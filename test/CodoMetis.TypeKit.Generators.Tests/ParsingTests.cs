@@ -72,4 +72,67 @@ public sealed class ParsingTests
         ProbeInstant.Parse("2026-09-27T12:00:00Z", CultureInfo.InvariantCulture).Value.ShouldBe(Instant.FromUtc(2026, 9, 27, 12, 0));
         ProbeInstant.TryParse("not an instant", CultureInfo.InvariantCulture, out _).ShouldBeFalse();
     }
+
+    /// <summary>
+    /// An enum is <c>IConvertible</c> but <c>Convert.ChangeType</c> cannot make one from a string, so a
+    /// parse that went that way threw <c>InvalidCastException</c> for every input and <c>TryParse</c>
+    /// answered <see langword="false"/> for every input, while the type still advertised <c>IParsable</c>.
+    /// </summary>
+    [Fact]
+    public void An_enum_parses_by_name()
+    {
+        ProbeWeekday.Parse("Monday", null).Value.ShouldBe(DayOfWeek.Monday);
+        ProbeWeekday.TryParse("Friday", null, out var parsed).ShouldBeTrue();
+        parsed.Value.ShouldBe(DayOfWeek.Friday);
+        ProbeWeekday.Parse(ProbeWeekday.From(DayOfWeek.Sunday).ToString(), null).Value.ShouldBe(DayOfWeek.Sunday);
+    }
+
+    [Fact]
+    public void An_unknown_enum_name_is_a_FormatException_and_a_false()
+    {
+        Should.Throw<FormatException>(() => ProbeWeekday.Parse("Funday", null)).Message.ShouldNotContain("Funday");
+        ProbeWeekday.TryParse("Funday", null, out _).ShouldBeFalse();
+        ProbeWeekday.TryParse(null, null, out _).ShouldBeFalse();
+    }
+
+    /// <summary>The type converter delegates to <c>Parse</c>, so it parses an enum the same way.</summary>
+    [Fact]
+    public void An_enum_converts_from_its_name_through_the_type_converter() =>
+        System.ComponentModel.TypeDescriptor.GetConverter(typeof(ProbeWeekday)).ConvertFromInvariantString("Tuesday").ShouldBe(ProbeWeekday.From(DayOfWeek.Tuesday));
+
+    /// <summary>
+    /// <c>ToString()</c> is invariant, so <c>Parse(x.ToString(), null)</c> must be too: with a null
+    /// provider meaning the current culture, "1.5" parsed as 15 in de-DE.
+    /// </summary>
+    [Fact]
+    public void A_null_provider_means_the_invariant_culture_so_ToString_round_trips()
+    {
+        var previous = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
+
+        try
+        {
+            var amount = ProbeAmount.From(1.5m);
+
+            ProbeAmount.Parse(amount.ToString(), null).ShouldBe(amount);
+            ProbeAmount.Parse(amount.ToString().AsSpan(), null).ShouldBe(amount);
+            ProbeAmount.Parse("1.5"u8, null).ShouldBe(amount);
+
+            ProbeAmount.TryParse("1.5", null, out var parsed).ShouldBeTrue();
+            parsed.ShouldBe(amount);
+            ProbeAmount.TryParse("1.5".AsSpan(), null, out parsed).ShouldBeTrue();
+            parsed.ShouldBe(amount);
+            ProbeAmount.TryParse("1.5"u8, null, out parsed).ShouldBeTrue();
+            parsed.ShouldBe(amount);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
+
+    /// <summary>The counterpart, so the fix is not "always invariant": a provider that is given is used.</summary>
+    [Fact]
+    public void A_given_provider_is_still_honoured() =>
+        ProbeAmount.Parse("1,5", CultureInfo.GetCultureInfo("de-DE")).ShouldBe(ProbeAmount.From(1.5m));
 }

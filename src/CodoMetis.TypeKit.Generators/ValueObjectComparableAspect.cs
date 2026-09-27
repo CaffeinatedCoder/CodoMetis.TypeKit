@@ -7,6 +7,7 @@ namespace CodoMetis.TypeKit.Generators;
 [CompileTime]
 internal enum ValueCompareStrategy
 {
+    OrdinalString,        // T is string: ordinal, so the ordering agrees with the record's ordinal equality
     GenericComparable,    // T : IComparable<T> — type-safe, no boxing for structs
     NonGenericComparable, // T : IComparable only — boxing unavoidable
     Unsupported
@@ -92,6 +93,10 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
 
     private static ValueCompareStrategy ResolveStrategy(INamedType valueType)
     {
+        // string.CompareTo is culture-sensitive, and the record's equality is ordinal.
+        if (valueType.SpecialType == SpecialType.String)
+            return ValueCompareStrategy.OrdinalString;
+
         // Probe IComparable<T> first — avoids boxing for struct T.
         var genericComparable = typeof(IComparable<>).ToNamedType().MakeGenericInstance(valueType);
         if (valueType.IsConvertibleTo(genericComparable))

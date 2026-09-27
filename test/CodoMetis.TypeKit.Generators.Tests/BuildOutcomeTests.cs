@@ -28,6 +28,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1004", "Misnamed")]
     [InlineData("CMTK1005", "Generic")]
     [InlineData("CMTK1005", "ArrayBacked")]
+    [InlineData("CMTK1005", "NullableBacked")]
     public void A_declaration_that_cannot_be_generated_is_an_error(string id, string type) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains($"'{type}"), $"{id} on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
 
@@ -84,6 +85,10 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public readonly partial record struct Generic<T> : IValue<int>;
 
             public readonly partial record struct ArrayBacked : IValue<int[]>;
+
+            // Violates the notnull constraint, which is only a warning (CS8714). Without its own
+            // refusal, the generated JSON converter and parsing fail to compile (LAMA0611/0612).
+            public readonly partial record struct NullableBacked : IValue<int?>;
 
             public readonly partial record struct Fine : IValue<int>;
 

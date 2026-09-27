@@ -39,7 +39,7 @@ internal sealed partial class ValueObjectParsableAspect
             string wrapped = meta.CompileTime(ValueObjectTypes.SourceName(tag.ValueType));
 
             return (bool)ExpressionFactory.Parse(
-                $"(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.TryParse<{wrapped}>(s, provider, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
+                $"(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.TryParse<{wrapped}>(s, {ParsableImplementationArguments.Provider}, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
                 TypeFactory.GetType(SpecialType.Boolean),
                 false
             ).Value!;
@@ -48,6 +48,18 @@ internal sealed partial class ValueObjectParsableAspect
         if (meta.CompileTime(tag.Strategy == ValueParseStrategy.String))
         {
             return (bool)ExpressionFactory.Parse($"(s is not null && {tag.TryFromText}(s, out result))", TypeFactory.GetType(SpecialType.Boolean), false).Value!;
+        }
+
+        if (meta.CompileTime(tag.Strategy == ValueParseStrategy.Enum))
+        {
+            string wrapped = meta.CompileTime(ValueObjectTypes.SourceName(tag.ValueType));
+
+            // Enum.TryParse answers false for null, an unknown name and an empty string.
+            return (bool)ExpressionFactory.Parse(
+                $"(global::System.Enum.TryParse<{wrapped}>(s, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
+                TypeFactory.GetType(SpecialType.Boolean),
+                false
+            ).Value!;
         }
 
         // The remaining strategies have no TryParse of their own: their inner parse throws.
@@ -81,7 +93,7 @@ internal sealed partial class ValueObjectParsableAspect
         result = meta.Default(tag.ValueObjectType);
 
         return (bool)ExpressionFactory.Parse(
-            $"(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.TryParseSpan<{wrapped}>(s, provider, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
+            $"(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.TryParseSpan<{wrapped}>(s, {ParsableImplementationArguments.Provider}, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
             TypeFactory.GetType(SpecialType.Boolean),
             false
         ).Value!;
@@ -93,7 +105,11 @@ internal sealed partial class ValueObjectParsableAspect
         var tag = (ParsableImplementationArguments)meta.Tags.Source!;
         string wrapped = meta.CompileTime(ValueObjectTypes.SourceName(tag.ValueType));
 
-        return ExpressionFactory.Parse($"{tag.FromText}(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.ParseUtf8<{wrapped}>(utf8Text, provider))", tag.ValueObjectType, false).Value!;
+        return ExpressionFactory.Parse(
+            $"{tag.FromText}(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.ParseUtf8<{wrapped}>(utf8Text, {ParsableImplementationArguments.Provider}))",
+            tag.ValueObjectType,
+            false
+        ).Value!;
     }
 
     [Template]
@@ -105,7 +121,7 @@ internal sealed partial class ValueObjectParsableAspect
         result = meta.Default(tag.ValueObjectType);
 
         return (bool)ExpressionFactory.Parse(
-            $"(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.TryParseUtf8<{wrapped}>(utf8Text, provider, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
+            $"(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.TryParseUtf8<{wrapped}>(utf8Text, {ParsableImplementationArguments.Provider}, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
             TypeFactory.GetType(SpecialType.Boolean),
             false
         ).Value!;

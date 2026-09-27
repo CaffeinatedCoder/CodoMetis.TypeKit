@@ -123,6 +123,17 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
             return false;
         }
 
+        // The markers' notnull constraint is only a warning (CS8714), so IValue<int?> reaches here,
+        // and the generated JSON converter and parsing then fail to compile, which Metalama reports
+        // as a bug in an aspect (LAMA0611/0612). Absence belongs to the value object, not to what
+        // it wraps: an optional OrderId is an OrderId?, not an OrderId over a Guid?.
+        if (namedValueType.IsNullable == true)
+        {
+            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target,
+                $"the wrapped type '{namedValueType.ToDisplayString()}' is nullable; wrap '{namedValueType.ToNonNullable().ToDisplayString()}' and declare the property or parameter as '{target.Name}?' where the value can be absent")));
+            return false;
+        }
+
         valueType = namedValueType;
         return true;
     }

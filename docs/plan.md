@@ -105,6 +105,10 @@ Each phase ends green, and its guards have been proven by seeding the defect
      `Parse(null)` wrapped null; `bool`/`char` (explicit `IParsable`) did not compile; a NodaTime
      `LocalDate` could not be a dictionary key; an internal value object got a public extension
      class; a marker reached through a derived interface would not have been generated.
+   - Found in review on 2026-09-27, and fixed with guards proven by reverting: an enum-backed value
+     object's parsing threw for every input; string ordering was culture-sensitive while equality
+     is ordinal; `Parse(x.ToString(), null)` did not round-trip outside the invariant culture; and
+     `IValue<int?>` failed as an aspect bug instead of CMTK1005 (§5).
 4. **EF Core. ✅ Done 2026-09-27.**
    - The mapping spike first (spikes/EfMapping): an additive type-mapping-source plugin maps every
      value object, with keys, foreign keys, nullable properties and primitive collections, on
@@ -218,6 +222,20 @@ passes in tests and breaks for the first consumer who renames something.
 - **Explicit `IParsable`.** `bool` and `char` implement their parsing interfaces explicitly, so the
   generated code calls the wrapped type's `Parse`/`TryParse` through `GeneratedParsing`, whose
   constrained type parameters reach an explicit implementation.
+- **Parsing culture (decided 2026-09-27).** In the generated `Parse`/`TryParse` a null
+  `IFormatProvider` means the invariant culture, unlike the BCL, because the generated `ToString()`
+  is invariant: `Parse(x.ToString(), null)` must round-trip, and with the current culture it parsed
+  "1.5" as 15 in de-DE. A provider that is given is used as given. The type converter already did
+  this.
+- **Enums** parse by name through `Enum.TryParse`, with a `FormatException` for an unknown name.
+  `Convert.ChangeType` cannot make an enum from a string, so the former `IConvertible` strategy
+  threw for every input while the type advertised `IParsable`. Nothing else that is convertible
+  lacks `ISpanParsable`, so that strategy is gone.
+- **String comparison is ordinal**, so ordering agrees with the record's equality. Culture
+  comparison sorts "a" before "B" and ignores a zero-width space, and a `SortedSet` then dropped a
+  value a `HashSet` kept.
+- **A nullable wrapped type is CMTK1005.** The markers' `notnull` constraint is only a warning
+  (CS8714), and `IValue<int?>` then failed inside the generated code as LAMA0611/0612.
 - **Metalama 2026.1.** Aspect state uses `IDurableRef`, which exists in 2026.1. `[Durable]` on the
   `_value` template placeholder is 2027.0-only and stays out until the upgrade (decision 4). Build
   each aspect on 2026.1 as it lands, and use no 2027.0-only API.

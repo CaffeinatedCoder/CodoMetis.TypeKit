@@ -835,3 +835,43 @@ ProbeUri
   static op_Inequality(ProbeUri, ProbeUri) : Boolean
   extension static GetValue(ProbeUri) : Uri
   extension static ValueOrNull(ProbeUri?) : Uri
+ProbeWeekday
+  CompareTo(Object) : Int32
+  CompareTo(ProbeWeekday) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeWeekday) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : DayOfWeek
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeWeekday>
+  implements IComparisonOperators<ProbeWeekday, ProbeWeekday, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeWeekday, ProbeWeekday, Boolean>
+  implements IEquatable<ProbeWeekday>
+  implements IFormattable
+  implements IParsable<ProbeWeekday>
+  implements ISpanFormattable
+  implements IValue<DayOfWeek>
+  implements IValueObject<ProbeWeekday, DayOfWeek>
+  implements IValueObjectMaterializer<ProbeWeekday, DayOfWeek>
+  implements IValueWrapper<ProbeWeekday, DayOfWeek>
+  nested ProbeWeekdayJsonConverter : JsonConverter<ProbeWeekday>
+  nested ProbeWeekdayTypeConverter : TypeConverter
+  new()
+  static From(DayOfWeek) : ProbeWeekday
+  static Parse(String, IFormatProvider) : ProbeWeekday
+  static TryParse(String, IFormatProvider, out ProbeWeekday) : Boolean
+  static op_Equality(ProbeWeekday, ProbeWeekday) : Boolean
+  static op_GreaterThan(ProbeWeekday, ProbeWeekday) : Boolean
+  static op_GreaterThanOrEqual(ProbeWeekday, ProbeWeekday) : Boolean
+  static op_Inequality(ProbeWeekday, ProbeWeekday) : Boolean
+  static op_LessThan(ProbeWeekday, ProbeWeekday) : Boolean
+  static op_LessThanOrEqual(ProbeWeekday, ProbeWeekday) : Boolean
+  extension static GetValue(ProbeWeekday) : DayOfWeek
+  extension static ValueOrNull(ProbeWeekday?) : DayOfWeek?

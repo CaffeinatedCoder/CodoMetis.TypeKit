@@ -66,6 +66,40 @@ public sealed class ComparisonTests
     [Fact]
     public void A_value_object_over_an_incomparable_type_is_not_comparable() =>
         typeof(IComparable).IsAssignableFrom(typeof(ProbeUri)).ShouldBeFalse();
+
+    /// <summary>
+    /// The record's equality is ordinal, so the ordering must be too. Culture-sensitive comparison
+    /// puts "a" before "B" and treats a zero-width space as nothing, so a sorted set held one of two
+    /// values a hash set kept apart.
+    /// </summary>
+    [Fact]
+    public void A_string_value_object_orders_ordinally_so_ordering_agrees_with_equality()
+    {
+        var previous = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+
+        try
+        {
+            var plain    = ProbeName.From("ABC");
+            var invisible = ProbeName.From("A​BC");
+
+            (plain == invisible).ShouldBeFalse();
+            plain.CompareTo(invisible).ShouldNotBe(0);
+            new SortedSet<ProbeName> { plain, invisible }.Count.ShouldBe(2);
+
+            ProbeName.From("B").CompareTo(ProbeName.From("a")).ShouldBeLessThan(0);
+            (ProbeName.From("B") < ProbeName.From("a")).ShouldBeTrue();
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
+
+    /// <summary>An enum orders through the non-generic <c>IComparable</c> its base type implements.</summary>
+    [Fact]
+    public void An_enum_value_object_orders_by_its_value() =>
+        (ProbeWeekday.From(DayOfWeek.Monday) < ProbeWeekday.From(DayOfWeek.Tuesday)).ShouldBeTrue();
 }
 
 /// <summary><c>MinValue</c>/<c>MaxValue</c> for a plain value object whose wrapped type has them.</summary>

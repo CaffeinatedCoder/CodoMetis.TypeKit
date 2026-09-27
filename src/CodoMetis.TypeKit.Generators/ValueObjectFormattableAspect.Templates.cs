@@ -20,9 +20,11 @@ internal sealed partial class ValueObjectFormattableAspect
         return meta.This.Value.ToString() ?? string.Empty;
     }
 
-    // Overrides the record-generated ToString() to stay consistent.
-    // Uses InvariantCulture to match standard library conventions for
-    // ToString() — callers who need locale control use the IFormattable overload.
+    // Overrides the record-generated ToString() with the invariant culture. The BCL's own ToString()
+    // uses the current culture; this one does not, because a value object's text is an identifier
+    // or a wire value more often than a display string, and the generated Parse treats a null
+    // provider as invariant too, so Parse(x.ToString(), null) round-trips. Callers who need a
+    // culture use the IFormattable overload.
     [Template]
     public string ToStringOverrideTemplate() => meta.This.ToString(null, CultureInfo.InvariantCulture);
 

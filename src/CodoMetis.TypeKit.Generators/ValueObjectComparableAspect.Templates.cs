@@ -12,6 +12,19 @@ internal sealed partial class ValueObjectComparableAspect
     {
         var tag = (ComparableImplementationArguments)meta.Tags.Source!;
 
+        if (meta.CompileTime(tag.Strategy == ValueCompareStrategy.OrdinalString))
+        {
+            // Not string.CompareTo, which compares by the current culture: under it "a" sorts before
+            // "B" and a zero-width space counts for nothing, so "A​BC" compared equal to "ABC"
+            // while the record's ordinal equality told them apart, and a SortedSet dropped a value
+            // a HashSet kept. Ordinal agrees with the equality.
+            return (int)ExpressionFactory.Parse(
+                "global::System.String.CompareOrdinal(this.Value, other.Value)",
+                TypeFactory.GetType(SpecialType.Int32),
+                false
+            ).Value!;
+        }
+
         if (meta.CompileTime(tag.Strategy == ValueCompareStrategy.GenericComparable))
         {
             // ExpressionFactory.Parse is necessary: an explicit IComparable<T> cast

@@ -10,7 +10,7 @@ internal enum ValueParseStrategy
     String,
     SpanParsable,
     Parsable,
-    Convertible,
+    Enum,
     TypeConverter,
     StaticParse,
     StringConstructor,
@@ -32,6 +32,14 @@ internal sealed class ParsableImplementationArguments
     public required string TryFromText { get; init; }
 
     /// <summary>
+    /// The provider the generated parsing hands to the wrapped type. A null provider means the
+    /// invariant culture, not the current one as in the BCL: the generated <c>ToString()</c> is
+    /// invariant, so <c>Parse(x.ToString(), null)</c> has to round-trip, and with the current
+    /// culture it parsed "1.5" as 15 in de-DE. A provider that is given is used as given.
+    /// </summary>
+    public const string Provider = "(provider ?? global::System.Globalization.CultureInfo.InvariantCulture)";
+
+    /// <summary>
     /// C# that turns the text <c>s</c> (and <c>provider</c>) into the wrapped type. The wrapped
     /// type's own <c>Parse</c> is called through <c>GeneratedParsing</c>, because it may be an
     /// explicit interface implementation that <c>T.Parse(...)</c> cannot reach (<c>bool</c> is one).
@@ -43,12 +51,15 @@ internal sealed class ParsableImplementationArguments
         return Strategy switch
         {
             ValueParseStrategy.String => input,
-            ValueParseStrategy.Parsable => $"global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.Parse<{valueType}>({input}, provider)",
-            ValueParseStrategy.SpanParsable => $"global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.ParseSpan<{valueType}>({input}, provider)",
-            ValueParseStrategy.Convertible => $"({valueType})global::System.Convert.ChangeType({input}, typeof({valueType}), provider)",
+            ValueParseStrategy.Parsable => $"global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.Parse<{valueType}>({input}, {Provider})",
+            ValueParseStrategy.SpanParsable => $"global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.ParseSpan<{valueType}>({input}, {Provider})",
+            // By name, as Enum.Parse does, but with the exception IParsable.Parse documents. The
+            // refused text stays out of the message, as in every other refusal.
+            ValueParseStrategy.Enum =>
+                $"(global::System.Enum.TryParse<{valueType}>({input}, out var __parsed) ? __parsed : throw new global::System.FormatException(\"The input is not a name of {ValueType.Name}.\"))",
             ValueParseStrategy.TypeConverter =>
                 $"({valueType})global::System.ComponentModel.TypeDescriptor.GetConverter(typeof({valueType}))"
-              + $".ConvertFromString(null, provider as global::System.Globalization.CultureInfo ?? global::System.Globalization.CultureInfo.CurrentCulture, {input})!",
+              + $".ConvertFromString(null, provider as global::System.Globalization.CultureInfo ?? global::System.Globalization.CultureInfo.InvariantCulture, {input})!",
             ValueParseStrategy.StaticParse => $"{valueType}.Parse({input})",
             ValueParseStrategy.StringConstructor => $"new {valueType}({input})",
             _ => throw new NotSupportedException(Strategy.ToString())
@@ -149,8 +160,11 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
         if (valueType.IsConvertibleTo(typeof(IParsable<>).ToNamedType().MakeGenericInstance(valueType)))
             return ValueParseStrategy.Parsable;
 
-        if (valueType.IsConvertibleTo(typeof(IConvertible)))
-            return ValueParseStrategy.Convertible;
+        // An enum is IConvertible, but Convert.ChangeType cannot make one from a string: a strategy
+        // built on it threw for every input while the type advertised IParsable. Nothing else that is
+        // convertible lacks ISpanParsable, so enums are the only type that gets here this way.
+        if (valueType.TypeKind == TypeKind.Enum)
+            return ValueParseStrategy.Enum;
 
         if (valueType.Attributes.Any(attribute => attribute.Type.IsConvertibleTo(typeof(TypeConverterAttribute))))
             return ValueParseStrategy.TypeConverter;

@@ -41,6 +41,9 @@ public readonly partial record struct ProbeLocalDate : IValue<NodaTime.LocalDate
 /// <summary>JSON: fallback through the options. Parse: the string constructor. A class as the wrapped type.</summary>
 public readonly partial record struct ProbeUri : IValue<Uri>;
 
+/// <summary>An enum as the wrapped type. Parse: by name, through <c>Enum.TryParse</c>. Comparison: non-generic <c>IComparable</c>.</summary>
+public readonly partial record struct ProbeWeekday : IValue<DayOfWeek>;
+
 /// <summary>A value object that is a record class rather than a record struct.</summary>
 public sealed partial record ProbeLabel : IValue<string>;
 
