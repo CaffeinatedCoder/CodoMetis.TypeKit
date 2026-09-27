@@ -1,6 +1,6 @@
 # Plan: CodoMetis.TypeKit
 
-Status: **in progress, 2026-09-27.** Phase 0 is done. The decisions are in §8. The fabric
+Status: **in progress, 2026-09-27.** Phases 0 and 1 are done. The decisions are in §8. The fabric
 spike ([spikes/FabricSpike](../spikes/FabricSpike/README.md)) and the translation comparison
 ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)) are done.
 
@@ -50,10 +50,18 @@ Each phase ends green, and its guards have been proven by seeding the defect
      transitively. Proven by seeding a direct reference in the base package, which failed the base
      and both satellites, and a transitive one via the EF satellite, which failed only that
      satellite.
-1. **Option and Result.** `Option<T>`, `Result<TError>`, `Result<T, TError>`, their extensions and
-   `RequireCustomInitializationAttribute` in `CodoMetis.TypeKit`, with behaviour tests. Add the
-   throw on `Uninitialized`, a `ToString` that never prints the content, and a `[DebuggerDisplay]`
-   that does (§9), each with its guard.
+1. **Option and Result. ✅ Done 2026-09-27.**
+   - `Option<T>`, `Result<TError>`, `Result<T, TError>`, the `Result.Ok`/`Result.Error` markers,
+     their extensions and `RequireCustomInitializationAttribute` in `CodoMetis.TypeKit`. Tests in
+     `test/CodoMetis.TypeKit.Tests`.
+   - The throw on `Uninitialized`, a `ToString` that never prints the content, and a
+     `[DebuggerDisplay]` that does (§9).
+   - Guards, each proven by seeding its defect:
+     - one throw case per branching member (21), plus a completeness test that fails when a
+       public `Result` member is added without being classified as branching or not;
+     - `ToString` never contains the content, including for the markers;
+     - the debugger display names an existing private property and shows the content;
+     - the collapsing `Match` runs its success callback.
 2. **Value-object contracts and analyzer.**
    - The interfaces and `KnownGood`.
    - `CodoMetis.TypeKit.Analyzers` with a symbol-based analyzer (§3), and CMTK0001 with its tests.
@@ -222,8 +230,12 @@ LanguageExt is out.
   `Option { }` and `Result { State = Error }`. So it never prints a value, in line with
   `KnownGood`'s rule. **Never make these types positional:** positional parameters become public
   properties, which reintroduces `.Value` and puts the value into `ToString`.
+- **The `Result.Ok(x)`/`Result.Error(e)` markers** keep their content internal too, so they print
+  `Success { }` and `Error { }`. Only the implicit conversions read it.
 - **`[DebuggerDisplay]`** on `Option` and both `Result` shapes shows the content in the debugger,
   where it is what someone stepping through wants to see. The debugger is not a log.
+- **`Result<TError>` has no `AsEnumerable`.** A sequence of zero or one units says no more than
+  the `bool` conversion.
 
 **Decided 2026-09-27: an uninitialized `Result` throws.**
 - A `default` result is `State == Uninitialized`. If the branching members tested only
