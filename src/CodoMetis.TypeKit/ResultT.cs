@@ -1,0 +1,272 @@
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
+using CodoMetis.TypeKit.Attributes;
+
+namespace CodoMetis.TypeKit;
+
+/// <summary>The state of a <see cref="Result{TError}"/> or <see cref="Result{T,TError}"/>.</summary>
+public enum ResultState
+{
+    /// <summary>A <c>default</c> instance, neither a success nor an error.</summary>
+    Uninitialized,
+
+    /// <summary>The operation succeeded.</summary>
+    Success,
+
+    /// <summary>The operation failed.</summary>
+    Error
+}
+
+/// <summary>
+/// The marker <c>Result.Ok()</c> returns. It converts implicitly to a successful
+/// <see cref="Result{TError}"/>.
+/// </summary>
+public readonly record struct Success;
+
+/// <summary>
+/// The marker <c>Result.Ok(value)</c> returns. It converts implicitly to a successful
+/// <see cref="Result{T,TError}"/>, and has no public <c>.Value</c> of its own.
+/// </summary>
+/// <typeparam name="T">The type of the value.</typeparam>
+[RequireCustomInitialization]
+public readonly record struct Success<T>
+{
+    internal T Value { get; }
+
+    internal Success(T value)
+    {
+        Value = value;
+    }
+}
+
+/// <summary>
+/// The marker <c>Result.Error(error)</c> returns. It converts implicitly to a failed
+/// <see cref="Result{T,TError}"/> of any value type, and has no public <c>.Value</c> of its own.
+/// </summary>
+/// <typeparam name="T">The type of the error.</typeparam>
+[RequireCustomInitialization]
+public readonly record struct Error<T>
+{
+    internal Error(T value)
+    {
+        Value = value;
+    }
+
+    internal T Value { get; }
+}
+
+/// <summary>
+/// The outcome of an operation that produces a value: a success holding a
+/// <typeparamref name="T"/>, or an error of type <typeparamref name="TError"/>. There is no public
+/// <c>.Value</c> or <c>.Error</c>: the content is reached through <c>Match</c>,
+/// <see cref="TryGetValue"/> and the combinators.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Create instances with <see cref="Success(T)"/> and <see cref="Error(TError)"/>, or by returning a
+/// bare value, <c>Result.Ok(value)</c> or <c>Result.Error(error)</c> from a method typed
+/// <see cref="Result{T,TError}"/>.
+/// </para>
+/// <para>
+/// A <c>default</c> result is <see cref="ResultState.Uninitialized"/>, neither a success nor an
+/// error. Every member that would pick a branch throws <see cref="InvalidOperationException"/> on
+/// it, instead of reporting a <c>default(T)</c> or a <c>default(TError)</c> that was never produced.
+/// </para>
+/// <para>
+/// <see cref="object.ToString"/> never prints the value or the error, so a result can be logged
+/// without leaking what it holds. The debugger shows both.
+/// </para>
+/// </remarks>
+/// <typeparam name="T">The type of the value.</typeparam>
+/// <typeparam name="TError">The type of the error.</typeparam>
+[RequireCustomInitialization]
+[DebuggerDisplay("{DebuggerDisplay,nq}")]
+public readonly record struct Result<T, TError>
+{
+    private readonly T?      _value;
+    private readonly TError? _error;
+
+    /// <summary>Whether this is a success, an error, or an uninitialized <c>default</c>.</summary>
+    public ResultState State { get; }
+
+    /// <summary>
+    /// Creates an <see cref="ResultState.Uninitialized"/> result. Use <see cref="Success(T)"/> or
+    /// <see cref="Error(TError)"/> instead.
+    /// </summary>
+    [DebuggerHidden]
+    [DebuggerNonUserCode]
+    [DebuggerStepThrough]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public Result()
+    {
+        State = ResultState.Uninitialized;
+    }
+
+    private Result(T? value, TError? error, ResultState state)
+    {
+        _value = value;
+        _error = error;
+        State  = state;
+    }
+
+    private bool Succeeded => State switch
+    {
+        ResultState.Success => true,
+        ResultState.Error   => false,
+        _                   => ThrowHelper.ThrowUninitializedResult<bool>()
+    };
+
+    private string DebuggerDisplay => State switch
+    {
+        ResultState.Success => $"Success({_value})",
+        ResultState.Error   => $"Error({_error})",
+        _                   => nameof(ResultState.Uninitialized)
+    };
+
+    /// <summary>Creates a success.</summary>
+    /// <param name="value">The value.</param>
+    /// <returns>A successful result holding <paramref name="value"/>.</returns>
+    public static Result<T, TError> Success(T value) => new(value, default, ResultState.Success);
+
+    /// <summary>Creates an error.</summary>
+    /// <param name="error">The error.</param>
+    /// <returns>A failed result holding <paramref name="error"/>.</returns>
+    public static Result<T, TError> Error(TError error) => new(default, error, ResultState.Error);
+
+    /// <summary>Produces a value from either the value or the error.</summary>
+    /// <param name="onSuccess">Called with the value on success.</param>
+    /// <param name="onError">Called with the error on error.</param>
+    /// <typeparam name="TResult">The type of the produced value.</typeparam>
+    /// <returns>What the called function returned.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public TResult Match<TResult>(Func<T, TResult> onSuccess, Func<TError, TResult> onError) =>
+        Succeeded ? onSuccess(_value!) : onError(_error!);
+
+    /// <summary>
+    /// Produces a value from either the value or the error, where the success branch returns a
+    /// <c>Result.Ok(value)</c> marker.
+    /// </summary>
+    /// <param name="onSuccess">Called with the value on success.</param>
+    /// <param name="onError">Called with the error on error.</param>
+    /// <typeparam name="TResult">The type of the produced value.</typeparam>
+    /// <returns>What the called function returned.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public TResult Match<TResult>(Func<T, Success<TResult>> onSuccess, Func<TError, TResult> onError) =>
+        Succeeded ? onSuccess(_value!).Value : onError(_error!);
+
+    /// <summary>Produces a value from the value, or from a fallback that drops the error.</summary>
+    /// <param name="fn">Called with the value on success.</param>
+    /// <param name="defaultProvider">Called on error. It does not receive the error.</param>
+    /// <typeparam name="TResult">The type of the produced value.</typeparam>
+    /// <returns>What the called function returned.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public TResult Match<TResult>(Func<T, TResult> fn, Func<TResult> defaultProvider) =>
+        Succeeded ? fn(_value!) : defaultProvider();
+
+    /// <summary>
+    /// Collapses into a <see cref="Result{TError}"/>: the value is spent, and the error may be
+    /// reshaped on the way out.
+    /// </summary>
+    /// <param name="onSuccess">Called with the value on success. Its <c>Result.Ok()</c> marker is discarded.</param>
+    /// <param name="onError">Called with the error on error. Its return value is the collapsed error.</param>
+    /// <returns>A success, or an error holding what <paramref name="onError"/> returned.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public Result<TError> Match(Func<T, Success> onSuccess, Func<TError, TError> onError)
+    {
+        if (!Succeeded)
+            return Result<TError>.Error(onError(_error!));
+
+        onSuccess(_value!);
+        return Result<TError>.Success();
+    }
+
+    /// <summary>Transforms the value on success, keeping the error otherwise.</summary>
+    /// <param name="fn">Called with the value on success.</param>
+    /// <typeparam name="TResult">The type of the transformed value.</typeparam>
+    /// <returns>A success with the transformed value, or this error without calling <paramref name="fn"/>.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public Result<TResult, TError> Map<TResult>(Func<T, TResult> fn) =>
+        Succeeded ? Result<TResult, TError>.Success(fn(_value!)) : Result<TResult, TError>.Error(_error!);
+
+    /// <summary>Chains an operation that may itself fail.</summary>
+    /// <param name="fn">Called with the value on success.</param>
+    /// <typeparam name="TResult">The type of the chained result's value.</typeparam>
+    /// <returns>The result <paramref name="fn"/> returned, or this error without calling it.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public Result<TResult, TError> Bind<TResult>(Func<T, Result<TResult, TError>> fn) =>
+        Succeeded ? fn(_value!) : Result<TResult, TError>.Error(_error!);
+
+    /// <summary>Chains an operation that always succeeds and returns a <c>Result.Ok(value)</c> marker.</summary>
+    /// <param name="fn">Called with the value on success.</param>
+    /// <typeparam name="TResult">The type of the produced value.</typeparam>
+    /// <returns>A success with the marker's value, or this error without calling <paramref name="fn"/>.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public Result<TResult, TError> Bind<TResult>(Func<T, Success<TResult>> fn) =>
+        Succeeded ? Result<TResult, TError>.Success(fn(_value!).Value) : Result<TResult, TError>.Error(_error!);
+
+    /// <summary>Runs a side effect on the value on success.</summary>
+    /// <param name="action">Called with the value on success.</param>
+    /// <returns>This result, unchanged.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public Result<T, TError> Tap(Action<T> action)
+    {
+        if (Succeeded)
+            action(_value!);
+
+        return this;
+    }
+
+    /// <summary>Runs an asynchronous side effect on the value on success.</summary>
+    /// <param name="action">Called with the value on success.</param>
+    /// <returns>This result, unchanged, once <paramref name="action"/> has completed.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public async Task<Result<T, TError>> TapAsync(Func<T, Task> action)
+    {
+        if (Succeeded)
+            await action(_value!).ConfigureAwait(false);
+
+        return this;
+    }
+
+    /// <summary>Unwraps the value or the error.</summary>
+    /// <param name="value">The value on success; otherwise <c>default</c>.</param>
+    /// <param name="error">The error on error; otherwise <c>default</c>.</param>
+    /// <returns>Whether this is a success.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool TryGetValue([NotNullWhen(returnValue: true)] out T? value, [NotNullWhen(returnValue: false)] out TError? error)
+    {
+        value = _value;
+        error = _error;
+        return Succeeded;
+    }
+
+    /// <summary>The value as a sequence of one element, or an empty sequence for an error.</summary>
+    /// <returns>A sequence with the value, or an empty one.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized, on enumeration.</exception>
+    public IEnumerable<T> AsEnumerable()
+    {
+        if (Succeeded)
+            yield return _value!;
+    }
+
+    /// <summary><see langword="true"/> for a success, <see langword="false"/> for an error.</summary>
+    /// <param name="result">The result.</param>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator bool(Result<T, TError> result) => result.Succeeded;
+
+    /// <summary>Converts the <c>Result.Error(error)</c> marker, so a method can <c>return Result.Error(error);</c>.</summary>
+    /// <param name="error">The marker.</param>
+    public static implicit operator Result<T, TError>(Error<TError> error) => Error(error.Value);
+
+    /// <summary>Wraps a bare value, so a method can <c>return value;</c>.</summary>
+    /// <param name="value">The value.</param>
+    public static implicit operator Result<T, TError>(T value) => Success(value);
+
+    /// <summary>Converts the <c>Result.Ok(value)</c> marker, so a method can <c>return Result.Ok(value);</c>.</summary>
+    /// <param name="instance">The marker.</param>
+    public static implicit operator Result<T, TError>(Success<T> instance) => Success(instance.Value);
+}
