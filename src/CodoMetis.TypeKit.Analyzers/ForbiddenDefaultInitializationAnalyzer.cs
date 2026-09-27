@@ -64,8 +64,10 @@ public sealed class ForbiddenDefaultInitializationAnalyzer : DiagnosticAnalyzer
             _ => null
         };
 
-        // A class has a legitimate null; Nullable<T> of a value object is a null, not an instance.
-        if (targetType is not { IsValueType: true }) return;
+        // A class has a legitimate null; Nullable<T> of a value object is a null, not an instance. A
+        // type parameter with new() and no class constraint is a struct wherever it is a value
+        // object, since a generated class has no public parameterless constructor.
+        if (targetType is not ({ IsValueType: true } or ITypeParameterSymbol { HasConstructorConstraint: true, IsReferenceType: false })) return;
 
         var containingType = context.SemanticModel.GetEnclosingSymbol(context.Node.SpanStart, context.CancellationToken)?.ContainingType;
         if (SymbolEqualityComparer.Default.Equals(containingType?.OriginalDefinition, targetType.OriginalDefinition)) return;

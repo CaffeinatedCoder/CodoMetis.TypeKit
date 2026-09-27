@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using CodoMetis.TypeKit.Generators.Probes;
 
@@ -58,8 +59,7 @@ public sealed class GeneratedSurfaceTests
             foreach (var line in Lines(type).Order(StringComparer.Ordinal))
                 text.Append("  ").Append(line).Append('\n');
 
-            var extensions = assembly.GetType($"{type.Namespace}.{type.Name}Extensions");
-            foreach (var line in (extensions is null ? [] : Members(extensions)).Order(StringComparer.Ordinal))
+            foreach (var line in Companions(assembly, type).Order(StringComparer.Ordinal))
                 text.Append("  extension ").Append(line).Append('\n');
         }
 
@@ -73,6 +73,20 @@ public sealed class GeneratedSurfaceTests
         .. type.GetNestedTypes().Select(nested => $"nested {nested.Name} : {Display(nested.BaseType!)}"),
         .. Members(type)
     ];
+
+    /// <summary>
+    /// The generated extension methods on <paramref name="valueObject"/>, found by what they extend
+    /// rather than by their class's name, which is rendered: looked up by name, a renamed class
+    /// rendered no companions at all instead of a diff, and an internal one was never listed.
+    /// </summary>
+    private static IEnumerable<string> Companions(Assembly assembly, Type valueObject) =>
+        assembly.GetTypes()
+                .Where(type => type.IsDefined(typeof(ExtensionAttribute), false))
+                .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly))
+                .Where(method => method.IsDefined(typeof(ExtensionAttribute), false)
+                              && method.GetParameters()[0].ParameterType is var extended
+                              && (extended == valueObject || Nullable.GetUnderlyingType(extended) == valueObject))
+                .Select(method => $"{(method.IsPublic ? "" : "internal ")}static {method.DeclaringType!.Name}.{method.Name}({Parameters(method)}) : {Display(method.ReturnType)}");
 
     private static IEnumerable<string> Members(Type type)
     {

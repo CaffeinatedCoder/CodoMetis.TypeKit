@@ -8,6 +8,13 @@ namespace CodoMetis.TypeKit.Generators;
 /// <c>ValueOrNull()</c>, both marked <c>[TranslatedAsUnderlyingValue]</c> so a query translates them
 /// to the column itself.
 /// </summary>
+/// <remarks>
+/// Extension methods need a namespace-level class, so a nested value object's class is named after
+/// its whole nesting chain: <c>Order.Id</c> gets <c>OrderIdExtensions</c>, and <c>Customer.Id</c> in
+/// the same namespace no longer asks for the same name. Two <c>IdExtensions</c> crashed Metalama
+/// (LAMA0001), and a declared type of that name failed the aspect (LAMA0041). A name that is taken
+/// is CMTK1007 now, naming what takes it.
+/// </remarks>
 internal sealed class ValueObjectExtensionsAspect : TypeAspect
 {
     [Template]
@@ -26,11 +33,20 @@ internal sealed class ValueObjectExtensionsAspect : TypeAspect
             return;
         }
 
+        var className = ExtensionClassName(builder.Target);
+
+        if (NameOwner(builder.Target, className) is { } owner)
+        {
+            builder.Diagnostics.Report(AspectDiagnostics.ExtensionClassNameTaken.WithArguments((builder.Target, className, owner)));
+            builder.SkipAspect();
+            return;
+        }
+
         var valueType = state.ValueType.GetTarget();
 
         var extensionClass = builder.With(builder.Target.ContainingNamespace)
                                     .IntroduceClass(
-                                        $"{builder.Target.Name}Extensions",
+                                        className,
                                         buildType: type =>
                                         {
                                             type.Accessibility = accessibility;
@@ -70,6 +86,43 @@ internal sealed class ValueObjectExtensionsAspect : TypeAspect
             }
         );
     }
+
+    /// <summary><c>OrderIdExtensions</c> for <c>OrderId</c>, and for <c>Order.Id</c>.</summary>
+    private static string ExtensionClassName(INamedType type)
+    {
+        var name = type.Name;
+
+        for (var container = type.DeclaringType; container is not null; container = container.DeclaringType)
+            name = container.Name + name;
+
+        return name + "Extensions";
+    }
+
+    /// <summary>
+    /// What already has <paramref name="className"/> in the value object's namespace: a declared type,
+    /// or another value object whose own extension class would get the same name. Every aspect
+    /// instance runs this same check, so both value objects of a clash report it.
+    /// </summary>
+    private static string? NameOwner(INamedType valueObject, string className)
+    {
+        var @namespace = valueObject.ContainingNamespace;
+
+        if (@namespace.Types.OfName(className).FirstOrDefault() is { } declared)
+            return $"the type '{declared.ToDisplayString()}'";
+
+        var rival = AllTypes(@namespace.Types)
+            .FirstOrDefault(type => !type.Equals(valueObject)
+                                 && type.TypeKind is TypeKind.Struct or TypeKind.Class
+                                 && !type.IsAbstract
+                                 && ValueObjectTypes.Markers(type).Count > 0
+                                 && NamespaceLevelAccessibility(type) is not null
+                                 && ExtensionClassName(type) == className);
+
+        return rival is null ? null : $"the extension class of '{rival.ToDisplayString()}'";
+    }
+
+    private static IEnumerable<INamedType> AllTypes(IEnumerable<INamedType> types) =>
+        types.SelectMany(type => AllTypes(type.Types).Prepend(type));
 
     /// <summary>
     /// Public when the value object and every type it is nested in are public, internal when any of

@@ -53,12 +53,14 @@ internal sealed partial class ValueObjectJsonAspect
             return;
         }
 
+        // Always UTC, through GeneratedJson.AsUtc: an Unspecified value is taken as UTC rather than
+        // as server-local time, which ToUniversalTime() assumed.
         if (meta.CompileTime(strategy == ValueJsonStrategy.DateTimeValue))
         {
             if (asPropertyName)
             {
                 var expr = ExpressionFactory.Parse(
-                    "value!.Value.ToUniversalTime().ToString(\"O\", global::System.Globalization.CultureInfo.InvariantCulture)",
+                    $"{GeneratedJson}.AsUtc(value!.Value).ToString(\"O\", global::System.Globalization.CultureInfo.InvariantCulture)",
                     TypeFactory.GetType(SpecialType.String),
                     false
                 );
@@ -66,7 +68,7 @@ internal sealed partial class ValueObjectJsonAspect
             }
             else
             {
-                var expr = ExpressionFactory.Parse("value!.Value.ToUniversalTime()", TypeFactory.GetNamedType(typeof(DateTime)), false);
+                var expr = ExpressionFactory.Parse($"{GeneratedJson}.AsUtc(value!.Value)", TypeFactory.GetNamedType(typeof(DateTime)), false);
                 writer.WriteStringValue((DateTime)expr.Value!);
             }
 
@@ -183,6 +185,25 @@ internal sealed partial class ValueObjectJsonAspect
         }
     }
 
+    private const string GeneratedJson = "global::CodoMetis.TypeKit.ValueObjects.GeneratedJson";
+
+    /// <summary>
+    /// The wrapped type's own built-in converter (<c>JsonMetadataServices.Int32Converter</c> and so
+    /// on), which parses exactly what the serializer parses for that type and reports malformed text
+    /// as a <c>JsonException</c>. A <c>Parse</c> in the generated code let a
+    /// <c>FormatException</c> escape, which ASP.NET Core answers with 500 rather than 400, and parsed
+    /// keys by rules of its own.
+    /// </summary>
+    private static string BuiltInConverter(JsonImplementationArguments tag) =>
+        $"global::System.Text.Json.Serialization.Metadata.JsonMetadataServices.{tag.ValueType.Name}Converter";
+
+    /// <summary>C# that reads the wrapped value as a dictionary key or as a value, through <see cref="BuiltInConverter"/>.</summary>
+    private static string BuiltInRead(JsonImplementationArguments tag, bool asPropertyName) =>
+        $"{BuiltInConverter(tag)}.{(asPropertyName ? "ReadAsPropertyName" : "Read")}(ref reader, typeof({ValueObjectTypes.SourceName(tag.ValueType)}), options)";
+
+    private static IExpression BuiltInReadExpression(JsonImplementationArguments tag, bool asPropertyName) =>
+        ExpressionFactory.Parse(BuiltInRead(tag, asPropertyName), tag.ValueType, false);
+
     [Template]
     public dynamic? JsonConverterReadTemplate(
         ref Utf8JsonReader    reader,
@@ -209,74 +230,40 @@ internal sealed partial class ValueObjectJsonAspect
         if (meta.CompileTime(strategy == ValueJsonStrategy.GuidValue))
         {
             if (asPropertyName)
-            {
-                var parsed = ExpressionFactory.Parse("global::System.Guid.Parse(reader.GetString()!)", TypeFactory.GetNamedType(typeof(Guid)), false);
-                return tag.FromJson.Invoke(parsed.Value!, meta.This._materialize);
-            }
+                return tag.FromJson.Invoke(BuiltInReadExpression(tag, asPropertyName: true).Value!, meta.This._materialize);
 
             var guidExpr = ExpressionFactory.Parse("reader.GetGuid()", TypeFactory.GetNamedType(typeof(Guid)), false);
             return tag.FromJson.Invoke(guidExpr.Value!, meta.This._materialize);
         }
 
+        // A key and a value are the same instant: both are normalised by GeneratedJson.AsUtc.
         if (meta.CompileTime(strategy == ValueJsonStrategy.DateTimeValue))
         {
-            if (asPropertyName)
-            {
-                var parsed = ExpressionFactory.Parse(
-                    "global::System.DateTime.ParseExact(reader.GetString()!, \"O\", global::System.Globalization.CultureInfo.InvariantCulture, global::System.Globalization.DateTimeStyles.RoundtripKind)",
-                    TypeFactory.GetNamedType(typeof(DateTime)),
-                    false
-                );
-                return tag.FromJson.Invoke(parsed.Value!, meta.This._materialize);
-            }
+            string read = meta.CompileTime(asPropertyName ? BuiltInRead(tag, asPropertyName: true) : "reader.GetDateTime()");
 
-            var dateTimeExpr = ExpressionFactory.Parse("reader.GetDateTime().ToUniversalTime()", TypeFactory.GetNamedType(typeof(DateTime)), false);
+            var dateTimeExpr = ExpressionFactory.Parse($"{GeneratedJson}.AsUtc({read})", TypeFactory.GetNamedType(typeof(DateTime)), false);
             return tag.FromJson.Invoke(dateTimeExpr.Value!, meta.This._materialize);
         }
 
         if (meta.CompileTime(strategy == ValueJsonStrategy.DateOnlyValue))
-        {
-            var parsed = ExpressionFactory.Parse(
-                "global::System.DateOnly.ParseExact(reader.GetString()!, \"yyyy-MM-dd\", global::System.Globalization.CultureInfo.InvariantCulture)",
-                TypeFactory.GetNamedType(typeof(DateOnly)),
-                false
-            );
-            return tag.FromJson.Invoke(parsed.Value!, meta.This._materialize);
-        }
+            return tag.FromJson.Invoke(BuiltInReadExpression(tag, asPropertyName).Value!, meta.This._materialize);
 
         if (meta.CompileTime(strategy == ValueJsonStrategy.DateTimeOffsetValue))
         {
             if (asPropertyName)
-            {
-                var parsed = ExpressionFactory.Parse(
-                    "global::System.DateTimeOffset.ParseExact(reader.GetString()!, \"O\", global::System.Globalization.CultureInfo.InvariantCulture)",
-                    TypeFactory.GetNamedType(typeof(DateTimeOffset)),
-                    false
-                );
-                return tag.FromJson.Invoke(parsed.Value!, meta.This._materialize);
-            }
+                return tag.FromJson.Invoke(BuiltInReadExpression(tag, asPropertyName: true).Value!, meta.This._materialize);
 
             var offsetExpr = ExpressionFactory.Parse("reader.GetDateTimeOffset()", TypeFactory.GetNamedType(typeof(DateTimeOffset)), false);
             return tag.FromJson.Invoke(offsetExpr.Value!, meta.This._materialize);
         }
 
         if (meta.CompileTime(strategy == ValueJsonStrategy.TimeOnlyValue))
-        {
-            var parsed = ExpressionFactory.Parse(
-                "global::System.TimeOnly.Parse(reader.GetString()!, global::System.Globalization.CultureInfo.InvariantCulture)",
-                TypeFactory.GetNamedType(typeof(TimeOnly)),
-                false
-            );
-            return tag.FromJson.Invoke(parsed.Value!, meta.This._materialize);
-        }
+            return tag.FromJson.Invoke(BuiltInReadExpression(tag, asPropertyName).Value!, meta.This._materialize);
 
         if (meta.CompileTime(strategy == ValueJsonStrategy.BooleanValue))
         {
             if (asPropertyName)
-            {
-                var parsed = ExpressionFactory.Parse("bool.Parse(reader.GetString()!)", TypeFactory.GetNamedType(typeof(bool)), false);
-                return tag.FromJson.Invoke(parsed.Value!, meta.This._materialize);
-            }
+                return tag.FromJson.Invoke(BuiltInReadExpression(tag, asPropertyName: true).Value!, meta.This._materialize);
 
             var boolExpr = ExpressionFactory.Parse("reader.GetBoolean()", TypeFactory.GetNamedType(typeof(bool)), false);
             return tag.FromJson.Invoke(boolExpr.Value!, meta.This._materialize);
@@ -285,14 +272,7 @@ internal sealed partial class ValueObjectJsonAspect
         if (meta.CompileTime(strategy == ValueJsonStrategy.NumericInvariant))
         {
             if (asPropertyName)
-            {
-                var parsed = ExpressionFactory.Parse(
-                    $"{typeName}.Parse(reader.GetString()!, global::System.Globalization.NumberStyles.Any, global::System.Globalization.CultureInfo.InvariantCulture)",
-                    tag.ValueType,
-                    false
-                );
-                return tag.FromJson.Invoke(parsed.Value!, meta.This._materialize);
-            }
+                return tag.FromJson.Invoke(BuiltInReadExpression(tag, asPropertyName: true).Value!, meta.This._materialize);
 
             var deserialized = ExpressionFactory.Parse(
                 $"global::System.Text.Json.JsonSerializer.Deserialize(ref reader, (global::System.Text.Json.Serialization.Metadata.JsonTypeInfo<{typeName}>)options.GetTypeInfo(typeof({typeName})))",

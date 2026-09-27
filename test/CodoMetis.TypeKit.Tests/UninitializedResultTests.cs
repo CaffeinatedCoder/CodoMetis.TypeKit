@@ -29,6 +29,7 @@ public sealed class UninitializedResultTests
     private static readonly Dictionary<string, Func<Result<string>, Task>> ErrorOnlyMembers = new()
     {
         ["Match(onSuccess, onError)"] = r => Task.FromResult(r.Match(() => 1, () => 2)),
+        ["Match(onSuccess, onError -> error)"] = r => Task.FromResult(r.Match(() => 1, _ => 2)),
         ["Map(fn)"]                   = r => Task.FromResult(r.Map(() => 1)),
         ["Bind(fn)"]                  = r => Task.FromResult(r.Bind(Result<string>.Success)),
         ["Tap(action)"]               = r => Task.FromResult(r.Tap(() => { })),

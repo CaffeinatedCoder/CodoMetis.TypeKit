@@ -39,7 +39,9 @@ public static class Option
         /// <typeparam name="TError">The type of the error.</typeparam>
         /// <returns>A success with the transformed value, or an error with <paramref name="error"/>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Result<TSuccess, TError> ToResult<TSuccess, TError>(Func<T, TSuccess> onSuccess, TError error) =>
+        public Result<TSuccess, TError> ToResult<TSuccess, TError>(Func<T, TSuccess> onSuccess, TError error)
+            where TSuccess : notnull
+            where TError : notnull =>
             a.Match<Result<TSuccess, TError>>(x => onSuccess(x), () => Result.Error(error));
 
         /// <summary>Turns absence into an error, dropping the value.</summary>

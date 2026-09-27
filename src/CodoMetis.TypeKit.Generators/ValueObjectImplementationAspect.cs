@@ -117,6 +117,24 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
             return false;
         }
 
+        // A record class that can be derived from is not generated: a derived record compares equal
+        // only to its own type, which is not value equality, and a derived value object then failed
+        // inside the generated code (LAMA0611), where the error names nothing the user wrote.
+        if (target is { TypeKind: TypeKind.Class, IsSealed: false })
+        {
+            builder.Diagnostics.Report(MissingSealedKeyword.WithArguments(target));
+            return false;
+        }
+
+        for (var baseType = target.BaseType; baseType is not null; baseType = baseType.BaseType)
+        {
+            if (!baseType.IsAbstract && ValueObjectTypes.Markers(baseType).Count > 0)
+            {
+                builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, $"it derives from '{baseType.ToDisplayString()}', which is a value object itself")));
+                return false;
+            }
+        }
+
         if (ValueObjectTypes.UnderlyingType(marker) is not INamedType namedValueType)
         {
             builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, $"the wrapped type '{ValueObjectTypes.UnderlyingType(marker).ToDisplayString()}' is not a class, struct or enum")));

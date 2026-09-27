@@ -25,6 +25,42 @@ public sealed class FormattingTests
     public void IFormattable_honours_the_format_and_the_culture() =>
         ProbeAmount.From(1234.5m).ToString("N1", CultureInfo.GetCultureInfo("de-DE")).ShouldBe("1.234,5");
 
+    /// <summary>
+    /// A null provider means the invariant culture in every generated format, as it does in the
+    /// generated parsing. Interpolation, <c>string.Format</c> and <c>Convert.ToString</c> pass null,
+    /// which meant the current culture: in de-DE <c>$"{amount}"</c> was "1,5" while
+    /// <c>amount.ToString()</c> was "1.5", and <c>Parse($"{amount}", null)</c> read it as 15.
+    /// </summary>
+    [Fact]
+    public void A_null_format_provider_means_the_invariant_culture_in_every_format()
+    {
+        var previous = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
+
+        try
+        {
+            var amount = ProbeAmount.From(1.5m);
+
+            $"{amount}".ShouldBe("1.5");
+            string.Format("{0}", amount).ShouldBe("1.5");
+            amount.ToString(null, null).ShouldBe("1.5");
+            Convert.ToString(amount).ShouldBe("1.5");
+            ProbeAmount.Parse($"{amount}", null).ShouldBe(amount);
+
+            Span<byte> bytes = stackalloc byte[16];
+            ((IUtf8SpanFormattable)amount).TryFormat(bytes, out var bytesWritten, default, null).ShouldBeTrue();
+            Encoding.UTF8.GetString(bytes[..bytesWritten]).ShouldBe("1.5");
+
+            // A provider that is given is used as given.
+            string.Create(CultureInfo.GetCultureInfo("de-DE"), $"{amount}").ShouldBe("1,5");
+            Convert.ToString(amount, CultureInfo.GetCultureInfo("de-DE")).ShouldBe("1,5");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
+
     [Fact]
     public void A_span_formattable_value_formats_into_a_span_and_into_UTF_8()
     {

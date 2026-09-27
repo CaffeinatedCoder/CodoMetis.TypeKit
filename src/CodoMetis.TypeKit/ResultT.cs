@@ -31,7 +31,7 @@ public readonly record struct Success;
 /// </summary>
 /// <typeparam name="T">The type of the value.</typeparam>
 [RequireCustomInitialization]
-public readonly record struct Success<T>
+public readonly record struct Success<T> where T : notnull
 {
     internal T Value { get; }
 
@@ -47,7 +47,7 @@ public readonly record struct Success<T>
 /// </summary>
 /// <typeparam name="T">The type of the error.</typeparam>
 [RequireCustomInitialization]
-public readonly record struct Error<T>
+public readonly record struct Error<T> where T : notnull
 {
     internal Error(T value)
     {
@@ -84,6 +84,8 @@ public readonly record struct Error<T>
 [RequireCustomInitialization]
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
 public readonly record struct Result<T, TError>
+    where T : notnull
+    where TError : notnull
 {
     private readonly T?      _value;
     private readonly TError? _error;
@@ -126,14 +128,28 @@ public readonly record struct Result<T, TError>
     };
 
     /// <summary>Creates a success.</summary>
-    /// <param name="value">The value.</param>
+    /// <param name="value">The value. Never null.</param>
     /// <returns>A successful result holding <paramref name="value"/>.</returns>
-    public static Result<T, TError> Success(T value) => new(value, default, ResultState.Success);
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    public static Result<T, TError> Success(T value)
+    {
+        // As in Option.Some: notnull is only an annotation, and a success holding null would hand it
+        // out of TryGetValue despite [NotNullWhen(true)]. Map, Bind and the conversions come through here.
+        if (value is null) throw new ArgumentNullException(nameof(value));
+
+        return new(value, default, ResultState.Success);
+    }
 
     /// <summary>Creates an error.</summary>
-    /// <param name="error">The error.</param>
+    /// <param name="error">The error. Never null.</param>
     /// <returns>A failed result holding <paramref name="error"/>.</returns>
-    public static Result<T, TError> Error(TError error) => new(default, error, ResultState.Error);
+    /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
+    public static Result<T, TError> Error(TError error)
+    {
+        if (error is null) throw new ArgumentNullException(nameof(error));
+
+        return new(default, error, ResultState.Error);
+    }
 
     /// <summary>Produces a value from either the value or the error.</summary>
     /// <param name="onSuccess">Called with the value on success.</param>
@@ -153,7 +169,7 @@ public readonly record struct Result<T, TError>
     /// <typeparam name="TResult">The type of the produced value.</typeparam>
     /// <returns>What the called function returned.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public TResult Match<TResult>(Func<T, Success<TResult>> onSuccess, Func<TError, TResult> onError) =>
+    public TResult Match<TResult>(Func<T, Success<TResult>> onSuccess, Func<TError, TResult> onError) where TResult : notnull =>
         Succeeded ? onSuccess(_value!).Value : onError(_error!);
 
     /// <summary>Produces a value from the value, or from a fallback that drops the error.</summary>
@@ -187,7 +203,7 @@ public readonly record struct Result<T, TError>
     /// <typeparam name="TResult">The type of the transformed value.</typeparam>
     /// <returns>A success with the transformed value, or this error without calling <paramref name="fn"/>.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public Result<TResult, TError> Map<TResult>(Func<T, TResult> fn) =>
+    public Result<TResult, TError> Map<TResult>(Func<T, TResult> fn) where TResult : notnull =>
         Succeeded ? Result<TResult, TError>.Success(fn(_value!)) : Result<TResult, TError>.Error(_error!);
 
     /// <summary>Chains an operation that may itself fail.</summary>
@@ -195,7 +211,7 @@ public readonly record struct Result<T, TError>
     /// <typeparam name="TResult">The type of the chained result's value.</typeparam>
     /// <returns>The result <paramref name="fn"/> returned, or this error without calling it.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public Result<TResult, TError> Bind<TResult>(Func<T, Result<TResult, TError>> fn) =>
+    public Result<TResult, TError> Bind<TResult>(Func<T, Result<TResult, TError>> fn) where TResult : notnull =>
         Succeeded ? fn(_value!) : Result<TResult, TError>.Error(_error!);
 
     /// <summary>Chains an operation that always succeeds and returns a <c>Result.Ok(value)</c> marker.</summary>
@@ -203,7 +219,7 @@ public readonly record struct Result<T, TError>
     /// <typeparam name="TResult">The type of the produced value.</typeparam>
     /// <returns>A success with the marker's value, or this error without calling <paramref name="fn"/>.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public Result<TResult, TError> Bind<TResult>(Func<T, Success<TResult>> fn) =>
+    public Result<TResult, TError> Bind<TResult>(Func<T, Success<TResult>> fn) where TResult : notnull =>
         Succeeded ? Result<TResult, TError>.Success(fn(_value!).Value) : Result<TResult, TError>.Error(_error!);
 
     /// <summary>Runs a side effect on the value on success.</summary>

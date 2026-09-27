@@ -236,6 +236,48 @@ public sealed class ForbiddenDefaultInitializationAnalyzerTests
             """,
             "The value object 'T' must be created with 'T.From', not as a default instance");
 
+    /// <summary>
+    /// A marker beside <c>new()</c> leaves only a struct value object: a generated class has no
+    /// public parameterless constructor. So <c>new T()</c> is a default instance without a
+    /// <c>struct</c> constraint too, and it went unreported.
+    /// </summary>
+    [Fact]
+    public Task New_T_of_a_new_constrained_type_parameter_that_is_a_value_object_reports() =>
+        ShouldFlag(
+            """
+            public static class Consumer
+            {
+                public static T A<T>() where T : CodoMetis.TypeKit.ValueObjects.IValue<int>, new() { return {|#0:new T()|}; }
+            }
+            """,
+            "The value object 'T' must be created with 'T.From', not as a default instance");
+
+    [Fact]
+    public Task A_default_of_a_new_constrained_type_parameter_that_is_a_value_object_reports() =>
+        ShouldFlag(
+            """
+            public static class Consumer
+            {
+                public static T A<T>() where T : CodoMetis.TypeKit.ValueObjects.IValue<int>, new() { return {|#0:default(T)|}; }
+            }
+            """,
+            "The value object 'T' must be created with 'T.From', not as a default instance");
+
+    /// <summary>
+    /// Without <c>struct</c> or <c>new()</c>, or with <c>class</c>, the type parameter may be a record
+    /// class value object, whose default is null rather than an instance.
+    /// </summary>
+    [Fact]
+    public Task A_default_of_a_type_parameter_that_may_be_a_class_is_null_not_an_instance() =>
+        ShouldStaySilentOn(
+            """
+            public static class Consumer
+            {
+                public static T? A<T>() where T : CodoMetis.TypeKit.ValueObjects.IValue<int> { return default(T); }
+                public static T? B<T>() where T : class, CodoMetis.TypeKit.ValueObjects.IValue<int>, new() { return default(T); }
+            }
+            """);
+
     /// <summary>The package's own types, through the attribute they carry in the real assembly.</summary>
     [Fact]
     public Task A_default_option_reports() =>

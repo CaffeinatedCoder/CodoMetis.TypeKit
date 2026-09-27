@@ -31,6 +31,42 @@ public sealed class ResultTests
         Result<string>.Error("boom").Match(() => "success", () => "error").ShouldBe("error");
     }
 
+    /// <summary>
+    /// The error branch of <c>Match</c> receives the error. The only overload took a parameterless
+    /// <c>onError</c>, so <c>TryGetError</c> was the only way to the error, while the type's own
+    /// documentation promised <c>Match</c> too. Through reflection, so this test compiles without the
+    /// overload and fails on its absence rather than on a build error.
+    /// </summary>
+    [Fact]
+    public void Match_hands_the_error_to_its_error_branch()
+    {
+        var match = typeof(Result<string>).GetMethods()
+                                          .SingleOrDefault(method => method is { Name: nameof(Result<>.Match), IsGenericMethodDefinition: true }
+                                                                  && method.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Func<,>))
+                                         ?.MakeGenericMethod(typeof(string));
+
+        match.ShouldNotBeNull("Result<TError> has no Match whose error branch receives the error");
+
+        Func<string>         onSuccess = () => "success";
+        Func<string, string> onError   = error => $"error: {error}";
+
+        match.Invoke(Result<string>.Error("boom"), [onSuccess, onError]).ShouldBe("error: boom");
+        match.Invoke(Result<string>.Success(), [onSuccess, onError]).ShouldBe("success");
+    }
+
+    /// <summary>
+    /// <c>notnull</c> is only an annotation: <c>Error(null!)</c> produced an error whose
+    /// <c>TryGetError</c> handed out null despite <c>[NotNullWhen(true)]</c>. The implicit
+    /// conversions and the collapsing <c>Match</c> go through <c>Error</c>, so they refuse it too.
+    /// </summary>
+    [Fact]
+    public void Error_refuses_null()
+    {
+        Should.Throw<ArgumentNullException>(() => Result<string>.Error(null!));
+        Should.Throw<ArgumentNullException>(() => (Result<string>)(string)null!);
+        Should.Throw<ArgumentNullException>(() => Result<int, string>.Error("boom").Match(_ => Result.Ok(), _ => (string)null!));
+    }
+
     [Fact]
     public void Map_on_success_carries_the_produced_value()
     {

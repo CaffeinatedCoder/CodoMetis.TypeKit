@@ -9,7 +9,7 @@ spike ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation c
 
 | Package | Depends on | Metalama | Contents |
 |---|---|---|---|
-| `CodoMetis.TypeKit` | Analyzers (flows, §10) | **no** | `Option<T>`, `Result<T,TError>`, `Result<TError>` and their extensions; the value-object contracts `IValueObject<,>`, `IValueWrapper<,>`, `IValue<T>`, `IValidatedValue<,,>`, `IValueObjectMaterializer<,>` (§4), `KnownGood`; `TranslatedAsUnderlyingValueAttribute`, `RequireCustomInitializationAttribute`; `GuidValueExtensions` (`OrderId.New()` from a version 7 Guid); `Accepted` and `GeneratedParsing`, which the generated code calls (§5) |
+| `CodoMetis.TypeKit` | Analyzers (flows, §10) | **no** | `Option<T>`, `Result<T,TError>`, `Result<TError>` and their extensions; the value-object contracts `IValueObject<,>`, `IValueWrapper<,>`, `IValue<T>`, `IValidatedValue<,,>`, `IValueObjectMaterializer<,>` (§4), `KnownGood`; `TranslatedAsUnderlyingValueAttribute`, `RequireCustomInitializationAttribute`; `GuidValueExtensions` (`OrderId.New()` from a version 7 Guid); `Accepted`, `GeneratedParsing` and `GeneratedJson`, which the generated code calls (§5) |
 | `CodoMetis.TypeKit.Analyzers` | — | no | Roslyn analyzers and code fixes (§10). Nobody references it directly: it reaches every consumer through the base package |
 | `CodoMetis.TypeKit.Generators` | TypeKit, Metalama.Framework 2026.1.x (flows) | yes | Internal aspects, internal `TransitiveProjectFabric`, `AspectOrder`. Future generated type families join this package too: one fabric, one aspect order |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | TypeKit, EF Core Relational | no | Generic converter, convention, `.Value` / `GetValue` / `ValueOrNull` translators, `UseTypeKit()` |
@@ -68,7 +68,8 @@ Each phase ends green, and its guards have been proven by seeding the defect
      `IValueObjectMaterializer<,>`, `KnownGood`, `TranslatedAsUnderlyingValueAttribute`, and
      `GuidValueExtensions` with `New()` and `New(DateTimeOffset)`. No NodaTime.
    - CMTK0001 and CMTK0002, resolved by symbol once per compilation (§3). CMTK0001 also follows a
-     type parameter's constraints (`default(T)`/`new T()` where `T : struct, IValue<…>`).
+     type parameter's constraints (`default(T)`/`new T()` where `T : struct, IValue<…>`, or
+     `T : IValue<…>, new()`, which only a struct value object satisfies).
    - The verifier tests compile against the real `CodoMetis.TypeKit` assembly, with no copy of the
      contracts, and `default(Option<int>)` is one of the positive controls.
    - Packaging (§10): `CodoMetis.TypeKit` depends on `CodoMetis.TypeKit.Analyzers`, which ships only
@@ -89,7 +90,7 @@ Each phase ends green, and its guards have been proven by seeding the defect
      the generators only through the probes, which is the transitive-fabric check.
    - The generated-surface snapshot (§6), `GeneratedSurface.verified.txt`.
    - Build-outcome tests: a throwaway consumer with declarations that cannot be generated gets
-     exactly CMTK1000–1005 and CMTK0001, nothing else, and no CMTK0002 beside the real generators.
+     exactly CMTK1000–1007 and CMTK0001, nothing else, and no CMTK0002 beside the real generators.
    - Guards, each proven by seeding its defect:
      - a JSON read, `Parse` or `TryParse` that bypasses `Create` fails 7, 9 and 5 entry-point
        cases; a new public factory without a case fails the completeness tests;
@@ -111,6 +112,14 @@ Each phase ends green, and its guards have been proven by seeding the defect
      `IValue<int?>` failed as an aspect bug instead of CMTK1005; a fallback JSON key did not read
      back; a record class's comparison threw on null (§5); `Option.Some(null)` reported a value;
      and `Result<TError>` did not accept the `Result.Error(e)` marker (§9).
+   - Found in the second review on 2026-09-27, and fixed the same way (39 guards fail with every fix
+     reverted): two nested value objects of one name crashed Metalama, and a declared
+     `{Name}Extensions` failed the aspect (CMTK1007 now); malformed JSON threw `FormatException`,
+     which a minimal API answers with 500; interpolation formatted in the current culture, so
+     `Parse($"{x}", null)` read "1,5" as 15; a `DateTime` without an offset was converted through
+     the server's time zone; `From(null)` wrapped null; `Result` held a null value or error;
+     `Result<TError>.Match` could not see the error (§9); a derived record-class value object failed
+     inside the generated code (CMTK1006 now); CMTK0001 missed `new T()` under `new()`.
 4. **EF Core. ✅ Done 2026-09-27.**
    - The mapping spike first (spikes/EfMapping): an additive type-mapping-source plugin maps every
      value object, with keys, foreign keys, nullable properties and primitive collections, on
@@ -214,7 +223,15 @@ passes in tests and breaks for the first consumer who renames something.
 - **Declarations that cannot be generated** are errors, so no type is left half-generated:
   CMTK1000/1001/1002 (not `partial`, not a record, a struct not `readonly`), CMTK1003 (more than one
   marker), CMTK1004 (a validated marker whose first type argument is another type), CMTK1005 (a
-  generic value object, or a wrapped type that is not a class, struct or enum).
+  generic value object, one that derives from another value object, or a wrapped type that is not
+  a class, struct or enum), CMTK1006 (a record class that is not `sealed`: a derived record compares
+  equal only to its own type, which is not value equality), CMTK1007 (the name of the
+  `GetValue`/`ValueOrNull` class is taken, see below).
+- **The companion class** holding `GetValue()`/`ValueOrNull()` sits at namespace level, as
+  extension methods must, and is named after the whole nesting chain: `Order.Id` gets
+  `OrderIdExtensions`. Named after the value object alone, `Order.Id` and `Customer.Id` both asked
+  for `IdExtensions` and Metalama crashed (LAMA0001). A name that a declared type or another value
+  object's companion already has is CMTK1007, naming it.
 - **NodaTime.** Only `ValueObjectJsonAspect` handles NodaTime types, and it must not refer to
   NodaTime at compile time, which would force NodaTime on every consumer. It resolves the types
   with `TypeFactory.TryGetType` from the consumer's compilation, compares them by symbol, and uses
@@ -229,6 +246,25 @@ passes in tests and breaks for the first consumer who renames something.
   is invariant: `Parse(x.ToString(), null)` must round-trip, and with the current culture it parsed
   "1.5" as 15 in de-DE. A provider that is given is used as given. The type converter already did
   this.
+- **Formatting culture (decided 2026-09-27),** the counterpart: a null provider means the invariant
+  culture in the generated `ToString(format, provider)`, both `TryFormat`s and `IConvertible`.
+  Interpolation, `string.Format` and `Convert.ToString` pass null, and with the current culture
+  `$"{amount}"` was "1,5" in de-DE while `amount.ToString()` was "1.5". Display text in a culture
+  passes it: `string.Create(culture, $"{amount}")`.
+- **JSON reads never parse by rules of their own.** A value is read by the reader's methods
+  (`GetGuid`, `GetDateTime`) or, for `DateOnly`/`TimeOnly`, the serializer's built-in converter; a
+  dictionary key by the built-in converter's `ReadAsPropertyName`
+  (`JsonMetadataServices.Int32Converter` and so on). Both accept exactly what the serializer
+  accepts for the wrapped type, and report malformed text as `JsonException`. A `Parse` in the
+  generated code let `FormatException` escape, which a minimal API answers with 500 rather than 400,
+  and read number keys with `NumberStyles.Any` ("1,000" as 1000).
+- **A `DateTime` is UTC on the wire (decided 2026-09-27).** Written and read, value and key, through
+  `GeneratedJson.AsUtc`: a `Local` value converts, and an `Unspecified` one (an offset-less string, a
+  column without a time zone) is taken as UTC with its digits kept. `ToUniversalTime()` read it as
+  server-local, so 12:00 became 10:00Z on a server at +02:00 and 12:00Z on CI. The guards switch the
+  process to a +05:30 zone, since CI runs in UTC.
+- **`From(null)` throws** `ArgumentNullException` for a reference-type wrapped value, as
+  `Option.Some(null)` does. It wrapped a null that `Value` promises it never holds.
 - **Enums** parse by name through `Enum.TryParse`, with a `FormatException` for an unknown name.
   `Convert.ChangeType` cannot make an enum from a string, so the former `IConvertible` strategy
   threw for every input while the type advertised `IParsable`. Nothing else that is convertible
@@ -347,6 +383,13 @@ LanguageExt is out.
 - **`Option.Some(null)` throws.** `notnull` is an annotation the runtime does not enforce, and a
   `Some` over null reported a value it could not hand out. `Map` and the zips go through `Some`,
   so a selector that returns null throws too.
+- **So do `Result`'s factories.** Both shapes and both markers constrain their content to
+  `notnull`, and `Success(null)`/`Error(null)`/`Result.Ok(null)`/`Result.Error(null)` throw
+  `ArgumentNullException`: a result over null handed it out of `TryGetValue`/`TryGetError` despite
+  `[NotNullWhen]`. `Map`, `Bind`, the collapsing `Match` and the conversions go through them.
+- **`Result<TError>.Match` hands the error to its error branch.** The only overload took a
+  parameterless `onError`, so `TryGetError` was the only way to the error. The parameterless one
+  stays, for a branch that does not need it.
 - **`[DebuggerDisplay]`** on `Option` and both `Result` shapes shows the content in the debugger,
   where it is what someone stepping through wants to see. The debugger is not a log.
 - **`Result<TError>` has no `AsEnumerable`.** A sequence of zero or one units says no more than

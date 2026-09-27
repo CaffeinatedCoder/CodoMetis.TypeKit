@@ -11,16 +11,20 @@ public static class Result
     public static Success Ok() => new();
 
     /// <summary>The success marker for a method typed <see cref="Result{T,TError}"/>.</summary>
-    /// <param name="value">The value.</param>
+    /// <param name="value">The value. Never null.</param>
     /// <typeparam name="T">The type of the value.</typeparam>
     /// <returns>A marker that converts implicitly to a successful result holding <paramref name="value"/>.</returns>
-    public static Success<T> Ok<T>(T value) => new(value);
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    public static Success<T> Ok<T>(T value) where T : notnull =>
+        value is null ? throw new ArgumentNullException(nameof(value)) : new(value);
 
     /// <summary>The error marker for a method typed <see cref="Result{T,TError}"/>, whatever its value type, or <see cref="Result{TError}"/>.</summary>
-    /// <param name="error">The error.</param>
+    /// <param name="error">The error. Never null.</param>
     /// <typeparam name="T">The type of the error.</typeparam>
     /// <returns>A marker that converts implicitly to a failed result holding <paramref name="error"/>.</returns>
-    public static Error<T> Error<T>(T error) => new(error);
+    /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
+    public static Error<T> Error<T>(T error) where T : notnull =>
+        error is null ? throw new ArgumentNullException(nameof(error)) : new(error);
 
     /// <param name="instance">The result.</param>
     /// <typeparam name="T">The type of the value.</typeparam>
@@ -32,7 +36,7 @@ public static class Result
         /// <typeparam name="TResult">The type of the transformed value.</typeparam>
         /// <returns>A success with the transformed value, or the error.</returns>
         /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-        public Result<TResult, TError> Select<TResult>(Func<T, TResult> fn) =>
+        public Result<TResult, TError> Select<TResult>(Func<T, TResult> fn) where TResult : notnull =>
             instance.Map(fn);
 
         /// <summary>Keeps the value and drops the error.</summary>
@@ -45,7 +49,7 @@ public static class Result
     /// <param name="source">The sequence.</param>
     /// <typeparam name="T">The type of the elements.</typeparam>
     /// <typeparam name="TError">The type of the error.</typeparam>
-    extension<T, TError>(IEnumerable<T> source) where T : notnull
+    extension<T, TError>(IEnumerable<T> source) where T : notnull where TError : notnull
     {
         /// <summary>The first element that matches, or the given error.</summary>
         /// <param name="predicate">The condition to match.</param>

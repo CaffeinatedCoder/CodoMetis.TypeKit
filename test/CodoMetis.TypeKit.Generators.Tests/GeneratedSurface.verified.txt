@@ -47,8 +47,8 @@ ProbeAmount
   static op_Inequality(ProbeAmount, ProbeAmount) : Boolean
   static op_LessThan(ProbeAmount, ProbeAmount) : Boolean
   static op_LessThanOrEqual(ProbeAmount, ProbeAmount) : Boolean
-  extension static GetValue(ProbeAmount) : Decimal
-  extension static ValueOrNull(ProbeAmount?) : Decimal?
+  extension static ProbeAmountExtensions.GetValue(ProbeAmount) : Decimal
+  extension static ProbeAmountExtensions.ValueOrNull(ProbeAmount?) : Decimal?
 ProbeCode
   CompareTo(Object) : Int32
   CompareTo(ProbeCode) : Int32
@@ -86,8 +86,8 @@ ProbeCode
   static op_Inequality(ProbeCode, ProbeCode) : Boolean
   static op_LessThan(ProbeCode, ProbeCode) : Boolean
   static op_LessThanOrEqual(ProbeCode, ProbeCode) : Boolean
-  extension static GetValue(ProbeCode) : String
-  extension static ValueOrNull(ProbeCode?) : String
+  extension static ProbeCodeExtensions.GetValue(ProbeCode) : String
+  extension static ProbeCodeExtensions.ValueOrNull(ProbeCode?) : String
 ProbeContainer.NestedId
   CompareTo(Object) : Int32
   CompareTo(ProbeContainer.NestedId) : Int32
@@ -137,8 +137,8 @@ ProbeContainer.NestedId
   static op_Inequality(ProbeContainer.NestedId, ProbeContainer.NestedId) : Boolean
   static op_LessThan(ProbeContainer.NestedId, ProbeContainer.NestedId) : Boolean
   static op_LessThanOrEqual(ProbeContainer.NestedId, ProbeContainer.NestedId) : Boolean
-  extension static GetValue(ProbeContainer.NestedId) : Int32
-  extension static ValueOrNull(ProbeContainer.NestedId?) : Int32?
+  extension static ProbeContainerNestedIdExtensions.GetValue(ProbeContainer.NestedId) : Int32
+  extension static ProbeContainerNestedIdExtensions.ValueOrNull(ProbeContainer.NestedId?) : Int32?
 ProbeCount
   CompareTo(Object) : Int32
   CompareTo(ProbeCount) : Int32
@@ -188,8 +188,8 @@ ProbeCount
   static op_Inequality(ProbeCount, ProbeCount) : Boolean
   static op_LessThan(ProbeCount, ProbeCount) : Boolean
   static op_LessThanOrEqual(ProbeCount, ProbeCount) : Boolean
-  extension static GetValue(ProbeCount) : Int32
-  extension static ValueOrNull(ProbeCount?) : Int32?
+  extension static ProbeCountExtensions.GetValue(ProbeCount) : Int32
+  extension static ProbeCountExtensions.ValueOrNull(ProbeCount?) : Int32?
 ProbeCustomerId
   CompareTo(Object) : Int32
   CompareTo(ProbeCustomerId) : Int32
@@ -236,8 +236,8 @@ ProbeCustomerId
   static op_Inequality(ProbeCustomerId, ProbeCustomerId) : Boolean
   static op_LessThan(ProbeCustomerId, ProbeCustomerId) : Boolean
   static op_LessThanOrEqual(ProbeCustomerId, ProbeCustomerId) : Boolean
-  extension static GetValue(ProbeCustomerId) : Guid
-  extension static ValueOrNull(ProbeCustomerId?) : Guid?
+  extension static ProbeCustomerIdExtensions.GetValue(ProbeCustomerId) : Guid
+  extension static ProbeCustomerIdExtensions.ValueOrNull(ProbeCustomerId?) : Guid?
 ProbeDate
   CompareTo(Object) : Int32
   CompareTo(ProbeDate) : Int32
@@ -283,8 +283,8 @@ ProbeDate
   static op_Inequality(ProbeDate, ProbeDate) : Boolean
   static op_LessThan(ProbeDate, ProbeDate) : Boolean
   static op_LessThanOrEqual(ProbeDate, ProbeDate) : Boolean
-  extension static GetValue(ProbeDate) : DateOnly
-  extension static ValueOrNull(ProbeDate?) : DateOnly?
+  extension static ProbeDateExtensions.GetValue(ProbeDate) : DateOnly
+  extension static ProbeDateExtensions.ValueOrNull(ProbeDate?) : DateOnly?
 ProbeFlag
   CompareTo(Object) : Int32
   CompareTo(ProbeFlag) : Int32
@@ -324,8 +324,8 @@ ProbeFlag
   static op_Inequality(ProbeFlag, ProbeFlag) : Boolean
   static op_LessThan(ProbeFlag, ProbeFlag) : Boolean
   static op_LessThanOrEqual(ProbeFlag, ProbeFlag) : Boolean
-  extension static GetValue(ProbeFlag) : Boolean
-  extension static ValueOrNull(ProbeFlag?) : Boolean?
+  extension static ProbeFlagExtensions.GetValue(ProbeFlag) : Boolean
+  extension static ProbeFlagExtensions.ValueOrNull(ProbeFlag?) : Boolean?
 ProbeId
   CompareTo(Object) : Int32
   CompareTo(ProbeId) : Int32
@@ -371,8 +371,8 @@ ProbeId
   static op_Inequality(ProbeId, ProbeId) : Boolean
   static op_LessThan(ProbeId, ProbeId) : Boolean
   static op_LessThanOrEqual(ProbeId, ProbeId) : Boolean
-  extension static GetValue(ProbeId) : Guid
-  extension static ValueOrNull(ProbeId?) : Guid?
+  extension static ProbeIdExtensions.GetValue(ProbeId) : Guid
+  extension static ProbeIdExtensions.ValueOrNull(ProbeId?) : Guid?
 ProbeInstant
   CompareTo(Object) : Int32
   CompareTo(ProbeInstant) : Int32
@@ -411,8 +411,8 @@ ProbeInstant
   static op_Inequality(ProbeInstant, ProbeInstant) : Boolean
   static op_LessThan(ProbeInstant, ProbeInstant) : Boolean
   static op_LessThanOrEqual(ProbeInstant, ProbeInstant) : Boolean
-  extension static GetValue(ProbeInstant) : Instant
-  extension static ValueOrNull(ProbeInstant?) : Instant?
+  extension static ProbeInstantExtensions.GetValue(ProbeInstant) : Instant
+  extension static ProbeInstantExtensions.ValueOrNull(ProbeInstant?) : Instant?
 ProbeInternalId (internal)
   CompareTo(Object) : Int32
   CompareTo(ProbeInternalId) : Int32
@@ -462,6 +462,8 @@ ProbeInternalId (internal)
   static op_Inequality(ProbeInternalId, ProbeInternalId) : Boolean
   static op_LessThan(ProbeInternalId, ProbeInternalId) : Boolean
   static op_LessThanOrEqual(ProbeInternalId, ProbeInternalId) : Boolean
+  extension internal static ProbeInternalIdExtensions.GetValue(ProbeInternalId) : Int32
+  extension internal static ProbeInternalIdExtensions.ValueOrNull(ProbeInternalId?) : Int32?
 ProbeLabel
   <Clone>$() : ProbeLabel
   CompareTo(Object) : Int32
@@ -498,8 +500,8 @@ ProbeLabel
   static op_Inequality(ProbeLabel, ProbeLabel) : Boolean
   static op_LessThan(ProbeLabel, ProbeLabel) : Boolean
   static op_LessThanOrEqual(ProbeLabel, ProbeLabel) : Boolean
-  extension static GetValue(ProbeLabel) : String
-  extension static ValueOrNull(ProbeLabel) : String
+  extension static ProbeLabelExtensions.GetValue(ProbeLabel) : String
+  extension static ProbeLabelExtensions.ValueOrNull(ProbeLabel) : String
 ProbeLocalDate
   CompareTo(Object) : Int32
   CompareTo(ProbeLocalDate) : Int32
@@ -535,8 +537,8 @@ ProbeLocalDate
   static op_Inequality(ProbeLocalDate, ProbeLocalDate) : Boolean
   static op_LessThan(ProbeLocalDate, ProbeLocalDate) : Boolean
   static op_LessThanOrEqual(ProbeLocalDate, ProbeLocalDate) : Boolean
-  extension static GetValue(ProbeLocalDate) : LocalDate
-  extension static ValueOrNull(ProbeLocalDate?) : LocalDate?
+  extension static ProbeLocalDateExtensions.GetValue(ProbeLocalDate) : LocalDate
+  extension static ProbeLocalDateExtensions.ValueOrNull(ProbeLocalDate?) : LocalDate?
 ProbeMoment
   CompareTo(Object) : Int32
   CompareTo(ProbeMoment) : Int32
@@ -582,8 +584,8 @@ ProbeMoment
   static op_Inequality(ProbeMoment, ProbeMoment) : Boolean
   static op_LessThan(ProbeMoment, ProbeMoment) : Boolean
   static op_LessThanOrEqual(ProbeMoment, ProbeMoment) : Boolean
-  extension static GetValue(ProbeMoment) : DateTimeOffset
-  extension static ValueOrNull(ProbeMoment?) : DateTimeOffset?
+  extension static ProbeMomentExtensions.GetValue(ProbeMoment) : DateTimeOffset
+  extension static ProbeMomentExtensions.ValueOrNull(ProbeMoment?) : DateTimeOffset?
 ProbeName
   CompareTo(Object) : Int32
   CompareTo(ProbeName) : Int32
@@ -620,8 +622,8 @@ ProbeName
   static op_Inequality(ProbeName, ProbeName) : Boolean
   static op_LessThan(ProbeName, ProbeName) : Boolean
   static op_LessThanOrEqual(ProbeName, ProbeName) : Boolean
-  extension static GetValue(ProbeName) : String
-  extension static ValueOrNull(ProbeName?) : String
+  extension static ProbeNameExtensions.GetValue(ProbeName) : String
+  extension static ProbeNameExtensions.ValueOrNull(ProbeName?) : String
 ProbeOverride
   CompareTo(Object) : Int32
   CompareTo(ProbeOverride) : Int32
@@ -659,8 +661,8 @@ ProbeOverride
   static op_Inequality(ProbeOverride, ProbeOverride) : Boolean
   static op_LessThan(ProbeOverride, ProbeOverride) : Boolean
   static op_LessThanOrEqual(ProbeOverride, ProbeOverride) : Boolean
-  extension static GetValue(ProbeOverride) : String
-  extension static ValueOrNull(ProbeOverride?) : String
+  extension static ProbeOverrideExtensions.GetValue(ProbeOverride) : String
+  extension static ProbeOverrideExtensions.ValueOrNull(ProbeOverride?) : String
 ProbePercentage
   CompareTo(Object) : Int32
   CompareTo(ProbePercentage) : Int32
@@ -708,8 +710,8 @@ ProbePercentage
   static op_Inequality(ProbePercentage, ProbePercentage) : Boolean
   static op_LessThan(ProbePercentage, ProbePercentage) : Boolean
   static op_LessThanOrEqual(ProbePercentage, ProbePercentage) : Boolean
-  extension static GetValue(ProbePercentage) : Int32
-  extension static ValueOrNull(ProbePercentage?) : Int32?
+  extension static ProbePercentageExtensions.GetValue(ProbePercentage) : Int32
+  extension static ProbePercentageExtensions.ValueOrNull(ProbePercentage?) : Int32?
 ProbeTime
   CompareTo(Object) : Int32
   CompareTo(ProbeTime) : Int32
@@ -755,8 +757,8 @@ ProbeTime
   static op_Inequality(ProbeTime, ProbeTime) : Boolean
   static op_LessThan(ProbeTime, ProbeTime) : Boolean
   static op_LessThanOrEqual(ProbeTime, ProbeTime) : Boolean
-  extension static GetValue(ProbeTime) : TimeOnly
-  extension static ValueOrNull(ProbeTime?) : TimeOnly?
+  extension static ProbeTimeExtensions.GetValue(ProbeTime) : TimeOnly
+  extension static ProbeTimeExtensions.ValueOrNull(ProbeTime?) : TimeOnly?
 ProbeTimestamp
   CompareTo(Object) : Int32
   CompareTo(ProbeTimestamp) : Int32
@@ -803,8 +805,8 @@ ProbeTimestamp
   static op_Inequality(ProbeTimestamp, ProbeTimestamp) : Boolean
   static op_LessThan(ProbeTimestamp, ProbeTimestamp) : Boolean
   static op_LessThanOrEqual(ProbeTimestamp, ProbeTimestamp) : Boolean
-  extension static GetValue(ProbeTimestamp) : DateTime
-  extension static ValueOrNull(ProbeTimestamp?) : DateTime?
+  extension static ProbeTimestampExtensions.GetValue(ProbeTimestamp) : DateTime
+  extension static ProbeTimestampExtensions.ValueOrNull(ProbeTimestamp?) : DateTime?
 ProbeUri
   Equals(Object) : Boolean
   Equals(ProbeUri) : Boolean
@@ -833,8 +835,8 @@ ProbeUri
   static TryParse(String, IFormatProvider, out ProbeUri) : Boolean
   static op_Equality(ProbeUri, ProbeUri) : Boolean
   static op_Inequality(ProbeUri, ProbeUri) : Boolean
-  extension static GetValue(ProbeUri) : Uri
-  extension static ValueOrNull(ProbeUri?) : Uri
+  extension static ProbeUriExtensions.GetValue(ProbeUri) : Uri
+  extension static ProbeUriExtensions.ValueOrNull(ProbeUri?) : Uri
 ProbeWeekday
   CompareTo(Object) : Int32
   CompareTo(ProbeWeekday) : Int32
@@ -873,5 +875,5 @@ ProbeWeekday
   static op_Inequality(ProbeWeekday, ProbeWeekday) : Boolean
   static op_LessThan(ProbeWeekday, ProbeWeekday) : Boolean
   static op_LessThanOrEqual(ProbeWeekday, ProbeWeekday) : Boolean
-  extension static GetValue(ProbeWeekday) : DayOfWeek
-  extension static ValueOrNull(ProbeWeekday?) : DayOfWeek?
+  extension static ProbeWeekdayExtensions.GetValue(ProbeWeekday) : DayOfWeek
+  extension static ProbeWeekdayExtensions.ValueOrNull(ProbeWeekday?) : DayOfWeek?

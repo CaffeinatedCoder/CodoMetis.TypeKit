@@ -9,7 +9,7 @@ namespace CodoMetis.TypeKit;
 /// <summary>
 /// The outcome of an operation that produces no value: a success, or an error of type
 /// <typeparamref name="TError"/>. There is no public <c>.Error</c>: the error is reached through
-/// <see cref="Match{TResult}"/> and <see cref="TryGetError"/>.
+/// <see cref="Match{TResult}(Func{TResult},Func{TError,TResult})"/> and <see cref="TryGetError"/>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -30,7 +30,7 @@ namespace CodoMetis.TypeKit;
 /// <typeparam name="TError">The type of the error.</typeparam>
 [RequireCustomInitialization]
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
-public readonly record struct Result<TError>
+public readonly record struct Result<TError> where TError : notnull
 {
     private readonly TError? _error;
 
@@ -75,13 +75,30 @@ public readonly record struct Result<TError>
     public static Result<TError> Success() => new(default, ResultState.Success);
 
     /// <summary>Creates an error.</summary>
-    /// <param name="error">The error.</param>
+    /// <param name="error">The error. Never null.</param>
     /// <returns>A failed result holding <paramref name="error"/>.</returns>
-    public static Result<TError> Error(TError error) => new(error, ResultState.Error);
+    /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
+    public static Result<TError> Error(TError error)
+    {
+        // As in Option.Some: notnull is only an annotation, and an error holding null would hand it
+        // out of TryGetError despite [NotNullWhen(true)]. The implicit conversions come through here.
+        if (error is null) throw new ArgumentNullException(nameof(error));
+
+        return new(error, ResultState.Error);
+    }
 
     /// <summary>Produces a value from either outcome.</summary>
     /// <param name="onSuccess">Called on success.</param>
-    /// <param name="onError">Called on error.</param>
+    /// <param name="onError">Called with the error on error.</param>
+    /// <typeparam name="TResult">The type of the produced value.</typeparam>
+    /// <returns>What the called function returned.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public TResult Match<TResult>(Func<TResult> onSuccess, Func<TError, TResult> onError)
+        => Succeeded ? onSuccess() : onError(_error!);
+
+    /// <summary>Produces a value from either outcome, where the error branch does not need the error.</summary>
+    /// <param name="onSuccess">Called on success.</param>
+    /// <param name="onError">Called on error. It does not receive the error.</param>
     /// <typeparam name="TResult">The type of the produced value.</typeparam>
     /// <returns>What the called function returned.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
@@ -93,7 +110,7 @@ public readonly record struct Result<TError>
     /// <typeparam name="TResult">The type of the produced value.</typeparam>
     /// <returns>A success with the produced value, or this error without calling <paramref name="fn"/>.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public Result<TResult, TError> Map<TResult>(Func<TResult> fn) =>
+    public Result<TResult, TError> Map<TResult>(Func<TResult> fn) where TResult : notnull =>
         Succeeded ? Result<TResult, TError>.Success(fn()) : Result<TResult, TError>.Error(_error!);
 
     /// <summary>Chains an operation that may itself fail.</summary>

@@ -33,6 +33,20 @@ public sealed class ImplementationTests
         typeof(ProbeCode).GetInterfaces().ShouldContain(typeof(IEqualityOperators<ProbeCode, ProbeCode, bool>));
     }
 
+    /// <summary>
+    /// <c>From</c> over a reference type refuses null, as <c>Option.Some</c> does. It wrapped a null
+    /// that <c>Value</c> promises it never holds: the value object serialized as a JSON null its own
+    /// converter refuses to read, and a <c>Uri</c>-backed one threw <c>NullReferenceException</c>
+    /// from <c>ToString</c>.
+    /// </summary>
+    [Fact]
+    public void From_refuses_null()
+    {
+        Should.Throw<ArgumentNullException>(() => ProbeName.From(null!)).ParamName.ShouldBe("value");
+        Should.Throw<ArgumentNullException>(() => ProbeUri.From(null!));
+        Should.Throw<ArgumentNullException>(() => ProbeLabel.From(null!));
+    }
+
     /// <summary>A validated value object's only factories are the ones that apply its rules.</summary>
     [Fact]
     public void Only_a_plain_value_object_gets_From()

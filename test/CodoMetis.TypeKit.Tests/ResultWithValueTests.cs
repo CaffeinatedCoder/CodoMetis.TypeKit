@@ -193,6 +193,22 @@ public sealed class ResultWithValueTests
         Result<int, string>.Error("boom").AsEnumerable().ShouldBeEmpty();
     }
 
+    /// <summary>
+    /// The type parameters are <c>notnull</c>, as <see cref="Option{T}"/>'s are, which is only an
+    /// annotation. <c>Success(null!)</c> and <c>Error(null!)</c> produced results whose
+    /// <c>TryGetValue</c> handed out null despite <c>[NotNullWhen]</c>. So did the markers and a
+    /// <c>Map</c> whose selector returned null.
+    /// </summary>
+    [Fact]
+    public void Success_and_Error_refuse_null()
+    {
+        Should.Throw<ArgumentNullException>(() => Result<string, string>.Success(null!));
+        Should.Throw<ArgumentNullException>(() => Result<int, string>.Error(null!));
+        Should.Throw<ArgumentNullException>(() => Result.Ok<string>(null!));
+        Should.Throw<ArgumentNullException>(() => Result.Error<string>(null!));
+        Should.Throw<ArgumentNullException>(() => Result<int, string>.Success(1).Map(_ => (string)null!));
+    }
+
     [Fact]
     public void Results_compare_by_value()
     {

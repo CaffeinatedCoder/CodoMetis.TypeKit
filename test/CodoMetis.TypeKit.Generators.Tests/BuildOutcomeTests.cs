@@ -29,6 +29,11 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1005", "Generic")]
     [InlineData("CMTK1005", "ArrayBacked")]
     [InlineData("CMTK1005", "NullableBacked")]
+    [InlineData("CMTK1005", "DerivesFromAValueObject")]
+    [InlineData("CMTK1006", "NotSealed")]
+    [InlineData("CMTK1007", "TakenName")]
+    [InlineData("CMTK1007", "ShopId")]
+    [InlineData("CMTK1007", "Shop.Id")]
     public void A_declaration_that_cannot_be_generated_is_an_error(string id, string type) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains($"'{type}"), $"{id} on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
 
@@ -40,7 +45,16 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007"], ignoreOrder: false, customMessage: consumer.Output);
+
+    /// <summary>
+    /// The <c>GetValue</c>/<c>ValueOrNull</c> companions live in a namespace-level class. Named after
+    /// the value object alone, <c>Order.Id</c> and <c>Customer.Id</c> both asked for <c>IdExtensions</c>,
+    /// and Metalama crashed (LAMA0001) with the whole project unbuildable and no declaration named.
+    /// </summary>
+    [Fact]
+    public void Nested_value_objects_of_one_name_get_a_companion_class_each() =>
+        consumer.Errors.ShouldNotContain(error => error.Id.StartsWith("LAMA") || error.Message.Contains("'Order.Id'") || error.Message.Contains("'Customer.Id'"), consumer.Output);
 
     [Fact]
     public void The_analyzer_reports_a_default_value_object_beside_the_generators() =>
@@ -89,6 +103,43 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             // Violates the notnull constraint, which is only a warning (CS8714). Without its own
             // refusal, the generated JSON converter and parsing fail to compile (LAMA0611/0612).
             public readonly partial record struct NullableBacked : IValue<int?>;
+
+            // A record class that can be derived from: equality across a hierarchy is not value
+            // equality, and a derived value object failed inside the generated code (LAMA0611).
+            public partial record NotSealed : IValue<string>;
+
+            public sealed partial record DerivesFromAValueObject : NotSealed;
+
+            // Companion classes are named after the whole nesting chain, so these two coexist.
+            public sealed class Order { public readonly partial record struct Id : IValue<System.Guid>; }
+
+            public sealed class Customer { public readonly partial record struct Id : IValue<System.Guid>; }
+
+            // A companion class name that is taken, by a declared type or by another value object's
+            // companion, is an error naming it, where it was an aspect exception or a crash.
+            public readonly partial record struct TakenName : IValue<int>;
+
+            public static class TakenNameExtensions { }
+
+            public readonly partial record struct ShopId : IValue<int>;
+
+            public static class Shop { public readonly partial record struct Id : IValue<int>; }
+
+            // A dictionary key is read by JsonMetadataServices.{TypeName}Converter, named after the
+            // wrapped type. The probes cover int and decimal; a misnamed converter for any other number
+            // would fail to compile here, as LAMA0611, rather than in a consumer's build.
+            public readonly partial record struct AByte : IValue<byte>;
+            public readonly partial record struct ASByte : IValue<sbyte>;
+            public readonly partial record struct AShort : IValue<short>;
+            public readonly partial record struct AUShort : IValue<ushort>;
+            public readonly partial record struct AUInt : IValue<uint>;
+            public readonly partial record struct ALong : IValue<long>;
+            public readonly partial record struct AULong : IValue<ulong>;
+            public readonly partial record struct AFloat : IValue<float>;
+            public readonly partial record struct ADouble : IValue<double>;
+            public readonly partial record struct AHalf : IValue<System.Half>;
+            public readonly partial record struct AnInt128 : IValue<System.Int128>;
+            public readonly partial record struct AUInt128 : IValue<System.UInt128>;
 
             public readonly partial record struct Fine : IValue<int>;
 

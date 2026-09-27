@@ -58,7 +58,7 @@ internal sealed partial class ValueObjectInterfaceAspect : TypeAspect
                 method.AddAttribute(CodeAnnotations.AggressiveInlining);
                 method.AddAttribute(CodeAnnotations.CompilerGenerated);
             },
-            args: new { constructor = privateConstructor }
+            args: new { constructor = privateConstructor, refusesNull = valueType.IsReferenceType == true }
         );
 
         builder.ImplementInterface(TypeFactory.GetNamedType(typeof(IValueWrapper<,>)).MakeGenericInstance(builder.Target, valueType));

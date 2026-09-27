@@ -28,4 +28,10 @@ internal static class AspectDiagnostics
 
     public static readonly DiagnosticDefinition<(INamedType Type, string Reason)> UnsupportedValueObject =
         new("CMTK1005", Severity.Error, "'{0}' cannot be generated as a value object: {1}");
+
+    public static readonly DiagnosticDefinition<INamedType> MissingSealedKeyword =
+        new("CMTK1006", Severity.Error, "'{0}' is a value object and must be declared sealed, so it is not generated");
+
+    public static readonly DiagnosticDefinition<(INamedType Type, string ClassName, string Owner)> ExtensionClassNameTaken =
+        new("CMTK1007", Severity.Error, "'{0}' gets GetValue() and ValueOrNull() in a class named '{1}', but {2} already has that name, so the class is not generated. Rename one of them.");
 }

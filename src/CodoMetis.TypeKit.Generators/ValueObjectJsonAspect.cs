@@ -41,6 +41,8 @@ internal sealed class JsonImplementationArguments
 /// object applies <c>Create</c> and a refusal is a <c>JsonException</c>. A JSON <c>null</c> is a
 /// <c>JsonException</c> too, rather than an instance wrapping <c>null</c>. The one exception is the
 /// materializing mode for stored JSON, which only <c>StoredJsonConverterFactory</c> can create.
+/// Malformed input is a <c>JsonException</c> as well: the wrapped value is read by the reader's own
+/// methods or the serializer's built-in converter for its type, never by a <c>Parse</c> of its own.
 /// </remarks>
 internal sealed partial class ValueObjectJsonAspect : TypeAspect
 {
