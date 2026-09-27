@@ -28,7 +28,7 @@ factories, value equality, a JSON converter, `IParsable`, `IFormattable`, `IComp
 | [CodoMetis.TypeKit.Analyzers](src/CodoMetis.TypeKit.Analyzers/README.md) | CMTK0001 (no `default` of a value object, an `Option` or a `Result`) and CMTK0002 (a value object nobody generates). Arrives with the base package | no |
 | [CodoMetis.TypeKit.Generators](src/CodoMetis.TypeKit.Generators/README.md) | The compile-time generation, in the project that declares value objects | yes |
 | [CodoMetis.TypeKit.EntityFrameworkCore](src/CodoMetis.TypeKit.EntityFrameworkCore/README.md) | Value objects as columns with nothing registered per type, and `.Value` in LINQ | no |
-| [CodoMetis.TypeKit.AspNetCore](src/CodoMetis.TypeKit.AspNetCore/README.md) | Value objects in the OpenAPI document. In development | no |
+| [CodoMetis.TypeKit.AspNetCore](src/CodoMetis.TypeKit.AspNetCore/README.md) | Value objects in the OpenAPI document, with the schema of the type they wrap | no |
 
 The base package is the cheapest one: someone who only wants `Option` and `Result` never receives a
 code generator by accident. Taking Metalama on is a named choice, made once, in the domain project.
@@ -80,6 +80,8 @@ Email.Parse("ops@example.com", null);                     // IParsable, so it bi
 services.AddDbContext<ShopDb>(options => options.UseNpgsql(connectionString).UseTypeKit());
 
 db.Orders.Where(o => o.Customer.Email.Value.EndsWith("@example.com"));   // WHERE o."Email" LIKE '%@example.com'
+
+services.AddOpenApi(options => options.AddTypeKit());                    // OrderId: {"type":"string","format":"uuid"}
 ```
 
 ## What it holds to
@@ -100,8 +102,8 @@ db.Orders.Where(o => o.Customer.Email.Value.EndsWith("@example.com"));   // WHER
 
 ## Status
 
-No version has been released yet. `Option`/`Result`, the contracts and analyzers, the generators
-and the EF Core satellite are done; the OpenAPI satellite and the release pipeline are next. The
+No version has been released yet. `Option`/`Result`, the contracts and analyzers, the generators,
+the EF Core satellite and the OpenAPI satellite are done; the release pipeline is next. The
 plan, the decisions and their evidence are in [docs/plan.md](docs/plan.md), and the measurements
 that decided the design are in [spikes/](spikes/).
 

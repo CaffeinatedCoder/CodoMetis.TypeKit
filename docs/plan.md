@@ -1,9 +1,10 @@
 # Plan: CodoMetis.TypeKit
 
-Status: **in progress, 2026-09-27.** Phases 0 to 4 are done. The decisions are in §8. The fabric
+Status: **in progress, 2026-09-27.** Phases 0 to 5 are done. The decisions are in §8. The fabric
 spike ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation comparison
-([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)) and the EF mapping spike
-([spikes/EfMapping](../spikes/EfMapping/README.md)) are done.
+([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)), the EF mapping spike
+([spikes/EfMapping](../spikes/EfMapping/README.md)) and the OpenAPI spike
+([spikes/OpenApiSchemas](../spikes/OpenApiSchemas/README.md)) are done.
 
 ## 1. Packages
 
@@ -13,7 +14,7 @@ spike ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation c
 | `CodoMetis.TypeKit.Analyzers` | — | no | Roslyn analyzers and code fixes (§10). Nobody references it directly: it reaches every consumer through the base package |
 | `CodoMetis.TypeKit.Generators` | TypeKit, Metalama.Framework 2026.1.x (flows) | yes | Internal aspects, internal `TransitiveProjectFabric`, `AspectOrder`. Future generated type families join this package too: one fabric, one aspect order |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | TypeKit, EF Core Relational | no | Generic converter, convention, `.Value` / `GetValue` / `ValueOrNull` translators, `UseTypeKit()` |
-| `CodoMetis.TypeKit.AspNetCore` | TypeKit, Microsoft.AspNetCore.OpenApi | no | OpenAPI transformers |
+| `CodoMetis.TypeKit.AspNetCore` | TypeKit, Microsoft.AspNetCore.OpenApi | no | `AddTypeKit()`: one OpenAPI schema transformer (§7) |
 
 **The bare name is the cheapest package.** Someone who only wants `Option`/`Result` references
 `CodoMetis.TypeKit` and never receives Metalama by accident. Taking Metalama on is always an
@@ -29,7 +30,7 @@ objects from a referenced domain assembly never needs Metalama itself.
 | `CodoMetis.TypeKit.ValueObjects` | `IValue`, `IValidatedValue`, `KnownGood`, `IValueObjectMaterializer` |
 | `CodoMetis.TypeKit.Attributes` | `RequireCustomInitializationAttribute` |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | converter, convention, translators |
-| `CodoMetis.TypeKit.AspNetCore` | transformers |
+| `CodoMetis.TypeKit.AspNetCore` | `AddTypeKit()` |
 
 The internal aspects live in `CodoMetis.TypeKit.Generators`. Users never type that namespace.
 
@@ -141,7 +142,32 @@ Each phase ends green, and its guards have been proven by seeding the defect
      fails 4 and 3; a validating `Materialize` fails the stored-row test; a stored-JSON converter
      that validates fails the stored value and key tests. The SQL snapshots first failed on the
      cast `Convert` produced, which led to re-typing the column (§4).
-5. **ASP.NET Core.** §7, preceded by its own measurement spike.
+5. **ASP.NET Core. ✅ Done 2026-09-27.**
+   - The measurement spike first (spikes/OpenApiSchemas): a schema transformer reaches a value
+     object that only ever appears as a property, which the earlier measurement had denied; container
+     elements and `TryParse`-bound parameters need handling of their own (§7, decision 11).
+   - `CodoMetis.TypeKit.AspNetCore`: `OpenApiOptions.AddTypeKit()`, which adds
+     `ValueObjectSchemaTransformer`. A value object's schema is filled in, keyword by keyword, from
+     the schema ASP.NET itself publishes for the wrapped type.
+   - Tests in `test/CodoMetis.TypeKit.AspNetCore.Tests`: a probe host with minimal APIs and MVC whose
+     document is read per shape (15 value-object properties across the wrapped-type families, nullable, list, array, set, dictionary,
+     nested containers, bodies, route/query/header/`[AsParameters]`/MVC `[FromQuery]` parameters, a
+     query array), each against a control that uses the wrapped type, in OpenAPI 3.1 and 3.0; the
+     host's enum converter and number handling, on the wire too; composition with another
+     transformer in either order; a host that inlines value objects; a keyword-completeness test over
+     every `OpenApiSchema` property.
+   - Guards, each proven by seeding its defect: not registering it fails 66 tests; dropping the
+     container branch 9, the parameter branch 18, the MVC model-metadata fallback 8; using the
+     parameter descriptor instead fails the MVC `[FromQuery]` object (4); keeping ASP.NET's `string`
+     placeholder fails the integer parameters (8); dropping the nullable unwrap 9; copying
+     `Metadata` 44; overwriting what a container or a keyword already had 1 and 28; sharing
+     collections 5; assigning a missing keyword (null) 174; without the recursion stop every
+     document is refused (73); without the cycle refusal the test host dies of a stack overflow.
+   - Found while building it: assigning `null` to `OpenApiSchema.Const` is not a no-op, it writes
+     `"const": null`, so every keyword is assigned only when the wrapped schema has one, and the
+     keyword tests compare the written schema, not the getters.
+   - Found in the spike and documented, not fixed: ASP0020 (an error) for a minimal-API route
+     parameter whose value object is declared in the same project (decision 12).
 6. **Delivery.**
    - Per-package READMEs (2026-09-27): `src/<Package>/README.md`, packed and named by
      `PackageReadmeFile` from `src/Directory.Build.props`, so a new package cannot pack without one.
@@ -164,7 +190,7 @@ passes in tests and breaks for the first consumer who renames something.
 | Analyzer, `[RequireCustomInitialization]` | The attribute symbol is resolved the same way |
 | Analyzer, CMTK0002 | The compilation references an assembly whose identity is exactly `CodoMetis.TypeKit.Generators`. That is the package's own id, which a consumer cannot rename, and a prefix or suffix match never counts |
 | EF Core | EF asks the type-mapping plugin per CLR type, and it answers for any type implementing `IValueObject<TSelf, T>` (§4). There is no type scan and no assembly filter |
-| OpenAPI | The transformer decides per `JsonTypeInfo.Type` whether it implements `IValueObject<,>` (§7). There is no referenced-assembly walk |
+| OpenAPI | The transformer tests `IValueObject<,>` on the schema's `JsonTypeInfo.Type`, its element type, or a parameter's type or model metadata (§7). There is no referenced-assembly walk |
 
 ## 4. EF Core
 
@@ -326,27 +352,44 @@ passes in tests and breaks for the first consumer who renames something.
    guards the hand-written surface too.
 3. **Generated SQL.** `ToQueryString()` snapshots for `.Value`, `GetValue`, `ValueOrNull`,
    `StartsWith`, equality, and `Contains` over a list of ids.
-4. **OpenAPI.** A probe host's emitted document, asserted per shape (§7).
+4. **OpenAPI.** A probe host's emitted document, asserted per shape against a control that uses
+   the wrapped type directly, so the tests follow what ASP.NET publishes for that type (§7).
 
-## 7. OpenAPI: conflicting evidence, measure first
+## 7. OpenAPI
 
-The goal is a per-type **schema** transformer. An earlier measurement found exactly that failing:
-a schema transformer never reached the component of a type that only ever appears as a property,
-so a document transformer was used instead. The current Microsoft docs (aspnetcore-10.0, updated
-2026-08-19) say schema transformers run *before* schemas are hoisted into components. That
-contradicts the measurement.
+**Decided 2026-09-27, measured in [spikes/OpenApiSchemas](../spikes/OpenApiSchemas/README.md)**
+with Microsoft.AspNetCore.OpenApi 10.0.12. An earlier measurement had found that a schema
+transformer never reached a type that only appears as a property, and repaired such types in a
+document transformer. It does not hold in 10.0.12: one schema transformer reaches every JSON
+position, and the change lands in the hoisted component.
 
-Phase 5 opens with a probe: a value object that appears only as a property, as a list element,
-as a dictionary value, and as a route/query parameter. Assert the emitted document for each.
-Then:
-- **Schema transformer suffices** → a single `ValueObjectSchemaTransformer` that maps any
-  `IValueObject<,>` to `context.GetOrCreateSchemaAsync(underlyingType)`. The underlying type can
-  be anything, not only Guid or string.
-- **The earlier measurement still holds** → keep that underlying-type mapping, but host it in a
-  document transformer for components and parameters, plus a schema transformer for containers.
+- **The schema is the wrapped type's, as ASP.NET publishes it for this host**, asked of ASP.NET
+  through `context.GetOrCreateSchemaAsync(typeof(T))`. It therefore follows the host's JSON options
+  (number handling, enum converter) exactly as the generated converter does, and the document's
+  other transformers (a NodaTime transformer describes a value object wrapping `Instant` too). No
+  format table of our own.
+- **Keywords are filled in, never the object replaced**: the transformer receives the instance ASP.NET
+  hoists into the value object's own component, so `OrderId` stays a named component. What the
+  value object's schema already says is kept. ASP.NET's `Metadata` (the reference id) and the
+  schema-identity keywords are never copied; copying `Metadata` made every use a reference to the
+  wrapped type's component. A keyword is assigned only when the wrapped schema has one.
+- **Containers**: ASP.NET drops `items`/`additionalProperties` for a converter-backed element before
+  any transformer runs; the value object's own schema is put back, only where missing.
+- **Parameters** bound through the generated `TryParse` reach the transformer as `string`, ASP.NET's
+  placeholder for any parsable type, which the wrapped type's schema replaces. Minimal APIs name the
+  value object in the parameter's `Type`, MVC in `ModelMetadata.ModelType`; the parameter descriptor
+  names the container for an MVC `[FromQuery]` object and is not used. Each parameter then publishes
+  exactly what a parameter of the wrapped type publishes.
+- **A value object that reaches itself** through what it wraps is an `InvalidOperationException`
+  naming the chain, not a stack overflow.
+- **ASP0020** (decision 12): a minimal-API route parameter whose value object is declared in the
+  same project fails the build, because the route analyzer reads the source before Metalama weaves
+  `IParsable` in. Binding is correct at run time and in the request delegate generator. A
+  `DiagnosticSuppressor` has no effect under Metalama's compiler, and Metalama's own suppression is
+  scoped to the aspect's targets, so the package README documents the pragma instead.
 
-Vogen and Thinktecture document Swashbuckle only (checked 2026-09-27), so support for the built-in
-`Microsoft.AspNetCore.OpenApi` is a gap worth filling. Confirm that before a README claims it.
+Vogen and Thinktecture document Swashbuckle only (checked 2026-09-27). The README describes what
+the package does and claims nothing about other libraries.
 
 ## 8. Decisions
 
@@ -373,11 +416,16 @@ Vogen and Thinktecture document Swashbuckle only (checked 2026-09-27), so suppor
 9. **EF mapping through an additive `IRelationalTypeMappingSourcePlugin`** (2026-09-27), not a
    replaced `IValueConverterSelector` or a pre-convention scan (§4, spikes/EfMapping).
 10. **Stored JSON through `StoredJsonConverterFactory`** in the base package (2026-09-27, §4).
+11. **OpenAPI through one schema transformer** that fills a value object's schema in from the
+    wrapped type's, as ASP.NET publishes it (2026-09-27, §7, spikes/OpenApiSchemas), not a document
+    transformer and not a format table.
+12. **ASP0020 is documented, not suppressed** (2026-09-27, §7): the package cannot suppress it, and
+    a blanket suppression would hide the check for every other type.
 
 Still open:
 
-11. **Analyzer first-release rule set** (§10 proposes CMTK0001–0005 plus code fixes).
-12. **context7.json.** The sibling repos register one. Add it once the repo is public.
+13. **Analyzer first-release rule set** (§10 proposes CMTK0001–0005 plus code fixes).
+14. **context7.json.** The sibling repos register one. Add it once the repo is public.
 
 ## 9. Option and Result
 

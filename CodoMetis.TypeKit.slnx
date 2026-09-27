@@ -8,6 +8,7 @@
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/CodoMetis.TypeKit.Analyzers.Tests/CodoMetis.TypeKit.Analyzers.Tests.csproj" />
+    <Project Path="test/CodoMetis.TypeKit.AspNetCore.Tests/CodoMetis.TypeKit.AspNetCore.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Conventions.Tests/CodoMetis.TypeKit.Conventions.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.EntityFrameworkCore.Tests/CodoMetis.TypeKit.EntityFrameworkCore.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Generators.Probes/CodoMetis.TypeKit.Generators.Probes.csproj" />

@@ -45,5 +45,7 @@
         <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
         <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
         <PackageVersion Include="Testcontainers.PostgreSql" Version="4.15.0" />
+        <!-- The ASP.NET Core satellite's tests: a probe host whose OpenAPI document they read. -->
+        <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
     </ItemGroup>
 </Project>

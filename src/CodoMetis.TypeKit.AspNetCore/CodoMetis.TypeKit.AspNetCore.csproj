@@ -11,4 +11,8 @@
         <ProjectReference Include="..\CodoMetis.TypeKit\CodoMetis.TypeKit.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="CodoMetis.TypeKit.AspNetCore.Tests" />
+    </ItemGroup>
+
 </Project>

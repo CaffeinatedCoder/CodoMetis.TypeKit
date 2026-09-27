@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      The OpenAPI satellite against value objects the real generators wove: a probe host with minimal
+      APIs and MVC controllers, whose emitted document the tests read. Every value-object shape sits
+      beside a control that uses the wrapped type directly, and the two must publish the same schema.
+    -->
+    <!--
+      ASP.NET's OpenAPI XML-comment generator intercepts AddOpenApi, as it does in any documented
+      host. The Web SDK enables its interceptors namespace; this project uses the plain SDK.
+    -->
+    <PropertyGroup>
+        <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.OpenApi.Generated</InterceptorsNamespaces>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+        <PackageReference Include="NodaTime" />
+        <PackageReference Include="NodaTime.Serialization.SystemTextJson" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.AspNetCore\CodoMetis.TypeKit.AspNetCore.csproj" />
+        <ProjectReference Include="..\CodoMetis.TypeKit.Generators.Probes\CodoMetis.TypeKit.Generators.Probes.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="System.Net" />
+        <Using Include="System.Text.Json.Nodes" />
+    </ItemGroup>
+
+</Project>
