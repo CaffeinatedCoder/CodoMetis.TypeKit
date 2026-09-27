@@ -123,6 +123,16 @@ public sealed partial class NotWireTypeTests
         JsonSerializer.Deserialize<Nicknamed>("""{"Nickname":"Ric"}""", options).ShouldNotBeNull().Nickname.Coalesce("").ShouldBe("Ric");
     }
 
+    /// <summary>A dictionary key too, with the same message, rather than the serializer's about <see cref="object"/> keys.</summary>
+    [Fact]
+    public void A_dictionary_keyed_by_an_option_is_refused_with_the_same_message()
+    {
+        Should.Throw<NotSupportedException>(() => JsonSerializer.Serialize(new Dictionary<Option<string>, int> { [Option.Some(Secret)] = 1 }))
+              .Message.ShouldStartWith("Option<String> is not a wire type");
+        Should.Throw<NotSupportedException>(() => JsonSerializer.Deserialize<Dictionary<Option<string>, int>>("""{"a":1}"""))
+              .Message.ShouldStartWith("Option<String> is not a wire type");
+    }
+
     [Fact]
     public void A_source_generated_context_honours_the_refusal()
     {

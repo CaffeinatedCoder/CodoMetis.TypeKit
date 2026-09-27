@@ -32,6 +32,13 @@ namespace CodoMetis.TypeKit;
 /// Public only so that a source-generated <see cref="JsonSerializerContext"/> can instantiate it.
 /// There is nothing to call.
 /// </para>
+/// <para>
+/// Every type gets the same converter, typed <see cref="object"/>, which the serializer wraps for the
+/// type it asked for. A converter per type would have to be constructed with
+/// <see cref="Type.MakeGenericType"/>, and under Native AOT that construction itself failed for these
+/// structs, with the runtime's "missing native code" message instead of this one (measured
+/// 2026-09-27).
+/// </para>
 /// </remarks>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public sealed class NotWireTypeJsonConverterFactory : JsonConverterFactory
@@ -39,14 +46,16 @@ public sealed class NotWireTypeJsonConverterFactory : JsonConverterFactory
     private static readonly Type[] RefusedDefinitions =
         [typeof(Option<>), typeof(Result<>), typeof(Result<,>), typeof(Success<>), typeof(Error<>)];
 
-    /// <inheritdoc/>
-    public override bool CanConvert(Type typeToConvert) =>
-        typeToConvert == typeof(Success)
-     || typeToConvert.IsGenericType && RefusedDefinitions.Contains(typeToConvert.GetGenericTypeDefinition());
+    private static readonly Refusing Converter = new();
 
     /// <inheritdoc/>
-    public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options) =>
-        (JsonConverter)Activator.CreateInstance(typeof(Refusing<>).MakeGenericType(typeToConvert))!;
+    public override bool CanConvert(Type typeToConvert) => IsRefused(typeToConvert);
+
+    /// <inheritdoc/>
+    public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options) => Converter;
+
+    private static bool IsRefused(Type type) =>
+        type == typeof(Success) || type.IsGenericType && RefusedDefinitions.Contains(type.GetGenericTypeDefinition());
 
     /// <summary>The message for <paramref name="type"/>, naming the alternative. Never the content.</summary>
     internal static string Message(Type type)
@@ -67,15 +76,28 @@ public sealed class NotWireTypeJsonConverterFactory : JsonConverterFactory
             ? $"{type.Name[..type.Name.IndexOf('`', StringComparison.Ordinal)]}<{string.Join(", ", type.GetGenericArguments().Select(Name))}>"
             : type.Name;
 
-    private sealed class Refusing<T> : JsonConverter<T>
+    /// <summary>
+    /// Refuses every refused type. The serializer hands a read the type it asked for, and a write the
+    /// value itself, a boxed struct that is never null; either names the type in the message.
+    /// </summary>
+    private sealed class Refusing : JsonConverter<object>
     {
         /// <summary>A JSON <c>null</c> is refused with the same message, not with the serializer's own.</summary>
         public override bool HandleNull => true;
 
-        public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
-            throw new NotSupportedException(Message(typeof(T)));
+        public override bool CanConvert(Type typeToConvert) => IsRefused(typeToConvert);
 
-        public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options) =>
-            throw new NotSupportedException(Message(typeof(T)));
+        public override object Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+            throw new NotSupportedException(Message(typeToConvert));
+
+        public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options) =>
+            throw new NotSupportedException(Message(value.GetType()));
+
+        /// <summary>A dictionary key too, rather than the serializer's message about <see cref="object"/> keys.</summary>
+        public override object ReadAsPropertyName(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+            throw new NotSupportedException(Message(typeToConvert));
+
+        public override void WriteAsPropertyName(Utf8JsonWriter writer, object value, JsonSerializerOptions options) =>
+            throw new NotSupportedException(Message(value.GetType()));
     }
 }
