@@ -208,6 +208,17 @@ The ids are stable across releases. See
 [CodoMetis.TypeKit.Analyzers](https://www.nuget.org/packages/CodoMetis.TypeKit.Analyzers) for the
 rule table.
 
+## Native AOT
+
+Everything here works in a trimmed or Native AOT application, and the packages are built with the
+trim and AOT analyzers on. With source-generated JSON, which Native AOT requires, list the value
+objects (or the types that hold them) in your `JsonSerializerContext`, not what they wrap: the
+generated converters build the wrapped type's contract themselves, from a converter on your options,
+the type's own `[JsonConverter]`, or the serializer's built-in one. Only a value object wrapping a
+type of your own that has no converter needs that type in the context, and the serializer's error
+names it. `Option` and `Result` refuse JSON there exactly as on the JIT, and
+`StoredJsonConverterFactory` reads without the rules.
+
 ## Where things are
 
 `Option`, `Result` and `IValueObject` live in `CodoMetis.TypeKit`; the value-object contracts in

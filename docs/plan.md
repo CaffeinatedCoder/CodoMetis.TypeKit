@@ -1,7 +1,7 @@
 # Plan: CodoMetis.TypeKit
 
-Status: **in progress, 2026-09-27.** Phases 0 to 6 are done; 0.1.0 waits on the repository going
-public. The decisions are in §8. The fabric spike
+Status: **in progress, 2026-09-27.** Phases 0 to 7 are done; 0.1.0 waits on the repository going
+public. The decisions are in §8, Native AOT in §11. The fabric spike
 ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation comparison
 ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)), the EF mapping spike
 ([spikes/EfMapping](../spikes/EfMapping/README.md)) and the OpenAPI spike
@@ -11,7 +11,7 @@ public. The decisions are in §8. The fabric spike
 
 | Package | Depends on | Metalama | Contents |
 |---|---|---|---|
-| `CodoMetis.TypeKit` | Analyzers (flows, §10) | **no** | `Option<T>`, `Result<T,TError>`, `Result<TError>` and their extensions, all carrying `NotWireTypeJsonConverterFactory` (§9); the value-object contracts `IValueObject<,>`, `IValueWrapper<,>`, `IValue<T>`, `IValidatedValue<,,>`, `IValueObjectMaterializer<,>` (§4), `KnownGood`; `TranslatedAsUnderlyingValueAttribute`, `RequireCustomInitializationAttribute`; `GuidValueExtensions` (`OrderId.New()` from a version 7 Guid); `Accepted`, `GeneratedParsing` and `GeneratedJson`, which the generated code calls (§5) |
+| `CodoMetis.TypeKit` | Analyzers (flows, §10) | **no** | `Option<T>`, `Result<T,TError>`, `Result<TError>` and their extensions, all carrying `NotWireTypeJsonConverterFactory` (§9); the value-object contracts `IValueObject<,>`, `IValueWrapper<,>`, `IValue<T>`, `IValidatedValue<,,>`, `IValueObjectMaterializer<,>` (§4), `KnownGood`; `TranslatedAsUnderlyingValueAttribute`, `RequireCustomInitializationAttribute`; `GeneratedValueObjectAttribute<,>` and `IValueObjectVisitor<>`, which the satellites read (§3, §11); `GuidValueExtensions` (`OrderId.New()` from a version 7 Guid); `Accepted`, `GeneratedParsing`, `GeneratedJson` and `IStoredJsonConverterSource`, which the generated code calls or implements (§5) |
 | `CodoMetis.TypeKit.Analyzers` | — | no | Roslyn analyzers and code fixes (§10). Nobody references it directly: it reaches every consumer through the base package |
 | `CodoMetis.TypeKit.Generators` | TypeKit, Metalama.Framework 2026.1.x (flows) | yes | Internal aspects, internal `TransitiveProjectFabric`, `AspectOrder`. Future generated type families join this package too: one fabric, one aspect order |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | TypeKit, EF Core Relational | no | Generic converter, convention, `.Value` / `GetValue` / `ValueOrNull` translators, `UseTypeKit()` |
@@ -27,8 +27,8 @@ objects from a referenced domain assembly never needs Metalama itself.
 
 | Namespace | Holds |
 |---|---|
-| `CodoMetis.TypeKit` | `Option`, `Result`, `NotWireTypeJsonConverterFactory`, `IValueObject`, `IValueWrapper`, `TranslatedAsUnderlyingValueAttribute` |
-| `CodoMetis.TypeKit.ValueObjects` | `IValue`, `IValidatedValue`, `KnownGood`, `IValueObjectMaterializer` |
+| `CodoMetis.TypeKit` | `Option`, `Result`, `NotWireTypeJsonConverterFactory`, `IValueObject`, `IValueWrapper`, `TranslatedAsUnderlyingValueAttribute`, `GeneratedValueObjectAttribute`, `IValueObjectVisitor` |
+| `CodoMetis.TypeKit.ValueObjects` | `IValue`, `IValidatedValue`, `KnownGood`, `IValueObjectMaterializer`, `IStoredJsonConverterSource` |
 | `CodoMetis.TypeKit.Attributes` | `RequireCustomInitializationAttribute` |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | converter, convention, translators |
 | `CodoMetis.TypeKit.AspNetCore` | `AddTypeKit()` |
@@ -220,6 +220,45 @@ Each phase ends green, and its guards have been proven by seeding the defect
      reference only. The satellite README says to reference it, as the `webapi` template does; a copy
      of Microsoft's switch in our own `buildTransitive` would drift from theirs.
 
+7. **Native AOT. ✅ Done 2026-09-27** (§11).
+   - `IsAotCompatible` on the three run-time packages, so the trim and AOT analyzers run in every
+     build and a warning fails it. `AotCompatibilityTests` reads the packed assemblies' metadata; the
+     compile-time packages are exempt by name, with the reason.
+   - The consumer smoke test's `aot` consumer: a domain library and a web host with JSON, OpenAPI
+     and EF Core (compiled model, precompiled queries), published with `PublishAot`. No trim or AOT
+     warning may name a package or a woven value object, and the native binary is run and asserted
+     on. The workflows install clang and zlib before it, held by a wiring test.
+   - Found by publishing with Native AOT, each fixed and guarded:
+     - `StoredJsonConverterFactory` found its private constructor by reflection, which the trimmer
+       removed: stored JSON was **validated after all**, silently. It now asks the generated
+       converter through `IStoredJsonConverterSource`.
+     - the OpenAPI satellite described **every value object as `{}`**, silently: the trimmer removes
+       `IValueObject<,>` from a type's interfaces when nothing uses it, and `GetInterfaces()` found
+       nothing. The satellites now read `GeneratedValueObjectAttribute<,>` (decision 17).
+     - `Option`/`Result` refused JSON with the runtime's "missing native code" message instead of
+       their own: the refusing converter was made with `MakeGenericType`. One object-typed converter
+       now serves every type.
+     - the generated JSON converter serialized the wrapped value through the options (20 warnings in
+       the consumer's assembly), and a source-generated context without the wrapped type refused a
+       `decimal` value object outright, on the JIT too. It now goes through `GeneratedJson.TypeInfo`.
+     - the generated parsing of a `[TypeConverter]` type (NodaTime) called
+       `TypeDescriptor.GetConverter`, which requires unreferenced code.
+     - EF Core: the converter's read path called an internal helper, which a compiled model
+       (`dotnet ef dbcontext optimize`) writes out as C# in the application's assembly, where it does
+       not compile; a precompiled query cast the converter to its design-time type, which the
+       compiled model does not recreate; a value-object parameter, mapped at run time, hit EF's own
+       `MakeGenericType` guard composing its JSON reader/writer; and the converter was made with
+       `MakeGenericType`.
+   - Guards, each proven by seeding its defect: reverting the generated JSON to the options fails 6
+     `SourceGeneratedJsonTests`, and in the smoke test's `aot` consumer the warnings assertion (8 woven
+     warnings) and the JSON assertions; each reflection or `MakeGenericType` call put back fails the
+     build under the analyzers, and suppressed with `#pragma` only, the smoke test's warnings
+     assertion (IL2070 from ILCompiler); without the generated attribute, the OpenAPI host under
+     Native AOT is `{}` again; dropping `IsAotCompatible` from a package fails
+     `AotCompatibilityTests` for that package; a missing or late toolchain step fails the wiring test.
+   - Not caught at run time: a `GetInterfaces()` lookup suppressed with
+     `[UnconditionalSuppressMessage]`, since the attribute keeps the interface alive (§11).
+
 ## 3. Discovery is by interface
 
 No namespace strings, assembly-name prefixes or type-name lists anywhere. A name-based check
@@ -230,8 +269,14 @@ passes in tests and breaks for the first consumer who renames something.
 | Analyzer, value-object rules | `CompilationStartAction` resolves `CodoMetis.TypeKit.ValueObjects.IValue`1` / `IValidatedValue`3` with `GetTypeByMetadataName` and compares `OriginalDefinition` with `SymbolEqualityComparer`. If `CodoMetis.TypeKit` is absent, nothing is registered |
 | Analyzer, `[RequireCustomInitialization]` | The attribute symbol is resolved the same way |
 | Analyzer, CMTK0002 | The compilation references an assembly whose identity is exactly `CodoMetis.TypeKit.Generators`. That is the package's own id, which a consumer cannot rename, and a prefix or suffix match never counts |
-| EF Core | EF asks the type-mapping plugin per CLR type, and it answers for any type implementing `IValueObject<TSelf, T>` (§4). There is no type scan and no assembly filter |
-| OpenAPI | The transformer tests `IValueObject<,>` on the schema's `JsonTypeInfo.Type`, its element type, or a parameter's type or model metadata (§7). There is no referenced-assembly walk |
+| EF Core | EF asks the type-mapping plugin per CLR type, and it answers for any type carrying `GeneratedValueObjectAttribute<TSelf, T>` (§4). There is no type scan and no assembly filter |
+| OpenAPI | The transformer reads `GeneratedValueObjectAttribute<,>` on the schema's `JsonTypeInfo.Type`, its element type, or a parameter's type or model metadata (§7). There is no referenced-assembly walk |
+
+Run-time code that holds only a `Type` reads the attribute rather than calling `GetInterfaces()`
+(decision 17). Its type arguments are constrained to `IValueObject<TSelf, T>` and
+`IValueObjectMaterializer<TSelf, T>`, so the interface still decides what a value object is; the
+attribute is how a type says so after trimming, which removes an interface nothing uses and keeps
+custom attributes.
 
 ## 4. EF Core
 
@@ -240,10 +285,13 @@ passes in tests and breaks for the first consumer who renames something.
   implements it **explicitly**, so it is invisible on the type's public surface and reachable only
   through a constrained generic. Documented contract: *skips validation; for values this
   application wrote itself; never call it on input.* CMTK0004 enforces who may call it.
-- **One converter.** `ValueObjectConverter<TVO,T> : ValueConverter<TVO,T>`, public so a property
-  can also name it explicitly. Pitfall: an expression tree cannot call a static abstract member
-  directly (CS8927). The from-provider lambda therefore calls a plain generic helper,
-  `Materializer.Create<TVO,T>(v)` (internal), which does the constrained call.
+- **One pair of conversions.** `ValueObjectConverter<TVO,T> : ValueConverter<TVO,T>`, public so a
+  property can also name it explicitly. Its expressions call its own public static
+  `ProviderValue` and `Materialize`: an expression tree cannot call a static abstract member
+  directly (CS8927), and EF's compiled model writes the expressions out as C# in the application's
+  assembly, where an internal helper did not compile (§11). `UseTypeKit()` composes a plain
+  `ValueConverter<TVO,T>` over the same expressions, the type the compiled model recreates, because a
+  precompiled query casts a property's converter to its design-time type.
 - **No per-type comparer.** A `readonly record struct` already has value equality, and EF's default
   comparer uses it. A test pins that it agrees with comparing `.Value`.
 - **Application (decided 2026-09-27, spikes/EfMapping).** `optionsBuilder.UseTypeKit()` registers
@@ -251,7 +299,10 @@ passes in tests and breaks for the first consumer who renames something.
   column mapping can join it. It adds an `IRelationalTypeMappingSourcePlugin` that answers any
   `IValueObject<TSelf, T>` with the provider's mapping for `T` and the converter composed onto it.
   EF consults it per CLR type wherever it maps one: property discovery, keys, foreign keys,
-  primitive-collection elements, query parameters. The lookup's facets are passed on.
+  primitive-collection elements, query parameters. The lookup's facets are passed on. The plugin
+  composes the JSON reader/writer itself, with both types known through the attribute's visitor:
+  EF's own composition uses `MakeGenericType`, which it refuses under Native AOT, where a precompiled
+  query still maps a value-object parameter at run time.
   - Not a replaced `IValueConverterSelector`: it maps the same, but a second library replacing the
     selector (as strongly-typed-id guides recommend) would take it away, and the resulting model
     error does not name the cause. Plugins are additive. This was first decided the other way on
@@ -310,7 +361,9 @@ passes in tests and breaks for the first consumer who renames something.
   with `TypeFactory.TryGetType` from the consumer's compilation, compares them by symbol, and uses
   NodaTime's converters (values and dictionary keys) only when
   NodaTime.Serialization.SystemTextJson is referenced too. Otherwise the fallback serializes
-  through the options. Parsing reaches NodaTime types through their `[TypeConverter]`.
+  through the options. Parsing reaches NodaTime types through their `[TypeConverter]`, via
+  `GeneratedParsing.TypeConverterOf<T>()` (`TypeDescriptor.RegisterType` and
+  `GetConverterFromRegisteredType`, the trim-safe lookup).
 - **Explicit `IParsable`.** `bool` and `char` implement their parsing interfaces explicitly, so the
   generated code calls the wrapped type's `Parse`/`TryParse` through `GeneratedParsing`, whose
   constrained type parameters reach an explicit implementation.
@@ -324,6 +377,12 @@ passes in tests and breaks for the first consumer who renames something.
   Interpolation, `string.Format` and `Convert.ToString` pass null, and with the current culture
   `$"{amount}"` was "1,5" in de-DE while `amount.ToString()` was "1.5". Display text in a culture
   passes it: `string.Create(culture, $"{amount}")`.
+- **The wrapped value's JSON contract** comes from `GeneratedJson.TypeInfo<T>(options, builtIn)`
+  (decided 2026-09-27, §11): the options' own contract when their resolver has one, so a host's
+  number handling and converters apply, and otherwise made in the serializer's order (a converter on
+  the options, the type's `[JsonConverter]`, the built-in converter the aspect names by its property
+  type). A source-generated context never sees what a value object wraps, and serializing through
+  the options needs reflection. A key uses `GeneratedJson.KeyConverter<T>`.
 - **JSON reads never parse by rules of their own.** A value is read by the reader's methods
   (`GetGuid`, `GetDateTime`) or, for `DateOnly`/`TimeOnly`, the serializer's built-in converter; a
   dictionary key by the built-in converter's `ReadAsPropertyName`
@@ -423,6 +482,11 @@ position, and the change lands in the hoisted component.
   exactly what a parameter of the wrapped type publishes.
 - **A value object that reaches itself** through what it wraps is an `InvalidOperationException`
   naming the chain, not a stack overflow.
+- **Source-generated JSON** (§11): ASP.NET builds the wrapped type's schema from the host's JSON
+  contract for it, and a source-generated context has none for a type the host never serializes.
+  The transformer then refuses with an `InvalidOperationException` naming the value object and the
+  `[JsonSerializable(typeof(Guid))]` to add, rather than the serializer's message about a Guid. A
+  resolver of our own cannot be added: the host's options are read-only by then.
 - **ASP0020** (decision 12): a minimal-API route parameter whose value object is declared in the
   same project fails the build, because the route analyzer reads the source before Metalama weaves
   `IParsable` in. Binding is correct at run time and in the request delegate generator. A
@@ -465,6 +529,16 @@ the package does and claims nothing about other libraries.
 15. **`Option`/`Result` are not wire types** (2026-09-27, §9): a `[JsonConverter]` on every exported
     struct of the base package throws `NotSupportedException` in both directions. Not a lossless
     converter, and not an analyzer.
+16. **Native AOT wherever the platform allows it** (2026-09-27, §11): the run-time packages build with
+    `IsAotCompatible`, the woven code is published with Native AOT in the smoke test, and a path that
+    needs reflection or dynamic code is rewritten rather than annotated or suppressed. EF Core itself
+    stays experimental under Native AOT; the satellite adds nothing to what EF requires.
+17. **Run-time discovery reads `GeneratedValueObjectAttribute<TSelf, T>`** (2026-09-27, §3, §11),
+    which the generators put on every value object, not `GetInterfaces()`. Measured under Native AOT:
+    the interface was gone from every value object reached through a property, and the OpenAPI
+    satellite described each as `{}`. The attribute's constraints are the interfaces, so what a value
+    object is has not changed; its `Accept` hands the two types to a visitor as type arguments, which
+    is how the EF satellite makes a converter without `MakeGenericType`.
 
 Still open:
 
@@ -534,7 +608,10 @@ LanguageExt is out.
 - **Decision:** `NotWireTypeJsonConverterFactory`, on `Option<T>`, both `Result` shapes and the
   `Success`/`Success<T>`/`Error<T>` markers, throws `NotSupportedException` from `Read` and `Write`,
   naming the type and the alternative and never the content. `HandleNull` is on, so a JSON `null`
-  gets the same message. That is what the serializer itself does for `System.Type`.
+  gets the same message, and a dictionary key does too. That is what the serializer itself does for
+  `System.Type`. It hands every type one converter typed `object`, which the serializer wraps: a
+  converter per type needed `MakeGenericType`, and under Native AOT that failed for these structs
+  with the runtime's message instead of this one (§11).
 - A serialized shape says absent with `T?`; `ToOption()`/`OrNull()` convert at the boundary; a
   result is matched to a response or a document. An application that wants a wire format registers
   its own converter on its options, which takes precedence over the type's attribute, in a
@@ -606,7 +683,7 @@ exist.
 | CMTK0001 | No `default`/`default(T)`/`new()`/`new T()` of a value object or a `[RequireCustomInitialization]` type | Error | done (unshipped) |
 | CMTK0002 | Type implements `IValue<>`/`IValidatedValue<,,>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so it is never woven | Error | done (unshipped) |
 | CMTK0003 | `Result`/`Option` return value ignored (expression statement, including an awaited `Task<Result<…>>`; `_ =` is the explicit opt-out). CA1806 can only enforce this per method name via `additional_use_results_methods`, not per return type | Warning | proposed |
-| CMTK0004 | `IValueObjectMaterializer<,>.Materialize` called outside `CodoMetis.TypeKit.EntityFrameworkCore`. Enforces the validation-free-path invariant in SECURITY.md (the other sanctioned path, `StoredJsonConverterFactory`, reaches the converter's private constructor, not `Materialize`) | Error | proposed |
+| CMTK0004 | `IValueObjectMaterializer<,>.Materialize` or `ValueObjectConverter<,>.Materialize` called outside `CodoMetis.TypeKit.EntityFrameworkCore` and EF's generated compiled model. Enforces the validation-free-path invariant in SECURITY.md (the other sanctioned path, `StoredJsonConverterFactory`, reaches the converter's materializing mode through `IStoredJsonConverterSource`, not `Materialize`) | Error | proposed |
 | CMTK0005 | Array of a no-default type created with a length (`new OrderId[n]`, `GC.AllocateUninitializedArray`): every element starts as `default` | Warning | proposed |
 | CMTK0006 | Field or auto-property of a no-default type in a class, not `required`, no initializer, not assigned in every constructor. This is the CS8618 equivalent nullable analysis does not give structs, and the largest remaining way to get a `default` value object | Info → Warning | **measure noise first** on EF entities with private parameterless constructors |
 | CMTK0007 | `FromKnownGood` called with a non-constant argument | Info | **needs design**: "a value the caller just produced" is legitimate |
@@ -616,3 +693,43 @@ exist.
 ships at Warning or Info in a minor version and is raised to Error only in a major. Consumers
 build with warnings as errors, so a new Error rule in a minor version would break their builds on
 update.
+
+## 11. Native AOT
+
+**Decided 2026-09-27 (decision 16), measured by publishing consumers with Native AOT** (SDK 10.0.401,
+ILCompiler 10.0.12, osx-arm64), JSON through source-generated contexts, OpenAPI in a slim web
+host, EF Core through `dotnet ef dbcontext optimize --precompile-queries --nativeaot`.
+
+- **What the analyzers can and cannot see.** `IsAotCompatible` runs the trim and AOT analyzers on
+  the packages' own code, and warnings are errors. The generators' product is compiled in the
+  consumer, where only the consumer's publish sees it, and the analyzers cannot tell that a run-time
+  path still works: the two worst findings (stored JSON validated, every schema `{}`) produced no
+  warning at build time on the JIT. So the smoke test publishes with Native AOT and runs the binary.
+- **Trimming removes interfaces nothing uses.** ILCompiler keeps an interface on a type only if the
+  interface's definition is used somewhere; `typeof(IValueObject<,>)` does not count. Neither
+  `[DynamicallyAccessedMembers(Interfaces)]` on the interface nor on the value object kept it (both
+  measured). Custom attributes are kept, which is why discovery reads
+  `GeneratedValueObjectAttribute<,>` (decision 17).
+- **And keeps them once anything uses the interface.** The attribute's own constraint does, and so
+  does the EF satellite's converter: with the attribute generated, a `GetInterfaces()` lookup found
+  `IValueObject<,>` again under Native AOT, and without it the same host described every value object
+  as `{}` (both measured). That is ILCompiler's behaviour, not a contract, so the smoke test cannot
+  catch a return to `GetInterfaces()` at run time; the analyzers' IL2070, an error in the packages'
+  build, does.
+- **JSON.** The generated converter's wrapped value goes through `GeneratedJson.TypeInfo` (§5), so a
+  context lists the value objects and never what they wrap. A value object wrapping a type the
+  serializer has no converter for (a class of the application's) still needs that type in the
+  context, and the serializer's refusal names it.
+- **OpenAPI.** The host's context lists what its value objects wrap (§7).
+- **EF Core** is experimental under Native AOT and needs a compiled model and precompiled queries;
+  its `DbContext` constructors require dynamic code. With the satellite, a value object maps, writes,
+  queries by `.Value`, binds as a parameter and reads a stored value without validation, in the
+  native binary. EF limitations met on the way, not ours to fix:
+  - the compiled model cannot write the sentinel of a **struct value object wrapping a reference
+    type** (`default(Code)` converts to `null`, and EF then needs a literal for the struct itself).
+    Such a value object on an entity is a `sealed partial record` instead;
+  - EF 10's precompiled queries cast an entity to an internal interface, which does not compile for
+    a **sealed** entity class.
+- **Third-party packages** report their own warnings (NodaTime.Serialization.SystemTextJson 1.4.0,
+  EF Core). The smoke test asserts only that none names a CodoMetis package or a woven value object.
+

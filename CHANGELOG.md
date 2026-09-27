@@ -41,3 +41,9 @@ The first release.
 - **`CodoMetis.TypeKit.AspNetCore`**: `AddTypeKit()` on `AddOpenApi` gives every value object the
   schema ASP.NET publishes for the type it wraps, wherever it appears: properties, bodies,
   containers, and route, query and header parameters.
+- **Native AOT**, for every package that runs in an application. The run-time packages are built with
+  the trim and AOT analyzers on, and the generated code is published with Native AOT and run in the
+  consumer smoke test. With source-generated JSON a context lists the value objects, not what they
+  wrap. The EF Core satellite works with a compiled model and precompiled queries, which is how EF
+  Core runs under Native AOT. The OpenAPI satellite needs the wrapped types in the host's
+  `JsonSerializerContext`, and says which one is missing.

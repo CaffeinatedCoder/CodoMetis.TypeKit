@@ -116,6 +116,13 @@ reads the wrapped type itself, and malformed text is a `JsonException`, which AS
 with 400. NodaTime types use NodaTime's converters when `NodaTime.Serialization.SystemTextJson` is
 referenced. For JSON the application stored itself, see `StoredJsonConverterFactory` in the base package.
 
+With a source-generated `JsonSerializerContext` (and so under Native AOT), list the value objects,
+not the types they wrap. The context sees a value object's converter and never what it wraps, so the
+converter builds that contract itself, as the serializer would: a converter on your options first,
+then the wrapped type's `[JsonConverter]`, then the serializer's built-in converter. Your options'
+number handling applies either way. Everything generated is trim- and AOT-safe, and the consumer
+smoke test publishes it with Native AOT.
+
 ## Parsing and formatting
 
 ```csharp

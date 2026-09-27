@@ -113,13 +113,19 @@ services.AddOpenApi(options => options.AddTypeKit());                    // Orde
 - **Loud failures.** A declaration that cannot be generated is a build error naming the
   declaration, CMTK1000 to CMTK1008, never a type with nothing in it. The analyzers make `default`
   of a value object, an `Option` or a `Result` an error.
-- **Discovery by interface.** The EF Core and OpenAPI satellites recognise a value object by
-  `IValueObject<,>`, never by a name, a namespace or an assembly prefix.
+- **Discovery by interface.** The EF Core and OpenAPI satellites recognise a value object by the
+  attribute the generators put beside `IValueObject<,>`, whose type arguments are constrained to it,
+  never by a name, a namespace or an assembly prefix, and never by `GetInterfaces()`, which trimming
+  breaks.
+- **Native AOT.** The run-time packages build with the trim and AOT analyzers on, and a consumer
+  with value objects, source-generated JSON, OpenAPI and EF Core is published with Native AOT and run
+  on every CI build. Each package's README says what, if anything, Native AOT asks of you.
 
 ## Status
 
 No version has been released yet. `Option`/`Result`, the contracts and analyzers, the generators,
-the EF Core satellite, the OpenAPI satellite and the release pipeline are done; 0.1.0 is next. The
+the EF Core satellite, the OpenAPI satellite, the release pipeline and Native AOT are done; 0.1.0 is
+next. The
 plan, the decisions and their evidence are in [docs/plan.md](docs/plan.md), and the measurements
 that decided the design are in [spikes/](spikes/).
 

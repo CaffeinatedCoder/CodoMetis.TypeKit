@@ -92,6 +92,25 @@ app.MapGet("/orders/{id}", (OrderId id) => …);
 A `DiagnosticSuppressor` cannot do this for you: suppressors do not run in a project the generators
 compile.
 
+## Native AOT
+
+The transformer is trim- and AOT-safe. With source-generated JSON, which Native AOT requires, the
+host's `JsonSerializerContext` lists every type its value objects wrap: ASP.NET builds a value
+object's schema from its JSON contract for the wrapped type, and a context has none for a type the
+host never serializes itself.
+
+```csharp
+[JsonSerializable(typeof(OrderDto))]
+[JsonSerializable(typeof(Guid))]   // what OrderId wraps
+[JsonSerializable(typeof(int))]    // what Quantity wraps
+internal partial class AppJson : JsonSerializerContext;
+
+builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJson.Default));
+```
+
+Without one, generating the document fails with an `InvalidOperationException` that names the
+value object and the `[JsonSerializable]` to add.
+
 ## Binding
 
 The generated members cover the request itself:

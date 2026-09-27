@@ -81,3 +81,30 @@ wrote is trusted by contract. Input still goes through `Create`: nothing in this
 from a request.
 
 Tested on SQLite and PostgreSQL, with SQL snapshots for every translation above.
+
+## Compiled models and Native AOT
+
+EF Core runs under Native AOT only through a compiled model and precompiled queries, and supports
+that experimentally:
+
+```bash
+dotnet ef dbcontext optimize --precompile-queries --nativeaot
+```
+
+`UseTypeKit()` works there: value objects map through the compiled model, `.Value` translates in
+precompiled queries, a value-object parameter binds, and a stored value reads back without the rules,
+in the native binary (the consumer smoke test runs exactly that). A compiled model without Native AOT
+works the same way. This package adds no trim or AOT warning of its own; EF's `DbContext`
+constructors report theirs, which EF's documentation covers.
+
+Three EF limitations to know:
+
+- **A struct value object that wraps a reference type** (`string`, `Uri`) cannot be a property in a
+  compiled model: EF cannot write its sentinel, since `default(ProductCode)` converts to `null`, and
+  `dbcontext optimize` fails with "The type mapping for 'ProductCode' has not implemented code
+  literal generation". Declare such a value object as a `sealed partial record`.
+- **A sealed entity class** does not compile in EF 10's precompiled queries (CS0030 in the generated
+  interceptors).
+- **Precompiled queries need the converter `UseTypeKit()` composes.** They cast a property's
+  converter to the type it had at design time, which the compiled model does not recreate for a
+  `ValueObjectConverter<,>` named in `HasConversion`.

@@ -85,7 +85,10 @@ There is one publishing path, `.github/workflows/release.yml`, run by pushing a 
 3. **Materialisation.** Two paths rebuild value objects **without** validation, by design, and
    trust that the application wrote what they read: the EF Core satellite for columns, and
    `StoredJsonConverterFactory` for JSON the application stored itself, where it is registered on
-   that store's `JsonSerializerOptions` and nowhere else.
+   that store's `JsonSerializerOptions` and nowhere else. The EF satellite's read path is
+   `ValueObjectConverter<,>.Materialize`, public because EF's compiled model calls it from code it
+   generates in the application; the factory reaches the generated converter's materializing mode
+   through `IStoredJsonConverterSource`, which hands it out to the factory only.
 
 ## In scope
 
@@ -98,6 +101,9 @@ There is one publishing path, `.github/workflows/release.yml`, run by pushing a 
 - **A validation-free path reachable from input.** The materializer, the stored-JSON mode of the
   generated converter, or anything else that skips `Create`, becoming reachable other than through
   the EF satellite or an explicitly registered `StoredJsonConverterFactory`.
+- **A path that behaves differently when trimmed or compiled with Native AOT** in a way that skips
+  `Create` or reads as success, such as a converter that silently falls back to validation-free
+  behaviour, or a satellite that stops recognising value objects.
 - **An analyzer that silently stops enforcing its rule** where it is the only guard against
   `default(T)` of a validated value.
 - **Denial of service through parsing or JSON** out of proportion to input length.

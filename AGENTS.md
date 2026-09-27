@@ -51,7 +51,7 @@ dotnet build CodoMetis.TypeKit.slnx
 dotnet test --solution CodoMetis.TypeKit.slnx
 dotnet test --project test/CodoMetis.TypeKit.Conventions.Tests --filter-method "*Metalama*"
 dotnet build spikes/FabricSpike/FabricSpike.slnx      # the fabric spike, standalone
-./test/consumer-smoke-test.sh                          # the packages, installed into throwaway consumers
+./test/consumer-smoke-test.sh                          # the packages, installed into throwaway consumers, one published with Native AOT (needs clang)
 ```
 
 The SDK is pinned in `global.json` (10.0.4xx band, `latestPatch`). Tests run on Microsoft Testing
@@ -64,11 +64,13 @@ Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TR
   Metalama, directly or transitively. That is why the aspects are applied by a
   `TransitiveProjectFabric` in `.Generators` and not by `[Inheritable]` on the interfaces.
 - **Discovery is by interface, never by name.** No namespace strings, assembly-name prefixes or
-  type-name lists. The analyzer resolves the interface symbols from the compilation, and run-time
-  code tests `IValueObject<,>` assignability. A name-based check passes in tests and breaks for
-  the first consumer who renames something. The only names the analyzer knows are this package's
-  own: the metadata names of its contracts and the exact identity of the `.Generators` assembly,
-  each tied to the real assembly by a test.
+  type-name lists. The analyzer resolves the interface symbols from the compilation. Run-time code
+  that holds only a `Type` reads `GeneratedValueObjectAttribute<TSelf, T>`, whose type arguments are
+  constrained to the interfaces, and **never calls `GetInterfaces()`**: trimming removes an interface
+  nothing uses, and under Native AOT every value object then looked like no value object at all. A
+  name-based check passes in tests and breaks for the first consumer who renames something. The
+  only names the analyzer knows are this package's own: the metadata names of its contracts and
+  the exact identity of the `.Generators` assembly, each tied to the real assembly by a test.
 - **No public `.Value` on `Option`/`Result`, and never positional records.** Positional
   parameters become public properties and reach `ToString`.
 - **`Option`/`Result` refuse System.Text.Json.** Every exported struct of the base package carries
@@ -77,7 +79,14 @@ Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TR
   `NotWireTypeTests` fails for a struct without it.
 - **The materializer skips validation.** `IValueObjectMaterializer<,>.Materialize` exists for
   values the application wrote itself (a database column). Never expose it to input, and never
-  call it outside the EF satellite (CMTK0004).
+  call it outside the EF satellite (CMTK0004). `ValueObjectConverter<,>.Materialize` is public only
+  because EF's compiled model calls it from generated code in the application's assembly.
+- **Native AOT: rewrite, never suppress.** The run-time packages build with `IsAotCompatible` and
+  warnings are errors. No `MakeGenericType`, no reflection over members the trimmer may remove, no
+  `JsonSerializer` call that takes only options, in the packages or in woven code: a typed call
+  (`GeneratedValueObjectAttribute.Accept`, `GeneratedJson.TypeInfo`) or an interface instead. An
+  `[UnconditionalSuppressMessage]` needs a measured reason, and the smoke test's `aot` consumer is
+  the measurement (docs/plan.md §11).
 - **Aspects stay internal.** Their public surface is what they generate, and nothing else.
 - **Diagnostic ids (`CMTK`) are public contract.** Never renumber a shipped rule, and never ship a
   new rule at Error severity in a minor version.

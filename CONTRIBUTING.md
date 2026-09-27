@@ -11,7 +11,9 @@ dotnet test --solution CodoMetis.TypeKit.slnx
 ./test/consumer-smoke-test.sh      # packs the packages and builds throwaway consumers against them
 ```
 
-The EF Core tests start a PostgreSQL container, so the suite needs Docker. Shipping projects live
+The EF Core tests start a PostgreSQL container, so the suite needs Docker. The smoke test publishes
+one consumer with Native AOT, which needs the platform's native toolchain: clang (Xcode's command-line
+tools on macOS; `clang` and `zlib1g-dev` on Debian and Ubuntu). Shipping projects live
 under `src/` and test projects under `test/`.
 [AGENTS.md](AGENTS.md) is the architecture guide and [docs/plan.md](docs/plan.md) the current
 roadmap. Read both before changing `Option`/`Result`, an aspect, the fabric, the analyzer or a
