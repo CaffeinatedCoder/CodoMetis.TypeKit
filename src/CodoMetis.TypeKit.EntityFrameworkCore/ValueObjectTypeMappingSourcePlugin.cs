@@ -42,6 +42,6 @@ internal sealed class ValueObjectTypeMappingSourcePlugin(IServiceProvider servic
             valueObject.ValueType, mappingInfo.StoreTypeName, mappingInfo.IsKeyOrIndex, mappingInfo.IsUnicode, mappingInfo.Size,
             mappingInfo.IsRowVersion, mappingInfo.IsFixedLength, mappingInfo.Precision, mappingInfo.Scale);
 
-        return (RelationalTypeMapping?)wrapped?.WithComposedConverter(ValueObjectConverter.For(valueObject.ValueObjectType, valueObject.ValueType));
+        return wrapped is null ? null : ValueObjectMapping.For(valueObject).ComposeOnto(wrapped);
     }
 }

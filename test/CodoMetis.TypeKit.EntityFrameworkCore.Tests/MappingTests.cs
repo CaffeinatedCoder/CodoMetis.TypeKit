@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using CodoMetis.TypeKit.Generators.Probes;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -38,7 +39,7 @@ public sealed class MappingTests : IDisposable
 
         var mapped = db.Model.FindEntityType(typeof(Order))!.FindProperty(property).ShouldNotBeNull($"{property} is not mapped as a property");
 
-        mapped.GetTypeMapping().Converter.ShouldBeOfType(typeof(ValueObjectConverter<,>).MakeGenericType(valueObject, wrapped));
+        mapped.GetTypeMapping().Converter.ShouldBeTheValueObjectConverter(valueObject, wrapped);
     }
 
     [Fact]
@@ -71,7 +72,7 @@ public sealed class MappingTests : IDisposable
         var tags = db.Model.FindEntityType(typeof(Order))!.FindProperty(nameof(Order.Tags))!;
 
         tags.IsPrimitiveCollection.ShouldBeTrue();
-        tags.GetElementType().ShouldNotBeNull().GetTypeMapping().Converter.ShouldBeOfType<ValueObjectConverter<Tag, string>>();
+        tags.GetElementType().ShouldNotBeNull().GetTypeMapping().Converter.ShouldBeTheValueObjectConverter(typeof(Tag), typeof(string));
     }
 
     [Fact]
@@ -96,7 +97,7 @@ public sealed class MappingTests : IDisposable
     {
         using var db = new TestDb(new DbContextOptionsBuilder<TestDb>().UseTypeKit().UseSqlite(_connection).Options);
 
-        db.Model.FindEntityType(typeof(Order))!.FindProperty(nameof(Order.Id))!.GetTypeMapping().Converter.ShouldBeOfType<ValueObjectConverter<OrderId, Guid>>();
+        db.Model.FindEntityType(typeof(Order))!.FindProperty(nameof(Order.Id))!.GetTypeMapping().Converter.ShouldBeTheValueObjectConverter(typeof(OrderId), typeof(Guid));
     }
 
     /// <summary>
@@ -112,7 +113,7 @@ public sealed class MappingTests : IDisposable
                                   .ReplaceService<IValueConverterSelector, OtherLibrarySelector>()
                                   .Options);
 
-        db.Model.FindEntityType(typeof(Order))!.FindProperty(nameof(Order.Id))!.GetTypeMapping().Converter.ShouldBeOfType<ValueObjectConverter<OrderId, Guid>>();
+        db.Model.FindEntityType(typeof(Order))!.FindProperty(nameof(Order.Id))!.GetTypeMapping().Converter.ShouldBeTheValueObjectConverter(typeof(OrderId), typeof(Guid));
     }
 
     [Fact]
@@ -122,7 +123,7 @@ public sealed class MappingTests : IDisposable
         var code = db.Model.FindEntityType(typeof(Order))!.FindProperty(nameof(Order.Code))!;
 
         code.GetColumnType().ShouldBe("character varying(10)");
-        code.GetTypeMapping().Converter.ShouldBeOfType<ValueObjectConverter<ProbeCode, string>>();
+        code.GetTypeMapping().Converter.ShouldBeTheValueObjectConverter(typeof(ProbeCode), typeof(string));
     }
 
     [Fact]
@@ -131,7 +132,7 @@ public sealed class MappingTests : IDisposable
         var internalServices = new ServiceCollection().AddEntityFrameworkSqlite().AddEntityFrameworkTypeKit().BuildServiceProvider();
         using var db = new TestDb(new DbContextOptionsBuilder<TestDb>().UseSqlite(_connection).UseInternalServiceProvider(internalServices).Options);
 
-        db.Model.FindEntityType(typeof(Order))!.FindProperty(nameof(Order.Id))!.GetTypeMapping().Converter.ShouldBeOfType<ValueObjectConverter<OrderId, Guid>>();
+        db.Model.FindEntityType(typeof(Order))!.FindProperty(nameof(Order.Id))!.GetTypeMapping().Converter.ShouldBeTheValueObjectConverter(typeof(OrderId), typeof(Guid));
         db.Orders.Where(o => o.Code.Value == "ABC").ToQueryString().ShouldContain("\"o\".\"Code\" = 'ABC'");
     }
 
@@ -158,4 +159,24 @@ public sealed class MappingTests : IDisposable
     public void Dispose() => _connection.Dispose();
 
     private sealed class OtherLibrarySelector(ValueConverterSelectorDependencies dependencies) : ValueConverterSelector(dependencies);
+}
+
+internal static class ValueObjectConverterAssertions
+{
+    /// <summary>
+    /// The converter <c>UseTypeKit()</c> composes: exactly <see cref="ValueConverter{TModel,TProvider}"/>,
+    /// the type EF's compiled model creates for it (its precompiled queries cast a property's converter
+    /// to the type it had at design time), over the validation-free conversions of
+    /// <see cref="ValueObjectConverter{TValueObject,T}"/>.
+    /// </summary>
+    public static void ShouldBeTheValueObjectConverter(this ValueConverter? converter, Type valueObject, Type wrapped)
+    {
+        var ours = typeof(ValueObjectConverter<,>).MakeGenericType(valueObject, wrapped);
+
+        converter.ShouldNotBeNull().GetType().ShouldBe(typeof(ValueConverter<,>).MakeGenericType(valueObject, wrapped));
+        converter.ConvertToProviderExpression.Body.ShouldBeAssignableTo<MethodCallExpression>()!.Method
+                 .ShouldBe(ours.GetMethod(nameof(ValueObjectConverter<,>.ProviderValue)));
+        converter.ConvertFromProviderExpression.Body.ShouldBeAssignableTo<MethodCallExpression>()!.Method
+                 .ShouldBe(ours.GetMethod(nameof(ValueObjectConverter<,>.Materialize)));
+    }
 }

@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+using System.ComponentModel;
 using System.Linq.Expressions;
 using CodoMetis.TypeKit.ValueObjects;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -25,11 +25,12 @@ public sealed class ValueObjectConverter<TValueObject, T> : ValueConverter<TValu
     where TValueObject : IValueObject<TValueObject, T>, IValueObjectMaterializer<TValueObject, T>
     where T : notnull
 {
-    private static readonly Expression<Func<TValueObject, T>> ToProvider = BuildToProvider();
-
-    // An expression tree cannot call a static abstract member (CS8927), so it calls a plain generic
-    // method that does the constrained call.
-    private static readonly Expression<Func<T, TValueObject>> FromProvider = value => Materializer.Create<TValueObject, T>(value);
+    // Both directions call a public static method of this class. EF's compiled model
+    // (dotnet ef dbcontext optimize, which Native AOT requires) writes these expressions out as C# in
+    // the application's own assembly, where an internal helper does not compile; and an expression
+    // tree cannot call the static abstract Materialize itself (CS8927).
+    internal static readonly Expression<Func<TValueObject, T>> ToProvider   = instance => ProviderValue(instance);
+    internal static readonly Expression<Func<T, TValueObject>> FromProvider = value => Materialize(value);
 
     /// <summary>Creates the converter.</summary>
     public ValueObjectConverter()
@@ -45,34 +46,24 @@ public sealed class ValueObjectConverter<TValueObject, T> : ValueConverter<TValu
     }
 
     /// <summary>
-    /// <c>instance =&gt; instance.Value</c> through the value object's own public property, rather
-    /// than through the interface, which would box a struct.
+    /// The value to store: <c>Value</c>, read through the type parameter, so a struct is not boxed.
     /// </summary>
-    private static Expression<Func<TValueObject, T>> BuildToProvider()
-    {
-        var instance = Expression.Parameter(typeof(TValueObject), "instance");
-        var value    = typeof(TValueObject).GetProperty(nameof(IValueObject<TValueObject, T>.Value), typeof(T))
-                    ?? throw new InvalidOperationException($"{typeof(TValueObject)} has no public Value property of type {typeof(T)}.");
+    /// <remarks>Public for the code EF's compiled model generates; nothing else needs to call it.</remarks>
+    /// <param name="instance">The value object.</param>
+    /// <returns>The value it wraps.</returns>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static T ProviderValue(TValueObject instance) => instance.Value;
 
-        return Expression.Lambda<Func<TValueObject, T>>(Expression.Property(instance, value), instance);
-    }
-}
-
-/// <summary>Creates a <see cref="ValueObjectConverter{TValueObject,T}"/> for a type known only at run time.</summary>
-internal static class ValueObjectConverter
-{
-    private static readonly ConcurrentDictionary<(Type ValueObject, Type Value), ValueConverter> Converters = new();
-
-    public static ValueConverter For(Type valueObject, Type value) =>
-        Converters.GetOrAdd((valueObject, value), static key =>
-            (ValueConverter)Activator.CreateInstance(typeof(ValueObjectConverter<,>).MakeGenericType(key.ValueObject, key.Value))!);
-}
-
-/// <summary>The constrained call behind the converter's read path.</summary>
-internal static class Materializer
-{
-    public static TValueObject Create<TValueObject, T>(T value)
-        where TValueObject : IValueObjectMaterializer<TValueObject, T>
-        where T : notnull =>
-        TValueObject.Materialize(value);
+    /// <summary>
+    /// The value object over a stored value, <b>without validation</b>
+    /// (<see cref="IValueObjectMaterializer{TSelf,T}"/>).
+    /// </summary>
+    /// <remarks>
+    /// Public for the code EF's compiled model generates. It is this converter's read path, which a
+    /// public converter already exposes: never call it on input.
+    /// </remarks>
+    /// <param name="value">A value the application itself stored.</param>
+    /// <returns>The value object.</returns>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static TValueObject Materialize(T value) => TValueObject.Materialize(value);
 }
