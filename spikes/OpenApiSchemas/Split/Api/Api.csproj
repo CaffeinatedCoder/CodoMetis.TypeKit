@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DefineConstants Condition="'$(Pragma)' == 'true'">$(DefineConstants);PRAGMA</DefineConstants>
+    <EnableRequestDelegateGenerator Condition="'$(Rdg)' == 'true'">true</EnableRequestDelegateGenerator>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
+    <ProjectReference Include="../Domain/Domain.csproj" />
+    <ProjectReference Include="../../../../src/CodoMetis.TypeKit.Generators/CodoMetis.TypeKit.Generators.csproj" />
+    <ProjectReference Include="../Suppressor/Suppressor.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" Condition="'$(Suppress)' == 'true'" />
+  </ItemGroup>
+</Project>

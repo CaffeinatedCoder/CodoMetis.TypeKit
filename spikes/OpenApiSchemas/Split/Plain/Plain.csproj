@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Control for the suppressor: the same project without Metalama. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Suppressor/Suppressor.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" Condition="'$(Suppress)' == 'true'" />
+  </ItemGroup>
+</Project>
