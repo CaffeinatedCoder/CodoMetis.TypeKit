@@ -10,6 +10,7 @@ ProbeAmount
   TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
   Value : Decimal
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeAmount, Decimal>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -59,6 +60,7 @@ ProbeCode
   ToString(String, IFormatProvider) : String
   Value : String
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeCode, String>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -100,6 +102,7 @@ ProbeContainer.NestedId
   TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
   Value : Int32
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeContainer.NestedId, Int32>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -151,6 +154,7 @@ ProbeCount
   TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
   Value : Int32
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeCount, Int32>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -202,6 +206,7 @@ ProbeCustomerId
   TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
   Value : Guid
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeCustomerId, Guid>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -250,6 +255,7 @@ ProbeDate
   TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
   Value : DateOnly
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeDate, DateOnly>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -297,6 +303,7 @@ ProbeDescending
   TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
   Value : Int32
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeDescending, Int32>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -346,6 +353,7 @@ ProbeFlag
   ToString(String, IFormatProvider) : String
   Value : Boolean
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeFlag, Boolean>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -389,6 +397,7 @@ ProbeId
   TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
   Value : Guid
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeId, Guid>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -434,6 +443,7 @@ ProbeInstant
   ToString(String, IFormatProvider) : String
   Value : Instant
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeInstant, Instant>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -476,6 +486,7 @@ ProbeInternalId (internal)
   TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
   Value : Int32
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeInternalId, Int32>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -526,6 +537,7 @@ ProbeLabel
   ToString(String, IFormatProvider) : String
   Value : String
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeLabel, String>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -563,6 +575,7 @@ ProbeLocalDate
   ToString(String, IFormatProvider) : String
   Value : LocalDate
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeLocalDate, LocalDate>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -602,6 +615,7 @@ ProbeMoment
   TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
   Value : DateTimeOffset
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeMoment, DateTimeOffset>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -647,6 +661,7 @@ ProbeName
   ToString(String, IFormatProvider) : String
   Value : String
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeName, String>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -685,6 +700,7 @@ ProbeOverride
   ToString(String, IFormatProvider) : String
   Value : String
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeOverride, String>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -726,6 +742,7 @@ ProbePercentage
   TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
   Value : Int32
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbePercentage, Int32>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -775,6 +792,7 @@ ProbeTime
   TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
   Value : TimeOnly
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeTime, TimeOnly>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -822,6 +840,7 @@ ProbeTimestamp
   TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
   Value : DateTime
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeTimestamp, DateTime>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -867,6 +886,7 @@ ProbeUri
   TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
   Value : Uri
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeUri, Uri>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IEqualityOperators<ProbeUri, ProbeUri, Boolean>
@@ -899,6 +919,7 @@ ProbeWeekday
   TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
   Value : DayOfWeek
   attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeWeekday, DayOfWeek>
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable

@@ -99,6 +99,18 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
             var wrappedSchema = await context.GetOrCreateSchemaAsync(wrapped, parameter, cancellationToken);
             schema.FillFrom(wrappedSchema);
         }
+        catch (NotSupportedException unsupported)
+        {
+            // ASP.NET builds the wrapped type's schema from the host's JSON contract for it. A
+            // source-generated context, the only resolver under Native AOT, has none for a type the
+            // host never serializes itself, and the serializer's message then names a Guid the host
+            // never asked for.
+            throw new InvalidOperationException(
+                $"'{self}' is described with the schema of the '{wrapped}' it wraps, and the host's JSON options have no contract " +
+                $"for '{wrapped}'. With source-generated JSON (as under Native AOT), add [JsonSerializable(typeof({wrapped.Name}))] " +
+                "to the host's JsonSerializerContext.",
+                unsupported);
+        }
         finally
         {
             Describing.Value = describing;

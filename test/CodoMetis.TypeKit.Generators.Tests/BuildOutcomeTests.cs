@@ -28,6 +28,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1003", "TwoMarkers")]
     [InlineData("CMTK1004", "Misnamed")]
     [InlineData("CMTK1005", "Generic")]
+    [InlineData("CMTK1005", "Outer<T>.Middle.DeeplyNested")]
     [InlineData("CMTK1005", "ArrayBacked")]
     [InlineData("CMTK1005", "NullableBacked")]
     [InlineData("CMTK1005", "DerivesFromAValueObject")]
@@ -100,6 +101,11 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             }
 
             public readonly partial record struct Generic<T> : IValue<int>;
+
+            // Nested in a generic type through one that is not: T is still in scope, and the
+            // generated code would have to name it where it cannot (an attribute's type argument,
+            // a namespace-level companion class).
+            public static class Outer<T> { public static class Middle { public readonly partial record struct DeeplyNested : IValue<int>; } }
 
             public readonly partial record struct ArrayBacked : IValue<int[]>;
 

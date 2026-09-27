@@ -1,8 +1,13 @@
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using CodoMetis.TypeKit.Generators.Probes;
+using CodoMetis.TypeKit.ValueObjects;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.OpenApi;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
 using NodaTime;
 using NodaTime.Serialization.SystemTextJson;
@@ -151,6 +156,45 @@ public sealed class HostConfigurationTests
         refusal.Message.ShouldContain("wraps itself");
     }
 
+    /// <summary>
+    /// With source-generated JSON only, as under Native AOT, ASP.NET has no contract for a type the
+    /// host never serializes itself, so it cannot build the wrapped type's schema. The refusal says
+    /// which value object needs which type in the host's context; the serializer's alone named a Guid
+    /// the host never asked for.
+    /// </summary>
+    [Fact]
+    public async Task A_source_generated_host_without_the_wrapped_type_is_told_which_to_add()
+    {
+        var refusal = await Should.ThrowAsync<InvalidOperationException>(() => SourceGeneratedDocumentAsync(IdsWithoutGuid.Default));
+
+        refusal.Message.ShouldContain(nameof(ProbeId));
+        refusal.Message.ShouldContain("[JsonSerializable(typeof(Guid))]");
+    }
+
+    [Fact]
+    public async Task A_source_generated_host_with_the_wrapped_type_describes_the_value_object()
+    {
+        var document = await SourceGeneratedDocumentAsync(IdsWithGuid.Default);
+
+        document["components"]!["schemas"]![nameof(ProbeId)]!.ToJsonString().ShouldBe("""{"type":"string","format":"uuid"}""");
+    }
+
+    private static async Task<JsonNode> SourceGeneratedDocumentAsync(JsonSerializerContext context)
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        builder.Services.ConfigureHttpJsonOptions(json => json.SerializerOptions.TypeInfoResolver = context);
+        builder.Services.AddOpenApi(openApi => openApi.AddTypeKit());
+
+        await using var app = builder.Build();
+        app.MapOpenApi();
+        app.MapGet("/ids", () => new IdHolder(ProbeId.From(Guid.Empty)));
+        await app.StartAsync();
+
+        return JsonNode.Parse(await app.GetTestClient().GetStringAsync("/openapi/v1.json"))!;
+    }
+
     private sealed class InstantSchemaTransformer : IOpenApiSchemaTransformer
     {
         public Task TransformAsync(OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
@@ -168,11 +212,15 @@ public sealed class HostConfigurationTests
 
 /// <summary>
 /// A value object, by its contract, that wraps itself. It has no finite schema, and the satellite
-/// works against the interface, so it has to refuse such a type rather than recurse.
+/// works against the contract, so it has to refuse such a type rather than recurse. Declared by
+/// hand as the generators declare one: the interfaces, and the attribute run-time code reads.
 /// </summary>
-public sealed class Ouroboros : IValueObject<Ouroboros, Ouroboros>
+[GeneratedValueObject<Ouroboros, Ouroboros>]
+public sealed class Ouroboros : IValueObject<Ouroboros, Ouroboros>, IValueObjectMaterializer<Ouroboros, Ouroboros>
 {
     public Ouroboros Value => this;
+
+    public static Ouroboros Materialize(Ouroboros value) => value;
 
     public static bool operator ==(Ouroboros left, Ouroboros right) => ReferenceEquals(left, right);
 
@@ -182,3 +230,12 @@ public sealed class Ouroboros : IValueObject<Ouroboros, Ouroboros>
 
     public override int GetHashCode() => 0;
 }
+
+public sealed record IdHolder(ProbeId Id);
+
+[JsonSerializable(typeof(IdHolder))]
+internal sealed partial class IdsWithoutGuid : JsonSerializerContext;
+
+[JsonSerializable(typeof(IdHolder))]
+[JsonSerializable(typeof(Guid))]
+internal sealed partial class IdsWithGuid : JsonSerializerContext;

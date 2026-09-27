@@ -34,15 +34,14 @@ internal sealed class ValueObjectTypeMappingSourcePlugin(IServiceProvider servic
     {
         if (mappingInfo.ClrType is not { } clrType) return null;
 
-        var valueObject = Nullable.GetUnderlyingType(clrType) ?? clrType;
-        if (ValueObjectTypes.UnderlyingType(valueObject) is not { } valueType) return null;
+        if (ValueObjectTypes.Describe(Nullable.GetUnderlyingType(clrType) ?? clrType) is not { } valueObject) return null;
 
         _typeMappingSource ??= services.GetRequiredService<IRelationalTypeMappingSource>();
 
         var wrapped = _typeMappingSource.FindMapping(
-            valueType, mappingInfo.StoreTypeName, mappingInfo.IsKeyOrIndex, mappingInfo.IsUnicode, mappingInfo.Size,
+            valueObject.ValueType, mappingInfo.StoreTypeName, mappingInfo.IsKeyOrIndex, mappingInfo.IsUnicode, mappingInfo.Size,
             mappingInfo.IsRowVersion, mappingInfo.IsFixedLength, mappingInfo.Precision, mappingInfo.Scale);
 
-        return (RelationalTypeMapping?)wrapped?.WithComposedConverter(ValueObjectConverter.For(valueObject, valueType));
+        return (RelationalTypeMapping?)wrapped?.WithComposedConverter(ValueObjectConverter.For(valueObject.ValueObjectType, valueObject.ValueType));
     }
 }

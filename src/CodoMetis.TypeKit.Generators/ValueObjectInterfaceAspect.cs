@@ -1,6 +1,7 @@
 using System.Numerics;
 using Metalama.Framework.Aspects;
 using Metalama.Framework.Code;
+using Metalama.Framework.Code.DeclarationBuilders;
 
 namespace CodoMetis.TypeKit.Generators;
 
@@ -18,6 +19,11 @@ internal sealed partial class ValueObjectInterfaceAspect : TypeAspect
         var valueType = state.ValueType.GetTarget();
 
         builder.ImplementInterface(TypeFactory.GetNamedType(typeof(IValueObject<,>)).MakeGenericInstance(builder.Target, valueType));
+
+        // How run-time code that holds only a Type recognises the value object. Trimming removes
+        // IValueObject<,> from a type's interfaces when nothing uses it, and keeps its attributes.
+        builder.IntroduceAttribute(AttributeConstruction.Create(
+            TypeFactory.GetNamedType(typeof(GeneratedValueObjectAttribute<,>)).MakeGenericInstance(builder.Target, valueType)));
 
         builder.IntroduceProperty(
             nameof(Value), IntroductionScope.Instance,

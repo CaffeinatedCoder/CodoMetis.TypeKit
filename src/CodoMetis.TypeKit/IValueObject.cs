@@ -10,8 +10,10 @@ namespace CodoMetis.TypeKit;
 /// <see cref="ValueObjects.IValue{T}"/> or <see cref="ValueObjects.IValidatedValue{TValueObject,T,TFault}"/>.
 /// </para>
 /// <para>
-/// Run-time code (the EF Core and OpenAPI satellites, a host's own mapping) recognises a value object
-/// by testing assignability to this interface, never by its name or namespace.
+/// Run-time code that holds only a <see cref="Type"/> (the EF Core and OpenAPI satellites, a host's
+/// own mapping) recognises a value object by the <see cref="GeneratedValueObjectAttribute{TValueObject,T}"/>
+/// the generators put beside this interface, whose type arguments are constrained to it; never by its
+/// name or namespace, and not by <see cref="Type.GetInterfaces"/>, which trimming breaks.
 /// </para>
 /// </remarks>
 /// <typeparam name="TValueObject">The value object type itself.</typeparam>
