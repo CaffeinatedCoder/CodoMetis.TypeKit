@@ -158,7 +158,7 @@ internal sealed partial class ValueObjectJsonAspect
             }
             else
             {
-                JsonSerializer.Serialize(writer, value?.Value, options);
+                meta.InsertStatement(ExpressionFactory.Parse(WrappedWrite(tag)));
             }
 
             return;
@@ -180,22 +180,15 @@ internal sealed partial class ValueObjectJsonAspect
             return;
         }
 
-        // Fallback: an unknown type round-trips through JsonSerializer and the caller's options. As a
-        // key it goes through the wrapped type's own converter, which knows the type's key format
+        // Fallback: an unknown type round-trips through its contract under the caller's options. As
+        // a key it goes through the wrapped type's own converter, which knows the type's key format
         // where it has one (an enum by name, a Uri as its text) and throws NotSupportedException
         // where it has none. Writing the serialized value as the name gave a Uri key quotes inside
         // its quotes and an enum key its number, and neither read back.
         if (asPropertyName)
-        {
-            string fallbackType = meta.CompileTime(ValueObjectTypes.SourceName(tag.ValueType));
-
-            meta.InsertStatement(ExpressionFactory.Parse(
-                $"((global::System.Text.Json.Serialization.JsonConverter<{fallbackType}>)options.GetConverter(typeof({fallbackType}))).WriteAsPropertyName(writer, value!.Value, options)"));
-        }
+            meta.InsertStatement(ExpressionFactory.Parse($"{WrappedKeyConverter(tag)}.WriteAsPropertyName(writer, value!.Value, options)"));
         else
-        {
-            JsonSerializer.Serialize(writer, value?.Value, options);
-        }
+            meta.InsertStatement(ExpressionFactory.Parse(WrappedWrite(tag)));
     }
 
     private const string GeneratedJson = "global::CodoMetis.TypeKit.ValueObjects.GeneratedJson";
@@ -205,10 +198,27 @@ internal sealed partial class ValueObjectJsonAspect
     /// on), which parses exactly what the serializer parses for that type and reports malformed text
     /// as a <c>JsonException</c>. A <c>Parse</c> in the generated code let a
     /// <c>FormatException</c> escape, which ASP.NET Core answers with 500 rather than 400, and parsed
-    /// keys by rules of its own.
+    /// keys by rules of their own.
     /// </summary>
-    private static string BuiltInConverter(JsonImplementationArguments tag) =>
-        $"global::System.Text.Json.Serialization.Metadata.JsonMetadataServices.{tag.ValueType.Name}Converter";
+    private static string BuiltInConverter(JsonImplementationArguments tag) => tag.BuiltInConverter;
+
+    /// <summary>
+    /// C# for the wrapped type's contract under the caller's options (<c>GeneratedJson.TypeInfo</c>):
+    /// the options' own where their resolver has one, otherwise made as the serializer makes it. Never
+    /// <c>JsonSerializer.Serialize(writer, value, options)</c>, which needs reflection and, with a
+    /// source-generated context that never saw the wrapped type, refused it.
+    /// </summary>
+    private static string WrappedTypeInfo(JsonImplementationArguments tag) =>
+        $"{GeneratedJson}.TypeInfo<{ValueObjectTypes.SourceName(tag.ValueType)}>(options, {tag.BuiltInConverter})";
+
+    private static string WrappedKeyConverter(JsonImplementationArguments tag) =>
+        $"{GeneratedJson}.KeyConverter<{ValueObjectTypes.SourceName(tag.ValueType)}>(options, {tag.BuiltInConverter})";
+
+    private static string WrappedWrite(JsonImplementationArguments tag) =>
+        $"global::System.Text.Json.JsonSerializer.Serialize(writer, value!.Value, {WrappedTypeInfo(tag)})";
+
+    private static IExpression WrappedReadExpression(JsonImplementationArguments tag) =>
+        ExpressionFactory.Parse($"global::System.Text.Json.JsonSerializer.Deserialize(ref reader, {WrappedTypeInfo(tag)})!", tag.ValueType, false);
 
     /// <summary>C# that reads the wrapped value as a dictionary key or as a value, through <see cref="BuiltInConverter"/>.</summary>
     private static string BuiltInRead(JsonImplementationArguments tag, bool asPropertyName) =>
@@ -287,12 +297,7 @@ internal sealed partial class ValueObjectJsonAspect
             if (asPropertyName)
                 return tag.FromJson.Invoke(BuiltInReadExpression(tag, asPropertyName: true).Value!, meta.This._materialize);
 
-            var deserialized = ExpressionFactory.Parse(
-                $"global::System.Text.Json.JsonSerializer.Deserialize(ref reader, (global::System.Text.Json.Serialization.Metadata.JsonTypeInfo<{typeName}>)options.GetTypeInfo(typeof({typeName})))",
-                tag.ValueType,
-                false
-            );
-            return tag.FromJson.Invoke(deserialized.Value!, meta.This._materialize);
+            return tag.FromJson.Invoke(WrappedReadExpression(tag).Value!, meta.This._materialize);
         }
 
         if (meta.CompileTime(strategy == ValueJsonStrategy.NodaTimeValue))
@@ -309,19 +314,18 @@ internal sealed partial class ValueObjectJsonAspect
             return tag.FromJson.Invoke(nodaValue.Value!, meta.This._materialize);
         }
 
-        // Fallback: an unknown type round-trips through JsonSerializer and the caller's options. A
+        // Fallback: an unknown type round-trips through its contract under the caller's options. A
         // key is read by the wrapped type's own converter, the counterpart of the write.
         if (asPropertyName)
         {
             var key = ExpressionFactory.Parse(
-                $"((global::System.Text.Json.Serialization.JsonConverter<{typeName}>)options.GetConverter(typeof({typeName}))).ReadAsPropertyName(ref reader, typeof({typeName}), options)",
+                $"{WrappedKeyConverter(tag)}.ReadAsPropertyName(ref reader, typeof({typeName}), options)",
                 tag.ValueType,
                 false
             );
             return tag.FromJson.Invoke(key.Value!, meta.This._materialize);
         }
 
-        var fallback = ExpressionFactory.Parse($"global::System.Text.Json.JsonSerializer.Deserialize<{typeName}>(ref reader, options)!", tag.ValueType, false);
-        return tag.FromJson.Invoke(fallback.Value!, meta.This._materialize);
+        return tag.FromJson.Invoke(WrappedReadExpression(tag).Value!, meta.This._materialize);
     }
 }

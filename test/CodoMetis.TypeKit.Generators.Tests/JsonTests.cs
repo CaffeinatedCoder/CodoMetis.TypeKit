@@ -12,7 +12,7 @@ namespace CodoMetis.TypeKit.Generators.Tests;
 /// </summary>
 public sealed class JsonTests
 {
-    private static readonly Dictionary<string, (object Value, string Json)> Cases = new()
+    internal static readonly Dictionary<string, (object Value, string Json)> Cases = new()
     {
         ["string"]         = (ProbeName.From("a b"), "\"a b\""),
         ["Guid"]           = (ProbeId.From(Guid.Parse("0199a3f4-1c00-7000-8000-000000000001")), "\"0199a3f4-1c00-7000-8000-000000000001\""),

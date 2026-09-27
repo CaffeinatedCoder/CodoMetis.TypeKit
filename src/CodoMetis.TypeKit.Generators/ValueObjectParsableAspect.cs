@@ -57,8 +57,10 @@ internal sealed class ParsableImplementationArguments
             // refused text stays out of the message, as in every other refusal.
             ValueParseStrategy.Enum =>
                 $"(global::System.Enum.TryParse<{valueType}>({input}, out var __parsed) ? __parsed : throw new global::System.FormatException(\"The input is not a name of {ValueType.Name}.\"))",
+            // Through GeneratedParsing, whose lookup is the trim-safe one: TypeDescriptor.GetConverter
+            // requires unreferenced code, so trimming and Native AOT warned about this call.
             ValueParseStrategy.TypeConverter =>
-                $"({valueType})global::System.ComponentModel.TypeDescriptor.GetConverter(typeof({valueType}))"
+                $"({valueType})global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.TypeConverterOf<{valueType}>()"
               + $".ConvertFromString(null, provider as global::System.Globalization.CultureInfo ?? global::System.Globalization.CultureInfo.InvariantCulture, {input})!",
             ValueParseStrategy.StaticParse => $"{valueType}.Parse({input})",
             ValueParseStrategy.StringConstructor => $"new {valueType}({input})",

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using CodoMetis.TypeKit.ValueObjects;
 using Metalama.Framework.Advising;
 using Metalama.Framework.Aspects;
@@ -32,6 +33,12 @@ internal sealed class JsonImplementationArguments
 
     /// <summary>Only for <see cref="ValueJsonStrategy.NodaTimeValue"/>: the NodaConverters property, e.g. <c>InstantConverter</c>.</summary>
     public string? NodaConverterProperty { get; init; }
+
+    /// <summary>
+    /// C# for the serializer's built-in converter of the wrapped type (<c>JsonMetadataServices.Int32Converter</c>,
+    /// <c>JsonMetadataServices.GetEnumConverter&lt;T&gt;(options)</c>), or <c>null</c> where it has none.
+    /// </summary>
+    public required string BuiltInConverter { get; init; }
 }
 
 /// <summary>
@@ -82,7 +89,8 @@ internal sealed partial class ValueObjectJsonAspect : TypeAspect
             ValueObjectType       = builder.Target,
             FromJson              = state.FromJson.GetTarget(),
             Strategy              = ResolveStrategy(valueType, out var nodaConverterProperty),
-            NodaConverterProperty = nodaConverterProperty
+            NodaConverterProperty = nodaConverterProperty,
+            BuiltInConverter      = ResolveBuiltInConverter(valueType)
         };
 
         var jsonConverter = builder.IntroduceClass(
@@ -182,6 +190,26 @@ internal sealed partial class ValueObjectJsonAspect : TypeAspect
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// The serializer's built-in converter for <paramref name="valueType"/>: the static property of
+    /// <c>JsonMetadataServices</c> typed <c>JsonConverter&lt;T&gt;</c> for exactly that type, found by
+    /// its type rather than its name, or the enum converter. <c>null</c> for any other type, which the
+    /// options must then know (<c>GeneratedJson.TypeInfo</c>).
+    /// </summary>
+    private static string ResolveBuiltInConverter(INamedType valueType)
+    {
+        const string metadataServices = "global::System.Text.Json.Serialization.Metadata.JsonMetadataServices";
+
+        if (valueType.TypeKind == TypeKind.Enum)
+            return $"{metadataServices}.GetEnumConverter<{ValueObjectTypes.SourceName(valueType)}>(options)";
+
+        var converterType = typeof(JsonConverter<>).ToNamedType().MakeGenericInstance(valueType);
+        var property = TypeFactory.GetNamedType(typeof(JsonMetadataServices)).Properties
+                                  .FirstOrDefault(candidate => candidate is { IsStatic: true, Accessibility: Accessibility.Public } && candidate.Type.Equals(converterType));
+
+        return property is null ? "null" : $"{metadataServices}.{property.Name}";
     }
 
     private static void IntroduceWriteMethod(IAdviser<INamedType> converter, INamedType valueObjectType, string methodName, bool asPropertyName) =>

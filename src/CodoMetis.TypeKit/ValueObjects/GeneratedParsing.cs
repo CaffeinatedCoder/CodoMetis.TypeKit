@@ -66,4 +66,29 @@ public static class GeneratedParsing
     public static bool TryParseUtf8<T>(ReadOnlySpan<byte> utf8Text, IFormatProvider? provider, [MaybeNullWhen(false)] out T result)
         where T : IUtf8SpanParsable<T> =>
         T.TryParse(utf8Text, provider, out result);
+
+    /// <summary>
+    /// The <see cref="TypeConverter"/> of <typeparamref name="T"/>, for a wrapped type that parses only
+    /// through its <see cref="TypeConverterAttribute"/> (NodaTime's types do).
+    /// </summary>
+    /// <remarks>
+    /// Resolved through <see cref="TypeDescriptor.RegisterType{T}"/> and
+    /// <see cref="TypeDescriptor.GetConverterFromRegisteredType(Type)"/>, the trim-safe path, once per
+    /// type. <see cref="TypeDescriptor.GetConverter(Type)"/> requires unreferenced code, so trimming
+    /// and Native AOT warned about the generated parsing that called it.
+    /// </remarks>
+    /// <typeparam name="T">The wrapped type.</typeparam>
+    /// <returns>The converter.</returns>
+    public static TypeConverter TypeConverterOf<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>() => TypeConverters<T>.Converter;
+
+    private static class TypeConverters<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+    {
+        public static readonly TypeConverter Converter = Register();
+
+        private static TypeConverter Register()
+        {
+            TypeDescriptor.RegisterType<T>();
+            return TypeDescriptor.GetConverterFromRegisteredType(typeof(T));
+        }
+    }
 }
