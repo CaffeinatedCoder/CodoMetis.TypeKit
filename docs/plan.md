@@ -1,6 +1,6 @@
 # Plan: CodoMetis.TypeKit
 
-Status: **in progress, 2026-09-27.** Phases 0 to 7 are done; 0.1.0 waits on the repository going
+Status: **in progress, 2026-09-27.** Phases 0 to 8 are done; 0.1.0 waits on the repository going
 public. The decisions are in §8, Native AOT in §11. The fabric spike
 ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation comparison
 ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)), the EF mapping spike
@@ -11,7 +11,7 @@ public. The decisions are in §8, Native AOT in §11. The fabric spike
 
 | Package | Depends on | Metalama | Contents |
 |---|---|---|---|
-| `CodoMetis.TypeKit` | Analyzers (flows, §10) | **no** | `Option<T>`, `Result<T,TError>`, `Result<TError>` and their extensions, all carrying `NotWireTypeJsonConverterFactory` (§9); the value-object contracts `IValueObject<,>`, `IValueWrapper<,>`, `IValue<T>`, `IValidatedValue<,,>`, `IValueObjectMaterializer<,>` (§4), `KnownGood`; `TranslatedAsUnderlyingValueAttribute`, `RequireCustomInitializationAttribute`; `GeneratedValueObjectAttribute<,>` and `IValueObjectVisitor<>`, which the satellites read (§3, §11); `GuidValueExtensions` (`OrderId.New()` from a version 7 Guid); `Accepted`, `GeneratedParsing`, `GeneratedJson` and `IStoredJsonConverterSource`, which the generated code calls or implements (§5) |
+| `CodoMetis.TypeKit` | Analyzers (flows, §10) | **no** | `Option<T>`, `Result<T,TError>`, `Result<TError>` and their extensions, all carrying `NotWireTypeJsonConverterFactory` (§9); the value-object contracts `IValueObject<,>`, `IPlainValueObject<,>`, `IValue<T>`, `IValidatedValue<,,>`, `IValueObjectMaterializer<,>` (§4); `RequireCustomInitializationAttribute`; `GuidValueExtensions` (`OrderId.New()` from a version 7 Guid); and what only generated code and the satellites use (§3, §5, §11): `GeneratedValueObjectAttribute<,>`, `IValueObjectVisitor<>`, `TranslatedAsWrappedValueAttribute`, `GeneratedFactories`, `GeneratedParsing`, `GeneratedJson`, `IStoredJsonConverterSource` |
 | `CodoMetis.TypeKit.Analyzers` | — | no | Roslyn analyzers and code fixes (§10). Nobody references it directly: it reaches every consumer through the base package |
 | `CodoMetis.TypeKit.Generators` | TypeKit, Metalama.Framework 2026.1.x (flows) | yes | Internal aspects, internal `TransitiveProjectFabric`, `AspectOrder`. Future generated type families join this package too: one fabric, one aspect order |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | TypeKit, EF Core Relational | no | Generic converter, convention, `.Value` / `GetValue` / `ValueOrNull` translators, `UseTypeKit()` |
@@ -27,9 +27,9 @@ objects from a referenced domain assembly never needs Metalama itself.
 
 | Namespace | Holds |
 |---|---|
-| `CodoMetis.TypeKit` | `Option`, `Result`, `NotWireTypeJsonConverterFactory`, `IValueObject`, `IValueWrapper`, `TranslatedAsUnderlyingValueAttribute`, `GeneratedValueObjectAttribute`, `IValueObjectVisitor` |
-| `CodoMetis.TypeKit.ValueObjects` | `IValue`, `IValidatedValue`, `KnownGood`, `IValueObjectMaterializer`, `IStoredJsonConverterSource` |
-| `CodoMetis.TypeKit.Attributes` | `RequireCustomInitializationAttribute` |
+| `CodoMetis.TypeKit` | `Option`, `Result`, `ResultState`, the markers, `NotWireTypeJsonConverterFactory`, `RequireCustomInitializationAttribute`, `GuidValueExtensions` (`New()` is call-site vocabulary, like `Option`) |
+| `CodoMetis.TypeKit.ValueObjects` | Every contract a user declares or constrains on: `IValue`, `IValidatedValue`, `IValueObject`, `IPlainValueObject`, `IValueObjectMaterializer`, and `StoredJsonConverterFactory` |
+| `CodoMetis.TypeKit.CompilerServices` | What only generated code and the satellites touch, all `[EditorBrowsable(Never)]`: `GeneratedValueObjectAttribute`, `IValueObjectVisitor`, `TranslatedAsWrappedValueAttribute`, `GeneratedFactories`, `GeneratedParsing`, `GeneratedJson`, `IStoredJsonConverterSource`. The name follows `System.Runtime.CompilerServices` |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | converter, convention, translators |
 | `CodoMetis.TypeKit.AspNetCore` | `AddTypeKit()` |
 
@@ -54,7 +54,7 @@ Each phase ends green, and its guards have been proven by seeding the defect
      and both satellites, and a transitive one via the EF satellite, which failed only that
      satellite.
 1. **Option and Result. ✅ Done 2026-09-27.**
-   - `Option<T>`, `Result<TError>`, `Result<T, TError>`, the `Result.Ok`/`Result.Error` markers,
+   - `Option<T>`, `Result<TError>`, `Result<T, TError>`, the `Result.Success`/`Result.Error` markers,
      their extensions and `RequireCustomInitializationAttribute` in `CodoMetis.TypeKit`. Tests in
      `test/CodoMetis.TypeKit.Tests`.
    - The throw on `Uninitialized`, a `ToString` that never prints the content, and a
@@ -69,9 +69,15 @@ Each phase ends green, and its guards have been proven by seeding the defect
      `{"State":1}` and read back as `None` and uninitialized, silently. Every exported struct now
      carries `NotWireTypeJsonConverterFactory` (§9). Guard: with the attributes removed, 58 of the 62
      `NotWireTypeTests` fail, the other 4 pin the escape hatch and the absent-property gap.
+   - Found in the fifth review on 2026-09-27, and fixed: `Result` never checked its delegates, so a
+     null for the branch not taken passed until the other outcome first arrived (`Match(null, …)` on
+     every error), and `Option.ToResult` and the zips lost `Option`'s own check inside a lambda. Every
+     delegate is now checked before a branch is picked (§9). Guard: `NullDelegateTests` runs each case
+     on both branches, and its completeness test holds every delegate parameter of the assembly to a
+     case; with the checks reverted, 29 of its 42 tests fail.
 2. **Value-object contracts and analyzer. ✅ Done 2026-09-27.**
-   - The contracts: `IValueObject<,>`, `IValueWrapper<,>`, `IValue<>`, `IValidatedValue<,,>`,
-     `IValueObjectMaterializer<,>`, `KnownGood`, `TranslatedAsUnderlyingValueAttribute`, and
+   - The contracts: `IValueObject<,>`, `IPlainValueObject<,>`, `IValue<>`, `IValidatedValue<,,>`,
+     `IValueObjectMaterializer<,>`, `GeneratedFactories`, `TranslatedAsWrappedValueAttribute`, and
      `GuidValueExtensions` with `New()` and `New(DateTimeOffset)`. No NodaTime.
    - CMTK0001 and CMTK0002, resolved by symbol once per compilation (§3). CMTK0001 also follows a
      type parameter's constraints (`default(T)`/`new T()` where `T : struct, IValue<…>`, or
@@ -96,7 +102,7 @@ Each phase ends green, and its guards have been proven by seeding the defect
      the generators only through the probes, which is the transitive-fabric check.
    - The generated-surface snapshot (§6), `GeneratedSurface.verified.txt`.
    - Build-outcome tests: a throwaway consumer with declarations that cannot be generated gets
-     exactly CMTK1000–1008 and CMTK0001, nothing else, and no CMTK0002 beside the real generators.
+     exactly CMTK1000–1009 and CMTK0001, nothing else, and no CMTK0002 beside the real generators.
    - Guards, each proven by seeding its defect:
      - a JSON read, `Parse` or `TryParse` that bypasses `Create` fails 7, 9 and 5 entry-point
        cases; a new public factory without a case fails the completeness tests;
@@ -135,6 +141,13 @@ Each phase ends green, and its guards have been proven by seeding the defect
      defect: without the refusal 12 build-outcome tests fail (the struct cycle's LAMA0611 among
      them); reporting a cycle as plain nesting fails 4 (a self-wrap then compiles again); allowing
      nesting without a cycle fails 2.
+   - Found in the fifth review on 2026-09-27: a hand-written constructor. One with the generated
+     constructor's signature failed as LAMA0611, a positional record (`OrderId(Guid Value)`) as
+     LAMA0500 or an exception in the aspect (LAMA0041), and any other compiled without a word: it
+     skipped `Create`, left `Value` null, or, as a record's copy constructor, did that to `with`.
+     Every hand-written instance constructor is CMTK1009 now (§5). Guards, each proven by seeding its
+     defect: without the refusal 13 build-outcome tests fail, the LAMA errors among them; refusing a
+     static constructor too fails 2.
 4. **EF Core. ✅ Done 2026-09-27.**
    - The mapping spike first (spikes/EfMapping): an additive type-mapping-source plugin maps every
      value object, with keys, foreign keys, nullable properties and primitive collections, on
@@ -153,6 +166,11 @@ Each phase ends green, and its guards have been proven by seeding the defect
      fails 4 and 3; a validating `Materialize` fails the stored-row test; a stored-JSON converter
      that validates fails the stored value and key tests. The SQL snapshots first failed on the
      cast `Convert` produced, which led to re-typing the column (§4).
+   - Found in the fifth review on 2026-09-27, and fixed: the method translator took any static
+     one-argument method carrying the public `TranslatedAsWrappedValueAttribute` for the unwrap, so
+     a hand-marked `Length(this ProbeCode)` became `WHERE o."Code" = '3'`. It now requires the
+     unwrap's signature (§4). Guard: the hand-marked test fails without the check, and the
+     `GetValue`/`ValueOrNull` snapshots, now with a record class's `ValueOrNull`, still translate.
 5. **ASP.NET Core. ✅ Done 2026-09-27.**
    - The measurement spike first (spikes/OpenApiSchemas): a schema transformer reaches a value
      object that only ever appears as a property, which the earlier measurement had denied; container
@@ -264,6 +282,21 @@ Each phase ends green, and its guards have been proven by seeding the defect
      `AotCompatibilityTests` for that package; a missing or late toolchain step fails the wiring test.
    - Not caught at run time: a `GetInterfaces()` lookup suppressed with
      `[UnconditionalSuppressMessage]`, since the attribute keeps the interface alive (§11).
+8. **Pre-release naming and syntax. ✅ Done 2026-09-27.**
+   - Names (decision 18): the wrapped value, the plain value object, the value object's own type
+     parameter and the delegate parameters each have one name, and the namespaces follow who uses
+     a type (§1). Every rename is a compile error for code that used the old name; the analyzer's
+     metadata-name tests and the generated-surface snapshot moved with them, the snapshot by exactly
+     the interface rename and nothing else.
+   - Syntax (decision 19): `Result.Success` (was `Result.Ok`), an `Option.None()` marker, `MapError`,
+     `Bind` from a valued result onto `Result<TError>`, `Or(fallback)` (was `Coalesce`), and a
+     `ToResult(error)` that keeps the value; the marker-lambda overloads and the collapsing `Match`
+     are gone. Measured first against a replica of the conversions: the marker works in a return, a
+     conditional beside `Some`, a `Bind` lambda and an `async` method, and the new `Bind` resolves
+     beside the generic one. The completeness tests forced a case for every new member; seeding
+     `None` out of the refusal, `MapError` past the uninitialized check, or the command into the
+     error branch of `Bind` fails 7, 1 and 1 tests. `ToResult` checks its error on either branch,
+     like the delegates, and a `Some` that accepted a null error fails its test.
 
 ## 3. Discovery is by interface
 
@@ -274,8 +307,8 @@ passes in tests and breaks for the first consumer who renames something.
 |---|---|
 | Analyzer, value-object rules | `CompilationStartAction` resolves `CodoMetis.TypeKit.ValueObjects.IValue`1` / `IValidatedValue`3` with `GetTypeByMetadataName` and compares `OriginalDefinition` with `SymbolEqualityComparer`. If `CodoMetis.TypeKit` is absent, nothing is registered |
 | Analyzer, `[RequireCustomInitialization]` | The attribute symbol is resolved the same way |
-| Analyzer, CMTK0002 | The compilation references an assembly whose identity is exactly `CodoMetis.TypeKit.Generators`. That is the package's own id, which a consumer cannot rename, and a prefix or suffix match never counts |
-| EF Core | EF asks the type-mapping plugin per CLR type, and it answers for any type carrying `GeneratedValueObjectAttribute<TSelf, T>` (§4). There is no type scan and no assembly filter |
+| Analyzer, CMTK0002 | The compilation references an assembly whose name is exactly `CodoMetis.TypeKit.Generators`, ignoring case as assembly names do. That is the package's own id, which a consumer cannot rename, and a prefix or suffix match never counts. The assembly is not strong-named, so the name is the part of its identity to compare; the version must not be |
+| EF Core | EF asks the type-mapping plugin per CLR type, and it answers for any type carrying `GeneratedValueObjectAttribute<TValueObject, T>` (§4). There is no type scan and no assembly filter |
 | OpenAPI | The transformer reads `GeneratedValueObjectAttribute<,>` on the schema's `JsonTypeInfo.Type`, its element type, or a parameter's type or model metadata (§7). There is no referenced-assembly walk |
 
 Run-time code that holds only a `Type` reads the attribute rather than calling `GetInterfaces()`
@@ -321,7 +354,10 @@ custom attributes.
   operand is **re-typed** as the wrapped type, keeping the column's store type, rather than cast:
   `Convert` produced `o."Code"::text = 'ABC'`, which PostgreSQL discards but which is not a no-op
   everywhere (on SQL Server, a cast to `nvarchar(max)` can stop an index seek). Any other operand
-  is still converted.
+  is still converted. The method translator acts only on a method whose signature is the unwrap,
+  from a value object (or its `Nullable`) to what it wraps: the attribute is public, and a
+  hand-marked `Length(this ProbeCode)` was translated as the column (`o."Code" = '3'`). Any other
+  method carrying it is left to EF, which refuses the call.
 - **Stored JSON (decided 2026-09-27).** The generated JSON converter applies `Create` (§5), which
   is right for input and wrong for JSON the application stored itself (an event store, a document
   column): a rule added later would make old documents unreadable. `StoredJsonConverterFactory`, in
@@ -343,11 +379,11 @@ custom attributes.
 
 - **Aspect-class count.** Ten classes. The Metalama Open Source edition (MIT) has no aspect-class
   limit (pricing page, 2026-09-26). The unlicensed CI build confirms it (phase 6).
-- **Entry points.** The implementation aspect introduces three private helpers on every value
+- **Entry points.** `ValueObjectAspect` introduces three private helpers on every value
   object, and they are the only way the JSON, parsing and type-converter aspects create an
   instance: `__FromJson` (a refusal throws `JsonException`), `__FromText` (`FormatException`) and
   `__TryFromText` (`false`). A plain value object constructs directly; a validated one calls
-  `Create` through `Accepted` in the base package. The exception is the explicit
+  `Create` through `GeneratedFactories` in the base package. The exception is the explicit
   `IValueObjectMaterializer.Materialize`, by contract. `MinValue`/`MaxValue` are only generated for
   a plain value object.
 - **Declarations that cannot be generated** are errors, so no type is left half-generated:
@@ -357,7 +393,16 @@ custom attributes.
   a class, struct or enum, or one that is a value object: itself, one that reaches it again, or
   any other, see below), CMTK1006 (a record class that is not `sealed`: a derived record compares
   equal only to its own type, which is not value equality), CMTK1007 (the name of the
-  `GetValue`/`ValueOrNull` class is taken, see below).
+  `GetValue`/`ValueOrNull` class is taken, see below), CMTK1008 (a comparison member beside the
+  seam, see below), CMTK1009 (a hand-written constructor, see below).
+- **No hand-written constructor (decided 2026-09-27).** A value object's one constructor is the
+  generated private one, and a hand-written instance constructor is CMTK1009. The implementation
+  aspect answers it before introducing its own, since it reads only its target: `Constructors` minus
+  the implicitly declared ones, measured to catch every form (the generated one's signature, any
+  other, one chained to the generated one, a struct's `X()`, a record's copy constructor, a
+  positional record's parameter list) and to leave the compiler's own and a static constructor
+  alone. The type's own members can still call the private constructor, as `Create` must: that is
+  the one trusted seam into a validated value object, stated on `IValidatedValue` and in SECURITY.md.
 - **The companion class** holding `GetValue()`/`ValueOrNull()` sits at namespace level, as
   extension methods must, and is named after the whole nesting chain: `Order.Id` gets
   `OrderIdExtensions`. Named after the value object alone, `Order.Id` and `Customer.Id` both asked
@@ -452,7 +497,7 @@ custom attributes.
 - **An aspect never scans its namespace (decided 2026-09-27,
   [spikes/ConcurrentNamespaceTypes](../spikes/ConcurrentNamespaceTypes/README.md)).** The
   instances of one aspect layer run in parallel on one code model, and the CMTK1007 check, reading
-  the namespace's types from the extensions aspect while sibling instances introduced their
+  the namespace's types from the companion aspect while sibling instances introduced their
   companion classes into it, missed a declared type in 5 of 60 builds. With Metalama's concurrent
   build off it never missed. What owns a companion name is now answered in the fabric, before any
   introduction, and reaches the aspect through its constructor and the aspect state: 0 misses in
@@ -558,12 +603,46 @@ the package does and claims nothing about other libraries.
     `IsAotCompatible`, the woven code is published with Native AOT in the smoke test, and a path that
     needs reflection or dynamic code is rewritten rather than annotated or suppressed. EF Core itself
     stays experimental under Native AOT; the satellite adds nothing to what EF requires.
-17. **Run-time discovery reads `GeneratedValueObjectAttribute<TSelf, T>`** (2026-09-27, §3, §11),
+17. **Run-time discovery reads `GeneratedValueObjectAttribute<TValueObject, T>`** (2026-09-27, §3, §11),
     which the generators put on every value object, not `GetInterfaces()`. Measured under Native AOT:
     the interface was gone from every value object reached through a property, and the OpenAPI
     satellite described each as `{}`. The attribute's constraints are the interfaces, so what a value
     object is has not changed; its `Accept` hands the two types to a visitor as type arguments, which
     is how the EF satellite makes a converter without `MakeGenericType`.
+18. **One name per concept** (2026-09-27, before 0.1.0, when renaming still costs nothing).
+    - What a value object holds is *wrapped*: `GeneratedValueObjectAttribute.WrappedType` and
+      `TranslatedAsWrappedValueAttribute`, not "underlying", and not `ValueType`, which in .NET means
+      a struct and here returned `typeof(string)` for a string-backed value object.
+    - A value object without rules is *plain*: `IPlainValueObject<TSelf, T>`, which has `From`. It was
+      `IValueWrapper`, which named what every value object does.
+    - The value object's own type parameter is `TSelf` on the self-referencing contracts, as in
+      `IParsable<TSelf>`, and `TValueObject` where a helper or attribute names one. Never `TValue`,
+      which `KnownGood` used for the value object while "value" means the wrapped value everywhere
+      else.
+    - Delegate parameters: `onSome`/`onNone`, `onSuccess`/`onError`, `selector`, `predicate`,
+      `action`, as LINQ names them. They were `fnSome`, `map`, `fn`, `check` and `defaultProvider`.
+    - Namespaces follow who uses a type (§1). The helpers only generated code calls moved to
+      `CodoMetis.TypeKit.CompilerServices`, hidden from IntelliSense, and `Accepted` and `KnownGood`
+      became one `GeneratedFactories` whose methods name the exception each entry point throws.
+    - Internally: `ValueObjectAspect` (was the implementation aspect), `ValueObjectContractAspect`,
+      `ValueObjectCompanionAspect`, `ValueObjectKind.Plain`.
+19. **Concise, not implicit** (2026-09-27, §9). Markers where a target type exists, explicit type
+    arguments where none does.
+    - One word for success: `Result.Success(...)` beside `Result<…>.Success(...)`, the `Success`
+      markers, `ResultState.Success` and `onSuccess`, as `Option.Some` sits beside `Option<T>`.
+      `Result.Ok` was the one place that said it differently.
+    - `Option.None()` returns a marker that converts to any `Option<T>`; `Option.None<T>()` stays for
+      `var`. The analyzer forbids `default(Option<T>)`, so every None needed its type argument.
+    - `MapError` on both shapes, for crossing layers, which needed
+      `Match<Result<T, TNew>>(x => x, e => Result.Error(…))`; and `Bind(Func<T, Result<TError>>)`, a
+      command after a query, which replaces the collapsing `Match(_ => Result.Ok(), e => e)`, a
+      conversion wearing `Match`'s name.
+    - `Option.ToResult(error)` keeps the value (`Result<T, TError>`); it returned `Result<TError>`,
+      dropping it. `Coalesce` is `Or`, beside `OrDefault()` and `OrNull()`.
+    - Not added: an implicit `T` → `Option<T>`, since a null would throw exactly where a reader
+      expects `None`; a bare error → `Result<T, TError>` (the ambiguity above); a shipped
+      `using static`. A lambda that returns a bare value and `Result.Error(...)` still needs its type
+      argument, because C# infers a lambda's return type from its body alone; the README says so.
 
 Still open:
 
@@ -572,8 +651,8 @@ Still open:
 
 ## 9. Option and Result
 
-`Result<T,TError>` (with the `Success`/`Error` markers and the `Result.Ok()`/`Result.Error()`
-helpers), `Result<TError>` and `Option<T>` ship in `CodoMetis.TypeKit`. The value-object contracts
+`Result<T,TError>`, `Result<TError>` and `Option<T>`, with the `Option.None()`, `Result.Success()` and
+`Result.Error()` markers (decision 19), ship in `CodoMetis.TypeKit`. The value-object contracts
 depend on them: `IValidatedValue.Create` returns a `Result`, and the generated `TryFrom` returns an
 `Option`.
 
@@ -585,16 +664,20 @@ LanguageExt is out.
 - **`Result<T, TError>`, value first.** Error-first (`Either e a`) exists in Haskell and Scala
   only because a generic type there can be filled in from the left alone, which C# cannot do.
   Rust, F#, Swift, DotNext, CSharpFunctionalExtensions and the csharplang unions design note all
-  put the value first. `IValidatedValue<TValueObject, T, TFault>` does too.
+  put the value first. `IValidatedValue<TSelf, T, TFault>` does too.
 - **`readonly record struct`, non-positional, private fields.** The synthesized equality is
   correct (`State` included). The synthesized `ToString` prints only public members:
   `Option { }` and `Result { State = Error }`. So it never prints a value, in line with
-  `KnownGood`'s rule. **Never make these types positional:** positional parameters become public
+  `FromKnownGood`'s message. **Never make these types positional:** positional parameters become public
   properties, which reintroduces `.Value` and puts the value into `ToString`.
-- **The `Result.Ok(x)`/`Result.Error(e)` markers** keep their content internal too, so they print
-  `Success { }` and `Error { }`. Only the implicit conversions read it. Both shapes accept both
-  markers: `Result<TError>` converts from `Result.Error(e)` as well as from a bare error, so a
-  method can `return Result.Error(fault);` whichever shape it returns.
+- **The markers** (decision 19): `Option.None()`, `Result.Success()`, `Result.Success(x)` and
+  `Result.Error(e)` return a small struct that converts implicitly to whatever `Option`/`Result`
+  the target is, so a method returns one without spelling out type arguments. They keep their
+  content internal too, so they print `Success { }` and `Error { }`. Only the implicit conversions
+  read it. Both shapes accept both result markers: `Result<TError>` converts from `Result.Error(e)`
+  as well as from a bare error, so a method can `return Result.Error(fault);` whichever shape it
+  returns. No combinator takes a marker-returning lambda: `Bind(x => Result.Success(x))` was `Map`
+  under another name, and is a compile error now.
 - **`Result<T, TError>` converts from a bare value, never from a bare error** (measured
   2026-09-27). With both conversions, `Result<long, int> r = 5;` compiles and is an **error**:
   `int` is the more specific source type, so C# picks the error conversion. The READMEs had shown
@@ -603,9 +686,12 @@ LanguageExt is out.
   `Some` over null reported a value it could not hand out. `Map` and the zips go through `Some`,
   so a selector that returns null throws too.
 - **So do `Result`'s factories.** Both shapes and both markers constrain their content to
-  `notnull`, and `Success(null)`/`Error(null)`/`Result.Ok(null)`/`Result.Error(null)` throw
+  `notnull`, and `Success(null)`/`Error(null)`/`Result.Success(null)`/`Result.Error(null)` throw
   `ArgumentNullException`: a result over null handed it out of `TryGetValue`/`TryGetError` despite
-  `[NotNullWhen]`. `Map`, `Bind`, the collapsing `Match` and the conversions go through them.
+  `[NotNullWhen]`. `Map`, `MapError`, `Bind` and the conversions go through them.
+- **Every delegate is checked before a branch is picked**, in `Option`, both `Result` shapes and
+  their extensions: a null for the branch not taken passed until the other outcome first arrived.
+  `NullDelegateTests` holds every delegate parameter of the assembly to a case run on both branches.
 - **`Result<TError>.Match` hands the error to its error branch.** The only overload took a
   parameterless `onError`, so `TryGetError` was the only way to the error. The parameterless one
   stays, for a branch that does not need it.
@@ -709,7 +795,7 @@ exist.
 | CMTK0002 | Type implements `IValue<>`/`IValidatedValue<,,>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so it is never woven | Error | done (unshipped) |
 | CMTK0003 | `Result`/`Option` return value ignored (expression statement, including an awaited `Task<Result<…>>`; `_ =` is the explicit opt-out). CA1806 can only enforce this per method name via `additional_use_results_methods`, not per return type | Warning | proposed |
 | CMTK0004 | `IValueObjectMaterializer<,>.Materialize` or `ValueObjectConverter<,>.Materialize` called outside `CodoMetis.TypeKit.EntityFrameworkCore` and EF's generated compiled model. Enforces the validation-free-path invariant in SECURITY.md (the other sanctioned path, `StoredJsonConverterFactory`, reaches the converter's materializing mode through `IStoredJsonConverterSource`, not `Materialize`) | Error | proposed |
-| CMTK0005 | Array of a no-default type created with a length (`new OrderId[n]`, `GC.AllocateUninitializedArray`): every element starts as `default` | Warning | proposed |
+| CMTK0005 | Array or span of a no-default type created with a length (`new OrderId[n]`, `GC.AllocateUninitializedArray`, `stackalloc OrderId[n]`, which CMTK0001 does not see, measured 2026-09-27): every element starts as `default` | Warning | proposed |
 | CMTK0006 | Field or auto-property of a no-default type in a class, not `required`, no initializer, not assigned in every constructor. This is the CS8618 equivalent nullable analysis does not give structs, and the largest remaining way to get a `default` value object | Info → Warning | **measure noise first** on EF entities with private parameterless constructors |
 | CMTK0007 | `FromKnownGood` called with a non-constant argument | Info | **needs design**: "a value the caller just produced" is legitimate |
 | — | Code fixes for the aspect's shape diagnostics CMTK1000–1002 (missing `partial`/`record`/`readonly`) | — | proposed. The aspect keeps its own error as a backstop |

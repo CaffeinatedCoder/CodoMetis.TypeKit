@@ -11,12 +11,12 @@ namespace CodoMetis.TypeKit.Generators;
 /// The first aspect on every value object: checks the declaration, introduces the field, the private
 /// constructor, the explicit materializer and the entry-point helpers, and adds the other aspects.
 /// </summary>
-internal sealed partial class ValueObjectImplementationAspect : TypeAspect
+internal sealed partial class ValueObjectAspect : TypeAspect
 {
-    private readonly string? _extensionClassNameOwner;
+    private readonly string? _companionClassNameOwner;
     private readonly string? _wrappedValueObjectRefusal;
 
-    /// <param name="extensionClassNameOwner">
+    /// <param name="companionClassNameOwner">
     /// What already owns the name of the companion class, as <see cref="CompanionClass.NameOwner"/>
     /// answered it in the fabric, or <see langword="null"/> when the name is free.
     /// </param>
@@ -25,9 +25,9 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
     /// <see cref="ValueObjectTypes.WrappedValueObjectRefusal"/> answered it in the fabric, or
     /// <see langword="null"/> when what it wraps is not a value object.
     /// </param>
-    public ValueObjectImplementationAspect(string? extensionClassNameOwner, string? wrappedValueObjectRefusal)
+    public ValueObjectAspect(string? companionClassNameOwner, string? wrappedValueObjectRefusal)
     {
-        _extensionClassNameOwner   = extensionClassNameOwner;
+        _companionClassNameOwner   = companionClassNameOwner;
         _wrappedValueObjectRefusal = wrappedValueObjectRefusal;
     }
 
@@ -90,10 +90,10 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
             fromText.ToDurableRef(),
             tryFromText.ToDurableRef(),
             CompanionClass.Name(target),
-            _extensionClassNameOwner
+            _companionClassNameOwner
         );
 
-        builder.Outbound.AddAspect<ValueObjectInterfaceAspect>();
+        builder.Outbound.AddAspect<ValueObjectContractAspect>();
         builder.Outbound.AddAspect<ValueObjectJsonAspect>();
         builder.Outbound.AddAspect<ValueObjectParsableAspect>();
         builder.Outbound.AddAspect<ValueObjectFormattableAspect>();
@@ -101,7 +101,7 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
         builder.Outbound.AddAspect<ValueObjectMinMaxValueAspect>();
         builder.Outbound.AddAspect<ValueObjectTypeConverterAspect>();
         builder.Outbound.AddAspect<ValueObjectConvertibleAspect>();
-        builder.Outbound.AddAspect<ValueObjectExtensionsAspect>();
+        builder.Outbound.AddAspect<ValueObjectCompanionAspect>();
     }
 
     /// <summary>
@@ -155,9 +155,24 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
             }
         }
 
-        if (ValueObjectTypes.UnderlyingType(marker) is not INamedType namedValueType)
+        // Before the private constructor is introduced. One with its signature failed inside the
+        // generated code (LAMA0611), and a positional record failed the aspect (LAMA0500, or LAMA0041
+        // where it threw). Any other compiled, and either skipped Create or left the field unassigned:
+        // a Value of null, or of a string Create refuses. A hand-written copy constructor did the same
+        // to `with`.
+        // The compiler's implicit constructors are the struct's parameterless one and the record
+        // class's copy constructor; a static constructor is not in this list and stays allowed.
+        var declaredConstructors = target.Constructors.Where(constructor => !constructor.IsImplicitlyDeclared).ToList();
+
+        if (declaredConstructors.Count > 0)
         {
-            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, $"the wrapped type '{ValueObjectTypes.UnderlyingType(marker).ToDisplayString()}' is not a class, struct or enum")));
+            builder.Diagnostics.Report(HandWrittenConstructor.WithArguments((target, DescribeConstructors(target, declaredConstructors))));
+            return false;
+        }
+
+        if (ValueObjectTypes.WrappedType(marker) is not INamedType namedValueType)
+        {
+            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, $"the wrapped type '{ValueObjectTypes.WrappedType(marker).ToDisplayString()}' is not a class, struct or enum")));
             return false;
         }
 
@@ -183,6 +198,16 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
         valueType = namedValueType;
         return true;
     }
+
+    /// <summary>
+    /// What CMTK1009 names: a positional record's parameter list as it is written, any other
+    /// constructor by its signature.
+    /// </summary>
+    private static string DescribeConstructors(INamedType target, IReadOnlyList<IConstructor> constructors) =>
+        string.Join(", ", constructors.Select(constructor =>
+            constructor.Equals(target.PrimaryConstructor)
+                ? $"the parameter list ({string.Join(", ", constructor.Parameters.Select(parameter => $"{parameter.Type.ToDisplayString()} {parameter.Name}"))})"
+                : $"the constructor {constructor.ToDisplayString()}"));
 
     private static void HideDefaultStructConstructor(IAspectBuilder<INamedType> builder)
     {

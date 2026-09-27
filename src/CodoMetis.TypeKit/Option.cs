@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
-using CodoMetis.TypeKit.Attributes;
 
 namespace CodoMetis.TypeKit;
 
@@ -50,39 +49,39 @@ public readonly record struct Option<T> where T : notnull
     public bool IsNone() => !_hasValue;
 
     /// <summary>Produces a result from either the value or its absence.</summary>
-    /// <param name="fnSome">Called with the value if there is one.</param>
-    /// <param name="fnNone">Called if there is no value.</param>
+    /// <param name="onSome">Called with the value if there is one.</param>
+    /// <param name="onNone">Called if there is no value.</param>
     /// <typeparam name="TResult">The type of the produced result.</typeparam>
     /// <returns>What the called function returned.</returns>
-    public TResult Match<TResult>(Func<T, TResult> fnSome, Func<TResult> fnNone)
+    public TResult Match<TResult>(Func<T, TResult> onSome, Func<TResult> onNone)
     {
-        ArgumentNullException.ThrowIfNull(fnSome);
-        ArgumentNullException.ThrowIfNull(fnNone);
+        ArgumentNullException.ThrowIfNull(onSome);
+        ArgumentNullException.ThrowIfNull(onNone);
 
-        return _hasValue ? fnSome(_value!) : fnNone();
+        return _hasValue ? onSome(_value!) : onNone();
     }
 
     /// <summary>Chains an operation that may itself produce no value.</summary>
-    /// <param name="fn">Called with the value if there is one.</param>
+    /// <param name="selector">Called with the value if there is one.</param>
     /// <typeparam name="TResult">The type of the chained option's value.</typeparam>
-    /// <returns>The option <paramref name="fn"/> returned, or <c>None</c> without calling it.</returns>
-    public Option<TResult> Bind<TResult>(Func<T, Option<TResult>> fn) where TResult : notnull
+    /// <returns>The option <paramref name="selector"/> returned, or <c>None</c> without calling it.</returns>
+    public Option<TResult> Bind<TResult>(Func<T, Option<TResult>> selector) where TResult : notnull
     {
-        ArgumentNullException.ThrowIfNull(fn);
+        ArgumentNullException.ThrowIfNull(selector);
 
-        return _hasValue ? fn(_value!) : Option.None<TResult>();
+        return _hasValue ? selector(_value!) : Option.None<TResult>();
     }
 
     /// <summary>Transforms the value, if there is one.</summary>
-    /// <param name="map">Called with the value if there is one. It must not return null.</param>
+    /// <param name="selector">Called with the value if there is one. It must not return null.</param>
     /// <typeparam name="TResult">The type of the transformed value.</typeparam>
-    /// <returns>The transformed value, or <c>None</c> without calling <paramref name="map"/>.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="map"/> returned null.</exception>
-    public Option<TResult> Map<TResult>(Func<T, TResult> map) where TResult : notnull
+    /// <returns>The transformed value, or <c>None</c> without calling <paramref name="selector"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="selector"/> returned null.</exception>
+    public Option<TResult> Map<TResult>(Func<T, TResult> selector) where TResult : notnull
     {
-        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(selector);
 
-        return _hasValue ? Option.Some(map(_value!)) : Option.None<TResult>();
+        return _hasValue ? Option.Some(selector(_value!)) : Option.None<TResult>();
     }
 
     /// <summary>Runs a side effect on the value, if there is one.</summary>
@@ -98,22 +97,25 @@ public readonly record struct Option<T> where T : notnull
         return this;
     }
 
-    /// <summary>Keeps the value only if it passes a check.</summary>
-    /// <param name="check">Called with the value if there is one.</param>
+    /// <summary>Keeps the value only if it satisfies <paramref name="predicate"/>.</summary>
+    /// <param name="predicate">Called with the value if there is one.</param>
     /// <returns>This option if it holds a value that passes, otherwise <c>None</c>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Option<T> Filter(Func<T, bool> check)
+    public Option<T> Filter(Func<T, bool> predicate)
     {
-        ArgumentNullException.ThrowIfNull(check);
+        ArgumentNullException.ThrowIfNull(predicate);
 
-        return _hasValue && check(_value!) ? this : Option.None<T>();
+        return _hasValue && predicate(_value!) ? this : Option.None<T>();
     }
 
-    /// <summary>Unwraps the value, substituting a fallback for <c>None</c>.</summary>
-    /// <param name="alternateValue">Returned if there is no value.</param>
-    /// <returns>The value, or <paramref name="alternateValue"/>.</returns>
+    /// <summary>
+    /// Unwraps the value, substituting <paramref name="fallback"/> for <c>None</c>. The siblings for a
+    /// fallback of <c>default</c> or <see langword="null"/> are <c>OrDefault()</c> and <c>OrNull()</c>.
+    /// </summary>
+    /// <param name="fallback">Returned if there is no value.</param>
+    /// <returns>The value, or <paramref name="fallback"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public T Coalesce(T alternateValue) => TryGetValue(out var value) ? value : alternateValue;
+    public T Or(T fallback) => TryGetValue(out var value) ? value : fallback;
 
     /// <summary>Unwraps the value, if there is one.</summary>
     /// <param name="value">The value if there is one; otherwise <c>default</c>.</param>
@@ -131,4 +133,8 @@ public readonly record struct Option<T> where T : notnull
     {
         if (_hasValue) yield return _value!;
     }
+
+    /// <summary>Converts the <c>Option.None()</c> marker, so a method can <c>return Option.None();</c>.</summary>
+    /// <param name="none">The marker.</param>
+    public static implicit operator Option<T>(None none) => Option.None<T>();
 }

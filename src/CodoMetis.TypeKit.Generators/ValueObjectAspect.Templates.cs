@@ -4,7 +4,7 @@ using Metalama.Framework.Code.SyntaxBuilders;
 
 namespace CodoMetis.TypeKit.Generators;
 
-internal sealed partial class ValueObjectImplementationAspect
+internal sealed partial class ValueObjectAspect
 {
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
     // Metalama 2027.0 requires [Durable] (Metalama.Framework.Utilities) on this placeholder, and
@@ -37,14 +37,14 @@ internal sealed partial class ValueObjectImplementationAspect
         [CompileTime] ValueObjectKind kind
     )
     {
-        if (meta.CompileTime(kind == ValueObjectKind.SimpleValue))
+        if (meta.CompileTime(kind == ValueObjectKind.Plain))
             return constructor.Invoke(value)!;
 
         if (materialize)
             return constructor.Invoke(value)!;
 
         return ExpressionFactory.Parse(
-            $"global::CodoMetis.TypeKit.ValueObjects.Accepted.OrJsonException({ValueObjectTypes.SourceName(target)}.Create(value))"
+            $"global::CodoMetis.TypeKit.CompilerServices.GeneratedFactories.OrJsonException({ValueObjectTypes.SourceName(target)}.Create(value))"
         ).Value!;
     }
 
@@ -57,11 +57,11 @@ internal sealed partial class ValueObjectImplementationAspect
         [CompileTime] ValueObjectKind kind
     )
     {
-        if (meta.CompileTime(kind == ValueObjectKind.SimpleValue))
+        if (meta.CompileTime(kind == ValueObjectKind.Plain))
             return constructor.Invoke(value)!;
 
         return ExpressionFactory.Parse(
-            $"global::CodoMetis.TypeKit.ValueObjects.Accepted.OrFormatException({ValueObjectTypes.SourceName(target)}.Create(value))"
+            $"global::CodoMetis.TypeKit.CompilerServices.GeneratedFactories.OrFormatException({ValueObjectTypes.SourceName(target)}.Create(value))"
         ).Value!;
     }
 
@@ -75,7 +75,7 @@ internal sealed partial class ValueObjectImplementationAspect
         [CompileTime] ValueObjectKind kind
     )
     {
-        if (meta.CompileTime(kind == ValueObjectKind.SimpleValue))
+        if (meta.CompileTime(kind == ValueObjectKind.Plain))
         {
             result = constructor.Invoke(value);
             return true;

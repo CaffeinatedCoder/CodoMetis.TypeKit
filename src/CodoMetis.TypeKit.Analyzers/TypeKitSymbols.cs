@@ -62,7 +62,7 @@ internal sealed class TypeKitSymbols
     {
         var valueMarkers     = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.ValueObjects.IValue`1");
         var validatedMarkers = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.ValueObjects.IValidatedValue`3");
-        var attributes       = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.Attributes.RequireCustomInitializationAttribute");
+        var attributes       = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.RequireCustomInitializationAttribute");
 
         if (valueMarkers.IsEmpty && validatedMarkers.IsEmpty && attributes.IsEmpty) return null;
 

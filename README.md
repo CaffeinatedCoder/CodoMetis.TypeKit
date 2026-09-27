@@ -111,7 +111,7 @@ services.AddOpenApi(options => options.AddTypeKit());                    // Orde
   `FromKnownGood` names the caller's expression, and `Option` and `Result` print nothing, so a value
   that is a secret cannot reach a message or a log through this package.
 - **Loud failures.** A declaration that cannot be generated is a build error naming the
-  declaration, CMTK1000 to CMTK1008, never a type with nothing in it. The analyzers make `default`
+  declaration, CMTK1000 to CMTK1009, never a type with nothing in it. The analyzers make `default`
   of a value object, an `Option` or a `Result` an error.
 - **Discovery by interface.** The EF Core and OpenAPI satellites recognise a value object by the
   attribute the generators put beside `IValueObject<,>`, whose type arguments are constrained to it,

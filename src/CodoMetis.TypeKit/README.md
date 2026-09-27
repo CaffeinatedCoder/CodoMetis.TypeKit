@@ -39,9 +39,12 @@ Option<string> town = customer
 var name = from c in customer where c.IsActive select c.Name;   // query syntax works too
 ```
 
-Create one with `Option.Some(value)` or `Option.None<T>()`, or lift a nullable with `ToOption()`.
+Create one with `Option.Some(value)` and `Option.None()`, or lift a nullable with `ToOption()`.
+`Option.None()` takes its type from where it goes (`return Option.None();`, a conditional beside
+`Some`); where nothing supplies one, as with `var`, write `Option.None<T>()`.
 `Some(null)` throws, so an option that reports a value always has one. A `default(Option<T>)` is
-`None`. `Coalesce(fallback)`, `OrDefault()` and `OrNull()` unwrap with a fallback. `ToString()` never
+`None`. `Or(fallback)`, `OrDefault()` and `OrNull()` unwrap with a fallback, and `ToResult(error)` turns
+absence into an error. `ToString()` never
 prints the content, so an option is safe to log; the debugger shows it.
 
 ## Result&lt;T, TError&gt; and Result&lt;TError&gt;
@@ -61,7 +64,7 @@ public Result<Order, OrderFault> Place(CustomerId customer, IReadOnlyList<Line> 
 }
 
 public Result<OrderFault> Cancel(OrderId id) =>
-    orders.Remove(id) ? Result.Ok() : OrderFault.CustomerUnknown;
+    orders.Remove(id) ? Result.Success() : OrderFault.CustomerUnknown;
 ```
 
 A bare value converts to a success, and an error goes through `Result.Error(...)`. A bare error
@@ -81,11 +84,16 @@ if (placed.TryGetValue(out var order, out var fault)) { /* order is non-null her
 if (service.Cancel(id)) { /* the bool conversion is true for a success */ }
 
 Result<Invoice, OrderFault> invoiced = placed.Bind(order => billing.Invoice(order));
+Result<OrderFault> confirmed = placed.Bind(order => mailer.Confirm(order));   // a command after a query
+Result<Order, ApiFault> forApi = placed.MapError(ApiFault.From);             // across layers
 Option<Order> maybe = placed.ToOption();
 ```
 
-`Map`, `Bind`, `Tap` and `TapAsync` run only on success and carry an error through unchanged. A
-`default(Result<…>)`, which an array slot or an unassigned field can still produce, is
+`Map`, `Bind`, `Tap` and `TapAsync` run only on success and carry an error through unchanged;
+`MapError` runs only on an error. A lambda that returns a bare value on one branch and
+`Result.Error(...)` on the other needs its type argument, `placed.Bind<Invoice>(o => o.IsPaid ?
+invoices.Of(o) : Result.Error(OrderFault.Unpaid))`, because C# infers a lambda's return type from its
+body alone. A `default(Result<…>)`, which an array slot or an unassigned field can still produce, is
 `ResultState.Uninitialized`, and every member that would pick a branch throws
 `InvalidOperationException` on it rather than inventing a `default(TError)`. `ToString()` never
 prints the value or the error.
@@ -106,7 +114,7 @@ back as `None`, with nothing raised and the missing data as the only evidence; a
 its `State` and read back uninitialized. So a request, a response, a stored document or an event
 payload says absent with `T?`, and the option lives between them: `dto.Nickname.ToOption()` on the
 way in, `nickname.OrNull()` on the way out. A result is matched to a response or a document; it has
-no wire shape of its own. The `Result.Ok(...)`/`Result.Error(...)` markers refuse too, so an endpoint
+no wire shape of its own. The `Option.None()`, `Result.Success(...)` and `Result.Error(...)` markers refuse too, so an endpoint
 that returns one fails on its first call rather than answering `{}`.
 
 Two things to know. A converter registered on the `JsonSerializerOptions` takes precedence over
@@ -151,7 +159,7 @@ The contracts in this package say what every value object has:
 | `IValue<T>` | Wraps any `T`. Gets `From(value)`. |
 | `IValidatedValue<TSelf, T, TFault>` | You write `Create`, which returns a `Result`. Gets `TryFrom(value)` returning an `Option`, and `FromKnownGood(value)`, which throws and names the caller's expression, never the value. Every generated way in, JSON, parsing and the type converter, applies `Create`. |
 | `IValueObject<TSelf, T>` | What every generated value object implements: `Value`, equality. Run-time code recognises a value object by this interface, never by name. |
-| `IValueWrapper<TSelf, T>` | `From`, on plain value objects only. |
+| `IPlainValueObject<TSelf, T>` | A value object with no rules: `From` accepts any `T`. Plain value objects only. |
 | `IValueObjectMaterializer<TSelf, T>` | Rebuilds an instance **without validation**, for values the application wrote itself, such as a database column. Implemented explicitly, so it is not on the public surface. |
 
 Which factory to call: `Create` when the caller has to say what to fix, `TryFrom` when "is it
@@ -178,7 +186,7 @@ static Option<TSelf> Read<TSelf, TFault>(string field)
     where TFault : notnull =>
     TSelf.Create(field).ToOption();
 
-static TId NewId<TId>() where TId : IValueObject<TId, Guid>, IValueWrapper<TId, Guid> =>
+static TId NewId<TId>() where TId : IValueObject<TId, Guid>, IPlainValueObject<TId, Guid> =>
     TId.From(Guid.CreateVersion7());
 ```
 
@@ -221,6 +229,7 @@ names it. `Option` and `Result` refuse JSON there exactly as on the JIT, and
 
 ## Where things are
 
-`Option`, `Result` and `IValueObject` live in `CodoMetis.TypeKit`; the value-object contracts in
-`CodoMetis.TypeKit.ValueObjects`; the attribute in `CodoMetis.TypeKit.Attributes`. Targets .NET 10.
+`Option`, `Result`, `OrderId.New()` and `[RequireCustomInitialization]` live in `CodoMetis.TypeKit`;
+every value-object contract in `CodoMetis.TypeKit.ValueObjects`. What only the generated code and the
+satellites call is in `CodoMetis.TypeKit.CompilerServices`, hidden from IntelliSense. Targets .NET 10.
 Source and issues: [github.com/CaffeinatedCoder/CodoMetis.TypeKit](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit).

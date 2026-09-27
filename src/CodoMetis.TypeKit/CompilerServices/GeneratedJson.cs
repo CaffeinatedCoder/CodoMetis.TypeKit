@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 
-namespace CodoMetis.TypeKit.ValueObjects;
+namespace CodoMetis.TypeKit.CompilerServices;
 
 /// <summary>
 /// What the JSON converter that CodoMetis.TypeKit.Generators generates calls, kept in ordinary C# so

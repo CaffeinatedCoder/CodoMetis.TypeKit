@@ -7,8 +7,10 @@ namespace CodoMetis.TypeKit.ValueObjects;
 /// <remarks>
 /// <para>
 /// CodoMetis.TypeKit.Generators generates everything else: the field, the private constructor,
-/// <see cref="IValueObject{TValueObject,T}.Value"/>, <see cref="IValueWrapper{TValueObject,T}.From"/>,
-/// the JSON converter, parsing, formatting, comparison and the type converter.
+/// <see cref="IValueObject{TSelf,T}.Value"/>, <see cref="IPlainValueObject{TSelf,T}.From"/>,
+/// the JSON converter, parsing, formatting, comparison and the type converter. The type therefore
+/// declares no constructor of its own, not even a record's parameter list (CMTK1009); another way in
+/// is a static method that calls <c>From</c>.
 /// </para>
 /// <para>
 /// Ordering follows the wrapped type's <c>CompareTo</c>, ordinal for a string, so it agrees with

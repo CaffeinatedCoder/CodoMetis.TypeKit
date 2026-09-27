@@ -51,8 +51,8 @@ public sealed class ImplementationTests
     [Fact]
     public void Only_a_plain_value_object_gets_From()
     {
-        typeof(ProbeName).GetInterfaces().ShouldContain(typeof(IValueWrapper<ProbeName, string>));
-        typeof(ProbeCode).GetInterfaces().ShouldNotContain(typeof(IValueWrapper<ProbeCode, string>));
+        typeof(ProbeName).GetInterfaces().ShouldContain(typeof(IPlainValueObject<ProbeName, string>));
+        typeof(ProbeCode).GetInterfaces().ShouldNotContain(typeof(IPlainValueObject<ProbeCode, string>));
         typeof(ProbeCode).GetMethod("From", BindingFlags.Public | BindingFlags.Static).ShouldBeNull();
     }
 

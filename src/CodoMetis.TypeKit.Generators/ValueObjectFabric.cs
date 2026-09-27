@@ -16,7 +16,7 @@ namespace CodoMetis.TypeKit.Generators;
 /// </para>
 /// <para>
 /// Every concrete class or struct that implements a marker, directly or through another interface,
-/// gets the implementation aspect, which validates the declaration and adds the others. Selecting
+/// gets ValueObjectAspect, which validates the declaration and adds the others. Selecting
 /// only direct implementations would skip <c>record struct CustomerId : IIdentifier</c> with
 /// <c>IIdentifier : IValue&lt;Guid&gt;</c> silently, because the analyzer sees this assembly and stays quiet.
 /// </para>
@@ -34,7 +34,7 @@ internal sealed class ValueObjectFabric : TransitiveProjectFabric
     public override void AmendProject(IProjectAmender amender) =>
         amender.SelectTypes(includeNestedTypes: true)
                .Where(ValueObjectTypes.IsValueObject)
-               .AddAspect(type => new ValueObjectImplementationAspect(
+               .AddAspect(type => new ValueObjectAspect(
                               CompanionClass.NameOwner(type),
                               ValueObjectTypes.WrappedValueObjectRefusal(type)));
 }

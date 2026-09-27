@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CodoMetis.TypeKit.CompilerServices;
 using CodoMetis.TypeKit.Generators.Probes;
 using CodoMetis.TypeKit.ValueObjects;
 using NodaTime;

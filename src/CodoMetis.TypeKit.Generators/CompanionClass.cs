@@ -10,7 +10,7 @@ namespace CodoMetis.TypeKit.Generators;
 /// <remarks>
 /// <para>
 /// <see cref="NameOwner"/> reads the namespace's types, and it runs in the fabric, when the aspects
-/// are selected and nothing has been introduced yet. Run inside the extensions aspect, it read the
+/// are selected and nothing has been introduced yet. Run inside the companion aspect, it read the
 /// namespace while sibling instances were introducing their companion classes into it, since the
 /// instances of one aspect layer run in parallel on one code model, and one build in nine then
 /// missed a declared <c>TakenNameExtensions</c> and introduced a second one (CS0260 instead of

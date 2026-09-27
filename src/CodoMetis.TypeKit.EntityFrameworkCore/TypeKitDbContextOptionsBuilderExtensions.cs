@@ -12,7 +12,7 @@ public static class TypeKitDbContextOptionsBuilderExtensions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Value objects are recognised by <see cref="IValueObject{TValueObject,T}"/> wherever EF meets
+    /// Value objects are recognised by <see cref="ValueObjects.IValueObject{TSelf,T}"/> wherever EF meets
     /// them: properties, keys, foreign keys, elements of primitive collections and query parameters.
     /// Nothing is registered per type. Reading a column back does not apply the value object's rules
     /// (<see cref="ValueObjects.IValueObjectMaterializer{TSelf,T}"/>).

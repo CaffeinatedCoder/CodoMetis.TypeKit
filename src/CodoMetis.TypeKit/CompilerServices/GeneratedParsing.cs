@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 
-namespace CodoMetis.TypeKit.ValueObjects;
+namespace CodoMetis.TypeKit.CompilerServices;
 
 /// <summary>
 /// Calls the wrapped type's <c>Parse</c>/<c>TryParse</c> through a type parameter, for the parsing

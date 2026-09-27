@@ -1,12 +1,13 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using CodoMetis.TypeKit.CompilerServices;
 
 namespace CodoMetis.TypeKit.AspNetCore;
 
 /// <summary>
 /// Which CLR types are value objects, and what they wrap: read from the
 /// <see cref="GeneratedValueObjectAttribute"/> every value object carries, whose type arguments are
-/// constrained to <see cref="IValueObject{TValueObject,T}"/>. Never by name or assembly.
+/// constrained to <see cref="ValueObjects.IValueObject{TSelf,T}"/>. Never by name or assembly.
 /// </summary>
 /// <remarks>
 /// Not by <see cref="Type.GetInterfaces"/>, which trimming breaks: under Native AOT the interface is
@@ -15,19 +16,19 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// </remarks>
 internal static class ValueObjectTypes
 {
-    private static readonly ConcurrentDictionary<Type, Type?> UnderlyingTypes = new();
+    private static readonly ConcurrentDictionary<Type, Type?> WrappedTypes = new();
 
     /// <summary>
     /// The wrapped type <c>T</c> of a value object, or of a nullable one, or <see langword="null"/>
     /// for any other type.
     /// </summary>
-    public static Type? UnderlyingType(Type? type) =>
+    public static Type? WrappedType(Type? type) =>
         type is null
             ? null
-            : UnderlyingTypes.GetOrAdd(Nullable.GetUnderlyingType(type) ?? type, static candidate =>
+            : WrappedTypes.GetOrAdd(Nullable.GetUnderlyingType(type) ?? type, static candidate =>
                 candidate.GetCustomAttribute<GeneratedValueObjectAttribute>(inherit: false) is { } valueObject && valueObject.ValueObjectType == candidate
-                    ? valueObject.ValueType
+                    ? valueObject.WrappedType
                     : null);
 
-    public static bool IsValueObject(Type type) => UnderlyingType(type) is not null;
+    public static bool IsValueObject(Type type) => WrappedType(type) is not null;
 }

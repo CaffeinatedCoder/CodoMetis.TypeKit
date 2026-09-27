@@ -18,7 +18,7 @@ public static class TypeKitOpenApiOptionsExtensions
     /// <see cref="Guid"/> is <c>{"type":"string","format":"uuid"}</c>, and keeps its own component.
     /// </para>
     /// <para>
-    /// Value objects are recognised by <see cref="IValueObject{TValueObject,T}"/>. Nothing is
+    /// Value objects are recognised by <see cref="ValueObjects.IValueObject{TSelf,T}"/>. Nothing is
     /// registered per type, and no assembly is scanned. The order against other schema transformers
     /// does not matter.
     /// </para>

@@ -1,4 +1,6 @@
 using System.Numerics;
+using CodoMetis.TypeKit.CompilerServices;
+using CodoMetis.TypeKit.ValueObjects;
 using Metalama.Framework.Aspects;
 using Metalama.Framework.Code;
 using Metalama.Framework.Code.DeclarationBuilders;
@@ -9,7 +11,7 @@ namespace CodoMetis.TypeKit.Generators;
 /// <c>IValueObject&lt;TSelf, T&gt;</c> and <c>Value</c>; <c>From</c> for a plain value object,
 /// <c>TryFrom</c> and <c>FromKnownGood</c> for a validated one; and the equality-operator interface.
 /// </summary>
-internal sealed partial class ValueObjectInterfaceAspect : TypeAspect
+internal sealed partial class ValueObjectContractAspect : TypeAspect
 {
     public override void BuildAspect(IAspectBuilder<INamedType> builder)
     {
@@ -35,7 +37,7 @@ internal sealed partial class ValueObjectInterfaceAspect : TypeAspect
             }
         );
 
-        if (state.Kind == ValueObjectKind.SimpleValue)
+        if (state.Kind == ValueObjectKind.Plain)
         {
             ImplementValueWrapper(builder, valueType, state.PrivateConstructor.GetTarget());
         }
@@ -67,7 +69,7 @@ internal sealed partial class ValueObjectInterfaceAspect : TypeAspect
             args: new { constructor = privateConstructor, refusesNull = valueType.IsReferenceType == true }
         );
 
-        builder.ImplementInterface(TypeFactory.GetNamedType(typeof(IValueWrapper<,>)).MakeGenericInstance(builder.Target, valueType));
+        builder.ImplementInterface(TypeFactory.GetNamedType(typeof(IPlainValueObject<,>)).MakeGenericInstance(builder.Target, valueType));
     }
 
     /// <summary>

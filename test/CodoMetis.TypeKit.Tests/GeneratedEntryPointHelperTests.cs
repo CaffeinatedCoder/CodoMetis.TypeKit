@@ -1,5 +1,5 @@
 using System.Text.Json;
-using CodoMetis.TypeKit.ValueObjects;
+using CodoMetis.TypeKit.CompilerServices;
 
 namespace CodoMetis.TypeKit.Tests;
 
@@ -18,18 +18,18 @@ public sealed class GeneratedEntryPointHelperTests
     {
         var code = new Code();
 
-        Accepted.OrJsonException(Result<Code, Fault>.Success(code)).ShouldBe(code);
-        Accepted.OrFormatException(Result<Code, Fault>.Success(code)).ShouldBe(code);
+        GeneratedFactories.OrJsonException(Result<Code, Fault>.Success(code)).ShouldBe(code);
+        GeneratedFactories.OrFormatException(Result<Code, Fault>.Success(code)).ShouldBe(code);
     }
 
     [Fact]
     public void A_JSON_refusal_is_a_JsonException_naming_the_type_and_the_fault() =>
-        Should.Throw<JsonException>(() => Accepted.OrJsonException(Result<Code, Fault>.Error(Fault.TooLong)))
+        Should.Throw<JsonException>(() => GeneratedFactories.OrJsonException(Result<Code, Fault>.Error(Fault.TooLong)))
               .Message.ShouldBe("Code refused the JSON value (TooLong).");
 
     [Fact]
     public void A_parse_refusal_is_a_FormatException_naming_the_type_and_the_fault() =>
-        Should.Throw<FormatException>(() => Accepted.OrFormatException(Result<Code, Fault>.Error(Fault.TooLong)))
+        Should.Throw<FormatException>(() => GeneratedFactories.OrFormatException(Result<Code, Fault>.Error(Fault.TooLong)))
               .Message.ShouldBe("Code refused the input (TooLong).");
 
     /// <summary><c>bool</c> implements its parsing interfaces explicitly; <c>bool.Parse(s, provider)</c> does not compile.</summary>

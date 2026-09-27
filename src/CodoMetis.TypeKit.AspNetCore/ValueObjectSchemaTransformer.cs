@@ -43,7 +43,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
     {
         var info = context.JsonTypeInfo;
 
-        if (ValueObjectTypes.UnderlyingType(info.Type) is { } wrapped)
+        if (ValueObjectTypes.WrappedType(info.Type) is { } wrapped)
         {
             await DescribeAsync(schema, info.Type, wrapped, parameter: null, context, cancellationToken);
             return;
@@ -51,7 +51,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
 
         if (context is { JsonPropertyInfo: null, ParameterDescription: { } parameter }
          && ParameterValueObject(parameter) is { } valueObject
-         && ValueObjectTypes.UnderlyingType(valueObject) is { } parameterWrapped
+         && ValueObjectTypes.WrappedType(valueObject) is { } parameterWrapped
          // Handed the wrapped type itself, this is the call below asking for it: nothing to do.
          && parameterWrapped != info.Type)
         {

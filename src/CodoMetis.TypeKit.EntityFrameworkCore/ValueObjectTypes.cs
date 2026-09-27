@@ -1,12 +1,13 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using CodoMetis.TypeKit.CompilerServices;
 
 namespace CodoMetis.TypeKit.EntityFrameworkCore;
 
 /// <summary>
 /// Which CLR types are value objects, and what they wrap: read from the
 /// <see cref="GeneratedValueObjectAttribute"/> every value object carries, whose type arguments are
-/// constrained to <see cref="IValueObject{TValueObject,T}"/>. Never by name or assembly.
+/// constrained to <see cref="ValueObjects.IValueObject{TSelf,T}"/>. Never by name or assembly.
 /// </summary>
 /// <remarks>
 /// Not by <see cref="Type.GetInterfaces"/>, which trimming breaks: under Native AOT the interface is

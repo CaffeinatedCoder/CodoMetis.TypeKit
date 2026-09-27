@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
-using CodoMetis.TypeKit.Attributes;
 
 namespace CodoMetis.TypeKit;
 
@@ -15,7 +14,7 @@ namespace CodoMetis.TypeKit;
 /// <remarks>
 /// <para>
 /// Create instances with <see cref="Success()"/> and <see cref="Error(TError)"/>, or by returning
-/// <c>Result.Ok()</c>, <c>Result.Error(error)</c> or a bare error value from a method typed
+/// <c>Result.Success()</c>, <c>Result.Error(error)</c> or a bare error value from a method typed
 /// <see cref="Result{TError}"/>.
 /// </para>
 /// <para>
@@ -96,7 +95,14 @@ public readonly record struct Result<TError> where TError : notnull
     /// <returns>What the called function returned.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
     public TResult Match<TResult>(Func<TResult> onSuccess, Func<TError, TResult> onError)
-        => Succeeded ? onSuccess() : onError(_error!);
+    {
+        // Every delegate is checked before a branch is picked, as in Option: a null for the branch
+        // not taken passed until the other outcome first arrived, typically in production.
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onError);
+
+        return Succeeded ? onSuccess() : onError(_error!);
+    }
 
     /// <summary>Produces a value from either outcome, where the error branch does not need the error.</summary>
     /// <param name="onSuccess">Called on success.</param>
@@ -105,22 +111,48 @@ public readonly record struct Result<TError> where TError : notnull
     /// <returns>What the called function returned.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
     public TResult Match<TResult>(Func<TResult> onSuccess, Func<TResult> onError)
-        => Succeeded ? onSuccess() : onError();
+    {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onError);
+
+        return Succeeded ? onSuccess() : onError();
+    }
 
     /// <summary>Produces a value on success, keeping the error otherwise.</summary>
-    /// <param name="fn">Called on success.</param>
+    /// <param name="selector">Called on success.</param>
     /// <typeparam name="TResult">The type of the produced value.</typeparam>
-    /// <returns>A success with the produced value, or this error without calling <paramref name="fn"/>.</returns>
+    /// <returns>A success with the produced value, or this error without calling <paramref name="selector"/>.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public Result<TResult, TError> Map<TResult>(Func<TResult> fn) where TResult : notnull =>
-        Succeeded ? Result<TResult, TError>.Success(fn()) : Result<TResult, TError>.Error(_error!);
+    public Result<TResult, TError> Map<TResult>(Func<TResult> selector) where TResult : notnull
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return Succeeded ? Result<TResult, TError>.Success(selector()) : Result<TResult, TError>.Error(_error!);
+    }
 
     /// <summary>Chains an operation that may itself fail.</summary>
-    /// <param name="fn">Called on success.</param>
-    /// <returns>The result <paramref name="fn"/> returned, or this error without calling it.</returns>
+    /// <param name="selector">Called on success.</param>
+    /// <returns>The result <paramref name="selector"/> returned, or this error without calling it.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public Result<TError> Bind(Func<Result<TError>> fn) =>
-        Succeeded ? fn() : Error(_error!);
+    public Result<TError> Bind(Func<Result<TError>> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return Succeeded ? selector() : Error(_error!);
+    }
+
+    /// <summary>Transforms the error, keeping a success unchanged: for crossing from one layer's faults to another's.</summary>
+    /// <param name="selector">Called with the error on error. It must not return null.</param>
+    /// <typeparam name="TNewError">The type of the transformed error.</typeparam>
+    /// <returns>An error with the transformed error, or a success without calling <paramref name="selector"/>.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="selector"/> returned null.</exception>
+    public Result<TNewError> MapError<TNewError>(Func<TError, TNewError> selector) where TNewError : notnull
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return Succeeded ? Result<TNewError>.Success() : Result<TNewError>.Error(selector(_error!));
+    }
 
     /// <summary>Runs a side effect on success.</summary>
     /// <param name="action">Called on success.</param>
@@ -128,6 +160,8 @@ public readonly record struct Result<TError> where TError : notnull
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
     public Result<TError> Tap(Action action)
     {
+        ArgumentNullException.ThrowIfNull(action);
+
         if (Succeeded)
             action();
 
@@ -140,6 +174,8 @@ public readonly record struct Result<TError> where TError : notnull
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
     public async Task<Result<TError>> TapAsync(Func<Task> action)
     {
+        ArgumentNullException.ThrowIfNull(action);
+
         if (Succeeded)
             await action().ConfigureAwait(false);
 
@@ -171,7 +207,7 @@ public readonly record struct Result<TError> where TError : notnull
     /// <param name="error">The marker.</param>
     public static implicit operator Result<TError>(Error<TError> error) => Error(error.Value);
 
-    /// <summary>Converts the <c>Result.Ok()</c> marker, so a method can <c>return Result.Ok();</c>.</summary>
+    /// <summary>Converts the <c>Result.Success()</c> marker, so a method can <c>return Result.Success();</c>.</summary>
     /// <param name="success">The marker.</param>
     public static implicit operator Result<TError>(Success success) => Success();
 }

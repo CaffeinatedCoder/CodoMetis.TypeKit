@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using CodoMetis.TypeKit.CompilerServices;
 using Metalama.Framework.Aspects;
 using Metalama.Framework.Code.DeclarationBuilders;
 
@@ -32,6 +33,6 @@ internal static class CodeAnnotations
     public static readonly AttributeConstruction EditorNonBrowsable =
         AttributeConstruction.Create(typeof(EditorBrowsableAttribute), [EditorBrowsableState.Never]);
 
-    public static readonly AttributeConstruction TranslatedAsUnderlyingValue =
-        AttributeConstruction.Create(typeof(TranslatedAsUnderlyingValueAttribute));
+    public static readonly AttributeConstruction TranslatedAsWrappedValue =
+        AttributeConstruction.Create(typeof(TranslatedAsWrappedValueAttribute));
 }

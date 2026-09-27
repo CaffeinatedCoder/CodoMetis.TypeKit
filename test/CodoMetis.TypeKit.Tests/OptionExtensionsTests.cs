@@ -50,21 +50,25 @@ public sealed class OptionExtensionsTests
     }
 
     /// <summary>
-    /// The bridge from "not there" to "and that is an error": absence gains the caller's error
-    /// value, in both the valued and the error-only shape.
+    /// The bridge from "not there" to "and that is an error": the value is kept, and absence gains
+    /// the caller's error.
     /// </summary>
     [Fact]
-    public void ToResult_turns_none_into_the_given_error()
+    public void ToResult_keeps_the_value_and_turns_none_into_the_given_error()
     {
-        Option.Some(21).ToResult(x => x * 2, "missing").TryGetValue(out var value, out _).ShouldBeTrue();
-        value.ShouldBe(42);
+        Option.Some(21).ToResult("missing").TryGetValue(out var value, out _).ShouldBeTrue();
+        value.ShouldBe(21);
 
-        Option.None<int>().ToResult(x => x * 2, "missing").TryGetValue(out _, out var error).ShouldBeFalse();
+        Option.None<int>().ToResult("missing").TryGetValue(out _, out var error).ShouldBeFalse();
         error.ShouldBe("missing");
+    }
 
-        ((bool)Option.Some(21).ToResult("missing")).ShouldBeTrue();
-        Option.None<int>().ToResult("missing").TryGetError(out var bare).ShouldBeTrue();
-        bare.ShouldBe("missing");
+    /// <summary>A null error is refused whatever the option holds, not first on a <c>None</c>.</summary>
+    [Fact]
+    public void ToResult_refuses_a_null_error_on_either_branch()
+    {
+        Should.Throw<ArgumentNullException>(() => Option.Some(1).ToResult((string)null!));
+        Should.Throw<ArgumentNullException>(() => Option.None<int>().ToResult((string)null!));
     }
 
     [Fact]

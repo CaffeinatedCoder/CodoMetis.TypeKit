@@ -22,6 +22,7 @@ ProbeAmount
   implements IFormattable
   implements IMinMaxValue<ProbeAmount>
   implements IParsable<ProbeAmount>
+  implements IPlainValueObject<ProbeAmount, Decimal>
   implements ISpanFormattable
   implements ISpanParsable<ProbeAmount>
   implements IUtf8SpanFormattable
@@ -29,7 +30,6 @@ ProbeAmount
   implements IValue<Decimal>
   implements IValueObject<ProbeAmount, Decimal>
   implements IValueObjectMaterializer<ProbeAmount, Decimal>
-  implements IValueWrapper<ProbeAmount, Decimal>
   nested ProbeAmountJsonConverter : JsonConverter<ProbeAmount>, IStoredJsonConverterSource
   nested ProbeAmountTypeConverter : TypeConverter
   new()
@@ -114,6 +114,7 @@ ProbeContainer.NestedId
   implements IFormattable
   implements IMinMaxValue<ProbeContainer.NestedId>
   implements IParsable<ProbeContainer.NestedId>
+  implements IPlainValueObject<ProbeContainer.NestedId, Int32>
   implements ISpanFormattable
   implements ISpanParsable<ProbeContainer.NestedId>
   implements IUtf8SpanFormattable
@@ -121,7 +122,6 @@ ProbeContainer.NestedId
   implements IValue<Int32>
   implements IValueObject<ProbeContainer.NestedId, Int32>
   implements IValueObjectMaterializer<ProbeContainer.NestedId, Int32>
-  implements IValueWrapper<ProbeContainer.NestedId, Int32>
   nested NestedIdJsonConverter : JsonConverter<ProbeContainer.NestedId>, IStoredJsonConverterSource
   nested NestedIdTypeConverter : TypeConverter
   new()
@@ -166,6 +166,7 @@ ProbeCount
   implements IFormattable
   implements IMinMaxValue<ProbeCount>
   implements IParsable<ProbeCount>
+  implements IPlainValueObject<ProbeCount, Int32>
   implements ISpanFormattable
   implements ISpanParsable<ProbeCount>
   implements IUtf8SpanFormattable
@@ -173,7 +174,6 @@ ProbeCount
   implements IValue<Int32>
   implements IValueObject<ProbeCount, Int32>
   implements IValueObjectMaterializer<ProbeCount, Int32>
-  implements IValueWrapper<ProbeCount, Int32>
   nested ProbeCountJsonConverter : JsonConverter<ProbeCount>, IStoredJsonConverterSource
   nested ProbeCountTypeConverter : TypeConverter
   new()
@@ -216,6 +216,7 @@ ProbeCustomerId
   implements IEquatable<ProbeCustomerId>
   implements IFormattable
   implements IParsable<ProbeCustomerId>
+  implements IPlainValueObject<ProbeCustomerId, Guid>
   implements IProbeIdentifier
   implements ISpanFormattable
   implements ISpanParsable<ProbeCustomerId>
@@ -224,7 +225,6 @@ ProbeCustomerId
   implements IValue<Guid>
   implements IValueObject<ProbeCustomerId, Guid>
   implements IValueObjectMaterializer<ProbeCustomerId, Guid>
-  implements IValueWrapper<ProbeCustomerId, Guid>
   nested ProbeCustomerIdJsonConverter : JsonConverter<ProbeCustomerId>, IStoredJsonConverterSource
   nested ProbeCustomerIdTypeConverter : TypeConverter
   new()
@@ -266,13 +266,13 @@ ProbeDate
   implements IFormattable
   implements IMinMaxValue<ProbeDate>
   implements IParsable<ProbeDate>
+  implements IPlainValueObject<ProbeDate, DateOnly>
   implements ISpanFormattable
   implements ISpanParsable<ProbeDate>
   implements IUtf8SpanFormattable
   implements IValue<DateOnly>
   implements IValueObject<ProbeDate, DateOnly>
   implements IValueObjectMaterializer<ProbeDate, DateOnly>
-  implements IValueWrapper<ProbeDate, DateOnly>
   nested ProbeDateJsonConverter : JsonConverter<ProbeDate>, IStoredJsonConverterSource
   nested ProbeDateTypeConverter : TypeConverter
   new()
@@ -315,6 +315,7 @@ ProbeDescending
   implements IFormattable
   implements IMinMaxValue<ProbeDescending>
   implements IParsable<ProbeDescending>
+  implements IPlainValueObject<ProbeDescending, Int32>
   implements ISpanFormattable
   implements ISpanParsable<ProbeDescending>
   implements IUtf8SpanFormattable
@@ -322,7 +323,6 @@ ProbeDescending
   implements IValue<Int32>
   implements IValueObject<ProbeDescending, Int32>
   implements IValueObjectMaterializer<ProbeDescending, Int32>
-  implements IValueWrapper<ProbeDescending, Int32>
   nested ProbeDescendingJsonConverter : JsonConverter<ProbeDescending>, IStoredJsonConverterSource
   nested ProbeDescendingTypeConverter : TypeConverter
   new()
@@ -364,11 +364,11 @@ ProbeFlag
   implements IEquatable<ProbeFlag>
   implements IFormattable
   implements IParsable<ProbeFlag>
+  implements IPlainValueObject<ProbeFlag, Boolean>
   implements ISpanParsable<ProbeFlag>
   implements IValue<Boolean>
   implements IValueObject<ProbeFlag, Boolean>
   implements IValueObjectMaterializer<ProbeFlag, Boolean>
-  implements IValueWrapper<ProbeFlag, Boolean>
   nested ProbeFlagJsonConverter : JsonConverter<ProbeFlag>, IStoredJsonConverterSource
   nested ProbeFlagTypeConverter : TypeConverter
   new()
@@ -407,6 +407,7 @@ ProbeId
   implements IEquatable<ProbeId>
   implements IFormattable
   implements IParsable<ProbeId>
+  implements IPlainValueObject<ProbeId, Guid>
   implements ISpanFormattable
   implements ISpanParsable<ProbeId>
   implements IUtf8SpanFormattable
@@ -414,7 +415,6 @@ ProbeId
   implements IValue<Guid>
   implements IValueObject<ProbeId, Guid>
   implements IValueObjectMaterializer<ProbeId, Guid>
-  implements IValueWrapper<ProbeId, Guid>
   nested ProbeIdJsonConverter : JsonConverter<ProbeId>, IStoredJsonConverterSource
   nested ProbeIdTypeConverter : TypeConverter
   new()
@@ -454,10 +454,10 @@ ProbeInstant
   implements IFormattable
   implements IMinMaxValue<ProbeInstant>
   implements IParsable<ProbeInstant>
+  implements IPlainValueObject<ProbeInstant, Instant>
   implements IValue<Instant>
   implements IValueObject<ProbeInstant, Instant>
   implements IValueObjectMaterializer<ProbeInstant, Instant>
-  implements IValueWrapper<ProbeInstant, Instant>
   nested ProbeInstantJsonConverter : JsonConverter<ProbeInstant>, IStoredJsonConverterSource
   nested ProbeInstantTypeConverter : TypeConverter
   new()
@@ -498,6 +498,7 @@ ProbeInternalId (internal)
   implements IFormattable
   implements IMinMaxValue<ProbeInternalId>
   implements IParsable<ProbeInternalId>
+  implements IPlainValueObject<ProbeInternalId, Int32>
   implements ISpanFormattable
   implements ISpanParsable<ProbeInternalId>
   implements IUtf8SpanFormattable
@@ -505,7 +506,6 @@ ProbeInternalId (internal)
   implements IValue<Int32>
   implements IValueObject<ProbeInternalId, Int32>
   implements IValueObjectMaterializer<ProbeInternalId, Int32>
-  implements IValueWrapper<ProbeInternalId, Int32>
   nested ProbeInternalIdJsonConverter : JsonConverter<ProbeInternalId>, IStoredJsonConverterSource
   nested ProbeInternalIdTypeConverter : TypeConverter
   new()
@@ -548,10 +548,10 @@ ProbeLabel
   implements IEquatable<ProbeLabel>
   implements IFormattable
   implements IParsable<ProbeLabel>
+  implements IPlainValueObject<ProbeLabel, String>
   implements IValue<String>
   implements IValueObject<ProbeLabel, String>
   implements IValueObjectMaterializer<ProbeLabel, String>
-  implements IValueWrapper<ProbeLabel, String>
   nested ProbeLabelJsonConverter : JsonConverter<ProbeLabel>, IStoredJsonConverterSource
   nested ProbeLabelTypeConverter : TypeConverter
   static From(String) : ProbeLabel
@@ -585,10 +585,10 @@ ProbeLocalDate
   implements IEquatable<ProbeLocalDate>
   implements IFormattable
   implements IParsable<ProbeLocalDate>
+  implements IPlainValueObject<ProbeLocalDate, LocalDate>
   implements IValue<LocalDate>
   implements IValueObject<ProbeLocalDate, LocalDate>
   implements IValueObjectMaterializer<ProbeLocalDate, LocalDate>
-  implements IValueWrapper<ProbeLocalDate, LocalDate>
   nested ProbeLocalDateJsonConverter : JsonConverter<ProbeLocalDate>, IStoredJsonConverterSource
   nested ProbeLocalDateTypeConverter : TypeConverter
   new()
@@ -626,13 +626,13 @@ ProbeMoment
   implements IFormattable
   implements IMinMaxValue<ProbeMoment>
   implements IParsable<ProbeMoment>
+  implements IPlainValueObject<ProbeMoment, DateTimeOffset>
   implements ISpanFormattable
   implements ISpanParsable<ProbeMoment>
   implements IUtf8SpanFormattable
   implements IValue<DateTimeOffset>
   implements IValueObject<ProbeMoment, DateTimeOffset>
   implements IValueObjectMaterializer<ProbeMoment, DateTimeOffset>
-  implements IValueWrapper<ProbeMoment, DateTimeOffset>
   nested ProbeMomentJsonConverter : JsonConverter<ProbeMoment>, IStoredJsonConverterSource
   nested ProbeMomentTypeConverter : TypeConverter
   new()
@@ -672,10 +672,10 @@ ProbeName
   implements IEquatable<ProbeName>
   implements IFormattable
   implements IParsable<ProbeName>
+  implements IPlainValueObject<ProbeName, String>
   implements IValue<String>
   implements IValueObject<ProbeName, String>
   implements IValueObjectMaterializer<ProbeName, String>
-  implements IValueWrapper<ProbeName, String>
   nested ProbeNameJsonConverter : JsonConverter<ProbeName>, IStoredJsonConverterSource
   nested ProbeNameTypeConverter : TypeConverter
   new()
@@ -803,13 +803,13 @@ ProbeTime
   implements IFormattable
   implements IMinMaxValue<ProbeTime>
   implements IParsable<ProbeTime>
+  implements IPlainValueObject<ProbeTime, TimeOnly>
   implements ISpanFormattable
   implements ISpanParsable<ProbeTime>
   implements IUtf8SpanFormattable
   implements IValue<TimeOnly>
   implements IValueObject<ProbeTime, TimeOnly>
   implements IValueObjectMaterializer<ProbeTime, TimeOnly>
-  implements IValueWrapper<ProbeTime, TimeOnly>
   nested ProbeTimeJsonConverter : JsonConverter<ProbeTime>, IStoredJsonConverterSource
   nested ProbeTimeTypeConverter : TypeConverter
   new()
@@ -852,13 +852,13 @@ ProbeTimestamp
   implements IFormattable
   implements IMinMaxValue<ProbeTimestamp>
   implements IParsable<ProbeTimestamp>
+  implements IPlainValueObject<ProbeTimestamp, DateTime>
   implements ISpanFormattable
   implements ISpanParsable<ProbeTimestamp>
   implements IUtf8SpanFormattable
   implements IValue<DateTime>
   implements IValueObject<ProbeTimestamp, DateTime>
   implements IValueObjectMaterializer<ProbeTimestamp, DateTime>
-  implements IValueWrapper<ProbeTimestamp, DateTime>
   nested ProbeTimestampJsonConverter : JsonConverter<ProbeTimestamp>, IStoredJsonConverterSource
   nested ProbeTimestampTypeConverter : TypeConverter
   new()
@@ -893,11 +893,11 @@ ProbeUri
   implements IEquatable<ProbeUri>
   implements IFormattable
   implements IParsable<ProbeUri>
+  implements IPlainValueObject<ProbeUri, Uri>
   implements ISpanFormattable
   implements IValue<Uri>
   implements IValueObject<ProbeUri, Uri>
   implements IValueObjectMaterializer<ProbeUri, Uri>
-  implements IValueWrapper<ProbeUri, Uri>
   nested ProbeUriJsonConverter : JsonConverter<ProbeUri>, IStoredJsonConverterSource
   nested ProbeUriTypeConverter : TypeConverter
   new()
@@ -930,11 +930,11 @@ ProbeWeekday
   implements IEquatable<ProbeWeekday>
   implements IFormattable
   implements IParsable<ProbeWeekday>
+  implements IPlainValueObject<ProbeWeekday, DayOfWeek>
   implements ISpanFormattable
   implements IValue<DayOfWeek>
   implements IValueObject<ProbeWeekday, DayOfWeek>
   implements IValueObjectMaterializer<ProbeWeekday, DayOfWeek>
-  implements IValueWrapper<ProbeWeekday, DayOfWeek>
   nested ProbeWeekdayJsonConverter : JsonConverter<ProbeWeekday>, IStoredJsonConverterSource
   nested ProbeWeekdayTypeConverter : TypeConverter
   new()

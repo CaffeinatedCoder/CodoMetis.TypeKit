@@ -44,6 +44,14 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1007", "Shop.Id")]
     [InlineData("CMTK1008", "WithOperator")]
     [InlineData("CMTK1008", "WithObjectCompareTo")]
+    [InlineData("CMTK1009", "CtorSameSignature")]
+    [InlineData("CMTK1009", "CtorBypass")]
+    [InlineData("CMTK1009", "CtorUnassignedStruct")]
+    [InlineData("CMTK1009", "CtorUnassignedClass")]
+    [InlineData("CMTK1009", "CtorParameterless")]
+    [InlineData("CMTK1009", "CtorCopy")]
+    [InlineData("CMTK1009", "PositionalStruct")]
+    [InlineData("CMTK1009", "PositionalClass")]
     public void A_declaration_that_cannot_be_generated_is_an_error(string id, string type) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains($"'{type}"), $"{id} on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
 
@@ -60,6 +68,22 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1005" && error.Message.StartsWith($"'{type}'") && error.Message.Contains(reason), $"CMTK1005 on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
 
     /// <summary>
+    /// A positional record is told that its parameter list is the constructor, since it declares
+    /// none by that name.
+    /// </summary>
+    [Theory]
+    [InlineData("CtorBypass", "the constructor CtorBypass.CtorBypass(string, int)")]
+    [InlineData("PositionalStruct", "the parameter list (Guid Value)")]
+    [InlineData("PositionalClass", "the parameter list (string Code)")]
+    public void A_hand_written_constructor_is_refused_by_name(string type, string constructor) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1009" && error.Message.StartsWith($"'{type}' declares {constructor},"), $"CMTK1009 on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
+
+    /// <summary>A static constructor makes no instance, so the value object is still generated.</summary>
+    [Fact]
+    public void A_static_constructor_is_allowed() =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains("'WithStaticConstructor'"), consumer.Output);
+
+    /// <summary>
     /// The declarations are refused with the errors above, never by an aspect that failed on them:
     /// an exception in an aspect or a compile error in the code it generated surfaces as LAMA0041 or
     /// LAMA0611, which tells the user nothing about their declaration.
@@ -67,7 +91,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009"], ignoreOrder: false, customMessage: consumer.Output);
 
     /// <summary>
     /// The <c>GetValue</c>/<c>ValueOrNull</c> companions live in a namespace-level class. Named after
@@ -185,6 +209,53 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                 public int CompareTo(object? obj) => 0;
             }
 
+            // A value object's only constructor is the generated private one. A hand-written one with
+            // its signature failed inside the generated code (LAMA0611), a positional record failed the
+            // aspect (LAMA0041), and any other compiled: it skipped Create, or left Value null, and a
+            // hand-written copy constructor did that to `with`. The bodies here touch nothing
+            // generated, because a refused type is not generated.
+            public readonly partial record struct CtorSameSignature : IValue<System.Guid>
+            {
+                public CtorSameSignature(System.Guid value) { }
+            }
+
+            public readonly partial record struct CtorBypass : IValidatedValue<CtorBypass, string, Fault>
+            {
+                public static Result<CtorBypass, Fault> Create(string value) => Result.Error(Fault.Refused);
+
+                public CtorBypass(string value, int bypass) { }
+            }
+
+            public readonly partial record struct CtorUnassignedStruct : IValue<string>
+            {
+                public CtorUnassignedStruct(int unrelated) { }
+            }
+
+            public sealed partial record CtorUnassignedClass : IValue<string>
+            {
+                public CtorUnassignedClass(int unrelated) { }
+            }
+
+            public readonly partial record struct CtorParameterless : IValue<string>
+            {
+                public CtorParameterless() { }
+            }
+
+            public sealed partial record CtorCopy : IValue<string>
+            {
+                private CtorCopy(CtorCopy original) { }
+            }
+
+            public readonly partial record struct PositionalStruct(System.Guid Value) : IValue<System.Guid>;
+
+            public sealed partial record PositionalClass(string Code) : IValue<string>;
+
+            // A static constructor makes no instance: generated as usual.
+            public readonly partial record struct WithStaticConstructor : IValue<int>
+            {
+                static WithStaticConstructor() { }
+            }
+
             // A dictionary key is read by JsonMetadataServices.{TypeName}Converter, named after the
             // wrapped type. The probes cover int and decimal; a misnamed converter for any other number
             // would fail to compile here, as LAMA0611, rather than in a consumer's build.
@@ -206,6 +277,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public static class Uses
             {
                 public static Fine Make() => default;
+
+                public static WithStaticConstructor MakeWithStaticConstructor() => WithStaticConstructor.From(1);
             }
             """;
 

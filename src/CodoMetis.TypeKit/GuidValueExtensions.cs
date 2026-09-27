@@ -1,3 +1,5 @@
+using CodoMetis.TypeKit.ValueObjects;
+
 namespace CodoMetis.TypeKit;
 
 /// <summary>Creates identifiers for value objects that wrap a <see cref="Guid"/>.</summary>
@@ -5,7 +7,7 @@ public static class GuidValueExtensions
 {
     /// <typeparam name="TSelf">The identifier type.</typeparam>
     extension<TSelf>(TSelf)
-        where TSelf : IValueObject<TSelf, Guid>, IValueWrapper<TSelf, Guid>
+        where TSelf : IValueObject<TSelf, Guid>, IPlainValueObject<TSelf, Guid>
     {
         /// <summary>Creates an identifier from a new version 7 <see cref="Guid"/>.</summary>
         /// <remarks>

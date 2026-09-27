@@ -6,8 +6,8 @@ namespace CodoMetis.TypeKit;
 
 /// <summary>
 /// The JSON converter behind <see cref="Option{T}"/>, <see cref="Result{TError}"/>,
-/// <see cref="Result{T,TError}"/> and the <c>Result.Ok</c>/<c>Result.Error</c> markers. It refuses to
-/// read or write any of them, because none of them is a wire type.
+/// <see cref="Result{T,TError}"/> and the <c>Option.None</c>, <c>Result.Success</c> and <c>Result.Error</c>
+/// markers. It refuses to read or write any of them, because none of them is a wire type.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -55,15 +55,20 @@ public sealed class NotWireTypeJsonConverterFactory : JsonConverterFactory
     public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options) => Converter;
 
     private static bool IsRefused(Type type) =>
-        type == typeof(Success) || type.IsGenericType && RefusedDefinitions.Contains(type.GetGenericTypeDefinition());
+        type == typeof(None) || type == typeof(Success) || type.IsGenericType && RefusedDefinitions.Contains(type.GetGenericTypeDefinition());
 
     /// <summary>The message for <paramref name="type"/>, naming the alternative. Never the content.</summary>
     internal static string Message(Type type)
     {
         var name = Name(type);
 
-        return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Option<>)
-            ? $"{name} is not a wire type. A serialized shape says absent with a nullable ({Name(type.GetGenericArguments()[0])}?), "
+        // The None marker is absence too, with no type argument to name.
+        var nullable = type == typeof(None) ? ""
+                     : type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Option<>) ? $" ({Name(type.GetGenericArguments()[0])}?)"
+                     : null;
+
+        return nullable is not null
+            ? $"{name} is not a wire type. A serialized shape says absent with a nullable{nullable}, "
             + "and ToOption() and OrNull() convert at the boundary. To serialize it anyway, register a converter for it on the "
             + "JsonSerializerOptions, which takes precedence over this refusal."
             : $"{name} is an outcome, not a wire type. Match it to a response or a document at the boundary. To serialize it "

@@ -191,7 +191,7 @@ cat > Program.cs <<'CSHARP'
 using CodoMetis.TypeKit;
 
 Option<int> some = Option.Some(3);
-Option<int> none = Option.None<int>();
+Option<int> none = Option.None();
 Console.WriteLine($"some={some.Match(v => $"Some {v}", () => "None")}");
 Console.WriteLine($"none={none.Match(v => $"Some {v}", () => "None")}");
 Console.WriteLine($"printed=[{Option.Some(424242)}]");
@@ -202,7 +202,7 @@ Console.WriteLine($"ok={ok.Match(v => $"Ok {v}", e => $"Error {e}")}");
 Console.WriteLine($"refused={refused.Match(v => $"Ok {v}", e => $"Error {e}")}");
 
 // The command shape the README shows: the success marker and a bare error, one conditional.
-Result<string> Cancel(bool removed) => removed ? Result.Ok() : "gone";
+Result<string> Cancel(bool removed) => removed ? Result.Success() : "gone";
 Console.WriteLine($"cancelled={Cancel(true).Match(() => "Ok", e => $"Error {e}")}/{Cancel(false).Match(() => "Ok", e => $"Error {e}")}");
 
 // An array slot is the one place a default Result still comes from: it must not pick a branch.

@@ -5,7 +5,7 @@ namespace CodoMetis.TypeKit.Generators;
 
 /// <summary>
 /// A <c>{TSelf}Extensions</c> class beside the value object with <c>GetValue()</c> and
-/// <c>ValueOrNull()</c>, both marked <c>[TranslatedAsUnderlyingValue]</c> so a query translates them
+/// <c>ValueOrNull()</c>, both marked <c>[TranslatedAsWrappedValue]</c> so a query translates them
 /// to the column itself.
 /// </summary>
 /// <remarks>
@@ -22,7 +22,7 @@ namespace CodoMetis.TypeKit.Generators;
 /// the same namespace, and one build in nine introduced a class beside a declared one.
 /// </para>
 /// </remarks>
-internal sealed class ValueObjectExtensionsAspect : TypeAspect
+internal sealed class ValueObjectCompanionAspect : TypeAspect
 {
     [Template]
     public static dynamic? GetValueExtension(dynamic? instance) => instance?.Value;
@@ -38,18 +38,18 @@ internal sealed class ValueObjectExtensionsAspect : TypeAspect
             return;
         }
 
-        var className = state.ExtensionClassName;
+        var className = state.CompanionClassName;
 
-        if (state.ExtensionClassNameOwner is { } owner)
+        if (state.CompanionClassNameOwner is { } owner)
         {
-            builder.Diagnostics.Report(AspectDiagnostics.ExtensionClassNameTaken.WithArguments((builder.Target, className, owner)));
+            builder.Diagnostics.Report(AspectDiagnostics.CompanionClassNameTaken.WithArguments((builder.Target, className, owner)));
             builder.SkipAspect();
             return;
         }
 
         var valueType = state.ValueType.GetTarget();
 
-        var extensionClass = builder.With(builder.Target.ContainingNamespace)
+        var companionClass = builder.With(builder.Target.ContainingNamespace)
                                     .IntroduceClass(
                                         className,
                                         buildType: type =>
@@ -60,7 +60,7 @@ internal sealed class ValueObjectExtensionsAspect : TypeAspect
                                             type.AddAttribute(CodeAnnotations.CompilerGenerated);
                                         });
 
-        extensionClass.IntroduceMethod(
+        companionClass.IntroduceMethod(
             nameof(GetValueExtension), IntroductionScope.Static,
             buildMethod: method =>
             {
@@ -70,11 +70,11 @@ internal sealed class ValueObjectExtensionsAspect : TypeAspect
                 method.Parameters[0].Type   = builder.Target.ToNonNullable();
                 method.Parameters[0].IsThis = true;
                 method.AddAttribute(CodeAnnotations.CompilerGenerated);
-                method.AddAttribute(CodeAnnotations.TranslatedAsUnderlyingValue);
+                method.AddAttribute(CodeAnnotations.TranslatedAsWrappedValue);
             }
         );
 
-        extensionClass.IntroduceMethod(
+        companionClass.IntroduceMethod(
             nameof(GetValueExtension), IntroductionScope.Static,
             buildMethod: method =>
             {
@@ -87,7 +87,7 @@ internal sealed class ValueObjectExtensionsAspect : TypeAspect
                 method.Parameters[0].Type   = builder.Target.ToNullable();
                 method.Parameters[0].IsThis = true;
                 method.AddAttribute(CodeAnnotations.CompilerGenerated);
-                method.AddAttribute(CodeAnnotations.TranslatedAsUnderlyingValue);
+                method.AddAttribute(CodeAnnotations.TranslatedAsWrappedValue);
             }
         );
     }

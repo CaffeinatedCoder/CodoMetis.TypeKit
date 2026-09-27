@@ -39,7 +39,7 @@ internal sealed partial class ValueObjectParsableAspect
             string wrapped = meta.CompileTime(ValueObjectTypes.SourceName(tag.ValueType));
 
             return (bool)ExpressionFactory.Parse(
-                $"(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.TryParse<{wrapped}>(s, {ParsableImplementationArguments.Provider}, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
+                $"(global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing.TryParse<{wrapped}>(s, {ParsableImplementationArguments.Provider}, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
                 TypeFactory.GetType(SpecialType.Boolean),
                 false
             ).Value!;
@@ -93,7 +93,7 @@ internal sealed partial class ValueObjectParsableAspect
         result = meta.Default(tag.ValueObjectType);
 
         return (bool)ExpressionFactory.Parse(
-            $"(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.TryParseSpan<{wrapped}>(s, {ParsableImplementationArguments.Provider}, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
+            $"(global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing.TryParseSpan<{wrapped}>(s, {ParsableImplementationArguments.Provider}, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
             TypeFactory.GetType(SpecialType.Boolean),
             false
         ).Value!;
@@ -106,7 +106,7 @@ internal sealed partial class ValueObjectParsableAspect
         string wrapped = meta.CompileTime(ValueObjectTypes.SourceName(tag.ValueType));
 
         return ExpressionFactory.Parse(
-            $"{tag.FromText}(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.ParseUtf8<{wrapped}>(utf8Text, {ParsableImplementationArguments.Provider}))",
+            $"{tag.FromText}(global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing.ParseUtf8<{wrapped}>(utf8Text, {ParsableImplementationArguments.Provider}))",
             tag.ValueObjectType,
             false
         ).Value!;
@@ -121,7 +121,7 @@ internal sealed partial class ValueObjectParsableAspect
         result = meta.Default(tag.ValueObjectType);
 
         return (bool)ExpressionFactory.Parse(
-            $"(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.TryParseUtf8<{wrapped}>(utf8Text, {ParsableImplementationArguments.Provider}, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
+            $"(global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing.TryParseUtf8<{wrapped}>(utf8Text, {ParsableImplementationArguments.Provider}, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
             TypeFactory.GetType(SpecialType.Boolean),
             false
         ).Value!;

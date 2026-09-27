@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using CodoMetis.TypeKit.ValueObjects;
 
-namespace CodoMetis.TypeKit;
+namespace CodoMetis.TypeKit.CompilerServices;
 
 /// <summary>
 /// Put on every value object by CodoMetis.TypeKit.Generators: what the value object wraps, readable
@@ -11,7 +11,7 @@ namespace CodoMetis.TypeKit;
 /// <para>
 /// Run-time code that is handed a <see cref="Type"/> (the EF Core satellite mapping a property, the
 /// OpenAPI satellite describing a schema) recognises a value object by this attribute, whose type
-/// arguments are constrained to <see cref="IValueObject{TValueObject,T}"/>: the interface decides
+/// arguments are constrained to <see cref="IValueObject{TSelf,T}"/>: the interface decides
 /// what a value object is, the attribute is how a type says so at run time. Never by a name.
 /// </para>
 /// <para>
@@ -38,7 +38,7 @@ public abstract class GeneratedValueObjectAttribute : Attribute
     public abstract Type ValueObjectType { get; }
 
     /// <summary>The type the value object wraps.</summary>
-    public abstract Type ValueType { get; }
+    public abstract Type WrappedType { get; }
 
     /// <summary>
     /// Calls <paramref name="visitor"/> with the value object and its wrapped type as type arguments:
@@ -64,7 +64,7 @@ public sealed class GeneratedValueObjectAttribute<TValueObject, T> : GeneratedVa
     public override Type ValueObjectType => typeof(TValueObject);
 
     /// <inheritdoc/>
-    public override Type ValueType => typeof(T);
+    public override Type WrappedType => typeof(T);
 
     /// <inheritdoc/>
     public override TResult Accept<TResult>(IValueObjectVisitor<TResult> visitor)

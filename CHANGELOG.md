@@ -17,7 +17,8 @@ The first release.
 ### Added
 
 - **`CodoMetis.TypeKit`**: `Option<T>`, `Result<T, TError>` and `Result<TError>`, with no public
-  `.Value` or `.Error`. A `default` `Option` is `None`; a `default` `Result` is uninitialized, and
+  `.Value` or `.Error`, and the `Option.None()`, `Result.Success(...)` and `Result.Error(...)`
+  markers that convert to whichever one a method returns. A `default` `Option` is `None`; a `default` `Result` is uninitialized, and
   every member that would pick a branch throws on it. `ToString()` never prints the content, and
   none of them serializes: System.Text.Json refuses them with `NotSupportedException` in both
   directions instead of writing `{}`, and a converter registered on the options takes precedence. The
@@ -32,7 +33,7 @@ The first release.
   JSON converter, `IParsable`/`ISpanParsable`/`IUtf8SpanParsable`, formatting in the invariant
   culture, comparison, a `TypeConverter` and `GetValue()`/`ValueOrNull()` extensions. Every
   generated way into a validated value object applies `Create`. A declaration that cannot be
-  generated is a build error naming it (CMTK1000–CMTK1008). Metalama 2026.1, and no Metalama
+  generated is a build error naming it (CMTK1000–CMTK1009). Metalama 2026.1, and no Metalama
   license is needed to build.
 - **`CodoMetis.TypeKit.EntityFrameworkCore`**: `UseTypeKit()` maps every value object to a column
   of the type it wraps, with nothing registered per type, including keys, foreign keys, nullable

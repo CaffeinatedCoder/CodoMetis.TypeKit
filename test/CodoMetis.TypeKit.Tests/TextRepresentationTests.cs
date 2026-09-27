@@ -62,13 +62,13 @@ public sealed partial class TextRepresentationTests
     }
 
     /// <summary>
-    /// The <c>Result.Ok(x)</c> and <c>Result.Error(e)</c> markers carry the content only as far as
+    /// The <c>Result.Success(x)</c> and <c>Result.Error(e)</c> markers carry the content only as far as
     /// the implicit conversion, and are just as loggable on the way.
     /// </summary>
     [Fact]
-    public void The_ok_and_error_markers_never_print_their_content()
+    public void The_success_and_error_markers_never_print_their_content()
     {
-        Result.Ok(Secret).ToString().ShouldBe("Success { }");
+        Result.Success(Secret).ToString().ShouldBe("Success { }");
         Result.Error(Secret).ToString().ShouldBe("Error { }");
     }
 

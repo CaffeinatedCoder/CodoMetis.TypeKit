@@ -1,4 +1,4 @@
-using CodoMetis.TypeKit.ValueObjects;
+using CodoMetis.TypeKit.CompilerServices;
 
 namespace CodoMetis.TypeKit.Tests;
 
@@ -17,13 +17,13 @@ public sealed class KnownGoodTests
     {
         var code = new Code();
 
-        KnownGood.OrThrow(Result<Code, Fault>.Success(code), "input").ShouldBe(code);
+        GeneratedFactories.OrInvalidOperationException(Result<Code, Fault>.Success(code), "input").ShouldBe(code);
     }
 
     [Fact]
     public void A_refusal_names_the_type_the_expression_and_the_fault()
     {
-        var exception = Should.Throw<InvalidOperationException>(() => KnownGood.OrThrow(Result<Code, Fault>.Error(Fault.TooLong), "request.Code"));
+        var exception = Should.Throw<InvalidOperationException>(() => GeneratedFactories.OrInvalidOperationException(Result<Code, Fault>.Error(Fault.TooLong), "request.Code"));
 
         exception.Message.ShouldBe("Code refused request.Code, which the call site declared known-good (TooLong).");
     }
@@ -31,7 +31,7 @@ public sealed class KnownGoodTests
     [Fact]
     public void Without_an_expression_the_message_still_names_the_type_and_the_fault()
     {
-        var exception = Should.Throw<InvalidOperationException>(() => KnownGood.OrThrow(Result<Code, Fault>.Error(Fault.TooLong), null));
+        var exception = Should.Throw<InvalidOperationException>(() => GeneratedFactories.OrInvalidOperationException(Result<Code, Fault>.Error(Fault.TooLong), null));
 
         exception.Message.ShouldBe("Code refused a value the call site declared known-good (TooLong).");
     }

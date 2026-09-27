@@ -1,4 +1,5 @@
 using System.Reflection;
+using CodoMetis.TypeKit.CompilerServices;
 using CodoMetis.TypeKit.Generators.Probes;
 using CodoMetis.TypeKit.ValueObjects;
 
@@ -30,7 +31,7 @@ public sealed class GeneratedValueObjectAttributeTests
         var attribute = valueObject.GetCustomAttribute<GeneratedValueObjectAttribute>().ShouldNotBeNull($"{valueObject} carries no [GeneratedValueObject]");
 
         attribute.ValueObjectType.ShouldBe(valueObject);
-        attribute.ValueType.ShouldBe(wrapped);
+        attribute.WrappedType.ShouldBe(wrapped);
     }
 
     [Theory]

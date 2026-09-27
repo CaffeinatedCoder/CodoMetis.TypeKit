@@ -39,7 +39,7 @@ internal sealed partial class ValueObjectComparableAspect
             // is required to avoid boxing value types through dynamic dispatch.
             // Metalama's IMethod.Invoke has no equivalent for typed instance method
             // calls through a generic interface constraint.
-            // The wrapped type is never an open generic (the implementation aspect refuses those).
+            // The wrapped type is never an open generic (ValueObjectAspect refuses those).
             string typeName = meta.CompileTime(ValueObjectTypes.SourceName(tag.ValueType));
             return (int)ExpressionFactory.Parse(
                 $"((global::System.IComparable<{typeName}>)this.Value).CompareTo(other.Value)",

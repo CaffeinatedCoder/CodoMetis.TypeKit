@@ -1,4 +1,6 @@
-namespace CodoMetis.TypeKit;
+using CodoMetis.TypeKit.CompilerServices;
+
+namespace CodoMetis.TypeKit.ValueObjects;
 
 /// <summary>
 /// A value object: a type that wraps exactly one <typeparamref name="T"/> and is equal to another
@@ -7,7 +9,7 @@ namespace CodoMetis.TypeKit;
 /// <remarks>
 /// <para>
 /// Not implemented by hand. CodoMetis.TypeKit.Generators implements it on every type that declares
-/// <see cref="ValueObjects.IValue{T}"/> or <see cref="ValueObjects.IValidatedValue{TValueObject,T,TFault}"/>.
+/// <see cref="IValue{T}"/> or <see cref="IValidatedValue{TSelf,T,TFault}"/>.
 /// </para>
 /// <para>
 /// Run-time code that holds only a <see cref="Type"/> (the EF Core and OpenAPI satellites, a host's
@@ -16,9 +18,9 @@ namespace CodoMetis.TypeKit;
 /// name or namespace, and not by <see cref="Type.GetInterfaces"/>, which trimming breaks.
 /// </para>
 /// </remarks>
-/// <typeparam name="TValueObject">The value object type itself.</typeparam>
+/// <typeparam name="TSelf">The value object type itself.</typeparam>
 /// <typeparam name="T">The type of the wrapped value.</typeparam>
-public interface IValueObject<in TValueObject, T> where TValueObject : IValueObject<TValueObject, T> where T : notnull
+public interface IValueObject<in TSelf, T> where TSelf : IValueObject<TSelf, T> where T : notnull
 {
     /// <summary>The wrapped value.</summary>
     T Value { get; }
@@ -27,11 +29,11 @@ public interface IValueObject<in TValueObject, T> where TValueObject : IValueObj
     /// <param name="left">The first value object.</param>
     /// <param name="right">The second value object.</param>
     /// <returns><see langword="true"/> if the wrapped values are equal.</returns>
-    abstract static bool operator ==(TValueObject left, TValueObject right);
+    abstract static bool operator ==(TSelf left, TSelf right);
 
     /// <summary>Whether two value objects wrap different values.</summary>
     /// <param name="left">The first value object.</param>
     /// <param name="right">The second value object.</param>
     /// <returns><see langword="true"/> if the wrapped values differ.</returns>
-    abstract static bool operator !=(TValueObject left, TValueObject right);
+    abstract static bool operator !=(TSelf left, TSelf right);
 }

@@ -55,11 +55,28 @@ public sealed class OptionTests
         Option.None<int>().Filter(_ => true).IsNone().ShouldBeTrue();
     }
 
+    /// <summary>
+    /// <c>Option.None()</c> needs no type argument wherever the target type supplies it: a return, a
+    /// conditional beside <c>Some</c>, the lambda passed to <c>Bind</c>.
+    /// </summary>
     [Fact]
-    public void Coalesce_substitutes_only_for_none()
+    public void The_none_marker_converts_to_an_empty_option_of_any_type()
     {
-        Option.Some(5).Coalesce(9).ShouldBe(5);
-        Option.None<int>().Coalesce(9).ShouldBe(9);
+        Option<string> assigned = Option.None();
+        assigned.IsNone().ShouldBeTrue();
+
+        Option<int> Conditional(bool some) => some ? Option.Some(1) : Option.None();
+        Conditional(false).IsNone().ShouldBeTrue();
+        Conditional(true).ShouldBe(Option.Some(1));
+
+        Option.Some("abc").Bind(s => s.Length > 5 ? Option.Some(s.Length) : Option.None()).IsNone().ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Or_substitutes_only_for_none()
+    {
+        Option.Some(5).Or(9).ShouldBe(5);
+        Option.None<int>().Or(9).ShouldBe(9);
     }
 
     [Fact]
