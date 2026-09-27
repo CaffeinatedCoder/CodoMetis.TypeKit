@@ -143,6 +143,9 @@ Each phase ends green, and its guards have been proven by seeding the defect
      cast `Convert` produced, which led to re-typing the column (§4).
 5. **ASP.NET Core.** §7, preceded by its own measurement spike.
 6. **Delivery.**
+   - Per-package READMEs (2026-09-27): `src/<Package>/README.md`, packed and named by
+     `PackageReadmeFile` from `src/Directory.Build.props`, so a new package cannot pack without one.
+     `PackageReadmeTests` packs every shipping project and reads the nuspec and the package.
    - Consumer smoke test script: a throwaway project outside the repo, a private
      `NUGET_PACKAGES` and package source mapping, as in the sibling repos. It also covers a
      consumer that references **only** `CodoMetis.TypeKit`, and one that reaches it only through

@@ -21,7 +21,8 @@ namespace CodoMetis.TypeKit.Conventions.Tests;
 /// dependency should say what is intended rather than lean on that.
 /// </para>
 /// </remarks>
-public sealed class AnalyzerPackagingTests(AnalyzerPackagingTests.Packs packs) : IClassFixture<AnalyzerPackagingTests.Packs>
+[Collection(PacksCollection.Name)]
+public sealed class AnalyzerPackagingTests(AnalyzerPackagingTests.Packs packs)
 {
     private const string BasePackage     = "CodoMetis.TypeKit";
     private const string AnalyzerPackage = "CodoMetis.TypeKit.Analyzers";
@@ -73,14 +74,18 @@ public sealed class AnalyzerPackagingTests(AnalyzerPackagingTests.Packs packs) :
     private static IEnumerable<XElement> Named(XDocument nuspec, string localName) =>
         nuspec.Descendants().Where(element => element.Name.LocalName == localName);
 
-    /// <summary>The two packages, packed once per test run from the current sources.</summary>
+    /// <summary>
+    /// Every shipping package, packed once per test run from the current sources and shared by the
+    /// packaging test classes through <see cref="PacksCollection"/>: two fixtures packing the same
+    /// project at once would race on its build output.
+    /// </summary>
     public sealed class Packs : IAsyncLifetime
     {
         private readonly string _output = Path.Combine(Path.GetTempPath(), $"codometis-typekit-pack-{Guid.NewGuid():N}");
 
         public async ValueTask InitializeAsync()
         {
-            foreach (var project in new[] { BasePackage, AnalyzerPackage })
+            foreach (var project in Repository.ShippingProjects())
                 await Pack(project);
         }
 
@@ -131,4 +136,11 @@ public sealed class AnalyzerPackagingTests(AnalyzerPackagingTests.Packs packs) :
             process.ExitCode.ShouldBe(0, $"dotnet pack {project} failed:{Environment.NewLine}{await output}{await errors}");
         }
     }
+}
+
+/// <summary>The one <see cref="AnalyzerPackagingTests.Packs"/> the packaging test classes share.</summary>
+[CollectionDefinition(Name)]
+public sealed class PacksCollection : ICollectionFixture<AnalyzerPackagingTests.Packs>
+{
+    public const string Name = "Packs";
 }
