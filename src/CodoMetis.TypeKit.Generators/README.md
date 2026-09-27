@@ -82,7 +82,7 @@ it, and parsed when it implements `IParsable`.
 
 | Member | For | Notes |
 |---|---|---|
-| `Value`, a private constructor, value equality | every value object | The record's equality, over the wrapped value. |
+| `Value`, a private constructor, value equality | every value object | The record's equality, over the wrapped value. Declare no constructor of your own, not even a parameter list (CMTK1009). |
 | `From(T)` | `IValue<T>` | Refuses null for a reference type. |
 | `TryFrom(T)`, `FromKnownGood(T)` | `IValidatedValue` | Both derived from your `Create`. `FromKnownGood` throws with the caller's expression in the message, never the value. Declare either yourself and it is not generated. |
 | `[JsonConverter]` with a nested converter | every value object | Reads and writes the wrapped value, also as a dictionary key. A JSON `null` is refused. |
@@ -97,7 +97,9 @@ it, and parsed when it implements `IParsable`.
 | `IValueObjectMaterializer<TSelf, T>` | every value object | Explicit, invisible on the type. Rebuilds an instance without validation, for the EF Core satellite. |
 
 Every generated way into a validated value object goes through `Create`. The only exception is the
-explicit materializer, for values the application wrote itself.
+explicit materializer, for values the application wrote itself. Inside the type, your own members can
+reach the private constructor, which applies no rules, because `Create` needs it: call it from
+`Create` only. Another way in is a static method that calls `From` or `Create`.
 
 ## JSON
 
@@ -161,6 +163,7 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1006 | A record class not declared `sealed`. |
 | CMTK1007 | The `{TSelf}Extensions` companion's name is taken by a declared type or by another value object's companion. |
 | CMTK1008 | A hand-written comparison operator or object `CompareTo` beside the generated ones. |
+| CMTK1009 | A hand-written instance constructor, including a positional record's parameter list such as `OrderId(Guid Value)`. The constructor and `Value` are generated; a static constructor is fine. |
 
 The analyzer that comes with the base package adds CMTK0001, no `default` of a value object, and
 CMTK0002, a value object in a project without this package.

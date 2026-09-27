@@ -114,6 +114,9 @@ There is one publishing path, `.github/workflows/release.yml`, run by pushing a 
 - Vulnerabilities in Metalama, EF Core, ASP.NET Core or Roslyn themselves. Report those upstream.
 - Rules you wrote in your own `Create`. The package guarantees they are applied consistently, not
   that they are sufficient.
+- Your value object's own members calling its generated private constructor, as `Create` does. Code
+  inside the type is trusted to apply its rules; a hand-written constructor is a build error
+  (CMTK1009), so every other way in is generated or goes through `From` or `Create`.
 - Anything that fails loudly: a refused value, a `FormatException`, a build error.
 - Values the application itself wrote and reads back, from a column or from a store whose options
   register `StoredJsonConverterFactory`: materialisation trusts them by contract. Registering the

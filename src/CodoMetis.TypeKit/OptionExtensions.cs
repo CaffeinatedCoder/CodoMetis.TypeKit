@@ -41,8 +41,14 @@ public static class Option
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Result<TSuccess, TError> ToResult<TSuccess, TError>(Func<T, TSuccess> onSuccess, TError error)
             where TSuccess : notnull
-            where TError : notnull =>
-            a.Match<Result<TSuccess, TError>>(x => onSuccess(x), () => Result.Error(error));
+            where TError : notnull
+        {
+            // Checked here: Match only sees the lambda around it, so a null passed on every None.
+            // The zips and SelectMany check their own delegate for the same reason, or to name it.
+            ArgumentNullException.ThrowIfNull(onSuccess);
+
+            return a.Match<Result<TSuccess, TError>>(x => onSuccess(x), () => Result.Error(error));
+        }
 
         /// <summary>Turns absence into an error, dropping the value.</summary>
         /// <param name="error">The error for <c>None</c>.</param>
@@ -65,8 +71,12 @@ public static class Option
         /// <typeparam name="TResult">The type of the chained option's value.</typeparam>
         /// <returns>The option <paramref name="map"/> returned, or <c>None</c>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Option<TResult> SelectMany<TResult>(Func<T, Option<TResult>> map) where TResult : notnull =>
-            a.Bind(map);
+        public Option<TResult> SelectMany<TResult>(Func<T, Option<TResult>> map) where TResult : notnull
+        {
+            ArgumentNullException.ThrowIfNull(map);
+
+            return a.Bind(map);
+        }
 
         /// <summary>Keeps the value only if it passes a check. Enables <c>where</c> in query syntax.</summary>
         /// <param name="check">Called with the value if there is one.</param>
@@ -84,7 +94,11 @@ public static class Option
         public Option<TResult> Zip<T2, TResult>(Option<T2> b, Func<T, T2, TResult> selector)
             where T2 : notnull
             where TResult : notnull
-            => a.Bind(x => b.Map(y => selector(x, y)));
+        {
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return a.Bind(x => b.Map(y => selector(x, y)));
+        }
 
         /// <summary>Combines three options, if all hold a value.</summary>
         /// <param name="b">The second option.</param>
@@ -99,11 +113,15 @@ public static class Option
             where T2 : notnull
             where T3 : notnull
             where TResult : notnull
-            => a.TryGetValue(out var v1) &&
-               b.TryGetValue(out var v2) &&
-               c.TryGetValue(out var v3)
-                   ? Some(selector(v1, v2, v3))
-                   : None<TResult>();
+        {
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return a.TryGetValue(out var v1) &&
+                   b.TryGetValue(out var v2) &&
+                   c.TryGetValue(out var v3)
+                       ? Some(selector(v1, v2, v3))
+                       : None<TResult>();
+        }
 
         /// <summary>Combines four options, if all hold a value.</summary>
         /// <param name="b">The second option.</param>
@@ -126,12 +144,16 @@ public static class Option
             where T3 : notnull
             where T4 : notnull
             where TResult : notnull
-            => a.TryGetValue(out var v1) &&
-               b.TryGetValue(out var v2) &&
-               c.TryGetValue(out var v3) &&
-               d.TryGetValue(out var v4)
-                   ? Some(selector(v1, v2, v3, v4))
-                   : None<TResult>();
+        {
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return a.TryGetValue(out var v1) &&
+                   b.TryGetValue(out var v2) &&
+                   c.TryGetValue(out var v3) &&
+                   d.TryGetValue(out var v4)
+                       ? Some(selector(v1, v2, v3, v4))
+                       : None<TResult>();
+        }
 
         /// <summary>Combines five options, if all hold a value.</summary>
         /// <param name="b">The second option.</param>
@@ -158,13 +180,17 @@ public static class Option
             where T4 : notnull
             where T5 : notnull
             where TResult : notnull
-            => a.TryGetValue(out var v1) &&
-               b.TryGetValue(out var v2) &&
-               c.TryGetValue(out var v3) &&
-               d.TryGetValue(out var v4) &&
-               e.TryGetValue(out var v5)
-                   ? Some(selector(v1, v2, v3, v4, v5))
-                   : None<TResult>();
+        {
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return a.TryGetValue(out var v1) &&
+                   b.TryGetValue(out var v2) &&
+                   c.TryGetValue(out var v3) &&
+                   d.TryGetValue(out var v4) &&
+                   e.TryGetValue(out var v5)
+                       ? Some(selector(v1, v2, v3, v4, v5))
+                       : None<TResult>();
+        }
 
         /// <summary>Combines six options, if all hold a value.</summary>
         /// <param name="b">The second option.</param>
@@ -195,14 +221,18 @@ public static class Option
             where T5 : notnull
             where T6 : notnull
             where TResult : notnull
-            => a.TryGetValue(out var v1) &&
-               b.TryGetValue(out var v2) &&
-               c.TryGetValue(out var v3) &&
-               d.TryGetValue(out var v4) &&
-               e.TryGetValue(out var v5) &&
-               f.TryGetValue(out var v6)
-                   ? Some(selector(v1, v2, v3, v4, v5, v6))
-                   : None<TResult>();
+        {
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return a.TryGetValue(out var v1) &&
+                   b.TryGetValue(out var v2) &&
+                   c.TryGetValue(out var v3) &&
+                   d.TryGetValue(out var v4) &&
+                   e.TryGetValue(out var v5) &&
+                   f.TryGetValue(out var v6)
+                       ? Some(selector(v1, v2, v3, v4, v5, v6))
+                       : None<TResult>();
+        }
     }
 
     /// <param name="option">The option.</param>

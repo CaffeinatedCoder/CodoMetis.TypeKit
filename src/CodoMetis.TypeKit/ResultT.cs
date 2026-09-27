@@ -162,8 +162,15 @@ public readonly record struct Result<T, TError>
     /// <typeparam name="TResult">The type of the produced value.</typeparam>
     /// <returns>What the called function returned.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public TResult Match<TResult>(Func<T, TResult> onSuccess, Func<TError, TResult> onError) =>
-        Succeeded ? onSuccess(_value!) : onError(_error!);
+    public TResult Match<TResult>(Func<T, TResult> onSuccess, Func<TError, TResult> onError)
+    {
+        // Every delegate is checked before a branch is picked, as in Option: a null for the branch
+        // not taken passed until the other outcome first arrived, typically in production.
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onError);
+
+        return Succeeded ? onSuccess(_value!) : onError(_error!);
+    }
 
     /// <summary>
     /// Produces a value from either the value or the error, where the success branch returns a
@@ -174,8 +181,13 @@ public readonly record struct Result<T, TError>
     /// <typeparam name="TResult">The type of the produced value.</typeparam>
     /// <returns>What the called function returned.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public TResult Match<TResult>(Func<T, Success<TResult>> onSuccess, Func<TError, TResult> onError) where TResult : notnull =>
-        Succeeded ? onSuccess(_value!).Value : onError(_error!);
+    public TResult Match<TResult>(Func<T, Success<TResult>> onSuccess, Func<TError, TResult> onError) where TResult : notnull
+    {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onError);
+
+        return Succeeded ? onSuccess(_value!).Value : onError(_error!);
+    }
 
     /// <summary>Produces a value from the value, or from a fallback that drops the error.</summary>
     /// <param name="fn">Called with the value on success.</param>
@@ -183,8 +195,13 @@ public readonly record struct Result<T, TError>
     /// <typeparam name="TResult">The type of the produced value.</typeparam>
     /// <returns>What the called function returned.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public TResult Match<TResult>(Func<T, TResult> fn, Func<TResult> defaultProvider) =>
-        Succeeded ? fn(_value!) : defaultProvider();
+    public TResult Match<TResult>(Func<T, TResult> fn, Func<TResult> defaultProvider)
+    {
+        ArgumentNullException.ThrowIfNull(fn);
+        ArgumentNullException.ThrowIfNull(defaultProvider);
+
+        return Succeeded ? fn(_value!) : defaultProvider();
+    }
 
     /// <summary>
     /// Collapses into a <see cref="Result{TError}"/>: the value is spent, and the error may be
@@ -196,6 +213,9 @@ public readonly record struct Result<T, TError>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
     public Result<TError> Match(Func<T, Success> onSuccess, Func<TError, TError> onError)
     {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onError);
+
         if (!Succeeded)
             return Result<TError>.Error(onError(_error!));
 
@@ -208,24 +228,36 @@ public readonly record struct Result<T, TError>
     /// <typeparam name="TResult">The type of the transformed value.</typeparam>
     /// <returns>A success with the transformed value, or this error without calling <paramref name="fn"/>.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public Result<TResult, TError> Map<TResult>(Func<T, TResult> fn) where TResult : notnull =>
-        Succeeded ? Result<TResult, TError>.Success(fn(_value!)) : Result<TResult, TError>.Error(_error!);
+    public Result<TResult, TError> Map<TResult>(Func<T, TResult> fn) where TResult : notnull
+    {
+        ArgumentNullException.ThrowIfNull(fn);
+
+        return Succeeded ? Result<TResult, TError>.Success(fn(_value!)) : Result<TResult, TError>.Error(_error!);
+    }
 
     /// <summary>Chains an operation that may itself fail.</summary>
     /// <param name="fn">Called with the value on success.</param>
     /// <typeparam name="TResult">The type of the chained result's value.</typeparam>
     /// <returns>The result <paramref name="fn"/> returned, or this error without calling it.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public Result<TResult, TError> Bind<TResult>(Func<T, Result<TResult, TError>> fn) where TResult : notnull =>
-        Succeeded ? fn(_value!) : Result<TResult, TError>.Error(_error!);
+    public Result<TResult, TError> Bind<TResult>(Func<T, Result<TResult, TError>> fn) where TResult : notnull
+    {
+        ArgumentNullException.ThrowIfNull(fn);
+
+        return Succeeded ? fn(_value!) : Result<TResult, TError>.Error(_error!);
+    }
 
     /// <summary>Chains an operation that always succeeds and returns a <c>Result.Ok(value)</c> marker.</summary>
     /// <param name="fn">Called with the value on success.</param>
     /// <typeparam name="TResult">The type of the produced value.</typeparam>
     /// <returns>A success with the marker's value, or this error without calling <paramref name="fn"/>.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public Result<TResult, TError> Bind<TResult>(Func<T, Success<TResult>> fn) where TResult : notnull =>
-        Succeeded ? Result<TResult, TError>.Success(fn(_value!).Value) : Result<TResult, TError>.Error(_error!);
+    public Result<TResult, TError> Bind<TResult>(Func<T, Success<TResult>> fn) where TResult : notnull
+    {
+        ArgumentNullException.ThrowIfNull(fn);
+
+        return Succeeded ? Result<TResult, TError>.Success(fn(_value!).Value) : Result<TResult, TError>.Error(_error!);
+    }
 
     /// <summary>Runs a side effect on the value on success.</summary>
     /// <param name="action">Called with the value on success.</param>
@@ -233,6 +265,8 @@ public readonly record struct Result<T, TError>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
     public Result<T, TError> Tap(Action<T> action)
     {
+        ArgumentNullException.ThrowIfNull(action);
+
         if (Succeeded)
             action(_value!);
 
@@ -245,6 +279,8 @@ public readonly record struct Result<T, TError>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
     public async Task<Result<T, TError>> TapAsync(Func<T, Task> action)
     {
+        ArgumentNullException.ThrowIfNull(action);
+
         if (Succeeded)
             await action(_value!).ConfigureAwait(false);
 

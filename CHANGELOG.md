@@ -32,7 +32,7 @@ The first release.
   JSON converter, `IParsable`/`ISpanParsable`/`IUtf8SpanParsable`, formatting in the invariant
   culture, comparison, a `TypeConverter` and `GetValue()`/`ValueOrNull()` extensions. Every
   generated way into a validated value object applies `Create`. A declaration that cannot be
-  generated is a build error naming it (CMTK1000–CMTK1008). Metalama 2026.1, and no Metalama
+  generated is a build error naming it (CMTK1000–CMTK1009). Metalama 2026.1, and no Metalama
   license is needed to build.
 - **`CodoMetis.TypeKit.EntityFrameworkCore`**: `UseTypeKit()` maps every value object to a column
   of the type it wraps, with nothing registered per type, including keys, foreign keys, nullable

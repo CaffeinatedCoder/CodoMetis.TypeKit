@@ -21,6 +21,12 @@ namespace CodoMetis.TypeKit.ValueObjects;
 /// which is for values the application wrote itself.
 /// </para>
 /// <para>
+/// <see cref="Create"/> builds the instance with the generated private constructor, which applies no
+/// rules. The type's own members are the only code that can reach it, so they are trusted to call it
+/// from <see cref="Create"/> alone. The type declares no constructor of its own, not even a record's
+/// parameter list (CMTK1009): another way in is a static method that calls <see cref="Create"/>.
+/// </para>
+/// <para>
 /// <b>Which factory to call.</b> <see cref="Create"/> when the caller has to tell somebody what to
 /// fix. <c>TryFrom</c> when "is it valid" is the whole question. <c>FromKnownGood</c> when the
 /// caller owns the input, such as a literal in source or a value it has just produced, so a

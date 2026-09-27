@@ -37,4 +37,7 @@ internal static class AspectDiagnostics
 
     public static readonly DiagnosticDefinition<(INamedType Type, string Members)> ComparisonMemberBesideTheSeam =
         new("CMTK1008", Severity.Error, "'{0}' declares {1}, but its comparison is generated from CompareTo({0}): declare that one to change the order, and remove the rest");
+
+    public static readonly DiagnosticDefinition<(INamedType Type, string Constructors)> HandWrittenConstructor =
+        new("CMTK1009", Severity.Error, "'{0}' declares {1}, so it is not generated: its only constructor and its Value are generated, and every way in goes through From or Create. Remove it; where another way in is needed, declare a static method that calls From or Create.");
 }

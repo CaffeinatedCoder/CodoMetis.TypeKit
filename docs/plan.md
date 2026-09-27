@@ -69,6 +69,12 @@ Each phase ends green, and its guards have been proven by seeding the defect
      `{"State":1}` and read back as `None` and uninitialized, silently. Every exported struct now
      carries `NotWireTypeJsonConverterFactory` (§9). Guard: with the attributes removed, 58 of the 62
      `NotWireTypeTests` fail, the other 4 pin the escape hatch and the absent-property gap.
+   - Found in the fifth review on 2026-09-27, and fixed: `Result` never checked its delegates, so a
+     null for the branch not taken passed until the other outcome first arrived (`Match(null, …)` on
+     every error), and `Option.ToResult` and the zips lost `Option`'s own check inside a lambda. Every
+     delegate is now checked before a branch is picked (§9). Guard: `NullDelegateTests` runs each case
+     on both branches, and its completeness test holds every delegate parameter of the assembly to a
+     case; with the checks reverted, 29 of its 42 tests fail.
 2. **Value-object contracts and analyzer. ✅ Done 2026-09-27.**
    - The contracts: `IValueObject<,>`, `IValueWrapper<,>`, `IValue<>`, `IValidatedValue<,,>`,
      `IValueObjectMaterializer<,>`, `KnownGood`, `TranslatedAsUnderlyingValueAttribute`, and
@@ -96,7 +102,7 @@ Each phase ends green, and its guards have been proven by seeding the defect
      the generators only through the probes, which is the transitive-fabric check.
    - The generated-surface snapshot (§6), `GeneratedSurface.verified.txt`.
    - Build-outcome tests: a throwaway consumer with declarations that cannot be generated gets
-     exactly CMTK1000–1008 and CMTK0001, nothing else, and no CMTK0002 beside the real generators.
+     exactly CMTK1000–1009 and CMTK0001, nothing else, and no CMTK0002 beside the real generators.
    - Guards, each proven by seeding its defect:
      - a JSON read, `Parse` or `TryParse` that bypasses `Create` fails 7, 9 and 5 entry-point
        cases; a new public factory without a case fails the completeness tests;
@@ -135,6 +141,13 @@ Each phase ends green, and its guards have been proven by seeding the defect
      defect: without the refusal 12 build-outcome tests fail (the struct cycle's LAMA0611 among
      them); reporting a cycle as plain nesting fails 4 (a self-wrap then compiles again); allowing
      nesting without a cycle fails 2.
+   - Found in the fifth review on 2026-09-27: a hand-written constructor. One with the generated
+     constructor's signature failed as LAMA0611, a positional record (`OrderId(Guid Value)`) as
+     LAMA0500 or an exception in the aspect (LAMA0041), and any other compiled without a word: it
+     skipped `Create`, left `Value` null, or, as a record's copy constructor, did that to `with`.
+     Every hand-written instance constructor is CMTK1009 now (§5). Guards, each proven by seeding its
+     defect: without the refusal 13 build-outcome tests fail, the LAMA errors among them; refusing a
+     static constructor too fails 2.
 4. **EF Core. ✅ Done 2026-09-27.**
    - The mapping spike first (spikes/EfMapping): an additive type-mapping-source plugin maps every
      value object, with keys, foreign keys, nullable properties and primitive collections, on
@@ -153,6 +166,11 @@ Each phase ends green, and its guards have been proven by seeding the defect
      fails 4 and 3; a validating `Materialize` fails the stored-row test; a stored-JSON converter
      that validates fails the stored value and key tests. The SQL snapshots first failed on the
      cast `Convert` produced, which led to re-typing the column (§4).
+   - Found in the fifth review on 2026-09-27, and fixed: the method translator took any static
+     one-argument method carrying the public `TranslatedAsUnderlyingValueAttribute` for the unwrap, so
+     a hand-marked `Length(this ProbeCode)` became `WHERE o."Code" = '3'`. It now requires the
+     unwrap's signature (§4). Guard: the hand-marked test fails without the check, and the
+     `GetValue`/`ValueOrNull` snapshots, now with a record class's `ValueOrNull`, still translate.
 5. **ASP.NET Core. ✅ Done 2026-09-27.**
    - The measurement spike first (spikes/OpenApiSchemas): a schema transformer reaches a value
      object that only ever appears as a property, which the earlier measurement had denied; container
@@ -274,7 +292,7 @@ passes in tests and breaks for the first consumer who renames something.
 |---|---|
 | Analyzer, value-object rules | `CompilationStartAction` resolves `CodoMetis.TypeKit.ValueObjects.IValue`1` / `IValidatedValue`3` with `GetTypeByMetadataName` and compares `OriginalDefinition` with `SymbolEqualityComparer`. If `CodoMetis.TypeKit` is absent, nothing is registered |
 | Analyzer, `[RequireCustomInitialization]` | The attribute symbol is resolved the same way |
-| Analyzer, CMTK0002 | The compilation references an assembly whose identity is exactly `CodoMetis.TypeKit.Generators`. That is the package's own id, which a consumer cannot rename, and a prefix or suffix match never counts |
+| Analyzer, CMTK0002 | The compilation references an assembly whose name is exactly `CodoMetis.TypeKit.Generators`, ignoring case as assembly names do. That is the package's own id, which a consumer cannot rename, and a prefix or suffix match never counts. The assembly is not strong-named, so the name is the part of its identity to compare; the version must not be |
 | EF Core | EF asks the type-mapping plugin per CLR type, and it answers for any type carrying `GeneratedValueObjectAttribute<TSelf, T>` (§4). There is no type scan and no assembly filter |
 | OpenAPI | The transformer reads `GeneratedValueObjectAttribute<,>` on the schema's `JsonTypeInfo.Type`, its element type, or a parameter's type or model metadata (§7). There is no referenced-assembly walk |
 
@@ -321,7 +339,10 @@ custom attributes.
   operand is **re-typed** as the wrapped type, keeping the column's store type, rather than cast:
   `Convert` produced `o."Code"::text = 'ABC'`, which PostgreSQL discards but which is not a no-op
   everywhere (on SQL Server, a cast to `nvarchar(max)` can stop an index seek). Any other operand
-  is still converted.
+  is still converted. The method translator acts only on a method whose signature is the unwrap,
+  from a value object (or its `Nullable`) to what it wraps: the attribute is public, and a
+  hand-marked `Length(this ProbeCode)` was translated as the column (`o."Code" = '3'`). Any other
+  method carrying it is left to EF, which refuses the call.
 - **Stored JSON (decided 2026-09-27).** The generated JSON converter applies `Create` (§5), which
   is right for input and wrong for JSON the application stored itself (an event store, a document
   column): a rule added later would make old documents unreadable. `StoredJsonConverterFactory`, in
@@ -357,7 +378,16 @@ custom attributes.
   a class, struct or enum, or one that is a value object: itself, one that reaches it again, or
   any other, see below), CMTK1006 (a record class that is not `sealed`: a derived record compares
   equal only to its own type, which is not value equality), CMTK1007 (the name of the
-  `GetValue`/`ValueOrNull` class is taken, see below).
+  `GetValue`/`ValueOrNull` class is taken, see below), CMTK1008 (a comparison member beside the
+  seam, see below), CMTK1009 (a hand-written constructor, see below).
+- **No hand-written constructor (decided 2026-09-27).** A value object's one constructor is the
+  generated private one, and a hand-written instance constructor is CMTK1009. The implementation
+  aspect answers it before introducing its own, since it reads only its target: `Constructors` minus
+  the implicitly declared ones, measured to catch every form (the generated one's signature, any
+  other, one chained to the generated one, a struct's `X()`, a record's copy constructor, a
+  positional record's parameter list) and to leave the compiler's own and a static constructor
+  alone. The type's own members can still call the private constructor, as `Create` must: that is
+  the one trusted seam into a validated value object, stated on `IValidatedValue` and in SECURITY.md.
 - **The companion class** holding `GetValue()`/`ValueOrNull()` sits at namespace level, as
   extension methods must, and is named after the whole nesting chain: `Order.Id` gets
   `OrderIdExtensions`. Named after the value object alone, `Order.Id` and `Customer.Id` both asked
@@ -606,6 +636,9 @@ LanguageExt is out.
   `notnull`, and `Success(null)`/`Error(null)`/`Result.Ok(null)`/`Result.Error(null)` throw
   `ArgumentNullException`: a result over null handed it out of `TryGetValue`/`TryGetError` despite
   `[NotNullWhen]`. `Map`, `Bind`, the collapsing `Match` and the conversions go through them.
+- **Every delegate is checked before a branch is picked**, in `Option`, both `Result` shapes and
+  their extensions: a null for the branch not taken passed until the other outcome first arrived.
+  `NullDelegateTests` holds every delegate parameter of the assembly to a case run on both branches.
 - **`Result<TError>.Match` hands the error to its error branch.** The only overload took a
   parameterless `onError`, so `TryGetError` was the only way to the error. The parameterless one
   stays, for a branch that does not need it.
@@ -709,7 +742,7 @@ exist.
 | CMTK0002 | Type implements `IValue<>`/`IValidatedValue<,,>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so it is never woven | Error | done (unshipped) |
 | CMTK0003 | `Result`/`Option` return value ignored (expression statement, including an awaited `Task<Result<…>>`; `_ =` is the explicit opt-out). CA1806 can only enforce this per method name via `additional_use_results_methods`, not per return type | Warning | proposed |
 | CMTK0004 | `IValueObjectMaterializer<,>.Materialize` or `ValueObjectConverter<,>.Materialize` called outside `CodoMetis.TypeKit.EntityFrameworkCore` and EF's generated compiled model. Enforces the validation-free-path invariant in SECURITY.md (the other sanctioned path, `StoredJsonConverterFactory`, reaches the converter's materializing mode through `IStoredJsonConverterSource`, not `Materialize`) | Error | proposed |
-| CMTK0005 | Array of a no-default type created with a length (`new OrderId[n]`, `GC.AllocateUninitializedArray`): every element starts as `default` | Warning | proposed |
+| CMTK0005 | Array or span of a no-default type created with a length (`new OrderId[n]`, `GC.AllocateUninitializedArray`, `stackalloc OrderId[n]`, which CMTK0001 does not see, measured 2026-09-27): every element starts as `default` | Warning | proposed |
 | CMTK0006 | Field or auto-property of a no-default type in a class, not `required`, no initializer, not assigned in every constructor. This is the CS8618 equivalent nullable analysis does not give structs, and the largest remaining way to get a `default` value object | Info → Warning | **measure noise first** on EF entities with private parameterless constructors |
 | CMTK0007 | `FromKnownGood` called with a non-constant argument | Info | **needs design**: "a value the caller just produced" is legitimate |
 | — | Code fixes for the aspect's shape diagnostics CMTK1000–1002 (missing `partial`/`record`/`readonly`) | — | proposed. The aspect keeps its own error as a backstop |

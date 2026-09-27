@@ -155,6 +155,21 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
             }
         }
 
+        // Before the private constructor is introduced. One with its signature failed inside the
+        // generated code (LAMA0611), and a positional record failed the aspect (LAMA0500, or LAMA0041
+        // where it threw). Any other compiled, and either skipped Create or left the field unassigned:
+        // a Value of null, or of a string Create refuses. A hand-written copy constructor did the same
+        // to `with`.
+        // The compiler's implicit constructors are the struct's parameterless one and the record
+        // class's copy constructor; a static constructor is not in this list and stays allowed.
+        var declaredConstructors = target.Constructors.Where(constructor => !constructor.IsImplicitlyDeclared).ToList();
+
+        if (declaredConstructors.Count > 0)
+        {
+            builder.Diagnostics.Report(HandWrittenConstructor.WithArguments((target, DescribeConstructors(target, declaredConstructors))));
+            return false;
+        }
+
         if (ValueObjectTypes.UnderlyingType(marker) is not INamedType namedValueType)
         {
             builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, $"the wrapped type '{ValueObjectTypes.UnderlyingType(marker).ToDisplayString()}' is not a class, struct or enum")));
@@ -183,6 +198,16 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
         valueType = namedValueType;
         return true;
     }
+
+    /// <summary>
+    /// What CMTK1009 names: a positional record's parameter list as it is written, any other
+    /// constructor by its signature.
+    /// </summary>
+    private static string DescribeConstructors(INamedType target, IReadOnlyList<IConstructor> constructors) =>
+        string.Join(", ", constructors.Select(constructor =>
+            constructor.Equals(target.PrimaryConstructor)
+                ? $"the parameter list ({string.Join(", ", constructor.Parameters.Select(parameter => $"{parameter.Type.ToDisplayString()} {parameter.Name}"))})"
+                : $"the constructor {constructor.ToDisplayString()}"));
 
     private static void HideDefaultStructConstructor(IAspectBuilder<INamedType> builder)
     {
