@@ -1,7 +1,7 @@
 using CodoMetis.TypeKit.Generators.Probes;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CodoMetis.TypeKit.EntityFrameworkCore.Tests;
@@ -99,6 +99,32 @@ public sealed class MappingTests : IDisposable
         db.Model.FindEntityType(typeof(Order))!.FindProperty(nameof(Order.Id))!.GetTypeMapping().Converter.ShouldBeOfType<ValueObjectConverter<OrderId, Guid>>();
     }
 
+    /// <summary>
+    /// A strongly-typed-id library commonly replaces EF's converter selector. The mapping is a plugin
+    /// and replaces nothing, so both work; a replaced selector of ours would have lost to it.
+    /// </summary>
+    [Fact]
+    public void UseTypeKit_coexists_with_a_library_that_replaces_the_converter_selector()
+    {
+        using var db = new TestDb(new DbContextOptionsBuilder<TestDb>()
+                                  .UseSqlite(_connection)
+                                  .UseTypeKit()
+                                  .ReplaceService<IValueConverterSelector, OtherLibrarySelector>()
+                                  .Options);
+
+        db.Model.FindEntityType(typeof(Order))!.FindProperty(nameof(Order.Id))!.GetTypeMapping().Converter.ShouldBeOfType<ValueObjectConverter<OrderId, Guid>>();
+    }
+
+    [Fact]
+    public void A_configured_column_facet_is_kept()
+    {
+        using var db = new TestDb(TestDb.NpgsqlWithoutServer());
+        var code = db.Model.FindEntityType(typeof(Order))!.FindProperty(nameof(Order.Code))!;
+
+        code.GetColumnType().ShouldBe("character varying(10)");
+        code.GetTypeMapping().Converter.ShouldBeOfType<ValueObjectConverter<ProbeCode, string>>();
+    }
+
     [Fact]
     public void An_application_that_builds_the_internal_service_provider_uses_AddEntityFrameworkTypeKit()
     {
@@ -130,4 +156,6 @@ public sealed class MappingTests : IDisposable
     }
 
     public void Dispose() => _connection.Dispose();
+
+    private sealed class OtherLibrarySelector(ValueConverterSelectorDependencies dependencies) : ValueConverterSelector(dependencies);
 }

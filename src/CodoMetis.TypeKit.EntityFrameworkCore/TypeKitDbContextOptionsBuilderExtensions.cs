@@ -18,8 +18,8 @@ public static class TypeKitDbContextOptionsBuilderExtensions
     /// (<see cref="ValueObjects.IValueObjectMaterializer{TSelf,T}"/>).
     /// </para>
     /// <para>
-    /// It replaces EF's <c>IValueConverterSelector</c>, so it does not combine with another library
-    /// that replaces that service too. The order against the database provider does not matter.
+    /// It only adds plugins, so it replaces nothing of EF's or of another library's, and the order
+    /// against the database provider does not matter.
     /// </para>
     /// </remarks>
     /// <param name="optionsBuilder">The options being configured.</param>

@@ -106,18 +106,20 @@ Each phase ends green, and its guards have been proven by seeding the defect
      `LocalDate` could not be a dictionary key; an internal value object got a public extension
      class; a marker reached through a derived interface would not have been generated.
 4. **EF Core. ✅ Done 2026-09-27.**
-   - The mapping spike first (spikes/EfMapping): a custom `IValueConverterSelector` maps every
+   - The mapping spike first (spikes/EfMapping): an additive type-mapping-source plugin maps every
      value object, with keys, foreign keys, nullable properties and primitive collections, on
-     SQLite and PostgreSQL, whatever the registration order (decision 9).
-   - `CodoMetis.TypeKit.EntityFrameworkCore`: `ValueObjectConverter<TSelf, T>`, the selector, the
+     SQLite and PostgreSQL, whatever the registration order, and beside a library that replaces
+     EF's converter selector (decision 9).
+   - `CodoMetis.TypeKit.EntityFrameworkCore`: `ValueObjectConverter<TSelf, T>`, the plugin, the
      `.Value`/`GetValue()`/`ValueOrNull()` translators, `UseTypeKit()`, and
      `AddEntityFrameworkTypeKit()` for an application that builds EF's internal service provider.
    - Stored JSON (§4): `StoredJsonConverterFactory` in the base package (decision 10).
    - Tests: the model on SQLite, SQL snapshots on PostgreSQL via `ToQueryString`, the default
      comparer against `.Value`, and one Testcontainers PostgreSQL round trip covering every
      wrapped-type family, stored values the rules refuse, and the translated queries.
-   - Guards, each proven by seeding its defect: a selector that stops recognising value objects
-     fails 31 of 32 EF tests (all but the control); losing the member or the method translator
+   - Guards, each proven by seeding its defect: a plugin that stops recognising value objects
+     fails 33 of 34 EF tests (all but the control), one that drops the column facets fails the
+     facet test; losing the member or the method translator
      fails 4 and 3; a validating `Materialize` fails the stored-row test; a stored-JSON converter
      that validates fails the stored value and key tests. The SQL snapshots first failed on the
      cast `Convert` produced, which led to re-typing the column (§4).
@@ -140,7 +142,7 @@ passes in tests and breaks for the first consumer who renames something.
 | Analyzer, value-object rules | `CompilationStartAction` resolves `CodoMetis.TypeKit.ValueObjects.IValue`1` / `IValidatedValue`3` with `GetTypeByMetadataName` and compares `OriginalDefinition` with `SymbolEqualityComparer`. If `CodoMetis.TypeKit` is absent, nothing is registered |
 | Analyzer, `[RequireCustomInitialization]` | The attribute symbol is resolved the same way |
 | Analyzer, CMTK0002 | The compilation references an assembly whose identity is exactly `CodoMetis.TypeKit.Generators`. That is the package's own id, which a consumer cannot rename, and a prefix or suffix match never counts |
-| EF Core | EF asks the replaced `IValueConverterSelector` per CLR type, and it answers for any type implementing `IValueObject<TSelf, T>` (§4). There is no type scan and no assembly filter |
+| EF Core | EF asks the type-mapping plugin per CLR type, and it answers for any type implementing `IValueObject<TSelf, T>` (§4). There is no type scan and no assembly filter |
 | OpenAPI | The transformer decides per `JsonTypeInfo.Type` whether it implements `IValueObject<,>` (§7). There is no referenced-assembly walk |
 
 ## 4. EF Core
@@ -158,14 +160,15 @@ passes in tests and breaks for the first consumer who renames something.
   comparer uses it. A test pins that it agrees with comparing `.Value`.
 - **Application (decided 2026-09-27, spikes/EfMapping).** `optionsBuilder.UseTypeKit()` registers
   an options extension. The name is deliberately not value-object specific, so a later `Option<T>`
-  column mapping can join it. It replaces EF's `IValueConverterSelector` with one that answers
-  "an `IValueObject<TSelf, T>` converts to `T`", which EF consults per CLR type wherever it maps
-  one: property discovery, keys, foreign keys, primitive-collection elements, query parameters.
-  - Not a type-mapping-source plugin: it would have to produce the provider's mapping for the
-    wrapped type itself, which it cannot reach without a dependency cycle.
+  column mapping can join it. It adds an `IRelationalTypeMappingSourcePlugin` that answers any
+  `IValueObject<TSelf, T>` with the provider's mapping for `T` and the converter composed onto it.
+  EF consults it per CLR type wherever it maps one: property discovery, keys, foreign keys,
+  primitive-collection elements, query parameters. The lookup's facets are passed on.
+  - Not a replaced `IValueConverterSelector`: it maps the same, but a second library replacing the
+    selector (as strongly-typed-id guides recommend) would take it away, and the resulting model
+    error does not name the cause. Plugins are additive. This was first decided the other way on
+    an unmeasured assumption, and reversed by the spike the same day.
   - Not a pre-convention: `Properties<T>()` needs the list of types up front, which means a scan.
-  - The replacement does not combine with another library that replaces the selector too; the
-    loser's types stop mapping, which is the model error EF raises without any mechanism.
   - An application that builds EF's internal service provider calls
     `AddEntityFrameworkTypeKit()` on that service collection instead.
 - **Translators.** `ValueObjectMemberTranslatorPlugin` / `ValueObjectMethodCallTranslatorPlugin`
@@ -279,8 +282,8 @@ Vogen and Thinktecture document Swashbuckle only (checked 2026-09-27), so suppor
 7. **Analyzer as its own package** (2026-09-27), reaching consumers through the base package (§10).
 8. **An uninitialized `Result` throws** (2026-09-27) instead of reporting `default(TError)` (§9).
 
-9. **EF mapping through `IValueConverterSelector`** (2026-09-27), not a type-mapping-source plugin
-   or a pre-convention scan (§4, spikes/EfMapping).
+9. **EF mapping through an additive `IRelationalTypeMappingSourcePlugin`** (2026-09-27), not a
+   replaced `IValueConverterSelector` or a pre-convention scan (§4, spikes/EfMapping).
 10. **Stored JSON through `StoredJsonConverterFactory`** in the base package (2026-09-27, §4).
 
 Still open:

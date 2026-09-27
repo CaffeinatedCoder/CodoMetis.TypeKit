@@ -78,6 +78,10 @@ public sealed class TestDb(DbContextOptions<TestDb> options) : DbContext(options
 
     public DbSet<Customer> Customers => Set<Customer>();
 
+    /// <summary>One configured facet, which the value-object mapping must keep.</summary>
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<Order>().Property(order => order.Code).HasMaxLength(10);
+
     public static DbContextOptions<TestDb> Sqlite(Microsoft.Data.Sqlite.SqliteConnection connection) =>
         new DbContextOptionsBuilder<TestDb>().UseSqlite(connection).UseTypeKit().Options;
 

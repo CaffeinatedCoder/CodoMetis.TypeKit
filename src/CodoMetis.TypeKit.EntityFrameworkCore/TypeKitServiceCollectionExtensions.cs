@@ -1,8 +1,7 @@
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Query;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace CodoMetis.TypeKit.EntityFrameworkCore;
 
@@ -20,13 +19,12 @@ public static class TypeKitServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(serviceCollection);
 
+        // All three are plugins, which EF collects from every registration: nothing of EF's or of
+        // another library's is replaced.
         new EntityFrameworkRelationalServicesBuilder(serviceCollection)
+            .TryAdd<IRelationalTypeMappingSourcePlugin, ValueObjectTypeMappingSourcePlugin>()
             .TryAdd<IMemberTranslatorPlugin, ValueObjectMemberTranslatorPlugin>()
             .TryAdd<IMethodCallTranslatorPlugin, ValueObjectMethodCallTranslatorPlugin>();
-
-        // Replace, not TryAdd: before the provider's services are added this registers the selector
-        // first, and their TryAdd then keeps it; after them it swaps out EF's default.
-        serviceCollection.Replace(ServiceDescriptor.Singleton<IValueConverterSelector, ValueObjectConverterSelector>());
 
         return serviceCollection;
     }

@@ -21,6 +21,10 @@ foreach (var (provider, configure) in new (string, Action<DbContextOptionsBuilde
                  ("selector, registered after the provider", (o, p) => { p(o); return o.ReplaceService<IValueConverterSelector, ValueObjectConverterSelector>(); }),
                  ("selector, registered before the provider", (o, p) => { o.ReplaceService<IValueConverterSelector, ValueObjectConverterSelector>(); p(o); return o; }),
                  ("none (control)", (o, p) => { p(o); return o; }),
+                 ("selector, then another library's selector", (o, p) => { p(o); o.ReplaceService<IValueConverterSelector, ValueObjectConverterSelector>(); return o.ReplaceService<IValueConverterSelector, OtherLibrarySelector>(); }),
+                 ("another library's selector, then the selector", (o, p) => { p(o); o.ReplaceService<IValueConverterSelector, OtherLibrarySelector>(); return o.ReplaceService<IValueConverterSelector, ValueObjectConverterSelector>(); }),
+                 ("plugin", (o, p) => { p(o); ((Microsoft.EntityFrameworkCore.Infrastructure.IDbContextOptionsBuilderInfrastructure)o).AddOrUpdateExtension(new PluginExtension()); return o; }),
+                 ("plugin, beside another library's selector", (o, p) => { p(o); ((Microsoft.EntityFrameworkCore.Infrastructure.IDbContextOptionsBuilderInfrastructure)o).AddOrUpdateExtension(new PluginExtension()); return o.ReplaceService<IValueConverterSelector, OtherLibrarySelector>(); }),
              })
     {
         var options = (DbContextOptions<Db>)apply(new DbContextOptionsBuilder<Db>(), configure).Options;
@@ -122,4 +126,25 @@ public sealed class Db(DbContextOptions<Db> options) : DbContext(options)
 {
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Customer> Customers => Set<Customer>();
+}
+
+/// <summary>Registers the plugin the way the package's options extension would.</summary>
+public sealed class PluginExtension : Microsoft.EntityFrameworkCore.Infrastructure.IDbContextOptionsExtension
+{
+    public Microsoft.EntityFrameworkCore.Infrastructure.DbContextOptionsExtensionInfo Info => new PluginInfo(this);
+
+    public void ApplyServices(Microsoft.Extensions.DependencyInjection.IServiceCollection services) =>
+        new Microsoft.EntityFrameworkCore.Infrastructure.EntityFrameworkRelationalServicesBuilder(services)
+            .TryAdd<Microsoft.EntityFrameworkCore.Storage.IRelationalTypeMappingSourcePlugin, ValueObjectTypeMappingSourcePlugin>();
+
+    public void Validate(Microsoft.EntityFrameworkCore.Infrastructure.IDbContextOptions options) { }
+
+    private sealed class PluginInfo(Microsoft.EntityFrameworkCore.Infrastructure.IDbContextOptionsExtension e) : Microsoft.EntityFrameworkCore.Infrastructure.DbContextOptionsExtensionInfo(e)
+    {
+        public override bool IsDatabaseProvider => false;
+        public override string LogFragment => "plugin ";
+        public override int GetServiceProviderHashCode() => 0;
+        public override bool ShouldUseSameServiceProvider(Microsoft.EntityFrameworkCore.Infrastructure.DbContextOptionsExtensionInfo other) => other is PluginInfo;
+        public override void PopulateDebugInfo(IDictionary<string, string> debugInfo) => debugInfo["plugin"] = "1";
+    }
 }
