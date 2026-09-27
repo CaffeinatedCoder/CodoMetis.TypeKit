@@ -53,7 +53,7 @@ public interface IProbeIdentifier : IValue<Guid>;
 public readonly partial record struct ProbeCustomerId : IProbeIdentifier;
 
 /// <summary>Nested inside another type.</summary>
-public static class ProbeContainer
+public static partial class ProbeContainer
 {
     public readonly partial record struct NestedId : IValue<int>;
 }

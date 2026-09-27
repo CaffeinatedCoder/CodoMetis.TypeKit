@@ -19,6 +19,8 @@ That is the whole declaration. The generators add the field, the constructor, `V
 factories, value equality, a JSON converter, `IParsable`, `IFormattable`, `IComparable`, a
 `TypeConverter` and the companions that make `.Value` work inside an EF Core query. Every way into
 `Email`, whether JSON, a route parameter or a call to `TryFrom`, applies the one `Create` you wrote.
+A value object can wrap a primitive, a `Guid`, a date, an enum, a `Uri`, a NodaTime type or a type of
+your own, and it can be declared inside another type.
 
 ## Packages
 
@@ -31,7 +33,9 @@ factories, value equality, a JSON converter, `IParsable`, `IFormattable`, `IComp
 | [CodoMetis.TypeKit.AspNetCore](src/CodoMetis.TypeKit.AspNetCore/README.md) | Value objects in the OpenAPI document, with the schema of the type they wrap | no |
 
 The base package is the cheapest one: someone who only wants `Option` and `Result` never receives a
-code generator by accident. Taking Metalama on is a named choice, made once, in the domain project.
+code generator by accident. Taking Metalama on is a named choice, made once, in the domain project,
+and it needs no Metalama license key: the generators build on Metalama's Open Source edition, in this
+repository and in yours.
 The EF Core and ASP.NET Core packages work at run time against the interfaces, so a host that maps
 value objects from a referenced domain assembly needs no generator itself.
 
@@ -90,13 +94,25 @@ services.AddOpenApi(options => options.AddTypeKit());                    // Orde
   and the combinators, so absence and failure are handled where the value is used. A `default`
   `Option` is `None`; a `default` `Result` is uninitialized and every branching member throws on
   it rather than inventing a `default(TError)`. `ToString()` never prints the content.
+- **Not wire types.** Serializing an `Option` or a `Result` with System.Text.Json throws
+  `NotSupportedException`, in both directions, instead of writing `{}` that reads back as `None`. A
+  serialized shape says absent with a nullable, `ToOption()` and `OrNull()` convert at the boundary,
+  and a converter you register on the options takes precedence if you want a wire format of your own.
 - **One rule set per validated value object.** `Create` is the only factory written by hand, and
   the generated `TryFrom`, `FromKnownGood`, JSON converter, parsing and type converter all apply
-  it. The two validation-free paths, reading a database column and reading JSON the application
-  stored itself, are explicit, named, and unreachable from input.
+  it. The fault you return from `Create` is what each of them reports: the JSON 400, the
+  `FormatException` and the `FromKnownGood` exception all name your `EmailFault.NoAt`. The two
+  validation-free paths, reading a database column and reading JSON the application stored itself,
+  are explicit, named, and unreachable from input.
+- **No factory throws on input by accident.** A validated value object has no `From`. Its ways in
+  are `Create`, which returns a `Result`, `TryFrom`, which returns an `Option`, and `FromKnownGood`,
+  whose name says the caller vouches for the value and whose exception blames the call site.
+- **A refusal never echoes the input.** A JSON or parsing refusal names the type and the rule,
+  `FromKnownGood` names the caller's expression, and `Option` and `Result` print nothing, so a value
+  that is a secret cannot reach a message or a log through this package.
 - **Loud failures.** A declaration that cannot be generated is a build error naming the
   declaration, CMTK1000 to CMTK1008, never a type with nothing in it. The analyzers make `default`
-  of a value object an error.
+  of a value object, an `Option` or a `Result` an error.
 - **Discovery by interface.** The EF Core and OpenAPI satellites recognise a value object by
   `IValueObject<,>`, never by a name, a namespace or an assembly prefix.
 

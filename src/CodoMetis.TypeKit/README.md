@@ -90,6 +90,31 @@ Option<Order> maybe = placed.ToOption();
 `InvalidOperationException` on it rather than inventing a `default(TError)`. `ToString()` never
 prints the value or the error.
 
+## Not wire types
+
+Neither `Option` nor `Result` serializes. System.Text.Json refuses both, in both directions, with a
+`NotSupportedException` that names the type and the alternative:
+
+```csharp
+JsonSerializer.Serialize(new OrderDto(Option.Some(customer)));
+// NotSupportedException: Option<Customer> is not a wire type. A serialized shape says absent with a
+// nullable (Customer?), and ToOption() and OrNull() convert at the boundary. ...
+```
+
+Without the refusal the serializer would see no public members, write `{}` for a `Some` and read it
+back as `None`, with nothing raised and the missing data as the only evidence; a `Result` would write
+its `State` and read back uninitialized. So a request, a response, a stored document or an event
+payload says absent with `T?`, and the option lives between them: `dto.Nickname.ToOption()` on the
+way in, `nickname.OrNull()` on the way out. A result is matched to a response or a document; it has
+no wire shape of its own. The `Result.Ok(...)`/`Result.Error(...)` markers refuse too, so an endpoint
+that returns one fails on its first call rather than answering `{}`.
+
+Two things to know. A converter registered on the `JsonSerializerOptions` takes precedence over
+the refusal, so an application that wants `Option<T>` on the wire writes one and registers it there,
+on those options only. And a property that is absent from a document reaches no converter at all: the
+serializer leaves it `default`, a `None` or an uninitialized result. Where absence must be an error
+too, mark the property `required` or set `RespectRequiredConstructorParameters` on the options.
+
 ## Value objects
 
 A value object wraps exactly one value and is equal to another when the wrapped values are equal.
@@ -133,6 +158,29 @@ Which factory to call: `Create` when the caller has to say what to fix, `TryFrom
 valid" is the whole question, `FromKnownGood` for a literal in source or a value the caller has just
 produced, `From` when there are no rules. `OrderId.New()` creates an identifier from a version 7 `Guid`;
 it is an extension in the `CodoMetis.TypeKit` namespace, so the calling file imports that.
+
+A validated value object has no `From`, so nothing that looks harmless throws on input. The one
+throwing factory is `FromKnownGood`, whose name says the caller vouches for the value and whose
+exception names the call site's expression, never the value. And the fault `Create` returns is what
+every refusal reports: `FromKnownGood`'s exception carries it, and the generated JSON converter and
+parsing name it in their `JsonException` and `FormatException`. A refusal, wherever it happens,
+names the type and the rule and never the input, which can be a secret.
+
+**Generic code over value objects.** The contracts are static abstract, so a method constrained on
+them works for every value object, and the generated types implement `IEqualityOperators`,
+`IComparisonOperators` and `IMinMaxValue` where the wrapped type allows, so they satisfy generic-math
+constraints too. `OrderId.New()` is such a method: one extension for every `Guid`-wrapping value
+object, not a member generated per type.
+
+```csharp
+static Option<TSelf> Read<TSelf, TFault>(string field)
+    where TSelf : IValidatedValue<TSelf, string, TFault>
+    where TFault : notnull =>
+    TSelf.Create(field).ToOption();
+
+static TId NewId<TId>() where TId : IValueObject<TId, Guid>, IValueWrapper<TId, Guid> =>
+    TId.From(Guid.CreateVersion7());
+```
 
 **Stored JSON.** The generated JSON converter applies `Create`, which is right for input and wrong
 for documents the application stored before a rule existed. Register `StoredJsonConverterFactory`

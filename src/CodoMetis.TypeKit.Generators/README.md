@@ -12,7 +12,8 @@ dotnet add package CodoMetis.TypeKit.Generators
 Reference it in the project that declares value objects. Projects that reference that one, directly
 or further down, inherit the generators without referencing the package themselves.
 `Metalama.Framework` flows with it, because the fabric that applies the aspects runs in every one of
-those projects.
+those projects. No Metalama license key is needed, there or here: the generators build on Metalama's
+Open Source edition.
 
 ## Declaring a value object
 
@@ -45,6 +46,16 @@ A value object is a `readonly partial record struct`, or a `sealed partial recor
 has to be a reference type. `IValue<T>` wraps any `T`; `IValidatedValue<TSelf, T, TFault>` adds
 `Create`, the one method you write, and every generated way in applies it.
 
+A validated value object has no `From`. Its ways in are `Create`, `TryFrom` and `FromKnownGood`, so
+nothing that looks harmless throws on input: the one factory that throws says in its name that the
+caller vouches for the value, and its exception names the call site, never the value. The fault
+`Create` returns is what every refusal reports, in that exception, in the JSON converter's
+`JsonException` and in `Parse`'s `FormatException`.
+
+A value object may be declared inside another type. `Order.Id` is generated like any other, and its
+companion class is `OrderIdExtensions`, named after the whole nesting chain so that `Order.Id` and
+`Customer.Id` do not collide.
+
 ```csharp
 var id = OrderId.New();                          // a version 7 Guid
 var quantity = Quantity.From(3);
@@ -58,6 +69,15 @@ quantity == Quantity.From(3);                    // true, value equality
 quantity.ToString();                             // "3"
 ```
 
+## What can be wrapped
+
+Any class, struct or enum, with the exceptions CMTK1005 lists. The generated members follow what the
+wrapped type offers. Numbers, `bool`, `char`, `string`, `Guid`, `decimal`, `DateTime`,
+`DateTimeOffset`, `DateOnly`, `TimeOnly`, enums, `Uri` and the NodaTime types get JSON, parsing,
+formatting and comparison in full; an enum parses by name and is written as the host's JSON options
+write the enum itself. Anything else is written and read through the serializer's own converter for
+it, and parsed when it implements `IParsable`.
+
 ## What is generated
 
 | Member | For | Notes |
@@ -68,8 +88,9 @@ quantity.ToString();                             // "3"
 | `[JsonConverter]` with a nested converter | every value object | Reads and writes the wrapped value, also as a dictionary key. A JSON `null` is refused. |
 | `IParsable`, `ISpanParsable`, `IUtf8SpanParsable` | when the wrapped type has them | Enums parse by name. A `Uri` parses through its constructor, a NodaTime type through its type converter. |
 | `IFormattable`, `ISpanFormattable`, `IUtf8SpanFormattable`, `ToString()` | when the wrapped type has them | `ToString()` is invariant. |
-| `IComparable<TSelf>`, `IComparable`, `<` `>` `<=` `>=` | when the wrapped type is comparable | Strings compare ordinally, so ordering agrees with equality. |
-| `MinValue`, `MaxValue` | `IValue<T>` over a type that has them | Never for a validated value object. |
+| `IEqualityOperators<TSelf, TSelf, bool>` | every value object | The generic-math form of `==`/`!=`, so a value object satisfies that constraint. |
+| `IComparable<TSelf>`, `IComparable`, `IComparisonOperators<TSelf, TSelf, bool>`, `<` `>` `<=` `>=` | when the wrapped type is comparable | Strings compare ordinally, so ordering agrees with equality. |
+| `MinValue`, `MaxValue`, `IMinMaxValue<TSelf>` | `IValue<T>` over a type that has them | Never for a validated value object. |
 | `[TypeConverter]` with a nested converter | when parsing is generated | Model binding and configuration binding work. |
 | `IConvertible` | when the wrapped type is convertible | Explicit, so `Convert.ToInt64(quantity)` works. |
 | `{TSelf}Extensions.GetValue()` and `ValueOrNull()` | every value object | For EF Core queries, where they translate to the column. |
@@ -129,7 +150,7 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1002 | A struct not declared `readonly`. |
 | CMTK1003 | More than one marker, such as `IValue<int>, IValue<string>`. |
 | CMTK1004 | An `IValidatedValue<TSelf, …>` whose `TSelf` is another type. |
-| CMTK1005 | Generic, nested in a generic type, derived from another value object, or wrapping an array, a pointer or a nullable type. |
+| CMTK1005 | Generic or nested in a generic type (nesting in a non-generic type is fine), derived from another value object, or wrapping an array, a pointer or a nullable type. |
 | CMTK1006 | A record class not declared `sealed`. |
 | CMTK1007 | The `{TSelf}Extensions` companion's name is taken by a declared type or by another value object's companion. |
 | CMTK1008 | A hand-written comparison operator or object `CompareTo` beside the generated ones. |
