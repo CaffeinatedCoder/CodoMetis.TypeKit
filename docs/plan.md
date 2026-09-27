@@ -1,7 +1,8 @@
 # Plan: CodoMetis.TypeKit
 
-Status: **in progress, 2026-09-27.** Phases 0 to 5 are done. The decisions are in §8. The fabric
-spike ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation comparison
+Status: **in progress, 2026-09-27.** Phases 0 to 6 are done; 0.1.0 waits on the repository going
+public. The decisions are in §8. The fabric spike
+([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation comparison
 ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)), the EF mapping spike
 ([spikes/EfMapping](../spikes/EfMapping/README.md)) and the OpenAPI spike
 ([spikes/OpenApiSchemas](../spikes/OpenApiSchemas/README.md)) are done.
@@ -168,16 +169,52 @@ Each phase ends green, and its guards have been proven by seeding the defect
      keyword tests compare the written schema, not the getters.
    - Found in the spike and documented, not fixed: ASP0020 (an error) for a minimal-API route
      parameter whose value object is declared in the same project (decision 12).
-6. **Delivery.**
-   - Per-package READMEs (2026-09-27): `src/<Package>/README.md`, packed and named by
-     `PackageReadmeFile` from `src/Directory.Build.props`, so a new package cannot pack without one.
-     `PackageReadmeTests` packs every shipping project and reads the nuspec and the package.
-   - Consumer smoke test script: a throwaway project outside the repo, a private
-     `NUGET_PACKAGES` and package source mapping, as in the sibling repos. It also covers a
-     consumer that references **only** `CodoMetis.TypeKit`, and one that reaches it only through
-     another project, and asserts CMTK0001 fires in both (§10).
-   - Release workflow with Trusted Publishing, and SBOMs.
-   - An **unlicensed-runner build**, which settles fabric spike finding 9.
+6. **Delivery. ✅ Done 2026-09-27**, up to the first tag, which needs the GitHub repository and the
+   nuget.org policy (release.yml, "Setup, once").
+   - Per-package READMEs: `src/<Package>/README.md`, packed and named by `PackageReadmeFile` from
+     `src/Directory.Build.props`, so a new package cannot pack without one. `PackageReadmeTests`
+     packs every shipping project and reads the nuspec and the package.
+   - `test/consumer-smoke-test.sh [feed]`: packs the five packages (or takes a packed feed) and
+     builds three consumers outside the repository, with a private `NUGET_PACKAGES`, package source
+     mapping and the repository's `global.json`. `core` references only `CodoMetis.TypeKit`: Option
+     and Result work, no Metalama arrives, CMTK0001 and CMTK0002 fire. `layered`: a domain library
+     on the generators and an app that reaches them only through it; the app uses the generated
+     members, the transitive fabric generates a value object the app declares, and CMTK0001 fires in
+     the app with no CMTK0002. `host`: both satellites in a running web host; the OpenAPI document,
+     route binding, EF mapping, a round trip and the `.Value` SQL. It asserts on output, diagnostics
+     and the resolved package graph, never on an exit code alone.
+   - CI (`dotnet.yml`): test, then a pack job (smoke test against the packed feed, SBOMs) and a
+     smoke-test job that packs its own feed, the two modes a sibling repository found not to be
+     interchangeable.
+   - `release.yml`: on a `v*` tag, verify (tag against `Version`, the changelog dates the version,
+     full suite, pack, smoke test against the packed feed, one CycloneDX SBOM per package), then
+     publish through Trusted Publishing behind the `nuget` environment's approval, then a GitHub
+     release with the changelog section as notes and the SBOMs attached. Only the publish job can
+     mint a token, and it cannot write to the repository. `CHANGELOG.md` and a release checklist in
+     CONTRIBUTING.md.
+   - SBOMs exclude the analyzer's `PrivateAssets=all` Roslyn references: unfiltered, the analyzer's
+     SBOM listed 13 components for a nuspec that declares none (measured with CycloneDX 6.2.0).
+   - The unlicensed build: fabric spike finding 9 confirmed in a clean container, no license file
+     and no variable, the whole solution in Release and all 254 generator tests green.
+   - Guards, each proven by seeding its defect: the smoke test fails when the base package loses its
+     analyzer dependency (and the `default(Option<int>)` build then succeeds) and when `AddTypeKit()`
+     does nothing (three OpenAPI assertions); a generators package without its assembly fails at
+     pack (NU5128), and a non-flowing Metalama in the repository's own build.
+     `ReleaseWiringTests`, `ChangelogTests` and `PackageDependencyTests` (17 seeds, each failing its
+     test): a renamed workflow or environment, a token in the verify job, repository write in the
+     publish job, a dropped tag or changelog check, either smoke-test mode dropped, a non-executable
+     script, a narrowed SBOM filter, an unpinned tool, a second publishing path, a malformed or
+     missing changelog section, a dated version with unshipped rules, a satellite without the base
+     package, a satellite depending on the generators.
+   - Found by the clean container: the build-outcome tests built their consumer in Debug whatever the
+     run's configuration, so CI's Release run would have failed 17 of them; the consumer now builds
+     in the test assembly's own configuration.
+   - Found by the smoke test: every README returned a bare fault from a method typed
+     `Result<T, TError>`, which does not compile (§9); and a host that has
+     `Microsoft.AspNetCore.OpenApi` only through the satellite fails with CS9137, because that
+     package enables its generator's interceptors in `build/`, which NuGet imports for a direct
+     reference only. The satellite README says to reference it, as the `webapi` template does; a copy
+     of Microsoft's switch in our own `buildTransitive` would drift from theirs.
 
 ## 3. Discovery is by interface
 
@@ -452,6 +489,10 @@ LanguageExt is out.
   `Success { }` and `Error { }`. Only the implicit conversions read it. Both shapes accept both
   markers: `Result<TError>` converts from `Result.Error(e)` as well as from a bare error, so a
   method can `return Result.Error(fault);` whichever shape it returns.
+- **`Result<T, TError>` converts from a bare value, never from a bare error** (measured
+  2026-09-27). With both conversions, `Result<long, int> r = 5;` compiles and is an **error**:
+  `int` is the more specific source type, so C# picks the error conversion. The READMEs had shown
+  `return Fault.X;` in valued methods, which does not compile; the consumer smoke test found it.
 - **`Option.Some(null)` throws.** `notnull` is an annotation the runtime does not enforce, and a
   `Some` over null reported a value it could not hand out. `Map` and the zips go through `Some`,
   so a selector that returns null throws too.

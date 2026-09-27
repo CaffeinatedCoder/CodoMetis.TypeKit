@@ -5,6 +5,7 @@ value objects: in the OpenAPI document produced by `Microsoft.AspNetCore.OpenApi
 object has the schema of the type it wraps, wherever it appears.
 
 ```bash
+dotnet add package Microsoft.AspNetCore.OpenApi     # AddOpenApi itself; the webapi template has it already
 dotnet add package CodoMetis.TypeKit.AspNetCore
 ```
 
@@ -20,6 +21,10 @@ builder.Services.AddOpenApi(options => options.AddTypeKit());
 
 `AddTypeKit()` adds one schema transformer. Nothing is registered per type and no assembly is
 scanned, and its position among the document's other transformers does not matter.
+
+The host references `Microsoft.AspNetCore.OpenApi` directly. This package depends on it, but its
+source generator's switch is imported for a direct reference only, and a host that has the package
+only through this one fails with CS9137 ("the feature 'Interceptors' is not enabled").
 
 ## What the document says
 

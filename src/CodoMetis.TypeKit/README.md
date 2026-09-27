@@ -55,14 +55,19 @@ public enum OrderFault { Empty, CustomerUnknown }
 public Result<Order, OrderFault> Place(CustomerId customer, IReadOnlyList<Line> lines)
 {
     if (lines.Count == 0) return Result.Error(OrderFault.Empty);
-    if (!customers.Exists(customer)) return OrderFault.CustomerUnknown;   // a bare error converts too
+    if (!customers.Exists(customer)) return Result.Error(OrderFault.CustomerUnknown);
 
-    return new Order(customer, lines);                                     // a bare value is a success
+    return new Order(customer, lines);   // a bare value is a success
 }
 
 public Result<OrderFault> Cancel(OrderId id) =>
     orders.Remove(id) ? Result.Ok() : OrderFault.CustomerUnknown;
 ```
+
+A bare value converts to a success, and an error goes through `Result.Error(...)`. A bare error
+converting as well would be ambiguous in the worst way: in a `Result<long, int>`, `return 5;` would
+pick the error, `int` being the closer match. `Result<TError>` has no value to confuse it with, so
+there a bare error converts too.
 
 ```csharp
 var placed = service.Place(customer, lines);
@@ -106,8 +111,8 @@ public readonly partial record struct ProductCode : IValidatedValue<ProductCode,
         if (string.IsNullOrWhiteSpace(value)) return Result.Error(CodeFault.Blank);
 
         var trimmed = value.Trim();
-        if (trimmed.Length < 3) return CodeFault.TooShort;
-        if (trimmed != trimmed.ToUpperInvariant()) return CodeFault.NotUpperCase;
+        if (trimmed.Length < 3) return Result.Error(CodeFault.TooShort);
+        if (trimmed != trimmed.ToUpperInvariant()) return Result.Error(CodeFault.NotUpperCase);
 
         return new ProductCode(trimmed);   // the private constructor is generated
     }
@@ -126,7 +131,8 @@ The contracts in this package say what every value object has:
 
 Which factory to call: `Create` when the caller has to say what to fix, `TryFrom` when "is it
 valid" is the whole question, `FromKnownGood` for a literal in source or a value the caller has just
-produced, `From` when there are no rules. `OrderId.New()` creates an identifier from a version 7 `Guid`.
+produced, `From` when there are no rules. `OrderId.New()` creates an identifier from a version 7 `Guid`;
+it is an extension in the `CodoMetis.TypeKit` namespace, so the calling file imports that.
 
 **Stored JSON.** The generated JSON converter applies `Create`, which is right for input and wrong
 for documents the application stored before a rule existed. Register `StoredJsonConverterFactory`

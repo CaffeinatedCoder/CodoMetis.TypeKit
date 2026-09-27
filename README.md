@@ -53,7 +53,7 @@ public readonly partial record struct Email : IValidatedValue<Email, string, Ema
     public static Result<Email, EmailFault> Create(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return Result.Error(EmailFault.Blank);
-        if (!value.Contains('@')) return EmailFault.NoAt;
+        if (!value.Contains('@')) return Result.Error(EmailFault.NoAt);
 
         return new Email(value.Trim());
     }
@@ -103,7 +103,7 @@ services.AddOpenApi(options => options.AddTypeKit());                    // Orde
 ## Status
 
 No version has been released yet. `Option`/`Result`, the contracts and analyzers, the generators,
-the EF Core satellite and the OpenAPI satellite are done; the release pipeline is next. The
+the EF Core satellite, the OpenAPI satellite and the release pipeline are done; 0.1.0 is next. The
 plan, the decisions and their evidence are in [docs/plan.md](docs/plan.md), and the measurements
 that decided the design are in [spikes/](spikes/).
 

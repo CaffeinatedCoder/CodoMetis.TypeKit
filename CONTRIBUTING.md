@@ -8,9 +8,11 @@ instead. Please don't open a public issue for those.
 ```bash
 dotnet build CodoMetis.TypeKit.slnx
 dotnet test --solution CodoMetis.TypeKit.slnx
+./test/consumer-smoke-test.sh      # packs the packages and builds throwaway consumers against them
 ```
 
-Shipping projects live under `src/` and test projects under `test/`.
+The EF Core tests start a PostgreSQL container, so the suite needs Docker. Shipping projects live
+under `src/` and test projects under `test/`.
 [AGENTS.md](AGENTS.md) is the architecture guide and [docs/plan.md](docs/plan.md) the current
 roadmap. Read both before changing `Option`/`Result`, an aspect, the fabric, the analyzer or a
 satellite.
@@ -51,6 +53,25 @@ should fail the build or throw with an actionable message.
 - User-visible changes get a changelog entry.
 - Match the surrounding style. Comments explain *why*, especially where behaviour is load-bearing
   and non-obvious.
+
+## Releasing
+
+The five packages share one version and are released together, only through
+`.github/workflows/release.yml` (see [SECURITY.md](SECURITY.md)).
+
+1. In `CHANGELOG.md`, replace `Unreleased` in the version's heading with today's date
+   (`## 0.1.0 — 2026-10-01`). The section becomes the GitHub release's notes.
+2. Move the rules in `src/CodoMetis.TypeKit.Analyzers/AnalyzerReleases.Unshipped.md` to
+   `AnalyzerReleases.Shipped.md`, under `## Release <version>`. Their ids and severities are public
+   contract from then on. `ChangelogTests` fails until steps 1 and 2 agree.
+3. Commit, then tag and push: `git tag v0.1.0 && git push origin v0.1.0`. The workflow checks the tag
+   against `Version` and the dated heading, runs the suite and the smoke test, and waits for approval
+   in the `nuget` environment before pushing.
+4. Afterwards: raise `Version` in `Directory.Build.props`, set `PackageValidationBaselineVersion` to
+   the version just released, so ApiCompat guards the public surface from then on, and open a new
+   `## <version> — Unreleased` section.
+
+`workflow_dispatch` with `dry_run` (the default) rehearses everything but the push.
 
 ## AI-assisted development
 

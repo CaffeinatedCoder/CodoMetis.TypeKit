@@ -51,6 +51,26 @@ unambiguous: the repository archived, the packages marked deprecated on nuget.or
 Published versions stay on nuget.org regardless. The code is MIT-licensed and the release path needs
 nothing but this repository, so forking is the intended continuity mechanism, not a fallback.
 
+## How releases are made
+
+There is one publishing path, `.github/workflows/release.yml`, run by pushing a `v*` tag:
+
+- **No stored credential.** Packages are pushed through nuget.org Trusted Publishing: GitHub signs a
+  short-lived token for that workflow in this repository, and nuget.org exchanges it for a key valid
+  for one hour. No API key exists in the repository or its secrets.
+- **Tested before anyone approves.** The full test suite and a smoke test that installs the packed
+  packages into throwaway projects run unattended. Only then does the push wait for a maintainer's
+  approval, and the job that can mint the token can neither build nor write to the repository.
+- **What was tested is what ships.** The push downloads the packages the verify job built; nothing
+  is rebuilt after the tests.
+- **An SBOM per package.** Each GitHub release carries a CycloneDX SBOM for every package, listing
+  what a consumer of that package actually receives. Build-only references (the analyzer's Roslyn
+  compiler packages, which run inside your own compiler) are excluded, and a test keeps that list
+  complete.
+- **Source and symbols.** Every package has Source Link and a symbol package, so the code you step
+  into is the code that was built.
+- **No license needed.** Metalama builds without a license; CI and the release run without one.
+
 ## Where this package sits
 
 **Part of this package family runs inside your build, and the rest in your request path.**

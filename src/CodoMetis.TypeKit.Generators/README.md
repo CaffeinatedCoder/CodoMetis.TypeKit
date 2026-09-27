@@ -33,8 +33,8 @@ public readonly partial record struct Email : IValidatedValue<Email, string, Ema
         if (string.IsNullOrWhiteSpace(value)) return Result.Error(EmailFault.Blank);
 
         var trimmed = value.Trim();
-        if (!trimmed.Contains('@')) return EmailFault.NoAt;
-        if (trimmed.Length > 254) return EmailFault.TooLong;
+        if (!trimmed.Contains('@')) return Result.Error(EmailFault.NoAt);
+        if (trimmed.Length > 254) return Result.Error(EmailFault.TooLong);
 
         return new Email(trimmed);   // the private constructor is generated
     }

@@ -51,6 +51,7 @@ dotnet build CodoMetis.TypeKit.slnx
 dotnet test --solution CodoMetis.TypeKit.slnx
 dotnet test --project test/CodoMetis.TypeKit.Conventions.Tests --filter-method "*Metalama*"
 dotnet build spikes/FabricSpike/FabricSpike.slnx      # the fabric spike, standalone
+./test/consumer-smoke-test.sh                          # the packages, installed into throwaway consumers
 ```
 
 The SDK is pinned in `global.json` (10.0.4xx band, `latestPatch`). Tests run on Microsoft Testing
