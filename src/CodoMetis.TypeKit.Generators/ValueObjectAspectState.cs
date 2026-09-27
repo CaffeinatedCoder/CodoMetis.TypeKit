@@ -4,7 +4,7 @@ using Metalama.Framework.Code;
 namespace CodoMetis.TypeKit.Generators;
 
 /// <summary>
-/// What <see cref="ValueObjectImplementationAspect"/> leaves for the aspects that run after it.
+/// What <see cref="ValueObjectAspect"/> leaves for the aspects that run after it.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -27,8 +27,8 @@ internal sealed class ValueObjectAspectState : IAspectState
         IDurableRef<IMethod>      fromJson,
         IDurableRef<IMethod>      fromText,
         IDurableRef<IMethod>      tryFromText,
-        string                    extensionClassName,
-        string?                   extensionClassNameOwner
+        string                    companionClassName,
+        string?                   companionClassNameOwner
     )
     {
         Kind                    = kind;
@@ -37,8 +37,8 @@ internal sealed class ValueObjectAspectState : IAspectState
         FromJson                = fromJson;
         FromText                = fromText;
         TryFromText             = tryFromText;
-        ExtensionClassName      = extensionClassName;
-        ExtensionClassNameOwner = extensionClassNameOwner;
+        CompanionClassName      = companionClassName;
+        CompanionClassNameOwner = companionClassNameOwner;
     }
 
     public ValueObjectKind Kind { get; }
@@ -61,11 +61,11 @@ internal sealed class ValueObjectAspectState : IAspectState
     public IDurableRef<IMethod> TryFromText { get; }
 
     /// <summary>The name of the <c>GetValue()</c>/<c>ValueOrNull()</c> companion class (<see cref="CompanionClass.Name"/>).</summary>
-    public string ExtensionClassName { get; }
+    public string CompanionClassName { get; }
 
     /// <summary>
     /// What already owns that name, answered by the fabric before any introduction, or
     /// <see langword="null"/> when the name is free (<see cref="CompanionClass.NameOwner"/>).
     /// </summary>
-    public string? ExtensionClassNameOwner { get; }
+    public string? CompanionClassNameOwner { get; }
 }

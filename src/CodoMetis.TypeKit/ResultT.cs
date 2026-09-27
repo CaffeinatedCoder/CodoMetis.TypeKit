@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
-using CodoMetis.TypeKit.Attributes;
 
 namespace CodoMetis.TypeKit;
 
@@ -190,17 +189,17 @@ public readonly record struct Result<T, TError>
     }
 
     /// <summary>Produces a value from the value, or from a fallback that drops the error.</summary>
-    /// <param name="fn">Called with the value on success.</param>
-    /// <param name="defaultProvider">Called on error. It does not receive the error.</param>
+    /// <param name="onSuccess">Called with the value on success.</param>
+    /// <param name="onError">Called on error. It does not receive the error.</param>
     /// <typeparam name="TResult">The type of the produced value.</typeparam>
     /// <returns>What the called function returned.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public TResult Match<TResult>(Func<T, TResult> fn, Func<TResult> defaultProvider)
+    public TResult Match<TResult>(Func<T, TResult> onSuccess, Func<TResult> onError)
     {
-        ArgumentNullException.ThrowIfNull(fn);
-        ArgumentNullException.ThrowIfNull(defaultProvider);
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onError);
 
-        return Succeeded ? fn(_value!) : defaultProvider();
+        return Succeeded ? onSuccess(_value!) : onError();
     }
 
     /// <summary>
@@ -224,39 +223,39 @@ public readonly record struct Result<T, TError>
     }
 
     /// <summary>Transforms the value on success, keeping the error otherwise.</summary>
-    /// <param name="fn">Called with the value on success.</param>
+    /// <param name="selector">Called with the value on success.</param>
     /// <typeparam name="TResult">The type of the transformed value.</typeparam>
-    /// <returns>A success with the transformed value, or this error without calling <paramref name="fn"/>.</returns>
+    /// <returns>A success with the transformed value, or this error without calling <paramref name="selector"/>.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public Result<TResult, TError> Map<TResult>(Func<T, TResult> fn) where TResult : notnull
+    public Result<TResult, TError> Map<TResult>(Func<T, TResult> selector) where TResult : notnull
     {
-        ArgumentNullException.ThrowIfNull(fn);
+        ArgumentNullException.ThrowIfNull(selector);
 
-        return Succeeded ? Result<TResult, TError>.Success(fn(_value!)) : Result<TResult, TError>.Error(_error!);
+        return Succeeded ? Result<TResult, TError>.Success(selector(_value!)) : Result<TResult, TError>.Error(_error!);
     }
 
     /// <summary>Chains an operation that may itself fail.</summary>
-    /// <param name="fn">Called with the value on success.</param>
+    /// <param name="selector">Called with the value on success.</param>
     /// <typeparam name="TResult">The type of the chained result's value.</typeparam>
-    /// <returns>The result <paramref name="fn"/> returned, or this error without calling it.</returns>
+    /// <returns>The result <paramref name="selector"/> returned, or this error without calling it.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public Result<TResult, TError> Bind<TResult>(Func<T, Result<TResult, TError>> fn) where TResult : notnull
+    public Result<TResult, TError> Bind<TResult>(Func<T, Result<TResult, TError>> selector) where TResult : notnull
     {
-        ArgumentNullException.ThrowIfNull(fn);
+        ArgumentNullException.ThrowIfNull(selector);
 
-        return Succeeded ? fn(_value!) : Result<TResult, TError>.Error(_error!);
+        return Succeeded ? selector(_value!) : Result<TResult, TError>.Error(_error!);
     }
 
     /// <summary>Chains an operation that always succeeds and returns a <c>Result.Ok(value)</c> marker.</summary>
-    /// <param name="fn">Called with the value on success.</param>
+    /// <param name="selector">Called with the value on success.</param>
     /// <typeparam name="TResult">The type of the produced value.</typeparam>
-    /// <returns>A success with the marker's value, or this error without calling <paramref name="fn"/>.</returns>
+    /// <returns>A success with the marker's value, or this error without calling <paramref name="selector"/>.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public Result<TResult, TError> Bind<TResult>(Func<T, Success<TResult>> fn) where TResult : notnull
+    public Result<TResult, TError> Bind<TResult>(Func<T, Success<TResult>> selector) where TResult : notnull
     {
-        ArgumentNullException.ThrowIfNull(fn);
+        ArgumentNullException.ThrowIfNull(selector);
 
-        return Succeeded ? Result<TResult, TError>.Success(fn(_value!).Value) : Result<TResult, TError>.Error(_error!);
+        return Succeeded ? Result<TResult, TError>.Success(selector(_value!).Value) : Result<TResult, TError>.Error(_error!);
     }
 
     /// <summary>Runs a side effect on the value on success.</summary>

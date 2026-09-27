@@ -1,4 +1,3 @@
-using CodoMetis.TypeKit.Attributes;
 using CodoMetis.TypeKit.ValueObjects;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Testing;
@@ -26,7 +25,7 @@ public sealed class ForbiddenDefaultInitializationAnalyzerTests
     private const string Subjects =
         """
         using CodoMetis.TypeKit;
-        using CodoMetis.TypeKit.Attributes;
+        using CodoMetis.TypeKit;
         using CodoMetis.TypeKit.ValueObjects;
 
         namespace Other

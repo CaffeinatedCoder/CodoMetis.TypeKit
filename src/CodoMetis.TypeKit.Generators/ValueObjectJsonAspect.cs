@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
+using CodoMetis.TypeKit.CompilerServices;
 using CodoMetis.TypeKit.ValueObjects;
 using Metalama.Framework.Advising;
 using Metalama.Framework.Aspects;

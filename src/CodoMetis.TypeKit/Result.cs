@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
-using CodoMetis.TypeKit.Attributes;
 
 namespace CodoMetis.TypeKit;
 
@@ -120,26 +119,26 @@ public readonly record struct Result<TError> where TError : notnull
     }
 
     /// <summary>Produces a value on success, keeping the error otherwise.</summary>
-    /// <param name="fn">Called on success.</param>
+    /// <param name="selector">Called on success.</param>
     /// <typeparam name="TResult">The type of the produced value.</typeparam>
-    /// <returns>A success with the produced value, or this error without calling <paramref name="fn"/>.</returns>
+    /// <returns>A success with the produced value, or this error without calling <paramref name="selector"/>.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public Result<TResult, TError> Map<TResult>(Func<TResult> fn) where TResult : notnull
+    public Result<TResult, TError> Map<TResult>(Func<TResult> selector) where TResult : notnull
     {
-        ArgumentNullException.ThrowIfNull(fn);
+        ArgumentNullException.ThrowIfNull(selector);
 
-        return Succeeded ? Result<TResult, TError>.Success(fn()) : Result<TResult, TError>.Error(_error!);
+        return Succeeded ? Result<TResult, TError>.Success(selector()) : Result<TResult, TError>.Error(_error!);
     }
 
     /// <summary>Chains an operation that may itself fail.</summary>
-    /// <param name="fn">Called on success.</param>
-    /// <returns>The result <paramref name="fn"/> returned, or this error without calling it.</returns>
+    /// <param name="selector">Called on success.</param>
+    /// <returns>The result <paramref name="selector"/> returned, or this error without calling it.</returns>
     /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    public Result<TError> Bind(Func<Result<TError>> fn)
+    public Result<TError> Bind(Func<Result<TError>> selector)
     {
-        ArgumentNullException.ThrowIfNull(fn);
+        ArgumentNullException.ThrowIfNull(selector);
 
-        return Succeeded ? fn() : Error(_error!);
+        return Succeeded ? selector() : Error(_error!);
     }
 
     /// <summary>Runs a side effect on success.</summary>

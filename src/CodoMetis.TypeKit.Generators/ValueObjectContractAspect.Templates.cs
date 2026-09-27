@@ -4,7 +4,7 @@ using Metalama.Framework.Code.SyntaxBuilders;
 
 namespace CodoMetis.TypeKit.Generators;
 
-internal sealed partial class ValueObjectInterfaceAspect
+internal sealed partial class ValueObjectContractAspect
 {
     [Template] public dynamic Value => meta.This._value;
 
@@ -37,6 +37,6 @@ internal sealed partial class ValueObjectInterfaceAspect
     [Template]
     public static dynamic FromKnownGoodTemplate(dynamic? value, [CompileTime] INamedType target, string? source = null) =>
         ExpressionFactory.Parse(
-            $"global::CodoMetis.TypeKit.ValueObjects.KnownGood.OrThrow({ValueObjectTypes.SourceName(target)}.Create(value), source)"
+            $"global::CodoMetis.TypeKit.CompilerServices.GeneratedFactories.OrInvalidOperationException({ValueObjectTypes.SourceName(target)}.Create(value), source)"
         ).Value!;
 }

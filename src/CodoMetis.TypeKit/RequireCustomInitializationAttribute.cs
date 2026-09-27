@@ -1,4 +1,4 @@
-namespace CodoMetis.TypeKit.Attributes;
+namespace CodoMetis.TypeKit;
 
 /// <summary>
 /// Marks a struct whose <c>default</c> value is not a valid instance, so it must be created through
@@ -13,7 +13,7 @@ namespace CodoMetis.TypeKit.Attributes;
 /// factory to call instead.
 /// </param>
 [AttributeUsage(AttributeTargets.Struct)]
-public class RequireCustomInitializationAttribute(string? errorMessage = null) : Attribute
+public sealed class RequireCustomInitializationAttribute(string? errorMessage = null) : Attribute
 {
     /// <summary>The message the analyzer reports instead of its generic one, if any.</summary>
     public string? ErrorMessage { get; } = errorMessage;

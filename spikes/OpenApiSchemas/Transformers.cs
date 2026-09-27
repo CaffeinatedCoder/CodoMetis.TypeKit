@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Json.Serialization.Metadata;
 using CodoMetis.TypeKit;
+using CodoMetis.TypeKit.ValueObjects;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 

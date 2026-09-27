@@ -51,8 +51,8 @@ internal sealed class ParsableImplementationArguments
         return Strategy switch
         {
             ValueParseStrategy.String => input,
-            ValueParseStrategy.Parsable => $"global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.Parse<{valueType}>({input}, {Provider})",
-            ValueParseStrategy.SpanParsable => $"global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.ParseSpan<{valueType}>({input}, {Provider})",
+            ValueParseStrategy.Parsable => $"global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing.Parse<{valueType}>({input}, {Provider})",
+            ValueParseStrategy.SpanParsable => $"global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing.ParseSpan<{valueType}>({input}, {Provider})",
             // By name, as Enum.Parse does, but with the exception IParsable.Parse documents. The
             // refused text stays out of the message, as in every other refusal.
             ValueParseStrategy.Enum =>
@@ -60,7 +60,7 @@ internal sealed class ParsableImplementationArguments
             // Through GeneratedParsing, whose lookup is the trim-safe one: TypeDescriptor.GetConverter
             // requires unreferenced code, so trimming and Native AOT warned about this call.
             ValueParseStrategy.TypeConverter =>
-                $"({valueType})global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.TypeConverterOf<{valueType}>()"
+                $"({valueType})global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing.TypeConverterOf<{valueType}>()"
               + $".ConvertFromString(null, provider as global::System.Globalization.CultureInfo ?? global::System.Globalization.CultureInfo.InvariantCulture, {input})!",
             ValueParseStrategy.StaticParse => $"{valueType}.Parse({input})",
             ValueParseStrategy.StringConstructor => $"new {valueType}({input})",

@@ -11,12 +11,12 @@ namespace CodoMetis.TypeKit.Generators;
 /// The first aspect on every value object: checks the declaration, introduces the field, the private
 /// constructor, the explicit materializer and the entry-point helpers, and adds the other aspects.
 /// </summary>
-internal sealed partial class ValueObjectImplementationAspect : TypeAspect
+internal sealed partial class ValueObjectAspect : TypeAspect
 {
-    private readonly string? _extensionClassNameOwner;
+    private readonly string? _companionClassNameOwner;
     private readonly string? _wrappedValueObjectRefusal;
 
-    /// <param name="extensionClassNameOwner">
+    /// <param name="companionClassNameOwner">
     /// What already owns the name of the companion class, as <see cref="CompanionClass.NameOwner"/>
     /// answered it in the fabric, or <see langword="null"/> when the name is free.
     /// </param>
@@ -25,9 +25,9 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
     /// <see cref="ValueObjectTypes.WrappedValueObjectRefusal"/> answered it in the fabric, or
     /// <see langword="null"/> when what it wraps is not a value object.
     /// </param>
-    public ValueObjectImplementationAspect(string? extensionClassNameOwner, string? wrappedValueObjectRefusal)
+    public ValueObjectAspect(string? companionClassNameOwner, string? wrappedValueObjectRefusal)
     {
-        _extensionClassNameOwner   = extensionClassNameOwner;
+        _companionClassNameOwner   = companionClassNameOwner;
         _wrappedValueObjectRefusal = wrappedValueObjectRefusal;
     }
 
@@ -90,10 +90,10 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
             fromText.ToDurableRef(),
             tryFromText.ToDurableRef(),
             CompanionClass.Name(target),
-            _extensionClassNameOwner
+            _companionClassNameOwner
         );
 
-        builder.Outbound.AddAspect<ValueObjectInterfaceAspect>();
+        builder.Outbound.AddAspect<ValueObjectContractAspect>();
         builder.Outbound.AddAspect<ValueObjectJsonAspect>();
         builder.Outbound.AddAspect<ValueObjectParsableAspect>();
         builder.Outbound.AddAspect<ValueObjectFormattableAspect>();
@@ -101,7 +101,7 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
         builder.Outbound.AddAspect<ValueObjectMinMaxValueAspect>();
         builder.Outbound.AddAspect<ValueObjectTypeConverterAspect>();
         builder.Outbound.AddAspect<ValueObjectConvertibleAspect>();
-        builder.Outbound.AddAspect<ValueObjectExtensionsAspect>();
+        builder.Outbound.AddAspect<ValueObjectCompanionAspect>();
     }
 
     /// <summary>
@@ -170,9 +170,9 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
             return false;
         }
 
-        if (ValueObjectTypes.UnderlyingType(marker) is not INamedType namedValueType)
+        if (ValueObjectTypes.WrappedType(marker) is not INamedType namedValueType)
         {
-            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, $"the wrapped type '{ValueObjectTypes.UnderlyingType(marker).ToDisplayString()}' is not a class, struct or enum")));
+            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, $"the wrapped type '{ValueObjectTypes.WrappedType(marker).ToDisplayString()}' is not a class, struct or enum")));
             return false;
         }
 

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CodoMetis.TypeKit.CompilerServices;
 
 namespace CodoMetis.TypeKit.ValueObjects;
 

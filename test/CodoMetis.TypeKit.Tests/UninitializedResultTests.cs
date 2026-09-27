@@ -42,7 +42,7 @@ public sealed class UninitializedResultTests
     {
         ["Match(onSuccess, onError)"]              = r => Task.FromResult(r.Match(x => x, _ => 2)),
         ["Match(onSuccess -> Ok(x), onError)"]     = r => Task.FromResult(r.Match(x => Result.Ok(x), _ => 2)),
-        ["Match(fn, defaultProvider)"]             = r => Task.FromResult(r.Match(x => x, () => 2)),
+        ["Match(onSuccess, onError -> no error)"] = r => Task.FromResult(r.Match(x => x, () => 2)),
         ["Match(onSuccess -> Ok(), onError) collapse"] = r => Task.FromResult(r.Match(_ => Result.Ok(), e => e)),
         ["Map(fn)"]                                = r => Task.FromResult(r.Map(x => x)),
         ["Bind(fn -> Result)"]                     = r => Task.FromResult(r.Bind(Result<int, string>.Success)),

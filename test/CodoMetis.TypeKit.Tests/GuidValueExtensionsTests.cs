@@ -1,4 +1,5 @@
 using System.Globalization;
+using CodoMetis.TypeKit.ValueObjects;
 
 namespace CodoMetis.TypeKit.Tests;
 
@@ -8,7 +9,7 @@ namespace CodoMetis.TypeKit.Tests;
 /// </summary>
 public sealed class GuidValueExtensionsTests
 {
-    private readonly record struct ProbeId : IValueObject<ProbeId, Guid>, IValueWrapper<ProbeId, Guid>
+    private readonly record struct ProbeId : IValueObject<ProbeId, Guid>, IPlainValueObject<ProbeId, Guid>
     {
         private ProbeId(Guid value) => Value = value;
 

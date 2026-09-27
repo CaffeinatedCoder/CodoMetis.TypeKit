@@ -65,7 +65,7 @@ Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TR
   `TransitiveProjectFabric` in `.Generators` and not by `[Inheritable]` on the interfaces.
 - **Discovery is by interface, never by name.** No namespace strings, assembly-name prefixes or
   type-name lists. The analyzer resolves the interface symbols from the compilation. Run-time code
-  that holds only a `Type` reads `GeneratedValueObjectAttribute<TSelf, T>`, whose type arguments are
+  that holds only a `Type` reads `GeneratedValueObjectAttribute<TValueObject, T>`, whose type arguments are
   constrained to the interfaces, and **never calls `GetInterfaces()`**: trimming removes an interface
   nothing uses, and under Native AOT every value object then looked like no value object at all. A
   name-based check passes in tests and breaks for the first consumer who renames something. The

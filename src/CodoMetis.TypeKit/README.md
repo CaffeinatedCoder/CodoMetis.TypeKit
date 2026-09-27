@@ -151,7 +151,7 @@ The contracts in this package say what every value object has:
 | `IValue<T>` | Wraps any `T`. Gets `From(value)`. |
 | `IValidatedValue<TSelf, T, TFault>` | You write `Create`, which returns a `Result`. Gets `TryFrom(value)` returning an `Option`, and `FromKnownGood(value)`, which throws and names the caller's expression, never the value. Every generated way in, JSON, parsing and the type converter, applies `Create`. |
 | `IValueObject<TSelf, T>` | What every generated value object implements: `Value`, equality. Run-time code recognises a value object by this interface, never by name. |
-| `IValueWrapper<TSelf, T>` | `From`, on plain value objects only. |
+| `IPlainValueObject<TSelf, T>` | A value object with no rules: `From` accepts any `T`. Plain value objects only. |
 | `IValueObjectMaterializer<TSelf, T>` | Rebuilds an instance **without validation**, for values the application wrote itself, such as a database column. Implemented explicitly, so it is not on the public surface. |
 
 Which factory to call: `Create` when the caller has to say what to fix, `TryFrom` when "is it
@@ -178,7 +178,7 @@ static Option<TSelf> Read<TSelf, TFault>(string field)
     where TFault : notnull =>
     TSelf.Create(field).ToOption();
 
-static TId NewId<TId>() where TId : IValueObject<TId, Guid>, IValueWrapper<TId, Guid> =>
+static TId NewId<TId>() where TId : IValueObject<TId, Guid>, IPlainValueObject<TId, Guid> =>
     TId.From(Guid.CreateVersion7());
 ```
 
@@ -221,6 +221,7 @@ names it. `Option` and `Result` refuse JSON there exactly as on the JIT, and
 
 ## Where things are
 
-`Option`, `Result` and `IValueObject` live in `CodoMetis.TypeKit`; the value-object contracts in
-`CodoMetis.TypeKit.ValueObjects`; the attribute in `CodoMetis.TypeKit.Attributes`. Targets .NET 10.
+`Option`, `Result`, `OrderId.New()` and `[RequireCustomInitialization]` live in `CodoMetis.TypeKit`;
+every value-object contract in `CodoMetis.TypeKit.ValueObjects`. What only the generated code and the
+satellites call is in `CodoMetis.TypeKit.CompilerServices`, hidden from IntelliSense. Targets .NET 10.
 Source and issues: [github.com/CaffeinatedCoder/CodoMetis.TypeKit](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit).

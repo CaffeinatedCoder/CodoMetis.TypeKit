@@ -9,10 +9,10 @@ namespace CodoMetis.TypeKit.ValueObjects;
 /// two more on the implementing type, which is why their signatures are spelled out here:
 /// </para>
 /// <list type="bullet">
-///   <item><c>public static Option&lt;TValueObject&gt; TryFrom(T value)</c>, which is <c>Create(value).ToOption()</c>;</item>
+///   <item><c>public static Option&lt;TSelf&gt; TryFrom(T value)</c>, which is <c>Create(value).ToOption()</c>;</item>
 ///   <item>
-///     <c>public static TValueObject FromKnownGood(T value, string? source = null)</c>, which is
-///     <c>KnownGood.OrThrow(Create(value), source)</c>.
+///     <c>public static TSelf FromKnownGood(T value, string? source = null)</c>, which is
+///     <c>GeneratedFactories.OrInvalidOperationException(Create(value), source)</c>.
 ///   </item>
 /// </list>
 /// <para>
@@ -48,19 +48,19 @@ namespace CodoMetis.TypeKit.ValueObjects;
 /// reports CMTK0002 on the declaration.
 /// </para>
 /// </remarks>
-/// <typeparam name="TValueObject">The value object type itself.</typeparam>
+/// <typeparam name="TSelf">The value object type itself.</typeparam>
 /// <typeparam name="T">The type of the wrapped value.</typeparam>
 /// <typeparam name="TFault">
 /// Why a value is refused. Typically an enum declared beside the value object, with one member per
 /// rule.
 /// </typeparam>
-public interface IValidatedValue<TValueObject, in T, TFault>
+public interface IValidatedValue<TSelf, in T, TFault>
     where T : notnull
     where TFault : notnull
-    where TValueObject : IValidatedValue<TValueObject, T, TFault>
+    where TSelf : IValidatedValue<TSelf, T, TFault>
 {
     /// <summary>Applies the value object's rules to <paramref name="value"/>.</summary>
     /// <param name="value">The value to validate and wrap.</param>
     /// <returns>The value object, or the fault naming the rule that refused <paramref name="value"/>.</returns>
-    abstract static Result<TValueObject, TFault> Create(T value);
+    abstract static Result<TSelf, TFault> Create(T value);
 }

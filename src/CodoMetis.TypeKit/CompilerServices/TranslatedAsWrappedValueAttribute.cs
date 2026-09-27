@@ -1,8 +1,10 @@
-namespace CodoMetis.TypeKit;
+using System.ComponentModel;
+
+namespace CodoMetis.TypeKit.CompilerServices;
 
 /// <summary>
 /// Marks a method whose call inside a relational query is translated as its single argument,
-/// re-typed to the value object's underlying value: the column the argument already is.
+/// re-typed to the value object's wrapped value: the column the argument already is.
 /// </summary>
 /// <remarks>
 /// The method body must be exactly the unwrap the translation claims (<c>value?.Value</c>). The
@@ -14,4 +16,5 @@ namespace CodoMetis.TypeKit;
 /// wraps. On any other method it is ignored, and EF refuses the call as it would without it.
 /// </remarks>
 [AttributeUsage(AttributeTargets.Method)]
-public sealed class TranslatedAsUnderlyingValueAttribute : Attribute;
+[EditorBrowsable(EditorBrowsableState.Never)]
+public sealed class TranslatedAsWrappedValueAttribute : Attribute;

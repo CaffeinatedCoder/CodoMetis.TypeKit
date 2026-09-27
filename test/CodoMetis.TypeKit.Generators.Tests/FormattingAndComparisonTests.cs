@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Numerics;
 using System.Reflection;
 using System.Text;
+using CodoMetis.TypeKit.CompilerServices;
 using CodoMetis.TypeKit.Generators.Probes;
 using CodoMetis.TypeKit.ValueObjects;
 
@@ -273,6 +274,6 @@ public sealed class ExtensionsTests
     public void Both_are_marked_for_translation()
     {
         foreach (var name in new[] { "GetValue", "ValueOrNull" })
-            typeof(ProbeCountExtensions).GetMethod(name).ShouldNotBeNull().GetCustomAttribute<TranslatedAsUnderlyingValueAttribute>().ShouldNotBeNull();
+            typeof(ProbeCountExtensions).GetMethod(name).ShouldNotBeNull().GetCustomAttribute<TranslatedAsWrappedValueAttribute>().ShouldNotBeNull();
     }
 }

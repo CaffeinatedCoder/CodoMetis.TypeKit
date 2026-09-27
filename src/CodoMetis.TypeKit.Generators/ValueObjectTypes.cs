@@ -11,7 +11,7 @@ namespace CodoMetis.TypeKit.Generators;
 internal enum ValueObjectKind
 {
     /// <summary><c>IValue&lt;T&gt;</c>: wraps any value, and gets <c>From</c>.</summary>
-    SimpleValue,
+    Plain,
 
     /// <summary><c>IValidatedValue&lt;,,&gt;</c>: every way in applies <c>Create</c>.</summary>
     Validated
@@ -30,7 +30,7 @@ internal static class ValueObjectTypes
         [.. type.AllImplementedInterfaces.Where(IsMarker)];
 
     /// <summary>
-    /// A type the fabric hands to the implementation aspect: a concrete class or struct with at least
+    /// A type the fabric hands to ValueObjectAspect: a concrete class or struct with at least
     /// one marker. The aspect then generates it or reports why it cannot.
     /// </summary>
     public static bool IsValueObject(INamedType type) =>
@@ -63,13 +63,13 @@ internal static class ValueObjectTypes
     public static string? WrappedValueObjectRefusal(INamedType valueObject)
     {
         List<INamedType> chain = [valueObject];
-        var next = WrappedType(valueObject);
+        var next = WrappedNamedType(valueObject);
 
         // Ends at the first type that is not a value object, or at one already on the chain.
         while (next is not null && IsValueObject(next) && !chain.Any(type => type.Equals(next)))
         {
             chain.Add(next);
-            next = WrappedType(next);
+            next = WrappedNamedType(next);
         }
 
         if (next is not null && next.Equals(valueObject))
@@ -87,17 +87,17 @@ internal static class ValueObjectTypes
     }
 
     /// <summary>The wrapped type of a type with exactly one marker, where it is a named type.</summary>
-    private static INamedType? WrappedType(INamedType type) =>
-        Markers(type) is [var marker] ? UnderlyingType(marker) as INamedType : null;
+    private static INamedType? WrappedNamedType(INamedType type) =>
+        Markers(type) is [var marker] ? WrappedType(marker) as INamedType : null;
 
     public static ValueObjectKind KindOf(INamedType marker) =>
         marker.Definition.Equals(TypeFactory.GetNamedType(typeof(IValue<>)))
-            ? ValueObjectKind.SimpleValue
+            ? ValueObjectKind.Plain
             : ValueObjectKind.Validated;
 
     /// <summary>The wrapped type: <c>T</c> of <c>IValue&lt;T&gt;</c>, or of <c>IValidatedValue&lt;TSelf, T, TFault&gt;</c>.</summary>
-    public static IType UnderlyingType(INamedType marker) =>
-        KindOf(marker) == ValueObjectKind.SimpleValue ? marker.TypeArguments[0] : marker.TypeArguments[1];
+    public static IType WrappedType(INamedType marker) =>
+        KindOf(marker) == ValueObjectKind.Plain ? marker.TypeArguments[0] : marker.TypeArguments[1];
 
     /// <summary>A reference to <paramref name="type"/> that is valid in any generated code, whatever the file imports.</summary>
     public static string SourceName(INamedType type) => $"global::{type.FullName}";
@@ -114,7 +114,7 @@ internal static class ValueObjectTypes
     extension(ImmutableArray<AspectPredecessor> predecessors)
     {
         /// <summary>
-        /// The state the implementation aspect left for the aspects that run after it. Fails only for
+        /// The state ValueObjectAspect left for the aspects that run after it. Fails only for
         /// an aspect applied without it, which <see cref="ValueObjectFabric"/> never does.
         /// </summary>
         public bool TryGetState<T>([NotNullWhen(returnValue: true)] out T? state) where T : IAspectState

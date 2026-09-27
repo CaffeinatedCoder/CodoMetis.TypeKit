@@ -59,30 +59,30 @@ public static class Option
             a.IsSome() ? Result.Ok() : error;
 
         /// <summary>Transforms the value, if there is one. Enables <c>select</c> in query syntax.</summary>
-        /// <param name="map">Called with the value if there is one.</param>
+        /// <param name="selector">Called with the value if there is one.</param>
         /// <typeparam name="TResult">The type of the transformed value.</typeparam>
         /// <returns>The transformed value, or <c>None</c>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Option<TResult> Select<TResult>(Func<T, TResult> map) where TResult : notnull =>
-            a.Map(map);
+        public Option<TResult> Select<TResult>(Func<T, TResult> selector) where TResult : notnull =>
+            a.Map(selector);
 
         /// <summary>Chains an operation that may itself produce no value. Same as <see cref="Option{T}.Bind{TResult}"/>.</summary>
-        /// <param name="map">Called with the value if there is one.</param>
+        /// <param name="selector">Called with the value if there is one.</param>
         /// <typeparam name="TResult">The type of the chained option's value.</typeparam>
-        /// <returns>The option <paramref name="map"/> returned, or <c>None</c>.</returns>
+        /// <returns>The option <paramref name="selector"/> returned, or <c>None</c>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Option<TResult> SelectMany<TResult>(Func<T, Option<TResult>> map) where TResult : notnull
+        public Option<TResult> SelectMany<TResult>(Func<T, Option<TResult>> selector) where TResult : notnull
         {
-            ArgumentNullException.ThrowIfNull(map);
+            ArgumentNullException.ThrowIfNull(selector);
 
-            return a.Bind(map);
+            return a.Bind(selector);
         }
 
-        /// <summary>Keeps the value only if it passes a check. Enables <c>where</c> in query syntax.</summary>
-        /// <param name="check">Called with the value if there is one.</param>
+        /// <summary>Keeps the value only if it satisfies <paramref name="predicate"/>. Enables <c>where</c> in query syntax.</summary>
+        /// <param name="predicate">Called with the value if there is one.</param>
         /// <returns>The option if its value passes, otherwise <c>None</c>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Option<T> Where(Func<T, bool> check) => a.Filter(check);
+        public Option<T> Where(Func<T, bool> predicate) => a.Filter(predicate);
 
         /// <summary>Combines two options, if both hold a value.</summary>
         /// <param name="b">The second option.</param>

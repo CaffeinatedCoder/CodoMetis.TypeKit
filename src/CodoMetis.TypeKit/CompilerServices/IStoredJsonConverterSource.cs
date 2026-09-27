@@ -1,7 +1,8 @@
 using System.ComponentModel;
 using System.Text.Json.Serialization;
+using CodoMetis.TypeKit.ValueObjects;
 
-namespace CodoMetis.TypeKit.ValueObjects;
+namespace CodoMetis.TypeKit.CompilerServices;
 
 /// <summary>
 /// Implemented by the JSON converter that CodoMetis.TypeKit.Generators generates for a value object:

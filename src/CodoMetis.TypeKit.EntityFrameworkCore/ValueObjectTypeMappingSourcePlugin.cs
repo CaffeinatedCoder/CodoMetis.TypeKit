@@ -39,7 +39,7 @@ internal sealed class ValueObjectTypeMappingSourcePlugin(IServiceProvider servic
         _typeMappingSource ??= services.GetRequiredService<IRelationalTypeMappingSource>();
 
         var wrapped = _typeMappingSource.FindMapping(
-            valueObject.ValueType, mappingInfo.StoreTypeName, mappingInfo.IsKeyOrIndex, mappingInfo.IsUnicode, mappingInfo.Size,
+            valueObject.WrappedType, mappingInfo.StoreTypeName, mappingInfo.IsKeyOrIndex, mappingInfo.IsUnicode, mappingInfo.Size,
             mappingInfo.IsRowVersion, mappingInfo.IsFixedLength, mappingInfo.Precision, mappingInfo.Scale);
 
         return wrapped is null ? null : ValueObjectMapping.For(valueObject).ComposeOnto(wrapped);

@@ -191,7 +191,7 @@ internal sealed partial class ValueObjectJsonAspect
             meta.InsertStatement(ExpressionFactory.Parse(WrappedWrite(tag)));
     }
 
-    private const string GeneratedJson = "global::CodoMetis.TypeKit.ValueObjects.GeneratedJson";
+    private const string GeneratedJson = "global::CodoMetis.TypeKit.CompilerServices.GeneratedJson";
 
     /// <summary>
     /// The wrapped type's own built-in converter (<c>JsonMetadataServices.Int32Converter</c> and so

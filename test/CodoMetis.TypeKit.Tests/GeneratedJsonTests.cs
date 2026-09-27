@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
-using CodoMetis.TypeKit.ValueObjects;
+using CodoMetis.TypeKit.CompilerServices;
 
 namespace CodoMetis.TypeKit.Tests;
 

@@ -32,12 +32,12 @@ public static class Result
     extension<T, TError>(Result<T, TError> instance) where T : notnull where TError : notnull
     {
         /// <summary>Transforms the value on success. Enables <c>select</c> in query syntax.</summary>
-        /// <param name="fn">Called with the value on success.</param>
+        /// <param name="selector">Called with the value on success.</param>
         /// <typeparam name="TResult">The type of the transformed value.</typeparam>
         /// <returns>A success with the transformed value, or the error.</returns>
         /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-        public Result<TResult, TError> Select<TResult>(Func<T, TResult> fn) where TResult : notnull =>
-            instance.Map(fn);
+        public Result<TResult, TError> Select<TResult>(Func<T, TResult> selector) where TResult : notnull =>
+            instance.Map(selector);
 
         /// <summary>Keeps the value and drops the error.</summary>
         /// <returns>The value, or <c>None</c> for an error.</returns>

@@ -1,3 +1,4 @@
+using CodoMetis.TypeKit.CompilerServices;
 using CodoMetis.TypeKit.Generators.Probes;
 using Microsoft.EntityFrameworkCore;
 
@@ -82,6 +83,6 @@ public sealed class SqlTranslationTests
 internal static class HandMarked
 {
     /// <summary>Carries the attribute without being the unwrap it promises.</summary>
-    [TranslatedAsUnderlyingValue]
+    [TranslatedAsWrappedValue]
     public static int Length(this ProbeCode code) => code.Value.Length;
 }
