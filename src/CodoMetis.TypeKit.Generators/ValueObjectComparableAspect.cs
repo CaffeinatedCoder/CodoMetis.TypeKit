@@ -37,6 +37,20 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
             return;
         }
 
+        // One seam: a hand-written CompareTo(TSelf) is kept (OverrideStrategy.Ignore below), and the
+        // object overload, the operators and the interfaces are derived from it, as TryFrom is for the
+        // factories. Any other hand-written comparison member would sit beside generated ones that
+        // need not agree with it, so it is an error naming the seam. Before this, an operator failed
+        // the aspect (LAMA0500, naming no fix) and an object overload was kept silently.
+        var besideTheSeam = HandWrittenComparisonMembers(builder.Target).ToList();
+
+        if (besideTheSeam.Count > 0)
+        {
+            builder.Diagnostics.Report(AspectDiagnostics.ComparisonMemberBesideTheSeam.WithArguments((builder.Target, string.Join(", ", besideTheSeam))));
+            builder.SkipAspect();
+            return;
+        }
+
         builder.Tags = new ComparableImplementationArguments
         {
             ValueType       = valueType,
@@ -62,13 +76,14 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
             }
         );
 
-        // IComparable — required for Array.Sort, SortedSet, etc.
+        // IComparable — required for Array.Sort, SortedSet, etc. A hand-written object overload is
+        // CMTK1008 above, so Fail here is a backstop, never a silent keep.
         builder.ImplementInterface(typeof(IComparable), OverrideStrategy.Ignore);
 
         builder.IntroduceMethod(
             nameof(ObjectCompareTo),
             IntroductionScope.Instance,
-            OverrideStrategy.Ignore,
+            OverrideStrategy.Fail,
             m =>
             {
                 m.Name = nameof(IComparable.CompareTo);
@@ -106,6 +121,23 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
             return ValueCompareStrategy.NonGenericComparable;
 
         return ValueCompareStrategy.Unsupported;
+    }
+
+    /// <summary>
+    /// The comparison members the type declares itself, other than the seam <c>CompareTo(TSelf)</c>:
+    /// the object overload and the four ordering operators.
+    /// </summary>
+    private static IEnumerable<string> HandWrittenComparisonMembers(INamedType target)
+    {
+        foreach (var method in target.Methods)
+        {
+            var isObjectOverload = method is { Name: nameof(IComparable.CompareTo), Parameters: [{ Type.SpecialType: SpecialType.Object }] };
+            var isOrderingOperator = method.OperatorKind is OperatorKind.LessThan or OperatorKind.GreaterThan
+                                                          or OperatorKind.LessThanOrEqual or OperatorKind.GreaterThanOrEqual;
+
+            if (isObjectOverload || isOrderingOperator)
+                yield return method.ToDisplayString();
+        }
     }
 
     /// <summary>

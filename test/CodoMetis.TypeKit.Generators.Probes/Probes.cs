@@ -60,3 +60,12 @@ public static class ProbeContainer
 
 /// <summary>Internal: its generated extension class must be internal too.</summary>
 internal readonly partial record struct ProbeInternalId : IValue<int>;
+
+/// <summary>
+/// Declares its own <c>CompareTo</c>, the one comparison seam, ordering descending on purpose so that
+/// an operator or object overload not derived from it is observable.
+/// </summary>
+public readonly partial record struct ProbeDescending : IValue<int>
+{
+    public int CompareTo(ProbeDescending other) => other.Value.CompareTo(Value);
+}

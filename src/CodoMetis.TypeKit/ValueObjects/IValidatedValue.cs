@@ -33,7 +33,9 @@ namespace CodoMetis.TypeKit.ValueObjects;
 /// </para>
 /// <para>
 /// An implementing type may declare its own <c>TryFrom</c> or <c>FromKnownGood</c>, and then that
-/// one is generated no longer.
+/// one is generated no longer. Comparison has one such seam, <c>CompareTo(TSelf)</c>, from which
+/// the rest is derived; any other hand-written comparison member is CMTK1008, and ordering
+/// otherwise follows the wrapped type, as <see cref="IValue{T}"/> describes.
 /// </para>
 /// <para>
 /// Without a reference to CodoMetis.TypeKit.Generators nothing is generated, and the analyzer

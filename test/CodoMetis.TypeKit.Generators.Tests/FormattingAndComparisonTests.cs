@@ -90,6 +90,31 @@ public sealed class ComparisonTests
         typeof(ProbeCount).GetInterfaces().ShouldContain(typeof(IComparisonOperators<ProbeCount, ProbeCount, bool>));
     }
 
+    /// <summary>
+    /// A hand-written <c>CompareTo(TSelf)</c> is the one comparison seam, as <c>TryFrom</c> is for the
+    /// factories: it is kept, and the object overload, the operators and the interfaces are derived
+    /// from it. A pin of behaviour that was already so, kept beside the CMTK1008 guard for the other
+    /// comparison members.
+    /// </summary>
+    [Fact]
+    public void A_hand_written_CompareTo_is_the_seam_and_the_rest_follows_it()
+    {
+        var one = ProbeDescending.From(1);
+        var two = ProbeDescending.From(2);
+
+        one.CompareTo(two).ShouldBePositive();
+        (one < two).ShouldBeFalse();
+        (one > two).ShouldBeTrue();
+        (one <= two).ShouldBeFalse();
+        (two >= one).ShouldBeFalse();
+        ((IComparable)one).CompareTo(two).ShouldBePositive();
+        new SortedSet<ProbeDescending> { one, two }.Select(value => value.Value).ShouldBe([2, 1]);
+
+        typeof(ProbeDescending).GetInterfaces().ShouldContain(typeof(IComparable<ProbeDescending>));
+        typeof(ProbeDescending).GetInterfaces().ShouldContain(typeof(IComparable));
+        typeof(ProbeDescending).GetInterfaces().ShouldContain(typeof(IComparisonOperators<ProbeDescending, ProbeDescending, bool>));
+    }
+
     [Fact]
     public void The_non_generic_CompareTo_orders_null_first_and_refuses_another_type()
     {

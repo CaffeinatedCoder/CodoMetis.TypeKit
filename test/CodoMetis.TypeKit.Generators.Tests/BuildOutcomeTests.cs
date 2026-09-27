@@ -34,6 +34,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1007", "TakenName")]
     [InlineData("CMTK1007", "ShopId")]
     [InlineData("CMTK1007", "Shop.Id")]
+    [InlineData("CMTK1008", "WithOperator")]
+    [InlineData("CMTK1008", "WithObjectCompareTo")]
     public void A_declaration_that_cannot_be_generated_is_an_error(string id, string type) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains($"'{type}"), $"{id} on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
 
@@ -45,7 +47,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008"], ignoreOrder: false, customMessage: consumer.Output);
 
     /// <summary>
     /// The <c>GetValue</c>/<c>ValueOrNull</c> companions live in a namespace-level class. Named after
@@ -124,6 +126,21 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public readonly partial record struct ShopId : IValue<int>;
 
             public static class Shop { public readonly partial record struct Id : IValue<int>; }
+
+            // Comparison has one seam, a hand-written CompareTo(TSelf). A hand-written operator failed
+            // the aspect (LAMA0500, naming no fix), and a hand-written object overload was kept
+            // silently beside the generated generic one, which need not agree with it.
+            public readonly partial record struct WithOperator : IValue<int>
+            {
+                public static bool operator <(WithOperator left, WithOperator right) => left.Value > right.Value;
+
+                public static bool operator >(WithOperator left, WithOperator right) => left.Value < right.Value;
+            }
+
+            public readonly partial record struct WithObjectCompareTo : IValue<int>
+            {
+                public int CompareTo(object? obj) => 0;
+            }
 
             // A dictionary key is read by JsonMetadataServices.{TypeName}Converter, named after the
             // wrapped type. The probes cover int and decimal; a misnamed converter for any other number

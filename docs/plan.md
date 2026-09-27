@@ -120,6 +120,9 @@ Each phase ends green, and its guards have been proven by seeding the defect
      the server's time zone; `From(null)` wrapped null; `Result` held a null value or error;
      `Result<TError>.Match` could not see the error (§9); a derived record-class value object failed
      inside the generated code (CMTK1006 now); CMTK0001 missed `new T()` under `new()`.
+   - Found in the third review on 2026-09-27: a hand-written comparison operator failed the aspect
+     (LAMA0500) and a hand-written object `CompareTo` was kept silently beside the generated generic
+     one; both are CMTK1008 now, and the one seam, `CompareTo(TSelf)`, is documented and pinned (§5).
 4. **EF Core. ✅ Done 2026-09-27.**
    - The mapping spike first (spikes/EfMapping): an additive type-mapping-source plugin maps every
      value object, with keys, foreign keys, nullable properties and primitive collections, on
@@ -282,6 +285,16 @@ passes in tests and breaks for the first consumer who renames something.
 - **A record class sorts null first.** Its generated `CompareTo` and comparison operators take a
   nullable operand, as `IComparable<T>.CompareTo(T?)` and the record's own `==` do, and treat null
   as smallest, where they threw `NullReferenceException`.
+- **Ordering follows the wrapped type.** `CompareTo` delegates to the wrapped type's, ordinal for a
+  string, so it agrees with equality exactly where the wrapped type's own does. A custom wrapped
+  type whose `CompareTo` returns 0 for values its `Equals` tells apart makes a `SortedSet` drop one,
+  of the value object and of the wrapped type alike (measured 2026-09-27). That is the wrapped
+  type's contract to keep, and the marker interfaces' documentation says so.
+- **One comparison seam (decided 2026-09-27).** A hand-written `CompareTo(TSelf)` is kept, and the
+  object overload, the operators and the interfaces are derived from it, as `TryFrom` is for the
+  factories. Any other hand-written comparison member is CMTK1008: an operator failed the aspect
+  (LAMA0500, naming no fix), and an object overload was kept silently beside a generated generic
+  one that need not agree with it.
 - **Metalama 2026.1.** Aspect state uses `IDurableRef`, which exists in 2026.1. `[Durable]` on the
   `_value` template placeholder is 2027.0-only and stays out until the upgrade (decision 4). Build
   each aspect on 2026.1 as it lands, and use no 2027.0-only API.

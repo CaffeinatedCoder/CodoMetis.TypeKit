@@ -11,6 +11,13 @@ namespace CodoMetis.TypeKit.ValueObjects;
 /// the JSON converter, parsing, formatting, comparison and the type converter.
 /// </para>
 /// <para>
+/// Ordering follows the wrapped type's <c>CompareTo</c>, ordinal for a string, so it agrees with
+/// equality wherever the wrapped type's own does. A custom wrapped type must keep its <c>CompareTo</c>
+/// consistent with its <c>Equals</c>, as any sorted collection already requires of it. To order
+/// differently, declare <c>CompareTo(TSelf)</c>: it is kept, and the object overload, the operators
+/// and the interfaces are derived from it. Any other hand-written comparison member is CMTK1008.
+/// </para>
+/// <para>
 /// Without a reference to CodoMetis.TypeKit.Generators nothing is generated, and the analyzer
 /// reports CMTK0002 on the declaration.
 /// </para>

@@ -285,6 +285,57 @@ ProbeDate
   static op_LessThanOrEqual(ProbeDate, ProbeDate) : Boolean
   extension static ProbeDateExtensions.GetValue(ProbeDate) : DateOnly
   extension static ProbeDateExtensions.ValueOrNull(ProbeDate?) : DateOnly?
+ProbeDescending
+  CompareTo(Object) : Int32
+  CompareTo(ProbeDescending) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeDescending) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeDescending>
+  implements IComparisonOperators<ProbeDescending, ProbeDescending, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeDescending, ProbeDescending, Boolean>
+  implements IEquatable<ProbeDescending>
+  implements IFormattable
+  implements IMinMaxValue<ProbeDescending>
+  implements IParsable<ProbeDescending>
+  implements ISpanFormattable
+  implements ISpanParsable<ProbeDescending>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ProbeDescending>
+  implements IValue<Int32>
+  implements IValueObject<ProbeDescending, Int32>
+  implements IValueObjectMaterializer<ProbeDescending, Int32>
+  implements IValueWrapper<ProbeDescending, Int32>
+  nested ProbeDescendingJsonConverter : JsonConverter<ProbeDescending>
+  nested ProbeDescendingTypeConverter : TypeConverter
+  new()
+  static From(Int32) : ProbeDescending
+  static MaxValue : ProbeDescending
+  static MinValue : ProbeDescending
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ProbeDescending
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeDescending
+  static Parse(String, IFormatProvider) : ProbeDescending
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ProbeDescending) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeDescending) : Boolean
+  static TryParse(String, IFormatProvider, out ProbeDescending) : Boolean
+  static op_Equality(ProbeDescending, ProbeDescending) : Boolean
+  static op_GreaterThan(ProbeDescending, ProbeDescending) : Boolean
+  static op_GreaterThanOrEqual(ProbeDescending, ProbeDescending) : Boolean
+  static op_Inequality(ProbeDescending, ProbeDescending) : Boolean
+  static op_LessThan(ProbeDescending, ProbeDescending) : Boolean
+  static op_LessThanOrEqual(ProbeDescending, ProbeDescending) : Boolean
+  extension static ProbeDescendingExtensions.GetValue(ProbeDescending) : Int32
+  extension static ProbeDescendingExtensions.ValueOrNull(ProbeDescending?) : Int32?
 ProbeFlag
   CompareTo(Object) : Int32
   CompareTo(ProbeFlag) : Int32
