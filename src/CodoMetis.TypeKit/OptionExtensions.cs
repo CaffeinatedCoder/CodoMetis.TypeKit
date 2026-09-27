@@ -28,35 +28,32 @@ public static class Option
     /// <returns>An empty option.</returns>
     public static Option<T> None<T>() where T : notnull => new(default, false);
 
+    /// <summary>
+    /// The empty marker, for a method typed <see cref="Option{T}"/>: it converts implicitly to an empty
+    /// option of any <c>T</c>, so <c>return Option.None();</c> needs no type argument. Where nothing
+    /// gives the target type, such as <c>var</c>, use <see cref="None{T}"/>.
+    /// </summary>
+    /// <returns>A marker that converts implicitly to an empty option.</returns>
+    public static None None() => new();
+
     /// <param name="a">The option.</param>
     /// <typeparam name="T">The type of the option's value.</typeparam>
     extension<T>(in Option<T> a) where T : notnull
     {
-        /// <summary>Turns absence into an error.</summary>
-        /// <param name="onSuccess">Transforms the value if there is one.</param>
+        /// <summary>Turns absence into an error, keeping the value.</summary>
         /// <param name="error">The error for <c>None</c>.</param>
-        /// <typeparam name="TSuccess">The type of the result's value.</typeparam>
         /// <typeparam name="TError">The type of the error.</typeparam>
-        /// <returns>A success with the transformed value, or an error with <paramref name="error"/>.</returns>
+        /// <returns>A success with the value, or an error with <paramref name="error"/>.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Result<TSuccess, TError> ToResult<TSuccess, TError>(Func<T, TSuccess> onSuccess, TError error)
-            where TSuccess : notnull
-            where TError : notnull
+        public Result<T, TError> ToResult<TError>(TError error) where TError : notnull
         {
-            // Checked here: Match only sees the lambda around it, so a null passed on every None.
-            // The zips and SelectMany check their own delegate for the same reason, or to name it.
-            ArgumentNullException.ThrowIfNull(onSuccess);
+            // Checked whatever the option holds, as the delegates are: a null error passed for every
+            // Some until the first None.
+            if (error is null) throw new ArgumentNullException(nameof(error));
 
-            return a.Match<Result<TSuccess, TError>>(x => onSuccess(x), () => Result.Error(error));
+            return a.TryGetValue(out var value) ? Result<T, TError>.Success(value) : Result<T, TError>.Error(error);
         }
-
-        /// <summary>Turns absence into an error, dropping the value.</summary>
-        /// <param name="error">The error for <c>None</c>.</param>
-        /// <typeparam name="TError">The type of the error.</typeparam>
-        /// <returns>A success if there is a value, otherwise an error with <paramref name="error"/>.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Result<TError> ToResult<TError>(TError error) where TError : notnull =>
-            a.IsSome() ? Result.Ok() : error;
 
         /// <summary>Transforms the value, if there is one. Enables <c>select</c> in query syntax.</summary>
         /// <param name="selector">Called with the value if there is one.</param>
@@ -71,12 +68,8 @@ public static class Option
         /// <typeparam name="TResult">The type of the chained option's value.</typeparam>
         /// <returns>The option <paramref name="selector"/> returned, or <c>None</c>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Option<TResult> SelectMany<TResult>(Func<T, Option<TResult>> selector) where TResult : notnull
-        {
-            ArgumentNullException.ThrowIfNull(selector);
-
-            return a.Bind(selector);
-        }
+        public Option<TResult> SelectMany<TResult>(Func<T, Option<TResult>> selector) where TResult : notnull =>
+            a.Bind(selector);
 
         /// <summary>Keeps the value only if it satisfies <paramref name="predicate"/>. Enables <c>where</c> in query syntax.</summary>
         /// <param name="predicate">Called with the value if there is one.</param>
@@ -95,6 +88,8 @@ public static class Option
             where T2 : notnull
             where TResult : notnull
         {
+            // Checked here: Bind and Map only see the lambdas around it, so a null passed on every
+            // None. The other zips never call it for a None either.
             ArgumentNullException.ThrowIfNull(selector);
 
             return a.Bind(x => b.Map(y => selector(x, y)));

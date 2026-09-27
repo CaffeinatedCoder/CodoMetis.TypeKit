@@ -17,7 +17,8 @@ The first release.
 ### Added
 
 - **`CodoMetis.TypeKit`**: `Option<T>`, `Result<T, TError>` and `Result<TError>`, with no public
-  `.Value` or `.Error`. A `default` `Option` is `None`; a `default` `Result` is uninitialized, and
+  `.Value` or `.Error`, and the `Option.None()`, `Result.Success(...)` and `Result.Error(...)`
+  markers that convert to whichever one a method returns. A `default` `Option` is `None`; a `default` `Result` is uninitialized, and
   every member that would pick a branch throws on it. `ToString()` never prints the content, and
   none of them serializes: System.Text.Json refuses them with `NotSupportedException` in both
   directions instead of writing `{}`, and a converter registered on the options takes precedence. The

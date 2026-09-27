@@ -54,7 +54,7 @@ Each phase ends green, and its guards have been proven by seeding the defect
      and both satellites, and a transitive one via the EF satellite, which failed only that
      satellite.
 1. **Option and Result. ✅ Done 2026-09-27.**
-   - `Option<T>`, `Result<TError>`, `Result<T, TError>`, the `Result.Ok`/`Result.Error` markers,
+   - `Option<T>`, `Result<TError>`, `Result<T, TError>`, the `Result.Success`/`Result.Error` markers,
      their extensions and `RequireCustomInitializationAttribute` in `CodoMetis.TypeKit`. Tests in
      `test/CodoMetis.TypeKit.Tests`.
    - The throw on `Uninitialized`, a `ToString` that never prints the content, and a
@@ -288,6 +288,15 @@ Each phase ends green, and its guards have been proven by seeding the defect
      a type (§1). Every rename is a compile error for code that used the old name; the analyzer's
      metadata-name tests and the generated-surface snapshot moved with them, the snapshot by exactly
      the interface rename and nothing else.
+   - Syntax (decision 19): `Result.Success` (was `Result.Ok`), an `Option.None()` marker, `MapError`,
+     `Bind` from a valued result onto `Result<TError>`, `Or(fallback)` (was `Coalesce`), and a
+     `ToResult(error)` that keeps the value; the marker-lambda overloads and the collapsing `Match`
+     are gone. Measured first against a replica of the conversions: the marker works in a return, a
+     conditional beside `Some`, a `Bind` lambda and an `async` method, and the new `Bind` resolves
+     beside the generic one. The completeness tests forced a case for every new member; seeding
+     `None` out of the refusal, `MapError` past the uninitialized check, or the command into the
+     error branch of `Bind` fails 7, 1 and 1 tests. `ToResult` checks its error on either branch,
+     like the delegates, and a `Some` that accepted a null error fails its test.
 
 ## 3. Discovery is by interface
 
@@ -617,6 +626,23 @@ the package does and claims nothing about other libraries.
       became one `GeneratedFactories` whose methods name the exception each entry point throws.
     - Internally: `ValueObjectAspect` (was the implementation aspect), `ValueObjectContractAspect`,
       `ValueObjectCompanionAspect`, `ValueObjectKind.Plain`.
+19. **Concise, not implicit** (2026-09-27, §9). Markers where a target type exists, explicit type
+    arguments where none does.
+    - One word for success: `Result.Success(...)` beside `Result<…>.Success(...)`, the `Success`
+      markers, `ResultState.Success` and `onSuccess`, as `Option.Some` sits beside `Option<T>`.
+      `Result.Ok` was the one place that said it differently.
+    - `Option.None()` returns a marker that converts to any `Option<T>`; `Option.None<T>()` stays for
+      `var`. The analyzer forbids `default(Option<T>)`, so every None needed its type argument.
+    - `MapError` on both shapes, for crossing layers, which needed
+      `Match<Result<T, TNew>>(x => x, e => Result.Error(…))`; and `Bind(Func<T, Result<TError>>)`, a
+      command after a query, which replaces the collapsing `Match(_ => Result.Ok(), e => e)`, a
+      conversion wearing `Match`'s name.
+    - `Option.ToResult(error)` keeps the value (`Result<T, TError>`); it returned `Result<TError>`,
+      dropping it. `Coalesce` is `Or`, beside `OrDefault()` and `OrNull()`.
+    - Not added: an implicit `T` → `Option<T>`, since a null would throw exactly where a reader
+      expects `None`; a bare error → `Result<T, TError>` (the ambiguity above); a shipped
+      `using static`. A lambda that returns a bare value and `Result.Error(...)` still needs its type
+      argument, because C# infers a lambda's return type from its body alone; the README says so.
 
 Still open:
 
@@ -625,8 +651,8 @@ Still open:
 
 ## 9. Option and Result
 
-`Result<T,TError>` (with the `Success`/`Error` markers and the `Result.Ok()`/`Result.Error()`
-helpers), `Result<TError>` and `Option<T>` ship in `CodoMetis.TypeKit`. The value-object contracts
+`Result<T,TError>`, `Result<TError>` and `Option<T>`, with the `Option.None()`, `Result.Success()` and
+`Result.Error()` markers (decision 19), ship in `CodoMetis.TypeKit`. The value-object contracts
 depend on them: `IValidatedValue.Create` returns a `Result`, and the generated `TryFrom` returns an
 `Option`.
 
@@ -644,10 +670,14 @@ LanguageExt is out.
   `Option { }` and `Result { State = Error }`. So it never prints a value, in line with
   `FromKnownGood`'s message. **Never make these types positional:** positional parameters become public
   properties, which reintroduces `.Value` and puts the value into `ToString`.
-- **The `Result.Ok(x)`/`Result.Error(e)` markers** keep their content internal too, so they print
-  `Success { }` and `Error { }`. Only the implicit conversions read it. Both shapes accept both
-  markers: `Result<TError>` converts from `Result.Error(e)` as well as from a bare error, so a
-  method can `return Result.Error(fault);` whichever shape it returns.
+- **The markers** (decision 19): `Option.None()`, `Result.Success()`, `Result.Success(x)` and
+  `Result.Error(e)` return a small struct that converts implicitly to whatever `Option`/`Result`
+  the target is, so a method returns one without spelling out type arguments. They keep their
+  content internal too, so they print `Success { }` and `Error { }`. Only the implicit conversions
+  read it. Both shapes accept both result markers: `Result<TError>` converts from `Result.Error(e)`
+  as well as from a bare error, so a method can `return Result.Error(fault);` whichever shape it
+  returns. No combinator takes a marker-returning lambda: `Bind(x => Result.Success(x))` was `Map`
+  under another name, and is a compile error now.
 - **`Result<T, TError>` converts from a bare value, never from a bare error** (measured
   2026-09-27). With both conversions, `Result<long, int> r = 5;` compiles and is an **error**:
   `int` is the more specific source type, so C# picks the error conversion. The READMEs had shown
@@ -656,9 +686,9 @@ LanguageExt is out.
   `Some` over null reported a value it could not hand out. `Map` and the zips go through `Some`,
   so a selector that returns null throws too.
 - **So do `Result`'s factories.** Both shapes and both markers constrain their content to
-  `notnull`, and `Success(null)`/`Error(null)`/`Result.Ok(null)`/`Result.Error(null)` throw
+  `notnull`, and `Success(null)`/`Error(null)`/`Result.Success(null)`/`Result.Error(null)` throw
   `ArgumentNullException`: a result over null handed it out of `TryGetValue`/`TryGetError` despite
-  `[NotNullWhen]`. `Map`, `Bind`, the collapsing `Match` and the conversions go through them.
+  `[NotNullWhen]`. `Map`, `MapError`, `Bind` and the conversions go through them.
 - **Every delegate is checked before a branch is picked**, in `Option`, both `Result` shapes and
   their extensions: a null for the branch not taken passed until the other outcome first arrived.
   `NullDelegateTests` holds every delegate parameter of the assembly to a case run on both branches.

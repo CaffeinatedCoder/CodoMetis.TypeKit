@@ -33,8 +33,9 @@ public sealed partial class NotWireTypeTests
         ["error-only error"]    = (Result<string>.Error(Secret), "Result<String>", "Match it"),
         ["valued success"]      = (Result<string, string>.Success(Secret), "Result<String, String>", "Match it"),
         ["valued error"]        = (Result<string, string>.Error(Secret), "Result<String, String>", "Match it"),
-        ["Ok() marker"]         = (Result.Ok(), "Success", "Match it"),
-        ["Ok(value) marker"]    = (Result.Ok(Secret), "Success<String>", "Match it"),
+        ["None() marker"]       = (Option.None(), "None", "ToOption() and OrNull()"),
+        ["Success() marker"]    = (Result.Success(), "Success", "Match it"),
+        ["Success(value) marker"] = (Result.Success(Secret), "Success<String>", "Match it"),
         ["Error(error) marker"] = (Result.Error(Secret), "Error<String>", "Match it"),
     };
 
@@ -120,7 +121,7 @@ public sealed partial class NotWireTypeTests
         JsonSerializer.Serialize(new Nicknamed(Option.Some("Ric")), options).ShouldBe("""{"Nickname":"Ric"}""");
         JsonSerializer.Serialize(new Nicknamed(Option.None<string>()), options).ShouldBe("""{"Nickname":null}""");
         JsonSerializer.Deserialize<Nicknamed>("""{"Nickname":null}""", options).ShouldNotBeNull().Nickname.IsNone().ShouldBeTrue();
-        JsonSerializer.Deserialize<Nicknamed>("""{"Nickname":"Ric"}""", options).ShouldNotBeNull().Nickname.Coalesce("").ShouldBe("Ric");
+        JsonSerializer.Deserialize<Nicknamed>("""{"Nickname":"Ric"}""", options).ShouldNotBeNull().Nickname.Or("").ShouldBe("Ric");
     }
 
     /// <summary>A dictionary key too, with the same message, rather than the serializer's about <see cref="object"/> keys.</summary>

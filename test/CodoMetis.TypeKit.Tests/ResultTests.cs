@@ -57,14 +57,26 @@ public sealed class ResultTests
     /// <summary>
     /// <c>notnull</c> is only an annotation: <c>Error(null!)</c> produced an error whose
     /// <c>TryGetError</c> handed out null despite <c>[NotNullWhen(true)]</c>. The implicit
-    /// conversions and the collapsing <c>Match</c> go through <c>Error</c>, so they refuse it too.
+    /// conversions and <c>MapError</c> go through <c>Error</c>, so they refuse it too.
     /// </summary>
     [Fact]
     public void Error_refuses_null()
     {
         Should.Throw<ArgumentNullException>(() => Result<string>.Error(null!));
         Should.Throw<ArgumentNullException>(() => (Result<string>)(string)null!);
-        Should.Throw<ArgumentNullException>(() => Result<int, string>.Error("boom").Match(_ => Result.Ok(), _ => (string)null!));
+        Should.Throw<ArgumentNullException>(() => Result<string>.Error("boom").MapError(_ => (string)null!));
+    }
+
+    /// <summary>Crossing layers: the error is reshaped, and a success passes without the mapping being called.</summary>
+    [Fact]
+    public void MapError_transforms_only_an_error()
+    {
+        Result<string>.Error("boom").MapError(e => e.Length).TryGetError(out var error).ShouldBeTrue();
+        error.ShouldBe(4);
+
+        var calls = 0;
+        ((bool)Result<string>.Success().MapError(e => { calls++; return e.Length; })).ShouldBeTrue();
+        calls.ShouldBe(0);
     }
 
     [Fact]
@@ -120,7 +132,7 @@ public sealed class ResultTests
 
     /// <summary>
     /// The conversions call sites actually write: returning a bare error value, or
-    /// <c>Result.Ok()</c>, from a method typed <see cref="Result{TError}"/>.
+    /// <c>Result.Success()</c>, from a method typed <see cref="Result{TError}"/>.
     /// </summary>
     [Fact]
     public void An_error_value_and_the_success_marker_convert_implicitly()
@@ -129,7 +141,7 @@ public sealed class ResultTests
         fromError.TryGetError(out var error).ShouldBeTrue();
         error.ShouldBe("boom");
 
-        Result<string> fromMarker = Result.Ok();
+        Result<string> fromMarker = Result.Success();
         ((bool)fromMarker).ShouldBeTrue();
     }
 

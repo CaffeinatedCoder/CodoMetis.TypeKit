@@ -14,7 +14,7 @@ namespace CodoMetis.TypeKit;
 /// <remarks>
 /// <para>
 /// Create instances with <see cref="Success()"/> and <see cref="Error(TError)"/>, or by returning
-/// <c>Result.Ok()</c>, <c>Result.Error(error)</c> or a bare error value from a method typed
+/// <c>Result.Success()</c>, <c>Result.Error(error)</c> or a bare error value from a method typed
 /// <see cref="Result{TError}"/>.
 /// </para>
 /// <para>
@@ -141,6 +141,19 @@ public readonly record struct Result<TError> where TError : notnull
         return Succeeded ? selector() : Error(_error!);
     }
 
+    /// <summary>Transforms the error, keeping a success unchanged: for crossing from one layer's faults to another's.</summary>
+    /// <param name="selector">Called with the error on error. It must not return null.</param>
+    /// <typeparam name="TNewError">The type of the transformed error.</typeparam>
+    /// <returns>An error with the transformed error, or a success without calling <paramref name="selector"/>.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="selector"/> returned null.</exception>
+    public Result<TNewError> MapError<TNewError>(Func<TError, TNewError> selector) where TNewError : notnull
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return Succeeded ? Result<TNewError>.Success() : Result<TNewError>.Error(selector(_error!));
+    }
+
     /// <summary>Runs a side effect on success.</summary>
     /// <param name="action">Called on success.</param>
     /// <returns>This result, unchanged.</returns>
@@ -194,7 +207,7 @@ public readonly record struct Result<TError> where TError : notnull
     /// <param name="error">The marker.</param>
     public static implicit operator Result<TError>(Error<TError> error) => Error(error.Value);
 
-    /// <summary>Converts the <c>Result.Ok()</c> marker, so a method can <c>return Result.Ok();</c>.</summary>
+    /// <summary>Converts the <c>Result.Success()</c> marker, so a method can <c>return Result.Success();</c>.</summary>
     /// <param name="success">The marker.</param>
     public static implicit operator Result<TError>(Success success) => Success();
 }

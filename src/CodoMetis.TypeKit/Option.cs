@@ -108,11 +108,14 @@ public readonly record struct Option<T> where T : notnull
         return _hasValue && predicate(_value!) ? this : Option.None<T>();
     }
 
-    /// <summary>Unwraps the value, substituting a fallback for <c>None</c>.</summary>
-    /// <param name="alternateValue">Returned if there is no value.</param>
-    /// <returns>The value, or <paramref name="alternateValue"/>.</returns>
+    /// <summary>
+    /// Unwraps the value, substituting <paramref name="fallback"/> for <c>None</c>. The siblings for a
+    /// fallback of <c>default</c> or <see langword="null"/> are <c>OrDefault()</c> and <c>OrNull()</c>.
+    /// </summary>
+    /// <param name="fallback">Returned if there is no value.</param>
+    /// <returns>The value, or <paramref name="fallback"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public T Coalesce(T alternateValue) => TryGetValue(out var value) ? value : alternateValue;
+    public T Or(T fallback) => TryGetValue(out var value) ? value : fallback;
 
     /// <summary>Unwraps the value, if there is one.</summary>
     /// <param name="value">The value if there is one; otherwise <c>default</c>.</param>
@@ -130,4 +133,8 @@ public readonly record struct Option<T> where T : notnull
     {
         if (_hasValue) yield return _value!;
     }
+
+    /// <summary>Converts the <c>Option.None()</c> marker, so a method can <c>return Option.None();</c>.</summary>
+    /// <param name="none">The marker.</param>
+    public static implicit operator Option<T>(None none) => Option.None<T>();
 }

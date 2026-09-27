@@ -10,7 +10,7 @@ namespace CodoMetis.TypeKit.Tests;
 /// <remarks>
 /// <para>
 /// Checked only where it was called, a null for the branch not taken passed: <c>Match(null, …)</c>
-/// on every error, <c>ToResult(null, …)</c> on every <c>None</c>, until the other outcome first
+/// on every error, <c>Zip(…, null)</c> on every <c>None</c>, until the other outcome first
 /// arrived, typically in production. Every case therefore runs on both branches.
 /// </para>
 /// <para>
@@ -38,8 +38,6 @@ public sealed class NullDelegateTests
         ["Option<T>.Tap(Action<T>): action"]                          = [() => Some.Tap(Null<Action<int>>()), () => None.Tap(Null<Action<int>>())],
         ["Option<T>.Filter(Func<T, Boolean>): predicate"]                 = [() => Some.Filter(Null<Func<int, bool>>()), () => None.Filter(Null<Func<int, bool>>())],
 
-        ["Option.ToResult(Option<T>, Func<T, TSuccess>, TError): onSuccess"] =
-            [() => Some.ToResult(Null<Func<int, int>>(), "e"), () => None.ToResult(Null<Func<int, int>>(), "e")],
         ["Option.Select(Option<T>, Func<T, TResult>): selector"]               = [() => Some.Select(Null<Func<int, int>>()), () => None.Select(Null<Func<int, int>>())],
         ["Option.SelectMany(Option<T>, Func<T, Option<TResult>>): selector"]   = [() => Some.SelectMany(Null<Func<int, Option<int>>>()), () => None.SelectMany(Null<Func<int, Option<int>>>())],
         ["Option.Where(Option<T>, Func<T, Boolean>): predicate"]              = [() => Some.Where(Null<Func<int, bool>>()), () => None.Where(Null<Func<int, bool>>())],
@@ -62,20 +60,18 @@ public sealed class NullDelegateTests
         ["Result<TError>.Match(Func<TResult>, Func<TResult>): onError"]           = [() => Ok.Match(() => 0, Null<Func<int>>()), () => Failed.Match(() => 0, Null<Func<int>>())],
         ["Result<TError>.Map(Func<TResult>): selector"]                                 = [() => Ok.Map(Null<Func<int>>()), () => Failed.Map(Null<Func<int>>())],
         ["Result<TError>.Bind(Func<Result<TError>>): selector"]                         = [() => Ok.Bind(Null<Func<Result<string>>>()), () => Failed.Bind(Null<Func<Result<string>>>())],
+        ["Result<TError>.MapError(Func<TError, TNewError>): selector"]         = [() => Ok.MapError(Null<Func<string, int>>()), () => Failed.MapError(Null<Func<string, int>>())],
         ["Result<TError>.Tap(Action): action"]                                    = [() => Ok.Tap(Null<Action>()), () => Failed.Tap(Null<Action>())],
         ["Result<TError>.TapAsync(Func<Task>): action"]                           = [() => Ok.TapAsync(Null<Func<Task>>()), () => Failed.TapAsync(Null<Func<Task>>())],
 
         ["Result<T, TError>.Match(Func<T, TResult>, Func<TError, TResult>): onSuccess"]          = [() => Value.Match(Null<Func<int, int>>(), _ => 0), () => Error.Match(Null<Func<int, int>>(), _ => 0)],
         ["Result<T, TError>.Match(Func<T, TResult>, Func<TError, TResult>): onError"]            = [() => Value.Match(x => x, Null<Func<string, int>>()), () => Error.Match(x => x, Null<Func<string, int>>())],
-        ["Result<T, TError>.Match(Func<T, Success<TResult>>, Func<TError, TResult>): onSuccess"] = [() => Value.Match(Null<Func<int, Success<int>>>(), _ => 0), () => Error.Match(Null<Func<int, Success<int>>>(), _ => 0)],
-        ["Result<T, TError>.Match(Func<T, Success<TResult>>, Func<TError, TResult>): onError"]   = [() => Value.Match(x => Result.Ok(x), Null<Func<string, int>>()), () => Error.Match(x => Result.Ok(x), Null<Func<string, int>>())],
         ["Result<T, TError>.Match(Func<T, TResult>, Func<TResult>): onSuccess"]                         = [() => Value.Match(Null<Func<int, int>>(), () => 0), () => Error.Match(Null<Func<int, int>>(), () => 0)],
         ["Result<T, TError>.Match(Func<T, TResult>, Func<TResult>): onError"]            = [() => Value.Match(x => x, Null<Func<int>>()), () => Error.Match(x => x, Null<Func<int>>())],
-        ["Result<T, TError>.Match(Func<T, Success>, Func<TError, TError>): onSuccess"]           = [() => Value.Match(Null<Func<int, Success>>(), e => e), () => Error.Match(Null<Func<int, Success>>(), e => e)],
-        ["Result<T, TError>.Match(Func<T, Success>, Func<TError, TError>): onError"]             = [() => Value.Match(_ => Result.Ok(), Null<Func<string, string>>()), () => Error.Match(_ => Result.Ok(), Null<Func<string, string>>())],
         ["Result<T, TError>.Map(Func<T, TResult>): selector"]                                          = [() => Value.Map(Null<Func<int, int>>()), () => Error.Map(Null<Func<int, int>>())],
         ["Result<T, TError>.Bind(Func<T, Result<TResult, TError>>): selector"]                         = [() => Value.Bind(Null<Func<int, Result<int, string>>>()), () => Error.Bind(Null<Func<int, Result<int, string>>>())],
-        ["Result<T, TError>.Bind(Func<T, Success<TResult>>): selector"]                                = [() => Value.Bind(Null<Func<int, Success<int>>>()), () => Error.Bind(Null<Func<int, Success<int>>>())],
+        ["Result<T, TError>.Bind(Func<T, Result<TError>>): selector"]                          = [() => Value.Bind(Null<Func<int, Result<string>>>()), () => Error.Bind(Null<Func<int, Result<string>>>())],
+        ["Result<T, TError>.MapError(Func<TError, TNewError>): selector"]                      = [() => Value.MapError(Null<Func<string, int>>()), () => Error.MapError(Null<Func<string, int>>())],
         ["Result<T, TError>.Tap(Action<T>): action"]                                             = [() => Value.Tap(Null<Action<int>>()), () => Error.Tap(Null<Action<int>>())],
         ["Result<T, TError>.TapAsync(Func<T, Task>): action"]                                    = [() => Value.TapAsync(Null<Func<int, Task>>()), () => Error.TapAsync(Null<Func<int, Task>>())],
 

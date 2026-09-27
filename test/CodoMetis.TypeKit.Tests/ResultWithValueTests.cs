@@ -32,33 +32,39 @@ public sealed class ResultWithValueTests
     }
 
     /// <summary>
-    /// The collapsing overload is how a valued pipeline hands its outcome to a caller that only
-    /// wants pass/fail: the value is spent, the error may be reshaped on the way out.
+    /// A query that produced a value, then a command that produces none: the value is spent in the
+    /// command, whose own error or success is what remains. An error skips the command.
     /// </summary>
     [Fact]
-    public void Match_can_collapse_to_an_error_only_result()
-    {
-        var collapsed = Result<int, string>.Success(21).Match(_ => Result.Ok(), e => e + "!");
-        ((bool)collapsed).ShouldBeTrue();
-
-        var failed = Result<int, string>.Error("boom").Match(_ => Result.Ok(), e => e + "!");
-        failed.TryGetError(out var error).ShouldBeTrue();
-        error.ShouldBe("boom!");
-    }
-
-    /// <summary>
-    /// "Spent" means the success callback runs: it is where the value is consumed, so skipping it
-    /// would silently drop whatever it does with the value.
-    /// </summary>
-    [Fact]
-    public void Collapsing_runs_the_success_callback_with_the_value()
+    public void Bind_to_an_error_only_result_spends_the_value_in_the_command()
     {
         var seen = new List<int>();
 
-        Result<int, string>.Success(21).Match(x => { seen.Add(x); return Result.Ok(); }, e => e);
-        Result<int, string>.Error("boom").Match(x => { seen.Add(x); return Result.Ok(); }, e => e);
+        Result<string> sent = Result<int, string>.Success(21).Bind(x => { seen.Add(x); return Result.Success(); });
+        ((bool)sent).ShouldBeTrue();
+
+        Result<string> declined = Result<int, string>.Success(21).Bind(_ => Result.Error("declined"));
+        declined.TryGetError(out var reason).ShouldBeTrue();
+        reason.ShouldBe("declined");
+
+        Result<string> skipped = Result<int, string>.Error("boom").Bind(x => { seen.Add(x); return Result.Success(); });
+        skipped.TryGetError(out var error).ShouldBeTrue();
+        error.ShouldBe("boom");
 
         seen.ShouldBe([21]);
+    }
+
+    /// <summary>Crossing layers: the error is reshaped, and a success passes without the mapping being called.</summary>
+    [Fact]
+    public void MapError_transforms_only_an_error()
+    {
+        Result<int, string>.Error("boom").MapError(e => e.Length).TryGetValue(out _, out var error).ShouldBeFalse();
+        error.ShouldBe(4);
+
+        var calls = 0;
+        Result<int, string>.Success(21).MapError(e => { calls++; return e.Length; }).TryGetValue(out var value, out _).ShouldBeTrue();
+        value.ShouldBe(21);
+        calls.ShouldBe(0);
     }
 
     [Fact]
@@ -92,13 +98,6 @@ public sealed class ResultWithValueTests
     }
 
     [Fact]
-    public void Bind_accepts_a_plain_ok_marker()
-    {
-        Result<int, string>.Success(21).Bind(x => Result.Ok(x * 2)).TryGetValue(out var value, out _).ShouldBeTrue();
-        value.ShouldBe(42);
-    }
-
-    [Fact]
     public void Tap_sees_the_value_only_on_success()
     {
         var seen = new List<int>();
@@ -129,19 +128,19 @@ public sealed class ResultWithValueTests
     }
 
     /// <summary>
-    /// The conversions call sites actually write: returning a bare value, <c>Result.Ok(x)</c> or
+    /// The conversions call sites actually write: returning a bare value, <c>Result.Success(x)</c> or
     /// <c>Result.Error(e)</c> from a method typed <see cref="Result{T,TError}"/>.
     /// </summary>
     [Fact]
-    public void A_value_an_ok_marker_and_an_error_marker_convert_implicitly()
+    public void A_value_a_success_marker_and_an_error_marker_convert_implicitly()
     {
         Result<int, string> fromValue = 5;
         fromValue.TryGetValue(out var value, out _).ShouldBeTrue();
         value.ShouldBe(5);
 
-        Result<int, string> fromOk = Result.Ok(7);
-        fromOk.TryGetValue(out var okValue, out _).ShouldBeTrue();
-        okValue.ShouldBe(7);
+        Result<int, string> fromSuccess = Result.Success(7);
+        fromSuccess.TryGetValue(out var successValue, out _).ShouldBeTrue();
+        successValue.ShouldBe(7);
 
         Result<int, string> fromError = Result.Error("boom");
         fromError.TryGetValue(out _, out var error).ShouldBeFalse();
@@ -204,9 +203,10 @@ public sealed class ResultWithValueTests
     {
         Should.Throw<ArgumentNullException>(() => Result<string, string>.Success(null!));
         Should.Throw<ArgumentNullException>(() => Result<int, string>.Error(null!));
-        Should.Throw<ArgumentNullException>(() => Result.Ok<string>(null!));
+        Should.Throw<ArgumentNullException>(() => Result.Success<string>(null!));
         Should.Throw<ArgumentNullException>(() => Result.Error<string>(null!));
         Should.Throw<ArgumentNullException>(() => Result<int, string>.Success(1).Map(_ => (string)null!));
+        Should.Throw<ArgumentNullException>(() => Result<int, string>.Error("boom").MapError(_ => (string)null!));
     }
 
     [Fact]

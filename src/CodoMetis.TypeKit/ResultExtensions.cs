@@ -1,21 +1,21 @@
 namespace CodoMetis.TypeKit;
 
 /// <summary>
-/// The <c>Ok</c>/<c>Error</c> markers that convert into a <see cref="Result{TError}"/> or
+/// The <c>Success</c>/<c>Error</c> markers that convert into a <see cref="Result{TError}"/> or
 /// <see cref="Result{T,TError}"/>, and the LINQ and sequence vocabulary for results.
 /// </summary>
 public static class Result
 {
     /// <summary>The success marker for a method typed <see cref="Result{TError}"/>.</summary>
     /// <returns>A marker that converts implicitly to a successful result.</returns>
-    public static Success Ok() => new();
+    public static Success Success() => new();
 
     /// <summary>The success marker for a method typed <see cref="Result{T,TError}"/>.</summary>
     /// <param name="value">The value. Never null.</param>
     /// <typeparam name="T">The type of the value.</typeparam>
     /// <returns>A marker that converts implicitly to a successful result holding <paramref name="value"/>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
-    public static Success<T> Ok<T>(T value) where T : notnull =>
+    public static Success<T> Success<T>(T value) where T : notnull =>
         value is null ? throw new ArgumentNullException(nameof(value)) : new(value);
 
     /// <summary>The error marker for a method typed <see cref="Result{T,TError}"/>, whatever its value type, or <see cref="Result{TError}"/>.</summary>
