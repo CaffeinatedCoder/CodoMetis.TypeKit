@@ -9,6 +9,8 @@
   <Folder Name="/test/">
     <Project Path="test/CodoMetis.TypeKit.Analyzers.Tests/CodoMetis.TypeKit.Analyzers.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Conventions.Tests/CodoMetis.TypeKit.Conventions.Tests.csproj" />
+    <Project Path="test/CodoMetis.TypeKit.Generators.Probes/CodoMetis.TypeKit.Generators.Probes.csproj" />
+    <Project Path="test/CodoMetis.TypeKit.Generators.Tests/CodoMetis.TypeKit.Generators.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Tests/CodoMetis.TypeKit.Tests.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">

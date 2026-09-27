@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Value objects woven by the real fabric, in a library of their own. The tests reach them through
+      a project reference, which also proves that generated members survive an assembly boundary
+      (FromKnownGood's caller expression is filled in at the call site, in another assembly).
+      The analyzer runs here too: CMTK0002 must stay silent, since this project references the
+      generators, and CMTK0001 must still fire.
+    -->
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <IsTestProject>false</IsTestProject>
+        <!-- The woven code, written to obj/…/metalama, is what a generation review reads. -->
+        <MetalamaEmitCompilerTransformedFiles>true</MetalamaEmitCompilerTransformedFiles>
+    </PropertyGroup>
+
+    <!-- test/Directory.Build.props makes every project under test/ an xunit host; this one is not. -->
+    <ItemGroup>
+        <PackageReference Remove="xunit.v3" />
+        <PackageReference Remove="Shouldly" />
+        <Using Remove="Xunit" />
+        <Using Remove="Shouldly" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="CodoMetis.TypeKit.Generators.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="NodaTime" />
+        <PackageReference Include="NodaTime.Serialization.SystemTextJson" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Generators\CodoMetis.TypeKit.Generators.csproj" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Analyzers\CodoMetis.TypeKit.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,55 @@
+using Metalama.Framework.Aspects;
+using Metalama.Framework.Code;
+
+namespace CodoMetis.TypeKit.Generators;
+
+/// <summary>
+/// What <see cref="ValueObjectImplementationAspect"/> leaves for the aspects that run after it.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The references are <see cref="IDurableRef{T}"/> rather than <see cref="IRef{T}"/>: aspect state
+/// outlives the compilation it was built from, and Metalama 2027.0 rejects a plain reference there.
+/// </para>
+/// <para>
+/// <see cref="FromJson"/>, <see cref="FromText"/> and <see cref="TryFromText"/> are the only way the
+/// JSON, parsing and type-converter aspects create an instance. They apply <c>Create</c> for a
+/// validated value object, so no generated entry point can bypass its rules.
+/// </para>
+/// </remarks>
+internal sealed class ValueObjectAspectState : IAspectState
+{
+    // ReSharper disable once ConvertToPrimaryConstructor
+    public ValueObjectAspectState(
+        ValueObjectKind           kind,
+        IDurableRef<INamedType>   valueType,
+        IDurableRef<IConstructor> privateConstructor,
+        IDurableRef<IMethod>      fromJson,
+        IDurableRef<IMethod>      fromText,
+        IDurableRef<IMethod>      tryFromText
+    )
+    {
+        Kind               = kind;
+        ValueType          = valueType;
+        PrivateConstructor = privateConstructor;
+        FromJson           = fromJson;
+        FromText           = fromText;
+        TryFromText        = tryFromText;
+    }
+
+    public ValueObjectKind Kind { get; }
+
+    public IDurableRef<INamedType> ValueType { get; }
+
+    /// <summary>No validation. For values that are already an instance's own, never for input.</summary>
+    public IDurableRef<IConstructor> PrivateConstructor { get; }
+
+    /// <summary><c>static TSelf __FromJson(T value)</c>: a refusal throws <c>JsonException</c>.</summary>
+    public IDurableRef<IMethod> FromJson { get; }
+
+    /// <summary><c>static TSelf __FromText(T value)</c>: a refusal throws <c>FormatException</c>.</summary>
+    public IDurableRef<IMethod> FromText { get; }
+
+    /// <summary><c>static bool __TryFromText(T value, out TSelf result)</c>: a refusal returns <see langword="false"/>.</summary>
+    public IDurableRef<IMethod> TryFromText { get; }
+}

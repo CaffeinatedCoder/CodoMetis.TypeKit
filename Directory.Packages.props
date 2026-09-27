@@ -35,5 +35,11 @@
             different compiler than the one it is built against. Bump the two together.
         -->
         <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" />
+        <!--
+            The generators resolve NodaTime from the consumer's compilation and never reference it
+            themselves; the probes reference it to exercise that path.
+        -->
+        <PackageVersion Include="NodaTime" Version="3.3.4" />
+        <PackageVersion Include="NodaTime.Serialization.SystemTextJson" Version="1.4.0" />
     </ItemGroup>
 </Project>

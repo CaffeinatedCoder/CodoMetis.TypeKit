@@ -24,3 +24,6 @@ riderModule.iml
 # OS
 .DS_Store
 Thumbs.db
+
+# Snapshot tests: the actual output of a failed comparison
+*.received.txt

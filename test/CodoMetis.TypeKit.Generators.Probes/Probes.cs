@@ -1,0 +1,59 @@
+using CodoMetis.TypeKit.ValueObjects;
+
+namespace CodoMetis.TypeKit.Generators.Probes;
+
+// One plain value object per strategy the JSON and parsing aspects distinguish. Declared here, in a
+// library, and used from the test assembly: generated members must survive the assembly boundary.
+
+/// <summary>JSON: string. Parse: the string itself.</summary>
+public readonly partial record struct ProbeName : IValue<string>;
+
+/// <summary>JSON: Guid. Parse: ISpanParsable and IUtf8SpanParsable.</summary>
+public readonly partial record struct ProbeId : IValue<Guid>;
+
+/// <summary>JSON: invariant number. Parse: ISpanParsable. MinValue/MaxValue, IConvertible, comparison.</summary>
+public readonly partial record struct ProbeCount : IValue<int>;
+
+/// <summary>JSON: invariant number.</summary>
+public readonly partial record struct ProbeAmount : IValue<decimal>;
+
+/// <summary>JSON: boolean.</summary>
+public readonly partial record struct ProbeFlag : IValue<bool>;
+
+/// <summary>JSON: DateTime, always written as UTC.</summary>
+public readonly partial record struct ProbeTimestamp : IValue<DateTime>;
+
+/// <summary>JSON: DateOnly as yyyy-MM-dd.</summary>
+public readonly partial record struct ProbeDate : IValue<DateOnly>;
+
+/// <summary>JSON: DateTimeOffset.</summary>
+public readonly partial record struct ProbeMoment : IValue<DateTimeOffset>;
+
+/// <summary>JSON: TimeOnly.</summary>
+public readonly partial record struct ProbeTime : IValue<TimeOnly>;
+
+/// <summary>JSON: NodaTime, through NodaConverters, resolved from this compilation by name.</summary>
+public readonly partial record struct ProbeInstant : IValue<NodaTime.Instant>;
+
+/// <summary>JSON: NodaTime, through NodaConverters.</summary>
+public readonly partial record struct ProbeLocalDate : IValue<NodaTime.LocalDate>;
+
+/// <summary>JSON: fallback through the options. Parse: the string constructor. A class as the wrapped type.</summary>
+public readonly partial record struct ProbeUri : IValue<Uri>;
+
+/// <summary>A value object that is a record class rather than a record struct.</summary>
+public sealed partial record ProbeLabel : IValue<string>;
+
+/// <summary>Implements the marker through another interface, which the fabric must still find.</summary>
+public interface IProbeIdentifier : IValue<Guid>;
+
+public readonly partial record struct ProbeCustomerId : IProbeIdentifier;
+
+/// <summary>Nested inside another type.</summary>
+public static class ProbeContainer
+{
+    public readonly partial record struct NestedId : IValue<int>;
+}
+
+/// <summary>Internal: its generated extension class must be internal too.</summary>
+internal readonly partial record struct ProbeInternalId : IValue<int>;

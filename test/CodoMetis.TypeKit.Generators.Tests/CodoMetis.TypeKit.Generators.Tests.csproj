@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Behaviour tests for every generated member, against value objects the real fabric wove: the
+      probes library, and TestLocalId here. This project references CodoMetis.TypeKit.Generators only
+      through the probes, so TestLocalId being generated is the transitive-fabric check.
+      The analyzer runs here as in the probes: CMTK0002 must stay silent.
+    -->
+    <ItemGroup>
+        <ProjectReference Include="..\CodoMetis.TypeKit.Generators.Probes\CodoMetis.TypeKit.Generators.Probes.csproj" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Analyzers\CodoMetis.TypeKit.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+</Project>

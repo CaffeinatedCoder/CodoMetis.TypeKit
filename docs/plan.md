@@ -1,6 +1,6 @@
 # Plan: CodoMetis.TypeKit
 
-Status: **in progress, 2026-09-27.** Phases 0, 1 and 2 are done. The decisions are in §8. The fabric
+Status: **in progress, 2026-09-27.** Phases 0 to 3 are done. The decisions are in §8. The fabric
 spike ([spikes/FabricSpike](../spikes/FabricSpike/README.md)) and the translation comparison
 ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)) are done.
 
@@ -8,7 +8,7 @@ spike ([spikes/FabricSpike](../spikes/FabricSpike/README.md)) and the translatio
 
 | Package | Depends on | Metalama | Contents |
 |---|---|---|---|
-| `CodoMetis.TypeKit` | Analyzers (flows, §10) | **no** | `Option<T>`, `Result<T,TError>`, `Result<TError>` and their extensions; the value-object contracts `IValueObject<,>`, `IValueWrapper<,>`, `IValue<T>`, `IValidatedValue<,,>`, `IValueObjectMaterializer<,>` (§4), `KnownGood`; `TranslatedAsUnderlyingValueAttribute`, `RequireCustomInitializationAttribute`; `GuidValueExtensions` (`OrderId.New()` from a version 7 Guid) |
+| `CodoMetis.TypeKit` | Analyzers (flows, §10) | **no** | `Option<T>`, `Result<T,TError>`, `Result<TError>` and their extensions; the value-object contracts `IValueObject<,>`, `IValueWrapper<,>`, `IValue<T>`, `IValidatedValue<,,>`, `IValueObjectMaterializer<,>` (§4), `KnownGood`; `TranslatedAsUnderlyingValueAttribute`, `RequireCustomInitializationAttribute`; `GuidValueExtensions` (`OrderId.New()` from a version 7 Guid); `Accepted` and `GeneratedParsing`, which the generated code calls (§5) |
 | `CodoMetis.TypeKit.Analyzers` | — | no | Roslyn analyzers and code fixes (§10). Nobody references it directly: it reaches every consumer through the base package |
 | `CodoMetis.TypeKit.Generators` | TypeKit, Metalama.Framework 2026.1.x (flows) | yes | Internal aspects, internal `TransitiveProjectFabric`, `AspectOrder`. Future generated type families join this package too: one fabric, one aspect order |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | TypeKit, EF Core Relational | no | Generic converter, convention, `.Value` / `GetValue` / `ValueOrNull` translators, `UseTypeKit()` |
@@ -79,16 +79,31 @@ Each phase ends green, and its guards have been proven by seeding the defect
      - matching the generators by prefix or by suffix fails the look-alike cases (1 each);
      - dropping the dependency, excluding its analyzers, packing the analyzer into `lib/` or
        marking it a development dependency each fail a packaging test.
-3. **Generators.**
-   - The ten aspects in `CodoMetis.TypeKit.Generators`, applied by the fabric rather than by
-     `[Inheritable]` on the interfaces.
-   - No NodaTime compile-time dependency (§5).
-   - Behaviour tests for every generated member, against woven probe types.
-   - The surface snapshot (§6).
-   - The generator tests reference the real `.Generators` assembly, so they double as CMTK0002's
-     integration test: give that project the analyzer (`OutputItemType="Analyzer"`), and it must
-     stay silent there. In-repo projects do not get the analyzer through a project reference to
-     `CodoMetis.TypeKit`; only package consumers do.
+3. **Generators. ✅ Done 2026-09-27.**
+   - The ten aspects, the transitive fabric and `AspectOrder` in `CodoMetis.TypeKit.Generators`,
+     built on Metalama 2026.1.28 (§5).
+   - Every generated way into a validated value object applies `Create` (§5, entry points).
+   - Probes in `test/CodoMetis.TypeKit.Generators.Probes`, one per JSON and parsing strategy plus
+     the edge cases, and behaviour tests for every generated member against them. The tests reach
+     the generators only through the probes, which is the transitive-fabric check.
+   - The generated-surface snapshot (§6), `GeneratedSurface.verified.txt`.
+   - Build-outcome tests: a throwaway consumer with declarations that cannot be generated gets
+     exactly CMTK1000–1005 and CMTK0001, nothing else, and no CMTK0002 beside the real generators.
+   - Guards, each proven by seeding its defect:
+     - a JSON read, `Parse` or `TryParse` that bypasses `Create` fails 7, 9 and 5 entry-point
+       cases; a new public factory without a case fails the completeness tests;
+     - `MinValue` on a validated number, a missing JSON-null or `Parse(null)` guard, and a fabric
+       that misses indirect markers or nested types each fail their tests, and the surface ones
+       the snapshot too;
+     - without the more-than-one-marker or the generic-type check, the build-outcome tests see an
+       aspect failure instead of CMTK1003/1005;
+     - an analyzer that stops seeing value objects fails the CMTK0001 build test, and one that
+       looks for a misspelled generators assembly breaks the probes build with CMTK0002.
+   - Found while building them, and fixed: JSON reads and parsing constructed validated value objects
+     without `Create`; `MinValue`/`MaxValue` wrapped an unvalidated bound; a JSON `null` or
+     `Parse(null)` wrapped null; `bool`/`char` (explicit `IParsable`) did not compile; a NodaTime
+     `LocalDate` could not be a dictionary key; an internal value object got a public extension
+     class; a marker reached through a derived interface would not have been generated.
 4. **EF Core.** §4. SQL snapshot tests via `ToQueryString` (no database), plus one
    Testcontainers PostgreSQL round trip per underlying type family.
 5. **ASP.NET Core.** §7, preceded by its own measurement spike.
@@ -137,6 +152,13 @@ passes in tests and breaks for the first consumer who renames something.
   `HasConversion`.
 - **Translators.** `ValueObjectMemberTranslatorPlugin` / `ValueObjectMethodCallTranslatorPlugin`
   are registered by the same options extension, so a consumer wires nothing else.
+- **Stored JSON.** The generated JSON converter applies `Create` (§5), which is right for input and
+  wrong for JSON the application stored itself (an event store, a `jsonb` column): a rule added
+  later would make old documents unreadable, the problem the materializer solves for columns.
+  Offer an opt-in converter factory for the `JsonSerializerOptions` of such a store that reads
+  through `IValueObjectMaterializer`, documented with the same contract. Converters in
+  `JsonSerializerOptions.Converters` take precedence over the type's `[JsonConverter]`, so no
+  generated code changes. Decide the package (base or EF satellite) at the start of phase 4.
 - **How far the translation is unique, measured 2026-09-27**
   ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)):
   - `.Value` in a query predicate fails in Vogen 8.0.7 and in plain EF Core 10. Thinktecture
@@ -150,18 +172,33 @@ passes in tests and breaks for the first consumer who renames something.
 
 - **Aspect-class count.** Ten classes. The Metalama Open Source edition (MIT) has no aspect-class
   limit (pricing page, 2026-09-26). The unlicensed CI build confirms it (phase 6).
-- **NodaTime.** `ValueObjectJsonAspect` and `ValueObjectParsableAspect` handle NodaTime value
-  types, but must not refer to NodaTime at compile time, which would force NodaTime on every
-  consumer. They resolve the types by metadata name from the target's compilation, and skip the
-  strategy when the type is absent. The generated code only mentions NodaTime when the value type
-  is a NodaTime type, and then the consumer already references it.
+- **Entry points.** The implementation aspect introduces three private helpers on every value
+  object, and they are the only way the JSON, parsing and type-converter aspects create an
+  instance: `__FromJson` (a refusal throws `JsonException`), `__FromText` (`FormatException`) and
+  `__TryFromText` (`false`). A plain value object constructs directly; a validated one calls
+  `Create` through `Accepted` in the base package. The exception is the explicit
+  `IValueObjectMaterializer.Materialize`, by contract. `MinValue`/`MaxValue` are only generated for
+  a plain value object.
+- **Declarations that cannot be generated** are errors, so no type is left half-generated:
+  CMTK1000/1001/1002 (not `partial`, not a record, a struct not `readonly`), CMTK1003 (more than one
+  marker), CMTK1004 (a validated marker whose first type argument is another type), CMTK1005 (a
+  generic value object, or a wrapped type that is not a class, struct or enum).
+- **NodaTime.** Only `ValueObjectJsonAspect` handles NodaTime types, and it must not refer to
+  NodaTime at compile time, which would force NodaTime on every consumer. It resolves the types
+  with `TypeFactory.TryGetType` from the consumer's compilation, compares them by symbol, and uses
+  NodaTime's converters (values and dictionary keys) only when
+  NodaTime.Serialization.SystemTextJson is referenced too. Otherwise the fallback serializes
+  through the options. Parsing reaches NodaTime types through their `[TypeConverter]`.
+- **Explicit `IParsable`.** `bool` and `char` implement their parsing interfaces explicitly, so the
+  generated code calls the wrapped type's `Parse`/`TryParse` through `GeneratedParsing`, whose
+  constrained type parameters reach an explicit implementation.
 - **Metalama 2026.1.** Aspect state uses `IDurableRef`, which exists in 2026.1. `[Durable]` on the
   `_value` template placeholder is 2027.0-only and stays out until the upgrade (decision 4). Build
   each aspect on 2026.1 as it lands, and use no 2027.0-only API.
 - **`AspectOrder`** lives in `CodoMetis.TypeKit.Generators`. Open point: ordering against a
   consumer's own aspects (fabric spike D).
 - **Not in scope:** a `Try`/`Unit` type (§9 non-goals), clock-type analyzers, text-guarding types,
-  and decimal JSON converters unless an aspect needs them (check during phase 3).
+  and decimal JSON converters (no aspect needs them, checked in phase 3).
 
 ## 6. Test strategy
 
@@ -320,7 +357,7 @@ exist.
 | CMTK0005 | Array of a no-default type created with a length (`new OrderId[n]`, `GC.AllocateUninitializedArray`): every element starts as `default` | Warning | proposed |
 | CMTK0006 | Field or auto-property of a no-default type in a class, not `required`, no initializer, not assigned in every constructor. This is the CS8618 equivalent nullable analysis does not give structs, and the largest remaining way to get a `default` value object | Info → Warning | **measure noise first** on EF entities with private parameterless constructors |
 | CMTK0007 | `FromKnownGood` called with a non-constant argument | Info | **needs design**: "a value the caller just produced" is legitimate |
-| — | Code fixes for the aspect's shape diagnostics (missing `partial`/`record`/`readonly`) | — | proposed. The aspect keeps its own error as a backstop |
+| — | Code fixes for the aspect's shape diagnostics CMTK1000–1002 (missing `partial`/`record`/`readonly`) | — | proposed. The aspect keeps its own error as a backstop |
 
 **Release discipline.** Keep `AnalyzerReleases.Shipped/Unshipped.md` tracking (RS2008). A new rule
 ships at Warning or Info in a minor version and is raised to Error only in a major. Consumers

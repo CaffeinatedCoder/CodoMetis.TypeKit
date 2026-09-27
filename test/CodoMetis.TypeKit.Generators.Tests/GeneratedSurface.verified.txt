@@ -1,0 +1,837 @@
+ProbeAmount
+  CompareTo(Object) : Int32
+  CompareTo(ProbeAmount) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeAmount) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Decimal
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeAmount>
+  implements IComparisonOperators<ProbeAmount, ProbeAmount, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeAmount, ProbeAmount, Boolean>
+  implements IEquatable<ProbeAmount>
+  implements IFormattable
+  implements IMinMaxValue<ProbeAmount>
+  implements IParsable<ProbeAmount>
+  implements ISpanFormattable
+  implements ISpanParsable<ProbeAmount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ProbeAmount>
+  implements IValue<Decimal>
+  implements IValueObject<ProbeAmount, Decimal>
+  implements IValueObjectMaterializer<ProbeAmount, Decimal>
+  implements IValueWrapper<ProbeAmount, Decimal>
+  nested ProbeAmountJsonConverter : JsonConverter<ProbeAmount>
+  nested ProbeAmountTypeConverter : TypeConverter
+  new()
+  static From(Decimal) : ProbeAmount
+  static MaxValue : ProbeAmount
+  static MinValue : ProbeAmount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ProbeAmount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeAmount
+  static Parse(String, IFormatProvider) : ProbeAmount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ProbeAmount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeAmount) : Boolean
+  static TryParse(String, IFormatProvider, out ProbeAmount) : Boolean
+  static op_Equality(ProbeAmount, ProbeAmount) : Boolean
+  static op_GreaterThan(ProbeAmount, ProbeAmount) : Boolean
+  static op_GreaterThanOrEqual(ProbeAmount, ProbeAmount) : Boolean
+  static op_Inequality(ProbeAmount, ProbeAmount) : Boolean
+  static op_LessThan(ProbeAmount, ProbeAmount) : Boolean
+  static op_LessThanOrEqual(ProbeAmount, ProbeAmount) : Boolean
+  extension static GetValue(ProbeAmount) : Decimal
+  extension static ValueOrNull(ProbeAmount?) : Decimal?
+ProbeCode
+  CompareTo(Object) : Int32
+  CompareTo(ProbeCode) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeCode) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  Value : String
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeCode>
+  implements IComparisonOperators<ProbeCode, ProbeCode, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeCode, ProbeCode, Boolean>
+  implements IEquatable<ProbeCode>
+  implements IFormattable
+  implements IParsable<ProbeCode>
+  implements IValidatedValue<ProbeCode, String, ProbeCodeFault>
+  implements IValueObject<ProbeCode, String>
+  implements IValueObjectMaterializer<ProbeCode, String>
+  nested ProbeCodeJsonConverter : JsonConverter<ProbeCode>
+  nested ProbeCodeTypeConverter : TypeConverter
+  new()
+  static Create(String) : Result<ProbeCode, ProbeCodeFault>
+  static FromKnownGood(String, String) : ProbeCode
+  static Parse(String, IFormatProvider) : ProbeCode
+  static TryFrom(String) : Option<ProbeCode>
+  static TryParse(String, IFormatProvider, out ProbeCode) : Boolean
+  static op_Equality(ProbeCode, ProbeCode) : Boolean
+  static op_GreaterThan(ProbeCode, ProbeCode) : Boolean
+  static op_GreaterThanOrEqual(ProbeCode, ProbeCode) : Boolean
+  static op_Inequality(ProbeCode, ProbeCode) : Boolean
+  static op_LessThan(ProbeCode, ProbeCode) : Boolean
+  static op_LessThanOrEqual(ProbeCode, ProbeCode) : Boolean
+  extension static GetValue(ProbeCode) : String
+  extension static ValueOrNull(ProbeCode?) : String
+ProbeContainer.NestedId
+  CompareTo(Object) : Int32
+  CompareTo(ProbeContainer.NestedId) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeContainer.NestedId) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeContainer.NestedId>
+  implements IComparisonOperators<ProbeContainer.NestedId, ProbeContainer.NestedId, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeContainer.NestedId, ProbeContainer.NestedId, Boolean>
+  implements IEquatable<ProbeContainer.NestedId>
+  implements IFormattable
+  implements IMinMaxValue<ProbeContainer.NestedId>
+  implements IParsable<ProbeContainer.NestedId>
+  implements ISpanFormattable
+  implements ISpanParsable<ProbeContainer.NestedId>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ProbeContainer.NestedId>
+  implements IValue<Int32>
+  implements IValueObject<ProbeContainer.NestedId, Int32>
+  implements IValueObjectMaterializer<ProbeContainer.NestedId, Int32>
+  implements IValueWrapper<ProbeContainer.NestedId, Int32>
+  nested NestedIdJsonConverter : JsonConverter<ProbeContainer.NestedId>
+  nested NestedIdTypeConverter : TypeConverter
+  new()
+  static From(Int32) : ProbeContainer.NestedId
+  static MaxValue : ProbeContainer.NestedId
+  static MinValue : ProbeContainer.NestedId
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ProbeContainer.NestedId
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeContainer.NestedId
+  static Parse(String, IFormatProvider) : ProbeContainer.NestedId
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ProbeContainer.NestedId) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeContainer.NestedId) : Boolean
+  static TryParse(String, IFormatProvider, out ProbeContainer.NestedId) : Boolean
+  static op_Equality(ProbeContainer.NestedId, ProbeContainer.NestedId) : Boolean
+  static op_GreaterThan(ProbeContainer.NestedId, ProbeContainer.NestedId) : Boolean
+  static op_GreaterThanOrEqual(ProbeContainer.NestedId, ProbeContainer.NestedId) : Boolean
+  static op_Inequality(ProbeContainer.NestedId, ProbeContainer.NestedId) : Boolean
+  static op_LessThan(ProbeContainer.NestedId, ProbeContainer.NestedId) : Boolean
+  static op_LessThanOrEqual(ProbeContainer.NestedId, ProbeContainer.NestedId) : Boolean
+  extension static GetValue(ProbeContainer.NestedId) : Int32
+  extension static ValueOrNull(ProbeContainer.NestedId?) : Int32?
+ProbeCount
+  CompareTo(Object) : Int32
+  CompareTo(ProbeCount) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeCount) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeCount>
+  implements IComparisonOperators<ProbeCount, ProbeCount, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeCount, ProbeCount, Boolean>
+  implements IEquatable<ProbeCount>
+  implements IFormattable
+  implements IMinMaxValue<ProbeCount>
+  implements IParsable<ProbeCount>
+  implements ISpanFormattable
+  implements ISpanParsable<ProbeCount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ProbeCount>
+  implements IValue<Int32>
+  implements IValueObject<ProbeCount, Int32>
+  implements IValueObjectMaterializer<ProbeCount, Int32>
+  implements IValueWrapper<ProbeCount, Int32>
+  nested ProbeCountJsonConverter : JsonConverter<ProbeCount>
+  nested ProbeCountTypeConverter : TypeConverter
+  new()
+  static From(Int32) : ProbeCount
+  static MaxValue : ProbeCount
+  static MinValue : ProbeCount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ProbeCount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeCount
+  static Parse(String, IFormatProvider) : ProbeCount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ProbeCount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeCount) : Boolean
+  static TryParse(String, IFormatProvider, out ProbeCount) : Boolean
+  static op_Equality(ProbeCount, ProbeCount) : Boolean
+  static op_GreaterThan(ProbeCount, ProbeCount) : Boolean
+  static op_GreaterThanOrEqual(ProbeCount, ProbeCount) : Boolean
+  static op_Inequality(ProbeCount, ProbeCount) : Boolean
+  static op_LessThan(ProbeCount, ProbeCount) : Boolean
+  static op_LessThanOrEqual(ProbeCount, ProbeCount) : Boolean
+  extension static GetValue(ProbeCount) : Int32
+  extension static ValueOrNull(ProbeCount?) : Int32?
+ProbeCustomerId
+  CompareTo(Object) : Int32
+  CompareTo(ProbeCustomerId) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeCustomerId) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Guid
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeCustomerId>
+  implements IComparisonOperators<ProbeCustomerId, ProbeCustomerId, Boolean>
+  implements IEqualityOperators<ProbeCustomerId, ProbeCustomerId, Boolean>
+  implements IEquatable<ProbeCustomerId>
+  implements IFormattable
+  implements IParsable<ProbeCustomerId>
+  implements IProbeIdentifier
+  implements ISpanFormattable
+  implements ISpanParsable<ProbeCustomerId>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ProbeCustomerId>
+  implements IValue<Guid>
+  implements IValueObject<ProbeCustomerId, Guid>
+  implements IValueObjectMaterializer<ProbeCustomerId, Guid>
+  implements IValueWrapper<ProbeCustomerId, Guid>
+  nested ProbeCustomerIdJsonConverter : JsonConverter<ProbeCustomerId>
+  nested ProbeCustomerIdTypeConverter : TypeConverter
+  new()
+  static From(Guid) : ProbeCustomerId
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ProbeCustomerId
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeCustomerId
+  static Parse(String, IFormatProvider) : ProbeCustomerId
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ProbeCustomerId) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeCustomerId) : Boolean
+  static TryParse(String, IFormatProvider, out ProbeCustomerId) : Boolean
+  static op_Equality(ProbeCustomerId, ProbeCustomerId) : Boolean
+  static op_GreaterThan(ProbeCustomerId, ProbeCustomerId) : Boolean
+  static op_GreaterThanOrEqual(ProbeCustomerId, ProbeCustomerId) : Boolean
+  static op_Inequality(ProbeCustomerId, ProbeCustomerId) : Boolean
+  static op_LessThan(ProbeCustomerId, ProbeCustomerId) : Boolean
+  static op_LessThanOrEqual(ProbeCustomerId, ProbeCustomerId) : Boolean
+  extension static GetValue(ProbeCustomerId) : Guid
+  extension static ValueOrNull(ProbeCustomerId?) : Guid?
+ProbeDate
+  CompareTo(Object) : Int32
+  CompareTo(ProbeDate) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeDate) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : DateOnly
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeDate>
+  implements IComparisonOperators<ProbeDate, ProbeDate, Boolean>
+  implements IEqualityOperators<ProbeDate, ProbeDate, Boolean>
+  implements IEquatable<ProbeDate>
+  implements IFormattable
+  implements IMinMaxValue<ProbeDate>
+  implements IParsable<ProbeDate>
+  implements ISpanFormattable
+  implements ISpanParsable<ProbeDate>
+  implements IUtf8SpanFormattable
+  implements IValue<DateOnly>
+  implements IValueObject<ProbeDate, DateOnly>
+  implements IValueObjectMaterializer<ProbeDate, DateOnly>
+  implements IValueWrapper<ProbeDate, DateOnly>
+  nested ProbeDateJsonConverter : JsonConverter<ProbeDate>
+  nested ProbeDateTypeConverter : TypeConverter
+  new()
+  static From(DateOnly) : ProbeDate
+  static MaxValue : ProbeDate
+  static MinValue : ProbeDate
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeDate
+  static Parse(String, IFormatProvider) : ProbeDate
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeDate) : Boolean
+  static TryParse(String, IFormatProvider, out ProbeDate) : Boolean
+  static op_Equality(ProbeDate, ProbeDate) : Boolean
+  static op_GreaterThan(ProbeDate, ProbeDate) : Boolean
+  static op_GreaterThanOrEqual(ProbeDate, ProbeDate) : Boolean
+  static op_Inequality(ProbeDate, ProbeDate) : Boolean
+  static op_LessThan(ProbeDate, ProbeDate) : Boolean
+  static op_LessThanOrEqual(ProbeDate, ProbeDate) : Boolean
+  extension static GetValue(ProbeDate) : DateOnly
+  extension static ValueOrNull(ProbeDate?) : DateOnly?
+ProbeFlag
+  CompareTo(Object) : Int32
+  CompareTo(ProbeFlag) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeFlag) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  Value : Boolean
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeFlag>
+  implements IComparisonOperators<ProbeFlag, ProbeFlag, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeFlag, ProbeFlag, Boolean>
+  implements IEquatable<ProbeFlag>
+  implements IFormattable
+  implements IParsable<ProbeFlag>
+  implements ISpanParsable<ProbeFlag>
+  implements IValue<Boolean>
+  implements IValueObject<ProbeFlag, Boolean>
+  implements IValueObjectMaterializer<ProbeFlag, Boolean>
+  implements IValueWrapper<ProbeFlag, Boolean>
+  nested ProbeFlagJsonConverter : JsonConverter<ProbeFlag>
+  nested ProbeFlagTypeConverter : TypeConverter
+  new()
+  static From(Boolean) : ProbeFlag
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeFlag
+  static Parse(String, IFormatProvider) : ProbeFlag
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeFlag) : Boolean
+  static TryParse(String, IFormatProvider, out ProbeFlag) : Boolean
+  static op_Equality(ProbeFlag, ProbeFlag) : Boolean
+  static op_GreaterThan(ProbeFlag, ProbeFlag) : Boolean
+  static op_GreaterThanOrEqual(ProbeFlag, ProbeFlag) : Boolean
+  static op_Inequality(ProbeFlag, ProbeFlag) : Boolean
+  static op_LessThan(ProbeFlag, ProbeFlag) : Boolean
+  static op_LessThanOrEqual(ProbeFlag, ProbeFlag) : Boolean
+  extension static GetValue(ProbeFlag) : Boolean
+  extension static ValueOrNull(ProbeFlag?) : Boolean?
+ProbeId
+  CompareTo(Object) : Int32
+  CompareTo(ProbeId) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeId) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Guid
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeId>
+  implements IComparisonOperators<ProbeId, ProbeId, Boolean>
+  implements IEqualityOperators<ProbeId, ProbeId, Boolean>
+  implements IEquatable<ProbeId>
+  implements IFormattable
+  implements IParsable<ProbeId>
+  implements ISpanFormattable
+  implements ISpanParsable<ProbeId>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ProbeId>
+  implements IValue<Guid>
+  implements IValueObject<ProbeId, Guid>
+  implements IValueObjectMaterializer<ProbeId, Guid>
+  implements IValueWrapper<ProbeId, Guid>
+  nested ProbeIdJsonConverter : JsonConverter<ProbeId>
+  nested ProbeIdTypeConverter : TypeConverter
+  new()
+  static From(Guid) : ProbeId
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ProbeId
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeId
+  static Parse(String, IFormatProvider) : ProbeId
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ProbeId) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeId) : Boolean
+  static TryParse(String, IFormatProvider, out ProbeId) : Boolean
+  static op_Equality(ProbeId, ProbeId) : Boolean
+  static op_GreaterThan(ProbeId, ProbeId) : Boolean
+  static op_GreaterThanOrEqual(ProbeId, ProbeId) : Boolean
+  static op_Inequality(ProbeId, ProbeId) : Boolean
+  static op_LessThan(ProbeId, ProbeId) : Boolean
+  static op_LessThanOrEqual(ProbeId, ProbeId) : Boolean
+  extension static GetValue(ProbeId) : Guid
+  extension static ValueOrNull(ProbeId?) : Guid?
+ProbeInstant
+  CompareTo(Object) : Int32
+  CompareTo(ProbeInstant) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeInstant) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  Value : Instant
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeInstant>
+  implements IComparisonOperators<ProbeInstant, ProbeInstant, Boolean>
+  implements IEqualityOperators<ProbeInstant, ProbeInstant, Boolean>
+  implements IEquatable<ProbeInstant>
+  implements IFormattable
+  implements IMinMaxValue<ProbeInstant>
+  implements IParsable<ProbeInstant>
+  implements IValue<Instant>
+  implements IValueObject<ProbeInstant, Instant>
+  implements IValueObjectMaterializer<ProbeInstant, Instant>
+  implements IValueWrapper<ProbeInstant, Instant>
+  nested ProbeInstantJsonConverter : JsonConverter<ProbeInstant>
+  nested ProbeInstantTypeConverter : TypeConverter
+  new()
+  static From(Instant) : ProbeInstant
+  static MaxValue : ProbeInstant
+  static MinValue : ProbeInstant
+  static Parse(String, IFormatProvider) : ProbeInstant
+  static TryParse(String, IFormatProvider, out ProbeInstant) : Boolean
+  static op_Equality(ProbeInstant, ProbeInstant) : Boolean
+  static op_GreaterThan(ProbeInstant, ProbeInstant) : Boolean
+  static op_GreaterThanOrEqual(ProbeInstant, ProbeInstant) : Boolean
+  static op_Inequality(ProbeInstant, ProbeInstant) : Boolean
+  static op_LessThan(ProbeInstant, ProbeInstant) : Boolean
+  static op_LessThanOrEqual(ProbeInstant, ProbeInstant) : Boolean
+  extension static GetValue(ProbeInstant) : Instant
+  extension static ValueOrNull(ProbeInstant?) : Instant?
+ProbeInternalId (internal)
+  CompareTo(Object) : Int32
+  CompareTo(ProbeInternalId) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeInternalId) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeInternalId>
+  implements IComparisonOperators<ProbeInternalId, ProbeInternalId, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeInternalId, ProbeInternalId, Boolean>
+  implements IEquatable<ProbeInternalId>
+  implements IFormattable
+  implements IMinMaxValue<ProbeInternalId>
+  implements IParsable<ProbeInternalId>
+  implements ISpanFormattable
+  implements ISpanParsable<ProbeInternalId>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ProbeInternalId>
+  implements IValue<Int32>
+  implements IValueObject<ProbeInternalId, Int32>
+  implements IValueObjectMaterializer<ProbeInternalId, Int32>
+  implements IValueWrapper<ProbeInternalId, Int32>
+  nested ProbeInternalIdJsonConverter : JsonConverter<ProbeInternalId>
+  nested ProbeInternalIdTypeConverter : TypeConverter
+  new()
+  static From(Int32) : ProbeInternalId
+  static MaxValue : ProbeInternalId
+  static MinValue : ProbeInternalId
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ProbeInternalId
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeInternalId
+  static Parse(String, IFormatProvider) : ProbeInternalId
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ProbeInternalId) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeInternalId) : Boolean
+  static TryParse(String, IFormatProvider, out ProbeInternalId) : Boolean
+  static op_Equality(ProbeInternalId, ProbeInternalId) : Boolean
+  static op_GreaterThan(ProbeInternalId, ProbeInternalId) : Boolean
+  static op_GreaterThanOrEqual(ProbeInternalId, ProbeInternalId) : Boolean
+  static op_Inequality(ProbeInternalId, ProbeInternalId) : Boolean
+  static op_LessThan(ProbeInternalId, ProbeInternalId) : Boolean
+  static op_LessThanOrEqual(ProbeInternalId, ProbeInternalId) : Boolean
+ProbeLabel
+  <Clone>$() : ProbeLabel
+  CompareTo(Object) : Int32
+  CompareTo(ProbeLabel) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeLabel) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  Value : String
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeLabel>
+  implements IComparisonOperators<ProbeLabel, ProbeLabel, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeLabel, ProbeLabel, Boolean>
+  implements IEquatable<ProbeLabel>
+  implements IFormattable
+  implements IParsable<ProbeLabel>
+  implements IValue<String>
+  implements IValueObject<ProbeLabel, String>
+  implements IValueObjectMaterializer<ProbeLabel, String>
+  implements IValueWrapper<ProbeLabel, String>
+  nested ProbeLabelJsonConverter : JsonConverter<ProbeLabel>
+  nested ProbeLabelTypeConverter : TypeConverter
+  static From(String) : ProbeLabel
+  static Parse(String, IFormatProvider) : ProbeLabel
+  static TryParse(String, IFormatProvider, out ProbeLabel) : Boolean
+  static op_Equality(ProbeLabel, ProbeLabel) : Boolean
+  static op_GreaterThan(ProbeLabel, ProbeLabel) : Boolean
+  static op_GreaterThanOrEqual(ProbeLabel, ProbeLabel) : Boolean
+  static op_Inequality(ProbeLabel, ProbeLabel) : Boolean
+  static op_LessThan(ProbeLabel, ProbeLabel) : Boolean
+  static op_LessThanOrEqual(ProbeLabel, ProbeLabel) : Boolean
+  extension static GetValue(ProbeLabel) : String
+  extension static ValueOrNull(ProbeLabel) : String
+ProbeLocalDate
+  CompareTo(Object) : Int32
+  CompareTo(ProbeLocalDate) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeLocalDate) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  Value : LocalDate
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeLocalDate>
+  implements IComparisonOperators<ProbeLocalDate, ProbeLocalDate, Boolean>
+  implements IEqualityOperators<ProbeLocalDate, ProbeLocalDate, Boolean>
+  implements IEquatable<ProbeLocalDate>
+  implements IFormattable
+  implements IParsable<ProbeLocalDate>
+  implements IValue<LocalDate>
+  implements IValueObject<ProbeLocalDate, LocalDate>
+  implements IValueObjectMaterializer<ProbeLocalDate, LocalDate>
+  implements IValueWrapper<ProbeLocalDate, LocalDate>
+  nested ProbeLocalDateJsonConverter : JsonConverter<ProbeLocalDate>
+  nested ProbeLocalDateTypeConverter : TypeConverter
+  new()
+  static From(LocalDate) : ProbeLocalDate
+  static Parse(String, IFormatProvider) : ProbeLocalDate
+  static TryParse(String, IFormatProvider, out ProbeLocalDate) : Boolean
+  static op_Equality(ProbeLocalDate, ProbeLocalDate) : Boolean
+  static op_GreaterThan(ProbeLocalDate, ProbeLocalDate) : Boolean
+  static op_GreaterThanOrEqual(ProbeLocalDate, ProbeLocalDate) : Boolean
+  static op_Inequality(ProbeLocalDate, ProbeLocalDate) : Boolean
+  static op_LessThan(ProbeLocalDate, ProbeLocalDate) : Boolean
+  static op_LessThanOrEqual(ProbeLocalDate, ProbeLocalDate) : Boolean
+  extension static GetValue(ProbeLocalDate) : LocalDate
+  extension static ValueOrNull(ProbeLocalDate?) : LocalDate?
+ProbeMoment
+  CompareTo(Object) : Int32
+  CompareTo(ProbeMoment) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeMoment) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : DateTimeOffset
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeMoment>
+  implements IComparisonOperators<ProbeMoment, ProbeMoment, Boolean>
+  implements IEqualityOperators<ProbeMoment, ProbeMoment, Boolean>
+  implements IEquatable<ProbeMoment>
+  implements IFormattable
+  implements IMinMaxValue<ProbeMoment>
+  implements IParsable<ProbeMoment>
+  implements ISpanFormattable
+  implements ISpanParsable<ProbeMoment>
+  implements IUtf8SpanFormattable
+  implements IValue<DateTimeOffset>
+  implements IValueObject<ProbeMoment, DateTimeOffset>
+  implements IValueObjectMaterializer<ProbeMoment, DateTimeOffset>
+  implements IValueWrapper<ProbeMoment, DateTimeOffset>
+  nested ProbeMomentJsonConverter : JsonConverter<ProbeMoment>
+  nested ProbeMomentTypeConverter : TypeConverter
+  new()
+  static From(DateTimeOffset) : ProbeMoment
+  static MaxValue : ProbeMoment
+  static MinValue : ProbeMoment
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeMoment
+  static Parse(String, IFormatProvider) : ProbeMoment
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeMoment) : Boolean
+  static TryParse(String, IFormatProvider, out ProbeMoment) : Boolean
+  static op_Equality(ProbeMoment, ProbeMoment) : Boolean
+  static op_GreaterThan(ProbeMoment, ProbeMoment) : Boolean
+  static op_GreaterThanOrEqual(ProbeMoment, ProbeMoment) : Boolean
+  static op_Inequality(ProbeMoment, ProbeMoment) : Boolean
+  static op_LessThan(ProbeMoment, ProbeMoment) : Boolean
+  static op_LessThanOrEqual(ProbeMoment, ProbeMoment) : Boolean
+  extension static GetValue(ProbeMoment) : DateTimeOffset
+  extension static ValueOrNull(ProbeMoment?) : DateTimeOffset?
+ProbeName
+  CompareTo(Object) : Int32
+  CompareTo(ProbeName) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeName) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  Value : String
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeName>
+  implements IComparisonOperators<ProbeName, ProbeName, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeName, ProbeName, Boolean>
+  implements IEquatable<ProbeName>
+  implements IFormattable
+  implements IParsable<ProbeName>
+  implements IValue<String>
+  implements IValueObject<ProbeName, String>
+  implements IValueObjectMaterializer<ProbeName, String>
+  implements IValueWrapper<ProbeName, String>
+  nested ProbeNameJsonConverter : JsonConverter<ProbeName>
+  nested ProbeNameTypeConverter : TypeConverter
+  new()
+  static From(String) : ProbeName
+  static Parse(String, IFormatProvider) : ProbeName
+  static TryParse(String, IFormatProvider, out ProbeName) : Boolean
+  static op_Equality(ProbeName, ProbeName) : Boolean
+  static op_GreaterThan(ProbeName, ProbeName) : Boolean
+  static op_GreaterThanOrEqual(ProbeName, ProbeName) : Boolean
+  static op_Inequality(ProbeName, ProbeName) : Boolean
+  static op_LessThan(ProbeName, ProbeName) : Boolean
+  static op_LessThanOrEqual(ProbeName, ProbeName) : Boolean
+  extension static GetValue(ProbeName) : String
+  extension static ValueOrNull(ProbeName?) : String
+ProbeOverride
+  CompareTo(Object) : Int32
+  CompareTo(ProbeOverride) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeOverride) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  Value : String
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeOverride>
+  implements IComparisonOperators<ProbeOverride, ProbeOverride, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeOverride, ProbeOverride, Boolean>
+  implements IEquatable<ProbeOverride>
+  implements IFormattable
+  implements IParsable<ProbeOverride>
+  implements IValidatedValue<ProbeOverride, String, ProbeOverrideFault>
+  implements IValueObject<ProbeOverride, String>
+  implements IValueObjectMaterializer<ProbeOverride, String>
+  nested ProbeOverrideJsonConverter : JsonConverter<ProbeOverride>
+  nested ProbeOverrideTypeConverter : TypeConverter
+  new()
+  static Create(String) : Result<ProbeOverride, ProbeOverrideFault>
+  static FromKnownGood(String, String) : ProbeOverride
+  static Parse(String, IFormatProvider) : ProbeOverride
+  static TryFrom(String) : Option<ProbeOverride>
+  static TryParse(String, IFormatProvider, out ProbeOverride) : Boolean
+  static op_Equality(ProbeOverride, ProbeOverride) : Boolean
+  static op_GreaterThan(ProbeOverride, ProbeOverride) : Boolean
+  static op_GreaterThanOrEqual(ProbeOverride, ProbeOverride) : Boolean
+  static op_Inequality(ProbeOverride, ProbeOverride) : Boolean
+  static op_LessThan(ProbeOverride, ProbeOverride) : Boolean
+  static op_LessThanOrEqual(ProbeOverride, ProbeOverride) : Boolean
+  extension static GetValue(ProbeOverride) : String
+  extension static ValueOrNull(ProbeOverride?) : String
+ProbePercentage
+  CompareTo(Object) : Int32
+  CompareTo(ProbePercentage) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbePercentage) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbePercentage>
+  implements IComparisonOperators<ProbePercentage, ProbePercentage, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbePercentage, ProbePercentage, Boolean>
+  implements IEquatable<ProbePercentage>
+  implements IFormattable
+  implements IParsable<ProbePercentage>
+  implements ISpanFormattable
+  implements ISpanParsable<ProbePercentage>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ProbePercentage>
+  implements IValidatedValue<ProbePercentage, Int32, ProbePercentageFault>
+  implements IValueObject<ProbePercentage, Int32>
+  implements IValueObjectMaterializer<ProbePercentage, Int32>
+  nested ProbePercentageJsonConverter : JsonConverter<ProbePercentage>
+  nested ProbePercentageTypeConverter : TypeConverter
+  new()
+  static Create(Int32) : Result<ProbePercentage, ProbePercentageFault>
+  static FromKnownGood(Int32, String) : ProbePercentage
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ProbePercentage
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbePercentage
+  static Parse(String, IFormatProvider) : ProbePercentage
+  static TryFrom(Int32) : Option<ProbePercentage>
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ProbePercentage) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbePercentage) : Boolean
+  static TryParse(String, IFormatProvider, out ProbePercentage) : Boolean
+  static op_Equality(ProbePercentage, ProbePercentage) : Boolean
+  static op_GreaterThan(ProbePercentage, ProbePercentage) : Boolean
+  static op_GreaterThanOrEqual(ProbePercentage, ProbePercentage) : Boolean
+  static op_Inequality(ProbePercentage, ProbePercentage) : Boolean
+  static op_LessThan(ProbePercentage, ProbePercentage) : Boolean
+  static op_LessThanOrEqual(ProbePercentage, ProbePercentage) : Boolean
+  extension static GetValue(ProbePercentage) : Int32
+  extension static ValueOrNull(ProbePercentage?) : Int32?
+ProbeTime
+  CompareTo(Object) : Int32
+  CompareTo(ProbeTime) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeTime) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : TimeOnly
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeTime>
+  implements IComparisonOperators<ProbeTime, ProbeTime, Boolean>
+  implements IEqualityOperators<ProbeTime, ProbeTime, Boolean>
+  implements IEquatable<ProbeTime>
+  implements IFormattable
+  implements IMinMaxValue<ProbeTime>
+  implements IParsable<ProbeTime>
+  implements ISpanFormattable
+  implements ISpanParsable<ProbeTime>
+  implements IUtf8SpanFormattable
+  implements IValue<TimeOnly>
+  implements IValueObject<ProbeTime, TimeOnly>
+  implements IValueObjectMaterializer<ProbeTime, TimeOnly>
+  implements IValueWrapper<ProbeTime, TimeOnly>
+  nested ProbeTimeJsonConverter : JsonConverter<ProbeTime>
+  nested ProbeTimeTypeConverter : TypeConverter
+  new()
+  static From(TimeOnly) : ProbeTime
+  static MaxValue : ProbeTime
+  static MinValue : ProbeTime
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeTime
+  static Parse(String, IFormatProvider) : ProbeTime
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeTime) : Boolean
+  static TryParse(String, IFormatProvider, out ProbeTime) : Boolean
+  static op_Equality(ProbeTime, ProbeTime) : Boolean
+  static op_GreaterThan(ProbeTime, ProbeTime) : Boolean
+  static op_GreaterThanOrEqual(ProbeTime, ProbeTime) : Boolean
+  static op_Inequality(ProbeTime, ProbeTime) : Boolean
+  static op_LessThan(ProbeTime, ProbeTime) : Boolean
+  static op_LessThanOrEqual(ProbeTime, ProbeTime) : Boolean
+  extension static GetValue(ProbeTime) : TimeOnly
+  extension static ValueOrNull(ProbeTime?) : TimeOnly?
+ProbeTimestamp
+  CompareTo(Object) : Int32
+  CompareTo(ProbeTimestamp) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeTimestamp) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : DateTime
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeTimestamp>
+  implements IComparisonOperators<ProbeTimestamp, ProbeTimestamp, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeTimestamp, ProbeTimestamp, Boolean>
+  implements IEquatable<ProbeTimestamp>
+  implements IFormattable
+  implements IMinMaxValue<ProbeTimestamp>
+  implements IParsable<ProbeTimestamp>
+  implements ISpanFormattable
+  implements ISpanParsable<ProbeTimestamp>
+  implements IUtf8SpanFormattable
+  implements IValue<DateTime>
+  implements IValueObject<ProbeTimestamp, DateTime>
+  implements IValueObjectMaterializer<ProbeTimestamp, DateTime>
+  implements IValueWrapper<ProbeTimestamp, DateTime>
+  nested ProbeTimestampJsonConverter : JsonConverter<ProbeTimestamp>
+  nested ProbeTimestampTypeConverter : TypeConverter
+  new()
+  static From(DateTime) : ProbeTimestamp
+  static MaxValue : ProbeTimestamp
+  static MinValue : ProbeTimestamp
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeTimestamp
+  static Parse(String, IFormatProvider) : ProbeTimestamp
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeTimestamp) : Boolean
+  static TryParse(String, IFormatProvider, out ProbeTimestamp) : Boolean
+  static op_Equality(ProbeTimestamp, ProbeTimestamp) : Boolean
+  static op_GreaterThan(ProbeTimestamp, ProbeTimestamp) : Boolean
+  static op_GreaterThanOrEqual(ProbeTimestamp, ProbeTimestamp) : Boolean
+  static op_Inequality(ProbeTimestamp, ProbeTimestamp) : Boolean
+  static op_LessThan(ProbeTimestamp, ProbeTimestamp) : Boolean
+  static op_LessThanOrEqual(ProbeTimestamp, ProbeTimestamp) : Boolean
+  extension static GetValue(ProbeTimestamp) : DateTime
+  extension static ValueOrNull(ProbeTimestamp?) : DateTime?
+ProbeUri
+  Equals(Object) : Boolean
+  Equals(ProbeUri) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Uri
+  attribute CompilerGeneratedAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IEqualityOperators<ProbeUri, ProbeUri, Boolean>
+  implements IEquatable<ProbeUri>
+  implements IFormattable
+  implements IParsable<ProbeUri>
+  implements ISpanFormattable
+  implements IValue<Uri>
+  implements IValueObject<ProbeUri, Uri>
+  implements IValueObjectMaterializer<ProbeUri, Uri>
+  implements IValueWrapper<ProbeUri, Uri>
+  nested ProbeUriJsonConverter : JsonConverter<ProbeUri>
+  nested ProbeUriTypeConverter : TypeConverter
+  new()
+  static From(Uri) : ProbeUri
+  static Parse(String, IFormatProvider) : ProbeUri
+  static TryParse(String, IFormatProvider, out ProbeUri) : Boolean
+  static op_Equality(ProbeUri, ProbeUri) : Boolean
+  static op_Inequality(ProbeUri, ProbeUri) : Boolean
+  extension static GetValue(ProbeUri) : Uri
+  extension static ValueOrNull(ProbeUri?) : Uri

@@ -1,0 +1,113 @@
+using System.Diagnostics.CodeAnalysis;
+using Metalama.Framework.Aspects;
+using Metalama.Framework.Code;
+using Metalama.Framework.Code.SyntaxBuilders;
+
+namespace CodoMetis.TypeKit.Generators;
+
+internal sealed partial class ValueObjectParsableAspect
+{
+    // The inner parse is built as C# text (ParsableImplementationArguments.InnerParse): TryParse
+    // has an out parameter no Metalama invocation API can pass, and the wrapped type's own members
+    // are called through GeneratedParsing, which also reaches an explicit implementation.
+
+    [Template]
+    public static dynamic ParseTemplate(string s, IFormatProvider? provider)
+    {
+        var tag = (ParsableImplementationArguments)meta.Tags.Source!;
+
+        // IParsable.Parse takes a non-null string. Without this, a string-backed value object
+        // would wrap null.
+        ArgumentNullException.ThrowIfNull(s);
+
+        return ExpressionFactory.Parse($"{meta.CompileTime(tag.FromText)}({meta.CompileTime(tag.InnerParse())})", tag.ValueObjectType, false).Value!;
+    }
+
+    [Template]
+    public static bool TryParseTemplate(
+        [NotNullWhen(true)] string?        s,
+        IFormatProvider?                   provider,
+        [MaybeNullWhen(false)] out dynamic result
+    )
+    {
+        var tag = (ParsableImplementationArguments)meta.Tags.Source!;
+
+        result = meta.Default(tag.ValueObjectType);
+
+        if (meta.CompileTime(tag.Strategy is ValueParseStrategy.Parsable or ValueParseStrategy.SpanParsable))
+        {
+            string wrapped = meta.CompileTime(ValueObjectTypes.SourceName(tag.ValueType));
+
+            return (bool)ExpressionFactory.Parse(
+                $"(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.TryParse<{wrapped}>(s, provider, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
+                TypeFactory.GetType(SpecialType.Boolean),
+                false
+            ).Value!;
+        }
+
+        if (meta.CompileTime(tag.Strategy == ValueParseStrategy.String))
+        {
+            return (bool)ExpressionFactory.Parse($"(s is not null && {tag.TryFromText}(s, out result))", TypeFactory.GetType(SpecialType.Boolean), false).Value!;
+        }
+
+        // The remaining strategies have no TryParse of their own: their inner parse throws.
+        if (s is null) return false;
+
+        try
+        {
+            return (bool)ExpressionFactory.Parse($"{tag.TryFromText}({tag.InnerParse()}, out result)", TypeFactory.GetType(SpecialType.Boolean), false).Value!;
+        }
+        catch
+        {
+            result = meta.Default(tag.ValueObjectType);
+            return false;
+        }
+    }
+
+    [Template]
+    public static dynamic SpanParseTemplate(ReadOnlySpan<char> s, IFormatProvider? provider)
+    {
+        var tag = (ParsableImplementationArguments)meta.Tags.Source!;
+
+        return ExpressionFactory.Parse($"{meta.CompileTime(tag.FromText)}({meta.CompileTime(tag.InnerParse())})", tag.ValueObjectType, false).Value!;
+    }
+
+    [Template]
+    public static bool SpanTryParseTemplate(ReadOnlySpan<char> s, IFormatProvider? provider, [MaybeNullWhen(false)] out dynamic result)
+    {
+        var tag = (ParsableImplementationArguments)meta.Tags.Source!;
+        string wrapped = meta.CompileTime(ValueObjectTypes.SourceName(tag.ValueType));
+
+        result = meta.Default(tag.ValueObjectType);
+
+        return (bool)ExpressionFactory.Parse(
+            $"(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.TryParseSpan<{wrapped}>(s, provider, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
+            TypeFactory.GetType(SpecialType.Boolean),
+            false
+        ).Value!;
+    }
+
+    [Template]
+    public static dynamic Utf8SpanParseTemplate(ReadOnlySpan<byte> utf8Text, IFormatProvider? provider)
+    {
+        var tag = (ParsableImplementationArguments)meta.Tags.Source!;
+        string wrapped = meta.CompileTime(ValueObjectTypes.SourceName(tag.ValueType));
+
+        return ExpressionFactory.Parse($"{tag.FromText}(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.ParseUtf8<{wrapped}>(utf8Text, provider))", tag.ValueObjectType, false).Value!;
+    }
+
+    [Template]
+    public static bool Utf8SpanTryParseTemplate(ReadOnlySpan<byte> utf8Text, IFormatProvider? provider, [MaybeNullWhen(false)] out dynamic result)
+    {
+        var tag = (ParsableImplementationArguments)meta.Tags.Source!;
+        string wrapped = meta.CompileTime(ValueObjectTypes.SourceName(tag.ValueType));
+
+        result = meta.Default(tag.ValueObjectType);
+
+        return (bool)ExpressionFactory.Parse(
+            $"(global::CodoMetis.TypeKit.ValueObjects.GeneratedParsing.TryParseUtf8<{wrapped}>(utf8Text, provider, out var innerValue) && {tag.TryFromText}(innerValue, out result))",
+            TypeFactory.GetType(SpecialType.Boolean),
+            false
+        ).Value!;
+    }
+}
