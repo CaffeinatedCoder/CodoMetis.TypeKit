@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace CodoMetis.TypeKit.Tests;
 
 /// <summary>
@@ -93,6 +95,23 @@ public sealed class ResultTests
 
         Result<string> fromMarker = Result.Ok();
         ((bool)fromMarker).ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// <c>return Result.Error(fault);</c> from a method typed <see cref="Result{TError}"/> did not
+    /// compile, while the valued shape accepts it. Through reflection, so this test compiles without
+    /// the conversion and fails on its absence rather than on a build error.
+    /// </summary>
+    [Fact]
+    public void The_error_marker_converts_implicitly_too()
+    {
+        var conversion = typeof(Result<string>).GetMethod("op_Implicit", BindingFlags.Public | BindingFlags.Static, [typeof(Error<string>)]);
+
+        conversion.ShouldNotBeNull("Result<TError> has no implicit conversion from the Result.Error(error) marker");
+
+        var converted = (Result<string>)conversion.Invoke(null, [Result.Error("boom")])!;
+        converted.TryGetError(out var error).ShouldBeTrue();
+        error.ShouldBe("boom");
     }
 
     [Fact]

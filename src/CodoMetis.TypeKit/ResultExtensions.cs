@@ -16,7 +16,7 @@ public static class Result
     /// <returns>A marker that converts implicitly to a successful result holding <paramref name="value"/>.</returns>
     public static Success<T> Ok<T>(T value) => new(value);
 
-    /// <summary>The error marker for a method typed <see cref="Result{T,TError}"/>, whatever its value type.</summary>
+    /// <summary>The error marker for a method typed <see cref="Result{T,TError}"/>, whatever its value type, or <see cref="Result{TError}"/>.</summary>
     /// <param name="error">The error.</param>
     /// <typeparam name="T">The type of the error.</typeparam>
     /// <returns>A marker that converts implicitly to a failed result holding <paramref name="error"/>.</returns>

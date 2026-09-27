@@ -107,8 +107,10 @@ Each phase ends green, and its guards have been proven by seeding the defect
      class; a marker reached through a derived interface would not have been generated.
    - Found in review on 2026-09-27, and fixed with guards proven by reverting: an enum-backed value
      object's parsing threw for every input; string ordering was culture-sensitive while equality
-     is ordinal; `Parse(x.ToString(), null)` did not round-trip outside the invariant culture; and
-     `IValue<int?>` failed as an aspect bug instead of CMTK1005 (§5).
+     is ordinal; `Parse(x.ToString(), null)` did not round-trip outside the invariant culture;
+     `IValue<int?>` failed as an aspect bug instead of CMTK1005; a fallback JSON key did not read
+     back; a record class's comparison threw on null (§5); `Option.Some(null)` reported a value;
+     and `Result<TError>` did not accept the `Result.Error(e)` marker (§9).
 4. **EF Core. ✅ Done 2026-09-27.**
    - The mapping spike first (spikes/EfMapping): an additive type-mapping-source plugin maps every
      value object, with keys, foreign keys, nullable properties and primitive collections, on
@@ -236,6 +238,14 @@ passes in tests and breaks for the first consumer who renames something.
   value a `HashSet` kept.
 - **A nullable wrapped type is CMTK1005.** The markers' `notnull` constraint is only a warning
   (CS8714), and `IValue<int?>` then failed inside the generated code as LAMA0611/0612.
+- **A fallback JSON key goes through the wrapped type's own converter**
+  (`options.GetConverter(typeof(T))`), which knows the type's key format where it has one (an enum
+  by name, a `Uri` as its text) and throws `NotSupportedException` where it has none. Writing the
+  serialized value as the property name gave a `Uri` key quotes inside its quotes and an enum key
+  its number, and neither read back.
+- **A record class sorts null first.** Its generated `CompareTo` and comparison operators take a
+  nullable operand, as `IComparable<T>.CompareTo(T?)` and the record's own `==` do, and treat null
+  as smallest, where they threw `NullReferenceException`.
 - **Metalama 2026.1.** Aspect state uses `IDurableRef`, which exists in 2026.1. `[Durable]` on the
   `_value` template placeholder is 2027.0-only and stays out until the upgrade (decision 4). Build
   each aspect on 2026.1 as it lands, and use no 2027.0-only API.
@@ -331,7 +341,12 @@ LanguageExt is out.
   `KnownGood`'s rule. **Never make these types positional:** positional parameters become public
   properties, which reintroduces `.Value` and puts the value into `ToString`.
 - **The `Result.Ok(x)`/`Result.Error(e)` markers** keep their content internal too, so they print
-  `Success { }` and `Error { }`. Only the implicit conversions read it.
+  `Success { }` and `Error { }`. Only the implicit conversions read it. Both shapes accept both
+  markers: `Result<TError>` converts from `Result.Error(e)` as well as from a bare error, so a
+  method can `return Result.Error(fault);` whichever shape it returns.
+- **`Option.Some(null)` throws.** `notnull` is an annotation the runtime does not enforce, and a
+  `Some` over null reported a value it could not hand out. `Map` and the zips go through `Some`,
+  so a selector that returns null throws too.
 - **`[DebuggerDisplay]`** on `Option` and both `Result` shapes shows the content in the debugger,
   where it is what someone stepping through wants to see. The debugger is not a log.
 - **`Result<TError>` has no `AsEnumerable`.** A sequence of zero or one units says no more than

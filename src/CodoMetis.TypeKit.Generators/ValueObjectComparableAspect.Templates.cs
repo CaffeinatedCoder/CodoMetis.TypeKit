@@ -12,6 +12,14 @@ internal sealed partial class ValueObjectComparableAspect
     {
         var tag = (ComparableImplementationArguments)meta.Tags.Source!;
 
+        // A record class meets null here, and null sorts first, as in the BCL. Without this every
+        // strategy below dereferenced other.Value and threw NullReferenceException.
+        if (meta.CompileTime(tag.ValueObjectType.IsReferenceType == true))
+        {
+            if ((bool)ExpressionFactory.Parse("other is null", TypeFactory.GetType(SpecialType.Boolean), false).Value!)
+                return 1;
+        }
+
         if (meta.CompileTime(tag.Strategy == ValueCompareStrategy.OrdinalString))
         {
             // Not string.CompareTo, which compares by the current culture: under it "a" sorts before
@@ -74,17 +82,43 @@ internal sealed partial class ValueObjectComparableAspect
 
     // All four operators delegate to CompareTo, keeping comparison logic in one place.
     // AggressiveInlining is applied at the introduction site, so the operator calls
-    // disappear entirely in release builds.
+    // disappear entirely in release builds. For a record class the left operand can be null,
+    // which CompareTo cannot see, so the operator sorts it first itself.
+
+    private static IExpression Compared(ComparableImplementationArguments tag, string relation)
+    {
+        var comparison = tag.ValueObjectType.IsReferenceType == true
+                             ? "(left is null ? (right is null ? 0 : -1) : left.CompareTo(right))"
+                             : "left.CompareTo(right)";
+
+        return ExpressionFactory.Parse($"{comparison} {relation} 0", TypeFactory.GetType(SpecialType.Boolean), false);
+    }
 
     [Template]
-    public static bool LessThanOperator(dynamic left, dynamic right) => left.CompareTo(right) < 0;
+    public static bool LessThanOperator(dynamic left, dynamic right)
+    {
+        var tag = (ComparableImplementationArguments)meta.Tags.Source!;
+        return (bool)Compared(tag, "<").Value!;
+    }
 
     [Template]
-    public static bool GreaterThanOperator(dynamic left, dynamic right) => left.CompareTo(right) > 0;
+    public static bool GreaterThanOperator(dynamic left, dynamic right)
+    {
+        var tag = (ComparableImplementationArguments)meta.Tags.Source!;
+        return (bool)Compared(tag, ">").Value!;
+    }
 
     [Template]
-    public static bool LessThanOrEqualOperator(dynamic left, dynamic right) => left.CompareTo(right) <= 0;
+    public static bool LessThanOrEqualOperator(dynamic left, dynamic right)
+    {
+        var tag = (ComparableImplementationArguments)meta.Tags.Source!;
+        return (bool)Compared(tag, "<=").Value!;
+    }
 
     [Template]
-    public static bool GreaterThanOrEqualOperator(dynamic left, dynamic right) => left.CompareTo(right) >= 0;
+    public static bool GreaterThanOrEqualOperator(dynamic left, dynamic right)
+    {
+        var tag = (ComparableImplementationArguments)meta.Tags.Source!;
+        return (bool)Compared(tag, ">=").Value!;
+    }
 }

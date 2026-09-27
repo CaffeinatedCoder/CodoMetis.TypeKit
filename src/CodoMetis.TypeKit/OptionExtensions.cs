@@ -9,10 +9,19 @@ namespace CodoMetis.TypeKit;
 public static class Option
 {
     /// <summary>Creates an option that holds <paramref name="value"/>.</summary>
-    /// <param name="value">The value.</param>
+    /// <param name="value">The value. Never null: absence is <see cref="None{T}"/>.</param>
     /// <typeparam name="T">The type of the value.</typeparam>
     /// <returns>An option holding <paramref name="value"/>.</returns>
-    public static Option<T> Some<T>(T value) where T : notnull => new(value, true);
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    public static Option<T> Some<T>(T value) where T : notnull
+    {
+        // notnull is an annotation, not a run-time check: without this, Some(null!) reported a value
+        // and TryGetValue handed out null despite [NotNullWhen(true)]. `is null` costs nothing for a
+        // value type, where the JIT drops it; ThrowIfNull(object?) would box one.
+        if (value is null) throw new ArgumentNullException(nameof(value));
+
+        return new(value, true);
+    }
 
     /// <summary>Creates an empty option.</summary>
     /// <typeparam name="T">The type of the value the option could have held.</typeparam>

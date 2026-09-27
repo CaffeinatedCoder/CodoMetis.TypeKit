@@ -14,7 +14,8 @@ namespace CodoMetis.TypeKit;
 /// <remarks>
 /// <para>
 /// Create instances with <see cref="Success()"/> and <see cref="Error(TError)"/>, or by returning
-/// <c>Result.Ok()</c> or a bare error value from a method typed <see cref="Result{TError}"/>.
+/// <c>Result.Ok()</c>, <c>Result.Error(error)</c> or a bare error value from a method typed
+/// <see cref="Result{TError}"/>.
 /// </para>
 /// <para>
 /// A <c>default</c> result is <see cref="ResultState.Uninitialized"/>, neither a success nor an
@@ -146,6 +147,10 @@ public readonly record struct Result<TError>
     /// <summary>Wraps a bare error value, so a method can <c>return error;</c>.</summary>
     /// <param name="error">The error.</param>
     public static implicit operator Result<TError>(TError error) => Error(error);
+
+    /// <summary>Converts the <c>Result.Error(error)</c> marker, so a method can <c>return Result.Error(error);</c>, as it can for <see cref="Result{T,TError}"/>.</summary>
+    /// <param name="error">The marker.</param>
+    public static implicit operator Result<TError>(Error<TError> error) => Error(error.Value);
 
     /// <summary>Converts the <c>Result.Ok()</c> marker, so a method can <c>return Result.Ok();</c>.</summary>
     /// <param name="success">The marker.</param>

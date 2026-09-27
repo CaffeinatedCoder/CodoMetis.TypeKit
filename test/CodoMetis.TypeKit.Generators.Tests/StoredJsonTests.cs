@@ -14,7 +14,7 @@ public sealed class StoredJsonTests
     private static readonly JsonSerializerOptions Store = new() { Converters = { new StoredJsonConverterFactory() } };
 
     /// <summary>One value per JSON strategy, as in <see cref="JsonTests"/>.</summary>
-    public static TheoryData<string> Formats => ["string", "Guid", "int", "decimal", "bool", "DateTime", "DateOnly", "DateTimeOffset", "TimeOnly", "Instant", "LocalDate", "Uri"];
+    public static TheoryData<string> Formats => ["string", "Guid", "int", "decimal", "bool", "DateTime", "DateOnly", "DateTimeOffset", "TimeOnly", "Instant", "LocalDate", "Uri", "enum"];
 
     private static object Sample(string format) => format switch
     {
@@ -30,6 +30,7 @@ public sealed class StoredJsonTests
         "Instant"        => ProbeInstant.From(Instant.FromUtc(2026, 9, 27, 12, 0)),
         "LocalDate"      => ProbeLocalDate.From(new LocalDate(2026, 9, 27)),
         "Uri"            => ProbeUri.From(new Uri("https://example.com/a")),
+        "enum"           => ProbeWeekday.From(DayOfWeek.Monday),
         _                => throw new ArgumentOutOfRangeException(nameof(format))
     };
 

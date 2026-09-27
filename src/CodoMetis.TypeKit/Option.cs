@@ -72,9 +72,10 @@ public readonly record struct Option<T> where T : notnull
     }
 
     /// <summary>Transforms the value, if there is one.</summary>
-    /// <param name="map">Called with the value if there is one.</param>
+    /// <param name="map">Called with the value if there is one. It must not return null.</param>
     /// <typeparam name="TResult">The type of the transformed value.</typeparam>
     /// <returns>The transformed value, or <c>None</c> without calling <paramref name="map"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="map"/> returned null.</exception>
     public Option<TResult> Map<TResult>(Func<T, TResult> map) where TResult : notnull
     {
         ArgumentNullException.ThrowIfNull(map);

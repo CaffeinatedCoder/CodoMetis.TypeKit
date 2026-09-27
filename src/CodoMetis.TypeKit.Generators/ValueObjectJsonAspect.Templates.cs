@@ -165,11 +165,22 @@ internal sealed partial class ValueObjectJsonAspect
             return;
         }
 
-        // Fallback: an unknown type round-trips through JsonSerializer and the caller's options.
+        // Fallback: an unknown type round-trips through JsonSerializer and the caller's options. As a
+        // key it goes through the wrapped type's own converter, which knows the type's key format
+        // where it has one (an enum by name, a Uri as its text) and throws NotSupportedException
+        // where it has none. Writing the serialized value as the name gave a Uri key quotes inside
+        // its quotes and an enum key its number, and neither read back.
         if (asPropertyName)
-            writer.WritePropertyName(JsonSerializer.Serialize(value?.Value, options));
+        {
+            string fallbackType = meta.CompileTime(ValueObjectTypes.SourceName(tag.ValueType));
+
+            meta.InsertStatement(ExpressionFactory.Parse(
+                $"((global::System.Text.Json.Serialization.JsonConverter<{fallbackType}>)options.GetConverter(typeof({fallbackType}))).WriteAsPropertyName(writer, value!.Value, options)"));
+        }
         else
+        {
             JsonSerializer.Serialize(writer, value?.Value, options);
+        }
     }
 
     [Template]
@@ -305,7 +316,18 @@ internal sealed partial class ValueObjectJsonAspect
             return tag.FromJson.Invoke(nodaValue.Value!, meta.This._materialize);
         }
 
-        // Fallback: an unknown type round-trips through JsonSerializer and the caller's options.
+        // Fallback: an unknown type round-trips through JsonSerializer and the caller's options. A
+        // key is read by the wrapped type's own converter, the counterpart of the write.
+        if (asPropertyName)
+        {
+            var key = ExpressionFactory.Parse(
+                $"((global::System.Text.Json.Serialization.JsonConverter<{typeName}>)options.GetConverter(typeof({typeName}))).ReadAsPropertyName(ref reader, typeof({typeName}), options)",
+                tag.ValueType,
+                false
+            );
+            return tag.FromJson.Invoke(key.Value!, meta.This._materialize);
+        }
+
         var fallback = ExpressionFactory.Parse($"global::System.Text.Json.JsonSerializer.Deserialize<{typeName}>(ref reader, options)!", tag.ValueType, false);
         return tag.FromJson.Invoke(fallback.Value!, meta.This._materialize);
     }

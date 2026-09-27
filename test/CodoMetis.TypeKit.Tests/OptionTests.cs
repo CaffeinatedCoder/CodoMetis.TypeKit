@@ -109,4 +109,16 @@ public sealed class OptionTests
         default(Option<int>).ShouldBe(Option.None<int>());
         default(Option<string>).IsNone().ShouldBeTrue();
     }
+
+    /// <summary>
+    /// <c>notnull</c> is an annotation the runtime does not enforce: <c>Some(null!)</c> produced an
+    /// option that reported a value and handed null out of <c>TryGetValue</c>, despite
+    /// <c>[NotNullWhen(true)]</c>. So did a <c>Map</c> whose selector returned null.
+    /// </summary>
+    [Fact]
+    public void Some_refuses_null()
+    {
+        Should.Throw<ArgumentNullException>(() => Option.Some<string>(null!));
+        Should.Throw<ArgumentNullException>(() => Option.Some("x").Map(_ => (string)null!));
+    }
 }

@@ -57,7 +57,7 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
             m =>
             {
                 m.Name               = nameof(IComparable<int>.CompareTo);
-                m.Parameters[0].Type = builder.Target;
+                m.Parameters[0].Type = OperandType(builder.Target);
                 m.AddAttribute(CodeAnnotations.CompilerGenerated);
             }
         );
@@ -108,6 +108,13 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
         return ValueCompareStrategy.Unsupported;
     }
 
+    /// <summary>
+    /// The operand type: nullable for a record class, as <c>IComparable&lt;T&gt;.CompareTo(T?)</c> and
+    /// the record's own equality operators declare it, so a caller passing null gets flow analysis
+    /// rather than a <c>NullReferenceException</c>. The templates then sort null first.
+    /// </summary>
+    private static IType OperandType(INamedType target) => target.IsReferenceType == true ? target.ToNullable() : target;
+
     private static void IntroduceComparisonOperator(
         IAspectBuilder<INamedType> builder,
         string                     templateName,
@@ -116,8 +123,8 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
     {
         builder.IntroduceMethod(templateName, buildMethod: m =>
         {
-            m.Parameters[0].Type = builder.Target;
-            m.Parameters[1].Type = builder.Target;
+            m.Parameters[0].Type = OperandType(builder.Target);
+            m.Parameters[1].Type = OperandType(builder.Target);
             m.ReturnType         = typeof(bool).ToNamedType();
             m.OperatorKind       = operatorKind;
             m.AddAttribute(CodeAnnotations.AggressiveInlining);

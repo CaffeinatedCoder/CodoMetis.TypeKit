@@ -26,15 +26,18 @@ public sealed class JsonTests
         ["NodaTime Instant"]   = (ProbeInstant.From(Instant.FromUtc(2026, 9, 27, 12, 0)), "\"2026-09-27T12:00:00Z\""),
         ["NodaTime LocalDate"] = (ProbeLocalDate.From(new LocalDate(2026, 9, 27)), "\"2026-09-27\""),
         ["fallback (Uri)"] = (ProbeUri.From(new Uri("https://example.com/a")), "\"https://example.com/a\""),
+        ["fallback (enum)"] = (ProbeWeekday.From(DayOfWeek.Monday), "1"),
         ["record class"]   = (ProbeLabel.From("label"), "\"label\""),
     };
 
-    /// <summary>The fallback writes a key through the serializer, which is not a usable property name.</summary>
-    private static readonly string[] WithoutKeySupport = ["fallback (Uri)"];
-
     public static TheoryData<string> CaseNames => [.. Cases.Keys];
 
-    public static TheoryData<string> KeyCaseNames => [.. Cases.Keys.Except(WithoutKeySupport)];
+    /// <summary>
+    /// Every case, the fallback included: as a key, the fallback goes through the wrapped type's own
+    /// converter. Before, it wrote the serialized value as the property name, which for a Uri was a
+    /// quoted string inside the quotes and for an enum its number, and read neither back.
+    /// </summary>
+    public static TheoryData<string> KeyCaseNames => CaseNames;
 
     [Theory]
     [MemberData(nameof(CaseNames))]
@@ -89,6 +92,14 @@ public sealed class JsonTests
 
     [Fact]
     public void A_nullable_value_object_reads_a_JSON_null_as_null() => JsonSerializer.Deserialize<ProbeId?>("null").ShouldBeNull();
+
+    /// <summary>A fallback key is written in the wrapped type's own key format: an enum by name, a Uri as its text.</summary>
+    [Fact]
+    public void A_fallback_key_is_the_wrapped_type_s_own_key_format()
+    {
+        JsonSerializer.Serialize(new Dictionary<ProbeWeekday, int> { [ProbeWeekday.From(DayOfWeek.Monday)] = 1 }).ShouldBe("{\"Monday\":1}");
+        JsonSerializer.Serialize(new Dictionary<ProbeUri, int> { [ProbeUri.From(new Uri("https://example.com/a"))] = 1 }).ShouldBe("{\"https://example.com/a\":1}");
+    }
 
     [Fact]
     public void Numbers_are_written_with_the_invariant_culture_whatever_the_current_one()

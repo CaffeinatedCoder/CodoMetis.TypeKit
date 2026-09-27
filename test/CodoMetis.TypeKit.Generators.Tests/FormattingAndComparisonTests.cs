@@ -100,6 +100,46 @@ public sealed class ComparisonTests
     [Fact]
     public void An_enum_value_object_orders_by_its_value() =>
         (ProbeWeekday.From(DayOfWeek.Monday) < ProbeWeekday.From(DayOfWeek.Tuesday)).ShouldBeTrue();
+
+    /// <summary>
+    /// A record class is a reference type, so <c>CompareTo</c> and the operators meet null. The BCL
+    /// rule is that null sorts first; both threw <c>NullReferenceException</c> instead.
+    /// </summary>
+    [Fact]
+    public void A_record_class_value_object_sorts_null_first()
+    {
+        var        label       = ProbeLabel.From("a");
+        ProbeLabel none        = null!; // `null!` so this compiles against non-nullable parameters too, and fails at run time rather than at build time without the fix
+        ProbeLabel anotherNone = null!;
+
+        label.CompareTo(none).ShouldBePositive();
+        (none < label).ShouldBeTrue();
+        (label > none).ShouldBeTrue();
+        (label < none).ShouldBeFalse();
+        (label >= none).ShouldBeTrue();
+        (none <= anotherNone).ShouldBeTrue();
+        (none < anotherNone).ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// The generated signatures say so too: <c>IComparable&lt;T&gt;.CompareTo(T?)</c> and the record's
+    /// own equality operators take a nullable operand for a reference type, and so do these.
+    /// </summary>
+    [Fact]
+    public void A_record_class_value_object_declares_its_comparison_operands_nullable()
+    {
+        var nullability = new NullabilityInfoContext();
+
+        var compareTo = typeof(ProbeLabel).GetMethod(nameof(IComparable<>.CompareTo), [typeof(ProbeLabel)]).ShouldNotBeNull();
+        nullability.Create(compareTo.GetParameters()[0]).ReadState.ShouldBe(NullabilityState.Nullable);
+
+        var lessThan = typeof(ProbeLabel).GetMethod("op_LessThan", [typeof(ProbeLabel), typeof(ProbeLabel)]).ShouldNotBeNull();
+        nullability.Create(lessThan.GetParameters()[0]).ReadState.ShouldBe(NullabilityState.Nullable);
+        nullability.Create(lessThan.GetParameters()[1]).ReadState.ShouldBe(NullabilityState.Nullable);
+
+        var structCompareTo = typeof(ProbeCount).GetMethod(nameof(IComparable<>.CompareTo), [typeof(ProbeCount)]).ShouldNotBeNull();
+        nullability.Create(structCompareTo.GetParameters()[0]).ReadState.ShouldBe(NullabilityState.NotNull);
+    }
 }
 
 /// <summary><c>MinValue</c>/<c>MaxValue</c> for a plain value object whose wrapped type has them.</summary>
