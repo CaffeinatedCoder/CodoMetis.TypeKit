@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      The EF satellite against value objects the real generators wove: the probes, and the model's own
+      identifiers, which this project gets through the probes' transitive fabric. The PostgreSQL round
+      trips start a container, so these tests need Docker.
+    -->
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.EntityFrameworkCore\CodoMetis.TypeKit.EntityFrameworkCore.csproj" />
+        <ProjectReference Include="..\CodoMetis.TypeKit.Generators.Probes\CodoMetis.TypeKit.Generators.Probes.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+        <PackageReference Include="Testcontainers.PostgreSql" />
+    </ItemGroup>
+
+</Project>

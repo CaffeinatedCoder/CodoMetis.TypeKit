@@ -39,7 +39,8 @@ internal sealed class JsonImplementationArguments
 /// <remarks>
 /// Every read goes through <see cref="ValueObjectAspectState.FromJson"/>, so a validated value
 /// object applies <c>Create</c> and a refusal is a <c>JsonException</c>. A JSON <c>null</c> is a
-/// <c>JsonException</c> too, rather than an instance wrapping <c>null</c>.
+/// <c>JsonException</c> too, rather than an instance wrapping <c>null</c>. The one exception is the
+/// materializing mode for stored JSON, which only <c>StoredJsonConverterFactory</c> can create.
 /// </remarks>
 internal sealed partial class ValueObjectJsonAspect : TypeAspect
 {
@@ -91,6 +92,16 @@ internal sealed partial class ValueObjectJsonAspect : TypeAspect
                 type.AddAttribute(CodeAnnotations.CompilerGenerated);
             }
         );
+
+        // Two modes, one code path: the public constructor validates through Create, and the
+        // private one, reachable only through StoredJsonConverterFactory, reads JSON the
+        // application stored itself without it, in exactly the format the converter writes.
+        jsonConverter.IntroduceField(nameof(_materialize), IntroductionScope.Instance, OverrideStrategy.Fail,
+            field => field.AddAttribute(CodeAnnotations.CompilerGenerated));
+        jsonConverter.IntroduceConstructor(nameof(ValidatingConstructor),
+            buildConstructor: constructor => constructor.Accessibility = Accessibility.Public);
+        jsonConverter.IntroduceConstructor(nameof(MaterializingConstructor),
+            buildConstructor: constructor => constructor.Accessibility = Accessibility.Private);
 
         IntroduceWriteMethod(jsonConverter, builder.Target, nameof(JsonConverter<>.Write),               asPropertyName: false);
         IntroduceWriteMethod(jsonConverter, builder.Target, nameof(JsonConverter<>.WriteAsPropertyName), asPropertyName: true);

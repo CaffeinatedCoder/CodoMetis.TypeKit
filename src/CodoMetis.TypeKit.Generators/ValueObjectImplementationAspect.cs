@@ -173,8 +173,8 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
                 method.Accessibility      = Accessibility.Private;
                 method.Parameters[0].Type = valueType;
 
-                if (method.Parameters.Count > 1)
-                    method.Parameters[1].Type = builder.Target;
+                if (method.Parameters.Any(parameter => parameter.Name == "result"))
+                    method.Parameters["result"].Type = builder.Target;
                 else
                     method.ReturnType = builder.Target;
 

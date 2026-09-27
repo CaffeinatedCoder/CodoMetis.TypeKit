@@ -7,6 +7,23 @@ namespace CodoMetis.TypeKit.Generators;
 
 internal sealed partial class ValueObjectJsonAspect
 {
+#pragma warning disable CS0649 // Field is never assigned to: it is, by the introduced constructor.
+    /// <summary>Set only through the private constructor, which <c>StoredJsonConverterFactory</c> calls.</summary>
+    [Template] private readonly bool _materialize;
+#pragma warning restore CS0649
+
+    /// <summary>What <c>[JsonConverter]</c> instantiates: the validating converter.</summary>
+    [Template]
+    public void ValidatingConstructor()
+    {
+    }
+
+    [Template]
+    public void MaterializingConstructor(bool materialize)
+    {
+        meta.This._materialize = materialize;
+    }
+
     [Template]
     public void JsonConverterWriteTemplate(
         Utf8JsonWriter        writer,
@@ -176,18 +193,18 @@ internal sealed partial class ValueObjectJsonAspect
         }
 
         if (meta.CompileTime(strategy == ValueJsonStrategy.StringValue))
-            return tag.FromJson.Invoke(reader.GetString());
+            return tag.FromJson.Invoke(reader.GetString(), meta.This._materialize);
 
         if (meta.CompileTime(strategy == ValueJsonStrategy.GuidValue))
         {
             if (asPropertyName)
             {
                 var parsed = ExpressionFactory.Parse("global::System.Guid.Parse(reader.GetString()!)", TypeFactory.GetNamedType(typeof(Guid)), false);
-                return tag.FromJson.Invoke(parsed.Value!);
+                return tag.FromJson.Invoke(parsed.Value!, meta.This._materialize);
             }
 
             var guidExpr = ExpressionFactory.Parse("reader.GetGuid()", TypeFactory.GetNamedType(typeof(Guid)), false);
-            return tag.FromJson.Invoke(guidExpr.Value!);
+            return tag.FromJson.Invoke(guidExpr.Value!, meta.This._materialize);
         }
 
         if (meta.CompileTime(strategy == ValueJsonStrategy.DateTimeValue))
@@ -199,11 +216,11 @@ internal sealed partial class ValueObjectJsonAspect
                     TypeFactory.GetNamedType(typeof(DateTime)),
                     false
                 );
-                return tag.FromJson.Invoke(parsed.Value!);
+                return tag.FromJson.Invoke(parsed.Value!, meta.This._materialize);
             }
 
             var dateTimeExpr = ExpressionFactory.Parse("reader.GetDateTime().ToUniversalTime()", TypeFactory.GetNamedType(typeof(DateTime)), false);
-            return tag.FromJson.Invoke(dateTimeExpr.Value!);
+            return tag.FromJson.Invoke(dateTimeExpr.Value!, meta.This._materialize);
         }
 
         if (meta.CompileTime(strategy == ValueJsonStrategy.DateOnlyValue))
@@ -213,7 +230,7 @@ internal sealed partial class ValueObjectJsonAspect
                 TypeFactory.GetNamedType(typeof(DateOnly)),
                 false
             );
-            return tag.FromJson.Invoke(parsed.Value!);
+            return tag.FromJson.Invoke(parsed.Value!, meta.This._materialize);
         }
 
         if (meta.CompileTime(strategy == ValueJsonStrategy.DateTimeOffsetValue))
@@ -225,11 +242,11 @@ internal sealed partial class ValueObjectJsonAspect
                     TypeFactory.GetNamedType(typeof(DateTimeOffset)),
                     false
                 );
-                return tag.FromJson.Invoke(parsed.Value!);
+                return tag.FromJson.Invoke(parsed.Value!, meta.This._materialize);
             }
 
             var offsetExpr = ExpressionFactory.Parse("reader.GetDateTimeOffset()", TypeFactory.GetNamedType(typeof(DateTimeOffset)), false);
-            return tag.FromJson.Invoke(offsetExpr.Value!);
+            return tag.FromJson.Invoke(offsetExpr.Value!, meta.This._materialize);
         }
 
         if (meta.CompileTime(strategy == ValueJsonStrategy.TimeOnlyValue))
@@ -239,7 +256,7 @@ internal sealed partial class ValueObjectJsonAspect
                 TypeFactory.GetNamedType(typeof(TimeOnly)),
                 false
             );
-            return tag.FromJson.Invoke(parsed.Value!);
+            return tag.FromJson.Invoke(parsed.Value!, meta.This._materialize);
         }
 
         if (meta.CompileTime(strategy == ValueJsonStrategy.BooleanValue))
@@ -247,11 +264,11 @@ internal sealed partial class ValueObjectJsonAspect
             if (asPropertyName)
             {
                 var parsed = ExpressionFactory.Parse("bool.Parse(reader.GetString()!)", TypeFactory.GetNamedType(typeof(bool)), false);
-                return tag.FromJson.Invoke(parsed.Value!);
+                return tag.FromJson.Invoke(parsed.Value!, meta.This._materialize);
             }
 
             var boolExpr = ExpressionFactory.Parse("reader.GetBoolean()", TypeFactory.GetNamedType(typeof(bool)), false);
-            return tag.FromJson.Invoke(boolExpr.Value!);
+            return tag.FromJson.Invoke(boolExpr.Value!, meta.This._materialize);
         }
 
         if (meta.CompileTime(strategy == ValueJsonStrategy.NumericInvariant))
@@ -263,7 +280,7 @@ internal sealed partial class ValueObjectJsonAspect
                     tag.ValueType,
                     false
                 );
-                return tag.FromJson.Invoke(parsed.Value!);
+                return tag.FromJson.Invoke(parsed.Value!, meta.This._materialize);
             }
 
             var deserialized = ExpressionFactory.Parse(
@@ -271,7 +288,7 @@ internal sealed partial class ValueObjectJsonAspect
                 tag.ValueType,
                 false
             );
-            return tag.FromJson.Invoke(deserialized.Value!);
+            return tag.FromJson.Invoke(deserialized.Value!, meta.This._materialize);
         }
 
         if (meta.CompileTime(strategy == ValueJsonStrategy.NodaTimeValue))
@@ -281,15 +298,15 @@ internal sealed partial class ValueObjectJsonAspect
             if (asPropertyName)
             {
                 var key = ExpressionFactory.Parse($"{converterExpr}.ReadAsPropertyName(ref reader, typeof({typeName}), options)", tag.ValueType, false);
-                return tag.FromJson.Invoke(key.Value!);
+                return tag.FromJson.Invoke(key.Value!, meta.This._materialize);
             }
 
             var nodaValue = ExpressionFactory.Parse($"{converterExpr}.Read(ref reader, typeof({typeName}), options)", tag.ValueType, false);
-            return tag.FromJson.Invoke(nodaValue.Value!);
+            return tag.FromJson.Invoke(nodaValue.Value!, meta.This._materialize);
         }
 
         // Fallback: an unknown type round-trips through JsonSerializer and the caller's options.
         var fallback = ExpressionFactory.Parse($"global::System.Text.Json.JsonSerializer.Deserialize<{typeName}>(ref reader, options)!", tag.ValueType, false);
-        return tag.FromJson.Invoke(fallback.Value!);
+        return tag.FromJson.Invoke(fallback.Value!, meta.This._materialize);
     }
 }

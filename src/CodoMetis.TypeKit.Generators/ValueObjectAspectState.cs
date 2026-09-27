@@ -44,7 +44,10 @@ internal sealed class ValueObjectAspectState : IAspectState
     /// <summary>No validation. For values that are already an instance's own, never for input.</summary>
     public IDurableRef<IConstructor> PrivateConstructor { get; }
 
-    /// <summary><c>static TSelf __FromJson(T value)</c>: a refusal throws <c>JsonException</c>.</summary>
+    /// <summary>
+    /// <c>static TSelf __FromJson(T value, bool materialize)</c>: a refusal throws <c>JsonException</c>,
+    /// unless the converter is in the materializing mode for stored JSON.
+    /// </summary>
     public IDurableRef<IMethod> FromJson { get; }
 
     /// <summary><c>static TSelf __FromText(T value)</c>: a refusal throws <c>FormatException</c>.</summary>

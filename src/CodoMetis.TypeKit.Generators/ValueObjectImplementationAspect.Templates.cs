@@ -23,16 +23,24 @@ internal sealed partial class ValueObjectImplementationAspect
     [Template]
     private static dynamic? MaterializeTemplate(dynamic? value, [CompileTime] IConstructor constructor) => constructor.Invoke(value);
 
-    /// <summary>The JSON converter's way in. A refusal throws <c>JsonException</c>, which a JSON read reports.</summary>
+    /// <summary>
+    /// The JSON converter's way in. A refusal throws <c>JsonException</c>, which a JSON read reports.
+    /// <c>materialize</c> is set only by a converter <c>StoredJsonConverterFactory</c> created, for
+    /// JSON the application stored itself.
+    /// </summary>
     [Template]
     private static dynamic FromJsonTemplate(
         dynamic?                      value,
+        bool                          materialize,
         [CompileTime] IConstructor    constructor,
         [CompileTime] INamedType      target,
         [CompileTime] ValueObjectKind kind
     )
     {
         if (meta.CompileTime(kind == ValueObjectKind.SimpleValue))
+            return constructor.Invoke(value)!;
+
+        if (materialize)
             return constructor.Invoke(value)!;
 
         return ExpressionFactory.Parse(

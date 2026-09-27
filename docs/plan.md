@@ -1,8 +1,9 @@
 # Plan: CodoMetis.TypeKit
 
-Status: **in progress, 2026-09-27.** Phases 0 to 3 are done. The decisions are in §8. The fabric
-spike ([spikes/FabricSpike](../spikes/FabricSpike/README.md)) and the translation comparison
-([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)) are done.
+Status: **in progress, 2026-09-27.** Phases 0 to 4 are done. The decisions are in §8. The fabric
+spike ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation comparison
+([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)) and the EF mapping spike
+([spikes/EfMapping](../spikes/EfMapping/README.md)) are done.
 
 ## 1. Packages
 
@@ -104,8 +105,22 @@ Each phase ends green, and its guards have been proven by seeding the defect
      `Parse(null)` wrapped null; `bool`/`char` (explicit `IParsable`) did not compile; a NodaTime
      `LocalDate` could not be a dictionary key; an internal value object got a public extension
      class; a marker reached through a derived interface would not have been generated.
-4. **EF Core.** §4. SQL snapshot tests via `ToQueryString` (no database), plus one
-   Testcontainers PostgreSQL round trip per underlying type family.
+4. **EF Core. ✅ Done 2026-09-27.**
+   - The mapping spike first (spikes/EfMapping): a custom `IValueConverterSelector` maps every
+     value object, with keys, foreign keys, nullable properties and primitive collections, on
+     SQLite and PostgreSQL, whatever the registration order (decision 9).
+   - `CodoMetis.TypeKit.EntityFrameworkCore`: `ValueObjectConverter<TSelf, T>`, the selector, the
+     `.Value`/`GetValue()`/`ValueOrNull()` translators, `UseTypeKit()`, and
+     `AddEntityFrameworkTypeKit()` for an application that builds EF's internal service provider.
+   - Stored JSON (§4): `StoredJsonConverterFactory` in the base package (decision 10).
+   - Tests: the model on SQLite, SQL snapshots on PostgreSQL via `ToQueryString`, the default
+     comparer against `.Value`, and one Testcontainers PostgreSQL round trip covering every
+     wrapped-type family, stored values the rules refuse, and the translated queries.
+   - Guards, each proven by seeding its defect: a selector that stops recognising value objects
+     fails 31 of 32 EF tests (all but the control); losing the member or the method translator
+     fails 4 and 3; a validating `Materialize` fails the stored-row test; a stored-JSON converter
+     that validates fails the stored value and key tests. The SQL snapshots first failed on the
+     cast `Convert` produced, which led to re-typing the column (§4).
 5. **ASP.NET Core.** §7, preceded by its own measurement spike.
 6. **Delivery.**
    - Consumer smoke test script: a throwaway project outside the repo, a private
@@ -125,7 +140,7 @@ passes in tests and breaks for the first consumer who renames something.
 | Analyzer, value-object rules | `CompilationStartAction` resolves `CodoMetis.TypeKit.ValueObjects.IValue`1` / `IValidatedValue`3` with `GetTypeByMetadataName` and compares `OriginalDefinition` with `SymbolEqualityComparer`. If `CodoMetis.TypeKit` is absent, nothing is registered |
 | Analyzer, `[RequireCustomInitialization]` | The attribute symbol is resolved the same way |
 | Analyzer, CMTK0002 | The compilation references an assembly whose identity is exactly `CodoMetis.TypeKit.Generators`. That is the package's own id, which a consumer cannot rename, and a prefix or suffix match never counts |
-| EF Core | Value objects are discovered at run time from the EF model (§4). There is no compile-time type scan and no assembly filter |
+| EF Core | EF asks the replaced `IValueConverterSelector` per CLR type, and it answers for any type implementing `IValueObject<TSelf, T>` (§4). There is no type scan and no assembly filter |
 | OpenAPI | The transformer decides per `JsonTypeInfo.Type` whether it implements `IValueObject<,>` (§7). There is no referenced-assembly walk |
 
 ## 4. EF Core
@@ -135,30 +150,38 @@ passes in tests and breaks for the first consumer who renames something.
   implements it **explicitly**, so it is invisible on the type's public surface and reachable only
   through a constrained generic. Documented contract: *skips validation; for values this
   application wrote itself; never call it on input.* CMTK0004 enforces who may call it.
-- **One converter.** `ValueObjectConverter<TVO,T> : ValueConverter<TVO,T>`. Pitfall: an expression
-  tree cannot call a static abstract member directly (CS8927). The from-provider lambda therefore
-  calls a plain generic helper, `Materializer.Create<TVO,T>(v)`, which does the constrained call.
+- **One converter.** `ValueObjectConverter<TVO,T> : ValueConverter<TVO,T>`, public so a property
+  can also name it explicitly. Pitfall: an expression tree cannot call a static abstract member
+  directly (CS8927). The from-provider lambda therefore calls a plain generic helper,
+  `Materializer.Create<TVO,T>(v)` (internal), which does the constrained call.
 - **No per-type comparer.** A `readonly record struct` already has value equality, and EF's default
   comparer uses it. A test pins that it agrees with comparing `.Value`.
-- **Application.** `optionsBuilder.UseTypeKit()` registers an options extension. The name is
-  deliberately not value-object specific, so a later `Option<T>` column mapping can join it. It
-  adds:
-  - either a **type-mapping-source plugin** that answers any CLR type implementing
-    `IValueObject<,>` with the underlying type's mapping plus the converter,
-  - or a pre-convention (`ConfigureConventions`) scan.
-  **Spike this first.** The plugin wins if EF discovers struct value-object properties through it
-  as scalars, with no `Properties<T>()`. The spike must also show that keys, foreign keys and
-  primitive collections of value objects behave as they do with an explicit per-type
-  `HasConversion`.
+- **Application (decided 2026-09-27, spikes/EfMapping).** `optionsBuilder.UseTypeKit()` registers
+  an options extension. The name is deliberately not value-object specific, so a later `Option<T>`
+  column mapping can join it. It replaces EF's `IValueConverterSelector` with one that answers
+  "an `IValueObject<TSelf, T>` converts to `T`", which EF consults per CLR type wherever it maps
+  one: property discovery, keys, foreign keys, primitive-collection elements, query parameters.
+  - Not a type-mapping-source plugin: it would have to produce the provider's mapping for the
+    wrapped type itself, which it cannot reach without a dependency cycle.
+  - Not a pre-convention: `Properties<T>()` needs the list of types up front, which means a scan.
+  - The replacement does not combine with another library that replaces the selector too; the
+    loser's types stop mapping, which is the model error EF raises without any mechanism.
+  - An application that builds EF's internal service provider calls
+    `AddEntityFrameworkTypeKit()` on that service collection instead.
 - **Translators.** `ValueObjectMemberTranslatorPlugin` / `ValueObjectMethodCallTranslatorPlugin`
-  are registered by the same options extension, so a consumer wires nothing else.
-- **Stored JSON.** The generated JSON converter applies `Create` (§5), which is right for input and
-  wrong for JSON the application stored itself (an event store, a `jsonb` column): a rule added
-  later would make old documents unreadable, the problem the materializer solves for columns.
-  Offer an opt-in converter factory for the `JsonSerializerOptions` of such a store that reads
-  through `IValueObjectMaterializer`, documented with the same contract. Converters in
-  `JsonSerializerOptions.Converters` take precedence over the type's `[JsonConverter]`, so no
-  generated code changes. Decide the package (base or EF satellite) at the start of phase 4.
+  are registered by the same options extension, so a consumer wires nothing else. A column
+  operand is **re-typed** as the wrapped type, keeping the column's store type, rather than cast:
+  `Convert` produced `o."Code"::text = 'ABC'`, which PostgreSQL discards but which is not a no-op
+  everywhere (on SQL Server, a cast to `nvarchar(max)` can stop an index seek). Any other operand
+  is still converted.
+- **Stored JSON (decided 2026-09-27).** The generated JSON converter applies `Create` (§5), which
+  is right for input and wrong for JSON the application stored itself (an event store, a document
+  column): a rule added later would make old documents unreadable. `StoredJsonConverterFactory`, in
+  the base package because it is a System.Text.Json concern, is the opt-in for such a store's
+  `JsonSerializerOptions`. It hands out the generated converter in a mode only it can create
+  (a private constructor), so stored documents are read in exactly the format they were written
+  in, dictionary keys included. SECURITY.md lists it beside the EF satellite as the two
+  validation-free paths.
 - **How far the translation is unique, measured 2026-09-27**
   ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)):
   - `.Value` in a query predicate fails in Vogen 8.0.7 and in plain EF Core 10. Thinktecture
@@ -256,10 +279,14 @@ Vogen and Thinktecture document Swashbuckle only (checked 2026-09-27), so suppor
 7. **Analyzer as its own package** (2026-09-27), reaching consumers through the base package (§10).
 8. **An uninitialized `Result` throws** (2026-09-27) instead of reporting `default(TError)` (§9).
 
+9. **EF mapping through `IValueConverterSelector`** (2026-09-27), not a type-mapping-source plugin
+   or a pre-convention scan (§4, spikes/EfMapping).
+10. **Stored JSON through `StoredJsonConverterFactory`** in the base package (2026-09-27, §4).
+
 Still open:
 
-9. **Analyzer first-release rule set** (§10 proposes CMTK0001–0005 plus code fixes).
-10. **context7.json.** The sibling repos register one. Add it once the repo is public.
+11. **Analyzer first-release rule set** (§10 proposes CMTK0001–0005 plus code fixes).
+12. **context7.json.** The sibling repos register one. Add it once the repo is public.
 
 ## 9. Option and Result
 
@@ -353,7 +380,7 @@ exist.
 | CMTK0001 | No `default`/`default(T)`/`new()`/`new T()` of a value object or a `[RequireCustomInitialization]` type | Error | done (unshipped) |
 | CMTK0002 | Type implements `IValue<>`/`IValidatedValue<,,>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so it is never woven | Error | done (unshipped) |
 | CMTK0003 | `Result`/`Option` return value ignored (expression statement, including an awaited `Task<Result<…>>`; `_ =` is the explicit opt-out). CA1806 can only enforce this per method name via `additional_use_results_methods`, not per return type | Warning | proposed |
-| CMTK0004 | `IValueObjectMaterializer<,>.Materialize` called outside `CodoMetis.TypeKit.EntityFrameworkCore`. Enforces the validation-free-path invariant in SECURITY.md | Error | proposed |
+| CMTK0004 | `IValueObjectMaterializer<,>.Materialize` called outside `CodoMetis.TypeKit.EntityFrameworkCore`. Enforces the validation-free-path invariant in SECURITY.md (the other sanctioned path, `StoredJsonConverterFactory`, reaches the converter's private constructor, not `Materialize`) | Error | proposed |
 | CMTK0005 | Array of a no-default type created with a length (`new OrderId[n]`, `GC.AllocateUninitializedArray`): every element starts as `default` | Warning | proposed |
 | CMTK0006 | Field or auto-property of a no-default type in a class, not `required`, no initializer, not assigned in every constructor. This is the CS8618 equivalent nullable analysis does not give structs, and the largest remaining way to get a `default` value object | Info → Warning | **measure noise first** on EF entities with private parameterless constructors |
 | CMTK0007 | `FromKnownGood` called with a non-constant argument | Info | **needs design**: "a value the caller just produced" is legitimate |

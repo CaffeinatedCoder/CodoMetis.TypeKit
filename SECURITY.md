@@ -62,8 +62,10 @@ nothing but this repository, so forking is the intended continuity mechanism, no
 2. **Validation.** `IValidatedValue` types are often used as the boundary check on untrusted input.
    The generated `TryFrom`, JSON converter, `IParsable` and `TypeConverter` must all apply the
    same `Create` rules.
-3. **Materialisation.** The EF Core satellite rebuilds value objects from columns **without**
-   validation, by design. It trusts that the application wrote them.
+3. **Materialisation.** Two paths rebuild value objects **without** validation, by design, and
+   trust that the application wrote what they read: the EF Core satellite for columns, and
+   `StoredJsonConverterFactory` for JSON the application stored itself, where it is registered on
+   that store's `JsonSerializerOptions` and nowhere else.
 
 ## In scope
 
@@ -72,8 +74,9 @@ nothing but this repository, so forking is the intended continuity mechanism, no
   `Create` would have refused.
 - **An `Option` or `Result` that reads as success when it is not**, such as a `default` instance
   that passes the analyzer, or any path that exposes the value of a `None` or an error.
-- **A validation-free path reachable from input.** The materializer, or anything else that skips
-  `Create`, becoming callable from outside the EF satellite.
+- **A validation-free path reachable from input.** The materializer, the stored-JSON mode of the
+  generated converter, or anything else that skips `Create`, becoming reachable other than through
+  the EF satellite or an explicitly registered `StoredJsonConverterFactory`.
 - **An analyzer that silently stops enforcing its rule** where it is the only guard against
   `default(T)` of a validated value.
 - **Denial of service through parsing or JSON** out of proportion to input length.
@@ -85,5 +88,6 @@ nothing but this repository, so forking is the intended continuity mechanism, no
 - Rules you wrote in your own `Create`. The package guarantees they are applied consistently, not
   that they are sufficient.
 - Anything that fails loudly: a refused value, a `FormatException`, a build error.
-- Values the application itself wrote to the database and reads back: materialisation trusts them
-  by contract.
+- Values the application itself wrote and reads back, from a column or from a store whose options
+  register `StoredJsonConverterFactory`: materialisation trusts them by contract. Registering the
+  factory on options that read input is a misuse, not a vulnerability in the package.
