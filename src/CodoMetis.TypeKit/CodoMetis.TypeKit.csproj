@@ -8,4 +8,16 @@
         <Description>Option and Result types that cannot be misused, and the contracts for strongly-typed value objects.</Description>
     </PropertyGroup>
 
+    <!--
+      The analyzers reach every consumer through this package: whoever can see the interfaces gets
+      the guard (docs/plan.md §10). It must stay an ordinary project reference: with
+      ReferenceOutputAssembly="false", NuGet emits no dependency at all (measured 2026-09-27).
+      Private="false" keeps the analyzer assembly out of this project's output, and nothing here
+      compiles against it. PrivateAssets="none" keeps exclude="Build,Analyzers" off the dependency.
+      AnalyzerPackagingTests packs the packages and reads the nuspec to hold all of it in place.
+    -->
+    <ItemGroup>
+        <ProjectReference Include="..\CodoMetis.TypeKit.Analyzers\CodoMetis.TypeKit.Analyzers.csproj" PrivateAssets="none" Private="false" />
+    </ItemGroup>
+
 </Project>

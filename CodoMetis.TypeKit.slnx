@@ -7,6 +7,7 @@
     <Project Path="src/CodoMetis.TypeKit.AspNetCore/CodoMetis.TypeKit.AspNetCore.csproj" />
   </Folder>
   <Folder Name="/test/">
+    <Project Path="test/CodoMetis.TypeKit.Analyzers.Tests/CodoMetis.TypeKit.Analyzers.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Conventions.Tests/CodoMetis.TypeKit.Conventions.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Tests/CodoMetis.TypeKit.Tests.csproj" />
   </Folder>

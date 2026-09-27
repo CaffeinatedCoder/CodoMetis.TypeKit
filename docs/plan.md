@@ -1,6 +1,6 @@
 # Plan: CodoMetis.TypeKit
 
-Status: **in progress, 2026-09-27.** Phases 0 and 1 are done. The decisions are in §8. The fabric
+Status: **in progress, 2026-09-27.** Phases 0, 1 and 2 are done. The decisions are in §8. The fabric
 spike ([spikes/FabricSpike](../spikes/FabricSpike/README.md)) and the translation comparison
 ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)) are done.
 
@@ -8,7 +8,7 @@ spike ([spikes/FabricSpike](../spikes/FabricSpike/README.md)) and the translatio
 
 | Package | Depends on | Metalama | Contents |
 |---|---|---|---|
-| `CodoMetis.TypeKit` | Analyzers (flows, §10) | **no** | `Option<T>`, `Result<T,TError>`, `Result<TError>` and their extensions; the value-object contracts `IValueObject<,>`, `IValueWrapper<,>`, `IValue<T>`, `IValidatedValue<,,>`, `IValueObjectMaterializer<,>` (§4), `KnownGood`; `TranslatedAsUnderlyingValueAttribute`, `RequireCustomInitializationAttribute` |
+| `CodoMetis.TypeKit` | Analyzers (flows, §10) | **no** | `Option<T>`, `Result<T,TError>`, `Result<TError>` and their extensions; the value-object contracts `IValueObject<,>`, `IValueWrapper<,>`, `IValue<T>`, `IValidatedValue<,,>`, `IValueObjectMaterializer<,>` (§4), `KnownGood`; `TranslatedAsUnderlyingValueAttribute`, `RequireCustomInitializationAttribute`; `GuidValueExtensions` (`OrderId.New()` from a version 7 Guid) |
 | `CodoMetis.TypeKit.Analyzers` | — | no | Roslyn analyzers and code fixes (§10). Nobody references it directly: it reaches every consumer through the base package |
 | `CodoMetis.TypeKit.Generators` | TypeKit, Metalama.Framework 2026.1.x (flows) | yes | Internal aspects, internal `TransitiveProjectFabric`, `AspectOrder`. Future generated type families join this package too: one fabric, one aspect order |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | TypeKit, EF Core Relational | no | Generic converter, convention, `.Value` / `GetValue` / `ValueOrNull` translators, `UseTypeKit()` |
@@ -62,27 +62,41 @@ Each phase ends green, and its guards have been proven by seeding the defect
      - `ToString` never contains the content, including for the markers;
      - the debugger display names an existing private property and shows the content;
      - the collapsing `Match` runs its success callback.
-2. **Value-object contracts and analyzer.**
-   - The interfaces and `KnownGood`.
-   - `CodoMetis.TypeKit.Analyzers` with a symbol-based analyzer (§3), and CMTK0001 with its tests.
-   - A test that the analyzer tests' verifier compiles against the *real* `CodoMetis.TypeKit`
-     assembly, not a copy of the contracts.
-   - CMTK0002 and its tests.
-   - Once CMTK0001 reaches the test projects, the tests that build an uninitialized `Result` on
-     purpose need a local suppression.
+2. **Value-object contracts and analyzer. ✅ Done 2026-09-27.**
+   - The contracts: `IValueObject<,>`, `IValueWrapper<,>`, `IValue<>`, `IValidatedValue<,,>`,
+     `IValueObjectMaterializer<,>`, `KnownGood`, `TranslatedAsUnderlyingValueAttribute`, and
+     `GuidValueExtensions` with `New()` and `New(DateTimeOffset)`. No NodaTime.
+   - CMTK0001 and CMTK0002, resolved by symbol once per compilation (§3). CMTK0001 also follows a
+     type parameter's constraints (`default(T)`/`new T()` where `T : struct, IValue<…>`).
+   - The verifier tests compile against the real `CodoMetis.TypeKit` assembly, with no copy of the
+     contracts, and `default(Option<int>)` is one of the positive controls.
+   - Packaging (§10): `CodoMetis.TypeKit` depends on `CodoMetis.TypeKit.Analyzers`, which ships only
+     `analyzers/dotnet/cs`. `AnalyzerPackagingTests` packs both and reads the result.
+   - Guards, each proven by seeding its defect:
+     - a drifted metadata name silences the positive controls (10 tests for `IValue`1`, 9 for the
+       attribute);
+     - losing indirect markers (2) or type-parameter constraints (2) fails their tests;
+     - matching the generators by prefix or by suffix fails the look-alike cases (1 each);
+     - dropping the dependency, excluding its analyzers, packing the analyzer into `lib/` or
+       marking it a development dependency each fail a packaging test.
 3. **Generators.**
    - The ten aspects in `CodoMetis.TypeKit.Generators`, applied by the fabric rather than by
      `[Inheritable]` on the interfaces.
    - No NodaTime compile-time dependency (§5).
    - Behaviour tests for every generated member, against woven probe types.
    - The surface snapshot (§6).
+   - The generator tests reference the real `.Generators` assembly, so they double as CMTK0002's
+     integration test: give that project the analyzer (`OutputItemType="Analyzer"`), and it must
+     stay silent there. In-repo projects do not get the analyzer through a project reference to
+     `CodoMetis.TypeKit`; only package consumers do.
 4. **EF Core.** §4. SQL snapshot tests via `ToQueryString` (no database), plus one
    Testcontainers PostgreSQL round trip per underlying type family.
 5. **ASP.NET Core.** §7, preceded by its own measurement spike.
 6. **Delivery.**
    - Consumer smoke test script: a throwaway project outside the repo, a private
      `NUGET_PACKAGES` and package source mapping, as in the sibling repos. It also covers a
-     consumer that references **only** `CodoMetis.TypeKit` (§10).
+     consumer that references **only** `CodoMetis.TypeKit`, and one that reaches it only through
+     another project, and asserts CMTK0001 fires in both (§10).
    - Release workflow with Trusted Publishing, and SBOMs.
    - An **unlicensed-runner build**, which settles fabric spike finding 9.
 
@@ -95,6 +109,7 @@ passes in tests and breaks for the first consumer who renames something.
 |---|---|
 | Analyzer, value-object rules | `CompilationStartAction` resolves `CodoMetis.TypeKit.ValueObjects.IValue`1` / `IValidatedValue`3` with `GetTypeByMetadataName` and compares `OriginalDefinition` with `SymbolEqualityComparer`. If `CodoMetis.TypeKit` is absent, nothing is registered |
 | Analyzer, `[RequireCustomInitialization]` | The attribute symbol is resolved the same way |
+| Analyzer, CMTK0002 | The compilation references an assembly whose identity is exactly `CodoMetis.TypeKit.Generators`. That is the package's own id, which a consumer cannot rename, and a prefix or suffix match never counts |
 | EF Core | Value objects are discovered at run time from the EF model (§4). There is no compile-time type scan and no assembly filter |
 | OpenAPI | The transformer decides per `JsonTypeInfo.Type` whether it implements `IValueObject<,>` (§7). There is no referenced-assembly walk |
 
@@ -276,11 +291,16 @@ code fixes under `analyzers/dotnet/cs`). `CodoMetis.TypeKit` takes a package dep
   stays out of a runtime library package.
 - **Why still a dependency of the base package:** fabric spike consequence A. Whoever can see the
   interfaces must get the guard.
-- **Pitfall, measured in the fabric spike:** a package dependency is emitted with
-  `exclude="Build,Analyzers"` by default, and then the analyzer would **not** reach the base
-  package's consumers. The reference therefore needs `PrivateAssets="none"`.
-- **Guards for the pitfall:** a packaging convention test that reads the nuspec, and a consumer
-  smoke test that references only `CodoMetis.TypeKit` and asserts `CMTK0001` fires.
+- **Measured 2026-09-27 (SDK 10.0.401),** packed and consumed from a local feed:
+  - A project that references only `CodoMetis.TypeKit` gets CMTK0001 and CMTK0002, and so does a
+    project that reaches it only through another project.
+  - With the default `exclude="Build,Analyzers"` on the dependency, the analyzer **still** loads,
+    because the SDK takes analyzers from every package in the restore graph. `PrivateAssets="none"`
+    is kept so the dependency says what is intended instead of relying on that.
+  - What does drop it: a project reference with `ReferenceOutputAssembly="false"` emits **no
+    dependency at all**. The reference is therefore an ordinary one with `Private="false"`.
+- **Guards:** `AnalyzerPackagingTests` packs both packages and reads the nuspec and the package
+  layout. The consumer smoke test (phase 6) asserts CMTK0001 fires, directly and transitively.
 
 Attributes stay in `CodoMetis.TypeKit`. The analyzer resolves them and the interfaces with
 `GetTypeByMetadataName` and compares symbols (§3), so it does not reference the base package.
@@ -293,8 +313,8 @@ exist.
 
 | Id | Rule | Severity | Status |
 |---|---|---|---|
-| CMTK0001 | No `default`/`default(T)`/`new()`/`new T()` of a value object or a `[RequireCustomInitialization]` type | Error | planned |
-| CMTK0002 | Type implements `IValue<>`/`IValidatedValue<,,>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so it is never woven | Error | planned |
+| CMTK0001 | No `default`/`default(T)`/`new()`/`new T()` of a value object or a `[RequireCustomInitialization]` type | Error | done (unshipped) |
+| CMTK0002 | Type implements `IValue<>`/`IValidatedValue<,,>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so it is never woven | Error | done (unshipped) |
 | CMTK0003 | `Result`/`Option` return value ignored (expression statement, including an awaited `Task<Result<…>>`; `_ =` is the explicit opt-out). CA1806 can only enforce this per method name via `additional_use_results_methods`, not per return type | Warning | proposed |
 | CMTK0004 | `IValueObjectMaterializer<,>.Materialize` called outside `CodoMetis.TypeKit.EntityFrameworkCore`. Enforces the validation-free-path invariant in SECURITY.md | Error | proposed |
 | CMTK0005 | Array of a no-default type created with a length (`new OrderId[n]`, `GC.AllocateUninitializedArray`): every element starts as `default` | Warning | proposed |

@@ -28,5 +28,12 @@
     <ItemGroup>
         <PackageVersion Include="xunit.v3" Version="4.0.1" />
         <PackageVersion Include="Shouldly" Version="4.3.0" />
+        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" Version="1.1.4" />
+        <!--
+            Locked to Microsoft.CodeAnalysis.CSharp above: the analyzer-testing package floors its
+            Roslyn dependency at 1.0.1, so without this pin the verifier would run the analyzer on a
+            different compiler than the one it is built against. Bump the two together.
+        -->
+        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" />
     </ItemGroup>
 </Project>

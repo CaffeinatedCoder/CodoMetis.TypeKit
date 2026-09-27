@@ -2,8 +2,7 @@
 
     <!--
       Roslyn loads analyzers into the compiler's own process, so this targets netstandard2.0 whatever
-      the analysed code targets. It reaches consumers through CodoMetis.TypeKit (docs/plan.md §10);
-      that wiring, and the analyzers/dotnet/cs pack layout, land in phase 2 with the first rule.
+      the analysed code targets. It reaches consumers through CodoMetis.TypeKit (docs/plan.md §10).
     -->
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
@@ -12,6 +11,23 @@
         <IsRoslynComponent>true</IsRoslynComponent>
         <Description>Analyzers for CodoMetis.TypeKit: no default instances, no ignored results, no validation bypass.</Description>
     </PropertyGroup>
+
+    <!--
+      An analyzer-only package: the assembly goes to analyzers/dotnet/cs and nothing to lib/, so a
+      consumer never compiles against it. NU5128 is the warning for exactly that missing lib/. It is
+      not a development dependency, which would stop it flowing through CodoMetis.TypeKit.
+    -->
+    <PropertyGroup>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+        <DevelopmentDependency>false</DevelopmentDependency>
+        <IncludeSymbols>false</IncludeSymbols>
+        <NoWarn>$(NoWarn);NU5128</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />

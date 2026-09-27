@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Verifier tests for the CMTK analyzers. The analyzer is referenced as a library, because the
+      verifier instantiates it in-process; OutputItemType=Analyzer would instead run it over this
+      project's own sources. CodoMetis.TypeKit is referenced so that every verifier compilation binds
+      to the real contracts (AnalyzerTest).
+    -->
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Analyzers\CodoMetis.TypeKit.Analyzers.csproj" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit\CodoMetis.TypeKit.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+    </ItemGroup>
+
+</Project>

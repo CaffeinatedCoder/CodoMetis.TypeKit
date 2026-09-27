@@ -65,7 +65,9 @@ Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TR
 - **Discovery is by interface, never by name.** No namespace strings, assembly-name prefixes or
   type-name lists. The analyzer resolves the interface symbols from the compilation, and run-time
   code tests `IValueObject<,>` assignability. A name-based check passes in tests and breaks for
-  the first consumer who renames something.
+  the first consumer who renames something. The only names the analyzer knows are this package's
+  own: the metadata names of its contracts and the exact identity of the `.Generators` assembly,
+  each tied to the real assembly by a test.
 - **No public `.Value` on `Option`/`Result`, and never positional records.** Positional
   parameters become public properties and reach `ToString`.
 - **The materializer skips validation.** `IValueObjectMaterializer<,>.Materialize` exists for
