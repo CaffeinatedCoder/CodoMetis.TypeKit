@@ -14,19 +14,26 @@ namespace CodoMetis.TypeKit.Generators;
 internal sealed partial class ValueObjectImplementationAspect : TypeAspect
 {
     private readonly string? _extensionClassNameOwner;
+    private readonly string? _wrappedValueObjectRefusal;
 
     /// <param name="extensionClassNameOwner">
     /// What already owns the name of the companion class, as <see cref="CompanionClass.NameOwner"/>
     /// answered it in the fabric, or <see langword="null"/> when the name is free.
     /// </param>
-    public ValueObjectImplementationAspect(string? extensionClassNameOwner)
+    /// <param name="wrappedValueObjectRefusal">
+    /// Why the value object cannot wrap what it wraps, as
+    /// <see cref="ValueObjectTypes.WrappedValueObjectRefusal"/> answered it in the fabric, or
+    /// <see langword="null"/> when what it wraps is not a value object.
+    /// </param>
+    public ValueObjectImplementationAspect(string? extensionClassNameOwner, string? wrappedValueObjectRefusal)
     {
-        _extensionClassNameOwner = extensionClassNameOwner;
+        _extensionClassNameOwner   = extensionClassNameOwner;
+        _wrappedValueObjectRefusal = wrappedValueObjectRefusal;
     }
 
     public override void BuildAspect(IAspectBuilder<INamedType> builder)
     {
-        if (!TryResolve(builder, out var kind, out var valueType))
+        if (!TryResolve(builder, _wrappedValueObjectRefusal, out var kind, out var valueType))
         {
             builder.SkipAspect();
             return;
@@ -101,7 +108,7 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
     /// The one marker, the kind and the wrapped type, or an error for a declaration that cannot be
     /// generated. Generating it anyway would fail later with a far less useful message.
     /// </summary>
-    private static bool TryResolve(IAspectBuilder<INamedType> builder, out ValueObjectKind kind, [NotNullWhen(true)] out INamedType? valueType)
+    private static bool TryResolve(IAspectBuilder<INamedType> builder, string? wrappedValueObjectRefusal, out ValueObjectKind kind, [NotNullWhen(true)] out INamedType? valueType)
     {
         var target  = builder.Target;
         var markers = ValueObjectTypes.Markers(target);
@@ -162,6 +169,14 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
         {
             builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target,
                 $"the wrapped type '{namedValueType.ToDisplayString()}' is nullable; wrap '{namedValueType.ToNonNullable().ToDisplayString()}' and declare the property or parameter as '{target.Name}?' where the value can be absent")));
+            return false;
+        }
+
+        // Before the field is introduced: over a struct that wraps itself it has no layout (CS0523),
+        // which Metalama reports as a bug in this aspect.
+        if (wrappedValueObjectRefusal is not null)
+        {
+            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, wrappedValueObjectRefusal)));
             return false;
         }
 

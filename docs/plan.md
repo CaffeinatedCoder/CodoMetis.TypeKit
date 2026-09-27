@@ -92,7 +92,7 @@ Each phase ends green, and its guards have been proven by seeding the defect
      the generators only through the probes, which is the transitive-fabric check.
    - The generated-surface snapshot (§6), `GeneratedSurface.verified.txt`.
    - Build-outcome tests: a throwaway consumer with declarations that cannot be generated gets
-     exactly CMTK1000–1007 and CMTK0001, nothing else, and no CMTK0002 beside the real generators.
+     exactly CMTK1000–1008 and CMTK0001, nothing else, and no CMTK0002 beside the real generators.
    - Guards, each proven by seeding its defect:
      - a JSON read, `Parse` or `TryParse` that bypasses `Create` fails 7, 9 and 5 entry-point
        cases; a new public factory without a case fails the completeness tests;
@@ -125,6 +125,12 @@ Each phase ends green, and its guards have been proven by seeding the defect
    - Found in the third review on 2026-09-27: a hand-written comparison operator failed the aspect
      (LAMA0500) and a hand-written object `CompareTo` was kept silently beside the generated generic
      one; both are CMTK1008 now, and the one seam, `CompareTo(TSelf)`, is documented and pinned (§5).
+   - Found by the OpenAPI spike on 2026-09-27 (finding 16): a record class that wraps itself, or
+     two that wrap each other, compiled without a word, and a struct cycle failed as LAMA0611. Every
+     value object over a value object is CMTK1005 now (§5). Guards, each proven by seeding its
+     defect: without the refusal 12 build-outcome tests fail (the struct cycle's LAMA0611 among
+     them); reporting a cycle as plain nesting fails 4 (a self-wrap then compiles again); allowing
+     nesting without a cycle fails 2.
 4. **EF Core. ✅ Done 2026-09-27.**
    - The mapping spike first (spikes/EfMapping): an additive type-mapping-source plugin maps every
      value object, with keys, foreign keys, nullable properties and primitive collections, on
@@ -292,8 +298,9 @@ passes in tests and breaks for the first consumer who renames something.
 - **Declarations that cannot be generated** are errors, so no type is left half-generated:
   CMTK1000/1001/1002 (not `partial`, not a record, a struct not `readonly`), CMTK1003 (more than one
   marker), CMTK1004 (a validated marker whose first type argument is another type), CMTK1005 (a
-  generic value object, one that derives from another value object, or a wrapped type that is not
-  a class, struct or enum), CMTK1006 (a record class that is not `sealed`: a derived record compares
+  generic value object, one that derives from another value object, a wrapped type that is not
+  a class, struct or enum, or one that is a value object: itself, one that reaches it again, or
+  any other, see below), CMTK1006 (a record class that is not `sealed`: a derived record compares
   equal only to its own type, which is not value equality), CMTK1007 (the name of the
   `GetValue`/`ValueOrNull` class is taken, see below).
 - **The companion class** holding `GetValue()`/`ValueOrNull()` sits at namespace level, as
@@ -343,6 +350,24 @@ passes in tests and breaks for the first consumer who renames something.
   value a `HashSet` kept.
 - **A nullable wrapped type is CMTK1005.** The markers' `notnull` constraint is only a warning
   (CS8714), and `IValue<int?>` then failed inside the generated code as LAMA0611/0612.
+- **A value object never wraps a value object (decided 2026-09-27).** CMTK1005, answered in the
+  fabric because it reads the wrapped types (see "An aspect never scans its namespace" below).
+  - **A cycle** (`sealed partial record SelfWrap : IValue<SelfWrap>`, or A wraps B wraps A) has no
+    finite form: the fallback JSON converter serializes the wrapped value through the options,
+    which is its own converter again, and a schema walk never ends. As a record class it compiled
+    without a word (spikes/OpenApiSchemas finding 16), as a struct it failed inside the generated
+    code (CS0523 as LAMA0611). The message names the chain: `it wraps itself (A -> B -> A)`.
+  - **Any other value object** (`Outer : IValue<OrderId>`) terminates, but its surface depended on
+    where the inner one was declared. Over one from a referenced project it got every interface;
+    over one from its own project it silently lacked `IParsable`, `IComparable`, `ISpanFormattable`,
+    `IConvertible`, `IMinMaxValue` and the type converter, and sorting it threw: the aspects of one
+    layer do not see what their sibling instances introduce (measured 2026-09-27). The message
+    names what to wrap instead (`wrap 'Guid' instead`); a validated value object applies the inner
+    one's rules in its `Create`. Refused rather than made to work: a surface that follows the
+    project layout is the silent failure this repo exists to prevent, and lifting a refusal later
+    breaks nobody, while adding one after 0.1.0 would.
+  - The satellites keep their own refusal (§7): a hand-written `IValueObject<,>` can still wrap
+    itself.
 - **A fallback JSON key goes through the wrapped type's own converter**
   (`options.GetConverter(typeof(T))`), which knows the type's key format where it has one (an enum
   by name, a `Uri` as its text) and throws `NotSupportedException` where it has none. Writing the

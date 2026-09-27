@@ -129,7 +129,7 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1002 | A struct not declared `readonly`. |
 | CMTK1003 | More than one marker, such as `IValue<int>, IValue<string>`. |
 | CMTK1004 | An `IValidatedValue<TSelf, …>` whose `TSelf` is another type. |
-| CMTK1005 | Generic, nested in a generic type, derived from another value object, or wrapping an array, a pointer or a nullable type. |
+| CMTK1005 | Generic, nested in a generic type, derived from another value object, or wrapping an array, a pointer, a nullable type or a value object (itself included). Wrap what the other value object wraps instead. |
 | CMTK1006 | A record class not declared `sealed`. |
 | CMTK1007 | The `{TSelf}Extensions` companion's name is taken by a declared type or by another value object's companion. |
 | CMTK1008 | A hand-written comparison operator or object `CompareTo` beside the generated ones. |

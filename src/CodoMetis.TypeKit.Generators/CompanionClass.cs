@@ -73,9 +73,7 @@ internal static class CompanionClass
 
         var rival = AllTypes(@namespace.Types)
             .FirstOrDefault(type => !type.Equals(valueObject)
-                                 && type.TypeKind is TypeKind.Struct or TypeKind.Class
-                                 && !type.IsAbstract
-                                 && ValueObjectTypes.Markers(type).Count > 0
+                                 && ValueObjectTypes.IsValueObject(type)
                                  && NamespaceLevelAccessibility(type) is not null
                                  && Name(type) == className);
 
