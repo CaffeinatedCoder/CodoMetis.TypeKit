@@ -32,6 +32,12 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1005", "ArrayBacked")]
     [InlineData("CMTK1005", "NullableBacked")]
     [InlineData("CMTK1005", "DerivesFromAValueObject")]
+    [InlineData("CMTK1005", "WrapsItself")]
+    [InlineData("CMTK1005", "CycleOne")]
+    [InlineData("CMTK1005", "CycleTwo")]
+    [InlineData("CMTK1005", "StructCycleOne")]
+    [InlineData("CMTK1005", "StructCycleTwo")]
+    [InlineData("CMTK1005", "WrapsAValueObject")]
     [InlineData("CMTK1006", "NotSealed")]
     [InlineData("CMTK1007", "TakenName")]
     [InlineData("CMTK1007", "ShopId")]
@@ -40,6 +46,18 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1008", "WithObjectCompareTo")]
     public void A_declaration_that_cannot_be_generated_is_an_error(string id, string type) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains($"'{type}"), $"{id} on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
+
+    /// <summary>
+    /// Every value object over another one is refused, so a cycle would be refused without this
+    /// reason too, but not told that it loops, or through which types.
+    /// </summary>
+    [Theory]
+    [InlineData("WrapsItself", "it wraps itself (WrapsItself -> WrapsItself)")]
+    [InlineData("CycleOne", "it wraps itself (CycleOne -> CycleTwo -> CycleOne)")]
+    [InlineData("StructCycleTwo", "it wraps itself (StructCycleTwo -> StructCycleOne -> StructCycleTwo)")]
+    [InlineData("WrapsAValueObject", "it wraps 'Fine', which is a value object itself; wrap 'int' instead")]
+    public void A_value_object_over_a_value_object_is_refused_with_what_it_reaches(string type, string reason) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1005" && error.Message.StartsWith($"'{type}'") && error.Message.Contains(reason), $"CMTK1005 on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
 
     /// <summary>
     /// The declarations are refused with the errors above, never by an aspect that failed on them:
@@ -118,6 +136,24 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public partial record NotSealed : IValue<string>;
 
             public sealed partial record DerivesFromAValueObject : NotSealed;
+
+            // A value object that reaches itself through what it wraps has no finite form: its JSON
+            // converter serializes the wrapped value through the options, which is its own converter
+            // again. As a record class it compiled without a word; as a struct it failed inside the
+            // generated code (CS0523 as LAMA0611).
+            public sealed partial record WrapsItself : IValue<WrapsItself>;
+
+            public sealed partial record CycleOne : IValue<CycleTwo>;
+
+            public sealed partial record CycleTwo : IValue<CycleOne>;
+
+            public readonly partial record struct StructCycleOne : IValue<StructCycleTwo>;
+
+            public readonly partial record struct StructCycleTwo : IValue<StructCycleOne>;
+
+            // Over another value object, the surface depended on where that one was declared: over one
+            // from the same project, parsing, comparison and the type converter were silently missing.
+            public readonly partial record struct WrapsAValueObject : IValue<Fine>;
 
             // Companion classes are named after the whole nesting chain, so these two coexist.
             public sealed class Order { public readonly partial record struct Id : IValue<System.Guid>; }
