@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using System.Text.RegularExpressions;
 
 namespace CodoMetis.TypeKit.Generators.Tests;
@@ -206,9 +207,11 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             // --no-dependencies and RestoreRecursive=false: the referenced projects are already built
             // by this test run, and restoring them again could rewrite restore output that other
-            // tests read concurrently.
+            // tests read concurrently. Already built in this run's configuration, which is therefore
+            // passed on: without it the consumer builds in Debug and, in a Release run such as CI's,
+            // finds no referenced assembly at all.
             using var process = Process.Start(new ProcessStartInfo(
-                "dotnet", ["build", _directory, "--no-dependencies", "-p:RestoreRecursive=false", "-nodeReuse:false", "-clp:NoSummary"])
+                "dotnet", ["build", _directory, "-c", Configuration, "--no-dependencies", "-p:RestoreRecursive=false", "-nodeReuse:false", "-clp:NoSummary"])
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError  = true,
@@ -230,6 +233,11 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);
             return ValueTask.CompletedTask;
         }
+
+        /// <summary>The configuration this test assembly, and so the projects it references, was built in.</summary>
+        private static string Configuration =>
+            typeof(Consumer).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>()?.Configuration
+         ?? throw new InvalidOperationException("The test assembly carries no AssemblyConfigurationAttribute.");
 
         private static string RepositoryRoot()
         {
