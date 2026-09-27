@@ -26,15 +26,19 @@ internal sealed class ValueObjectAspectState : IAspectState
         IDurableRef<IConstructor> privateConstructor,
         IDurableRef<IMethod>      fromJson,
         IDurableRef<IMethod>      fromText,
-        IDurableRef<IMethod>      tryFromText
+        IDurableRef<IMethod>      tryFromText,
+        string                    extensionClassName,
+        string?                   extensionClassNameOwner
     )
     {
-        Kind               = kind;
-        ValueType          = valueType;
-        PrivateConstructor = privateConstructor;
-        FromJson           = fromJson;
-        FromText           = fromText;
-        TryFromText        = tryFromText;
+        Kind                    = kind;
+        ValueType               = valueType;
+        PrivateConstructor      = privateConstructor;
+        FromJson                = fromJson;
+        FromText                = fromText;
+        TryFromText             = tryFromText;
+        ExtensionClassName      = extensionClassName;
+        ExtensionClassNameOwner = extensionClassNameOwner;
     }
 
     public ValueObjectKind Kind { get; }
@@ -55,4 +59,13 @@ internal sealed class ValueObjectAspectState : IAspectState
 
     /// <summary><c>static bool __TryFromText(T value, out TSelf result)</c>: a refusal returns <see langword="false"/>.</summary>
     public IDurableRef<IMethod> TryFromText { get; }
+
+    /// <summary>The name of the <c>GetValue()</c>/<c>ValueOrNull()</c> companion class (<see cref="CompanionClass.Name"/>).</summary>
+    public string ExtensionClassName { get; }
+
+    /// <summary>
+    /// What already owns that name, answered by the fabric before any introduction, or
+    /// <see langword="null"/> when the name is free (<see cref="CompanionClass.NameOwner"/>).
+    /// </summary>
+    public string? ExtensionClassNameOwner { get; }
 }

@@ -295,6 +295,14 @@ passes in tests and breaks for the first consumer who renames something.
   factories. Any other hand-written comparison member is CMTK1008: an operator failed the aspect
   (LAMA0500, naming no fix), and an object overload was kept silently beside a generated generic
   one that need not agree with it.
+- **An aspect never scans its namespace (decided 2026-09-27,
+  [spikes/ConcurrentNamespaceTypes](../spikes/ConcurrentNamespaceTypes/README.md)).** The
+  instances of one aspect layer run in parallel on one code model, and the CMTK1007 check, reading
+  the namespace's types from the extensions aspect while sibling instances introduced their
+  companion classes into it, missed a declared type in 5 of 60 builds. With Metalama's concurrent
+  build off it never missed. What owns a companion name is now answered in the fabric, before any
+  introduction, and reaches the aspect through its constructor and the aspect state: 0 misses in
+  48. Anything that has to look beyond the aspect's own target goes the same way.
 - **Metalama 2026.1.** Aspect state uses `IDurableRef`, which exists in 2026.1. `[Durable]` on the
   `_value` template placeholder is 2027.0-only and stays out until the upgrade (decision 4). Build
   each aspect on 2026.1 as it lands, and use no 2027.0-only API.

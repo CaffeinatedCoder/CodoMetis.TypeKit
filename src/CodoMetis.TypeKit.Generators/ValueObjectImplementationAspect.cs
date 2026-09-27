@@ -13,6 +13,17 @@ namespace CodoMetis.TypeKit.Generators;
 /// </summary>
 internal sealed partial class ValueObjectImplementationAspect : TypeAspect
 {
+    private readonly string? _extensionClassNameOwner;
+
+    /// <param name="extensionClassNameOwner">
+    /// What already owns the name of the companion class, as <see cref="CompanionClass.NameOwner"/>
+    /// answered it in the fabric, or <see langword="null"/> when the name is free.
+    /// </param>
+    public ValueObjectImplementationAspect(string? extensionClassNameOwner)
+    {
+        _extensionClassNameOwner = extensionClassNameOwner;
+    }
+
     public override void BuildAspect(IAspectBuilder<INamedType> builder)
     {
         if (!TryResolve(builder, out var kind, out var valueType))
@@ -70,7 +81,9 @@ internal sealed partial class ValueObjectImplementationAspect : TypeAspect
             privateConstructor.Declaration.ToDurableRef(),
             fromJson.ToDurableRef(),
             fromText.ToDurableRef(),
-            tryFromText.ToDurableRef()
+            tryFromText.ToDurableRef(),
+            CompanionClass.Name(target),
+            _extensionClassNameOwner
         );
 
         builder.Outbound.AddAspect<ValueObjectInterfaceAspect>();
