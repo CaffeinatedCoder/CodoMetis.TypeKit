@@ -9,6 +9,16 @@
     </PropertyGroup>
 
     <!--
+      Native AOT and trimming: the analyzers run on every build, and warnings are errors, so a call
+      that trimming or AOT cannot honour fails here rather than in a consumer's publish. The code the
+      generators weave into a consumer is checked where it runs: the consumer smoke test publishes
+      it with Native AOT. AotCompatibilityTests reads the packed assembly to hold this in place.
+    -->
+    <PropertyGroup>
+        <IsAotCompatible>true</IsAotCompatible>
+    </PropertyGroup>
+
+    <!--
       The analyzers reach every consumer through this package: whoever can see the interfaces gets
       the guard (docs/plan.md §10). It must stay an ordinary project reference: with
       ReferenceOutputAssembly="false", NuGet emits no dependency at all (measured 2026-09-27).

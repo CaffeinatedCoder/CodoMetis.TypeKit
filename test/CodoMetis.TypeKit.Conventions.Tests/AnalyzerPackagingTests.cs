@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
 using System.Xml.Linq;
 
 namespace CodoMetis.TypeKit.Conventions.Tests;
@@ -108,6 +110,59 @@ public sealed class AnalyzerPackagingTests(AnalyzerPackagingTests.Packs packs)
             using var archive = ZipFile.OpenRead(Package(package));
 
             return [.. archive.Entries.Select(entry => entry.FullName)];
+        }
+
+        /// <summary>
+        /// The <see cref="System.Reflection.AssemblyMetadataAttribute"/> pairs of the package's
+        /// <c>lib/net10.0/{package}.dll</c>, or <see langword="null"/> when it packs no such assembly.
+        /// Read from the metadata, never loaded.
+        /// </summary>
+        public IReadOnlyDictionary<string, string?>? AssemblyMetadata(string package)
+        {
+            using var archive = ZipFile.OpenRead(Package(package));
+            var entry = archive.GetEntry($"lib/net10.0/{package}.dll");
+            if (entry is null) return null;
+
+            using var image = new MemoryStream();
+            using (var stream = entry.Open()) stream.CopyTo(image);
+            image.Position = 0;
+
+            using var pe = new PEReader(image);
+            var metadata = pe.GetMetadataReader();
+
+            return metadata.GetAssemblyDefinition().GetCustomAttributes()
+                           .Select(metadata.GetCustomAttribute)
+                           .Where(attribute => IsAssemblyMetadata(metadata, attribute))
+                           .Select(attribute => attribute.DecodeValue(StringArguments.Instance))
+                           .ToDictionary(value => (string)value.FixedArguments[0].Value!, value => (string?)value.FixedArguments[1].Value, StringComparer.Ordinal);
+        }
+
+        private static bool IsAssemblyMetadata(MetadataReader metadata, CustomAttribute attribute) =>
+            attribute.Constructor.Kind == HandleKind.MemberReference
+         && metadata.GetMemberReference((MemberReferenceHandle)attribute.Constructor).Parent is { Kind: HandleKind.TypeReference } parent
+         && metadata.GetString(metadata.GetTypeReference((TypeReferenceHandle)parent).Name) == nameof(System.Reflection.AssemblyMetadataAttribute);
+
+        /// <summary>Enough of a type provider to decode an attribute whose arguments are strings.</summary>
+        private sealed class StringArguments : ICustomAttributeTypeProvider<Type>
+        {
+            public static readonly StringArguments Instance = new();
+
+            public Type GetPrimitiveType(PrimitiveTypeCode typeCode) =>
+                typeCode == PrimitiveTypeCode.String ? typeof(string) : throw new NotSupportedException(typeCode.ToString());
+
+            public Type GetSystemType() => typeof(Type);
+
+            public Type GetSZArrayType(Type elementType) => elementType.MakeArrayType();
+
+            public Type GetTypeFromDefinition(MetadataReader reader, TypeDefinitionHandle handle, byte rawTypeKind) => throw new NotSupportedException();
+
+            public Type GetTypeFromReference(MetadataReader reader, TypeReferenceHandle handle, byte rawTypeKind) => throw new NotSupportedException();
+
+            public Type GetTypeFromSerializedName(string name) => throw new NotSupportedException();
+
+            public PrimitiveTypeCode GetUnderlyingEnumType(Type type) => throw new NotSupportedException();
+
+            public bool IsSystemType(Type type) => type == typeof(Type);
         }
 
         private string Package(string package) =>

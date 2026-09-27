@@ -81,6 +81,29 @@ public sealed partial class ReleaseWiringTests
             "dotnet.yml does not run the smoke test in its other mode, packing its own feed.");
     }
 
+    /// <summary>
+    /// The smoke test publishes a consumer with Native AOT, which needs clang and zlib: every job that
+    /// runs it installs them first.
+    /// </summary>
+    [Fact]
+    public void Every_job_that_runs_the_smoke_test_installs_the_Native_AOT_prerequisites_first()
+    {
+        var jobs = new[] { ("release.yml", ReleaseWorkflow), ("dotnet.yml", BuildWorkflow) }
+                   .SelectMany(workflow => Jobs(workflow.Item2).Select(job => (Name: $"{workflow.Item1}:{job.Key}", Text: job.Value)))
+                   .Where(job => SmokeTestStep().IsMatch(job.Text))
+                   .ToList();
+
+        jobs.Count.ShouldBeGreaterThanOrEqualTo(3, "the release's verify job and the build workflow's pack and consumer jobs");
+
+        foreach (var (name, text) in jobs)
+        {
+            var install = AotPrerequisites().Match(text);
+
+            install.Success.ShouldBeTrue($"{name} runs the smoke test without installing clang and zlib1g-dev.");
+            install.Index.ShouldBeLessThan(SmokeTestStep().Match(text).Index, $"{name} installs the Native AOT prerequisites after the smoke test.");
+        }
+    }
+
     [Fact]
     public void The_smoke_test_is_executable()
     {
@@ -182,6 +205,12 @@ public sealed partial class ReleaseWiringTests
 
     [GeneratedRegex(@"(?m)^  (?<name>[A-Za-z0-9_-]+):\s*$")]
     private static partial Regex JobKey();
+
+    [GeneratedRegex(@"(?m)^\s+run:\s*\./test/consumer-smoke-test\.sh")]
+    private static partial Regex SmokeTestStep();
+
+    [GeneratedRegex(@"(?m)^\s+run:.*\bapt-get install\b.*\bclang\b.*\bzlib1g-dev\b")]
+    private static partial Regex AotPrerequisites();
 
     [GeneratedRegex(@"(?m)^\s+id-token:\s*write")]
     private static partial Regex IdTokenWrite();

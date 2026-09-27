@@ -93,6 +93,11 @@ jobs:
       - name: Pack
         run: dotnet pack CodoMetis.TypeKit.slnx -c Release --no-build -o dist
 
+      # The smoke test publishes a consumer with Native AOT, which links with the platform's clang
+      # and zlib (docs/plan.md §11).
+      - name: Native AOT prerequisites
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang zlib1g-dev
+
       # Against the packed feed, exactly as the release workflow runs it. The `consumer` job runs the
       # other mode, packing its own feed. The two are not interchangeable: packing fills the private
       # package cache with the solution's dependencies, and a restore that only works because of that
@@ -136,6 +141,11 @@ jobs:
         uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
         with:
           global-json-file: global.json
+
+      # The smoke test publishes a consumer with Native AOT, which links with the platform's clang
+      # and zlib (docs/plan.md §11).
+      - name: Native AOT prerequisites
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang zlib1g-dev
 
       - name: Consumer smoke test, packing its own feed
         run: ./test/consumer-smoke-test.sh

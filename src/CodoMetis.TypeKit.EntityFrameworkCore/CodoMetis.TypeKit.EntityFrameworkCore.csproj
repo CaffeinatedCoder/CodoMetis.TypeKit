@@ -5,6 +5,15 @@
         <Description>EF Core integration for CodoMetis.TypeKit: value-object converters by convention, and `.Value` in LINQ queries.</Description>
     </PropertyGroup>
 
+    <!--
+      Native AOT and trimming analyzers on, as in every runtime package. This package's own code is
+      clean; EF Core itself is not AOT-compatible (its DbContext constructors require dynamic code)
+      and supports Native AOT only experimentally, through a compiled model and precompiled queries.
+    -->
+    <PropertyGroup>
+        <IsAotCompatible>true</IsAotCompatible>
+    </PropertyGroup>
+
     <ItemGroup>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
         <ProjectReference Include="..\CodoMetis.TypeKit\CodoMetis.TypeKit.csproj" />

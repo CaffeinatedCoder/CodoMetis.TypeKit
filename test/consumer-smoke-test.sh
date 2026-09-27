@@ -14,7 +14,7 @@
 # consumer builds), compiles real code against them, runs it, and asserts on what it prints, on the
 # diagnostics the build reports, and on the resolved package graph. Never on the exit code alone.
 #
-# Three consumers:
+# Four consumers:
 #   core     references only CodoMetis.TypeKit: Option and Result work, no Metalama arrives, and
 #            CMTK0001 and CMTK0002 fire (docs/plan.md §10).
 #   layered  a domain library references CodoMetis.TypeKit.Generators, and an app reaches everything
@@ -22,6 +22,11 @@
 #            generates a value object the app declares itself, and CMTK0001 fires in the app.
 #   host     a web host with both satellites: EF Core maps the value objects and translates .Value,
 #            and the OpenAPI document describes them.
+#   aot      the same ground published with Native AOT (docs/plan.md §11): no trim or AOT warning
+#            from a package or from the code woven into the consumer, and the native binary does
+#            what the JIT build does.
+#
+# Native AOT needs the platform linker: clang (and zlib on Linux), which the workflows install.
 #
 # Usage: consumer-smoke-test.sh [feed-directory]
 #   With no argument the packages are packed fresh. Pass a directory of existing .nupkg files (the
@@ -450,6 +455,287 @@ assert_contains "bound=200"      "$work/host.out" "a route parameter binds throu
 assert_contains "malformed=400"  "$work/host.out" "a malformed route parameter is a 400"
 assert_contains '"o"."Code" LIKE' "$work/host.out" ".Value in a query translates to the bare column"
 assert_contains "found=ABC:2"    "$work/host.out" "value objects round-trip through the database"
+
+# ── aot: the packages under Native AOT ───────────────────────────────────────────────────────────
+#
+# The packages build with the trim and AOT analyzers on, but those cannot see the code the
+# generators weave into a consumer, and they cannot tell that a run-time path still works. Under
+# Native AOT an interface nothing uses is removed from a type, and reflection over it finds nothing:
+# that is how the OpenAPI satellite once described every value object as {} with no warning at any
+# build (docs/plan.md §11). So this publishes a consumer with PublishAot, reads the publish warnings,
+# and runs the native binary.
+#
+# The value objects live in namespace Shop, so a warning about woven code names Shop.; a warning in
+# a package names CodoMetis. TrimmerSingleWarn=false keeps the packages' warnings itemised instead of
+# folded into one line per assembly. EF Core's own warnings (its DbContext constructor requires
+# dynamic code) name neither and are EF's to fix.
+
+echo "==> aot: the packages published with Native AOT"
+command -v clang >/dev/null || { echo "FAILED: Native AOT needs clang on PATH (and zlib on Linux)"; exit 1; }
+
+new_project classlib aot/Domain CodoMetis.TypeKit.Generators
+run dotnet add package NodaTime --version "$(central_version NodaTime)"
+
+cat > Shop.cs <<'CSHARP'
+using CodoMetis.TypeKit;
+using CodoMetis.TypeKit.ValueObjects;
+
+namespace Shop;
+
+// One per JSON strategy: a reader method (Guid), the serializer's contract for a number, the
+// fallback with a built-in converter (Uri, an enum), a string, and parsing through a TypeConverter.
+public readonly partial record struct OrderId : IValue<Guid>;
+public readonly partial record struct Quantity : IValue<int>;
+public readonly partial record struct Amount : IValue<decimal>;
+public readonly partial record struct Link : IValue<Uri>;
+public readonly partial record struct Weekday : IValue<DayOfWeek>;
+public readonly partial record struct Name : IValue<string>;
+public readonly partial record struct Day : IValue<NodaTime.LocalDate>;
+
+public enum CodeFault { Blank, NotUpperCase }
+
+// A record class: EF's compiled model cannot write the sentinel of a struct that wraps a reference
+// type (its default converts to null), so a string-backed value object on an entity is a class here.
+public sealed partial record Code : IValidatedValue<Code, string, CodeFault>
+{
+    public static Result<Code, CodeFault> Create(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return Result.Error(CodeFault.Blank);
+        if (value != value.ToUpperInvariant()) return Result.Error(CodeFault.NotUpperCase);
+        return new Code(value);
+    }
+}
+CSHARP
+
+# Two applications: JSON and OpenAPI in a web app, EF Core in a console app of its own, the way its
+# compiled model is generated.
+#
+# What a run cannot see: anything that uses IValueObject<,> (the EF satellite's converter, or the
+# generated [GeneratedValueObject<,>] through its constraint) makes the trimmer keep that interface
+# on every value object, so a GetInterfaces() lookup passes here as well (measured). Before the
+# attribute existed it found nothing, and the OpenAPI assertions below failed. That lookup is kept
+# out by the analyzers, whose IL2070 fails the packages' build, and by AGENTS.md.
+aot_project() {
+    local template="$1" path="$2"
+    shift 2
+    new_project "$template" "$path" "$@"
+    run dotnet add reference ../Domain/Domain.csproj
+    # PublishAot, the interceptors EF's precompiled queries are, and itemised package warnings.
+    sed -i.bak 's|</PropertyGroup>|  <PublishAot>true</PublishAot>\n    <TrimmerSingleWarn>false</TrimmerSingleWarn>\n    <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.EntityFrameworkCore.GeneratedInterceptors</InterceptorsNamespaces>\n  </PropertyGroup>|' "$(basename "$path").csproj"
+    rm "$(basename "$path").csproj.bak"
+}
+
+# Publishes, keeps the warnings that name a package or a woven value object, runs the native binary.
+aot_publish_and_run() {
+    local name="$1"
+    run dotnet publish -c Release -o "$work/aot/$name.out"
+    echo "$output" > "$work/aot.$name.publish"
+    grep -E 'warning IL[0-9]{4}' "$work/aot.$name.publish" | grep -E 'CodoMetis|Shop\.' | sort -u >> "$work/aot.warnings" || true
+    if [[ -x "$work/aot/$name.out/$name" && ! -f "$work/aot/$name.out/$name.dll" ]]; then
+        echo "  ok: $name is published as native code"
+    else
+        echo "  FAIL: $name was not published as a native executable"
+        failed=1
+    fi
+    run "$work/aot/$name.out/$name"
+    echo "$output" >> "$work/aot.out"
+}
+
+: > "$work/aot.warnings"
+: > "$work/aot.out"
+
+# JSON and OpenAPI.
+aot_project web aot/Web CodoMetis.TypeKit.AspNetCore
+run dotnet add package Microsoft.AspNetCore.OpenApi --version "$(central_version Microsoft.AspNetCore.OpenApi)"
+
+cat > Program.cs <<'CSHARP'
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
+using CodoMetis.TypeKit;
+using CodoMetis.TypeKit.AspNetCore;
+using CodoMetis.TypeKit.ValueObjects;
+using Shop;
+
+async Task Check(string name, Func<Task<string>> body)
+{
+    try { Console.WriteLine($"{name}={await body()}"); }
+    catch (Exception e) { Console.WriteLine($"{name}=THREW {e.GetType().Name}: {e.Message.ReplaceLineEndings(" ")}"); }
+}
+
+// JSON through a source-generated context, the only resolver under Native AOT, which lists none of
+// the wrapped types: the generated converters must not need them.
+var line = new Line(OrderId.From(Guid.Parse("0199aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee")), Code.FromKnownGood("ABC"), Name.From("n"), Quantity.From(3),
+    Amount.From(1.5m), Link.From(new Uri("https://x.test/a")), Weekday.From(DayOfWeek.Friday),
+    new() { [Quantity.From(7)] = 1 }, new() { [Weekday.From(DayOfWeek.Monday)] = 2 });
+var written = "";
+await Check("json", async () => written = JsonSerializer.Serialize(line, ShopJson.Default.Line));
+await Check("json-roundtrip", async () => (JsonSerializer.Serialize(JsonSerializer.Deserialize(written, ShopJson.Default.Line)!, ShopJson.Default.Line) == written).ToString());
+await Check("json-refused", async () => { JsonSerializer.Deserialize(written.Replace("\"ABC\"", "\"abc\""), ShopJson.Default.Line); return "accepted"; });
+await Check("json-number-handling", async () =>
+{
+    var options = new JsonSerializerOptions(ShopJson.Default.Options) { NumberHandling = JsonNumberHandling.WriteAsString };
+    return JsonSerializer.Serialize(Amount.From(2.5m), options);
+});
+await Check("stored", async () =>
+{
+    var store = new JsonSerializerOptions { TypeInfoResolver = ShopJson.Default, Converters = { new StoredJsonConverterFactory() } };
+    return JsonSerializer.Deserialize<Code>("\"abc\"", store)!.Value;
+});
+await Check("option-refused", async () => JsonSerializer.Serialize(new Holder(Option.Some(1)), ShopJson.Default.Holder));
+
+// Parsing, including through a TypeConverter (NodaTime's LocalDate).
+await Check("parse", async () => $"{Quantity.Parse("42", null).Value} {Weekday.Parse("Monday", null).Value} {Link.Parse("https://p.test/", null).Value} {Day.Parse("2026-09-27", null).Value:yyyy-MM-dd}");
+await Check("tryparse-refused", async () => Code.TryParse("abc", null, out _).ToString());
+
+// OpenAPI. Under source-generated JSON the host's context lists what the value objects wrap, since
+// the wrapped type's schema is ASP.NET's own, built from the host's JSON contract for it.
+var builder = WebApplication.CreateSlimBuilder(args);
+builder.WebHost.UseUrls("http://127.0.0.1:0");
+builder.Logging.ClearProviders();
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.TypeInfoResolverChain.Insert(0, HostJson.Default));
+builder.Services.AddOpenApi(options => options.AddTypeKit());
+
+await using var app = builder.Build();
+app.MapOpenApi();
+app.MapGet("/orders/{id}", (OrderId id, Quantity? limit) => new OrderView(id, [Quantity.From(1)], Amount.From(1.5m)));
+app.MapPost("/orders", (OrderView body) => body.Amount);
+await app.StartAsync();
+
+using var http = new HttpClient { BaseAddress = new Uri(app.Urls.First()) };
+JsonNode? document = null;
+await Check("openapi", async () =>
+{
+    var response = await http.GetAsync("/openapi/v1.json");
+    document = JsonNode.Parse(await response.Content.ReadAsStringAsync());
+    return ((int)response.StatusCode).ToString();
+});
+var schemas = document?["components"]?["schemas"];
+Console.WriteLine($"openapi-component={schemas?["OrderId"]?.ToJsonString() ?? "missing"}");
+Console.WriteLine($"openapi-parameter={document?["paths"]?["/orders/{id}"]?["get"]?["parameters"]?[0]?["schema"]?.ToJsonString() ?? "missing"}");
+Console.WriteLine($"openapi-items={schemas?["OrderView"]?["properties"]?["quantities"]?["items"]?.ToJsonString() ?? "missing"}");
+await Check("bound", async () => ((int)(await http.GetAsync($"/orders/{Guid.NewGuid()}?limit=3")).StatusCode).ToString());
+await Check("malformed", async () => ((int)(await http.GetAsync("/orders/nope")).StatusCode).ToString());
+await app.StopAsync();
+
+public sealed record Line(OrderId Id, Code Code, Name Name, Quantity Quantity, Amount Amount, Link Link, Weekday Weekday,
+    Dictionary<Quantity, int> ByQuantity, Dictionary<Weekday, int> ByDay);
+
+public sealed record OrderView(OrderId Id, List<Quantity> Quantities, Amount Amount);
+
+public sealed record Holder(Option<int> Value);
+
+// Lists no wrapped type: the generated converters must not need one.
+[JsonSerializable(typeof(Line))]
+[JsonSerializable(typeof(Holder))]
+[JsonSerializable(typeof(Code))]
+[JsonSerializable(typeof(Amount))]
+internal partial class ShopJson : JsonSerializerContext;
+
+// The web host's: what the endpoints exchange, and what their value objects wrap, for the schemas.
+[JsonSerializable(typeof(OrderView))]
+[JsonSerializable(typeof(Amount))]
+[JsonSerializable(typeof(Guid))]
+[JsonSerializable(typeof(int))]
+[JsonSerializable(typeof(decimal))]
+internal partial class HostJson : JsonSerializerContext;
+CSHARP
+
+list_packages "$work/aot.packages"
+aot_publish_and_run Web
+
+# EF Core: a compiled model and precompiled queries, generated before publishing, which is how EF
+# runs under Native AOT at all. The id query maps its value-object parameter at run time.
+aot_project console aot/Data CodoMetis.TypeKit.EntityFrameworkCore
+ef_version="$(central_version Microsoft.EntityFrameworkCore.Relational)"
+run dotnet add package Microsoft.EntityFrameworkCore.Sqlite --version "$ef_version"
+run dotnet add package Microsoft.EntityFrameworkCore.Design --version "$ef_version"
+
+cat > Program.cs <<'CSHARP'
+using CodoMetis.TypeKit.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Shop;
+
+async Task Check(string name, Func<Task<string>> body)
+{
+    try { Console.WriteLine($"{name}={await body()}"); }
+    catch (Exception e) { Console.WriteLine($"{name}=THREW {e.GetType().Name}: {e.Message.ReplaceLineEndings(" ")}"); }
+}
+
+var id = OrderId.From(Guid.Parse("0199aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee"));
+
+await using var db = new StoreDb();
+await db.Database.OpenConnectionAsync();
+await db.Database.ExecuteSqlRawAsync("CREATE TABLE Orders (Id TEXT NOT NULL PRIMARY KEY, Code TEXT NOT NULL, Quantity INTEGER NOT NULL)");
+await Check("ef-insert", async () =>
+{
+    db.Orders.Add(new Order { Id = id, Code = Code.FromKnownGood("ABC"), Quantity = Quantity.From(2) });
+    return (await db.SaveChangesAsync()).ToString();
+});
+db.ChangeTracker.Clear();
+await Check("ef-value", async () => (await db.Orders.Where(o => o.Code.Value.StartsWith("AB")).SingleAsync()).Quantity.Value.ToString());
+db.ChangeTracker.Clear();
+await Check("ef-parameter", async () => (await db.Orders.Where(o => o.Id == id).SingleAsync()).Code.Value);
+db.ChangeTracker.Clear();
+await Check("ef-stored", async () =>
+{
+    await db.Database.ExecuteSqlRawAsync("UPDATE Orders SET Code = 'lower'");
+    return (await db.Orders.Where(o => o.Id == id).SingleAsync()).Code.Value;
+});
+
+// Not sealed: EF 10's precompiled queries cast an entity to an internal interface, which does not
+// compile for a sealed class.
+public class Order
+{
+    public OrderId Id { get; set; }
+    public Code Code { get; set; } = null!;
+    public Quantity Quantity { get; set; }
+}
+
+public sealed class StoreDb : DbContext
+{
+    public DbSet<Order> Orders => Set<Order>();
+
+    protected override void OnConfiguring(DbContextOptionsBuilder options) => options.UseSqlite("Data Source=:memory:").UseTypeKit();
+}
+CSHARP
+
+run dotnet new tool-manifest
+run dotnet tool install dotnet-ef --version "$ef_version"
+run dotnet ef dbcontext optimize --precompile-queries --nativeaot
+list_packages "$work/aot.data.packages"
+aot_publish_and_run Data
+sed 's/^/      /' "$work/aot.out"
+
+echo "==> aot: asserting"
+assert_versions "$work/aot.packages"
+assert_versions "$work/aot.data.packages"
+if [[ -s "$work/aot.warnings" ]]; then
+    echo "  FAIL: trim or AOT warnings from the packages or the woven code"
+    sed 's/^/      /' "$work/aot.warnings" | head -20
+    failed=1
+else
+    echo "  ok: no trim or AOT warning names a package or a woven value object"
+fi
+assert_contains 'json={"Id":"0199aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee","Code":"ABC","Name":"n","Quantity":3,"Amount":1.5,"Link":"https://x.test/a","Weekday":5,"ByQuantity":{"7":1},"ByDay":{"Monday":2}}' \
+                 "$work/aot.out" "every JSON strategy writes through a context that lists no wrapped type"
+assert_contains "json-roundtrip=True"              "$work/aot.out" "and reads back what it wrote"
+assert_contains "json-refused=THREW JsonException: Code refused the JSON value (NotUpperCase)" "$work/aot.out" "the generated JSON converter applies Create"
+assert_contains 'json-number-handling="2.5"'       "$work/aot.out" "the options' number handling applies to a wrapped number"
+assert_contains "stored=abc"                       "$work/aot.out" "StoredJsonConverterFactory reads without the rules"
+assert_contains "option-refused=THREW NotSupportedException: Option<Int32> is not a wire type" "$work/aot.out" "Option refuses JSON with its own message"
+assert_contains "parse=42 Monday https://p.test/ 2026-09-27" "$work/aot.out" "the generated Parse, including through a TypeConverter"
+assert_contains "tryparse-refused=False"           "$work/aot.out" "the generated TryParse applies Create"
+assert_contains "openapi=200"                      "$work/aot.out" "the OpenAPI document is generated"
+assert_contains 'openapi-component={"type":"string","format":"uuid"}' "$work/aot.out" "OrderId is a uuid component"
+assert_contains 'openapi-parameter={"type":"string","format":"uuid"}' "$work/aot.out" "the route parameter is a uuid"
+assert_contains 'openapi-items={"$ref":"#/components/schemas/Quantity"}' "$work/aot.out" "a list of value objects keeps its items"
+assert_contains "bound=200"                        "$work/aot.out" "a route parameter binds through the generated TryParse"
+assert_contains "malformed=400"                    "$work/aot.out" "a malformed route parameter is a 400"
+assert_contains "ef-insert=1"                      "$work/aot.out" "EF Core writes value objects through the compiled model"
+assert_contains "ef-value=2"                       "$work/aot.out" ".Value translates in a precompiled query"
+assert_contains "ef-parameter=ABC"                 "$work/aot.out" "a value-object parameter is mapped at run time"
+assert_contains "ef-stored=lower"                  "$work/aot.out" "a stored value the rules refuse is read without them"
 
 [[ $failed -eq 0 ]] || { echo; echo "consumer smoke test FAILED"; exit 1; }
 echo
