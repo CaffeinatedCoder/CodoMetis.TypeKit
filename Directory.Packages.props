@@ -1,0 +1,32 @@
+<Project>
+    <PropertyGroup>
+        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    </PropertyGroup>
+
+    <!--
+        Shipping references. Each version here is a floor every consumer restores against, so raising
+        one is a release decision, not a dependency update.
+    -->
+    <ItemGroup>
+        <!-- Latest stable YYYY.N: MIT maintenance covers only the latest line (docs/plan.md §8). -->
+        <PackageVersion Include="Metalama.Framework" Version="2026.1.28" />
+        <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+        <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+    </ItemGroup>
+
+    <!--
+        The analyzer's Roslyn reference is the oldest compiler a consumer can load it into, so it
+        stays on 5.0.0, the version the first .NET 10 SDK shipped. Raising it would make the analyzer
+        fail to load (CS9057) on every older .NET 10 SDK.
+    -->
+    <ItemGroup>
+        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+        <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="4.14.0" />
+    </ItemGroup>
+
+    <!-- Test-only. xunit.v3 4.x is Microsoft Testing Platform v2: no VSTest adapter, no Test.Sdk. -->
+    <ItemGroup>
+        <PackageVersion Include="xunit.v3" Version="4.0.1" />
+        <PackageVersion Include="Shouldly" Version="4.3.0" />
+    </ItemGroup>
+</Project>

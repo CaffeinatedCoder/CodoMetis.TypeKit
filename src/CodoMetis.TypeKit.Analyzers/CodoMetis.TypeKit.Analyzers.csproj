@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Roslyn loads analyzers into the compiler's own process, so this targets netstandard2.0 whatever
+      the analysed code targets. It reaches consumers through CodoMetis.TypeKit (docs/plan.md §10);
+      that wiring, and the analyzers/dotnet/cs pack layout, land in phase 2 with the first rule.
+    -->
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+        <IsRoslynComponent>true</IsRoslynComponent>
+        <Description>Analyzers for CodoMetis.TypeKit: no default instances, no ignored results, no validation bypass.</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+    </ItemGroup>
+
+    <!-- RS2008 release tracking: every CMTK id and severity is a reviewable diff in these tables. -->
+    <ItemGroup>
+        <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+        <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+    </ItemGroup>
+
+</Project>

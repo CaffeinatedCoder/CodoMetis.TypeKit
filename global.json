@@ -1,0 +1,18 @@
+{
+  "//": [
+    "The SDK is pinned because the build is generation, not just compilation: Metalama and the",
+    "CMTK analyzers run inside the compiler, so a different SDK feature band (a different Roslyn)",
+    "can change what gets emitted.",
+    "rollForward latestPatch: patches inside the 10.0.4xx band are safe, and refusing them would",
+    "fail the build on any machine that installed a security update.",
+    "The test key selects Microsoft.Testing.Platform, which xunit.v3 4.x requires on SDK 10."
+  ],
+  "sdk": {
+    "version": "10.0.401",
+    "rollForward": "latestPatch",
+    "allowPrerelease": false
+  },
+  "test": {
+    "runner": "Microsoft.Testing.Platform"
+  }
+}

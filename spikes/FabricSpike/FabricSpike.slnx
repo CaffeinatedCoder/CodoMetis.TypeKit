@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Spike.Abstractions/Spike.Abstractions.csproj" />
+  <Project Path="Spike.AbstractionsOnly/Spike.AbstractionsOnly.csproj" />
+  <Project Path="Spike.App/Spike.App.csproj" />
+  <Project Path="Spike.Domain/Spike.Domain.csproj" />
+  <Project Path="Spike.ValueObjects/Spike.ValueObjects.csproj" />
+</Solution>

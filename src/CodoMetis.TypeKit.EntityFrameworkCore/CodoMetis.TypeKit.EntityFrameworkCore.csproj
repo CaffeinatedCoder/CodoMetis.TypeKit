@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- Works at run time against the CodoMetis.TypeKit interfaces; never references .Generators. -->
+    <PropertyGroup>
+        <Description>EF Core integration for CodoMetis.TypeKit: value-object converters by convention, and `.Value` in LINQ queries.</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+        <ProjectReference Include="..\CodoMetis.TypeKit\CodoMetis.TypeKit.csproj" />
+    </ItemGroup>
+
+</Project>

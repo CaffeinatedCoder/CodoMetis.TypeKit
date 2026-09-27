@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- Works at run time against the CodoMetis.TypeKit interfaces; never references .Generators. -->
+    <PropertyGroup>
+        <Description>ASP.NET Core integration for CodoMetis.TypeKit: OpenAPI schemas for value objects.</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+        <ProjectReference Include="..\CodoMetis.TypeKit\CodoMetis.TypeKit.csproj" />
+    </ItemGroup>
+
+</Project>

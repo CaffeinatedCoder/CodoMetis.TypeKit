@@ -1,0 +1,10 @@
+<Project>
+    <!--
+        Spikes pin their own package versions: each one records exactly what was measured. This file
+        stops MSBuild from walking up to the root Directory.Packages.props, whose central management
+        would reject their inline versions (NU1008).
+    -->
+    <PropertyGroup>
+        <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    </PropertyGroup>
+</Project>

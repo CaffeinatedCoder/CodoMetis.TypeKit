@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <!-- References Domain only: ValueObjects reaches this project transitively. -->
+    <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Spike.Domain\Spike.Domain.csproj" />
+    </ItemGroup>
+</Project>

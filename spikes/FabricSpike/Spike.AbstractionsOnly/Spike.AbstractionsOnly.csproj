@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <!-- Negative control: implements a marker without the aspect package. -->
+    <ItemGroup>
+        <ProjectReference Include="..\Spike.Abstractions\Spike.Abstractions.csproj" />
+    </ItemGroup>
+</Project>

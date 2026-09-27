@@ -1,0 +1,25 @@
+<Project>
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+    <!--
+      What makes these assemblies tests. OutputType Exe is required: xunit.v3 4.x is Microsoft
+      Testing Platform v2, the test assembly is its own host, and the build fails otherwise.
+    -->
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+        <OutputType>Exe</OutputType>
+        <!-- The public-surface documentation rule is for shipped code, not for tests. -->
+        <NoWarn>$(NoWarn);CS1591</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="xunit.v3" />
+        <PackageReference Include="Shouldly" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit" />
+        <Using Include="Shouldly" />
+    </ItemGroup>
+</Project>

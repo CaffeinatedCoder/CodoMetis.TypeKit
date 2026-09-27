@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="..\Spike.ValueObjects\Spike.ValueObjects.csproj" />
+    </ItemGroup>
+</Project>

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <PackageReference Include="Metalama.Framework" Version="$(MetalamaVersion)" />
+        <ProjectReference Include="..\Spike.Abstractions\Spike.Abstractions.csproj" />
+    </ItemGroup>
+</Project>

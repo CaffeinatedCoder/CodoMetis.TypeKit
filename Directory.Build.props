@@ -1,0 +1,58 @@
+<Project>
+    <PropertyGroup>
+        <Version>0.1.0</Version>
+        <Authors>CaffeinatedCoder</Authors>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/CaffeinatedCoder/CodoMetis.TypeKit</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/CaffeinatedCoder/CodoMetis.TypeKit</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+
+        <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>14</LangVersion>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    </PropertyGroup>
+
+    <!--
+        Warnings are errors, with one carve-out, as in the sibling repositories.
+
+        CS1591 (missing XML comment) polices the public surface: the shipped .xml is what a consumer
+        sees in IntelliSense. Test projects opt out in test/Directory.Build.props; nothing else is
+        exempt.
+
+        NU1901-NU1904 stay warnings. They report a vulnerable package, so as errors they would make
+        the build depend on advisories published upstream rather than on this commit. They stay
+        visible, which is why they are exempted rather than suppressed with NoWarn.
+    -->
+    <PropertyGroup>
+        <WarningsNotAsErrors>NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+    </PropertyGroup>
+
+    <!--
+        Package validation is on from the start, without a baseline: there is no release to compare
+        against yet. Once 0.1.0 ships, PackageValidationBaselineVersion is set to the last release,
+        so ApiCompat fails any pack that breaks the public surface.
+
+        GeneratePackageOnBuild is deliberately NOT set: it silently turns `dotnet pack` into a
+        no-build pack of whatever happens to be in bin/ (see CodoMetis.ValueRanges).
+    -->
+    <PropertyGroup>
+        <EnablePackageValidation>true</EnablePackageValidation>
+    </PropertyGroup>
+
+    <!-- Provenance: a consumer stepping into this code gets the exact source it is running. -->
+    <PropertyGroup>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    </PropertyGroup>
+
+    <!-- CI only: normalized source paths for a reproducible build; breaks local step-into. -->
+    <PropertyGroup Condition="'$(CI)' == 'true' or '$(CI)' == '1'">
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    </PropertyGroup>
+</Project>

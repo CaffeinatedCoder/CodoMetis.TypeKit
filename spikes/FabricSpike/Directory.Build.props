@@ -1,0 +1,11 @@
+<Project>
+    <!-- Self-contained spike: nothing above this folder is inherited. -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>14</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <MetalamaVersion Condition="'$(MetalamaVersion)' == ''">2026.1.28</MetalamaVersion>
+        <Version>0.0.1-spike</Version>
+    </PropertyGroup>
+</Project>

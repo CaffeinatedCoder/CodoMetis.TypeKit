@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CodoMetis.TypeKit/CodoMetis.TypeKit.csproj" />
+    <Project Path="src/CodoMetis.TypeKit.Analyzers/CodoMetis.TypeKit.Analyzers.csproj" />
+    <Project Path="src/CodoMetis.TypeKit.Generators/CodoMetis.TypeKit.Generators.csproj" />
+    <Project Path="src/CodoMetis.TypeKit.EntityFrameworkCore/CodoMetis.TypeKit.EntityFrameworkCore.csproj" />
+    <Project Path="src/CodoMetis.TypeKit.AspNetCore/CodoMetis.TypeKit.AspNetCore.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/CodoMetis.TypeKit.Conventions.Tests/CodoMetis.TypeKit.Conventions.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+  </Folder>
+</Solution>

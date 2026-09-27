@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      The base package: Option, Result and the value-object contracts. It must never reference
+      Metalama, directly or transitively; MetalamaBoundaryTests fails the build if it does.
+    -->
+    <PropertyGroup>
+        <Description>Option and Result types that cannot be misused, and the contracts for strongly-typed value objects.</Description>
+    </PropertyGroup>
+
+</Project>

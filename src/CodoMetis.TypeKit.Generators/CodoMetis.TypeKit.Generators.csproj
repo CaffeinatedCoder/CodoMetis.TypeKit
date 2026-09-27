@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      The only package that brings Metalama into a consumer's build. Its transitive project fabric
+      (phase 3) applies the aspects in every project that references it, directly or not, so the
+      Metalama.Framework reference flows on purpose (spikes/FabricSpike).
+    -->
+    <PropertyGroup>
+        <Description>Compile-time generation of strongly-typed value objects for CodoMetis.TypeKit, built on Metalama.</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Metalama.Framework" />
+        <ProjectReference Include="..\CodoMetis.TypeKit\CodoMetis.TypeKit.csproj" />
+    </ItemGroup>
+
+</Project>

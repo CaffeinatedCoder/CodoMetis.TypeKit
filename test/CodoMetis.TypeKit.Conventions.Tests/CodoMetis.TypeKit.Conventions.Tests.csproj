@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Repository-level rules that are about packaging and boundaries rather than code. It reads
+      the restore output of the shipping projects instead of referencing them, so no shipping
+      dependency (Metalama above all) flows into this project.
+    -->
+
+</Project>
