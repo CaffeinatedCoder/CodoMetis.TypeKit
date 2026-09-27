@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using CodoMetis.TypeKit.ValueObjects;
+using Metalama.Framework.Advising;
 using Metalama.Framework.Aspects;
 using Metalama.Framework.Code;
 using Metalama.Framework.Code.DeclarationBuilders;
@@ -102,8 +104,22 @@ internal sealed partial class ValueObjectJsonAspect : TypeAspect
             field => field.AddAttribute(CodeAnnotations.CompilerGenerated));
         jsonConverter.IntroduceConstructor(nameof(ValidatingConstructor),
             buildConstructor: constructor => constructor.Accessibility = Accessibility.Public);
-        jsonConverter.IntroduceConstructor(nameof(MaterializingConstructor),
+        var materializing = jsonConverter.IntroduceConstructor(nameof(MaterializingConstructor),
             buildConstructor: constructor => constructor.Accessibility = Accessibility.Private);
+
+        // How StoredJsonConverterFactory reaches the private constructor: through an interface, not
+        // by reflection, which a trimmed or Native AOT application may no longer find (it did not).
+        jsonConverter.ImplementInterface(typeof(IStoredJsonConverterSource), OverrideStrategy.Fail).ExplicitMembers.IntroduceMethod(
+            nameof(CreateStoredJsonConverterTemplate),
+            IntroductionScope.Instance,
+            OverrideStrategy.Fail,
+            method =>
+            {
+                method.Name = nameof(IStoredJsonConverterSource.CreateStoredJsonConverter);
+                method.AddAttribute(CodeAnnotations.CompilerGenerated);
+            },
+            args: new { materializing = materializing.Declaration }
+        );
 
         IntroduceWriteMethod(jsonConverter, builder.Target, nameof(JsonConverter<>.Write),               asPropertyName: false);
         IntroduceWriteMethod(jsonConverter, builder.Target, nameof(JsonConverter<>.WriteAsPropertyName), asPropertyName: true);

@@ -77,6 +77,16 @@ public sealed class StoredJsonTests
     public void A_JSON_null_is_still_not_a_value_object() =>
         Should.Throw<JsonException>(() => JsonSerializer.Deserialize<ProbeCode>("null", Store));
 
+    /// <summary>The materializing mode is handed out through the factory only: without one, the converter refuses.</summary>
+    [Fact]
+    public void The_materializing_mode_is_handed_out_to_the_factory_only()
+    {
+        IStoredJsonConverterSource converter = new ProbeCode.ProbeCodeJsonConverter();
+
+        Should.Throw<ArgumentNullException>(() => converter.CreateStoredJsonConverter(null!));
+        converter.CreateStoredJsonConverter(new StoredJsonConverterFactory()).ShouldBeOfType<ProbeCode.ProbeCodeJsonConverter>().ShouldNotBeSameAs(converter);
+    }
+
     [Fact]
     public void The_factory_claims_value_objects_only()
     {

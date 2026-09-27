@@ -29,7 +29,7 @@ ProbeAmount
   implements IValueObject<ProbeAmount, Decimal>
   implements IValueObjectMaterializer<ProbeAmount, Decimal>
   implements IValueWrapper<ProbeAmount, Decimal>
-  nested ProbeAmountJsonConverter : JsonConverter<ProbeAmount>
+  nested ProbeAmountJsonConverter : JsonConverter<ProbeAmount>, IStoredJsonConverterSource
   nested ProbeAmountTypeConverter : TypeConverter
   new()
   static From(Decimal) : ProbeAmount
@@ -72,7 +72,7 @@ ProbeCode
   implements IValidatedValue<ProbeCode, String, ProbeCodeFault>
   implements IValueObject<ProbeCode, String>
   implements IValueObjectMaterializer<ProbeCode, String>
-  nested ProbeCodeJsonConverter : JsonConverter<ProbeCode>
+  nested ProbeCodeJsonConverter : JsonConverter<ProbeCode>, IStoredJsonConverterSource
   nested ProbeCodeTypeConverter : TypeConverter
   new()
   static Create(String) : Result<ProbeCode, ProbeCodeFault>
@@ -119,7 +119,7 @@ ProbeContainer.NestedId
   implements IValueObject<ProbeContainer.NestedId, Int32>
   implements IValueObjectMaterializer<ProbeContainer.NestedId, Int32>
   implements IValueWrapper<ProbeContainer.NestedId, Int32>
-  nested NestedIdJsonConverter : JsonConverter<ProbeContainer.NestedId>
+  nested NestedIdJsonConverter : JsonConverter<ProbeContainer.NestedId>, IStoredJsonConverterSource
   nested NestedIdTypeConverter : TypeConverter
   new()
   static From(Int32) : ProbeContainer.NestedId
@@ -170,7 +170,7 @@ ProbeCount
   implements IValueObject<ProbeCount, Int32>
   implements IValueObjectMaterializer<ProbeCount, Int32>
   implements IValueWrapper<ProbeCount, Int32>
-  nested ProbeCountJsonConverter : JsonConverter<ProbeCount>
+  nested ProbeCountJsonConverter : JsonConverter<ProbeCount>, IStoredJsonConverterSource
   nested ProbeCountTypeConverter : TypeConverter
   new()
   static From(Int32) : ProbeCount
@@ -220,7 +220,7 @@ ProbeCustomerId
   implements IValueObject<ProbeCustomerId, Guid>
   implements IValueObjectMaterializer<ProbeCustomerId, Guid>
   implements IValueWrapper<ProbeCustomerId, Guid>
-  nested ProbeCustomerIdJsonConverter : JsonConverter<ProbeCustomerId>
+  nested ProbeCustomerIdJsonConverter : JsonConverter<ProbeCustomerId>, IStoredJsonConverterSource
   nested ProbeCustomerIdTypeConverter : TypeConverter
   new()
   static From(Guid) : ProbeCustomerId
@@ -267,7 +267,7 @@ ProbeDate
   implements IValueObject<ProbeDate, DateOnly>
   implements IValueObjectMaterializer<ProbeDate, DateOnly>
   implements IValueWrapper<ProbeDate, DateOnly>
-  nested ProbeDateJsonConverter : JsonConverter<ProbeDate>
+  nested ProbeDateJsonConverter : JsonConverter<ProbeDate>, IStoredJsonConverterSource
   nested ProbeDateTypeConverter : TypeConverter
   new()
   static From(DateOnly) : ProbeDate
@@ -316,7 +316,7 @@ ProbeDescending
   implements IValueObject<ProbeDescending, Int32>
   implements IValueObjectMaterializer<ProbeDescending, Int32>
   implements IValueWrapper<ProbeDescending, Int32>
-  nested ProbeDescendingJsonConverter : JsonConverter<ProbeDescending>
+  nested ProbeDescendingJsonConverter : JsonConverter<ProbeDescending>, IStoredJsonConverterSource
   nested ProbeDescendingTypeConverter : TypeConverter
   new()
   static From(Int32) : ProbeDescending
@@ -361,7 +361,7 @@ ProbeFlag
   implements IValueObject<ProbeFlag, Boolean>
   implements IValueObjectMaterializer<ProbeFlag, Boolean>
   implements IValueWrapper<ProbeFlag, Boolean>
-  nested ProbeFlagJsonConverter : JsonConverter<ProbeFlag>
+  nested ProbeFlagJsonConverter : JsonConverter<ProbeFlag>, IStoredJsonConverterSource
   nested ProbeFlagTypeConverter : TypeConverter
   new()
   static From(Boolean) : ProbeFlag
@@ -406,7 +406,7 @@ ProbeId
   implements IValueObject<ProbeId, Guid>
   implements IValueObjectMaterializer<ProbeId, Guid>
   implements IValueWrapper<ProbeId, Guid>
-  nested ProbeIdJsonConverter : JsonConverter<ProbeId>
+  nested ProbeIdJsonConverter : JsonConverter<ProbeId>, IStoredJsonConverterSource
   nested ProbeIdTypeConverter : TypeConverter
   new()
   static From(Guid) : ProbeId
@@ -448,7 +448,7 @@ ProbeInstant
   implements IValueObject<ProbeInstant, Instant>
   implements IValueObjectMaterializer<ProbeInstant, Instant>
   implements IValueWrapper<ProbeInstant, Instant>
-  nested ProbeInstantJsonConverter : JsonConverter<ProbeInstant>
+  nested ProbeInstantJsonConverter : JsonConverter<ProbeInstant>, IStoredJsonConverterSource
   nested ProbeInstantTypeConverter : TypeConverter
   new()
   static From(Instant) : ProbeInstant
@@ -495,7 +495,7 @@ ProbeInternalId (internal)
   implements IValueObject<ProbeInternalId, Int32>
   implements IValueObjectMaterializer<ProbeInternalId, Int32>
   implements IValueWrapper<ProbeInternalId, Int32>
-  nested ProbeInternalIdJsonConverter : JsonConverter<ProbeInternalId>
+  nested ProbeInternalIdJsonConverter : JsonConverter<ProbeInternalId>, IStoredJsonConverterSource
   nested ProbeInternalIdTypeConverter : TypeConverter
   new()
   static From(Int32) : ProbeInternalId
@@ -540,7 +540,7 @@ ProbeLabel
   implements IValueObject<ProbeLabel, String>
   implements IValueObjectMaterializer<ProbeLabel, String>
   implements IValueWrapper<ProbeLabel, String>
-  nested ProbeLabelJsonConverter : JsonConverter<ProbeLabel>
+  nested ProbeLabelJsonConverter : JsonConverter<ProbeLabel>, IStoredJsonConverterSource
   nested ProbeLabelTypeConverter : TypeConverter
   static From(String) : ProbeLabel
   static Parse(String, IFormatProvider) : ProbeLabel
@@ -576,7 +576,7 @@ ProbeLocalDate
   implements IValueObject<ProbeLocalDate, LocalDate>
   implements IValueObjectMaterializer<ProbeLocalDate, LocalDate>
   implements IValueWrapper<ProbeLocalDate, LocalDate>
-  nested ProbeLocalDateJsonConverter : JsonConverter<ProbeLocalDate>
+  nested ProbeLocalDateJsonConverter : JsonConverter<ProbeLocalDate>, IStoredJsonConverterSource
   nested ProbeLocalDateTypeConverter : TypeConverter
   new()
   static From(LocalDate) : ProbeLocalDate
@@ -619,7 +619,7 @@ ProbeMoment
   implements IValueObject<ProbeMoment, DateTimeOffset>
   implements IValueObjectMaterializer<ProbeMoment, DateTimeOffset>
   implements IValueWrapper<ProbeMoment, DateTimeOffset>
-  nested ProbeMomentJsonConverter : JsonConverter<ProbeMoment>
+  nested ProbeMomentJsonConverter : JsonConverter<ProbeMoment>, IStoredJsonConverterSource
   nested ProbeMomentTypeConverter : TypeConverter
   new()
   static From(DateTimeOffset) : ProbeMoment
@@ -661,7 +661,7 @@ ProbeName
   implements IValueObject<ProbeName, String>
   implements IValueObjectMaterializer<ProbeName, String>
   implements IValueWrapper<ProbeName, String>
-  nested ProbeNameJsonConverter : JsonConverter<ProbeName>
+  nested ProbeNameJsonConverter : JsonConverter<ProbeName>, IStoredJsonConverterSource
   nested ProbeNameTypeConverter : TypeConverter
   new()
   static From(String) : ProbeName
@@ -698,7 +698,7 @@ ProbeOverride
   implements IValidatedValue<ProbeOverride, String, ProbeOverrideFault>
   implements IValueObject<ProbeOverride, String>
   implements IValueObjectMaterializer<ProbeOverride, String>
-  nested ProbeOverrideJsonConverter : JsonConverter<ProbeOverride>
+  nested ProbeOverrideJsonConverter : JsonConverter<ProbeOverride>, IStoredJsonConverterSource
   nested ProbeOverrideTypeConverter : TypeConverter
   new()
   static Create(String) : Result<ProbeOverride, ProbeOverrideFault>
@@ -743,7 +743,7 @@ ProbePercentage
   implements IValidatedValue<ProbePercentage, Int32, ProbePercentageFault>
   implements IValueObject<ProbePercentage, Int32>
   implements IValueObjectMaterializer<ProbePercentage, Int32>
-  nested ProbePercentageJsonConverter : JsonConverter<ProbePercentage>
+  nested ProbePercentageJsonConverter : JsonConverter<ProbePercentage>, IStoredJsonConverterSource
   nested ProbePercentageTypeConverter : TypeConverter
   new()
   static Create(Int32) : Result<ProbePercentage, ProbePercentageFault>
@@ -792,7 +792,7 @@ ProbeTime
   implements IValueObject<ProbeTime, TimeOnly>
   implements IValueObjectMaterializer<ProbeTime, TimeOnly>
   implements IValueWrapper<ProbeTime, TimeOnly>
-  nested ProbeTimeJsonConverter : JsonConverter<ProbeTime>
+  nested ProbeTimeJsonConverter : JsonConverter<ProbeTime>, IStoredJsonConverterSource
   nested ProbeTimeTypeConverter : TypeConverter
   new()
   static From(TimeOnly) : ProbeTime
@@ -840,7 +840,7 @@ ProbeTimestamp
   implements IValueObject<ProbeTimestamp, DateTime>
   implements IValueObjectMaterializer<ProbeTimestamp, DateTime>
   implements IValueWrapper<ProbeTimestamp, DateTime>
-  nested ProbeTimestampJsonConverter : JsonConverter<ProbeTimestamp>
+  nested ProbeTimestampJsonConverter : JsonConverter<ProbeTimestamp>, IStoredJsonConverterSource
   nested ProbeTimestampTypeConverter : TypeConverter
   new()
   static From(DateTime) : ProbeTimestamp
@@ -878,7 +878,7 @@ ProbeUri
   implements IValueObject<ProbeUri, Uri>
   implements IValueObjectMaterializer<ProbeUri, Uri>
   implements IValueWrapper<ProbeUri, Uri>
-  nested ProbeUriJsonConverter : JsonConverter<ProbeUri>
+  nested ProbeUriJsonConverter : JsonConverter<ProbeUri>, IStoredJsonConverterSource
   nested ProbeUriTypeConverter : TypeConverter
   new()
   static From(Uri) : ProbeUri
@@ -914,7 +914,7 @@ ProbeWeekday
   implements IValueObject<ProbeWeekday, DayOfWeek>
   implements IValueObjectMaterializer<ProbeWeekday, DayOfWeek>
   implements IValueWrapper<ProbeWeekday, DayOfWeek>
-  nested ProbeWeekdayJsonConverter : JsonConverter<ProbeWeekday>
+  nested ProbeWeekdayJsonConverter : JsonConverter<ProbeWeekday>, IStoredJsonConverterSource
   nested ProbeWeekdayTypeConverter : TypeConverter
   new()
   static From(DayOfWeek) : ProbeWeekday

@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using CodoMetis.TypeKit.ValueObjects;
 using Metalama.Framework.Aspects;
 using Metalama.Framework.Code;
 using Metalama.Framework.Code.SyntaxBuilders;
@@ -22,6 +24,17 @@ internal sealed partial class ValueObjectJsonAspect
     public void MaterializingConstructor(bool materialize)
     {
         meta.This._materialize = materialize;
+    }
+
+    /// <summary>
+    /// <c>IStoredJsonConverterSource</c>: the materializing twin, for <c>StoredJsonConverterFactory</c>,
+    /// which reaches it through this interface rather than by reflecting over the private constructor.
+    /// </summary>
+    [Template]
+    public JsonConverter CreateStoredJsonConverterTemplate(StoredJsonConverterFactory factory, [CompileTime] IConstructor materializing)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        return materializing.Invoke(true)!;
     }
 
     [Template]

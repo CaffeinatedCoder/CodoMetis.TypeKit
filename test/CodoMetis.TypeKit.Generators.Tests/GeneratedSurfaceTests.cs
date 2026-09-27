@@ -70,7 +70,7 @@ public sealed class GeneratedSurfaceTests
     [
         .. type.GetInterfaces().Select(i => $"implements {Display(i)}"),
         .. type.GetCustomAttributesData().Where(IsDeclared).Select(attribute => $"attribute {Display(attribute.AttributeType)}"),
-        .. type.GetNestedTypes().Select(nested => $"nested {nested.Name} : {Display(nested.BaseType!)}"),
+        .. type.GetNestedTypes().Select(nested => $"nested {nested.Name} : {string.Join(", ", [Display(nested.BaseType!), .. nested.GetInterfaces().Where(i => !i.IsAssignableFrom(nested.BaseType)).Select(Display)])}"),
         .. Members(type)
     ];
 
