@@ -93,7 +93,8 @@ There is one publishing path, `.github/workflows/release.yml`, run by pushing a 
   model binder, type converter or `default` path that produces an `IValidatedValue` instance
   `Create` would have refused.
 - **An `Option` or `Result` that reads as success when it is not**, such as a `default` instance
-  that passes the analyzer, or any path that exposes the value of a `None` or an error.
+  that passes the analyzer, a serialization path that writes one as `{}` or reads one back as
+  `default` without raising, or any path that exposes the value of a `None` or an error.
 - **A validation-free path reachable from input.** The materializer, the stored-JSON mode of the
   generated converter, or anything else that skips `Create`, becoming reachable other than through
   the EF satellite or an explicitly registered `StoredJsonConverterFactory`.

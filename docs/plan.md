@@ -11,7 +11,7 @@ public. The decisions are in §8. The fabric spike
 
 | Package | Depends on | Metalama | Contents |
 |---|---|---|---|
-| `CodoMetis.TypeKit` | Analyzers (flows, §10) | **no** | `Option<T>`, `Result<T,TError>`, `Result<TError>` and their extensions; the value-object contracts `IValueObject<,>`, `IValueWrapper<,>`, `IValue<T>`, `IValidatedValue<,,>`, `IValueObjectMaterializer<,>` (§4), `KnownGood`; `TranslatedAsUnderlyingValueAttribute`, `RequireCustomInitializationAttribute`; `GuidValueExtensions` (`OrderId.New()` from a version 7 Guid); `Accepted`, `GeneratedParsing` and `GeneratedJson`, which the generated code calls (§5) |
+| `CodoMetis.TypeKit` | Analyzers (flows, §10) | **no** | `Option<T>`, `Result<T,TError>`, `Result<TError>` and their extensions, all carrying `NotWireTypeJsonConverterFactory` (§9); the value-object contracts `IValueObject<,>`, `IValueWrapper<,>`, `IValue<T>`, `IValidatedValue<,,>`, `IValueObjectMaterializer<,>` (§4), `KnownGood`; `TranslatedAsUnderlyingValueAttribute`, `RequireCustomInitializationAttribute`; `GuidValueExtensions` (`OrderId.New()` from a version 7 Guid); `Accepted`, `GeneratedParsing` and `GeneratedJson`, which the generated code calls (§5) |
 | `CodoMetis.TypeKit.Analyzers` | — | no | Roslyn analyzers and code fixes (§10). Nobody references it directly: it reaches every consumer through the base package |
 | `CodoMetis.TypeKit.Generators` | TypeKit, Metalama.Framework 2026.1.x (flows) | yes | Internal aspects, internal `TransitiveProjectFabric`, `AspectOrder`. Future generated type families join this package too: one fabric, one aspect order |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | TypeKit, EF Core Relational | no | Generic converter, convention, `.Value` / `GetValue` / `ValueOrNull` translators, `UseTypeKit()` |
@@ -27,7 +27,7 @@ objects from a referenced domain assembly never needs Metalama itself.
 
 | Namespace | Holds |
 |---|---|
-| `CodoMetis.TypeKit` | `Option`, `Result`, `IValueObject`, `IValueWrapper`, `TranslatedAsUnderlyingValueAttribute` |
+| `CodoMetis.TypeKit` | `Option`, `Result`, `NotWireTypeJsonConverterFactory`, `IValueObject`, `IValueWrapper`, `TranslatedAsUnderlyingValueAttribute` |
 | `CodoMetis.TypeKit.ValueObjects` | `IValue`, `IValidatedValue`, `KnownGood`, `IValueObjectMaterializer` |
 | `CodoMetis.TypeKit.Attributes` | `RequireCustomInitializationAttribute` |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | converter, convention, translators |
@@ -65,6 +65,10 @@ Each phase ends green, and its guards have been proven by seeding the defect
      - `ToString` never contains the content, including for the markers;
      - the debugger display names an existing private property and shows the content;
      - the collapsing `Match` runs its success callback.
+   - Found in the fourth review on 2026-09-27, and fixed: `Option`/`Result` serialized as `{}` and
+     `{"State":1}` and read back as `None` and uninitialized, silently. Every exported struct now
+     carries `NotWireTypeJsonConverterFactory` (§9). Guard: with the attributes removed, 58 of the 62
+     `NotWireTypeTests` fail, the other 4 pin the escape hatch and the absent-property gap.
 2. **Value-object contracts and analyzer. ✅ Done 2026-09-27.**
    - The contracts: `IValueObject<,>`, `IValueWrapper<,>`, `IValue<>`, `IValidatedValue<,,>`,
      `IValueObjectMaterializer<,>`, `KnownGood`, `TranslatedAsUnderlyingValueAttribute`, and
@@ -458,6 +462,9 @@ the package does and claims nothing about other libraries.
     transformer and not a format table.
 12. **ASP0020 is documented, not suppressed** (2026-09-27, §7): the package cannot suppress it, and
     a blanket suppression would hide the check for every other type.
+15. **`Option`/`Result` are not wire types** (2026-09-27, §9): a `[JsonConverter]` on every exported
+    struct of the base package throws `NotSupportedException` in both directions. Not a lossless
+    converter, and not an analyzer.
 
 Still open:
 
@@ -520,6 +527,29 @@ LanguageExt is out.
   `InvalidOperationException` on `Uninitialized`. That is a loud failure instead of a fabricated
   fault. `State`, equality and `ToString` stay safe to call.
 
+**Decided 2026-09-27: `Option`/`Result` are not wire types.**
+- Measured: with private state and no converter, System.Text.Json wrote `{}` for a `Some` and read
+  it back as `None`, and wrote `{"State":1}` for a success and read it back as `Uninitialized`.
+  Nothing raised.
+- **Decision:** `NotWireTypeJsonConverterFactory`, on `Option<T>`, both `Result` shapes and the
+  `Success`/`Success<T>`/`Error<T>` markers, throws `NotSupportedException` from `Read` and `Write`,
+  naming the type and the alternative and never the content. `HandleNull` is on, so a JSON `null`
+  gets the same message. That is what the serializer itself does for `System.Type`.
+- A serialized shape says absent with `T?`; `ToOption()`/`OrNull()` convert at the boundary; a
+  result is matched to a response or a document. An application that wants a wire format registers
+  its own converter on its options, which takes precedence over the type's attribute, in a
+  source-generated context too (measured).
+- **Not a lossless converter** (`Some(x)` as `x`, `None` as `null`): its bytes are identical to
+  `T?`, so it would only move the CLR type onto the shape the design keeps it off, and a `Result`
+  has no sensible wire shape at all.
+- **Not an analyzer:** whether a type is serialized is a property of the application's roots and
+  options, which the package cannot see. An application can add a shape test of its own.
+- **Known gap:** the serializer calls no converter for a property that is absent from the document,
+  so it stays `default`. `required` or `RespectRequiredConstructorParameters` closes it, and the
+  README says so.
+- Completeness: `NotWireTypeTests` walks every exported struct of the assembly, so a struct added
+  later refuses too, or is exempted on purpose.
+
 **Why not an existing package** (checked 2026-09-26). The criteria: no public `.Value`/`.Error`,
 a generic `TError`, `default` is not success, maintained.
 - **Funcky 3.6.0** is closest (`[NonDefaultable]` enforced by an analyzer, no `.Value`), but its
@@ -528,6 +558,10 @@ a generic `TError`, `default` is not success, maintained.
 - **CSharpFunctionalExtensions, DotNext and FluentResults** expose a throwing `.Value`.
 - **ErrorOr, Remora.Results and Ardalis.Result** expose an unguarded one. With ErrorOr,
   CSharpFunctionalExtensions and Remora, `default(Result<…>)` reads as success.
+- **JSON** (checked 2026-09-27): CSharpFunctionalExtensions 3.7.0 ships opt-in converters that write
+  a `Result` as a DTO with `IsSuccess`/`Error`/`Value`, for passing outcomes between services;
+  LanguageExt (v5 still beta) ships none; ErrorOr, OneOf and FluentResults ship none and serialize
+  their public properties as they are. None refuses.
 
 C# 15 `union` types (in .NET 11 preview) ship no standard `Option`/`Result`, and they need .NET 11
 anyway, while this repo targets net10.0.

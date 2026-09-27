@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 using CodoMetis.TypeKit.Attributes;
 
 namespace CodoMetis.TypeKit;
@@ -29,6 +30,7 @@ namespace CodoMetis.TypeKit;
 /// </remarks>
 /// <typeparam name="TError">The type of the error.</typeparam>
 [RequireCustomInitialization]
+[JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
 public readonly record struct Result<TError> where TError : notnull
 {

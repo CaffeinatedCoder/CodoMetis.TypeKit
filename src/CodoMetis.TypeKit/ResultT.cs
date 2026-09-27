@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 using CodoMetis.TypeKit.Attributes;
 
 namespace CodoMetis.TypeKit;
@@ -23,6 +24,7 @@ public enum ResultState
 /// The marker <c>Result.Ok()</c> returns. It converts implicitly to a successful
 /// <see cref="Result{TError}"/>.
 /// </summary>
+[JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
 public readonly record struct Success;
 
 /// <summary>
@@ -31,6 +33,7 @@ public readonly record struct Success;
 /// </summary>
 /// <typeparam name="T">The type of the value.</typeparam>
 [RequireCustomInitialization]
+[JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
 public readonly record struct Success<T> where T : notnull
 {
     internal T Value { get; }
@@ -47,6 +50,7 @@ public readonly record struct Success<T> where T : notnull
 /// </summary>
 /// <typeparam name="T">The type of the error.</typeparam>
 [RequireCustomInitialization]
+[JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
 public readonly record struct Error<T> where T : notnull
 {
     internal Error(T value)
@@ -82,6 +86,7 @@ public readonly record struct Error<T> where T : notnull
 /// <typeparam name="T">The type of the value.</typeparam>
 /// <typeparam name="TError">The type of the error.</typeparam>
 [RequireCustomInitialization]
+[JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
 public readonly record struct Result<T, TError>
     where T : notnull

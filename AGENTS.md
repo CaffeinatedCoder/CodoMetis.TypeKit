@@ -71,6 +71,10 @@ Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TR
   each tied to the real assembly by a test.
 - **No public `.Value` on `Option`/`Result`, and never positional records.** Positional
   parameters become public properties and reach `ToString`.
+- **`Option`/`Result` refuse System.Text.Json.** Every exported struct of the base package carries
+  `[JsonConverter(typeof(NotWireTypeJsonConverterFactory))]`, which throws in both directions;
+  without it a `Some` is written as `{}` and read back as `None`. The completeness test in
+  `NotWireTypeTests` fails for a struct without it.
 - **The materializer skips validation.** `IValueObjectMaterializer<,>.Materialize` exists for
   values the application wrote itself (a database column). Never expose it to input, and never
   call it outside the EF satellite (CMTK0004).
