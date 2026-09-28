@@ -683,6 +683,17 @@ custom attributes.
 5. **Performance.** Allocation tests hold the generated members to what the wrapped type allocates,
    and `benchmarks/` measures time against the wrapped types. The benchmarks are not a gate: they are
    run before a release and when a template changes.
+6. **README samples** (2026-09-28). Every C# block of the READMEs is a region in
+   `test/CodoMetis.TypeKit.Samples`, which references the shipping projects as a consumer does, with
+   the analyzer on. `ReadmeSampleTests` requires each block to equal exactly one region and each region
+   to be shown, so a sample that stops compiling fails the build and an edit on one side fails the test.
+   An output stated in a comment is asserted against the README's own comment, found by the expression
+   the test evaluates. A pre-release audit had found samples that did not compile (a bare fault as a
+   `Result<T, TError>`, `quantity.Value;` as a statement, an ellipsis as a lambda body), CMTK0006 on the
+   EF entity sample, and SQL the query does not produce; the consumer smoke test had found the first
+   once before (§9). Seeded: a README or sample edited alone, the bare fault back in both, the committed
+   READMEs, a changed SQL, JSON or string output, an opt-out on a compiled block or without a reason, an
+   unlabelled fence, and either parser finding nothing each fail their test.
 
 ## 7. OpenAPI
 

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Every C# block of the READMEs, as compiled code: each sits between `// sample: {README}/{name}`
+      and `// end sample`, with what it assumes (the types it names, the variables it uses) outside
+      the region. ReadmeSampleTests (conventions) holds each README block to exactly one region, so a
+      README edit that is not mirrored here fails there, and a sample that stops compiling fails this
+      build. Where a sample states an output in a comment, a test beside the region asserts it.
+
+      It references the shipping projects as a consumer's projects reference the packages: the
+      generators where the value objects are declared, both satellites, and
+      Microsoft.AspNetCore.OpenApi directly, as the ASP.NET Core README says a host must. The analyzer
+      runs as it does for a consumer, so a sample that trips a rule it does not show fails the build;
+      one that shows a rule suppresses it around its region.
+
+      The samples' namespaces are outside CodoMetis.TypeKit on purpose: inside it, the enclosing
+      namespace would supply Option, Result and OrderId.New() to a sample whose README forgot the using.
+    -->
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+        <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Generators\CodoMetis.TypeKit.Generators.csproj" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.EntityFrameworkCore\CodoMetis.TypeKit.EntityFrameworkCore.csproj" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.AspNetCore\CodoMetis.TypeKit.AspNetCore.csproj" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Analyzers\CodoMetis.TypeKit.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+</Project>
