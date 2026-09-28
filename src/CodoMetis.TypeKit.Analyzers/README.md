@@ -195,6 +195,19 @@ and so are the forms that take both values: `string.Equals`, `string.Compare`, `
 `object.Equals` and `EqualityComparer<T>.Default.Equals`. Analyzers such as Meziantou's MA0006
 rewrite `==` into those. The value is read through `.Value`, `?.Value`, `GetValue()` or `ValueOrNull()`.
 
+A join compares its two keys. `on o.Id equals c.Id`, an order id against a customer id, does not
+compile, and unwrapped it does:
+
+```csharp
+var wrong = from o in orders join c in customers on o.Id.Value equals c.Id.Value select o;  // CMTK0008: an order id joined to a customer id
+var meant = from o in orders join c in customers on o.CustomerId equals c.Id select o;      // what was meant
+orders.Join(customers, o => o.Id.Value, c => c.Id.Value, (o, c) => o);                     // CMTK0008
+```
+
+Query syntax is reported, with or without `into`, and so are `Join`, `GroupJoin`, `LeftJoin` and
+`RightJoin` of `Enumerable`, `Queryable` and `AsyncEnumerable` whose two key selectors each return
+such a value. A composite key, `new { … }` or a tuple, is not looked into.
+
 Two value objects of different types compared without unwrapping compile through `Equals(object)`
 and are never equal, the same bug:
 

@@ -88,6 +88,17 @@ public static class Rules
 #pragma warning restore CMTK0008
     }
 
+    public static void MixedJoin(IQueryable<Order> orders, IQueryable<Customer> customers)
+    {
+#pragma warning disable CMTK0008 // what the sample shows the rule reporting
+        // sample: CodoMetis.TypeKit.Analyzers/cmtk0008-join
+        var wrong = from o in orders join c in customers on o.Id.Value equals c.Id.Value select o;  // CMTK0008: an order id joined to a customer id
+        var meant = from o in orders join c in customers on o.CustomerId equals c.Id select o;      // what was meant
+        orders.Join(customers, o => o.Id.Value, c => c.Id.Value, (o, c) => o);                     // CMTK0008
+        // end sample
+#pragma warning restore CMTK0008
+    }
+
     public static void MixedObjects(Order order, CustomerId customerId)
     {
 #pragma warning disable CMTK0008 // what the sample shows the rule reporting
