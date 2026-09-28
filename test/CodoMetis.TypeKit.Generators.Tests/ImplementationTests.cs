@@ -42,7 +42,10 @@ public sealed class ImplementationTests
     [Fact]
     public void From_refuses_null()
     {
-        Should.Throw<ArgumentNullException>(() => ProbeName.From(null!)).ParamName.ShouldBe("value");
+        var refusal = Should.Throw<ArgumentNullException>(() => ProbeName.From(null!));
+        refusal.ParamName.ShouldBe("value");
+        refusal.Message.ShouldStartWith("ProbeName wraps no null.");
+        refusal.Message.ShouldContain("https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit/README.md#a-null-given-to-a-value-object");
         Should.Throw<ArgumentNullException>(() => ProbeUri.From(null!));
         Should.Throw<ArgumentNullException>(() => ProbeLabel.From(null!));
     }

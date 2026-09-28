@@ -48,6 +48,15 @@ public static class GeneratedJson
         new($"{typeof(TValueObject).Name} could not read the JSON value as {typeof(T).Name}.{Refusals.UnreadableInput}");
 
     /// <summary>
+    /// The refusal of a JSON null where a value object is declared: a null is not a value object, and a
+    /// string-backed one would otherwise wrap it.
+    /// </summary>
+    /// <typeparam name="TValueObject">The value object type.</typeparam>
+    /// <returns>The exception, to throw.</returns>
+    public static JsonException NullToken<TValueObject>() =>
+        new($"{typeof(TValueObject).Name} cannot be read from a JSON null. Where the value can be absent, declare the property as {typeof(TValueObject).Name}?.{Refusals.NullToValueObject}");
+
+    /// <summary>
     /// What a converter throws for input it cannot read, as opposed to a configuration the serializer
     /// refuses (<see cref="NotSupportedException"/>), which is left alone.
     /// </summary>

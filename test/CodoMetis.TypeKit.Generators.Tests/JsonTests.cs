@@ -87,8 +87,13 @@ public sealed class JsonTests
     [InlineData(typeof(ProbeId))]
     [InlineData(typeof(ProbeCount))]
     [InlineData(typeof(ProbeCode))]
-    public void A_JSON_null_is_refused(Type type) =>
-        Should.Throw<JsonException>(() => JsonSerializer.Deserialize("null", type)).Message.ShouldContain(type.Name);
+    public void A_JSON_null_is_refused(Type type)
+    {
+        var message = Should.Throw<JsonException>(() => JsonSerializer.Deserialize("null", type)).Message;
+
+        message.ShouldStartWith($"{type.Name} cannot be read from a JSON null.");
+        message.ShouldEndWith("https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit/README.md#a-null-given-to-a-value-object");
+    }
 
     [Fact]
     public void A_nullable_value_object_reads_a_JSON_null_as_null() => JsonSerializer.Deserialize<ProbeId?>("null").ShouldBeNull();

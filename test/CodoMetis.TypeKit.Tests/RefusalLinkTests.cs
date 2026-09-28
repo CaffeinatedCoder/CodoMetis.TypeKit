@@ -40,6 +40,7 @@ public sealed partial class RefusalLinkTests
     private const string Refused = "A value object refused a value";
     private const string KnownGood = "FromKnownGood refused a value";
     private const string Unreadable = "A value object could not read the input";
+    private const string NullToValueObject = "A null given to a value object";
 
     private enum Fault { TooLong }
 
@@ -87,6 +88,9 @@ public sealed partial class RefusalLinkTests
         ["unreadable text, Parse"]          = (Unreadable, () => throw GeneratedParsing.Unreadable<Code, int>()),
         ["unreadable text, static Parse"]   = (Unreadable, () => GeneratedParsing.Guarded<Code, int>("x", static text => int.Parse(text, CultureInfo.InvariantCulture))),
         ["unreadable text, type converter"] = (Unreadable, () => GeneratedParsing.ConvertFromString<Code, int>("x", null)),
+
+        ["From(null)"]                      = (NullToValueObject, () => throw GeneratedFactories.NullRefused<Code>("value")),
+        ["a JSON null"]                     = (NullToValueObject, () => throw GeneratedJson.NullToken<Code>()),
     };
 
     private static readonly Lazy<IReadOnlyList<(int Level, string Text)>> Headings = new(ReadmeHeadings);

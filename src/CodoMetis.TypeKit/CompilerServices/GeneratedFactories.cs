@@ -79,4 +79,14 @@ public static class GeneratedFactories
                 : $"{typeof(TValueObject).Name} refused {source}, which the call site declared known-good ({fault}).{Refusals.RefusedKnownGood}"
         );
     }
+
+    /// <summary>
+    /// The refusal of a null given to <c>From</c> of a value object over a reference type: <c>Value</c>
+    /// promises it never holds one, as <c>Option.Some</c> refuses one.
+    /// </summary>
+    /// <typeparam name="TValueObject">The value object type.</typeparam>
+    /// <param name="parameterName">The parameter the null was given to.</param>
+    /// <returns>The exception, to throw.</returns>
+    public static ArgumentNullException NullRefused<TValueObject>(string parameterName) =>
+        new(parameterName, $"{typeof(TValueObject).Name} wraps no null. Where the value can be absent, declare the property or parameter as {typeof(TValueObject).Name}?.{Refusals.NullToValueObject}");
 }

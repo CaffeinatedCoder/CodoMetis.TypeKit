@@ -387,6 +387,17 @@ decision 27. A JSON error still carries its path.
 
 **Instead:** `TryParse` for text that may not parse. Text that is yours to log, log before parsing.
 
+### A null given to a value object
+
+**Thrown:** `ArgumentNullException: ProductName wraps no null.` from `From`, or `JsonException:
+ProductName cannot be read from a JSON null.` from JSON.
+
+**Why:** a value object is a value; its `Value` promises never to be null, as an `Option` never holds
+one. A string-backed value object would otherwise wrap the null it was given.
+
+**Instead:** where the value can be absent, declare the property or parameter as `ProductName?`.
+JSON then reads a `null` as `null`, and the value object is never asked to hold it.
+
 ### Materialize and CMTK0004
 
 Not a run-time exception but a build error: `Materialize` rebuilds a value object without `Create`,

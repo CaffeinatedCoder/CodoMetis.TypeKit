@@ -19,7 +19,8 @@ internal sealed partial class ValueObjectContractAspect
         if (refusesNull)
         {
             if ((bool)ExpressionFactory.Parse("value is null", TypeFactory.GetType(SpecialType.Boolean), false).Value!)
-                throw new ArgumentNullException("value");
+                throw (Exception)ExpressionFactory.Parse(
+                    $"global::CodoMetis.TypeKit.CompilerServices.GeneratedFactories.NullRefused<{ValueObjectTypes.SourceName(constructor.DeclaringType)}>(\"value\")").Value!;
         }
 
         return constructor.Invoke(value)!;

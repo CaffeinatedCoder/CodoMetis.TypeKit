@@ -30,6 +30,9 @@ internal static class Refusals
     /// <summary>A value object's <c>Create</c> refused what <c>FromKnownGood</c> was given.</summary>
     public const string RefusedKnownGood = " See " + Readme + "fromknowngood-refused-a-value";
 
+    /// <summary>A null given to a value object: <c>From(null)</c>, or a JSON null.</summary>
+    public const string NullToValueObject = " See " + Readme + "a-null-given-to-a-value-object";
+
     /// <summary>The wrapped type could not read JSON or text at all.</summary>
     public const string UnreadableInput = " See " + Readme + "a-value-object-could-not-read-the-input";
 }
