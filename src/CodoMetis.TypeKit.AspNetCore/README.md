@@ -25,9 +25,23 @@ document's other transformers does not matter. It lives in
 `Microsoft.Extensions.DependencyInjection`, beside `AddOpenApi`, which a web project imports
 implicitly.
 
-The host references `Microsoft.AspNetCore.OpenApi` directly. This package depends on it, but its
-source generator's switch is imported for a direct reference only, and a host that has the package
-only through this one fails with CS9137 ("the feature 'Interceptors' is not enabled").
+`AddTypeKit()` configures the one document it is called for, and a document without it describes
+every value object as `{}`. A host with several documents calls it in each `AddOpenApi`, or once for
+all of them:
+
+```csharp
+using Microsoft.AspNetCore.OpenApi;   // OpenApiOptions
+
+builder.Services.ConfigureAll<OpenApiOptions>(options => options.AddTypeKit());
+```
+
+Calling it again for a document that already has it changes nothing.
+
+The host references `Microsoft.AspNetCore.OpenApi` directly, at 10.0.12 or later. This package
+depends on that version, and an earlier direct reference fails to restore with NU1605 (a package
+downgrade). The reference has to be direct: its source generator's switch is imported for a direct
+reference only, and a host that has the package only through this one fails with CS9137 ("the
+feature 'Interceptors' is not enabled").
 
 ## What the document says
 
@@ -58,9 +72,12 @@ no component at all), and both parameters are a bare `string`.
   `JsonStringEnumConverter` an enum-backed value object is its names.
 - **Each value object keeps its own component**, named after it, so the document still says
   `OrderId` where the API means an order id. A value object nested in another type is named after
-  the whole chain, `Shop.Id` as `ShopId`, so `Shop.Id` and `Stock.Id` do not share one. A name your
-  own `CreateSchemaReferenceId` gives, set before `AddTypeKit()`, is kept. A host that prefers value
-  objects inlined returns `null` for them, the nullable ones included, after `AddTypeKit()`:
+  the whole chain, `Shop.Id` as `ShopId`, so `Shop.Id` and `Stock.Id` do not share one. Two value
+  objects of one name in different namespaces (`Billing.InvoiceNo`, `Shipping.InvoiceNo`) do share
+  one, as ASP.NET does for any two types of one name, and it describes both as the first it meets.
+  A name your own `CreateSchemaReferenceId` gives, set before `AddTypeKit()`, is kept, so give one of
+  them its own name there. A host that prefers value objects inlined returns `null` for them, the
+  nullable ones included, after `AddTypeKit()`:
 
   ```csharp
   using System.Reflection;

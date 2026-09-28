@@ -8,6 +8,10 @@ and `.Value` works in a LINQ query as it does in memory.
 dotnet add package CodoMetis.TypeKit.EntityFrameworkCore
 ```
 
+It needs EF Core 10.0.12 or later. A project that references `Microsoft.EntityFrameworkCore` or
+`Microsoft.EntityFrameworkCore.Relational` directly at an earlier version fails to restore with NU1605
+(a package downgrade), so keep the EF Core packages at 10.0.12 or later.
+
 It recognises a value object at run time by the attribute the generators put on it, so the project
 that hosts the `DbContext` needs this package and the base package only, not the generators. The
 domain project that declares the value objects references `CodoMetis.TypeKit.Generators`.
@@ -24,6 +28,11 @@ services.AddDbContext<ShopDb>(options =>
 replaces nothing, so it coexists with a provider or a library that replaces EF's converter selector,
 and its position relative to `UseNpgsql` or `UseSqlite` does not matter. It lives in
 `Microsoft.EntityFrameworkCore`, beside `UseNpgsql`, so it needs no `using` of its own.
+
+It needs a relational provider. EF's in-memory provider has no relational type mapping, so there
+nothing is mapped: a struct value object is stored as it is, a class value object fails the model,
+and an integer key has no value generator (`SaveChanges` throws `NotSupportedException`). Tests that
+need a database in memory use SQLite's (`Data Source=:memory:`).
 
 An application that builds EF's internal service provider itself registers the same services there:
 
