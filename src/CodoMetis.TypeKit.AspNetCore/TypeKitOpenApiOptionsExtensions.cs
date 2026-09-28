@@ -25,12 +25,20 @@ public static class TypeKitOpenApiOptionsExtensions
     /// registered per type, and no assembly is scanned. The order against other schema transformers
     /// does not matter.
     /// </para>
+    /// <para>
+    /// A nested value object's component is named after its nesting chain (<c>Shop.Id</c> is
+    /// <c>ShopId</c>), so two nested value objects of one name do not share a component. A name the
+    /// host's own <see cref="OpenApiOptions.CreateSchemaReferenceId"/> gives, set before this call, is
+    /// kept; one set after it replaces this naming.
+    /// </para>
     /// </remarks>
     /// <param name="options">The options of one OpenAPI document.</param>
     /// <returns>The same options.</returns>
     public static OpenApiOptions AddTypeKit(this OpenApiOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
+
+        ValueObjectSchemaReferenceIds.Apply(options);
 
         return options.AddSchemaTransformer<ValueObjectSchemaTransformer>();
     }
