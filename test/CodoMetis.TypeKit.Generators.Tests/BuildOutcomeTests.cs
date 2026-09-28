@@ -51,6 +51,9 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1007", "Shop.Id")]
     [InlineData("CMTK1008", "WithOperator")]
     [InlineData("CMTK1008", "WithObjectCompareTo")]
+    [InlineData("CMTK1008", "ExplicitComparable")]
+    [InlineData("CMTK1008", "ExplicitObjectComparable")]
+    [InlineData("CMTK1008", "ExplicitComparisonOperators")]
     [InlineData("CMTK1009", "CtorSameSignature")]
     [InlineData("CMTK1009", "CtorBypass")]
     [InlineData("CMTK1009", "CtorUnassignedStruct")]
@@ -75,6 +78,12 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "ExplicitEquatable")]
     [InlineData("CMTK1011", "PinStruct")]
     [InlineData("CMTK1011", "PinClass")]
+    [InlineData("CMTK1011", "ExplicitParsable")]
+    [InlineData("CMTK1011", "ExplicitFormattable")]
+    [InlineData("CMTK1011", "ExplicitSpanFormattable")]
+    [InlineData("CMTK1011", "ExplicitMinMax")]
+    [InlineData("CMTK1011", "ExplicitConvertible")]
+    [InlineData("CMTK1011", "ExplicitEqualityOperators")]
     [InlineData("CMTK1012", "WithAutoProperty")]
     [InlineData("CMTK1012", "WithCacheField")]
     [InlineData("CMTK1012", "WithRequiredMember")]
@@ -154,6 +163,25 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                                             && error.Message.Contains("a value object's equality is its wrapped value's") && error.Message.Contains(remedy), consumer.Output);
 
     /// <summary>
+    /// An explicit implementation of an interface the generators implement was kept beside the generated
+    /// public member, and every caller through the interface reached it: a generic <c>T.Parse</c> bypassed
+    /// <c>Create</c>, <c>Comparer&lt;T&gt;.Default</c> disagreed with <c>&lt;</c>, and interpolation printed
+    /// what <c>ToString()</c> did not. The error names the interface member.
+    /// </summary>
+    [Theory]
+    [InlineData("CMTK1011", "ExplicitParsable", "the explicit implementation of IParsable<ExplicitParsable>.Parse(string, IFormatProvider?), the explicit implementation of IParsable<ExplicitParsable>.TryParse(string?, IFormatProvider?, out ExplicitParsable)")]
+    [InlineData("CMTK1011", "ExplicitFormattable", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?)")]
+    [InlineData("CMTK1011", "ExplicitSpanFormattable", "the explicit implementation of ISpanFormattable.TryFormat(")]
+    [InlineData("CMTK1011", "ExplicitMinMax", "the explicit implementation of IMinMaxValue<ExplicitMinMax>.MinValue")]
+    [InlineData("CMTK1011", "ExplicitConvertible", "the interface IConvertible")]
+    [InlineData("CMTK1011", "ExplicitEqualityOperators", "the explicit implementation of IEqualityOperators<ExplicitEqualityOperators, ExplicitEqualityOperators, bool>.operator ==(")]
+    [InlineData("CMTK1008", "ExplicitComparable", "the explicit implementation of IComparable<ExplicitComparable>.CompareTo(ExplicitComparable)")]
+    [InlineData("CMTK1008", "ExplicitObjectComparable", "the explicit implementation of IComparable.CompareTo(object?)")]
+    [InlineData("CMTK1008", "ExplicitComparisonOperators", "the explicit implementation of IComparisonOperators<ExplicitComparisonOperators, ExplicitComparisonOperators, bool>.operator <(")]
+    public void An_explicit_implementation_of_a_generated_interface_is_refused_by_name(string id, string type, string member) =>
+        consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
+
+    /// <summary>
     /// A hand-written <c>PrintMembers</c> was replaced silently with the record's <c>ToString()</c>, which
     /// calls it, so what it hid was printed. The error points at <c>ToString()</c>, the seam.
     /// </summary>
@@ -192,6 +220,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("Rank", "Level.M")]
     [InlineData("WithComputedMembers", "'WithComputedMembers")]
     [InlineData("PinWithToString", "'PinWithToString")]
+    [InlineData("ExplicitFormattableWithToString", "'ExplicitFormattableWithToString")]
+    [InlineData("ExplicitComparableUri", "'ExplicitComparableUri")]
     [InlineData("WithStatelessBase", "Described.")]
     public void A_seam_or_a_foreign_bound_is_not_refused(string type, string alsoNotNamed) =>
         consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'") || error.Message.Contains(alsoNotNamed), consumer.Output);
@@ -497,6 +527,104 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public readonly partial record struct ExplicitCreate : IValidatedValue<ExplicitCreate, string, Fault>
             {
                 static Result<ExplicitCreate, Fault> IValidatedValue<ExplicitCreate, string, Fault>.Create(string value) => Result.Error(Fault.Refused);
+            }
+
+            // An explicit implementation of an interface the generators implement: kept beside the generated
+            // public member, it answered every caller through the interface, so a generic T.Parse
+            // bypassed Create and Comparer<T>.Default sorted against <. The bodies touch nothing
+            // generated, because a refused type is not generated.
+            public readonly partial record struct ExplicitParsable : IValidatedValue<ExplicitParsable, string, Fault>, System.IParsable<ExplicitParsable>
+            {
+                public static Result<ExplicitParsable, Fault> Create(string value) => Result.Error(Fault.Refused);
+
+                static ExplicitParsable System.IParsable<ExplicitParsable>.Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                static bool System.IParsable<ExplicitParsable>.TryParse(string? s, System.IFormatProvider? provider, out ExplicitParsable result) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct ExplicitFormattable : IValue<int>, System.IFormattable
+            {
+                string System.IFormattable.ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+            }
+
+            public readonly partial record struct ExplicitSpanFormattable : IValue<long>, System.ISpanFormattable
+            {
+                string System.IFormattable.ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+
+                bool System.ISpanFormattable.TryFormat(System.Span<char> destination, out int charsWritten, System.ReadOnlySpan<char> format, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct ExplicitMinMax : IValue<int>, System.Numerics.IMinMaxValue<ExplicitMinMax>
+            {
+                static ExplicitMinMax System.Numerics.IMinMaxValue<ExplicitMinMax>.MinValue => throw new System.NotSupportedException();
+
+                static ExplicitMinMax System.Numerics.IMinMaxValue<ExplicitMinMax>.MaxValue => throw new System.NotSupportedException();
+            }
+
+            // IConvertible is generated explicitly in full, so declaring it at all, with public or explicit
+            // members, failed the aspect (LAMA0041).
+            public readonly partial record struct ExplicitConvertible : IValue<int>, System.IConvertible
+            {
+                public System.TypeCode GetTypeCode() => System.TypeCode.Int32;
+                bool System.IConvertible.ToBoolean(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                byte System.IConvertible.ToByte(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                char System.IConvertible.ToChar(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                System.DateTime System.IConvertible.ToDateTime(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                decimal System.IConvertible.ToDecimal(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                double System.IConvertible.ToDouble(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                short System.IConvertible.ToInt16(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                public int ToInt32(System.IFormatProvider? provider) => 0;
+                long System.IConvertible.ToInt64(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                sbyte System.IConvertible.ToSByte(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                float System.IConvertible.ToSingle(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                string System.IConvertible.ToString(System.IFormatProvider? provider) => "***";
+                object System.IConvertible.ToType(System.Type conversionType, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                ushort System.IConvertible.ToUInt16(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                uint System.IConvertible.ToUInt32(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                ulong System.IConvertible.ToUInt64(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct ExplicitEqualityOperators : IValue<int>, System.Numerics.IEqualityOperators<ExplicitEqualityOperators, ExplicitEqualityOperators, bool>
+            {
+                static bool System.Numerics.IEqualityOperators<ExplicitEqualityOperators, ExplicitEqualityOperators, bool>.operator ==(ExplicitEqualityOperators left, ExplicitEqualityOperators right) => true;
+
+                static bool System.Numerics.IEqualityOperators<ExplicitEqualityOperators, ExplicitEqualityOperators, bool>.operator !=(ExplicitEqualityOperators left, ExplicitEqualityOperators right) => false;
+            }
+
+            public readonly partial record struct ExplicitComparable : IValue<int>, System.IComparable<ExplicitComparable>
+            {
+                int System.IComparable<ExplicitComparable>.CompareTo(ExplicitComparable other) => 0;
+            }
+
+            public readonly partial record struct ExplicitObjectComparable : IValue<int>, System.IComparable
+            {
+                int System.IComparable.CompareTo(object? obj) => 0;
+            }
+
+            public readonly partial record struct ExplicitComparisonOperators : IValue<int>, System.Numerics.IComparisonOperators<ExplicitComparisonOperators, ExplicitComparisonOperators, bool>
+            {
+                static bool System.Numerics.IComparisonOperators<ExplicitComparisonOperators, ExplicitComparisonOperators, bool>.operator <(ExplicitComparisonOperators left, ExplicitComparisonOperators right) => false;
+
+                static bool System.Numerics.IComparisonOperators<ExplicitComparisonOperators, ExplicitComparisonOperators, bool>.operator >(ExplicitComparisonOperators left, ExplicitComparisonOperators right) => false;
+
+                static bool System.Numerics.IComparisonOperators<ExplicitComparisonOperators, ExplicitComparisonOperators, bool>.operator <=(ExplicitComparisonOperators left, ExplicitComparisonOperators right) => false;
+
+                static bool System.Numerics.IComparisonOperators<ExplicitComparisonOperators, ExplicitComparisonOperators, bool>.operator >=(ExplicitComparisonOperators left, ExplicitComparisonOperators right) => false;
+            }
+
+            // Where the generators implement no such interface, the explicit implementation is the only
+            // one: beside ToString(), the seam, no formatting interface is generated, and a Uri has no
+            // ordering. Generated as usual.
+            public readonly partial record struct ExplicitFormattableWithToString : IValue<int>, System.IFormattable
+            {
+                public override string ToString() => "***";
+
+                string System.IFormattable.ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+            }
+
+            public sealed partial record ExplicitComparableUri : IValue<System.Uri>, System.IComparable<ExplicitComparableUri>
+            {
+                int System.IComparable<ExplicitComparableUri>.CompareTo(ExplicitComparableUri? other) => 0;
             }
 
             // A hand-written PrintMembers: the generated ToString() replaced the record's, which calls it,

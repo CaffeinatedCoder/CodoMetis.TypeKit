@@ -115,11 +115,16 @@ internal static class ValueObjectDeclaration
     /// the user wrote, or, for a member the generators skip when it exists, would be kept silently as
     /// an entry point or a format the generated code never agreed to. The seams are not in it:
     /// <c>TryFrom</c>, <c>FromKnownGood</c>, <c>Revalidate</c>, <c>CompareTo(TSelf)</c>, <c>ToString()</c>
-    /// and, for a validated value object, <c>Create</c>.
+    /// and, for a validated value object, <c>Create</c>. Neither are the comparison interfaces, which
+    /// ValueObjectComparableAspect answers (CMTK1008).
     /// </summary>
     public static IReadOnlyList<string> GeneratedMembersDeclaredByHand(INamedType target, INamedType valueType, ValueObjectKind kind)
     {
         List<string> found = [];
+
+        // The interfaces the generators implement for this declaration, whose explicit implementations
+        // are refused below. ValueObjectContractAspect: the equality operators.
+        List<INamedType> generatedInterfaces = [TypeFactory.GetNamedType(typeof(IEqualityOperators<,,>))];
 
         // ValueObjectAspect: the field, the entry points; ValueObjectContractAspect: Value; the JSON aspect's nested converter.
         found.AddRange(MembersNamed(target, "_value", "Value", "__FromJson", "__FromText", "__TryFromText", $"{target.Name}JsonConverter"));
@@ -141,9 +146,12 @@ internal static class ValueObjectDeclaration
             found.AddRange(MethodsWithSignature(target, "Parse", stringType, provider));
             found.AddRange(MethodsWithSignature(target, "TryParse", stringType, provider, target));
             found.AddRange(MembersNamed(target, $"{target.Name}TypeConverter"));
+            generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IParsable<>)));
 
             if (parse == ValueParseStrategy.SpanParsable)
             {
+                generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(ISpanParsable<>)));
+
                 var span = TypeFactory.GetType(typeof(ReadOnlySpan<char>));
                 found.AddRange(MethodsWithSignature(target, "Parse", span, provider));
                 found.AddRange(MethodsWithSignature(target, "TryParse", span, provider, target));
@@ -151,6 +159,8 @@ internal static class ValueObjectDeclaration
 
             if (ValueObjectParsableAspect.SupportsUtf8(valueType))
             {
+                generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IUtf8SpanParsable<>)));
+
                 var utf8 = TypeFactory.GetType(typeof(ReadOnlySpan<byte>));
                 found.AddRange(MethodsWithSignature(target, "Parse", utf8, provider));
                 found.AddRange(MethodsWithSignature(target, "TryParse", utf8, provider, target));
@@ -161,24 +171,45 @@ internal static class ValueObjectDeclaration
         if (!DeclaresToString(target))
         {
             found.AddRange(MethodsWithSignature(target, nameof(IFormattable.ToString), stringType, provider));
+            generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IFormattable)));
 
             if (ValueObjectFormattableAspect.ResolveStrategy(valueType) == ValueFormatStrategy.SpanFormattable)
+            {
                 found.AddRange(MethodsWithSignature(target, nameof(ISpanFormattable.TryFormat), TypeFactory.GetType(typeof(Span<char>)), TypeFactory.GetType(SpecialType.Int32), TypeFactory.GetType(typeof(ReadOnlySpan<char>)), provider));
+                generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(ISpanFormattable)));
+            }
 
             if (ValueObjectFormattableAspect.SupportsUtf8(valueType))
+            {
                 found.AddRange(MethodsWithSignature(target, nameof(IUtf8SpanFormattable.TryFormat), TypeFactory.GetType(typeof(Span<byte>)), TypeFactory.GetType(SpecialType.Int32), TypeFactory.GetType(typeof(ReadOnlySpan<char>)), provider));
+                generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IUtf8SpanFormattable)));
+            }
         }
 
         // ValueObjectMinMaxValueAspect.
         if (kind == ValueObjectKind.Plain && ValueObjectMinMaxValueAspect.HasMinMaxValue(valueType))
+        {
             found.AddRange(MembersNamed(target, nameof(IMinMaxValue<int>.MinValue), nameof(IMinMaxValue<int>.MaxValue)));
+            generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IMinMaxValue<>)));
+        }
 
-        // The interfaces implemented with OverrideStrategy.Fail. The marker's own are implied by it.
+        // An explicit implementation of an interface the generators implement sat beside the generated
+        // member, which it hides from every caller through the interface: a generic T.Parse bypassed
+        // Create, and interpolation printed through a hand-written IFormattable while ToString() did not.
+        found.AddRange(ExplicitImplementationsOf(target, generatedInterfaces));
+
+        // ValueObjectConvertibleAspect implements every member of IConvertible explicitly, so declaring
+        // the interface at all, with public or explicit members, failed the aspect (LAMA0041: it cannot
+        // introduce explicit members for an interface it was told to ignore).
+        var convertible = valueType.IsConvertibleTo(typeof(IConvertible));
+
+        // The interfaces implemented with OverrideStrategy.Fail, and IConvertible. The marker's own are implied by it.
         foreach (var implemented in target.ImplementedInterfaces)
         {
             if (implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IValueObject<,>)))
              || implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IValueObjectMaterializer<,>)))
-             || implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IPlainValueObject<,>))))
+             || implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IPlainValueObject<,>)))
+             || (convertible && implemented.Equals(TypeFactory.GetNamedType(typeof(IConvertible)))))
                 found.Add($"the interface {implemented.ToDisplayString()}");
         }
 
@@ -195,6 +226,24 @@ internal static class ValueObjectDeclaration
         }
 
         return found.Distinct().ToList();
+    }
+
+    /// <summary>
+    /// The members of <paramref name="target"/> that explicitly implement a member of one of
+    /// <paramref name="interfaces"/>, compared by definition, as <see cref="Describe"/> names them.
+    /// </summary>
+    internal static IEnumerable<string> ExplicitImplementationsOf(INamedType target, IReadOnlyList<INamedType> interfaces)
+    {
+        bool OfOne(IMember implemented) => interfaces.Any(@interface => implemented.DeclaringType.Definition.Equals(@interface));
+
+        foreach (var method in target.Methods)
+            if (method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && method.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(method);
+
+        foreach (var property in target.Properties)
+            if (property is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && property.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(property);
+
+        foreach (var @event in target.Events)
+            if (@event is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && @event.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(@event);
     }
 
     /// <summary>
