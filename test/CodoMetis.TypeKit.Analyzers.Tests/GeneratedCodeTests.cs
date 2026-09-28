@@ -126,6 +126,10 @@ public sealed class GeneratedCodeTests
     public Task CMTK0008_reports_in_markup_only() =>
         Verify<MixedValueComparisonAnalyzer>("private bool Same$(Plain plain, Other other) => {|#0:plain.Value == other.Value|};", "CMTK0008", DiagnosticSeverity.Warning);
 
+    [Fact]
+    public Task CMTK0009_reports_in_markup_only() =>
+        Verify<DefaultProducingCallAnalyzer>("private Plain First$(List<Plain> ids) => {|#0:ids.FirstOrDefault()|};", "CMTK0009", DiagnosticSeverity.Warning);
+
     /// <summary>A Razor view compiles to generated code too, mapped to its <c>.cshtml</c>.</summary>
     [Fact]
     public Task A_cshtml_mapping_counts_as_markup() =>

@@ -22,4 +22,5 @@ internal static class DiagnosticIds
 
     public const string MixedValueComparison = "CMTK0008";
 
+    public const string DefaultProducingCall = "CMTK0009";
 }
