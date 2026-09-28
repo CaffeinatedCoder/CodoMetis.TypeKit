@@ -113,8 +113,8 @@ an argument (`Task.WhenAny(orders.CancelAsync(id), timeout)`). A task you still 
 and an explicit `(Task)` cast says the drop is intended. A `ValueTask<T>` has no conversion to
 `ValueTask`.
 
-`Tap`, `TapAsync` and `TapError` return their receiver unchanged, and so do the `Task`
-continuations `TapAsync` and `TapErrorAsync`, so `result.Tap(log);` and `await pending.TapAsync(log);`
+`Tap`, `TapAsync`, `TapError` and `TapErrorAsync` return their receiver unchanged, and so do the
+`Task` continuations `TapAsync` and `TapErrorAsync`, so `result.Tap(log);` and `await pending.TapAsync(log);`
 on a variable, parameter or field are silent. `Find(id).Tap(log);` drops the result and is reported.
 
 ## CMTK0004
