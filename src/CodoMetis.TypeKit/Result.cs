@@ -182,6 +182,31 @@ public readonly record struct Result<TError> where TError : notnull
         return this;
     }
 
+    /// <summary>Produces a value on success with an asynchronous function, keeping the error otherwise.</summary>
+    /// <param name="selector">Called on success.</param>
+    /// <typeparam name="TResult">The type of the produced value.</typeparam>
+    /// <returns>A success with the produced value, or this error without calling <paramref name="selector"/>.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public async Task<Result<TResult, TError>> MapAsync<TResult>(Func<Task<TResult>> selector) where TResult : notnull
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return Succeeded
+            ? Result<TResult, TError>.Success(await selector().ConfigureAwait(false))
+            : Result<TResult, TError>.Error(_error!);
+    }
+
+    /// <summary>Chains an asynchronous operation that may itself fail.</summary>
+    /// <param name="selector">Called on success.</param>
+    /// <returns>The result <paramref name="selector"/> produced, or this error without calling it.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public async Task<Result<TError>> BindAsync(Func<Task<Result<TError>>> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return Succeeded ? await selector().ConfigureAwait(false) : Error(_error!);
+    }
+
     /// <summary>Unwraps the error, if this is one.</summary>
     /// <param name="error">The error if this is one; otherwise <c>default</c>.</param>
     /// <returns>Whether this is an error.</returns>
