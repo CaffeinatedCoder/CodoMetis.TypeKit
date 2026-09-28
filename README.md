@@ -5,6 +5,7 @@ that are written as one line and generated at compile time.
 
 [![.NET](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/actions/workflows/dotnet.yml/badge.svg)](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/actions/workflows/dotnet.yml)
 [![NuGet](https://img.shields.io/nuget/v/CodoMetis.TypeKit.svg)](https://www.nuget.org/packages/CodoMetis.TypeKit)
+[![Built with Metalama](https://img.shields.io/badge/built_with-Metalama-informational)](#built-with-metalama)
 
 ```csharp
 public readonly partial record struct OrderId : IValue<Guid>;
@@ -127,6 +128,23 @@ services.AddOpenApi(options => options.AddTypeKit());                    // Orde
 - **Native AOT.** The run-time packages build with the trim and AOT analyzers on, and a consumer
   with value objects, source-generated JSON, OpenAPI and EF Core is published with Native AOT and run
   on every CI build. Each package's README says what, if anything, Native AOT asks of you.
+
+## Built with Metalama
+
+The value-object generation exists in this form because of [Metalama](https://postsharp.net/metalama).
+A transitive fabric finds every type that implements a TypeKit contract, in the project that
+references `CodoMetis.TypeKit.Generators` and in every project that references that one, so a value
+object is declared by implementing its interface, with no attribute and nothing registered.
+Templates write the generated members as ordinary C#, which a build can write out for you to read
+([Reading the generated code](src/CodoMetis.TypeKit.Generators/README.md#reading-the-generated-code)).
+A declaration that cannot be generated fails the build with its name on it, CMTK1000 to CMTK1012,
+instead of compiling to less than it appears to. And Metalama runs the analyzers on the code it
+transformed, which is how they reach Razor components.
+
+Metalama is in `CodoMetis.TypeKit.Generators` alone. `CodoMetis.TypeKit`, the analyzers and both
+satellites do not reference it, so a project that only wants `Option` and `Result` never receives
+it. It is open source under the MIT license, and building with it needs no license key, here or in
+your projects. Thanks to the Metalama team.
 
 ## Status
 
