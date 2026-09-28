@@ -184,14 +184,7 @@ public sealed class AnalyzerPackagingTests(AnalyzerPackagingTests.Packs packs)
         /// <summary>The assemblies an assembly in the package references, by name, read from its metadata.</summary>
         public IReadOnlyDictionary<string, Version> AssemblyReferences(string package, string path)
         {
-            using var archive = ZipFile.OpenRead(Package(package));
-            var entry = archive.GetEntry(path) ?? throw new InvalidOperationException($"{package} packs no {path}.");
-
-            using var image = new MemoryStream();
-            using (var stream = entry.Open()) stream.CopyTo(image);
-            image.Position = 0;
-
-            using var pe = new PEReader(image);
+            using var pe = Assembly(package, path);
             var metadata = pe.GetMetadataReader();
 
             return metadata.AssemblyReferences
@@ -215,29 +208,57 @@ public sealed class AnalyzerPackagingTests(AnalyzerPackagingTests.Packs packs)
         /// </summary>
         public IReadOnlyList<string> DiagnosticAnalyzers(string package, string path)
         {
-            using var archive = ZipFile.OpenRead(Package(package));
-            var entry = archive.GetEntry(path) ?? throw new InvalidOperationException($"{package} packs no {path}.");
-
-            using var image = new MemoryStream();
-            using (var stream = entry.Open()) stream.CopyTo(image);
-            image.Position = 0;
-
-            using var pe = new PEReader(image);
+            using var pe = Assembly(package, path);
             var metadata = pe.GetMetadataReader();
 
             return [.. metadata.TypeDefinitions
                                .Select(metadata.GetTypeDefinition)
-                               .Where(type => type.GetCustomAttributes().Select(metadata.GetCustomAttribute).Any(attribute => IsAttribute(metadata, attribute, "DiagnosticAnalyzerAttribute")))
+                               .Where(type => type.GetCustomAttributes().Select(metadata.GetCustomAttribute)
+                                                  .Any(attribute => IsAttribute(metadata, attribute, typeof(Microsoft.CodeAnalysis.Diagnostics.DiagnosticAnalyzerAttribute))))
                                .Select(type => $"{metadata.GetString(type.Namespace)}.{metadata.GetString(type.Name)}")];
         }
 
-        private static bool IsAssemblyMetadata(MetadataReader metadata, CustomAttribute attribute) =>
-            IsAttribute(metadata, attribute, nameof(System.Reflection.AssemblyMetadataAttribute));
+        /// <summary>
+        /// The types an assembly in the package declares with
+        /// <see cref="System.CodeDom.Compiler.GeneratedCodeAttribute"/>, each with the tool the
+        /// attribute names: what a source generator baked into it. Read from the metadata, never loaded.
+        /// </summary>
+        public IReadOnlyList<(string Type, string Tool)> GeneratedTypes(string package, string path)
+        {
+            using var pe = Assembly(package, path);
+            var metadata = pe.GetMetadataReader();
 
-        private static bool IsAttribute(MetadataReader metadata, CustomAttribute attribute, string name) =>
+            return
+            [
+                .. from type in metadata.TypeDefinitions.Select(metadata.GetTypeDefinition)
+                   from attribute in type.GetCustomAttributes().Select(metadata.GetCustomAttribute)
+                   where IsAttribute(metadata, attribute, typeof(System.CodeDom.Compiler.GeneratedCodeAttribute))
+                   select (Type: $"{metadata.GetString(type.Namespace)}.{metadata.GetString(type.Name)}".TrimStart('.'),
+                           Tool: (string?)attribute.DecodeValue(StringArguments.Instance).FixedArguments[0].Value ?? "")
+            ];
+        }
+
+        private PEReader Assembly(string package, string path)
+        {
+            using var archive = ZipFile.OpenRead(Package(package));
+            var entry = archive.GetEntry(path) ?? throw new InvalidOperationException($"{package} packs no {path}.");
+
+            var image = new MemoryStream();
+            using (var stream = entry.Open()) stream.CopyTo(image);
+            image.Position = 0;
+
+            return new PEReader(image);
+        }
+
+        private static bool IsAssemblyMetadata(MetadataReader metadata, CustomAttribute attribute) =>
+            IsAttribute(metadata, attribute, typeof(System.Reflection.AssemblyMetadataAttribute));
+
+        private static bool IsAttribute(MetadataReader metadata, CustomAttribute attribute, Type type) =>
             attribute.Constructor.Kind == HandleKind.MemberReference
          && metadata.GetMemberReference((MemberReferenceHandle)attribute.Constructor).Parent is { Kind: HandleKind.TypeReference } parent
-         && metadata.GetString(metadata.GetTypeReference((TypeReferenceHandle)parent).Name) == name;
+         && metadata.GetTypeReference((TypeReferenceHandle)parent) is var reference
+         && metadata.GetString(reference.Name) == type.Name
+         && metadata.GetString(reference.Namespace) == type.Namespace;
 
         /// <summary>Enough of a type provider to decode an attribute whose arguments are strings.</summary>
         private sealed class StringArguments : ICustomAttributeTypeProvider<Type>

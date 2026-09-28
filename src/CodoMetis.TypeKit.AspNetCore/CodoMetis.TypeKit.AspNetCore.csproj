@@ -21,4 +21,21 @@
         <InternalsVisibleTo Include="CodoMetis.TypeKit.AspNetCore.Tests" />
     </ItemGroup>
 
+    <!--
+      Microsoft.AspNetCore.OpenApi brings its XML-comment source generator into every project that
+      references it, this one included. Here it has nothing to do: its output serves an application's
+      own AddOpenApi call, and this library makes none. It still ran, and baked the XML documentation
+      of this project and its references into ten types nothing calls (measured 2026-09-28: the
+      assembly 229 KB instead of 37 KB, the package 60 KB instead of 23 KB). Removing it from the
+      Analyzer items is the opt-out the ASP.NET Core documentation gives ("Disabling XML documentation
+      support"); ExcludeAssets="analyzers" on the reference does not remove it. It is removed here only:
+      a consumer's own project keeps the generator, as it keeps its own reference to the package.
+      GeneratedCodeTests reads the packed assembly and fails if generated types come back.
+    -->
+    <Target Name="RemoveOpenApiXmlCommentGenerator" BeforeTargets="CoreCompile">
+        <ItemGroup>
+            <Analyzer Remove="@(Analyzer)" Condition="'%(Filename)' == 'Microsoft.AspNetCore.OpenApi.SourceGenerators'" />
+        </ItemGroup>
+    </Target>
+
 </Project>
