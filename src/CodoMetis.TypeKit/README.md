@@ -161,16 +161,24 @@ its `State` and read back uninitialized. So a request, a response, a stored docu
 payload says absent with `T?`, and the option lives between them: `dto.Nickname.ToOption()` on the
 way in, `nickname.OrNull()` on the way out. A result is matched to a response or a document; it has
 no wire shape of its own. The `Option.None()`, `Result.Success(...)` and `Result.Error(...)` markers refuse too, so an endpoint
-that returns one fails on its first call rather than answering `{}`.
+that returns one fails on its first call rather than answering `{}`. So does a nullable of any of
+them, an `Option<T>?` in a PATCH-style shape, whether it holds a value or not.
 
 Nor are they columns: EF Core cannot map an `Option` or a `Result` property, and says so when it
 builds the model. An entity says absent with `T?` too.
 
-Two things to know. A converter registered on the `JsonSerializerOptions` takes precedence over
+Three things to know. A converter registered on the `JsonSerializerOptions` takes precedence over
 the refusal, so an application that wants `Option<T>` on the wire writes one and registers it there,
-on those options only. And a property that is absent from a document reaches no converter at all: the
+on those options only. A property that is absent from a document reaches no converter at all: the
 serializer leaves it `default`, a `None` or an uninitialized result. Where absence must be an error
-too, mark the property `required` or set `RespectRequiredConstructorParameters` on the options.
+too, mark the property `required` or set `RespectRequiredConstructorParameters` on the options. And a
+source-generated `JsonSerializerContext` cannot describe a shape with an `Option<T>?` or `Result<…>?`
+property at all: it fails when it builds that shape's contract, before any document is read or
+written, with the serializer's own `InvalidOperationException`:
+``The converter '' is not compatible with the type 'CodoMetis.TypeKit.Option`1[System.String]'.``
+The refusal cannot be its own there, since that contract takes a converter typed for
+`Option<string>` alone, which only `MakeGenericType` could build for every `T`. Declare the
+property `T?`.
 
 ## Value objects
 
