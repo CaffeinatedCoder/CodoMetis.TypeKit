@@ -24,8 +24,51 @@ internal static class ValueObjectDeclaration
     /// formatting interfaces is generated, so interpolation, <c>string.Format</c> and
     /// <c>Convert.ToString</c> reach it. The record's own synthesized one is implicitly declared.
     /// </summary>
+    /// <remarks>
+    /// A base record's <c>sealed</c> one is the seam too: C# keeps it in every derived record, which then
+    /// synthesizes none, so it is what the value object prints, and it cannot declare its own. Generating
+    /// one failed the aspect (LAMA0502). A base record's one that is not sealed is refused instead
+    /// (<see cref="UnsealedInheritedToString"/>).
+    /// </remarks>
     public static bool DeclaresToString(INamedType type) =>
-        type.Methods.Any(method => method is { Name: nameof(ToString), IsStatic: false, IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false, Parameters.Count: 0 });
+        type.Methods.Any(IsHandWrittenToString) || InheritedToString(type) is { IsSealed: true };
+
+    /// <summary>
+    /// The <c>ToString()</c> a base record declares by hand and does not seal, where the value object
+    /// declares none: the generated one replaced it without a word, as a record's synthesized one does,
+    /// and printed the value a base that returned <c>"***"</c> hid (decision 28's leak, one level up).
+    /// </summary>
+    public static IMethod? UnsealedInheritedToString(INamedType target) =>
+        target.Methods.Any(IsHandWrittenToString) ? null : InheritedToString(target) is { IsSealed: false } inherited ? inherited : null;
+
+    /// <summary>The nearest base record's hand-written, non-abstract <c>ToString()</c>.</summary>
+    private static IMethod? InheritedToString(INamedType target)
+    {
+        foreach (var type in SelfAndBases(target).Skip(1))
+        {
+            var declared = type.Methods.FirstOrDefault(method => IsHandWrittenToString(method) && !method.IsAbstract);
+            if (declared is not null) return declared;
+        }
+
+        return null;
+    }
+
+    private static bool IsHandWrittenToString(IMethod method) =>
+        method is { Name: nameof(ToString), IsStatic: false, IsExplicitInterfaceImplementation: false, Parameters.Count: 0 } && IsHandWritten(method);
+
+    /// <summary>
+    /// A value object and the records it derives from, <see cref="object"/> left out. A struct has
+    /// none: its base is <see cref="ValueType"/>, whose <c>ToString()</c> is nobody's seam.
+    /// </summary>
+    private static IEnumerable<INamedType> SelfAndBases(INamedType target)
+    {
+        yield return target;
+
+        if (target.TypeKind != TypeKind.Class) yield break;
+
+        for (var type = target.BaseType; type is not null && type.SpecialType != SpecialType.Object; type = type.BaseType)
+            yield return type;
+    }
 
     /// <summary>
     /// A <c>file</c>-local type, or one nested in a <c>file</c>-local type, which cannot be named outside
@@ -229,6 +272,14 @@ internal static class ValueObjectDeclaration
                 found.Add($"the interface {implemented.ToDisplayString()}");
         }
 
+        // IConvertible implemented by a base record is implemented already, and the aspect failed the same way.
+        if (convertible)
+        {
+            foreach (var type in SelfAndBases(target).Skip(1))
+                if (type.ImplementedInterfaces.Any(implemented => implemented.Equals(TypeFactory.GetNamedType(typeof(IConvertible)))))
+                    found.Add($"the interface IConvertible in its base type {type.ToDisplayString()}");
+        }
+
         // The attributes the aspects put on the type.
         foreach (var attribute in target.Attributes)
         {
@@ -248,18 +299,30 @@ internal static class ValueObjectDeclaration
     /// The members of <paramref name="target"/> that explicitly implement a member of one of
     /// <paramref name="interfaces"/>, compared by definition, as <see cref="Describe"/> names them.
     /// </summary>
+    /// <remarks>
+    /// A base record's count too. The generated member replaced one of <c>IFormattable</c> or
+    /// <c>IEqualityOperators</c> without a word, and one of a static interface (<c>IParsable</c>,
+    /// <c>IMinMaxValue</c>) or of <c>IComparable</c> kept answering the interface: a generic
+    /// <c>T.Parse</c> reached a generic base's, skipping <c>Create</c>, and <c>Comparer&lt;T&gt;.Default</c>
+    /// disagreed with <c>&lt;</c> (measured 2026-09-28).
+    /// </remarks>
     internal static IEnumerable<string> ExplicitImplementationsOf(INamedType target, IReadOnlyList<INamedType> interfaces)
     {
         bool OfOne(IMember implemented) => interfaces.Any(@interface => implemented.DeclaringType.Definition.Equals(@interface));
 
-        foreach (var method in target.Methods)
-            if (method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && method.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(method);
+        foreach (var type in SelfAndBases(target))
+        {
+            var where = type.Equals(target) ? "" : $" in its base type {type.ToDisplayString()}";
 
-        foreach (var property in target.Properties)
-            if (property is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && property.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(property);
+            foreach (var method in type.Methods)
+                if (method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && method.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(method) + where;
 
-        foreach (var @event in target.Events)
-            if (@event is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && @event.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(@event);
+            foreach (var property in type.Properties)
+                if (property is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && property.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(property) + where;
+
+            foreach (var @event in type.Events)
+                if (@event is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && @event.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(@event) + where;
+        }
     }
 
     /// <summary>
@@ -304,11 +367,13 @@ internal static class ValueObjectDeclaration
 
         var stringBuilder = TypeFactory.GetType(typeof(System.Text.StringBuilder));
 
+        // A base record's too: a derived record's synthesized ToString() reaches it through its own
+        // PrintMembers, and the generated one does not.
         return
         [
-            .. target.Methods
-                     .Where(method => method is { Name: "PrintMembers", IsStatic: false, IsImplicitlyDeclared: false, Parameters: [{ } builder] } && builder.Type.Equals(stringBuilder))
-                     .Select(Describe)
+            .. SelfAndBases(target).SelectMany(type => type.Methods
+                                                           .Where(method => method is { Name: "PrintMembers", IsStatic: false, Parameters: [{ } builder] } && builder.Type.Equals(stringBuilder) && IsHandWritten(method))
+                                                           .Select(method => Describe(method) + (type.Equals(target) ? "" : $" in its base type {type.ToDisplayString()}")))
         ];
     }
 

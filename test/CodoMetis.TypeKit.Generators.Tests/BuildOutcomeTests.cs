@@ -59,6 +59,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1008", "ExplicitComparable")]
     [InlineData("CMTK1008", "ExplicitObjectComparable")]
     [InlineData("CMTK1008", "ExplicitComparisonOperators")]
+    [InlineData("CMTK1008", "InheritsExplicitComparable")]
+    [InlineData("CMTK1008", "InheritsExplicitObjectComparable")]
     [InlineData("CMTK1009", "CtorSameSignature")]
     [InlineData("CMTK1009", "CtorBypass")]
     [InlineData("CMTK1009", "CtorUnassignedStruct")]
@@ -90,6 +92,13 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "ExplicitMinMax")]
     [InlineData("CMTK1011", "ExplicitConvertible")]
     [InlineData("CMTK1011", "ExplicitEqualityOperators")]
+    [InlineData("CMTK1011", "InheritsUnsealedToString")]
+    [InlineData("CMTK1011", "InheritsPrintMembers")]
+    [InlineData("CMTK1011", "InheritsExplicitParsable")]
+    [InlineData("CMTK1011", "InheritsExplicitFormattable")]
+    [InlineData("CMTK1011", "InheritsExplicitMinMax")]
+    [InlineData("CMTK1011", "InheritsExplicitEqualityOperators")]
+    [InlineData("CMTK1011", "InheritsConvertible")]
     [InlineData("CMTK1012", "WithAutoProperty")]
     [InlineData("CMTK1012", "WithCacheField")]
     [InlineData("CMTK1012", "WithRequiredMember")]
@@ -189,6 +198,27 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
 
     /// <summary>
+    /// What a base record declares counts as the value object's own. Its unsealed <c>ToString()</c> and its
+    /// <c>PrintMembers</c> were replaced by the generated <c>ToString()</c>, printing what they hid; an
+    /// explicit implementation of a generated interface was replaced without a word (<c>IFormattable</c>,
+    /// <c>IEqualityOperators</c>) or kept answering the interface (<c>IParsable</c>, <c>IMinMaxValue</c>,
+    /// <c>IComparable</c>): a generic <c>T.Parse</c> skipped <c>Create</c>. <c>IConvertible</c> on a base
+    /// failed the aspect (LAMA0041). Measured 2026-09-28.
+    /// </summary>
+    [Theory]
+    [InlineData("CMTK1011", "InheritsUnsealedToString", "MaskingBase.ToString() in its base type, which is not sealed, so it is not generated: its generated ToString() replaces it")]
+    [InlineData("CMTK1011", "InheritsPrintMembers", "PrintingBase.PrintMembers(StringBuilder) in its base type PrintingBase, so it is not generated")]
+    [InlineData("CMTK1011", "InheritsExplicitParsable", "the explicit implementation of IParsable<InheritsExplicitParsable>.Parse(string, IFormatProvider?) in its base type ParsableBase<InheritsExplicitParsable>")]
+    [InlineData("CMTK1011", "InheritsExplicitFormattable", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its base type FormattableBase")]
+    [InlineData("CMTK1011", "InheritsExplicitMinMax", "the explicit implementation of IMinMaxValue<InheritsExplicitMinMax>.MinValue in its base type MinMaxBase<InheritsExplicitMinMax>")]
+    [InlineData("CMTK1011", "InheritsExplicitEqualityOperators", "in its base type EqualityOperatorsBase<InheritsExplicitEqualityOperators>")]
+    [InlineData("CMTK1011", "InheritsConvertible", "the interface IConvertible in its base type ConvertibleBase")]
+    [InlineData("CMTK1008", "InheritsExplicitComparable", "the explicit implementation of IComparable<InheritsExplicitComparable>.CompareTo(InheritsExplicitComparable?) in its base type ComparableBase<InheritsExplicitComparable>")]
+    [InlineData("CMTK1008", "InheritsExplicitObjectComparable", "the explicit implementation of IComparable.CompareTo(object?) in its base type ObjectComparableBase")]
+    public void What_a_base_record_declares_is_refused_by_name(string id, string type, string member) =>
+        consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
+
+    /// <summary>
     /// A hand-written <c>PrintMembers</c> was replaced silently with the record's <c>ToString()</c>, which
     /// calls it, so what it hid was printed. The error points at <c>ToString()</c>, the seam.
     /// </summary>
@@ -229,6 +259,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("PinWithToString", "'PinWithToString")]
     [InlineData("ExplicitFormattableWithToString", "'ExplicitFormattableWithToString")]
     [InlineData("ExplicitComparableUri", "'ExplicitComparableUri")]
+    [InlineData("InheritsSealedToString", "'InheritsSealedToString")]
+    [InlineData("InheritsFormattableBesideSealedToString", "'InheritsFormattableBesideSealedToString")]
     [InlineData("WithStatelessBase", "Described.")]
     public void A_seam_or_a_foreign_bound_is_not_refused(string type, string alsoNotNamed) =>
         consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'") || error.Message.Contains(alsoNotNamed), consumer.Output);
@@ -668,6 +700,117 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             {
                 int System.IComparable<ExplicitComparableUri>.CompareTo(ExplicitComparableUri? other) => 0;
             }
+
+            // What a base record declares: the generated ToString() replaced an unsealed ToString() and
+            // the PrintMembers a derived record's ToString() reaches; an explicit implementation of a
+            // generated interface was replaced or kept answering the interface; IConvertible failed the
+            // aspect (LAMA0041).
+            public abstract record MaskingBase
+            {
+                public override string ToString() => "***";
+            }
+
+            public sealed partial record InheritsUnsealedToString : MaskingBase, IValue<string>;
+
+            public abstract record PrintingBase
+            {
+                protected virtual bool PrintMembers(System.Text.StringBuilder builder) { builder.Append("***"); return true; }
+            }
+
+            public sealed partial record InheritsPrintMembers : PrintingBase, IValue<string>;
+
+            public abstract record ParsableBase<TSelf> : System.IParsable<TSelf> where TSelf : ParsableBase<TSelf>, System.IParsable<TSelf>
+            {
+                static TSelf System.IParsable<TSelf>.Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                static bool System.IParsable<TSelf>.TryParse(string? s, System.IFormatProvider? provider, out TSelf result) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsExplicitParsable : ParsableBase<InheritsExplicitParsable>, IValidatedValue<InheritsExplicitParsable, string, Fault>
+            {
+                public static Result<InheritsExplicitParsable, Fault> Create(string value) => Result.Error(Fault.Refused);
+            }
+
+            public abstract record FormattableBase : System.IFormattable
+            {
+                string System.IFormattable.ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+            }
+
+            public sealed partial record InheritsExplicitFormattable : FormattableBase, IValue<int>;
+
+            public abstract record MinMaxBase<TSelf> : System.Numerics.IMinMaxValue<TSelf> where TSelf : MinMaxBase<TSelf>, System.Numerics.IMinMaxValue<TSelf>
+            {
+                static TSelf System.Numerics.IMinMaxValue<TSelf>.MinValue => throw new System.NotSupportedException();
+
+                static TSelf System.Numerics.IMinMaxValue<TSelf>.MaxValue => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsExplicitMinMax : MinMaxBase<InheritsExplicitMinMax>, IValue<int>;
+
+            public abstract record EqualityOperatorsBase<TSelf> : System.Numerics.IEqualityOperators<TSelf, TSelf, bool> where TSelf : EqualityOperatorsBase<TSelf>, System.Numerics.IEqualityOperators<TSelf, TSelf, bool>
+            {
+                static bool System.Numerics.IEqualityOperators<TSelf, TSelf, bool>.operator ==(TSelf? left, TSelf? right) => true;
+
+                static bool System.Numerics.IEqualityOperators<TSelf, TSelf, bool>.operator !=(TSelf? left, TSelf? right) => false;
+            }
+
+            public sealed partial record InheritsExplicitEqualityOperators : EqualityOperatorsBase<InheritsExplicitEqualityOperators>, IValue<int>;
+
+            public abstract record ConvertibleBase : System.IConvertible
+            {
+                public System.TypeCode GetTypeCode() => System.TypeCode.Int32;
+                bool System.IConvertible.ToBoolean(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                byte System.IConvertible.ToByte(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                char System.IConvertible.ToChar(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                System.DateTime System.IConvertible.ToDateTime(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                decimal System.IConvertible.ToDecimal(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                double System.IConvertible.ToDouble(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                short System.IConvertible.ToInt16(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                int System.IConvertible.ToInt32(System.IFormatProvider? provider) => 0;
+                long System.IConvertible.ToInt64(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                sbyte System.IConvertible.ToSByte(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                float System.IConvertible.ToSingle(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                string System.IConvertible.ToString(System.IFormatProvider? provider) => "***";
+                object System.IConvertible.ToType(System.Type conversionType, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                ushort System.IConvertible.ToUInt16(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                uint System.IConvertible.ToUInt32(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                ulong System.IConvertible.ToUInt64(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsConvertible : ConvertibleBase, IValue<int>;
+
+            public abstract record ComparableBase<TSelf> : System.IComparable<TSelf> where TSelf : ComparableBase<TSelf>
+            {
+                int System.IComparable<TSelf>.CompareTo(TSelf? other) => 1;
+            }
+
+            public sealed partial record InheritsExplicitComparable : ComparableBase<InheritsExplicitComparable>, IValue<int>;
+
+            public abstract record ObjectComparableBase : System.IComparable
+            {
+                int System.IComparable.CompareTo(object? obj) => 1;
+            }
+
+            public sealed partial record InheritsExplicitObjectComparable : ObjectComparableBase, IValue<int>;
+
+            // A base record's sealed ToString() is the seam, as C# keeps it in every derived record: it failed
+            // the aspect (LAMA0502). Beside it no formatting interface is generated, so an explicit one on the
+            // base is the only one. Generated as usual.
+            public abstract record SealedMaskingBase
+            {
+                public sealed override string ToString() => "***";
+            }
+
+            public sealed partial record InheritsSealedToString : SealedMaskingBase, IValue<string>;
+
+            public abstract record SealedFormattableBase : System.IFormattable
+            {
+                public sealed override string ToString() => "***";
+
+                string System.IFormattable.ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+            }
+
+            public sealed partial record InheritsFormattableBesideSealedToString : SealedFormattableBase, IValue<int>;
 
             // A hand-written PrintMembers: the generated ToString() replaced the record's, which calls it,
             // so what it hid was printed ("1234", and "PinHolder { Pin = 1234 }" in a record holding it).

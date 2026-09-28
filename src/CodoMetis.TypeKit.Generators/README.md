@@ -139,6 +139,12 @@ way in applies.
 To change what a value object prints, declare `ToString()`: a record's `PrintMembers(StringBuilder)` is
 CMTK1011 without it, since the generated `ToString()` prints the wrapped value and never calls it.
 
+What a base record declares counts as the value object's own. Its `sealed` `ToString()` is the seam,
+since C# keeps it in every derived record; one that is not sealed is CMTK1011, because the generated
+`ToString()` would replace it: declare `ToString()` in the value object, or seal the base's. Its
+`PrintMembers`, its explicit implementations of the interfaces the generators implement, and an
+`IConvertible` on it are refused as they are on the value object.
+
 Equality is the wrapped value's, as the ordering, the JSON and the column are, so a hand-written
 `Equals(TSelf)`, `GetHashCode()` or `IEquatable<TSelf>.Equals` is CMTK1011: it would make values equal
 that sort apart. To make values that differ only in form equal, such as "abc" and "ABC", normalise them

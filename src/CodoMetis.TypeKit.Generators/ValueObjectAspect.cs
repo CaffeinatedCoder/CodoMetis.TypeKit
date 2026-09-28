@@ -270,6 +270,19 @@ internal sealed partial class ValueObjectAspect : TypeAspect
             return false;
         }
 
+        // A base record's ToString() that is not sealed was replaced by the generated one without a word,
+        // and what it hid was printed. A sealed one is the seam (DeclaresToString): C# keeps it in every
+        // derived record. Refused rather than honoured here, since C# replaces an unsealed one too, with
+        // the derived record's synthesized ToString(): it was never what the value object printed.
+        if (ValueObjectDeclaration.UnsealedInheritedToString(target) is { } inheritedToString)
+        {
+            builder.Diagnostics.Report(HandWrittenGeneratedMember.WithArguments((target,
+                $"{inheritedToString.ToDisplayString()} in its base type, which is not sealed",
+                $"its generated ToString() replaces it and prints the wrapped value, as a record's synthesized one would; declare ToString() in {target.Name} (it may return base.ToString()), "
+              + $"or seal the base's, which C# keeps in every derived record and the generators then keep too")));
+            return false;
+        }
+
         // The record's synthesized ToString() calls PrintMembers; the generated one replaces it and does
         // not, so what a hand-written PrintMembers hid was printed, the sibling of the ToString() leak
         // the seam fixed. Refused rather than made a second seam: ToString() already is one, and says
