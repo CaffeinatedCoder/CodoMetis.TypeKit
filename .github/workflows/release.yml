@@ -344,14 +344,15 @@ jobs:
             exit 1
           fi
 
-          # The section for this version: from its heading up to, not including, the next H2.
-          notes="$(awk -v version="$VERSION" '
-            index($0, "## " version " ") == 1 || $0 == "## " version { found = 1; print; next }
+          # The section for this version, from the line after its heading up to, not including, the
+          # next H2. The heading itself is left out: the release's title already names the version.
+          # awk exits 1 only when there is no such heading.
+          if ! notes="$(awk -v version="$VERSION" '
+            index($0, "## " version " ") == 1 || $0 == "## " version { found = 1; next }
             found && /^## / { exit }
-            found { print }
-          ' CHANGELOG.md)"
-
-          if [[ -z "$notes" ]]; then
+            found && (started || NF) { started = 1; print }
+            END { if (!found) exit 1 }
+          ' CHANGELOG.md)"; then
             echo "::error::CHANGELOG.md has no '## $VERSION' section to use as release notes."
             exit 1
           fi

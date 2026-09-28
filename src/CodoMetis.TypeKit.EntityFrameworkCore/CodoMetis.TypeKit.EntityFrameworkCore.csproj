@@ -2,7 +2,7 @@
 
     <!-- Works at run time against the CodoMetis.TypeKit interfaces; never references .Generators. -->
     <PropertyGroup>
-        <Description>EF Core integration for CodoMetis.TypeKit: value-object converters by convention, and `.Value` in LINQ queries.</Description>
+        <Description>EF Core integration for CodoMetis.TypeKit: value-object converters by convention, and .Value in LINQ queries.</Description>
         <PackageTags>efcore;entity-framework-core;value-object;strongly-typed-id;value-converter;linq;postgresql;ddd;native-aot</PackageTags>
     </PropertyGroup>
 
