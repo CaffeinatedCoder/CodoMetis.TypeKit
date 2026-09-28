@@ -156,6 +156,29 @@ public sealed class MappingTests : IDisposable
         comparer.Snapshot(a).ShouldBe(a);
     }
 
+    /// <summary>
+    /// <c>.Value</c> on the element of a collection, on SQLite: a <c>json_each</c> over a column and a
+    /// <c>VALUES</c> over a parameter list. The parameter list failed ("No coercion operator is defined
+    /// between types 'OrderId' and 'Guid'") while the element column was re-typed.
+    /// </summary>
+    [Fact]
+    public void Value_on_a_collection_element_translates_and_runs()
+    {
+        _connection.Open();
+        using var db = new TestDb(TestDb.Sqlite(_connection));
+        db.Database.EnsureCreated();
+
+        var customer = new Customer { Id = CustomerId.New(), Name = "c" };
+        var order    = Order.Sample(customer.Id);
+        db.AddRange(customer, order);
+        db.SaveChanges();
+
+        List<OrderId> ids = [order.Id];
+
+        db.Orders.Count(o => o.Tags.Any(t => t.Value == "x")).ShouldBe(1);
+        db.Orders.Count(o => ids.Any(id => id.Value == o.Id.Value)).ShouldBe(1);
+    }
+
     public void Dispose() => _connection.Dispose();
 
     private sealed class OtherLibrarySelector(ValueConverterSelectorDependencies dependencies) : ValueConverterSelector(dependencies);

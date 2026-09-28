@@ -86,6 +86,24 @@ public sealed class PostgreSqlRoundTripTests(PostgreSqlRoundTripTests.Database d
         (await db.Orders.CountAsync(o => o.Id == saved.Id && o.Tags.Contains(tag), cancellation)).ShouldBe(1);
     }
 
+    /// <summary>
+    /// <c>.Value</c> on the element of a collection: a column of the order, and a parameter list.
+    /// Both failed to translate while the element column was re-typed.
+    /// </summary>
+    [Fact]
+    public async Task Value_on_a_collection_element_finds_the_row()
+    {
+        var (_, saved) = await database.Seed(order => order.Tags = [Tag.From("needle"), Tag.From("hay")]);
+        List<OrderId> ids = [saved.Id];
+        var cancellation = TestContext.Current.CancellationToken;
+
+        await using var db = database.Create();
+
+        (await db.Orders.CountAsync(o => o.Id == saved.Id && o.Tags.Any(t => t.Value == "needle"), cancellation)).ShouldBe(1);
+        (await db.Orders.CountAsync(o => o.Id == saved.Id && o.Tags.Any(t => t.Value.StartsWith("nee")), cancellation)).ShouldBe(1);
+        (await db.Orders.CountAsync(o => ids.Any(id => id.Value == o.Id.Value), cancellation)).ShouldBe(1);
+    }
+
     /// <summary>One PostgreSQL container and one schema for the class.</summary>
     public sealed class Database : IAsyncLifetime
     {

@@ -58,6 +58,15 @@ public sealed class SqlTranslationTests
         Where(o => o.Tags.Contains(tag)).ShouldBe("WHERE @tag = ANY (o.\"Tags\")");
     }
 
+    /// <summary>
+    /// The element of a primitive collection is a column of the collection's own table expression
+    /// (<c>unnest</c> here). Re-typed to the wrapped type, it gave EF the wrapped type's mapping as the
+    /// collection's element mapping, and the query failed to translate. Such a column is converted.
+    /// </summary>
+    [Fact]
+    public void Value_on_the_element_of_a_primitive_collection_is_converted() =>
+        Sql(o => o.Tags.Any(t => t.Value == "x")).ShouldContain("FROM unnest(o.\"Tags\") AS t(value)\n    WHERE t.value::text = 'x')");
+
     /// <summary>Only a value object's <c>Value</c> is translated; <c>Nullable&lt;int&gt;.Value</c> stays EF's.</summary>
     [Fact]
     public void Value_on_a_nullable_int_is_left_to_EF() =>
@@ -71,6 +80,13 @@ public sealed class SqlTranslationTests
     [Fact]
     public void A_hand_marked_method_that_does_not_unwrap_is_not_translated() =>
         Should.Throw<InvalidOperationException>(() => Where(o => o.Code.Length() == 3)).Message.ShouldContain("could not be translated");
+
+    private static string Sql(System.Linq.Expressions.Expression<Func<Order, bool>> predicate)
+    {
+        using var db = new TestDb(TestDb.NpgsqlWithoutServer());
+
+        return db.Orders.Where(predicate).ToQueryString();
+    }
 
     private static string Where(System.Linq.Expressions.Expression<Func<Order, bool>> predicate)
     {
