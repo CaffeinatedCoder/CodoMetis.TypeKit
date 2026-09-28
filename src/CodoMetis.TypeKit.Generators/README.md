@@ -15,6 +15,9 @@ or further down, inherit the generators without referencing the package themselv
 those projects. No Metalama license key is needed, there or here: the generators build on Metalama's
 Open Source edition.
 
+How this compares with Vogen, Thinktecture.Runtime.Extensions and StronglyTypedId, and when one of
+them is the better choice: [How it compares](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit#how-it-compares).
+
 ## Built with Metalama
 
 This package exists in this form because of [Metalama](https://www.postsharp.net/metalama). A
