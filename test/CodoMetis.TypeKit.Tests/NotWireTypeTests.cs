@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace CodoMetis.TypeKit.Tests;
 
@@ -56,6 +57,64 @@ public sealed partial class NotWireTypeTests
         exception.Message.ShouldNotContain(Secret);
     }
 
+    public static TheoryData<string> OptionKinds => ["int", "Guid", "string", "Uri"];
+
+    /// <summary>
+    /// The refusal's advice compiles for an option of either kind: the nullable it names, and calls it
+    /// names that convert that nullable into the option and back. It advised <c>OrNull()</c> for an
+    /// <c>Option&lt;int&gt;</c>, which existed only for a reference type (CS0452). The advice is read
+    /// from the message and compiled as a consumer would write it, so the message and the API cannot
+    /// drift apart.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(OptionKinds))]
+    public void The_advice_for_an_option_compiles_for_its_kind(string kind)
+    {
+        var (instance, type) = kind switch
+        {
+            "int"    => ((object)Option.Some(5), typeof(int)),
+            "Guid"   => (Option.Some(Guid.Empty), typeof(Guid)),
+            "string" => (Option.Some(Secret), typeof(string)),
+            _        => (Option.Some(new Uri("https://example.org")), typeof(Uri)),
+        };
+
+        var message = Should.Throw<NotSupportedException>(() => JsonSerializer.Serialize(instance, instance.GetType())).Message;
+        var advice = Advice().Match(message);
+        advice.Success.ShouldBeTrue($"The refusal names no nullable and no calls: {message}");
+        advice.Groups["nullable"].Value.ShouldBe($"{type.Name}?");
+
+        var calls = AdvisedCall().Matches(advice.Groups["calls"].Value).Select(match => match.Groups["name"].Value).ToList();
+        calls.Count.ShouldBeGreaterThanOrEqualTo(2, message);
+
+        var option = $"Option<global::{type.FullName}>";
+        var nullable = $"global::{type.FullName}?";
+        var outward = calls.ToDictionary(call => call, call => ConsumerCompilation.Of(Consumer($"{nullable} Out({option} option) => option.{call}();")).Problems());
+        var inward = calls.ToDictionary(call => call, call => ConsumerCompilation.Of(Consumer($"{option} In({nullable} nullable) => nullable.{call}();")).Problems());
+
+        foreach (var call in calls)
+            (outward[call].Length == 0 || inward[call].Length == 0).ShouldBeTrue(
+                $"{call}() is advised for {option} but converts it neither way:{Environment.NewLine}{outward[call]}{Environment.NewLine}{inward[call]}");
+
+        outward.Values.ShouldContain(problems => problems.Length == 0, $"No advised call turns {option} into {nullable}:{Environment.NewLine}{string.Join(Environment.NewLine, outward.Values)}");
+        inward.Values.ShouldContain(problems => problems.Length == 0, $"No advised call turns {nullable} into {option}:{Environment.NewLine}{string.Join(Environment.NewLine, inward.Values)}");
+    }
+
+    private static string Consumer(string member) =>
+        $$"""
+          using CodoMetis.TypeKit;
+
+          public static class Consumer
+          {
+              public static {{member}}
+          }
+          """;
+
+    [GeneratedRegex(@"a nullable \((?<nullable>[^)]+)\), and (?<calls>.+?) convert at the boundary")]
+    private static partial Regex Advice();
+
+    [GeneratedRegex(@"(?<name>\w+)\(\)")]
+    private static partial Regex AdvisedCall();
+
     public static TheoryData<string, string> TypeNameAndJson =>
     [
         .. from @case in Cases.Keys.Distinct()
@@ -90,6 +149,87 @@ public sealed partial class NotWireTypeTests
     {
         Should.Throw<NotSupportedException>(() => JsonSerializer.Deserialize<Shape>("""{"Nickname":{},"Outcome":{"State":1}}"""))
               .Message.ShouldContain("Option<String>");
+    }
+
+    /// <summary>
+    /// A nullable of each refused type, <c>Option&lt;string&gt;?</c> in a PATCH-style shape, is refused
+    /// as the type itself is, whether it holds a value or not: the serializer's converter for
+    /// <c>Nullable&lt;T&gt;</c> is the refusing converter itself. Writing a null threw a
+    /// <see cref="NullReferenceException"/> from the refusal, and every read of an option gave the
+    /// advice for a result ("Nullable&lt;Option&lt;String&gt;&gt; is an outcome").
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(CaseNames))]
+    public void A_nullable_of_it_is_refused_with_its_own_message_whether_null_or_not(string @case)
+    {
+        var (instance, typeName, advice) = Cases[@case];
+        var nullable = typeof(Nullable<>).MakeGenericType(instance.GetType());
+
+        foreach (var value in new[] { null, instance })
+            ShouldRefuse(() => JsonSerializer.Serialize(value, nullable), typeName, advice, $"{@case}, writing {value ?? "null"}");
+
+        foreach (var json in new[] { "null", "{}", "5" })
+            ShouldRefuse(() => JsonSerializer.Deserialize(json, nullable), typeName, advice, $"{@case}, reading {json}");
+    }
+
+    [Fact]
+    public void A_shape_with_a_nullable_option_or_result_property_is_refused_whether_it_is_null_or_not()
+    {
+        ShouldRefuse(() => JsonSerializer.Serialize(new NullableNickname(null)), "Option<String>", "String?", "writing a null option");
+        ShouldRefuse(() => JsonSerializer.Serialize(new NullableNickname(Option.Some(Secret))), "Option<String>", "String?", "writing an option");
+        ShouldRefuse(() => JsonSerializer.Deserialize<NullableNickname>("""{"Nickname":null}"""), "Option<String>", "String?", "reading a null option");
+        ShouldRefuse(() => JsonSerializer.Deserialize<NullableNickname>("""{"Nickname":"Ric"}"""), "Option<String>", "String?", "reading an option");
+
+        ShouldRefuse(() => JsonSerializer.Serialize(new NullableOutcome(null)), "Result<Int32, String>", "Match it", "writing a null result");
+        ShouldRefuse(() => JsonSerializer.Serialize(new NullableOutcome(Result<int, string>.Error(Secret))), "Result<Int32, String>", "Match it", "writing a result");
+        ShouldRefuse(() => JsonSerializer.Deserialize<NullableOutcome>("""{"Outcome":null}"""), "Result<Int32, String>", "Match it", "reading a null result");
+        ShouldRefuse(() => JsonSerializer.Deserialize<NullableOutcome>("""{"Outcome":{"State":1}}"""), "Result<Int32, String>", "Match it", "reading a result");
+    }
+
+    /// <summary>
+    /// Pins what the README states: a source-generated context cannot build the contract of a shape
+    /// with an <c>Option&lt;T&gt;?</c> or a <c>Result&lt;…&gt;?</c> property, and fails before any
+    /// document is read or written, with the serializer's own message naming the type.
+    /// </summary>
+    /// <remarks>
+    /// The serializer's source-generated contract for <c>T?</c> takes the converter of <c>T</c> only as a
+    /// <c>JsonConverter&lt;T&gt;</c> (<c>JsonMetadataServices.GetNullableConverter&lt;T&gt;</c>), and the
+    /// refusal is one converter typed <see cref="object"/>: a converter per type needs
+    /// <c>MakeGenericType</c>, which Native AOT cannot honour for these structs. It would not help
+    /// either: that contract writes and reads a null itself without asking the converter of
+    /// <c>T</c>, so a null would pass silently (measured 2026-09-28 with a typed refusing converter).
+    /// If this starts to pass, the serializer changed, and the README's paragraph with it.
+    /// </remarks>
+    [Fact]
+    public void A_source_generated_context_cannot_build_the_contract_of_a_nullable_option_or_result()
+    {
+        var attempts = new (string Case, Action Attempt, string Type)[]
+        {
+            ("writing a null option", () => JsonSerializer.Serialize(new NullableNickname(null), NullableContext.Default.NullableNickname), "CodoMetis.TypeKit.Option`1[System.String]"),
+            ("writing an option", () => JsonSerializer.Serialize(new NullableNickname(Option.Some(Secret)), NullableContext.Default.NullableNickname), "CodoMetis.TypeKit.Option`1[System.String]"),
+            ("reading a null option", () => JsonSerializer.Deserialize("""{"Nickname":null}""", NullableContext.Default.NullableNickname), "CodoMetis.TypeKit.Option`1[System.String]"),
+            ("reading an option", () => JsonSerializer.Deserialize("""{"Nickname":"Ric"}""", NullableContext.Default.NullableNickname), "CodoMetis.TypeKit.Option`1[System.String]"),
+            ("reading no option", () => JsonSerializer.Deserialize("{}", NullableContext.Default.NullableNickname), "CodoMetis.TypeKit.Option`1[System.String]"),
+            ("writing a null result", () => JsonSerializer.Serialize(new NullableOutcome(null), NullableContext.Default.NullableOutcome), "CodoMetis.TypeKit.Result`2[System.Int32,System.String]"),
+            ("writing a result", () => JsonSerializer.Serialize(new NullableOutcome(Result<int, string>.Success(1)), NullableContext.Default.NullableOutcome), "CodoMetis.TypeKit.Result`2[System.Int32,System.String]"),
+            ("reading a null result", () => JsonSerializer.Deserialize("""{"Outcome":null}""", NullableContext.Default.NullableOutcome), "CodoMetis.TypeKit.Result`2[System.Int32,System.String]"),
+            ("reading a result", () => JsonSerializer.Deserialize("""{"Outcome":{"State":1}}""", NullableContext.Default.NullableOutcome), "CodoMetis.TypeKit.Result`2[System.Int32,System.String]"),
+        };
+
+        foreach (var (@case, attempt, type) in attempts)
+        {
+            var exception = Should.Throw<InvalidOperationException>(attempt, @case);
+            exception.Message.ShouldBe($"The converter '' is not compatible with the type '{type}'.", @case);
+        }
+    }
+
+    private static void ShouldRefuse(Action attempt, string typeName, string advice, string @case)
+    {
+        var exception = Should.Throw<NotSupportedException>(attempt, @case);
+
+        exception.Message.ShouldStartWith($"{typeName} ", Case.Sensitive, @case);
+        exception.Message.ShouldContain(advice, Case.Sensitive, @case);
+        exception.Message.ShouldNotContain(Secret, Case.Sensitive, @case);
     }
 
     /// <summary>
@@ -186,6 +326,15 @@ public sealed partial class NotWireTypeTests
     private sealed record Shape(Option<string> Nickname, Result<int, string> Outcome);
 
     private sealed record Nicknamed(Option<string> Nickname);
+
+    private sealed record NullableNickname(Option<string>? Nickname);
+
+    private sealed record NullableOutcome(Result<int, string>? Outcome);
+
+    /// <summary>Apart from <see cref="Context"/>, whose shapes a failed contract here must not reach.</summary>
+    [JsonSerializable(typeof(NullableNickname))]
+    [JsonSerializable(typeof(NullableOutcome))]
+    private sealed partial class NullableContext : JsonSerializerContext;
 
     [JsonSerializable(typeof(Shape))]
     [JsonSerializable(typeof(Nicknamed))]

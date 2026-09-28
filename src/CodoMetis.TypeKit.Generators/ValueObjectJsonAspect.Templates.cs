@@ -98,7 +98,8 @@ internal sealed partial class ValueObjectJsonAspect
         if (meta.CompileTime(!asPropertyName))
         {
             if (reader.TokenType == JsonTokenType.Null)
-                throw new JsonException($"{meta.CompileTime(tag.ValueObjectType.Name)} cannot be read from a JSON null.");
+                throw (Exception)ExpressionFactory.Parse(
+                    $"global::CodoMetis.TypeKit.CompilerServices.GeneratedJson.NullToken<{ValueObjectTypes.SourceName(tag.ValueObjectType)}>()").Value!;
         }
 
         string read = meta.CompileTime($"{Plan(tag)}.{(asPropertyName ? "ReadKey" : "Read")}<{ValueObjectTypes.SourceName(tag.ValueObjectType)}>(ref reader, options)");

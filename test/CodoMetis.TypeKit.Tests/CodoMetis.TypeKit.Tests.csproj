@@ -4,4 +4,13 @@
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit\CodoMetis.TypeKit.csproj" />
     </ItemGroup>
 
+    <!--
+      Compiles a consumer's code against the built package at test time (ConsumerCompilation): a
+      claim about what compiles, such as the advice in a refusal message, fails as a test with the
+      compiler's diagnostic rather than as a build error.
+    -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    </ItemGroup>
+
 </Project>

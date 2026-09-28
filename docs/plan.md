@@ -421,6 +421,23 @@ Each phase ends green, and its guards have been proven by seeding the defect
       the immutable collections' own `…OrDefault`, and the async forms of `System.Linq.AsyncEnumerable`
       and EF Core (7 seeds). CMTK0001 no longer reports a `default` passed to a comparison guard or an
       assertion, or assigned to the `out` parameter of a `bool` Try method (11 seeds).
+    - Refusals, after a reviewer's note that the refusal-heavy design will draw "why does this throw?"
+      reports: every deliberate run-time refusal ends with a link to its subsection of the base README's
+      "Why does this throw?" (`Refusals`, `RefusalLinkTests`, 38 refusals), the two raised by generated
+      code (`From(null)`, a JSON null) through `CompilerServices` helpers; every CMTK1000–CMTK1012
+      message ends with a link to the Generators README's Build errors table, since a Metalama 2026.1
+      `DiagnosticDefinition` takes no help link (`BuildOutcomeTests`). `OrNull()` for an `Option` of a
+      value type (`ValueTypeOptionExtensions`), so the JSON refusal's advice compiles for `Option<int>`.
+      A nullable `Option`/`Result` is refused with its own message, null or not: writing null threw
+      `NullReferenceException`, and reading an option gave the `Result` advice. A source-generated
+      context cannot refuse `Option<T>?` cleanly (it would need `MakeGenericType`) and rejects the
+      contract when it builds it; the README says so. Decision 37.
+    - Documentation: the root README gains "How it compares" (when TypeKit fits, a decision table of
+      needs another library meets better, and detail tables against Vogen, Thinktecture,
+      StronglyTypedId, LanguageExt, CSharpFunctionalExtensions and ErrorOr, each claim read from source
+      at the named release on 2026-09-28, the next major in preview included) and "Built with Metalama".
+      The Generators README links to the comparison. Both are GitHub-only and can be corrected without
+      a release.
     - Found and left for 1.x: CMTK0003 over `.Wait()` and `await foreach`; CMTK0008 over tuple `==`,
       `Contains` and `is var`, and composite join keys (all Warnings, decision 34). Raw Metalama errors
       for a value object named after a generated member (`From`, `TryFrom`, `MinValue`), a wrapped type
@@ -967,6 +984,10 @@ libraries.
 36. **A nullable value object admits null in the OpenAPI document wherever it appears** (2026-09-28,
     §7): as a property, as a container's element (`oneOf: [null, component]`, ASP.NET's own form),
     and inlined (null added to `type`, or `oneOf` around an inlined enum).
+37. **A refusal's message is its landing page** (2026-09-28): an exception has no help link, so every
+    deliberate run-time refusal says what to do instead and ends with a link to its subsection of the
+    base README's "Why does this throw?", and every generator build error with one to the Build errors
+    table. The links are held to the README's headings by tests. Nothing of the input is added.
 
 Still open:
 

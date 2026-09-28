@@ -50,7 +50,8 @@ the end of a sequence, with or without a predicate.
 `Option.None()` takes its type from where it goes (`return Option.None();`, a conditional beside
 `Some`); where nothing supplies one, as with `var`, write `Option.None<T>()`.
 `Some(null)` throws, so an option that reports a value always has one. A `default(Option<T>)` is
-`None`. `Or(fallback)`, `OrDefault()` and `OrNull()` unwrap with a fallback, and `ToResult(error)` turns
+`None`. `Or(fallback)` and `OrDefault()` unwrap with a fallback, `OrNull()` unwraps into a nullable,
+`int?` for an `Option<int>` and `string?` for an `Option<string>`, and `ToResult(error)` turns
 absence into an error. `ToString()` never
 prints the content, so an option is safe to log; the debugger shows it.
 
@@ -160,16 +161,24 @@ its `State` and read back uninitialized. So a request, a response, a stored docu
 payload says absent with `T?`, and the option lives between them: `dto.Nickname.ToOption()` on the
 way in, `nickname.OrNull()` on the way out. A result is matched to a response or a document; it has
 no wire shape of its own. The `Option.None()`, `Result.Success(...)` and `Result.Error(...)` markers refuse too, so an endpoint
-that returns one fails on its first call rather than answering `{}`.
+that returns one fails on its first call rather than answering `{}`. So does a nullable of any of
+them, an `Option<T>?` in a PATCH-style shape, whether it holds a value or not.
 
 Nor are they columns: EF Core cannot map an `Option` or a `Result` property, and says so when it
 builds the model. An entity says absent with `T?` too.
 
-Two things to know. A converter registered on the `JsonSerializerOptions` takes precedence over
+Three things to know. A converter registered on the `JsonSerializerOptions` takes precedence over
 the refusal, so an application that wants `Option<T>` on the wire writes one and registers it there,
-on those options only. And a property that is absent from a document reaches no converter at all: the
+on those options only. A property that is absent from a document reaches no converter at all: the
 serializer leaves it `default`, a `None` or an uninitialized result. Where absence must be an error
-too, mark the property `required` or set `RespectRequiredConstructorParameters` on the options.
+too, mark the property `required` or set `RespectRequiredConstructorParameters` on the options. And a
+source-generated `JsonSerializerContext` cannot describe a shape with an `Option<T>?` or `Result<…>?`
+property at all: it fails when it builds that shape's contract, before any document is read or
+written, with the serializer's own `InvalidOperationException`:
+``The converter '' is not compatible with the type 'CodoMetis.TypeKit.Option`1[System.String]'.``
+The refusal cannot be its own there, since that contract takes a converter typed for
+`Option<string>` alone, which only `MakeGenericType` could build for every `T`. Declare the
+property `T?`.
 
 ## Value objects
 
@@ -295,6 +304,107 @@ names it. An enum-backed value object is the exception: a context's `UseStringEn
 reach an enum the context does not list, so list the enum too if it should be written by name.
 `Option` and `Result` refuse JSON there exactly as on the JIT, and `StoredJsonConverterFactory` reads
 without the rules.
+
+## Why does this throw?
+
+Some calls throw on purpose, where carrying on would hand back a plausible wrong answer. Each of
+these exceptions ends its message with a link to its entry here: what it refuses, why, and what to
+call instead.
+
+### Option or Result in JSON
+
+**Thrown:** `NotSupportedException: Option<Customer> is not a wire type…`, or `Result<Order, OrderFault>
+is an outcome, not a wire type…`, when System.Text.Json reads or writes an `Option`, a `Result`, a
+marker such as `Option.None()`, or a nullable of any of them.
+
+**Why:** without it a `Some` is written as `{}` and read back as `None`, and nothing is raised; see
+[Not wire types](#not-wire-types) and the [design](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/plan.md#9-option-and-result).
+
+**Instead:** say absent with `T?` in the shape, and convert at the boundary: `dto.Nickname.ToOption()`
+on the way in, `nickname.OrNull()` on the way out. `Match` a result to a response. A source-generated
+context refuses an `Option<T>?` property earlier, with the serializer's
+``The converter '' is not compatible with the type 'CodoMetis.TypeKit.Option`1[…]'``; declare `T?`
+there too.
+
+### A null in an Option or a Result
+
+**Thrown:** `ArgumentNullException` from `Option.Some(null)`, `Result.Success(null)` or
+`Result.Error(null)`, from a `Map` or `MapError` whose selector returns null, from `FirstOrNone()`
+over a null element, or for a null error given to `ToResult`, `Ensure` or `FirstOrError`.
+
+**Why:** an option that reports a value always has one, and a result's value and error are never
+null. `notnull` is not checked at run time, so the factories check it.
+
+**Instead:** `value.ToOption()` turns a null into `None`; a selector that may return null becomes
+`Bind(c => c.Nickname.ToOption())`.
+
+### An uninitialized Result
+
+**Thrown:** `InvalidOperationException: This Result was never initialized…` from `Match`, `Map`,
+`TryGetValue` and every other member that picks a branch.
+
+**Why:** a `default` result is neither a success nor an error, and taking the error branch would
+invent a `default(TError)`. It comes from an array slot, a field nothing set, or a property missing
+from a JSON document.
+
+**Instead:** create results through `Result.Success`/`Result.Error` or a conversion. CMTK0005 and
+CMTK0006 point at the arrays and fields, and `required` closes a property; `State` tells an
+uninitialized result apart without throwing.
+
+### A value object refused a value
+
+**Thrown:** `JsonException: ProductCode refused the JSON value (TooShort).`, or `FormatException:
+ProductCode refused the input (TooShort).` from `Parse` and the type converter.
+
+**Why:** every generated way in applies `Create`, so input the rules refuse never becomes a value
+object. The message names the rule and never the input, which can be a secret; see
+[Value objects](#value-objects).
+
+**Instead:** where the caller should learn which rule failed, call `ProductCode.Create(text)` and
+match the fault; `TryFrom` or `TryParse` where valid or not is the whole question. ASP.NET Core
+answers the `JsonException` of a request body with 400.
+
+### FromKnownGood refused a value
+
+**Thrown:** `InvalidOperationException: ProductCode refused request.Code, which the call site
+declared known-good (TooShort).`
+
+**Why:** `FromKnownGood` is for a literal or a value the code has just produced, so a refusal there is
+a bug at that call site. It names the call site's expression and never the value.
+
+**Instead:** input goes through `Create` or `TryFrom`. CMTK0007 points at a `FromKnownGood` given a
+parameter.
+
+### A value object could not read the input
+
+**Thrown:** `FormatException: Quantity could not read the input as Int32.` from `Parse` and the type
+converter, or `JsonException: Quantity could not read the JSON value as Int32.` from JSON.
+
+**Why:** the wrapped type's own message quotes the input ("The input string '…' was not in a correct
+format."), so it is replaced, and not kept as the inner exception either; see the
+[design](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/plan.md#8-decisions),
+decision 27. A JSON error still carries its path.
+
+**Instead:** `TryParse` for text that may not parse. Text that is yours to log, log before parsing.
+
+### A null given to a value object
+
+**Thrown:** `ArgumentNullException: ProductName wraps no null.` from `From`, or `JsonException:
+ProductName cannot be read from a JSON null.` from JSON.
+
+**Why:** a value object is a value; its `Value` promises never to be null, as an `Option` never holds
+one. A string-backed value object would otherwise wrap the null it was given.
+
+**Instead:** where the value can be absent, declare the property or parameter as `ProductName?`.
+JSON then reads a `null` as `null`, and the value object is never asked to hold it.
+
+### Materialize and CMTK0004
+
+Not a run-time exception but a build error: `Materialize` rebuilds a value object without `Create`,
+for a value the application wrote itself, and anywhere but the EF Core satellite it is
+[CMTK0004](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0004).
+Use `Create` or `FromKnownGood` instead, and `StoredJsonConverterFactory` for JSON the application
+stored.
 
 ## Where things are
 

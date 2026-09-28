@@ -33,11 +33,22 @@ namespace CodoMetis.TypeKit;
 /// There is nothing to call.
 /// </para>
 /// <para>
-/// Every type gets the same converter, typed <see cref="object"/>, which the serializer wraps for the
-/// type it asked for. A converter per type would have to be constructed with
+/// Every type gets a converter of the same class, typed <see cref="object"/>, which the serializer
+/// wraps for the type it asked for. A converter typed per type would have to be constructed with
 /// <see cref="Type.MakeGenericType"/>, and under Native AOT that construction itself failed for these
 /// structs, with the runtime's "missing native code" message instead of this one (measured
 /// 2026-09-27).
+/// </para>
+/// <para>
+/// A nullable of a refused type, <c>Option&lt;T&gt;?</c> in a PATCH-style shape, is refused too. The
+/// serializer uses a converter typed <see cref="object"/> for <c>Nullable&lt;T&gt;</c> directly, and
+/// hands it a JSON <c>null</c>, and a <see langword="null"/> to write that names no type; so each
+/// converter remembers the type it was created for. A source-generated context cannot build the
+/// contract of such a shape at all: its contract for <c>T?</c> takes the converter of <c>T</c> only as
+/// a <c>JsonConverter&lt;T&gt;</c>, and fails with the serializer's own
+/// <see cref="InvalidOperationException"/> before any document is read or written. A typed converter
+/// would not refuse there either: that contract writes and reads a null without asking it (measured
+/// 2026-09-28). The README names that message, so a search for it finds the reason.
 /// </para>
 /// </remarks>
 [EditorBrowsable(EditorBrowsableState.Never)]
@@ -46,13 +57,11 @@ public sealed class NotWireTypeJsonConverterFactory : JsonConverterFactory
     private static readonly Type[] RefusedDefinitions =
         [typeof(Option<>), typeof(Result<>), typeof(Result<,>), typeof(Success<>), typeof(Error<>)];
 
-    private static readonly Refusing Converter = new();
-
     /// <inheritdoc/>
     public override bool CanConvert(Type typeToConvert) => IsRefused(typeToConvert);
 
     /// <inheritdoc/>
-    public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options) => Converter;
+    public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options) => new Refusing(typeToConvert);
 
     private static bool IsRefused(Type type) =>
         type == typeof(None) || type == typeof(Success) || type.IsGenericType && RefusedDefinitions.Contains(type.GetGenericTypeDefinition());
@@ -60,6 +69,9 @@ public sealed class NotWireTypeJsonConverterFactory : JsonConverterFactory
     /// <summary>The message for <paramref name="type"/>, naming the alternative. Never the content.</summary>
     internal static string Message(Type type)
     {
+        // The converter of Option<T> refuses Option<T>? too, and a read hands it the nullable.
+        type = Nullable.GetUnderlyingType(type) ?? type;
+
         var name = Name(type);
 
         // The None marker is absence too, with no type argument to name.
@@ -70,9 +82,9 @@ public sealed class NotWireTypeJsonConverterFactory : JsonConverterFactory
         return nullable is not null
             ? $"{name} is not a wire type. A serialized shape says absent with a nullable{nullable}, "
             + "and ToOption() and OrNull() convert at the boundary. To serialize it anyway, register a converter for it on the "
-            + "JsonSerializerOptions, which takes precedence over this refusal."
+            + "JsonSerializerOptions, which takes precedence over this refusal." + Refusals.NotAWireType
             : $"{name} is an outcome, not a wire type. Match it to a response or a document at the boundary. To serialize it "
-            + "anyway, register a converter for it on the JsonSerializerOptions, which takes precedence over this refusal.";
+            + "anyway, register a converter for it on the JsonSerializerOptions, which takes precedence over this refusal." + Refusals.NotAWireType;
     }
 
     /// <summary><c>Option&lt;Customer&gt;</c> rather than <c>Option`1</c>.</summary>
@@ -82,10 +94,12 @@ public sealed class NotWireTypeJsonConverterFactory : JsonConverterFactory
             : type.Name;
 
     /// <summary>
-    /// Refuses every refused type. The serializer hands a read the type it asked for, and a write the
-    /// value itself, a boxed struct that is never null; either names the type in the message.
+    /// Refuses the type it was created for. A read is handed the type the serializer asked for, the
+    /// nullable of it included; a write is handed a value, which for a nullable can be null, so a
+    /// write names the type this converter was created for.
     /// </summary>
-    private sealed class Refusing : JsonConverter<object>
+    /// <param name="refused">The type the factory created this converter for.</param>
+    private sealed class Refusing(Type refused) : JsonConverter<object>
     {
         /// <summary>A JSON <c>null</c> is refused with the same message, not with the serializer's own.</summary>
         public override bool HandleNull => true;
@@ -95,14 +109,14 @@ public sealed class NotWireTypeJsonConverterFactory : JsonConverterFactory
         public override object Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
             throw new NotSupportedException(Message(typeToConvert));
 
-        public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options) =>
-            throw new NotSupportedException(Message(value.GetType()));
+        public override void Write(Utf8JsonWriter writer, object? value, JsonSerializerOptions options) =>
+            throw new NotSupportedException(Message(refused));
 
         /// <summary>A dictionary key too, rather than the serializer's message about <see cref="object"/> keys.</summary>
         public override object ReadAsPropertyName(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
             throw new NotSupportedException(Message(typeToConvert));
 
         public override void WriteAsPropertyName(Utf8JsonWriter writer, object value, JsonSerializerOptions options) =>
-            throw new NotSupportedException(Message(value.GetType()));
+            throw new NotSupportedException(Message(refused));
     }
 }

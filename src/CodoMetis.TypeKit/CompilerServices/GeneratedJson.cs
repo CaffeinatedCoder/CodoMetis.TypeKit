@@ -33,7 +33,8 @@ public static class GeneratedJson
 
     /// <summary>
     /// What a value object's converter throws for JSON its wrapped type cannot read: a
-    /// <see cref="JsonException"/> naming both types, never the input, and with no inner exception.
+    /// <see cref="JsonException"/> naming both types, never the input, with no inner exception, and
+    /// ending in a link to the README's explanation.
     /// </summary>
     /// <remarks>
     /// The converters' own exceptions may quote the input: NodaTime's ("Value being parsed: '…'"), and
@@ -44,7 +45,16 @@ public static class GeneratedJson
     /// <typeparam name="T">The wrapped type.</typeparam>
     /// <returns>The exception, to throw.</returns>
     public static JsonException Unreadable<TValueObject, T>() =>
-        new($"{typeof(TValueObject).Name} could not read the JSON value as {typeof(T).Name}.");
+        new($"{typeof(TValueObject).Name} could not read the JSON value as {typeof(T).Name}.{Refusals.UnreadableInput}");
+
+    /// <summary>
+    /// The refusal of a JSON null where a value object is declared: a null is not a value object, and a
+    /// string-backed one would otherwise wrap it.
+    /// </summary>
+    /// <typeparam name="TValueObject">The value object type.</typeparam>
+    /// <returns>The exception, to throw.</returns>
+    public static JsonException NullToken<TValueObject>() =>
+        new($"{typeof(TValueObject).Name} cannot be read from a JSON null. Where the value can be absent, declare the property as {typeof(TValueObject).Name}?.{Refusals.NullToValueObject}");
 
     /// <summary>
     /// What a converter throws for input it cannot read, as opposed to a configuration the serializer

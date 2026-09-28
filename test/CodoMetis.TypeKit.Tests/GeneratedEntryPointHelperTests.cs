@@ -25,12 +25,12 @@ public sealed class GeneratedEntryPointHelperTests
     [Fact]
     public void A_JSON_refusal_is_a_JsonException_naming_the_type_and_the_fault() =>
         Should.Throw<JsonException>(() => GeneratedFactories.OrJsonException(Result<Code, Fault>.Error(Fault.TooLong)))
-              .Message.ShouldBe("Code refused the JSON value (TooLong).");
+              .Message.ShouldBe("Code refused the JSON value (TooLong). See https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit/README.md#a-value-object-refused-a-value");
 
     [Fact]
     public void A_parse_refusal_is_a_FormatException_naming_the_type_and_the_fault() =>
         Should.Throw<FormatException>(() => GeneratedFactories.OrFormatException(Result<Code, Fault>.Error(Fault.TooLong)))
-              .Message.ShouldBe("Code refused the input (TooLong).");
+              .Message.ShouldBe("Code refused the input (TooLong). See https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit/README.md#a-value-object-refused-a-value");
 
     /// <summary><c>bool</c> implements its parsing interfaces explicitly; <c>bool.Parse(s, provider)</c> does not compile.</summary>
     [Fact]
@@ -52,7 +52,7 @@ public sealed class GeneratedEntryPointHelperTests
     {
         var exception = GeneratedParsing.Unreadable<Code, int>();
 
-        exception.Message.ShouldBe("Code could not read the input as Int32.");
+        exception.Message.ShouldBe("Code could not read the input as Int32. See https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit/README.md#a-value-object-could-not-read-the-input");
         exception.InnerException.ShouldBeNull();
     }
 
@@ -65,7 +65,7 @@ public sealed class GeneratedEntryPointHelperTests
 
         foreach (var exception in new[] { guarded, converted })
         {
-            exception.Message.ShouldBe("Code could not read the input as Int32.");
+            exception.Message.ShouldBe("Code could not read the input as Int32. See https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit/README.md#a-value-object-could-not-read-the-input");
             exception.InnerException.ShouldBeNull();
         }
 

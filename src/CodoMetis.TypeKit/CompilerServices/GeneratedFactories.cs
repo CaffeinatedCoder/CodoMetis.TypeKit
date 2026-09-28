@@ -12,7 +12,8 @@ namespace CodoMetis.TypeKit.CompilerServices;
 /// <remarks>
 /// <para>
 /// The refused value never appears in a message: it is input, and input can be a secret. The fault
-/// does, so the caller learns which rule refused it.
+/// does, so the caller learns which rule refused it, and a link to the README's explanation of the
+/// refusal ends it.
 /// </para>
 /// <para>
 /// It lives in ordinary C#, so the generated code stays a single call and the messages can be tested
@@ -34,7 +35,7 @@ public static class GeneratedFactories
     {
         if (result.TryGetValue(out var value, out var fault)) return value;
 
-        throw new JsonException($"{typeof(TValueObject).Name} refused the JSON value ({fault}).");
+        throw new JsonException($"{typeof(TValueObject).Name} refused the JSON value ({fault}).{Refusals.RefusedValue}");
     }
 
     /// <summary>Unwraps what <c>Create</c> accepted from text, or throws the exception parsing reports.</summary>
@@ -49,7 +50,7 @@ public static class GeneratedFactories
     {
         if (result.TryGetValue(out var value, out var fault)) return value;
 
-        throw new FormatException($"{typeof(TValueObject).Name} refused the input ({fault}).");
+        throw new FormatException($"{typeof(TValueObject).Name} refused the input ({fault}).{Refusals.RefusedValue}");
     }
 
     /// <summary>
@@ -74,8 +75,18 @@ public static class GeneratedFactories
 
         throw new InvalidOperationException(
             source is null
-                ? $"{typeof(TValueObject).Name} refused a value the call site declared known-good ({fault})."
-                : $"{typeof(TValueObject).Name} refused {source}, which the call site declared known-good ({fault})."
+                ? $"{typeof(TValueObject).Name} refused a value the call site declared known-good ({fault}).{Refusals.RefusedKnownGood}"
+                : $"{typeof(TValueObject).Name} refused {source}, which the call site declared known-good ({fault}).{Refusals.RefusedKnownGood}"
         );
     }
+
+    /// <summary>
+    /// The refusal of a null given to <c>From</c> of a value object over a reference type: <c>Value</c>
+    /// promises it never holds one, as <c>Option.Some</c> refuses one.
+    /// </summary>
+    /// <typeparam name="TValueObject">The value object type.</typeparam>
+    /// <param name="parameterName">The parameter the null was given to.</param>
+    /// <returns>The exception, to throw.</returns>
+    public static ArgumentNullException NullRefused<TValueObject>(string parameterName) =>
+        new(parameterName, $"{typeof(TValueObject).Name} wraps no null. Where the value can be absent, declare the property or parameter as {typeof(TValueObject).Name}?.{Refusals.NullToValueObject}");
 }

@@ -29,13 +29,13 @@ public static class GeneratedParsing
     /// <summary>
     /// The exception the generated <c>Parse</c> of <typeparamref name="TValueObject"/> throws for text
     /// that <typeparamref name="T"/> cannot read: a <see cref="FormatException"/> naming both types,
-    /// never the input, and with no inner exception.
+    /// never the input, with no inner exception, and ending in a link to the README's explanation.
     /// </summary>
     /// <typeparam name="TValueObject">The value object type.</typeparam>
     /// <typeparam name="T">The wrapped type.</typeparam>
     /// <returns>The exception, to throw.</returns>
     public static FormatException Unreadable<TValueObject, T>() =>
-        new($"{typeof(TValueObject).Name} could not read the input as {typeof(T).Name}.");
+        new($"{typeof(TValueObject).Name} could not read the input as {typeof(T).Name}.{Refusals.UnreadableInput}");
 
     /// <summary><see cref="IParsable{TSelf}.TryParse"/> of <typeparamref name="T"/>.</summary>
     /// <param name="s">The text.</param>
