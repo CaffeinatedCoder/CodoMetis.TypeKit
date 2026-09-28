@@ -19,7 +19,8 @@
 #            CMTK0001 and CMTK0002 fire (docs/plan.md §10).
 #   layered  a domain library references CodoMetis.TypeKit.Generators, and an app reaches everything
 #            only through that library: the app uses the generated members, the transitive fabric
-#            generates a value object the app declares itself, and CMTK0001 fires in the app.
+#            generates a value object the app declares itself, and CMTK0001 fires in the app, in the
+#            domain library, and in a Razor component of a third project.
 #   host     a web host with both satellites: EF Core maps the value objects and translates .Value,
 #            and the OpenAPI document describes them.
 #   aot      the same ground published with Native AOT (docs/plan.md §11): no trim or AOT warning
@@ -355,6 +356,62 @@ echo "$output" > "$work/layered.guard"
 assert_contains "CMTK0001"     "$work/layered.guard" "CMTK0001 fires in a project that reaches the package only through another"
 assert_not_contains "CMTK0002" "$work/layered.guard" "no CMTK0002 where the generators arrive transitively"
 rm Guard.cs
+
+# Metalama compiles every project that reaches the generators, and runs source generators after its
+# transformation, so an analyzer it is not told about sees neither a component's generated C# nor
+# the members the aspects add. The analyzer package's buildTransitive props tells it. Without them,
+# both builds below succeed: measured 2026-09-28.
+echo "==> layered: the rules run on the code Metalama transformed"
+cd "$work/layered/Domain"
+cat > Guard.cs <<'CSHARP'
+using CodoMetis.TypeKit;
+
+namespace Shop;
+
+public static class Guard
+{
+    public static OrderId Reset()
+    {
+        var id = OrderId.New();
+        id = default;
+        return id;
+    }
+}
+CSHARP
+
+run_failing dotnet build --no-incremental
+echo "$output" | grep -F "Guard.cs(" > "$work/layered.declaring" || true
+assert_contains "error CMTK0001" "$work/layered.declaring" "CMTK0001 fires in the declaring project for a local typed by a generated member"
+rm Guard.cs
+
+# By hand: the razorclasslib template takes no --framework.
+mkdir -p "$work/layered/Components"
+cd "$work/layered/Components"
+cat > Components.csproj <<'XML'
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../Domain/Domain.csproj" />
+  </ItemGroup>
+</Project>
+XML
+
+cat > Probe.razor <<'RAZOR'
+@using Shop
+
+@code {
+    OrderId _id = default;
+}
+RAZOR
+
+run_failing dotnet build --no-incremental
+echo "$output" | grep -F "Probe.razor(" > "$work/layered.razor" || true
+assert_contains "error CMTK0001" "$work/layered.razor" "CMTK0001 fires in a Razor component of a project that reaches the generators"
 
 # ── host: both satellites, from packages ─────────────────────────────────────────────────────────
 

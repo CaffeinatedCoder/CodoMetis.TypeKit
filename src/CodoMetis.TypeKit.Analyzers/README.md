@@ -23,7 +23,7 @@ appears to: an instance that passed no factory, or a value object that was never
 | CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. |
 
 The ids are public contract and never change meaning. The generators' own build errors,
-CMTK1000 to CMTK1009, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
+CMTK1000 to CMTK1011, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
 
 Every rule also runs in `.razor` and `.cshtml` files (see [Generated code](#generated-code-and-razor)).
 
@@ -248,12 +248,20 @@ its `#line` directives: `@code { OrderId _id = default; }` is CMTK0001 at that l
 Everything else generated stays unreported, as before: EF Core's compiled model (which calls
 `Materialize`), source-generated JSON and regex code, and code under `#line hidden`.
 
+Metalama compiles every project that reaches `CodoMetis.TypeKit.Generators`, and there source
+generators, the Razor compiler among them, run after its transformation. An ordinary analyzer sees
+only the source, without the component's C#. This package therefore asks Metalama to run the rules
+on the transformed code, where it is, through a `MetalamaTransformedCodeAnalyzer` item that arrives
+with the package. Nothing needs configuring.
+
 ## In the project that declares the value objects
 
-Metalama runs analyzers on the source before it weaves, where the members the generators add to a
-value object of the same project (`From`, `New`, `TryFrom`, `FromKnownGood`, `Revalidate`, `Value`)
-do not exist yet, and a call to one does not bind. The rules recognise the forms below by the
-generated member's name on a value object's type, which does bind, so they report there too:
+The build runs the rules on the code as Metalama transformed it, where the members the generators
+add exist, so every form below is reported in the declaring project too. An IDE analyses as you
+type, without weaving. Where the members a value object of the same project gets (`From`, `New`,
+`TryFrom`, `FromKnownGood`, `Revalidate`, `Value`) do not exist there, a call to one does not bind.
+The rules recognise the forms below by the generated member's name on a value object's type, which
+does bind, so they report there too:
 
 - CMTK0001: every form, including a `default` beside an unbound call in a conditional, a switch arm
   or a collection element (`cond ? OrderId.From(g) : default`), whose type is taken from the whole

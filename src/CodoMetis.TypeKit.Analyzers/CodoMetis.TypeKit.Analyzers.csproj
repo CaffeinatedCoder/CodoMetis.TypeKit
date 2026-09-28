@@ -30,6 +30,15 @@
         <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     </ItemGroup>
 
+    <!--
+      buildTransitive, not build: the package is always a dependency of CodoMetis.TypeKit, often
+      several projects away, and NuGet imports only buildTransitive from a package that arrives that way.
+      NuGet imports the file only when it is named after the package.
+    -->
+    <ItemGroup>
+        <None Include="buildTransitive/CodoMetis.TypeKit.Analyzers.props" Pack="true" PackagePath="buildTransitive/" />
+    </ItemGroup>
+
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
         <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
