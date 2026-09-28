@@ -218,19 +218,24 @@ var first = ids.FirstOrDefault();                    // CMTK0009: an OrderId nob
 
 | Call | Instead |
 |---|---|
-| `Enumerable.FirstOrDefault`, `LastOrDefault` | `FirstOrNone`, `LastOrNone`, which return an `Option`, or the overload that takes a default value |
-| `Enumerable.SingleOrDefault`, `DefaultIfEmpty` | the overload that takes a default value |
-| `Enumerable.ElementAtOrDefault` | `Skip(index).FirstOrNone()` |
+| `Enumerable.FirstOrDefault`, `LastOrDefault`, and `ImmutableArray`'s own | `FirstOrNone`, `LastOrNone`, which return an `Option`, or the overload that takes a default value |
+| `Enumerable.SingleOrDefault`, `DefaultIfEmpty`, and `ImmutableArray`'s own | the overload that takes a default value |
+| `Enumerable.ElementAtOrDefault`, and `ImmutableArray`'s own | `Skip(index).FirstOrNone()` |
 | The same on `Queryable` | select a nullable first, `Select(x => (OrderId?)x).FirstOrDefault()`, which a query provider translates |
+| EF Core's `FirstOrDefaultAsync`, `LastOrDefaultAsync`, `SingleOrDefaultAsync`, `ElementAtOrDefaultAsync` | the same nullable projection, `Select(x => (OrderId?)x).FirstOrDefaultAsync()`; EF Core has no overload that takes a default value |
+| `FirstOrDefaultAsync`, `LastOrDefaultAsync`, `SingleOrDefaultAsync`, `DefaultIfEmpty` on an `IAsyncEnumerable<T>` | the overload that takes a default value |
+| `ElementAtOrDefaultAsync` on an `IAsyncEnumerable<T>` | the nullable projection |
+| `Find`, `FindLast` of a `List<T>`, an array (`Array.Find`) or an `ImmutableList<T>` | `FirstOrNone(predicate)`, `LastOrNone(predicate)` |
 | `Nullable<T>.GetValueOrDefault()` | `GetValueOrDefault(fallback)`, or check `HasValue` |
-| `dictionary.GetValueOrDefault(key)` | `GetValueOrNone(key)`, which returns an `Option`, or pass a default value |
+| `dictionary.GetValueOrDefault(key)`, an immutable dictionary's included | `GetValueOrNone(key)`, which returns an `Option`, or pass a default value |
 | `Activator.CreateInstance<T>()`, `Activator.CreateInstance(typeof(T))`, `RuntimeHelpers.GetUninitializedObject(typeof(T))` | one of the type's factories |
 | `Option<T>.OrDefault()` | `Or(fallback)` or `Match`, which say what `None` becomes |
 
 The element type is judged as CMTK0001 judges a `default`: a value object, `Option`, `Result`,
-`[RequireCustomInitialization]` struct, or a type parameter constrained to be one. An overload given
-a default value, and an element type whose default is null or an ordinary value, are not reported.
-A warning, since code that checks the sequence is not empty first is correct and the rule cannot tell.
+`[RequireCustomInitialization]` struct, or a type parameter constrained to be one. For the
+asynchronous forms, it is the type the task returns. An overload given a default value, and an
+element type whose default is null or an ordinary value, are not reported. EF Core's forms are
+recognised in any project that references EF Core. A warning, since code that checks the sequence is not empty first is correct and the rule cannot tell.
 
 ## Configuration
 

@@ -10,8 +10,10 @@ public sealed class DefaultProducingCallAnalyzerTests
         """
         using System;
         using System.Collections.Generic;
+        using System.Collections.Immutable;
         using System.Linq;
         using System.Runtime.CompilerServices;
+        using System.Threading.Tasks;
         using CodoMetis.TypeKit;
         using CodoMetis.TypeKit.ValueObjects;
 
@@ -40,6 +42,15 @@ public sealed class DefaultProducingCallAnalyzerTests
         return test;
     }
 
+    /// <summary>A compilation that references EF Core, whose <c>FirstOrDefaultAsync</c> and friends the rule reads when it is there.</summary>
+    private static AnalyzerTest<DefaultProducingCallAnalyzer> TestWithEntityFrameworkCore(string code, params DiagnosticResult[] expected)
+    {
+        var test = new AnalyzerTest<DefaultProducingCallAnalyzer>("using Microsoft.EntityFrameworkCore;" + Environment.NewLine + Subjects + code);
+        test.TestState.AdditionalReferences.AddRange(RealEntityFrameworkCore.References);
+        test.ExpectedDiagnostics.AddRange(expected);
+        return test;
+    }
+
     private const string FirstOrNone = "Use FirstOrNone, which returns an Option, or pass a default value";
 
     private const string LastOrNone = "Use LastOrNone, which returns an Option, or pass a default value";
@@ -49,6 +60,14 @@ public sealed class DefaultProducingCallAnalyzerTests
     private const string Factories = "Create it through one of its factories";
 
     private const string NothingFound = " when nothing is found";
+
+    private const string PastTheEnd = " for an index past the end";
+
+    private const string NullableFirst = "Select a nullable first, as in Select(x => (Plain?)x), so that nothing found is null";
+
+    private const string MissingKey = " for a missing key";
+
+    private const string GetValueOrNone = "Use GetValueOrNone, which returns an Option, or pass a default value";
 
     private static DiagnosticResult Cmtk0009(int location, string method, string type, string circumstance, string advice) =>
         new DiagnosticResult("CMTK0009", DiagnosticSeverity.Warning).WithLocation(location).WithArguments(method, type, circumstance, advice);
@@ -159,6 +178,199 @@ public sealed class DefaultProducingCallAnalyzerTests
             Cmtk0009(6, "GetUninitializedObject", "Plain", "", Factories),
             Cmtk0009(7, "OrDefault", "Plain", " for None", "Use Or(fallback) or Match, which say what None becomes"),
             Cmtk0009(8, "OrDefault", "Plain", " for None", "Use Or(fallback) or Match, which say what None becomes"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary><c>Find</c> and <c>FindLast</c> return <c>default(T)</c> when nothing matches, as <c>FirstOrDefault</c> does: each was silent.</summary>
+    [Fact]
+    public Task Find_and_FindLast_report() =>
+        Test(
+            """
+            public static class C
+            {
+                public static void Run(List<Plain> ids, Plain[] array, ImmutableList<Plain> immutable, ImmutableList<Plain>.Builder builder)
+                {
+                    var found = {|#0:ids.Find(id => true)|};
+                    var foundLast = {|#1:ids.FindLast(id => true)|};
+                    var inArray = {|#2:Array.Find(array, id => true)|};
+                    var lastInArray = {|#3:Array.FindLast(array, id => true)|};
+                    var inImmutable = {|#4:immutable.Find(id => true)|};
+                    var lastInImmutable = {|#5:immutable.FindLast(id => true)|};
+                    var inBuilder = {|#6:builder.Find(id => true)|};
+                    var lastInBuilder = {|#7:builder.FindLast(id => true)|};
+                }
+            }
+            """,
+            Cmtk0009(0, "Find", "Plain", NothingFound, FirstOrNonePredicate),
+            Cmtk0009(1, "FindLast", "Plain", NothingFound, LastOrNonePredicate),
+            Cmtk0009(2, "Find", "Plain", NothingFound, FirstOrNonePredicate),
+            Cmtk0009(3, "FindLast", "Plain", NothingFound, LastOrNonePredicate),
+            Cmtk0009(4, "Find", "Plain", NothingFound, FirstOrNonePredicate),
+            Cmtk0009(5, "FindLast", "Plain", NothingFound, LastOrNonePredicate),
+            Cmtk0009(6, "Find", "Plain", NothingFound, FirstOrNonePredicate),
+            Cmtk0009(7, "FindLast", "Plain", NothingFound, LastOrNonePredicate))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    private const string FirstOrNonePredicate = "Use FirstOrNone(predicate), which returns an Option";
+
+    private const string LastOrNonePredicate = "Use LastOrNone(predicate), which returns an Option";
+
+    /// <summary>
+    /// <c>ImmutableArray</c>'s own <c>FirstOrDefault</c> and friends (<c>ImmutableArrayExtensions</c>), which
+    /// bind before <c>Enumerable</c>'s, and <c>ImmutableDictionary.GetValueOrDefault</c>, which binds before
+    /// <c>CollectionExtensions</c>': each was silent.
+    /// </summary>
+    [Fact]
+    public Task Immutable_collection_forms_report() =>
+        Test(
+            """
+            public static class C
+            {
+                public static void Run(ImmutableArray<Plain> ids, ImmutableArray<Plain>.Builder arrayBuilder, ImmutableDictionary<int, Plain> byKey,
+                                       IImmutableDictionary<int, Plain> contract, ImmutableDictionary<int, Plain>.Builder dictionaryBuilder,
+                                       ImmutableSortedDictionary<int, Plain>.Builder sortedBuilder)
+                {
+                    var first = {|#0:ids.FirstOrDefault()|};
+                    var firstMatch = {|#1:ids.FirstOrDefault(id => true)|};
+                    var last = {|#2:ids.LastOrDefault()|};
+                    var lastMatch = {|#3:ids.LastOrDefault(id => true)|};
+                    var single = {|#4:ids.SingleOrDefault()|};
+                    var singleMatch = {|#5:ids.SingleOrDefault(id => true)|};
+                    var at = {|#6:ids.ElementAtOrDefault(3)|};
+                    var builderFirst = {|#7:arrayBuilder.FirstOrDefault()|};
+                    var builderLast = {|#8:arrayBuilder.LastOrDefault()|};
+                    var found = {|#9:byKey.GetValueOrDefault(1)|};
+                    var throughContract = {|#10:contract.GetValueOrDefault(1)|};
+                    var staticForm = {|#11:ImmutableDictionary.GetValueOrDefault(byKey, 1)|};
+                    var inBuilder = {|#12:dictionaryBuilder.GetValueOrDefault(1)|};
+                    var inSortedBuilder = {|#13:sortedBuilder.GetValueOrDefault(1)|};
+                }
+            }
+            """,
+            Cmtk0009(0, "FirstOrDefault", "Plain", NothingFound, FirstOrNone),
+            Cmtk0009(1, "FirstOrDefault", "Plain", NothingFound, FirstOrNone),
+            Cmtk0009(2, "LastOrDefault", "Plain", NothingFound, LastOrNone),
+            Cmtk0009(3, "LastOrDefault", "Plain", NothingFound, LastOrNone),
+            Cmtk0009(4, "SingleOrDefault", "Plain", NothingFound, DefaultValue),
+            Cmtk0009(5, "SingleOrDefault", "Plain", NothingFound, DefaultValue),
+            Cmtk0009(6, "ElementAtOrDefault", "Plain", PastTheEnd, "Use Skip(index).FirstOrNone(), which returns an Option"),
+            Cmtk0009(7, "FirstOrDefault", "Plain", NothingFound, FirstOrNone),
+            Cmtk0009(8, "LastOrDefault", "Plain", NothingFound, LastOrNone),
+            Cmtk0009(9, "GetValueOrDefault", "Plain", MissingKey, GetValueOrNone),
+            Cmtk0009(10, "GetValueOrDefault", "Plain", MissingKey, GetValueOrNone),
+            Cmtk0009(11, "GetValueOrDefault", "Plain", MissingKey, GetValueOrNone),
+            Cmtk0009(12, "GetValueOrDefault", "Plain", MissingKey, GetValueOrNone),
+            Cmtk0009(13, "GetValueOrDefault", "Plain", MissingKey, GetValueOrNone))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// .NET 10's <c>System.Linq.AsyncEnumerable</c>: the default comes back inside a <c>ValueTask</c>, and
+    /// was silent. The compilation references no EF Core, whose absence must not switch the rule off.
+    /// </summary>
+    [Fact]
+    public Task Async_sequence_forms_report() =>
+        Test(
+            """
+            public static class C
+            {
+                public static async Task Run(IAsyncEnumerable<Plain> ids, IAsyncEnumerable<Validated> validated)
+                {
+                    var first = await {|#0:ids.FirstOrDefaultAsync()|};
+                    var firstMatch = await {|#1:ids.FirstOrDefaultAsync(id => true)|};
+                    var last = await {|#2:ids.LastOrDefaultAsync()|};
+                    var lastMatch = await {|#3:ids.LastOrDefaultAsync(id => true)|};
+                    var single = await {|#4:ids.SingleOrDefaultAsync()|};
+                    var singleMatch = await {|#5:ids.SingleOrDefaultAsync(id => true)|};
+                    var at = await {|#6:ids.ElementAtOrDefaultAsync(3)|};
+                    var fromEnd = await {|#7:ids.ElementAtOrDefaultAsync(^1)|};
+                    var padded = {|#8:ids.DefaultIfEmpty()|};
+                    var staticForm = await {|#9:AsyncEnumerable.FirstOrDefaultAsync(validated)|};
+                    var held = {|#10:ids.FirstOrDefaultAsync()|};
+                }
+
+                public static async Task<T> Constrained<T>(IAsyncEnumerable<T> items) where T : struct, IValue<int> => await {|#11:items.FirstOrDefaultAsync()|};
+            }
+            """,
+            Cmtk0009(0, "FirstOrDefaultAsync", "Plain", NothingFound, DefaultValue),
+            Cmtk0009(1, "FirstOrDefaultAsync", "Plain", NothingFound, DefaultValue),
+            Cmtk0009(2, "LastOrDefaultAsync", "Plain", NothingFound, DefaultValue),
+            Cmtk0009(3, "LastOrDefaultAsync", "Plain", NothingFound, DefaultValue),
+            Cmtk0009(4, "SingleOrDefaultAsync", "Plain", NothingFound, DefaultValue),
+            Cmtk0009(5, "SingleOrDefaultAsync", "Plain", NothingFound, DefaultValue),
+            Cmtk0009(6, "ElementAtOrDefaultAsync", "Plain", PastTheEnd, NullableFirst),
+            Cmtk0009(7, "ElementAtOrDefaultAsync", "Plain", PastTheEnd, NullableFirst),
+            Cmtk0009(8, "DefaultIfEmpty", "Plain", " for an empty sequence", DefaultValue),
+            Cmtk0009(9, "FirstOrDefaultAsync", "Validated", NothingFound, DefaultValue),
+            Cmtk0009(10, "FirstOrDefaultAsync", "Plain", NothingFound, DefaultValue),
+            Cmtk0009(11, "FirstOrDefaultAsync", "T", NothingFound, DefaultValue))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// EF Core's <c>FirstOrDefaultAsync</c> and friends, the way a query is usually run: the default comes
+    /// back inside a <c>Task</c>, and was silent. EF Core has no overload that takes a default value, so the
+    /// advice is the nullable projection, as for <c>Queryable</c>.
+    /// </summary>
+    [Fact]
+    public Task Entity_Framework_Core_async_forms_report() =>
+        TestWithEntityFrameworkCore(
+            """
+            public static class C
+            {
+                public static async Task Run(IQueryable<Plain> ids, System.Threading.CancellationToken cancellationToken)
+                {
+                    var first = await {|#0:ids.FirstOrDefaultAsync(cancellationToken)|};
+                    var firstMatch = await {|#1:ids.FirstOrDefaultAsync(id => true, cancellationToken)|};
+                    var last = await {|#2:ids.LastOrDefaultAsync()|};
+                    var lastMatch = await {|#3:ids.LastOrDefaultAsync(id => true)|};
+                    var single = await {|#4:ids.SingleOrDefaultAsync()|};
+                    var singleMatch = await {|#5:ids.SingleOrDefaultAsync(id => true)|};
+                    var at = await {|#6:ids.ElementAtOrDefaultAsync(3)|};
+                    var staticForm = await {|#7:EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(ids)|};
+                }
+            }
+            """,
+            Cmtk0009(0, "FirstOrDefaultAsync", "Plain", NothingFound, NullableFirst),
+            Cmtk0009(1, "FirstOrDefaultAsync", "Plain", NothingFound, NullableFirst),
+            Cmtk0009(2, "LastOrDefaultAsync", "Plain", NothingFound, NullableFirst),
+            Cmtk0009(3, "LastOrDefaultAsync", "Plain", NothingFound, NullableFirst),
+            Cmtk0009(4, "SingleOrDefaultAsync", "Plain", NothingFound, NullableFirst),
+            Cmtk0009(5, "SingleOrDefaultAsync", "Plain", NothingFound, NullableFirst),
+            Cmtk0009(6, "ElementAtOrDefaultAsync", "Plain", PastTheEnd, NullableFirst),
+            Cmtk0009(7, "FirstOrDefaultAsync", "Plain", NothingFound, NullableFirst))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// The new forms keep the rule's line: an overload given a default value, and an element type whose
+    /// default is null or an ordinary value, stay silent.
+    /// </summary>
+    [Fact]
+    public Task The_new_forms_given_a_default_value_or_a_legitimate_element_type_stay_silent() =>
+        TestWithEntityFrameworkCore(
+            """
+            public static class C
+            {
+                public static async Task Run(Plain fallback, List<int> numbers, int[] array, ImmutableList<Plain?> nullables, ImmutableArray<Free> free,
+                                             ImmutableArray<Plain> ids, ImmutableDictionary<int, Plain> byKey, ImmutableDictionary<int, Plain>.Builder builder,
+                                             IAsyncEnumerable<Plain> stream, IAsyncEnumerable<int> numberStream, IQueryable<int> numberQuery,
+                                             IQueryable<Plain?> nullableQuery, List<ValueClass> classes)
+                {
+                    var number = numbers.Find(n => true);
+                    var inArray = Array.FindLast(array, n => true);
+                    var nullable = nullables.Find(n => true);
+                    var ordinary = free.FirstOrDefault();
+                    var reference = classes.Find(c => true);
+                    var fallenBack = ids.FirstOrDefault(fallback);
+                    var found = byKey.GetValueOrDefault(1, fallback);
+                    var inBuilder = builder.GetValueOrDefault(1, fallback);
+                    var streamed = await stream.FirstOrDefaultAsync(fallback);
+                    var streamedMatch = await stream.LastOrDefaultAsync(id => true, fallback);
+                    var streamedSingle = await stream.SingleOrDefaultAsync(fallback);
+                    var streamPadded = stream.DefaultIfEmpty(fallback);
+                    var streamedNumber = await numberStream.FirstOrDefaultAsync();
+                    var queriedNumber = await numberQuery.FirstOrDefaultAsync();
+                    var projected = await nullableQuery.SingleOrDefaultAsync();
+                }
+            }
+            """)
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>Every type CMTK0001 forbids the default of, type parameters constrained to a value object included.</summary>
