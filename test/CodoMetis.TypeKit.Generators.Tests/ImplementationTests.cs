@@ -88,5 +88,10 @@ public sealed class ImplementationTests
     [Fact]
     public void A_generated_Guid_identifier_gets_New() => ProbeId.New().Value.Version.ShouldBe(7);
 
+    // CMTK0004 is exactly right here, and this is the one call outside the EF satellite that means
+    // it: the test proves the path skips validation. That it fires in this woven build is itself a
+    // check that the rule sees a call through a type parameter.
+#pragma warning disable CMTK0004
     private static T Materialize<T, TValue>(TValue value) where T : IValueObjectMaterializer<T, TValue> where TValue : notnull => T.Materialize(value);
+#pragma warning restore CMTK0004
 }

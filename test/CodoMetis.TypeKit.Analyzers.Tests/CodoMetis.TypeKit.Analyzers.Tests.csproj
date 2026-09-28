@@ -4,11 +4,13 @@
       Verifier tests for the CMTK analyzers. The analyzer is referenced as a library, because the
       verifier instantiates it in-process; OutputItemType=Analyzer would instead run it over this
       project's own sources. CodoMetis.TypeKit is referenced so that every verifier compilation binds
-      to the real contracts (AnalyzerTest).
+      to the real contracts (AnalyzerTest), and the EF Core satellite so that CMTK0004 binds to the
+      real ValueObjectConverter.
     -->
     <ItemGroup>
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Analyzers\CodoMetis.TypeKit.Analyzers.csproj" />
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit\CodoMetis.TypeKit.csproj" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.EntityFrameworkCore\CodoMetis.TypeKit.EntityFrameworkCore.csproj" />
     </ItemGroup>
 
     <ItemGroup>
