@@ -118,7 +118,7 @@ public static class EntityFrameworkCoreSamples
     {
         // sample: CodoMetis.TypeKit.EntityFrameworkCore/revalidate
         var orders = await db.Orders.AsNoTracking().ToListAsync();
-        foreach (var order in orders.Where(o => !o.Code.Revalidate()))
+        foreach (var order in orders.Where(o => o.Code.Revalidate().State == ResultState.Error))
             log.StoredCodeNowRefused(order.Id);
         // end sample
     }

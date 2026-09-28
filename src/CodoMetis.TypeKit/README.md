@@ -88,13 +88,18 @@ IResult response = placed.Match(
 
 if (placed.TryGetValue(out var order, out var fault)) { /* order is non-null here */ }
 
-if (service.Cancel(id)) { /* the bool conversion is true for a success */ }
+if (service.Cancel(id)) { /* a Result<TError> converts to bool, true for a success */ }
 
 Result<Invoice, OrderFault> invoiced = placed.Bind(order => billing.Invoice(order));
 Result<OrderFault> confirmed = placed.Bind(order => mailer.Confirm(order));   // a command after a query
 Result<Order, ApiFault> forApi = placed.MapError(ApiFault.From);             // across layers
 Option<Order> maybe = placed.ToOption();
 ```
+
+Only `Result<TError>` converts to `bool`. A valued result would say whether the operation succeeded
+where a reader expects its value: `if (await users.IsEmailTakenAsync(email))` over a
+`Result<bool, DbFault>` would take the branch for a success holding `false`. Match a valued result,
+or compare its `State`.
 
 `Map`, `Bind`, `Tap` and `TapAsync` run only on success and carry an error through unchanged;
 `MapError` and `TapError` run only on an error, and `Ensure(predicate, error)` turns a success whose

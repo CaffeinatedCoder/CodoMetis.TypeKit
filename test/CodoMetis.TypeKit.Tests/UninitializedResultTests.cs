@@ -59,7 +59,6 @@ public sealed class UninitializedResultTests
         ["BindAsync(selector -> Result<TError>)"]  = r => r.BindAsync(_ => Task.FromResult(Result<string>.Success())),
         ["TryGetValue(out value, out error)"]      = r => Task.FromResult(r.TryGetValue(out _, out _)),
         ["AsEnumerable() on enumeration"]          = r => Task.FromResult(r.AsEnumerable().ToList()),
-        ["op_Implicit(bool)"]                      = r => Task.FromResult((bool)r),
     };
 
     private static readonly Result<int, string> Value = Result<int, string>.Success(1);
@@ -186,7 +185,10 @@ public sealed class UninitializedResultTests
 
     private static void AssertClassified(Type type, IEnumerable<string> branchingCases)
     {
+        // A conversion into the result constructs one, as Success and Error do; only a conversion out
+        // of it, such as Result<TError>'s to bool, reads the state.
         var declared = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
+                           .Where(method => !(method.Name is "op_Implicit" or "op_Explicit" && method.ReturnType == type))
                            .Select(method => method.Name)
                            .ToHashSet();
 

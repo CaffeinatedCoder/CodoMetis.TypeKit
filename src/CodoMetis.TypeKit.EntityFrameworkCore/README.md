@@ -111,7 +111,7 @@ When a rule is added, `Revalidate()` finds the rows it refuses:
 
 ```csharp
 var orders = await db.Orders.AsNoTracking().ToListAsync();
-foreach (var order in orders.Where(o => !o.Code.Revalidate()))
+foreach (var order in orders.Where(o => o.Code.Revalidate().State == ResultState.Error))
     log.StoredCodeNowRefused(order.Id);
 ```
 

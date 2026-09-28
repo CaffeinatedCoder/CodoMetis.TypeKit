@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace CodoMetis.TypeKit.Tests;
 
 /// <summary>
@@ -179,12 +181,27 @@ public sealed class ResultWithValueTests
         error.ShouldBe("boom");
     }
 
+    /// <summary>
+    /// A valued result does not convert to <see langword="bool"/>; the error-only one does. With the
+    /// conversion, <c>if (await users.IsEmailTakenAsync(email))</c> over a
+    /// <c>Task&lt;Result&lt;bool, DbFault&gt;&gt;</c> took the branch for <c>Success(false)</c>: the
+    /// conversion says whether the query succeeded, and reads as its answer. A <see cref="Result{TError}"/>
+    /// has no value to confuse it with. Through reflection, so this test compiles with the operator
+    /// and fails on its presence rather than on a build error.
+    /// </summary>
     [Fact]
-    public void Success_converts_to_true_and_error_to_false()
+    public void Only_the_error_only_result_converts_to_bool()
     {
-        ((bool)Result<int, string>.Success(1)).ShouldBeTrue();
-        ((bool)Result<int, string>.Error("boom")).ShouldBeFalse();
+        ConversionsToBool(typeof(Result<bool, string>)).ShouldBeEmpty(
+            "Result<T, TError> converts to bool, so a Result<bool, TError> that succeeded with false reads as true in an if");
+
+        ConversionsToBool(typeof(Result<string>)).ShouldBe(["op_Implicit"], "Result<TError> lost its bool conversion");
     }
+
+    private static List<string> ConversionsToBool(Type type) =>
+        (from method in type.GetMethods(BindingFlags.Public | BindingFlags.Static)
+         where (method.Name is "op_Implicit" or "op_Explicit" && method.ReturnType == typeof(bool)) || method.Name is "op_True" or "op_False"
+         select method.Name).ToList();
 
     /// <summary><c>Select</c> exists so a result composes in query syntax like an option does.</summary>
     [Fact]
