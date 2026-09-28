@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using CodoMetis.TypeKit.Generators.Probes;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -177,6 +178,40 @@ public sealed class MappingTests : IDisposable
 
         db.Orders.Count(o => o.Tags.Any(t => t.Value == "x")).ShouldBe(1);
         db.Orders.Count(o => ids.Any(id => id.Value == o.Id.Value)).ShouldBe(1);
+    }
+
+    /// <summary>
+    /// A key over an integer is generated on add, as an <c>int</c> key is; EF's own convention looks
+    /// at the CLR type and generated none, so an entity added without a key was stored as 0. A key
+    /// over a <see cref="Guid"/> stays the application's to assign (<c>OrderId.New()</c>), and an
+    /// explicit configuration wins.
+    /// </summary>
+    [Fact]
+    public void An_integer_key_is_generated_on_add_and_a_Guid_key_is_assigned()
+    {
+        using var db = new TestDb(TestDb.Sqlite(_connection));
+
+        db.Model.FindEntityType(typeof(Shipment))!.FindProperty(nameof(Shipment.Id))!.ValueGenerated.ShouldBe(ValueGenerated.OnAdd);
+        db.Model.FindEntityType(typeof(Order))!.FindProperty(nameof(Order.Id))!.ValueGenerated.ShouldBe(ValueGenerated.Never);
+        db.Model.FindEntityType(typeof(Parcel))!.FindProperty(nameof(Parcel.Id))!.ValueGenerated.ShouldBe(ValueGenerated.Never);
+        db.Model.FindEntityType(typeof(Parcel))!.FindProperty(nameof(Parcel.ShipmentId))!.ValueGenerated.ShouldBe(ValueGenerated.Never);
+    }
+
+    [Fact]
+    public void An_integer_key_is_generated_by_the_database()
+    {
+        _connection.Open();
+        using var db = new TestDb(TestDb.Sqlite(_connection));
+        db.Database.EnsureCreated();
+
+        var first  = new Shipment { Carrier = "a" };
+        var second = new Shipment { Carrier = "b" };
+        db.AddRange(first, second);
+        db.SaveChanges();
+
+        first.Id.Value.ShouldBeGreaterThan(0);
+        second.Id.Value.ShouldBeGreaterThan(0);
+        second.Id.ShouldNotBe(first.Id);
     }
 
     public void Dispose() => _connection.Dispose();
