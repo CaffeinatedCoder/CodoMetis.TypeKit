@@ -33,6 +33,11 @@ internal sealed partial class ValueObjectContractAspect
     public static dynamic TryFromTemplate(dynamic? value, [CompileTime] INamedType target) =>
         ExpressionFactory.Parse($"global::CodoMetis.TypeKit.Result.ToOption({ValueObjectTypes.SourceName(target)}.Create(value))").Value!;
 
+    /// <summary><c>Create</c> of the value this instance holds.</summary>
+    [Template]
+    public dynamic RevalidateTemplate([CompileTime] INamedType target) =>
+        ExpressionFactory.Parse($"{ValueObjectTypes.SourceName(target)}.Create(this.Value)").Value!;
+
     /// <summary><c>Create</c> with the fault carried into the throw.</summary>
     [Template]
     public static dynamic FromKnownGoodTemplate(dynamic? value, [CompileTime] INamedType target, string? source = null) =>

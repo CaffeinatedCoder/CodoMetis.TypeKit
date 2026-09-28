@@ -56,6 +56,7 @@ ProbeCode
   Equals(Object) : Boolean
   Equals(ProbeCode) : Boolean
   GetHashCode() : Int32
+  Revalidate() : Result<ProbeCode, ProbeCodeFault>
   ToString() : String
   ToString(String, IFormatProvider) : String
   Value : String
@@ -696,6 +697,7 @@ ProbeOverride
   Equals(Object) : Boolean
   Equals(ProbeOverride) : Boolean
   GetHashCode() : Int32
+  Revalidate() : Result<ProbeOverride, ProbeOverrideFault>
   ToString() : String
   ToString(String, IFormatProvider) : String
   Value : String
@@ -736,6 +738,7 @@ ProbePercentage
   Equals(Object) : Boolean
   Equals(ProbePercentage) : Boolean
   GetHashCode() : Int32
+  Revalidate() : Result<ProbePercentage, ProbePercentageFault>
   ToString() : String
   ToString(String, IFormatProvider) : String
   TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean

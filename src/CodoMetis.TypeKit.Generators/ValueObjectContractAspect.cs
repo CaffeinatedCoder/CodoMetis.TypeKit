@@ -9,7 +9,8 @@ namespace CodoMetis.TypeKit.Generators;
 
 /// <summary>
 /// <c>IValueObject&lt;TSelf, T&gt;</c> and <c>Value</c>; <c>From</c> for a plain value object,
-/// <c>TryFrom</c> and <c>FromKnownGood</c> for a validated one; and the equality-operator interface.
+/// <c>TryFrom</c>, <c>FromKnownGood</c> and <c>Revalidate</c> for a validated one; and the
+/// equality-operator interface.
 /// </summary>
 internal sealed partial class ValueObjectContractAspect : TypeAspect
 {
@@ -45,6 +46,7 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
         {
             IntroduceTryFrom(builder, valueType);
             IntroduceFromKnownGood(builder, valueType);
+            IntroduceRevalidate(builder);
         }
 
         builder.ImplementInterface(
@@ -94,6 +96,36 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
             },
             args: new { target = builder.Target }
         );
+
+    /// <summary>
+    /// <c>Create</c> applied to the value an instance holds, for one rebuilt without validation (a
+    /// column read through the materializer, a stored document) after a rule changed: which stored
+    /// values would today's rules refuse?
+    /// </summary>
+    /// <remarks>
+    /// Returns what <c>Create</c> returns, normalisation included, so a stored value that the rules
+    /// would now trim or re-case comes back changed. <c>OverrideStrategy.Ignore</c>, as for
+    /// <c>TryFrom</c>.
+    /// </remarks>
+    private static void IntroduceRevalidate(IAspectBuilder<INamedType> builder)
+    {
+        // The one marker ValueObjectAspect accepted: IValidatedValue<TSelf, T, TFault>.
+        var fault = ValueObjectTypes.Markers(builder.Target)[0].TypeArguments[2];
+
+        builder.IntroduceMethod(
+            nameof(RevalidateTemplate),
+            IntroductionScope.Instance,
+            OverrideStrategy.Ignore,
+            buildMethod: method =>
+            {
+                method.Name          = "Revalidate";
+                method.Accessibility = Accessibility.Public;
+                method.ReturnType    = TypeFactory.GetNamedType(typeof(Result<,>)).MakeGenericInstance(builder.Target, fault);
+                method.AddAttribute(CodeAnnotations.CompilerGenerated);
+            },
+            args: new { target = builder.Target }
+        );
+    }
 
     /// <summary>
     /// The factory for a caller that owns its input, so a refusal is the caller's own bug: a literal
