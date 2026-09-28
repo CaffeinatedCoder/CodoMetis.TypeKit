@@ -71,7 +71,8 @@ The five packages share one version and are released together, only through
    in the `nuget` environment before pushing.
 4. Afterwards: raise `Version` in `Directory.Build.props`, set `PackageValidationBaselineVersion` to
    the version just released, so ApiCompat guards the public surface from then on, and open a new
-   `## <version> — Unreleased` section.
+   `## <version> — Unreleased` section. `ChangelogTests` fails while the baseline trails the last
+   version the changelog dates.
 
 `workflow_dispatch` with `dry_run` (the default) rehearses everything but the push.
 

@@ -51,6 +51,27 @@ public sealed partial class ChangelogTests
             $"CHANGELOG.md dates {Version} as released, but AnalyzerReleases.Shipped.md has no '## Release {Version}'.");
     }
 
+    /// <summary>
+    /// Package validation compares every pack with the baseline, so ApiCompat refuses a break of the
+    /// public surface. A baseline left behind at an older release, or dropped, lets a break of the last
+    /// release through without a word. Measured 2026-09-28: with the baseline at 1.0.0, making a member
+    /// that 1.0.0 shipped internal fails the pack with CP0002.
+    /// </summary>
+    [Fact]
+    public void The_package_validation_baseline_is_the_last_release()
+    {
+        var baseline = XDocument.Load(Path.Combine(Repository.Root, "Directory.Build.props"))
+                                .Descendants("PackageValidationBaselineVersion").SingleOrDefault()?.Value.Trim();
+        var released = Sections().Where(section => section.Value != "Unreleased")
+                                 .Select(section => section.Key)
+                                 .MaxBy(version => System.Version.Parse(version.Split('-')[0]));
+
+        if (released is null) return;
+
+        baseline.ShouldBe(released,
+            $"CHANGELOG.md dates {released} as the last release, so Directory.Build.props sets PackageValidationBaselineVersion to it (CONTRIBUTING.md, Releasing, step 4).");
+    }
+
     /// <summary>Each version's section heading: the version, and its date or <c>Unreleased</c>.</summary>
     private static Dictionary<string, string> Sections() =>
         VersionHeading().Matches(Changelog).ToDictionary(match => match.Groups["version"].Value, match => match.Groups["date"].Value);

@@ -1,6 +1,6 @@
 <Project>
     <PropertyGroup>
-        <Version>1.0.0</Version>
+        <Version>1.0.1</Version>
         <Authors>CaffeinatedCoder</Authors>
         <Copyright>Copyright (c) 2026 CaffeinatedCoder</Copyright>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -34,15 +34,16 @@
     </PropertyGroup>
 
     <!--
-        Package validation is on from the start, without a baseline: there is no release to compare
-        against yet. Once 1.0.0 ships, PackageValidationBaselineVersion is set to the last release,
-        so ApiCompat fails any pack that breaks the public surface.
+        Package validation compares every pack with the last release on nuget.org, so ApiCompat
+        fails a pack that breaks the public surface of 1.0.0. The baseline moves to each release as it
+        ships (CONTRIBUTING.md, "Releasing", step 4); a major version is the only one allowed to break it.
 
         GeneratePackageOnBuild is deliberately NOT set: it silently turns `dotnet pack` into a
         no-build pack of whatever happens to be in bin/ (see CodoMetis.ValueRanges).
     -->
     <PropertyGroup>
         <EnablePackageValidation>true</EnablePackageValidation>
+        <PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>
     </PropertyGroup>
 
     <!-- Provenance: a consumer stepping into this code gets the exact source it is running. -->
