@@ -12,6 +12,9 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+        <!-- Writes a migration snapshot as `dotnet ef migrations add` does; Roslyn compiles it back into a model. -->
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
         <PackageReference Include="Testcontainers.PostgreSql" />
     </ItemGroup>

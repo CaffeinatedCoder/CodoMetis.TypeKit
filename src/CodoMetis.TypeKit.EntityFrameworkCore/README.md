@@ -59,12 +59,25 @@ modelBuilder.Entity<Order>().Property(o => o.Code).HasConversion<ValueObjectConv
 ```
 
 **Keys.** A single-column key over an integer (`int`, `long`, `short`) is generated on add, as a key
-of that integer type is: an identity column on PostgreSQL and SQL Server, `AUTOINCREMENT` on SQLite.
-Switching an `int` key to a value object therefore changes no schema. A key over a `Guid` is the
-application's to assign, `Id = OrderId.New()` (a version 7 Guid, which sorts by creation time), and
-EF inserts it as given. For EF to generate it instead, configure `ValueGeneratedOnAdd()` on the
-property; EF then also takes an entity whose key is already set, reached through a navigation, for an
-existing one. An explicit configuration always wins over these defaults.
+of that integer type is. On PostgreSQL and SQL Server it is an identity column, so switching an `int`
+key to a value object there changes no schema. A key over a `Guid` is the application's to assign,
+`Id = OrderId.New()` (a version 7 Guid, which sorts by creation time), and EF inserts it as given. For
+EF to generate it instead, configure `ValueGeneratedOnAdd()` on the property; EF then also takes an
+entity whose key is already set, reached through a navigation, for an existing one. An explicit
+configuration always wins over these defaults.
+
+**SQLite: configure integer keys with `UseAutoincrement()`.** SQLite fills such a key in, but EF's
+SQLite provider makes a key `AUTOINCREMENT` only when the property's CLR type is an integer, and a
+value object is not. A migration snapshot records the column as an `int`, which is, so without the
+configuration the model never matches its snapshot: every migration repeats an `AlterColumn` (a
+table rebuild on SQLite), `migrations has-pending-model-changes` always reports changes, and
+`Migrate()` throws for `PendingModelChangesWarning`. Configure each such key:
+
+```csharp
+modelBuilder.Entity<Invoice>().Property(i => i.Id).UseAutoincrement();
+```
+
+A model that also runs on another provider does this under `if (Database.IsSqlite())`.
 
 **Model-wide conventions follow the property's type.** EF applies `ConfigureConventions` by CLR
 type, so `configurationBuilder.Properties<decimal>().HavePrecision(18, 2)` reaches `decimal`

@@ -72,6 +72,29 @@ public sealed class ExplicitConverterDb(DbContextOptions<ExplicitConverterDb> op
     }
 }
 
+public readonly partial record struct InvoiceNo : IValue<int>;
+
+/// <summary>An entity whose key over an integer the database generates.</summary>
+public sealed class Invoice
+{
+#pragma warning disable CMTK0006 // the database assigns the key when the invoice is saved
+    public InvoiceNo Id { get; set; }
+#pragma warning restore CMTK0006
+}
+
+/// <summary>A model on SQLite, where a value-object key over an integer is configured for <c>AUTOINCREMENT</c>.</summary>
+public sealed class InvoiceDb(DbContextOptions<InvoiceDb> options) : DbContext(options)
+{
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // sample: CodoMetis.TypeKit.EntityFrameworkCore/sqlite-autoincrement
+        modelBuilder.Entity<Invoice>().Property(i => i.Id).UseAutoincrement();
+        // end sample
+    }
+}
+
 public interface IRefusalLog
 {
     void StoredCodeNowRefused(OrderId order);
@@ -183,6 +206,20 @@ public sealed class EntityFrameworkCoreTests
         using var db = new ShopDb(options);
 
         db.Model.FindEntityType(typeof(Order))!.FindProperty(nameof(Order.Id))!.GetColumnType().ShouldBe("uuid");
+    }
+
+    /// <summary>
+    /// The SQLite configuration makes the key <c>AUTOINCREMENT</c>, as an <c>int</c> key is; that a model with it
+    /// matches its migration snapshot is tested in the EF satellite's MigrationSnapshotTests.
+    /// </summary>
+    [Fact]
+    public void The_SQLite_key_is_AUTOINCREMENT()
+    {
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
+        using var db = new InvoiceDb(new DbContextOptionsBuilder<InvoiceDb>().UseSqlite(connection).UseTypeKit().Options);
+
+        SqlitePropertyExtensions.GetValueGenerationStrategy(db.Model.FindEntityType(typeof(Invoice))!.FindProperty(nameof(Invoice.Id))!)
+                                .ShouldBe(SqliteValueGenerationStrategy.Autoincrement);
     }
 
     [Fact]
