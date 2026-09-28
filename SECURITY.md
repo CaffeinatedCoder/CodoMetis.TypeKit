@@ -64,9 +64,10 @@ There is one publishing path, `.github/workflows/release.yml`, run by pushing a 
 - **What was tested is what ships.** The push downloads the packages the verify job built; nothing
   is rebuilt after the tests.
 - **An SBOM per package.** Each GitHub release carries a CycloneDX SBOM for every package, listing
-  what a consumer of that package actually receives. Build-only references (the analyzer's Roslyn
-  compiler packages, which run inside your own compiler) are excluded, and a test keeps that list
-  complete.
+  what a consumer of that package actually receives. Build-only references are excluded: the
+  analyzer's Roslyn compiler packages, which run inside your own compiler, and the packages the SDK
+  adds to this repository's own build, such as the trimming tasks. A test reads the restore output
+  and keeps that list complete.
 - **Source and symbols.** Every library package has Source Link and a symbol package, so the code
   you step into is the code that was built. The analyzer package ships only the analyzer, which runs
   inside your compiler.

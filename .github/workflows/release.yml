@@ -148,11 +148,13 @@ jobs:
 
       # One CycloneDX SBOM per package, describing what a consumer actually takes on.
       #
-      # --exclude-filter drops the analyzer's Roslyn references and their subtrees. They are
-      # PrivateAssets=all, so no consumer receives them: the analyzer runs inside the consumer's own
-      # compiler. Listing them would contradict the nuspec and hand consumers vulnerability alerts
-      # for code they do not ship. ReleaseWiringTests asserts the filter covers every
-      # PrivateAssets=all reference.
+      # --exclude-filter drops the build-only references and their subtrees, which no consumer
+      # receives and no nuspec names: the analyzer's Roslyn references (PrivateAssets=all; the
+      # analyzer runs inside the consumer's own compiler), and what the SDK adds on its own, the
+      # ILLink tasks every IsAotCompatible project gets and NETStandard.Library under the
+      # netstandard2.0 analyzer. Listing them would contradict the nuspec and hand consumers
+      # vulnerability alerts for code they do not ship. ReleaseWiringTests reads restore output and
+      # asserts the filter covers every reference it marks build-only (suppressParent All).
       #
       # --include-project-references keeps the base package listed as a dependency of the others,
       # matching their nuspecs.
@@ -171,7 +173,7 @@ jobs:
               --set-name "$id" \
               --set-version "${{ steps.version.outputs.version }}" \
               --include-project-references \
-              --exclude-filter Microsoft.CodeAnalysis.CSharp,Microsoft.CodeAnalysis.Analyzers
+              --exclude-filter Microsoft.CodeAnalysis.CSharp,Microsoft.CodeAnalysis.Analyzers,Microsoft.NET.ILLink.Tasks,NETStandard.Library
           done
 
       - name: Collect packages

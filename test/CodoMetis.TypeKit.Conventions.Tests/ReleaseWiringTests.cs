@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
 
 namespace CodoMetis.TypeKit.Conventions.Tests;
 
@@ -115,18 +114,25 @@ public sealed partial class ReleaseWiringTests
 
     /// <summary>
     /// Measured 2026-09-27: without the filter, the analyzer package's SBOM lists 13 Roslyn
-    /// components while its nuspec declares no dependency at all.
+    /// components while its nuspec declares no dependency at all. Measured 2026-09-28: the SDK adds
+    /// <c>Microsoft.NET.ILLink.Tasks</c> to every <c>IsAotCompatible</c> project, build-only, and it
+    /// reached the three run-time SBOMs while no nuspec names it. No project file declares it, so the
+    /// build-only set is read from restore output, not from <c>PrivateAssets</c> in the project files.
     /// </summary>
     [Fact]
     public void Every_build_only_reference_is_excluded_from_both_SBOM_steps()
     {
-        var buildOnly = Repository.ShippingProjects()
-                                  .SelectMany(BuildOnlyReferences)
-                                  .Distinct(StringComparer.OrdinalIgnoreCase)
-                                  .Order(StringComparer.Ordinal)
-                                  .ToList();
+        var found = Repository.ShippingProjects().SelectMany(Repository.BuildOnlyPackages).ToList();
 
-        buildOnly.ShouldNotBeEmpty("No PrivateAssets=all reference found; the analyzer's Roslyn references are, so the discovery is broken.");
+        found.Where(package => !package.AutoReferenced).ShouldNotBeEmpty(
+            "No PrivateAssets=all reference found in restore output; the analyzer's Roslyn references are, so the discovery is broken.");
+        found.Where(package => package.AutoReferenced).ShouldNotBeEmpty(
+            "No build-only reference added by the SDK found in restore output; IsAotCompatible adds one, so the discovery is broken.");
+
+        var buildOnly = found.Select(package => package.Id)
+                             .Distinct(StringComparer.OrdinalIgnoreCase)
+                             .Order(StringComparer.Ordinal)
+                             .ToList();
 
         foreach (var (workflow, text) in new[] { ("release.yml", ReleaseWorkflow), ("dotnet.yml", BuildWorkflow) })
         {
@@ -135,8 +141,8 @@ public sealed partial class ReleaseWiringTests
                                           .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             buildOnly.Where(reference => !excluded.Contains(reference)).ShouldBeEmpty(
-                $"{workflow}'s SBOM step does not exclude these PrivateAssets=all references, which no consumer receives. " +
-                "Add them to its comma-separated --exclude-filter.");
+                $"{workflow}'s SBOM step does not exclude these build-only references (suppressParent All in restore output, " +
+                "written as PrivateAssets=all or added by the SDK), which no consumer receives. Add them to its comma-separated --exclude-filter.");
         }
     }
 
@@ -175,15 +181,6 @@ public sealed partial class ReleaseWiringTests
             foreach (var file in SourceFiles(child)) yield return file;
         }
     }
-
-    private static IEnumerable<string> BuildOnlyReferences(string project) =>
-        XDocument.Load(Path.Combine(Repository.Root, "src", project, $"{project}.csproj"))
-                 .Descendants("PackageReference")
-                 .Where(reference => string.Equals(
-                      ((string?)reference.Attribute("PrivateAssets") ?? reference.Element("PrivateAssets")?.Value)?.Trim(),
-                      "all", StringComparison.OrdinalIgnoreCase))
-                 .Select(reference => (string?)reference.Attribute("Include"))
-                 .OfType<string>();
 
     private static string Workflow(string fileName) =>
         File.ReadAllText(Path.Combine(Repository.Root, ".github", "workflows", fileName));
