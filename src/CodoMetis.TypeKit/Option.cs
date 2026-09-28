@@ -17,7 +17,7 @@ namespace CodoMetis.TypeKit;
 /// option can be logged without leaking what it holds. The debugger shows the content.
 /// </remarks>
 /// <typeparam name="T">The type of the value.</typeparam>
-[RequireCustomInitialization]
+[RequireCustomInitialization("Use Option.Some(value) or Option.None().")]
 [JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
 public readonly record struct Option<T> where T : notnull

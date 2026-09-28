@@ -1,9 +1,11 @@
+using CodoMetis.TypeKit.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace CodoMetis.TypeKit.EntityFrameworkCore;
+// Beside EF Core's own AddEntityFrameworkNpgsql and AddEntityFrameworkSqlite.
+namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>Registers CodoMetis.TypeKit in EF Core's internal service provider.</summary>
 public static class TypeKitServiceCollectionExtensions
@@ -19,12 +21,13 @@ public static class TypeKitServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(serviceCollection);
 
-        // All three are plugins, which EF collects from every registration: nothing of EF's or of
+        // All four are plugins, which EF collects from every registration: nothing of EF's or of
         // another library's is replaced.
         new EntityFrameworkRelationalServicesBuilder(serviceCollection)
             .TryAdd<IRelationalTypeMappingSourcePlugin, ValueObjectTypeMappingSourcePlugin>()
             .TryAdd<IMemberTranslatorPlugin, ValueObjectMemberTranslatorPlugin>()
-            .TryAdd<IMethodCallTranslatorPlugin, ValueObjectMethodCallTranslatorPlugin>();
+            .TryAdd<IMethodCallTranslatorPlugin, ValueObjectMethodCallTranslatorPlugin>()
+            .TryAdd<IConventionSetPlugin, ValueObjectKeyConventionSetPlugin>();
 
         return serviceCollection;
     }

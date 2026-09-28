@@ -69,6 +69,28 @@ public sealed class AnalyzerPackagingTests(AnalyzerPackagingTests.Packs packs)
     }
 
     /// <summary>
+    /// The analyzer compiles against the oldest Roslyn a .NET 10 SDK runs, 5.0.0 (the 10.0.1xx band,
+    /// still serviced, and the only band Linux distributions build). Measured 2026-09-28: built
+    /// against 5.9.0 and run by the 5.0.0 compiler, the analyzer is not loaded (CS9057, a warning),
+    /// and <c>default(Option&lt;int&gt;)</c> compiles without CMTK0001.
+    /// </summary>
+    [Fact]
+    public void The_packed_analyzer_loads_in_the_oldest_NET_10_compiler()
+    {
+        var floor      = new Version(5, 0, 0, 0);
+        var references = packs.AssemblyReferences(AnalyzerPackage, $"analyzers/dotnet/cs/{AnalyzerPackage}.dll");
+
+        references.Keys.ShouldContain("Microsoft.CodeAnalysis");
+
+        foreach (var (name, version) in references.Where(reference => reference.Key.StartsWith("Microsoft.CodeAnalysis", StringComparison.Ordinal)))
+        {
+            version.ShouldBeLessThanOrEqualTo(floor,
+                $"The analyzer references {name} {version}. A compiler older than that (SDK 10.0.1xx runs Roslyn {floor}) " +
+                "refuses to load it with CS9057, and every CMTK rule goes silent. Keep Microsoft.CodeAnalysis.CSharp at the floor in Directory.Packages.props.");
+        }
+    }
+
+    /// <summary>
     /// Elements by local name. NuGet picks the nuspec's XML namespace by the features a package
     /// uses (a development dependency is written against the 2010/07 schema, a plain package against
     /// 2013/05), so a query for one namespace finds nothing in the other and passes vacuously.
@@ -135,6 +157,24 @@ public sealed class AnalyzerPackagingTests(AnalyzerPackagingTests.Packs packs)
                            .Where(attribute => IsAssemblyMetadata(metadata, attribute))
                            .Select(attribute => attribute.DecodeValue(StringArguments.Instance))
                            .ToDictionary(value => (string)value.FixedArguments[0].Value!, value => (string?)value.FixedArguments[1].Value, StringComparer.Ordinal);
+        }
+
+        /// <summary>The assemblies an assembly in the package references, by name, read from its metadata.</summary>
+        public IReadOnlyDictionary<string, Version> AssemblyReferences(string package, string path)
+        {
+            using var archive = ZipFile.OpenRead(Package(package));
+            var entry = archive.GetEntry(path) ?? throw new InvalidOperationException($"{package} packs no {path}.");
+
+            using var image = new MemoryStream();
+            using (var stream = entry.Open()) stream.CopyTo(image);
+            image.Position = 0;
+
+            using var pe = new PEReader(image);
+            var metadata = pe.GetMetadataReader();
+
+            return metadata.AssemblyReferences
+                           .Select(metadata.GetAssemblyReference)
+                           .ToDictionary(reference => metadata.GetString(reference.Name), reference => reference.Version, StringComparer.Ordinal);
         }
 
         private static bool IsAssemblyMetadata(MetadataReader metadata, CustomAttribute attribute) =>

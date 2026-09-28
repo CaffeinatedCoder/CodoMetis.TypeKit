@@ -28,7 +28,8 @@ internal sealed class ValueObjectAspectState : IAspectState
         IDurableRef<IMethod>      fromText,
         IDurableRef<IMethod>      tryFromText,
         string                    companionClassName,
-        string?                   companionClassNameOwner
+        string?                   companionClassNameOwner,
+        bool                      declaresToString
     )
     {
         Kind                    = kind;
@@ -39,6 +40,7 @@ internal sealed class ValueObjectAspectState : IAspectState
         TryFromText             = tryFromText;
         CompanionClassName      = companionClassName;
         CompanionClassNameOwner = companionClassNameOwner;
+        DeclaresToString        = declaresToString;
     }
 
     public ValueObjectKind Kind { get; }
@@ -68,4 +70,10 @@ internal sealed class ValueObjectAspectState : IAspectState
     /// <see langword="null"/> when the name is free (<see cref="CompanionClass.NameOwner"/>).
     /// </summary>
     public string? CompanionClassNameOwner { get; }
+
+    /// <summary>
+    /// The value object declares its own parameterless <c>ToString()</c>, the formatting seam
+    /// (<see cref="ValueObjectDeclaration.DeclaresToString"/>). Read before any aspect introduces one.
+    /// </summary>
+    public bool DeclaresToString { get; }
 }

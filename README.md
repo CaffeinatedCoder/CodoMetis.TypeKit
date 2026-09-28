@@ -4,6 +4,7 @@ Strong types for .NET 10: `Option` and `Result` types that cannot be misused, an
 that are written as one line and generated at compile time.
 
 [![.NET](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/actions/workflows/dotnet.yml/badge.svg)](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/actions/workflows/dotnet.yml)
+[![NuGet](https://img.shields.io/nuget/v/CodoMetis.TypeKit.svg)](https://www.nuget.org/packages/CodoMetis.TypeKit)
 
 ```csharp
 public readonly partial record struct OrderId : IValue<Guid>;
@@ -27,7 +28,7 @@ your own, and it can be declared inside another type.
 | Package | Role | Metalama |
 |---|---|---|
 | [CodoMetis.TypeKit](src/CodoMetis.TypeKit/README.md) | `Option<T>`, `Result<T, TError>`, `Result<TError>`, the value-object contracts, and the analyzers that guard them | no |
-| [CodoMetis.TypeKit.Analyzers](src/CodoMetis.TypeKit.Analyzers/README.md) | CMTK0001–CMTK0008: no `default` of a value object, an `Option` or a `Result`, in any form; no value object nobody generates; no ignored result; no validation bypass; no comparing two value objects' values. Arrives with the base package | no |
+| [CodoMetis.TypeKit.Analyzers](src/CodoMetis.TypeKit.Analyzers/README.md) | CMTK0001–CMTK0009: no `default` of a value object, an `Option` or a `Result`, written in source or handed out by `FirstOrDefault` and its kind; no value object nobody generates; no ignored result; no validation bypass; no comparing two value objects' values. In Razor components too. Arrives with the base package | no |
 | [CodoMetis.TypeKit.Generators](src/CodoMetis.TypeKit.Generators/README.md) | The compile-time generation, in the project that declares value objects | yes |
 | [CodoMetis.TypeKit.EntityFrameworkCore](src/CodoMetis.TypeKit.EntityFrameworkCore/README.md) | Value objects as columns with nothing registered per type, and `.Value` in LINQ | no |
 | [CodoMetis.TypeKit.AspNetCore](src/CodoMetis.TypeKit.AspNetCore/README.md) | Value objects in the OpenAPI document, with the schema of the type they wrap | no |
@@ -71,9 +72,9 @@ Result<Email, EmailFault> created = Email.Create(input);  // the fault says whic
 Option<Email> maybe = Email.TryFrom(input);               // is it valid?
 Email known = Email.FromKnownGood("ops@example.com");     // a literal you vouch for; throws otherwise
 
-created.Match(
-    email => Send(email),
-    fault => Reject(fault));
+string reply = created.Match(
+    email => $"Welcome, {email}",
+    fault => $"Please check the address ({fault})");
 
 JsonSerializer.Serialize(known);                          // "ops@example.com"
 JsonSerializer.Deserialize<Email>("\"nobody\"");          // JsonException naming Email and NoAt, never the text
@@ -83,7 +84,7 @@ Email.Parse("ops@example.com", null);                     // IParsable, so it bi
 ```csharp
 services.AddDbContext<ShopDb>(options => options.UseNpgsql(connectionString).UseTypeKit());
 
-db.Orders.Where(o => o.Customer.Email.Value.EndsWith("@example.com"));   // WHERE o."Email" LIKE '%@example.com'
+db.Customers.Where(c => c.Email.Value.EndsWith("@example.com"));        // WHERE c."Email" LIKE '%@example.com'
 
 services.AddOpenApi(options => options.AddTypeKit());                    // OrderId: {"type":"string","format":"uuid"}
 ```
@@ -100,18 +101,24 @@ services.AddOpenApi(options => options.AddTypeKit());                    // Orde
   and a converter you register on the options takes precedence if you want a wire format of your own.
 - **One rule set per validated value object.** `Create` is the only factory written by hand, and
   the generated `TryFrom`, `FromKnownGood`, JSON converter, parsing and type converter all apply
-  it. The fault you return from `Create` is what each of them reports: the JSON 400, the
+  it. The fault you return from `Create` is what each of them reports: the `JsonException`, the
   `FormatException` and the `FromKnownGood` exception all name your `EmailFault.NoAt`. The two
   validation-free paths, reading a database column and reading JSON the application stored itself,
   are explicit, named, and unreachable from input.
 - **No factory throws on input by accident.** A validated value object has no `From`. Its ways in
   are `Create`, which returns a `Result`, `TryFrom`, which returns an `Option`, and `FromKnownGood`,
   whose name says the caller vouches for the value and whose exception blames the call site.
-- **A refusal never echoes the input.** A JSON or parsing refusal names the type and the rule,
-  `FromKnownGood` names the caller's expression, and `Option` and `Result` print nothing, so a value
-  that is a secret cannot reach a message or a log through this package.
+- **A refusal never echoes the input.** A JSON or parsing refusal names the value object and the
+  rule, or the wrapped type it could not read, and carries no inner exception that quotes the text;
+  `FromKnownGood` names the caller's expression, and `Option` and `Result` print nothing. So a value
+  that is a secret does not reach a message or a log through this package, as long as your fault
+  type does not carry it.
+- **Swapping a primitive for a value object changes no contract.** Its JSON is the wrapped type's,
+  byte for byte, under your options; its column is the wrapped type's, a key over an integer still an
+  identity column; its OpenAPI schema is the one ASP.NET publishes for the wrapped type. Only what
+  the value object refuses changes.
 - **Loud failures.** A declaration that cannot be generated is a build error naming the
-  declaration, CMTK1000 to CMTK1009, never a type with nothing in it. The analyzers make `default`
+  declaration, CMTK1000 to CMTK1011, never a type with nothing in it. The analyzers make `default`
   of a value object, an `Option` or a `Result` an error.
 - **Discovery by interface.** The EF Core and OpenAPI satellites recognise a value object by the
   attribute the generators put beside `IValueObject<,>`, whose type arguments are constrained to it,
@@ -123,11 +130,13 @@ services.AddOpenApi(options => options.AddTypeKit());                    // Orde
 
 ## Status
 
-No version has been released yet. `Option`/`Result`, the contracts and analyzers, the generators,
-the EF Core satellite, the OpenAPI satellite, the release pipeline and Native AOT are done; 0.1.0 is
-next. The
-plan, the decisions and their evidence are in [docs/plan.md](docs/plan.md), and the measurements
-that decided the design are in [spikes/](spikes/).
+1.0.0 is the first release. The five packages share one version and follow Semantic Versioning:
+the public API, the generated members of a value object, and the analyzer ids and severities are
+the contract. A new analyzer rule arrives as a warning or a suggestion in a minor version, and
+becomes an error only in a major one.
+[CHANGELOG.md](CHANGELOG.md) lists what each version changed. The plan, the decisions and their
+evidence are in [docs/plan.md](docs/plan.md), and the measurements that decided the design are in
+[spikes/](spikes/).
 
 ## Building
 
@@ -139,7 +148,9 @@ dotnet test --solution CodoMetis.TypeKit.slnx
 The SDK is pinned in `global.json`. The PostgreSQL round-trip tests start a container, so they need
 Docker; everything else runs without it. [CONTRIBUTING.md](CONTRIBUTING.md) describes the quality
 bar, [SECURITY.md](SECURITY.md) how to report a vulnerability, and [AGENTS.md](AGENTS.md) is the
-guide for coding agents working in this repository.
+guide for coding agents working in this repository. Much of the code was written with AI assistance,
+under the maintainer's direction and review; [CONTRIBUTING.md](CONTRIBUTING.md#ai-assisted-development)
+says what that does and does not mean.
 
 ## License
 

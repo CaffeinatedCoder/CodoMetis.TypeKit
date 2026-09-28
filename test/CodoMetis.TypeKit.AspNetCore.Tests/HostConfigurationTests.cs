@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using CodoMetis.TypeKit.CompilerServices;
@@ -117,6 +118,7 @@ public sealed class HostConfigurationTests
         }
     }
 
+    /// <summary>The predicate the package README shows, a nullable value object included.</summary>
     [Fact]
     public async Task A_host_that_inlines_value_objects_gets_the_wrapped_types_schema_in_place()
     {
@@ -124,15 +126,51 @@ public sealed class HostConfigurationTests
         {
             openApi.AddTypeKit();
             openApi.CreateSchemaReferenceId = type =>
-                type.Type.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IValueObject<,>))
+                (Nullable.GetUnderlyingType(type.Type) ?? type.Type).GetCustomAttribute<GeneratedValueObjectAttribute>() is not null
                     ? null
                     : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
         });
 
         document.Components.ContainsKey("ProbeId").ShouldBeFalse();
+        document.Components.ContainsKey("ProbeCount").ShouldBeFalse("the nullable ProbeCount? still made a component");
         document.Property("ProbeDocument", "id").ShouldDescribeTheSameAs(new JsonObject { ["type"] = "string", ["format"] = "uuid" });
         document.Property("ProbeDocument", "ids")["items"].ShouldNotBeNull("the list lost its items")
                 .ShouldDescribeTheSameAs(new JsonObject { ["type"] = "string", ["format"] = "uuid" });
+    }
+
+    /// <summary>
+    /// ASP.NET names a component after the type's simple name, so <c>Shop.Id</c> and <c>Stock.Id</c>
+    /// shared one component <c>Id</c>, and a stock id was documented as a uuid. A nested value object's
+    /// component is named after the whole nesting chain, as its companion class is.
+    /// </summary>
+    [Fact]
+    public async Task Nested_value_objects_of_one_name_get_a_component_each()
+    {
+        var document = await ProbeHost.DocumentAsync(
+            openApi => openApi.AddTypeKit(),
+            endpoints: app => app.MapPost("/inventory", Inventory (Inventory inventory) => inventory));
+
+        document.Component("ShopId").ShouldDescribeTheSameAs(new JsonObject { ["type"] = "string", ["format"] = "uuid" });
+        document.Component("StockId")["format"]!.GetValue<string>().ShouldBe("int32");
+        document.Property("Inventory", "shop")["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/ShopId");
+        document.Property("Inventory", "stock")["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/StockId");
+        document.Components.ContainsKey("Id").ShouldBeFalse();
+    }
+
+    /// <summary>A name the host chose itself is kept; only ASP.NET's default name is replaced.</summary>
+    [Fact]
+    public async Task A_component_name_the_host_chose_is_kept()
+    {
+        var document = await ProbeHost.DocumentAsync(
+            openApi =>
+            {
+                openApi.CreateSchemaReferenceId = type => type.Type == typeof(Shop.Id) ? "ShopIdentifier" : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
+                openApi.AddTypeKit();
+            },
+            endpoints: app => app.MapPost("/inventory", Inventory (Inventory inventory) => inventory));
+
+        document.Components.ContainsKey("ShopIdentifier").ShouldBeTrue();
+        document.Components.ContainsKey("StockId").ShouldBeTrue();
     }
 
     [Fact]
@@ -240,3 +278,15 @@ internal sealed partial class IdsWithoutGuid : JsonSerializerContext;
 [JsonSerializable(typeof(IdHolder))]
 [JsonSerializable(typeof(Guid))]
 internal sealed partial class IdsWithGuid : JsonSerializerContext;
+
+public static partial class Shop
+{
+    public readonly partial record struct Id : IValue<Guid>;
+}
+
+public static partial class Stock
+{
+    public readonly partial record struct Id : IValue<int>;
+}
+
+public sealed record Inventory(Shop.Id Shop, Stock.Id Stock);

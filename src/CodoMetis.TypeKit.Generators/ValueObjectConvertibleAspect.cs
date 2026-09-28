@@ -63,11 +63,13 @@ internal sealed partial class ValueObjectConvertibleAspect : TypeAspect
             {
                 m.Name = nameof(IConvertible.ToType);
                 m.AddAttribute(CodeAnnotations.CompilerGenerated);
-            }
+            },
+            args: new { valueObjectType = builder.Target, declaresToString = state.DeclaresToString }
         );
 
-        // ToString(IFormatProvider) — already covered by IFormattable, dedicated template
-        // to satisfy the explicit IConvertible contract without duplicating logic.
+        // ToString(IFormatProvider): the wrapped value's text, or the value object's own ToString()
+        // where it declares one. Convert.ToString(object) asks IConvertible before anything else, so it
+        // printed the wrapped value past a ToString() that hid it.
         interfaceType.ExplicitMembers.IntroduceMethod(
             nameof(ToStringTemplate),
             IntroductionScope.Instance,
@@ -76,7 +78,8 @@ internal sealed partial class ValueObjectConvertibleAspect : TypeAspect
             {
                 m.Name = nameof(IConvertible.ToString);
                 m.AddAttribute(CodeAnnotations.CompilerGenerated);
-            }
+            },
+            args: new { declaresToString = state.DeclaresToString }
         );
 
         // One template, introduced once per typed conversion with its name and return type.

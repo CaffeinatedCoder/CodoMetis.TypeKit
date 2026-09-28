@@ -120,6 +120,18 @@ public sealed class ResultTests
     }
 
     [Fact]
+    public void TapError_runs_only_on_error_and_sees_the_error()
+    {
+        var seen = new List<string>();
+
+        ((bool)Result<string>.Success().TapError(seen.Add)).ShouldBeTrue();
+        Result<string>.Error("boom").TapError(seen.Add).TryGetError(out var error).ShouldBeTrue();
+
+        error.ShouldBe("boom");
+        seen.ShouldBe(["boom"]);
+    }
+
+    [Fact]
     public async Task TapAsync_runs_only_on_success()
     {
         var calls = 0;

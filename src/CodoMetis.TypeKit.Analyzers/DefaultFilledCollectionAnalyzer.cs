@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -16,8 +15,9 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// <remarks>
 /// CMTK0001 sees <c>default</c> written out, and none of these forms writes it: <c>new OrderId[n]</c>,
 /// <c>stackalloc OrderId[n]</c>, <c>GC.AllocateUninitializedArray&lt;OrderId&gt;(n)</c>,
-/// <c>GC.AllocateArray</c> and a growing <c>Array.Resize</c> (measured 2026-09-28). An array with
-/// initial elements, a constant length of zero and a collection expression start with no default
+/// <c>GC.AllocateArray</c> and <c>Array.Resize</c> (measured 2026-09-28), which adds default slots
+/// whenever the new size is larger, and the rule cannot tell whether it is. An array with initial
+/// elements, a constant length or size of zero and a collection expression start with no default
 /// element and are not reported. A warning, since filling such an array in a loop straight after is
 /// correct code the rule cannot tell apart.
 /// </remarks>
@@ -42,7 +42,7 @@ public sealed class DefaultFilledCollectionAnalyzer : DiagnosticAnalyzer
     /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+        context.ConfigureGeneratedCodeAnalysis(GeneratedCode.AnalysisFlags);
         context.EnableConcurrentExecution();
 
         context.RegisterCompilationStartAction(start =>
@@ -67,7 +67,7 @@ public sealed class DefaultFilledCollectionAnalyzer : DiagnosticAnalyzer
         if (creation.Initializer is not null || creation.Type is not IArrayTypeSymbol { ElementType: var element }) return;
         if (creation.DimensionSizes.All(size => size.ConstantValue is { HasValue: true, Value: 0 })) return;
 
-        Report(context.ReportDiagnostic, context.ContainingSymbol, creation.Syntax, "An array created with a length", element, symbols);
+        if (Diagnose(context.ContainingSymbol, creation.Syntax, "An array created with a length", element, symbols) is { } diagnostic) context.Report(diagnostic);
     }
 
     private static void AnalyzeInvocation(OperationAnalysisContext context, TypeKitSymbols symbols, INamedTypeSymbol? gc, INamedTypeSymbol? array)
@@ -78,15 +78,25 @@ public sealed class DefaultFilledCollectionAnalyzer : DiagnosticAnalyzer
         if (method.TypeArguments.Length != 1) return;
 
         string? form = null;
+        var     size = -1;
 
         if (SymbolEqualityComparer.Default.Equals(method.ContainingType, gc) && AllocatingMethods.Contains(method.Name))
+        {
             form = $"GC.{method.Name}";
+            size = 0; // (int length, bool pinned = false)
+        }
         else if (SymbolEqualityComparer.Default.Equals(method.ContainingType, array) && method.Name == "Resize")
+        {
             form = "Array.Resize";
+            size = 1; // (ref T[]? array, int newSize)
+        }
 
         if (form is null) return;
 
-        Report(context.ReportDiagnostic, context.ContainingSymbol, invocation.Syntax, form, method.TypeArguments[0], symbols);
+        // A length of zero creates no slot, as new T[0] does not.
+        if (invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == size)?.Value.ConstantValue is { HasValue: true, Value: 0 }) return;
+
+        if (Diagnose(context.ContainingSymbol, invocation.Syntax, form, method.TypeArguments[0], symbols) is { } diagnostic) context.Report(diagnostic);
     }
 
     private static void AnalyzeStackAlloc(SyntaxNodeAnalysisContext context, TypeKitSymbols symbols)
@@ -100,19 +110,19 @@ public sealed class DefaultFilledCollectionAnalyzer : DiagnosticAnalyzer
 
         if (context.SemanticModel.GetTypeInfo(arrayType.ElementType, context.CancellationToken).Type is not { } element) return;
 
-        Report(context.ReportDiagnostic, context.ContainingSymbol, stackAlloc, "A stackalloc with a length", element, symbols);
+        if (Diagnose(context.ContainingSymbol, stackAlloc, "A stackalloc with a length", element, symbols) is { } diagnostic) context.Report(diagnostic);
     }
 
-    private static void Report(Action<Diagnostic> report, ISymbol? containingSymbol, SyntaxNode node, string form, ITypeSymbol element, TypeKitSymbols symbols)
+    private static Diagnostic? Diagnose(ISymbol? containingSymbol, SyntaxNode node, string form, ITypeSymbol element, TypeKitSymbols symbols)
     {
-        if (!symbols.IsNoDefaultStruct(element)) return;
+        if (!symbols.IsNoDefaultStruct(element)) return null;
 
         // Inside the type itself, as CMTK0001 exempts it: its own code knows how it fills the slots.
         for (var current = containingSymbol; current is not null; current = current.ContainingSymbol)
         {
-            if (current is INamedTypeSymbol named && SymbolEqualityComparer.Default.Equals(named.OriginalDefinition, element.OriginalDefinition)) return;
+            if (current is INamedTypeSymbol named && SymbolEqualityComparer.Default.Equals(named.OriginalDefinition, element.OriginalDefinition)) return null;
         }
 
-        report(Diagnostic.Create(Rule, node.GetLocation(), form, element.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+        return Diagnostic.Create(Rule, node.GetLocation(), form, element.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
     }
 }

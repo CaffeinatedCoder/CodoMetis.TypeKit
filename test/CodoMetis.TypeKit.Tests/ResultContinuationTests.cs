@@ -131,6 +131,30 @@ public sealed class ResultContinuationTests
         calls.ShouldBe(2);
     }
 
+    [Fact]
+    public async Task EnsureAsync_and_TapErrorAsync_continue_a_pending_result()
+    {
+        var logged = new List<Fault>();
+
+        Result<Order, Fault> small = await Find(3).EnsureAsync(order => order.Total < 100m, Fault.Declined).TapErrorAsync(logged.Add);
+        Result<Order, Fault> large = await Find(30).EnsureAsync(order => order.Total < 100m, Fault.Declined).TapErrorAsync(logged.Add);
+        Result<Order, Fault> none  = await Find(0).EnsureAsync(_ => throw new InvalidOperationException("not called on an error"), Fault.Declined);
+
+        small.Match(order => order.Id, _ => -1).ShouldBe(3);
+        large.ShouldBe(Result<Order, Fault>.Error(Fault.Declined));
+        none.ShouldBe(Result<Order, Fault>.Error(Fault.NotFound));
+        logged.ShouldBe([Fault.Declined]);
+
+        var commandErrors = new List<Fault>();
+        (await Find(30).BindAsync(Charge).TapErrorAsync(commandErrors.Add)).TryGetError(out _).ShouldBeTrue();
+        ((bool)await Find(3).BindAsync(Charge).TapErrorAsync(commandErrors.Add)).ShouldBeTrue();
+        commandErrors.ShouldBe([Fault.Declined]);
+
+        // The error is checked before the result is known, as the delegates are.
+        (await Should.ThrowAsync<ArgumentNullException>(() => Task.FromResult(Result<int, string>.Error("e")).EnsureAsync(_ => true, null!))).ParamName.ShouldBe("error");
+        (await Should.ThrowAsync<ArgumentNullException>(() => Task.FromException<Result<int, string>>(new TimeoutException()).EnsureAsync(_ => true, null!))).ParamName.ShouldBe("error");
+    }
+
     /// <summary>
     /// A selector that returns a task picks the asynchronous overload, a method group included,
     /// rather than wrapping the task as the value.

@@ -94,15 +94,31 @@ internal static class WrappedValue
     /// A column is re-typed rather than cast: it already holds the wrapped value, and a cast is not a
     /// no-op everywhere (on SQL Server, <c>CAST(Code AS nvarchar(max))</c> can stop an index seek).
     /// The mapping keeps the column's store type, so its facets survive. Any other operand, such as a
-    /// parameter or a function result, is converted.
+    /// parameter or a function result, is converted, and so is the element column of a primitive
+    /// collection (<see cref="IsCollectionElement"/>).
     /// </summary>
     public static SqlExpression Of(SqlExpression operand, Type valueType, ISqlExpressionFactory sqlExpressionFactory, IRelationalTypeMappingSource typeMappingSource)
     {
         var mapping = (operand.TypeMapping?.StoreType is { } storeType ? typeMappingSource.FindMapping(valueType, storeType) : null)
                    ?? typeMappingSource.FindMapping(valueType);
 
-        return operand is ColumnExpression column
+        return operand is ColumnExpression column && !IsCollectionElement(column)
                    ? new ColumnExpression(column.Name, column.TableAlias, valueType, mapping, column.IsNullable)
                    : sqlExpressionFactory.Convert(operand, valueType, mapping);
     }
+
+    /// <summary>
+    /// The element of a primitive collection is a column of the collection's table expression
+    /// (<c>unnest</c>, <c>json_each</c>, <c>OPENJSON</c>, EF's <c>VALUES</c>), and EF infers the
+    /// collection's element mapping from the columns that read it. Re-typed, the column handed it the
+    /// wrapped type's mapping for a collection of value objects, and translating <c>o.Tags.Any(t =>
+    /// t.Value == "x")</c> threw (measured with EF Core 10.0.12 on PostgreSQL and SQLite).
+    /// </summary>
+    /// <remarks>
+    /// EF Core 10's column no longer knows its table, so the element column is recognised by the name
+    /// every relational provider gives it, <c>value</c>. The name only decides between two correct
+    /// translations: a table column that happens to be named <c>Value</c> is converted too, which is
+    /// correct and at worst a cast.
+    /// </remarks>
+    private static bool IsCollectionElement(ColumnExpression column) => string.Equals(column.Name, "value", StringComparison.OrdinalIgnoreCase);
 }

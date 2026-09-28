@@ -73,7 +73,7 @@ internal sealed partial class ValueObjectTypeConverterAspect : TypeAspect
                 x.Name = nameof(TypeConverter.ConvertTo);
                 x.AddAttribute(CodeAnnotations.CompilerGenerated);
             },
-            args: new { valueObjectType = builder.Target }
+            args: new { valueObjectType = builder.Target, valueType = state.ValueType.GetTarget() }
         );
 
         var typeConverterAttribute = AttributeConstruction.Create(

@@ -41,6 +41,29 @@ public sealed class PackageReadmeTests(AnalyzerPackagingTests.Packs packs)
         firstLine.ShouldBe($"# {package}");
     }
 
+    /// <summary>
+    /// What nuget.org shows and searches: a package without tags is found only by its exact id, and
+    /// one without a commit in its repository element cannot be traced to the source it was built from.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ShippingPackages))]
+    public void The_package_carries_the_metadata_nuget_org_shows(string package)
+    {
+        var metadata = packs.Nuspec(package).Descendants().Where(element => element.Parent?.Name.LocalName == "metadata")
+                            .GroupBy(element => element.Name.LocalName)
+                            .ToDictionary(group => group.Key, group => group.First());
+
+        foreach (var name in new[] { "description", "tags", "copyright", "projectUrl", "releaseNotes" })
+            metadata.ShouldContainKey(name, $"{package} has no <{name}> in its nuspec.");
+
+        metadata["tags"].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length.ShouldBeGreaterThanOrEqualTo(3, $"{package} has almost no tags.");
+        metadata["license"].Value.ShouldBe("MIT");
+
+        var repository = metadata["repository"];
+        repository.Attribute("type")?.Value.ShouldBe("git");
+        repository.Attribute("commit")?.Value.ShouldNotBeNullOrWhiteSpace($"{package} names no commit, so Source Link cannot tie it to its source.");
+    }
+
     /// <summary>The repository's README maps every package to its own README, so a new package appears there too.</summary>
     [Theory]
     [MemberData(nameof(ShippingPackages))]

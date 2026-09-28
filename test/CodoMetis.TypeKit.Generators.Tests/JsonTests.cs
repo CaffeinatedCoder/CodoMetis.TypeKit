@@ -22,7 +22,7 @@ public sealed class JsonTests
         ["DateTime"]       = (ProbeTimestamp.From(new DateTime(2026, 9, 27, 12, 0, 0, DateTimeKind.Utc)), "\"2026-09-27T12:00:00Z\""),
         ["DateOnly"]       = (ProbeDate.From(new DateOnly(2026, 9, 27)), "\"2026-09-27\""),
         ["DateTimeOffset"] = (ProbeMoment.From(new DateTimeOffset(2026, 9, 27, 12, 0, 0, TimeSpan.FromHours(2))), "\"2026-09-27T12:00:00+02:00\""),
-        ["TimeOnly"]       = (ProbeTime.From(new TimeOnly(13, 45, 30)), "\"13:45:30.0000000\""),
+        ["TimeOnly"]       = (ProbeTime.From(new TimeOnly(13, 45, 30)), "\"13:45:30\""),
         ["NodaTime Instant"]   = (ProbeInstant.From(Instant.FromUtc(2026, 9, 27, 12, 0)), "\"2026-09-27T12:00:00Z\""),
         ["NodaTime LocalDate"] = (ProbeLocalDate.From(new LocalDate(2026, 9, 27)), "\"2026-09-27\""),
         ["fallback (Uri)"] = (ProbeUri.From(new Uri("https://example.com/a")), "\"https://example.com/a\""),

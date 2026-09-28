@@ -71,6 +71,27 @@ public static class Option
         public Option<TResult> SelectMany<TResult>(Func<T, Option<TResult>> selector) where TResult : notnull =>
             a.Bind(selector);
 
+        /// <summary>
+        /// Chains an operation that may itself produce no value, and combines both values. Enables a
+        /// second <c>from</c> in query syntax, where the later steps can use every earlier value.
+        /// </summary>
+        /// <param name="selector">Called with the value if there is one.</param>
+        /// <param name="resultSelector">Called with both values if the chained option holds one too.</param>
+        /// <typeparam name="TNext">The type of the chained option's value.</typeparam>
+        /// <typeparam name="TResult">The type of the combined value.</typeparam>
+        /// <returns>The combined value, or <c>None</c> if either option is empty.</returns>
+        public Option<TResult> SelectMany<TNext, TResult>(Func<T, Option<TNext>> selector, Func<T, TNext, TResult> resultSelector)
+            where TNext : notnull
+            where TResult : notnull
+        {
+            ArgumentNullException.ThrowIfNull(selector);
+            ArgumentNullException.ThrowIfNull(resultSelector);
+
+            return a.TryGetValue(out var value) && selector(value).TryGetValue(out var next)
+                ? Some(resultSelector(value, next))
+                : None<TResult>();
+        }
+
         /// <summary>Keeps the value only if it satisfies <paramref name="predicate"/>. Enables <c>where</c> in query syntax.</summary>
         /// <param name="predicate">Called with the value if there is one.</param>
         /// <returns>The option if its value passes, otherwise <c>None</c>.</returns>
@@ -252,6 +273,36 @@ public static class Option
     /// <typeparam name="T">The type of the elements.</typeparam>
     extension<T>(IEnumerable<T> source) where T : notnull
     {
+        /// <summary>The first element, or <c>None</c> for an empty sequence.</summary>
+        /// <returns>The first element, or <c>None</c> if there is none.</returns>
+        /// <exception cref="ArgumentNullException">The first element is null.</exception>
+        public Option<T> FirstOrNone()
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            using var enumerator = source.GetEnumerator();
+
+            return enumerator.MoveNext() ? Some(enumerator.Current) : None<T>();
+        }
+
+        /// <summary>The last element, or <c>None</c> for an empty sequence.</summary>
+        /// <returns>The last element, or <c>None</c> if there is none.</returns>
+        /// <exception cref="ArgumentNullException">The last element is null.</exception>
+        public Option<T> LastOrNone()
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            if (source is IReadOnlyList<T> list) return list.Count > 0 ? Some(list[^1]) : None<T>();
+
+            using var enumerator = source.GetEnumerator();
+            if (!enumerator.MoveNext()) return None<T>();
+
+            var last = enumerator.Current;
+            while (enumerator.MoveNext()) last = enumerator.Current;
+
+            return Some(last);
+        }
+
         /// <summary>The first element that matches, or <c>None</c>.</summary>
         /// <param name="predicate">The condition to match.</param>
         /// <returns>The first matching element, or <c>None</c> if nothing matches.</returns>
@@ -269,6 +320,23 @@ public static class Option
                   .Select(Some)
                   .DefaultIfEmpty(None<T>())
                   .LastOrDefault();
+    }
+
+    /// <param name="dictionary">The dictionary.</param>
+    /// <typeparam name="TKey">The type of the keys.</typeparam>
+    /// <typeparam name="TValue">The type of the values.</typeparam>
+    extension<TKey, TValue>(IReadOnlyDictionary<TKey, TValue> dictionary) where TValue : notnull
+    {
+        /// <summary>The value stored under <paramref name="key"/>, or <c>None</c>: <c>TryGetValue</c> as an option.</summary>
+        /// <param name="key">The key to look up.</param>
+        /// <returns>The value, or <c>None</c> if the dictionary has no such key.</returns>
+        /// <exception cref="ArgumentNullException">The value stored under <paramref name="key"/> is null.</exception>
+        public Option<TValue> GetValueOrNone(TKey key)
+        {
+            ArgumentNullException.ThrowIfNull(dictionary);
+
+            return dictionary.TryGetValue(key, out var value) ? Some(value) : None<TValue>();
+        }
     }
 
     /// <param name="instance">The object to cast.</param>

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
 
 namespace CodoMetis.TypeKit.AspNetCore.Tests;

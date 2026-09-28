@@ -1,8 +1,10 @@
 <Project>
     <PropertyGroup>
-        <Version>0.1.0</Version>
+        <Version>1.0.0</Version>
         <Authors>CaffeinatedCoder</Authors>
+        <Copyright>Copyright (c) 2026 CaffeinatedCoder</Copyright>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReleaseNotes>https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/CHANGELOG.md</PackageReleaseNotes>
         <PackageProjectUrl>https://github.com/CaffeinatedCoder/CodoMetis.TypeKit</PackageProjectUrl>
         <RepositoryUrl>https://github.com/CaffeinatedCoder/CodoMetis.TypeKit</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
@@ -33,7 +35,7 @@
 
     <!--
         Package validation is on from the start, without a baseline: there is no release to compare
-        against yet. Once 0.1.0 ships, PackageValidationBaselineVersion is set to the last release,
+        against yet. Once 1.0.0 ships, PackageValidationBaselineVersion is set to the last release,
         so ApiCompat fails any pack that breaks the public surface.
 
         GeneratePackageOnBuild is deliberately NOT set: it silently turns `dotnet pack` into a

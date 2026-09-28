@@ -527,6 +527,35 @@ ProbeInternalId (internal)
   static op_LessThanOrEqual(ProbeInternalId, ProbeInternalId) : Boolean
   extension internal static ProbeInternalIdExtensions.GetValue(ProbeInternalId) : Int32
   extension internal static ProbeInternalIdExtensions.ValueOrNull(ProbeInternalId?) : Int32?
+ProbeIsbn
+  Equals(Object) : Boolean
+  Equals(ProbeIsbn) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  Value : ProbeIsbnText
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeIsbn, ProbeIsbnText>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IEqualityOperators<ProbeIsbn, ProbeIsbn, Boolean>
+  implements IEquatable<ProbeIsbn>
+  implements IFormattable
+  implements IParsable<ProbeIsbn>
+  implements IPlainValueObject<ProbeIsbn, ProbeIsbnText>
+  implements IValue<ProbeIsbnText>
+  implements IValueObject<ProbeIsbn, ProbeIsbnText>
+  implements IValueObjectMaterializer<ProbeIsbn, ProbeIsbnText>
+  nested ProbeIsbnJsonConverter : JsonConverter<ProbeIsbn>, IStoredJsonConverterSource
+  nested ProbeIsbnTypeConverter : TypeConverter
+  new()
+  static From(ProbeIsbnText) : ProbeIsbn
+  static Parse(String, IFormatProvider) : ProbeIsbn
+  static TryParse(String, IFormatProvider, out ProbeIsbn) : Boolean
+  static op_Equality(ProbeIsbn, ProbeIsbn) : Boolean
+  static op_Inequality(ProbeIsbn, ProbeIsbn) : Boolean
+  extension static ProbeIsbnExtensions.GetValue(ProbeIsbn) : ProbeIsbnText
+  extension static ProbeIsbnExtensions.ValueOrNull(ProbeIsbn?) : ProbeIsbnText
 ProbeLabel
   <Clone>$() : ProbeLabel
   CompareTo(Object) : Int32
@@ -783,6 +812,52 @@ ProbePercentage
   static op_LessThanOrEqual(ProbePercentage, ProbePercentage) : Boolean
   extension static ProbePercentageExtensions.GetValue(ProbePercentage) : Int32
   extension static ProbePercentageExtensions.ValueOrNull(ProbePercentage?) : Int32?
+ProbePin
+  CompareTo(Object) : Int32
+  CompareTo(ProbePin) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbePin) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbePin, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbePin>
+  implements IComparisonOperators<ProbePin, ProbePin, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbePin, ProbePin, Boolean>
+  implements IEquatable<ProbePin>
+  implements IMinMaxValue<ProbePin>
+  implements IParsable<ProbePin>
+  implements IPlainValueObject<ProbePin, Int32>
+  implements ISpanParsable<ProbePin>
+  implements IUtf8SpanParsable<ProbePin>
+  implements IValue<Int32>
+  implements IValueObject<ProbePin, Int32>
+  implements IValueObjectMaterializer<ProbePin, Int32>
+  nested ProbePinJsonConverter : JsonConverter<ProbePin>, IStoredJsonConverterSource
+  nested ProbePinTypeConverter : TypeConverter
+  new()
+  static From(Int32) : ProbePin
+  static MaxValue : ProbePin
+  static MinValue : ProbePin
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ProbePin
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbePin
+  static Parse(String, IFormatProvider) : ProbePin
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ProbePin) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbePin) : Boolean
+  static TryParse(String, IFormatProvider, out ProbePin) : Boolean
+  static op_Equality(ProbePin, ProbePin) : Boolean
+  static op_GreaterThan(ProbePin, ProbePin) : Boolean
+  static op_GreaterThanOrEqual(ProbePin, ProbePin) : Boolean
+  static op_Inequality(ProbePin, ProbePin) : Boolean
+  static op_LessThan(ProbePin, ProbePin) : Boolean
+  static op_LessThanOrEqual(ProbePin, ProbePin) : Boolean
+  extension static ProbePinExtensions.GetValue(ProbePin) : Int32
+  extension static ProbePinExtensions.ValueOrNull(ProbePin?) : Int32?
 ProbeRatio
   CompareTo(Object) : Int32
   CompareTo(ProbeRatio) : Int32
@@ -835,6 +910,72 @@ ProbeRatio
   static op_LessThanOrEqual(ProbeRatio, ProbeRatio) : Boolean
   extension static ProbeRatioExtensions.GetValue(ProbeRatio) : Double
   extension static ProbeRatioExtensions.ValueOrNull(ProbeRatio?) : Double?
+ProbeSecret
+  <Clone>$() : ProbeSecret
+  CompareTo(Object) : Int32
+  CompareTo(ProbeSecret) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeSecret) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  Value : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeSecret, String>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeSecret>
+  implements IComparisonOperators<ProbeSecret, ProbeSecret, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeSecret, ProbeSecret, Boolean>
+  implements IEquatable<ProbeSecret>
+  implements IParsable<ProbeSecret>
+  implements IPlainValueObject<ProbeSecret, String>
+  implements IValue<String>
+  implements IValueObject<ProbeSecret, String>
+  implements IValueObjectMaterializer<ProbeSecret, String>
+  nested ProbeSecretJsonConverter : JsonConverter<ProbeSecret>, IStoredJsonConverterSource
+  nested ProbeSecretTypeConverter : TypeConverter
+  static From(String) : ProbeSecret
+  static Parse(String, IFormatProvider) : ProbeSecret
+  static TryParse(String, IFormatProvider, out ProbeSecret) : Boolean
+  static op_Equality(ProbeSecret, ProbeSecret) : Boolean
+  static op_GreaterThan(ProbeSecret, ProbeSecret) : Boolean
+  static op_GreaterThanOrEqual(ProbeSecret, ProbeSecret) : Boolean
+  static op_Inequality(ProbeSecret, ProbeSecret) : Boolean
+  static op_LessThan(ProbeSecret, ProbeSecret) : Boolean
+  static op_LessThanOrEqual(ProbeSecret, ProbeSecret) : Boolean
+  extension static ProbeSecretExtensions.GetValue(ProbeSecret) : String
+  extension static ProbeSecretExtensions.ValueOrNull(ProbeSecret) : String
+ProbeSku
+  Equals(Object) : Boolean
+  Equals(ProbeSku) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  Value : ProbeSkuText
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeSku, ProbeSkuText>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IEqualityOperators<ProbeSku, ProbeSku, Boolean>
+  implements IEquatable<ProbeSku>
+  implements IFormattable
+  implements IParsable<ProbeSku>
+  implements IPlainValueObject<ProbeSku, ProbeSkuText>
+  implements IValue<ProbeSkuText>
+  implements IValueObject<ProbeSku, ProbeSkuText>
+  implements IValueObjectMaterializer<ProbeSku, ProbeSkuText>
+  nested ProbeSkuJsonConverter : JsonConverter<ProbeSku>, IStoredJsonConverterSource
+  nested ProbeSkuTypeConverter : TypeConverter
+  new()
+  static From(ProbeSkuText) : ProbeSku
+  static Parse(String, IFormatProvider) : ProbeSku
+  static TryParse(String, IFormatProvider, out ProbeSku) : Boolean
+  static op_Equality(ProbeSku, ProbeSku) : Boolean
+  static op_Inequality(ProbeSku, ProbeSku) : Boolean
+  extension static ProbeSkuExtensions.GetValue(ProbeSku) : ProbeSkuText
+  extension static ProbeSkuExtensions.ValueOrNull(ProbeSku?) : ProbeSkuText
 ProbeTime
   CompareTo(Object) : Int32
   CompareTo(ProbeTime) : Int32

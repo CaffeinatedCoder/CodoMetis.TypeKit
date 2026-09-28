@@ -24,9 +24,13 @@ operation. The short job's error is about ±10%.
 | Sort 1,000 (enum-backed against the enum) | 0.63 | — |
 | `Parse` | 0.98 | — |
 | `TryFormat` | parity | — |
-| JSON read / write | 1.08 / 0.96 | same bytes |
+| JSON read / write | 1.06 / 1.00 | same bytes |
 | `Create` against the same rule returning a nullable fault | 0.93 | — |
 | `Create` → `Map` → `Bind` → `Match` against branches | 1.93 | — |
+
+The JSON row was measured again with `--job medium` after the converter started writing through the
+options' own converter for the wrapped type, which makes its bytes identical to the wrapped type's
+under any options (1.03 / 0.99 before that change, on the same job).
 
 A result pipeline costs about a nanosecond per item over hand-written branches: the delegate calls
 that `Map` and `Bind` are made of. Against Vogen:

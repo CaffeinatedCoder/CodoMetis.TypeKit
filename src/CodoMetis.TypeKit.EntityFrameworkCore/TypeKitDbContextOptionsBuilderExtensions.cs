@@ -1,7 +1,9 @@
-using Microsoft.EntityFrameworkCore;
+using CodoMetis.TypeKit.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
-namespace CodoMetis.TypeKit.EntityFrameworkCore;
+// In EF Core's namespace, as the providers' UseNpgsql and UseSqlite are: the file that configures a
+// DbContext imports it already, so UseTypeKit() needs no using of its own.
+namespace Microsoft.EntityFrameworkCore;
 
 /// <summary>Adds CodoMetis.TypeKit to a <see cref="DbContext"/>.</summary>
 public static class TypeKitDbContextOptionsBuilderExtensions
@@ -12,10 +14,10 @@ public static class TypeKitDbContextOptionsBuilderExtensions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Value objects are recognised by <see cref="ValueObjects.IValueObject{TSelf,T}"/> wherever EF meets
+    /// Value objects are recognised by <see cref="CodoMetis.TypeKit.ValueObjects.IValueObject{TSelf,T}"/> wherever EF meets
     /// them: properties, keys, foreign keys, elements of primitive collections and query parameters.
     /// Nothing is registered per type. Reading a column back does not apply the value object's rules
-    /// (<see cref="ValueObjects.IValueObjectMaterializer{TSelf,T}"/>).
+    /// (<see cref="CodoMetis.TypeKit.ValueObjects.IValueObjectMaterializer{TSelf,T}"/>).
     /// </para>
     /// <para>
     /// It only adds plugins, so it replaces nothing of EF's or of another library's, and the order

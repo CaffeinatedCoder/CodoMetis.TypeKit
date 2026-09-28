@@ -6,6 +6,7 @@
     -->
     <PropertyGroup>
         <Description>Option and Result types that cannot be misused, and the contracts for strongly-typed value objects.</Description>
+        <PackageTags>option;result;maybe;railway-oriented-programming;functional;error-handling;value-object;strongly-typed-id;primitive-obsession;ddd;domain-driven-design;native-aot</PackageTags>
     </PropertyGroup>
 
     <!--

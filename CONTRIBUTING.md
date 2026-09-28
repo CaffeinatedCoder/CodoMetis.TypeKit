@@ -62,11 +62,11 @@ The five packages share one version and are released together, only through
 `.github/workflows/release.yml` (see [SECURITY.md](SECURITY.md)).
 
 1. In `CHANGELOG.md`, replace `Unreleased` in the version's heading with today's date
-   (`## 0.1.0 — 2026-10-01`). The section becomes the GitHub release's notes.
+   (`## 1.0.0 — 2026-10-01`). The section becomes the GitHub release's notes.
 2. Move the rules in `src/CodoMetis.TypeKit.Analyzers/AnalyzerReleases.Unshipped.md` to
    `AnalyzerReleases.Shipped.md`, under `## Release <version>`. Their ids and severities are public
    contract from then on. `ChangelogTests` fails until steps 1 and 2 agree.
-3. Commit, then tag and push: `git tag v0.1.0 && git push origin v0.1.0`. The workflow checks the tag
+3. Commit, then tag and push: `git tag v1.0.0 && git push origin v1.0.0`. The workflow checks the tag
    against `Version` and the dated heading, runs the suite and the smoke test, and waits for approval
    in the `nuget` environment before pushing.
 4. Afterwards: raise `Version` in `Directory.Build.props`, set `PackageValidationBaselineVersion` to

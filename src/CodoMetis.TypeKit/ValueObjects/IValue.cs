@@ -20,6 +20,12 @@ namespace CodoMetis.TypeKit.ValueObjects;
 /// and the interfaces are derived from it. Any other hand-written comparison member is CMTK1008.
 /// </para>
 /// <para>
+/// A hand-written <c>ToString()</c> is kept too, and then none of the formatting interfaces is
+/// generated, so interpolation, <c>string.Format</c> and <c>Convert.ToString</c> reach it; JSON and the
+/// type converter still write the wrapped value. Any other member the generators introduce, written by
+/// hand, is CMTK1011, and a value object is declared in one part (CMTK1010).
+/// </para>
+/// <para>
 /// Without a reference to CodoMetis.TypeKit.Generators nothing is generated, and the analyzer
 /// reports CMTK0002 on the declaration.
 /// </para>

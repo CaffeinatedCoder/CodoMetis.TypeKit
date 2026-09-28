@@ -16,12 +16,16 @@
 
     <!--
         The analyzer's Roslyn reference is the oldest compiler a consumer can load it into, so it
-        stays on 5.0.0, the version the first .NET 10 SDK shipped. Raising it would make the analyzer
-        fail to load (CS9057) on every older .NET 10 SDK.
+        stays on 5.0.0, the version the 10.0.1xx SDK band runs. That band is serviced for all of
+        .NET 10 and is the one Linux distributions build. Measured 2026-09-28: built against 5.9.0
+        and run by the 5.0.0 compiler, the analyzer is not loaded (CS9057, only a warning) and
+        default(Option<int>) compiles. AnalyzerPackagingTests reads the packed analyzer's references.
+        Microsoft.CodeAnalysis.Analyzers is a build-time analyzer of this project only and can
+        follow the SDK.
     -->
     <ItemGroup>
         <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
-        <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="4.14.0" />
+        <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0" />
     </ItemGroup>
 
     <!-- Test-only. xunit.v3 4.x is Microsoft Testing Platform v2: no VSTest adapter, no Test.Sdk. -->

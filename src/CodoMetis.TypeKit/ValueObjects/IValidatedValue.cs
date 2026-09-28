@@ -41,7 +41,10 @@ namespace CodoMetis.TypeKit.ValueObjects;
 /// An implementing type may declare its own <c>TryFrom</c> or <c>FromKnownGood</c>, and then that
 /// one is generated no longer. Comparison has one such seam, <c>CompareTo(TSelf)</c>, from which
 /// the rest is derived; any other hand-written comparison member is CMTK1008, and ordering
-/// otherwise follows the wrapped type, as <see cref="IValue{T}"/> describes.
+/// otherwise follows the wrapped type, as <see cref="IValue{T}"/> describes. Formatting has one,
+/// <c>ToString()</c>, also described there. Any other member the generators introduce, written by
+/// hand, is CMTK1011, and so is a <see cref="Create"/> declared only as an explicit interface
+/// implementation, which the generated code cannot call: declare it <c>public static</c>.
 /// </para>
 /// <para>
 /// Without a reference to CodoMetis.TypeKit.Generators nothing is generated, and the analyzer

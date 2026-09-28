@@ -28,7 +28,7 @@ namespace CodoMetis.TypeKit;
 /// </para>
 /// </remarks>
 /// <typeparam name="TError">The type of the error.</typeparam>
-[RequireCustomInitialization]
+[RequireCustomInitialization("Use Result.Success() or Result.Error(error).")]
 [JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
 public readonly record struct Result<TError> where TError : notnull
@@ -164,6 +164,20 @@ public readonly record struct Result<TError> where TError : notnull
 
         if (Succeeded)
             action();
+
+        return this;
+    }
+
+    /// <summary>Runs a side effect on the error, such as logging it.</summary>
+    /// <param name="action">Called with the error on error.</param>
+    /// <returns>This result, unchanged.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public Result<TError> TapError(Action<TError> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        if (!Succeeded)
+            action(_error!);
 
         return this;
     }

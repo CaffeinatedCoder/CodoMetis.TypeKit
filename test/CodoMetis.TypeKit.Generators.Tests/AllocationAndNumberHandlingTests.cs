@@ -101,6 +101,43 @@ public sealed class AllocationAndNumberHandlingTests
         Allocated(() => JsonSerializer.Deserialize<ProbeAmount>(utf8, options)).ShouldBe(Allocated(() => JsonSerializer.Deserialize<decimal>(utf8, options)), "read");
     }
 
+    /// <summary>
+    /// An enum value object, as a value and as a dictionary key. The built-in enum converter was passed
+    /// as <c>JsonMetadataServices.GetEnumConverter&lt;T&gt;(options)</c> on every call, which builds a new
+    /// converter each time: about 4.7 KB per value and per key. It is evaluated only when the value
+    /// object's converter makes a plan for new options now.
+    /// </summary>
+    /// <remarks>
+    /// A written key is compared with an <c>int</c> value object's key rather than with the raw enum's:
+    /// the serializer itself allocates 24 bytes per written key for any struct key type with a
+    /// converter of its own, a hand-written one included (measured 2026-09-28), which no generated code
+    /// can avoid. Reading a key allocates exactly what reading the raw enum key does.
+    /// </remarks>
+    [Fact]
+    public void An_enum_is_written_and_read_with_what_the_wrapped_type_allocates()
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var buffer  = new ArrayBufferWriter<byte>();
+        var writer  = new Utf8JsonWriter(buffer);
+        var value   = "1"u8.ToArray();
+
+        var byWeekday = new Dictionary<ProbeWeekday, int> { [ProbeWeekday.From(DayOfWeek.Monday)] = 1 };
+        var byCount   = new Dictionary<ProbeCount, int> { [ProbeCount.From(1)] = 1 };
+
+        void Write<T>(T written)
+        {
+            buffer.ResetWrittenCount();
+            writer.Reset();
+            JsonSerializer.Serialize(writer, written, options);
+        }
+
+        Allocated(() => Write(ProbeWeekday.From(DayOfWeek.Monday))).ShouldBe(Allocated(() => Write(DayOfWeek.Monday)), "written as a value");
+        Allocated(() => JsonSerializer.Deserialize<ProbeWeekday>(value, options)).ShouldBe(Allocated(() => JsonSerializer.Deserialize<DayOfWeek>(value, options)), "read as a value");
+        Allocated(() => Write(byWeekday)).ShouldBe(Allocated(() => Write(byCount)), "written as a key");
+        Allocated(() => JsonSerializer.Deserialize<Dictionary<ProbeWeekday, int>>("{\"Monday\":1}"u8, options))
+            .ShouldBe(Allocated(() => JsonSerializer.Deserialize<Dictionary<DayOfWeek, int>>("{\"Monday\":1}"u8, options)), "read as a key");
+    }
+
     public static TheoryData<JsonNumberHandling> Handlings =>
     [
         JsonNumberHandling.Strict,

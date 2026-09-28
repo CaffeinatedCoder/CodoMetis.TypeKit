@@ -3,6 +3,7 @@
     <!-- Works at run time against the CodoMetis.TypeKit interfaces; never references .Generators. -->
     <PropertyGroup>
         <Description>ASP.NET Core integration for CodoMetis.TypeKit: OpenAPI schemas for value objects.</Description>
+        <PackageTags>aspnetcore;openapi;json-schema;minimal-api;value-object;strongly-typed-id;ddd;native-aot</PackageTags>
     </PropertyGroup>
 
     <!-- Native AOT and trimming analyzers on, as in every runtime package. -->

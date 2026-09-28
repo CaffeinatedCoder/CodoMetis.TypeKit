@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Linq;
+using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -16,7 +18,9 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// on input turns a validation failure into an exception (a 500 where a 400 was meant). A value is
 /// reported when it comes straight from a parameter of the enclosing method, local function or
 /// lambda: the parameter itself, or a member or element reached from it (<c>request.Email</c>,
-/// <c>args[0]</c>). That is input as far as this code can tell.
+/// <c>args[0]</c>), through <c>!</c> and parentheses, passed by position or by name, and called as
+/// <c>X.FromKnownGood(…)</c> or, under <c>using static</c>, as <c>FromKnownGood(…)</c>. That is input
+/// as far as this code can tell.
 /// </para>
 /// <para>
 /// The call is recognised by syntax, since on a value object of the same project it does not bind
@@ -48,7 +52,7 @@ public sealed class KnownGoodFromCallerAnalyzer : DiagnosticAnalyzer
     /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+        context.ConfigureGeneratedCodeAnalysis(GeneratedCode.AnalysisFlags);
         context.EnableConcurrentExecution();
 
         context.RegisterCompilationStartAction(start =>
@@ -62,16 +66,62 @@ public sealed class KnownGoodFromCallerAnalyzer : DiagnosticAnalyzer
     private static void Analyze(SyntaxNodeAnalysisContext context, TypeKitSymbols symbols)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
+        var model      = context.SemanticModel;
 
-        if (symbols.GeneratedMemberCall(invocation, FromKnownGood, context.SemanticModel, context.CancellationToken) is not { } valueObject) return;
+        if (symbols.GeneratedMemberCall(invocation, FromKnownGood, model, context.CancellationToken) is not { } valueObject) return;
+        if (ValueArgument(invocation, model, context.CancellationToken) is not { } argument) return;
 
-        // The value comes first; the generated method adds the caller's expression after it.
-        if (invocation.ArgumentList.Arguments.Count == 0 || invocation.ArgumentList.Arguments[0] is not { NameColon: null } argument) return;
-
-        var value = context.SemanticModel.GetOperation(argument.Expression, context.CancellationToken);
+        // IOperation has no node for ! or for parentheses, so GetOperation on either returns null.
+        var value = model.GetOperation(WithoutSuppressionOrParentheses(argument.Expression), context.CancellationToken);
         if (value is null || !ArrivesFromCaller(value)) return;
 
-        context.ReportDiagnostic(Diagnostic.Create(Rule, argument.Expression.GetLocation(), valueObject.Name, argument.Expression.ToString()));
+        context.Report(Diagnostic.Create(Rule, argument.Expression.GetLocation(), valueObject.Name, argument.Expression.ToString()));
+    }
+
+    /// <summary>
+    /// The argument for the value, the method's first parameter; the generated method adds the
+    /// caller's expression after it. A bound call says which argument that is, named or not. An
+    /// unbound one passes it first by position, or alone by any name.
+    /// </summary>
+    private static ArgumentSyntax? ValueArgument(InvocationExpressionSyntax invocation, SemanticModel model, CancellationToken cancellationToken)
+    {
+        // The argument operation's syntax is the ArgumentSyntax, or, through ! or parentheses, the
+        // expression inside them (and the operation is then marked implicit).
+        if (model.GetOperation(invocation, cancellationToken) is IInvocationOperation bound)
+            return bound.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == 0)?.Syntax.FirstAncestorOrSelf<ArgumentSyntax>() is { } syntax
+                && syntax.Parent == invocation.ArgumentList
+                       ? syntax
+                       : null;
+
+        var arguments = invocation.ArgumentList.Arguments;
+
+        return arguments.Count switch
+        {
+            0                                   => null,
+            _ when arguments[0].NameColon is null => arguments[0],
+            1                                   => arguments[0],
+            _                                   => null
+        };
+    }
+
+    private static ExpressionSyntax WithoutSuppressionOrParentheses(ExpressionSyntax expression)
+    {
+        while (true)
+        {
+            switch (expression)
+            {
+                case ParenthesizedExpressionSyntax parenthesized:
+                    expression = parenthesized.Expression;
+                    break;
+
+                case PostfixUnaryExpressionSyntax suppressed when suppressed.IsKind(SyntaxKind.SuppressNullableWarningExpression):
+                    expression = suppressed.Operand;
+                    break;
+
+                default:
+                    return expression;
+            }
+        }
     }
 
     private static bool ArrivesFromCaller(IOperation operation) =>

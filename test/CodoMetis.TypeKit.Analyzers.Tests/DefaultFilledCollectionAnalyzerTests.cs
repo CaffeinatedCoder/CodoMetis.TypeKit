@@ -86,6 +86,29 @@ public sealed class DefaultFilledCollectionAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
+    /// A constant length or size of zero creates no slot, as <c>new Plain[0]</c> does not: the calls
+    /// were reported although the array creation was not.
+    /// </summary>
+    [Fact]
+    public Task A_call_with_a_constant_length_of_zero_stays_silent() =>
+        Test(
+            """
+            public static class C
+            {
+                public static void Run(Plain[] existing)
+                {
+                    Array.Resize(ref existing, 0);
+                    Array.Resize(ref existing, newSize: 0);
+                    var uninitialized = GC.AllocateUninitializedArray<Plain>(0);
+                    var allocated = GC.AllocateArray<Plain>(0, pinned: false);
+                    const int none = 0;
+                    var constant = GC.AllocateArray<Plain>(none);
+                }
+            }
+            """)
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
     /// The subjects' own <c>new Plain[1]</c> inside <c>Plain</c> doubles as the exemption for the type
     /// itself. Nothing here starts with a default element of a no-default struct.
     /// </summary>

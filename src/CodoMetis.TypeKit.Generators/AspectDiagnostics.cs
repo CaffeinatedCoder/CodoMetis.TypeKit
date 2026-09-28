@@ -40,4 +40,10 @@ internal static class AspectDiagnostics
 
     public static readonly DiagnosticDefinition<(INamedType Type, string Constructors)> HandWrittenConstructor =
         new("CMTK1009", Severity.Error, "'{0}' declares {1}, so it is not generated: its only constructor and its Value are generated, and every way in goes through From or Create. Remove it; where another way in is needed, declare a static method that calls From or Create.");
+
+    public static readonly DiagnosticDefinition<(INamedType Type, int Parts)> DeclaredInSeveralParts =
+        new("CMTK1010", Severity.Error, "'{0}' is declared in {1} parts, so it is not generated: declare a value object in a single part, and move the members of the other parts into it");
+
+    public static readonly DiagnosticDefinition<(INamedType Type, string Declared, string Remedy)> HandWrittenGeneratedMember =
+        new("CMTK1011", Severity.Error, "'{0}' declares {1}, so it is not generated: {2}");
 }

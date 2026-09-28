@@ -10,7 +10,7 @@ A version's heading reads `## <version> — Unreleased` until the release is pre
 the release date. The release workflow refuses a tag whose section still says `Unreleased`, and the
 section is the GitHub release's notes.
 
-## 0.1.0 — Unreleased
+## 1.0.0 — Unreleased
 
 The first release.
 
@@ -18,39 +18,62 @@ The first release.
 
 - **`CodoMetis.TypeKit`**: `Option<T>`, `Result<T, TError>` and `Result<TError>`, with no public
   `.Value` or `.Error`, and the `Option.None()`, `Result.Success(...)` and `Result.Error(...)`
-  markers that convert to whichever one a method returns. A `default` `Option` is `None`; a `default` `Result` is uninitialized, and
-  every member that would pick a branch throws on it. `ToString()` never prints the content, and
-  none of them serializes: System.Text.Json refuses them with `NotSupportedException` in both
-  directions instead of writing `{}`, and a converter registered on the options takes precedence.
-  Pipelines: `MapAsync`/`BindAsync`, a continuation of every combinator on a `Task<Result<…>>` so a
-  chain is awaited once, `Zip` for two to six results, and `Sequence`/`Traverse` over a sequence, all
-  stopping at the first error. The value-object contracts (`IValue<T>`, `IValidatedValue<TSelf, T, TFault>`, `IValueObject<TSelf, T>`),
-  `OrderId.New()` for version 7 Guid identifiers, and `StoredJsonConverterFactory` for JSON the
-  application stored itself.
-- **`CodoMetis.TypeKit.Analyzers`**, arriving with the base package: CMTK0001 (no `default` of a
-  value object, an `Option`, a `Result` or a `[RequireCustomInitialization]` struct), CMTK0002 (a
-  value object in a project that does not reference the generators), CMTK0003 (an ignored `Result`
-  or `Option`, warning), CMTK0004 (`Materialize`, which skips validation, called outside the EF Core
-  satellite), CMTK0005 (an array or span of such a struct created with a length, warning), CMTK0006
-  (a member of such a type that nothing assigns, warning), CMTK0007 (`FromKnownGood` given a
-  parameter, suggestion) and CMTK0008 (the wrapped values of two different value objects compared,
-  warning).
+  markers that convert to whichever one a method returns. A `default` `Option` is `None`; a
+  `default` `Result` is uninitialized, and every member that would pick a branch throws on it.
+  `ToString()` never prints the content, and none of them serializes: System.Text.Json refuses them
+  with `NotSupportedException` in both directions instead of writing `{}`, and a converter registered
+  on the options takes precedence.
+  - Combinators: `Map`, `Bind`, `MapError`, `Tap`, `TapError`, `Ensure` (a rule checked inside a
+    pipeline), `Match`, `TryGetValue`, and query syntax with any number of `from` clauses, for
+    `Option` and `Result` alike.
+  - Pipelines: `MapAsync`/`BindAsync`, and an `…Async` continuation of `Map`, `Bind`, `MapError`,
+    `Tap`, `TapError` and `Ensure` on a `Task<Result<…>>`, so a chain is awaited once; `Zip` for two
+    to six results; `Sequence` and `Traverse` over a sequence. All stop at the first error.
+  - Lookups that return an `Option`: `GetValueOrNone(key)` on a dictionary, and `FirstOrNone()` and
+    `LastOrNone()` with or without a predicate.
+  - The value-object contracts (`IValue<T>`, `IValidatedValue<TSelf, T, TFault>`,
+    `IValueObject<TSelf, T>`), `OrderId.New()` for version 7 Guid identifiers, and
+    `StoredJsonConverterFactory` for JSON the application stored itself.
+- **`CodoMetis.TypeKit.Analyzers`**, arriving with the base package, in C# files and Razor
+  components alike:
+  - Errors: CMTK0001 (no `default` of a value object, an `Option`, a `Result` or a
+    `[RequireCustomInitialization]` struct; a comparison with `default` is allowed), CMTK0002 (a value
+    object in a project that does not reference the generators), CMTK0004 (`Materialize`, which skips
+    validation, called outside the EF Core satellite).
+  - Warnings: CMTK0003 (an ignored `Result` or `Option`, a `Task` of one converted to a plain `Task`
+    included), CMTK0005 (an array or span of such a struct created with a length), CMTK0006 (a member
+    of such a type that nothing assigns), CMTK0008 (the values of two different value objects
+    compared, through `==`, `Equals`, `string.Equals` or a comparer, or two value objects of different
+    types compared through `Equals`), CMTK0009 (a call that hands out a `default` instance when it
+    finds nothing: `FirstOrDefault`, `GetValueOrDefault`, `Option.OrDefault()` and their kind).
+  - Info: CMTK0007 (`FromKnownGood` given a parameter).
+  - The analyzer loads in every .NET 10 SDK: it compiles against Roslyn 5.0.0, the compiler of the
+    10.0.1xx band.
 - **`CodoMetis.TypeKit.Generators`**: a one-line value-object declaration gets its constructor,
   `Value`, `From`, `TryFrom` and `FromKnownGood` (both derived from the hand-written `Create`),
-  `Revalidate()` for values read back without validation, a
-  JSON converter, `IParsable`/`ISpanParsable`/`IUtf8SpanParsable`, formatting in the invariant
-  culture, comparison, a `TypeConverter` and `GetValue()`/`ValueOrNull()` extensions. Every
-  generated way into a validated value object applies `Create`. A declaration that cannot be
-  generated is a build error naming it (CMTK1000–CMTK1009). Formatting, comparison and JSON cost
-  what the wrapped type's own do, and allocate nothing more. Metalama 2026.1, and no Metalama
-  license is needed to build.
+  `Revalidate()` for values read back without validation, a JSON converter,
+  `IParsable`/`ISpanParsable`/`IUtf8SpanParsable`, formatting in the invariant culture, comparison,
+  `IConvertible`, a `TypeConverter` and `GetValue()`/`ValueOrNull()` extensions.
+  - Every generated way into a validated value object applies `Create`.
+  - The JSON is the wrapped type's, byte for byte, under the application's options, as a value and as
+    a dictionary key; formatting, comparison and JSON cost about what the wrapped type's own do.
+  - A refusal names the value object and the fault, or the wrapped type it could not read, and never
+    quotes the input.
+  - Seams: a hand-written `TryFrom`, `FromKnownGood`, `Revalidate`, `CompareTo(TSelf)` or `ToString()`
+    is kept, and what depends on it derived from it.
+  - A declaration that cannot be generated is a build error naming it (CMTK1000–CMTK1011).
+  - Metalama 2026.1, and no Metalama license is needed to build.
 - **`CodoMetis.TypeKit.EntityFrameworkCore`**: `UseTypeKit()` maps every value object to a column
   of the type it wraps, with nothing registered per type, including keys, foreign keys, nullable
   properties and primitive collections, and translates `.Value`, `GetValue()` and `ValueOrNull()`
-  in queries to the bare column.
+  in queries to the bare column, collection elements included. A key over an integer is generated by
+  the database, as a key of that integer type is.
 - **`CodoMetis.TypeKit.AspNetCore`**: `AddTypeKit()` on `AddOpenApi` gives every value object the
   schema ASP.NET publishes for the type it wraps, wherever it appears: properties, bodies,
-  containers, and route, query and header parameters.
+  containers, and route, query and header parameters. A nested value object's component is named
+  after its nesting chain.
+- `UseTypeKit()`, `AddEntityFrameworkTypeKit()` and `AddTypeKit()` live in EF Core's and
+  dependency injection's namespaces, so a host adds them without a `using`.
 - **Native AOT**, for every package that runs in an application. The run-time packages are built with
   the trim and AOT analyzers on, and the generated code is published with Native AOT and run in the
   consumer smoke test. With source-generated JSON a context lists the value objects, not what they

@@ -9,9 +9,9 @@ dotnet add package Microsoft.AspNetCore.OpenApi     # AddOpenApi itself; the web
 dotnet add package CodoMetis.TypeKit.AspNetCore
 ```
 
-It works at run time against the `IValueObject<,>` interface, so the host needs this package and
-the base package, not the generators. The domain project that declares the value objects
-references `CodoMetis.TypeKit.Generators`.
+It recognises a value object at run time by the attribute the generators put on it, so the host
+needs this package and the base package, not the generators. The domain project that declares the
+value objects references `CodoMetis.TypeKit.Generators`.
 
 ## Setup
 
@@ -19,8 +19,11 @@ references `CodoMetis.TypeKit.Generators`.
 builder.Services.AddOpenApi(options => options.AddTypeKit());
 ```
 
-`AddTypeKit()` adds one schema transformer. Nothing is registered per type and no assembly is
-scanned, and its position among the document's other transformers does not matter.
+`AddTypeKit()` adds one schema transformer, and names the component of a nested value object (see
+below). Nothing is registered per type and no assembly is scanned, and its position among the
+document's other transformers does not matter. It lives in
+`Microsoft.Extensions.DependencyInjection`, beside `AddOpenApi`, which a web project imports
+implicitly.
 
 The host references `Microsoft.AspNetCore.OpenApi` directly. This package depends on it, but its
 source generator's switch is imported for a direct reference only, and a host that has the package
@@ -32,7 +35,7 @@ only through this one fails with CS9137 ("the feature 'Interceptors' is not enab
 public readonly partial record struct OrderId : IValue<Guid>;
 public readonly partial record struct Quantity : IValue<int>;
 
-app.MapGet("/orders/{id}", (OrderId id, Quantity? limit) => …);   // returns OrderDto
+app.MapGet("/orders/{id}", (OrderId id, Quantity? limit) => orders.Find(id, limit));   // returns OrderDto
 public sealed record OrderDto(OrderId Id, List<OrderId> Related, Dictionary<string, Quantity> PerWarehouse);
 ```
 
@@ -45,17 +48,35 @@ public sealed record OrderDto(OrderId Id, List<OrderId> Related, Dictionary<stri
     "perWarehouse": { "type": "object", "additionalProperties": { "$ref": "#/components/schemas/Quantity" } } } }
 ```
 
-and the `id` and `limit` parameters are a uuid string and an integer. Without the package, both
-components are the empty schema `{}`, the list and the dictionary lose their element schema, and
-both parameters are a bare `string`.
+and the `id` and `limit` parameters are a uuid string and an integer. Without the package, `OrderId`
+is the empty schema `{}`, the list and the dictionary lose their element schema (so `Quantity` gets
+no component at all), and both parameters are a bare `string`.
 
 - **The wrapped type's schema is ASP.NET's own**, so it follows the host's JSON options exactly
   as the generated converter does. Under the web defaults a number also accepts a quoted number
   (`"5"`), which is what the `integer | string` above says, and the converter reads it. With
   `JsonStringEnumConverter` an enum-backed value object is its names.
 - **Each value object keeps its own component**, named after it, so the document still says
-  `OrderId` where the API means an order id. A host that prefers value objects inlined returns
-  `null` for them from `OpenApiOptions.CreateSchemaReferenceId`.
+  `OrderId` where the API means an order id. A value object nested in another type is named after
+  the whole chain, `Shop.Id` as `ShopId`, so `Shop.Id` and `Stock.Id` do not share one. A name your
+  own `CreateSchemaReferenceId` gives, set before `AddTypeKit()`, is kept. A host that prefers value
+  objects inlined returns `null` for them, the nullable ones included, after `AddTypeKit()`:
+
+  ```csharp
+  using System.Reflection;
+  using CodoMetis.TypeKit.CompilerServices;   // GeneratedValueObjectAttribute, on every value object
+
+  options.AddTypeKit();
+  options.CreateSchemaReferenceId = type =>
+      (Nullable.GetUnderlyingType(type.Type) ?? type.Type).GetCustomAttribute<GeneratedValueObjectAttribute>() is not null
+          ? null
+          : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
+  ```
+
+- **Rules belong in `Create`, not on the property.** A validation attribute on a value-object
+  property (`[MaxLength]`, `[Range]`) lands in the value object's shared component, as ASP.NET does
+  for any referenced schema, so it then applies to every other use too. `Create` is where every way
+  in applies the rule anyway.
 - **Everywhere it appears**: a property, a nullable property, a request or response body, the
   elements of a list, an array, a set or a nested container, a dictionary value, and a route,
   query or header parameter, in minimal APIs and in MVC, in OpenAPI 3.1 and 3.0.
@@ -85,7 +106,7 @@ query parameter, or in MVC. Where it does, suppress it at the endpoint:
 
 ```csharp
 #pragma warning disable ASP0020 // OrderId implements IParsable once generated
-app.MapGet("/orders/{id}", (OrderId id) => …);
+app.MapGet("/orders/{id}", (OrderId id) => orders.Find(id));
 #pragma warning restore ASP0020
 ```
 
@@ -115,9 +136,23 @@ value object and the `[JsonSerializable]` to add.
 
 The generated members cover the request itself:
 
-- **Route, query and header parameters** bind through the generated `IParsable`, with the
-  invariant culture, and a value that is refused is a 400.
+- **Route, query and header parameters** bind through the generated `TryParse` in minimal APIs and
+  through the generated `TypeConverter` in MVC, with the invariant culture, and a value that is
+  refused is a 400. The text of that 400 is ASP.NET's own: MVC's "The value '…' is not valid." quotes
+  the input, as it does for a `Guid`.
 - **Request and response bodies** go through the generated JSON converter. A value a validated
-  value object refuses is a `JsonException`, which minimal APIs and MVC answer with 400 and a
-  message naming the type and the rule, never the value.
-- **Model binding** in MVC also finds the generated `TypeConverter`.
+  value object refuses is a `JsonException` naming the type and the rule, never the value, and a
+  400. MVC puts that message in its validation problem details. A minimal API answers with an empty
+  400 and logs the message; `AddProblemDetails()` gives the response a body.
+- **A property missing from the body is not refused.** System.Text.Json calls no converter for an
+  absent property, so it stays `default`: a `Guid.Empty` order id, or a validated value object that
+  never passed `Create`. Where a value object is required, say so, with `required` on the property or,
+  for a record's constructor parameters, with `RespectRequiredConstructorParameters`:
+
+  ```csharp
+  builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.RespectRequiredConstructorParameters = true);
+  builder.Services.AddControllers().AddJsonOptions(o => o.JsonSerializerOptions.RespectRequiredConstructorParameters = true);
+  ```
+
+  Both minimal APIs and MVC then answer a body without it with 400. An optional constructor
+  parameter (`Discount? Discount`) then needs a default value (`= null`).

@@ -10,6 +10,26 @@ public readonly partial record struct CustomerId : IValue<Guid>;
 
 public readonly partial record struct Tag : IValue<string>;
 
+public readonly partial record struct ShipmentNo : IValue<int>;
+
+public readonly partial record struct ParcelNo : IValue<long>;
+
+/// <summary>A key over an integer, which the database generates as it would for an <c>int</c> key.</summary>
+public sealed class Shipment
+{
+    public ShipmentNo Id { get; set; }
+
+    public string Carrier { get; set; } = "";
+}
+
+/// <summary>A key over an integer that the model configures as never generated, which must win.</summary>
+public sealed class Parcel
+{
+    public ParcelNo Id { get; set; }
+
+    public ShipmentNo ShipmentId { get; set; }
+}
+
 public sealed class Customer
 {
     public CustomerId Id { get; set; }
@@ -78,9 +98,16 @@ public sealed class TestDb(DbContextOptions<TestDb> options) : DbContext(options
 
     public DbSet<Customer> Customers => Set<Customer>();
 
-    /// <summary>One configured facet, which the value-object mapping must keep.</summary>
-    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+    public DbSet<Shipment> Shipments => Set<Shipment>();
+
+    public DbSet<Parcel> Parcels => Set<Parcel>();
+
+    /// <summary>One configured facet, which the value-object mapping must keep, and one configured key generation.</summary>
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<Order>().Property(order => order.Code).HasMaxLength(10);
+        modelBuilder.Entity<Parcel>().Property(parcel => parcel.Id).ValueGeneratedNever();
+    }
 
     public static DbContextOptions<TestDb> Sqlite(Microsoft.Data.Sqlite.SqliteConnection connection) =>
         new DbContextOptionsBuilder<TestDb>().UseSqlite(connection).UseTypeKit().Options;

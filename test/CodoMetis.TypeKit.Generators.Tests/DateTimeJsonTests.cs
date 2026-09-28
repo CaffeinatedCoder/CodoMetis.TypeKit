@@ -33,7 +33,8 @@ public sealed class DateTimeJsonTests
             var noon = ProbeTimestamp.From(new DateTime(2026, 9, 27, 12, 0, 0, DateTimeKind.Unspecified));
 
             JsonSerializer.Serialize(noon).ShouldBe("\"2026-09-27T12:00:00Z\"");
-            JsonSerializer.Serialize(new Dictionary<ProbeTimestamp, int> { [noon] = 1 }).ShouldBe("{\"2026-09-27T12:00:00.0000000Z\":1}");
+            // As the serializer writes the UTC instant as a key: no seven fractional digits.
+            JsonSerializer.Serialize(new Dictionary<ProbeTimestamp, int> { [noon] = 1 }).ShouldBe("{\"2026-09-27T12:00:00Z\":1}");
         });
 
     [Fact]

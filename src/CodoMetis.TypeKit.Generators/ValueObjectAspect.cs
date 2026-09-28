@@ -90,7 +90,8 @@ internal sealed partial class ValueObjectAspect : TypeAspect
             fromText.ToDurableRef(),
             tryFromText.ToDurableRef(),
             CompanionClass.Name(target),
-            _companionClassNameOwner
+            _companionClassNameOwner,
+            ValueObjectDeclaration.DeclaresToString(target)
         );
 
         builder.Outbound.AddAspect<ValueObjectContractAspect>();
@@ -137,6 +138,22 @@ internal sealed partial class ValueObjectAspect : TypeAspect
             return false;
         }
 
+        // Its generated property is named Value, and a member cannot have its type's name (CS0542,
+        // inside the generated code).
+        if (target.Name == nameof(IValueObject<,>.Value))
+        {
+            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, $"a value object cannot be named '{nameof(IValueObject<,>.Value)}', the name of its generated property; rename it")));
+            return false;
+        }
+
+        // The companion class and the attribute's type arguments sit outside the file, where a file-local
+        // type cannot be named, and Metalama crashed on it (LAMA0001, naming nothing).
+        if (ValueObjectDeclaration.IsFileLocal(target))
+        {
+            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, "a value object cannot be file-local, since generated code outside its file refers to it; declare it internal instead")));
+            return false;
+        }
+
         // A record class that can be derived from is not generated: a derived record compares equal
         // only to its own type, which is not value equality, and a derived value object then failed
         // inside the generated code (LAMA0611), where the error names nothing the user wrote.
@@ -153,6 +170,16 @@ internal sealed partial class ValueObjectAspect : TypeAspect
                 builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, $"it derives from '{baseType.ToDisplayString()}', which is a value object itself")));
                 return false;
             }
+        }
+
+        // Metalama writes its override of the record's synthesized ToString() into every part of the
+        // declaration, and the second copy failed inside the generated code (LAMA0611, CS0111). Only the
+        // user's own parts count: Sources leaves out a part a source generator added ([GeneratedRegex]),
+        // which Metalama does not write into, and such a value object builds.
+        if (target.Sources.Length > 1)
+        {
+            builder.Diagnostics.Report(DeclaredInSeveralParts.WithArguments((target, target.Sources.Length)));
+            return false;
         }
 
         // Before the private constructor is introduced. One with its signature failed inside the
@@ -187,6 +214,17 @@ internal sealed partial class ValueObjectAspect : TypeAspect
             return false;
         }
 
+        // A generic wrapped type, tuples included, failed inside the generated code (LAMA0611): its
+        // name lost its type arguments there, and a named tuple broke the attribute. Refused rather than
+        // made to work, because a value object's equality is its wrapped value's, and a generic type's
+        // is not value equality in general. Refusing now and lifting it later breaks nobody.
+        if (namedValueType.IsGeneric || IsNestedInGeneric(namedValueType))
+        {
+            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target,
+                $"the wrapped type '{namedValueType.ToDisplayString()}' is generic, and a value object's equality is its wrapped value's, which a generic type does not guarantee (a List<T> compares by reference); wrap a non-generic type of your own that has the equality you need")));
+            return false;
+        }
+
         // Before the field is introduced: over a struct that wraps itself it has no layout (CS0523),
         // which Metalama reports as a bug in this aspect.
         if (wrappedValueObjectRefusal is not null)
@@ -195,8 +233,47 @@ internal sealed partial class ValueObjectAspect : TypeAspect
             return false;
         }
 
+        // Before anything is introduced, as for the constructors above: a hand-written member the
+        // generators introduce themselves failed the aspect (LAMA0500, LAMA0512, LAMA0521, LAMA0531) or
+        // the generated code (LAMA0611), naming no fix, or was kept silently as a Parse or a format the
+        // rest of the generated code never agreed to.
+        var declaredByHand = ValueObjectDeclaration.GeneratedMembersDeclaredByHand(target, namedValueType, kind);
+
+        if (declaredByHand.Count > 0)
+        {
+            builder.Diagnostics.Report(HandWrittenGeneratedMember.WithArguments((target, string.Join(", ", declaredByHand),
+                (declaredByHand.Count == 1 ? "the generators introduce it themselves; remove it" : "the generators introduce these themselves; remove them")
+              + ". The generated members a value object may declare instead are "
+              + (kind == ValueObjectKind.Validated ? "TryFrom, FromKnownGood, Revalidate, " : "")
+              + $"CompareTo({target.Name}) and ToString()")));
+            return false;
+        }
+
+        // The generated code calls {TSelf}.Create(value), which cannot reach an explicit implementation
+        // (LAMA0611, CS1929). Refused rather than called through a constrained type parameter: the
+        // smaller change, and a public Create is what IValidatedValue documents.
+        if (kind == ValueObjectKind.Validated && ValueObjectDeclaration.DeclaresCreateOnlyExplicitly(target))
+        {
+            var fault = marker.TypeArguments[2];
+
+            builder.Diagnostics.Report(HandWrittenGeneratedMember.WithArguments((target,
+                $"Create only as an explicit implementation of {marker.ToDisplayString()}",
+                $"the generated code calls {target.Name}.Create, which cannot reach an explicit implementation; declare it as 'public static Result<{target.Name}, {fault.ToDisplayString()}> Create({namedValueType.ToDisplayString()} value)'")));
+            return false;
+        }
+
         valueType = namedValueType;
         return true;
+    }
+
+    private static bool IsNestedInGeneric(INamedType type)
+    {
+        for (var container = type.DeclaringType; container is not null; container = container.DeclaringType)
+        {
+            if (container.IsGeneric) return true;
+        }
+
+        return false;
     }
 
     /// <summary>

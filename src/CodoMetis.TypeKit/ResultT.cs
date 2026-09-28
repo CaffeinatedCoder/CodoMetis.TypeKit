@@ -43,7 +43,7 @@ public enum ResultState
 /// </remarks>
 /// <typeparam name="T">The type of the value.</typeparam>
 /// <typeparam name="TError">The type of the error.</typeparam>
-[RequireCustomInitialization]
+[RequireCustomInitialization("Use Result.Success(value) or Result.Error(error).")]
 [JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
 public readonly record struct Result<T, TError>
@@ -207,6 +207,40 @@ public readonly record struct Result<T, TError>
             action(_value!);
 
         return this;
+    }
+
+    /// <summary>Runs a side effect on the error, such as logging it.</summary>
+    /// <param name="action">Called with the error on error.</param>
+    /// <returns>This result, unchanged.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public Result<T, TError> TapError(Action<TError> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        if (!Succeeded)
+            action(_error!);
+
+        return this;
+    }
+
+    /// <summary>
+    /// Keeps a success only if its value satisfies <paramref name="predicate"/>, and turns it into
+    /// <paramref name="error"/> otherwise: a rule checked inside a pipeline, without the type argument
+    /// a <c>Bind</c> lambda returning either a value or <c>Result.Error(…)</c> needs.
+    /// </summary>
+    /// <param name="predicate">Called with the value on success.</param>
+    /// <param name="error">The error for a value that fails <paramref name="predicate"/>. Never null.</param>
+    /// <returns>This result if it is an error or its value passes, otherwise an error with <paramref name="error"/>.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
+    public Result<T, TError> Ensure(Func<T, bool> predicate, TError error)
+    {
+        // Checked on either branch, as the delegates are and as Option.ToResult checks its error: a
+        // null passed for every value that satisfied the predicate until the first one that did not.
+        ArgumentNullException.ThrowIfNull(predicate);
+        if (error is null) throw new ArgumentNullException(nameof(error));
+
+        return !Succeeded || predicate(_value!) ? this : Error(error);
     }
 
     /// <summary>Runs an asynchronous side effect on the value on success.</summary>

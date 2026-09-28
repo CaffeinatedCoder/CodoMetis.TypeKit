@@ -72,3 +72,55 @@ public readonly partial record struct ProbeDescending : IValue<int>
 {
     public int CompareTo(ProbeDescending other) => other.Value.CompareTo(Value);
 }
+
+/// <summary>
+/// Declares its own <c>ToString()</c>, the formatting seam, to hide what it wraps: it is kept, and no
+/// formatting interface is generated, so interpolation and <c>string.Format</c> reach it too. A record
+/// class over a string, as a secret usually is.
+/// </summary>
+public sealed partial record ProbeSecret : IValue<string>
+{
+    public override string ToString() => "***";
+}
+
+/// <summary>
+/// The formatting seam on a record struct over a number, whose wrapped type is span-formattable and
+/// convertible: the paths interpolation and <c>Convert.ToString</c> take for such a type.
+/// </summary>
+public readonly partial record struct ProbePin : IValue<int>
+{
+    public override string ToString() => "****";
+}
+
+/// <summary>
+/// A wrapped type that parses only through a static <c>Parse(string)</c>, whose exception quotes the
+/// input, as many hand-written types' do.
+/// </summary>
+public sealed record ProbeSkuText
+{
+    private ProbeSkuText(string text) => Text = text;
+
+    public string Text { get; }
+
+    public static ProbeSkuText Parse(string text) =>
+        text.Length == 7 ? new ProbeSkuText(text) : throw new FormatException($"'{text}' is not a SKU.");
+
+    public override string ToString() => Text;
+}
+
+/// <summary>Parse: the wrapped type's static <c>Parse(string)</c>.</summary>
+public readonly partial record struct ProbeSku : IValue<ProbeSkuText>;
+
+/// <summary>A wrapped type that parses only through its string constructor, whose exception quotes the input.</summary>
+public sealed record ProbeIsbnText
+{
+    public ProbeIsbnText(string text) =>
+        Text = text.Length == 13 ? text : throw new ArgumentException($"'{text}' is not an ISBN.", nameof(text));
+
+    public string Text { get; }
+
+    public override string ToString() => Text;
+}
+
+/// <summary>Parse: the wrapped type's string constructor.</summary>
+public readonly partial record struct ProbeIsbn : IValue<ProbeIsbnText>;

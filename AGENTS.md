@@ -38,6 +38,9 @@ This file is the canonical agent guide. There is no CLAUDE.md, on purpose.
 - Central package management (`Directory.Packages.props`). The versions of shipping references
   are floors for consumers, so raising one is a release decision. `spikes/` opts out of it and
   pins what each spike measured.
+- `test/CodoMetis.TypeKit.Samples` holds every C# block of the READMEs as compiled code, between
+  `// sample: {README}/{name}` and `// end sample`, beside tests that check the outputs the blocks
+  state in comments. `ReadmeSampleTests` (conventions) holds each block to exactly one region.
 - `spikes/` holds experiments that decided something. Each one has a README with the question,
   the answer and the evidence. Spikes are not in the main solution and are never packed.
 - `docs/` holds the plan and the design notes.
@@ -88,8 +91,23 @@ Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TR
   `[UnconditionalSuppressMessage]` needs a measured reason, and the smoke test's `aot` consumer is
   the measurement (docs/plan.md §11).
 - **Aspects stay internal.** Their public surface is what they generate, and nothing else.
+- **A value object's JSON is its wrapped type's, byte for byte**, under whatever options the
+  application uses, values and dictionary keys alike (`JsonParityTests`). Never write or read the
+  wrapped value by a rule of your own; go through `GeneratedJsonPlan<T>`.
+- **No refusal quotes the input.** A generated `Parse`, type converter or JSON read replaces the
+  wrapped type's exception, whose message quotes the text, with one naming the value object and the
+  wrapped type, and no inner exception (`UnreadableInputTests`).
+- **Seams are declared, everything else refused.** `TryFrom`, `FromKnownGood`, `Revalidate`,
+  `CompareTo(TSelf)` and `ToString()` written by hand are kept; any other member the generators
+  introduce is CMTK1011. A new generated member joins that check, or a hand-written one is kept silently.
 - **Diagnostic ids (`CMTK`) are public contract.** Never renumber a shipped rule, and never ship a
   new rule at Error severity in a minor version.
+- **A README's C# block is compiled code.** Change it and its region in
+  `test/CodoMetis.TypeKit.Samples` together, or `ReadmeSampleTests` fails; the region's scaffolding
+  (the types and variables it assumes) stays outside the markers. An output a block states in a comment
+  (SQL, JSON, a string) is read from the README by the test beside the region, so correct the comment,
+  never the test. A block that cannot compile on purpose says `<!-- not compiled: {reason} -->` above
+  its fence; an analyzer diagnostic in a comment is no reason, the sample suppresses it around the region.
 - **Silent is worse than broken.** A value object that compiles without being generated, an
   analyzer that stops firing, or a converter that materialises `default` are this repo's
   characteristic failures. Prefer a diagnostic or an exception to a plausible result.

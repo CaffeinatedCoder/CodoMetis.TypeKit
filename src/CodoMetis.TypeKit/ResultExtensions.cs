@@ -44,6 +44,26 @@ public static class Result
         public Result<TResult, TError> Select<TResult>(Func<T, TResult> selector) where TResult : notnull =>
             instance.Map(selector);
 
+        /// <summary>
+        /// Chains an operation that may itself fail, and combines both values. Enables a second
+        /// <c>from</c> in query syntax, where the later steps can use every earlier value.
+        /// </summary>
+        /// <param name="selector">Called with the value on success.</param>
+        /// <param name="resultSelector">Called with both values if the chained operation succeeds.</param>
+        /// <typeparam name="TNext">The type of the chained result's value.</typeparam>
+        /// <typeparam name="TResult">The type of the combined value.</typeparam>
+        /// <returns>A success with the combined value, or the first error.</returns>
+        /// <exception cref="InvalidOperationException">The result, or the one <paramref name="selector"/> returned, is uninitialized.</exception>
+        public Result<TResult, TError> SelectMany<TNext, TResult>(Func<T, Result<TNext, TError>> selector, Func<T, TNext, TResult> resultSelector)
+            where TNext : notnull
+            where TResult : notnull
+        {
+            ArgumentNullException.ThrowIfNull(selector);
+            ArgumentNullException.ThrowIfNull(resultSelector);
+
+            return instance.Bind(value => selector(value).Map(next => resultSelector(value, next)));
+        }
+
         /// <summary>Keeps the value and drops the error.</summary>
         /// <returns>The value, or <c>None</c> for an error.</returns>
         /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
@@ -310,6 +330,33 @@ public static class Result
             return (await task.ConfigureAwait(false)).MapError(selector);
         }
 
+        /// <summary>Keeps a success once the result is known only if its value satisfies <paramref name="predicate"/>.</summary>
+        /// <param name="predicate">Called with the value on success.</param>
+        /// <param name="error">The error for a value that fails <paramref name="predicate"/>. Never null.</param>
+        /// <returns>The result if it is an error or its value passes, otherwise an error with <paramref name="error"/>.</returns>
+        /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
+        public async Task<Result<T, TError>> EnsureAsync(Func<T, bool> predicate, TError error)
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(predicate);
+            if (error is null) throw new ArgumentNullException(nameof(error));
+
+            return (await task.ConfigureAwait(false)).Ensure(predicate, error);
+        }
+
+        /// <summary>Runs a side effect on the error once the result is known, on error.</summary>
+        /// <param name="action">Called with the error on error.</param>
+        /// <returns>The result, unchanged.</returns>
+        /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+        public async Task<Result<T, TError>> TapErrorAsync(Action<TError> action)
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(action);
+
+            return (await task.ConfigureAwait(false)).TapError(action);
+        }
+
         /// <summary>Runs a side effect on the value once the result is known, on success.</summary>
         /// <param name="action">Called with the value on success.</param>
         /// <returns>The result, unchanged.</returns>
@@ -402,6 +449,18 @@ public static class Result
             return (await task.ConfigureAwait(false)).MapError(selector);
         }
 
+        /// <summary>Runs a side effect on the error once the result is known, on error.</summary>
+        /// <param name="action">Called with the error on error.</param>
+        /// <returns>The result, unchanged.</returns>
+        /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+        public async Task<Result<TError>> TapErrorAsync(Action<TError> action)
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(action);
+
+            return (await task.ConfigureAwait(false)).TapError(action);
+        }
+
         /// <summary>Runs a side effect once the result is known, on success.</summary>
         /// <param name="action">Called on success.</param>
         /// <returns>The result, unchanged.</returns>
@@ -434,19 +493,25 @@ public static class Result
     {
         /// <summary>The first element that matches, or the given error.</summary>
         /// <param name="predicate">The condition to match.</param>
-        /// <param name="error">The error if nothing matches.</param>
+        /// <param name="error">The error if nothing matches. Never null.</param>
         /// <returns>The first matching element, or <paramref name="error"/>.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
         public Result<T, TError> FirstOrError(Func<T, bool> predicate, TError error) =>
-            source.FirstOrNone(predicate)
-                  .Match(Result<T, TError>.Success, () => Result<T, TError>.Error(error));
+            // The error is checked whether or not an element matches, as Option.ToResult checks it:
+            // a null passed for every search that found something until the first that did not.
+            error is null
+                ? throw new ArgumentNullException(nameof(error))
+                : source.FirstOrNone(predicate).ToResult(error);
 
         /// <summary>The last element that matches, or the given error.</summary>
         /// <param name="predicate">The condition to match.</param>
-        /// <param name="error">The error if nothing matches.</param>
+        /// <param name="error">The error if nothing matches. Never null.</param>
         /// <returns>The last matching element, or <paramref name="error"/>.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
         public Result<T, TError> LastOrError(Func<T, bool> predicate, TError error) =>
-            source.LastOrNone(predicate)
-                  .Match(Result<T, TError>.Success, () => Result<T, TError>.Error(error));
+            error is null
+                ? throw new ArgumentNullException(nameof(error))
+                : source.LastOrNone(predicate).ToResult(error);
     }
 
     /// <param name="source">The sequence.</param>

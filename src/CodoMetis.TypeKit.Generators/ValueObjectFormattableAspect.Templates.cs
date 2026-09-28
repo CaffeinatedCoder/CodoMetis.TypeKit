@@ -34,14 +34,7 @@ internal sealed partial class ValueObjectFormattableAspect
     {
         var tag = (FormattableImplementationArguments)meta.Tags.Source!;
 
-        if (meta.CompileTime(tag.Strategy == ValueFormatStrategy.String))
-            return meta.This.Value ?? string.Empty;
-
-        if (meta.CompileTime(tag.Strategy is ValueFormatStrategy.Formattable or ValueFormatStrategy.SpanFormattable))
-            return (string)Formatted($"{GeneratedFormatting}.ToString(this.Value, format, formatProvider {InvariantIfNull})", SpecialType.String).Value!;
-
-        // FallbackToString: T has no formatting knowledge, so ignore args gracefully.
-        return meta.This.Value.ToString() ?? string.Empty;
+        return (string)Formatted(WrappedText(tag.ValueType, "this.Value", "format", $"formatProvider {InvariantIfNull}"), SpecialType.String).Value!;
     }
 
     // Overrides the record-generated ToString() with the invariant culture. The BCL's own ToString()

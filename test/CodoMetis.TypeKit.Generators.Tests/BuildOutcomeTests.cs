@@ -38,6 +38,13 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1005", "StructCycleOne")]
     [InlineData("CMTK1005", "StructCycleTwo")]
     [InlineData("CMTK1005", "WrapsAValueObject")]
+    [InlineData("CMTK1005", "ListBacked")]
+    [InlineData("CMTK1005", "ImmutableArrayBacked")]
+    [InlineData("CMTK1005", "PairBacked")]
+    [InlineData("CMTK1005", "TupleBacked")]
+    [InlineData("CMTK1005", "NamedTupleBacked")]
+    [InlineData("CMTK1005", "Named.Value")]
+    [InlineData("CMTK1005", "FileLocal")]
     [InlineData("CMTK1006", "NotSealed")]
     [InlineData("CMTK1007", "TakenName")]
     [InlineData("CMTK1007", "ShopId")]
@@ -52,6 +59,17 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1009", "CtorCopy")]
     [InlineData("CMTK1009", "PositionalStruct")]
     [InlineData("CMTK1009", "PositionalClass")]
+    [InlineData("CMTK1010", "SplitInOneFile")]
+    [InlineData("CMTK1010", "SplitAcrossFiles")]
+    [InlineData("CMTK1011", "HandWrittenFrom")]
+    [InlineData("CMTK1011", "HandWrittenValue")]
+    [InlineData("CMTK1011", "HandWrittenParse")]
+    [InlineData("CMTK1011", "HandWrittenFormat")]
+    [InlineData("CMTK1011", "HandWrittenMinValue")]
+    [InlineData("CMTK1011", "HandWrittenJsonConverter")]
+    [InlineData("CMTK1011", "HandWrittenTypeConverter")]
+    [InlineData("CMTK1011", "HandWrittenInterface")]
+    [InlineData("CMTK1011", "ExplicitCreate")]
     public void A_declaration_that_cannot_be_generated_is_an_error(string id, string type) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains($"'{type}"), $"{id} on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
 
@@ -66,6 +84,63 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("WrapsAValueObject", "it wraps 'Fine', which is a value object itself; wrap 'int' instead")]
     public void A_value_object_over_a_value_object_is_refused_with_what_it_reaches(string type, string reason) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1005" && error.Message.StartsWith($"'{type}'") && error.Message.Contains(reason), $"CMTK1005 on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
+
+    /// <summary>
+    /// A generic wrapped type failed inside the generated code (LAMA0611). The refusal says why, since
+    /// the type is often a perfectly good type: its equality is not guaranteed to be value equality.
+    /// </summary>
+    [Theory]
+    [InlineData("ListBacked", "the wrapped type 'List<string>' is generic")]
+    [InlineData("NamedTupleBacked", "the wrapped type '(int X, int Y)' is generic")]
+    public void A_generic_wrapped_type_is_refused_with_the_reason(string type, string reason) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1005" && error.Message.StartsWith($"'{type}'") && error.Message.Contains(reason) && error.Message.Contains("compares by reference"), consumer.Output);
+
+    /// <summary>
+    /// Metalama writes its override of the record's <c>ToString()</c> into every part of a declaration,
+    /// and the second copy failed inside the generated code (LAMA0611, CS0111).
+    /// </summary>
+    [Fact]
+    public void A_value_object_in_several_parts_is_refused_with_the_count() =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1010" && error.Message.StartsWith("'SplitAcrossFiles' is declared in 3 parts"), consumer.Output);
+
+    /// <summary>
+    /// A part that a source generator adds is not the user's, and Metalama does not write into it: a
+    /// validated value object with a <c>[GeneratedRegex]</c> member builds, and must keep building.
+    /// A guard against over-correction, since it built before CMTK1010 too.
+    /// </summary>
+    [Fact]
+    public void A_part_a_source_generator_adds_does_not_count() =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains("'Sku'"), consumer.Output);
+
+    /// <summary>
+    /// A hand-written member that a generator introduces failed the aspect or the generated code
+    /// (LAMA0500, LAMA0503, LAMA0512, LAMA0521, LAMA0611) naming no fix. The error names each one.
+    /// </summary>
+    [Theory]
+    [InlineData("HandWrittenFrom", "HandWrittenFrom.From(string)")]
+    [InlineData("HandWrittenValue", "HandWrittenValue.Value")]
+    [InlineData("HandWrittenParse", "HandWrittenParse.Parse(string, IFormatProvider?)")]
+    [InlineData("HandWrittenFormat", "HandWrittenFormat.ToString(string?, IFormatProvider?)")]
+    [InlineData("HandWrittenMinValue", "HandWrittenMinValue.MinValue")]
+    [InlineData("HandWrittenJsonConverter", "the attribute JsonConverter")]
+    [InlineData("HandWrittenTypeConverter", "the attribute TypeConverter")]
+    [InlineData("HandWrittenInterface", "the interface IValueObject<HandWrittenInterface, int>")]
+    [InlineData("ExplicitCreate", "Create only as an explicit implementation of IValidatedValue<ExplicitCreate, string, Fault>")]
+    public void A_hand_written_generated_member_is_refused_by_name(string type, string member) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
+
+    /// <summary>
+    /// The seams stay allowed: <c>Create</c>, <c>TryFrom</c>, <c>FromKnownGood</c>, <c>Revalidate</c>,
+    /// <c>CompareTo(TSelf)</c> and <c>ToString()</c>. A <c>MinValue</c> of another type, or one the value
+    /// object cannot reach, is not the wrapped type's bound: no <c>MinValue</c> is generated, where it
+    /// failed inside the generated code (LAMA0611, CS1503 and CS0122).
+    /// </summary>
+    [Theory]
+    [InlineData("WithEverySeam", "'WithEverySeam")]
+    [InlineData("Share", "Percent")]
+    [InlineData("Rank", "Level.M")]
+    public void A_seam_or_a_foreign_bound_is_not_refused(string type, string alsoNotNamed) =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'") || error.Message.Contains(alsoNotNamed), consumer.Output);
 
     /// <summary>
     /// A positional record is told that its parameter list is the constructor, since it declares
@@ -91,7 +166,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011"], ignoreOrder: false, customMessage: consumer.Output);
 
     /// <summary>
     /// The <c>GetValue</c>/<c>ValueOrNull</c> companions live in a namespace-level class. Named after
@@ -120,8 +195,23 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK0006", "'Unset' starts as a default 'Fine'")]
     [InlineData("CMTK0007", "'Target.FromKnownGood' is given 'input'")]
     [InlineData("CMTK0008", "the value of a 'Fine' with the value of a 'OtherFine'")]
+    [InlineData("CMTK0001", "The value object 'Sibling' must be created with 'Sibling.From'")]
+    [InlineData("CMTK0003", "The Result that 'Revalidate' returns")]
+    [InlineData("CMTK0007", "'Target.FromKnownGood' is given 'named'")]
+    [InlineData("CMTK0008", "This compares a 'Sibling' with a 'OtherSibling'")]
+    [InlineData("CMTK0009", "'OrDefault' returns a default 'Target' for None")]
+    [InlineData("CMTK0009", "'FirstOrDefault' returns a default 'Sibling' when nothing is found")]
     public void A_rule_sees_the_value_objects_of_its_own_project(string id, string fragment) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains(fragment), consumer.Output);
+
+    /// <summary>
+    /// A constructor that chains to another through <c>this(…)</c> whose argument calls a generated
+    /// member does not bind where Metalama runs analyzers; CMTK0006 resolves it to the one constructor it
+    /// can mean, which assigns the member, rather than report it unassigned.
+    /// </summary>
+    [Fact]
+    public void A_constructor_chained_through_a_generated_call_is_not_reported_unassigned() =>
+        consumer.Errors.ShouldNotContain(error => error.Id == "CMTK0006" && error.Message.Contains("'Chained()'"), consumer.Output);
 
     [Fact]
     public void CMTK0002_stays_silent_when_the_real_generators_assembly_is_referenced() =>
@@ -273,6 +363,122 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                 static WithStaticConstructor() { }
             }
 
+            // A generic wrapped type, tuples included, failed inside the generated code (LAMA0611).
+            public sealed partial record ListBacked : IValue<System.Collections.Generic.List<string>>;
+
+            public readonly partial record struct ImmutableArrayBacked : IValue<System.Collections.Immutable.ImmutableArray<int>>;
+
+            public readonly partial record struct PairBacked : IValue<System.Collections.Generic.KeyValuePair<string, int>>;
+
+            public readonly partial record struct TupleBacked : IValue<(int, int)>;
+
+            public readonly partial record struct NamedTupleBacked : IValue<(int X, int Y)>;
+
+            // Its generated property would have its name (CS0542), and a file-local type crashed
+            // Metalama (LAMA0001).
+            public static class Named { public readonly partial record struct Value : IValue<int>; }
+
+            file readonly partial record struct FileLocal : IValue<int>;
+
+            // Metalama writes the ToString() override into every part (CS0111 as LAMA0611). The other
+            // parts touch nothing generated, because a refused type is not generated.
+            public readonly partial record struct SplitInOneFile : IValue<int>;
+
+            public readonly partial record struct SplitInOneFile
+            {
+                public bool IsSet => true;
+            }
+
+            public readonly partial record struct SplitAcrossFiles : IValue<int>;
+
+            // A part a source generator adds does not count, and the value object builds.
+            public readonly partial record struct Sku : IValidatedValue<Sku, string, Fault>
+            {
+                public static Result<Sku, Fault> Create(string value) =>
+                    value is not null && Pattern().IsMatch(value) ? new Sku(value) : Result.Error(Fault.Refused);
+
+                [System.Text.RegularExpressions.GeneratedRegex("^[A-Z]{3}-[0-9]{4}$")]
+                private static partial System.Text.RegularExpressions.Regex Pattern();
+            }
+
+            // A member a generator introduces, written by hand: LAMA0500, LAMA0503, LAMA0512, LAMA0521
+            // or LAMA0611, or a Parse kept silently beside the generated parsing.
+            public readonly partial record struct HandWrittenFrom : IValue<string>
+            {
+                public static HandWrittenFrom From(string value) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct HandWrittenValue : IValue<string>
+            {
+                public int Value => 0;
+            }
+
+            public readonly partial record struct HandWrittenParse : IValue<int>
+            {
+                public static HandWrittenParse Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct HandWrittenFormat : IValue<int>
+            {
+                public string ToString(string? format, System.IFormatProvider? provider) => "";
+            }
+
+            public readonly partial record struct HandWrittenMinValue : IValue<int>
+            {
+                public static int MinValue => 0;
+            }
+
+            [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+            public readonly partial record struct HandWrittenJsonConverter : IValue<int>;
+
+            [System.ComponentModel.TypeConverter(typeof(System.ComponentModel.Int32Converter))]
+            public readonly partial record struct HandWrittenTypeConverter : IValue<int>;
+
+            public readonly partial record struct HandWrittenInterface : IValue<int>, IValueObject<HandWrittenInterface, int>
+            {
+                public int Value => 0;
+            }
+
+            // The generated code calls ExplicitCreate.Create, which cannot reach it (LAMA0611, CS1929).
+            public readonly partial record struct ExplicitCreate : IValidatedValue<ExplicitCreate, string, Fault>
+            {
+                static Result<ExplicitCreate, Fault> IValidatedValue<ExplicitCreate, string, Fault>.Create(string value) => Result.Error(Fault.Refused);
+            }
+
+            // The seams stay allowed.
+            public readonly partial record struct WithEverySeam : IValidatedValue<WithEverySeam, string, Fault>
+            {
+                public static Result<WithEverySeam, Fault> Create(string value) => new WithEverySeam(value);
+
+                public static Option<WithEverySeam> TryFrom(string value) => Create(value).ToOption();
+
+                public static WithEverySeam FromKnownGood(string value, string? source = null) => new(value);
+
+                public Result<WithEverySeam, Fault> Revalidate() => Create(Value);
+
+                public int CompareTo(WithEverySeam other) => string.CompareOrdinal(Value, other.Value);
+
+                public override string ToString() => "***";
+            }
+
+            // A MinValue of another type, or one the value object cannot reach, is no bound: nothing is
+            // generated for it, where it failed inside the generated code (LAMA0611, CS1503 and CS0122).
+            public readonly record struct Percent(decimal Amount)
+            {
+                public const decimal MinValue = 0m;
+                public const decimal MaxValue = 100m;
+            }
+
+            public readonly partial record struct Share : IValue<Percent>;
+
+            public readonly record struct Level(int Rung)
+            {
+                private static readonly Level MinValue = default;
+                private static readonly Level MaxValue = default;
+            }
+
+            public readonly partial record struct Rank : IValue<Level>;
+
             // A dictionary key is read by JsonMetadataServices.{TypeName}Converter, named after the
             // wrapped type. The probes cover int and decimal; a misnamed converter for any other number
             // would fail to compile here, as LAMA0611, rather than in a consumer's build.
@@ -317,6 +523,34 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             {
                 public Fine Unset { get; set; }
             }
+
+            public readonly partial record struct Sibling : IValue<int>;
+
+            public readonly partial record struct OtherSibling : IValue<int>;
+
+            public static class SameProjectForms
+            {
+                public static Sibling ConditionalDefault(bool pick) => pick ? Sibling.From(1) : default;
+
+                public static void IgnoredRevalidate(Target target) { target.Revalidate(); }
+
+                public static Target KnownGoodNamed(int named) => Target.FromKnownGood(value: named);
+
+                public static bool MixedObjects(Sibling sibling, OtherSibling other) => sibling.Equals(other);
+
+                public static Target OrDefaultOfTryFrom(int input) => Target.TryFrom(input).OrDefault();
+
+                public static Sibling FirstSibling(List<Sibling> siblings) => siblings.FirstOrDefault();
+            }
+
+            public sealed class Chained
+            {
+                public Chained(Fine id) => Id = id;
+
+                public Chained() : this(Fine.From(1)) { }
+
+                public Fine Id { get; }
+            }
             """;
 
         /// <summary>
@@ -324,6 +558,22 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
         /// <c>/var</c> symlink, and NuGet's relative project paths then resolve against the wrong side.
         /// </summary>
         private readonly string _directory = Path.Combine(RepositoryRoot(), "artifacts", $"consumer-{Guid.NewGuid():N}");
+
+        /// <summary>A second file, so a declaration can be split across files.</summary>
+        private const string OtherFile =
+            """
+            namespace Consumer;
+
+            public readonly partial record struct SplitAcrossFiles
+            {
+                public bool IsSet => true;
+            }
+
+            public readonly partial record struct SplitAcrossFiles
+            {
+                public bool IsUnset => false;
+            }
+            """;
 
         public IReadOnlyList<Diagnostic> Errors { get; private set; } = [];
 
@@ -349,6 +599,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                  </Project>
                  """);
             await File.WriteAllTextAsync(Path.Combine(_directory, "Declarations.cs"), Declarations);
+            await File.WriteAllTextAsync(Path.Combine(_directory, "OtherFile.cs"), OtherFile);
 
             // Only errors are read, so the rules that ship as warnings or a suggestion are raised here.
             await File.WriteAllTextAsync(Path.Combine(_directory, ".editorconfig"),
@@ -361,6 +612,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                 dotnet_diagnostic.CMTK0006.severity = error
                 dotnet_diagnostic.CMTK0007.severity = error
                 dotnet_diagnostic.CMTK0008.severity = error
+                dotnet_diagnostic.CMTK0009.severity = error
                 """);
 
             // Stop MSBuild's upward search here, so the repository's own build settings (warnings as

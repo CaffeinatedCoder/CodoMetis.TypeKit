@@ -57,12 +57,33 @@ public sealed class ParsingTests
         ProbeDate.Parse("2026-09-27", CultureInfo.InvariantCulture).Value.ShouldBe(new DateOnly(2026, 9, 27));
     }
 
-    /// <summary>A type without IParsable that has a string constructor: the constructor's exception means "no" to TryParse.</summary>
-    [Fact]
-    public void A_type_with_a_string_constructor_parses_through_it()
+    /// <summary>
+    /// A <see cref="Uri"/> parses relative or absolute, as the serializer reads it: through its
+    /// constructor, "/orders/7" became file:///orders/7 on macOS and Linux, "orders/7" threw, and
+    /// <c>Parse(x.ToString(), null)</c> did not round-trip what JSON had read.
+    /// </summary>
+    [Theory]
+    [InlineData("https://example.com/a?b=c")]
+    [InlineData("/orders/7")]
+    [InlineData("orders/7")]
+    public void A_uri_round_trips_through_its_text_relative_or_absolute(string text)
     {
-        ProbeUri.Parse("https://example.com/", null).Value.ShouldBe(new Uri("https://example.com/"));
-        ProbeUri.TryParse("::not a uri", null, out _).ShouldBeFalse();
+        var fromJson = System.Text.Json.JsonSerializer.Deserialize<ProbeUri>(System.Text.Json.JsonSerializer.Serialize(text));
+
+        ProbeUri.Parse(text, null).ShouldBe(fromJson);
+        ProbeUri.Parse(fromJson.ToString(), null).ShouldBe(fromJson);
+        ProbeUri.Parse(text, null).Value.OriginalString.ShouldBe(text);
+        ProbeUri.TryParse(text, null, out var parsed).ShouldBeTrue();
+        parsed.ShouldBe(fromJson);
+        System.ComponentModel.TypeDescriptor.GetConverter(typeof(ProbeUri)).ConvertFromInvariantString(text).ShouldBe(fromJson);
+    }
+
+    [Fact]
+    public void A_uri_neither_relative_nor_absolute_is_refused_as_JSON_refuses_it()
+    {
+        Should.Throw<FormatException>(() => ProbeUri.Parse("http://[::1", null));
+        ProbeUri.TryParse("http://[::1", null, out _).ShouldBeFalse();
+        Should.Throw<System.Text.Json.JsonException>(() => System.Text.Json.JsonSerializer.Deserialize<ProbeUri>("\"http://[::1\""));
     }
 
     /// <summary>NodaTime's types carry a <c>[TypeConverter]</c>, which is the strategy they get.</summary>
