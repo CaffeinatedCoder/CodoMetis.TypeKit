@@ -147,10 +147,10 @@ internal sealed partial class ValueObjectAspect : TypeAspect
         }
 
         // The companion class and the attribute's type arguments sit outside the file, where a file-local
-        // type cannot be named, and Metalama crashed on it (LAMA0001, naming nothing).
+        // type, or one nested in it, cannot be named, and Metalama crashed on it (LAMA0001, naming nothing).
         if (ValueObjectDeclaration.IsFileLocal(target))
         {
-            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, "a value object cannot be file-local, since generated code outside its file refers to it; declare it internal instead")));
+            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, "a value object cannot be file-local or nested in a file-local type, since generated code outside its file refers to it; declare it, and any type it is nested in, internal instead")));
             return false;
         }
 
@@ -251,14 +251,78 @@ internal sealed partial class ValueObjectAspect : TypeAspect
 
         // The generated code calls {TSelf}.Create(value), which cannot reach an explicit implementation
         // (LAMA0611, CS1929). Refused rather than called through a constrained type parameter: the
-        // smaller change, and a public Create is what IValidatedValue documents.
-        if (kind == ValueObjectKind.Validated && ValueObjectDeclaration.DeclaresCreateOnlyExplicitly(target))
-        {
-            var fault = marker.TypeArguments[2];
+        // smaller change, and a public Create is what IValidatedValue documents. Beside a public one, an
+        // explicit one is a second rule set: generic code calling T.Create reached it, and every
+        // generated entry point the public one. One Create, public, implements the interface too.
+        var (createExplicitly, createCallable) = kind == ValueObjectKind.Validated ? ValueObjectDeclaration.CreateDeclarations(target) : (false, false);
 
+        if (createExplicitly)
+        {
+            var signature = $"'public static Result<{target.Name}, {marker.TypeArguments[2].ToDisplayString()}> Create({namedValueType.ToDisplayString()} value)'";
+
+            builder.Diagnostics.Report(HandWrittenGeneratedMember.WithArguments(createCallable
+                ? (target,
+                   $"Create both as a static method and as an explicit implementation of {marker.ToDisplayString()}",
+                   $"every generated way in calls {target.Name}.Create and generic code calling T.Create reaches the explicit one, so it would have two rule sets; remove the explicit implementation and keep one Create, {signature}, which implements the interface too")
+                : (target,
+                   $"Create only as an explicit implementation of {marker.ToDisplayString()}",
+                   $"the generated code calls {target.Name}.Create, which cannot reach an explicit implementation; declare it as {signature}")));
+            return false;
+        }
+
+        // A base record's ToString() that is not sealed was replaced by the generated one without a word,
+        // and what it hid was printed. A sealed one is the seam (DeclaresToString): C# keeps it in every
+        // derived record. Refused rather than honoured here, since C# replaces an unsealed one too, with
+        // the derived record's synthesized ToString(): it was never what the value object printed.
+        if (ValueObjectDeclaration.UnsealedInheritedToString(target) is { } inheritedToString)
+        {
             builder.Diagnostics.Report(HandWrittenGeneratedMember.WithArguments((target,
-                $"Create only as an explicit implementation of {marker.ToDisplayString()}",
-                $"the generated code calls {target.Name}.Create, which cannot reach an explicit implementation; declare it as 'public static Result<{target.Name}, {fault.ToDisplayString()}> Create({namedValueType.ToDisplayString()} value)'")));
+                $"{inheritedToString.ToDisplayString()} in its base type, which is not sealed",
+                $"its generated ToString() replaces it and prints the wrapped value, as a record's synthesized one would; declare ToString() in {target.Name} (it may return base.ToString()), "
+              + $"or seal the base's, which C# keeps in every derived record and the generators then keep too")));
+            return false;
+        }
+
+        // The record's synthesized ToString() calls PrintMembers; the generated one replaces it and does
+        // not, so what a hand-written PrintMembers hid was printed, the sibling of the ToString() leak
+        // the seam fixed. Refused rather than made a second seam: ToString() already is one, and says
+        // what it prints in one place rather than as "Pin { *** }".
+        var printMembers = ValueObjectDeclaration.PrintMembersDeclaredByHand(target);
+
+        if (printMembers.Count > 0)
+        {
+            builder.Diagnostics.Report(HandWrittenGeneratedMember.WithArguments((target, string.Join(", ", printMembers),
+                "its ToString() is generated, prints the wrapped value and never calls PrintMembers, so what PrintMembers leaves out would be printed; "
+              + "to change what it prints, declare ToString() instead, which is kept")));
+            return false;
+        }
+
+        // A hand-written equality was kept by the record while the generated ordering, the JSON keys and
+        // the column went on comparing the wrapped value, so values it called equal sorted apart.
+        // Refused rather than made a seam: normalising in Create makes equal values hold the same wrapped
+        // value, which every one of those agrees with, while a hand-written CompareTo beside it would
+        // align the ordering alone.
+        var equality = ValueObjectDeclaration.EqualityDeclaredByHand(target);
+
+        if (equality.Count > 0)
+        {
+            builder.Diagnostics.Report(HandWrittenGeneratedMember.WithArguments((target, string.Join(", ", equality),
+                "a value object's equality is its wrapped value's, as its ordering, its JSON and its EF Core column are, and a hand-written one disagrees with them: "
+              + "values it calls equal sort apart, and a HashSet and a SortedSet of the same values differ in size. To make values that differ only in form equal, normalise them in Create"
+              + (kind == ValueObjectKind.Plain ? $" (declare {target.Name} as IValidatedValue to get one)" : "")
+              + ", so that equal values hold the same wrapped value")));
+            return false;
+        }
+
+        // Before the field is introduced, so what is found is the user's. JSON, parsing and the
+        // materializer carried the wrapped value alone, while the record's equality compared the rest:
+        // lost on a round trip, and a lazily filled cache made equal instances unequal. A required
+        // member failed inside the generated code (LAMA0611, CS9035).
+        var state = ValueObjectDeclaration.InstanceStateBesideTheValue(target);
+
+        if (state.Count > 0)
+        {
+            builder.Diagnostics.Report(StateBesideTheWrappedValue.WithArguments((target, string.Join(", ", state))));
             return false;
         }
 

@@ -8,6 +8,10 @@ and `.Value` works in a LINQ query as it does in memory.
 dotnet add package CodoMetis.TypeKit.EntityFrameworkCore
 ```
 
+It needs EF Core 10.0.12 or later. A project that references `Microsoft.EntityFrameworkCore` or
+`Microsoft.EntityFrameworkCore.Relational` directly at an earlier version fails to restore with NU1605
+(a package downgrade), so keep the EF Core packages at 10.0.12 or later.
+
 It recognises a value object at run time by the attribute the generators put on it, so the project
 that hosts the `DbContext` needs this package and the base package only, not the generators. The
 domain project that declares the value objects references `CodoMetis.TypeKit.Generators`.
@@ -24,6 +28,11 @@ services.AddDbContext<ShopDb>(options =>
 replaces nothing, so it coexists with a provider or a library that replaces EF's converter selector,
 and its position relative to `UseNpgsql` or `UseSqlite` does not matter. It lives in
 `Microsoft.EntityFrameworkCore`, beside `UseNpgsql`, so it needs no `using` of its own.
+
+It needs a relational provider. EF's in-memory provider has no relational type mapping, so there
+nothing is mapped: a struct value object is stored as it is, a class value object fails the model,
+and an integer key has no value generator (`SaveChanges` throws `NotSupportedException`). Tests that
+need a database in memory use SQLite's (`Data Source=:memory:`).
 
 An application that builds EF's internal service provider itself registers the same services there:
 
@@ -59,12 +68,25 @@ modelBuilder.Entity<Order>().Property(o => o.Code).HasConversion<ValueObjectConv
 ```
 
 **Keys.** A single-column key over an integer (`int`, `long`, `short`) is generated on add, as a key
-of that integer type is: an identity column on PostgreSQL and SQL Server, `AUTOINCREMENT` on SQLite.
-Switching an `int` key to a value object therefore changes no schema. A key over a `Guid` is the
-application's to assign, `Id = OrderId.New()` (a version 7 Guid, which sorts by creation time), and
-EF inserts it as given. For EF to generate it instead, configure `ValueGeneratedOnAdd()` on the
-property; EF then also takes an entity whose key is already set, reached through a navigation, for an
-existing one. An explicit configuration always wins over these defaults.
+of that integer type is. On PostgreSQL and SQL Server it is an identity column, so switching an `int`
+key to a value object there changes no schema. A key over a `Guid` is the application's to assign,
+`Id = OrderId.New()` (a version 7 Guid, which sorts by creation time), and EF inserts it as given. For
+EF to generate it instead, configure `ValueGeneratedOnAdd()` on the property; EF then also takes an
+entity whose key is already set, reached through a navigation, for an existing one. An explicit
+configuration always wins over these defaults.
+
+**SQLite: configure integer keys with `UseAutoincrement()`.** SQLite fills such a key in, but EF's
+SQLite provider makes a key `AUTOINCREMENT` only when the property's CLR type is an integer, and a
+value object is not. A migration snapshot records the column as an `int`, which is, so without the
+configuration the model never matches its snapshot: every migration repeats an `AlterColumn` (a
+table rebuild on SQLite), `migrations has-pending-model-changes` always reports changes, and
+`Migrate()` throws for `PendingModelChangesWarning`. Configure each such key:
+
+```csharp
+modelBuilder.Entity<Invoice>().Property(i => i.Id).UseAutoincrement();
+```
+
+A model that also runs on another provider does this under `if (Database.IsSqlite())`.
 
 **Model-wide conventions follow the property's type.** EF applies `ConfigureConventions` by CLR
 type, so `configurationBuilder.Properties<decimal>().HavePrecision(18, 2)` reaches `decimal`
@@ -111,7 +133,7 @@ When a rule is added, `Revalidate()` finds the rows it refuses:
 
 ```csharp
 var orders = await db.Orders.AsNoTracking().ToListAsync();
-foreach (var order in orders.Where(o => !o.Code.Revalidate()))
+foreach (var order in orders.Where(o => o.Code.Revalidate().State == ResultState.Error))
     log.StoredCodeNowRefused(order.Id);
 ```
 

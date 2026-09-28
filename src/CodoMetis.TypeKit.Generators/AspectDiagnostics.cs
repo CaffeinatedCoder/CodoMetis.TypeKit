@@ -46,4 +46,7 @@ internal static class AspectDiagnostics
 
     public static readonly DiagnosticDefinition<(INamedType Type, string Declared, string Remedy)> HandWrittenGeneratedMember =
         new("CMTK1011", Severity.Error, "'{0}' declares {1}, so it is not generated: {2}");
+
+    public static readonly DiagnosticDefinition<(INamedType Type, string Members)> StateBesideTheWrappedValue =
+        new("CMTK1012", Severity.Error, "'{0}' holds {1} besides its wrapped value, so it is not generated: its JSON, parsing, type converter and EF Core column carry the wrapped value alone, so the rest is lost on every round trip, and the record's equality compares it too. Compute it from Value in a property without a backing field, make it static, or wrap a type of your own that holds all of it.");
 }

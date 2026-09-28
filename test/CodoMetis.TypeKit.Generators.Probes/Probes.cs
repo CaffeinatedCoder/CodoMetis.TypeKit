@@ -124,3 +124,19 @@ public sealed record ProbeIsbnText
 
 /// <summary>Parse: the wrapped type's string constructor.</summary>
 public readonly partial record struct ProbeIsbn : IValue<ProbeIsbnText>;
+
+/// <summary>
+/// A base record for value objects in the test assembly, where it comes from another assembly: its
+/// synthesized members read as declared there, and must not be mistaken for the user's.
+/// </summary>
+public abstract record ProbeRecordBase;
+
+/// <summary>
+/// A base record in another assembly for the test assembly's value objects, whose sealed
+/// <c>ToString()</c> is the formatting seam: C# keeps it in every derived record.
+/// </summary>
+public abstract record ProbeMaskingRecord
+{
+    /// <summary>What every derived record prints.</summary>
+    public sealed override string ToString() => "***";
+}

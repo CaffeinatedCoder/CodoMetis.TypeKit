@@ -37,7 +37,7 @@ public static class ResultUse
 
         if (placed.TryGetValue(out var order, out var fault)) { /* order is non-null here */ }
 
-        if (service.Cancel(id)) { /* the bool conversion is true for a success */ }
+        if (service.Cancel(id)) { /* a Result<TError> converts to bool, true for a success */ }
 
         Result<Invoice, OrderFault> invoiced = placed.Bind(order => billing.Invoice(order));
         Result<OrderFault> confirmed = placed.Bind(order => mailer.Confirm(order));   // a command after a query

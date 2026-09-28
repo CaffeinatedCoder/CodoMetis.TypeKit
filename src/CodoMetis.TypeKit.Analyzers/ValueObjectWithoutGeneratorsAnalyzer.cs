@@ -25,7 +25,8 @@ public sealed class ValueObjectWithoutGeneratorsAnalyzer : DiagnosticAnalyzer
         category: "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Value objects are generated at compile time by CodoMetis.TypeKit.Generators. Without it, a type that implements IValue<T> or IValidatedValue<,,> compiles, but has no field, no Value and no factory."
+        description: "Value objects are generated at compile time by CodoMetis.TypeKit.Generators. Without it, a type that implements IValue<T> or IValidatedValue<,,> compiles, but has no field, no Value and no factory.",
+        helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.ValueObjectWithoutGenerators)
     );
 
     /// <inheritdoc/>

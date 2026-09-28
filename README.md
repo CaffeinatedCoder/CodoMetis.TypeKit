@@ -118,7 +118,7 @@ services.AddOpenApi(options => options.AddTypeKit());                    // Orde
   identity column; its OpenAPI schema is the one ASP.NET publishes for the wrapped type. Only what
   the value object refuses changes.
 - **Loud failures.** A declaration that cannot be generated is a build error naming the
-  declaration, CMTK1000 to CMTK1011, never a type with nothing in it. The analyzers make `default`
+  declaration, CMTK1000 to CMTK1012, never a type with nothing in it. The analyzers make `default`
   of a value object, an `Option` or a `Result` an error.
 - **Discovery by interface.** The EF Core and OpenAPI satellites recognise a value object by the
   attribute the generators put beside `IValueObject<,>`, whose type arguments are constrained to it,

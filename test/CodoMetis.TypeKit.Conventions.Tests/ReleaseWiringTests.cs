@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
 
 namespace CodoMetis.TypeKit.Conventions.Tests;
 
@@ -59,6 +58,33 @@ public sealed partial class ReleaseWiringTests
         }
     }
 
+    /// <summary>
+    /// A re-run of the publish job is the answer to a partial failure, so it must complete what is
+    /// missing. Measured 2026-09-28 with the SDK's own push against a stand-in feed: a .nupkg the feed
+    /// already has is skipped together with its .snupkg, so symbols pushed alongside their package
+    /// are never retried, and the re-run goes green without them. The symbol packages are pushed in a
+    /// step of their own; with <c>--no-symbols</c>, or without a symbol source NuGet can resolve,
+    /// that push skips every .snupkg without an error.
+    /// </summary>
+    [Fact]
+    public void A_re_run_of_the_publish_job_completes_missing_symbols()
+    {
+        var pushes = Steps(Job(ReleaseWorkflow, "publish")).Where(step => step.Contains("dotnet nuget push", StringComparison.Ordinal)).ToList();
+
+        pushes.Count.ShouldBeGreaterThanOrEqualTo(2, "The publish job no longer pushes the packages and the symbol packages in steps of their own.");
+        pushes.Where(step => !step.Contains("--skip-duplicate", StringComparison.Ordinal)).ShouldBeEmpty(
+            "A push without --skip-duplicate fails a re-run on the first package nuget.org already has.");
+
+        var symbols = pushes.Where(step => SymbolPackageGlob().IsMatch(step)).ToList();
+
+        symbols.Count.ShouldBe(1,
+            "No step of the publish job pushes the .snupkg files on their own. NuGet skips a .snupkg together with a duplicate .nupkg, " +
+            "so a re-run would go green with a failed symbol upload still missing.");
+        symbols[0].ShouldNotContain("--no-symbols", Case.Sensitive, "The symbol push passes --no-symbols, so NuGet skips every .snupkg without an error.");
+        symbols[0].ShouldContain("--symbol-source", Case.Sensitive,
+            "The symbol push names no --symbol-source, so a .snupkg NuGet resolves no symbol endpoint for is skipped without an error.");
+    }
+
     [Fact]
     public void The_release_checks_the_tag_against_the_version_property() =>
         Job(ReleaseWorkflow, "verify").ShouldContain("does not match Directory.Build.props",
@@ -115,18 +141,25 @@ public sealed partial class ReleaseWiringTests
 
     /// <summary>
     /// Measured 2026-09-27: without the filter, the analyzer package's SBOM lists 13 Roslyn
-    /// components while its nuspec declares no dependency at all.
+    /// components while its nuspec declares no dependency at all. Measured 2026-09-28: the SDK adds
+    /// <c>Microsoft.NET.ILLink.Tasks</c> to every <c>IsAotCompatible</c> project, build-only, and it
+    /// reached the three run-time SBOMs while no nuspec names it. No project file declares it, so the
+    /// build-only set is read from restore output, not from <c>PrivateAssets</c> in the project files.
     /// </summary>
     [Fact]
     public void Every_build_only_reference_is_excluded_from_both_SBOM_steps()
     {
-        var buildOnly = Repository.ShippingProjects()
-                                  .SelectMany(BuildOnlyReferences)
-                                  .Distinct(StringComparer.OrdinalIgnoreCase)
-                                  .Order(StringComparer.Ordinal)
-                                  .ToList();
+        var found = Repository.ShippingProjects().SelectMany(Repository.BuildOnlyPackages).ToList();
 
-        buildOnly.ShouldNotBeEmpty("No PrivateAssets=all reference found; the analyzer's Roslyn references are, so the discovery is broken.");
+        found.Where(package => !package.AutoReferenced).ShouldNotBeEmpty(
+            "No PrivateAssets=all reference found in restore output; the analyzer's Roslyn references are, so the discovery is broken.");
+        found.Where(package => package.AutoReferenced).ShouldNotBeEmpty(
+            "No build-only reference added by the SDK found in restore output; IsAotCompatible adds one, so the discovery is broken.");
+
+        var buildOnly = found.Select(package => package.Id)
+                             .Distinct(StringComparer.OrdinalIgnoreCase)
+                             .Order(StringComparer.Ordinal)
+                             .ToList();
 
         foreach (var (workflow, text) in new[] { ("release.yml", ReleaseWorkflow), ("dotnet.yml", BuildWorkflow) })
         {
@@ -135,8 +168,8 @@ public sealed partial class ReleaseWiringTests
                                           .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             buildOnly.Where(reference => !excluded.Contains(reference)).ShouldBeEmpty(
-                $"{workflow}'s SBOM step does not exclude these PrivateAssets=all references, which no consumer receives. " +
-                "Add them to its comma-separated --exclude-filter.");
+                $"{workflow}'s SBOM step does not exclude these build-only references (suppressParent All in restore output, " +
+                "written as PrivateAssets=all or added by the SDK), which no consumer receives. Add them to its comma-separated --exclude-filter.");
         }
     }
 
@@ -176,15 +209,6 @@ public sealed partial class ReleaseWiringTests
         }
     }
 
-    private static IEnumerable<string> BuildOnlyReferences(string project) =>
-        XDocument.Load(Path.Combine(Repository.Root, "src", project, $"{project}.csproj"))
-                 .Descendants("PackageReference")
-                 .Where(reference => string.Equals(
-                      ((string?)reference.Attribute("PrivateAssets") ?? reference.Element("PrivateAssets")?.Value)?.Trim(),
-                      "all", StringComparison.OrdinalIgnoreCase))
-                 .Select(reference => (string?)reference.Attribute("Include"))
-                 .OfType<string>();
-
     private static string Workflow(string fileName) =>
         File.ReadAllText(Path.Combine(Repository.Root, ".github", "workflows", fileName));
 
@@ -203,8 +227,20 @@ public sealed partial class ReleaseWiringTests
                    .ToDictionary(job => job.name, job => job.text);
     }
 
+    /// <summary>Each step's text, without its comment lines, so a step is judged by what it runs, not by what its comment explains.</summary>
+    private static IEnumerable<string> Steps(string job) =>
+        StepStart().Split(job)
+                   .Skip(1)
+                   .Select(step => string.Join('\n', step.Split('\n').Where(line => !line.TrimStart().StartsWith('#'))));
+
     [GeneratedRegex(@"(?m)^  (?<name>[A-Za-z0-9_-]+):\s*$")]
     private static partial Regex JobKey();
+
+    [GeneratedRegex(@"(?m)^\s+- (?=name:|uses:)")]
+    private static partial Regex StepStart();
+
+    [GeneratedRegex(@"\*\.\S*\.snupkg\b")]
+    private static partial Regex SymbolPackageGlob();
 
     [GeneratedRegex(@"(?m)^\s+run:\s*\./test/consumer-smoke-test\.sh")]
     private static partial Regex SmokeTestStep();

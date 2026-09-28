@@ -45,8 +45,12 @@
         -->
         <PackageVersion Include="NodaTime" Version="3.3.4" />
         <PackageVersion Include="NodaTime.Serialization.SystemTextJson" Version="1.4.0" />
-        <!-- The EF satellite's tests: SQLite for the model, Npgsql for SQL and the round trips. -->
+        <!--
+            The EF satellite's tests: SQLite for the model, Npgsql for SQL and the round trips, and EF's
+            design-time services to write the migration snapshot a model is compared with.
+        -->
         <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
+        <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
         <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
         <PackageVersion Include="Testcontainers.PostgreSql" Version="4.15.0" />
         <!-- The ASP.NET Core satellite's tests: a probe host whose OpenAPI document they read. -->

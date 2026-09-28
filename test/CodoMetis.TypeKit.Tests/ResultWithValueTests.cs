@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace CodoMetis.TypeKit.Tests;
 
 /// <summary>
@@ -160,6 +162,36 @@ public sealed class ResultWithValueTests
     }
 
     /// <summary>
+    /// The callback has completed when the result is handed on, the result is passed on unchanged, and
+    /// what the callback throws reaches the caller as it was thrown.
+    /// </summary>
+    [Fact]
+    public async Task TapErrorAsync_awaits_its_callback_only_on_error()
+    {
+        var log = new List<string>();
+
+        async Task Audit(string e)
+        {
+            await Task.Delay(50, TestContext.Current.CancellationToken);
+            lock (log) log.Add($"audited {e}");
+        }
+
+        var success = await Result<int, string>.Success(5).TapErrorAsync(Audit);
+        var error = await Result<int, string>.Error("boom").TapErrorAsync(Audit);
+        lock (log) log.Add("handed on");
+
+        lock (log) log.ShouldBe(["audited boom", "handed on"]);
+        success.ShouldBe(Result<int, string>.Success(5));
+        error.ShouldBe(Result<int, string>.Error("boom"));
+
+        (await Should.ThrowAsync<TimeoutException>(() => Result<int, string>.Error("boom").TapErrorAsync(async _ =>
+        {
+            await Task.Yield();
+            throw new TimeoutException("audit store down");
+        }))).Message.ShouldBe("audit store down");
+    }
+
+    /// <summary>
     /// The conversions call sites actually write: returning a bare value, <c>Result.Success(x)</c> or
     /// <c>Result.Error(e)</c> from a method typed <see cref="Result{T,TError}"/>.
     /// </summary>
@@ -179,12 +211,27 @@ public sealed class ResultWithValueTests
         error.ShouldBe("boom");
     }
 
+    /// <summary>
+    /// A valued result does not convert to <see langword="bool"/>; the error-only one does. With the
+    /// conversion, <c>if (await users.IsEmailTakenAsync(email))</c> over a
+    /// <c>Task&lt;Result&lt;bool, DbFault&gt;&gt;</c> took the branch for <c>Success(false)</c>: the
+    /// conversion says whether the query succeeded, and reads as its answer. A <see cref="Result{TError}"/>
+    /// has no value to confuse it with. Through reflection, so this test compiles with the operator
+    /// and fails on its presence rather than on a build error.
+    /// </summary>
     [Fact]
-    public void Success_converts_to_true_and_error_to_false()
+    public void Only_the_error_only_result_converts_to_bool()
     {
-        ((bool)Result<int, string>.Success(1)).ShouldBeTrue();
-        ((bool)Result<int, string>.Error("boom")).ShouldBeFalse();
+        ConversionsToBool(typeof(Result<bool, string>)).ShouldBeEmpty(
+            "Result<T, TError> converts to bool, so a Result<bool, TError> that succeeded with false reads as true in an if");
+
+        ConversionsToBool(typeof(Result<string>)).ShouldBe(["op_Implicit"], "Result<TError> lost its bool conversion");
     }
+
+    private static List<string> ConversionsToBool(Type type) =>
+        (from method in type.GetMethods(BindingFlags.Public | BindingFlags.Static)
+         where (method.Name is "op_Implicit" or "op_Explicit" && method.ReturnType == typeof(bool)) || method.Name is "op_True" or "op_False"
+         select method.Name).ToList();
 
     /// <summary><c>Select</c> exists so a result composes in query syntax like an option does.</summary>
     [Fact]

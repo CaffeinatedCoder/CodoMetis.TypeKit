@@ -1,8 +1,12 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Text;
 
 namespace CodoMetis.TypeKit.Analyzers;
 
@@ -20,6 +24,14 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// <c>object.Equals</c> and <c>comparer.Equals</c>, into which analyzers such as MA0006 rewrite
 /// <c>==</c>. The value is read through <c>.Value</c>, <c>?.Value</c>, <c>GetValue()</c> or
 /// <c>ValueOrNull()</c>, in expression trees too.
+/// </para>
+/// <para>
+/// A join is an equality of its keys, and <c>on o.Id equals c.Id</c> of two value objects of different
+/// types does not compile either. Reported: a query's <c>join … on a.Value equals b.Value</c>, with or
+/// without <c>into</c>, and <c>Join</c>, <c>GroupJoin</c>, <c>LeftJoin</c> and <c>RightJoin</c> of
+/// <c>Enumerable</c>, <c>Queryable</c> and <c>AsyncEnumerable</c> whose two key selectors are lambdas
+/// that each return such a value, over the two keys. The methods are resolved by symbol; where a key
+/// selector does not bind, their candidates are. A composite key is not looked into.
 /// </para>
 /// <para>
 /// Two value objects of different types compared without unwrapping, <c>order.Id.Equals(customerId)</c>
@@ -46,7 +58,8 @@ public sealed class MixedValueComparisonAnalyzer : DiagnosticAnalyzer
         category: "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Two value objects of different types cannot be compared with ==, which is the point of them. Comparing what they wrap compiles, and brings back the bug they prevent, such as an order id compared with a customer id. Equals(object) between them compiles too, and is always false."
+        description: "Two value objects of different types cannot be compared with ==, which is the point of them. Comparing what they wrap compiles, and brings back the bug they prevent, such as an order id compared with a customer id. Equals(object) between them compiles too, and is always false.",
+        helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.MixedValueComparison)
     );
 
     /// <inheritdoc/>
@@ -62,6 +75,8 @@ public sealed class MixedValueComparisonAnalyzer : DiagnosticAnalyzer
         {
             if (TypeKitSymbols.Resolve(start.Compilation) is not { } symbols) return;
 
+            var joins = Joins(start.Compilation);
+
             start.RegisterSyntaxNodeAction(
                 node => AnalyzeBinary(node, symbols),
                 SyntaxKind.EqualsExpression,
@@ -71,7 +86,9 @@ public sealed class MixedValueComparisonAnalyzer : DiagnosticAnalyzer
                 SyntaxKind.GreaterThanExpression,
                 SyntaxKind.GreaterThanOrEqualExpression);
 
-            start.RegisterSyntaxNodeAction(node => AnalyzeInvocation(node, symbols), SyntaxKind.InvocationExpression);
+            start.RegisterSyntaxNodeAction(node => AnalyzeInvocation(node, symbols, joins), SyntaxKind.InvocationExpression);
+
+            start.RegisterSyntaxNodeAction(node => AnalyzeJoinClause(node, symbols), SyntaxKind.JoinClause);
         });
     }
 
@@ -80,6 +97,109 @@ public sealed class MixedValueComparisonAnalyzer : DiagnosticAnalyzer
         var binary = (BinaryExpressionSyntax)context.Node;
 
         Report(context, binary, binary.Left, binary.Right, symbols);
+    }
+
+    /// <summary>
+    /// <c>join c in customers on o.CustomerId.Value equals c.Id.Value</c>, with or without <c>into</c>: a
+    /// join is an equality of its two keys, reported over <c>… equals …</c>.
+    /// </summary>
+    private static void AnalyzeJoinClause(SyntaxNodeAnalysisContext context, TypeKitSymbols symbols)
+    {
+        var join = (JoinClauseSyntax)context.Node;
+
+        Report(context, join, join.LeftExpression, join.RightExpression, symbols, Across(join.LeftExpression, join.RightExpression));
+    }
+
+    /// <summary>
+    /// <c>orders.Join(customers, o => o.CustomerId.Value, c => c.Id.Value, …)</c> and the other LINQ joins,
+    /// as extensions, statically or with named arguments: what the two key selectors return is compared.
+    /// </summary>
+    /// <remarks>
+    /// Where a key selector reads the generated <c>.Value</c> of a value object of the same project, the
+    /// call does not bind; its candidates are LINQ's joins, and every one of them has its key selectors
+    /// in the same places.
+    /// </remarks>
+    private static void AnalyzeJoin(SyntaxNodeAnalysisContext context, InvocationExpressionSyntax invocation, TypeKitSymbols symbols, Dictionary<IMethodSymbol, KeySelectors> joins)
+    {
+        var info = context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken);
+
+        IMethodSymbol? join = null;
+        KeySelectors keys = default;
+
+        foreach (var candidate in info.Symbol is IMethodSymbol bound ? [bound] : info.CandidateSymbols.OfType<IMethodSymbol>())
+        {
+            if (!joins.TryGetValue((candidate.ReducedFrom ?? candidate).OriginalDefinition, out keys)) continue;
+
+            join = candidate;
+            break;
+        }
+
+        if (join is null) return;
+
+        // outer.Join(inner, …) passes the outer sequence as the receiver: the first argument is the second parameter.
+        var definition = (join.ReducedFrom ?? join).OriginalDefinition;
+        var offset     = join.ReducedFrom is null ? 0 : 1;
+        var arguments  = invocation.ArgumentList.Arguments;
+
+        ExpressionSyntax? outerKey = null, innerKey = null;
+
+        for (var index = 0; index < arguments.Count; index++)
+        {
+            var ordinal = arguments[index].NameColon is { } name
+                              ? definition.Parameters.FirstOrDefault(parameter => parameter.Name == name.Name.Identifier.ValueText)?.Ordinal
+                              : index + offset;
+
+            if (ordinal == keys.Outer) outerKey = arguments[index].Expression;
+            else if (ordinal == keys.Inner) innerKey = arguments[index].Expression;
+        }
+
+        if (outerKey is null || innerKey is null || KeyOf(outerKey) is not { } outer || KeyOf(innerKey) is not { } inner) return;
+
+        Report(context, invocation, outer, inner, symbols, Across(outerKey, innerKey));
+    }
+
+    /// <summary>What a key selector returns: the body of <c>o => o.CustomerId.Value</c>.</summary>
+    private static ExpressionSyntax? KeyOf(ExpressionSyntax selector) =>
+        selector is LambdaExpressionSyntax { ExpressionBody: { } body } ? body : null;
+
+    /// <summary>The span from the first of two keys to the end of the other, whichever order they are written in.</summary>
+    private static Location Across(SyntaxNode first, SyntaxNode second) =>
+        Location.Create(first.SyntaxTree, TextSpan.FromBounds(Math.Min(first.SpanStart, second.SpanStart), Math.Max(first.Span.End, second.Span.End)));
+
+    /// <summary>
+    /// The LINQ joins by their original definitions, with where their key selectors are: <c>Join</c>,
+    /// <c>GroupJoin</c>, <c>LeftJoin</c> and <c>RightJoin</c> of <c>Enumerable</c>, <c>Queryable</c> and
+    /// <c>AsyncEnumerable</c>, each type resolved from the compilation. Every match of a name counts, as
+    /// in <see cref="TypeKitSymbols.Resolve"/>: the System.Linq.Async package declares an
+    /// <c>AsyncEnumerable</c> of its own.
+    /// </summary>
+    private static Dictionary<IMethodSymbol, KeySelectors> Joins(Compilation compilation)
+    {
+        var joins = new Dictionary<IMethodSymbol, KeySelectors>(SymbolEqualityComparer.Default);
+
+        foreach (var type in new[] { "System.Linq.Enumerable", "System.Linq.Queryable", "System.Linq.AsyncEnumerable" }.SelectMany(name => compilation.GetTypesByMetadataName(name)))
+        {
+            foreach (var method in JoinNames.SelectMany(name => type.GetMembers(name)).OfType<IMethodSymbol>())
+            {
+                // The parameter names are the methods' public contract, the same for every overload.
+                var outer = method.Parameters.FirstOrDefault(parameter => parameter.Name == "outerKeySelector");
+                var inner = method.Parameters.FirstOrDefault(parameter => parameter.Name == "innerKeySelector");
+
+                if (outer is not null && inner is not null) joins[method] = new KeySelectors(outer.Ordinal, inner.Ordinal);
+            }
+        }
+
+        return joins;
+    }
+
+    private static readonly string[] JoinNames = ["Join", "GroupJoin", "LeftJoin", "RightJoin"];
+
+    /// <summary>The ordinals of a join's two key selectors, in its unreduced definition.</summary>
+    private readonly struct KeySelectors(int outer, int inner)
+    {
+        public int Outer { get; } = outer;
+
+        public int Inner { get; } = inner;
     }
 
     /// <summary>
@@ -93,7 +213,7 @@ public sealed class MixedValueComparisonAnalyzer : DiagnosticAnalyzer
     /// Both operands must still be read from value objects of two different types, which is what the
     /// rule is about whatever the method is.
     /// </remarks>
-    private static void AnalyzeInvocation(SyntaxNodeAnalysisContext context, TypeKitSymbols symbols)
+    private static void AnalyzeInvocation(SyntaxNodeAnalysisContext context, TypeKitSymbols symbols, Dictionary<IMethodSymbol, KeySelectors> joins)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
 
@@ -103,6 +223,12 @@ public sealed class MixedValueComparisonAnalyzer : DiagnosticAnalyzer
             IdentifierNameSyntax identifier     => (null, identifier.Identifier.ValueText),
             _                                   => ((ExpressionSyntax?)null, (string?)null)
         };
+
+        if (name is not null && joins.Count > 0 && Array.IndexOf(JoinNames, name) >= 0)
+        {
+            AnalyzeJoin(context, invocation, symbols, joins);
+            return;
+        }
 
         if (name is not ("Equals" or "CompareTo" or "Compare" or "CompareOrdinal")) return;
 
@@ -116,7 +242,14 @@ public sealed class MixedValueComparisonAnalyzer : DiagnosticAnalyzer
         if (name is not "CompareTo" && arguments.Count >= 2) Report(context, invocation, arguments[0].Expression, arguments[1].Expression, symbols);
     }
 
-    private static bool Report(SyntaxNodeAnalysisContext context, SyntaxNode comparison, ExpressionSyntax left, ExpressionSyntax right, TypeKitSymbols symbols)
+    /// <summary>Reports <paramref name="left"/> and <paramref name="right"/> when they read two different value objects.</summary>
+    /// <param name="context">The analysis context.</param>
+    /// <param name="comparison">The comparison, whose kind decides whether value objects compared themselves count.</param>
+    /// <param name="left">The first operand or key.</param>
+    /// <param name="right">The second operand or key.</param>
+    /// <param name="symbols">The compilation's TypeKit symbols.</param>
+    /// <param name="location">Where to report, when not the whole comparison: a join's two keys.</param>
+    private static bool Report(SyntaxNodeAnalysisContext context, SyntaxNode comparison, ExpressionSyntax left, ExpressionSyntax right, TypeKitSymbols symbols, Location? location = null)
     {
         ITypeSymbol? leftType, rightType;
         string form;
@@ -138,7 +271,7 @@ public sealed class MixedValueComparisonAnalyzer : DiagnosticAnalyzer
 
         context.Report(Diagnostic.Create(
             Rule,
-            comparison.GetLocation(),
+            location ?? comparison.GetLocation(),
             string.Format(form, leftType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)),
             string.Format(form, rightType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat))));
 

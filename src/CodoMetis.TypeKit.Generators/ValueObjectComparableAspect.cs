@@ -125,12 +125,17 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
 
     /// <summary>
     /// The comparison members the type declares itself, other than the seam <c>CompareTo(TSelf)</c>:
-    /// the object overload and the four ordering operators.
+    /// the object overload, the four ordering operators, and an explicit implementation of any member
+    /// of the comparison interfaces. The explicit one was kept beside the generated public one, which
+    /// it hides from every caller through the interface: an explicit <c>IComparable&lt;Rank&gt;.CompareTo</c>
+    /// sorted a list descending while <c>&lt;</c> kept ascending.
     /// </summary>
     private static IEnumerable<string> HandWrittenComparisonMembers(INamedType target)
     {
         foreach (var method in target.Methods)
         {
+            if (method.IsExplicitInterfaceImplementation) continue;
+
             var isObjectOverload = method is { Name: nameof(IComparable.CompareTo), Parameters: [{ Type.SpecialType: SpecialType.Object }] };
             var isOrderingOperator = method.OperatorKind is OperatorKind.LessThan or OperatorKind.GreaterThan
                                                           or OperatorKind.LessThanOrEqual or OperatorKind.GreaterThanOrEqual;
@@ -138,6 +143,10 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
             if (isObjectOverload || isOrderingOperator)
                 yield return method.ToDisplayString();
         }
+
+        foreach (var member in ValueObjectDeclaration.ExplicitImplementationsOf(target,
+                     [typeof(IComparable<>).ToNamedType(), typeof(IComparable).ToNamedType(), typeof(IComparisonOperators<,,>).ToNamedType()]))
+            yield return member;
     }
 
     /// <summary>

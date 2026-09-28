@@ -117,7 +117,7 @@ jobs:
               --output dist --filename "$id.$version.cdx.json" --output-format Json \
               --set-type Library --set-nuget-purl --set-name "$id" --set-version "$version" \
               --include-project-references \
-              --exclude-filter Microsoft.CodeAnalysis.CSharp,Microsoft.CodeAnalysis.Analyzers
+              --exclude-filter Microsoft.CodeAnalysis.CSharp,Microsoft.CodeAnalysis.Analyzers,Microsoft.NET.ILLink.Tasks,NETStandard.Library
           done
 
       - name: Upload packages

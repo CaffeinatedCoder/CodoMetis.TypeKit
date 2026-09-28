@@ -15,6 +15,7 @@ public sealed class MixedValueComparisonAnalyzerTests
         """
         using System;
         using System.Collections.Generic;
+        using System.Linq;
         using System.Linq.Expressions;
         using CodoMetis.TypeKit.ValueObjects;
 
@@ -161,6 +162,154 @@ public sealed class MixedValueComparisonAnalyzerTests
             Cmtk0008Objects(2, "OrderId", "CustomerId"),
             Cmtk0008Objects(3, "OrderId", "CustomerId"),
             Cmtk0008Objects(4, "Label", "Title"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>Rows that hold value objects, as entities do, for the joins.</summary>
+    private const string Rows =
+        """
+        public sealed class OrderRow
+        {
+            public OrderId Id { get; set; }
+            public CustomerId CustomerId { get; set; }
+            public OrderId? Previous { get; set; }
+            public Label? Tag { get; set; }
+        }
+
+        public sealed class CustomerRow
+        {
+            public CustomerId Id { get; set; }
+            public CustomerId? Referrer { get; set; }
+            public Title? Heading { get; set; }
+        }
+
+        """;
+
+    /// <summary>
+    /// A join is an equality of its two keys. <c>on o.CustomerId equals c.Id</c> does not compile for two
+    /// value objects of different types, which is the point of the types; unwrapping both keys compiles and
+    /// joins an order id to a customer id. Each form was silent.
+    /// </summary>
+    [Fact]
+    public Task A_query_join_on_the_values_of_two_value_objects_reports() =>
+        Test(
+            Rows +
+            """
+            public static class C
+            {
+                public static void Run(IQueryable<OrderRow> orders, IQueryable<CustomerRow> customers, List<OrderRow> list, List<CustomerRow> people)
+                {
+                    var joined = from o in orders join c in customers on {|#0:o.Id.Value equals c.Id.Value|} select o;
+                    var grouped = from o in list join c in people on {|#1:o.Id.Value equals c.Id.Value|} into matches select matches;
+                    var typed = from o in list join CustomerRow c in people on {|#2:o.Id.Value equals c.Id.Value|} select o;
+                    var companions = from o in list join c in people on {|#3:o.Previous.GetValue() equals c.Referrer.ValueOrNull()|} select o;
+                    var conditional = from o in list join c in people on {|#4:o.Tag?.Value equals c.Heading?.Value|} select o;
+                    var parenthesized = from o in list join c in people on {|#5:(o.Id.Value) equals (c.Id.Value)|} select o;
+                }
+            }
+            """,
+            Cmtk0008(0, "OrderId", "CustomerId"),
+            Cmtk0008(1, "OrderId", "CustomerId"),
+            Cmtk0008(2, "OrderId", "CustomerId"),
+            Cmtk0008(3, "OrderId", "CustomerId"),
+            Cmtk0008(4, "Label", "Title"),
+            Cmtk0008(5, "OrderId", "CustomerId"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// <c>Join</c>, <c>GroupJoin</c> and .NET 10's <c>LeftJoin</c> and <c>RightJoin</c>, on <c>Enumerable</c>,
+    /// <c>Queryable</c> and <c>AsyncEnumerable</c>, called as extensions, statically or with named arguments:
+    /// the two key selectors compare what they return. Each was silent. The outer key is named first.
+    /// </summary>
+    [Fact]
+    public Task A_Join_method_on_the_values_of_two_value_objects_reports() =>
+        Test(
+            Rows +
+            """
+            public static class C
+            {
+                public static void Run(IQueryable<OrderRow> orders, IQueryable<CustomerRow> customers, List<OrderRow> list, List<CustomerRow> people,
+                                       IAsyncEnumerable<OrderRow> stream, IAsyncEnumerable<CustomerRow> others)
+                {
+                    var streamed = stream.Join(others, {|#9:o => o.Id.Value, c => c.Id.Value|}, (o, c) => o);
+                    var joined = orders.Join(customers, {|#0:o => o.Id.Value, c => c.Id.Value|}, (o, c) => o);
+                    var grouped = list.GroupJoin(people, {|#1:o => o.Id.Value, c => c.Id.Value|}, (o, cs) => o);
+                    var left = list.LeftJoin(people, {|#2:o => o.Id.Value, c => c.Id.Value|}, (o, c) => o);
+                    var right = orders.RightJoin(customers, {|#3:o => o.Id.Value, c => c.Id.Value|}, (o, c) => c);
+                    var queryGrouped = orders.GroupJoin(customers, {|#4:o => o.Id.Value, c => c.Id.Value|}, (o, cs) => o);
+                    var staticForm = Enumerable.Join(list, people, {|#5:o => o.Id.Value, c => c.Id.Value|}, (o, c) => o);
+                    var named = list.Join(people, resultSelector: (o, c) => o, innerKeySelector: {|#6:c => c.Id.Value, outerKeySelector: o => o.Id.Value|});
+                    var compared = list.Join(people, {|#7:o => o.Tag!.Value, c => c.Heading!.Value|}, (o, c) => o, StringComparer.Ordinal);
+                    var companions = list.Join(people, {|#8:(OrderRow o) => o.Previous.GetValue(), (CustomerRow c) => c.Referrer.ValueOrNull()|}, (o, c) => o);
+                }
+            }
+            """,
+            Cmtk0008(0, "OrderId", "CustomerId"),
+            Cmtk0008(1, "OrderId", "CustomerId"),
+            Cmtk0008(2, "OrderId", "CustomerId"),
+            Cmtk0008(3, "OrderId", "CustomerId"),
+            Cmtk0008(4, "OrderId", "CustomerId"),
+            Cmtk0008(5, "OrderId", "CustomerId"),
+            Cmtk0008(6, "OrderId", "CustomerId"),
+            Cmtk0008(7, "Label", "Title"),
+            Cmtk0008(8, "OrderId", "CustomerId"),
+            Cmtk0008(9, "OrderId", "CustomerId"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A value object of the same project has no <c>Value</c> where Metalama runs analyzers (CS1061), so a
+    /// <c>Join</c> given it does not bind either; its candidates still say where the key selectors are.
+    /// </summary>
+    [Fact]
+    public Task A_join_on_unbound_values_reports() =>
+        Test(
+            """
+            public sealed class UnwovenRow { public Unwoven Id { get; set; } }
+            public sealed class AlsoUnwovenRow { public AlsoUnwoven Id { get; set; } }
+
+            public static class C
+            {
+                public static void Run(List<UnwovenRow> left, List<AlsoUnwovenRow> right)
+                {
+                    var joined = left.Join(right, {|#0:u => u.Id.{|CS1061:Value|}, a => a.Id.{|CS1061:Value|}|}, (u, a) => u);
+                    var query = from u in left join a in right on {|#1:u.Id.{|CS1061:Value|} equals a.Id.{|CS1061:Value|}|} select u;
+                }
+            }
+            """,
+            Cmtk0008(0, "Unwoven", "AlsoUnwoven"),
+            Cmtk0008(1, "Unwoven", "AlsoUnwoven"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A join of one type's values, of a value against a raw value, through a cast, or on the value objects
+    /// themselves stays silent, and so does a method named <c>Join</c> that is not LINQ's.
+    /// </summary>
+    [Fact]
+    public Task A_join_of_one_type_a_raw_value_or_a_cast_stays_silent() =>
+        Test(
+            Rows +
+            """
+            public static class Mine
+            {
+                public static IEnumerable<TOuter> Join<TOuter, TInner>(this IEnumerable<TOuter> outer, IEnumerable<TInner> inner, Func<TOuter, Guid> first, Func<TInner, Guid> second) => outer;
+            }
+
+            public static class C
+            {
+                public static void Run(List<OrderRow> list, List<CustomerRow> people, List<Guid> raw, Guid[] ids)
+                {
+                    var sameType = from o in list join c in people on o.CustomerId.Value equals c.Id.Value select o;
+                    var typed = from o in list join c in people on o.CustomerId equals c.Id select o;
+                    var rawValue = from o in list join g in raw on o.Id.Value equals g select o;
+                    var cast = from o in list join c in people on (Guid)(object)o.Id.Value equals c.Id.Value select o;
+                    var sameTypeMethod = list.Join(people, o => o.CustomerId.Value, c => c.Id.Value, (o, c) => o);
+                    var rawMethod = list.GroupJoin(raw, o => o.Id.Value, g => g, (o, gs) => o);
+                    var castMethod = list.Join(people, o => (Guid)(object)o.Id.Value, c => c.Id.Value, (o, c) => o);
+                    var typedMethod = list.Join(people, o => o.CustomerId, c => c.Id, (o, c) => o);
+                    var notLinq = list.Join(people, o => o.Id.Value, c => c.Id.Value);
+                    var text = string.Join(",", ids);
+                }
+            }
+            """)
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>

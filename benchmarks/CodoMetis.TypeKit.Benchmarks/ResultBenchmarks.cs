@@ -26,7 +26,7 @@ public class ResultBenchmarks
     public int Create_validate()
     {
         var valid = 0;
-        foreach (var input in _inputs) if (Code.Create(input)) valid++;
+        foreach (var input in _inputs) if (Code.Create(input).TryGetValue(out _, out _)) valid++;
         return valid;
     }
 

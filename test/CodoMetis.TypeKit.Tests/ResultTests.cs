@@ -143,6 +143,36 @@ public sealed class ResultTests
     }
 
     /// <summary>
+    /// The callback has completed when the result is handed on, the error is passed on unchanged, and
+    /// what the callback throws reaches the caller as it was thrown.
+    /// </summary>
+    [Fact]
+    public async Task TapErrorAsync_awaits_its_callback_only_on_error()
+    {
+        var log = new List<string>();
+
+        async Task Audit(string e)
+        {
+            await Task.Delay(50, TestContext.Current.CancellationToken);
+            lock (log) log.Add($"audited {e}");
+        }
+
+        var success = await Result<string>.Success().TapErrorAsync(Audit);
+        var error = await Result<string>.Error("boom").TapErrorAsync(Audit);
+        lock (log) log.Add("handed on");
+
+        lock (log) log.ShouldBe(["audited boom", "handed on"]);
+        success.ShouldBe(Result<string>.Success());
+        error.ShouldBe(Result<string>.Error("boom"));
+
+        (await Should.ThrowAsync<TimeoutException>(() => Result<string>.Error("boom").TapErrorAsync(async _ =>
+        {
+            await Task.Yield();
+            throw new TimeoutException("audit store down");
+        }))).Message.ShouldBe("audit store down");
+    }
+
+    /// <summary>
     /// The conversions call sites actually write: returning a bare error value, or
     /// <c>Result.Success()</c>, from a method typed <see cref="Result{TError}"/>.
     /// </summary>

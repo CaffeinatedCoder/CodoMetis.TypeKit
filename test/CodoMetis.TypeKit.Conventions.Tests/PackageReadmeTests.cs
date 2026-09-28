@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace CodoMetis.TypeKit.Conventions.Tests;
 
 /// <summary>
@@ -9,7 +11,7 @@ namespace CodoMetis.TypeKit.Conventions.Tests;
 /// here, and the floor below keeps the theory from passing on an empty list.
 /// </remarks>
 [Collection(PacksCollection.Name)]
-public sealed class PackageReadmeTests(AnalyzerPackagingTests.Packs packs)
+public sealed partial class PackageReadmeTests(AnalyzerPackagingTests.Packs packs)
 {
     public static TheoryData<string> ShippingPackages => [.. Repository.ShippingProjects()];
 
@@ -64,10 +66,32 @@ public sealed class PackageReadmeTests(AnalyzerPackagingTests.Packs packs)
         repository.Attribute("commit")?.Value.ShouldNotBeNullOrWhiteSpace($"{package} names no commit, so Source Link cannot tie it to its source.");
     }
 
+    /// <summary>
+    /// nuget.org renders the README but shows the description as plain text, in search results and on
+    /// the package page, and a description is frozen with the version once pushed: markdown in it
+    /// reaches every reader as literal backticks and asterisks.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ShippingPackages))]
+    public void The_description_is_plain_text(string package)
+    {
+        var description = packs.Nuspec(package).Descendants()
+                               .Single(element => element.Name.LocalName == "description" && element.Parent?.Name.LocalName == "metadata")
+                               .Value;
+
+        description.ShouldNotBeNullOrWhiteSpace($"{package} has an empty description.");
+        Markdown().Matches(description).Select(match => match.Value).ShouldBeEmpty(
+            $"{package}'s description contains markdown, which nuget.org shows literally: \"{description}\". Write it as plain text (<Description> in its project file).");
+    }
+
     /// <summary>The repository's README maps every package to its own README, so a new package appears there too.</summary>
     [Theory]
     [MemberData(nameof(ShippingPackages))]
     public void The_root_README_links_to_the_package(string package) =>
         File.ReadAllText(Path.Combine(Repository.Root, "README.md"))
             .ShouldContain($"](src/{package}/README.md)", Case.Sensitive, $"README.md at the repository root has no link to src/{package}/README.md.");
+
+    /// <summary>Inline code, emphasis, a link, or a heading or list marker at the start of a line.</summary>
+    [GeneratedRegex(@"(?m)`|\*\*|__|\]\(|^\s*(?:#|[-*] )")]
+    private static partial Regex Markdown();
 }

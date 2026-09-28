@@ -1,0 +1,19 @@
+<Project>
+
+    <!--
+      Where Metalama compiles a project, which is every project that reaches
+      CodoMetis.TypeKit.Generators, source generators run after its transformation (Metalama 2025.0),
+      and an ordinary analyzer sees only the source. The C# the Razor compiler generates for a .razor
+      or .cshtml file is not in it, and neither are the members the aspects introduce. Measured
+      2026-09-28: a component's `OrderId _id = default;` built with no diagnostic at all.
+
+      Listed here, Metalama's compiler runs the rules on the transformed code instead, where both are.
+      The namespace covers every rule, a future one included (AnalyzerPackagingTests). Nothing reads
+      the item where Metalama does not compile the project, and the IDE's compiler ignores it, so live
+      diagnostics still come from the source.
+    -->
+    <ItemGroup>
+        <MetalamaTransformedCodeAnalyzer Include="CodoMetis.TypeKit.Analyzers" />
+    </ItemGroup>
+
+</Project>

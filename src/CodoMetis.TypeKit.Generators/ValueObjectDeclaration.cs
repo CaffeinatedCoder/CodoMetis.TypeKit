@@ -24,19 +24,77 @@ internal static class ValueObjectDeclaration
     /// formatting interfaces is generated, so interpolation, <c>string.Format</c> and
     /// <c>Convert.ToString</c> reach it. The record's own synthesized one is implicitly declared.
     /// </summary>
+    /// <remarks>
+    /// A base record's <c>sealed</c> one is the seam too: C# keeps it in every derived record, which then
+    /// synthesizes none, so it is what the value object prints, and it cannot declare its own. Generating
+    /// one failed the aspect (LAMA0502). A base record's one that is not sealed is refused instead
+    /// (<see cref="UnsealedInheritedToString"/>).
+    /// </remarks>
     public static bool DeclaresToString(INamedType type) =>
-        type.Methods.Any(method => method is { Name: nameof(ToString), IsStatic: false, IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false, Parameters.Count: 0 });
+        type.Methods.Any(IsHandWrittenToString) || InheritedToString(type) is { IsSealed: true };
 
     /// <summary>
-    /// A <c>file</c>-local type. Metalama's code model reports it as internal and has no flag for it,
-    /// so the declaration's modifiers are read from its source.
+    /// The <c>ToString()</c> a base record declares by hand and does not seal, where the value object
+    /// declares none: the generated one replaced it without a word, as a record's synthesized one does,
+    /// and printed the value a base that returned <c>"***"</c> hid (decision 28's leak, one level up).
     /// </summary>
-    public static bool IsFileLocal(INamedType type) =>
-        type.Sources.Any(source => Modifiers(source.GetText(normalized: false)).Contains("file"));
+    public static IMethod? UnsealedInheritedToString(INamedType target) =>
+        target.Methods.Any(IsHandWrittenToString) ? null : InheritedToString(target) is { IsSealed: false } inherited ? inherited : null;
+
+    /// <summary>The nearest base record's hand-written, non-abstract <c>ToString()</c>.</summary>
+    private static IMethod? InheritedToString(INamedType target)
+    {
+        foreach (var type in SelfAndBases(target).Skip(1))
+        {
+            var declared = type.Methods.FirstOrDefault(method => IsHandWrittenToString(method) && !method.IsAbstract);
+            if (declared is not null) return declared;
+        }
+
+        return null;
+    }
+
+    private static bool IsHandWrittenToString(IMethod method) =>
+        method is { Name: nameof(ToString), IsStatic: false, IsExplicitInterfaceImplementation: false, Parameters.Count: 0 } && IsHandWritten(method);
+
+    /// <summary>
+    /// A value object and the records it derives from, <see cref="object"/> left out. A struct has
+    /// none: its base is <see cref="ValueType"/>, whose <c>ToString()</c> is nobody's seam.
+    /// </summary>
+    private static IEnumerable<INamedType> SelfAndBases(INamedType target)
+    {
+        yield return target;
+
+        if (target.TypeKind != TypeKind.Class) yield break;
+
+        for (var type = target.BaseType; type is not null && type.SpecialType != SpecialType.Object; type = type.BaseType)
+            yield return type;
+    }
+
+    /// <summary>
+    /// A <c>file</c>-local type, or one nested in a <c>file</c>-local type, which cannot be named outside
+    /// its file either. Metalama's code model reports it as internal and has no flag for it, so the
+    /// declaration's modifiers are read from its source.
+    /// </summary>
+    /// <remarks>
+    /// The source is read without its leading trivia, as its span's text: <c>SourceReference.GetText</c>
+    /// includes it (and its <c>ToString()</c> is a location, whatever its documentation says), and a
+    /// <c>#region</c> or <c>#pragma</c> line above the declaration ended the
+    /// modifiers before <c>file</c>, as the text an <c>#if</c> leaves out would, and Metalama then crashed
+    /// (LAMA0001). A type nested in a <c>file</c> class crashed it the same way.
+    /// </remarks>
+    public static bool IsFileLocal(INamedType type)
+    {
+        for (INamedType? declaration = type; declaration is not null; declaration = declaration.DeclaringType)
+        {
+            if (declaration.Sources.Any(source => Modifiers(source.Span.GetText()).Contains("file"))) return true;
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// The modifiers of a type declaration: the words between its attribute lists and its
-    /// <c>class</c>/<c>struct</c>/<c>record</c> keyword, comments skipped.
+    /// <c>class</c>/<c>struct</c>/<c>record</c> keyword, comments and directive lines skipped.
     /// </summary>
     internal static IReadOnlyList<string> Modifiers(string declaration)
     {
@@ -51,8 +109,9 @@ internal static class ValueObjectDeclaration
             {
                 i++;
             }
-            else if (c == '/' && i + 1 < declaration.Length && declaration[i + 1] == '/')
+            else if (c == '#' || (c == '/' && i + 1 < declaration.Length && declaration[i + 1] == '/'))
             {
+                // A line comment, or a directive between the attribute lists and the modifiers.
                 while (i < declaration.Length && declaration[i] != '\n') i++;
             }
             else if (c == '/' && i + 1 < declaration.Length && declaration[i + 1] == '*')
@@ -115,11 +174,16 @@ internal static class ValueObjectDeclaration
     /// the user wrote, or, for a member the generators skip when it exists, would be kept silently as
     /// an entry point or a format the generated code never agreed to. The seams are not in it:
     /// <c>TryFrom</c>, <c>FromKnownGood</c>, <c>Revalidate</c>, <c>CompareTo(TSelf)</c>, <c>ToString()</c>
-    /// and, for a validated value object, <c>Create</c>.
+    /// and, for a validated value object, <c>Create</c>. Neither are the comparison interfaces, which
+    /// ValueObjectComparableAspect answers (CMTK1008).
     /// </summary>
     public static IReadOnlyList<string> GeneratedMembersDeclaredByHand(INamedType target, INamedType valueType, ValueObjectKind kind)
     {
         List<string> found = [];
+
+        // The interfaces the generators implement for this declaration, whose explicit implementations
+        // are refused below. ValueObjectContractAspect: the equality operators.
+        List<INamedType> generatedInterfaces = [TypeFactory.GetNamedType(typeof(IEqualityOperators<,,>))];
 
         // ValueObjectAspect: the field, the entry points; ValueObjectContractAspect: Value; the JSON aspect's nested converter.
         found.AddRange(MembersNamed(target, "_value", "Value", "__FromJson", "__FromText", "__TryFromText", $"{target.Name}JsonConverter"));
@@ -141,9 +205,12 @@ internal static class ValueObjectDeclaration
             found.AddRange(MethodsWithSignature(target, "Parse", stringType, provider));
             found.AddRange(MethodsWithSignature(target, "TryParse", stringType, provider, target));
             found.AddRange(MembersNamed(target, $"{target.Name}TypeConverter"));
+            generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IParsable<>)));
 
             if (parse == ValueParseStrategy.SpanParsable)
             {
+                generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(ISpanParsable<>)));
+
                 var span = TypeFactory.GetType(typeof(ReadOnlySpan<char>));
                 found.AddRange(MethodsWithSignature(target, "Parse", span, provider));
                 found.AddRange(MethodsWithSignature(target, "TryParse", span, provider, target));
@@ -151,6 +218,8 @@ internal static class ValueObjectDeclaration
 
             if (ValueObjectParsableAspect.SupportsUtf8(valueType))
             {
+                generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IUtf8SpanParsable<>)));
+
                 var utf8 = TypeFactory.GetType(typeof(ReadOnlySpan<byte>));
                 found.AddRange(MethodsWithSignature(target, "Parse", utf8, provider));
                 found.AddRange(MethodsWithSignature(target, "TryParse", utf8, provider, target));
@@ -161,25 +230,54 @@ internal static class ValueObjectDeclaration
         if (!DeclaresToString(target))
         {
             found.AddRange(MethodsWithSignature(target, nameof(IFormattable.ToString), stringType, provider));
+            generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IFormattable)));
 
             if (ValueObjectFormattableAspect.ResolveStrategy(valueType) == ValueFormatStrategy.SpanFormattable)
+            {
                 found.AddRange(MethodsWithSignature(target, nameof(ISpanFormattable.TryFormat), TypeFactory.GetType(typeof(Span<char>)), TypeFactory.GetType(SpecialType.Int32), TypeFactory.GetType(typeof(ReadOnlySpan<char>)), provider));
+                generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(ISpanFormattable)));
+            }
 
             if (ValueObjectFormattableAspect.SupportsUtf8(valueType))
+            {
                 found.AddRange(MethodsWithSignature(target, nameof(IUtf8SpanFormattable.TryFormat), TypeFactory.GetType(typeof(Span<byte>)), TypeFactory.GetType(SpecialType.Int32), TypeFactory.GetType(typeof(ReadOnlySpan<char>)), provider));
+                generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IUtf8SpanFormattable)));
+            }
         }
 
         // ValueObjectMinMaxValueAspect.
         if (kind == ValueObjectKind.Plain && ValueObjectMinMaxValueAspect.HasMinMaxValue(valueType))
+        {
             found.AddRange(MembersNamed(target, nameof(IMinMaxValue<int>.MinValue), nameof(IMinMaxValue<int>.MaxValue)));
+            generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IMinMaxValue<>)));
+        }
 
-        // The interfaces implemented with OverrideStrategy.Fail. The marker's own are implied by it.
+        // An explicit implementation of an interface the generators implement sat beside the generated
+        // member, which it hides from every caller through the interface: a generic T.Parse bypassed
+        // Create, and interpolation printed through a hand-written IFormattable while ToString() did not.
+        found.AddRange(ExplicitImplementationsOf(target, generatedInterfaces));
+
+        // ValueObjectConvertibleAspect implements every member of IConvertible explicitly, so declaring
+        // the interface at all, with public or explicit members, failed the aspect (LAMA0041: it cannot
+        // introduce explicit members for an interface it was told to ignore).
+        var convertible = valueType.IsConvertibleTo(typeof(IConvertible));
+
+        // The interfaces implemented with OverrideStrategy.Fail, and IConvertible. The marker's own are implied by it.
         foreach (var implemented in target.ImplementedInterfaces)
         {
             if (implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IValueObject<,>)))
              || implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IValueObjectMaterializer<,>)))
-             || implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IPlainValueObject<,>))))
+             || implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IPlainValueObject<,>)))
+             || (convertible && implemented.Equals(TypeFactory.GetNamedType(typeof(IConvertible)))))
                 found.Add($"the interface {implemented.ToDisplayString()}");
+        }
+
+        // IConvertible implemented by a base record is implemented already, and the aspect failed the same way.
+        if (convertible)
+        {
+            foreach (var type in SelfAndBases(target).Skip(1))
+                if (type.ImplementedInterfaces.Any(implemented => implemented.Equals(TypeFactory.GetNamedType(typeof(IConvertible)))))
+                    found.Add($"the interface IConvertible in its base type {type.ToDisplayString()}");
         }
 
         // The attributes the aspects put on the type.
@@ -198,13 +296,46 @@ internal static class ValueObjectDeclaration
     }
 
     /// <summary>
-    /// The <c>Create</c> of a validated value object, when it is declared only as an explicit interface
-    /// implementation: the generated code calls <c>{TSelf}.Create(value)</c>, which cannot reach it
-    /// (CS1929 inside the generated code). <see langword="false"/> when a callable one is declared too.
+    /// The members of <paramref name="target"/> that explicitly implement a member of one of
+    /// <paramref name="interfaces"/>, compared by definition, as <see cref="Describe"/> names them.
     /// </summary>
-    public static bool DeclaresCreateOnlyExplicitly(INamedType target)
+    /// <remarks>
+    /// A base record's count too. The generated member replaced one of <c>IFormattable</c> or
+    /// <c>IEqualityOperators</c> without a word, and one of a static interface (<c>IParsable</c>,
+    /// <c>IMinMaxValue</c>) or of <c>IComparable</c> kept answering the interface: a generic
+    /// <c>T.Parse</c> reached a generic base's, skipping <c>Create</c>, and <c>Comparer&lt;T&gt;.Default</c>
+    /// disagreed with <c>&lt;</c> (measured 2026-09-28).
+    /// </remarks>
+    internal static IEnumerable<string> ExplicitImplementationsOf(INamedType target, IReadOnlyList<INamedType> interfaces)
     {
-        var declaresExplicitly = false;
+        bool OfOne(IMember implemented) => interfaces.Any(@interface => implemented.DeclaringType.Definition.Equals(@interface));
+
+        foreach (var type in SelfAndBases(target))
+        {
+            var where = type.Equals(target) ? "" : $" in its base type {type.ToDisplayString()}";
+
+            foreach (var method in type.Methods)
+                if (method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && method.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(method) + where;
+
+            foreach (var property in type.Properties)
+                if (property is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && property.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(property) + where;
+
+            foreach (var @event in type.Events)
+                if (@event is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && @event.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(@event) + where;
+        }
+    }
+
+    /// <summary>
+    /// How a validated value object declares <c>Create</c>: as an explicit implementation of the
+    /// marker's, and as a static method the generated code can call as <c>{TSelf}.Create(value)</c>.
+    /// Alone, the explicit one cannot be reached from there (CS1929 inside the generated code); beside a
+    /// callable one it is a second rule set, which generic code calling <c>T.Create</c> reached while
+    /// every generated entry point applied the other.
+    /// </summary>
+    public static (bool Explicitly, bool Callable) CreateDeclarations(INamedType target)
+    {
+        var explicitly = false;
+        var callable   = false;
 
         foreach (var method in target.Methods)
         {
@@ -212,17 +343,134 @@ internal static class ValueObjectDeclaration
 
             if (method.IsExplicitInterfaceImplementation)
             {
-                declaresExplicitly |= method.ExplicitInterfaceImplementations.Any(implemented => implemented.Name == nameof(IValidatedValue<,,>.Create)
-                                                                                              && implemented.DeclaringType.Definition.Equals(TypeFactory.GetNamedType(typeof(IValidatedValue<,,>))));
+                explicitly |= method.ExplicitInterfaceImplementations.Any(implemented => implemented.Name == nameof(IValidatedValue<,,>.Create)
+                                                                                      && implemented.DeclaringType.Definition.Equals(TypeFactory.GetNamedType(typeof(IValidatedValue<,,>))));
             }
             else if (method.Name == nameof(IValidatedValue<,,>.Create))
             {
-                return false;
+                callable = true;
             }
         }
 
-        return declaresExplicitly;
+        return (explicitly, callable);
     }
+
+    /// <summary>
+    /// A hand-written <c>PrintMembers(StringBuilder)</c>, the hook a record's synthesized <c>ToString()</c>
+    /// calls, where the generated <c>ToString()</c> replaces that one and never calls it. What it hid was
+    /// printed: <c>"1234"</c>, and <c>PinHolder { Pin = 1234 }</c> in a record that holds it. With a
+    /// hand-written <c>ToString()</c>, the seam, nothing is generated in its place, so it is allowed there.
+    /// </summary>
+    public static IReadOnlyList<string> PrintMembersDeclaredByHand(INamedType target)
+    {
+        if (DeclaresToString(target)) return [];
+
+        var stringBuilder = TypeFactory.GetType(typeof(System.Text.StringBuilder));
+
+        // A base record's too: a derived record's synthesized ToString() reaches it through its own
+        // PrintMembers, and the generated one does not.
+        return
+        [
+            .. SelfAndBases(target).SelectMany(type => type.Methods
+                                                           .Where(method => method is { Name: "PrintMembers", IsStatic: false, Parameters: [{ } builder] } && builder.Type.Equals(stringBuilder) && IsHandWritten(method))
+                                                           .Select(method => Describe(method) + (type.Equals(target) ? "" : $" in its base type {type.ToDisplayString()}")))
+        ];
+    }
+
+    /// <summary>
+    /// A hand-written equality: <c>Equals(TSelf)</c>, <c>GetHashCode()</c>, or an explicit
+    /// <c>IEquatable&lt;TSelf&gt;.Equals</c>. The record kept it, while the generated ordering, the JSON
+    /// dictionary keys and the EF Core column went on comparing the wrapped value: a case-insensitive
+    /// <c>Equals</c> made "abc" and "ABC" equal with <c>CompareTo</c> 32, so a <c>HashSet</c> held one and
+    /// a <c>SortedSet</c> two.
+    /// </summary>
+    public static IReadOnlyList<string> EqualityDeclaredByHand(INamedType target)
+    {
+        var equatable = TypeFactory.GetNamedType(typeof(IEquatable<>));
+
+        return
+        [
+            .. target.Methods
+                     .Where(method => method is { IsStatic: false, IsImplicitlyDeclared: false }
+                                   && (method.IsExplicitInterfaceImplementation
+                                           ? method.ExplicitInterfaceImplementations.Any(implemented => implemented.DeclaringType.Definition.Equals(equatable))
+                                           : (method is { Name: nameof(Equals), Parameters: [{ } other] } && other.Type.Equals(target))
+                                          || method is { Name: nameof(GetHashCode), Parameters.Count: 0 }))
+                     .Select(Describe)
+        ];
+    }
+
+    /// <summary>
+    /// The instance state <paramref name="target"/> declares or inherits besides the wrapped value: a
+    /// field, an auto-property, a <c>required</c> member or a field-like event. The generated JSON,
+    /// parsing, type converter and materializer carry the wrapped value alone, so such state was lost
+    /// on every round trip, while the record's equality compared it: a <c>Currency</c> written as
+    /// <c>10</c> read back as its initializer's <c>"EUR"</c>, and a lazily filled cache field made two
+    /// equal instances unequal once it was read. A <c>required</c> member failed inside the generated
+    /// code instead (LAMA0611, CS9035). A computed property, and anything static, holds nothing.
+    /// </summary>
+    /// <remarks>
+    /// The generated field does not exist yet when this runs, and a hand-written <c>_value</c> or
+    /// <c>Value</c> is CMTK1011, answered before this. A base type is read too, since the record's
+    /// equality compares its state as well; in a referenced assembly its private fields are out of
+    /// sight and its properties' implementation unknown, so there a writable property counts. What the
+    /// compiler synthesized there is not the user's: a base record's <c>EqualityContract</c> read as an
+    /// auto-property, and a value object over any record from another project was refused.
+    /// </remarks>
+    public static IReadOnlyList<string> InstanceStateBesideTheValue(INamedType target)
+    {
+        List<string> found = [];
+
+        for (var type = target; type is not null && type.SpecialType != SpecialType.Object; type = type.BaseType)
+        {
+            var inherited = type.Equals(target) ? "" : " (inherited)";
+
+            foreach (var field in type.Fields)
+                if (!field.IsStatic && IsHandWritten(field)) found.Add($"the field {field.ToDisplayString()}{inherited}");
+
+            foreach (var property in type.Properties)
+            {
+                if (property.IsStatic || !IsHandWritten(property)) continue;
+
+                if (property.IsRequired)
+                    found.Add($"the required property {property.ToDisplayString()}{inherited}");
+                else if (property.IsAutoPropertyOrField == true)
+                    found.Add($"the auto-property {property.ToDisplayString()}{inherited}");
+                else if (property.IsAutoPropertyOrField is null && property.Writeability != Writeability.None)
+                    found.Add($"the property {property.ToDisplayString()}{inherited}");
+            }
+
+            foreach (var @event in type.Events)
+                if (@event is { IsStatic: false, RaiseMethod: not null } && IsHandWritten(@event)) found.Add($"the event {@event.ToDisplayString()}{inherited}");
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// A member as an error names it. An explicit interface implementation names the interface member
+    /// it implements, type arguments included, which its own display name drops
+    /// (<c>Rank.IComparable.CompareTo(Rank)</c>).
+    /// </summary>
+    internal static string Describe(IMember member)
+    {
+        IMember? implemented = member switch
+        {
+            IMethod { IsExplicitInterfaceImplementation: true } method       => method.ExplicitInterfaceImplementations.FirstOrDefault(),
+            IProperty { IsExplicitInterfaceImplementation: true } property => property.ExplicitInterfaceImplementations.FirstOrDefault(),
+            IEvent { IsExplicitInterfaceImplementation: true } @event       => @event.ExplicitInterfaceImplementations.FirstOrDefault(),
+            _                                                               => null
+        };
+
+        return implemented is null ? member.ToDisplayString() : $"the explicit implementation of {implemented.ToDisplayString()}";
+    }
+
+    /// <summary>
+    /// Written by the user, not synthesized by the compiler: a record in a referenced assembly reports its
+    /// synthesized members as declared, and marks them <c>[CompilerGenerated]</c>.
+    /// </summary>
+    private static bool IsHandWritten(IMember member) =>
+        !member.IsImplicitlyDeclared && !member.Attributes.Any(attribute => attribute.Type.Equals(TypeFactory.GetNamedType(typeof(CompilerGeneratedAttribute))));
 
     /// <summary>Non-implicit members of <paramref name="target"/> with one of <paramref name="names"/>, of any kind.</summary>
     private static IEnumerable<string> MembersNamed(INamedType target, params string[] names) => MembersNamed(target, methods: true, names);

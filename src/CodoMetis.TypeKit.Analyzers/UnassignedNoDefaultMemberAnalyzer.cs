@@ -58,7 +58,8 @@ public sealed class UnassignedNoDefaultMemberAnalyzer : DiagnosticAnalyzer
         category: "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "A field or auto-property of a value object, Option, Result or [RequireCustomInitialization] struct type holds a default instance until something assigns it. Nullable analysis reports this for reference types (CS8618) but not for structs."
+        description: "A field or auto-property of a value object, Option, Result or [RequireCustomInitialization] struct type holds a default instance until something assigns it. Nullable analysis reports this for reference types (CS8618) but not for structs.",
+        helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.UnassignedNoDefaultMember)
     );
 
     /// <inheritdoc/>

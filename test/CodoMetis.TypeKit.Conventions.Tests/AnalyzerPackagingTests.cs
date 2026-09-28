@@ -91,6 +91,28 @@ public sealed class AnalyzerPackagingTests(AnalyzerPackagingTests.Packs packs)
     }
 
     /// <summary>
+    /// Where Metalama compiles a project, an analyzer it is not told about sees only the source,
+    /// before the Razor compiler's output exists. Measured 2026-09-28: every rule went silent in a
+    /// component of a project that references a value-object project. The package names the rules in
+    /// its buildTransitive props, and this holds every analyzer in the packed assembly to that list,
+    /// so a rule declared in another namespace is not left out.
+    /// </summary>
+    [Fact]
+    public void Every_analyzer_runs_on_the_code_Metalama_transformed()
+    {
+        var props  = XDocument.Parse(packs.Text(AnalyzerPackage, $"buildTransitive/{AnalyzerPackage}.props"));
+        var listed = Named(props, "MetalamaTransformedCodeAnalyzer").Select(item => (string?)item.Attribute("Include")).ToHashSet(StringComparer.Ordinal);
+
+        var analyzers = packs.DiagnosticAnalyzers(AnalyzerPackage, $"analyzers/dotnet/cs/{AnalyzerPackage}.dll");
+
+        analyzers.ShouldNotBeEmpty("The packed analyzer assembly declares no [DiagnosticAnalyzer] type, so this test checks nothing.");
+        analyzers.Where(analyzer => !listed.Contains(analyzer) && !listed.Contains(analyzer[..analyzer.LastIndexOf('.')]))
+                 .ShouldBeEmpty(
+                     "These analyzers are not in buildTransitive/CodoMetis.TypeKit.Analyzers.props, so in a project Metalama compiles they " +
+                     "never see a .razor or .cshtml file. Add their namespace as a MetalamaTransformedCodeAnalyzer item.");
+    }
+
+    /// <summary>
     /// Elements by local name. NuGet picks the nuspec's XML namespace by the features a package
     /// uses (a development dependency is written against the 2010/07 schema, a plain package against
     /// 2013/05), so a query for one namespace finds nothing in the other and passes vacuously.
@@ -162,14 +184,7 @@ public sealed class AnalyzerPackagingTests(AnalyzerPackagingTests.Packs packs)
         /// <summary>The assemblies an assembly in the package references, by name, read from its metadata.</summary>
         public IReadOnlyDictionary<string, Version> AssemblyReferences(string package, string path)
         {
-            using var archive = ZipFile.OpenRead(Package(package));
-            var entry = archive.GetEntry(path) ?? throw new InvalidOperationException($"{package} packs no {path}.");
-
-            using var image = new MemoryStream();
-            using (var stream = entry.Open()) stream.CopyTo(image);
-            image.Position = 0;
-
-            using var pe = new PEReader(image);
+            using var pe = Assembly(package, path);
             var metadata = pe.GetMetadataReader();
 
             return metadata.AssemblyReferences
@@ -177,10 +192,73 @@ public sealed class AnalyzerPackagingTests(AnalyzerPackagingTests.Packs packs)
                            .ToDictionary(reference => metadata.GetString(reference.Name), reference => reference.Version, StringComparer.Ordinal);
         }
 
+        /// <summary>A text file in the package, read whole.</summary>
+        public string Text(string package, string path)
+        {
+            using var archive = ZipFile.OpenRead(Package(package));
+            var entry = archive.GetEntry(path) ?? throw new InvalidOperationException($"{package} packs no {path}.");
+
+            using var reader = new StreamReader(entry.Open());
+            return reader.ReadToEnd();
+        }
+
+        /// <summary>
+        /// The full names of the types marked <c>[DiagnosticAnalyzer]</c> in an assembly of the package,
+        /// read from its metadata, never loaded.
+        /// </summary>
+        public IReadOnlyList<string> DiagnosticAnalyzers(string package, string path)
+        {
+            using var pe = Assembly(package, path);
+            var metadata = pe.GetMetadataReader();
+
+            return [.. metadata.TypeDefinitions
+                               .Select(metadata.GetTypeDefinition)
+                               .Where(type => type.GetCustomAttributes().Select(metadata.GetCustomAttribute)
+                                                  .Any(attribute => IsAttribute(metadata, attribute, typeof(Microsoft.CodeAnalysis.Diagnostics.DiagnosticAnalyzerAttribute))))
+                               .Select(type => $"{metadata.GetString(type.Namespace)}.{metadata.GetString(type.Name)}")];
+        }
+
+        /// <summary>
+        /// The types an assembly in the package declares with
+        /// <see cref="System.CodeDom.Compiler.GeneratedCodeAttribute"/>, each with the tool the
+        /// attribute names: what a source generator baked into it. Read from the metadata, never loaded.
+        /// </summary>
+        public IReadOnlyList<(string Type, string Tool)> GeneratedTypes(string package, string path)
+        {
+            using var pe = Assembly(package, path);
+            var metadata = pe.GetMetadataReader();
+
+            return
+            [
+                .. from type in metadata.TypeDefinitions.Select(metadata.GetTypeDefinition)
+                   from attribute in type.GetCustomAttributes().Select(metadata.GetCustomAttribute)
+                   where IsAttribute(metadata, attribute, typeof(System.CodeDom.Compiler.GeneratedCodeAttribute))
+                   select (Type: $"{metadata.GetString(type.Namespace)}.{metadata.GetString(type.Name)}".TrimStart('.'),
+                           Tool: (string?)attribute.DecodeValue(StringArguments.Instance).FixedArguments[0].Value ?? "")
+            ];
+        }
+
+        private PEReader Assembly(string package, string path)
+        {
+            using var archive = ZipFile.OpenRead(Package(package));
+            var entry = archive.GetEntry(path) ?? throw new InvalidOperationException($"{package} packs no {path}.");
+
+            var image = new MemoryStream();
+            using (var stream = entry.Open()) stream.CopyTo(image);
+            image.Position = 0;
+
+            return new PEReader(image);
+        }
+
         private static bool IsAssemblyMetadata(MetadataReader metadata, CustomAttribute attribute) =>
+            IsAttribute(metadata, attribute, typeof(System.Reflection.AssemblyMetadataAttribute));
+
+        private static bool IsAttribute(MetadataReader metadata, CustomAttribute attribute, Type type) =>
             attribute.Constructor.Kind == HandleKind.MemberReference
          && metadata.GetMemberReference((MemberReferenceHandle)attribute.Constructor).Parent is { Kind: HandleKind.TypeReference } parent
-         && metadata.GetString(metadata.GetTypeReference((TypeReferenceHandle)parent).Name) == nameof(System.Reflection.AssemblyMetadataAttribute);
+         && metadata.GetTypeReference((TypeReferenceHandle)parent) is var reference
+         && metadata.GetString(reference.Name) == type.Name
+         && metadata.GetString(reference.Namespace) == type.Namespace;
 
         /// <summary>Enough of a type provider to decode an attribute whose arguments are strings.</summary>
         private sealed class StringArguments : ICustomAttributeTypeProvider<Type>

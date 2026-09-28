@@ -12,9 +12,9 @@ appears to: an instance that passed no factory, or a value object that was never
 
 | Id | Severity | Reports |
 |---|---|---|
-| CMTK0001 | Error | `default`, `default(T)`, `new T()`, `new()` and `new T { }` of a value object, an `Option`, a `Result`, or a struct marked `[RequireCustomInitialization]`. Also through a type parameter whose constraints make it one of those. A default that is only compared (`id == default`, `id.Equals(default)`) is a guard and is not reported. |
+| CMTK0001 | Error | `default`, `default(T)`, `new T()`, `new()` and `new T { }` of a value object, an `Option`, a `Result`, or a struct marked `[RequireCustomInitialization]`. Also through a type parameter whose constraints make it one of those. A default that is only compared (`id == default`, `id.Equals(default)`, `ThrowIfEqual(id, default)`, `Assert.NotEqual(default, id)`) is a guard and is not reported, nor is one assigned to an `out` parameter of a Try method that returns `bool`. |
 | CMTK0002 | Error | A type implements `IValue<T>` or `IValidatedValue<,,>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so nothing is generated for it: no field, no `Value`, no factory. |
-| CMTK0003 | Warning | A `Result` or `Option` that a call returns, dropped by a statement, awaited or not, or by converting its `Task` to a plain `Task`. |
+| CMTK0003 | Warning | A `Result` or `Option` that a call returns, or a collection of them that the statement made, dropped by a statement, awaited or not, or by converting its `Task` to a plain `Task`, a method group's included. |
 | CMTK0004 | Error | `Materialize`, which rebuilds a value object without its rules, called or referenced anywhere but the EF Core satellite. |
 | CMTK0005 | Warning | An array or span of a value object, `Option`, `Result` or `[RequireCustomInitialization]` struct created with a length, so every slot starts as `default`. A constant length of zero is not reported. |
 | CMTK0006 | Warning | A field or auto-property of such a type in a class that no initializer, `required` or constructor sets, or a `required` one that a `[SetsRequiredMembers]` constructor does not set. |
@@ -23,7 +23,7 @@ appears to: an instance that passed no factory, or a value object that was never
 | CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. |
 
 The ids are public contract and never change meaning. The generators' own build errors,
-CMTK1000 to CMTK1009, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
+CMTK1000 to CMTK1011, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
 
 Every rule also runs in `.razor` and `.cshtml` files (see [Generated code](#generated-code-and-razor)).
 
@@ -51,16 +51,45 @@ of a value object is a null, not an instance, and is not reported. What the rule
 as an array created with a length or an unassigned field of a class, is why an uninitialized
 `Result` throws instead of reporting an error it never had.
 
-A default that is only compared is a guard against exactly those, and is not reported:
+A default that is only compared is a guard against exactly those, or an assertion that one is not
+there, and is not reported:
 
 ```csharp
 if (id == default) throw new ArgumentException("An order id is required.", nameof(id));
 if (option != default) { /* … */ }
 if (id.Equals(default(OrderId)) || EqualityComparer<OrderId>.Default.Equals(id, default)) { /* … */ }
+ArgumentOutOfRangeException.ThrowIfEqual(id, default);
+Assert.NotEqual(default, id);
+id.ShouldNotBe(default);
 ```
 
-That is an operand of `==` or `!=`, or an argument of a call named `Equals`. Anything else, such as
-`id == default ? default : id`, still reports the second `default`.
+That is an operand of `==` or `!=`, or an argument of a call whose name says it compares: one of its
+words is `Equal`, `Equals` or `Compare`, or its last word is `Be`. That takes in `Equals`,
+`ReferenceEquals`, `ThrowIfEqual`, `ThrowIfNotEqual`, `CompareTo`, a comparer's `Compare`, and the
+assertions `Equal` and `NotEqual` (xUnit), `AreEqual` and `AreNotEqual` (MSTest), `EqualTo` (NUnit),
+and `ShouldBe` and `ShouldNotBe` (Shouldly). The `default` has to be the argument itself. Anything
+else still reports: `Assert.Contains(default, ids)`, `WithEquality(default)`, `Assert.Equal(Wrap(default), id)`,
+and the second `default` of `id == default ? default : id`.
+
+A `default` assigned to an `out` parameter of a method that returns `bool` is the Try pattern, as
+`int.TryParse` writes it, and is not reported either: the caller reads the parameter only when the
+method returned `true`.
+
+```csharp
+public bool TryFind(string key, out OrderId id)
+{
+    if (_ids.TryGetValue(key, out var found)) { id = found; return true; }
+
+    id = default;
+    return false;
+}
+```
+
+The rule does not follow which value the method returns. It leaves alone `default` and `default(T)`
+assigned whole, or through a conditional or a switch arm (`id = found ? OrderId.From(g) : default;`),
+to an `out` parameter of a method, local function or lambda that returns `bool`. An `out` parameter
+of a method that returns anything else, a `ref` parameter, `new()`, and a default kept in a local or
+a field first still report.
 
 To mark your own struct, whose `default` is not a valid instance:
 
@@ -70,6 +99,11 @@ public readonly record struct Money { /* … */ }
 ```
 
 The message you give is the one the rule reports, as `Option` and `Result` name their own factories.
+
+A struct made of value objects, such as `readonly record struct OrderLine(OrderId Order, Quantity Quantity)`,
+is not one itself, and its `default` holds default value objects that no rule sees: the rules do not
+look inside another struct. Mark it with `[RequireCustomInitialization]`, and CMTK0001, CMTK0005,
+CMTK0006 and CMTK0009 then treat it as they treat a value object.
 
 ## CMTK0002
 
@@ -104,12 +138,40 @@ async Task CancelQuietly(Guid id) => _ = await orders.CancelAsync(id);   // an e
 ```
 
 The conversion of a call's task is what is reported, in a `return`, an expression body, a lambda or
-an argument (`Task.WhenAny(orders.CancelAsync(id), timeout)`). A task you still hold is not dropped,
-and an explicit `(Task)` cast says the drop is intended. A `ValueTask<T>` has no conversion to
-`ValueTask`.
+an argument (`Task.WhenAny(orders.CancelAsync(id), timeout)`), and so is a method group converted to a
+delegate that returns `Task`, which drops the result on every call:
 
-`Tap`, `TapAsync` and `TapError` return their receiver unchanged, and so do the `Task`
-continuations `TapAsync` and `TapErrorAsync`, so `result.Tap(log);` and `await pending.TapAsync(log);`
+```csharp
+Func<Guid, Task> cancel = orders.CancelAsync;             // CMTK0003
+bus.Subscribe<Guid>(orders.CancelAsync);                  // CMTK0003: the parameter is a Func<T, Task>
+```
+
+A task you still hold is not dropped, and an explicit cast, to `Task` or to the delegate type, says
+the drop is intended. A `ValueTask<T>` has no conversion to `ValueTask`.
+
+A collection of results is dropped as silently as one result:
+
+```csharp
+await Task.WhenAll(ids.Select(orders.CancelAsync));                 // CMTK0003: a Result[] nobody reads
+await Task.WhenAll(orders.CancelAsync(first), orders.CancelAsync(second));   // CMTK0003
+ids.Select(orders.Cancel).ToList();                                 // CMTK0003: a list of them, forgotten
+
+var cancelFirst = orders.CancelAsync(first);
+var cancelSecond = orders.CancelAsync(second);
+await Task.WhenAll(cancelFirst, cancelSecond);                      // silent: both tasks still hold their results
+```
+
+A collection is an array, or a type that is or implements `ICollection<T>` or `IReadOnlyCollection<T>`
+(`List<T>`, `ImmutableArray<T>`, `IReadOnlyList<T>`), of results or of tasks of them. It is reported
+when the statement made the results in it: a call in the statement returns a result or a task of one,
+a method group of such a method is passed on, or the call that returns the collection was given no
+result and made them itself, as `orders.CancelAll(ids);` does. A call given results that something
+still holds only passes them on and is silent: `Task.WhenAll` over tasks in variables, fields or
+parameters, or `pending.ToList()`. A lazy `IEnumerable<T>`, such as a `Select` nobody enumerates, has
+made nothing yet; CA1806 reports a LINQ result that is dropped.
+
+`Tap`, `TapAsync`, `TapError` and `TapErrorAsync` return their receiver unchanged, and so do the
+`Task` continuations `TapAsync` and `TapErrorAsync`, so `result.Tap(log);` and `await pending.TapAsync(log);`
 on a variable, parameter or field are silent. `Find(id).Tap(log);` drops the result and is reported.
 
 ## CMTK0004
@@ -190,6 +252,19 @@ and so are the forms that take both values: `string.Equals`, `string.Compare`, `
 `object.Equals` and `EqualityComparer<T>.Default.Equals`. Analyzers such as Meziantou's MA0006
 rewrite `==` into those. The value is read through `.Value`, `?.Value`, `GetValue()` or `ValueOrNull()`.
 
+A join compares its two keys. `on o.Id equals c.Id`, an order id against a customer id, does not
+compile, and unwrapped it does:
+
+```csharp
+var wrong = from o in orders join c in customers on o.Id.Value equals c.Id.Value select o;  // CMTK0008: an order id joined to a customer id
+var meant = from o in orders join c in customers on o.CustomerId equals c.Id select o;      // what was meant
+orders.Join(customers, o => o.Id.Value, c => c.Id.Value, (o, c) => o);                     // CMTK0008
+```
+
+Query syntax is reported, with or without `into`, and so are `Join`, `GroupJoin`, `LeftJoin` and
+`RightJoin` of `Enumerable`, `Queryable` and `AsyncEnumerable` whose two key selectors each return
+such a value. A composite key, `new { … }` or a tuple, is not looked into.
+
 Two value objects of different types compared without unwrapping compile through `Equals(object)`
 and are never equal, the same bug:
 
@@ -213,24 +288,31 @@ var first = ids.FirstOrDefault();                    // CMTK0009: an OrderId nob
 
 | Call | Instead |
 |---|---|
-| `Enumerable.FirstOrDefault`, `LastOrDefault` | `FirstOrNone`, `LastOrNone`, which return an `Option`, or the overload that takes a default value |
-| `Enumerable.SingleOrDefault`, `DefaultIfEmpty` | the overload that takes a default value |
-| `Enumerable.ElementAtOrDefault` | `Skip(index).FirstOrNone()` |
+| `Enumerable.FirstOrDefault`, `LastOrDefault`, and `ImmutableArray`'s own | `FirstOrNone`, `LastOrNone`, which return an `Option`, or the overload that takes a default value |
+| `Enumerable.SingleOrDefault`, `DefaultIfEmpty`, and `ImmutableArray`'s own | the overload that takes a default value |
+| `Enumerable.ElementAtOrDefault`, and `ImmutableArray`'s own | `Skip(index).FirstOrNone()` |
 | The same on `Queryable` | select a nullable first, `Select(x => (OrderId?)x).FirstOrDefault()`, which a query provider translates |
+| EF Core's `FirstOrDefaultAsync`, `LastOrDefaultAsync`, `SingleOrDefaultAsync`, `ElementAtOrDefaultAsync` | the same nullable projection, `Select(x => (OrderId?)x).FirstOrDefaultAsync()`; EF Core has no overload that takes a default value |
+| `FirstOrDefaultAsync`, `LastOrDefaultAsync`, `SingleOrDefaultAsync`, `DefaultIfEmpty` on an `IAsyncEnumerable<T>` | the overload that takes a default value |
+| `ElementAtOrDefaultAsync` on an `IAsyncEnumerable<T>` | the nullable projection |
+| `Find`, `FindLast` of a `List<T>`, an array (`Array.Find`) or an `ImmutableList<T>` | `FirstOrNone(predicate)`, `LastOrNone(predicate)` |
 | `Nullable<T>.GetValueOrDefault()` | `GetValueOrDefault(fallback)`, or check `HasValue` |
-| `dictionary.GetValueOrDefault(key)` | `GetValueOrNone(key)`, which returns an `Option`, or pass a default value |
+| `dictionary.GetValueOrDefault(key)`, an immutable dictionary's included | `GetValueOrNone(key)`, which returns an `Option`, or pass a default value |
 | `Activator.CreateInstance<T>()`, `Activator.CreateInstance(typeof(T))`, `RuntimeHelpers.GetUninitializedObject(typeof(T))` | one of the type's factories |
 | `Option<T>.OrDefault()` | `Or(fallback)` or `Match`, which say what `None` becomes |
 
 The element type is judged as CMTK0001 judges a `default`: a value object, `Option`, `Result`,
-`[RequireCustomInitialization]` struct, or a type parameter constrained to be one. An overload given
-a default value, and an element type whose default is null or an ordinary value, are not reported.
-A warning, since code that checks the sequence is not empty first is correct and the rule cannot tell.
+`[RequireCustomInitialization]` struct, or a type parameter constrained to be one. For the
+asynchronous forms, it is the type the task returns. An overload given a default value, and an
+element type whose default is null or an ordinary value, are not reported. EF Core's forms are
+recognised in any project that references EF Core. A warning, since code that checks the sequence is not empty first is correct and the rule cannot tell.
 
 ## Configuration
 
 Severity follows the usual `.editorconfig` mechanism, for instance
-`dotnet_diagnostic.CMTK0001.severity = warning`.
+`dotnet_diagnostic.CMTK0001.severity = warning`. No `.editorconfig` section reaches the C# generated
+for `.razor` and `.cshtml` files, not `[*.cs]`, not `[*.razor]`, not even `[*]`. To set a severity
+there too, put the line in a `.globalconfig` file, which applies to every file of the project.
 
 The errors are the rules where the code is wrong whatever surrounds it: a `default` written out
 (CMTK0001), a value object nothing generates (CMTK0002), and validation bypassed (CMTK0004). A
@@ -240,6 +322,12 @@ because correct code can look the same: an array filled in a loop straight after
 drop that nothing depends on (CMTK0003), or a comparison of two identities that really are shared
 (CMTK0008).
 
+Within a major version, an Error never reports more than it did: a new Error rule, or an Error that
+reports more, waits for the next major version. A Warning or an Info may learn more forms in a minor
+version, such as another method that returns a default instance for CMTK0009. In a build that
+treats warnings as errors, such an update can report code that built before, as a newer compiler's
+warnings can.
+
 ## Generated code and Razor
 
 The C# that the Razor compiler generates for a `.razor` or `.cshtml` file is generated code, which
@@ -248,12 +336,20 @@ its `#line` directives: `@code { OrderId _id = default; }` is CMTK0001 at that l
 Everything else generated stays unreported, as before: EF Core's compiled model (which calls
 `Materialize`), source-generated JSON and regex code, and code under `#line hidden`.
 
+Metalama compiles every project that reaches `CodoMetis.TypeKit.Generators`, and there source
+generators, the Razor compiler among them, run after its transformation. An ordinary analyzer sees
+only the source, without the component's C#. This package therefore asks Metalama to run the rules
+on the transformed code, where it is, through a `MetalamaTransformedCodeAnalyzer` item that arrives
+with the package. Nothing needs configuring.
+
 ## In the project that declares the value objects
 
-Metalama runs analyzers on the source before it weaves, where the members the generators add to a
-value object of the same project (`From`, `New`, `TryFrom`, `FromKnownGood`, `Revalidate`, `Value`)
-do not exist yet, and a call to one does not bind. The rules recognise the forms below by the
-generated member's name on a value object's type, which does bind, so they report there too:
+The build runs the rules on the code as Metalama transformed it, where the members the generators
+add exist, so every form below is reported in the declaring project too. An IDE analyses as you
+type, without weaving. Where the members a value object of the same project gets (`From`, `New`,
+`TryFrom`, `FromKnownGood`, `Revalidate`, `Value`) do not exist there, a call to one does not bind.
+The rules recognise the forms below by the generated member's name on a value object's type, which
+does bind, so they report there too:
 
 - CMTK0001: every form, including a `default` beside an unbound call in a conditional, a switch arm
   or a collection element (`cond ? OrderId.From(g) : default`), whose type is taken from the whole

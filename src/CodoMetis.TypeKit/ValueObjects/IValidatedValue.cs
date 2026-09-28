@@ -43,8 +43,9 @@ namespace CodoMetis.TypeKit.ValueObjects;
 /// the rest is derived; any other hand-written comparison member is CMTK1008, and ordering
 /// otherwise follows the wrapped type, as <see cref="IValue{T}"/> describes. Formatting has one,
 /// <c>ToString()</c>, also described there. Any other member the generators introduce, written by
-/// hand, is CMTK1011, and so is a <see cref="Create"/> declared only as an explicit interface
-/// implementation, which the generated code cannot call: declare it <c>public static</c>.
+/// hand, is CMTK1011, and so is a <see cref="Create"/> implemented explicitly: alone, the generated
+/// code cannot call it, and beside a public one, generic code would reach a second rule set. Declare
+/// one, <c>public static</c>.
 /// </para>
 /// <para>
 /// Without a reference to CodoMetis.TypeKit.Generators nothing is generated, and the analyzer

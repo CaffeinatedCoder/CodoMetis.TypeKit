@@ -30,14 +30,7 @@ internal static class Repository
     /// </summary>
     public static IReadOnlyList<string> ResolvedPackages(string project)
     {
-        var assets = Path.Combine(Root, "src", project, "obj", "project.assets.json");
-
-        if (!File.Exists(assets))
-            throw new InvalidOperationException(
-                $"{assets} does not exist. Restore the solution first (`dotnet restore {SolutionMarker}`); " +
-                "the convention tests read restore output and do not trigger a restore themselves.");
-
-        using var document = JsonDocument.Parse(File.ReadAllText(assets));
+        using var document = Assets(project);
 
         return
         [
@@ -47,6 +40,49 @@ internal static class Repository
                        .Select(library => library.Name.Split('/')[0])
                        .Order(StringComparer.OrdinalIgnoreCase)
         ];
+    }
+
+    /// <summary>
+    /// The packages the project references directly and hands to no consumer, read from its restore
+    /// output: those restore records as <c>suppressParent: All</c>, for which pack writes no
+    /// dependency. That covers a <c>PrivateAssets="all"</c> written in the project file and a
+    /// reference the SDK adds on its own (<c>AutoReferenced</c>), such as the ILLink tasks
+    /// <c>IsAotCompatible</c> brings, which no project file names.
+    /// </summary>
+    public static IReadOnlyList<(string Id, bool AutoReferenced)> BuildOnlyPackages(string project)
+    {
+        using var document = Assets(project);
+
+        var packages = new List<(string Id, bool AutoReferenced)>();
+
+        foreach (var framework in document.RootElement.GetProperty("project").GetProperty("frameworks").EnumerateObject())
+        {
+            if (!framework.Value.TryGetProperty("dependencies", out var dependencies)) continue;
+
+            foreach (var dependency in dependencies.EnumerateObject())
+            {
+                var suppressed = dependency.Value.TryGetProperty("suppressParent", out var suppressParent)
+                              && string.Equals(suppressParent.GetString()?.Trim(), "All", StringComparison.OrdinalIgnoreCase);
+                if (!suppressed) continue;
+
+                var autoReferenced = dependency.Value.TryGetProperty("autoReferenced", out var flag) && flag.ValueKind == JsonValueKind.True;
+                packages.Add((dependency.Name, autoReferenced));
+            }
+        }
+
+        return packages;
+    }
+
+    private static JsonDocument Assets(string project)
+    {
+        var assets = Path.Combine(Root, "src", project, "obj", "project.assets.json");
+
+        if (!File.Exists(assets))
+            throw new InvalidOperationException(
+                $"{assets} does not exist. Restore the solution first (`dotnet restore {SolutionMarker}`); " +
+                "the convention tests read restore output and do not trigger a restore themselves.");
+
+        return JsonDocument.Parse(File.ReadAllText(assets));
     }
 
     private static string FindRoot()

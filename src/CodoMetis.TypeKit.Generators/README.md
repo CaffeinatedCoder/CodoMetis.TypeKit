@@ -15,6 +15,16 @@ or further down, inherit the generators without referencing the package themselv
 those projects. No Metalama license key is needed, there or here: the generators build on Metalama's
 Open Source edition.
 
+## Built with Metalama
+
+This package exists in this form because of [Metalama](https://www.postsharp.net/metalama). A
+transitive fabric finds every type that implements a TypeKit contract, in the project that references
+this package and in every project that references that one, so a value object is declared by its
+interface and nothing else. Templates write the generated members as ordinary C#, which you can read
+(see "Reading the generated code"). A declaration that cannot be generated fails the build with its
+name on it (see "Build errors") instead of compiling to less than it appears to. Thanks to the
+Metalama team.
+
 ## Declaring a value object
 
 ```csharp
@@ -117,9 +127,35 @@ despite its `string` type.
 A value object may declare its own `TryFrom`, `FromKnownGood`, `Revalidate`, `CompareTo(TSelf)` and
 `ToString()`; each is kept, and what depends on it is derived from it. Any other member or attribute
 the generators introduce, written by hand, is CMTK1011, which names it: a plain value object's `From`,
-`Value`, `Parse` and `TryParse`, `MinValue`/`MaxValue`, `[JsonConverter]` or `[TypeConverter]`, and the
-interfaces the generators implement. `Create` is declared `public static`, not as an explicit interface
-implementation, which the generated code cannot call.
+`Value`, `Parse` and `TryParse`, `MinValue`/`MaxValue`, `[JsonConverter]` or `[TypeConverter]`, the
+interfaces the generators implement, and `IConvertible` where they generate it. So is an explicit
+implementation of a member of an interface they implement, such as `IParsable<TSelf>.Parse` or
+`IFormattable.ToString`: every caller through the interface would reach it rather than the generated
+member, and a generic `T.Parse` would skip `Create`. `Create` is declared once, `public static`, and
+never as an explicit interface implementation: alone, the generated code cannot call it, and beside a
+public one, generic code calling `T.Create` would reach its rules instead of the ones every generated
+way in applies.
+
+To change what a value object prints, declare `ToString()`: a record's `PrintMembers(StringBuilder)` is
+CMTK1011 without it, since the generated `ToString()` prints the wrapped value and never calls it.
+
+What a base record declares counts as the value object's own. Its `sealed` `ToString()` is the seam,
+since C# keeps it in every derived record; one that is not sealed is CMTK1011, because the generated
+`ToString()` would replace it: declare `ToString()` in the value object, or seal the base's. Its
+`PrintMembers`, its explicit implementations of the interfaces the generators implement, and an
+`IConvertible` on it are refused as they are on the value object.
+
+Equality is the wrapped value's, as the ordering, the JSON and the column are, so a hand-written
+`Equals(TSelf)`, `GetHashCode()` or `IEquatable<TSelf>.Equals` is CMTK1011: it would make values equal
+that sort apart. To make values that differ only in form equal, such as "abc" and "ABC", normalise them
+in `Create` (a plain value object becomes an `IValidatedValue` for that), so that equal values hold
+the same wrapped value.
+
+A value object holds its wrapped value and nothing else. Its JSON, parsing, type converter and column
+carry that value alone, while a record's equality compares every field, so any other instance state
+would be lost on a round trip or make equal values unequal. An instance field, an auto-property, a
+`required` member or a field-like event, declared or inherited from a base record, is CMTK1012. A
+property computed from `Value` without a backing field, and anything `static` or `const`, is fine.
 
 ## JSON
 
@@ -191,7 +227,8 @@ the wrapped type's own message quotes the input. A refusal by `Create` names the
 
 `CompareTo` and the operators follow the wrapped type's ordering, ordinal for a string. To order
 differently, declare `CompareTo(TSelf)` yourself: it is kept, and the object overload, the operators
-and the interfaces are derived from it. Any other hand-written comparison member is an error
+and the interfaces are derived from it. Any other hand-written comparison member, an explicit
+implementation of `IComparable<TSelf>`, `IComparable` or `IComparisonOperators` included, is an error
 (CMTK1008), so the ordering can never disagree with itself.
 
 ## Build errors
@@ -205,13 +242,14 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1002 | A struct not declared `readonly`. |
 | CMTK1003 | More than one marker, such as `IValue<int>, IValue<string>`. |
 | CMTK1004 | An `IValidatedValue<TSelf, …>` whose `TSelf` is another type. |
-| CMTK1005 | Generic or nested in a generic type (nesting in a non-generic type is fine), `file`-local, named `Value`, derived from another value object, or wrapping an array, a pointer, a nullable type, a generic type (a tuple included) or a value object (itself included). Wrap what the other value object wraps instead. |
+| CMTK1005 | Generic or nested in a generic type (nesting in a non-generic type is fine), `file`-local or nested in a `file`-local type, named `Value`, derived from another value object, or wrapping an array, a pointer, a nullable type, a generic type (a tuple included) or a value object (itself included). Wrap what the other value object wraps instead. |
 | CMTK1006 | A record class not declared `sealed`. |
 | CMTK1007 | The `{TSelf}Extensions` companion's name is taken by a declared type or by another value object's companion. |
-| CMTK1008 | A hand-written comparison operator or object `CompareTo` beside the generated ones. |
+| CMTK1008 | A hand-written comparison operator, object `CompareTo` or explicit implementation of a comparison interface beside the generated ones. |
 | CMTK1009 | A hand-written instance constructor, including a positional record's parameter list such as `OrderId(Guid Value)`. The constructor and `Value` are generated; a static constructor is fine. |
 | CMTK1010 | Declared in more than one `partial` part: Metalama 2026.1 writes the generated `ToString()` into every part, which does not compile. A part a source generator adds, such as a `[GeneratedRegex]` method's, does not count. |
-| CMTK1011 | A hand-written member or attribute the generators introduce (see "Your own members"), or `Create` implemented explicitly. |
+| CMTK1011 | A hand-written member or attribute the generators introduce (see "Your own members"), an explicit implementation of an interface they implement, a hand-written equality, a `PrintMembers` without `ToString()`, or `Create` implemented explicitly. |
+| CMTK1012 | Instance state besides the wrapped value: a field, an auto-property, a `required` member or a field-like event, declared or inherited. Compute it from `Value`, make it static, or wrap a type that holds all of it. |
 
 The analyzers that come with the base package add CMTK0001 to CMTK0009; see
 [CodoMetis.TypeKit.Analyzers](https://www.nuget.org/packages/CodoMetis.TypeKit.Analyzers).

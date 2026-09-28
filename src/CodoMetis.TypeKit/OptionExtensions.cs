@@ -339,18 +339,6 @@ public static class Option
         }
     }
 
-    /// <param name="instance">The object to cast.</param>
-    extension(object? instance)
-    {
-        /// <summary>Casts to <typeparamref name="TResult"/>, if the run-time type allows it.</summary>
-        /// <typeparam name="TResult">The type to cast to.</typeparam>
-        /// <returns>The cast instance, or <c>None</c> if it is not a <typeparamref name="TResult"/> or is <see langword="null"/>.</returns>
-        public Option<TResult> TryCast<TResult>() where TResult : notnull =>
-            instance is TResult result
-                ? Some(result)
-                : None<TResult>();
-    }
-
     /// <param name="instance">The nullable value.</param>
     /// <typeparam name="T">The underlying value type.</typeparam>
     extension<T>(in T? instance) where T : struct

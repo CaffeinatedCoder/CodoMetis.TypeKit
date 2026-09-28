@@ -36,6 +36,7 @@ public sealed class UninitializedResultTests
         ["Tap(action)"]               = r => Task.FromResult(r.Tap(() => { })),
         ["TapError(action)"]          = r => Task.FromResult(r.TapError(_ => { })),
         ["TapAsync(action)"]          = r => r.TapAsync(() => Task.CompletedTask),
+        ["TapErrorAsync(action)"]     = r => r.TapErrorAsync(_ => Task.CompletedTask),
         ["MapAsync(selector)"]        = r => r.MapAsync(() => Task.FromResult(1)),
         ["BindAsync(selector)"]       = r => r.BindAsync(() => Task.FromResult(Result<string>.Success())),
         ["TryGetError(out error)"]    = r => Task.FromResult(r.TryGetError(out _)),
@@ -54,12 +55,12 @@ public sealed class UninitializedResultTests
         ["TapError(action)"]                       = r => Task.FromResult(r.TapError(_ => { })),
         ["Ensure(predicate, error)"]               = r => Task.FromResult(r.Ensure(_ => true, "e")),
         ["TapAsync(action)"]                       = r => r.TapAsync(_ => Task.CompletedTask),
+        ["TapErrorAsync(action)"]                  = r => r.TapErrorAsync(_ => Task.CompletedTask),
         ["MapAsync(selector)"]                     = r => r.MapAsync(Task.FromResult),
         ["BindAsync(selector -> Result<T, TError>)"] = r => r.BindAsync(x => Task.FromResult(Result<int, string>.Success(x))),
         ["BindAsync(selector -> Result<TError>)"]  = r => r.BindAsync(_ => Task.FromResult(Result<string>.Success())),
         ["TryGetValue(out value, out error)"]      = r => Task.FromResult(r.TryGetValue(out _, out _)),
         ["AsEnumerable() on enumeration"]          = r => Task.FromResult(r.AsEnumerable().ToList()),
-        ["op_Implicit(bool)"]                      = r => Task.FromResult((bool)r),
     };
 
     private static readonly Result<int, string> Value = Result<int, string>.Success(1);
@@ -98,6 +99,7 @@ public sealed class UninitializedResultTests
         ["MapErrorAsync(Task<Result<T, TError>>, Func<TError, TNewError>)"]            = () => PendingDefault.MapErrorAsync(e => e.Length),
         ["EnsureAsync(Task<Result<T, TError>>, Func<T, Boolean>, TError)"]            = () => PendingDefault.EnsureAsync(_ => true, "e"),
         ["TapErrorAsync(Task<Result<T, TError>>, Action<TError>)"]                     = () => PendingDefault.TapErrorAsync(_ => { }),
+        ["TapErrorAsync(Task<Result<T, TError>>, Func<TError, Task>)"]                 = () => PendingDefault.TapErrorAsync(_ => Task.CompletedTask),
         ["TapAsync(Task<Result<T, TError>>, Action<T>)"]                               = () => PendingDefault.TapAsync(_ => { }),
         ["TapAsync(Task<Result<T, TError>>, Func<T, Task>)"]                           = () => PendingDefault.TapAsync(_ => Task.CompletedTask),
 
@@ -107,6 +109,7 @@ public sealed class UninitializedResultTests
         ["BindAsync(Task<Result<TError>>, Func<Task<Result<TError>>>)"]    = () => PendingDefaultCommand.BindAsync(() => Task.FromResult(Result<string>.Success())),
         ["MapErrorAsync(Task<Result<TError>>, Func<TError, TNewError>)"]   = () => PendingDefaultCommand.MapErrorAsync(e => e.Length),
         ["TapErrorAsync(Task<Result<TError>>, Action<TError>)"]            = () => PendingDefaultCommand.TapErrorAsync(_ => { }),
+        ["TapErrorAsync(Task<Result<TError>>, Func<TError, Task>)"]        = () => PendingDefaultCommand.TapErrorAsync(_ => Task.CompletedTask),
         ["TapAsync(Task<Result<TError>>, Action)"]                         = () => PendingDefaultCommand.TapAsync(() => { }),
         ["TapAsync(Task<Result<TError>>, Func<Task>)"]                     = () => PendingDefaultCommand.TapAsync(() => Task.CompletedTask),
 
@@ -186,7 +189,10 @@ public sealed class UninitializedResultTests
 
     private static void AssertClassified(Type type, IEnumerable<string> branchingCases)
     {
+        // A conversion into the result constructs one, as Success and Error do; only a conversion out
+        // of it, such as Result<TError>'s to bool, reads the state.
         var declared = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
+                           .Where(method => !(method.Name is "op_Implicit" or "op_Explicit" && method.ReturnType == type))
                            .Select(method => method.Name)
                            .ToHashSet();
 

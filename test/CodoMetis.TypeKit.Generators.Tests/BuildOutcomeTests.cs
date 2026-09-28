@@ -45,12 +45,22 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1005", "NamedTupleBacked")]
     [InlineData("CMTK1005", "Named.Value")]
     [InlineData("CMTK1005", "FileLocal")]
+    [InlineData("CMTK1005", "FileLocalBelowRegion")]
+    [InlineData("CMTK1005", "FileLocalBelowPragma")]
+    [InlineData("CMTK1005", "FileLocalBelowDisabledText")]
+    [InlineData("CMTK1005", "FileLocalAfterAttribute")]
+    [InlineData("CMTK1005", "FileLocalFixtures.NestedInFileLocal")]
     [InlineData("CMTK1006", "NotSealed")]
     [InlineData("CMTK1007", "TakenName")]
     [InlineData("CMTK1007", "ShopId")]
     [InlineData("CMTK1007", "Shop.Id")]
     [InlineData("CMTK1008", "WithOperator")]
     [InlineData("CMTK1008", "WithObjectCompareTo")]
+    [InlineData("CMTK1008", "ExplicitComparable")]
+    [InlineData("CMTK1008", "ExplicitObjectComparable")]
+    [InlineData("CMTK1008", "ExplicitComparisonOperators")]
+    [InlineData("CMTK1008", "InheritsExplicitComparable")]
+    [InlineData("CMTK1008", "InheritsExplicitObjectComparable")]
     [InlineData("CMTK1009", "CtorSameSignature")]
     [InlineData("CMTK1009", "CtorBypass")]
     [InlineData("CMTK1009", "CtorUnassignedStruct")]
@@ -70,6 +80,30 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "HandWrittenTypeConverter")]
     [InlineData("CMTK1011", "HandWrittenInterface")]
     [InlineData("CMTK1011", "ExplicitCreate")]
+    [InlineData("CMTK1011", "ExplicitCreateBesidePublic")]
+    [InlineData("CMTK1011", "CaseInsensitiveEquals")]
+    [InlineData("CMTK1011", "HashCodeOnly")]
+    [InlineData("CMTK1011", "ExplicitEquatable")]
+    [InlineData("CMTK1011", "PinStruct")]
+    [InlineData("CMTK1011", "PinClass")]
+    [InlineData("CMTK1011", "ExplicitParsable")]
+    [InlineData("CMTK1011", "ExplicitFormattable")]
+    [InlineData("CMTK1011", "ExplicitSpanFormattable")]
+    [InlineData("CMTK1011", "ExplicitMinMax")]
+    [InlineData("CMTK1011", "ExplicitConvertible")]
+    [InlineData("CMTK1011", "ExplicitEqualityOperators")]
+    [InlineData("CMTK1011", "InheritsUnsealedToString")]
+    [InlineData("CMTK1011", "InheritsPrintMembers")]
+    [InlineData("CMTK1011", "InheritsExplicitParsable")]
+    [InlineData("CMTK1011", "InheritsExplicitFormattable")]
+    [InlineData("CMTK1011", "InheritsExplicitMinMax")]
+    [InlineData("CMTK1011", "InheritsExplicitEqualityOperators")]
+    [InlineData("CMTK1011", "InheritsConvertible")]
+    [InlineData("CMTK1012", "WithAutoProperty")]
+    [InlineData("CMTK1012", "WithCacheField")]
+    [InlineData("CMTK1012", "WithRequiredMember")]
+    [InlineData("CMTK1012", "WithInheritedState")]
+    [InlineData("CMTK1012", "WithEvent")]
     public void A_declaration_that_cannot_be_generated_is_an_error(string id, string type) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains($"'{type}"), $"{id} on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
 
@@ -126,8 +160,90 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("HandWrittenTypeConverter", "the attribute TypeConverter")]
     [InlineData("HandWrittenInterface", "the interface IValueObject<HandWrittenInterface, int>")]
     [InlineData("ExplicitCreate", "Create only as an explicit implementation of IValidatedValue<ExplicitCreate, string, Fault>")]
+    [InlineData("ExplicitCreateBesidePublic", "Create both as a static method and as an explicit implementation of IValidatedValue<ExplicitCreateBesidePublic, string, Fault>, so it is not generated: every generated way in calls ExplicitCreateBesidePublic.Create and generic code calling T.Create reaches the explicit one")]
     public void A_hand_written_generated_member_is_refused_by_name(string type, string member) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
+
+    /// <summary>
+    /// A hand-written equality was kept while the generated ordering, the JSON keys and the column went
+    /// on comparing the wrapped value, so values it called equal sorted apart. The error names each
+    /// member and points at normalising in <c>Create</c>, which a plain value object gets by becoming a
+    /// validated one.
+    /// </summary>
+    [Theory]
+    [InlineData("CaseInsensitiveEquals", "CaseInsensitiveEquals.Equals(CaseInsensitiveEquals), CaseInsensitiveEquals.GetHashCode(), so", "(declare CaseInsensitiveEquals as IValidatedValue to get one)")]
+    [InlineData("HashCodeOnly", "HashCodeOnly.GetHashCode(), so", "normalise them in Create, so")]
+    [InlineData("ExplicitEquatable", "the explicit implementation of IEquatable<ExplicitEquatable>.Equals(ExplicitEquatable), so", "(declare ExplicitEquatable as IValidatedValue to get one)")]
+    public void A_hand_written_equality_is_refused_by_name(string type, string members, string remedy) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(members)
+                                            && error.Message.Contains("a value object's equality is its wrapped value's") && error.Message.Contains(remedy), consumer.Output);
+
+    /// <summary>
+    /// An explicit implementation of an interface the generators implement was kept beside the generated
+    /// public member, and every caller through the interface reached it: a generic <c>T.Parse</c> bypassed
+    /// <c>Create</c>, <c>Comparer&lt;T&gt;.Default</c> disagreed with <c>&lt;</c>, and interpolation printed
+    /// what <c>ToString()</c> did not. The error names the interface member.
+    /// </summary>
+    [Theory]
+    [InlineData("CMTK1011", "ExplicitParsable", "the explicit implementation of IParsable<ExplicitParsable>.Parse(string, IFormatProvider?), the explicit implementation of IParsable<ExplicitParsable>.TryParse(string?, IFormatProvider?, out ExplicitParsable)")]
+    [InlineData("CMTK1011", "ExplicitFormattable", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?)")]
+    [InlineData("CMTK1011", "ExplicitSpanFormattable", "the explicit implementation of ISpanFormattable.TryFormat(")]
+    [InlineData("CMTK1011", "ExplicitMinMax", "the explicit implementation of IMinMaxValue<ExplicitMinMax>.MinValue")]
+    [InlineData("CMTK1011", "ExplicitConvertible", "the interface IConvertible")]
+    [InlineData("CMTK1011", "ExplicitEqualityOperators", "the explicit implementation of IEqualityOperators<ExplicitEqualityOperators, ExplicitEqualityOperators, bool>.operator ==(")]
+    [InlineData("CMTK1008", "ExplicitComparable", "the explicit implementation of IComparable<ExplicitComparable>.CompareTo(ExplicitComparable)")]
+    [InlineData("CMTK1008", "ExplicitObjectComparable", "the explicit implementation of IComparable.CompareTo(object?)")]
+    [InlineData("CMTK1008", "ExplicitComparisonOperators", "the explicit implementation of IComparisonOperators<ExplicitComparisonOperators, ExplicitComparisonOperators, bool>.operator <(")]
+    public void An_explicit_implementation_of_a_generated_interface_is_refused_by_name(string id, string type, string member) =>
+        consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
+
+    /// <summary>
+    /// What a base record declares counts as the value object's own. Its unsealed <c>ToString()</c> and its
+    /// <c>PrintMembers</c> were replaced by the generated <c>ToString()</c>, printing what they hid; an
+    /// explicit implementation of a generated interface was replaced without a word (<c>IFormattable</c>,
+    /// <c>IEqualityOperators</c>) or kept answering the interface (<c>IParsable</c>, <c>IMinMaxValue</c>,
+    /// <c>IComparable</c>): a generic <c>T.Parse</c> skipped <c>Create</c>. <c>IConvertible</c> on a base
+    /// failed the aspect (LAMA0041). Measured 2026-09-28.
+    /// </summary>
+    [Theory]
+    [InlineData("CMTK1011", "InheritsUnsealedToString", "MaskingBase.ToString() in its base type, which is not sealed, so it is not generated: its generated ToString() replaces it")]
+    [InlineData("CMTK1011", "InheritsPrintMembers", "PrintingBase.PrintMembers(StringBuilder) in its base type PrintingBase, so it is not generated")]
+    [InlineData("CMTK1011", "InheritsExplicitParsable", "the explicit implementation of IParsable<InheritsExplicitParsable>.Parse(string, IFormatProvider?) in its base type ParsableBase<InheritsExplicitParsable>")]
+    [InlineData("CMTK1011", "InheritsExplicitFormattable", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its base type FormattableBase")]
+    [InlineData("CMTK1011", "InheritsExplicitMinMax", "the explicit implementation of IMinMaxValue<InheritsExplicitMinMax>.MinValue in its base type MinMaxBase<InheritsExplicitMinMax>")]
+    [InlineData("CMTK1011", "InheritsExplicitEqualityOperators", "in its base type EqualityOperatorsBase<InheritsExplicitEqualityOperators>")]
+    [InlineData("CMTK1011", "InheritsConvertible", "the interface IConvertible in its base type ConvertibleBase")]
+    [InlineData("CMTK1008", "InheritsExplicitComparable", "the explicit implementation of IComparable<InheritsExplicitComparable>.CompareTo(InheritsExplicitComparable?) in its base type ComparableBase<InheritsExplicitComparable>")]
+    [InlineData("CMTK1008", "InheritsExplicitObjectComparable", "the explicit implementation of IComparable.CompareTo(object?) in its base type ObjectComparableBase")]
+    public void What_a_base_record_declares_is_refused_by_name(string id, string type, string member) =>
+        consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
+
+    /// <summary>
+    /// A hand-written <c>PrintMembers</c> was replaced silently with the record's <c>ToString()</c>, which
+    /// calls it, so what it hid was printed. The error points at <c>ToString()</c>, the seam.
+    /// </summary>
+    [Theory]
+    [InlineData("PinStruct")]
+    [InlineData("PinClass")]
+    public void A_hand_written_PrintMembers_is_refused_with_the_seam(string type) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares {type}.PrintMembers(StringBuilder), so it is not generated")
+                                            && error.Message.Contains("declare ToString() instead"), consumer.Output);
+
+    /// <summary>
+    /// Instance state besides the wrapped value was generated without a word: JSON, parsing and the
+    /// materializer carried the wrapped value alone while the record's equality compared the rest, so a
+    /// <c>Currency</c> was lost on a round trip and a lazily filled cache made equal instances unequal.
+    /// A <c>required</c> member failed inside the generated code (LAMA0611, CS9035). The error names
+    /// each member, an inherited one too.
+    /// </summary>
+    [Theory]
+    [InlineData("WithAutoProperty", "the auto-property WithAutoProperty.Currency besides its wrapped value")]
+    [InlineData("WithCacheField", "the field WithCacheField._domain besides its wrapped value")]
+    [InlineData("WithRequiredMember", "the required property WithRequiredMember.Currency besides its wrapped value")]
+    [InlineData("WithInheritedState", "the auto-property Audited.At (inherited) besides its wrapped value")]
+    [InlineData("WithEvent", "the event WithEvent.Changed besides its wrapped value")]
+    public void Instance_state_besides_the_wrapped_value_is_refused_by_name(string type, string member) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1012" && error.Message.StartsWith($"'{type}' holds {member}, so it is not generated"), consumer.Output);
 
     /// <summary>
     /// The seams stay allowed: <c>Create</c>, <c>TryFrom</c>, <c>FromKnownGood</c>, <c>Revalidate</c>,
@@ -139,6 +255,13 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("WithEverySeam", "'WithEverySeam")]
     [InlineData("Share", "Percent")]
     [InlineData("Rank", "Level.M")]
+    [InlineData("WithComputedMembers", "'WithComputedMembers")]
+    [InlineData("PinWithToString", "'PinWithToString")]
+    [InlineData("ExplicitFormattableWithToString", "'ExplicitFormattableWithToString")]
+    [InlineData("ExplicitComparableUri", "'ExplicitComparableUri")]
+    [InlineData("InheritsSealedToString", "'InheritsSealedToString")]
+    [InlineData("InheritsFormattableBesideSealedToString", "'InheritsFormattableBesideSealedToString")]
+    [InlineData("WithStatelessBase", "Described.")]
     public void A_seam_or_a_foreign_bound_is_not_refused(string type, string alsoNotNamed) =>
         consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'") || error.Message.Contains(alsoNotNamed), consumer.Output);
 
@@ -166,7 +289,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012"], ignoreOrder: false, customMessage: consumer.Output);
 
     /// <summary>
     /// The <c>GetValue</c>/<c>ValueOrNull</c> companions live in a namespace-level class. Named after
@@ -380,6 +503,32 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             file readonly partial record struct FileLocal : IValue<int>;
 
+            // A directive above the declaration, or a file-local type around it: the modifiers were read
+            // from the declaration's text with its leading trivia, and of the type alone, and Metalama
+            // crashed on both (LAMA0001).
+            #region File-local
+            file readonly partial record struct FileLocalBelowRegion : IValue<int>;
+            #endregion
+
+            #pragma warning disable CS0169
+            file readonly partial record struct FileLocalBelowPragma : IValue<int>;
+            #pragma warning restore CS0169
+
+            #if NEVER_DEFINED
+            public sealed class LeftOut { }
+            #endif
+            file readonly partial record struct FileLocalBelowDisabledText : IValue<int>;
+
+            [System.Diagnostics.DebuggerDisplay("{Value}")]
+            #pragma warning disable CS0169
+            file readonly partial record struct FileLocalAfterAttribute : IValue<int>;
+            #pragma warning restore CS0169
+
+            file static class FileLocalFixtures
+            {
+                public readonly partial record struct NestedInFileLocal : IValue<int>;
+            }
+
             // Metalama writes the ToString() override into every part (CS0111 as LAMA0611). The other
             // parts touch nothing generated, because a refused type is not generated.
             public readonly partial record struct SplitInOneFile : IValue<int>;
@@ -444,6 +593,323 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             {
                 static Result<ExplicitCreate, Fault> IValidatedValue<ExplicitCreate, string, Fault>.Create(string value) => Result.Error(Fault.Refused);
             }
+
+            // Beside a public Create, a second rule set: generic code calling T.Create reached the explicit
+            // one, every generated entry point the public one.
+            public readonly partial record struct ExplicitCreateBesidePublic : IValidatedValue<ExplicitCreateBesidePublic, string, Fault>
+            {
+                public static Result<ExplicitCreateBesidePublic, Fault> Create(string value) => Result.Error(Fault.Refused);
+
+                static Result<ExplicitCreateBesidePublic, Fault> IValidatedValue<ExplicitCreateBesidePublic, string, Fault>.Create(string value) => Result.Error(Fault.Refused);
+            }
+
+            // An explicit implementation of an interface the generators implement: kept beside the generated
+            // public member, it answered every caller through the interface, so a generic T.Parse
+            // bypassed Create and Comparer<T>.Default sorted against <. The bodies touch nothing
+            // generated, because a refused type is not generated.
+            public readonly partial record struct ExplicitParsable : IValidatedValue<ExplicitParsable, string, Fault>, System.IParsable<ExplicitParsable>
+            {
+                public static Result<ExplicitParsable, Fault> Create(string value) => Result.Error(Fault.Refused);
+
+                static ExplicitParsable System.IParsable<ExplicitParsable>.Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                static bool System.IParsable<ExplicitParsable>.TryParse(string? s, System.IFormatProvider? provider, out ExplicitParsable result) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct ExplicitFormattable : IValue<int>, System.IFormattable
+            {
+                string System.IFormattable.ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+            }
+
+            public readonly partial record struct ExplicitSpanFormattable : IValue<long>, System.ISpanFormattable
+            {
+                string System.IFormattable.ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+
+                bool System.ISpanFormattable.TryFormat(System.Span<char> destination, out int charsWritten, System.ReadOnlySpan<char> format, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct ExplicitMinMax : IValue<int>, System.Numerics.IMinMaxValue<ExplicitMinMax>
+            {
+                static ExplicitMinMax System.Numerics.IMinMaxValue<ExplicitMinMax>.MinValue => throw new System.NotSupportedException();
+
+                static ExplicitMinMax System.Numerics.IMinMaxValue<ExplicitMinMax>.MaxValue => throw new System.NotSupportedException();
+            }
+
+            // IConvertible is generated explicitly in full, so declaring it at all, with public or explicit
+            // members, failed the aspect (LAMA0041).
+            public readonly partial record struct ExplicitConvertible : IValue<int>, System.IConvertible
+            {
+                public System.TypeCode GetTypeCode() => System.TypeCode.Int32;
+                bool System.IConvertible.ToBoolean(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                byte System.IConvertible.ToByte(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                char System.IConvertible.ToChar(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                System.DateTime System.IConvertible.ToDateTime(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                decimal System.IConvertible.ToDecimal(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                double System.IConvertible.ToDouble(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                short System.IConvertible.ToInt16(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                public int ToInt32(System.IFormatProvider? provider) => 0;
+                long System.IConvertible.ToInt64(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                sbyte System.IConvertible.ToSByte(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                float System.IConvertible.ToSingle(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                string System.IConvertible.ToString(System.IFormatProvider? provider) => "***";
+                object System.IConvertible.ToType(System.Type conversionType, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                ushort System.IConvertible.ToUInt16(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                uint System.IConvertible.ToUInt32(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                ulong System.IConvertible.ToUInt64(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct ExplicitEqualityOperators : IValue<int>, System.Numerics.IEqualityOperators<ExplicitEqualityOperators, ExplicitEqualityOperators, bool>
+            {
+                static bool System.Numerics.IEqualityOperators<ExplicitEqualityOperators, ExplicitEqualityOperators, bool>.operator ==(ExplicitEqualityOperators left, ExplicitEqualityOperators right) => true;
+
+                static bool System.Numerics.IEqualityOperators<ExplicitEqualityOperators, ExplicitEqualityOperators, bool>.operator !=(ExplicitEqualityOperators left, ExplicitEqualityOperators right) => false;
+            }
+
+            public readonly partial record struct ExplicitComparable : IValue<int>, System.IComparable<ExplicitComparable>
+            {
+                int System.IComparable<ExplicitComparable>.CompareTo(ExplicitComparable other) => 0;
+            }
+
+            public readonly partial record struct ExplicitObjectComparable : IValue<int>, System.IComparable
+            {
+                int System.IComparable.CompareTo(object? obj) => 0;
+            }
+
+            public readonly partial record struct ExplicitComparisonOperators : IValue<int>, System.Numerics.IComparisonOperators<ExplicitComparisonOperators, ExplicitComparisonOperators, bool>
+            {
+                static bool System.Numerics.IComparisonOperators<ExplicitComparisonOperators, ExplicitComparisonOperators, bool>.operator <(ExplicitComparisonOperators left, ExplicitComparisonOperators right) => false;
+
+                static bool System.Numerics.IComparisonOperators<ExplicitComparisonOperators, ExplicitComparisonOperators, bool>.operator >(ExplicitComparisonOperators left, ExplicitComparisonOperators right) => false;
+
+                static bool System.Numerics.IComparisonOperators<ExplicitComparisonOperators, ExplicitComparisonOperators, bool>.operator <=(ExplicitComparisonOperators left, ExplicitComparisonOperators right) => false;
+
+                static bool System.Numerics.IComparisonOperators<ExplicitComparisonOperators, ExplicitComparisonOperators, bool>.operator >=(ExplicitComparisonOperators left, ExplicitComparisonOperators right) => false;
+            }
+
+            // Where the generators implement no such interface, the explicit implementation is the only
+            // one: beside ToString(), the seam, no formatting interface is generated, and a Uri has no
+            // ordering. Generated as usual.
+            public readonly partial record struct ExplicitFormattableWithToString : IValue<int>, System.IFormattable
+            {
+                public override string ToString() => "***";
+
+                string System.IFormattable.ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+            }
+
+            public sealed partial record ExplicitComparableUri : IValue<System.Uri>, System.IComparable<ExplicitComparableUri>
+            {
+                int System.IComparable<ExplicitComparableUri>.CompareTo(ExplicitComparableUri? other) => 0;
+            }
+
+            // What a base record declares: the generated ToString() replaced an unsealed ToString() and
+            // the PrintMembers a derived record's ToString() reaches; an explicit implementation of a
+            // generated interface was replaced or kept answering the interface; IConvertible failed the
+            // aspect (LAMA0041).
+            public abstract record MaskingBase
+            {
+                public override string ToString() => "***";
+            }
+
+            public sealed partial record InheritsUnsealedToString : MaskingBase, IValue<string>;
+
+            public abstract record PrintingBase
+            {
+                protected virtual bool PrintMembers(System.Text.StringBuilder builder) { builder.Append("***"); return true; }
+            }
+
+            public sealed partial record InheritsPrintMembers : PrintingBase, IValue<string>;
+
+            public abstract record ParsableBase<TSelf> : System.IParsable<TSelf> where TSelf : ParsableBase<TSelf>, System.IParsable<TSelf>
+            {
+                static TSelf System.IParsable<TSelf>.Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                static bool System.IParsable<TSelf>.TryParse(string? s, System.IFormatProvider? provider, out TSelf result) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsExplicitParsable : ParsableBase<InheritsExplicitParsable>, IValidatedValue<InheritsExplicitParsable, string, Fault>
+            {
+                public static Result<InheritsExplicitParsable, Fault> Create(string value) => Result.Error(Fault.Refused);
+            }
+
+            public abstract record FormattableBase : System.IFormattable
+            {
+                string System.IFormattable.ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+            }
+
+            public sealed partial record InheritsExplicitFormattable : FormattableBase, IValue<int>;
+
+            public abstract record MinMaxBase<TSelf> : System.Numerics.IMinMaxValue<TSelf> where TSelf : MinMaxBase<TSelf>, System.Numerics.IMinMaxValue<TSelf>
+            {
+                static TSelf System.Numerics.IMinMaxValue<TSelf>.MinValue => throw new System.NotSupportedException();
+
+                static TSelf System.Numerics.IMinMaxValue<TSelf>.MaxValue => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsExplicitMinMax : MinMaxBase<InheritsExplicitMinMax>, IValue<int>;
+
+            public abstract record EqualityOperatorsBase<TSelf> : System.Numerics.IEqualityOperators<TSelf, TSelf, bool> where TSelf : EqualityOperatorsBase<TSelf>, System.Numerics.IEqualityOperators<TSelf, TSelf, bool>
+            {
+                static bool System.Numerics.IEqualityOperators<TSelf, TSelf, bool>.operator ==(TSelf? left, TSelf? right) => true;
+
+                static bool System.Numerics.IEqualityOperators<TSelf, TSelf, bool>.operator !=(TSelf? left, TSelf? right) => false;
+            }
+
+            public sealed partial record InheritsExplicitEqualityOperators : EqualityOperatorsBase<InheritsExplicitEqualityOperators>, IValue<int>;
+
+            public abstract record ConvertibleBase : System.IConvertible
+            {
+                public System.TypeCode GetTypeCode() => System.TypeCode.Int32;
+                bool System.IConvertible.ToBoolean(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                byte System.IConvertible.ToByte(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                char System.IConvertible.ToChar(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                System.DateTime System.IConvertible.ToDateTime(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                decimal System.IConvertible.ToDecimal(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                double System.IConvertible.ToDouble(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                short System.IConvertible.ToInt16(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                int System.IConvertible.ToInt32(System.IFormatProvider? provider) => 0;
+                long System.IConvertible.ToInt64(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                sbyte System.IConvertible.ToSByte(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                float System.IConvertible.ToSingle(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                string System.IConvertible.ToString(System.IFormatProvider? provider) => "***";
+                object System.IConvertible.ToType(System.Type conversionType, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                ushort System.IConvertible.ToUInt16(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                uint System.IConvertible.ToUInt32(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                ulong System.IConvertible.ToUInt64(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsConvertible : ConvertibleBase, IValue<int>;
+
+            public abstract record ComparableBase<TSelf> : System.IComparable<TSelf> where TSelf : ComparableBase<TSelf>
+            {
+                int System.IComparable<TSelf>.CompareTo(TSelf? other) => 1;
+            }
+
+            public sealed partial record InheritsExplicitComparable : ComparableBase<InheritsExplicitComparable>, IValue<int>;
+
+            public abstract record ObjectComparableBase : System.IComparable
+            {
+                int System.IComparable.CompareTo(object? obj) => 1;
+            }
+
+            public sealed partial record InheritsExplicitObjectComparable : ObjectComparableBase, IValue<int>;
+
+            // A base record's sealed ToString() is the seam, as C# keeps it in every derived record: it failed
+            // the aspect (LAMA0502). Beside it no formatting interface is generated, so an explicit one on the
+            // base is the only one. Generated as usual.
+            public abstract record SealedMaskingBase
+            {
+                public sealed override string ToString() => "***";
+            }
+
+            public sealed partial record InheritsSealedToString : SealedMaskingBase, IValue<string>;
+
+            public abstract record SealedFormattableBase : System.IFormattable
+            {
+                public sealed override string ToString() => "***";
+
+                string System.IFormattable.ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+            }
+
+            public sealed partial record InheritsFormattableBesideSealedToString : SealedFormattableBase, IValue<int>;
+
+            // A hand-written PrintMembers: the generated ToString() replaced the record's, which calls it,
+            // so what it hid was printed ("1234", and "PinHolder { Pin = 1234 }" in a record holding it).
+            public readonly partial record struct PinStruct : IValue<string>
+            {
+                private bool PrintMembers(System.Text.StringBuilder builder) { builder.Append("***"); return true; }
+            }
+
+            public sealed partial record PinClass : IValue<string>
+            {
+                private bool PrintMembers(System.Text.StringBuilder builder) { builder.Append("***"); return true; }
+            }
+
+            // Beside ToString(), the seam, nothing replaces what calls it: generated as usual.
+            public readonly partial record struct PinWithToString : IValue<string>
+            {
+                public override string ToString()
+                {
+                    var builder = new System.Text.StringBuilder();
+                    PrintMembers(builder);
+                    return builder.ToString();
+                }
+
+                private bool PrintMembers(System.Text.StringBuilder builder) { builder.Append("***"); return true; }
+            }
+
+            // A hand-written equality: the record kept it while the generated ordering, the JSON keys and
+            // the column compared the wrapped value, so values it called equal sorted apart.
+            public readonly partial record struct CaseInsensitiveEquals : IValue<string>
+            {
+                public bool Equals(CaseInsensitiveEquals other) => true;
+
+                public override int GetHashCode() => 0;
+            }
+
+            public sealed partial record HashCodeOnly : IValidatedValue<HashCodeOnly, string, Fault>
+            {
+                public static Result<HashCodeOnly, Fault> Create(string value) => Result.Error(Fault.Refused);
+
+                public override int GetHashCode() => 0;
+            }
+
+            public readonly partial record struct ExplicitEquatable : IValue<string>, System.IEquatable<ExplicitEquatable>
+            {
+                bool System.IEquatable<ExplicitEquatable>.Equals(ExplicitEquatable other) => true;
+            }
+
+            // Instance state besides the wrapped value: JSON, parsing and the materializer carried the
+            // wrapped value alone while the record's equality compared the rest, and a required member
+            // failed inside the generated code (LAMA0611, CS9035).
+            public sealed partial record WithAutoProperty : IValue<decimal>
+            {
+                public string Currency { get; init; } = "EUR";
+            }
+
+            public sealed partial record WithCacheField : IValidatedValue<WithCacheField, string, Fault>
+            {
+                private string? _domain;
+
+                public static Result<WithCacheField, Fault> Create(string value) => Result.Error(Fault.Refused);
+
+                public string Domain => _domain ??= "";
+            }
+
+            public readonly partial record struct WithRequiredMember : IValue<decimal>
+            {
+                public required string Currency { get; init; }
+            }
+
+            public abstract record Audited
+            {
+                public System.DateTime At { get; init; }
+            }
+
+            public sealed partial record WithInheritedState : Audited, IValue<string>;
+
+            public sealed partial record WithEvent : IValue<int>
+            {
+                public event System.EventHandler? Changed;
+            }
+
+            // Computed from Value, or static, holds nothing besides it: generated as usual.
+            public readonly partial record struct WithComputedMembers : IValue<string>
+            {
+                public const int MaxLength = 10;
+
+                private static readonly string[] Reserved = ["admin"];
+
+                public int Length => Value.Length;
+
+                public bool IsReserved => Reserved.Contains(Value);
+            }
+
+            public abstract record Described
+            {
+                public string Kind => "described";
+            }
+
+            public sealed partial record WithStatelessBase : Described, IValue<string>;
 
             // The seams stay allowed.
             public readonly partial record struct WithEverySeam : IValidatedValue<WithEverySeam, string, Fault>

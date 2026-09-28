@@ -37,6 +37,11 @@ public enum ResultState
 /// it, instead of reporting a <c>default(T)</c> or a <c>default(TError)</c> that was never produced.
 /// </para>
 /// <para>
+/// Unlike <see cref="Result{TError}"/>, it does not convert to <see langword="bool"/>: in an
+/// <c>if</c>, a <c>Result&lt;bool, TError&gt;</c> holding <see langword="false"/> would read as true.
+/// Match it, or compare its <see cref="State"/>.
+/// </para>
+/// <para>
 /// <see cref="object.ToString"/> never prints the value or the error, so a result can be logged
 /// without leaking what it holds. The debugger shows both.
 /// </para>
@@ -257,6 +262,20 @@ public readonly record struct Result<T, TError>
         return this;
     }
 
+    /// <summary>Runs an asynchronous side effect on the error, such as recording it.</summary>
+    /// <param name="action">Called with the error on error.</param>
+    /// <returns>This result, unchanged, once <paramref name="action"/> has completed.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public async Task<Result<T, TError>> TapErrorAsync(Func<TError, Task> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        if (!Succeeded)
+            await action(_error!).ConfigureAwait(false);
+
+        return this;
+    }
+
     /// <summary>Transforms the value on success with an asynchronous function, keeping the error otherwise.</summary>
     /// <param name="selector">Called with the value on success.</param>
     /// <typeparam name="TResult">The type of the transformed value.</typeparam>
@@ -318,12 +337,6 @@ public readonly record struct Result<T, TError>
         if (Succeeded)
             yield return _value!;
     }
-
-    /// <summary><see langword="true"/> for a success, <see langword="false"/> for an error.</summary>
-    /// <param name="result">The result.</param>
-    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static implicit operator bool(Result<T, TError> result) => result.Succeeded;
 
     /// <summary>Converts the <c>Result.Error(error)</c> marker, so a method can <c>return Result.Error(error);</c>.</summary>
     /// <param name="error">The marker.</param>

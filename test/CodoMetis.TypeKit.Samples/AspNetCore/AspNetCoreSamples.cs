@@ -3,6 +3,10 @@ using System.Reflection;
 using CodoMetis.TypeKit.CompilerServices;   // GeneratedValueObjectAttribute, on every value object
 
 // end sample
+// sample: CodoMetis.TypeKit.AspNetCore/every-document
+using Microsoft.AspNetCore.OpenApi;   // OpenApiOptions
+
+// end sample
 using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -12,7 +16,6 @@ using CodoMetis.TypeKit.ValueObjects;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -68,6 +71,16 @@ public sealed record OrderDto(OrderId Id, List<OrderId> Related, Dictionary<stri
 internal partial class AppJson : JsonSerializerContext;
 
 // end sample
+public static class EveryDocument
+{
+    public static void Use(WebApplicationBuilder builder)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/every-document
+        builder.Services.ConfigureAll<OpenApiOptions>(options => options.AddTypeKit());
+        // end sample
+    }
+}
+
 public static class SourceGeneratedJson
 {
     public static void Use(WebApplicationBuilder builder)
@@ -147,6 +160,38 @@ public sealed class RequiredPropertyTests
 public sealed partial class AspNetCoreTests
 {
     private const string Readme = "src/CodoMetis.TypeKit.AspNetCore/README.md";
+
+    /// <summary>
+    /// What the README says around the sample: <c>AddTypeKit()</c> configures one document, a document without
+    /// it describes a value object as <c>{}</c>, <c>ConfigureAll</c> reaches every document, and a document
+    /// that already had it is unchanged.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ConfigureAll_describes_value_objects_in_every_document(bool configureAll)
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        builder.Services.AddOpenApi("public");
+        builder.Services.AddOpenApi("internal", options => options.AddTypeKit());
+        if (configureAll) EveryDocument.Use(builder);
+
+        await using var app = builder.Build();
+        app.MapOpenApi();
+        Endpoints.MapOrder(app, new NoOrders());
+        await app.StartAsync(TestContext.Current.CancellationToken);
+
+        var uuid = new JsonObject { ["type"] = "string", ["format"] = "uuid" };
+        foreach (var (name, expected) in new[] { ("public", configureAll ? uuid : new JsonObject()), ("internal", uuid) })
+        {
+            var json = await app.GetTestClient().GetStringAsync($"/openapi/{name}.json", TestContext.Current.CancellationToken);
+            var orderId = JsonNode.Parse(json)!.Component("OrderId");
+
+            JsonNode.DeepEquals(orderId, expected).ShouldBeTrue($"'{name}' describes OrderId as {orderId.ToJsonString()}");
+        }
+    }
 
     /// <summary>
     /// The README's JSON block, read from the README, against the document the sample's host publishes: every

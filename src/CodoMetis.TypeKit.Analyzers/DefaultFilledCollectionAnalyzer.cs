@@ -31,7 +31,8 @@ public sealed class DefaultFilledCollectionAnalyzer : DiagnosticAnalyzer
         category: "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "A default value object, Option or Result is not a valid instance, and CMTK0001 only sees 'default' written out. An array or span created with a length holds nothing else until every element is assigned."
+        description: "A default value object, Option or Result is not a valid instance, and CMTK0001 only sees 'default' written out. An array or span created with a length holds nothing else until every element is assigned.",
+        helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.DefaultFilledCollection)
     );
 
     private static readonly ImmutableHashSet<string> AllocatingMethods = ["AllocateUninitializedArray", "AllocateArray"];
