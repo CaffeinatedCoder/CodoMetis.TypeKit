@@ -23,4 +23,11 @@ internal static class DiagnosticIds
     public const string MixedValueComparison = "CMTK0008";
 
     public const string DefaultProducingCall = "CMTK0009";
+
+    /// <summary>
+    /// The rule's section of the analyzer README on GitHub, which an IDE opens from the diagnostic.
+    /// The README's <c>## CMTK000N</c> headings give the anchors (AnalyzerHelpLinkTests).
+    /// </summary>
+    public static string HelpLink(string id) =>
+        $"https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#{id.ToLowerInvariant()}";
 }

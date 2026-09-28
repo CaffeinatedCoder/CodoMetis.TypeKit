@@ -50,7 +50,8 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         category: "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "A Result carries an error and an Option an absence; dropping either as a statement, or converting its Task to a plain Task, means nobody decides what happens then. Assign it to '_' to make an intended drop explicit."
+        description: "A Result carries an error and an Option an absence; dropping either as a statement, or converting its Task to a plain Task, means nobody decides what happens then. Assign it to '_' to make an intended drop explicit.",
+        helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.IgnoredOutcome)
     );
 
     private const string TryFrom = "TryFrom";

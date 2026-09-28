@@ -43,7 +43,8 @@ public sealed class KnownGoodFromCallerAnalyzer : DiagnosticAnalyzer
         category: "Usage",
         DiagnosticSeverity.Info,
         isEnabledByDefault: true,
-        description: "FromKnownGood throws on a value that breaks the rules, which is right for constants and wrong for input: a request that fails validation becomes an exception. Create returns the fault and TryFrom an Option."
+        description: "FromKnownGood throws on a value that breaks the rules, which is right for constants and wrong for input: a request that fails validation becomes an exception. Create returns the fault and TryFrom an Option.",
+        helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.KnownGoodFromCaller)
     );
 
     /// <inheritdoc/>

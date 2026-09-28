@@ -33,7 +33,8 @@ public sealed class MaterializeOutsidePersistenceAnalyzer : DiagnosticAnalyzer
         category: "Security",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "IValueObjectMaterializer.Materialize and ValueObjectConverter.Materialize skip Create, so that a rule added later cannot make stored rows unreadable. Called on anything else, they let input past the value object's rules. EF Core's generated compiled model is generated code and is not reported."
+        description: "IValueObjectMaterializer.Materialize and ValueObjectConverter.Materialize skip Create, so that a rule added later cannot make stored rows unreadable. Called on anything else, they let input past the value object's rules. EF Core's generated compiled model is generated code and is not reported.",
+        helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.MaterializeOutsidePersistence)
     );
 
     /// <inheritdoc/>

@@ -47,7 +47,8 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
         category: "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "FirstOrDefault, GetValueOrDefault, Option.OrDefault and their kind return default(T) when there is nothing to return. For a value object, Option, Result or [RequireCustomInitialization] struct that is an instance no factory produced, which CMTK0001 cannot see because 'default' is never written."
+        description: "FirstOrDefault, GetValueOrDefault, Option.OrDefault and their kind return default(T) when there is nothing to return. For a value object, Option, Result or [RequireCustomInitialization] struct that is an instance no factory produced, which CMTK0001 cannot see because 'default' is never written.",
+        helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.DefaultProducingCall)
     );
 
     private const string TryFrom = "TryFrom";

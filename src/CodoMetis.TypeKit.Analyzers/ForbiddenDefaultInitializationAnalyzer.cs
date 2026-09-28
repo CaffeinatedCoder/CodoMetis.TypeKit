@@ -43,7 +43,8 @@ public sealed class ForbiddenDefaultInitializationAnalyzer : DiagnosticAnalyzer
         category: "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "This type must be created through one of its factories. Its default value, which a parameterless constructor also produces, is not a valid instance."
+        description: "This type must be created through one of its factories. Its default value, which a parameterless constructor also produces, is not a valid instance.",
+        helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.ForbiddenDefaultInitialization)
     );
 
     /// <inheritdoc/>

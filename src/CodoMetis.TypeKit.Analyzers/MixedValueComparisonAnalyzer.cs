@@ -46,7 +46,8 @@ public sealed class MixedValueComparisonAnalyzer : DiagnosticAnalyzer
         category: "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Two value objects of different types cannot be compared with ==, which is the point of them. Comparing what they wrap compiles, and brings back the bug they prevent, such as an order id compared with a customer id. Equals(object) between them compiles too, and is always false."
+        description: "Two value objects of different types cannot be compared with ==, which is the point of them. Comparing what they wrap compiles, and brings back the bug they prevent, such as an order id compared with a customer id. Equals(object) between them compiles too, and is always false.",
+        helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.MixedValueComparison)
     );
 
     /// <inheritdoc/>
