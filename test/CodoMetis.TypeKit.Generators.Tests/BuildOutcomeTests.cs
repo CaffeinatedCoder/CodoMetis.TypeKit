@@ -195,8 +195,21 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK0006", "'Unset' starts as a default 'Fine'")]
     [InlineData("CMTK0007", "'Target.FromKnownGood' is given 'input'")]
     [InlineData("CMTK0008", "the value of a 'Fine' with the value of a 'OtherFine'")]
+    [InlineData("CMTK0001", "The value object 'Sibling' must be created with 'Sibling.From'")]
+    [InlineData("CMTK0003", "The Result that 'Revalidate' returns")]
+    [InlineData("CMTK0007", "'Target.FromKnownGood' is given 'named'")]
+    [InlineData("CMTK0008", "This compares a 'Sibling' with a 'OtherSibling'")]
     public void A_rule_sees_the_value_objects_of_its_own_project(string id, string fragment) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains(fragment), consumer.Output);
+
+    /// <summary>
+    /// A constructor that chains to another through <c>this(…)</c> whose argument calls a generated
+    /// member does not bind where Metalama runs analyzers; CMTK0006 resolves it to the one constructor it
+    /// can mean, which assigns the member, rather than report it unassigned.
+    /// </summary>
+    [Fact]
+    public void A_constructor_chained_through_a_generated_call_is_not_reported_unassigned() =>
+        consumer.Errors.ShouldNotContain(error => error.Id == "CMTK0006" && error.Message.Contains("'Chained()'"), consumer.Output);
 
     [Fact]
     public void CMTK0002_stays_silent_when_the_real_generators_assembly_is_referenced() =>
@@ -507,6 +520,34 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public sealed class Holder
             {
                 public Fine Unset { get; set; }
+            }
+
+            public readonly partial record struct Sibling : IValue<int>;
+
+            public readonly partial record struct OtherSibling : IValue<int>;
+
+            public static class SameProjectForms
+            {
+                public static Sibling ConditionalDefault(bool pick) => pick ? Sibling.From(1) : default;
+
+                public static void IgnoredRevalidate(Target target) { target.Revalidate(); }
+
+                public static Target KnownGoodNamed(int named) => Target.FromKnownGood(value: named);
+
+                public static bool MixedObjects(Sibling sibling, OtherSibling other) => sibling.Equals(other);
+
+                public static Target OrDefaultOfTryFrom(int input) => Target.TryFrom(input).OrDefault();
+
+                public static Sibling FirstSibling(List<Sibling> siblings) => siblings.FirstOrDefault();
+            }
+
+            public sealed class Chained
+            {
+                public Chained(Fine id) => Id = id;
+
+                public Chained() : this(Fine.From(1)) { }
+
+                public Fine Id { get; }
             }
             """;
 

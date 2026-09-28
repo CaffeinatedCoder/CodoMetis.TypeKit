@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -34,6 +35,18 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// another with <c>this(…)</c> assigns what that one assigns. An assignment on any path counts, so
 /// the rule errs towards silence.
 /// </para>
+/// <para>
+/// A <c>required</c> member is set by every object initializer, except behind a constructor marked
+/// <c>[SetsRequiredMembers]</c>, which promises to set it instead; such a constructor that does not
+/// is reported. The message names <c>required</c> only where it compiles: not on a get-only property
+/// or a <c>readonly</c> field (CS9034), nor on a member, or a setter, less visible than the class (CS9032).
+/// </para>
+/// <para>
+/// In a project that declares value objects, Metalama runs analyzers on the source before weaving,
+/// where <c>this(OrderId.New())</c> does not bind. The constructor it chains to is then the one
+/// candidate that takes that many arguments; if there is none or more than one, the chaining
+/// constructor counts as assigning everything.
+/// </para>
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class UnassignedNoDefaultMemberAnalyzer : DiagnosticAnalyzer
@@ -41,7 +54,7 @@ public sealed class UnassignedNoDefaultMemberAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticIds.UnassignedNoDefaultMember,
         title: "Member starts as a default instance",
-        messageFormat: "'{0}' starts as a default '{1}', which passed no factory: it has no initializer, is not 'required', and {2} does not assign it. Make it 'required', initialize it, or assign it in every constructor.",
+        messageFormat: "'{0}' starts as a default '{1}', which passed no factory: {2}. {3}.",
         category: "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
@@ -54,18 +67,20 @@ public sealed class UnassignedNoDefaultMemberAnalyzer : DiagnosticAnalyzer
     /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+        context.ConfigureGeneratedCodeAnalysis(GeneratedCode.AnalysisFlags);
         context.EnableConcurrentExecution();
 
         context.RegisterCompilationStartAction(start =>
         {
             if (TypeKitSymbols.Resolve(start.Compilation) is not { } symbols) return;
 
-            start.RegisterSymbolStartAction(type => AnalyzeType(type, symbols), SymbolKind.NamedType);
+            var setsRequiredMembers = start.Compilation.GetTypeByMetadataName("System.Diagnostics.CodeAnalysis.SetsRequiredMembersAttribute");
+
+            start.RegisterSymbolStartAction(type => AnalyzeType(type, symbols, setsRequiredMembers), SymbolKind.NamedType);
         });
     }
 
-    private static void AnalyzeType(SymbolStartAnalysisContext context, TypeKitSymbols symbols)
+    private static void AnalyzeType(SymbolStartAnalysisContext context, TypeKitSymbols symbols, INamedTypeSymbol? setsRequiredMembers)
     {
         var type = (INamedTypeSymbol)context.Symbol;
         if (type.TypeKind != TypeKind.Class || type.IsStatic) return;
@@ -100,22 +115,33 @@ public sealed class UnassignedNoDefaultMemberAnalyzer : DiagnosticAnalyzer
             {
                 if (initialized.ContainsKey(member)) continue;
 
+                // Every object initializer sets a required member, except behind [SetsRequiredMembers].
+                var required = member is IFieldSymbol { IsRequired: true } or IPropertySymbol { IsRequired: true };
+
                 var missing = type.InstanceConstructors.FirstOrDefault(constructor =>
-                    !IsExempt(constructor, type) && !Assigns(constructor, member, constructors, []));
+                    !IsExempt(constructor, type)
+                 && (!required || HasAttribute(constructor, setsRequiredMembers))
+                 && !Assigns(constructor, member, constructors, []));
 
                 if (missing is null) continue;
 
-                end.ReportDiagnostic(Diagnostic.Create(
+                var (reason, advice) = required
+                    ? ($"it is 'required', but {Describe(missing, type)} carries [SetsRequiredMembers] and does not assign it", "Assign it in that constructor, or remove [SetsRequiredMembers] from it")
+                    : ($"it has no initializer, is not 'required', and {Describe(missing, type)} does not assign it",
+                       CanBeRequired(member, type) ? "Make it 'required', initialize it, or assign it in every constructor" : "Initialize it, or assign it in every constructor");
+
+                end.Report(Diagnostic.Create(
                     Rule,
                     member.Locations[0],
                     member.Name,
                     memberType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
-                    Describe(missing, type)));
+                    reason,
+                    advice));
             }
         });
     }
 
-    /// <summary>Instance fields and auto-properties whose type forbids <c>default</c>, and that are not <c>required</c>.</summary>
+    /// <summary>Instance fields and auto-properties whose type forbids <c>default</c>.</summary>
     private static List<(ISymbol Member, ITypeSymbol Type)> Candidates(INamedTypeSymbol type, TypeKitSymbols symbols)
     {
         var members = type.GetMembers();
@@ -132,13 +158,13 @@ public sealed class UnassignedNoDefaultMemberAnalyzer : DiagnosticAnalyzer
         {
             switch (member)
             {
-                case IFieldSymbol { IsStatic: false, IsConst: false, IsImplicitlyDeclared: false, IsRequired: false } field
+                case IFieldSymbol { IsStatic: false, IsConst: false, IsImplicitlyDeclared: false } field
                     when symbols.IsNoDefaultStruct(field.Type):
                     candidates.Add((field, field.Type));
                     break;
 
                 // A positional record's property is set by its primary constructor's parameter.
-                case IPropertySymbol { IsStatic: false, IsIndexer: false, IsRequired: false } property
+                case IPropertySymbol { IsStatic: false, IsIndexer: false } property
                     when backed.Contains(property)
                       && !property.DeclaringSyntaxReferences.Any(reference => reference.GetSyntax() is ParameterSyntax)
                       && symbols.IsNoDefaultStruct(property.Type):
@@ -162,26 +188,92 @@ public sealed class UnassignedNoDefaultMemberAnalyzer : DiagnosticAnalyzer
     {
         if (!visited.Add(constructor) || !constructors.TryGetValue(constructor, out var assignments)) return false;
 
-        return assignments.Members.Contains(member)
+        return assignments.AssignsEverything
+            || assignments.Members.Contains(member)
             || assignments.ChainsTo is { } target && Assigns(target, member, constructors, visited);
     }
+
+    private static bool HasAttribute(IMethodSymbol constructor, INamedTypeSymbol? attribute) =>
+        attribute is not null && constructor.GetAttributes().Any(candidate => SymbolEqualityComparer.Default.Equals(candidate.AttributeClass, attribute));
+
+    /// <summary>
+    /// Whether <c>required</c> compiles on <paramref name="member"/>: a field that is not
+    /// <c>readonly</c>, or a property with a setter or <c>init</c> that is not an explicit interface
+    /// implementation, as visible as the class, setter included (CS9032, CS9034).
+    /// </summary>
+    private static bool CanBeRequired(ISymbol member, INamedTypeSymbol type)
+    {
+        var visibility = EffectiveAccessibility(type);
+
+        return member switch
+        {
+            IFieldSymbol field       => !field.IsReadOnly && AtLeastAsVisible(field.DeclaredAccessibility, visibility),
+            IPropertySymbol property => property is { SetMethod: { } setter, ExplicitInterfaceImplementations.IsEmpty: true }
+                                     && AtLeastAsVisible(property.DeclaredAccessibility, visibility)
+                                     && AtLeastAsVisible(setter.DeclaredAccessibility, visibility),
+            _ => false
+        };
+    }
+
+    /// <summary>The narrowest accessibility on the way out from <paramref name="type"/> through its containing types.</summary>
+    private static Accessibility EffectiveAccessibility(INamedTypeSymbol type)
+    {
+        var effective = type.DeclaredAccessibility;
+
+        for (var outer = type.ContainingType; outer is not null; outer = outer.ContainingType)
+        {
+            effective = (effective, outer.DeclaredAccessibility) switch
+            {
+                (Accessibility.Internal, Accessibility.Protected) or (Accessibility.Protected, Accessibility.Internal) => Accessibility.ProtectedAndInternal,
+                var (inner, around) => Rank(around) < Rank(inner) ? around : inner
+            };
+        }
+
+        return effective;
+    }
+
+    private static int Rank(Accessibility accessibility) =>
+        accessibility switch
+        {
+            Accessibility.Public                                 => 5,
+            Accessibility.ProtectedOrInternal                    => 4,
+            Accessibility.Protected or Accessibility.Internal    => 3,
+            Accessibility.ProtectedAndInternal                   => 2,
+            _                                                    => 1
+        };
+
+    /// <summary>
+    /// Whether a member of a class of <paramref name="container"/> visibility may be <c>required</c>
+    /// (measured against CS9032): a protected member of a nested class is protected in that class, not
+    /// in the one around it, so only a public member is as visible as a public or protected class.
+    /// </summary>
+    private static bool AtLeastAsVisible(Accessibility member, Accessibility container) =>
+        container is Accessibility.Public or Accessibility.Protected or Accessibility.ProtectedOrInternal
+            ? member is Accessibility.Public
+            : member is Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal;
 
     private static string Describe(IMethodSymbol constructor, INamedTypeSymbol type) =>
         constructor.IsImplicitlyDeclared
             ? "the implicit constructor"
             : $"the constructor '{type.Name}({string.Join(", ", constructor.Parameters.Select(p => p.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)))})'";
 
-    /// <summary>What one constructor body assigns on <c>this</c>, and the constructor it chains to with <c>this(…)</c>.</summary>
-    private sealed class Assignments(HashSet<ISymbol> members, IMethodSymbol? chainsTo)
+    /// <summary>
+    /// What one constructor body assigns on <c>this</c>, and the constructor it chains to with
+    /// <c>this(…)</c>; or that it assigns everything, when it chains to a constructor that cannot be told.
+    /// </summary>
+    private sealed class Assignments(HashSet<ISymbol> members, IMethodSymbol? chainsTo, bool assignsEverything)
     {
         public HashSet<ISymbol> Members { get; } = members;
 
         public IMethodSymbol? ChainsTo { get; } = chainsTo;
 
+        public bool AssignsEverything { get; } = assignsEverything;
+
         public static Assignments Of(ImmutableArray<IOperation> blocks, INamedTypeSymbol type)
         {
             var members = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
             IMethodSymbol? chainsTo = null;
+            var assignsEverything = false;
 
             foreach (var operation in blocks.SelectMany(block => block.DescendantsAndSelf()))
             {
@@ -199,11 +291,39 @@ public sealed class UnassignedNoDefaultMemberAnalyzer : DiagnosticAnalyzer
                         when SymbolEqualityComparer.Default.Equals(chained.TargetMethod.ContainingType, type):
                         chainsTo = chained.TargetMethod;
                         break;
+
+                    // this(OrderId.New()) before weaving: the generated New does not bind, and neither
+                    // does the chained call.
+                    case IInvalidOperation { Syntax: ConstructorInitializerSyntax initializer } invalid when initializer.IsKind(SyntaxKind.ThisConstructorInitializer):
+                        chainsTo          = UnboundTarget(initializer, invalid.SemanticModel, type);
+                        assignsEverything = chainsTo is null;
+                        break;
                 }
             }
 
-            return new Assignments(members, chainsTo);
+            return new Assignments(members, chainsTo, assignsEverything);
         }
+
+        /// <summary>The one constructor of <paramref name="type"/> that an unbound <c>this(…)</c> can mean, judged by its arguments' count.</summary>
+        private static IMethodSymbol? UnboundTarget(ConstructorInitializerSyntax initializer, SemanticModel? model, INamedTypeSymbol type)
+        {
+            if (model is null) return null;
+
+            var count = initializer.ArgumentList.Arguments.Count;
+            var info  = model.GetSymbolInfo(initializer);
+
+            var candidates = (info.Symbol is { } bound ? [bound] : info.CandidateSymbols)
+                             .OfType<IMethodSymbol>()
+                             .Where(candidate => SymbolEqualityComparer.Default.Equals(candidate.ContainingType, type) && Accepts(candidate, count))
+                             .Take(2)
+                             .ToList();
+
+            return candidates.Count == 1 ? candidates[0] : null;
+        }
+
+        private static bool Accepts(IMethodSymbol constructor, int count) =>
+            constructor.Parameters.Count(parameter => !parameter.IsOptional && !parameter.IsParams) <= count
+         && (count <= constructor.Parameters.Length || constructor.Parameters.LastOrDefault()?.IsParams == true);
 
         private static void Collect(IOperation target, HashSet<ISymbol> members)
         {

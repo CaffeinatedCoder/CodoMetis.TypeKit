@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
@@ -33,7 +34,7 @@ public sealed class ValueObjectWithoutGeneratorsAnalyzer : DiagnosticAnalyzer
     /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+        context.ConfigureGeneratedCodeAnalysis(GeneratedCode.AnalysisFlags);
         context.EnableConcurrentExecution();
 
         context.RegisterCompilationStartAction(start =>
@@ -53,9 +54,14 @@ public sealed class ValueObjectWithoutGeneratorsAnalyzer : DiagnosticAnalyzer
 
         if (symbols.FindMarker(type, out _) is not { } marker) return;
 
-        context.ReportDiagnostic(Diagnostic.Create(
+        // A partial declared in several files is reported where it can be: in the user's file, or in
+        // the markup a Razor component's generated part maps to.
+        var location = type.Locations.FirstOrDefault(candidate => GeneratedCode.IsReportable(candidate, context.IsGeneratedCode, context.Compilation, context.CancellationToken))
+                    ?? type.Locations[0];
+
+        context.Report(Diagnostic.Create(
             Rule,
-            type.Locations[0],
+            location,
             type.Name,
             marker.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
     }

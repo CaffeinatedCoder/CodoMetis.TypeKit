@@ -14,8 +14,8 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// The validation-free path exists for values the application stored itself, and the EF Core
 /// satellite is its one caller. That call is compiled into the satellite, where a consumer's
 /// analyzer never looks, and into the compiled model and precompiled queries EF generates in the
-/// application, which are generated code and skipped. Anything else that calls it hands input past
-/// <c>Create</c>.
+/// application, which are generated code and not reported (<see cref="GeneratedCode"/>). Anything
+/// else that calls it hands input past <c>Create</c>.
 /// </para>
 /// <para>
 /// A call and a method-group reference both count, inside an expression tree too: a hand-written
@@ -42,8 +42,9 @@ public sealed class MaterializeOutsidePersistenceAnalyzer : DiagnosticAnalyzer
     /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
-        // Generated code is skipped on purpose: it is where EF's compiled model calls the converter.
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+        // Generated code is analysed for Razor, and reported only where it maps to markup: EF's
+        // compiled model, which calls the converter, stays unreported.
+        context.ConfigureGeneratedCodeAnalysis(GeneratedCode.AnalysisFlags);
         context.EnableConcurrentExecution();
 
         context.RegisterCompilationStartAction(start =>
@@ -67,7 +68,7 @@ public sealed class MaterializeOutsidePersistenceAnalyzer : DiagnosticAnalyzer
         // A value object declared by hand may call its own Materialize, as its factories construct it.
         if (valueObject is INamedTypeSymbol owner && IsInside(context.ContainingSymbol, owner)) return;
 
-        context.ReportDiagnostic(Diagnostic.Create(
+        context.Report(Diagnostic.Create(
             Rule,
             context.Operation.Syntax.GetLocation(),
             valueObject?.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat) ?? method.ContainingType.Name));

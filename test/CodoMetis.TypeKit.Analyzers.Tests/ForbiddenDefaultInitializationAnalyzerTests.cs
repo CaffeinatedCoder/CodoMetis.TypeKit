@@ -1,3 +1,4 @@
+using System.Linq;
 using CodoMetis.TypeKit.ValueObjects;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Testing;
@@ -74,6 +75,8 @@ public sealed class ForbiddenDefaultInitializationAnalyzerTests
             public struct DoublyMarked { public int N; }
 
             public sealed class ValueClass : IValue<int> { }
+
+            public readonly record struct RecordId : IValue<int> { }
         }
 
         """;
@@ -89,6 +92,15 @@ public sealed class ForbiddenDefaultInitializationAnalyzerTests
 
     private static Task ShouldStaySilentOn(string consumer) =>
         new AnalyzerTest<ForbiddenDefaultInitializationAnalyzer>(Subjects + consumer).RunAsync(TestContext.Current.CancellationToken);
+
+    private static Task ShouldFlagEach(string consumer, params string[] messages)
+    {
+        var test = new AnalyzerTest<ForbiddenDefaultInitializationAnalyzer>(Subjects + consumer);
+        test.ExpectedDiagnostics.AddRange(messages.Select((message, index) => new DiagnosticResult("CMTK0001", DiagnosticSeverity.Error).WithLocation(index).WithMessage(message)));
+        return test.RunAsync(TestContext.Current.CancellationToken);
+    }
+
+    private const string TypeParameterMessage = "The type parameter 'T' is constrained to a value object, which must be created through its factories, not as a default instance";
 
     [Fact]
     public void The_descriptor_is_the_published_contract()
@@ -222,7 +234,7 @@ public sealed class ForbiddenDefaultInitializationAnalyzerTests
                 public static T A<T>() where T : struct, CodoMetis.TypeKit.ValueObjects.IValue<int> { return {|#0:default(T)|}; }
             }
             """,
-            "The value object 'T' must be created with 'T.From', not as a default instance");
+            TypeParameterMessage);
 
     [Fact]
     public Task New_T_of_a_struct_constrained_type_parameter_that_is_a_value_object_reports() =>
@@ -233,7 +245,7 @@ public sealed class ForbiddenDefaultInitializationAnalyzerTests
                 public static T A<T>() where T : struct, CodoMetis.TypeKit.ValueObjects.IValue<int> { return {|#0:new T()|}; }
             }
             """,
-            "The value object 'T' must be created with 'T.From', not as a default instance");
+            TypeParameterMessage);
 
     /// <summary>
     /// A marker beside <c>new()</c> leaves only a struct value object: a generated class has no
@@ -249,7 +261,7 @@ public sealed class ForbiddenDefaultInitializationAnalyzerTests
                 public static T A<T>() where T : CodoMetis.TypeKit.ValueObjects.IValue<int>, new() { return {|#0:new T()|}; }
             }
             """,
-            "The value object 'T' must be created with 'T.From', not as a default instance");
+            TypeParameterMessage);
 
     [Fact]
     public Task A_default_of_a_new_constrained_type_parameter_that_is_a_value_object_reports() =>
@@ -260,7 +272,7 @@ public sealed class ForbiddenDefaultInitializationAnalyzerTests
                 public static T A<T>() where T : CodoMetis.TypeKit.ValueObjects.IValue<int>, new() { return {|#0:default(T)|}; }
             }
             """,
-            "The value object 'T' must be created with 'T.From', not as a default instance");
+            TypeParameterMessage);
 
     /// <summary>
     /// Without <c>struct</c> or <c>new()</c>, or with <c>class</c>, the type parameter may be a record
@@ -277,7 +289,10 @@ public sealed class ForbiddenDefaultInitializationAnalyzerTests
             }
             """);
 
-    /// <summary>The package's own types, through the attribute they carry in the real assembly.</summary>
+    /// <summary>
+    /// The package's own types, through the attribute they carry in the real assembly, whose message
+    /// names the factories to use instead.
+    /// </summary>
     [Fact]
     public Task A_default_option_reports() =>
         ShouldFlag(
@@ -287,7 +302,7 @@ public sealed class ForbiddenDefaultInitializationAnalyzerTests
                 public static CodoMetis.TypeKit.Option<int> A() { return {|#0:default(CodoMetis.TypeKit.Option<int>)|}; }
             }
             """,
-            "The type 'Option' forbids default initialization");
+            "Invalid initialization of 'Option': Use Option.Some(value) or Option.None().");
 
     [Fact]
     public Task A_default_result_reports() =>
@@ -298,7 +313,98 @@ public sealed class ForbiddenDefaultInitializationAnalyzerTests
                 public static CodoMetis.TypeKit.Result<int, string> A() { CodoMetis.TypeKit.Result<int, string> r = {|#0:default|}; return r; }
             }
             """,
-            "The type 'Result' forbids default initialization");
+            "Invalid initialization of 'Result': Use Result.Success(value) or Result.Error(error).");
+
+    [Fact]
+    public Task The_other_package_types_name_their_factories() =>
+        ShouldFlagEach(
+            """
+            public static class Consumer
+            {
+                public static void A()
+                {
+                    CodoMetis.TypeKit.Result<string> command = {|#0:default|};
+                    var success = {|#1:default(CodoMetis.TypeKit.Success<int>)|};
+                    var error = {|#2:new CodoMetis.TypeKit.Error<string>()|};
+                }
+            }
+            """,
+            "Invalid initialization of 'Result': Use Result.Success() or Result.Error(error).",
+            "Invalid initialization of 'Success': Use Result.Success(value).",
+            "Invalid initialization of 'Error': Use Result.Error(error).");
+
+    /// <summary>
+    /// A default compared with <c>==</c> or <c>!=</c>, or passed to <c>Equals</c>, is a guard against
+    /// the defaults the rule cannot see, not an instance anyone keeps.
+    /// </summary>
+    [Fact]
+    public Task A_default_that_is_only_compared_is_a_guard_and_stays_silent() =>
+        ShouldStaySilentOn(
+            """
+            public static class Consumer
+            {
+                public static bool A(Subjects.RecordId id, CodoMetis.TypeKit.Option<int> o, Subjects.RecordId? maybe)
+                {
+                    return id == default
+                        || o != default
+                        || (default) == id
+                        || id.Equals(default(Subjects.RecordId))
+                        || id.Equals(new Subjects.RecordId())
+                        || maybe?.Equals(default) == true
+                        || System.Collections.Generic.EqualityComparer<Subjects.RecordId>.Default.Equals(id, default)
+                        || Equals(id, (object)default(Subjects.RecordId));
+                }
+            }
+            """);
+
+    /// <summary>A comparison exempts the compared default only, not one kept beside it.</summary>
+    [Fact]
+    public Task A_default_kept_beside_a_comparison_still_reports() =>
+        ShouldFlag(
+            """
+            public static class Consumer
+            {
+                public static Subjects.RecordId A(Subjects.RecordId id) { return id == default ? {|#0:default|} : id; }
+            }
+            """,
+            "The value object 'RecordId' must be created with 'RecordId.From', not as a default instance");
+
+    /// <summary>
+    /// Where a sibling branch does not bind, as a generated factory of the same project does not where
+    /// Metalama runs analyzers (CS0117 here), the literal has no type of its own. The target type is
+    /// taken from the whole expression or from what it initializes, is assigned to or returns.
+    /// </summary>
+    [Fact]
+    public Task A_default_beside_a_call_that_does_not_bind_reports() =>
+        ShouldFlagEach(
+            """
+            public static class Consumer
+            {
+                public static Subjects.Plain Conditional(bool b) => b ? Subjects.Plain.{|CS0117:From|}(1) : {|#0:default|};
+
+                public static Subjects.Plain Switch(int x) => x switch { 0 => {|#1:default|}, _ => Subjects.Plain.{|CS0117:From|}(x) };
+
+                public static System.Collections.Generic.List<Subjects.Plain> Collection() => [Subjects.Plain.{|CS0117:From|}(1), {|#2:{|CS8716:default|}|}];
+
+                public static void Declared(bool b)
+                {
+                    Subjects.Plain declared = b ? Subjects.Plain.{|CS0117:From|}(1) : ({|#3:default|});
+                    Subjects.Plain assigned;
+                    assigned = b ? {|#4:default|} : Subjects.Plain.{|CS0117:From|}(2);
+                }
+
+                public static System.Func<CodoMetis.TypeKit.Option<Subjects.Validated>> Lambda(bool b) => () => b ? Subjects.Validated.{|CS0117:TryFrom|}(1) : {|#5:default|};
+
+                public static Subjects.Plain Nested(bool b, int x) => x switch { 0 => b ? {|#6:default|}! : Subjects.Plain.{|CS0117:From|}(x), _ => Subjects.Plain.{|CS0117:From|}(x) };
+            }
+            """,
+            "The value object 'Plain' must be created with 'Plain.From', not as a default instance",
+            "The value object 'Plain' must be created with 'Plain.From', not as a default instance",
+            "The value object 'Plain' must be created with 'Plain.From', not as a default instance",
+            "The value object 'Plain' must be created with 'Plain.From', not as a default instance",
+            "The value object 'Plain' must be created with 'Plain.From', not as a default instance",
+            "Invalid initialization of 'Option': Use Option.Some(value) or Option.None().",
+            "The value object 'Plain' must be created with 'Plain.From', not as a default instance");
 
     [Fact]
     public Task Parameterised_construction_is_the_sanctioned_path() =>

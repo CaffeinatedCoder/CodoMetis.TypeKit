@@ -14,6 +14,7 @@ public sealed class MixedValueComparisonAnalyzerTests
     private const string Subjects =
         """
         using System;
+        using System.Collections.Generic;
         using System.Linq.Expressions;
         using CodoMetis.TypeKit.ValueObjects;
 
@@ -23,6 +24,7 @@ public sealed class MixedValueComparisonAnalyzerTests
         public sealed class Title : IValue<string> { public string Value => ""; }
         public readonly struct Unwoven : IValue<Guid> { }
         public readonly struct AlsoUnwoven : IValue<Guid> { }
+        public interface IIdentifier : IValue<Guid> { }
 
         public static class Companions
         {
@@ -39,8 +41,13 @@ public sealed class MixedValueComparisonAnalyzerTests
         return test;
     }
 
+    /// <summary>The values of two value objects compared.</summary>
     private static DiagnosticResult Cmtk0008(int location, string left, string right) =>
-        new DiagnosticResult("CMTK0008", DiagnosticSeverity.Warning).WithLocation(location).WithArguments(left, right);
+        new DiagnosticResult("CMTK0008", DiagnosticSeverity.Warning).WithLocation(location).WithArguments($"the value of a '{left}'", $"the value of a '{right}'");
+
+    /// <summary>Two value objects themselves compared through <c>Equals(object)</c>.</summary>
+    private static DiagnosticResult Cmtk0008Objects(int location, string left, string right) =>
+        new DiagnosticResult("CMTK0008", DiagnosticSeverity.Warning).WithLocation(location).WithArguments($"a '{left}'", $"a '{right}'");
 
     [Fact]
     public void The_descriptor_is_the_published_contract()
@@ -92,6 +99,91 @@ public sealed class MixedValueComparisonAnalyzerTests
             Cmtk0008(6, "Label", "Title"),
             Cmtk0008(7, "OrderId", "CustomerId"),
             Cmtk0008(8, "Unwoven", "AlsoUnwoven"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// The static and two-argument comparisons, into which analyzers such as Meziantou's MA0006 rewrite
+    /// <c>==</c>: each silenced the rule.
+    /// </summary>
+    [Fact]
+    public Task Static_and_two_argument_comparisons_report() =>
+        Test(
+            """
+            public static class C
+            {
+                public static void Run(OrderId order, CustomerId customer, Label label, Title title)
+                {
+                    var ordinal = {|#0:string.Equals(label.Value, title.Value, StringComparison.Ordinal)|};
+                    var plain = {|#1:string.Equals(label.Value, title.Value)|};
+                    var ignoringCase = {|#2:label.Value.Equals(title.Value, StringComparison.OrdinalIgnoreCase)|};
+                    var objects = {|#3:object.Equals(order.Value, customer.Value)|};
+                    var inherited = {|#4:Equals(order.Value, customer.Value)|};
+                    var comparer = {|#5:EqualityComparer<Guid>.Default.Equals(order.Value, customer.Value)|};
+                    var compared = {|#6:string.Compare(label.Value, title.Value)|} < 0;
+                    var ordered = {|#7:string.CompareOrdinal(label.Value, title.Value)|} < 0;
+                    var cultured = {|#8:string.Compare(label.Value, title.Value, StringComparison.CurrentCulture)|} < 0;
+                }
+            }
+            """,
+            Cmtk0008(0, "Label", "Title"),
+            Cmtk0008(1, "Label", "Title"),
+            Cmtk0008(2, "Label", "Title"),
+            Cmtk0008(3, "OrderId", "CustomerId"),
+            Cmtk0008(4, "OrderId", "CustomerId"),
+            Cmtk0008(5, "OrderId", "CustomerId"),
+            Cmtk0008(6, "Label", "Title"),
+            Cmtk0008(7, "Label", "Title"),
+            Cmtk0008(8, "Label", "Title"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// Two value objects of different types, not unwrapped, compile through <c>Equals(object)</c> and
+    /// are never equal: the same bug.
+    /// </summary>
+    [Fact]
+    public Task Two_different_value_objects_compared_through_Equals_report() =>
+        Test(
+            """
+            public static class C
+            {
+                public static void Run(OrderId order, CustomerId customer, OrderId? maybe, Label label, Title title)
+                {
+                    var instance = {|#0:order.Equals(customer)|};
+                    var inherited = {|#1:Equals(order, customer)|};
+                    var objects = {|#2:object.Equals(order, customer)|};
+                    var nullable = {|#3:maybe.Equals(customer)|};
+                    var classes = {|#4:label.Equals(title)|};
+                }
+            }
+            """,
+            Cmtk0008Objects(0, "OrderId", "CustomerId"),
+            Cmtk0008Objects(1, "OrderId", "CustomerId"),
+            Cmtk0008Objects(2, "OrderId", "CustomerId"),
+            Cmtk0008Objects(3, "OrderId", "CustomerId"),
+            Cmtk0008Objects(4, "Label", "Title"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// One type, a raw value on one side, and a deliberate cast stay silent in the new forms too, and
+    /// so does an interface, which may hold a value object of either type.
+    /// </summary>
+    [Fact]
+    public Task Equals_of_one_type_a_raw_value_or_a_cast_stays_silent() =>
+        Test(
+            """
+            public static class C
+            {
+                public static void Run(OrderId order, OrderId other, CustomerId customer, Label label, Guid raw, IIdentifier identifier, object unknown)
+                {
+                    var sameType = order.Equals(other) || Equals(order, other) || string.Equals(label.Value, label.Value, StringComparison.Ordinal);
+                    var rawValue = order.Equals(raw) || object.Equals(order.Value, raw) || string.Compare(label.Value, "x") == 0;
+                    var cast = order.Equals((object)customer) || Equals((object)order, customer) || object.Equals((Guid)(object)order.Value, customer.Value);
+                    var anInterface = identifier.Equals(order) || Equals(identifier, customer);
+                    var castToAValueObject = order.Equals((CustomerId)unknown) || Equals(((CustomerId)unknown), order);
+                    var notAComparison = string.Concat(label.Value, label.Value);
+                }
+            }
+            """)
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>One type, a raw value, a deliberate cast, a <c>Nullable</c>'s own <c>Value</c>, and a <c>Value</c> that is not a value object's.</summary>

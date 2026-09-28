@@ -28,7 +28,7 @@ namespace CodoMetis.TypeKit;
 /// </para>
 /// </remarks>
 /// <typeparam name="TError">The type of the error.</typeparam>
-[RequireCustomInitialization]
+[RequireCustomInitialization("Use Result.Success() or Result.Error(error).")]
 [JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
 public readonly record struct Result<TError> where TError : notnull

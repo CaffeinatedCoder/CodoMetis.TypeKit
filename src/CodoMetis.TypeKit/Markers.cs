@@ -26,7 +26,7 @@ public readonly record struct Success;
 /// <see cref="Result{T,TError}"/>, and has no public <c>.Value</c> of its own.
 /// </summary>
 /// <typeparam name="T">The type of the value.</typeparam>
-[RequireCustomInitialization]
+[RequireCustomInitialization("Use Result.Success(value).")]
 [JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
 public readonly record struct Success<T> where T : notnull
 {
@@ -44,7 +44,7 @@ public readonly record struct Success<T> where T : notnull
 /// public <c>.Value</c> of its own.
 /// </summary>
 /// <typeparam name="T">The type of the error.</typeparam>
-[RequireCustomInitialization]
+[RequireCustomInitialization("Use Result.Error(error).")]
 [JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
 public readonly record struct Error<T> where T : notnull
 {

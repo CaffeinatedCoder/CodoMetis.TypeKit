@@ -21,4 +21,5 @@ internal static class DiagnosticIds
     public const string KnownGoodFromCaller = "CMTK0007";
 
     public const string MixedValueComparison = "CMTK0008";
+
 }

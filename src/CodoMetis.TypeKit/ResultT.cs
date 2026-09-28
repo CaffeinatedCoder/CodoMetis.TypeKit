@@ -43,7 +43,7 @@ public enum ResultState
 /// </remarks>
 /// <typeparam name="T">The type of the value.</typeparam>
 /// <typeparam name="TError">The type of the error.</typeparam>
-[RequireCustomInitialization]
+[RequireCustomInitialization("Use Result.Success(value) or Result.Error(error).")]
 [JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
 public readonly record struct Result<T, TError>
