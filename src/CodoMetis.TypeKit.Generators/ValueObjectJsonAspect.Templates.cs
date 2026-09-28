@@ -202,23 +202,25 @@ internal sealed partial class ValueObjectJsonAspect
     /// </summary>
     private static string BuiltInConverter(JsonImplementationArguments tag) => tag.BuiltInConverter;
 
-    /// <summary>
-    /// C# for the wrapped type's contract under the caller's options (<c>GeneratedJson.TypeInfo</c>):
-    /// the options' own where their resolver has one, otherwise made as the serializer makes it. Never
-    /// <c>JsonSerializer.Serialize(writer, value, options)</c>, which needs reflection and, with a
-    /// source-generated context that never saw the wrapped type, refused it.
-    /// </summary>
-    private static string WrappedTypeInfo(JsonImplementationArguments tag) =>
-        $"{GeneratedJson}.TypeInfo<{ValueObjectTypes.SourceName(tag.ValueType)}>(options, {tag.BuiltInConverter})";
-
     private static string WrappedKeyConverter(JsonImplementationArguments tag) =>
         $"{GeneratedJson}.KeyConverter<{ValueObjectTypes.SourceName(tag.ValueType)}>(options, {tag.BuiltInConverter})";
 
+    /// <summary>
+    /// C# that writes the wrapped value through <c>GeneratedJson.Write</c>, under the wrapped type's
+    /// contract for the caller's options: the options' own where their resolver has one, otherwise made
+    /// as the serializer makes it. It calls the contract's converter directly where that is what the
+    /// serializer would write, and the serializer where the options' number handling applies. Never
+    /// <c>JsonSerializer.Serialize(writer, value, options)</c>, which needs reflection and, with a
+    /// source-generated context that never saw the wrapped type, refused it.
+    /// </summary>
     private static string WrappedWrite(JsonImplementationArguments tag) =>
-        $"global::System.Text.Json.JsonSerializer.Serialize(writer, value!.Value, {WrappedTypeInfo(tag)})";
+        $"{GeneratedJson}.Write<{ValueObjectTypes.SourceName(tag.ValueType)}>(writer, value!.Value, options, {tag.BuiltInConverter})";
 
     private static IExpression WrappedReadExpression(JsonImplementationArguments tag) =>
-        ExpressionFactory.Parse($"global::System.Text.Json.JsonSerializer.Deserialize(ref reader, {WrappedTypeInfo(tag)})!", tag.ValueType, false);
+        ExpressionFactory.Parse(
+            $"{GeneratedJson}.Read<{ValueObjectTypes.SourceName(tag.ValueType)}>(ref reader, options, {tag.BuiltInConverter})!",
+            tag.ValueType,
+            false);
 
     /// <summary>C# that reads the wrapped value as a dictionary key or as a value, through <see cref="BuiltInConverter"/>.</summary>
     private static string BuiltInRead(JsonImplementationArguments tag, bool asPropertyName) =>

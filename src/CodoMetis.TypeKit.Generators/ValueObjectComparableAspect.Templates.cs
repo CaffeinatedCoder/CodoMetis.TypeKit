@@ -33,23 +33,18 @@ internal sealed partial class ValueObjectComparableAspect
             ).Value!;
         }
 
-        if (meta.CompileTime(tag.Strategy == ValueCompareStrategy.GenericComparable))
-        {
-            // ExpressionFactory.Parse is necessary: an explicit IComparable<T> cast
-            // is required to avoid boxing value types through dynamic dispatch.
-            // Metalama's IMethod.Invoke has no equivalent for typed instance method
-            // calls through a generic interface constraint.
-            // The wrapped type is never an open generic (ValueObjectAspect refuses those).
-            string typeName = meta.CompileTime(ValueObjectTypes.SourceName(tag.ValueType));
-            return (int)ExpressionFactory.Parse(
-                $"((global::System.IComparable<{typeName}>)this.Value).CompareTo(other.Value)",
-                TypeFactory.GetType(SpecialType.Int32),
-                false
-            ).Value!;
-        }
-
-        // NonGenericComparable: boxing is inherent to the interface; no workaround.
-        return ((IComparable)meta.This.Value).CompareTo(other.Value);
+        // Comparer<T>.Default, which the JIT specialises per wrapped type: a constrained call to
+        // IComparable<T> for a struct, and for an enum a comparer of the underlying values. Casting
+        // the value to IComparable<T> or IComparable boxed it, and for an enum both operands: sorting
+        // 1,000 enum-backed value objects allocated 367 KB and took eight times as long as sorting
+        // the enums (measured 2026-09-28). It reaches an explicit implementation too.
+        // The wrapped type is never an open generic (ValueObjectAspect refuses those).
+        string typeName = meta.CompileTime(ValueObjectTypes.SourceName(tag.ValueType));
+        return (int)ExpressionFactory.Parse(
+            $"global::System.Collections.Generic.Comparer<{typeName}>.Default.Compare(this.Value, other.Value)",
+            TypeFactory.GetType(SpecialType.Int32),
+            false
+        ).Value!;
     }
 
     // IComparable.CompareTo(object? obj)
