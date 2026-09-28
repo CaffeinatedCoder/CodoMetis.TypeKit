@@ -50,7 +50,8 @@ the end of a sequence, with or without a predicate.
 `Option.None()` takes its type from where it goes (`return Option.None();`, a conditional beside
 `Some`); where nothing supplies one, as with `var`, write `Option.None<T>()`.
 `Some(null)` throws, so an option that reports a value always has one. A `default(Option<T>)` is
-`None`. `Or(fallback)`, `OrDefault()` and `OrNull()` unwrap with a fallback, and `ToResult(error)` turns
+`None`. `Or(fallback)` and `OrDefault()` unwrap with a fallback, `OrNull()` unwraps into a nullable,
+`int?` for an `Option<int>` and `string?` for an `Option<string>`, and `ToResult(error)` turns
 absence into an error. `ToString()` never
 prints the content, so an option is safe to log; the debugger shows it.
 

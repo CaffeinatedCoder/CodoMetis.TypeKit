@@ -264,7 +264,10 @@ public static class Option
     /// <typeparam name="T">The reference type the option holds.</typeparam>
     extension<T>(in Option<T> option) where T : class
     {
-        /// <summary>Unwraps the value, substituting <see langword="null"/> for <c>None</c>.</summary>
+        /// <summary>
+        /// Unwraps the value, substituting <see langword="null"/> for <c>None</c>: the inverse of
+        /// <c>ToOption()</c>. For a value type, <see cref="ValueTypeOptionExtensions"/> has the same call.
+        /// </summary>
         /// <returns>The value, or <see langword="null"/>.</returns>
         public T? OrNull() => option.TryGetValue(out var value) ? value : null;
     }

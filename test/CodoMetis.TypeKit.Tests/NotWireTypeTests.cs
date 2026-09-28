@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace CodoMetis.TypeKit.Tests;
 
@@ -55,6 +56,64 @@ public sealed partial class NotWireTypeTests
         exception.Message.ShouldContain("register a converter");
         exception.Message.ShouldNotContain(Secret);
     }
+
+    public static TheoryData<string> OptionKinds => ["int", "Guid", "string", "Uri"];
+
+    /// <summary>
+    /// The refusal's advice compiles for an option of either kind: the nullable it names, and calls it
+    /// names that convert that nullable into the option and back. It advised <c>OrNull()</c> for an
+    /// <c>Option&lt;int&gt;</c>, which existed only for a reference type (CS0452). The advice is read
+    /// from the message and compiled as a consumer would write it, so the message and the API cannot
+    /// drift apart.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(OptionKinds))]
+    public void The_advice_for_an_option_compiles_for_its_kind(string kind)
+    {
+        var (instance, type) = kind switch
+        {
+            "int"    => ((object)Option.Some(5), typeof(int)),
+            "Guid"   => (Option.Some(Guid.Empty), typeof(Guid)),
+            "string" => (Option.Some(Secret), typeof(string)),
+            _        => (Option.Some(new Uri("https://example.org")), typeof(Uri)),
+        };
+
+        var message = Should.Throw<NotSupportedException>(() => JsonSerializer.Serialize(instance, instance.GetType())).Message;
+        var advice = Advice().Match(message);
+        advice.Success.ShouldBeTrue($"The refusal names no nullable and no calls: {message}");
+        advice.Groups["nullable"].Value.ShouldBe($"{type.Name}?");
+
+        var calls = AdvisedCall().Matches(advice.Groups["calls"].Value).Select(match => match.Groups["name"].Value).ToList();
+        calls.Count.ShouldBeGreaterThanOrEqualTo(2, message);
+
+        var option = $"Option<global::{type.FullName}>";
+        var nullable = $"global::{type.FullName}?";
+        var outward = calls.ToDictionary(call => call, call => ConsumerCompilation.Of(Consumer($"{nullable} Out({option} option) => option.{call}();")).Problems());
+        var inward = calls.ToDictionary(call => call, call => ConsumerCompilation.Of(Consumer($"{option} In({nullable} nullable) => nullable.{call}();")).Problems());
+
+        foreach (var call in calls)
+            (outward[call].Length == 0 || inward[call].Length == 0).ShouldBeTrue(
+                $"{call}() is advised for {option} but converts it neither way:{Environment.NewLine}{outward[call]}{Environment.NewLine}{inward[call]}");
+
+        outward.Values.ShouldContain(problems => problems.Length == 0, $"No advised call turns {option} into {nullable}:{Environment.NewLine}{string.Join(Environment.NewLine, outward.Values)}");
+        inward.Values.ShouldContain(problems => problems.Length == 0, $"No advised call turns {nullable} into {option}:{Environment.NewLine}{string.Join(Environment.NewLine, inward.Values)}");
+    }
+
+    private static string Consumer(string member) =>
+        $$"""
+          using CodoMetis.TypeKit;
+
+          public static class Consumer
+          {
+              public static {{member}}
+          }
+          """;
+
+    [GeneratedRegex(@"a nullable \((?<nullable>[^)]+)\), and (?<calls>.+?) convert at the boundary")]
+    private static partial Regex Advice();
+
+    [GeneratedRegex(@"(?<name>\w+)\(\)")]
+    private static partial Regex AdvisedCall();
 
     public static TheoryData<string, string> TypeNameAndJson =>
     [
