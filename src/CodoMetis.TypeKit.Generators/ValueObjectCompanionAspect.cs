@@ -17,9 +17,10 @@ namespace CodoMetis.TypeKit.Generators;
 /// is CMTK1007 now, naming what takes it.
 /// </para>
 /// <para>
-/// Who takes it is answered by the fabric (<see cref="CompanionClass.NameOwner"/>) and arrives in the
-/// aspect state. Asked here, the answer raced the sibling instances introducing their classes into
-/// the same namespace, and one build in nine introduced a class beside a declared one.
+/// Who takes it is answered by the fabric (<see cref="CompanionClass.NameOwner"/>), before any
+/// introduction, and arrives in the aspect state. A missed answer is not harmless: the class is then
+/// introduced beside a declared one (CS0260), or Metalama fails the aspect (LAMA0531), which is why
+/// the lookup never uses Metalama's by-name index.
 /// </para>
 /// </remarks>
 internal sealed class ValueObjectCompanionAspect : TypeAspect

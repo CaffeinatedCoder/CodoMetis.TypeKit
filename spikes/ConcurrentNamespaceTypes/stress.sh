@@ -1,7 +1,8 @@
 #!/bin/bash
 # Reproduces the CMTK1007 race (README.md): N value objects in one namespace, one of them with a
 # declared {Name}Extensions class. The consumer is built repeatedly, and a run in which the aspect
-# introduced the class anyway (CS0260) instead of reporting CMTK1007 counts as a miss.
+# introduced the class anyway instead of reporting CMTK1007 counts as a miss: CS0260 when the class
+# was introduced beside the declared one, LAMA0531 when Metalama's own check refused it.
 #   usage: stress.sh <runs> <types> [extra msbuild args, e.g. -p:MetalamaConcurrentBuildEnabled=false]
 set -u
 export DOTNET_CLI_UI_LANGUAGE=en DOTNET_NOLOGO=1
@@ -49,7 +50,7 @@ for run in $(seq 1 "$RUNS"); do
   out=$(dotnet build "$DIR" --no-incremental --no-dependencies -p:RestoreRecursive=false -nodeReuse:false -clp:NoSummary "$@" 2>&1)
   if echo "$out" | grep -q "error CMTK1007: 'V7'"; then
     verdict=reported
-  elif echo "$out" | grep -q "CS0260"; then
+  elif echo "$out" | grep -qE "CS0260|LAMA0531"; then
     verdict=MISSED; misses=$((misses + 1))
   else
     verdict=other; other=$((other + 1)); echo "$out" | grep -E "error" | head -5
