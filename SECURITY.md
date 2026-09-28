@@ -88,7 +88,8 @@ There is one publishing path, `.github/workflows/release.yml`, run by pushing a 
    that store's `JsonSerializerOptions` and nowhere else. The EF satellite's read path is
    `ValueObjectConverter<,>.Materialize`, public because EF's compiled model calls it from code it
    generates in the application; the factory reaches the generated converter's materializing mode
-   through `IStoredJsonConverterSource`, which hands it out to the factory only.
+   through `IStoredJsonConverterSource`, which hands it out to the factory only. The analyzer reports
+   a call to `Materialize` anywhere else as an error (CMTK0004).
 
 ## In scope
 

@@ -98,6 +98,23 @@ body alone. A `default(Result<…>)`, which an array slot or an unassigned field
 `InvalidOperationException` on it rather than inventing a `default(TError)`. `ToString()` never
 prints the value or the error.
 
+**Pipelines.** Asynchronous steps chain without an `await` each: every combinator also continues a
+`Task<Result<…>>`, and the chain is awaited once.
+
+```csharp
+Result<OrderFault> charged = await orders.FindAsync(id)         // Task<Result<Order, OrderFault>>
+    .MapAsync(order => order.Total)                              // a synchronous step on a pending result
+    .TapAsync(total => log.Charging(total))
+    .BindAsync(total => payments.ChargeAsync(total));            // a command: Result<OrderFault> remains
+
+Result<Line, OrderFault> line = product.Zip(quantity, (p, q) => new Line(p, q));
+Result<IReadOnlyList<Sku>, SkuFault> skus = input.Skus.Traverse(Sku.Create);
+Result<IReadOnlyList<Sku>, SkuFault> all = parsed.Sequence();
+```
+
+`Zip` (two to six results), `Traverse` and `Sequence` stop at the first error, in argument or
+sequence order, and `Traverse` calls nothing after it. None of them collects errors.
+
 ## Not wire types
 
 Neither `Option` nor `Result` serializes. System.Text.Json refuses both, in both directions, with a
@@ -211,6 +228,18 @@ They arrive with this package, so whoever can see the interfaces gets the guard:
   factory.
 - **CMTK0002**: a type implements `IValue<T>` or `IValidatedValue<,,>` but the project does not
   reference `CodoMetis.TypeKit.Generators`, so nothing would be generated for it.
+- **CMTK0003** (warning): a `Result` or `Option` that a call returns, dropped. `_ = …` says it is
+  meant.
+- **CMTK0004**: `Materialize`, which rebuilds a value object without its rules, called anywhere but
+  the EF Core satellite.
+- **CMTK0005** (warning): `new OrderId[n]` and the like, which fill every slot with a default
+  instance.
+- **CMTK0006** (warning): a property or field of such a type that nothing sets. `required`
+  closes it.
+- **CMTK0007** (suggestion): `FromKnownGood` given a parameter, which is input as far as the code
+  can tell.
+- **CMTK0008** (warning): `order.CustomerId.Value == product.Id.Value`, the wrapped values of two
+  different value objects compared, which the types exist to prevent.
 
 The ids are stable across releases. See
 [CodoMetis.TypeKit.Analyzers](https://www.nuget.org/packages/CodoMetis.TypeKit.Analyzers) for the

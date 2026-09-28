@@ -30,6 +30,16 @@ internal sealed class AnalyzerTest<TAnalyzer> : CSharpAnalyzerTest<TAnalyzer, De
     }
 }
 
+/// <summary>The real EF Core satellite and the EF Core assembly its converter derives from.</summary>
+internal static class RealEntityFrameworkCore
+{
+    public static MetadataReference[] References { get; } =
+    [
+        MetadataReference.CreateFromFile(typeof(global::CodoMetis.TypeKit.EntityFrameworkCore.ValueObjectConverter<,>).Assembly.Location),
+        MetadataReference.CreateFromFile(typeof(global::Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter).Assembly.Location),
+    ];
+}
+
 internal static class RealTypeKit
 {
     public static Assembly Assembly { get; } = typeof(Option<>).Assembly;

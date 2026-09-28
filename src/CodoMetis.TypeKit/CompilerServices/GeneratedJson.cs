@@ -31,6 +31,56 @@ public static class GeneratedJson
         value.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(value, DateTimeKind.Utc) : value.ToUniversalTime();
 
     /// <summary>
+    /// Writes the wrapped value <paramref name="value"/> as the serializer writes a
+    /// <typeparamref name="T"/> under <paramref name="options"/>.
+    /// </summary>
+    /// <remarks>
+    /// Through the contract's converter directly where that writes exactly what the serializer would,
+    /// and through the serializer where the options' number handling changes the output
+    /// (<see cref="JsonNumberHandling.WriteAsString"/>, named floating-point literals), which only the
+    /// serializer applies. A nested <c>JsonSerializer.Serialize</c> per value made a value object's
+    /// JSON 40% slower than its wrapped type's (measured 2026-09-28).
+    /// </remarks>
+    /// <param name="writer">The writer.</param>
+    /// <param name="value">The wrapped value.</param>
+    /// <param name="options">The caller's options.</param>
+    /// <param name="builtIn">The serializer's built-in converter for <typeparamref name="T"/>, if it has one.</param>
+    /// <typeparam name="T">The wrapped type.</typeparam>
+    public static void Write<T>(Utf8JsonWriter writer, T value, JsonSerializerOptions options, JsonConverter<T>? builtIn)
+    {
+        ArgumentNullException.ThrowIfNull(writer);
+
+        var plan = Plan<T>.For(options, builtIn);
+
+        if (plan.Direct is { } converter && plan.WritesAsIs) converter.Write(writer, value, options);
+        else JsonSerializer.Serialize(writer, value, plan.TypeInfo);
+    }
+
+    /// <summary>
+    /// Reads a wrapped value as the serializer reads a <typeparamref name="T"/> under
+    /// <paramref name="options"/>.
+    /// </summary>
+    /// <remarks>
+    /// Through the contract's converter directly unless the token is a string and the options' number
+    /// handling may read a number from one, which only the serializer applies. A failure the reader
+    /// reports is the serializer's to turn into a <see cref="JsonException"/>, as it does for every
+    /// converter it calls.
+    /// </remarks>
+    /// <param name="reader">The reader, on the value.</param>
+    /// <param name="options">The caller's options.</param>
+    /// <param name="builtIn">The serializer's built-in converter for <typeparamref name="T"/>, if it has one.</param>
+    /// <typeparam name="T">The wrapped type.</typeparam>
+    /// <returns>The wrapped value.</returns>
+    public static T? Read<T>(ref Utf8JsonReader reader, JsonSerializerOptions options, JsonConverter<T>? builtIn)
+    {
+        var plan = Plan<T>.For(options, builtIn);
+
+        return plan.Direct is { } converter && (reader.TokenType != JsonTokenType.String || plan.StrictNumbers)
+            ? converter.Read(ref reader, typeof(T), options)
+            : JsonSerializer.Deserialize(ref reader, plan.TypeInfo);
+    }
+
+    /// <summary>
     /// The JSON contract of the wrapped type <typeparamref name="T"/> under <paramref name="options"/>,
     /// through which the generated converter reads and writes the wrapped value.
     /// </summary>
@@ -105,6 +155,51 @@ public static class GeneratedJson
             : null;
 
     /// <summary>Contracts made here, one per options instance, which outlive neither.</summary>
+    /// <summary>
+    /// How one wrapped type is read and written under one options instance. The most recent one is
+    /// kept per wrapped type, which is every call in an application with one set of options; any
+    /// other options are resolved again, which is what every call cost before.
+    /// </summary>
+    private sealed class Plan<T>
+    {
+        private static Plan<T>? _last;
+
+        private Plan(JsonSerializerOptions options, JsonTypeInfo<T> typeInfo)
+        {
+            Options  = options;
+            TypeInfo = typeInfo;
+
+            var handling = typeInfo.NumberHandling ?? options.NumberHandling;
+
+            // Only a value converter is called directly: an object or collection contract is the
+            // serializer's to walk. Number handling is applied by the serializer alone, and only
+            // these flags change what is written; reading a number from a string is decided per token.
+            Direct        = typeInfo.Kind == JsonTypeInfoKind.None ? typeInfo.Converter as JsonConverter<T> : null;
+            WritesAsIs    = (handling & (JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowNamedFloatingPointLiterals)) == 0;
+            StrictNumbers = handling == JsonNumberHandling.Strict;
+        }
+
+        public JsonSerializerOptions Options { get; }
+
+        public JsonTypeInfo<T> TypeInfo { get; }
+
+        public JsonConverter<T>? Direct { get; }
+
+        public bool WritesAsIs { get; }
+
+        public bool StrictNumbers { get; }
+
+        public static Plan<T> For(JsonSerializerOptions options, JsonConverter<T>? builtIn)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+
+            var last = _last;
+            if (last is not null && ReferenceEquals(last.Options, options)) return last;
+
+            return _last = new Plan<T>(options, TypeInfo(options, builtIn));
+        }
+    }
+
     private static class Contracts<T>
     {
         public static readonly ConditionalWeakTable<JsonSerializerOptions, JsonTypeInfo<T>> Made = new();

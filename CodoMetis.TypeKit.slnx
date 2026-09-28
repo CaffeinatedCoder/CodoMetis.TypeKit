@@ -15,6 +15,9 @@
     <Project Path="test/CodoMetis.TypeKit.Generators.Tests/CodoMetis.TypeKit.Generators.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Tests/CodoMetis.TypeKit.Tests.csproj" />
   </Folder>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/CodoMetis.TypeKit.Benchmarks/CodoMetis.TypeKit.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />

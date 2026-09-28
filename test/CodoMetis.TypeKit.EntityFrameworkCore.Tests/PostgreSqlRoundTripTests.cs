@@ -63,6 +63,11 @@ public sealed class PostgreSqlRoundTripTests(PostgreSqlRoundTripTests.Database d
 
         loaded.Code.Value.ShouldBe("lower");
         loaded.Discount!.Value.Value.ShouldBe(101);
+
+        // And found again: Revalidate applies today's rules to what was read.
+        loaded.Code.Revalidate().TryGetValue(out _, out var fault).ShouldBeFalse();
+        fault.ShouldBe(ProbeCodeFault.NotUpperCase);
+        loaded.Discount.Value.Revalidate().TryGetValue(out _, out _).ShouldBeFalse();
     }
 
     [Fact]

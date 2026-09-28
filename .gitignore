@@ -27,3 +27,6 @@ Thumbs.db
 
 # Snapshot tests: the actual output of a failed comparison
 *.received.txt
+
+# Benchmark runs: the numbers worth keeping go into benchmarks/README.md
+BenchmarkDotNet.Artifacts/

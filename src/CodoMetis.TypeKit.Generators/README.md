@@ -85,6 +85,7 @@ it, and parsed when it implements `IParsable`.
 | `Value`, a private constructor, value equality | every value object | The record's equality, over the wrapped value. Declare no constructor of your own, not even a parameter list (CMTK1009). |
 | `From(T)` | `IValue<T>` | Refuses null for a reference type. |
 | `TryFrom(T)`, `FromKnownGood(T)` | `IValidatedValue` | Both derived from your `Create`. `FromKnownGood` throws with the caller's expression in the message, never the value. Declare either yourself and it is not generated. |
+| `Revalidate()` | `IValidatedValue` | `Create` applied to the value an instance holds: which values read back without validation (a column, a stored document) would today's rules refuse? Returns what `Create` returns, normalisation included. |
 | `[JsonConverter]` with a nested converter | every value object | Reads and writes the wrapped value, also as a dictionary key. A JSON `null` is refused. |
 | `IParsable`, `ISpanParsable`, `IUtf8SpanParsable` | when the wrapped type has them | Enums parse by name. A `Uri` parses through its constructor, a NodaTime type through its type converter. |
 | `IFormattable`, `ISpanFormattable`, `IUtf8SpanFormattable`, `ToString()` | when the wrapped type has them | `ToString()` is invariant. |

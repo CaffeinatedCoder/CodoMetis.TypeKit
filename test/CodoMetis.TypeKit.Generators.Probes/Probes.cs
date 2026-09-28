@@ -17,6 +17,9 @@ public readonly partial record struct ProbeCount : IValue<int>;
 /// <summary>JSON: invariant number.</summary>
 public readonly partial record struct ProbeAmount : IValue<decimal>;
 
+/// <summary>JSON: invariant number, the one family where named floating-point literals (NaN) apply.</summary>
+public readonly partial record struct ProbeRatio : IValue<double>;
+
 /// <summary>JSON: boolean.</summary>
 public readonly partial record struct ProbeFlag : IValue<bool>;
 

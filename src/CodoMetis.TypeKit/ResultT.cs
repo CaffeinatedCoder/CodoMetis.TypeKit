@@ -223,6 +223,46 @@ public readonly record struct Result<T, TError>
         return this;
     }
 
+    /// <summary>Transforms the value on success with an asynchronous function, keeping the error otherwise.</summary>
+    /// <param name="selector">Called with the value on success.</param>
+    /// <typeparam name="TResult">The type of the transformed value.</typeparam>
+    /// <returns>A success with the transformed value, or this error without calling <paramref name="selector"/>.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public async Task<Result<TResult, TError>> MapAsync<TResult>(Func<T, Task<TResult>> selector) where TResult : notnull
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return Succeeded
+            ? Result<TResult, TError>.Success(await selector(_value!).ConfigureAwait(false))
+            : Result<TResult, TError>.Error(_error!);
+    }
+
+    /// <summary>Chains an asynchronous operation that may itself fail.</summary>
+    /// <param name="selector">Called with the value on success.</param>
+    /// <typeparam name="TResult">The type of the chained result's value.</typeparam>
+    /// <returns>The result <paramref name="selector"/> produced, or this error without calling it.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public async Task<Result<TResult, TError>> BindAsync<TResult>(Func<T, Task<Result<TResult, TError>>> selector) where TResult : notnull
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return Succeeded ? await selector(_value!).ConfigureAwait(false) : Result<TResult, TError>.Error(_error!);
+    }
+
+    /// <summary>
+    /// Chains an asynchronous command that may itself fail and produces no value: the value is spent,
+    /// and a <see cref="Result{TError}"/> remains.
+    /// </summary>
+    /// <param name="selector">Called with the value on success.</param>
+    /// <returns>The result <paramref name="selector"/> produced, or this error without calling it.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public async Task<Result<TError>> BindAsync(Func<T, Task<Result<TError>>> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return Succeeded ? await selector(_value!).ConfigureAwait(false) : Result<TError>.Error(_error!);
+    }
+
     /// <summary>Unwraps the value or the error.</summary>
     /// <param name="value">The value on success; otherwise <c>default</c>.</param>
     /// <param name="error">The error on error; otherwise <c>default</c>.</param>

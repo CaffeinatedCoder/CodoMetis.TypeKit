@@ -56,6 +56,7 @@ ProbeCode
   Equals(Object) : Boolean
   Equals(ProbeCode) : Boolean
   GetHashCode() : Int32
+  Revalidate() : Result<ProbeCode, ProbeCodeFault>
   ToString() : String
   ToString(String, IFormatProvider) : String
   Value : String
@@ -696,6 +697,7 @@ ProbeOverride
   Equals(Object) : Boolean
   Equals(ProbeOverride) : Boolean
   GetHashCode() : Int32
+  Revalidate() : Result<ProbeOverride, ProbeOverrideFault>
   ToString() : String
   ToString(String, IFormatProvider) : String
   Value : String
@@ -736,6 +738,7 @@ ProbePercentage
   Equals(Object) : Boolean
   Equals(ProbePercentage) : Boolean
   GetHashCode() : Int32
+  Revalidate() : Result<ProbePercentage, ProbePercentageFault>
   ToString() : String
   ToString(String, IFormatProvider) : String
   TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
@@ -780,6 +783,58 @@ ProbePercentage
   static op_LessThanOrEqual(ProbePercentage, ProbePercentage) : Boolean
   extension static ProbePercentageExtensions.GetValue(ProbePercentage) : Int32
   extension static ProbePercentageExtensions.ValueOrNull(ProbePercentage?) : Int32?
+ProbeRatio
+  CompareTo(Object) : Int32
+  CompareTo(ProbeRatio) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeRatio) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Double
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeRatio, Double>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeRatio>
+  implements IComparisonOperators<ProbeRatio, ProbeRatio, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeRatio, ProbeRatio, Boolean>
+  implements IEquatable<ProbeRatio>
+  implements IFormattable
+  implements IMinMaxValue<ProbeRatio>
+  implements IParsable<ProbeRatio>
+  implements IPlainValueObject<ProbeRatio, Double>
+  implements ISpanFormattable
+  implements ISpanParsable<ProbeRatio>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ProbeRatio>
+  implements IValue<Double>
+  implements IValueObject<ProbeRatio, Double>
+  implements IValueObjectMaterializer<ProbeRatio, Double>
+  nested ProbeRatioJsonConverter : JsonConverter<ProbeRatio>, IStoredJsonConverterSource
+  nested ProbeRatioTypeConverter : TypeConverter
+  new()
+  static From(Double) : ProbeRatio
+  static MaxValue : ProbeRatio
+  static MinValue : ProbeRatio
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ProbeRatio
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeRatio
+  static Parse(String, IFormatProvider) : ProbeRatio
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ProbeRatio) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeRatio) : Boolean
+  static TryParse(String, IFormatProvider, out ProbeRatio) : Boolean
+  static op_Equality(ProbeRatio, ProbeRatio) : Boolean
+  static op_GreaterThan(ProbeRatio, ProbeRatio) : Boolean
+  static op_GreaterThanOrEqual(ProbeRatio, ProbeRatio) : Boolean
+  static op_Inequality(ProbeRatio, ProbeRatio) : Boolean
+  static op_LessThan(ProbeRatio, ProbeRatio) : Boolean
+  static op_LessThanOrEqual(ProbeRatio, ProbeRatio) : Boolean
+  extension static ProbeRatioExtensions.GetValue(ProbeRatio) : Double
+  extension static ProbeRatioExtensions.ValueOrNull(ProbeRatio?) : Double?
 ProbeTime
   CompareTo(Object) : Int32
   CompareTo(ProbeTime) : Int32

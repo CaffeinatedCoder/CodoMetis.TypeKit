@@ -14,9 +14,15 @@ appears to: an instance that passed no factory, or a value object that was never
 |---|---|---|
 | CMTK0001 | Error | `default`, `default(T)`, `new T()`, `new()` and `new T { }` of a value object, an `Option`, a `Result`, or a struct marked `[RequireCustomInitialization]`. Also through a type parameter whose constraints make it one of those. |
 | CMTK0002 | Error | A type implements `IValue<T>` or `IValidatedValue<,,>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so nothing is generated for it: no field, no `Value`, no factory. |
+| CMTK0003 | Warning | A `Result` or `Option` that a call returns, dropped by a statement, awaited or not. |
+| CMTK0004 | Error | `Materialize`, which rebuilds a value object without its rules, called or referenced anywhere but the EF Core satellite. |
+| CMTK0005 | Warning | An array or span of a value object, `Option`, `Result` or `[RequireCustomInitialization]` struct created with a length, so every slot starts as `default`. |
+| CMTK0006 | Warning | A field or auto-property of such a type in a class that no initializer, `required` or constructor sets. |
+| CMTK0007 | Info | `FromKnownGood` given a value that comes straight from a parameter. |
+| CMTK0008 | Warning | The wrapped values of two different value objects compared: `order.CustomerId.Value == product.Id.Value`. |
 
-Both ids are public contract and never change meaning. The generators' own build errors,
-CMTK1000 to CMTK1008, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
+The ids are public contract and never change meaning. The generators' own build errors,
+CMTK1000 to CMTK1009, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
 
 ## CMTK0001
 
@@ -62,11 +68,84 @@ public readonly partial record struct OrderId : IValue<Guid>;   // CMTK0002 with
 Reference `CodoMetis.TypeKit.Generators` in the project that declares value objects. Projects that
 merely reference that one inherit it.
 
+## CMTK0003
+
+A dropped `Result` is an error nobody sees, and a dropped `Option` an absence nobody handles.
+
+```csharp
+Email.Create(input);                         // CMTK0003: validated, and the verdict forgotten
+await orders.CancelAsync(id);                // CMTK0003: it may have failed
+_ = cache.Remove(key);                       // an explicit discard is silent
+```
+
+`Tap` returns its receiver unchanged, so `result.Tap(log);` on a variable is silent;
+`Find(id).Tap(log);` drops the result and is reported.
+
+## CMTK0004
+
+`IValueObjectMaterializer<,>.Materialize` and `ValueObjectConverter<,>.Materialize` rebuild a value
+object without `Create`, for rows the application stored itself. Anywhere else they let input past
+the rules. The EF Core satellite's own call is compiled into the satellite, and the compiled model EF
+generates in your project is generated code, which the rule skips. A test that means it suppresses the
+rule where it calls it.
+
+## CMTK0005
+
+```csharp
+var ids = new OrderId[count];                // CMTK0005: count default instances
+OrderId[] kept = [.. rows.Select(r => OrderId.From(r.Id))];   // built from values
+```
+
+`stackalloc`, `GC.AllocateUninitializedArray`, `GC.AllocateArray` and `Array.Resize` are reported
+too. A warning, since filling such an array in a loop straight after is correct and indistinguishable.
+
+## CMTK0006
+
+The CS8618 that nullable analysis does not give structs:
+
+```csharp
+public sealed class Order
+{
+    public OrderId Id { get; set; }            // CMTK0006: new Order { } and JSON without "id" leave it default
+    public required CustomerId Customer { get; set; }   // required: silent
+}
+```
+
+A parameterless constructor that is not public is exempt, since EF Core and the serializers
+materialize through it and then set the properties. `required` works with EF Core's compiled model
+and precompiled queries, and makes System.Text.Json refuse a document without the property.
+
+## CMTK0007
+
+`FromKnownGood` throws on a value that breaks the rules: right for a constant, wrong for input, where a
+request that fails validation becomes an exception. The rule reports a value that comes straight from
+a parameter of the enclosing method or lambda (`input`, `request.Email`, `args[0]`). A value the code
+produced itself is not reported. A suggestion, since a test theory's parameters are reported too.
+
+## CMTK0008
+
+`OrderId == CustomerId` does not compile, which is what the types are for. Unwrapping both sides
+compiles, and brings back the bug they prevent:
+
+```csharp
+orders.Where(o => o.CustomerId.Value == product.Id.Value)   // CMTK0008: a customer id against a product id
+orders.Where(o => o.CustomerId == customer.Id)              // what was meant
+```
+
+`==`, `!=`, the ordering operators, `Equals` and `CompareTo` are reported, through `.Value`,
+`?.Value`, `GetValue()` or `ValueOrNull()`. A value object's value against a raw value is not, and
+an explicit cast says the conversion is deliberate.
+
 ## Configuration
 
 Severity follows the usual `.editorconfig` mechanism, for instance
-`dotnet_diagnostic.CMTK0001.severity = warning`. Both rules are errors by default on purpose: a
-warning is what gets ignored.
+`dotnet_diagnostic.CMTK0001.severity = warning`. The rules that guard against an instance that
+passed no factory or no rules are errors by default on purpose: a warning is what gets ignored. The
+others are warnings or a suggestion because correct code can look the same.
+
+Metalama runs analyzers on the source before it weaves, where `TryFrom`, `FromKnownGood` and `Value` of a
+value object in the same project do not exist yet. CMTK0003, CMTK0007 and CMTK0008 recognise those
+by the generated member's name on a value object's type, so they report in the declaring project too.
 
 The analyzer resolves the types it looks for by symbol, so a type of your own named `IValue<T>` in
 another namespace is not mistaken for ours, and a value object that implements a marker through a

@@ -78,7 +78,15 @@ object, where `.Value` would first unwrap the `Nullable`.
 A column is read through `IValueObjectMaterializer<,>`, not through `Create`. A rule added to a
 value object later must not make the rows written before it unreadable, and what the application
 wrote is trusted by contract. Input still goes through `Create`: nothing in this package is reachable
-from a request.
+from a request, and the analyzer reports `Materialize` called anywhere else (CMTK0004).
+
+When a rule is added, `Revalidate()` finds the rows it refuses:
+
+```csharp
+var orders = await db.Orders.AsNoTracking().ToListAsync();
+foreach (var order in orders.Where(o => !o.Code.Revalidate()))
+    log.StoredCodeNowRefused(order.Id);
+```
 
 Tested on SQLite and PostgreSQL, with SQL snapshots for every translation above.
 

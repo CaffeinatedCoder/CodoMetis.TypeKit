@@ -29,6 +29,18 @@ public sealed class NullDelegateTests
     private static readonly Result<int, string> Value = Result<int, string>.Success(1);
     private static readonly Result<int, string> Error = Result<int, string>.Error("e");
 
+    // Fresh tasks per call: the continuations of a pending result are checked the same way.
+    private static Task<Result<string>> PendingOk     => Task.FromResult(Ok);
+    private static Task<Result<string>> PendingFailed => Task.FromResult(Failed);
+
+    private static Task<Result<int, string>> PendingValue => Task.FromResult(Value);
+    private static Task<Result<int, string>> PendingError => Task.FromResult(Error);
+
+    // A pending result that fails: only a delegate checked before the task is awaited reports itself
+    // rather than the task's own exception.
+    private static Task<Result<int, string>> PendingFault        => Task.FromException<Result<int, string>>(new TimeoutException());
+    private static Task<Result<string>>      PendingCommandFault => Task.FromException<Result<string>>(new TimeoutException());
+
     private static readonly Dictionary<string, Func<object?>[]> Cases = new()
     {
         ["Option<T>.Match(Func<T, TResult>, Func<TResult>): onSome"]  = [() => Some.Match(Null<Func<int, int>>(), () => 0), () => None.Match(Null<Func<int, int>>(), () => 0)],
@@ -74,6 +86,57 @@ public sealed class NullDelegateTests
         ["Result<T, TError>.MapError(Func<TError, TNewError>): selector"]                      = [() => Value.MapError(Null<Func<string, int>>()), () => Error.MapError(Null<Func<string, int>>())],
         ["Result<T, TError>.Tap(Action<T>): action"]                                             = [() => Value.Tap(Null<Action<int>>()), () => Error.Tap(Null<Action<int>>())],
         ["Result<T, TError>.TapAsync(Func<T, Task>): action"]                                    = [() => Value.TapAsync(Null<Func<int, Task>>()), () => Error.TapAsync(Null<Func<int, Task>>())],
+
+        ["Result<TError>.MapAsync(Func<Task<TResult>>): selector"]                = [() => Ok.MapAsync(Null<Func<Task<int>>>()), () => Failed.MapAsync(Null<Func<Task<int>>>())],
+        ["Result<TError>.BindAsync(Func<Task<Result<TError>>>): selector"]        = [() => Ok.BindAsync(Null<Func<Task<Result<string>>>>()), () => Failed.BindAsync(Null<Func<Task<Result<string>>>>())],
+
+        ["Result<T, TError>.MapAsync(Func<T, Task<TResult>>): selector"]                 = [() => Value.MapAsync(Null<Func<int, Task<int>>>()), () => Error.MapAsync(Null<Func<int, Task<int>>>())],
+        ["Result<T, TError>.BindAsync(Func<T, Task<Result<TResult, TError>>>): selector"] =
+            [() => Value.BindAsync(Null<Func<int, Task<Result<int, string>>>>()), () => Error.BindAsync(Null<Func<int, Task<Result<int, string>>>>())],
+        ["Result<T, TError>.BindAsync(Func<T, Task<Result<TError>>>): selector"]         =
+            [() => Value.BindAsync(Null<Func<int, Task<Result<string>>>>()), () => Error.BindAsync(Null<Func<int, Task<Result<string>>>>())],
+
+        ["Result.MapAsync(Task<Result<T, TError>>, Func<T, TResult>): selector"]       = [() => PendingValue.MapAsync(Null<Func<int, int>>()), () => PendingError.MapAsync(Null<Func<int, int>>()), () => PendingFault.MapAsync(Null<Func<int, int>>())],
+        ["Result.MapAsync(Task<Result<T, TError>>, Func<T, Task<TResult>>): selector"] = [() => PendingValue.MapAsync(Null<Func<int, Task<int>>>()), () => PendingError.MapAsync(Null<Func<int, Task<int>>>()), () => PendingFault.MapAsync(Null<Func<int, Task<int>>>())],
+        ["Result.BindAsync(Task<Result<T, TError>>, Func<T, Result<TResult, TError>>): selector"] =
+            [() => PendingValue.BindAsync(Null<Func<int, Result<int, string>>>()), () => PendingError.BindAsync(Null<Func<int, Result<int, string>>>()), () => PendingFault.BindAsync(Null<Func<int, Result<int, string>>>())],
+        ["Result.BindAsync(Task<Result<T, TError>>, Func<T, Task<Result<TResult, TError>>>): selector"] =
+            [() => PendingValue.BindAsync(Null<Func<int, Task<Result<int, string>>>>()), () => PendingError.BindAsync(Null<Func<int, Task<Result<int, string>>>>()), () => PendingFault.BindAsync(Null<Func<int, Task<Result<int, string>>>>())],
+        ["Result.BindAsync(Task<Result<T, TError>>, Func<T, Result<TError>>): selector"] =
+            [() => PendingValue.BindAsync(Null<Func<int, Result<string>>>()), () => PendingError.BindAsync(Null<Func<int, Result<string>>>()), () => PendingFault.BindAsync(Null<Func<int, Result<string>>>())],
+        ["Result.BindAsync(Task<Result<T, TError>>, Func<T, Task<Result<TError>>>): selector"] =
+            [() => PendingValue.BindAsync(Null<Func<int, Task<Result<string>>>>()), () => PendingError.BindAsync(Null<Func<int, Task<Result<string>>>>()), () => PendingFault.BindAsync(Null<Func<int, Task<Result<string>>>>())],
+        ["Result.MapErrorAsync(Task<Result<T, TError>>, Func<TError, TNewError>): selector"] =
+            [() => PendingValue.MapErrorAsync(Null<Func<string, int>>()), () => PendingError.MapErrorAsync(Null<Func<string, int>>()), () => PendingFault.MapErrorAsync(Null<Func<string, int>>())],
+        ["Result.TapAsync(Task<Result<T, TError>>, Action<T>): action"]     = [() => PendingValue.TapAsync(Null<Action<int>>()), () => PendingError.TapAsync(Null<Action<int>>()), () => PendingFault.TapAsync(Null<Action<int>>())],
+        ["Result.TapAsync(Task<Result<T, TError>>, Func<T, Task>): action"] = [() => PendingValue.TapAsync(Null<Func<int, Task>>()), () => PendingError.TapAsync(Null<Func<int, Task>>()), () => PendingFault.TapAsync(Null<Func<int, Task>>())],
+
+        ["Result.MapAsync(Task<Result<TError>>, Func<TResult>): selector"]       = [() => PendingOk.MapAsync(Null<Func<int>>()), () => PendingFailed.MapAsync(Null<Func<int>>()), () => PendingCommandFault.MapAsync(Null<Func<int>>())],
+        ["Result.MapAsync(Task<Result<TError>>, Func<Task<TResult>>): selector"] = [() => PendingOk.MapAsync(Null<Func<Task<int>>>()), () => PendingFailed.MapAsync(Null<Func<Task<int>>>()), () => PendingCommandFault.MapAsync(Null<Func<Task<int>>>())],
+        ["Result.BindAsync(Task<Result<TError>>, Func<Result<TError>>): selector"] =
+            [() => PendingOk.BindAsync(Null<Func<Result<string>>>()), () => PendingFailed.BindAsync(Null<Func<Result<string>>>()), () => PendingCommandFault.BindAsync(Null<Func<Result<string>>>())],
+        ["Result.BindAsync(Task<Result<TError>>, Func<Task<Result<TError>>>): selector"] =
+            [() => PendingOk.BindAsync(Null<Func<Task<Result<string>>>>()), () => PendingFailed.BindAsync(Null<Func<Task<Result<string>>>>()), () => PendingCommandFault.BindAsync(Null<Func<Task<Result<string>>>>())],
+        ["Result.MapErrorAsync(Task<Result<TError>>, Func<TError, TNewError>): selector"] =
+            [() => PendingOk.MapErrorAsync(Null<Func<string, int>>()), () => PendingFailed.MapErrorAsync(Null<Func<string, int>>()), () => PendingCommandFault.MapErrorAsync(Null<Func<string, int>>())],
+        ["Result.TapAsync(Task<Result<TError>>, Action): action"]     = [() => PendingOk.TapAsync(Null<Action>()), () => PendingFailed.TapAsync(Null<Action>()), () => PendingCommandFault.TapAsync(Null<Action>())],
+        ["Result.TapAsync(Task<Result<TError>>, Func<Task>): action"] = [() => PendingOk.TapAsync(Null<Func<Task>>()), () => PendingFailed.TapAsync(Null<Func<Task>>()), () => PendingCommandFault.TapAsync(Null<Func<Task>>())],
+
+        ["Result.Zip(Result<T, TError>, Result<T2, TError>, Func<T, T2, TResult>): selector"] =
+            [() => Value.Zip(Value, Null<Func<int, int, int>>()), () => Error.Zip(Value, Null<Func<int, int, int>>())],
+        ["Result.Zip(Result<T, TError>, Result<T2, TError>, Result<T3, TError>, Func<T, T2, T3, TResult>): selector"] =
+            [() => Value.Zip(Value, Value, Null<Func<int, int, int, int>>()), () => Error.Zip(Value, Value, Null<Func<int, int, int, int>>())],
+        ["Result.Zip(Result<T, TError>, Result<T2, TError>, Result<T3, TError>, Result<T4, TError>, Func<T, T2, T3, T4, TResult>): selector"] =
+            [() => Value.Zip(Value, Value, Value, Null<Func<int, int, int, int, int>>()), () => Error.Zip(Value, Value, Value, Null<Func<int, int, int, int, int>>())],
+        ["Result.Zip(Result<T, TError>, Result<T2, TError>, Result<T3, TError>, Result<T4, TError>, Result<T5, TError>, Func<T, T2, T3, T4, T5, TResult>): selector"] =
+            [() => Value.Zip(Value, Value, Value, Value, Null<Func<int, int, int, int, int, int>>()), () => Error.Zip(Value, Value, Value, Value, Null<Func<int, int, int, int, int, int>>())],
+        ["Result.Zip(Result<T, TError>, Result<T2, TError>, Result<T3, TError>, Result<T4, TError>, Result<T5, TError>, Result<T6, TError>, Func<T, T2, T3, T4, T5, T6, TResult>): selector"] =
+            [() => Value.Zip(Value, Value, Value, Value, Value, Null<Func<int, int, int, int, int, int, int>>()), () => Error.Zip(Value, Value, Value, Value, Value, Null<Func<int, int, int, int, int, int, int>>())],
+
+        ["Result.Traverse(IEnumerable<T>, Func<T, Result<TResult, TError>>): selector"] =
+            [() => new[] { 1 }.Traverse(Null<Func<int, Result<int, string>>>()), () => Array.Empty<int>().Traverse(Null<Func<int, Result<int, string>>>())],
+        ["Result.Traverse(IEnumerable<T>, Func<T, Result<TError>>): selector"] =
+            [() => new[] { 1 }.Traverse(Null<Func<int, Result<string>>>()), () => Array.Empty<int>().Traverse(Null<Func<int, Result<string>>>())],
 
         ["Result.Select(Result<T, TError>, Func<T, TResult>): selector"]                = [() => Value.Select(Null<Func<int, int>>()), () => Error.Select(Null<Func<int, int>>())],
         ["Result.FirstOrError(IEnumerable<T>, Func<T, Boolean>, TError): predicate"] =

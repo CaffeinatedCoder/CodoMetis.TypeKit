@@ -27,7 +27,7 @@ your own, and it can be declared inside another type.
 | Package | Role | Metalama |
 |---|---|---|
 | [CodoMetis.TypeKit](src/CodoMetis.TypeKit/README.md) | `Option<T>`, `Result<T, TError>`, `Result<TError>`, the value-object contracts, and the analyzers that guard them | no |
-| [CodoMetis.TypeKit.Analyzers](src/CodoMetis.TypeKit.Analyzers/README.md) | CMTK0001 (no `default` of a value object, an `Option` or a `Result`) and CMTK0002 (a value object nobody generates). Arrives with the base package | no |
+| [CodoMetis.TypeKit.Analyzers](src/CodoMetis.TypeKit.Analyzers/README.md) | CMTK0001–CMTK0008: no `default` of a value object, an `Option` or a `Result`, in any form; no value object nobody generates; no ignored result; no validation bypass; no comparing two value objects' values. Arrives with the base package | no |
 | [CodoMetis.TypeKit.Generators](src/CodoMetis.TypeKit.Generators/README.md) | The compile-time generation, in the project that declares value objects | yes |
 | [CodoMetis.TypeKit.EntityFrameworkCore](src/CodoMetis.TypeKit.EntityFrameworkCore/README.md) | Value objects as columns with nothing registered per type, and `.Value` in LINQ | no |
 | [CodoMetis.TypeKit.AspNetCore](src/CodoMetis.TypeKit.AspNetCore/README.md) | Value objects in the OpenAPI document, with the schema of the type they wrap | no |
