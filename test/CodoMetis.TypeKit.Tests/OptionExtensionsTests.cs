@@ -1,3 +1,6 @@
+using System.Reflection;
+using System.Runtime.CompilerServices;
+
 namespace CodoMetis.TypeKit.Tests;
 
 /// <summary>
@@ -152,14 +155,33 @@ public sealed class OptionExtensionsTests
         Should.Throw<ArgumentNullException>(() => new[] { "a", null! }.Select(x => x).LastOrNone());
     }
 
+    /// <summary>
+    /// Nothing here extends <see cref="object"/> or an unconstrained type parameter. Such a member is
+    /// offered on every expression in every file that imports <c>CodoMetis.TypeKit</c>, boxes a value
+    /// type, and collides (CS0121) with any other package's member of the same name, as a
+    /// <c>TryCast&lt;T&gt;()</c> on <c>object?</c> did. Removing one after 1.0 breaks callers.
+    /// </summary>
     [Fact]
-    public void TryCast_filters_by_runtime_type()
+    public void No_extension_member_extends_every_type()
     {
-        object boxed = 42;
+        var extensions = (from type in typeof(Option).Assembly.GetExportedTypes()
+                          where type is { IsAbstract: true, IsSealed: true, IsNested: false }
+                          from method in type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
+                          where method.IsDefined(typeof(ExtensionAttribute), inherit: false)
+                          select method).ToList();
 
-        boxed.TryCast<int>().ShouldBe(Option.Some(42));
-        boxed.TryCast<string>().IsNone().ShouldBeTrue();
-        ((object?)null).TryCast<string>().IsNone().ShouldBeTrue();
+        extensions.Count.ShouldBeGreaterThanOrEqualTo(40);
+        extensions.Where(method => ExtendsEveryType(method.GetParameters()[0].ParameterType))
+                  .Select(method => $"{method.DeclaringType!.Name}.{method.Name}({method.GetParameters()[0].ParameterType.Name})")
+                  .ShouldBeEmpty("These extension members appear on every expression of a file that imports the namespace.");
+    }
+
+    private static bool ExtendsEveryType(Type receiver)
+    {
+        if (receiver.IsByRef) receiver = receiver.GetElementType()!;
+
+        return receiver == typeof(object)
+            || receiver is { IsGenericParameter: true, GenericParameterAttributes: GenericParameterAttributes.None } && receiver.GetGenericParameterConstraints().Length == 0;
     }
 
     [Fact]
