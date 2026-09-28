@@ -225,6 +225,29 @@ internal static class ValueObjectDeclaration
     }
 
     /// <summary>
+    /// A hand-written equality: <c>Equals(TSelf)</c>, <c>GetHashCode()</c>, or an explicit
+    /// <c>IEquatable&lt;TSelf&gt;.Equals</c>. The record kept it, while the generated ordering, the JSON
+    /// dictionary keys and the EF Core column went on comparing the wrapped value: a case-insensitive
+    /// <c>Equals</c> made "abc" and "ABC" equal with <c>CompareTo</c> 32, so a <c>HashSet</c> held one and
+    /// a <c>SortedSet</c> two.
+    /// </summary>
+    public static IReadOnlyList<string> EqualityDeclaredByHand(INamedType target)
+    {
+        var equatable = TypeFactory.GetNamedType(typeof(IEquatable<>));
+
+        return
+        [
+            .. target.Methods
+                     .Where(method => method is { IsStatic: false, IsImplicitlyDeclared: false }
+                                   && (method.IsExplicitInterfaceImplementation
+                                           ? method.ExplicitInterfaceImplementations.Any(implemented => implemented.DeclaringType.Definition.Equals(equatable))
+                                           : (method is { Name: nameof(Equals), Parameters: [{ } other] } && other.Type.Equals(target))
+                                          || method is { Name: nameof(GetHashCode), Parameters.Count: 0 }))
+                     .Select(Describe)
+        ];
+    }
+
+    /// <summary>
     /// The instance state <paramref name="target"/> declares or inherits besides the wrapped value: a
     /// field, an auto-property, a <c>required</c> member or a field-like event. The generated JSON,
     /// parsing, type converter and materializer carry the wrapped value alone, so such state was lost
@@ -267,6 +290,24 @@ internal static class ValueObjectDeclaration
         }
 
         return found;
+    }
+
+    /// <summary>
+    /// A member as an error names it. An explicit interface implementation names the interface member
+    /// it implements, type arguments included, which its own display name drops
+    /// (<c>Rank.IComparable.CompareTo(Rank)</c>).
+    /// </summary>
+    internal static string Describe(IMember member)
+    {
+        IMember? implemented = member switch
+        {
+            IMethod { IsExplicitInterfaceImplementation: true } method       => method.ExplicitInterfaceImplementations.FirstOrDefault(),
+            IProperty { IsExplicitInterfaceImplementation: true } property => property.ExplicitInterfaceImplementations.FirstOrDefault(),
+            IEvent { IsExplicitInterfaceImplementation: true } @event       => @event.ExplicitInterfaceImplementations.FirstOrDefault(),
+            _                                                               => null
+        };
+
+        return implemented is null ? member.ToDisplayString() : $"the explicit implementation of {implemented.ToDisplayString()}";
     }
 
     /// <summary>Non-implicit members of <paramref name="target"/> with one of <paramref name="names"/>, of any kind.</summary>

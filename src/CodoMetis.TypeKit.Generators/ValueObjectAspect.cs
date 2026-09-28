@@ -262,6 +262,23 @@ internal sealed partial class ValueObjectAspect : TypeAspect
             return false;
         }
 
+        // A hand-written equality was kept by the record while the generated ordering, the JSON keys and
+        // the column went on comparing the wrapped value, so values it called equal sorted apart.
+        // Refused rather than made a seam: normalising in Create makes equal values hold the same wrapped
+        // value, which every one of those agrees with, while a hand-written CompareTo beside it would
+        // align the ordering alone.
+        var equality = ValueObjectDeclaration.EqualityDeclaredByHand(target);
+
+        if (equality.Count > 0)
+        {
+            builder.Diagnostics.Report(HandWrittenGeneratedMember.WithArguments((target, string.Join(", ", equality),
+                "a value object's equality is its wrapped value's, as its ordering, its JSON and its EF Core column are, and a hand-written one disagrees with them: "
+              + "values it calls equal sort apart, and a HashSet and a SortedSet of the same values differ in size. To make values that differ only in form equal, normalise them in Create"
+              + (kind == ValueObjectKind.Plain ? $" (declare {target.Name} as IValidatedValue to get one)" : "")
+              + ", so that equal values hold the same wrapped value")));
+            return false;
+        }
+
         // Before the field is introduced, so what is found is the user's. JSON, parsing and the
         // materializer carried the wrapped value alone, while the record's equality compared the rest:
         // lost on a round trip, and a lazily filled cache made equal instances unequal. A required

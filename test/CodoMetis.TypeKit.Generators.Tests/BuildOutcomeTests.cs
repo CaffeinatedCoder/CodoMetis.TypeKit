@@ -70,6 +70,9 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "HandWrittenTypeConverter")]
     [InlineData("CMTK1011", "HandWrittenInterface")]
     [InlineData("CMTK1011", "ExplicitCreate")]
+    [InlineData("CMTK1011", "CaseInsensitiveEquals")]
+    [InlineData("CMTK1011", "HashCodeOnly")]
+    [InlineData("CMTK1011", "ExplicitEquatable")]
     [InlineData("CMTK1012", "WithAutoProperty")]
     [InlineData("CMTK1012", "WithCacheField")]
     [InlineData("CMTK1012", "WithRequiredMember")]
@@ -133,6 +136,20 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("ExplicitCreate", "Create only as an explicit implementation of IValidatedValue<ExplicitCreate, string, Fault>")]
     public void A_hand_written_generated_member_is_refused_by_name(string type, string member) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
+
+    /// <summary>
+    /// A hand-written equality was kept while the generated ordering, the JSON keys and the column went
+    /// on comparing the wrapped value, so values it called equal sorted apart. The error names each
+    /// member and points at normalising in <c>Create</c>, which a plain value object gets by becoming a
+    /// validated one.
+    /// </summary>
+    [Theory]
+    [InlineData("CaseInsensitiveEquals", "CaseInsensitiveEquals.Equals(CaseInsensitiveEquals), CaseInsensitiveEquals.GetHashCode(), so", "(declare CaseInsensitiveEquals as IValidatedValue to get one)")]
+    [InlineData("HashCodeOnly", "HashCodeOnly.GetHashCode(), so", "normalise them in Create, so")]
+    [InlineData("ExplicitEquatable", "the explicit implementation of IEquatable<ExplicitEquatable>.Equals(ExplicitEquatable), so", "(declare ExplicitEquatable as IValidatedValue to get one)")]
+    public void A_hand_written_equality_is_refused_by_name(string type, string members, string remedy) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(members)
+                                            && error.Message.Contains("a value object's equality is its wrapped value's") && error.Message.Contains(remedy), consumer.Output);
 
     /// <summary>
     /// Instance state besides the wrapped value was generated without a word: JSON, parsing and the
@@ -466,6 +483,27 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public readonly partial record struct ExplicitCreate : IValidatedValue<ExplicitCreate, string, Fault>
             {
                 static Result<ExplicitCreate, Fault> IValidatedValue<ExplicitCreate, string, Fault>.Create(string value) => Result.Error(Fault.Refused);
+            }
+
+            // A hand-written equality: the record kept it while the generated ordering, the JSON keys and
+            // the column compared the wrapped value, so values it called equal sorted apart.
+            public readonly partial record struct CaseInsensitiveEquals : IValue<string>
+            {
+                public bool Equals(CaseInsensitiveEquals other) => true;
+
+                public override int GetHashCode() => 0;
+            }
+
+            public sealed partial record HashCodeOnly : IValidatedValue<HashCodeOnly, string, Fault>
+            {
+                public static Result<HashCodeOnly, Fault> Create(string value) => Result.Error(Fault.Refused);
+
+                public override int GetHashCode() => 0;
+            }
+
+            public readonly partial record struct ExplicitEquatable : IValue<string>, System.IEquatable<ExplicitEquatable>
+            {
+                bool System.IEquatable<ExplicitEquatable>.Equals(ExplicitEquatable other) => true;
             }
 
             // Instance state besides the wrapped value: JSON, parsing and the materializer carried the

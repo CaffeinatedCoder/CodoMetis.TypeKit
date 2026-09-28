@@ -18,6 +18,8 @@ namespace CodoMetis.TypeKit.ValueObjects;
 /// consistent with its <c>Equals</c>, as any sorted collection already requires of it. To order
 /// differently, declare <c>CompareTo(TSelf)</c>: it is kept, and the object overload, the operators
 /// and the interfaces are derived from it. Any other hand-written comparison member is CMTK1008.
+/// Equality is the wrapped value's too: a hand-written <c>Equals(TSelf)</c> or <c>GetHashCode()</c> is
+/// CMTK1011, and values that differ only in form are made equal by normalising them in <c>Create</c>.
 /// </para>
 /// <para>
 /// A hand-written <c>ToString()</c> is kept too, and then none of the formatting interfaces is
