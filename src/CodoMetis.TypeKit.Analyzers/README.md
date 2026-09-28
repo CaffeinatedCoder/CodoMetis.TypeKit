@@ -71,6 +71,11 @@ public readonly record struct Money { /* … */ }
 
 The message you give is the one the rule reports, as `Option` and `Result` name their own factories.
 
+A struct made of value objects, such as `readonly record struct OrderLine(OrderId Order, Quantity Quantity)`,
+is not one itself, and its `default` holds default value objects that no rule sees: the rules do not
+look inside another struct. Mark it with `[RequireCustomInitialization]`, and CMTK0001, CMTK0005,
+CMTK0006 and CMTK0009 then treat it as they treat a value object.
+
 ## CMTK0002
 
 The generators apply through a transitive project fabric rather than an attribute on the interfaces,
@@ -230,7 +235,9 @@ A warning, since code that checks the sequence is not empty first is correct and
 ## Configuration
 
 Severity follows the usual `.editorconfig` mechanism, for instance
-`dotnet_diagnostic.CMTK0001.severity = warning`.
+`dotnet_diagnostic.CMTK0001.severity = warning`. No `.editorconfig` section reaches the C# generated
+for `.razor` and `.cshtml` files, not `[*.cs]`, not `[*.razor]`, not even `[*]`. To set a severity
+there too, put the line in a `.globalconfig` file, which applies to every file of the project.
 
 The errors are the rules where the code is wrong whatever surrounds it: a `default` written out
 (CMTK0001), a value object nothing generates (CMTK0002), and validation bypassed (CMTK0004). A
@@ -239,6 +246,12 @@ because correct code can look the same: an array filled in a loop straight after
 (CMTK0005), a member a framework sets (CMTK0006), a sequence known not to be empty (CMTK0009), a
 drop that nothing depends on (CMTK0003), or a comparison of two identities that really are shared
 (CMTK0008).
+
+Within a major version, an Error never reports more than it did: a new Error rule, or an Error that
+reports more, waits for the next major version. A Warning or an Info may learn more forms in a minor
+version, such as another method that returns a default instance for CMTK0009. In a build that
+treats warnings as errors, such an update can report code that built before, as a newer compiler's
+warnings can.
 
 ## Generated code and Razor
 
