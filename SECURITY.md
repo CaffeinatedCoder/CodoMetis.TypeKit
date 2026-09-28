@@ -41,8 +41,8 @@ for going public, whatever the fix status. Reporters are credited unless they as
 
 ## Supported versions
 
-No version has been released yet. Once one is, security fixes land on the latest released minor
-version.
+Security fixes land on the latest minor version of the latest major version, 1.x at present. The
+five packages share one version, so a fix in any of them is a release of all five.
 
 ### If this project stops being maintained
 
@@ -67,8 +67,9 @@ There is one publishing path, `.github/workflows/release.yml`, run by pushing a 
   what a consumer of that package actually receives. Build-only references (the analyzer's Roslyn
   compiler packages, which run inside your own compiler) are excluded, and a test keeps that list
   complete.
-- **Source and symbols.** Every package has Source Link and a symbol package, so the code you step
-  into is the code that was built.
+- **Source and symbols.** Every library package has Source Link and a symbol package, so the code
+  you step into is the code that was built. The analyzer package ships only the analyzer, which runs
+  inside your compiler.
 - **No license needed.** Metalama builds without a license; CI and the release run without one.
 
 ## Where this package sits
@@ -96,6 +97,8 @@ There is one publishing path, `.github/workflows/release.yml`, run by pushing a 
 - **A generated entry point that bypasses validation.** A JSON converter, `Parse`, `TryParse`,
   model binder, type converter or `default` path that produces an `IValidatedValue` instance
   `Create` would have refused.
+- **A generated refusal that quotes the input**: a message, or an inner exception, of a generated
+  `Parse`, type converter or JSON read that contains the text it refused.
 - **An `Option` or `Result` that reads as success when it is not**, such as a `default` instance
   that passes the analyzer, a serialization path that writes one as `{}` or reads one back as
   `default` without raising, or any path that exposes the value of a `None` or an error.
@@ -119,6 +122,17 @@ There is one publishing path, `.github/workflows/release.yml`, run by pushing a 
   inside the type is trusted to apply its rules; a hand-written constructor is a build error
   (CMTK1009), so every other way in is generated or goes through `From` or `Create`.
 - Anything that fails loudly: a refused value, a `FormatException`, a build error.
+- A property absent from a JSON document. System.Text.Json calls no converter for it, so it stays
+  `default`, which no entry point of this package sees; `required` or
+  `RespectRequiredConstructorParameters` makes the serializer refuse it (the ASP.NET Core package's
+  README shows both).
+- Messages ASP.NET Core or the configuration binder write themselves, such as MVC's "The value '…'
+  is not valid.", which quote the input for a value object as they do for a `Guid`, and the
+  `JsonException.Path` System.Text.Json sets for an unreadable dictionary key, which contains the key.
+  The package's own messages, and the exceptions it throws for text the wrapped type cannot read,
+  never quote the input.
+- The wrapped type's own members reached through the value object's explicit `IConvertible`, such as
+  `Convert.ToInt32` on a value object over a `string`, which fail with the string's own message.
 - Values the application itself wrote and reads back, from a column or from a store whose options
   register `StoredJsonConverterFactory`: materialisation trusts them by contract. Registering the
   factory on options that read input is a misuse, not a vulnerability in the package.

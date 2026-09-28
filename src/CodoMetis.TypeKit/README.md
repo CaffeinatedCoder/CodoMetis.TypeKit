@@ -37,9 +37,16 @@ Option<string> town = customer
     .Filter(t => t.Length > 0);
 
 var name = from c in customer where c.IsActive select c.Name;   // query syntax works too
+
+Option<decimal> discount =                                       // a later from sees the earlier ones
+    from c in customer
+    from rate in discounts.GetValueOrNone(c.Tier)                // TryGetValue as an option
+    select rate;
 ```
 
 Create one with `Option.Some(value)` and `Option.None()`, or lift a nullable with `ToOption()`.
+`GetValueOrNone(key)` looks a key up in a dictionary, and `FirstOrNone()` and `LastOrNone()` take
+the end of a sequence, with or without a predicate.
 `Option.None()` takes its type from where it goes (`return Option.None();`, a conditional beside
 `Some`); where nothing supplies one, as with `var`, write `Option.None<T>()`.
 `Some(null)` throws, so an option that reports a value always has one. A `default(Option<T>)` is
@@ -53,7 +60,7 @@ The outcome of an operation: a value or an error of your own type, or for a comm
 no value, a success or an error. There is no `.Value` and no `.Error`.
 
 ```csharp
-public enum OrderFault { Empty, CustomerUnknown }
+public enum OrderFault { Empty, CustomerUnknown, Unpaid, Closed }
 
 public Result<Order, OrderFault> Place(CustomerId customer, IReadOnlyList<Line> lines)
 {
@@ -90,22 +97,32 @@ Option<Order> maybe = placed.ToOption();
 ```
 
 `Map`, `Bind`, `Tap` and `TapAsync` run only on success and carry an error through unchanged;
-`MapError` runs only on an error. A lambda that returns a bare value on one branch and
+`MapError` and `TapError` run only on an error, and `Ensure(predicate, error)` turns a success whose
+value breaks a rule into that error. A lambda that returns a bare value on one branch and
 `Result.Error(...)` on the other needs its type argument, `placed.Bind<Invoice>(o => o.IsPaid ?
 invoices.Of(o) : Result.Error(OrderFault.Unpaid))`, because C# infers a lambda's return type from its
-body alone. A `default(Result<…>)`, which an array slot or an unassigned field can still produce, is
+body alone; `placed.Ensure(o => o.IsPaid, OrderFault.Unpaid).Map(invoices.Of)` says the same without
+one. A `default(Result<…>)`, which an array slot or an unassigned field can still produce, is
 `ResultState.Uninitialized`, and every member that would pick a branch throws
 `InvalidOperationException` on it rather than inventing a `default(TError)`. `ToString()` never
 prints the value or the error.
 
-**Pipelines.** Asynchronous steps chain without an `await` each: every combinator also continues a
-`Task<Result<…>>`, and the chain is awaited once.
+**Pipelines.** Asynchronous steps chain without an `await` each: `Map`, `Bind`, `MapError`, `Tap`,
+`TapError` and `Ensure` also continue a `Task<Result<…>>` (`MapAsync`, `BindAsync`, …), so the chain
+is awaited once, at its end, and `Match` follows that `await`.
 
 ```csharp
 Result<OrderFault> charged = await orders.FindAsync(id)         // Task<Result<Order, OrderFault>>
-    .MapAsync(order => order.Total)                              // a synchronous step on a pending result
+    .EnsureAsync(order => order.IsOpen, OrderFault.Closed)       // a rule, on a pending result
+    .MapAsync(order => order.Total)                              // a synchronous step
     .TapAsync(total => log.Charging(total))
-    .BindAsync(total => payments.ChargeAsync(total));            // a command: Result<OrderFault> remains
+    .BindAsync(total => payments.ChargeAsync(total))             // a command: Result<OrderFault> remains
+    .TapErrorAsync(fault => log.NotCharged(id, fault));
+
+Result<Quote, OrderFault> quote =                                // query syntax: each step sees the earlier ones
+    from item in catalog.Find(sku)
+    from price in pricing.For(item, customer)
+    select new Quote(item, price);
 
 Result<Line, OrderFault> line = product.Zip(quantity, (p, q) => new Line(p, q));
 Result<IReadOnlyList<Sku>, SkuFault> skus = input.Skus.Traverse(Sku.Create);
@@ -133,6 +150,9 @@ payload says absent with `T?`, and the option lives between them: `dto.Nickname.
 way in, `nickname.OrNull()` on the way out. A result is matched to a response or a document; it has
 no wire shape of its own. The `Option.None()`, `Result.Success(...)` and `Result.Error(...)` markers refuse too, so an endpoint
 that returns one fails on its first call rather than answering `{}`.
+
+Nor are they columns: EF Core cannot map an `Option` or a `Result` property, and says so when it
+builds the model. An entity says absent with `T?` too.
 
 Two things to know. A converter registered on the `JsonSerializerOptions` takes precedence over
 the refusal, so an application that wants `Option<T>` on the wire writes one and registers it there,
@@ -175,7 +195,7 @@ The contracts in this package say what every value object has:
 |---|---|
 | `IValue<T>` | Wraps any `T`. Gets `From(value)`. |
 | `IValidatedValue<TSelf, T, TFault>` | You write `Create`, which returns a `Result`. Gets `TryFrom(value)` returning an `Option`, and `FromKnownGood(value)`, which throws and names the caller's expression, never the value. Every generated way in, JSON, parsing and the type converter, applies `Create`. |
-| `IValueObject<TSelf, T>` | What every generated value object implements: `Value`, equality. Run-time code recognises a value object by this interface, never by name. |
+| `IValueObject<TSelf, T>` | What every generated value object implements: `Value`, equality. Run-time code recognises a value object by the attribute the generators add beside it, whose type arguments are constrained to this interface, never by name. |
 | `IPlainValueObject<TSelf, T>` | A value object with no rules: `From` accepts any `T`. Plain value objects only. |
 | `IValueObjectMaterializer<TSelf, T>` | Rebuilds an instance **without validation**, for values the application wrote itself, such as a database column. Implemented explicitly, so it is not on the public surface. |
 
@@ -189,13 +209,15 @@ throwing factory is `FromKnownGood`, whose name says the caller vouches for the 
 exception names the call site's expression, never the value. And the fault `Create` returns is what
 every refusal reports: `FromKnownGood`'s exception carries it, and the generated JSON converter and
 parsing name it in their `JsonException` and `FormatException`. A refusal, wherever it happens,
-names the type and the rule and never the input, which can be a secret.
+names the type and the rule and never the input, which can be a secret; text the wrapped type cannot
+read at all is reported as that, without quoting it. The fault's own text is yours, so keep the input
+out of it.
 
 **Generic code over value objects.** The contracts are static abstract, so a method constrained on
 them works for every value object, and the generated types implement `IEqualityOperators`,
 `IComparisonOperators` and `IMinMaxValue` where the wrapped type allows, so they satisfy generic-math
-constraints too. `OrderId.New()` is such a method: one extension for every `Guid`-wrapping value
-object, not a member generated per type.
+constraints too. `OrderId.New()` is such a method: one extension for every plain (unvalidated)
+`Guid`-wrapping value object, not a member generated per type.
 
 ```csharp
 static Option<TSelf> Read<TSelf, TFault>(string field)
@@ -236,10 +258,15 @@ They arrive with this package, so whoever can see the interfaces gets the guard:
   instance.
 - **CMTK0006** (warning): a property or field of such a type that nothing sets. `required`
   closes it.
-- **CMTK0007** (suggestion): `FromKnownGood` given a parameter, which is input as far as the code
-  can tell.
+- **CMTK0007** (Info, a suggestion in the IDE): `FromKnownGood` given a parameter, which is input as
+  far as the code can tell.
 - **CMTK0008** (warning): `order.CustomerId.Value == product.Id.Value`, the wrapped values of two
   different value objects compared, which the types exist to prevent.
+- **CMTK0009** (warning): a call that hands out a `default` instance when it finds nothing,
+  `ids.FirstOrDefault()` or `ProductCode.TryFrom(s).OrDefault()`. `FirstOrNone()`, `GetValueOrNone()`
+  and `Or(fallback)` say what happens then.
+
+The rules also run in Razor components (`.razor`, `.cshtml`).
 
 The ids are stable across releases. See
 [CodoMetis.TypeKit.Analyzers](https://www.nuget.org/packages/CodoMetis.TypeKit.Analyzers) for the
@@ -253,8 +280,10 @@ objects (or the types that hold them) in your `JsonSerializerContext`, not what 
 generated converters build the wrapped type's contract themselves, from a converter on your options,
 the type's own `[JsonConverter]`, or the serializer's built-in one. Only a value object wrapping a
 type of your own that has no converter needs that type in the context, and the serializer's error
-names it. `Option` and `Result` refuse JSON there exactly as on the JIT, and
-`StoredJsonConverterFactory` reads without the rules.
+names it. An enum-backed value object is the exception: a context's `UseStringEnumConverter` does not
+reach an enum the context does not list, so list the enum too if it should be written by name.
+`Option` and `Result` refuse JSON there exactly as on the JIT, and `StoredJsonConverterFactory` reads
+without the rules.
 
 ## Where things are
 

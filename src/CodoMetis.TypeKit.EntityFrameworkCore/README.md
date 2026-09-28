@@ -8,9 +8,9 @@ and `.Value` works in a LINQ query as it does in memory.
 dotnet add package CodoMetis.TypeKit.EntityFrameworkCore
 ```
 
-It works at run time against the `IValueObject<,>` interface, so the project that hosts the
-`DbContext` needs this package and the base package only, not the generators. The domain project
-that declares the value objects references `CodoMetis.TypeKit.Generators`.
+It recognises a value object at run time by the attribute the generators put on it, so the project
+that hosts the `DbContext` needs this package and the base package only, not the generators. The
+domain project that declares the value objects references `CodoMetis.TypeKit.Generators`.
 
 ## Setup
 
@@ -20,9 +20,10 @@ services.AddDbContext<ShopDb>(options =>
            .UseTypeKit());
 ```
 
-`UseTypeKit()` adds plugins to EF's type mapping and query translation. It replaces nothing, so it
-coexists with a provider or a library that replaces EF's converter selector, and its position
-relative to `UseNpgsql` or `UseSqlite` does not matter.
+`UseTypeKit()` adds plugins to EF's type mapping, model conventions and query translation. It
+replaces nothing, so it coexists with a provider or a library that replaces EF's converter selector,
+and its position relative to `UseNpgsql` or `UseSqlite` does not matter. It lives in
+`Microsoft.EntityFrameworkCore`, beside `UseNpgsql`, so it needs no `using` of its own.
 
 An application that builds EF's internal service provider itself registers the same services there:
 
@@ -36,25 +37,42 @@ var internalServices = new ServiceCollection()
 ## What maps
 
 ```csharp
-public sealed class Order
+public class Order
 {
-    public OrderId Id { get; set; }                 // key: uuid
-    public CustomerId CustomerId { get; set; }      // foreign key: uuid
-    public ProductCode Code { get; set; }           // text, keeps HasMaxLength(10)
-    public Discount? Discount { get; set; }         // nullable integer
-    public Amount Total { get; set; }               // numeric
-    public PlacedAt PlacedAt { get; set; }          // timestamp
-    public List<Tag> Tags { get; set; } = [];       // primitive collection: text[] on PostgreSQL, JSON elsewhere
+    public required OrderId Id { get; init; }              // key: uuid
+    public required CustomerId CustomerId { get; set; }    // foreign key: uuid
+    public required ProductCode Code { get; set; }         // text, keeps HasMaxLength(10)
+    public Discount? Discount { get; set; }                // nullable integer
+    public required Amount Total { get; set; }             // numeric
+    public required PlacedAt PlacedAt { get; set; }        // timestamp with time zone on PostgreSQL
+    public List<Tag> Tags { get; set; } = [];              // primitive collection: text[] on PostgreSQL, JSON elsewhere
 }
 ```
 
 Keys, foreign keys, nullable properties, primitive collections and query parameters all map as
 scalars, and a facet configured on the property, such as a maximum length or a column type, is
-kept. A property can still name the converter explicitly:
+kept. (`required` is what the analyzer's CMTK0006 asks for: a value object that nothing assigns
+would be a `default` instance.) A property can still name the converter explicitly:
 
 ```csharp
 modelBuilder.Entity<Order>().Property(o => o.Code).HasConversion<ValueObjectConverter<ProductCode, string>>();
 ```
+
+**Keys.** A single-column key over an integer (`int`, `long`, `short`) is generated on add, as a key
+of that integer type is: an identity column on PostgreSQL and SQL Server, `AUTOINCREMENT` on SQLite.
+Switching an `int` key to a value object therefore changes no schema. A key over a `Guid` is the
+application's to assign, `Id = OrderId.New()` (a version 7 Guid, which sorts by creation time), and
+EF inserts it as given. For EF to generate it instead, configure `ValueGeneratedOnAdd()` on the
+property; EF then also takes an entity whose key is already set, reached through a navigation, for an
+existing one. An explicit configuration always wins over these defaults.
+
+**Model-wide conventions follow the property's type.** EF applies `ConfigureConventions` by CLR
+type, so `configurationBuilder.Properties<decimal>().HavePrecision(18, 2)` reaches `decimal`
+properties and not an `Amount` that wraps one. Configure the value object instead:
+`configurationBuilder.Properties<Amount>().HavePrecision(18, 2)`.
+
+**`Option` and `Result` are not columns.** EF cannot map them, and the model says so. An optional
+value is `T?` on the entity, and `ToOption()` converts it where the domain wants an `Option`.
 
 ## Queries
 
@@ -65,13 +83,22 @@ db.Orders.Where(o => o.Code.Value.StartsWith("A"));          // WHERE o."Code" L
 db.Orders.Where(o => o.Total.GetValue() > 100m);             // WHERE o."Total" > 100.0
 db.Orders.Where(o => o.Discount.ValueOrNull() > 10);         // WHERE o."Discount" > 10
 db.Orders.Where(o => o.Tags.Contains(tag));                  // WHERE @tag = ANY (o."Tags")
+db.Orders.Where(o => o.Tags.Any(t => t.Value == "x"));       // WHERE EXISTS (SELECT 1 FROM unnest(o."Tags") AS t(value) WHERE t.value::text = 'x')
 db.Orders.OrderBy(o => o.PlacedAt);
 ```
 
 `.Value`, `GetValue()` and `ValueOrNull()` translate to the column itself, so the wrapped type's
-own operations, `StartsWith`, arithmetic, comparisons, are available on it. The column is re-typed,
-not cast, so an index on it still serves the query. `ValueOrNull()` is for an optional value
+own operations, `StartsWith`, arithmetic, comparisons, are available on it. A table's column is
+re-typed, not cast, so an index on it still serves the query. The element of a primitive collection
+(`o.Tags.Any(t => t.Value == "x")`), a property mapped into a JSON column and a parameter are
+converted, which works everywhere and may add a cast. `ValueOrNull()` is for an optional value
 object, where `.Value` would first unwrap the `Nullable`.
+
+Ordering in SQL follows the database's collation for the column, while the generated comparison in
+memory is ordinal for a string, as it is for any string column.
+
+The mapping is tested on SQLite and PostgreSQL, the SQL of each translation is pinned on PostgreSQL,
+and every wrapped-type family makes a round trip through a real PostgreSQL.
 
 ## Reading back skips validation
 
@@ -88,8 +115,6 @@ foreach (var order in orders.Where(o => !o.Code.Revalidate()))
     log.StoredCodeNowRefused(order.Id);
 ```
 
-Tested on SQLite and PostgreSQL, with SQL snapshots for every translation above.
-
 ## Compiled models and Native AOT
 
 EF Core runs under Native AOT only through a compiled model and precompiled queries, and supports
@@ -100,8 +125,9 @@ dotnet ef dbcontext optimize --precompile-queries --nativeaot
 ```
 
 `UseTypeKit()` works there: value objects map through the compiled model, `.Value` translates in
-precompiled queries, a value-object parameter binds, and a stored value reads back without the rules,
-in the native binary (the consumer smoke test runs exactly that). A compiled model without Native AOT
+precompiled queries, a value-object parameter binds, a stored value reads back without the rules, and
+a key over an integer is generated by the database, in the native binary (the consumer smoke test
+runs exactly that). A compiled model without Native AOT
 works the same way. This package adds no trim or AOT warning of its own; EF's `DbContext`
 constructors report theirs, which EF's documentation covers.
 

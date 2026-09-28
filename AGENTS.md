@@ -88,6 +88,15 @@ Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TR
   `[UnconditionalSuppressMessage]` needs a measured reason, and the smoke test's `aot` consumer is
   the measurement (docs/plan.md §11).
 - **Aspects stay internal.** Their public surface is what they generate, and nothing else.
+- **A value object's JSON is its wrapped type's, byte for byte**, under whatever options the
+  application uses, values and dictionary keys alike (`JsonParityTests`). Never write or read the
+  wrapped value by a rule of your own; go through `GeneratedJsonPlan<T>`.
+- **No refusal quotes the input.** A generated `Parse`, type converter or JSON read replaces the
+  wrapped type's exception, whose message quotes the text, with one naming the value object and the
+  wrapped type, and no inner exception (`UnreadableInputTests`).
+- **Seams are declared, everything else refused.** `TryFrom`, `FromKnownGood`, `Revalidate`,
+  `CompareTo(TSelf)` and `ToString()` written by hand are kept; any other member the generators
+  introduce is CMTK1011. A new generated member joins that check, or a hand-written one is kept silently.
 - **Diagnostic ids (`CMTK`) are public contract.** Never renumber a shipped rule, and never ship a
   new rule at Error severity in a minor version.
 - **Silent is worse than broken.** A value object that compiles without being generated, an
