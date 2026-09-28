@@ -225,6 +225,26 @@ internal static class ValueObjectDeclaration
     }
 
     /// <summary>
+    /// A hand-written <c>PrintMembers(StringBuilder)</c>, the hook a record's synthesized <c>ToString()</c>
+    /// calls, where the generated <c>ToString()</c> replaces that one and never calls it. What it hid was
+    /// printed: <c>"1234"</c>, and <c>PinHolder { Pin = 1234 }</c> in a record that holds it. With a
+    /// hand-written <c>ToString()</c>, the seam, nothing is generated in its place, so it is allowed there.
+    /// </summary>
+    public static IReadOnlyList<string> PrintMembersDeclaredByHand(INamedType target)
+    {
+        if (DeclaresToString(target)) return [];
+
+        var stringBuilder = TypeFactory.GetType(typeof(System.Text.StringBuilder));
+
+        return
+        [
+            .. target.Methods
+                     .Where(method => method is { Name: "PrintMembers", IsStatic: false, IsImplicitlyDeclared: false, Parameters: [{ } builder] } && builder.Type.Equals(stringBuilder))
+                     .Select(Describe)
+        ];
+    }
+
+    /// <summary>
     /// A hand-written equality: <c>Equals(TSelf)</c>, <c>GetHashCode()</c>, or an explicit
     /// <c>IEquatable&lt;TSelf&gt;.Equals</c>. The record kept it, while the generated ordering, the JSON
     /// dictionary keys and the EF Core column went on comparing the wrapped value: a case-insensitive

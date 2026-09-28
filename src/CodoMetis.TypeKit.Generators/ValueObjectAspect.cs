@@ -262,6 +262,20 @@ internal sealed partial class ValueObjectAspect : TypeAspect
             return false;
         }
 
+        // The record's synthesized ToString() calls PrintMembers; the generated one replaces it and does
+        // not, so what a hand-written PrintMembers hid was printed, the sibling of the ToString() leak
+        // the seam fixed. Refused rather than made a second seam: ToString() already is one, and says
+        // what it prints in one place rather than as "Pin { *** }".
+        var printMembers = ValueObjectDeclaration.PrintMembersDeclaredByHand(target);
+
+        if (printMembers.Count > 0)
+        {
+            builder.Diagnostics.Report(HandWrittenGeneratedMember.WithArguments((target, string.Join(", ", printMembers),
+                "its ToString() is generated, prints the wrapped value and never calls PrintMembers, so what PrintMembers leaves out would be printed; "
+              + "to change what it prints, declare ToString() instead, which is kept")));
+            return false;
+        }
+
         // A hand-written equality was kept by the record while the generated ordering, the JSON keys and
         // the column went on comparing the wrapped value, so values it called equal sorted apart.
         // Refused rather than made a seam: normalising in Create makes equal values hold the same wrapped

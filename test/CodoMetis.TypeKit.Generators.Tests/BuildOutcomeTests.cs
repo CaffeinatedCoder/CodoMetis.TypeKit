@@ -73,6 +73,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "CaseInsensitiveEquals")]
     [InlineData("CMTK1011", "HashCodeOnly")]
     [InlineData("CMTK1011", "ExplicitEquatable")]
+    [InlineData("CMTK1011", "PinStruct")]
+    [InlineData("CMTK1011", "PinClass")]
     [InlineData("CMTK1012", "WithAutoProperty")]
     [InlineData("CMTK1012", "WithCacheField")]
     [InlineData("CMTK1012", "WithRequiredMember")]
@@ -152,6 +154,17 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                                             && error.Message.Contains("a value object's equality is its wrapped value's") && error.Message.Contains(remedy), consumer.Output);
 
     /// <summary>
+    /// A hand-written <c>PrintMembers</c> was replaced silently with the record's <c>ToString()</c>, which
+    /// calls it, so what it hid was printed. The error points at <c>ToString()</c>, the seam.
+    /// </summary>
+    [Theory]
+    [InlineData("PinStruct")]
+    [InlineData("PinClass")]
+    public void A_hand_written_PrintMembers_is_refused_with_the_seam(string type) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares {type}.PrintMembers(StringBuilder), so it is not generated")
+                                            && error.Message.Contains("declare ToString() instead"), consumer.Output);
+
+    /// <summary>
     /// Instance state besides the wrapped value was generated without a word: JSON, parsing and the
     /// materializer carried the wrapped value alone while the record's equality compared the rest, so a
     /// <c>Currency</c> was lost on a round trip and a lazily filled cache made equal instances unequal.
@@ -178,6 +191,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("Share", "Percent")]
     [InlineData("Rank", "Level.M")]
     [InlineData("WithComputedMembers", "'WithComputedMembers")]
+    [InlineData("PinWithToString", "'PinWithToString")]
     [InlineData("WithStatelessBase", "Described.")]
     public void A_seam_or_a_foreign_bound_is_not_refused(string type, string alsoNotNamed) =>
         consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'") || error.Message.Contains(alsoNotNamed), consumer.Output);
@@ -483,6 +497,31 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public readonly partial record struct ExplicitCreate : IValidatedValue<ExplicitCreate, string, Fault>
             {
                 static Result<ExplicitCreate, Fault> IValidatedValue<ExplicitCreate, string, Fault>.Create(string value) => Result.Error(Fault.Refused);
+            }
+
+            // A hand-written PrintMembers: the generated ToString() replaced the record's, which calls it,
+            // so what it hid was printed ("1234", and "PinHolder { Pin = 1234 }" in a record holding it).
+            public readonly partial record struct PinStruct : IValue<string>
+            {
+                private bool PrintMembers(System.Text.StringBuilder builder) { builder.Append("***"); return true; }
+            }
+
+            public sealed partial record PinClass : IValue<string>
+            {
+                private bool PrintMembers(System.Text.StringBuilder builder) { builder.Append("***"); return true; }
+            }
+
+            // Beside ToString(), the seam, nothing replaces what calls it: generated as usual.
+            public readonly partial record struct PinWithToString : IValue<string>
+            {
+                public override string ToString()
+                {
+                    var builder = new System.Text.StringBuilder();
+                    PrintMembers(builder);
+                    return builder.ToString();
+                }
+
+                private bool PrintMembers(System.Text.StringBuilder builder) { builder.Append("***"); return true; }
             }
 
             // A hand-written equality: the record kept it while the generated ordering, the JSON keys and
