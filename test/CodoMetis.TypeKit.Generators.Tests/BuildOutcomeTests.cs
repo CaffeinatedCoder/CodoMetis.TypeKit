@@ -45,6 +45,11 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1005", "NamedTupleBacked")]
     [InlineData("CMTK1005", "Named.Value")]
     [InlineData("CMTK1005", "FileLocal")]
+    [InlineData("CMTK1005", "FileLocalBelowRegion")]
+    [InlineData("CMTK1005", "FileLocalBelowPragma")]
+    [InlineData("CMTK1005", "FileLocalBelowDisabledText")]
+    [InlineData("CMTK1005", "FileLocalAfterAttribute")]
+    [InlineData("CMTK1005", "FileLocalFixtures.NestedInFileLocal")]
     [InlineData("CMTK1006", "NotSealed")]
     [InlineData("CMTK1007", "TakenName")]
     [InlineData("CMTK1007", "ShopId")]
@@ -463,6 +468,32 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public static class Named { public readonly partial record struct Value : IValue<int>; }
 
             file readonly partial record struct FileLocal : IValue<int>;
+
+            // A directive above the declaration, or a file-local type around it: the modifiers were read
+            // from the declaration's text with its leading trivia, and of the type alone, and Metalama
+            // crashed on both (LAMA0001).
+            #region File-local
+            file readonly partial record struct FileLocalBelowRegion : IValue<int>;
+            #endregion
+
+            #pragma warning disable CS0169
+            file readonly partial record struct FileLocalBelowPragma : IValue<int>;
+            #pragma warning restore CS0169
+
+            #if NEVER_DEFINED
+            public sealed class LeftOut { }
+            #endif
+            file readonly partial record struct FileLocalBelowDisabledText : IValue<int>;
+
+            [System.Diagnostics.DebuggerDisplay("{Value}")]
+            #pragma warning disable CS0169
+            file readonly partial record struct FileLocalAfterAttribute : IValue<int>;
+            #pragma warning restore CS0169
+
+            file static class FileLocalFixtures
+            {
+                public readonly partial record struct NestedInFileLocal : IValue<int>;
+            }
 
             // Metalama writes the ToString() override into every part (CS0111 as LAMA0611). The other
             // parts touch nothing generated, because a refused type is not generated.

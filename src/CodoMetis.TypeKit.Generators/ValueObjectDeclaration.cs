@@ -28,15 +28,30 @@ internal static class ValueObjectDeclaration
         type.Methods.Any(method => method is { Name: nameof(ToString), IsStatic: false, IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false, Parameters.Count: 0 });
 
     /// <summary>
-    /// A <c>file</c>-local type. Metalama's code model reports it as internal and has no flag for it,
-    /// so the declaration's modifiers are read from its source.
+    /// A <c>file</c>-local type, or one nested in a <c>file</c>-local type, which cannot be named outside
+    /// its file either. Metalama's code model reports it as internal and has no flag for it, so the
+    /// declaration's modifiers are read from its source.
     /// </summary>
-    public static bool IsFileLocal(INamedType type) =>
-        type.Sources.Any(source => Modifiers(source.GetText(normalized: false)).Contains("file"));
+    /// <remarks>
+    /// The source is read without its leading trivia, as its span's text: <c>SourceReference.GetText</c>
+    /// includes it (and its <c>ToString()</c> is a location, whatever its documentation says), and a
+    /// <c>#region</c> or <c>#pragma</c> line above the declaration ended the
+    /// modifiers before <c>file</c>, as the text an <c>#if</c> leaves out would, and Metalama then crashed
+    /// (LAMA0001). A type nested in a <c>file</c> class crashed it the same way.
+    /// </remarks>
+    public static bool IsFileLocal(INamedType type)
+    {
+        for (INamedType? declaration = type; declaration is not null; declaration = declaration.DeclaringType)
+        {
+            if (declaration.Sources.Any(source => Modifiers(source.Span.GetText()).Contains("file"))) return true;
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// The modifiers of a type declaration: the words between its attribute lists and its
-    /// <c>class</c>/<c>struct</c>/<c>record</c> keyword, comments skipped.
+    /// <c>class</c>/<c>struct</c>/<c>record</c> keyword, comments and directive lines skipped.
     /// </summary>
     internal static IReadOnlyList<string> Modifiers(string declaration)
     {
@@ -51,8 +66,9 @@ internal static class ValueObjectDeclaration
             {
                 i++;
             }
-            else if (c == '/' && i + 1 < declaration.Length && declaration[i + 1] == '/')
+            else if (c == '#' || (c == '/' && i + 1 < declaration.Length && declaration[i + 1] == '/'))
             {
+                // A line comment, or a directive between the attribute lists and the modifiers.
                 while (i < declaration.Length && declaration[i] != '\n') i++;
             }
             else if (c == '/' && i + 1 < declaration.Length && declaration[i + 1] == '*')

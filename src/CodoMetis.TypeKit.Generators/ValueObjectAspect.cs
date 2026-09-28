@@ -147,10 +147,10 @@ internal sealed partial class ValueObjectAspect : TypeAspect
         }
 
         // The companion class and the attribute's type arguments sit outside the file, where a file-local
-        // type cannot be named, and Metalama crashed on it (LAMA0001, naming nothing).
+        // type, or one nested in it, cannot be named, and Metalama crashed on it (LAMA0001, naming nothing).
         if (ValueObjectDeclaration.IsFileLocal(target))
         {
-            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, "a value object cannot be file-local, since generated code outside its file refers to it; declare it internal instead")));
+            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, "a value object cannot be file-local or nested in a file-local type, since generated code outside its file refers to it; declare it, and any type it is nested in, internal instead")));
             return false;
         }
 
