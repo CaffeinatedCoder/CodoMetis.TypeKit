@@ -78,6 +78,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "HandWrittenTypeConverter")]
     [InlineData("CMTK1011", "HandWrittenInterface")]
     [InlineData("CMTK1011", "ExplicitCreate")]
+    [InlineData("CMTK1011", "ExplicitCreateBesidePublic")]
     [InlineData("CMTK1011", "CaseInsensitiveEquals")]
     [InlineData("CMTK1011", "HashCodeOnly")]
     [InlineData("CMTK1011", "ExplicitEquatable")]
@@ -150,6 +151,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("HandWrittenTypeConverter", "the attribute TypeConverter")]
     [InlineData("HandWrittenInterface", "the interface IValueObject<HandWrittenInterface, int>")]
     [InlineData("ExplicitCreate", "Create only as an explicit implementation of IValidatedValue<ExplicitCreate, string, Fault>")]
+    [InlineData("ExplicitCreateBesidePublic", "Create both as a static method and as an explicit implementation of IValidatedValue<ExplicitCreateBesidePublic, string, Fault>, so it is not generated: every generated way in calls ExplicitCreateBesidePublic.Create and generic code calling T.Create reaches the explicit one")]
     public void A_hand_written_generated_member_is_refused_by_name(string type, string member) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
 
@@ -558,6 +560,15 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public readonly partial record struct ExplicitCreate : IValidatedValue<ExplicitCreate, string, Fault>
             {
                 static Result<ExplicitCreate, Fault> IValidatedValue<ExplicitCreate, string, Fault>.Create(string value) => Result.Error(Fault.Refused);
+            }
+
+            // Beside a public Create, a second rule set: generic code calling T.Create reached the explicit
+            // one, every generated entry point the public one.
+            public readonly partial record struct ExplicitCreateBesidePublic : IValidatedValue<ExplicitCreateBesidePublic, string, Fault>
+            {
+                public static Result<ExplicitCreateBesidePublic, Fault> Create(string value) => Result.Error(Fault.Refused);
+
+                static Result<ExplicitCreateBesidePublic, Fault> IValidatedValue<ExplicitCreateBesidePublic, string, Fault>.Create(string value) => Result.Error(Fault.Refused);
             }
 
             // An explicit implementation of an interface the generators implement: kept beside the generated

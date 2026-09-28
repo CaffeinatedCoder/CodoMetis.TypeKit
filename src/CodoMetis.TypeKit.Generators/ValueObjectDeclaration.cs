@@ -263,13 +263,16 @@ internal static class ValueObjectDeclaration
     }
 
     /// <summary>
-    /// The <c>Create</c> of a validated value object, when it is declared only as an explicit interface
-    /// implementation: the generated code calls <c>{TSelf}.Create(value)</c>, which cannot reach it
-    /// (CS1929 inside the generated code). <see langword="false"/> when a callable one is declared too.
+    /// How a validated value object declares <c>Create</c>: as an explicit implementation of the
+    /// marker's, and as a static method the generated code can call as <c>{TSelf}.Create(value)</c>.
+    /// Alone, the explicit one cannot be reached from there (CS1929 inside the generated code); beside a
+    /// callable one it is a second rule set, which generic code calling <c>T.Create</c> reached while
+    /// every generated entry point applied the other.
     /// </summary>
-    public static bool DeclaresCreateOnlyExplicitly(INamedType target)
+    public static (bool Explicitly, bool Callable) CreateDeclarations(INamedType target)
     {
-        var declaresExplicitly = false;
+        var explicitly = false;
+        var callable   = false;
 
         foreach (var method in target.Methods)
         {
@@ -277,16 +280,16 @@ internal static class ValueObjectDeclaration
 
             if (method.IsExplicitInterfaceImplementation)
             {
-                declaresExplicitly |= method.ExplicitInterfaceImplementations.Any(implemented => implemented.Name == nameof(IValidatedValue<,,>.Create)
-                                                                                              && implemented.DeclaringType.Definition.Equals(TypeFactory.GetNamedType(typeof(IValidatedValue<,,>))));
+                explicitly |= method.ExplicitInterfaceImplementations.Any(implemented => implemented.Name == nameof(IValidatedValue<,,>.Create)
+                                                                                      && implemented.DeclaringType.Definition.Equals(TypeFactory.GetNamedType(typeof(IValidatedValue<,,>))));
             }
             else if (method.Name == nameof(IValidatedValue<,,>.Create))
             {
-                return false;
+                callable = true;
             }
         }
 
-        return declaresExplicitly;
+        return (explicitly, callable);
     }
 
     /// <summary>

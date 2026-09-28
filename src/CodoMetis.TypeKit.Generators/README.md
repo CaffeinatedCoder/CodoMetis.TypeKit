@@ -131,8 +131,10 @@ the generators introduce, written by hand, is CMTK1011, which names it: a plain 
 interfaces the generators implement, and `IConvertible` where they generate it. So is an explicit
 implementation of a member of an interface they implement, such as `IParsable<TSelf>.Parse` or
 `IFormattable.ToString`: every caller through the interface would reach it rather than the generated
-member, and a generic `T.Parse` would skip `Create`. `Create` is declared `public static`, not as an
-explicit interface implementation, which the generated code cannot call.
+member, and a generic `T.Parse` would skip `Create`. `Create` is declared once, `public static`, and
+never as an explicit interface implementation: alone, the generated code cannot call it, and beside a
+public one, generic code calling `T.Create` would reach its rules instead of the ones every generated
+way in applies.
 
 To change what a value object prints, declare `ToString()`: a record's `PrintMembers(StringBuilder)` is
 CMTK1011 without it, since the generated `ToString()` prints the wrapped value and never calls it.

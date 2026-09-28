@@ -251,14 +251,22 @@ internal sealed partial class ValueObjectAspect : TypeAspect
 
         // The generated code calls {TSelf}.Create(value), which cannot reach an explicit implementation
         // (LAMA0611, CS1929). Refused rather than called through a constrained type parameter: the
-        // smaller change, and a public Create is what IValidatedValue documents.
-        if (kind == ValueObjectKind.Validated && ValueObjectDeclaration.DeclaresCreateOnlyExplicitly(target))
-        {
-            var fault = marker.TypeArguments[2];
+        // smaller change, and a public Create is what IValidatedValue documents. Beside a public one, an
+        // explicit one is a second rule set: generic code calling T.Create reached it, and every
+        // generated entry point the public one. One Create, public, implements the interface too.
+        var (createExplicitly, createCallable) = kind == ValueObjectKind.Validated ? ValueObjectDeclaration.CreateDeclarations(target) : (false, false);
 
-            builder.Diagnostics.Report(HandWrittenGeneratedMember.WithArguments((target,
-                $"Create only as an explicit implementation of {marker.ToDisplayString()}",
-                $"the generated code calls {target.Name}.Create, which cannot reach an explicit implementation; declare it as 'public static Result<{target.Name}, {fault.ToDisplayString()}> Create({namedValueType.ToDisplayString()} value)'")));
+        if (createExplicitly)
+        {
+            var signature = $"'public static Result<{target.Name}, {marker.TypeArguments[2].ToDisplayString()}> Create({namedValueType.ToDisplayString()} value)'";
+
+            builder.Diagnostics.Report(HandWrittenGeneratedMember.WithArguments(createCallable
+                ? (target,
+                   $"Create both as a static method and as an explicit implementation of {marker.ToDisplayString()}",
+                   $"every generated way in calls {target.Name}.Create and generic code calling T.Create reaches the explicit one, so it would have two rule sets; remove the explicit implementation and keep one Create, {signature}, which implements the interface too")
+                : (target,
+                   $"Create only as an explicit implementation of {marker.ToDisplayString()}",
+                   $"the generated code calls {target.Name}.Create, which cannot reach an explicit implementation; declare it as {signature}")));
             return false;
         }
 
