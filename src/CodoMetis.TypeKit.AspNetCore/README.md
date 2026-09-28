@@ -79,7 +79,9 @@ no component at all), and both parameters are a bare `string`.
   in applies the rule anyway.
 - **Everywhere it appears**: a property, a nullable property, a request or response body, the
   elements of a list, an array, a set or a nested container, a dictionary value, and a route,
-  query or header parameter, in minimal APIs and in MVC, in OpenAPI 3.1 and 3.0.
+  query or header parameter, in minimal APIs and in MVC, in OpenAPI 3.1 and 3.0. A nullable
+  element (`List<Quantity?>`, `Dictionary<string, Quantity?>`) is the component or null, as a
+  nullable property is.
 - **Other transformers compose.** If the document has a transformer for a wrapped type, such as
   one that describes NodaTime's `Instant` as a date-time, a value object wrapping `Instant` gets
   that description too, whichever of the two was added first.

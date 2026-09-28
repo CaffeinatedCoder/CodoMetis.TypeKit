@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.OpenApi;
@@ -26,7 +27,8 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// and ASP.NET still hoists it into the value object's own component.</item>
 /// <item>A container of value objects arrives without its element: ASP.NET drops <c>items</c> or
 /// <c>additionalProperties</c> for a converter-backed element before any transformer runs. The
-/// value object's own schema is put back, only where it is missing.</item>
+/// value object's own schema is put back, only where it is missing, and for a nullable element that
+/// schema or null.</item>
 /// <item>A parameter bound through the generated <c>TryParse</c> arrives as <see cref="string"/>,
 /// ASP.NET's placeholder for any parsable type, which the wrapped type's schema replaces.
 /// Minimal APIs name the value object in the parameter's <c>Type</c>, MVC in its model metadata.
@@ -39,8 +41,18 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
     /// <summary>The value objects being described on this call path, to refuse one that wraps itself.</summary>
     private static readonly AsyncLocal<ImmutableStack<Type>?> Describing = new();
 
+    /// <summary>
+    /// The null-or-value-object schemas put in as the elements of a container of nullable value objects,
+    /// with the element type. ASP.NET goes on to visit each as that nullable value object.
+    /// </summary>
+    private static readonly ConditionalWeakTable<OpenApiSchema, Type> NullableElements = new();
+
     public async Task TransformAsync(OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
     {
+        // Already complete: describing it as the value object would put the wrapped type's keywords beside
+        // its oneOf, and a null then no longer matched them.
+        if (NullableElements.TryGetValue(schema, out _)) return;
+
         var info = context.JsonTypeInfo;
 
         if (ValueObjectTypes.WrappedType(info.Type) is { } wrapped)
@@ -65,9 +77,30 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
 
         // Only what ASP.NET left out: a schema it did build is its own description of the elements.
         if (info.Kind == JsonTypeInfoKind.Enumerable && schema.Items is null)
-            schema.Items = await context.GetOrCreateSchemaAsync(element, parameterDescription: null, cancellationToken);
+            schema.Items = await ElementSchemaAsync(element, context, cancellationToken);
         else if (info.Kind == JsonTypeInfoKind.Dictionary && schema.AdditionalProperties is null)
-            schema.AdditionalProperties = await context.GetOrCreateSchemaAsync(element, parameterDescription: null, cancellationToken);
+            schema.AdditionalProperties = await ElementSchemaAsync(element, context, cancellationToken);
+    }
+
+    /// <summary>
+    /// The value object's schema, or, for a nullable one (<c>List&lt;Quantity?&gt;</c>, whose JSON is
+    /// <c>[1,null]</c>), that schema or null, in the form ASP.NET gives a nullable value-object property.
+    /// </summary>
+    /// <remarks>
+    /// Asking ASP.NET for the <see cref="Nullable{T}"/> itself returned the bare value object: its component
+    /// is shared with every non-nullable use, so it cannot admit null, and ASP.NET adds the null only for a
+    /// property, a body or a response, never for an element it did not build.
+    /// </remarks>
+    private static async Task<IOpenApiSchema> ElementSchemaAsync(Type element, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
+    {
+        var valueObject = Nullable.GetUnderlyingType(element);
+        var schema = await context.GetOrCreateSchemaAsync(valueObject ?? element, parameterDescription: null, cancellationToken);
+        if (valueObject is null) return schema;
+
+        var valueObjectOrNull = new OpenApiSchema { OneOf = [new OpenApiSchema { Type = JsonSchemaType.Null }, schema] };
+        NullableElements.AddOrUpdate(valueObjectOrNull, element);
+
+        return valueObjectOrNull;
     }
 
     private static Type? ParameterValueObject(ApiParameterDescription parameter) =>

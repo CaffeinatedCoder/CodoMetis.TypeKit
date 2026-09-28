@@ -33,7 +33,9 @@ public sealed record ProbeDocument(
     Dictionary<string, ProbeCount> Counts,
     Dictionary<string, List<ProbeId>> NestedIds,
     List<List<ProbeId>> ListOfLists,
-    List<ProbeCount?> MaybeCounts);
+    List<ProbeCount?> MaybeCounts,
+    ProbeCount?[] MaybeCountArray,
+    Dictionary<string, ProbeCount?> MaybeCountsByKey);
 
 /// <summary>The same names as <see cref="ProbeDocument"/>, with the wrapped types.</summary>
 public sealed record ControlDocument(

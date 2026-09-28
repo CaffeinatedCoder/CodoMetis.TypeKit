@@ -95,14 +95,39 @@ public sealed class SchemaTests
                           .ShouldBe("#/components/schemas/ProbeId");
     }
 
-    [Fact]
-    public async Task A_collection_of_optional_value_objects_has_their_component_as_its_items()
+    public static TheoryData<string, string, OpenApiSpecVersion> ContainersOfOptionalValueObjects()
     {
-        var document = await ProbeHost.DefaultDocumentAsync();
+        var data = new TheoryData<string, string, OpenApiSpecVersion>();
+        foreach (var version in new[] { OpenApiSpecVersion.OpenApi3_1, OpenApiSpecVersion.OpenApi3_0 })
+        {
+            data.Add("maybeCounts", "items", version);
+            data.Add("maybeCountArray", "items", version);
+            data.Add("maybeCountsByKey", "additionalProperties", version);
+        }
 
-        var items = document.Property("ProbeDocument", "maybeCounts")["items"].ShouldNotBeNull("the list lost its items");
+        return data;
+    }
 
-        items.ToJsonString().ShouldContain("#/components/schemas/ProbeCount");
+    /// <summary>
+    /// <c>List&lt;ProbeCount?&gt;</c> carries <c>[1,null]</c> on the wire, so its elements are the component or
+    /// null, in the form ASP.NET gives a nullable value-object property (<c>maybeCount</c>) in that version. They
+    /// were the bare component, while <c>List&lt;int?&gt;</c> admits null, and a generated client refused the null.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ContainersOfOptionalValueObjects))]
+    public async Task A_container_of_optional_value_objects_has_their_component_or_null_as_its_elements(
+        string property, string keyword, OpenApiSpecVersion version)
+    {
+        var document = await ProbeHost.DefaultDocumentAsync(version);
+
+        var elements = document.Property("ProbeDocument", property)[keyword].ShouldNotBeNull($"'{property}' lost its {keyword}");
+        var oneOf = elements["oneOf"].ShouldNotBeNull($"'{property}' does not admit null: {elements.ToJsonString()}").AsArray();
+
+        oneOf.Select(schema => schema!["$ref"]?.GetValue<string>()).ShouldContain("#/components/schemas/ProbeCount");
+        // "type": "null" in 3.1, "nullable": true in 3.0.
+        oneOf.Any(schema => schema!["type"]?.ToJsonString() == "\"null\"" || schema!["nullable"]?.GetValue<bool>() == true)
+             .ShouldBeTrue($"'{property}' does not admit null: {elements.ToJsonString()}");
+        elements.ShouldDescribeTheSameAs(document.Property("ProbeDocument", "maybeCount"), property);
     }
 
     [Fact]
