@@ -305,6 +305,95 @@ reach an enum the context does not list, so list the enum too if it should be wr
 `Option` and `Result` refuse JSON there exactly as on the JIT, and `StoredJsonConverterFactory` reads
 without the rules.
 
+## Why does this throw?
+
+Some calls throw on purpose, where carrying on would hand back a plausible wrong answer. What each
+refuses, why, and what to call instead:
+
+### Option or Result in JSON
+
+**Thrown:** `NotSupportedException: Option<Customer> is not a wire type…`, or `Result<Order, OrderFault>
+is an outcome, not a wire type…`, when System.Text.Json reads or writes an `Option`, a `Result`, a
+marker such as `Option.None()`, or a nullable of any of them.
+
+**Why:** without it a `Some` is written as `{}` and read back as `None`, and nothing is raised; see
+[Not wire types](#not-wire-types) and the [design](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/plan.md#9-option-and-result).
+
+**Instead:** say absent with `T?` in the shape, and convert at the boundary: `dto.Nickname.ToOption()`
+on the way in, `nickname.OrNull()` on the way out. `Match` a result to a response. A source-generated
+context refuses an `Option<T>?` property earlier, with the serializer's
+``The converter '' is not compatible with the type 'CodoMetis.TypeKit.Option`1[…]'``; declare `T?`
+there too.
+
+### A null in an Option or a Result
+
+**Thrown:** `ArgumentNullException` from `Option.Some(null)`, `Result.Success(null)` or
+`Result.Error(null)`, from a `Map` or `MapError` whose selector returns null, from `FirstOrNone()`
+over a null element, or for a null error given to `ToResult`, `Ensure` or `FirstOrError`.
+
+**Why:** an option that reports a value always has one, and a result's value and error are never
+null. `notnull` is not checked at run time, so the factories check it.
+
+**Instead:** `value.ToOption()` turns a null into `None`; a selector that may return null becomes
+`Bind(c => c.Nickname.ToOption())`.
+
+### An uninitialized Result
+
+**Thrown:** `InvalidOperationException: This Result was never initialized…` from `Match`, `Map`,
+`TryGetValue` and every other member that picks a branch.
+
+**Why:** a `default` result is neither a success nor an error, and taking the error branch would
+invent a `default(TError)`. It comes from an array slot, a field nothing set, or a property missing
+from a JSON document.
+
+**Instead:** create results through `Result.Success`/`Result.Error` or a conversion. CMTK0005 and
+CMTK0006 point at the arrays and fields, and `required` closes a property; `State` tells an
+uninitialized result apart without throwing.
+
+### A value object refused a value
+
+**Thrown:** `JsonException: ProductCode refused the JSON value (TooShort).`, or `FormatException:
+ProductCode refused the input (TooShort).` from `Parse` and the type converter.
+
+**Why:** every generated way in applies `Create`, so input the rules refuse never becomes a value
+object. The message names the rule and never the input, which can be a secret; see
+[Value objects](#value-objects).
+
+**Instead:** where the caller should learn which rule failed, call `ProductCode.Create(text)` and
+match the fault; `TryFrom` or `TryParse` where valid or not is the whole question. ASP.NET Core
+answers the `JsonException` of a request body with 400.
+
+### FromKnownGood refused a value
+
+**Thrown:** `InvalidOperationException: ProductCode refused request.Code, which the call site
+declared known-good (TooShort).`
+
+**Why:** `FromKnownGood` is for a literal or a value the code has just produced, so a refusal there is
+a bug at that call site. It names the call site's expression and never the value.
+
+**Instead:** input goes through `Create` or `TryFrom`. CMTK0007 points at a `FromKnownGood` given a
+parameter.
+
+### A value object could not read the input
+
+**Thrown:** `FormatException: Quantity could not read the input as Int32.` from `Parse` and the type
+converter, or `JsonException: Quantity could not read the JSON value as Int32.` from JSON.
+
+**Why:** the wrapped type's own message quotes the input ("The input string '…' was not in a correct
+format."), so it is replaced, and not kept as the inner exception either; see the
+[design](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/plan.md#8-decisions),
+decision 27. A JSON error still carries its path.
+
+**Instead:** `TryParse` for text that may not parse. Text that is yours to log, log before parsing.
+
+### Materialize and CMTK0004
+
+Not a run-time exception but a build error: `Materialize` rebuilds a value object without `Create`,
+for a value the application wrote itself, and anywhere but the EF Core satellite it is
+[CMTK0004](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0004).
+Use `Create` or `FromKnownGood` instead, and `StoredJsonConverterFactory` for JSON the application
+stored.
+
 ## Where things are
 
 `Option`, `Result`, `OrderId.New()` and `[RequireCustomInitialization]` live in `CodoMetis.TypeKit`;
