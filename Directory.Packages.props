@@ -48,4 +48,9 @@
         <!-- The ASP.NET Core satellite's tests: a probe host whose OpenAPI document they read. -->
         <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
     </ItemGroup>
+
+    <!-- Benchmarks only (benchmarks/), never a shipping or test dependency. -->
+    <ItemGroup>
+        <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
+    </ItemGroup>
 </Project>

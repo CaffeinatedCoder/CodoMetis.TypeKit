@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Value objects and Option/Result against the types they stand in for, measured with
+      BenchmarkDotNet. Not a test and never packed; it is in the solution so that it keeps compiling.
+      Run it in Release, as benchmarks/README.md shows.
+    -->
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <IsPackable>false</IsPackable>
+        <!-- BenchmarkDotNet needs public benchmark classes; the documentation rule is for shipped code. -->
+        <NoWarn>$(NoWarn);CS1591</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="BenchmarkDotNet" />
+        <!--
+          The analyzer's Roslyn reaches this project through CodoMetis.TypeKit's reference to it, and
+          BenchmarkDotNet brings an older one (MSB3277). Raising BenchmarkDotNet's to the analyzer's
+          settles it.
+        -->
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Generators\CodoMetis.TypeKit.Generators.csproj" />
+    </ItemGroup>
+
+</Project>
