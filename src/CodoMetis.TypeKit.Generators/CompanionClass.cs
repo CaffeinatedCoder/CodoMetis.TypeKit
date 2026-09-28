@@ -10,11 +10,17 @@ namespace CodoMetis.TypeKit.Generators;
 /// <remarks>
 /// <para>
 /// <see cref="NameOwner"/> reads the namespace's types, and it runs in the fabric, when the aspects
-/// are selected and nothing has been introduced yet. Run inside the companion aspect, it read the
-/// namespace while sibling instances were introducing their companion classes into it, since the
-/// instances of one aspect layer run in parallel on one code model, and one build in nine then
-/// missed a declared <c>TakenNameExtensions</c> and introduced a second one (CS0260 instead of
-/// CMTK1007). With Metalama's concurrent build off it never missed (spikes/ConcurrentNamespaceTypes).
+/// are selected and nothing has been introduced yet.
+/// </para>
+/// <para>
+/// It finds a type by enumerating the namespace and comparing names, never with <c>OfName</c>.
+/// Metalama builds a collection's by-name index lazily and without a lock, and the fabric runs this
+/// for every value object in parallel on one code model. An <c>OfName</c> that overlapped another
+/// caller completing the collection returned nothing for a declared <c>TakenNameExtensions</c>, and
+/// the aspect introduced a second one: CS0260, or LAMA0531 where Metalama's own check still saw it.
+/// That was one build in 23 in the fabric, and one in 12 in the companion aspect before it.
+/// Enumerating goes through the collection's lock and missed none in 600 builds
+/// (spikes/ConcurrentNamespaceTypes).
 /// </para>
 /// </remarks>
 [CompileTime]
@@ -66,12 +72,12 @@ internal static class CompanionClass
     public static string? NameOwner(INamedType valueObject)
     {
         var className = Name(valueObject);
-        var @namespace = valueObject.ContainingNamespace;
+        var types = valueObject.ContainingNamespace.Types;
 
-        if (@namespace.Types.OfName(className).FirstOrDefault() is { } declared)
+        if (types.FirstOrDefault(type => type.Name == className) is { } declared)
             return $"the type '{declared.ToDisplayString()}'";
 
-        var rival = AllTypes(@namespace.Types)
+        var rival = AllTypes(types)
             .FirstOrDefault(type => !type.Equals(valueObject)
                                  && ValueObjectTypes.IsValueObject(type)
                                  && NamespaceLevelAccessibility(type) is not null

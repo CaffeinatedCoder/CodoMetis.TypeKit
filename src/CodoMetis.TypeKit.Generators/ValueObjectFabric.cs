@@ -23,10 +23,10 @@ namespace CodoMetis.TypeKit.Generators;
 /// <para>
 /// The aspect is handed what owns its companion class's name, and whether what it wraps is a value
 /// object (<see cref="ValueObjectTypes.WrappedValueObjectRefusal"/>). Both read types other than its
-/// target, so they are computed here rather than in an aspect: the instances of one aspect layer run
-/// in parallel on one code model, and a scan of the namespace's types from inside the extensions
-/// aspect raced the sibling instances introducing their companion classes into it
-/// (<see cref="CompanionClass"/>). Here nothing has been introduced yet.
+/// target, so they are computed here, where nothing has been introduced yet, rather than in an
+/// aspect. The factory below still runs in parallel on one code model, so they find a type by
+/// enumerating a collection, never by <c>OfName</c>, whose index is not safe for parallel callers
+/// (<see cref="CompanionClass"/>).
 /// </para>
 /// </remarks>
 internal sealed class ValueObjectFabric : TransitiveProjectFabric
