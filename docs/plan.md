@@ -1,6 +1,6 @@
 # Plan: CodoMetis.TypeKit
 
-Status: **in progress, 2026-09-27.** Phases 0 to 8 are done; 0.1.0 waits on the repository going
+Status: **in progress, 2026-09-28.** Phases 0 to 9 are done; 0.1.0 waits on the repository going
 public. The decisions are in §8, Native AOT in §11. The fabric spike
 ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation comparison
 ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)), the EF mapping spike
@@ -11,7 +11,7 @@ public. The decisions are in §8, Native AOT in §11. The fabric spike
 
 | Package | Depends on | Metalama | Contents |
 |---|---|---|---|
-| `CodoMetis.TypeKit` | Analyzers (flows, §10) | **no** | `Option<T>`, `Result<T,TError>`, `Result<TError>` and their extensions, all carrying `NotWireTypeJsonConverterFactory` (§9); the value-object contracts `IValueObject<,>`, `IPlainValueObject<,>`, `IValue<T>`, `IValidatedValue<,,>`, `IValueObjectMaterializer<,>` (§4); `RequireCustomInitializationAttribute`; `GuidValueExtensions` (`OrderId.New()` from a version 7 Guid); and what only generated code and the satellites use (§3, §5, §11): `GeneratedValueObjectAttribute<,>`, `IValueObjectVisitor<>`, `TranslatedAsWrappedValueAttribute`, `GeneratedFactories`, `GeneratedParsing`, `GeneratedJson`, `IStoredJsonConverterSource` |
+| `CodoMetis.TypeKit` | Analyzers (flows, §10) | **no** | `Option<T>`, `Result<T,TError>`, `Result<TError>` and their extensions, all carrying `NotWireTypeJsonConverterFactory` (§9); the value-object contracts `IValueObject<,>`, `IPlainValueObject<,>`, `IValue<T>`, `IValidatedValue<,,>`, `IValueObjectMaterializer<,>` (§4); `RequireCustomInitializationAttribute`; `GuidValueExtensions` (`OrderId.New()` from a version 7 Guid); and what only generated code and the satellites use (§3, §5, §11): `GeneratedValueObjectAttribute<,>`, `IValueObjectVisitor<>`, `TranslatedAsWrappedValueAttribute`, `GeneratedFactories`, `GeneratedParsing`, `GeneratedFormatting`, `GeneratedJson`, `IStoredJsonConverterSource` |
 | `CodoMetis.TypeKit.Analyzers` | — | no | Roslyn analyzers and code fixes (§10). Nobody references it directly: it reaches every consumer through the base package |
 | `CodoMetis.TypeKit.Generators` | TypeKit, Metalama.Framework 2026.1.x (flows) | yes | Internal aspects, internal `TransitiveProjectFabric`, `AspectOrder`. Future generated type families join this package too: one fabric, one aspect order |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | TypeKit, EF Core Relational | no | Generic converter, convention, `.Value` / `GetValue` / `ValueOrNull` translators, `UseTypeKit()` |
@@ -29,7 +29,7 @@ objects from a referenced domain assembly never needs Metalama itself.
 |---|---|
 | `CodoMetis.TypeKit` | `Option`, `Result`, `ResultState`, the markers, `NotWireTypeJsonConverterFactory`, `RequireCustomInitializationAttribute`, `GuidValueExtensions` (`New()` is call-site vocabulary, like `Option`) |
 | `CodoMetis.TypeKit.ValueObjects` | Every contract a user declares or constrains on: `IValue`, `IValidatedValue`, `IValueObject`, `IPlainValueObject`, `IValueObjectMaterializer`, and `StoredJsonConverterFactory` |
-| `CodoMetis.TypeKit.CompilerServices` | What only generated code and the satellites touch, all `[EditorBrowsable(Never)]`: `GeneratedValueObjectAttribute`, `IValueObjectVisitor`, `TranslatedAsWrappedValueAttribute`, `GeneratedFactories`, `GeneratedParsing`, `GeneratedJson`, `IStoredJsonConverterSource`. The name follows `System.Runtime.CompilerServices` |
+| `CodoMetis.TypeKit.CompilerServices` | What only generated code and the satellites touch, all `[EditorBrowsable(Never)]`: `GeneratedValueObjectAttribute`, `IValueObjectVisitor`, `TranslatedAsWrappedValueAttribute`, `GeneratedFactories`, `GeneratedParsing`, `GeneratedFormatting`, `GeneratedJson`, `IStoredJsonConverterSource`. The name follows `System.Runtime.CompilerServices` |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | converter, convention, translators |
 | `CodoMetis.TypeKit.AspNetCore` | `AddTypeKit()` |
 
@@ -297,6 +297,36 @@ Each phase ends green, and its guards have been proven by seeding the defect
      `None` out of the refusal, `MapError` past the uninitialized check, or the command into the
      error branch of `Bind` fails 7, 1 and 1 tests. `ToResult` checks its error on either branch,
      like the delegates, and a `Some` that accepted a null error fails its test.
+9. **Before 0.1.0: rule set, Result pipelines, performance. ✅ Done 2026-09-28.**
+   - The analyzer rule set (decision 13): CMTK0003–CMTK0008 beside CMTK0001/0002 (§10). CMTK0004
+     ships at Error, which only the first release can do without a major version.
+   - `Revalidate()` on a validated value object (§5): `Create` applied to the value it holds, for
+     finding the stored values a rule added later refuses.
+   - `Result` (§9): `MapAsync`/`BindAsync` on both shapes, and on a `Task<Result<…>>` a continuation
+     of every combinator (`MapAsync`, `BindAsync`, `MapErrorAsync`, `TapAsync`); `Zip` for two to six
+     results; `Sequence` and `Traverse`. All stop at the first error.
+   - Benchmarks (`benchmarks/`), against the wrapped types, and a spike against Vogen
+     ([spikes/ValueObjectPerformance](../spikes/ValueObjectPerformance/README.md)).
+   - Found by the benchmarks, and fixed: `TryFormat` boxed the wrapped value (32 bytes, 3.5 times a
+     `Guid`'s time); comparing an enum-backed value object boxed both operands (sorting 1,000 took 8
+     times as long and allocated 367 KB); the JSON converter wrote and read a number through a nested
+     serializer call (1.35–1.40 times). All at parity after the fix (§5).
+   - Found while measuring the rules on woven code: Metalama runs analyzers on the source before
+     weaving, where a call to a generated member of a value object in the same project does not bind,
+     so CMTK0003 missed an ignored `TryFrom` and CMTK0007 every `FromKnownGood` (§10).
+   - Guards, each proven by seeding its defect: the new `Result` members' completeness tests force a
+     case each (28 null-delegate cases, one uninitialized case per extension, one continuation per
+     combinator), and six seeds (zips short-circuiting, a delegate checked after the await, `Sequence`
+     enumerating past the error, `MapAsync` calling its selector on an error, a combinator without a
+     continuation, the second error first) fail 5, 16, 3, 2, 3 and 1 tests. Each rule's verifier tests
+     have a positive control per form and a negative control per exemption; 29 seeds across the six
+     rules each fail their test. A `Revalidate()` that skips `Create` fails both of its behaviour
+     tests, one of them against PostgreSQL. CMTK0004's exemption of EF's compiled model is measured by the smoke
+     test: with generated code analysed, the AOT consumer fails with six CMTK0004 errors in
+     `CompiledModels/OrderEntityType.cs`. The build-outcome consumer holds every rule to a value object
+     of its own project; without the unbound-call path CMTK0003 and CMTK0007 fail there. The
+     performance fixes are held by allocation tests on a Debug build, where the JIT never removes a
+     box, and a number-handling matrix; reverting any fix fails them.
 
 ## 3. Discovery is by interface
 
@@ -403,6 +433,11 @@ custom attributes.
   positional record's parameter list) and to leave the compiler's own and a static constructor
   alone. The type's own members can still call the private constructor, as `Create` must: that is
   the one trusted seam into a validated value object, stated on `IValidatedValue` and in SECURITY.md.
+- **`Revalidate()` (decided 2026-09-28)** on a validated value object returns `Create(Value)`: today's
+  rules applied to an instance that was rebuilt without them, by the EF satellite or
+  `StoredJsonConverterFactory`. It is how an application finds the stored values a rule added later
+  refuses, which the validation-free read path otherwise hides by design. It returns what `Create`
+  returns, normalisation included, and a type that declares its own keeps it.
 - **The companion class** holding `GetValue()`/`ValueOrNull()` sits at namespace level, as
   extension methods must, and is named after the whole nesting chain: `Order.Id` gets
   `OrderIdExtensions`. Named after the value object alone, `Order.Id` and `Customer.Id` both asked
@@ -435,6 +470,18 @@ custom attributes.
   the options, the type's `[JsonConverter]`, the built-in converter the aspect names by its property
   type). A source-generated context never sees what a value object wraps, and serializing through
   the options needs reflection. A key uses `GeneratedJson.KeyConverter<T>`.
+- **The wrapped value is written and read by its converter directly** (decided 2026-09-28), through
+  `GeneratedJson.Write`/`Read`, wherever that is what the serializer would do: a value converter, and
+  no number handling that changes the output (`WriteAsString`, named literals) or, for a string
+  token, the input. Otherwise through the serializer, which alone applies number handling. A nested
+  `JsonSerializer.Serialize`/`Deserialize` per value cost 35–40% (measured). The contract is kept for
+  the most recent options per wrapped type, one strong reference each.
+- **Formatting and comparison never box** (decided 2026-09-28). The wrapped type's `ToString`,
+  `TryFormat` and UTF-8 `TryFormat` are called through `GeneratedFormatting`, a constrained generic
+  call that also reaches an explicit implementation, and comparison through `Comparer<T>.Default`,
+  which the JIT specialises per type and, for an enum, compares the underlying values. Casting the
+  value to the interface boxed it; an optimising JIT hid that for some types and not for others
+  (enums), so the allocation tests run on a Debug build, where it never does.
 - **JSON reads never parse by rules of their own.** A value is read by the reader's methods
   (`GetGuid`, `GetDateTime`) or, for `DateOnly`/`TimeOnly`, the serializer's built-in converter; a
   dictionary key by the built-in converter's `ReadAsPropertyName`
@@ -524,6 +571,9 @@ custom attributes.
    `StartsWith`, equality, and `Contains` over a list of ids.
 4. **OpenAPI.** A probe host's emitted document, asserted per shape against a control that uses
    the wrapped type directly, so the tests follow what ASP.NET publishes for that type (§7).
+5. **Performance.** Allocation tests hold the generated members to what the wrapped type allocates,
+   and `benchmarks/` measures time against the wrapped types. The benchmarks are not a gate: they are
+   run before a release and when a template changes.
 
 ## 7. OpenAPI
 
@@ -563,8 +613,10 @@ position, and the change lands in the hoisted component.
   `DiagnosticSuppressor` has no effect under Metalama's compiler, and Metalama's own suppression is
   scoped to the aspect's targets, so the package README documents the pragma instead.
 
-Vogen and Thinktecture document Swashbuckle only (checked 2026-09-27). The README describes what
-the package does and claims nothing about other libraries.
+Vogen 8.0.7 generates a schema transformer for Microsoft.AspNetCore.OpenApi too, from a table of
+wrapped types (checked in its source at the tag, 2026-09-28; the 2026-09-27 note here said
+Swashbuckle only). The README describes what the package does and claims nothing about other
+libraries.
 
 ## 8. Decisions
 
@@ -596,6 +648,10 @@ the package does and claims nothing about other libraries.
     transformer and not a format table.
 12. **ASP0020 is documented, not suppressed** (2026-09-27, §7): the package cannot suppress it, and
     a blanket suppression would hide the check for every other type.
+13. **The first release's rule set is CMTK0001–CMTK0008** (2026-09-28, §10). CMTK0004 ships at Error
+    in 0.1.0, the one release where a new Error rule needs no major version; CMTK0003, CMTK0005 and
+    CMTK0006 at Warning, CMTK0006 once its fix was measured; CMTK0007 at Info, reporting only a
+    value that comes straight from a parameter.
 15. **`Option`/`Result` are not wire types** (2026-09-27, §9): a `[JsonConverter]` on every exported
     struct of the base package throws `NotSupportedException` in both directions. Not a lossless
     converter, and not an analyzer.
@@ -644,9 +700,12 @@ the package does and claims nothing about other libraries.
       `using static`. A lambda that returns a bare value and `Result.Error(...)` still needs its type
       argument, because C# infers a lambda's return type from its body alone; the README says so.
 
+20. **net10.0 only** (2026-09-28). The satellites cannot go lower (EF Core 10 and
+    Microsoft.AspNetCore.OpenApi 10 require it), the contracts use static abstract interface members,
+    which rules out netstandard2.0, and .NET 8's support ends on 2026-11-10.
+
 Still open:
 
-13. **Analyzer first-release rule set** (§10 proposes CMTK0001–0005 plus code fixes).
 14. **context7.json.** The sibling repos register one. Add it once the repo is public.
 
 ## 9. Option and Result
@@ -699,6 +758,15 @@ LanguageExt is out.
   where it is what someone stepping through wants to see. The debugger is not a log.
 - **`Result<TError>` has no `AsEnumerable`.** A sequence of zero or one units says no more than
   the `bool` conversion.
+- **Pipelines (decided 2026-09-28).** `MapAsync`/`BindAsync` take an asynchronous selector on a
+  result, and every combinator of both shapes continues a `Task<Result<…>>` (`MapAsync`, `BindAsync`,
+  `MapErrorAsync`, `TapAsync`), so a chain is awaited once, at its end; a completeness test holds
+  every combinator to a continuation. `Match` ends a chain after that `await`. Each continuation
+  checks its delegate before awaiting, so a null one is reported even when the pending result fails.
+  `Zip` combines two to six results, `Sequence` and `Traverse` a sequence of them. All stop at the
+  first error, in argument or sequence order: collecting errors is the validation applicative the
+  non-goals exclude. A zip still inspects every argument, so an uninitialized one after an error
+  throws.
 
 **Decided 2026-09-27: an uninitialized `Result` throws.**
 - A `default` result is `State == Uninitialized`. If the branching members tested only
@@ -793,12 +861,20 @@ exist.
 |---|---|---|---|
 | CMTK0001 | No `default`/`default(T)`/`new()`/`new T()` of a value object or a `[RequireCustomInitialization]` type | Error | done (unshipped) |
 | CMTK0002 | Type implements `IValue<>`/`IValidatedValue<,,>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so it is never woven | Error | done (unshipped) |
-| CMTK0003 | `Result`/`Option` return value ignored (expression statement, including an awaited `Task<Result<…>>`; `_ =` is the explicit opt-out). CA1806 can only enforce this per method name via `additional_use_results_methods`, not per return type | Warning | proposed |
-| CMTK0004 | `IValueObjectMaterializer<,>.Materialize` or `ValueObjectConverter<,>.Materialize` called outside `CodoMetis.TypeKit.EntityFrameworkCore` and EF's generated compiled model. Enforces the validation-free-path invariant in SECURITY.md (the other sanctioned path, `StoredJsonConverterFactory`, reaches the converter's materializing mode through `IStoredJsonConverterSource`, not `Materialize`) | Error | proposed |
-| CMTK0005 | Array or span of a no-default type created with a length (`new OrderId[n]`, `GC.AllocateUninitializedArray`, `stackalloc OrderId[n]`, which CMTK0001 does not see, measured 2026-09-27): every element starts as `default` | Warning | proposed |
-| CMTK0006 | Field or auto-property of a no-default type in a class, not `required`, no initializer, not assigned in every constructor. This is the CS8618 equivalent nullable analysis does not give structs, and the largest remaining way to get a `default` value object | Info → Warning | **measure noise first** on EF entities with private parameterless constructors |
-| CMTK0007 | `FromKnownGood` called with a non-constant argument | Info | **needs design**: "a value the caller just produced" is legitimate |
+| CMTK0003 | `Result`/`Option` a call returns, dropped by an expression statement, awaited or not; `_ =` opts out. `Tap` on a stored result is exempt, since it returns its receiver. CA1806 can only enforce this per method name, not per return type | Warning | done (unshipped) |
+| CMTK0004 | `IValueObjectMaterializer<,>.Materialize`, `ValueObjectConverter<,>.Materialize` or a hand-written value object's public `Materialize`, called or referenced (expression trees included). The satellite's own call is compiled in the satellite; EF's compiled model is generated code, which is skipped (measured: analysed, it is six errors in the smoke test's AOT consumer). `StoredJsonConverterFactory` goes through `IStoredJsonConverterSource`, not `Materialize` | Error | done (unshipped) |
+| CMTK0005 | `new T[n]`, `stackalloc T[n]`, `GC.AllocateUninitializedArray/AllocateArray<T>` or `Array.Resize` of a no-default struct: every new slot starts as `default`. A constant length of zero or initial elements are silent | Warning | done (unshipped) |
+| CMTK0006 | Field or auto-property of a no-default struct type in a class that no initializer, `required` or constructor sets; a non-public parameterless constructor (EF, serializers) and a record's copy constructor are exempt. Measured 2026-09-28 on the repository's EF entities and request types: 12 of 12 reports on settable properties of a type with only the implicit constructor, each a real way to a default. `required`, the fix the message names, works with EF's compiled model, precompiled queries and Native AOT (the smoke test rerun with it) | Warning | done (unshipped) |
+| CMTK0007 | `FromKnownGood` given a value straight from a parameter of the enclosing method or lambda, or a member or element of one. A value the code produced itself is legitimate and silent; a parameter copied into a local first is not seen. Info, since test theories and helpers that only receive constants are reported too | Info | done (unshipped) |
+| CMTK0008 | The wrapped values of two different value objects compared (`==`, `!=`, ordering, `Equals`, `CompareTo`) through `.Value`, `?.Value`, `GetValue()` or `ValueOrNull()`: the typed ids unwrapped into the bug they prevent. Recognised by syntax, since `.Value` of a same-project value object does not bind where analyzers run. A raw value on one side, or an explicit cast, is silent | Warning | done (unshipped) |
 | — | Code fixes for the aspect's shape diagnostics CMTK1000–1002 (missing `partial`/`record`/`readonly`) | — | proposed. The aspect keeps its own error as a backstop |
+
+**Rules that read calls see the source before weaving (measured 2026-09-28).** Metalama runs
+analyzers on the unwoven source, where a call to a member the generators introduce into a value
+object of the same project does not bind. CMTK0003 recognises `X.TryFrom(…)` and CMTK0007
+`X.FromKnownGood(…)` by the generated member's name on a validated value object's type, which binds;
+the names are pinned by the generated-surface snapshot. The build-outcome consumer holds every rule to
+a value object of its own project, since the verifier tests never weave.
 
 **Release discipline.** Keep `AnalyzerReleases.Shipped/Unshipped.md` tracking (RS2008). A new rule
 ships at Warning or Info in a minor version and is raised to Error only in a major. Consumers
