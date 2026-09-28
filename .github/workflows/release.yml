@@ -241,8 +241,10 @@ jobs:
         with:
           user: ${{ secrets.NUGET_USER }}
 
-      # Only .nupkg is globbed: dotnet nuget push uploads the matching .snupkg alongside it.
-      # --skip-duplicate makes a re-run after a partial failure safe.
+      # The packages, without their symbols: those are the next step's. --skip-duplicate makes a
+      # re-run after a partial failure safe, but a .nupkg nuget.org already has is skipped together
+      # with its .snupkg, so symbols pushed alongside would never be retried: a re-run would go
+      # green with a failed symbol upload still missing.
       - name: Push to NuGet
         env:
           NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
@@ -252,6 +254,34 @@ jobs:
             dotnet nuget push "$package" \
               --api-key "$NUGET_API_KEY" \
               --source "$NUGET_SOURCE" \
+              --no-symbols \
+              --skip-duplicate
+          done
+
+      # Each .snupkg on its own, after every package it belongs to: nuget.org refuses symbols for a
+      # package it does not have. It accepts the same symbol package more than once and answers 409
+      # while one is still being validated, which --skip-duplicate skips, so a re-run completes
+      # whatever is missing. --symbol-source names the feed whose symbol endpoint to use: without
+      # it, a .snupkg for which NuGet resolves no symbol endpoint is skipped without an error. The
+      # analyzer package has no .snupkg by design (it packs no lib/), but none at all means the
+      # library packages were packed without symbols.
+      - name: Push symbols to NuGet
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          shopt -s nullglob
+          symbols=(dist/*."$VERSION".snupkg)
+          if [[ ${#symbols[@]} -eq 0 ]]; then
+            echo "::error::No *.$VERSION.snupkg in dist/: the library packages were packed without symbols."
+            exit 1
+          fi
+          for symbol in "${symbols[@]}"; do
+            echo "==> Pushing $(basename "$symbol")"
+            dotnet nuget push "$symbol" \
+              --api-key "$NUGET_API_KEY" \
+              --source "$NUGET_SOURCE" \
+              --symbol-source "$NUGET_SOURCE" \
               --skip-duplicate
           done
 
