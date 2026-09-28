@@ -1,7 +1,7 @@
 # Plan: CodoMetis.TypeKit
 
-Status: **release candidate, 2026-09-28.** Phases 0 to 10 are done; 1.0.0 waits on the repository
-going public (release.yml, "Setup, once"). The decisions are in §8, Native AOT in §11. The fabric spike
+Status: **release candidate, 2026-09-28.** Phases 0 to 11 are done; 1.0.0 is tagged once the
+release branch is merged (CONTRIBUTING.md, "Releasing"). The decisions are in §8, Native AOT in §11. The fabric spike
 ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation comparison
 ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)), the EF mapping spike
 ([spikes/EfMapping](../spikes/EfMapping/README.md)) and the OpenAPI spike
@@ -370,6 +370,61 @@ Each phase ends green, and its guards have been proven by seeding the defect
       into a `partial record struct` declared in two parts (LAMA0611 CS0111, then LAMA0613). Lift
       CMTK1010 once Metalama emits the override once.
 
+11. **Second review, against the packed 1.0.0. ✅ Done 2026-09-28.** Five reviews (the generators,
+    `Option`/`Result`, the analyzers, the satellites, packaging and release), each building throwaway
+    consumers of the packed packages with a private package cache, and the fixes below, each with a
+    guard seeded to fail.
+    - Analyzers (§10): where Metalama compiles a project, source generators run after its
+      transformation (Metalama 2025.0), and an analyzer sees only the source. Every rule was silent in
+      the `.razor` files of the usual Blazor layout (a web project referencing a value-object project)
+      and missed forms in the declaring project. The analyzer package's `buildTransitive` props lists
+      the analyzers' namespace as a `MetalamaTransformedCodeAnalyzer` item (decision 33).
+      `AnalyzerPackagingTests` holds every analyzer to it; the smoke test's layered consumer gains a
+      Razor library and a guard in Domain, and both build clean with the props left out. Every rule
+      has a `helpLinkUri` (`AnalyzerHelpLinkTests`). The README adds `[RequireCustomInitialization]` for
+      a struct made of value objects, and `.globalconfig` for severities in Razor, which no
+      `.editorconfig` section reaches (measured).
+    - `Option`/`Result` (§9): `Result<T, TError>` lost its `bool` conversion (decision 29);
+      `TapErrorAsync(Func<TError, Task>)` on both shapes and both continuations, since an `async` error
+      callback ran as `async void` and its exception ended the process (decision 30); `TryCast` on
+      `object?` removed (decision 31). CMTK0003 treats the instance `TapErrorAsync` like `TapAsync`.
+      Five seeds fail twelve tests.
+    - Generators (§5): state besides the wrapped value is CMTK1012 (a `Currency` lost in JSON, a lazy
+      cache that made equal instances unequal, `required` as LAMA0611 CS9035); a hand-written equality,
+      `PrintMembers` without `ToString()`, and explicit implementations of the interfaces the
+      generators implement are CMTK1011, or CMTK1008 for comparison (an explicit `IParsable<T>.Parse`
+      let a generic `T.Parse` past `Create`); a declared `IConvertible` is CMTK1011 (it was LAMA0041);
+      a `file`-local value object below a directive or nested in a `file` type is CMTK1005 (it was
+      LAMA0001, failing the whole project); an explicit `Create` beside a public one is CMTK1011, since
+      a generic `T.Create` reached a second rule set; and what a base record declares counts as the
+      value object's own (an unsealed `ToString()` on the base was replaced and printed the value).
+      The first CMTK1012 refused every record base from another assembly (its compiler-generated
+      `EqualityContract`); the check now skips `[CompilerGenerated]` members. Decision 32.
+    - Satellites (§4, §7): a container of nullable value objects, and a nullable value object inlined
+      by `CreateSchemaReferenceId`, admit null as the wrapped type does, in 3.1 and 3.0 (decision 36);
+      `InlinedValueObjectTests` compares 34 positions with the wrapped type. On SQLite an integer
+      value-object key is not `AUTOINCREMENT`, so the model never matched its snapshot and `Migrate()`
+      threw: the README documents `UseAutoincrement()`, and `MigrationSnapshotTests` checks it
+      (decision 35). The READMEs state the 10.0.12 floors (NU1605 below them), `AddTypeKit()` per
+      document or `ConfigureAll<OpenApiOptions>`, that `UseTypeKit()` needs a relational provider, and
+      that value objects with one name in different namespaces share a component, as any type does.
+    - Packaging (§6): the SBOMs also exclude what the SDK adds (`Microsoft.NET.ILLink.Tasks`,
+      `NETStandard.Library`), read from restore output (`suppressParent: All`); the ASP.NET Core
+      satellite drops `Microsoft.AspNetCore.OpenApi.SourceGenerators`, which had baked ten unused types
+      into it (assembly 229 → 37 KB), held by `GeneratedCodeTests`; symbol packages are pushed in a step
+      of their own, since a duplicate .nupkg made NuGet skip its .snupkg on a re-run; package
+      descriptions are plain text, and the release notes omit the changelog heading.
+    - Found and left for 1.x: CMTK0003 over `Task.WhenAll`/`Select` of results and over method groups;
+      CMTK0008 in LINQ joins; CMTK0009 for `List.Find`, `Array.Find`, `ImmutableArray` and
+      `FirstOrDefaultAsync`, EF's included (all Warnings, decision 34). CMTK0001 reports
+      `ThrowIfEqual(id, default)`, assertions and an `out` parameter's `default`. Raw Metalama errors
+      for a value object named after a generated member (`From`, `TryFrom`, `MinValue`), a wrapped type
+      whose `Parse` does not return it or that is abstract, and a public base member whose signature
+      matches a generated one (LAMA0500). `ToString()` of a default `Uri`/`Version` value object throws; `IConvertible` quotes
+      the value; `class Email : IValue<string>` reports one of its three errors at a time; `IValue<object>`
+      writes `{}`. JSON on `Option<T>?` throws the wrong exception; a default marker converts.
+      `UseTypeKit()` on a non-relational provider could refuse in `Validate`.
+
 ## 3. Discovery is by interface
 
 No namespace strings, assembly-name prefixes or type-name lists anywhere. A name-based check
@@ -586,7 +641,19 @@ custom attributes.
     `Revalidate`, `CompareTo(TSelf)`, `ToString()`) stay allowed. Some of these were introduced with
     `OverrideStrategy.Ignore` and kept silently: a hand-written `Parse` became the binding entry
     point. `Create` implemented explicitly is CMTK1011 too, since the generated code calls
-    `{Type}.Create`.
+    `{Type}.Create`. Since phase 11 also a hand-written `Equals(TSelf)`/`GetHashCode()`/
+    `IEquatable<TSelf>.Equals`, `PrintMembers` without `ToString()`, an explicit implementation of an
+    interface the generators implement (CMTK1008 for the comparison interfaces), and a declared
+    `IConvertible`.
+  - `Create` is declared once, public: an explicit one beside it is CMTK1011, since a generic
+    `T.Create` would reach a second rule set. A base record's members count as the value object's
+    own: its `sealed` `ToString()` is the seam; an unsealed one, its `PrintMembers`, its explicit
+    implementations of the generated interfaces and an `IConvertible` on it are CMTK1011, or CMTK1008
+    for comparison. Members the compiler generated on a record from another assembly do not count.
+  - CMTK1012: state besides the wrapped value, an instance field, auto-property, `required` member or
+    field-like event, declared or inherited. JSON, parsing and the materializer carried the wrapped
+    value alone while equality compared the rest. Computed and static members stay allowed. In a
+    referenced assembly a base's private fields are invisible, so a writable property counts there.
   - CMTK1005 adds a generic wrapped type, tuples included (its equality is not value equality: a
     `List<T>` compares by reference), a value object named `Value` (CS0542), and a `file`-local one
     (LAMA0001, which failed the whole project).
@@ -860,7 +927,40 @@ libraries.
     names the value object and the wrapped type.
 28. **Seams are declared, everything else refused** (2026-09-28, §5): `TryFrom`, `FromKnownGood`,
     `Revalidate`, `CompareTo(TSelf)` and `ToString()` may be written by hand and are kept; any other
-    member or attribute the generators introduce is CMTK1011, never kept silently.
+    member or attribute the generators introduce is CMTK1011, never kept silently. Since phase 11 so
+    is an explicit implementation of an interface they implement, a hand-written equality, and
+    `PrintMembers` without `ToString()`, declared or inherited from a base record, whose `sealed`
+    `ToString()` is the seam; state besides the wrapped value is CMTK1012.
+29. **Only `Result<TError>` converts to `bool`** (2026-09-28, §9). On a valued result the conversion
+    said whether the operation succeeded where a reader expects the value: `if (await
+    IsEmailTakenAsync(email))` over `Result<bool, DbFault>` took the branch for `Success(false)`. The
+    same reason keeps a bare error from converting into one. Match it, or compare `State`.
+30. **Asynchronous callbacks return `Task`** (2026-09-28, §9). `TapErrorAsync(Func<TError, Task>)` sits
+    beside `Action<TError>`, as `TapAsync` already did. It ships in 1.0 because adding it later
+    rebinds existing calls. No `ValueTask` overloads: beside the `Task` ones every `async` lambda
+    becomes ambiguous (CS0121, measured).
+31. **No extension on `object` or on an unconstrained `T`** (2026-09-28, §9): it is offered on every
+    expression of every file that imports the namespace, and collides with anyone else's.
+    `No_extension_member_extends_every_type` holds it.
+32. **A value object holds its wrapped value alone, and its equality is that value's** (2026-09-28,
+    §5). Everything generated (JSON, parsing, the type converter, the EF column, comparison) carries
+    the wrapped value, so other state (CMTK1012), a hand-written equality or an explicit
+    implementation beside a generated member (CMTK1011, CMTK1008) would make two views of one value
+    disagree. Normalise in `Create` instead.
+33. **The analyzers run on the code Metalama transformed** (2026-09-28, §10), through a
+    `MetalamaTransformedCodeAnalyzer` item in the analyzer package's `buildTransitive` props. The
+    namespace covers every rule, a future one included.
+34. **Errors are fixed within a major version; Warnings may learn** (2026-09-28, §10). A new Error, or
+    an Error that reports more, waits for a major version. A Warning or Info may report more forms in
+    a minor version. The CMTK0003, CMTK0008 and CMTK0009 gaps the second review found go to 1.x.
+35. **SQLite's autoincrement is the application's line, not the convention's** (2026-09-28, §4). EF's
+    SQLite provider decides by the CLR type, and the only other way in is an annotation typed by the
+    SQLite assembly: setting it means naming the provider or writing a foreign annotation into every
+    other provider's model. The README documents `UseAutoincrement()`; `MigrationSnapshotTests` fails
+    once EF fixes the check, which is when the note can go.
+36. **A nullable value object admits null in the OpenAPI document wherever it appears** (2026-09-28,
+    §7): as a property, as a container's element (`oneOf: [null, component]`, ASP.NET's own form),
+    and inlined (null added to `type`, or `oneOf` around an inlined enum).
 
 Still open:
 
@@ -924,7 +1024,9 @@ LanguageExt is out.
   `Zip` combines two to six results, `Sequence` and `Traverse` a sequence of them. All stop at the
   first error, in argument or sequence order: collecting errors is the validation applicative the
   non-goals exclude. A zip still inspects every argument, so an uninitialized one after an error
-  throws.
+  throws. Callbacks return `Task` (decision 30): `TapAsync` and `TapErrorAsync` take a
+  `Func<…, Task>` beside the `Action`, so an `async` lambda is awaited; a `ValueTask` one needs
+  `.AsTask()`.
 
 **Decided 2026-09-27: an uninitialized `Result` throws.**
 - A `default` result is `State == Uninitialized`. If the branching members tested only
@@ -934,7 +1036,8 @@ LanguageExt is out.
 - The analyzer blocks `default` in source, but array elements, class fields (CMTK0005/0006) and
   reflection still produce such instances.
 - **Decision:** every member that picks a branch (`Match`, `Map`, `Bind`, `Tap`, `TapAsync`,
-  `TryGetValue`/`TryGetError`, `AsEnumerable`, the `bool` conversion) throws
+  `TapErrorAsync`, `TryGetValue`/`TryGetError`, `AsEnumerable`, the `bool` conversion of
+  `Result<TError>`) throws
   `InvalidOperationException` on `Uninitialized`. That is a loud failure instead of a fabricated
   fault. `State`, equality and `ToString` stay safe to call.
 
@@ -1045,10 +1148,18 @@ does by default, silenced every rule inside Razor components, CMTK0001 included.
 generated stays unreported, which keeps EF's compiled model out of CMTK0004 (the smoke test's AOT
 consumer is the measurement). `GeneratedCode.Report` is the one reporting path.
 
+**Transformed code (decided 2026-09-28, decision 33).** Where Metalama compiles a project, source
+generators run after its transformation, so the Razor compiler's output is not in the source an
+analyzer sees, and neither are the members the aspects introduce. The analyzer package's
+`buildTransitive` props lists the analyzers' namespace as a `MetalamaTransformedCodeAnalyzer`, and
+Metalama's compiler runs them on the transformed code. The IDE ignores the item, so live analysis
+still runs on the source, where the name-based forms above remain the reach.
+
 **Release discipline.** Keep `AnalyzerReleases.Shipped/Unshipped.md` tracking (RS2008). A new rule
 ships at Warning or Info in a minor version and is raised to Error only in a major. Consumers
 build with warnings as errors, so a new Error rule in a minor version would break their builds on
-update.
+update. Within a major version an Error never reports more than it did; a Warning or Info may learn
+more forms in a minor version (decision 34, stated in the analyzer README).
 
 ## 11. Native AOT
 
