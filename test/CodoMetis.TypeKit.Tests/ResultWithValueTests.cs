@@ -109,6 +109,38 @@ public sealed class ResultWithValueTests
     }
 
     [Fact]
+    public void TapError_sees_the_error_only_on_error()
+    {
+        var seen = new List<string>();
+
+        Result<int, string>.Success(5).TapError(seen.Add).TryGetValue(out var value, out _).ShouldBeTrue();
+        Result<int, string>.Error("boom").TapError(seen.Add).TryGetValue(out _, out var error).ShouldBeFalse();
+
+        value.ShouldBe(5);
+        error.ShouldBe("boom");
+        seen.ShouldBe(["boom"]);
+    }
+
+    [Fact]
+    public void Ensure_turns_a_value_that_fails_the_rule_into_the_given_error()
+    {
+        Result<int, string>.Success(5).Ensure(x => x > 0, "negative").ShouldBe(Result<int, string>.Success(5));
+        Result<int, string>.Success(-5).Ensure(x => x > 0, "negative").ShouldBe(Result<int, string>.Error("negative"));
+
+        var calls = 0;
+        Result<int, string>.Error("boom").Ensure(_ => ++calls > 0, "negative").ShouldBe(Result<int, string>.Error("boom"));
+        calls.ShouldBe(0);
+    }
+
+    /// <summary>As <c>Option.ToResult</c>: a null error is refused whether or not it is needed.</summary>
+    [Fact]
+    public void Ensure_refuses_a_null_error_on_either_branch()
+    {
+        Should.Throw<ArgumentNullException>(() => Result<int, string>.Success(5).Ensure(_ => true, null!)).ParamName.ShouldBe("error");
+        Should.Throw<ArgumentNullException>(() => Result<int, string>.Error("boom").Ensure(_ => true, null!)).ParamName.ShouldBe("error");
+    }
+
+    [Fact]
     public async Task TapAsync_sees_the_value_only_on_success()
     {
         var seen = new List<int>();
@@ -164,6 +196,43 @@ public sealed class ResultWithValueTests
         value.ShouldBe(42);
     }
 
+    /// <summary>
+    /// A second <c>from</c> needs the two-selector <c>SelectMany</c>: each step can use every earlier
+    /// value, and the first error ends the query.
+    /// </summary>
+    [Fact]
+    public void Query_syntax_chains_results_that_depend_on_each_other()
+    {
+        static Result<int, string> Positive(int x) => x > 0 ? x : Result.Error("not positive");
+
+        var sum =
+            from a in Positive(2)
+            from b in Positive(a + 1)
+            select a + b;
+
+        sum.ShouldBe(Result<int, string>.Success(5));
+        (from a in Positive(2) from b in Positive(-a) select a + b).ShouldBe(Result<int, string>.Error("not positive"));
+
+        var calls = 0;
+        (from a in Positive(-1) from b in Counted(a) select a + b).ShouldBe(Result<int, string>.Error("not positive"));
+        calls.ShouldBe(0);
+
+        Result<int, string> Counted(int x)
+        {
+            calls++;
+            return x;
+        }
+    }
+
+    [Fact]
+    public void SelectMany_refuses_an_uninitialized_result_from_its_selector()
+    {
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            Result<int, string>.Success(1).SelectMany(_ => default(Result<int, string>), (a, b) => a + b));
+
+        exception.Message.ShouldContain("never initialized");
+    }
+
     /// <summary>Dropping the error is the point: the caller keeps only presence.</summary>
     [Fact]
     public void ToOption_keeps_the_value_and_drops_the_error()
@@ -183,6 +252,16 @@ public sealed class ResultWithValueTests
 
         new[] { 1, 2, 3 }.FirstOrError(x => x > 9, "missing").TryGetValue(out _, out var error).ShouldBeFalse();
         error.ShouldBe("missing");
+    }
+
+    /// <summary>As <c>Option.ToResult</c>: the error was checked only when nothing matched.</summary>
+    [Fact]
+    public void FirstOrError_and_LastOrError_refuse_a_null_error_whether_or_not_something_matches()
+    {
+        Should.Throw<ArgumentNullException>(() => new[] { 1 }.FirstOrError(_ => true, (string)null!)).ParamName.ShouldBe("error");
+        Should.Throw<ArgumentNullException>(() => new[] { 1 }.LastOrError(_ => true, (string)null!)).ParamName.ShouldBe("error");
+        Should.Throw<ArgumentNullException>(() => new[] { 1 }.FirstOrError(_ => false, (string)null!)).ParamName.ShouldBe("error");
+        Should.Throw<ArgumentNullException>(() => new[] { 1 }.LastOrError(_ => false, (string)null!)).ParamName.ShouldBe("error");
     }
 
     [Fact]

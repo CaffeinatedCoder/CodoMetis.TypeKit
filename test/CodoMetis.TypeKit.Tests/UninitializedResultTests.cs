@@ -34,6 +34,7 @@ public sealed class UninitializedResultTests
         ["MapError(selector)"]        = r => Task.FromResult(r.MapError(e => e.Length)),
         ["Bind(selector)"]            = r => Task.FromResult(r.Bind(Result<string>.Success)),
         ["Tap(action)"]               = r => Task.FromResult(r.Tap(() => { })),
+        ["TapError(action)"]          = r => Task.FromResult(r.TapError(_ => { })),
         ["TapAsync(action)"]          = r => r.TapAsync(() => Task.CompletedTask),
         ["MapAsync(selector)"]        = r => r.MapAsync(() => Task.FromResult(1)),
         ["BindAsync(selector)"]       = r => r.BindAsync(() => Task.FromResult(Result<string>.Success())),
@@ -50,6 +51,8 @@ public sealed class UninitializedResultTests
         ["Bind(selector -> Result<T, TError>)"]    = r => Task.FromResult(r.Bind(Result<int, string>.Success)),
         ["Bind(selector -> Result<TError>)"]       = r => Task.FromResult(r.Bind(_ => Result<string>.Success())),
         ["Tap(action)"]                            = r => Task.FromResult(r.Tap(_ => { })),
+        ["TapError(action)"]                       = r => Task.FromResult(r.TapError(_ => { })),
+        ["Ensure(predicate, error)"]               = r => Task.FromResult(r.Ensure(_ => true, "e")),
         ["TapAsync(action)"]                       = r => r.TapAsync(_ => Task.CompletedTask),
         ["MapAsync(selector)"]                     = r => r.MapAsync(Task.FromResult),
         ["BindAsync(selector -> Result<T, TError>)"] = r => r.BindAsync(x => Task.FromResult(Result<int, string>.Success(x))),
@@ -73,6 +76,8 @@ public sealed class UninitializedResultTests
     {
         ["Select(Result<T, TError>, Func<T, TResult>)"] = () => Task.FromResult(default(Result<int, string>).Select(x => x)),
         ["ToOption(Result<T, TError>)"]                 = () => Task.FromResult(default(Result<int, string>).ToOption()),
+        ["SelectMany(Result<T, TError>, Func<T, Result<TNext, TError>>, Func<T, TNext, TResult>)"] =
+            () => Task.FromResult(default(Result<int, string>).SelectMany(_ => Value, (x, _) => x)),
 
         ["Zip(Result<T, TError>, Result<T2, TError>, Func<T, T2, TResult>)"] = () => Task.FromResult(Error.Zip(default(Result<int, string>), (x, _) => x)),
         ["Zip(Result<T, TError>, Result<T2, TError>, Result<T3, TError>, Func<T, T2, T3, TResult>)"] =
@@ -91,6 +96,8 @@ public sealed class UninitializedResultTests
         ["BindAsync(Task<Result<T, TError>>, Func<T, Result<TError>>)"]                = () => PendingDefault.BindAsync(_ => Result<string>.Success()),
         ["BindAsync(Task<Result<T, TError>>, Func<T, Task<Result<TError>>>)"]          = () => PendingDefault.BindAsync(_ => Task.FromResult(Result<string>.Success())),
         ["MapErrorAsync(Task<Result<T, TError>>, Func<TError, TNewError>)"]            = () => PendingDefault.MapErrorAsync(e => e.Length),
+        ["EnsureAsync(Task<Result<T, TError>>, Func<T, Boolean>, TError)"]            = () => PendingDefault.EnsureAsync(_ => true, "e"),
+        ["TapErrorAsync(Task<Result<T, TError>>, Action<TError>)"]                     = () => PendingDefault.TapErrorAsync(_ => { }),
         ["TapAsync(Task<Result<T, TError>>, Action<T>)"]                               = () => PendingDefault.TapAsync(_ => { }),
         ["TapAsync(Task<Result<T, TError>>, Func<T, Task>)"]                           = () => PendingDefault.TapAsync(_ => Task.CompletedTask),
 
@@ -99,6 +106,7 @@ public sealed class UninitializedResultTests
         ["BindAsync(Task<Result<TError>>, Func<Result<TError>>)"]          = () => PendingDefaultCommand.BindAsync(Result<string>.Success),
         ["BindAsync(Task<Result<TError>>, Func<Task<Result<TError>>>)"]    = () => PendingDefaultCommand.BindAsync(() => Task.FromResult(Result<string>.Success())),
         ["MapErrorAsync(Task<Result<TError>>, Func<TError, TNewError>)"]   = () => PendingDefaultCommand.MapErrorAsync(e => e.Length),
+        ["TapErrorAsync(Task<Result<TError>>, Action<TError>)"]            = () => PendingDefaultCommand.TapErrorAsync(_ => { }),
         ["TapAsync(Task<Result<TError>>, Action)"]                         = () => PendingDefaultCommand.TapAsync(() => { }),
         ["TapAsync(Task<Result<TError>>, Func<Task>)"]                     = () => PendingDefaultCommand.TapAsync(() => Task.CompletedTask),
 

@@ -52,6 +52,10 @@ public sealed class NullDelegateTests
 
         ["Option.Select(Option<T>, Func<T, TResult>): selector"]               = [() => Some.Select(Null<Func<int, int>>()), () => None.Select(Null<Func<int, int>>())],
         ["Option.SelectMany(Option<T>, Func<T, Option<TResult>>): selector"]   = [() => Some.SelectMany(Null<Func<int, Option<int>>>()), () => None.SelectMany(Null<Func<int, Option<int>>>())],
+        ["Option.SelectMany(Option<T>, Func<T, Option<TNext>>, Func<T, TNext, TResult>): selector"] =
+            [() => Some.SelectMany(Null<Func<int, Option<int>>>(), (x, y) => x + y), () => None.SelectMany(Null<Func<int, Option<int>>>(), (x, y) => x + y)],
+        ["Option.SelectMany(Option<T>, Func<T, Option<TNext>>, Func<T, TNext, TResult>): resultSelector"] =
+            [() => Some.SelectMany(_ => Some, Null<Func<int, int, int>>()), () => None.SelectMany(_ => Some, Null<Func<int, int, int>>())],
         ["Option.Where(Option<T>, Func<T, Boolean>): predicate"]              = [() => Some.Where(Null<Func<int, bool>>()), () => None.Where(Null<Func<int, bool>>())],
         ["Option.Zip(Option<T>, Option<T2>, Func<T, T2, TResult>): selector"] =
             [() => Some.Zip(Some, Null<Func<int, int, int>>()), () => None.Zip(Some, Null<Func<int, int, int>>())],
@@ -74,6 +78,7 @@ public sealed class NullDelegateTests
         ["Result<TError>.Bind(Func<Result<TError>>): selector"]                         = [() => Ok.Bind(Null<Func<Result<string>>>()), () => Failed.Bind(Null<Func<Result<string>>>())],
         ["Result<TError>.MapError(Func<TError, TNewError>): selector"]         = [() => Ok.MapError(Null<Func<string, int>>()), () => Failed.MapError(Null<Func<string, int>>())],
         ["Result<TError>.Tap(Action): action"]                                    = [() => Ok.Tap(Null<Action>()), () => Failed.Tap(Null<Action>())],
+        ["Result<TError>.TapError(Action<TError>): action"]                       = [() => Ok.TapError(Null<Action<string>>()), () => Failed.TapError(Null<Action<string>>())],
         ["Result<TError>.TapAsync(Func<Task>): action"]                           = [() => Ok.TapAsync(Null<Func<Task>>()), () => Failed.TapAsync(Null<Func<Task>>())],
 
         ["Result<T, TError>.Match(Func<T, TResult>, Func<TError, TResult>): onSuccess"]          = [() => Value.Match(Null<Func<int, int>>(), _ => 0), () => Error.Match(Null<Func<int, int>>(), _ => 0)],
@@ -85,6 +90,8 @@ public sealed class NullDelegateTests
         ["Result<T, TError>.Bind(Func<T, Result<TError>>): selector"]                          = [() => Value.Bind(Null<Func<int, Result<string>>>()), () => Error.Bind(Null<Func<int, Result<string>>>())],
         ["Result<T, TError>.MapError(Func<TError, TNewError>): selector"]                      = [() => Value.MapError(Null<Func<string, int>>()), () => Error.MapError(Null<Func<string, int>>())],
         ["Result<T, TError>.Tap(Action<T>): action"]                                             = [() => Value.Tap(Null<Action<int>>()), () => Error.Tap(Null<Action<int>>())],
+        ["Result<T, TError>.TapError(Action<TError>): action"]                                   = [() => Value.TapError(Null<Action<string>>()), () => Error.TapError(Null<Action<string>>())],
+        ["Result<T, TError>.Ensure(Func<T, Boolean>, TError): predicate"]                        = [() => Value.Ensure(Null<Func<int, bool>>(), "e"), () => Error.Ensure(Null<Func<int, bool>>(), "e")],
         ["Result<T, TError>.TapAsync(Func<T, Task>): action"]                                    = [() => Value.TapAsync(Null<Func<int, Task>>()), () => Error.TapAsync(Null<Func<int, Task>>())],
 
         ["Result<TError>.MapAsync(Func<Task<TResult>>): selector"]                = [() => Ok.MapAsync(Null<Func<Task<int>>>()), () => Failed.MapAsync(Null<Func<Task<int>>>())],
@@ -108,6 +115,10 @@ public sealed class NullDelegateTests
             [() => PendingValue.BindAsync(Null<Func<int, Task<Result<string>>>>()), () => PendingError.BindAsync(Null<Func<int, Task<Result<string>>>>()), () => PendingFault.BindAsync(Null<Func<int, Task<Result<string>>>>())],
         ["Result.MapErrorAsync(Task<Result<T, TError>>, Func<TError, TNewError>): selector"] =
             [() => PendingValue.MapErrorAsync(Null<Func<string, int>>()), () => PendingError.MapErrorAsync(Null<Func<string, int>>()), () => PendingFault.MapErrorAsync(Null<Func<string, int>>())],
+        ["Result.EnsureAsync(Task<Result<T, TError>>, Func<T, Boolean>, TError): predicate"] =
+            [() => PendingValue.EnsureAsync(Null<Func<int, bool>>(), "e"), () => PendingError.EnsureAsync(Null<Func<int, bool>>(), "e"), () => PendingFault.EnsureAsync(Null<Func<int, bool>>(), "e")],
+        ["Result.TapErrorAsync(Task<Result<T, TError>>, Action<TError>): action"] =
+            [() => PendingValue.TapErrorAsync(Null<Action<string>>()), () => PendingError.TapErrorAsync(Null<Action<string>>()), () => PendingFault.TapErrorAsync(Null<Action<string>>())],
         ["Result.TapAsync(Task<Result<T, TError>>, Action<T>): action"]     = [() => PendingValue.TapAsync(Null<Action<int>>()), () => PendingError.TapAsync(Null<Action<int>>()), () => PendingFault.TapAsync(Null<Action<int>>())],
         ["Result.TapAsync(Task<Result<T, TError>>, Func<T, Task>): action"] = [() => PendingValue.TapAsync(Null<Func<int, Task>>()), () => PendingError.TapAsync(Null<Func<int, Task>>()), () => PendingFault.TapAsync(Null<Func<int, Task>>())],
 
@@ -119,6 +130,8 @@ public sealed class NullDelegateTests
             [() => PendingOk.BindAsync(Null<Func<Task<Result<string>>>>()), () => PendingFailed.BindAsync(Null<Func<Task<Result<string>>>>()), () => PendingCommandFault.BindAsync(Null<Func<Task<Result<string>>>>())],
         ["Result.MapErrorAsync(Task<Result<TError>>, Func<TError, TNewError>): selector"] =
             [() => PendingOk.MapErrorAsync(Null<Func<string, int>>()), () => PendingFailed.MapErrorAsync(Null<Func<string, int>>()), () => PendingCommandFault.MapErrorAsync(Null<Func<string, int>>())],
+        ["Result.TapErrorAsync(Task<Result<TError>>, Action<TError>): action"] =
+            [() => PendingOk.TapErrorAsync(Null<Action<string>>()), () => PendingFailed.TapErrorAsync(Null<Action<string>>()), () => PendingCommandFault.TapErrorAsync(Null<Action<string>>())],
         ["Result.TapAsync(Task<Result<TError>>, Action): action"]     = [() => PendingOk.TapAsync(Null<Action>()), () => PendingFailed.TapAsync(Null<Action>()), () => PendingCommandFault.TapAsync(Null<Action>())],
         ["Result.TapAsync(Task<Result<TError>>, Func<Task>): action"] = [() => PendingOk.TapAsync(Null<Func<Task>>()), () => PendingFailed.TapAsync(Null<Func<Task>>()), () => PendingCommandFault.TapAsync(Null<Func<Task>>())],
 
@@ -139,6 +152,10 @@ public sealed class NullDelegateTests
             [() => new[] { 1 }.Traverse(Null<Func<int, Result<string>>>()), () => Array.Empty<int>().Traverse(Null<Func<int, Result<string>>>())],
 
         ["Result.Select(Result<T, TError>, Func<T, TResult>): selector"]                = [() => Value.Select(Null<Func<int, int>>()), () => Error.Select(Null<Func<int, int>>())],
+        ["Result.SelectMany(Result<T, TError>, Func<T, Result<TNext, TError>>, Func<T, TNext, TResult>): selector"] =
+            [() => Value.SelectMany(Null<Func<int, Result<int, string>>>(), (x, y) => x + y), () => Error.SelectMany(Null<Func<int, Result<int, string>>>(), (x, y) => x + y)],
+        ["Result.SelectMany(Result<T, TError>, Func<T, Result<TNext, TError>>, Func<T, TNext, TResult>): resultSelector"] =
+            [() => Value.SelectMany(_ => Value, Null<Func<int, int, int>>()), () => Error.SelectMany(_ => Value, Null<Func<int, int, int>>())],
         ["Result.FirstOrError(IEnumerable<T>, Func<T, Boolean>, TError): predicate"] =
             [() => new[] { 1 }.FirstOrError(Null<Func<int, bool>>(), "e"), () => Array.Empty<int>().FirstOrError(Null<Func<int, bool>>(), "e")],
         ["Result.LastOrError(IEnumerable<T>, Func<T, Boolean>, TError): predicate"] =

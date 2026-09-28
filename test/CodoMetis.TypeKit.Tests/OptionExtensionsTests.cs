@@ -22,6 +22,46 @@ public sealed class OptionExtensionsTests
         Option.None<int>().SelectMany(x => Option.Some(x)).IsNone().ShouldBeTrue();
     }
 
+    /// <summary>
+    /// A second <c>from</c> needs the two-selector <c>SelectMany</c>; with only the one-selector form,
+    /// the query did not compile. A later step sees every earlier value.
+    /// </summary>
+    [Fact]
+    public void Query_syntax_chains_options_that_depend_on_each_other()
+    {
+        var towns = new Dictionary<string, string> { ["ada"] = "London" };
+
+        var greeting =
+            from name in Option.Some("ada")
+            from town in towns.GetValueOrNone(name)
+            where town.Length > 0
+            select $"{name} from {town}";
+
+        greeting.ShouldBe(Option.Some("ada from London"));
+
+        (from name in Option.Some("bob") from town in towns.GetValueOrNone(name) select town).IsNone().ShouldBeTrue();
+
+        var calls = 0;
+        (from name in Option.None<string>() from town in Counted(name) select town).IsNone().ShouldBeTrue();
+        calls.ShouldBe(0);
+
+        Option<string> Counted(string name)
+        {
+            calls++;
+            return Option.Some(name);
+        }
+    }
+
+    [Fact]
+    public void GetValueOrNone_is_TryGetValue_as_an_option()
+    {
+        IReadOnlyDictionary<int, string> names = new Dictionary<int, string> { [1] = "one" };
+
+        names.GetValueOrNone(1).ShouldBe(Option.Some("one"));
+        names.GetValueOrNone(2).IsNone().ShouldBeTrue();
+        new Dictionary<int, string> { [1] = "one" }.GetValueOrNone(1).ShouldBe(Option.Some("one"));
+    }
+
     [Fact]
     public void Zip_combines_only_when_every_side_has_a_value()
     {
@@ -88,6 +128,28 @@ public sealed class OptionExtensionsTests
         new[] { 1, 2, 3 }.LastOrNone(x => x > 1).ShouldBe(Option.Some(3));
         new[] { 1, 2, 3 }.FirstOrNone(x => x > 9).IsNone().ShouldBeTrue();
         Array.Empty<int>().LastOrNone(_ => true).IsNone().ShouldBeTrue();
+    }
+
+    /// <summary>A list and a lazy sequence take different paths to the last element.</summary>
+    [Fact]
+    public void FirstOrNone_and_LastOrNone_without_a_predicate_take_the_ends()
+    {
+        new[] { 1, 2, 3 }.FirstOrNone().ShouldBe(Option.Some(1));
+        new[] { 1, 2, 3 }.LastOrNone().ShouldBe(Option.Some(3));
+        Enumerable.Range(1, 3).Select(x => x * 10).LastOrNone().ShouldBe(Option.Some(30));
+
+        Array.Empty<int>().FirstOrNone().IsNone().ShouldBeTrue();
+        Array.Empty<int>().LastOrNone().IsNone().ShouldBeTrue();
+        Enumerable.Empty<int>().Select(x => x).LastOrNone().IsNone().ShouldBeTrue();
+    }
+
+    /// <summary>A null element is refused as <c>Option.Some(null)</c> is, rather than reported as a value.</summary>
+    [Fact]
+    public void FirstOrNone_and_LastOrNone_refuse_a_null_element()
+    {
+        Should.Throw<ArgumentNullException>(() => new string[] { null! }.FirstOrNone());
+        Should.Throw<ArgumentNullException>(() => new string[] { null! }.LastOrNone());
+        Should.Throw<ArgumentNullException>(() => new[] { "a", null! }.Select(x => x).LastOrNone());
     }
 
     [Fact]

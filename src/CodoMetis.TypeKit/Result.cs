@@ -168,6 +168,20 @@ public readonly record struct Result<TError> where TError : notnull
         return this;
     }
 
+    /// <summary>Runs a side effect on the error, such as logging it.</summary>
+    /// <param name="action">Called with the error on error.</param>
+    /// <returns>This result, unchanged.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public Result<TError> TapError(Action<TError> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        if (!Succeeded)
+            action(_error!);
+
+        return this;
+    }
+
     /// <summary>Runs an asynchronous side effect on success.</summary>
     /// <param name="action">Called on success.</param>
     /// <returns>This result, unchanged, once <paramref name="action"/> has completed.</returns>
