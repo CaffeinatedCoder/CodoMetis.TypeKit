@@ -1,6 +1,9 @@
+using CodoMetis.TypeKit.AspNetCore;
 using Microsoft.AspNetCore.OpenApi;
 
-namespace CodoMetis.TypeKit.AspNetCore;
+// Beside AddOpenApi, in a namespace every web project imports implicitly, so
+// AddOpenApi(options => options.AddTypeKit()) needs no using of its own.
+namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>Adds CodoMetis.TypeKit to an OpenAPI document.</summary>
 public static class TypeKitOpenApiOptionsExtensions
@@ -18,7 +21,7 @@ public static class TypeKitOpenApiOptionsExtensions
     /// <see cref="Guid"/> is <c>{"type":"string","format":"uuid"}</c>, and keeps its own component.
     /// </para>
     /// <para>
-    /// Value objects are recognised by <see cref="ValueObjects.IValueObject{TSelf,T}"/>. Nothing is
+    /// Value objects are recognised by the attribute the generators put on each. Nothing is
     /// registered per type, and no assembly is scanned. The order against other schema transformers
     /// does not matter.
     /// </para>

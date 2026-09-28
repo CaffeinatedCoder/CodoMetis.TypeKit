@@ -372,8 +372,6 @@ run dotnet add reference ../layered/Domain/Domain.csproj
 cat > Program.cs <<'CSHARP'
 using System.Text.Json.Nodes;
 using CodoMetis.TypeKit;
-using CodoMetis.TypeKit.AspNetCore;
-using CodoMetis.TypeKit.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Shop;
@@ -553,7 +551,6 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using CodoMetis.TypeKit;
-using CodoMetis.TypeKit.AspNetCore;
 using CodoMetis.TypeKit.ValueObjects;
 using Shop;
 
@@ -652,7 +649,6 @@ run dotnet add package Microsoft.EntityFrameworkCore.Sqlite --version "$ef_versi
 run dotnet add package Microsoft.EntityFrameworkCore.Design --version "$ef_version"
 
 cat > Program.cs <<'CSHARP'
-using CodoMetis.TypeKit.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Shop;
 

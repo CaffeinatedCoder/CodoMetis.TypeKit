@@ -1,9 +1,10 @@
+using CodoMetis.TypeKit.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace CodoMetis.TypeKit.EntityFrameworkCore;
+// Beside EF Core's own AddEntityFrameworkNpgsql and AddEntityFrameworkSqlite.
+namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>Registers CodoMetis.TypeKit in EF Core's internal service provider.</summary>
 public static class TypeKitServiceCollectionExtensions
