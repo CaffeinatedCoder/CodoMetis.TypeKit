@@ -23,8 +23,12 @@ The first release.
   `Result<TError>` converts to `bool` for a success; `Result<T, TError>` does not, since its value
   could itself be a `bool`.
   `ToString()` never prints the content, and none of them serializes: System.Text.Json refuses them
-  with `NotSupportedException` in both directions instead of writing `{}`, and a converter registered
-  on the options takes precedence.
+  with `NotSupportedException` in both directions instead of writing `{}`, a nullable one too, and a
+  converter registered on the options takes precedence. `OrNull()` converts an `Option` of a value
+  type or of a reference type to a nullable at the boundary.
+  - Every deliberate refusal, of the base package and of generated code, says what to do instead and
+    ends with a link to its explanation under "Why does this throw?" in the package README; the
+    generators' build errors link to the README's Build errors table.
   - Combinators: `Map`, `Bind`, `MapError`, `Tap`, `TapError`, `Ensure` (a rule checked inside a
     pipeline), `Match`, `TryGetValue`, and query syntax with any number of `from` clauses, for
     `Option` and `Result` alike.
