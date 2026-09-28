@@ -26,6 +26,11 @@ namespace CodoMetis.TypeKit.ValueObjects;
 /// hand, is CMTK1011, and a value object is declared in one part (CMTK1010).
 /// </para>
 /// <para>
+/// A value object holds its wrapped value and nothing else: an instance field, auto-property,
+/// <c>required</c> member or field-like event, declared or inherited, is CMTK1012, since JSON, parsing
+/// and the type converter carry the wrapped value alone. Compute anything else from the value.
+/// </para>
+/// <para>
 /// Without a reference to CodoMetis.TypeKit.Generators nothing is generated, and the analyzer
 /// reports CMTK0002 on the declaration.
 /// </para>

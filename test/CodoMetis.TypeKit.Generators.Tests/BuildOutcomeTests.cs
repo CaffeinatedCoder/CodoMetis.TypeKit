@@ -70,6 +70,11 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "HandWrittenTypeConverter")]
     [InlineData("CMTK1011", "HandWrittenInterface")]
     [InlineData("CMTK1011", "ExplicitCreate")]
+    [InlineData("CMTK1012", "WithAutoProperty")]
+    [InlineData("CMTK1012", "WithCacheField")]
+    [InlineData("CMTK1012", "WithRequiredMember")]
+    [InlineData("CMTK1012", "WithInheritedState")]
+    [InlineData("CMTK1012", "WithEvent")]
     public void A_declaration_that_cannot_be_generated_is_an_error(string id, string type) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains($"'{type}"), $"{id} on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
 
@@ -130,6 +135,22 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
 
     /// <summary>
+    /// Instance state besides the wrapped value was generated without a word: JSON, parsing and the
+    /// materializer carried the wrapped value alone while the record's equality compared the rest, so a
+    /// <c>Currency</c> was lost on a round trip and a lazily filled cache made equal instances unequal.
+    /// A <c>required</c> member failed inside the generated code (LAMA0611, CS9035). The error names
+    /// each member, an inherited one too.
+    /// </summary>
+    [Theory]
+    [InlineData("WithAutoProperty", "the auto-property WithAutoProperty.Currency besides its wrapped value")]
+    [InlineData("WithCacheField", "the field WithCacheField._domain besides its wrapped value")]
+    [InlineData("WithRequiredMember", "the required property WithRequiredMember.Currency besides its wrapped value")]
+    [InlineData("WithInheritedState", "the auto-property Audited.At (inherited) besides its wrapped value")]
+    [InlineData("WithEvent", "the event WithEvent.Changed besides its wrapped value")]
+    public void Instance_state_besides_the_wrapped_value_is_refused_by_name(string type, string member) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1012" && error.Message.StartsWith($"'{type}' holds {member}, so it is not generated"), consumer.Output);
+
+    /// <summary>
     /// The seams stay allowed: <c>Create</c>, <c>TryFrom</c>, <c>FromKnownGood</c>, <c>Revalidate</c>,
     /// <c>CompareTo(TSelf)</c> and <c>ToString()</c>. A <c>MinValue</c> of another type, or one the value
     /// object cannot reach, is not the wrapped type's bound: no <c>MinValue</c> is generated, where it
@@ -139,6 +160,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("WithEverySeam", "'WithEverySeam")]
     [InlineData("Share", "Percent")]
     [InlineData("Rank", "Level.M")]
+    [InlineData("WithComputedMembers", "'WithComputedMembers")]
+    [InlineData("WithStatelessBase", "Described.")]
     public void A_seam_or_a_foreign_bound_is_not_refused(string type, string alsoNotNamed) =>
         consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'") || error.Message.Contains(alsoNotNamed), consumer.Output);
 
@@ -166,7 +189,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012"], ignoreOrder: false, customMessage: consumer.Output);
 
     /// <summary>
     /// The <c>GetValue</c>/<c>ValueOrNull</c> companions live in a namespace-level class. Named after
@@ -444,6 +467,59 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             {
                 static Result<ExplicitCreate, Fault> IValidatedValue<ExplicitCreate, string, Fault>.Create(string value) => Result.Error(Fault.Refused);
             }
+
+            // Instance state besides the wrapped value: JSON, parsing and the materializer carried the
+            // wrapped value alone while the record's equality compared the rest, and a required member
+            // failed inside the generated code (LAMA0611, CS9035).
+            public sealed partial record WithAutoProperty : IValue<decimal>
+            {
+                public string Currency { get; init; } = "EUR";
+            }
+
+            public sealed partial record WithCacheField : IValidatedValue<WithCacheField, string, Fault>
+            {
+                private string? _domain;
+
+                public static Result<WithCacheField, Fault> Create(string value) => Result.Error(Fault.Refused);
+
+                public string Domain => _domain ??= "";
+            }
+
+            public readonly partial record struct WithRequiredMember : IValue<decimal>
+            {
+                public required string Currency { get; init; }
+            }
+
+            public abstract record Audited
+            {
+                public System.DateTime At { get; init; }
+            }
+
+            public sealed partial record WithInheritedState : Audited, IValue<string>;
+
+            public sealed partial record WithEvent : IValue<int>
+            {
+                public event System.EventHandler? Changed;
+            }
+
+            // Computed from Value, or static, holds nothing besides it: generated as usual.
+            public readonly partial record struct WithComputedMembers : IValue<string>
+            {
+                public const int MaxLength = 10;
+
+                private static readonly string[] Reserved = ["admin"];
+
+                public int Length => Value.Length;
+
+                public bool IsReserved => Reserved.Contains(Value);
+            }
+
+            public abstract record Described
+            {
+                public string Kind => "described";
+            }
+
+            public sealed partial record WithStatelessBase : Described, IValue<string>;
 
             // The seams stay allowed.
             public readonly partial record struct WithEverySeam : IValidatedValue<WithEverySeam, string, Fault>

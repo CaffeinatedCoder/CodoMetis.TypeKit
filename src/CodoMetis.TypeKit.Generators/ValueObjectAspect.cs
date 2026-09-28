@@ -262,6 +262,18 @@ internal sealed partial class ValueObjectAspect : TypeAspect
             return false;
         }
 
+        // Before the field is introduced, so what is found is the user's. JSON, parsing and the
+        // materializer carried the wrapped value alone, while the record's equality compared the rest:
+        // lost on a round trip, and a lazily filled cache made equal instances unequal. A required
+        // member failed inside the generated code (LAMA0611, CS9035).
+        var state = ValueObjectDeclaration.InstanceStateBesideTheValue(target);
+
+        if (state.Count > 0)
+        {
+            builder.Diagnostics.Report(StateBesideTheWrappedValue.WithArguments((target, string.Join(", ", state))));
+            return false;
+        }
+
         valueType = namedValueType;
         return true;
     }

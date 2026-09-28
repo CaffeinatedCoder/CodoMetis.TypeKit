@@ -131,6 +131,12 @@ the generators introduce, written by hand, is CMTK1011, which names it: a plain 
 interfaces the generators implement. `Create` is declared `public static`, not as an explicit interface
 implementation, which the generated code cannot call.
 
+A value object holds its wrapped value and nothing else. Its JSON, parsing, type converter and column
+carry that value alone, while a record's equality compares every field, so any other instance state
+would be lost on a round trip or make equal values unequal. An instance field, an auto-property, a
+`required` member or a field-like event, declared or inherited from a base record, is CMTK1012. A
+property computed from `Value` without a backing field, and anything `static` or `const`, is fine.
+
 ## JSON
 
 The wire format is the wrapped value's, so an `OrderId` is a string and a `Quantity` a number:
@@ -222,6 +228,7 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1009 | A hand-written instance constructor, including a positional record's parameter list such as `OrderId(Guid Value)`. The constructor and `Value` are generated; a static constructor is fine. |
 | CMTK1010 | Declared in more than one `partial` part: Metalama 2026.1 writes the generated `ToString()` into every part, which does not compile. A part a source generator adds, such as a `[GeneratedRegex]` method's, does not count. |
 | CMTK1011 | A hand-written member or attribute the generators introduce (see "Your own members"), or `Create` implemented explicitly. |
+| CMTK1012 | Instance state besides the wrapped value: a field, an auto-property, a `required` member or a field-like event, declared or inherited. Compute it from `Value`, make it static, or wrap a type that holds all of it. |
 
 The analyzers that come with the base package add CMTK0001 to CMTK0009; see
 [CodoMetis.TypeKit.Analyzers](https://www.nuget.org/packages/CodoMetis.TypeKit.Analyzers).

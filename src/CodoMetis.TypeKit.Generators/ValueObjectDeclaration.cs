@@ -224,6 +224,51 @@ internal static class ValueObjectDeclaration
         return declaresExplicitly;
     }
 
+    /// <summary>
+    /// The instance state <paramref name="target"/> declares or inherits besides the wrapped value: a
+    /// field, an auto-property, a <c>required</c> member or a field-like event. The generated JSON,
+    /// parsing, type converter and materializer carry the wrapped value alone, so such state was lost
+    /// on every round trip, while the record's equality compared it: a <c>Currency</c> written as
+    /// <c>10</c> read back as its initializer's <c>"EUR"</c>, and a lazily filled cache field made two
+    /// equal instances unequal once it was read. A <c>required</c> member failed inside the generated
+    /// code instead (LAMA0611, CS9035). A computed property, and anything static, holds nothing.
+    /// </summary>
+    /// <remarks>
+    /// The generated field does not exist yet when this runs, and a hand-written <c>_value</c> or
+    /// <c>Value</c> is CMTK1011, answered before this. A base type is read too, since the record's
+    /// equality compares its state as well; in a referenced assembly its private fields are out of
+    /// sight and its properties' implementation unknown, so there a writable property counts.
+    /// </remarks>
+    public static IReadOnlyList<string> InstanceStateBesideTheValue(INamedType target)
+    {
+        List<string> found = [];
+
+        for (var type = target; type is not null && type.SpecialType != SpecialType.Object; type = type.BaseType)
+        {
+            var inherited = type.Equals(target) ? "" : " (inherited)";
+
+            foreach (var field in type.Fields)
+                if (field is { IsStatic: false, IsImplicitlyDeclared: false }) found.Add($"the field {field.ToDisplayString()}{inherited}");
+
+            foreach (var property in type.Properties)
+            {
+                if (property.IsStatic || property.IsImplicitlyDeclared) continue;
+
+                if (property.IsRequired)
+                    found.Add($"the required property {property.ToDisplayString()}{inherited}");
+                else if (property.IsAutoPropertyOrField == true)
+                    found.Add($"the auto-property {property.ToDisplayString()}{inherited}");
+                else if (property.IsAutoPropertyOrField is null && property.Writeability != Writeability.None)
+                    found.Add($"the property {property.ToDisplayString()}{inherited}");
+            }
+
+            foreach (var @event in type.Events)
+                if (@event is { IsStatic: false, IsImplicitlyDeclared: false, RaiseMethod: not null }) found.Add($"the event {@event.ToDisplayString()}{inherited}");
+        }
+
+        return found;
+    }
+
     /// <summary>Non-implicit members of <paramref name="target"/> with one of <paramref name="names"/>, of any kind.</summary>
     private static IEnumerable<string> MembersNamed(INamedType target, params string[] names) => MembersNamed(target, methods: true, names);
 
