@@ -15,6 +15,16 @@ or further down, inherit the generators without referencing the package themselv
 those projects. No Metalama license key is needed, there or here: the generators build on Metalama's
 Open Source edition.
 
+## Built with Metalama
+
+This package exists in this form because of [Metalama](https://www.postsharp.net/metalama). A
+transitive fabric finds every type that implements a TypeKit contract, in the project that references
+this package and in every project that references that one, so a value object is declared by its
+interface and nothing else. Templates write the generated members as ordinary C#, which you can read
+(see "Reading the generated code"). A declaration that cannot be generated fails the build with its
+name on it (see "Build errors") instead of compiling to less than it appears to. Thanks to the
+Metalama team.
+
 ## Declaring a value object
 
 ```csharp
