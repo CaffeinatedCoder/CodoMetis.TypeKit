@@ -292,6 +292,26 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                 .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012"], ignoreOrder: false, customMessage: consumer.Output);
 
     /// <summary>
+    /// A generator error cannot carry a help link as an analyzer rule does (a Metalama 2026.1
+    /// <c>DiagnosticDefinition</c> takes none), so its message ends with one, to the README's Build
+    /// errors table. A link to a heading that does not exist opens the top of the page, silently.
+    /// </summary>
+    [Fact]
+    public void Every_build_error_links_to_the_Build_errors_table()
+    {
+        const string link = "https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#build-errors";
+
+        var errors = consumer.Errors.Where(error => error.Id.StartsWith("CMTK1", StringComparison.Ordinal)).ToList();
+
+        errors.Select(error => error.Id).Distinct().Count().ShouldBe(13, $"Not every CMTK1000-CMTK1012 error was observed, so the check below is incomplete:{Environment.NewLine}{consumer.Output}");
+        errors.Where(error => !error.Message.EndsWith($". See {link}", StringComparison.Ordinal))
+              .Select(error => $"{error.Id}: {error.Message}")
+              .ShouldBeEmpty("These errors do not end with the link to the Build errors table.");
+        File.ReadAllLines(Path.Combine(Consumer.RepositoryRoot(), "src", "CodoMetis.TypeKit.Generators", "README.md"))
+            .ShouldContain("## Build errors", "The link's anchor, #build-errors, is no heading of the Generators README.");
+    }
+
+    /// <summary>
     /// The <c>GetValue</c>/<c>ValueOrNull</c> companions live in a namespace-level class. Named after
     /// the value object alone, <c>Order.Id</c> and <c>Customer.Id</c> both asked for <c>IdExtensions</c>,
     /// and Metalama crashed (LAMA0001) with the whole project unbuildable and no declaration named.
@@ -1122,7 +1142,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             typeof(Consumer).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>()?.Configuration
          ?? throw new InvalidOperationException("The test assembly carries no AssemblyConfigurationAttribute.");
 
-        private static string RepositoryRoot()
+        internal static string RepositoryRoot()
         {
             for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
             {
