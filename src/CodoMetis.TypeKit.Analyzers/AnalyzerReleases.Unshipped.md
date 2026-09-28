@@ -12,3 +12,4 @@ CMTK0004 | Security | Error | Materialize, which skips validation, called outsid
 CMTK0005 | Usage | Warning | An array or span of a no-default struct created with a length
 CMTK0006 | Usage | Warning | A no-default member of a class that nothing assigns
 CMTK0007 | Usage | Info | FromKnownGood given a value that arrives from the caller
+CMTK0008 | Usage | Warning | The wrapped values of two different value objects compared

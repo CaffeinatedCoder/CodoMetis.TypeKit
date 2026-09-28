@@ -91,7 +91,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009"], ignoreOrder: false, customMessage: consumer.Output);
 
     /// <summary>
     /// The <c>GetValue</c>/<c>ValueOrNull</c> companions live in a namespace-level class. Named after
@@ -119,6 +119,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK0005", "with a default 'Fine'")]
     [InlineData("CMTK0006", "'Unset' starts as a default 'Fine'")]
     [InlineData("CMTK0007", "'Target.FromKnownGood' is given 'input'")]
+    [InlineData("CMTK0008", "the value of a 'Fine' with the value of a 'OtherFine'")]
     public void A_rule_sees_the_value_objects_of_its_own_project(string id, string fragment) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains(fragment), consumer.Output);
 
@@ -290,6 +291,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             public readonly partial record struct Fine : IValue<int>;
 
+            public readonly partial record struct OtherFine : IValue<int>;
+
             public static class Uses
             {
                 public static Fine Make() => default;
@@ -306,6 +309,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                 public static Fine[] Slots(int count) => new Fine[count];
 
                 public static T Materialized<T>(int value) where T : IValueObjectMaterializer<T, int> => T.Materialize(value);
+
+                public static bool Mixed(Fine fine, OtherFine other) => fine.Value == other.Value;
             }
 
             public sealed class Holder
@@ -355,6 +360,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                 dotnet_diagnostic.CMTK0005.severity = error
                 dotnet_diagnostic.CMTK0006.severity = error
                 dotnet_diagnostic.CMTK0007.severity = error
+                dotnet_diagnostic.CMTK0008.severity = error
                 """);
 
             // Stop MSBuild's upward search here, so the repository's own build settings (warnings as

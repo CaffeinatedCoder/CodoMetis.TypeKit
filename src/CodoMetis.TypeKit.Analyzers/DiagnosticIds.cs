@@ -19,4 +19,6 @@ internal static class DiagnosticIds
     public const string UnassignedNoDefaultMember = "CMTK0006";
 
     public const string KnownGoodFromCaller = "CMTK0007";
+
+    public const string MixedValueComparison = "CMTK0008";
 }
