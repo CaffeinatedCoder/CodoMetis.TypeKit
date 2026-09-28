@@ -115,8 +115,8 @@ public sealed class IgnoredOutcomeAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
-    /// <c>Tap</c> and <c>TapError</c> return their receiver: dropping it loses nothing only when the
-    /// receiver is still held.
+    /// <c>Tap</c>, <c>TapAsync</c>, <c>TapError</c> and <c>TapErrorAsync</c> return their receiver:
+    /// dropping it loses nothing only when the receiver is still held.
     /// </summary>
     [Fact]
     public Task Tap_on_a_stored_result_is_silent_and_on_a_call_reports() =>
@@ -135,12 +135,15 @@ public sealed class IgnoredOutcomeAnalyzerTests
                     await local.TapAsync(_ => Task.CompletedTask);
                     local.TapError(_ => { });
                     parameter.TapError(_ => { });
+                    await local.TapErrorAsync(_ => Task.CompletedTask);
+                    await parameter.TapErrorAsync(_ => Task.CompletedTask);
 
                     {|#0:service.Load().Tap(_ => { })|};
                     {|#1:await service.LoadAsync().TapAsync(_ => { })|};
                     {|#2:service.Load().TapError(_ => { })|};
                     {|#3:await service.LoadAsync().TapErrorAsync(_ => { })|};
                     {|#4:local.Ensure(_ => true, Fault.Refused)|};
+                    {|#5:await service.Load().TapErrorAsync(_ => Task.CompletedTask)|};
                 }
             }
             """,
@@ -148,7 +151,8 @@ public sealed class IgnoredOutcomeAnalyzerTests
             Cmtk0003(1, "Result", "TapAsync"),
             Cmtk0003(2, "Result", "TapError"),
             Cmtk0003(3, "Result", "TapErrorAsync"),
-            Cmtk0003(4, "Result", "Ensure"))
+            Cmtk0003(4, "Result", "Ensure"),
+            Cmtk0003(5, "Result", "TapErrorAsync"))
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>

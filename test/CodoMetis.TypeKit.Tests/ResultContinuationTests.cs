@@ -156,6 +156,63 @@ public sealed class ResultContinuationTests
     }
 
     /// <summary>
+    /// An asynchronous error callback is awaited before the chain goes on, as <c>TapAsync</c>'s is.
+    /// With only the <c>Action&lt;TError&gt;</c> overload, <c>async fault =&gt; …</c> bound to it as
+    /// <c>async void</c>: the chain finished before the callback did, and an exception it threw
+    /// escaped the pipeline and ended the process.
+    /// </summary>
+    [Fact]
+    public async Task An_asynchronous_error_callback_completes_before_the_chain_s_result_is_observed()
+    {
+        var log = new List<string>();
+
+        var valued = await Find(-1).TapErrorAsync(async fault =>
+        {
+            await Task.Delay(50, TestContext.Current.CancellationToken);
+            lock (log) log.Add($"audited {fault}");
+        });
+        lock (log) log.Add("valued chain finished");
+
+        var command = await Find(30).BindAsync(Charge).TapErrorAsync(async fault =>
+        {
+            await Task.Delay(50, TestContext.Current.CancellationToken);
+            lock (log) log.Add($"audited {fault}");
+        });
+        lock (log) log.Add("command chain finished");
+
+        lock (log) log.ShouldBe(["audited NotFound", "valued chain finished", "audited Declined", "command chain finished"]);
+        valued.ShouldBe(Result<Order, Fault>.Error(Fault.NotFound));
+        command.ShouldBe(Result<Fault>.Error(Fault.Declined));
+    }
+
+    [Fact]
+    public async Task An_asynchronous_error_callback_is_not_called_on_success()
+    {
+        var calls = 0;
+
+        var found = await Find(3).TapErrorAsync(async _ => { calls++; await Task.Yield(); });
+        var charged = await Find(3).BindAsync(Charge).TapErrorAsync(async _ => { calls++; await Task.Yield(); });
+
+        calls.ShouldBe(0);
+        found.Match(order => order.Id, _ => -1).ShouldBe(3);
+        charged.ShouldBe(Result<Fault>.Success());
+    }
+
+    /// <summary>
+    /// A task-returning error callback's exception reaches whoever awaits the chain, unwrapped. Bound
+    /// to the <c>Action</c> overload, the faulted task was discarded and the failure went unseen.
+    /// </summary>
+    [Fact]
+    public async Task A_failing_asynchronous_error_callback_fails_the_chain()
+    {
+        (await Should.ThrowAsync<TimeoutException>(() => Find(-1).TapErrorAsync(_ => Task.FromException(new TimeoutException("audit store down")))))
+            .Message.ShouldBe("audit store down");
+
+        (await Should.ThrowAsync<TimeoutException>(() => Find(30).BindAsync(Charge).TapErrorAsync(_ => Task.FromException(new TimeoutException("audit store down")))))
+            .Message.ShouldBe("audit store down");
+    }
+
+    /// <summary>
     /// A selector that returns a task picks the asynchronous overload, a method group included,
     /// rather than wrapping the task as the value.
     /// </summary>

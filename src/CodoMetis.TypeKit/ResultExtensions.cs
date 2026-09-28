@@ -357,6 +357,22 @@ public static class Result
             return (await task.ConfigureAwait(false)).TapError(action);
         }
 
+        /// <summary>Runs an asynchronous side effect on the error once the result is known, on error.</summary>
+        /// <param name="action">Called with the error on error.</param>
+        /// <returns>The result, unchanged, once <paramref name="action"/> has completed.</returns>
+        /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+        /// <remarks>
+        /// An <c>async</c> lambda binds here rather than to the <c>Action&lt;TError&gt;</c> overload, so
+        /// it is awaited, and what it throws reaches the caller, instead of running as <c>async void</c>.
+        /// </remarks>
+        public async Task<Result<T, TError>> TapErrorAsync(Func<TError, Task> action)
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(action);
+
+            return await (await task.ConfigureAwait(false)).TapErrorAsync(action).ConfigureAwait(false);
+        }
+
         /// <summary>Runs a side effect on the value once the result is known, on success.</summary>
         /// <param name="action">Called with the value on success.</param>
         /// <returns>The result, unchanged.</returns>
@@ -459,6 +475,22 @@ public static class Result
             ArgumentNullException.ThrowIfNull(action);
 
             return (await task.ConfigureAwait(false)).TapError(action);
+        }
+
+        /// <summary>Runs an asynchronous side effect on the error once the result is known, on error.</summary>
+        /// <param name="action">Called with the error on error.</param>
+        /// <returns>The result, unchanged, once <paramref name="action"/> has completed.</returns>
+        /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+        /// <remarks>
+        /// An <c>async</c> lambda binds here rather than to the <c>Action&lt;TError&gt;</c> overload, so
+        /// it is awaited, and what it throws reaches the caller, instead of running as <c>async void</c>.
+        /// </remarks>
+        public async Task<Result<TError>> TapErrorAsync(Func<TError, Task> action)
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(action);
+
+            return await (await task.ConfigureAwait(false)).TapErrorAsync(action).ConfigureAwait(false);
         }
 
         /// <summary>Runs a side effect once the result is known, on success.</summary>

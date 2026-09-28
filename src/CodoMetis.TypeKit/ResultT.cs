@@ -262,6 +262,20 @@ public readonly record struct Result<T, TError>
         return this;
     }
 
+    /// <summary>Runs an asynchronous side effect on the error, such as recording it.</summary>
+    /// <param name="action">Called with the error on error.</param>
+    /// <returns>This result, unchanged, once <paramref name="action"/> has completed.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public async Task<Result<T, TError>> TapErrorAsync(Func<TError, Task> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        if (!Succeeded)
+            await action(_error!).ConfigureAwait(false);
+
+        return this;
+    }
+
     /// <summary>Transforms the value on success with an asynchronous function, keeping the error otherwise.</summary>
     /// <param name="selector">Called with the value on success.</param>
     /// <typeparam name="TResult">The type of the transformed value.</typeparam>

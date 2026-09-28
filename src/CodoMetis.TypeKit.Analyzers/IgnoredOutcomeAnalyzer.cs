@@ -26,8 +26,8 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// A <c>ValueTask&lt;T&gt;</c> has no conversion to <c>ValueTask</c>.
 /// </para>
 /// <para>
-/// <c>Tap</c>, <c>TapAsync</c> and <c>TapError</c> return their receiver unchanged, and so do the
-/// <c>Task</c> continuations <c>TapAsync</c> and <c>TapErrorAsync</c>, so <c>result.Tap(log);</c> or
+/// <c>Tap</c>, <c>TapAsync</c>, <c>TapError</c> and <c>TapErrorAsync</c> return their receiver unchanged,
+/// and so do the <c>Task</c> continuations of those names, so <c>result.Tap(log);</c> or
 /// <c>await pending.TapAsync(log);</c> on a variable drops nothing the caller does not still hold. On
 /// anything else, such as <c>Find(id).Tap(log);</c>, the result is gone and is reported.
 /// </para>
@@ -155,14 +155,14 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
 
     /// <summary>
     /// A call that returns its receiver unchanged, on a receiver the caller still holds: the
-    /// outcome's own <c>Tap</c>, <c>TapAsync</c> and <c>TapError</c>, and the <c>Task</c>
-    /// continuations <c>TapAsync</c> and <c>TapErrorAsync</c>, which return the task's result as it was.
+    /// outcome's own <c>Tap</c>, <c>TapAsync</c>, <c>TapError</c> and <c>TapErrorAsync</c>, and the
+    /// <c>Task</c> continuations <c>TapAsync</c> and <c>TapErrorAsync</c>, which return the task's result as it was.
     /// </summary>
     private static bool ReturnsItsStoredReceiver(IInvocationOperation invocation, TypeKitSymbols symbols)
     {
         var method = invocation.TargetMethod;
 
-        if (method is { IsStatic: false, Name: "Tap" or "TapAsync" or "TapError" } && symbols.OutcomeName(method.ContainingType) is not null)
+        if (method is { IsStatic: false, Name: "Tap" or "TapAsync" or "TapError" or "TapErrorAsync" } && symbols.OutcomeName(method.ContainingType) is not null)
             return IsStored(invocation.Instance);
 
         // pending.TapAsync(log) binds to the extension block's member, with the task as its instance;

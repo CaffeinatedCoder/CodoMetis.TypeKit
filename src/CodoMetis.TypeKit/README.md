@@ -102,7 +102,7 @@ where a reader expects its value: `if (await users.IsEmailTakenAsync(email))` ov
 or compare its `State`.
 
 `Map`, `Bind`, `Tap` and `TapAsync` run only on success and carry an error through unchanged;
-`MapError` and `TapError` run only on an error, and `Ensure(predicate, error)` turns a success whose
+`MapError`, `TapError` and `TapErrorAsync` run only on an error, and `Ensure(predicate, error)` turns a success whose
 value breaks a rule into that error. A lambda that returns a bare value on one branch and
 `Result.Error(...)` on the other needs its type argument, `placed.Bind<Invoice>(o => o.IsPaid ?
 invoices.Of(o) : Result.Error(OrderFault.Unpaid))`, because C# infers a lambda's return type from its
@@ -136,6 +136,12 @@ Result<IReadOnlyList<Sku>, SkuFault> all = parsed.Sequence();
 
 `Zip` (two to six results), `Traverse` and `Sequence` stop at the first error, in argument or
 sequence order, and `Traverse` calls nothing after it. None of them collects errors.
+
+The asynchronous steps take callbacks that return a `Task`, and wait for them:
+`.TapErrorAsync(fault => audit.RecordAsync(fault))` has recorded the fault when the chain's `await`
+returns, and what it throws reaches that `await`. A callback that returns a `ValueTask` needs
+`.AsTask()`, or an `async` lambda: `TapAsync` and `TapErrorAsync` would bind it to their synchronous
+overload and not wait for it, and `MapAsync` would hold the `ValueTask` as the value.
 
 ## Not wire types
 
