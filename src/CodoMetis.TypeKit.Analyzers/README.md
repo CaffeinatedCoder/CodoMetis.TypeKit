@@ -12,7 +12,7 @@ appears to: an instance that passed no factory, or a value object that was never
 
 | Id | Severity | Reports |
 |---|---|---|
-| CMTK0001 | Error | `default`, `default(T)`, `new T()`, `new()` and `new T { }` of a value object, an `Option`, a `Result`, or a struct marked `[RequireCustomInitialization]`. Also through a type parameter whose constraints make it one of those. A default that is only compared (`id == default`, `id.Equals(default)`) is a guard and is not reported. |
+| CMTK0001 | Error | `default`, `default(T)`, `new T()`, `new()` and `new T { }` of a value object, an `Option`, a `Result`, or a struct marked `[RequireCustomInitialization]`. Also through a type parameter whose constraints make it one of those. A default that is only compared (`id == default`, `id.Equals(default)`, `ThrowIfEqual(id, default)`, `Assert.NotEqual(default, id)`) is a guard and is not reported, nor is one assigned to an `out` parameter of a Try method that returns `bool`. |
 | CMTK0002 | Error | A type implements `IValue<T>` or `IValidatedValue<,,>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so nothing is generated for it: no field, no `Value`, no factory. |
 | CMTK0003 | Warning | A `Result` or `Option` that a call returns, or a collection of them that the statement made, dropped by a statement, awaited or not, or by converting its `Task` to a plain `Task`, a method group's included. |
 | CMTK0004 | Error | `Materialize`, which rebuilds a value object without its rules, called or referenced anywhere but the EF Core satellite. |
@@ -51,16 +51,45 @@ of a value object is a null, not an instance, and is not reported. What the rule
 as an array created with a length or an unassigned field of a class, is why an uninitialized
 `Result` throws instead of reporting an error it never had.
 
-A default that is only compared is a guard against exactly those, and is not reported:
+A default that is only compared is a guard against exactly those, or an assertion that one is not
+there, and is not reported:
 
 ```csharp
 if (id == default) throw new ArgumentException("An order id is required.", nameof(id));
 if (option != default) { /* … */ }
 if (id.Equals(default(OrderId)) || EqualityComparer<OrderId>.Default.Equals(id, default)) { /* … */ }
+ArgumentOutOfRangeException.ThrowIfEqual(id, default);
+Assert.NotEqual(default, id);
+id.ShouldNotBe(default);
 ```
 
-That is an operand of `==` or `!=`, or an argument of a call named `Equals`. Anything else, such as
-`id == default ? default : id`, still reports the second `default`.
+That is an operand of `==` or `!=`, or an argument of a call whose name says it compares: one of its
+words is `Equal`, `Equals` or `Compare`, or its last word is `Be`. That takes in `Equals`,
+`ReferenceEquals`, `ThrowIfEqual`, `ThrowIfNotEqual`, `CompareTo`, a comparer's `Compare`, and the
+assertions `Equal` and `NotEqual` (xUnit), `AreEqual` and `AreNotEqual` (MSTest), `EqualTo` (NUnit),
+and `ShouldBe` and `ShouldNotBe` (Shouldly). The `default` has to be the argument itself. Anything
+else still reports: `Assert.Contains(default, ids)`, `WithEquality(default)`, `Assert.Equal(Wrap(default), id)`,
+and the second `default` of `id == default ? default : id`.
+
+A `default` assigned to an `out` parameter of a method that returns `bool` is the Try pattern, as
+`int.TryParse` writes it, and is not reported either: the caller reads the parameter only when the
+method returned `true`.
+
+```csharp
+public bool TryFind(string key, out OrderId id)
+{
+    if (_ids.TryGetValue(key, out var found)) { id = found; return true; }
+
+    id = default;
+    return false;
+}
+```
+
+The rule does not follow which value the method returns. It leaves alone `default` and `default(T)`
+assigned whole, or through a conditional or a switch arm (`id = found ? OrderId.From(g) : default;`),
+to an `out` parameter of a method, local function or lambda that returns `bool`. An `out` parameter
+of a method that returns anything else, a `ref` parameter, `new()`, and a default kept in a local or
+a field first still report.
 
 To mark your own struct, whose `default` is not a valid instance:
 

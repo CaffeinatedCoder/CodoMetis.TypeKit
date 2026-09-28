@@ -34,13 +34,19 @@ public static class NoDefault
 #pragma warning restore CMTK0001
     }
 
-    /// <summary>The guard checks the rule leaves alone: the analyzer runs here, and CMTK0001 is an error.</summary>
+    /// <summary>
+    /// The guard checks and assertions the rule leaves alone: the analyzer runs here, and CMTK0001 is
+    /// an error. Compiled, not called.
+    /// </summary>
     public static void GuardChecks(OrderId id, Option<int> option)
     {
         // sample: CodoMetis.TypeKit.Analyzers/cmtk0001-guard
         if (id == default) throw new ArgumentException("An order id is required.", nameof(id));
         if (option != default) { /* … */ }
         if (id.Equals(default(OrderId)) || EqualityComparer<OrderId>.Default.Equals(id, default)) { /* … */ }
+        ArgumentOutOfRangeException.ThrowIfEqual(id, default);
+        Assert.NotEqual(default, id);
+        id.ShouldNotBe(default);
         // end sample
     }
 
@@ -52,6 +58,22 @@ public static class NoDefault
         Result<Order, OrderFault> pending = Result.Error(OrderFault.Empty);
         // end sample
     }
+}
+
+/// <summary>The Try pattern the rule leaves alone: the analyzer runs here, and CMTK0001 is an error.</summary>
+public sealed class OrderLookup
+{
+    private readonly Dictionary<string, OrderId> _ids = [];
+
+    // sample: CodoMetis.TypeKit.Analyzers/cmtk0001-try
+    public bool TryFind(string key, out OrderId id)
+    {
+        if (_ids.TryGetValue(key, out var found)) { id = found; return true; }
+
+        id = default;
+        return false;
+    }
+    // end sample
 }
 
 // sample: CodoMetis.TypeKit.Analyzers/require-custom-initialization

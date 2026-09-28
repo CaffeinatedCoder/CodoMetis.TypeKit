@@ -77,6 +77,37 @@ public sealed class ForbiddenDefaultInitializationAnalyzerTests
             public sealed class ValueClass : IValue<int> { }
 
             public readonly record struct RecordId : IValue<int> { }
+
+            public readonly record struct Ordered : IValue<int>, System.IComparable<Ordered>
+            {
+                public int CompareTo(Ordered other) => 0;
+            }
+
+            public delegate bool TryDelegate(out RecordId id);
+        }
+
+        namespace Assertions
+        {
+            public static class Assert
+            {
+                public static void Equal<T>(T expected, T actual) { }
+                public static void NotEqual<T>(T expected, T actual) { }
+                public static void AreEqual<T>(T expected, T actual) { }
+                public static void AreNotEqual<T>(T expected, T actual) { }
+                public static void Contains<T>(T expected, System.Collections.Generic.IEnumerable<T> collection) { }
+            }
+
+            public static class Is
+            {
+                public static object EqualTo<T>(T expected) => expected;
+            }
+
+            public static class Shouldly
+            {
+                public static void ShouldBe<T>(this T actual, T expected) { }
+                public static void ShouldNotBe<T>(this T actual, T expected) { }
+                public static void ShouldBeValid<T>(this T actual, T sample) { }
+            }
         }
 
         """;
@@ -368,6 +399,162 @@ public sealed class ForbiddenDefaultInitializationAnalyzerTests
             }
             """,
             "The value object 'RecordId' must be created with 'RecordId.From', not as a default instance");
+
+    /// <summary>
+    /// A default passed to a call whose name says it compares is a guard or an assertion: the .NET
+    /// guards <c>ThrowIfEqual</c> and <c>ThrowIfNotEqual</c>, the assertions of xUnit, MSTest, NUnit and
+    /// Shouldly, <c>CompareTo</c> and a comparer's <c>Compare</c>, by position or by name.
+    /// </summary>
+    [Fact]
+    public Task A_default_passed_to_a_comparison_named_call_is_a_guard_and_stays_silent() =>
+        ShouldStaySilentOn(
+            """
+            namespace Consumers
+            {
+                using Assertions;
+
+                public static class Consumer
+                {
+                    public static void A(Subjects.RecordId id, Subjects.Ordered ordered, CodoMetis.TypeKit.Option<int> option)
+                    {
+                        System.ArgumentOutOfRangeException.ThrowIfEqual(id, default);
+                        System.ArgumentOutOfRangeException.ThrowIfNotEqual(id, default(Subjects.RecordId));
+                        Assert.Equal(default, id);
+                        Assert.NotEqual(default(Subjects.RecordId), id);
+                        Assert.AreEqual(new Subjects.RecordId(), id);
+                        Assert.AreNotEqual<Subjects.RecordId>(actual: id, expected: default);
+                        Assert.NotEqual(default, option);
+                        Is.EqualTo<Subjects.RecordId>(default);
+                        id.ShouldBe(default);
+                        id.ShouldNotBe((default));
+                        _ = ordered.CompareTo(default) == 0;
+                        _ = System.Collections.Generic.Comparer<Subjects.RecordId>.Default.Compare(id, default);
+                        _ = ReferenceEquals(id, default(Subjects.RecordId));
+                    }
+                }
+            }
+            """);
+
+    /// <summary>
+    /// Only the call's own argument is exempt, and only for a name that says it compares: an
+    /// assertion that does not compare, a name that merely contains the letters, a word that is not
+    /// the last, and a default inside another argument or beside a comparison still report.
+    /// </summary>
+    [Fact]
+    public Task A_default_passed_to_a_call_that_does_not_compare_still_reports() =>
+        ShouldFlagEach(
+            """
+            namespace Consumers
+            {
+                using Assertions;
+
+                public static class Consumer
+                {
+                    public static void Keep(Subjects.RecordId id) { }
+                    public static void WithEquality(Subjects.RecordId id) { }
+                    public static void Maybe(Subjects.RecordId id) { }
+                    public static Subjects.RecordId Wrap(Subjects.RecordId id) => id;
+
+                    public static void A(Subjects.RecordId id, System.Collections.Generic.List<Subjects.RecordId> ids)
+                    {
+                        Assert.Contains({|#0:default|}, ids);
+                        Keep({|#1:default|});
+                        WithEquality({|#2:default|});
+                        Maybe({|#3:default(Subjects.RecordId)|});
+                        id.ShouldBeValid({|#4:default|});
+                        Assert.Equal(Wrap({|#5:default|}), id);
+                        Assert.Equal(id == default ? {|#6:default|} : id, id);
+                        Assert.Equal({|#7:new Subjects.RecordId()|}.ToString(), id.ToString());
+                    }
+                }
+            }
+            """,
+            RecordIdMessage,
+            RecordIdMessage,
+            RecordIdMessage,
+            RecordIdMessage,
+            RecordIdMessage,
+            RecordIdMessage,
+            RecordIdMessage,
+            RecordIdMessage);
+
+    /// <summary>
+    /// The Try pattern: a default assigned to an <c>out</c> parameter of a method, local function or
+    /// lambda that returns <c>bool</c>, whole or through a conditional or a switch arm, and where the
+    /// sibling branch does not bind (CS0117, as a generated factory of the same project does not
+    /// where Metalama runs analyzers).
+    /// </summary>
+    [Fact]
+    public Task A_default_assigned_to_the_out_parameter_of_a_Try_method_stays_silent() =>
+        ShouldStaySilentOn(
+            """
+            public static class Consumer
+            {
+                public static bool TryFind(string key, out Subjects.RecordId id) { id = default; return false; }
+
+                public static bool TryParse(string text, out Subjects.RecordId id)
+                {
+                    id = default(Subjects.RecordId);
+                    if (text.Length == 0) return false;
+                    id = (default)!;
+                    return false;
+                }
+
+                public static bool TryPick(bool found, Subjects.RecordId candidate, out Subjects.RecordId id) { id = found ? candidate : default; return found; }
+
+                public static bool TrySwitch(int key, Subjects.RecordId candidate, out Subjects.RecordId id) { id = key switch { 0 => default, _ => candidate }; return key != 0; }
+
+                public static bool TryUnbound(bool found, out Subjects.Plain id) { id = found ? Subjects.Plain.{|CS0117:From|}(1) : default; return found; }
+
+                public static bool TryOption(out CodoMetis.TypeKit.Option<int> option) { option = default; return false; }
+
+                public static Subjects.TryDelegate Nested()
+                {
+                    static bool TryLocal(out Subjects.RecordId id) { id = default; return false; }
+
+                    _ = TryLocal(out _);
+                    return (out Subjects.RecordId id) => { id = default; return false; };
+                }
+            }
+            """);
+
+    /// <summary>
+    /// Near the Try pattern and still reported: an <c>out</c> of a method that returns nothing or no
+    /// <c>bool</c>, a <c>ref</c> parameter, <c>new()</c>, a default kept in a local or a field first, and
+    /// a default that is an element of what is assigned.
+    /// </summary>
+    [Fact]
+    public Task A_default_near_the_Try_pattern_still_reports() =>
+        ShouldFlagEach(
+            """
+            public static class Consumer
+            {
+                public static Subjects.RecordId Field;
+
+                public static void Fill(out Subjects.RecordId id) { id = {|#0:default|}; }
+
+                public static int Count(out Subjects.RecordId id) { id = {|#1:default|}; return 0; }
+
+                public static bool TryRef(ref Subjects.RecordId id) { id = {|#2:default|}; return false; }
+
+                public static bool TryNew(out Subjects.RecordId id) { id = {|#3:new()|}; return false; }
+
+                public static bool TryLocal(out Subjects.RecordId id) { Subjects.RecordId local = {|#4:default|}; id = local; return false; }
+
+                public static bool TryField(out Subjects.RecordId id) { Field = {|#5:default|}; id = Field; return false; }
+
+                public static bool TryMany(out Subjects.RecordId[] ids) { ids = [{|#6:default|}]; return false; }
+            }
+            """,
+            RecordIdMessage,
+            RecordIdMessage,
+            RecordIdMessage,
+            RecordIdMessage,
+            RecordIdMessage,
+            RecordIdMessage,
+            RecordIdMessage);
+
+    private const string RecordIdMessage = "The value object 'RecordId' must be created with 'RecordId.From', not as a default instance";
 
     /// <summary>
     /// Where a sibling branch does not bind, as a generated factory of the same project does not where
