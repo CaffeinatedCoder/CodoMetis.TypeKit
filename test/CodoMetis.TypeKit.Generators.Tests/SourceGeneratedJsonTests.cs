@@ -77,6 +77,42 @@ public sealed class SourceGeneratedJsonTests
     public void A_validated_value_object_is_still_refused() =>
         Should.Throw<JsonException>(() => JsonSerializer.Deserialize<ProbePercentage>("101", ContextOnly));
 
+    /// <summary>
+    /// A context's <c>UseStringEnumConverter</c> is not reachable through public API: it is not a
+    /// converter on the options, and applies only to the enums the context lists. An enum value object
+    /// whose enum the context does not list is written as a number, as the serializer's own converter
+    /// writes an enum. A pin of that, beside the two ways to get a name, which the documentation names.
+    /// </summary>
+    [Fact]
+    public void A_context_s_UseStringEnumConverter_does_not_reach_an_enum_it_does_not_list()
+    {
+        var options = new JsonSerializerOptions { TypeInfoResolver = StringEnumsUnlisted.Default };
+
+        StringEnumsUnlisted.Default.GetTypeInfo(typeof(DayOfWeek)).ShouldBeNull();
+        StringEnumsUnlisted.Default.Options.Converters.ShouldBeEmpty();
+        JsonSerializer.Serialize(ProbeWeekday.From(DayOfWeek.Monday), options).ShouldBe("1");
+    }
+
+    /// <summary>Listing the enum in the context gives it the context's contract, and the value object uses it.</summary>
+    [Fact]
+    public void Listing_the_enum_in_the_context_writes_it_by_name()
+    {
+        var options = new JsonSerializerOptions { TypeInfoResolver = StringEnumsListed.Default };
+
+        JsonSerializer.Serialize(ProbeWeekday.From(DayOfWeek.Monday), options).ShouldBe(JsonSerializer.Serialize(DayOfWeek.Monday, options));
+        JsonSerializer.Serialize(ProbeWeekday.From(DayOfWeek.Monday), options).ShouldBe("\"Monday\"");
+        JsonSerializer.Deserialize<ProbeWeekday>("\"Friday\"", options).Value.ShouldBe(DayOfWeek.Friday);
+        JsonSerializer.Serialize(new Dictionary<ProbeWeekday, int> { [ProbeWeekday.From(DayOfWeek.Monday)] = 1 }, options).ShouldBe("{\"Monday\":1}");
+    }
+
+    /// <summary>A converter the context puts on its options is a converter on the options, which comes first.</summary>
+    [Fact]
+    public void A_converter_in_the_context_s_options_writes_it_by_name()
+    {
+        JsonSerializer.Serialize(ProbeWeekday.From(DayOfWeek.Monday), StringEnumConverterInOptions.Default.Options).ShouldBe("\"Monday\"");
+        JsonSerializer.Deserialize<ProbeWeekday>("\"Friday\"", StringEnumConverterInOptions.Default.Options).Value.ShouldBe(DayOfWeek.Friday);
+    }
+
     [Fact]
     public void Stored_JSON_is_read_without_the_rules() =>
         JsonSerializer.Deserialize<ProbePercentage>("101", new JsonSerializerOptions(ContextOnly) { Converters = { new StoredJsonConverterFactory() } })
@@ -102,3 +138,17 @@ public sealed class SourceGeneratedJsonTests
 [JsonSerializable(typeof(Dictionary<ProbeUri, int>))]
 [JsonSerializable(typeof(Dictionary<ProbeAmount, int>))]
 internal sealed partial class ValueObjectsOnly : JsonSerializerContext;
+
+[JsonSourceGenerationOptions(UseStringEnumConverter = true)]
+[JsonSerializable(typeof(ProbeWeekday))]
+internal sealed partial class StringEnumsUnlisted : JsonSerializerContext;
+
+[JsonSourceGenerationOptions(UseStringEnumConverter = true)]
+[JsonSerializable(typeof(ProbeWeekday))]
+[JsonSerializable(typeof(DayOfWeek))]
+[JsonSerializable(typeof(Dictionary<ProbeWeekday, int>))]
+internal sealed partial class StringEnumsListed : JsonSerializerContext;
+
+[JsonSourceGenerationOptions(Converters = [typeof(JsonStringEnumConverter<DayOfWeek>)])]
+[JsonSerializable(typeof(ProbeWeekday))]
+internal sealed partial class StringEnumConverterInOptions : JsonSerializerContext;

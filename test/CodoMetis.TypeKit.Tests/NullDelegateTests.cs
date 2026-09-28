@@ -160,6 +160,10 @@ public sealed class NullDelegateTests
             [() => new[] { 1 }.FirstOrError(Null<Func<int, bool>>(), "e"), () => Array.Empty<int>().FirstOrError(Null<Func<int, bool>>(), "e")],
         ["Result.LastOrError(IEnumerable<T>, Func<T, Boolean>, TError): predicate"] =
             [() => new[] { 1 }.LastOrError(Null<Func<int, bool>>(), "e"), () => Array.Empty<int>().LastOrError(Null<Func<int, bool>>(), "e")],
+
+        // What generated parsing calls for a wrapped type without TryParse; either input, readable or not.
+        ["GeneratedParsing.Guarded(String, Func<String, T>): parse"] =
+            [() => CodoMetis.TypeKit.CompilerServices.GeneratedParsing.Guarded<string, int>("1", Null<Func<string, int>>()), () => CodoMetis.TypeKit.CompilerServices.GeneratedParsing.Guarded<string, int>("x", Null<Func<string, int>>())],
     };
 
     public static TheoryData<string> CaseNames => [.. Cases.Keys];

@@ -53,8 +53,40 @@ public sealed class GeneratedJsonTests
     public void A_type_nothing_can_write_is_refused_by_name() =>
         Should.Throw<NotSupportedException>(() => GeneratedJson.TypeInfo<Untagged>(Empty(), builtIn: null)).Message.ShouldContain(nameof(Untagged));
 
+    /// <summary>
+    /// A reflection resolver walks a type it has no converter for as an object, as it does a NodaTime
+    /// type on options not configured for NodaTime. Where a built-in converter is at hand (NodaTime's),
+    /// that one writes: the value object writes the type's own format there, not <c>{}</c>.
+    /// </summary>
+    [Fact]
+    public void An_object_contract_gives_way_to_a_built_in_converter()
+    {
+        var options = new JsonSerializerOptions { TypeInfoResolver = new DefaultJsonTypeInfoResolver() };
+        var builtIn = new UntaggedConverter();
+
+        GeneratedJson.TypeInfo(options, builtIn).Converter.ShouldBeSameAs(builtIn);
+        GeneratedJson.TypeInfo<Untagged>(options, builtIn: null).Kind.ShouldBe(JsonTypeInfoKind.Object);
+    }
+
+    /// <summary>What a value object's converter throws for JSON its wrapped type cannot read: both types, never the input.</summary>
+    [Fact]
+    public void Unreadable_JSON_names_the_types_and_nothing_else()
+    {
+        var exception = GeneratedJson.Unreadable<Tagged, int>();
+
+        exception.Message.ShouldBe("Tagged could not read the JSON value as Int32.");
+        exception.InnerException.ShouldBeNull();
+    }
+
     [JsonConverter(typeof(TaggedConverter))]
     public sealed record Tagged(string Text);
+
+    public sealed class UntaggedConverter : JsonConverter<Untagged>
+    {
+        public override Untagged Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => new(reader.GetString()!);
+
+        public override void Write(Utf8JsonWriter writer, Untagged value, JsonSerializerOptions options) => writer.WriteStringValue(value.Text);
+    }
 
     public sealed record Untagged(string Text);
 

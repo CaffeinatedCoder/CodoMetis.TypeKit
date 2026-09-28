@@ -11,6 +11,7 @@ internal enum ValueParseStrategy
     SpanParsable,
     Parsable,
     Enum,
+    Uri,
     TypeConverter,
     StaticParse,
     StringConstructor,
@@ -40,32 +41,60 @@ internal sealed class ParsableImplementationArguments
     public const string Provider = "(provider ?? global::System.Globalization.CultureInfo.InvariantCulture)";
 
     /// <summary>
-    /// C# that turns the text <c>s</c> (and <c>provider</c>) into the wrapped type. The wrapped
-    /// type's own <c>Parse</c> is called through <c>GeneratedParsing</c>, because it may be an
-    /// explicit interface implementation that <c>T.Parse(...)</c> cannot reach (<c>bool</c> is one).
+    /// C# that turns the text <c>s</c> (and <c>provider</c>) into the wrapped type, or throws
+    /// <c>GeneratedParsing.Unreadable</c>: a <c>FormatException</c> naming the value object and the
+    /// wrapped type, never the input, and with no inner exception. The wrapped type's own
+    /// <c>Parse</c> quoted the input ("The input string 'SECRET' was not in a correct format."), so it
+    /// is never called where a <c>TryParse</c> exists. That is called through <c>GeneratedParsing</c>,
+    /// because it may be an explicit interface implementation that <c>T.TryParse(...)</c> cannot reach
+    /// (<c>bool</c> is one).
     /// </summary>
     public string InnerParse(string input = "s")
     {
-        var valueType = ValueObjectTypes.SourceName(ValueType);
+        var valueType   = ValueObjectTypes.SourceName(ValueType);
+        var unreadable  = $"throw global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing.Unreadable<{ValueObjectTypes.SourceName(ValueObjectType)}, {valueType}>()";
+        const string at = "global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing";
 
         return Strategy switch
         {
             ValueParseStrategy.String => input,
-            ValueParseStrategy.Parsable => $"global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing.Parse<{valueType}>({input}, {Provider})",
-            ValueParseStrategy.SpanParsable => $"global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing.ParseSpan<{valueType}>({input}, {Provider})",
-            // By name, as Enum.Parse does, but with the exception IParsable.Parse documents. The
-            // refused text stays out of the message, as in every other refusal.
-            ValueParseStrategy.Enum =>
-                $"(global::System.Enum.TryParse<{valueType}>({input}, out var __parsed) ? __parsed : throw new global::System.FormatException(\"The input is not a name of {ValueType.Name}.\"))",
+            ValueParseStrategy.Parsable => $"({at}.TryParse<{valueType}>({input}, {Provider}, out var __parsed) ? __parsed : {unreadable})",
+            ValueParseStrategy.SpanParsable => $"({at}.TryParseSpan<{valueType}>({input}, {Provider}, out var __parsed) ? __parsed : {unreadable})",
+            // By name, as Enum.Parse does, but with the exception IParsable.Parse documents.
+            ValueParseStrategy.Enum => $"(global::System.Enum.TryParse<{valueType}>({input}, out var __parsed) ? __parsed : {unreadable})",
+            // Relative or absolute, as the serializer reads a Uri. The constructor took "/orders/7" for
+            // file:///orders/7 on macOS and Linux and refused "orders/7", which JSON reads as relative.
+            ValueParseStrategy.Uri => $"(global::System.Uri.TryCreate({input}, global::System.UriKind.RelativeOrAbsolute, out var __parsed) ? __parsed : {unreadable})",
             // Through GeneratedParsing, whose lookup is the trim-safe one: TypeDescriptor.GetConverter
             // requires unreferenced code, so trimming and Native AOT warned about this call.
-            ValueParseStrategy.TypeConverter =>
-                $"({valueType})global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing.TypeConverterOf<{valueType}>()"
-              + $".ConvertFromString(null, provider as global::System.Globalization.CultureInfo ?? global::System.Globalization.CultureInfo.InvariantCulture, {input})!",
-            ValueParseStrategy.StaticParse => $"{valueType}.Parse({input})",
-            ValueParseStrategy.StringConstructor => $"new {valueType}({input})",
+            ValueParseStrategy.TypeConverter => $"{at}.ConvertFromString<{ValueObjectTypes.SourceName(ValueObjectType)}, {valueType}>({input}, provider)",
+            ValueParseStrategy.StaticParse => $"{at}.Guarded<{ValueObjectTypes.SourceName(ValueObjectType)}, {valueType}>({input}, static __text => {valueType}.Parse(__text))",
+            ValueParseStrategy.StringConstructor => $"{at}.Guarded<{ValueObjectTypes.SourceName(ValueObjectType)}, {valueType}>({input}, static __text => new {valueType}(__text))",
             _ => throw new NotSupportedException(Strategy.ToString())
         };
+    }
+
+    /// <summary>
+    /// C# for <c>TryParse</c>: the wrapped type's own <c>TryParse</c> where it has one, then
+    /// <c>__TryFromText</c>, so nothing throws. <see langword="null"/> for a strategy without one, whose
+    /// parse is caught instead.
+    /// </summary>
+    public string? InnerTryParse(string input = "s")
+    {
+        var valueType   = ValueObjectTypes.SourceName(ValueType);
+        const string at = "global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing";
+
+        var parsed = Strategy switch
+        {
+            ValueParseStrategy.Parsable => $"{at}.TryParse<{valueType}>({input}, {Provider}, out var innerValue)",
+            ValueParseStrategy.SpanParsable => $"{at}.TryParseSpan<{valueType}>({input}, {Provider}, out var innerValue)",
+            // Enum.TryParse answers false for null, an unknown name and an empty string.
+            ValueParseStrategy.Enum => $"global::System.Enum.TryParse<{valueType}>({input}, out var innerValue)",
+            ValueParseStrategy.Uri => $"global::System.Uri.TryCreate({input}, global::System.UriKind.RelativeOrAbsolute, out var innerValue)",
+            _ => null
+        };
+
+        return parsed is null ? null : $"({parsed} && {TryFromText}(innerValue, out result))";
     }
 }
 
@@ -95,7 +124,7 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
             return;
         }
 
-        var supportsUtf8 = valueType.IsConvertibleTo(typeof(IUtf8SpanParsable<>).ToNamedType().MakeGenericInstance(valueType));
+        var supportsUtf8 = SupportsUtf8(valueType);
 
         builder.Tags = new ParsableImplementationArguments
         {
@@ -126,11 +155,13 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
         }
     }
 
+    // A hand-written Parse or TryParse with these signatures is CMTK1011, so Fail is a backstop, never a
+    // silent keep of an entry point that need not apply Create.
     private static void IntroduceParse(IAspectBuilder<INamedType> builder, string template, string name) =>
         builder.IntroduceMethod(
             template,
             IntroductionScope.Static,
-            OverrideStrategy.Ignore,
+            OverrideStrategy.Fail,
             method =>
             {
                 method.Name       = name;
@@ -142,7 +173,7 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
         builder.IntroduceMethod(
             template,
             IntroductionScope.Static,
-            OverrideStrategy.Ignore,
+            OverrideStrategy.Fail,
             method =>
             {
                 method.Name                      = name;
@@ -150,7 +181,12 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
                 method.AddAttribute(CodeAnnotations.CompilerGenerated);
             });
 
-    private static ValueParseStrategy ResolveStrategy(INamedType valueType)
+    /// <summary>Whether <c>IUtf8SpanParsable</c> is generated: the wrapped type implements it.</summary>
+    internal static bool SupportsUtf8(INamedType valueType) =>
+        valueType.IsConvertibleTo(typeof(IUtf8SpanParsable<>).ToNamedType().MakeGenericInstance(valueType));
+
+    /// <summary>How the wrapped type is parsed, which also decides what is generated (<see cref="ValueObjectDeclaration"/> reads it too).</summary>
+    internal static ValueParseStrategy ResolveStrategy(INamedType valueType)
     {
         if (valueType.SpecialType == SpecialType.String)
             return ValueParseStrategy.String;
@@ -167,6 +203,10 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
         // convertible lacks ISpanParsable, so enums are the only type that gets here this way.
         if (valueType.TypeKind == TypeKind.Enum)
             return ValueParseStrategy.Enum;
+
+        // Before the string constructor, which Uri has too: relative or absolute, as JSON reads it.
+        if (valueType.Equals(typeof(Uri)))
+            return ValueParseStrategy.Uri;
 
         if (valueType.Attributes.Any(attribute => attribute.Type.IsConvertibleTo(typeof(TypeConverterAttribute))))
             return ValueParseStrategy.TypeConverter;

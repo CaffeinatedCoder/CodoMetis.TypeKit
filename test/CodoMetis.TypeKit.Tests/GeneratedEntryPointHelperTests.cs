@@ -36,12 +36,40 @@ public sealed class GeneratedEntryPointHelperTests
     [Fact]
     public void An_explicitly_implemented_IParsable_is_reachable()
     {
-        GeneratedParsing.Parse<bool>("true", null).ShouldBeTrue();
+        GeneratedParsing.TryParse<bool>("true", null, out var flag).ShouldBeTrue();
+        flag.ShouldBeTrue();
         GeneratedParsing.TryParse<bool>("nope", null, out _).ShouldBeFalse();
-        GeneratedParsing.ParseSpan<bool>("False".AsSpan(), null).ShouldBeFalse();
         GeneratedParsing.TryParseSpan<char>("x".AsSpan(), null, out var character).ShouldBeTrue();
         character.ShouldBe('x');
-        GeneratedParsing.ParseUtf8<int>("42"u8, null).ShouldBe(42);
+        GeneratedParsing.TryParseUtf8<int>("42"u8, null, out var number).ShouldBeTrue();
+        number.ShouldBe(42);
         GeneratedParsing.TryParseUtf8<int>("x"u8, null, out _).ShouldBeFalse();
+    }
+
+    /// <summary>What every generated <c>Parse</c> throws for text the wrapped type cannot read: both types, never the input.</summary>
+    [Fact]
+    public void Unreadable_input_names_the_types_and_nothing_else()
+    {
+        var exception = GeneratedParsing.Unreadable<Code, int>();
+
+        exception.Message.ShouldBe("Code could not read the input as Int32.");
+        exception.InnerException.ShouldBeNull();
+    }
+
+    /// <summary>A parser's own exception quotes the input, so it is replaced, and not kept as the inner exception.</summary>
+    [Fact]
+    public void A_parser_s_exception_is_replaced_whole()
+    {
+        var guarded = Should.Throw<FormatException>(() => GeneratedParsing.Guarded<Code, int>("SECRET", static s => int.Parse(s, System.Globalization.CultureInfo.InvariantCulture)));
+        var converted = Should.Throw<FormatException>(() => GeneratedParsing.ConvertFromString<Code, int>("SECRET", null));
+
+        foreach (var exception in new[] { guarded, converted })
+        {
+            exception.Message.ShouldBe("Code could not read the input as Int32.");
+            exception.InnerException.ShouldBeNull();
+        }
+
+        GeneratedParsing.Guarded<Code, int>("42", static s => int.Parse(s, System.Globalization.CultureInfo.InvariantCulture)).ShouldBe(42);
+        GeneratedParsing.ConvertFromString<Code, int>("42", null).ShouldBe(42);
     }
 }

@@ -9,7 +9,8 @@ namespace CodoMetis.TypeKit.CompilerServices;
 
 /// <summary>
 /// What the JSON converter that CodoMetis.TypeKit.Generators generates calls, kept in ordinary C# so
-/// it is written once and testable without a generator.
+/// it is written once and testable without a generator. The wrapped value itself is read and written
+/// through <see cref="GeneratedJsonPlan{T}"/>.
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public static class GeneratedJson
@@ -31,54 +32,26 @@ public static class GeneratedJson
         value.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(value, DateTimeKind.Utc) : value.ToUniversalTime();
 
     /// <summary>
-    /// Writes the wrapped value <paramref name="value"/> as the serializer writes a
-    /// <typeparamref name="T"/> under <paramref name="options"/>.
+    /// What a value object's converter throws for JSON its wrapped type cannot read: a
+    /// <see cref="JsonException"/> naming both types, never the input, and with no inner exception.
     /// </summary>
     /// <remarks>
-    /// Through the contract's converter directly where that writes exactly what the serializer would,
-    /// and through the serializer where the options' number handling changes the output
-    /// (<see cref="JsonNumberHandling.WriteAsString"/>, named floating-point literals), which only the
-    /// serializer applies. A nested <c>JsonSerializer.Serialize</c> per value made a value object's
-    /// JSON 40% slower than its wrapped type's (measured 2026-09-28).
+    /// The converters' own exceptions may quote the input: NodaTime's ("Value being parsed: '…'"), and
+    /// for a dictionary key the serializer's own message, whose path is the key. The serializer still
+    /// sets <see cref="JsonException.Path"/> on this one, and for a key the path contains it.
     /// </remarks>
-    /// <param name="writer">The writer.</param>
-    /// <param name="value">The wrapped value.</param>
-    /// <param name="options">The caller's options.</param>
-    /// <param name="builtIn">The serializer's built-in converter for <typeparamref name="T"/>, if it has one.</param>
+    /// <typeparam name="TValueObject">The value object type.</typeparam>
     /// <typeparam name="T">The wrapped type.</typeparam>
-    public static void Write<T>(Utf8JsonWriter writer, T value, JsonSerializerOptions options, JsonConverter<T>? builtIn)
-    {
-        ArgumentNullException.ThrowIfNull(writer);
-
-        var plan = Plan<T>.For(options, builtIn);
-
-        if (plan.Direct is { } converter && plan.WritesAsIs) converter.Write(writer, value, options);
-        else JsonSerializer.Serialize(writer, value, plan.TypeInfo);
-    }
+    /// <returns>The exception, to throw.</returns>
+    public static JsonException Unreadable<TValueObject, T>() =>
+        new($"{typeof(TValueObject).Name} could not read the JSON value as {typeof(T).Name}.");
 
     /// <summary>
-    /// Reads a wrapped value as the serializer reads a <typeparamref name="T"/> under
-    /// <paramref name="options"/>.
+    /// What a converter throws for input it cannot read, as opposed to a configuration the serializer
+    /// refuses (<see cref="NotSupportedException"/>), which is left alone.
     /// </summary>
-    /// <remarks>
-    /// Through the contract's converter directly unless the token is a string and the options' number
-    /// handling may read a number from one, which only the serializer applies. A failure the reader
-    /// reports is the serializer's to turn into a <see cref="JsonException"/>, as it does for every
-    /// converter it calls.
-    /// </remarks>
-    /// <param name="reader">The reader, on the value.</param>
-    /// <param name="options">The caller's options.</param>
-    /// <param name="builtIn">The serializer's built-in converter for <typeparamref name="T"/>, if it has one.</param>
-    /// <typeparam name="T">The wrapped type.</typeparam>
-    /// <returns>The wrapped value.</returns>
-    public static T? Read<T>(ref Utf8JsonReader reader, JsonSerializerOptions options, JsonConverter<T>? builtIn)
-    {
-        var plan = Plan<T>.For(options, builtIn);
-
-        return plan.Direct is { } converter && (reader.TokenType != JsonTokenType.String || plan.StrictNumbers)
-            ? converter.Read(ref reader, typeof(T), options)
-            : JsonSerializer.Deserialize(ref reader, plan.TypeInfo);
-    }
+    internal static bool IsRefusal(Exception exception) =>
+        exception is JsonException or FormatException or InvalidOperationException or OverflowException or ArgumentException;
 
     /// <summary>
     /// The JSON contract of the wrapped type <typeparamref name="T"/> under <paramref name="options"/>,
@@ -113,24 +86,16 @@ public static class GeneratedJson
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        if (options.TryGetTypeInfo(typeof(T), out var resolved)) return (JsonTypeInfo<T>)resolved;
+        // Not an object or collection contract where a built-in converter is at hand: that is the
+        // reflection resolver walking a type it has no converter for, as it does for a NodaTime type
+        // when the options were not configured for NodaTime, and the value object writes NodaTime's
+        // own format there, not {}.
+        if (options.TryGetTypeInfo(typeof(T), out var resolved) && (resolved.Kind == JsonTypeInfoKind.None || builtIn is null))
+            return (JsonTypeInfo<T>)resolved;
 
         return Contracts<T>.Made.GetValue(options, created => CreateContract(created, builtIn)
                                                            ?? (JsonTypeInfo<T>)created.GetTypeInfo(typeof(T)));
     }
-
-    /// <summary>
-    /// The converter that writes and reads the wrapped type <typeparamref name="T"/> as a dictionary
-    /// key under <paramref name="options"/>: the one behind <see cref="TypeInfo{T}"/>.
-    /// </summary>
-    /// <param name="options">The options the value object is being read or written with.</param>
-    /// <param name="builtIn">The serializer's converter for <typeparamref name="T"/>, or <see langword="null"/> where it has none.</param>
-    /// <typeparam name="T">The wrapped type.</typeparam>
-    /// <returns>The converter.</returns>
-    /// <exception cref="NotSupportedException">The converter for <typeparamref name="T"/> is not a converter of <typeparamref name="T"/> itself.</exception>
-    public static JsonConverter<T> KeyConverter<T>(JsonSerializerOptions options, JsonConverter<T>? builtIn) =>
-        TypeInfo(options, builtIn).Converter as JsonConverter<T>
-     ?? throw new NotSupportedException($"The converter for {typeof(T)} under these options cannot read or write it as a dictionary key.");
 
     private static JsonTypeInfo<T>? CreateContract<T>(JsonSerializerOptions options, JsonConverter<T>? builtIn)
     {
@@ -155,51 +120,6 @@ public static class GeneratedJson
             : null;
 
     /// <summary>Contracts made here, one per options instance, which outlive neither.</summary>
-    /// <summary>
-    /// How one wrapped type is read and written under one options instance. The most recent one is
-    /// kept per wrapped type, which is every call in an application with one set of options; any
-    /// other options are resolved again, which is what every call cost before.
-    /// </summary>
-    private sealed class Plan<T>
-    {
-        private static Plan<T>? _last;
-
-        private Plan(JsonSerializerOptions options, JsonTypeInfo<T> typeInfo)
-        {
-            Options  = options;
-            TypeInfo = typeInfo;
-
-            var handling = typeInfo.NumberHandling ?? options.NumberHandling;
-
-            // Only a value converter is called directly: an object or collection contract is the
-            // serializer's to walk. Number handling is applied by the serializer alone, and only
-            // these flags change what is written; reading a number from a string is decided per token.
-            Direct        = typeInfo.Kind == JsonTypeInfoKind.None ? typeInfo.Converter as JsonConverter<T> : null;
-            WritesAsIs    = (handling & (JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowNamedFloatingPointLiterals)) == 0;
-            StrictNumbers = handling == JsonNumberHandling.Strict;
-        }
-
-        public JsonSerializerOptions Options { get; }
-
-        public JsonTypeInfo<T> TypeInfo { get; }
-
-        public JsonConverter<T>? Direct { get; }
-
-        public bool WritesAsIs { get; }
-
-        public bool StrictNumbers { get; }
-
-        public static Plan<T> For(JsonSerializerOptions options, JsonConverter<T>? builtIn)
-        {
-            ArgumentNullException.ThrowIfNull(options);
-
-            var last = _last;
-            if (last is not null && ReferenceEquals(last.Options, options)) return last;
-
-            return _last = new Plan<T>(options, TypeInfo(options, builtIn));
-        }
-    }
-
     private static class Contracts<T>
     {
         public static readonly ConditionalWeakTable<JsonSerializerOptions, JsonTypeInfo<T>> Made = new();

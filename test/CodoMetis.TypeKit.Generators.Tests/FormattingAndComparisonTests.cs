@@ -77,6 +77,78 @@ public sealed class FormattingTests
     }
 }
 
+/// <summary>
+/// A hand-written <c>ToString()</c> is the formatting seam. It was replaced by the generated override
+/// without a word, so a <c>ToString() => "***"</c> printed the secret, and interpolation reached the
+/// wrapped value through the generated <c>IFormattable</c>/<c>ISpanFormattable</c> even where it did not.
+/// Now it is kept and no formatting interface is generated; the wire formats stay the wrapped value's.
+/// </summary>
+public sealed class ToStringSeamTests
+{
+    private static readonly ProbeSecret Secret = ProbeSecret.From("s3cr3t");
+    private static readonly ProbePin    Pin    = ProbePin.From(1234);
+
+    [Fact]
+    public void The_hand_written_ToString_is_kept()
+    {
+        Secret.ToString().ShouldBe("***");
+        Pin.ToString().ShouldBe("****");
+    }
+
+    [Fact]
+    public void Interpolation_reaches_it()
+    {
+        $"{Secret}".ShouldBe("***");
+        $"{Pin}".ShouldBe("****");
+        $"{Pin:N0}".ShouldBe("****");
+        string.Create(CultureInfo.GetCultureInfo("de-DE"), $"{Pin}").ShouldBe("****");
+        new StringBuilder().Append($"{Pin}").Append(Secret).ToString().ShouldBe("*******");
+    }
+
+    [Fact]
+    public void String_Format_reaches_it()
+    {
+        string.Format(CultureInfo.InvariantCulture, "{0}", Secret).ShouldBe("***");
+        string.Format(CultureInfo.InvariantCulture, "{0:N0}", Pin).ShouldBe("****");
+    }
+
+    /// <summary>
+    /// <c>Convert.ToString(object)</c> asks <c>IConvertible</c> before anything else, and the generated
+    /// <c>IConvertible</c> answered with the wrapped value.
+    /// </summary>
+    [Fact]
+    public void Convert_reaches_it()
+    {
+        Convert.ToString(Secret, CultureInfo.InvariantCulture).ShouldBe("***");
+        Convert.ToString(Pin, CultureInfo.InvariantCulture).ShouldBe("****");
+        Convert.ChangeType(Pin, typeof(string), CultureInfo.InvariantCulture).ShouldBe("****");
+        ((IConvertible)Pin).ToType(typeof(string), null).ShouldBe("****");
+    }
+
+    [Fact]
+    public void No_formatting_interface_is_generated()
+    {
+        foreach (var type in new[] { typeof(ProbeSecret), typeof(ProbePin) })
+        {
+            typeof(IFormattable).IsAssignableFrom(type).ShouldBeFalse(type.Name);
+            typeof(IUtf8SpanFormattable).IsAssignableFrom(type).ShouldBeFalse(type.Name);
+        }
+    }
+
+    /// <summary>The type converter and JSON write the wrapped value, as for any value object.</summary>
+    [Fact]
+    public void The_wire_formats_are_still_the_wrapped_value()
+    {
+        TypeDescriptor.GetConverter(typeof(ProbeSecret)).ConvertToInvariantString(Secret).ShouldBe("s3cr3t");
+        TypeDescriptor.GetConverter(typeof(ProbePin)).ConvertToInvariantString(Pin).ShouldBe("1234");
+        TypeDescriptor.GetConverter(typeof(ProbePin)).ConvertToString(null, CultureInfo.GetCultureInfo("de-DE"), Pin).ShouldBe("1234");
+
+        System.Text.Json.JsonSerializer.Serialize(Secret).ShouldBe("\"s3cr3t\"");
+        System.Text.Json.JsonSerializer.Serialize(Pin).ShouldBe("1234");
+        System.Text.Json.JsonSerializer.Serialize(new Dictionary<ProbePin, int> { [Pin] = 1 }).ShouldBe("{\"1234\":1}");
+    }
+}
+
 /// <summary>Comparison, generated when the wrapped type is comparable.</summary>
 public sealed class ComparisonTests
 {
@@ -256,6 +328,26 @@ public sealed class ConvertibleTests
     [Fact]
     public void A_value_object_over_a_non_convertible_type_is_not_convertible() =>
         typeof(IConvertible).IsAssignableFrom(typeof(ProbeId)).ShouldBeFalse();
+
+    /// <summary>
+    /// The identity conversion: <c>Convert.ChangeType(q, typeof(Quantity))</c> reaches <c>ToType</c>,
+    /// which handed it to the wrapped <c>int</c> and threw <c>InvalidCastException</c>, and a
+    /// conversion to <see cref="object"/> returned the wrapped value rather than the value object.
+    /// </summary>
+    [Fact]
+    public void Converting_to_its_own_type_or_to_object_returns_the_value_object()
+    {
+        var count = ProbeCount.From(42);
+
+        Convert.ChangeType(count, typeof(ProbeCount), CultureInfo.InvariantCulture).ShouldBe(count);
+        ((IConvertible)count).ToType(typeof(ProbeCount), null).ShouldBe(count);
+        ((IConvertible)count).ToType(typeof(object), null).ShouldBe(count);
+        ((IConvertible)ProbeLabel.From("a")).ToType(typeof(ProbeLabel), null).ShouldBe(ProbeLabel.From("a"));
+
+        // Any other conversion is still the wrapped value's.
+        ((IConvertible)count).ToType(typeof(long), null).ShouldBe(42L);
+        Convert.ChangeType(count, typeof(decimal), CultureInfo.InvariantCulture).ShouldBe(42m);
+    }
 }
 
 /// <summary>The <c>GetValue</c>/<c>ValueOrNull</c> companions a query translates to the column.</summary>

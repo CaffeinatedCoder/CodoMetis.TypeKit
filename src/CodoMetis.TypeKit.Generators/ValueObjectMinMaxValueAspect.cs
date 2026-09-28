@@ -68,12 +68,22 @@ internal sealed partial class ValueObjectMinMaxValueAspect : TypeAspect
         );
     }
 
-    private static bool HasMinMaxValue(INamedType valueType)
+    /// <summary>
+    /// Whether the wrapped type has a static <c>MinValue</c> and <c>MaxValue</c> of its own type that the
+    /// generated code can read. A member of that name of another type (<c>public const decimal
+    /// MinValue</c> on a struct that is not a decimal) or one the value object cannot reach (private)
+    /// failed inside the generated code (LAMA0611, CS1503 and CS0122).
+    /// </summary>
+    internal static bool HasMinMaxValue(INamedType valueType)
     {
-        bool HasMember(string name) =>
-            valueType.Properties.Any(p => p.Name == name && p.IsStatic) ||
-            valueType.Fields.Any(f => f.Name == name && f.IsStatic);
+        bool Reachable(IMember member) =>
+            member.Accessibility == Accessibility.Public
+         || (member.Accessibility is Accessibility.Internal or Accessibility.ProtectedInternal && member.BelongsToCurrentProject);
 
-        return HasMember("MinValue") && HasMember("MaxValue");
+        bool HasMember(string name) =>
+            valueType.Properties.Any(p => p.Name == name && p.IsStatic && p.Type.Equals(valueType) && p.GetMethod is { } getter && Reachable(p) && Reachable(getter)) ||
+            valueType.Fields.Any(f => f.Name == name && f.IsStatic && f.Type.Equals(valueType) && Reachable(f));
+
+        return HasMember(nameof(IMinMaxValue<int>.MinValue)) && HasMember(nameof(IMinMaxValue<int>.MaxValue));
     }
 }

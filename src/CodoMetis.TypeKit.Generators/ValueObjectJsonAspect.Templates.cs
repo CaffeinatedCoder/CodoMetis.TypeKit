@@ -37,6 +37,14 @@ internal sealed partial class ValueObjectJsonAspect
         return materializing.Invoke(true)!;
     }
 
+    /// <summary>
+    /// The wrapped value, written as the serializer writes it under the caller's options, byte for byte,
+    /// as a value and as a dictionary key: through the converter the options have for the wrapped type,
+    /// or the built-in one where they have none (<see cref="JsonImplementationArguments.BuiltInConverter"/>).
+    /// Writing it here with formats of its own gave <c>03:04:05.0000000</c> for a <see cref="TimeOnly"/>
+    /// the serializer writes as <c>03:04:05</c>, seven fractional digits on date-time keys, no
+    /// <c>DictionaryKeyPolicy</c> on string keys, and ignored a converter the host registered.
+    /// </summary>
     [Template]
     public void JsonConverterWriteTemplate(
         Utf8JsonWriter        writer,
@@ -45,190 +53,36 @@ internal sealed partial class ValueObjectJsonAspect
         [CompileTime] bool    asPropertyName
     )
     {
-        var tag      = (JsonImplementationArguments)meta.Tags.Source!;
-        var strategy = meta.CompileTime(tag.Strategy);
+        var tag = (JsonImplementationArguments)meta.Tags.Source!;
 
-        if (meta.CompileTime(strategy == ValueJsonStrategy.StringValue))
-        {
-            if (asPropertyName)
-                writer.WritePropertyName(value!.Value);
-            else
-                writer.WriteStringValue(value!.Value);
-            return;
-        }
-
-        if (meta.CompileTime(strategy == ValueJsonStrategy.GuidValue))
-        {
-            if (asPropertyName)
-                writer.WritePropertyName(value!.Value.ToString());
-            else
-                writer.WriteStringValue(value!.Value);
-            return;
-        }
-
-        // Always UTC, through GeneratedJson.AsUtc: an Unspecified value is taken as UTC rather than
-        // as server-local time, which ToUniversalTime() assumed.
-        if (meta.CompileTime(strategy == ValueJsonStrategy.DateTimeValue))
-        {
-            if (asPropertyName)
-            {
-                var expr = ExpressionFactory.Parse(
-                    $"{GeneratedJson}.AsUtc(value!.Value).ToString(\"O\", global::System.Globalization.CultureInfo.InvariantCulture)",
-                    TypeFactory.GetType(SpecialType.String),
-                    false
-                );
-                writer.WritePropertyName((string)expr.Value!);
-            }
-            else
-            {
-                var expr = ExpressionFactory.Parse($"{GeneratedJson}.AsUtc(value!.Value)", TypeFactory.GetNamedType(typeof(DateTime)), false);
-                writer.WriteStringValue((DateTime)expr.Value!);
-            }
-
-            return;
-        }
-
-        if (meta.CompileTime(strategy == ValueJsonStrategy.DateOnlyValue))
-        {
-            var formatted = ExpressionFactory.Parse(
-                "value!.Value.ToString(\"yyyy-MM-dd\", global::System.Globalization.CultureInfo.InvariantCulture)",
-                TypeFactory.GetType(SpecialType.String),
-                false
-            );
-            if (asPropertyName)
-                writer.WritePropertyName((string)formatted.Value!);
-            else
-                writer.WriteStringValue((string)formatted.Value!);
-            return;
-        }
-
-        if (meta.CompileTime(strategy == ValueJsonStrategy.DateTimeOffsetValue))
-        {
-            if (asPropertyName)
-            {
-                var expr = ExpressionFactory.Parse(
-                    "value!.Value.ToString(\"O\", global::System.Globalization.CultureInfo.InvariantCulture)",
-                    TypeFactory.GetType(SpecialType.String),
-                    false
-                );
-                writer.WritePropertyName((string)expr.Value!);
-            }
-            else
-            {
-                var expr = ExpressionFactory.Parse("value!.Value", TypeFactory.GetNamedType(typeof(DateTimeOffset)), false);
-                writer.WriteStringValue((DateTimeOffset)expr.Value!);
-            }
-
-            return;
-        }
-
-        if (meta.CompileTime(strategy == ValueJsonStrategy.TimeOnlyValue))
-        {
-            var formatted = ExpressionFactory.Parse(
-                "value!.Value.ToString(\"o\", global::System.Globalization.CultureInfo.InvariantCulture)",
-                TypeFactory.GetType(SpecialType.String),
-                false
-            );
-            if (asPropertyName)
-                writer.WritePropertyName((string)formatted.Value!);
-            else
-                writer.WriteStringValue((string)formatted.Value!);
-            return;
-        }
-
-        if (meta.CompileTime(strategy == ValueJsonStrategy.BooleanValue))
-        {
-            if (asPropertyName)
-                writer.WritePropertyName(value!.Value.ToString());
-            else
-                writer.WriteBooleanValue(value!.Value);
-            return;
-        }
-
-        if (meta.CompileTime(strategy == ValueJsonStrategy.NumericInvariant))
-        {
-            if (asPropertyName)
-            {
-                var formatted = ExpressionFactory.Parse(
-                    "value!.Value.ToString(global::System.Globalization.CultureInfo.InvariantCulture)",
-                    TypeFactory.GetType(SpecialType.String),
-                    false
-                );
-                writer.WritePropertyName((string)formatted.Value!);
-            }
-            else
-            {
-                meta.InsertStatement(ExpressionFactory.Parse(WrappedWrite(tag)));
-            }
-
-            return;
-        }
-
-        if (meta.CompileTime(strategy == ValueJsonStrategy.NodaTimeValue))
-        {
-            // The NodaConverters property was resolved at compile time. ExpressionFactory.Parse
-            // because NodaConverters lives in an assembly this package does not reference.
-            string converterExpr = meta.CompileTime($"global::NodaTime.Serialization.SystemTextJson.NodaConverters.{tag.NodaConverterProperty}");
-
-            // NodaTime's converters handle dictionary keys themselves, with the same pattern as the
-            // value. No one format string fits every NodaTime type ("g" is invalid for LocalDate).
-            if (asPropertyName)
-                meta.InsertStatement(ExpressionFactory.Parse($"{converterExpr}.WriteAsPropertyName(writer, value!.Value, options)"));
-            else
-                meta.InsertStatement(ExpressionFactory.Parse($"{converterExpr}.Write(writer, value!.Value, options)"));
-
-            return;
-        }
-
-        // Fallback: an unknown type round-trips through its contract under the caller's options. As
-        // a key it goes through the wrapped type's own converter, which knows the type's key format
-        // where it has one (an enum by name, a Uri as its text) and throws NotSupportedException
-        // where it has none. Writing the serialized value as the name gave a Uri key quotes inside
-        // its quotes and an enum key its number, and neither read back.
-        if (asPropertyName)
-            meta.InsertStatement(ExpressionFactory.Parse($"{WrappedKeyConverter(tag)}.WriteAsPropertyName(writer, value!.Value, options)"));
-        else
-            meta.InsertStatement(ExpressionFactory.Parse(WrappedWrite(tag)));
+        meta.InsertStatement(ExpressionFactory.Parse($"{Plan(tag)}.{(asPropertyName ? "WriteKey" : "Write")}(writer, {Wrapped(tag)}, options)"));
     }
 
     private const string GeneratedJson = "global::CodoMetis.TypeKit.CompilerServices.GeneratedJson";
 
     /// <summary>
-    /// The wrapped type's own built-in converter (<c>JsonMetadataServices.Int32Converter</c> and so
-    /// on), which parses exactly what the serializer parses for that type and reports malformed text
-    /// as a <c>JsonException</c>. A <c>Parse</c> in the generated code let a
-    /// <c>FormatException</c> escape, which ASP.NET Core answers with 500 rather than 400, and parsed
-    /// keys by rules of their own.
+    /// C# for the plan for these options: the one this converter keeps, or a new one where the options
+    /// changed. The built-in converter is evaluated only then.
     /// </summary>
-    private static string BuiltInConverter(JsonImplementationArguments tag) => tag.BuiltInConverter;
-
-    private static string WrappedKeyConverter(JsonImplementationArguments tag) =>
-        $"{GeneratedJson}.KeyConverter<{ValueObjectTypes.SourceName(tag.ValueType)}>(options, {tag.BuiltInConverter})";
+    private static string Plan(JsonImplementationArguments tag) =>
+        $"(this.{JsonPlanField} is {{ }} __plan && global::System.Object.ReferenceEquals(__plan.Options, options) ? __plan : "
+      + $"this.{JsonPlanField} = global::CodoMetis.TypeKit.CompilerServices.GeneratedJsonPlan<{ValueObjectTypes.SourceName(tag.ValueType)}>.For(options, {tag.BuiltInConverter}))";
 
     /// <summary>
-    /// C# that writes the wrapped value through <c>GeneratedJson.Write</c>, under the wrapped type's
-    /// contract for the caller's options: the options' own where their resolver has one, otherwise made
-    /// as the serializer makes it. It calls the contract's converter directly where that is what the
-    /// serializer would write, and the serializer where the options' number handling applies. Never
-    /// <c>JsonSerializer.Serialize(writer, value, options)</c>, which needs reflection and, with a
-    /// source-generated context that never saw the wrapped type, refused it.
+    /// The value to write. A <see cref="DateTime"/> is always UTC, through <c>GeneratedJson.AsUtc</c>: an
+    /// Unspecified value is taken as UTC rather than as server-local time, which <c>ToUniversalTime()</c> assumed.
     /// </summary>
-    private static string WrappedWrite(JsonImplementationArguments tag) =>
-        $"{GeneratedJson}.Write<{ValueObjectTypes.SourceName(tag.ValueType)}>(writer, value!.Value, options, {tag.BuiltInConverter})";
+    private static string Wrapped(JsonImplementationArguments tag) =>
+        tag.IsDateTime ? $"{GeneratedJson}.AsUtc(value!.Value)" : "value!.Value";
 
-    private static IExpression WrappedReadExpression(JsonImplementationArguments tag) =>
-        ExpressionFactory.Parse(
-            $"{GeneratedJson}.Read<{ValueObjectTypes.SourceName(tag.ValueType)}>(ref reader, options, {tag.BuiltInConverter})!",
-            tag.ValueType,
-            false);
-
-    /// <summary>C# that reads the wrapped value as a dictionary key or as a value, through <see cref="BuiltInConverter"/>.</summary>
-    private static string BuiltInRead(JsonImplementationArguments tag, bool asPropertyName) =>
-        $"{BuiltInConverter(tag)}.{(asPropertyName ? "ReadAsPropertyName" : "Read")}(ref reader, typeof({ValueObjectTypes.SourceName(tag.ValueType)}), options)";
-
-    private static IExpression BuiltInReadExpression(JsonImplementationArguments tag, bool asPropertyName) =>
-        ExpressionFactory.Parse(BuiltInRead(tag, asPropertyName), tag.ValueType, false);
-
+    /// <summary>
+    /// The wrapped value, read as the serializer reads it under the caller's options: by the same
+    /// converter the write uses, never by a <c>Parse</c> of its own, which let a <c>FormatException</c>
+    /// escape (500 rather than 400 in ASP.NET Core) and read number keys with <c>NumberStyles.Any</c>. A
+    /// value the wrapped type cannot read is a <c>JsonException</c> naming the value object and the
+    /// wrapped type, never the input, with no inner exception (<c>GeneratedJson.Unreadable</c>): NodaTime's
+    /// own quoted it.
+    /// </summary>
     [Template]
     public dynamic? JsonConverterReadTemplate(
         ref Utf8JsonReader    reader,
@@ -237,9 +91,7 @@ internal sealed partial class ValueObjectJsonAspect
         [CompileTime] bool    asPropertyName
     )
     {
-        var tag      = (JsonImplementationArguments)meta.Tags.Source!;
-        var strategy = meta.CompileTime(tag.Strategy);
-        var typeName = meta.CompileTime(ValueObjectTypes.SourceName(tag.ValueType));
+        var tag = (JsonImplementationArguments)meta.Tags.Source!;
 
         // A JSON null is not a value object. Without this, a string-backed one would wrap null.
         // A property name is never null, so only the value path needs it.
@@ -249,85 +101,11 @@ internal sealed partial class ValueObjectJsonAspect
                 throw new JsonException($"{meta.CompileTime(tag.ValueObjectType.Name)} cannot be read from a JSON null.");
         }
 
-        if (meta.CompileTime(strategy == ValueJsonStrategy.StringValue))
-            return tag.FromJson.Invoke(reader.GetString(), meta.This._materialize);
-
-        if (meta.CompileTime(strategy == ValueJsonStrategy.GuidValue))
-        {
-            if (asPropertyName)
-                return tag.FromJson.Invoke(BuiltInReadExpression(tag, asPropertyName: true).Value!, meta.This._materialize);
-
-            var guidExpr = ExpressionFactory.Parse("reader.GetGuid()", TypeFactory.GetNamedType(typeof(Guid)), false);
-            return tag.FromJson.Invoke(guidExpr.Value!, meta.This._materialize);
-        }
+        string read = meta.CompileTime($"{Plan(tag)}.{(asPropertyName ? "ReadKey" : "Read")}<{ValueObjectTypes.SourceName(tag.ValueObjectType)}>(ref reader, options)");
 
         // A key and a value are the same instant: both are normalised by GeneratedJson.AsUtc.
-        if (meta.CompileTime(strategy == ValueJsonStrategy.DateTimeValue))
-        {
-            string read = meta.CompileTime(asPropertyName ? BuiltInRead(tag, asPropertyName: true) : "reader.GetDateTime()");
+        var wrapped = ExpressionFactory.Parse(tag.IsDateTime ? $"{GeneratedJson}.AsUtc({read})" : read, tag.ValueType, false);
 
-            var dateTimeExpr = ExpressionFactory.Parse($"{GeneratedJson}.AsUtc({read})", TypeFactory.GetNamedType(typeof(DateTime)), false);
-            return tag.FromJson.Invoke(dateTimeExpr.Value!, meta.This._materialize);
-        }
-
-        if (meta.CompileTime(strategy == ValueJsonStrategy.DateOnlyValue))
-            return tag.FromJson.Invoke(BuiltInReadExpression(tag, asPropertyName).Value!, meta.This._materialize);
-
-        if (meta.CompileTime(strategy == ValueJsonStrategy.DateTimeOffsetValue))
-        {
-            if (asPropertyName)
-                return tag.FromJson.Invoke(BuiltInReadExpression(tag, asPropertyName: true).Value!, meta.This._materialize);
-
-            var offsetExpr = ExpressionFactory.Parse("reader.GetDateTimeOffset()", TypeFactory.GetNamedType(typeof(DateTimeOffset)), false);
-            return tag.FromJson.Invoke(offsetExpr.Value!, meta.This._materialize);
-        }
-
-        if (meta.CompileTime(strategy == ValueJsonStrategy.TimeOnlyValue))
-            return tag.FromJson.Invoke(BuiltInReadExpression(tag, asPropertyName).Value!, meta.This._materialize);
-
-        if (meta.CompileTime(strategy == ValueJsonStrategy.BooleanValue))
-        {
-            if (asPropertyName)
-                return tag.FromJson.Invoke(BuiltInReadExpression(tag, asPropertyName: true).Value!, meta.This._materialize);
-
-            var boolExpr = ExpressionFactory.Parse("reader.GetBoolean()", TypeFactory.GetNamedType(typeof(bool)), false);
-            return tag.FromJson.Invoke(boolExpr.Value!, meta.This._materialize);
-        }
-
-        if (meta.CompileTime(strategy == ValueJsonStrategy.NumericInvariant))
-        {
-            if (asPropertyName)
-                return tag.FromJson.Invoke(BuiltInReadExpression(tag, asPropertyName: true).Value!, meta.This._materialize);
-
-            return tag.FromJson.Invoke(WrappedReadExpression(tag).Value!, meta.This._materialize);
-        }
-
-        if (meta.CompileTime(strategy == ValueJsonStrategy.NodaTimeValue))
-        {
-            string converterExpr = meta.CompileTime($"global::NodaTime.Serialization.SystemTextJson.NodaConverters.{tag.NodaConverterProperty}");
-
-            if (asPropertyName)
-            {
-                var key = ExpressionFactory.Parse($"{converterExpr}.ReadAsPropertyName(ref reader, typeof({typeName}), options)", tag.ValueType, false);
-                return tag.FromJson.Invoke(key.Value!, meta.This._materialize);
-            }
-
-            var nodaValue = ExpressionFactory.Parse($"{converterExpr}.Read(ref reader, typeof({typeName}), options)", tag.ValueType, false);
-            return tag.FromJson.Invoke(nodaValue.Value!, meta.This._materialize);
-        }
-
-        // Fallback: an unknown type round-trips through its contract under the caller's options. A
-        // key is read by the wrapped type's own converter, the counterpart of the write.
-        if (asPropertyName)
-        {
-            var key = ExpressionFactory.Parse(
-                $"{WrappedKeyConverter(tag)}.ReadAsPropertyName(ref reader, typeof({typeName}), options)",
-                tag.ValueType,
-                false
-            );
-            return tag.FromJson.Invoke(key.Value!, meta.This._materialize);
-        }
-
-        return tag.FromJson.Invoke(WrappedReadExpression(tag).Value!, meta.This._materialize);
+        return tag.FromJson.Invoke(wrapped.Value!, meta.This._materialize);
     }
 }
