@@ -18,7 +18,7 @@ public static class Option
         // notnull is an annotation, not a run-time check: without this, Some(null!) reported a value
         // and TryGetValue handed out null despite [NotNullWhen(true)]. `is null` costs nothing for a
         // value type, where the JIT drops it; ThrowIfNull(object?) would box one.
-        if (value is null) throw new ArgumentNullException(nameof(value));
+        if (value is null) throw ThrowHelper.NullContent(nameof(value));
 
         return new(value, true);
     }
@@ -50,7 +50,7 @@ public static class Option
         {
             // Checked whatever the option holds, as the delegates are: a null error passed for every
             // Some until the first None.
-            if (error is null) throw new ArgumentNullException(nameof(error));
+            if (error is null) throw ThrowHelper.NullContent(nameof(error));
 
             return a.TryGetValue(out var value) ? Result<T, TError>.Success(value) : Result<T, TError>.Error(error);
         }

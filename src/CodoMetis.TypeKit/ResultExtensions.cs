@@ -21,7 +21,7 @@ public static class Result
     /// <returns>A marker that converts implicitly to a successful result holding <paramref name="value"/>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
     public static Success<T> Success<T>(T value) where T : notnull =>
-        value is null ? throw new ArgumentNullException(nameof(value)) : new(value);
+        value is null ? throw ThrowHelper.NullContent(nameof(value)) : new(value);
 
     /// <summary>The error marker for a method typed <see cref="Result{T,TError}"/>, whatever its value type, or <see cref="Result{TError}"/>.</summary>
     /// <param name="error">The error. Never null.</param>
@@ -29,7 +29,7 @@ public static class Result
     /// <returns>A marker that converts implicitly to a failed result holding <paramref name="error"/>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
     public static Error<T> Error<T>(T error) where T : notnull =>
-        error is null ? throw new ArgumentNullException(nameof(error)) : new(error);
+        error is null ? throw ThrowHelper.NullContent(nameof(error)) : new(error);
 
     /// <param name="instance">The result.</param>
     /// <typeparam name="T">The type of the value.</typeparam>
@@ -340,7 +340,7 @@ public static class Result
         {
             ArgumentNullException.ThrowIfNull(task);
             ArgumentNullException.ThrowIfNull(predicate);
-            if (error is null) throw new ArgumentNullException(nameof(error));
+            if (error is null) throw ThrowHelper.NullContent(nameof(error));
 
             return (await task.ConfigureAwait(false)).Ensure(predicate, error);
         }
@@ -532,7 +532,7 @@ public static class Result
             // The error is checked whether or not an element matches, as Option.ToResult checks it:
             // a null passed for every search that found something until the first that did not.
             error is null
-                ? throw new ArgumentNullException(nameof(error))
+                ? throw ThrowHelper.NullContent(nameof(error))
                 : source.FirstOrNone(predicate).ToResult(error);
 
         /// <summary>The last element that matches, or the given error.</summary>
@@ -542,7 +542,7 @@ public static class Result
         /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
         public Result<T, TError> LastOrError(Func<T, bool> predicate, TError error) =>
             error is null
-                ? throw new ArgumentNullException(nameof(error))
+                ? throw ThrowHelper.NullContent(nameof(error))
                 : source.LastOrNone(predicate).ToResult(error);
     }
 

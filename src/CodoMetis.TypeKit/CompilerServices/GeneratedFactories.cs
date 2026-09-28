@@ -12,7 +12,8 @@ namespace CodoMetis.TypeKit.CompilerServices;
 /// <remarks>
 /// <para>
 /// The refused value never appears in a message: it is input, and input can be a secret. The fault
-/// does, so the caller learns which rule refused it.
+/// does, so the caller learns which rule refused it, and a link to the README's explanation of the
+/// refusal ends it.
 /// </para>
 /// <para>
 /// It lives in ordinary C#, so the generated code stays a single call and the messages can be tested
@@ -34,7 +35,7 @@ public static class GeneratedFactories
     {
         if (result.TryGetValue(out var value, out var fault)) return value;
 
-        throw new JsonException($"{typeof(TValueObject).Name} refused the JSON value ({fault}).");
+        throw new JsonException($"{typeof(TValueObject).Name} refused the JSON value ({fault}).{Refusals.RefusedValue}");
     }
 
     /// <summary>Unwraps what <c>Create</c> accepted from text, or throws the exception parsing reports.</summary>
@@ -49,7 +50,7 @@ public static class GeneratedFactories
     {
         if (result.TryGetValue(out var value, out var fault)) return value;
 
-        throw new FormatException($"{typeof(TValueObject).Name} refused the input ({fault}).");
+        throw new FormatException($"{typeof(TValueObject).Name} refused the input ({fault}).{Refusals.RefusedValue}");
     }
 
     /// <summary>
@@ -74,8 +75,8 @@ public static class GeneratedFactories
 
         throw new InvalidOperationException(
             source is null
-                ? $"{typeof(TValueObject).Name} refused a value the call site declared known-good ({fault})."
-                : $"{typeof(TValueObject).Name} refused {source}, which the call site declared known-good ({fault})."
+                ? $"{typeof(TValueObject).Name} refused a value the call site declared known-good ({fault}).{Refusals.RefusedKnownGood}"
+                : $"{typeof(TValueObject).Name} refused {source}, which the call site declared known-good ({fault}).{Refusals.RefusedKnownGood}"
         );
     }
 }

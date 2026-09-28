@@ -25,7 +25,7 @@ public sealed class KnownGoodTests
     {
         var exception = Should.Throw<InvalidOperationException>(() => GeneratedFactories.OrInvalidOperationException(Result<Code, Fault>.Error(Fault.TooLong), "request.Code"));
 
-        exception.Message.ShouldBe("Code refused request.Code, which the call site declared known-good (TooLong).");
+        exception.Message.ShouldBe("Code refused request.Code, which the call site declared known-good (TooLong). See https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit/README.md#fromknowngood-refused-a-value");
     }
 
     [Fact]
@@ -33,6 +33,6 @@ public sealed class KnownGoodTests
     {
         var exception = Should.Throw<InvalidOperationException>(() => GeneratedFactories.OrInvalidOperationException(Result<Code, Fault>.Error(Fault.TooLong), null));
 
-        exception.Message.ShouldBe("Code refused a value the call site declared known-good (TooLong).");
+        exception.Message.ShouldBe("Code refused a value the call site declared known-good (TooLong). See https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit/README.md#fromknowngood-refused-a-value");
     }
 }

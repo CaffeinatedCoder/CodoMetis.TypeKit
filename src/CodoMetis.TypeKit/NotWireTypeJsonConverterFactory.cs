@@ -82,9 +82,9 @@ public sealed class NotWireTypeJsonConverterFactory : JsonConverterFactory
         return nullable is not null
             ? $"{name} is not a wire type. A serialized shape says absent with a nullable{nullable}, "
             + "and ToOption() and OrNull() convert at the boundary. To serialize it anyway, register a converter for it on the "
-            + "JsonSerializerOptions, which takes precedence over this refusal."
+            + "JsonSerializerOptions, which takes precedence over this refusal." + Refusals.NotAWireType
             : $"{name} is an outcome, not a wire type. Match it to a response or a document at the boundary. To serialize it "
-            + "anyway, register a converter for it on the JsonSerializerOptions, which takes precedence over this refusal.";
+            + "anyway, register a converter for it on the JsonSerializerOptions, which takes precedence over this refusal." + Refusals.NotAWireType;
     }
 
     /// <summary><c>Option&lt;Customer&gt;</c> rather than <c>Option`1</c>.</summary>

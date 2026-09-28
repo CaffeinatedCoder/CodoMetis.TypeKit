@@ -28,13 +28,16 @@ public sealed class UnreadableInputTests
 {
     private const string Secret = "http://[SECRET-7f3a";
 
+    /// <summary>The end of every such message: the link to the README's explanation of the refusal.</summary>
+    private const string Why = " See https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit/README.md#a-value-object-could-not-read-the-input";
+
     private sealed record Attempt(Type Exception, string Message, Func<object?> Action);
 
     private static Attempt Parsing<T>(string valueObject, string wrapped, Func<T> action) =>
-        new(typeof(FormatException), $"{valueObject} could not read the input as {wrapped}.", () => action());
+        new(typeof(FormatException), $"{valueObject} could not read the input as {wrapped}.{Why}", () => action());
 
     private static Attempt Json<T>(string valueObject, string wrapped, Func<T> action) =>
-        new(typeof(JsonException), $"{valueObject} could not read the JSON value as {wrapped}.", () => action());
+        new(typeof(JsonException), $"{valueObject} could not read the JSON value as {wrapped}.{Why}", () => action());
 
     private static object? ConvertFrom(Type type) => TypeDescriptor.GetConverter(type).ConvertFromInvariantString(Secret);
 

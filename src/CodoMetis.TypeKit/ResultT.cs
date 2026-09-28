@@ -103,7 +103,7 @@ public readonly record struct Result<T, TError>
     {
         // As in Option.Some: notnull is only an annotation, and a success holding null would hand it
         // out of TryGetValue despite [NotNullWhen(true)]. Map, Bind and the conversions come through here.
-        if (value is null) throw new ArgumentNullException(nameof(value));
+        if (value is null) throw ThrowHelper.NullContent(nameof(value));
 
         return new(value, default, ResultState.Success);
     }
@@ -114,7 +114,7 @@ public readonly record struct Result<T, TError>
     /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
     public static Result<T, TError> Error(TError error)
     {
-        if (error is null) throw new ArgumentNullException(nameof(error));
+        if (error is null) throw ThrowHelper.NullContent(nameof(error));
 
         return new(default, error, ResultState.Error);
     }
@@ -243,7 +243,7 @@ public readonly record struct Result<T, TError>
         // Checked on either branch, as the delegates are and as Option.ToResult checks its error: a
         // null passed for every value that satisfied the predicate until the first one that did not.
         ArgumentNullException.ThrowIfNull(predicate);
-        if (error is null) throw new ArgumentNullException(nameof(error));
+        if (error is null) throw ThrowHelper.NullContent(nameof(error));
 
         return !Succeeded || predicate(_value!) ? this : Error(error);
     }

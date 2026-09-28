@@ -83,7 +83,7 @@ public readonly record struct Result<TError> where TError : notnull
     {
         // As in Option.Some: notnull is only an annotation, and an error holding null would hand it
         // out of TryGetError despite [NotNullWhen(true)]. The implicit conversions come through here.
-        if (error is null) throw new ArgumentNullException(nameof(error));
+        if (error is null) throw ThrowHelper.NullContent(nameof(error));
 
         return new(error, ResultState.Error);
     }

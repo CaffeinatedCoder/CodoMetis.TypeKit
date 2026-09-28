@@ -307,8 +307,9 @@ without the rules.
 
 ## Why does this throw?
 
-Some calls throw on purpose, where carrying on would hand back a plausible wrong answer. What each
-refuses, why, and what to call instead:
+Some calls throw on purpose, where carrying on would hand back a plausible wrong answer. Each of
+these exceptions ends its message with a link to its entry here: what it refuses, why, and what to
+call instead.
 
 ### Option or Result in JSON
 

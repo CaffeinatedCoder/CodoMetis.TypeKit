@@ -74,7 +74,7 @@ public sealed class GeneratedJsonTests
     {
         var exception = GeneratedJson.Unreadable<Tagged, int>();
 
-        exception.Message.ShouldBe("Tagged could not read the JSON value as Int32.");
+        exception.Message.ShouldBe("Tagged could not read the JSON value as Int32. See https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit/README.md#a-value-object-could-not-read-the-input");
         exception.InnerException.ShouldBeNull();
     }
 
