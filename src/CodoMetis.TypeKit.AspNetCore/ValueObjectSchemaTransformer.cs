@@ -3,6 +3,8 @@ using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.OpenApi;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 
 namespace CodoMetis.TypeKit.AspNetCore;
@@ -24,7 +26,8 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// <list type="bullet">
 /// <item>A value object in a JSON position (property, body, response, or an element reached below)
 /// arrives as itself, including one that only ever appears as a property. Its schema is filled in,
-/// and ASP.NET still hoists it into the value object's own component.</item>
+/// and ASP.NET still hoists it into the value object's own component. A host that inlines value
+/// objects gets no component, and a nullable one then admits null in its own schema.</item>
 /// <item>A container of value objects arrives without its element: ASP.NET drops <c>items</c> or
 /// <c>additionalProperties</c> for a converter-backed element before any transformer runs. The
 /// value object's own schema is put back, only where it is missing, and for a nullable element that
@@ -57,7 +60,14 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
 
         if (ValueObjectTypes.WrappedType(info.Type) is { } wrapped)
         {
-            await DescribeAsync(schema, info.Type, wrapped, parameter: null, context, cancellationToken);
+            // Where ASP.NET makes the value object a component, it adds the null around the reference itself.
+            // Inlined, the schema is this position's own, and the null goes in it, as ASP.NET's exporter puts
+            // it into the wrapped type's schema for a nullable property of that type.
+            var admitsNull = (Nullable.GetUnderlyingType(info.Type) is not null
+                           || context.JsonPropertyInfo is { IsGetNullable: true } or { IsSetNullable: true })
+                          && SchemaReferenceId(info, context) is null;
+
+            await DescribeAsync(schema, info.Type, wrapped, parameter: null, admitsNull, context, cancellationToken);
             return;
         }
 
@@ -69,7 +79,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
         {
             // ASP.NET's placeholder for any TryParse-bound parameter; the wrapped type says what it is.
             schema.Type = null;
-            await DescribeAsync(schema, valueObject, parameterWrapped, parameter, context, cancellationToken);
+            await DescribeAsync(schema, valueObject, parameterWrapped, parameter, admitsNull: false, context, cancellationToken);
             return;
         }
 
@@ -84,24 +94,36 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
 
     /// <summary>
     /// The value object's schema, or, for a nullable one (<c>List&lt;Quantity?&gt;</c>, whose JSON is
-    /// <c>[1,null]</c>), that schema or null, in the form ASP.NET gives a nullable value-object property.
+    /// <c>[1,null]</c>), that schema or null: in the form ASP.NET gives a nullable value-object property
+    /// where the value object is a component, and its own schema admitting null where the host inlines it.
     /// </summary>
     /// <remarks>
-    /// Asking ASP.NET for the <see cref="Nullable{T}"/> itself returned the bare value object: its component
-    /// is shared with every non-nullable use, so it cannot admit null, and ASP.NET adds the null only for a
-    /// property, a body or a response, never for an element it did not build.
+    /// Asking ASP.NET for the <see cref="Nullable{T}"/> itself returned the bare value object where it is a
+    /// component: the component is shared with every non-nullable use, so it cannot admit null, and ASP.NET
+    /// adds the null only for a property, a body or a response, never for an element it did not build.
     /// </remarks>
     private static async Task<IOpenApiSchema> ElementSchemaAsync(Type element, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
     {
         var valueObject = Nullable.GetUnderlyingType(element);
-        var schema = await context.GetOrCreateSchemaAsync(valueObject ?? element, parameterDescription: null, cancellationToken);
-        if (valueObject is null) return schema;
+
+        // Inlined, the nullable value object's own schema admits null (above).
+        if (valueObject is null || SchemaReferenceId(context.JsonTypeInfo.Options.GetTypeInfo(element), context) is null)
+            return await context.GetOrCreateSchemaAsync(element, parameterDescription: null, cancellationToken);
+
+        var schema = await context.GetOrCreateSchemaAsync(valueObject, parameterDescription: null, cancellationToken);
 
         var valueObjectOrNull = new OpenApiSchema { OneOf = [new OpenApiSchema { Type = JsonSchemaType.Null }, schema] };
         NullableElements.AddOrUpdate(valueObjectOrNull, element);
 
         return valueObjectOrNull;
     }
+
+    /// <summary>
+    /// The component a type gets in this document, or <see langword="null"/> where the host inlines it: the
+    /// document's own <see cref="OpenApiOptions.CreateSchemaReferenceId"/>, which ASP.NET asks too.
+    /// </summary>
+    private static string? SchemaReferenceId(JsonTypeInfo type, OpenApiSchemaTransformerContext context) =>
+        context.ApplicationServices.GetRequiredService<IOptionsMonitor<OpenApiOptions>>().Get(context.DocumentName).CreateSchemaReferenceId(type);
 
     private static Type? ParameterValueObject(ApiParameterDescription parameter) =>
         ValueObjectTypes.IsValueObject(parameter.Type) ? parameter.Type
@@ -113,6 +135,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
         Type valueObject,
         Type wrapped,
         ApiParameterDescription? parameter,
+        bool admitsNull,
         OpenApiSchemaTransformerContext context,
         CancellationToken cancellationToken)
     {
@@ -130,7 +153,27 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
         try
         {
             var wrappedSchema = await context.GetOrCreateSchemaAsync(wrapped, parameter, cancellationToken);
-            schema.FillFrom(wrappedSchema);
+
+            if (!admitsNull)
+            {
+                schema.FillFrom(wrappedSchema);
+            }
+            else if (SchemaReferenceId(context.JsonTypeInfo.Options.GetTypeInfo(wrapped), context) is not null)
+            {
+                // A nullable property of the wrapped type is ASP.NET's null-or-reference to the wrapped type's
+                // component (an enum's): the same, with the component's content in place of the reference.
+                // Visited again, it is rebuilt the same way; the wrapped keywords never reach its top level.
+                var content = new OpenApiSchema();
+                content.FillFrom(wrappedSchema);
+                schema.OneOf = [new OpenApiSchema { Type = JsonSchemaType.Null }, content];
+            }
+            else
+            {
+                // An inlined wrapped type (a number, a string, a Guid) admits null in its type, as ASP.NET's
+                // exporter writes a nullable property of it.
+                schema.FillFrom(wrappedSchema);
+                if (schema.Type is { } type) schema.Type = type | JsonSchemaType.Null;
+            }
         }
         catch (NotSupportedException unsupported)
         {

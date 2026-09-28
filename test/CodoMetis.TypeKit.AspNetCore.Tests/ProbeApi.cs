@@ -35,7 +35,11 @@ public sealed record ProbeDocument(
     List<List<ProbeId>> ListOfLists,
     List<ProbeCount?> MaybeCounts,
     ProbeCount?[] MaybeCountArray,
-    Dictionary<string, ProbeCount?> MaybeCountsByKey);
+    Dictionary<string, ProbeCount?> MaybeCountsByKey,
+    ProbeName Name,
+    ProbeName? MaybeName,
+    ProbeId? MaybeId,
+    ProbeWeekday? MaybeWeekday);
 
 /// <summary>The same names as <see cref="ProbeDocument"/>, with the wrapped types.</summary>
 public sealed record ControlDocument(
@@ -53,7 +57,18 @@ public sealed record ControlDocument(
     string Code,
     int Percentage,
     Guid CustomerId,
-    int Nested);
+    int Nested,
+    int? MaybeCount,
+    string? MaybeLabel,
+    List<Guid> Ids,
+    Dictionary<string, int> Counts,
+    List<int?> MaybeCounts,
+    int?[] MaybeCountArray,
+    Dictionary<string, int?> MaybeCountsByKey,
+    string Name,
+    string? MaybeName,
+    Guid? MaybeId,
+    DayOfWeek? MaybeWeekday);
 
 public sealed record ProbeSearch(ProbeId Customer, ProbeCount? Limit);
 
