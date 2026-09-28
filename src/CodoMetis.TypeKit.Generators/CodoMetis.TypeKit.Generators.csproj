@@ -7,6 +7,7 @@
     -->
     <PropertyGroup>
         <Description>Compile-time generation of strongly-typed value objects for CodoMetis.TypeKit, built on Metalama.</Description>
+        <PackageTags>value-object;strongly-typed-id;primitive-obsession;code-generation;metalama;ddd;domain-driven-design;system-text-json;iparsable;validation</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>
