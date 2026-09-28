@@ -14,7 +14,7 @@ appears to: an instance that passed no factory, or a value object that was never
 |---|---|---|
 | CMTK0001 | Error | `default`, `default(T)`, `new T()`, `new()` and `new T { }` of a value object, an `Option`, a `Result`, or a struct marked `[RequireCustomInitialization]`. Also through a type parameter whose constraints make it one of those. A default that is only compared (`id == default`, `id.Equals(default)`) is a guard and is not reported. |
 | CMTK0002 | Error | A type implements `IValue<T>` or `IValidatedValue<,,>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so nothing is generated for it: no field, no `Value`, no factory. |
-| CMTK0003 | Warning | A `Result` or `Option` that a call returns, dropped by a statement, awaited or not, or by converting its `Task` to a plain `Task`. |
+| CMTK0003 | Warning | A `Result` or `Option` that a call returns, or a collection of them that the statement made, dropped by a statement, awaited or not, or by converting its `Task` to a plain `Task`, a method group's included. |
 | CMTK0004 | Error | `Materialize`, which rebuilds a value object without its rules, called or referenced anywhere but the EF Core satellite. |
 | CMTK0005 | Warning | An array or span of a value object, `Option`, `Result` or `[RequireCustomInitialization]` struct created with a length, so every slot starts as `default`. A constant length of zero is not reported. |
 | CMTK0006 | Warning | A field or auto-property of such a type in a class that no initializer, `required` or constructor sets, or a `required` one that a `[SetsRequiredMembers]` constructor does not set. |
@@ -109,9 +109,37 @@ async Task CancelQuietly(Guid id) => _ = await orders.CancelAsync(id);   // an e
 ```
 
 The conversion of a call's task is what is reported, in a `return`, an expression body, a lambda or
-an argument (`Task.WhenAny(orders.CancelAsync(id), timeout)`). A task you still hold is not dropped,
-and an explicit `(Task)` cast says the drop is intended. A `ValueTask<T>` has no conversion to
-`ValueTask`.
+an argument (`Task.WhenAny(orders.CancelAsync(id), timeout)`), and so is a method group converted to a
+delegate that returns `Task`, which drops the result on every call:
+
+```csharp
+Func<Guid, Task> cancel = orders.CancelAsync;             // CMTK0003
+bus.Subscribe<Guid>(orders.CancelAsync);                  // CMTK0003: the parameter is a Func<T, Task>
+```
+
+A task you still hold is not dropped, and an explicit cast, to `Task` or to the delegate type, says
+the drop is intended. A `ValueTask<T>` has no conversion to `ValueTask`.
+
+A collection of results is dropped as silently as one result:
+
+```csharp
+await Task.WhenAll(ids.Select(orders.CancelAsync));                 // CMTK0003: a Result[] nobody reads
+await Task.WhenAll(orders.CancelAsync(first), orders.CancelAsync(second));   // CMTK0003
+ids.Select(orders.Cancel).ToList();                                 // CMTK0003: a list of them, forgotten
+
+var cancelFirst = orders.CancelAsync(first);
+var cancelSecond = orders.CancelAsync(second);
+await Task.WhenAll(cancelFirst, cancelSecond);                      // silent: both tasks still hold their results
+```
+
+A collection is an array, or a type that is or implements `ICollection<T>` or `IReadOnlyCollection<T>`
+(`List<T>`, `ImmutableArray<T>`, `IReadOnlyList<T>`), of results or of tasks of them. It is reported
+when the statement made the results in it: a call in the statement returns a result or a task of one,
+a method group of such a method is passed on, or the call that returns the collection was given no
+result and made them itself, as `orders.CancelAll(ids);` does. A call given results that something
+still holds only passes them on and is silent: `Task.WhenAll` over tasks in variables, fields or
+parameters, or `pending.ToList()`. A lazy `IEnumerable<T>`, such as a `Select` nobody enumerates, has
+made nothing yet; CA1806 reports a LINQ result that is dropped.
 
 `Tap`, `TapAsync`, `TapError` and `TapErrorAsync` return their receiver unchanged, and so do the
 `Task` continuations `TapAsync` and `TapErrorAsync`, so `result.Tap(log);` and `await pending.TapAsync(log);`

@@ -22,11 +22,18 @@ public enum OrderFault { Unknown }
 public interface IOrders
 {
     Task<Result<OrderFault>> CancelAsync(OrderId id);
+
+    Result<OrderFault> Cancel(OrderId id);
 }
 
 public interface IOrderIds
 {
     Task<Result<OrderFault>> CancelAsync(Guid id);
+}
+
+public interface IBus
+{
+    void Subscribe<T>(Func<T, Task> handler);
 }
 
 public interface ICache
@@ -66,6 +73,34 @@ public static class Rules
         // end sample
 #pragma warning restore CS8321
 #pragma warning restore CMTK0003
+    }
+
+    public static void DroppedByMethodGroup(IOrderIds orders, IBus bus)
+    {
+#pragma warning disable CMTK0003 // what the sample shows the rule reporting
+        // sample: CodoMetis.TypeKit.Analyzers/cmtk0003-method-group
+        Func<Guid, Task> cancel = orders.CancelAsync;             // CMTK0003
+        bus.Subscribe<Guid>(orders.CancelAsync);                  // CMTK0003: the parameter is a Func<T, Task>
+        // end sample
+#pragma warning restore CMTK0003
+    }
+
+    /// <summary>The silent part is compiled outside the suppression, so a report on it fails the build.</summary>
+    public static async Task DroppedCollections(IOrders orders, IEnumerable<OrderId> ids, OrderId first, OrderId second)
+    {
+#pragma warning disable CMTK0003 // what the sample shows the rule reporting
+        // sample: CodoMetis.TypeKit.Analyzers/cmtk0003-collections
+        await Task.WhenAll(ids.Select(orders.CancelAsync));                 // CMTK0003: a Result[] nobody reads
+        await Task.WhenAll(orders.CancelAsync(first), orders.CancelAsync(second));   // CMTK0003
+        ids.Select(orders.Cancel).ToList();                                 // CMTK0003: a list of them, forgotten
+
+        // end sample
+#pragma warning restore CMTK0003
+        // sample: CodoMetis.TypeKit.Analyzers/cmtk0003-collections
+        var cancelFirst = orders.CancelAsync(first);
+        var cancelSecond = orders.CancelAsync(second);
+        await Task.WhenAll(cancelFirst, cancelSecond);                      // silent: both tasks still hold their results
+        // end sample
     }
 
     public static void DefaultFilledArray(int count, IEnumerable<Row> rows)
