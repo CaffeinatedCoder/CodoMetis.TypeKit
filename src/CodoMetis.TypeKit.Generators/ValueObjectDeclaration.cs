@@ -348,7 +348,9 @@ internal static class ValueObjectDeclaration
     /// The generated field does not exist yet when this runs, and a hand-written <c>_value</c> or
     /// <c>Value</c> is CMTK1011, answered before this. A base type is read too, since the record's
     /// equality compares its state as well; in a referenced assembly its private fields are out of
-    /// sight and its properties' implementation unknown, so there a writable property counts.
+    /// sight and its properties' implementation unknown, so there a writable property counts. What the
+    /// compiler synthesized there is not the user's: a base record's <c>EqualityContract</c> read as an
+    /// auto-property, and a value object over any record from another project was refused.
     /// </remarks>
     public static IReadOnlyList<string> InstanceStateBesideTheValue(INamedType target)
     {
@@ -359,11 +361,11 @@ internal static class ValueObjectDeclaration
             var inherited = type.Equals(target) ? "" : " (inherited)";
 
             foreach (var field in type.Fields)
-                if (field is { IsStatic: false, IsImplicitlyDeclared: false }) found.Add($"the field {field.ToDisplayString()}{inherited}");
+                if (!field.IsStatic && IsHandWritten(field)) found.Add($"the field {field.ToDisplayString()}{inherited}");
 
             foreach (var property in type.Properties)
             {
-                if (property.IsStatic || property.IsImplicitlyDeclared) continue;
+                if (property.IsStatic || !IsHandWritten(property)) continue;
 
                 if (property.IsRequired)
                     found.Add($"the required property {property.ToDisplayString()}{inherited}");
@@ -374,7 +376,7 @@ internal static class ValueObjectDeclaration
             }
 
             foreach (var @event in type.Events)
-                if (@event is { IsStatic: false, IsImplicitlyDeclared: false, RaiseMethod: not null }) found.Add($"the event {@event.ToDisplayString()}{inherited}");
+                if (@event is { IsStatic: false, RaiseMethod: not null } && IsHandWritten(@event)) found.Add($"the event {@event.ToDisplayString()}{inherited}");
         }
 
         return found;
@@ -397,6 +399,13 @@ internal static class ValueObjectDeclaration
 
         return implemented is null ? member.ToDisplayString() : $"the explicit implementation of {implemented.ToDisplayString()}";
     }
+
+    /// <summary>
+    /// Written by the user, not synthesized by the compiler: a record in a referenced assembly reports its
+    /// synthesized members as declared, and marks them <c>[CompilerGenerated]</c>.
+    /// </summary>
+    private static bool IsHandWritten(IMember member) =>
+        !member.IsImplicitlyDeclared && !member.Attributes.Any(attribute => attribute.Type.Equals(TypeFactory.GetNamedType(typeof(CompilerGeneratedAttribute))));
 
     /// <summary>Non-implicit members of <paramref name="target"/> with one of <paramref name="names"/>, of any kind.</summary>
     private static IEnumerable<string> MembersNamed(INamedType target, params string[] names) => MembersNamed(target, methods: true, names);

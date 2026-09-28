@@ -124,3 +124,9 @@ public sealed record ProbeIsbnText
 
 /// <summary>Parse: the wrapped type's string constructor.</summary>
 public readonly partial record struct ProbeIsbn : IValue<ProbeIsbnText>;
+
+/// <summary>
+/// A base record for value objects in the test assembly, where it comes from another assembly: its
+/// synthesized members read as declared there, and must not be mistaken for the user's.
+/// </summary>
+public abstract record ProbeRecordBase;
