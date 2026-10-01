@@ -43,7 +43,7 @@
             The generators resolve NodaTime from the consumer's compilation and never reference it
             themselves; the probes reference it to exercise that path.
         -->
-        <PackageVersion Include="NodaTime" Version="3.3.4" />
+        <PackageVersion Include="NodaTime" Version="3.3.5" />
         <PackageVersion Include="NodaTime.Serialization.SystemTextJson" Version="1.4.0" />
         <!--
             The EF satellite's tests: SQLite for the model, Npgsql for SQL and the round trips, and EF's
