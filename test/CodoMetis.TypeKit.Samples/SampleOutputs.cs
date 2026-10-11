@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace ReadmeSamples;
@@ -23,7 +24,7 @@ internal static partial class SampleOutputs
     /// <summary>An in-memory host's OpenAPI document; <paramref name="configure"/> calls <c>AddOpenApi</c>, as a sample does.</summary>
     public static async Task<JsonNode> OpenApiDocumentAsync(Action<WebApplicationBuilder> configure, Action<WebApplication> endpoints)
     {
-        var builder = WebApplication.CreateBuilder();
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
         builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
         configure(builder);

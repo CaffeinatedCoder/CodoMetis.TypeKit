@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace ReadmeSamples.Web;
@@ -137,7 +138,7 @@ public sealed class RequiredPropertyTests
     [InlineData(true, HttpStatusCode.BadRequest)]
     public async Task A_body_without_a_value_object_is_refused_only_with_the_option(bool respectRequired, HttpStatusCode expected)
     {
-        var builder = WebApplication.CreateBuilder();
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
         builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
         builder.Services.AddControllers().AddApplicationPart(typeof(PlaceOrderController).Assembly);
@@ -171,7 +172,7 @@ public sealed partial class AspNetCoreTests
     [InlineData(true)]
     public async Task ConfigureAll_describes_value_objects_in_every_document(bool configureAll)
     {
-        var builder = WebApplication.CreateBuilder();
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
         builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
         builder.Services.AddOpenApi("public");

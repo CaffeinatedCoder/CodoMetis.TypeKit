@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
 using NodaTime;
@@ -220,7 +221,7 @@ public sealed class HostConfigurationTests
 
     private static async Task<JsonNode> SourceGeneratedDocumentAsync(JsonSerializerContext context)
     {
-        var builder = WebApplication.CreateBuilder();
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
         builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
         builder.Services.ConfigureHttpJsonOptions(json => json.SerializerOptions.TypeInfoResolver = context);

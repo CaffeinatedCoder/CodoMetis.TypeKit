@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
 using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
@@ -46,7 +47,9 @@ internal sealed class ProbeHost : IAsyncDisposable
         OpenApiSpecVersion version = OpenApiSpecVersion.OpenApi3_1,
         Action<WebApplication>? endpoints = null)
     {
-        var builder = WebApplication.CreateBuilder();
+        // Pinned, not read from ASPNETCORE_ENVIRONMENT: in Development the host adds the developer exception
+        // page on its own, and a refusal then reaches the test as a 500 instead of the exception it asserts.
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
         builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
         builder.Services.AddControllers().AddApplicationPart(typeof(ProbeController).Assembly);
