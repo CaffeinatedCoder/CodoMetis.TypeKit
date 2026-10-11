@@ -87,11 +87,17 @@ internal sealed class ProbeHost : IAsyncDisposable
         app.MapGet("/probes/search", int ([AsParameters] ProbeSearch search) => 0);
         app.MapGet("/probes/header", int ([FromHeader(Name = "X-Probe")] ProbeId probe) => 0);
         app.MapPost("/probes/numbers", ProbeNumbers (ProbeNumbers numbers) => numbers);
+        app.MapGet("/probes/spans", int (ProbeSpan span) => 0);
+        app.MapGet("/probes/kinds", int (ProbeFlag flag, ProbeRatio ratio, ProbeWeekday weekday, ProbeTimestamp timestamp, ProbeDate date,
+            ProbeTime time, ProbeDuration duration, ProbeAmount amount, ProbeUri uri) => 0);
 
         app.MapGet("/controls/{id}", ControlDocument (Guid id) => throw new NotSupportedException());
         app.MapGet("/controls", int (DateTimeOffset since, int? limit, string? code, [FromQuery] Guid[] ids) => ids.Length);
         app.MapGet("/controls/search", int ([AsParameters] ControlSearch search) => 0);
         app.MapGet("/controls/header", int ([FromHeader(Name = "X-Probe")] Guid probe) => 0);
+        app.MapGet("/controls/spans", int (ProbeSpanText span) => 0);
+        app.MapGet("/controls/kinds", int (bool flag, double ratio, DayOfWeek weekday, DateTime timestamp, DateOnly date,
+            TimeOnly time, TimeSpan duration, decimal amount, Uri uri) => 0);
     }
 }
 

@@ -35,6 +35,9 @@ public readonly partial record struct ProbeMoment : IValue<DateTimeOffset>;
 /// <summary>JSON: TimeOnly.</summary>
 public readonly partial record struct ProbeTime : IValue<TimeOnly>;
 
+/// <summary>JSON: TimeSpan.</summary>
+public readonly partial record struct ProbeDuration : IValue<TimeSpan>;
+
 /// <summary>JSON: NodaTime, through NodaConverters, resolved from this compilation by name.</summary>
 public readonly partial record struct ProbeInstant : IValue<NodaTime.Instant>;
 
@@ -124,6 +127,48 @@ public sealed record ProbeIsbnText
 
 /// <summary>Parse: the wrapped type's string constructor.</summary>
 public readonly partial record struct ProbeIsbn : IValue<ProbeIsbnText>;
+
+/// <summary>
+/// A wrapped type ASP.NET binds through its own <c>TryParse</c> but does not describe, as a range
+/// literal's type: its JSON goes through a converter of its own, so ASP.NET's schema for it is empty,
+/// and a parameter of it is ASP.NET's <see cref="string"/>.
+/// </summary>
+[System.Text.Json.Serialization.JsonConverter(typeof(ProbeSpanTextJsonConverter))]
+public sealed record ProbeSpanText : IParsable<ProbeSpanText>
+{
+    private ProbeSpanText(int from, int to) => (From, To) = (from, to);
+
+    public int From { get; }
+
+    public int To { get; }
+
+    public static ProbeSpanText Parse(string s, IFormatProvider? provider) =>
+        TryParse(s, provider, out var span) ? span : throw new FormatException("Not a span.");
+
+    public static bool TryParse(string? s, IFormatProvider? provider, out ProbeSpanText result)
+    {
+        var parts = s?.Split("..");
+        result = null!;
+        if (parts is not [var from, var to] || !int.TryParse(from, provider, out var f) || !int.TryParse(to, provider, out var t)) return false;
+        result = new ProbeSpanText(f, t);
+        return true;
+    }
+
+    public override string ToString() => $"{From}..{To}";
+}
+
+/// <summary>Writes a <see cref="ProbeSpanText"/> as its text.</summary>
+public sealed class ProbeSpanTextJsonConverter : System.Text.Json.Serialization.JsonConverter<ProbeSpanText>
+{
+    public override ProbeSpanText Read(ref System.Text.Json.Utf8JsonReader reader, Type typeToConvert, System.Text.Json.JsonSerializerOptions options) =>
+        ProbeSpanText.Parse(reader.GetString()!, null);
+
+    public override void Write(System.Text.Json.Utf8JsonWriter writer, ProbeSpanText value, System.Text.Json.JsonSerializerOptions options) =>
+        writer.WriteStringValue(value.ToString());
+}
+
+/// <summary>Parse: the wrapped type's <c>IParsable</c>. JSON: the wrapped type's own converter.</summary>
+public readonly partial record struct ProbeSpan : IValue<ProbeSpanText>;
 
 /// <summary>
 /// A base record for value objects in the test assembly, where it comes from another assembly: its

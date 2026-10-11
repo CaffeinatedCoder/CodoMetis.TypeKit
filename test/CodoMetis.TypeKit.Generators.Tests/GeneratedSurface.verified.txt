@@ -344,6 +344,54 @@ ProbeDescending
   static op_LessThanOrEqual(ProbeDescending, ProbeDescending) : Boolean
   extension static ProbeDescendingExtensions.GetValue(ProbeDescending) : Int32
   extension static ProbeDescendingExtensions.ValueOrNull(ProbeDescending?) : Int32?
+ProbeDuration
+  CompareTo(Object) : Int32
+  CompareTo(ProbeDuration) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeDuration) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : TimeSpan
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeDuration, TimeSpan>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeDuration>
+  implements IComparisonOperators<ProbeDuration, ProbeDuration, Boolean>
+  implements IEqualityOperators<ProbeDuration, ProbeDuration, Boolean>
+  implements IEquatable<ProbeDuration>
+  implements IFormattable
+  implements IMinMaxValue<ProbeDuration>
+  implements IParsable<ProbeDuration>
+  implements IPlainValueObject<ProbeDuration, TimeSpan>
+  implements ISpanFormattable
+  implements ISpanParsable<ProbeDuration>
+  implements IUtf8SpanFormattable
+  implements IValue<TimeSpan>
+  implements IValueObject<ProbeDuration, TimeSpan>
+  implements IValueObjectMaterializer<ProbeDuration, TimeSpan>
+  nested ProbeDurationJsonConverter : JsonConverter<ProbeDuration>, IStoredJsonConverterSource
+  nested ProbeDurationTypeConverter : TypeConverter
+  new()
+  static From(TimeSpan) : ProbeDuration
+  static MaxValue : ProbeDuration
+  static MinValue : ProbeDuration
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeDuration
+  static Parse(String, IFormatProvider) : ProbeDuration
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeDuration) : Boolean
+  static TryParse(String, IFormatProvider, out ProbeDuration) : Boolean
+  static op_Equality(ProbeDuration, ProbeDuration) : Boolean
+  static op_GreaterThan(ProbeDuration, ProbeDuration) : Boolean
+  static op_GreaterThanOrEqual(ProbeDuration, ProbeDuration) : Boolean
+  static op_Inequality(ProbeDuration, ProbeDuration) : Boolean
+  static op_LessThan(ProbeDuration, ProbeDuration) : Boolean
+  static op_LessThanOrEqual(ProbeDuration, ProbeDuration) : Boolean
+  extension static ProbeDurationExtensions.GetValue(ProbeDuration) : TimeSpan
+  extension static ProbeDurationExtensions.ValueOrNull(ProbeDuration?) : TimeSpan?
 ProbeFlag
   CompareTo(Object) : Int32
   CompareTo(ProbeFlag) : Int32
@@ -976,6 +1024,35 @@ ProbeSku
   static op_Inequality(ProbeSku, ProbeSku) : Boolean
   extension static ProbeSkuExtensions.GetValue(ProbeSku) : ProbeSkuText
   extension static ProbeSkuExtensions.ValueOrNull(ProbeSku?) : ProbeSkuText
+ProbeSpan
+  Equals(Object) : Boolean
+  Equals(ProbeSpan) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  Value : ProbeSpanText
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeSpan, ProbeSpanText>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IEqualityOperators<ProbeSpan, ProbeSpan, Boolean>
+  implements IEquatable<ProbeSpan>
+  implements IFormattable
+  implements IParsable<ProbeSpan>
+  implements IPlainValueObject<ProbeSpan, ProbeSpanText>
+  implements IValue<ProbeSpanText>
+  implements IValueObject<ProbeSpan, ProbeSpanText>
+  implements IValueObjectMaterializer<ProbeSpan, ProbeSpanText>
+  nested ProbeSpanJsonConverter : JsonConverter<ProbeSpan>, IStoredJsonConverterSource
+  nested ProbeSpanTypeConverter : TypeConverter
+  new()
+  static From(ProbeSpanText) : ProbeSpan
+  static Parse(String, IFormatProvider) : ProbeSpan
+  static TryParse(String, IFormatProvider, out ProbeSpan) : Boolean
+  static op_Equality(ProbeSpan, ProbeSpan) : Boolean
+  static op_Inequality(ProbeSpan, ProbeSpan) : Boolean
+  extension static ProbeSpanExtensions.GetValue(ProbeSpan) : ProbeSpanText
+  extension static ProbeSpanExtensions.ValueOrNull(ProbeSpan?) : ProbeSpanText
 ProbeTime
   CompareTo(Object) : Int32
   CompareTo(ProbeTime) : Int32
