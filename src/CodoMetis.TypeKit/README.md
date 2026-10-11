@@ -94,6 +94,8 @@ if (service.Cancel(id)) { /* a Result<TError> converts to bool, true for a succe
 Result<Invoice, OrderFault> invoiced = placed.Bind(order => billing.Invoice(order));
 Result<OrderFault> confirmed = placed.Bind(order => mailer.Confirm(order));   // a command after a query
 Result<Order, ApiFault> forApi = placed.MapError(ApiFault.From);             // across layers
+Result<OrderFault> settled = service.Cancel(id)                               // a second chance:
+    .Recover(fault => fault == OrderFault.Closed ? Result.Success() : fault);  // closed needs no cancelling
 Option<Order> maybe = placed.ToOption();
 ```
 
@@ -103,7 +105,8 @@ where a reader expects its value: `if (await users.IsEmailTakenAsync(email))` ov
 or compare its `State`.
 
 `Map`, `Bind`, `Tap` and `TapAsync` run only on success and carry an error through unchanged;
-`MapError`, `TapError` and `TapErrorAsync` run only on an error, and `Ensure(predicate, error)` turns a success whose
+`MapError`, `TapError` and `TapErrorAsync` run only on an error, and `Recover` hands an error the result
+its selector returns for it, a success or the error kept. `Ensure(predicate, error)` turns a success whose
 value breaks a rule into that error. A lambda that returns a bare value on one branch and
 `Result.Error(...)` on the other needs its type argument, `placed.Bind<Invoice>(o => o.IsPaid ?
 invoices.Of(o) : Result.Error(OrderFault.Unpaid))`, because C# infers a lambda's return type from its
@@ -113,8 +116,8 @@ one. A `default(Result<…>)`, which an array slot or an unassigned field can st
 `InvalidOperationException` on it rather than inventing a `default(TError)`. `ToString()` never
 prints the value or the error.
 
-**Pipelines.** Asynchronous steps chain without an `await` each: `Map`, `Bind`, `MapError`, `Tap`,
-`TapError` and `Ensure` also continue a `Task<Result<…>>` (`MapAsync`, `BindAsync`, …), so the chain
+**Pipelines.** Asynchronous steps chain without an `await` each: `Map`, `Bind`, `MapError`, `Recover`,
+`Tap`, `TapError` and `Ensure` also continue a `Task<Result<…>>` (`MapAsync`, `BindAsync`, …), so the chain
 is awaited once, at its end, and `Match` follows that `await`.
 
 ```csharp

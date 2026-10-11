@@ -42,6 +42,8 @@ public static class ResultUse
         Result<Invoice, OrderFault> invoiced = placed.Bind(order => billing.Invoice(order));
         Result<OrderFault> confirmed = placed.Bind(order => mailer.Confirm(order));   // a command after a query
         Result<Order, ApiFault> forApi = placed.MapError(ApiFault.From);             // across layers
+        Result<OrderFault> settled = service.Cancel(id)                               // a second chance:
+            .Recover(fault => fault == OrderFault.Closed ? Result.Success() : fault);  // closed needs no cancelling
         Option<Order> maybe = placed.ToOption();
         // end sample
     }

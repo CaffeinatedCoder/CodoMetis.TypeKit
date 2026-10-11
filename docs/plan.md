@@ -496,6 +496,11 @@ Each phase ends green, and its guards have been proven by seeding the defect
       logs (`Microsoft.Extensions.Compliance` classification, structured-logging destructuring). It
       extends decision 27 from refusals to every place a value is printed. No library does this.
     - **`Recover` on `Result`**: the error branch back to a success, which today needs `Match`.
+      **✅ Implemented 2026-10-11** on both shapes, with `RecoverAsync` (an asynchronous selector, and
+      continuations on a pending result). It returns a `Result`, so a selector recovers from some
+      errors and returns the others; the completeness tests (continuations, null delegates,
+      uninitialized results) found every new member until each had its case, and four seeds each fail
+      their guard.
     - Candidates once those ship, each with its own measurement: a Dapper satellite (nothing registered
       per type, through `GeneratedValueObjectAttribute.Accept`), Newtonsoft.Json under decision 26's
       parity, and configuration binding, which the configuration binder's source generator does not do

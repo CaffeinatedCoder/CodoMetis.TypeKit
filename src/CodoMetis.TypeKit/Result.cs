@@ -154,6 +154,20 @@ public readonly record struct Result<TError> where TError : notnull
         return Succeeded ? Result<TNewError>.Success() : Result<TNewError>.Error(selector(_error!));
     }
 
+    /// <summary>
+    /// Gives an error a second chance: the result <paramref name="selector"/> returns for it, a success
+    /// or another error. A success is kept unchanged.
+    /// </summary>
+    /// <param name="selector">Called with the error on error.</param>
+    /// <returns>The result <paramref name="selector"/> returned, or this success without calling it.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public Result<TError> Recover(Func<TError, Result<TError>> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return Succeeded ? this : selector(_error!);
+    }
+
     /// <summary>Runs a side effect on success.</summary>
     /// <param name="action">Called on success.</param>
     /// <returns>This result, unchanged.</returns>
@@ -233,6 +247,17 @@ public readonly record struct Result<TError> where TError : notnull
         ArgumentNullException.ThrowIfNull(selector);
 
         return Succeeded ? await selector().ConfigureAwait(false) : Error(_error!);
+    }
+
+    /// <summary>Gives an error a second chance with an asynchronous function. A success is kept unchanged.</summary>
+    /// <param name="selector">Called with the error on error.</param>
+    /// <returns>The result <paramref name="selector"/> produced, or this success without calling it.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public async Task<Result<TError>> RecoverAsync(Func<TError, Task<Result<TError>>> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return Succeeded ? this : await selector(_error!).ConfigureAwait(false);
     }
 
     /// <summary>Unwraps the error, if this is one.</summary>

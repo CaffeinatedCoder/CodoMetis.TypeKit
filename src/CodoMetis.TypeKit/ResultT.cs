@@ -200,6 +200,24 @@ public readonly record struct Result<T, TError>
         return Succeeded ? Result<T, TNewError>.Success(_value!) : Result<T, TNewError>.Error(selector(_error!));
     }
 
+    /// <summary>
+    /// Gives an error a second chance: the result <paramref name="selector"/> returns for it, a success
+    /// or another error. A success is kept unchanged.
+    /// </summary>
+    /// <remarks>
+    /// <c>Recover(fault => fallback)</c> recovers from every error; returning <c>Result.Error(fault)</c>
+    /// for the ones it cannot recover from keeps them.
+    /// </remarks>
+    /// <param name="selector">Called with the error on error.</param>
+    /// <returns>The result <paramref name="selector"/> returned, or this success without calling it.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public Result<T, TError> Recover(Func<TError, Result<T, TError>> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return Succeeded ? this : selector(_error!);
+    }
+
     /// <summary>Runs a side effect on the value on success.</summary>
     /// <param name="action">Called with the value on success.</param>
     /// <returns>This result, unchanged.</returns>
@@ -314,6 +332,17 @@ public readonly record struct Result<T, TError>
         ArgumentNullException.ThrowIfNull(selector);
 
         return Succeeded ? await selector(_value!).ConfigureAwait(false) : Result<TError>.Error(_error!);
+    }
+
+    /// <summary>Gives an error a second chance with an asynchronous function. A success is kept unchanged.</summary>
+    /// <param name="selector">Called with the error on error.</param>
+    /// <returns>The result <paramref name="selector"/> produced, or this success without calling it.</returns>
+    /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+    public async Task<Result<T, TError>> RecoverAsync(Func<TError, Task<Result<T, TError>>> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return Succeeded ? this : await selector(_error!).ConfigureAwait(false);
     }
 
     /// <summary>Unwraps the value or the error.</summary>

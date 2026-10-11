@@ -67,6 +67,24 @@ public sealed class ResultTests
         Should.Throw<ArgumentNullException>(() => Result<string>.Error("boom").MapError(_ => (string)null!));
     }
 
+    /// <summary>A second chance for an error: the success marker recovers, the error itself keeps it, a success is never handed over.</summary>
+    [Fact]
+    public async Task Recover_turns_an_error_into_what_the_selector_returns_and_keeps_a_success()
+    {
+        Result<string>.Error("gone").Recover(e => e == "gone" ? Result.Success() : e).ShouldBe(Result<string>.Success());
+        Result<string>.Error("boom").Recover(e => e == "gone" ? Result.Success() : e).ShouldBe(Result<string>.Error("boom"));
+
+        var calls = 0;
+        Result<string>.Success().Recover(e => { calls++; return e; }).ShouldBe(Result<string>.Success());
+        calls.ShouldBe(0);
+
+        (await Result<string>.Error("boom").RecoverAsync(_ => Task.FromResult(Result<string>.Success()))).ShouldBe(Result<string>.Success());
+        (await Task.FromResult(Result<string>.Error("boom")).RecoverAsync(_ => Result.Success())).ShouldBe(Result<string>.Success());
+        (await Task.FromResult(Result<string>.Error("boom")).RecoverAsync(e => Task.FromResult(Result<string>.Error(e + "!")))).ShouldBe(Result<string>.Error("boom!"));
+        (await Task.FromResult(Result<string>.Success()).RecoverAsync(e => { calls++; return Task.FromResult(Result<string>.Error(e)); })).ShouldBe(Result<string>.Success());
+        calls.ShouldBe(0);
+    }
+
     /// <summary>Crossing layers: the error is reshaped, and a success passes without the mapping being called.</summary>
     [Fact]
     public void MapError_transforms_only_an_error()

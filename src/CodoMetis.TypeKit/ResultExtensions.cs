@@ -330,6 +330,30 @@ public static class Result
             return (await task.ConfigureAwait(false)).MapError(selector);
         }
 
+        /// <summary>Gives an error a second chance once the result is known. A success is kept unchanged.</summary>
+        /// <param name="selector">Called with the error on error.</param>
+        /// <returns>The result <paramref name="selector"/> returned, or the success without calling it.</returns>
+        /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+        public async Task<Result<T, TError>> RecoverAsync(Func<TError, Result<T, TError>> selector)
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return (await task.ConfigureAwait(false)).Recover(selector);
+        }
+
+        /// <summary>Gives an error a second chance with an asynchronous function once the result is known.</summary>
+        /// <param name="selector">Called with the error on error.</param>
+        /// <returns>The result <paramref name="selector"/> produced, or the success without calling it.</returns>
+        /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+        public async Task<Result<T, TError>> RecoverAsync(Func<TError, Task<Result<T, TError>>> selector)
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return await (await task.ConfigureAwait(false)).RecoverAsync(selector).ConfigureAwait(false);
+        }
+
         /// <summary>Keeps a success once the result is known only if its value satisfies <paramref name="predicate"/>.</summary>
         /// <param name="predicate">Called with the value on success.</param>
         /// <param name="error">The error for a value that fails <paramref name="predicate"/>. Never null.</param>
@@ -463,6 +487,30 @@ public static class Result
             ArgumentNullException.ThrowIfNull(selector);
 
             return (await task.ConfigureAwait(false)).MapError(selector);
+        }
+
+        /// <summary>Gives an error a second chance once the result is known. A success is kept unchanged.</summary>
+        /// <param name="selector">Called with the error on error.</param>
+        /// <returns>The result <paramref name="selector"/> returned, or the success without calling it.</returns>
+        /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+        public async Task<Result<TError>> RecoverAsync(Func<TError, Result<TError>> selector)
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return (await task.ConfigureAwait(false)).Recover(selector);
+        }
+
+        /// <summary>Gives an error a second chance with an asynchronous function once the result is known.</summary>
+        /// <param name="selector">Called with the error on error.</param>
+        /// <returns>The result <paramref name="selector"/> produced, or the success without calling it.</returns>
+        /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+        public async Task<Result<TError>> RecoverAsync(Func<TError, Task<Result<TError>>> selector)
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return await (await task.ConfigureAwait(false)).RecoverAsync(selector).ConfigureAwait(false);
         }
 
         /// <summary>Runs a side effect on the error once the result is known, on error.</summary>

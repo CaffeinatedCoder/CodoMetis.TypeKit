@@ -69,6 +69,43 @@ public sealed class ResultWithValueTests
         calls.ShouldBe(0);
     }
 
+    /// <summary>A second chance for an error: a bare value recovers every one, and a success is never handed to the selector.</summary>
+    [Fact]
+    public void Recover_turns_an_error_into_what_the_selector_returns_and_keeps_a_success()
+    {
+        Result<int, string>.Error("boom").Recover(e => e.Length).ShouldBe(Result<int, string>.Success(4));
+
+        var calls = 0;
+        Result<int, string>.Success(21).Recover(e => { calls++; return e.Length; }).ShouldBe(Result<int, string>.Success(21));
+        calls.ShouldBe(0);
+    }
+
+    /// <summary>Recovering from some errors only: the others are returned as they were, with the marker.</summary>
+    [Theory]
+    [InlineData("gone", true)]
+    [InlineData("boom", false)]
+    public void Recover_keeps_the_errors_it_returns(string fault, bool recovered)
+    {
+        var result = Result<int, string>.Error(fault).Recover(e => e == "gone" ? 0 : Result.Error(e));
+
+        result.ShouldBe(recovered ? Result<int, string>.Success(0) : Result<int, string>.Error(fault));
+    }
+
+    [Fact]
+    public async Task RecoverAsync_recovers_with_an_asynchronous_selector_and_on_a_pending_result()
+    {
+        (await Result<int, string>.Error("boom").RecoverAsync(e => Task.FromResult(Result<int, string>.Success(e.Length))))
+            .ShouldBe(Result<int, string>.Success(4));
+        (await Task.FromResult(Result<int, string>.Error("boom")).RecoverAsync(e => e.Length)).ShouldBe(Result<int, string>.Success(4));
+        (await Task.FromResult(Result<int, string>.Error("boom")).RecoverAsync(e => Task.FromResult(Result<int, string>.Error(e + "!"))))
+            .ShouldBe(Result<int, string>.Error("boom!"));
+
+        var calls = 0;
+        (await Task.FromResult(Result<int, string>.Success(21)).RecoverAsync(e => { calls++; return Task.FromResult(Result<int, string>.Success(0)); }))
+            .ShouldBe(Result<int, string>.Success(21));
+        calls.ShouldBe(0);
+    }
+
     [Fact]
     public void Map_transforms_only_a_success()
     {

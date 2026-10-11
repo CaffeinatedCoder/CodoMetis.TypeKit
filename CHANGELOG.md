@@ -24,6 +24,10 @@ section is the GitHub release's notes.
   fault type is not mapped does not start; a mapping that gives a member no error status, or throws
   for one, fails where it is registered. `AddFaultResponses` calls `AddProblemDetails()`, which a
   Native AOT host needs to write a problem.
+- **`CodoMetis.TypeKit`**: `Recover` on both `Result` shapes, the error branch's `Bind`: the selector's
+  result replaces an error, a success or another error, and a success passes untouched.
+  `RecoverAsync` takes an asynchronous selector and continues a pending `Task<Result<…>>`, as the other
+  combinators do.
 - **`CodoMetis.TypeKit.Testing`**, a new package for test projects: `ShouldBeSome()`, `ShouldBeNone()`,
   `ShouldBeSuccess()` and `ShouldBeError()` (with or without the expected error) on `Option`, both
   `Result` shapes. They hand back the value or the error for the test's own assertions, and otherwise
