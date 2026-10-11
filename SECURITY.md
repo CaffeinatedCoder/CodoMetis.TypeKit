@@ -42,7 +42,7 @@ for going public, whatever the fix status. Reporters are credited unless they as
 ## Supported versions
 
 Security fixes land on the latest minor version of the latest major version, 1.x at present. The
-five packages share one version, so a fix in any of them is a release of all five.
+packages share one version, so a fix in any of them is a release of all of them.
 
 ### If this project stops being maintained
 

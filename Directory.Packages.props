@@ -11,6 +11,11 @@
     <PackageVersion Include="Metalama.Framework" Version="2026.1.29" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+    <!--
+      The Serilog satellite needs only IDestructuringPolicy and Destructure.With, which every 4.x has:
+      the floor is the first release of the current major, and the tests run on it.
+    -->
+    <PackageVersion Include="Serilog" Version="4.0.0" />
   </ItemGroup>
   <!--
         The analyzer's Roslyn reference is the oldest compiler a consumer can load it into, so it
@@ -50,6 +55,8 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
+    <!-- The Serilog README's sample writes to the console, as a reader's setup would. -->
+    <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
     <!-- The ASP.NET Core satellite's tests: a probe host whose OpenAPI document they read. -->
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
   </ItemGroup>

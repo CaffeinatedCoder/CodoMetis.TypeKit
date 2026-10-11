@@ -2,11 +2,12 @@
 
 Status: **1.0.0 released 2026-09-28** (nuget.org, GitHub release `v1.0.0`). Phases 0 to 11 are done;
 what is left for 1.x is listed at the end of phase 11, and package validation holds every pack to the
-1.0.0 surface. The decisions are in §8, Native AOT in §11. The fabric spike
+1.0.0 surface. Phase 12 is 1.5.0, prepared for release on 2026-10-11. The decisions are in §8, Native AOT in §11. The fabric spike
 ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation comparison
 ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)), the EF mapping spike
 ([spikes/EfMapping](../spikes/EfMapping/README.md)) and the OpenAPI spike
-([spikes/OpenApiSchemas](../spikes/OpenApiSchemas/README.md)) are done.
+([spikes/OpenApiSchemas](../spikes/OpenApiSchemas/README.md)) are done, and so is phase 12's
+`Result`-to-HTTP spike ([spikes/ResultHttp](../spikes/ResultHttp/README.md)).
 
 ## 1. Packages
 
@@ -16,7 +17,9 @@ what is left for 1.x is listed at the end of phase 11, and package validation ho
 | `CodoMetis.TypeKit.Analyzers` | — | no | Roslyn analyzers and code fixes (§10). Nobody references it directly: it reaches every consumer through the base package |
 | `CodoMetis.TypeKit.Generators` | TypeKit, Metalama.Framework 2026.1.x (flows) | yes | Internal aspects, internal `TransitiveProjectFabric`, `AspectOrder`. Future generated type families join this package too: one fabric, one aspect order |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | TypeKit, EF Core Relational | no | Generic converter, convention, `.Value` / `GetValue` / `ValueOrNull` translators, `UseTypeKit()` |
-| `CodoMetis.TypeKit.AspNetCore` | TypeKit, Microsoft.AspNetCore.OpenApi | no | `AddTypeKit()`: one OpenAPI schema transformer (§7) |
+| `CodoMetis.TypeKit.AspNetCore` | TypeKit, Microsoft.AspNetCore.OpenApi | no | `AddTypeKit()`: one OpenAPI schema transformer (§7); `ToHttpResult()`, `AddFaultResponses` (decision 38) |
+| `CodoMetis.TypeKit.Serilog` | TypeKit, Serilog 4.0.0 | no | `Destructure.WithTypeKit()`: one destructuring policy that logs every value object as its `ToString()` (decision 41) |
+| `CodoMetis.TypeKit.Testing` | TypeKit | no | `ShouldBeSome()`/`ShouldBeNone()`, `ShouldBeSuccess()`/`ShouldBeError()`: test assertions that hand back the content, with no test framework dependency (decision 40) |
 
 **The bare name is the cheapest package.** Someone who only wants `Option`/`Result` references
 `CodoMetis.TypeKit` and never receives Metalama by accident. Taking Metalama on is always an
@@ -32,7 +35,10 @@ objects from a referenced domain assembly never needs Metalama itself.
 | `CodoMetis.TypeKit.ValueObjects` | Every contract a user declares or constrains on: `IValue`, `IValidatedValue`, `IValueObject`, `IPlainValueObject`, `IValueObjectMaterializer`, and `StoredJsonConverterFactory` |
 | `CodoMetis.TypeKit.CompilerServices` | What only generated code and the satellites touch, all `[EditorBrowsable(Never)]`: `GeneratedValueObjectAttribute`, `IValueObjectVisitor`, `TranslatedAsWrappedValueAttribute`, `GeneratedFactories`, `GeneratedParsing`, `GeneratedFormatting`, `GeneratedJson`, `IStoredJsonConverterSource`. The name follows `System.Runtime.CompilerServices` |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | `ValueObjectConverter<,>`; the plugins, internal |
-| `CodoMetis.TypeKit.AspNetCore` | the schema transformer, internal |
+| `CodoMetis.TypeKit.AspNetCore` | the schema transformer, internal; `FaultProblem<TFault>` |
+| `CodoMetis.TypeKit.Serilog` | the destructuring policy, internal |
+| `Serilog` | `WithTypeKit()`, beside Serilog's own configuration methods (decision 22) |
+| `CodoMetis.TypeKit.Testing` | the assertions and `TypeKitAssertionException` |
 | `Microsoft.EntityFrameworkCore` | `UseTypeKit()`, beside the providers' `UseNpgsql` (decision 22) |
 | `Microsoft.Extensions.DependencyInjection` | `AddEntityFrameworkTypeKit()` and `OpenApiOptions.AddTypeKit()`, beside `AddEntityFrameworkNpgsql` and `AddOpenApi` (decision 22) |
 
@@ -447,6 +453,76 @@ Each phase ends green, and its guards have been proven by seeding the defect
       the value; `class Email : IValue<string>` reports one of its three errors at a time; `IValue<object>`
       writes `{}`. JSON on `Option<T>?` throws the wrong exception; a default marker converts.
       `UseTypeKit()` on a non-relational provider could refuse in `Validate`.
+12. **1.5.0: the boundaries. ✅ Done 2026-10-11.** Every item is additive, so it is a minor version. The
+    scope follows a survey of the competing libraries' trackers on 2026-10-11 (demand is small
+    everywhere, at most 22 reactions on one request), keeping what no library ships or what only
+    preview packages serve, and what follows from what TypeKit already holds to.
+    - **A `Result` as an HTTP response**, in `CodoMetis.TypeKit.AspNetCore`: a success as its value, a
+      fault as RFC 9457 problem details, with its status mapped from the fault in the host, so the
+      domain never references ASP.NET; and the endpoint's responses in the OpenAPI document. Mapping a
+      result to a response is not serializing it, so §9's refusal stands. The most-requested open item
+      in the field (FluentResults #149); the packages that answer it are previews or unmaintained.
+      Measured 2026-10-11 in [spikes/ResultHttp](../spikes/ResultHttp/README.md), under JIT and Native AOT,
+      minimal APIs and MVC: an explicit `ToHttpResult()` returning ASP.NET's own
+      `Results<Ok<T>, FaultProblem<TError>>`, a mapping per fault type registered in the host
+      (`AddFaultResponses`, which calls `AddProblemDetails()`, without which Native AOT writes no
+      problem), endpoint metadata recording only the fault type (MVC hands `PopulateMetadata` an empty
+      service provider), an operation transformer adding a problem response per mapped status, and a
+      startup filter that refuses a host with an endpoint whose fault type has no mapping. Returning
+      the `Result` itself from a handler is not offered: it documents a `Result`, and a Native AOT host
+      would need it in its JSON context. **✅ Implemented 2026-10-11** (decision 38): `FaultResponseTests`
+      (27, against ASP.NET's own `ProducesProblem` as the control, in OpenAPI 3.1 and 3.0, minimal APIs
+      and MVC), the README's sample and its problem JSON read from the README, and the smoke test's
+      Native AOT consumer. Fifteen seeds each fail their guard. The weaving review found one guard
+      vacuous: every host also mapped ProducesProblem controls, so a problem component the package
+      never added went unnoticed; a host without them now holds it. Without `AddProblemDetails()` only
+      the `traceId` assertion notices under JIT, so the AOT consumer is its real guard. A handler typed
+      `IResult` loses the endpoint's metadata, as ASP.NET's typed results do; the README says so.
+    - **A value object's fault as a validation error.** A body or parameter that `Create` refuses is a
+      `400` whose problem details name the member and the fault, as ASP.NET Core 10's validation
+      reports a data annotation, instead of a bare `400` from a `JsonException`. No library does this.
+      Measured 2026-10-11 in [spikes/ValidationFaults](../spikes/ValidationFaults/README.md): ASP.NET
+      Core 10's validation never sees a value that failed to bind, a refused route or query value has
+      lost its fault (`TryParse` says only `false`), and MVC already puts the converter's message in its
+      validation problem. What remains is a minimal-API body, reachable only with `ThrowOnBadRequest`
+      turned on for the whole host and an exception handler, and only once the converter's refusal
+      carries its fault as data. The README's "Binding" said `AddProblemDetails()` gives a refused body
+      a response body; it needs `UseStatusCodePages()` too, which it now says. **Dropped 2026-10-11**
+      (decision 39).
+    - **`CodoMetis.TypeKit.Testing`**: assertions for `Option`/`Result` (`ShouldBeSome()`,
+      `ShouldBeError(fault)`), which a type without `.Value` needs more than any other, and generators
+      of valid and refused values that go through `Create`. **✅ Assertions implemented 2026-10-11**
+      (decision 40): `AssertionTests` (23), the README's block run as a test and its quoted failure read
+      from the README, the smoke test's core consumer installing the package. Generators are not built
+      (decision 40).
+    - **Sensitive value objects**: a marker that keeps a value out of `ToString()`, the debugger and
+      logs (`Microsoft.Extensions.Compliance` classification, structured-logging destructuring). It
+      extends decision 27 from refusals to every place a value is printed. No library does this.
+      Measured 2026-10-11 in [spikes/SensitiveValues](../spikes/SensitiveValues/README.md): the
+      `ToString()` seam the generators keep already masks a value in every formatting path and every
+      Microsoft.Extensions.Logging path, `[LogProperties]` included, so a marker would generate the one
+      line a user writes. A classification on the type makes the logging generator refuse the method
+      (LOGGEN035). The one leak is Serilog's `{@x}`, which destructures the public `Value` of every
+      value object, masked or not; a destructuring policy closes it. **✅ Implemented 2026-10-11**
+      (decision 41): no marker; the Generators README's "A value that must not be printed", and
+      `CodoMetis.TypeKit.Serilog`.
+    - **`Recover` on `Result`**: the error branch back to a success, which today needs `Match`.
+      **✅ Implemented 2026-10-11** on both shapes, with `RecoverAsync` (an asynchronous selector, and
+      continuations on a pending result). It returns a `Result`, so a selector recovers from some
+      errors and returns the others; the completeness tests (continuations, null delegates,
+      uninitialized results) found every new member until each had its case, and four seeds each fail
+      their guard.
+    - Candidates once those ship, each with its own measurement: a Dapper satellite (nothing registered
+      per type, through `GeneratedValueObjectAttribute.Accept`), Newtonsoft.Json under decision 26's
+      parity, and configuration binding, which the configuration binder's source generator does not do
+      for `TypeConverter`/`IParsable` types (dotnet/runtime#83599). The CMTK0003/CMTK0008 gaps above
+      stay Warnings (decision 34).
+    - **2.0.0 is not scheduled.** It waits for breaking reasons: Metalama 2027.0 stable (decision 4),
+      Warnings promoted to Errors (decision 34), and C# 15 unions (.NET 11, GA 2026-11-10), whose
+      compiler-made types have a public `object? Value` and are serialized by System.Text.Json, so
+      `Option`/`Result` take part in their pattern matching only after a spike shows neither returns.
+      A closed-set (smart enum) family, declared by interface and joining `.Generators` (§1), is its
+      candidate headline.
 
 ## 3. Discovery is by interface
 
@@ -989,6 +1065,50 @@ libraries.
     deliberate run-time refusal says what to do instead and ends with a link to its subsection of the
     base README's "Why does this throw?", and every generator build error with one to the Build errors
     table. The links are held to the README's headings by tests. Nothing of the input is added.
+
+38. **A `Result` becomes a response through an explicit `ToHttpResult()`, its faults mapped in the host**
+    (2026-10-11, phase 12, spikes/ResultHttp). The return type is ASP.NET's
+    `Results<Ok<T>, FaultProblem<TFault>>`, so ASP.NET describes the success and the Request Delegate
+    Generator needs nothing of ours; a handler returning the `Result` itself would document a `Result`.
+    The fault type is an **enum**: its members are what a mapping can be checked against when it is
+    registered, and what the document lists. A fault of another shape is `MapError`ed to one at the
+    endpoint. The extensions live beside the framework's (`ToHttpResult` in `Microsoft.AspNetCore.Http`,
+    `AddFaultResponses` in `Microsoft.Extensions.DependencyInjection`, decision 22). A missing mapping
+    stops the host from starting (a startup filter, which comes with the first `AddFaultResponses`), a
+    value no member names is refused rather than answered, and the README's mapping ends in a throwing
+    discard arm: the registration calls it for every member, so a missed member still fails at startup,
+    and without the arm C# reports CS8524.
+
+39. **A value object's fault does not become a validation error** (2026-10-11, phase 12,
+    spikes/ValidationFaults). ASP.NET Core 10's validation never sees a value that failed to bind, a
+    refused route or query value has lost its fault, and MVC already reports a refused body with the
+    converter's message. What remained, a minimal-API body, needs `ThrowOnBadRequest` for the whole
+    host, an exception handler in its pipeline, and the fault carried as data by a new public type in
+    the base package: too much host-wide change for one of four positions. Reopen it if ASP.NET hands
+    a binding failure to a hook without `ThrowOnBadRequest`.
+40. **`CodoMetis.TypeKit.Testing` holds assertions that hand back the content** (2026-10-11, phase 12).
+    `ShouldBeSome()`, `ShouldBeSuccess()` and `ShouldBeError()` return the value or the error, so the
+    test compares it with the assertions it already uses, and the package depends on no test framework:
+    a failure is a `TypeKitAssertionException`, which every runner reports. A failure names the error
+    it found and never prints a value, as `Option` and `Result` do not; an uninitialized result fails
+    every assertion as uninitialized, since `default(TError)` would otherwise read as an expected
+    first-member fault. **No generators**: one that goes through `Create` is a single filter over the
+    test's own property-based library (`Gen.String.Where(s => Email.TryFrom(s).IsSome())` in CsCheck),
+    and shipping it would tie the package to one such library. The package is new in 1.5.0, so its
+    project clears the package-validation baseline while that is 1.0.0, a condition that lapses on its
+    own when the baseline moves.
+
+41. **A sensitive value object is one that declares `ToString()`; Serilog gets a satellite** (2026-10-11,
+    phase 12, spikes/SensitiveValues). The seam already masks every formatting and
+    Microsoft.Extensions.Logging path, so a marker would generate the one line a user writes, and is
+    not added. Serilog's `{@x}` read the public `Value` of every value object, masked or not:
+    `CodoMetis.TypeKit.Serilog` registers one destructuring policy, `Destructure.WithTypeKit()`, that
+    logs a value object as a scalar of its `ToString()`, recognised by `GeneratedValueObjectAttribute`.
+    Every value object is then a string in the event, as Microsoft.Extensions.Logging writes it, rather
+    than its wrapped value's JSON type: what it prints is the one rule, and the policy cannot tell a
+    masked `ToString()` from the generated one. Serilog's floor is 4.0.0, the first of the current
+    major, and the tests run on it. A classification on the type is advised against: the logging
+    generator refuses the method (LOGGEN035).
 
 Still open:
 

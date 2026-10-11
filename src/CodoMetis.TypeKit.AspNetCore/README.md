@@ -1,8 +1,9 @@
 # CodoMetis.TypeKit.AspNetCore
 
-ASP.NET Core integration for [CodoMetis.TypeKit](https://www.nuget.org/packages/CodoMetis.TypeKit)
-value objects: in the OpenAPI document produced by `Microsoft.AspNetCore.OpenApi`, every value
-object has the schema of the type it wraps, wherever it appears.
+ASP.NET Core integration for [CodoMetis.TypeKit](https://www.nuget.org/packages/CodoMetis.TypeKit):
+in the OpenAPI document produced by `Microsoft.AspNetCore.OpenApi`, every value object has the schema
+of the type it wraps, wherever it appears; and a `Result` becomes the endpoint's response, a fault as
+problem details ([A Result as a response](#a-result-as-a-response)).
 
 ```bash
 dotnet add package Microsoft.AspNetCore.OpenApi     # AddOpenApi itself; the webapi template has it already
@@ -105,6 +106,61 @@ no component at all), and both parameters are a bare `string`.
 - **What is already said is kept.** Whatever a value object's schema already says, from ASP.NET or
   another transformer, is not overwritten; only what it leaves open is filled in.
 
+## A Result as a response
+
+`ToHttpResult()` turns a `Result` into what an endpoint returns: a success as `200 OK` with its value
+(`204 No Content` for a `Result<TError>`), a fault as RFC 9457 problem details with the status the
+host maps it to.
+
+```csharp
+public enum OrderFault { NotFound, AlreadyShipped }
+
+builder.Services.AddFaultResponses<OrderFault>(fault => fault switch
+{
+    OrderFault.NotFound       => StatusCodes.Status404NotFound,
+    OrderFault.AlreadyShipped => StatusCodes.Status409Conflict,
+    _ => throw new ArgumentOutOfRangeException(nameof(fault)),
+});
+
+app.MapGet("/orders/{id}", (OrderId id) => orders.Find(id).ToHttpResult());      // Result<OrderDto, OrderFault>
+app.MapDelete("/orders/{id}", (OrderId id) => orders.Cancel(id).ToHttpResult()); // Result<OrderFault>
+```
+
+```json
+{ "type": "https://tools.ietf.org/html/rfc9110#section-15.5.10", "title": "Conflict", "status": 409, "fault": "AlreadyShipped", "traceId": "…" }
+```
+
+- **The domain declares faults, the host their statuses.** The fault type is an enum the domain owns;
+  only the host references ASP.NET. A problem names the fault, never anything of the request.
+- **The document says it too.** The endpoint's return type is ASP.NET's own
+  `Results<Ok<OrderDto>, FaultProblem<OrderFault>>`, so the operation describes the value, and
+  `AddTypeKit()` adds a problem response for every status the fault type is mapped to, as
+  `ProducesProblem` would. In minimal APIs and in MVC, an action returning the same type.
+- **Not a wire format.** The `Result` is matched to a response, not serialized: returning the
+  `Result` itself from a handler is still refused, and the document would promise a `Result`.
+- **The host's problem details apply.** `AddFaultResponses` calls `AddProblemDetails()`, so a
+  `CustomizeProblemDetails` of your own reaches these problems, and a host on source-generated JSON
+  can write them.
+- **Declare the return type.** ASP.NET reads an endpoint's responses from its declared return type,
+  as for its own typed results: a handler typed `IResult` answers the same, but its operation lists no
+  problem response, and the startup check cannot see which fault type it reports.
+- A handler's test can read the outcome without a host:
+  `Find(id).ToHttpResult().Result is FaultProblem<OrderFault> { Fault: OrderFault.NotFound }`.
+
+### Mapping faults to statuses
+
+`AddFaultResponses` maps every member of the enum when it is called, so a mapping that throws for a
+member, or gives one a status that is no error (outside 400 to 599), fails there, at startup. That is
+what the discard arm above relies on: a member the `switch` misses throws while the host starts, not
+when the fault first occurs. Without the arm, C# warns (CS8524) that a cast could produce a value no
+member names. A fault type is mapped once.
+
+A host with an endpoint whose fault type is not mapped does not start: the exception names the fault
+type and each endpoint that answers with it. The check comes with the first `AddFaultResponses` call;
+a host that never calls it refuses the first fault an endpoint reports, and its OpenAPI document,
+with the same message. A value no member names, which only a cast makes, is refused rather than
+answered with a status the document does not list.
+
 ## NodaTime
 
 ASP.NET cannot see through NodaTime's JSON converters, so once they are on the host's JSON options
@@ -162,7 +218,8 @@ The generated members cover the request itself:
 - **Request and response bodies** go through the generated JSON converter. A value a validated
   value object refuses is a `JsonException` naming the type and the rule, never the value, and a
   400. MVC puts that message in its validation problem details. A minimal API answers with an empty
-  400 and logs the message; `AddProblemDetails()` gives the response a body.
+  400 and logs the message, with `AddProblemDetails()` too; `app.UseStatusCodePages()` beside it gives
+  the response a generic problem body, which names neither the property nor the rule.
 - **A property missing from the body is not refused.** System.Text.Json calls no converter for an
   absent property, so it stays `default`: a `Guid.Empty` order id, or a validated value object that
   never passed `Create`. Where a value object is required, say so, with `required` on the property or,

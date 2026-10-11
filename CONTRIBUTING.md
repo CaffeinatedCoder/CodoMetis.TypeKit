@@ -58,7 +58,7 @@ should fail the build or throw with an actionable message.
 
 ## Releasing
 
-The five packages share one version and are released together, only through
+The packages share one version and are released together, only through
 `.github/workflows/release.yml` (see [SECURITY.md](SECURITY.md)).
 
 1. In `CHANGELOG.md`, replace `Unreleased` in the version's heading with today's date

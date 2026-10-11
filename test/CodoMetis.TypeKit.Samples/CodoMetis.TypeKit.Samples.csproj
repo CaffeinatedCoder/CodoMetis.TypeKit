@@ -20,6 +20,7 @@
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
         <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+        <PackageReference Include="Serilog.Sinks.Console" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     </ItemGroup>
@@ -28,6 +29,8 @@
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Generators\CodoMetis.TypeKit.Generators.csproj" />
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.EntityFrameworkCore\CodoMetis.TypeKit.EntityFrameworkCore.csproj" />
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.AspNetCore\CodoMetis.TypeKit.AspNetCore.csproj" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Testing\CodoMetis.TypeKit.Testing.csproj" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Serilog\CodoMetis.TypeKit.Serilog.csproj" />
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Analyzers\CodoMetis.TypeKit.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
 

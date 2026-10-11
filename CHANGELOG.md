@@ -2,7 +2,7 @@
 
 All notable changes to CodoMetis.TypeKit and its satellite packages.
 
-The five packages share one version number (the `Version` property in `Directory.Build.props`) and
+The packages share one version number (the `Version` property in `Directory.Build.props`) and
 are released together, so a version appears here even when a given package saw no change in it.
 Versions follow [Semantic Versioning](https://semver.org/). Entries are newest first.
 
@@ -10,7 +10,47 @@ A version's heading reads `## <version> — Unreleased` until the release is pre
 the release date. The release workflow refuses a tag whose section still says `Unreleased`, and the
 section is the GitHub release's notes.
 
-## 1.0.1 — Unreleased
+## 1.5.0 — 2026-10-11
+
+### Added
+
+- **`CodoMetis.TypeKit.AspNetCore`**: a `Result` as an HTTP response. `result.ToHttpResult()` answers a
+  success with `200 OK` and its value (`204 No Content` for a `Result<TError>`) and a fault with RFC 9457
+  problem details, whose status the host maps per fault type with
+  `services.AddFaultResponses<TFault>(fault => …)` and whose `fault` member names the fault. The fault
+  type is an enum the domain declares; only the host references ASP.NET. The return type is ASP.NET's
+  own `Results<Ok<T>, FaultProblem<TFault>>`, in minimal APIs and MVC, and `AddTypeKit()` lists a
+  problem response for every mapped status in the OpenAPI document. A host with an endpoint whose
+  fault type is not mapped does not start; a mapping that gives a member no error status, or throws
+  for one, fails where it is registered. `AddFaultResponses` calls `AddProblemDetails()`, which a
+  Native AOT host needs to write a problem.
+- **`CodoMetis.TypeKit`**: `Recover` on both `Result` shapes, the error branch's `Bind`: the selector's
+  result replaces an error, a success or another error, and a success passes untouched.
+  `RecoverAsync` takes an asynchronous selector and continues a pending `Task<Result<…>>`, as the other
+  combinators do.
+- **`CodoMetis.TypeKit.Serilog`**, a new package: `Destructure.WithTypeKit()` logs every value object as
+  what it prints, also where Serilog destructures it (`{@Key}`, or a record holding one). Without it,
+  Serilog read the public `Value`, so a value object masked by a hand-written `ToString()` was logged
+  unmasked there. Nothing is registered per type; Serilog 4.0.0 or later.
+- **`CodoMetis.TypeKit.Generators`** README: "A value that must not be printed", the `ToString()` seam
+  as the way to mask a value, what still carries it, and why a compliance classification belongs on
+  the logging method's parameter, not on the type.
+- **`CodoMetis.TypeKit.Testing`**, a new package for test projects: `ShouldBeSome()`, `ShouldBeNone()`,
+  `ShouldBeSuccess()` and `ShouldBeError()` (with or without the expected error) on `Option`, both
+  `Result` shapes. They hand back the value or the error for the test's own assertions, and otherwise
+  throw a `TypeKitAssertionException` that names the error found and never prints a value. An
+  uninitialized result fails every assertion as such. No test framework dependency.
+
+### Changed
+
+- **`CodoMetis.TypeKit.Generators`** depends on `Metalama.Framework` 2026.1.29 or later (was 2026.1.28),
+  the latest of the 2026.1 line that MIT maintenance covers.
+
+### Fixed
+
+- **`CodoMetis.TypeKit.AspNetCore`** README: a minimal API answers a body a value object refuses with
+  an empty `400`, with `AddProblemDetails()` too; it said that call gives the response a body, which
+  takes `UseStatusCodePages()` as well.
 
 ## 1.0.0 — 2026-09-28
 

@@ -77,6 +77,9 @@ public sealed class NullDelegateTests
         ["Result<TError>.Map(Func<TResult>): selector"]                                 = [() => Ok.Map(Null<Func<int>>()), () => Failed.Map(Null<Func<int>>())],
         ["Result<TError>.Bind(Func<Result<TError>>): selector"]                         = [() => Ok.Bind(Null<Func<Result<string>>>()), () => Failed.Bind(Null<Func<Result<string>>>())],
         ["Result<TError>.MapError(Func<TError, TNewError>): selector"]         = [() => Ok.MapError(Null<Func<string, int>>()), () => Failed.MapError(Null<Func<string, int>>())],
+        ["Result<TError>.Recover(Func<TError, Result<TError>>): selector"]      = [() => Ok.Recover(Null<Func<string, Result<string>>>()), () => Failed.Recover(Null<Func<string, Result<string>>>())],
+        ["Result<TError>.RecoverAsync(Func<TError, Task<Result<TError>>>): selector"] =
+            [() => Ok.RecoverAsync(Null<Func<string, Task<Result<string>>>>()), () => Failed.RecoverAsync(Null<Func<string, Task<Result<string>>>>())],
         ["Result<TError>.Tap(Action): action"]                                    = [() => Ok.Tap(Null<Action>()), () => Failed.Tap(Null<Action>())],
         ["Result<TError>.TapError(Action<TError>): action"]                       = [() => Ok.TapError(Null<Action<string>>()), () => Failed.TapError(Null<Action<string>>())],
         ["Result<TError>.TapAsync(Func<Task>): action"]                           = [() => Ok.TapAsync(Null<Func<Task>>()), () => Failed.TapAsync(Null<Func<Task>>())],
@@ -90,6 +93,9 @@ public sealed class NullDelegateTests
         ["Result<T, TError>.Bind(Func<T, Result<TResult, TError>>): selector"]                         = [() => Value.Bind(Null<Func<int, Result<int, string>>>()), () => Error.Bind(Null<Func<int, Result<int, string>>>())],
         ["Result<T, TError>.Bind(Func<T, Result<TError>>): selector"]                          = [() => Value.Bind(Null<Func<int, Result<string>>>()), () => Error.Bind(Null<Func<int, Result<string>>>())],
         ["Result<T, TError>.MapError(Func<TError, TNewError>): selector"]                      = [() => Value.MapError(Null<Func<string, int>>()), () => Error.MapError(Null<Func<string, int>>())],
+        ["Result<T, TError>.Recover(Func<TError, Result<T, TError>>): selector"]                = [() => Value.Recover(Null<Func<string, Result<int, string>>>()), () => Error.Recover(Null<Func<string, Result<int, string>>>())],
+        ["Result<T, TError>.RecoverAsync(Func<TError, Task<Result<T, TError>>>): selector"]     =
+            [() => Value.RecoverAsync(Null<Func<string, Task<Result<int, string>>>>()), () => Error.RecoverAsync(Null<Func<string, Task<Result<int, string>>>>())],
         ["Result<T, TError>.Tap(Action<T>): action"]                                             = [() => Value.Tap(Null<Action<int>>()), () => Error.Tap(Null<Action<int>>())],
         ["Result<T, TError>.TapError(Action<TError>): action"]                                   = [() => Value.TapError(Null<Action<string>>()), () => Error.TapError(Null<Action<string>>())],
         ["Result<T, TError>.Ensure(Func<T, Boolean>, TError): predicate"]                        = [() => Value.Ensure(Null<Func<int, bool>>(), "e"), () => Error.Ensure(Null<Func<int, bool>>(), "e")],
@@ -117,6 +123,10 @@ public sealed class NullDelegateTests
             [() => PendingValue.BindAsync(Null<Func<int, Task<Result<string>>>>()), () => PendingError.BindAsync(Null<Func<int, Task<Result<string>>>>()), () => PendingFault.BindAsync(Null<Func<int, Task<Result<string>>>>())],
         ["Result.MapErrorAsync(Task<Result<T, TError>>, Func<TError, TNewError>): selector"] =
             [() => PendingValue.MapErrorAsync(Null<Func<string, int>>()), () => PendingError.MapErrorAsync(Null<Func<string, int>>()), () => PendingFault.MapErrorAsync(Null<Func<string, int>>())],
+        ["Result.RecoverAsync(Task<Result<T, TError>>, Func<TError, Result<T, TError>>): selector"] =
+            [() => PendingValue.RecoverAsync(Null<Func<string, Result<int, string>>>()), () => PendingError.RecoverAsync(Null<Func<string, Result<int, string>>>()), () => PendingFault.RecoverAsync(Null<Func<string, Result<int, string>>>())],
+        ["Result.RecoverAsync(Task<Result<T, TError>>, Func<TError, Task<Result<T, TError>>>): selector"] =
+            [() => PendingValue.RecoverAsync(Null<Func<string, Task<Result<int, string>>>>()), () => PendingError.RecoverAsync(Null<Func<string, Task<Result<int, string>>>>()), () => PendingFault.RecoverAsync(Null<Func<string, Task<Result<int, string>>>>())],
         ["Result.EnsureAsync(Task<Result<T, TError>>, Func<T, Boolean>, TError): predicate"] =
             [() => PendingValue.EnsureAsync(Null<Func<int, bool>>(), "e"), () => PendingError.EnsureAsync(Null<Func<int, bool>>(), "e"), () => PendingFault.EnsureAsync(Null<Func<int, bool>>(), "e")],
         ["Result.TapErrorAsync(Task<Result<T, TError>>, Action<TError>): action"] =
@@ -134,6 +144,10 @@ public sealed class NullDelegateTests
             [() => PendingOk.BindAsync(Null<Func<Task<Result<string>>>>()), () => PendingFailed.BindAsync(Null<Func<Task<Result<string>>>>()), () => PendingCommandFault.BindAsync(Null<Func<Task<Result<string>>>>())],
         ["Result.MapErrorAsync(Task<Result<TError>>, Func<TError, TNewError>): selector"] =
             [() => PendingOk.MapErrorAsync(Null<Func<string, int>>()), () => PendingFailed.MapErrorAsync(Null<Func<string, int>>()), () => PendingCommandFault.MapErrorAsync(Null<Func<string, int>>())],
+        ["Result.RecoverAsync(Task<Result<TError>>, Func<TError, Result<TError>>): selector"] =
+            [() => PendingOk.RecoverAsync(Null<Func<string, Result<string>>>()), () => PendingFailed.RecoverAsync(Null<Func<string, Result<string>>>()), () => PendingCommandFault.RecoverAsync(Null<Func<string, Result<string>>>())],
+        ["Result.RecoverAsync(Task<Result<TError>>, Func<TError, Task<Result<TError>>>): selector"] =
+            [() => PendingOk.RecoverAsync(Null<Func<string, Task<Result<string>>>>()), () => PendingFailed.RecoverAsync(Null<Func<string, Task<Result<string>>>>()), () => PendingCommandFault.RecoverAsync(Null<Func<string, Task<Result<string>>>>())],
         ["Result.TapErrorAsync(Task<Result<TError>>, Action<TError>): action"] =
             [() => PendingOk.TapErrorAsync(Null<Action<string>>()), () => PendingFailed.TapErrorAsync(Null<Action<string>>()), () => PendingCommandFault.TapErrorAsync(Null<Action<string>>())],
         ["Result.TapErrorAsync(Task<Result<TError>>, Func<TError, Task>): action"] =

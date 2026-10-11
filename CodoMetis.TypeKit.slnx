@@ -5,6 +5,8 @@
     <Project Path="src/CodoMetis.TypeKit.Generators/CodoMetis.TypeKit.Generators.csproj" />
     <Project Path="src/CodoMetis.TypeKit.EntityFrameworkCore/CodoMetis.TypeKit.EntityFrameworkCore.csproj" />
     <Project Path="src/CodoMetis.TypeKit.AspNetCore/CodoMetis.TypeKit.AspNetCore.csproj" />
+    <Project Path="src/CodoMetis.TypeKit.Serilog/CodoMetis.TypeKit.Serilog.csproj" />
+    <Project Path="src/CodoMetis.TypeKit.Testing/CodoMetis.TypeKit.Testing.csproj" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/CodoMetis.TypeKit.Analyzers.Tests/CodoMetis.TypeKit.Analyzers.Tests.csproj" />
@@ -14,6 +16,8 @@
     <Project Path="test/CodoMetis.TypeKit.Generators.Probes/CodoMetis.TypeKit.Generators.Probes.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Generators.Tests/CodoMetis.TypeKit.Generators.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Samples/CodoMetis.TypeKit.Samples.csproj" />
+    <Project Path="test/CodoMetis.TypeKit.Serilog.Tests/CodoMetis.TypeKit.Serilog.Tests.csproj" />
+    <Project Path="test/CodoMetis.TypeKit.Testing.Tests/CodoMetis.TypeKit.Testing.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Tests/CodoMetis.TypeKit.Tests.csproj" />
   </Folder>
   <Folder Name="/benchmarks/">

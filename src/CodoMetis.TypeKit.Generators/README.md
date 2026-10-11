@@ -160,6 +160,28 @@ would be lost on a round trip or make equal values unequal. An instance field, a
 `required` member or a field-like event, declared or inherited from a base record, is CMTK1012. A
 property computed from `Value` without a backing field, and anything `static` or `const`, is fine.
 
+### A value that must not be printed
+
+A value object over a secret declares `ToString()`. No formatting interface is generated then, so
+interpolation, `string.Format`, `Convert.ToString`, a record that holds it and every
+Microsoft.Extensions.Logging path print what it says, `[LogProperties]` included:
+
+```csharp
+public sealed partial record ApiKey : IValue<string>
+{
+    public override string ToString() => "ApiKey(***)";
+}
+```
+
+- **What still carries the value is what must**: its JSON, the type converter and the database column,
+  which are conversions, not display; and the debugger, which shows `ToString()` but expands `Value`.
+- **Serilog** reads the public `Value` where it destructures (`{@Key}`, or a record holding one), past
+  `ToString()`. [CodoMetis.TypeKit.Serilog](https://www.nuget.org/packages/CodoMetis.TypeKit.Serilog)
+  logs every value object as what it prints instead.
+- **Microsoft.Extensions.Compliance**: classify the logging method's parameter. A
+  `DataClassificationAttribute` on the value object's type makes the logging generator report
+  LOGGEN035 and generate nothing for the method.
+
 ## JSON
 
 The wire format is the wrapped value's, so an `OrderId` is a string and a `Quantity` a number:

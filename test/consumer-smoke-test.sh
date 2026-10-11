@@ -185,11 +185,12 @@ list_packages() {
 
 # ── core: the base package alone ─────────────────────────────────────────────────────────────────
 
-echo "==> core: only CodoMetis.TypeKit"
-new_project console core CodoMetis.TypeKit
+echo "==> core: only CodoMetis.TypeKit, and its test assertions"
+new_project console core CodoMetis.TypeKit CodoMetis.TypeKit.Testing
 
 cat > Program.cs <<'CSHARP'
 using CodoMetis.TypeKit;
+using CodoMetis.TypeKit.Testing;
 
 Option<int> some = Option.Some(3);
 Option<int> none = Option.None();
@@ -218,6 +219,11 @@ catch (InvalidOperationException)
 {
     Console.WriteLine("uninitialized=throws");
 }
+
+// The test assertions, from the package as a test project installs it.
+Console.WriteLine($"asserted={some.ShouldBeSome()}/{refused.ShouldBeError()}");
+try { ok.ShouldBeError("nope"); }
+catch (TypeKitAssertionException e) { Console.WriteLine($"assertion-failed={e.Message}"); }
 CSHARP
 
 run dotnet build
@@ -229,6 +235,7 @@ sed 's/^/      /' "$work/core.out"
 echo "==> core: asserting"
 assert_contains "> CodoMetis.TypeKit "           "$work/core.packages" "the base package resolved from the feed"
 assert_contains "> CodoMetis.TypeKit.Analyzers " "$work/core.packages" "the analyzer package arrived with it"
+assert_contains "> CodoMetis.TypeKit.Testing "   "$work/core.packages" "the test assertions resolved from the feed"
 assert_not_contains "Metalama"                   "$work/core.packages" "no Metalama in the graph of a base-only consumer"
 assert_versions "$work/core.packages"
 assert_contains "some=Some 3"          "$work/core.out" "Option.Some matches its value"
@@ -238,6 +245,8 @@ assert_contains "ok=Ok 5"              "$work/core.out" "a bare value converts t
 assert_contains "refused=Error nope"   "$work/core.out" "Result.Error converts to a failed Result"
 assert_contains "uninitialized=throws" "$work/core.out" "a default Result throws rather than picking a branch"
 assert_contains "cancelled=Ok/Error gone" "$work/core.out" "Result<TError> converts from the success marker and a bare error"
+assert_contains "asserted=3/nope"      "$work/core.out" "the assertions hand back the value and the error"
+assert_contains "assertion-failed=Expected an error, but the Result<Int32, String> is a success (its value is not printed)." "$work/core.out" "a failed assertion says what the outcome was"
 
 # The analyzers run in the consumer's compiler. Both rules at once: a default Option, and a value
 # object declared in a project that has no generator to implement it.
@@ -287,14 +296,15 @@ public readonly partial record struct ProductCode : IValidatedValue<ProductCode,
 }
 CSHARP
 
-echo "==> layered: App references only Domain"
-new_project console layered/App
+echo "==> layered: App references only Domain, and logs with Serilog"
+new_project console layered/App CodoMetis.TypeKit.Serilog
 run dotnet add reference ../Domain/Domain.csproj
 
 cat > Program.cs <<'CSHARP'
 using System.Text.Json;
 using CodoMetis.TypeKit;
 using CodoMetis.TypeKit.ValueObjects;
+using Serilog;
 using Shop;
 
 var id = OrderId.New();
@@ -320,9 +330,28 @@ Console.WriteLine($"parsed={Quantity.Parse("42", null).Value}");
 // fabric has to generate it, or From does not exist and this does not compile.
 Console.WriteLine($"local={Sku.From("X-1").Value}");
 
+// Serilog destructures a record holding value objects: each is logged as what it prints, a masked one
+// as its mask, never through its public Value.
+var events = new List<Serilog.Events.LogEvent>();
+using (var log = new Serilog.LoggerConfiguration().Destructure.WithTypeKit().WriteTo.Sink(new ListSink(events)).CreateLogger())
+    log.Information("{@Held}", new Held(Secret.From("hunter2"), Quantity.From(3)));
+Console.WriteLine($"serilog={events.Single().Properties["Held"]}");
+
 public sealed record Line(ProductCode Code, Quantity Quantity);
 
 public readonly partial record struct Sku : IValue<string>;
+
+public sealed partial record Secret : IValue<string>
+{
+    public override string ToString() => "***";
+}
+
+public sealed record Held(Secret Secret, Quantity Quantity);
+
+sealed class ListSink(List<Serilog.Events.LogEvent> events) : Serilog.Core.ILogEventSink
+{
+    public void Emit(Serilog.Events.LogEvent logEvent) => events.Add(logEvent);
+}
 CSHARP
 
 run dotnet build
@@ -341,6 +370,9 @@ assert_contains "tryfrom=refused"                 "$work/layered.out" "TryFrom a
 assert_contains "json-read=refused, names the rule: True" "$work/layered.out" "the generated JSON converter applies Create"
 assert_contains "parsed=42"                       "$work/layered.out" "the generated Parse"
 assert_contains "local=X-1"                       "$work/layered.out" "the transitive fabric generates a value object the app declares"
+assert_contains "> CodoMetis.TypeKit.Serilog "    "$work/layered.packages" "the Serilog satellite resolved from the feed"
+assert_contains 'serilog=Held { Secret: "***", Quantity: "3" }' "$work/layered.out" "Serilog logs value objects as what they print"
+assert_not_contains "hunter2"                     "$work/layered.out" "a masked value object is never logged through its Value"
 
 cat > Guard.cs <<'CSHARP'
 using Shop;
@@ -650,11 +682,20 @@ builder.WebHost.UseUrls("http://127.0.0.1:0");
 builder.Logging.ClearProviders();
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.TypeInfoResolverChain.Insert(0, HostJson.Default));
 builder.Services.AddOpenApi(options => options.AddTypeKit());
+// The domain's fault, answered as problem details: the problem-details context AddFaultResponses
+// brings is the only way a source-generated host can write one.
+builder.Services.AddFaultResponses<CodeFault>(fault => fault switch
+{
+    CodeFault.Blank        => StatusCodes.Status400BadRequest,
+    CodeFault.NotUpperCase => StatusCodes.Status422UnprocessableEntity,
+    _ => throw new ArgumentOutOfRangeException(nameof(fault)),
+});
 
 await using var app = builder.Build();
 app.MapOpenApi();
 app.MapGet("/orders/{id}", (OrderId id, Quantity? limit) => new OrderView(id, [Quantity.From(1)], Amount.From(1.5m)));
 app.MapPost("/orders", (OrderView body) => body.Amount);
+app.MapGet("/codes/{text}", (string text) => Code.Create(text).ToHttpResult());
 await app.StartAsync();
 
 using var http = new HttpClient { BaseAddress = new Uri(app.Urls.First()) };
@@ -671,6 +712,14 @@ Console.WriteLine($"openapi-parameter={document?["paths"]?["/orders/{id}"]?["get
 Console.WriteLine($"openapi-items={schemas?["OrderView"]?["properties"]?["quantities"]?["items"]?.ToJsonString() ?? "missing"}");
 await Check("bound", async () => ((int)(await http.GetAsync($"/orders/{Guid.NewGuid()}?limit=3")).StatusCode).ToString());
 await Check("malformed", async () => ((int)(await http.GetAsync("/orders/nope")).StatusCode).ToString());
+await Check("result-success", async () => await http.GetStringAsync("/codes/ABC"));
+await Check("result-fault", async () =>
+{
+    var response = await http.GetAsync("/codes/abc");
+    var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync());
+    return $"{(int)response.StatusCode} {response.Content.Headers.ContentType?.MediaType} {problem?["fault"]}";
+});
+Console.WriteLine($"result-responses={string.Join(",", document?["paths"]?["/codes/{text}"]?["get"]?["responses"]?.AsObject().Select(r => r.Key) ?? [])}");
 await app.StopAsync();
 
 public sealed record Line(OrderId Id, Code Code, Name Name, Quantity Quantity, Amount Amount, Link Link, Weekday Weekday,
@@ -690,6 +739,8 @@ internal partial class ShopJson : JsonSerializerContext;
 // The web host's: what the endpoints exchange, and what their value objects wrap, for the schemas.
 [JsonSerializable(typeof(OrderView))]
 [JsonSerializable(typeof(Amount))]
+[JsonSerializable(typeof(Code))]
+[JsonSerializable(typeof(string))]
 [JsonSerializable(typeof(Guid))]
 [JsonSerializable(typeof(int))]
 [JsonSerializable(typeof(decimal))]
@@ -803,6 +854,9 @@ assert_contains 'openapi-component={"type":"string","format":"uuid"}' "$work/aot
 assert_contains 'openapi-parameter={"type":"string","format":"uuid"}' "$work/aot.out" "the route parameter is a uuid"
 assert_contains 'openapi-items={"$ref":"#/components/schemas/Quantity"}' "$work/aot.out" "a list of value objects keeps its items"
 assert_contains "bound=200"                        "$work/aot.out" "a route parameter binds through the generated TryParse"
+assert_contains 'result-success="ABC"'             "$work/aot.out" "ToHttpResult answers a success with its value"
+assert_contains "result-fault=422 application/problem+json NotUpperCase" "$work/aot.out" "and a fault as problem details with its mapped status"
+assert_contains "result-responses=200,400,422"     "$work/aot.out" "the document lists the value and each mapped status"
 assert_contains "malformed=400"                    "$work/aot.out" "a malformed route parameter is a 400"
 assert_contains "ef-insert=1"                      "$work/aot.out" "EF Core writes value objects through the compiled model"
 assert_contains "ef-value=2"                       "$work/aot.out" ".Value translates in a precompiled query"

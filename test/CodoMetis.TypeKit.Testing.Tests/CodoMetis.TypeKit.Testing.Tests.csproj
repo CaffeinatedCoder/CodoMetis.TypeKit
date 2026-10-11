@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Testing\CodoMetis.TypeKit.Testing.csproj" />
+    </ItemGroup>
+
+</Project>

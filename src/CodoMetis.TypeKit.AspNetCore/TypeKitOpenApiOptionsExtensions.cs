@@ -26,6 +26,10 @@ public static class TypeKitOpenApiOptionsExtensions
     /// does not matter.
     /// </para>
     /// <para>
+    /// An endpoint that returns <c>ToHttpResult()</c> also lists a problem-details response for every
+    /// status its fault type is mapped to with <c>AddFaultResponses</c>.
+    /// </para>
+    /// <para>
     /// A nested value object's component is named after its nesting chain (<c>Shop.Id</c> is
     /// <c>ShopId</c>), so two nested value objects of one name do not share a component. A name the
     /// host's own <see cref="OpenApiOptions.CreateSchemaReferenceId"/> gives, set before this call, is
@@ -40,6 +44,7 @@ public static class TypeKitOpenApiOptionsExtensions
 
         ValueObjectSchemaReferenceIds.Apply(options);
 
-        return options.AddSchemaTransformer<ValueObjectSchemaTransformer>();
+        return options.AddSchemaTransformer<ValueObjectSchemaTransformer>()
+                      .AddOperationTransformer<FaultResponsesOperationTransformer>();
     }
 }
