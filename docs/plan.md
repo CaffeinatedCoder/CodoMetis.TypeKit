@@ -476,6 +476,13 @@ Each phase ends green, and its guards have been proven by seeding the defect
     - **A value object's fault as a validation error.** A body or parameter that `Create` refuses is a
       `400` whose problem details name the member and the fault, as ASP.NET Core 10's validation
       reports a data annotation, instead of a bare `400` from a `JsonException`. No library does this.
+      Measured 2026-10-11 in [spikes/ValidationFaults](../spikes/ValidationFaults/README.md): ASP.NET
+      Core 10's validation never sees a value that failed to bind, a refused route or query value has
+      lost its fault (`TryParse` says only `false`), and MVC already puts the converter's message in its
+      validation problem. What remains is a minimal-API body, reachable only with `ThrowOnBadRequest`
+      turned on for the whole host and an exception handler, and only once the converter's refusal
+      carries its fault as data. The README's "Binding" said `AddProblemDetails()` gives a refused body
+      a response body; it needs `UseStatusCodePages()` too, which it now says.
     - **`CodoMetis.TypeKit.Testing`**: assertions for `Option`/`Result` (`ShouldBeSome()`,
       `ShouldBeError(fault)`), which a type without `.Value` needs more than any other, and generators
       of valid and refused values that go through `Create`.

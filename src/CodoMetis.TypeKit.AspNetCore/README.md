@@ -218,7 +218,8 @@ The generated members cover the request itself:
 - **Request and response bodies** go through the generated JSON converter. A value a validated
   value object refuses is a `JsonException` naming the type and the rule, never the value, and a
   400. MVC puts that message in its validation problem details. A minimal API answers with an empty
-  400 and logs the message; `AddProblemDetails()` gives the response a body.
+  400 and logs the message, with `AddProblemDetails()` too; `app.UseStatusCodePages()` beside it gives
+  the response a generic problem body, which names neither the property nor the rule.
 - **A property missing from the body is not refused.** System.Text.Json calls no converter for an
   absent property, so it stays `default`: a `Guid.Empty` order id, or a validated value object that
   never passed `Create`. Where a value object is required, say so, with `required` on the property or,

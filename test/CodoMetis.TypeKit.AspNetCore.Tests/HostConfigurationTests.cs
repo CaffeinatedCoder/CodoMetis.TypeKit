@@ -235,6 +235,46 @@ public sealed class HostConfigurationTests
         return JsonNode.Parse(await app.GetTestClient().GetStringAsync("/openapi/v1.json"))!;
     }
 
+    /// <summary>
+    /// What the README's "Binding" says of a minimal API refusing a body: an empty 400 with
+    /// <c>AddProblemDetails()</c> too, a generic problem only with <c>UseStatusCodePages()</c>, and the
+    /// input in neither (spikes/ValidationFaults).
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task A_minimal_API_answers_a_refused_body_with_a_bare_400(bool statusCodePages)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        builder.Services.AddProblemDetails();
+
+        await using var app = builder.Build();
+        if (statusCodePages) app.UseStatusCodePages();
+        app.MapPost("/codes", (CodeHolder holder) => holder.Code.Value);
+        await app.StartAsync(TestContext.Current.CancellationToken);
+
+        using var response = await app.GetTestClient().PostAsync(
+            "/codes", new StringContent("""{"code":"lower"}""", System.Text.Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        if (!statusCodePages)
+        {
+            body.ShouldBeEmpty();
+            return;
+        }
+
+        var problem = JsonNode.Parse(body)!.AsObject();
+        problem["title"]!.GetValue<string>().ShouldBe("Bad Request");
+        problem.ContainsKey("errors").ShouldBeFalse();
+        body.ShouldNotContain("lower");
+        body.ShouldNotContain(nameof(ProbeCodeFault.NotUpperCase));
+    }
+
+    private sealed record CodeHolder(ProbeCode Code);
+
     private sealed class InstantSchemaTransformer : IOpenApiSchemaTransformer
     {
         public Task TransformAsync(OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
