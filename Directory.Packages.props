@@ -1,20 +1,18 @@
 <Project>
-    <PropertyGroup>
-        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    </PropertyGroup>
-
-    <!--
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <!--
         Shipping references. Each version here is a floor every consumer restores against, so raising
         one is a release decision, not a dependency update.
     -->
-    <ItemGroup>
-        <!-- Latest stable YYYY.N: MIT maintenance covers only the latest line (docs/plan.md §8). -->
-        <PackageVersion Include="Metalama.Framework" Version="2026.1.28" />
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
-        <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
-    </ItemGroup>
-
-    <!--
+  <ItemGroup>
+    <!-- Latest stable YYYY.N: MIT maintenance covers only the latest line (docs/plan.md §8). -->
+    <PackageVersion Include="Metalama.Framework" Version="2026.1.29" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+  </ItemGroup>
+  <!--
         The analyzer's Roslyn reference is the oldest compiler a consumer can load it into, so it
         stays on 5.0.0, the version the 10.0.1xx SDK band runs. That band is serviced for all of
         .NET 10 and is the one Linux distributions build. Measured 2026-09-28: built against 5.9.0
@@ -23,42 +21,40 @@
         Microsoft.CodeAnalysis.Analyzers is a build-time analyzer of this project only and can
         follow the SDK.
     -->
-    <ItemGroup>
-        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
-        <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0" />
-    </ItemGroup>
-
-    <!-- Test-only. xunit.v3 4.x is Microsoft Testing Platform v2: no VSTest adapter, no Test.Sdk. -->
-    <ItemGroup>
-        <PackageVersion Include="xunit.v3" Version="4.0.1" />
-        <PackageVersion Include="Shouldly" Version="4.3.0" />
-        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" Version="1.1.4" />
-        <!--
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0" />
+  </ItemGroup>
+  <!-- Test-only. xunit.v3 4.x is Microsoft Testing Platform v2: no VSTest adapter, no Test.Sdk. -->
+  <ItemGroup>
+    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+    <PackageVersion Include="Shouldly" Version="4.3.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" Version="1.1.4" />
+    <!--
             Locked to Microsoft.CodeAnalysis.CSharp above: the analyzer-testing package floors its
             Roslyn dependency at 1.0.1, so without this pin the verifier would run the analyzer on a
             different compiler than the one it is built against. Bump the two together.
         -->
-        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" />
-        <!--
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" />
+    <!--
             The generators resolve NodaTime from the consumer's compilation and never reference it
             themselves; the probes reference it to exercise that path.
         -->
-        <PackageVersion Include="NodaTime" Version="3.3.4" />
-        <PackageVersion Include="NodaTime.Serialization.SystemTextJson" Version="1.4.0" />
-        <!--
+    <PackageVersion Include="NodaTime" Version="3.3.5" />
+    <PackageVersion Include="NodaTime.Serialization.SystemTextJson" Version="1.4.0" />
+    <!--
             The EF satellite's tests: SQLite for the model, Npgsql for SQL and the round trips, and EF's
             design-time services to write the migration snapshot a model is compared with.
         -->
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
-        <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
-        <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
-        <PackageVersion Include="Testcontainers.PostgreSql" Version="4.15.0" />
-        <!-- The ASP.NET Core satellite's tests: a probe host whose OpenAPI document they read. -->
-        <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
-    </ItemGroup>
-
-    <!-- Benchmarks only (benchmarks/), never a shipping or test dependency. -->
-    <ItemGroup>
-        <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
-    </ItemGroup>
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
+    <!-- The ASP.NET Core satellite's tests: a probe host whose OpenAPI document they read. -->
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
+  </ItemGroup>
+  <!-- Benchmarks only (benchmarks/), never a shipping or test dependency. -->
+  <ItemGroup>
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
+  </ItemGroup>
 </Project>
