@@ -56,13 +56,19 @@ public sealed partial class ChangelogTests
     /// public surface. A baseline left behind at an older release, or dropped, lets a break of the last
     /// release through without a word. Measured 2026-09-28: with the baseline at 1.0.0, making a member
     /// that 1.0.0 shipped internal fails the pack with CP0002.
+    /// <para>
+    /// The version being built is not its own baseline, even once its section is dated: the release
+    /// commit dates it, and its pack is compared with the release before, the only one on nuget.org yet.
+    /// Holding the baseline to the dated version being built made the release commit fail its own pack
+    /// (found preparing 1.5.0). Once step 4 raises the version, the version just released is the baseline.
+    /// </para>
     /// </summary>
     [Fact]
     public void The_package_validation_baseline_is_the_last_release()
     {
         var baseline = XDocument.Load(Path.Combine(Repository.Root, "Directory.Build.props"))
                                 .Descendants("PackageValidationBaselineVersion").SingleOrDefault()?.Value.Trim();
-        var released = Sections().Where(section => section.Value != "Unreleased")
+        var released = Sections().Where(section => section.Value != "Unreleased" && section.Key != Version)
                                  .Select(section => section.Key)
                                  .MaxBy(version => System.Version.Parse(version.Split('-')[0]));
 

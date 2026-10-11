@@ -10,7 +10,7 @@ A version's heading reads `## <version> — Unreleased` until the release is pre
 the release date. The release workflow refuses a tag whose section still says `Unreleased`, and the
 section is the GitHub release's notes.
 
-## 1.5.0 — Unreleased
+## 1.5.0 — 2026-10-11
 
 ### Added
 
@@ -40,6 +40,11 @@ section is the GitHub release's notes.
   `Result` shapes. They hand back the value or the error for the test's own assertions, and otherwise
   throw a `TypeKitAssertionException` that names the error found and never prints a value. An
   uninitialized result fails every assertion as such. No test framework dependency.
+
+### Changed
+
+- **`CodoMetis.TypeKit.Generators`** depends on `Metalama.Framework` 2026.1.29 or later (was 2026.1.28),
+  the latest of the 2026.1 line that MIT maintenance covers.
 
 ### Fixed
 

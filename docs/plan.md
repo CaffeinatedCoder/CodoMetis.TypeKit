@@ -2,7 +2,7 @@
 
 Status: **1.0.0 released 2026-09-28** (nuget.org, GitHub release `v1.0.0`). Phases 0 to 11 are done;
 what is left for 1.x is listed at the end of phase 11, and package validation holds every pack to the
-1.0.0 surface. Phase 12 scopes 1.5.0, which is in progress (version 1.5.0). The decisions are in §8, Native AOT in §11. The fabric spike
+1.0.0 surface. Phase 12 is 1.5.0, prepared for release on 2026-10-11. The decisions are in §8, Native AOT in §11. The fabric spike
 ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation comparison
 ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)), the EF mapping spike
 ([spikes/EfMapping](../spikes/EfMapping/README.md)) and the OpenAPI spike
@@ -453,7 +453,7 @@ Each phase ends green, and its guards have been proven by seeding the defect
       the value; `class Email : IValue<string>` reports one of its three errors at a time; `IValue<object>`
       writes `{}`. JSON on `Option<T>?` throws the wrong exception; a default marker converts.
       `UseTypeKit()` on a non-relational provider could refuse in `Validate`.
-12. **1.5.0: the boundaries. Scoped 2026-10-11.** Every item is additive, so it is a minor version. The
+12. **1.5.0: the boundaries. ✅ Done 2026-10-11.** Every item is additive, so it is a minor version. The
     scope follows a survey of the competing libraries' trackers on 2026-10-11 (demand is small
     everywhere, at most 22 reactions on one request), keeping what no library ships or what only
     preview packages serve, and what follows from what TypeKit already holds to.
