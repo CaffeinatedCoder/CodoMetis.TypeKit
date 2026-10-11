@@ -33,6 +33,7 @@ your own, and it can be declared inside another type.
 | [CodoMetis.TypeKit.Generators](src/CodoMetis.TypeKit.Generators/README.md) | The compile-time generation, in the project that declares value objects | yes |
 | [CodoMetis.TypeKit.EntityFrameworkCore](src/CodoMetis.TypeKit.EntityFrameworkCore/README.md) | Value objects as columns with nothing registered per type, and `.Value` in LINQ | no |
 | [CodoMetis.TypeKit.AspNetCore](src/CodoMetis.TypeKit.AspNetCore/README.md) | Value objects in the OpenAPI document, with the schema of the type they wrap; a `Result` as the response, a fault as problem details | no |
+| [CodoMetis.TypeKit.Serilog](src/CodoMetis.TypeKit.Serilog/README.md) | Value objects logged as what they print, also where Serilog destructures them, so a value masked by its `ToString()` stays masked | no |
 | [CodoMetis.TypeKit.Testing](src/CodoMetis.TypeKit.Testing/README.md) | Test assertions for `Option` and `Result` that hand back the value or the error, and fail saying what the outcome was. No test framework dependency | no |
 
 The base package is the cheapest one: someone who only wants `Option` and `Result` never receives a

@@ -296,14 +296,15 @@ public readonly partial record struct ProductCode : IValidatedValue<ProductCode,
 }
 CSHARP
 
-echo "==> layered: App references only Domain"
-new_project console layered/App
+echo "==> layered: App references only Domain, and logs with Serilog"
+new_project console layered/App CodoMetis.TypeKit.Serilog
 run dotnet add reference ../Domain/Domain.csproj
 
 cat > Program.cs <<'CSHARP'
 using System.Text.Json;
 using CodoMetis.TypeKit;
 using CodoMetis.TypeKit.ValueObjects;
+using Serilog;
 using Shop;
 
 var id = OrderId.New();
@@ -329,9 +330,28 @@ Console.WriteLine($"parsed={Quantity.Parse("42", null).Value}");
 // fabric has to generate it, or From does not exist and this does not compile.
 Console.WriteLine($"local={Sku.From("X-1").Value}");
 
+// Serilog destructures a record holding value objects: each is logged as what it prints, a masked one
+// as its mask, never through its public Value.
+var events = new List<Serilog.Events.LogEvent>();
+using (var log = new Serilog.LoggerConfiguration().Destructure.WithTypeKit().WriteTo.Sink(new ListSink(events)).CreateLogger())
+    log.Information("{@Held}", new Held(Secret.From("hunter2"), Quantity.From(3)));
+Console.WriteLine($"serilog={events.Single().Properties["Held"]}");
+
 public sealed record Line(ProductCode Code, Quantity Quantity);
 
 public readonly partial record struct Sku : IValue<string>;
+
+public sealed partial record Secret : IValue<string>
+{
+    public override string ToString() => "***";
+}
+
+public sealed record Held(Secret Secret, Quantity Quantity);
+
+sealed class ListSink(List<Serilog.Events.LogEvent> events) : Serilog.Core.ILogEventSink
+{
+    public void Emit(Serilog.Events.LogEvent logEvent) => events.Add(logEvent);
+}
 CSHARP
 
 run dotnet build
@@ -350,6 +370,9 @@ assert_contains "tryfrom=refused"                 "$work/layered.out" "TryFrom a
 assert_contains "json-read=refused, names the rule: True" "$work/layered.out" "the generated JSON converter applies Create"
 assert_contains "parsed=42"                       "$work/layered.out" "the generated Parse"
 assert_contains "local=X-1"                       "$work/layered.out" "the transitive fabric generates a value object the app declares"
+assert_contains "> CodoMetis.TypeKit.Serilog "    "$work/layered.packages" "the Serilog satellite resolved from the feed"
+assert_contains 'serilog=Held { Secret: "***", Quantity: "3" }' "$work/layered.out" "Serilog logs value objects as what they print"
+assert_not_contains "hunter2"                     "$work/layered.out" "a masked value object is never logged through its Value"
 
 cat > Guard.cs <<'CSHARP'
 using Shop;

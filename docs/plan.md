@@ -18,6 +18,7 @@ what is left for 1.x is listed at the end of phase 11, and package validation ho
 | `CodoMetis.TypeKit.Generators` | TypeKit, Metalama.Framework 2026.1.x (flows) | yes | Internal aspects, internal `TransitiveProjectFabric`, `AspectOrder`. Future generated type families join this package too: one fabric, one aspect order |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | TypeKit, EF Core Relational | no | Generic converter, convention, `.Value` / `GetValue` / `ValueOrNull` translators, `UseTypeKit()` |
 | `CodoMetis.TypeKit.AspNetCore` | TypeKit, Microsoft.AspNetCore.OpenApi | no | `AddTypeKit()`: one OpenAPI schema transformer (§7); `ToHttpResult()`, `AddFaultResponses` (decision 38) |
+| `CodoMetis.TypeKit.Serilog` | TypeKit, Serilog 4.0.0 | no | `Destructure.WithTypeKit()`: one destructuring policy that logs every value object as its `ToString()` (decision 41) |
 | `CodoMetis.TypeKit.Testing` | TypeKit | no | `ShouldBeSome()`/`ShouldBeNone()`, `ShouldBeSuccess()`/`ShouldBeError()`: test assertions that hand back the content, with no test framework dependency (decision 40) |
 
 **The bare name is the cheapest package.** Someone who only wants `Option`/`Result` references
@@ -35,6 +36,8 @@ objects from a referenced domain assembly never needs Metalama itself.
 | `CodoMetis.TypeKit.CompilerServices` | What only generated code and the satellites touch, all `[EditorBrowsable(Never)]`: `GeneratedValueObjectAttribute`, `IValueObjectVisitor`, `TranslatedAsWrappedValueAttribute`, `GeneratedFactories`, `GeneratedParsing`, `GeneratedFormatting`, `GeneratedJson`, `IStoredJsonConverterSource`. The name follows `System.Runtime.CompilerServices` |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | `ValueObjectConverter<,>`; the plugins, internal |
 | `CodoMetis.TypeKit.AspNetCore` | the schema transformer, internal; `FaultProblem<TFault>` |
+| `CodoMetis.TypeKit.Serilog` | the destructuring policy, internal |
+| `Serilog` | `WithTypeKit()`, beside Serilog's own configuration methods (decision 22) |
 | `CodoMetis.TypeKit.Testing` | the assertions and `TypeKitAssertionException` |
 | `Microsoft.EntityFrameworkCore` | `UseTypeKit()`, beside the providers' `UseNpgsql` (decision 22) |
 | `Microsoft.Extensions.DependencyInjection` | `AddEntityFrameworkTypeKit()` and `OpenApiOptions.AddTypeKit()`, beside `AddEntityFrameworkNpgsql` and `AddOpenApi` (decision 22) |
@@ -500,7 +503,9 @@ Each phase ends green, and its guards have been proven by seeding the defect
       Microsoft.Extensions.Logging path, `[LogProperties]` included, so a marker would generate the one
       line a user writes. A classification on the type makes the logging generator refuse the method
       (LOGGEN035). The one leak is Serilog's `{@x}`, which destructures the public `Value` of every
-      value object, masked or not; a destructuring policy closes it.
+      value object, masked or not; a destructuring policy closes it. **✅ Implemented 2026-10-11**
+      (decision 41): no marker; the Generators README's "A value that must not be printed", and
+      `CodoMetis.TypeKit.Serilog`.
     - **`Recover` on `Result`**: the error branch back to a success, which today needs `Match`.
       **✅ Implemented 2026-10-11** on both shapes, with `RecoverAsync` (an asynchronous selector, and
       continuations on a pending result). It returns a `Result`, so a selector recovers from some
@@ -1092,6 +1097,18 @@ libraries.
     and shipping it would tie the package to one such library. The package is new in 1.5.0, so its
     project clears the package-validation baseline while that is 1.0.0, a condition that lapses on its
     own when the baseline moves.
+
+41. **A sensitive value object is one that declares `ToString()`; Serilog gets a satellite** (2026-10-11,
+    phase 12, spikes/SensitiveValues). The seam already masks every formatting and
+    Microsoft.Extensions.Logging path, so a marker would generate the one line a user writes, and is
+    not added. Serilog's `{@x}` read the public `Value` of every value object, masked or not:
+    `CodoMetis.TypeKit.Serilog` registers one destructuring policy, `Destructure.WithTypeKit()`, that
+    logs a value object as a scalar of its `ToString()`, recognised by `GeneratedValueObjectAttribute`.
+    Every value object is then a string in the event, as Microsoft.Extensions.Logging writes it, rather
+    than its wrapped value's JSON type: what it prints is the one rule, and the policy cannot tell a
+    masked `ToString()` from the generated one. Serilog's floor is 4.0.0, the first of the current
+    major, and the tests run on it. A classification on the type is advised against: the logging
+    generator refuses the method (LOGGEN035).
 
 Still open:
 

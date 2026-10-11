@@ -29,6 +29,7 @@ This file is the canonical agent guide. There is no CLAUDE.md, on purpose.
 | `CodoMetis.TypeKit.Generators` | Metalama aspects and the transitive fabric |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | Converter, convention, `.Value` translation |
 | `CodoMetis.TypeKit.AspNetCore` | OpenAPI transformers; a `Result` as an HTTP response |
+| `CodoMetis.TypeKit.Serilog` | A destructuring policy: value objects logged as what they print |
 | `CodoMetis.TypeKit.Testing` | Test assertions for `Option` and `Result` |
 
 ## Structure

@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- Works at run time against the CodoMetis.TypeKit attribute; never references .Generators. -->
+    <PropertyGroup>
+        <Description>Serilog integration for CodoMetis.TypeKit: value objects are logged as what they print, so a destructured value object or a record holding one never exposes a value its ToString() masks.</Description>
+        <PackageTags>serilog;logging;structured-logging;value-object;strongly-typed-id;ddd;redaction</PackageTags>
+    </PropertyGroup>
+
+    <!-- Native AOT and trimming analyzers on, as in every runtime package. -->
+    <PropertyGroup>
+        <IsAotCompatible>true</IsAotCompatible>
+    </PropertyGroup>
+
+    <!-- New in 1.5.0: no 1.0.0 to validate against until the baseline moves (CodoMetis.TypeKit.Testing, decision 40). -->
+    <PropertyGroup Condition="'$(PackageValidationBaselineVersion)' == '1.0.0'">
+        <PackageValidationBaselineVersion />
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Serilog" />
+        <ProjectReference Include="..\CodoMetis.TypeKit\CodoMetis.TypeKit.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="CodoMetis.TypeKit.Serilog.Tests" />
+    </ItemGroup>
+
+</Project>

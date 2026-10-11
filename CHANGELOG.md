@@ -28,6 +28,13 @@ section is the GitHub release's notes.
   result replaces an error, a success or another error, and a success passes untouched.
   `RecoverAsync` takes an asynchronous selector and continues a pending `Task<Result<…>>`, as the other
   combinators do.
+- **`CodoMetis.TypeKit.Serilog`**, a new package: `Destructure.WithTypeKit()` logs every value object as
+  what it prints, also where Serilog destructures it (`{@Key}`, or a record holding one). Without it,
+  Serilog read the public `Value`, so a value object masked by a hand-written `ToString()` was logged
+  unmasked there. Nothing is registered per type; Serilog 4.0.0 or later.
+- **`CodoMetis.TypeKit.Generators`** README: "A value that must not be printed", the `ToString()` seam
+  as the way to mask a value, what still carries it, and why a compliance classification belongs on
+  the logging method's parameter, not on the type.
 - **`CodoMetis.TypeKit.Testing`**, a new package for test projects: `ShouldBeSome()`, `ShouldBeNone()`,
   `ShouldBeSuccess()` and `ShouldBeError()` (with or without the expected error) on `Option`, both
   `Result` shapes. They hand back the value or the error for the test's own assertions, and otherwise

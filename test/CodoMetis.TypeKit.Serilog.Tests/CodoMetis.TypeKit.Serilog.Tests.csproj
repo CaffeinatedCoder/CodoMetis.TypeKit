@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- The Serilog satellite against value objects the real generators wove, on Serilog's floor version. -->
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Serilog\CodoMetis.TypeKit.Serilog.csproj" />
+        <ProjectReference Include="..\CodoMetis.TypeKit.Generators.Probes\CodoMetis.TypeKit.Generators.Probes.csproj" />
+    </ItemGroup>
+
+</Project>
