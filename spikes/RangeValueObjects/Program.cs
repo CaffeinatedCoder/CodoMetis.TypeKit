@@ -40,6 +40,16 @@ Report("Parse(\"not a range\")", () => ContractPeriod.Parse("not a range", null)
 Report("TryParse(\"[2026-01-01,)\")", () => ContractPeriod.TryParse("[2026-01-01,)", null, out _).ToString());
 Report("TypeConverter from string", () => TypeDescriptor.GetConverter(typeof(ContractPeriod)).ConvertFromInvariantString("[2026-01-01,2026-03-31]")!.ToString()!);
 Report("TypeConverter from \"(,2026-01-01]\"", () => TypeDescriptor.GetConverter(typeof(ContractPeriod)).ConvertFromInvariantString("(,2026-01-01]")!.ToString()!);
+Report("DateRange's own TypeConverter", () => TypeDescriptor.GetConverter(typeof(DateRange)).GetType().Name);
+foreach (var text in new[] { "[2026-01-01,2026-06-30]", "[2026-01-01,)", "not a range" })
+{
+    var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Period"] = text, ["Range"] = text }).Build();
+    Report($"configuration binding {text}", () =>
+    {
+        var settings = configuration.Get<ContractSettings>()!;
+        return $"Period {settings.Period?.ToString() ?? "null"}, Range {settings.Range?.ToString() ?? "null"}";
+    });
+}
 
 Section("4. Equality and ordering");
 Report("equal ranges, equal value objects", () => (ContractPeriod.FromKnownGood(DateRange.CreateFinite(jan, new DateOnly(2026, 6, 30))) == period).ToString());
@@ -47,7 +57,7 @@ Report("hash codes agree", () => (ContractPeriod.FromKnownGood(DateRange.CreateF
 Report("IComparable<ContractPeriod>", () => (period is IComparable<ContractPeriod>).ToString());
 
 Section("5. JSON parity (decision 26)");
-// Without ValueRanges' converters (they are opt-in, docs/serialization.md), and with them.
+// Without registering ValueRanges' converters (9.0.0 puts [JsonConverter] on every range type), and with them.
 foreach (var (name, options) in new[]
          {
              ("default", JsonSerializerOptions.Default),
@@ -132,18 +142,31 @@ await using (var db = new ContractsDb(o => o.UseNpgsql(cs, n => n.UseValueRanges
 }
 
 Section("7. ASP.NET Core: binding and the OpenAPI document");
-foreach (var withRanges in new[] { false, true })
+// ValueRanges' OpenAPI transformer is documentation to copy (ValueRangesSchemaTransformer.cs), registered before and after TypeKit's.
+foreach (var (host, withRanges, openApi) in new (string, bool, Action<Microsoft.AspNetCore.OpenApi.OpenApiOptions>)[]
+         {
+             ("nothing registered", false, o => o.AddTypeKit()),
+             ("AddRangeConverters()", true, o => o.AddTypeKit()),
+             ("AddTypeKit() then ValueRangesSchemaTransformer", false, o => o.AddTypeKit().AddSchemaTransformer<ValueRangesSchemaTransformer>()),
+             ("ValueRangesSchemaTransformer then AddTypeKit()", false, o => o.AddSchemaTransformer<ValueRangesSchemaTransformer>().AddTypeKit()),
+         })
 {
-    Console.WriteLine($"\n  -- host {(withRanges ? "with" : "without")} AddRangeConverters()");
+    Console.WriteLine($"\n  -- host: {host}");
     var builder = WebApplication.CreateSlimBuilder();
     builder.WebHost.UseUrls("http://127.0.0.1:0");
     builder.Logging.ClearProviders();
     if (withRanges) builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.AddRangeConverters());
-    builder.Services.AddOpenApi(o => o.AddTypeKit());
+    builder.Services.AddOpenApi(openApi);
     await using var app = builder.Build();
     app.MapOpenApi();
     app.MapPost("/contracts", (ContractDto body) => body);
+    app.MapPost("/by-period", (Dictionary<ContractPeriod, int> body) => body);
     app.MapGet("/contracts", (ContractPeriod period) => period.ToString());
+    app.MapGet("/ranges", (DateRange range) => range.ToString());
+#pragma warning disable ASP0020 // a value object declared in this project (src/CodoMetis.TypeKit.AspNetCore/README.md)
+    app.MapGet("/period-array", ([Microsoft.AspNetCore.Mvc.FromQuery] ContractPeriod[] periods) => periods.Length);
+#pragma warning restore ASP0020
+    app.MapGet("/range-array", ([Microsoft.AspNetCore.Mvc.FromQuery] DateRange[] ranges) => ranges.Length);
     await app.StartAsync();
     using var client = new HttpClient { BaseAddress = new Uri(app.Urls.First()) };
 
@@ -152,6 +175,11 @@ foreach (var withRanges in new[] { false, true })
     foreach (var name in new[] { "ContractPeriod", "DateRange", "ContractDto" })
         Console.WriteLine($"  schema {name,-15} {schemas?[name]?.ToJsonString() ?? "(none)"}");
     Console.WriteLine($"  query parameter  {doc["paths"]!["/contracts"]!["get"]!["parameters"]![0]!["schema"]!.ToJsonString()}");
+    Console.WriteLine($"  DateRange query  {doc["paths"]!["/ranges"]!["get"]!["parameters"]![0]!["schema"]!.ToJsonString()}");
+    Console.WriteLine($"  query array, value object  {doc["paths"]!["/period-array"]!["get"]!["parameters"]![0]!["schema"]!.ToJsonString()}");
+    Console.WriteLine($"  query array, DateRange     {doc["paths"]!["/range-array"]!["get"]!["parameters"]![0]!["schema"]!.ToJsonString()}");
+    using (var r = await client.GetAsync("/period-array?periods=" + Uri.EscapeDataString("[2026-01-01,2026-06-30]") + "&periods=" + Uri.EscapeDataString("[2026-07-01,2026-09-30]")))
+        Console.WriteLine($"  GET /period-array (two)    {(int)r.StatusCode} {await r.Content.ReadAsStringAsync()}");
 
     foreach (var body in new[]
              {
@@ -161,6 +189,11 @@ foreach (var withRanges in new[] { false, true })
     {
         using var response = await client.PostAsync("/contracts", new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
         Console.WriteLine($"  POST {body,-62} {(int)response.StatusCode} {await response.Content.ReadAsStringAsync()}");
+    }
+    foreach (var body in new[] { """{"[2026-01-01,2026-06-30]":1}""", """{"[2026-01-01,)":1}""" })
+    {
+        using var response = await client.PostAsync("/by-period", new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
+        Console.WriteLine($"  POST /by-period {body,-46} {(int)response.StatusCode} {await response.Content.ReadAsStringAsync()}");
     }
     foreach (var query in new[] { "[2026-01-01,2026-06-30]", "[2026-01-01,)" })
     {
@@ -202,6 +235,12 @@ namespace RangeValueObjects
         public int Id { get; set; }
         public ContractPeriod Period { get; set; }
         public Availability? Availability { get; set; }
+    }
+
+    public sealed class ContractSettings
+    {
+        public ContractPeriod? Period { get; set; }
+        public DateRange? Range { get; set; }
     }
 
     public sealed class ContractDto

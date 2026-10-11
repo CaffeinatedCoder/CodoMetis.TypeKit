@@ -105,6 +105,9 @@ public sealed class ProbeController : ControllerBase
     [HttpGet("by-ids")]
     public int ByIds([FromQuery] ProbeId[] ids) => ids.Length;
 
+    [HttpGet("spans")]
+    public int Spans([FromQuery] ProbeSpan span) => 0;
+
     [HttpPost]
     public ActionResult<ProbeId> Post(ProbeDocument document) => document.Id;
 }
@@ -121,4 +124,7 @@ public sealed class ControlController : ControllerBase
 
     [HttpGet("by-ids")]
     public int ByIds([FromQuery] Guid[] ids) => ids.Length;
+
+    [HttpGet("spans")]
+    public int Spans([FromQuery] ProbeSpanText span) => 0;
 }

@@ -99,7 +99,9 @@ no component at all), and both parameters are a bare `string`.
   elements of a list, an array, a set or a nested container, a dictionary value, and a route,
   query or header parameter, in minimal APIs and in MVC, in OpenAPI 3.1 and 3.0. A nullable
   element (`List<Quantity?>`, `Dictionary<string, Quantity?>`) is the component or null, as a
-  nullable property is.
+  nullable property is. A parameter is what ASP.NET makes of a parameter of the wrapped type: its
+  schema for a number, a `Guid`, a date or an enum, and a bare `string` for any other parsable type,
+  such as NodaTime's `Instant` or a range, whatever its JSON schema or another transformer says.
 - **Other transformers compose.** If the document has a transformer for a wrapped type, such as
   one that describes NodaTime's `Instant` as a date-time, a value object wrapping `Instant` gets
   that description too, whichever of the two was added first.

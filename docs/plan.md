@@ -525,9 +525,16 @@ Each phase ends green, and its guards have been proven by seeding the defect
       - `.Value.Contains(day)` becomes `@>`;
       - the generated JSON and OpenAPI mirror `DateRange` exactly.
 
-      No bridge package is needed. Open: a README section for the pattern, which states the host's
-      `AddRangeConverters()`; and CMTK1005 refusing `RangeSet<,>`, whose equality is a value's, though
-      `IEquatable` alone is no criterion (`ImmutableArray<T>`).
+      No bridge package is needed. ValueRanges 9.0.0 (re-measured the same day) closes the three wire
+      gaps the value object had inherited: `[JsonConverter]` on every range type, ranges as dictionary
+      keys, and an OpenAPI transformer to copy, which reaches the value object through `AddTypeKit()`.
+      The re-run found a TypeKit defect, **fixed**: a value object's `TryParse`-bound parameter took the
+      wrapped type's JSON schema (`{}` over `DateRange`), where ASP.NET describes a parameter of the
+      wrapped type as `string` for anything off its own list (`EndpointModelMetadata.GetDisplayType`).
+      `ParameterTests` has a control for each entry of that list and one off it (`ProbeSpan`). Open: a
+      README section for the pattern, with no host registration needed for JSON; and CMTK1005 refusing
+      `RangeSet<,>`, whose equality is a value's, though `IEquatable` alone is no criterion
+      (`ImmutableArray<T>`).
     - **`Patch<T>`, a field of a JSON Merge Patch (RFC 7396)**, proposed 2026-10-11. It has three states:
       absent, null, or a value. System.Text.Json cannot tell an absent property from a null, so every
       PATCH endpoint rebuilds this type by hand. It is a wire type on purpose, beside `Option`, which

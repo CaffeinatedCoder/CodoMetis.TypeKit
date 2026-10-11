@@ -33,7 +33,9 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// value object's own schema is put back, only where it is missing, and for a nullable element that
 /// schema or null.</item>
 /// <item>A parameter bound through the generated <c>TryParse</c> arrives as <see cref="string"/>,
-/// ASP.NET's placeholder for any parsable type, which the wrapped type's schema replaces.
+/// ASP.NET's placeholder for any parsable type. The wrapped type's schema replaces it where ASP.NET
+/// describes a parameter of the wrapped type by its schema too (a number, a Guid, a date); a parameter
+/// of any other wrapped type is that same placeholder, and so it stays.
 /// Minimal APIs name the value object in the parameter's <c>Type</c>, MVC in its model metadata.
 /// The parameter's descriptor is not used: for an MVC <c>[FromQuery]</c> object it names the
 /// container, not the property.</item>
@@ -77,6 +79,9 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
          // Handed the wrapped type itself, this is the call below asking for it: nothing to do.
          && parameterWrapped != info.Type)
         {
+            // A parameter of a wrapped type ASP.NET does not describe gets the same placeholder: it stays.
+            if (!DescribesParameterAsItself(parameterWrapped)) return;
+
             // ASP.NET's placeholder for any TryParse-bound parameter; the wrapped type says what it is.
             schema.Type = null;
             await DescribeAsync(schema, valueObject, parameterWrapped, parameter, admitsNull: false, context, cancellationToken);
@@ -124,6 +129,33 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
     /// </summary>
     private static string? SchemaReferenceId(JsonTypeInfo type, OpenApiSchemaTransformerContext context) =>
         context.ApplicationServices.GetRequiredService<IOptionsMonitor<OpenApiOptions>>().Get(context.DocumentName).CreateSchemaReferenceId(type);
+
+    /// <summary>
+    /// Whether a <c>TryParse</c>-bound parameter of <paramref name="type"/> is described by the type's
+    /// own schema rather than ASP.NET's placeholder <see cref="string"/>.
+    /// </summary>
+    /// <remarks>
+    /// ASP.NET's own list, from <c>EndpointModelMetadata.GetDisplayType</c>, which is internal. Every
+    /// other parsable type is a string as a parameter, whatever its JSON schema says: a type with a JSON
+    /// converter of its own has the empty schema (a range literal's type does), which would claim a
+    /// parameter could be any JSON value. Each entry has a control in the tests, so a change to ASP.NET's
+    /// list fails them.
+    /// </remarks>
+    private static bool DescribesParameterAsItself(Type type)
+    {
+        type = Nullable.GetUnderlyingType(type) ?? type;
+
+        return type.IsPrimitive
+            || type.IsEnum
+            || type == typeof(DateTime)
+            || type == typeof(DateTimeOffset)
+            || type == typeof(DateOnly)
+            || type == typeof(TimeOnly)
+            || type == typeof(TimeSpan)
+            || type == typeof(decimal)
+            || type == typeof(Guid)
+            || type == typeof(Uri);
+    }
 
     private static Type? ParameterValueObject(ApiParameterDescription parameter) =>
         ValueObjectTypes.IsValueObject(parameter.Type) ? parameter.Type

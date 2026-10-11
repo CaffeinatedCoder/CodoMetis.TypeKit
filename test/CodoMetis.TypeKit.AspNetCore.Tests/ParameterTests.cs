@@ -27,10 +27,23 @@ public sealed class ParameterTests
                      ("/probes/search", "/controls/search", "Customer"),           // [AsParameters]
                      ("/probes/search", "/controls/search", "Limit"),              // [AsParameters], optional
                      ("/probes/header", "/controls/header", "X-Probe"),            // header
+                     ("/probes/spans", "/controls/spans", "span"),                 // minimal API, query, a wrapped type ASP.NET does not describe
+                     // ASP.NET's list of types a parameter is described as (EndpointModelMetadata.GetDisplayType),
+                     // beside Guid, int and DateTimeOffset above: one control each.
+                     ("/probes/kinds", "/controls/kinds", "flag"),
+                     ("/probes/kinds", "/controls/kinds", "ratio"),
+                     ("/probes/kinds", "/controls/kinds", "weekday"),
+                     ("/probes/kinds", "/controls/kinds", "timestamp"),
+                     ("/probes/kinds", "/controls/kinds", "date"),
+                     ("/probes/kinds", "/controls/kinds", "time"),
+                     ("/probes/kinds", "/controls/kinds", "duration"),
+                     ("/probes/kinds", "/controls/kinds", "amount"),
+                     ("/probes/kinds", "/controls/kinds", "uri"),
                      ("/mvc/probes/{id}", "/mvc/controls/{id}", "id"),             // MVC, route
                      ("/mvc/probes/{id}", "/mvc/controls/{id}", "limit"),          // MVC, optional query
                      ("/mvc/probes/search", "/mvc/controls/search", "Customer"),   // MVC, [FromQuery] object, optional
                      ("/mvc/probes/search", "/mvc/controls/search", "Limit"),      // MVC, [FromQuery] object
+                     ("/mvc/probes/spans", "/mvc/controls/spans", "span"),         // MVC, query, a wrapped type ASP.NET does not describe
                  })
             data.Add(probe, control, "get", name, version);
 
