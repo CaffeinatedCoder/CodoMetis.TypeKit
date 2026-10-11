@@ -19,4 +19,20 @@ CMTK0009 | Usage | Warning | A call that returns a default instance when it find
 
 ## Release 1.5.0
 
-; No new rules: 1.5.0 changes no analyzer.
+; No new rules: 1.5.0 changes no analyzer. Release tracking still wants a table after the
+; header, or a release that is not the last in this file is RS2007.
+
+### New Rules
+
+Rule ID | Category | Severity | Notes
+--------|----------|----------|-------------------------------------------------------------
+
+## Release 1.5.1
+
+; No new rules: 1.5.1 changes no analyzer. Release tracking still wants a table after the
+; header, or a release that is not the last in this file is RS2007.
+
+### New Rules
+
+Rule ID | Category | Severity | Notes
+--------|----------|----------|-------------------------------------------------------------

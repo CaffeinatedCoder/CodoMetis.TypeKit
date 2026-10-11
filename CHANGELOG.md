@@ -10,6 +10,18 @@ A version's heading reads `## <version> — Unreleased` until the release is pre
 the release date. The release workflow refuses a tag whose section still says `Unreleased`, and the
 section is the GitHub release's notes.
 
+## 1.5.1 — 2026-10-11
+
+### Fixed
+
+- **`CodoMetis.TypeKit.AspNetCore`**: a value object bound as a route, query or header parameter is
+  described as ASP.NET describes a parameter of the wrapped type. ASP.NET uses a type's own schema there
+  only for a primitive, an enum, `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, `TimeSpan`,
+  `decimal`, `Guid` and `Uri`, and `string` for any other parsable type. `AddTypeKit()` used the wrapped
+  type's JSON schema regardless, so a value object over a type with a JSON converter of its own, such as
+  a CodoMetis.ValueRanges `DateRange`, was the empty schema `{}` as a parameter, where a `DateRange`
+  parameter is `string`. Request and response bodies are unchanged.
+
 ## 1.5.0 — 2026-10-11
 
 ### Added
