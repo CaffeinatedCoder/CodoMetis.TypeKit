@@ -8,8 +8,8 @@
     <DefineConstants Condition="'$(RangeSet)' == 'true'">$(DefineConstants);RANGESET</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CodoMetis.ValueRanges" Version="8.0.0" />
-    <PackageReference Include="CodoMetis.ValueRanges.EFCore.PostgreSQL" Version="8.0.0" />
+    <PackageReference Include="CodoMetis.ValueRanges" Version="9.0.0" />
+    <PackageReference Include="CodoMetis.ValueRanges.EFCore.PostgreSQL" Version="9.0.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0" />
