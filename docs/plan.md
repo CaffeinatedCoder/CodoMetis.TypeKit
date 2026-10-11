@@ -2,7 +2,7 @@
 
 Status: **1.0.0 released 2026-09-28** (nuget.org, GitHub release `v1.0.0`). Phases 0 to 11 are done;
 what is left for 1.x is listed at the end of phase 11, and package validation holds every pack to the
-1.0.0 surface. Phase 12 scopes 1.5.0. The decisions are in §8, Native AOT in §11. The fabric spike
+1.0.0 surface. Phase 12 scopes 1.5.0, which is in progress (version 1.5.0). The decisions are in §8, Native AOT in §11. The fabric spike
 ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation comparison
 ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)), the EF mapping spike
 ([spikes/EfMapping](../spikes/EfMapping/README.md)) and the OpenAPI spike
@@ -465,7 +465,14 @@ Each phase ends green, and its guards have been proven by seeding the defect
       service provider), an operation transformer adding a problem response per mapped status, and a
       startup filter that refuses a host with an endpoint whose fault type has no mapping. Returning
       the `Result` itself from a handler is not offered: it documents a `Result`, and a Native AOT host
-      would need it in its JSON context.
+      would need it in its JSON context. **✅ Implemented 2026-10-11** (decision 38): `FaultResponseTests`
+      (27, against ASP.NET's own `ProducesProblem` as the control, in OpenAPI 3.1 and 3.0, minimal APIs
+      and MVC), the README's sample and its problem JSON read from the README, and the smoke test's
+      Native AOT consumer. Fifteen seeds each fail their guard. The weaving review found one guard
+      vacuous: every host also mapped ProducesProblem controls, so a problem component the package
+      never added went unnoticed; a host without them now holds it. Without `AddProblemDetails()` only
+      the `traceId` assertion notices under JIT, so the AOT consumer is its real guard. A handler typed
+      `IResult` loses the endpoint's metadata, as ASP.NET's typed results do; the README says so.
     - **A value object's fault as a validation error.** A body or parameter that `Create` refuses is a
       `400` whose problem details name the member and the fault, as ASP.NET Core 10's validation
       reports a data annotation, instead of a bare `400` from a `JsonException`. No library does this.
@@ -1029,6 +1036,19 @@ libraries.
     deliberate run-time refusal says what to do instead and ends with a link to its subsection of the
     base README's "Why does this throw?", and every generator build error with one to the Build errors
     table. The links are held to the README's headings by tests. Nothing of the input is added.
+
+38. **A `Result` becomes a response through an explicit `ToHttpResult()`, its faults mapped in the host**
+    (2026-10-11, phase 12, spikes/ResultHttp). The return type is ASP.NET's
+    `Results<Ok<T>, FaultProblem<TFault>>`, so ASP.NET describes the success and the Request Delegate
+    Generator needs nothing of ours; a handler returning the `Result` itself would document a `Result`.
+    The fault type is an **enum**: its members are what a mapping can be checked against when it is
+    registered, and what the document lists. A fault of another shape is `MapError`ed to one at the
+    endpoint. The extensions live beside the framework's (`ToHttpResult` in `Microsoft.AspNetCore.Http`,
+    `AddFaultResponses` in `Microsoft.Extensions.DependencyInjection`, decision 22). A missing mapping
+    stops the host from starting (a startup filter, which comes with the first `AddFaultResponses`), a
+    value no member names is refused rather than answered, and the README's mapping ends in a throwing
+    discard arm: the registration calls it for every member, so a missed member still fails at startup,
+    and without the arm C# reports CS8524.
 
 Still open:
 

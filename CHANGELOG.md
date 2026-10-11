@@ -10,7 +10,20 @@ A version's heading reads `## <version> — Unreleased` until the release is pre
 the release date. The release workflow refuses a tag whose section still says `Unreleased`, and the
 section is the GitHub release's notes.
 
-## 1.0.1 — Unreleased
+## 1.5.0 — Unreleased
+
+### Added
+
+- **`CodoMetis.TypeKit.AspNetCore`**: a `Result` as an HTTP response. `result.ToHttpResult()` answers a
+  success with `200 OK` and its value (`204 No Content` for a `Result<TError>`) and a fault with RFC 9457
+  problem details, whose status the host maps per fault type with
+  `services.AddFaultResponses<TFault>(fault => …)` and whose `fault` member names the fault. The fault
+  type is an enum the domain declares; only the host references ASP.NET. The return type is ASP.NET's
+  own `Results<Ok<T>, FaultProblem<TFault>>`, in minimal APIs and MVC, and `AddTypeKit()` lists a
+  problem response for every mapped status in the OpenAPI document. A host with an endpoint whose
+  fault type is not mapped does not start; a mapping that gives a member no error status, or throws
+  for one, fails where it is registered. `AddFaultResponses` calls `AddProblemDetails()`, which a
+  Native AOT host needs to write a problem.
 
 ## 1.0.0 — 2026-09-28
 

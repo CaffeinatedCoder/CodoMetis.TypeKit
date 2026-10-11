@@ -32,7 +32,7 @@ your own, and it can be declared inside another type.
 | [CodoMetis.TypeKit.Analyzers](src/CodoMetis.TypeKit.Analyzers/README.md) | CMTK0001–CMTK0009: no `default` of a value object, an `Option` or a `Result`, written in source or handed out by `FirstOrDefault` and its kind; no value object nobody generates; no ignored result; no validation bypass; no comparing two value objects' values. In Razor components too. Arrives with the base package | no |
 | [CodoMetis.TypeKit.Generators](src/CodoMetis.TypeKit.Generators/README.md) | The compile-time generation, in the project that declares value objects | yes |
 | [CodoMetis.TypeKit.EntityFrameworkCore](src/CodoMetis.TypeKit.EntityFrameworkCore/README.md) | Value objects as columns with nothing registered per type, and `.Value` in LINQ | no |
-| [CodoMetis.TypeKit.AspNetCore](src/CodoMetis.TypeKit.AspNetCore/README.md) | Value objects in the OpenAPI document, with the schema of the type they wrap | no |
+| [CodoMetis.TypeKit.AspNetCore](src/CodoMetis.TypeKit.AspNetCore/README.md) | Value objects in the OpenAPI document, with the schema of the type they wrap; a `Result` as the response, a fault as problem details | no |
 
 The base package is the cheapest one: someone who only wants `Option` and `Result` never receives a
 code generator by accident. Taking Metalama on is a named choice, made once, in the domain project,

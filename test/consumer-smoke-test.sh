@@ -650,11 +650,20 @@ builder.WebHost.UseUrls("http://127.0.0.1:0");
 builder.Logging.ClearProviders();
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.TypeInfoResolverChain.Insert(0, HostJson.Default));
 builder.Services.AddOpenApi(options => options.AddTypeKit());
+// The domain's fault, answered as problem details: the problem-details context AddFaultResponses
+// brings is the only way a source-generated host can write one.
+builder.Services.AddFaultResponses<CodeFault>(fault => fault switch
+{
+    CodeFault.Blank        => StatusCodes.Status400BadRequest,
+    CodeFault.NotUpperCase => StatusCodes.Status422UnprocessableEntity,
+    _ => throw new ArgumentOutOfRangeException(nameof(fault)),
+});
 
 await using var app = builder.Build();
 app.MapOpenApi();
 app.MapGet("/orders/{id}", (OrderId id, Quantity? limit) => new OrderView(id, [Quantity.From(1)], Amount.From(1.5m)));
 app.MapPost("/orders", (OrderView body) => body.Amount);
+app.MapGet("/codes/{text}", (string text) => Code.Create(text).ToHttpResult());
 await app.StartAsync();
 
 using var http = new HttpClient { BaseAddress = new Uri(app.Urls.First()) };
@@ -671,6 +680,14 @@ Console.WriteLine($"openapi-parameter={document?["paths"]?["/orders/{id}"]?["get
 Console.WriteLine($"openapi-items={schemas?["OrderView"]?["properties"]?["quantities"]?["items"]?.ToJsonString() ?? "missing"}");
 await Check("bound", async () => ((int)(await http.GetAsync($"/orders/{Guid.NewGuid()}?limit=3")).StatusCode).ToString());
 await Check("malformed", async () => ((int)(await http.GetAsync("/orders/nope")).StatusCode).ToString());
+await Check("result-success", async () => await http.GetStringAsync("/codes/ABC"));
+await Check("result-fault", async () =>
+{
+    var response = await http.GetAsync("/codes/abc");
+    var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync());
+    return $"{(int)response.StatusCode} {response.Content.Headers.ContentType?.MediaType} {problem?["fault"]}";
+});
+Console.WriteLine($"result-responses={string.Join(",", document?["paths"]?["/codes/{text}"]?["get"]?["responses"]?.AsObject().Select(r => r.Key) ?? [])}");
 await app.StopAsync();
 
 public sealed record Line(OrderId Id, Code Code, Name Name, Quantity Quantity, Amount Amount, Link Link, Weekday Weekday,
@@ -690,6 +707,8 @@ internal partial class ShopJson : JsonSerializerContext;
 // The web host's: what the endpoints exchange, and what their value objects wrap, for the schemas.
 [JsonSerializable(typeof(OrderView))]
 [JsonSerializable(typeof(Amount))]
+[JsonSerializable(typeof(Code))]
+[JsonSerializable(typeof(string))]
 [JsonSerializable(typeof(Guid))]
 [JsonSerializable(typeof(int))]
 [JsonSerializable(typeof(decimal))]
@@ -803,6 +822,9 @@ assert_contains 'openapi-component={"type":"string","format":"uuid"}' "$work/aot
 assert_contains 'openapi-parameter={"type":"string","format":"uuid"}' "$work/aot.out" "the route parameter is a uuid"
 assert_contains 'openapi-items={"$ref":"#/components/schemas/Quantity"}' "$work/aot.out" "a list of value objects keeps its items"
 assert_contains "bound=200"                        "$work/aot.out" "a route parameter binds through the generated TryParse"
+assert_contains 'result-success="ABC"'             "$work/aot.out" "ToHttpResult answers a success with its value"
+assert_contains "result-fault=422 application/problem+json NotUpperCase" "$work/aot.out" "and a fault as problem details with its mapped status"
+assert_contains "result-responses=200,400,422"     "$work/aot.out" "the document lists the value and each mapped status"
 assert_contains "malformed=400"                    "$work/aot.out" "a malformed route parameter is a 400"
 assert_contains "ef-insert=1"                      "$work/aot.out" "EF Core writes value objects through the compiled model"
 assert_contains "ef-value=2"                       "$work/aot.out" ".Value translates in a precompiled query"

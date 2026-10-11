@@ -12,9 +12,11 @@ using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using CodoMetis.TypeKit;
 using CodoMetis.TypeKit.ValueObjects;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -114,6 +116,43 @@ public static class RequiredProperties
         builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.RespectRequiredConstructorParameters = true);
         builder.Services.AddControllers().AddJsonOptions(o => o.JsonSerializerOptions.RespectRequiredConstructorParameters = true);
         // end sample
+    }
+}
+
+// sample: CodoMetis.TypeKit.AspNetCore/result-response
+public enum OrderFault { NotFound, AlreadyShipped }
+
+// end sample
+public interface IOrderService
+{
+    Result<OrderDto, OrderFault> Find(OrderId id);
+
+    Result<OrderFault> Cancel(OrderId id);
+}
+
+public static class ResultResponses
+{
+    public static void Use(WebApplicationBuilder builder)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/result-response
+        builder.Services.AddFaultResponses<OrderFault>(fault => fault switch
+        {
+            OrderFault.NotFound       => StatusCodes.Status404NotFound,
+            OrderFault.AlreadyShipped => StatusCodes.Status409Conflict,
+            _ => throw new ArgumentOutOfRangeException(nameof(fault)),
+        });
+
+        // end sample
+    }
+
+    public static void Map(WebApplication app, IOrderService orders)
+    {
+#pragma warning disable ASP0020 // the value objects are declared in this project, as the README's section on ASP0020 describes
+        // sample: CodoMetis.TypeKit.AspNetCore/result-response
+        app.MapGet("/orders/{id}", (OrderId id) => orders.Find(id).ToHttpResult());      // Result<OrderDto, OrderFault>
+        app.MapDelete("/orders/{id}", (OrderId id) => orders.Cancel(id).ToHttpResult()); // Result<OrderFault>
+        // end sample
+#pragma warning restore ASP0020
     }
 }
 
@@ -217,8 +256,46 @@ public sealed partial class AspNetCoreTests
         return JsonNode.Parse($"{{{json.Groups["body"].Value}}}")!.AsObject();
     }
 
+    /// <summary>
+    /// The problem the README shows under "A Result as a response", read from the README, against what the
+    /// sample's host answers for a fault: the same members with the same values, the trace id aside.
+    /// </summary>
+    [Fact]
+    public async Task A_fault_is_answered_with_the_problem_the_README_shows()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        ResultResponses.Use(builder);
+
+        await using var app = builder.Build();
+        ResultResponses.Map(app, new ShippedOrders());
+        await app.StartAsync(TestContext.Current.CancellationToken);
+
+        var client = app.GetTestClient();
+        using var response = await client.GetAsync($"/orders/{Guid.Empty}", TestContext.Current.CancellationToken);
+        var answered = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!.AsObject();
+
+        var section = SampleOutputs.Readme(Readme).Split("## A Result as a response")[1];
+        var shown = JsonNode.Parse(JsonBlock().Match(section).Groups["body"].Value)!.AsObject();
+
+        ((int)response.StatusCode).ShouldBe(shown["status"]!.GetValue<int>());
+        answered.Select(member => member.Key).Order().ShouldBe(shown.Select(member => member.Key).Order());
+        foreach (var (name, value) in shown.Where(member => member.Key != "traceId"))
+            JsonNode.DeepEquals(answered[name], value).ShouldBeTrue($"{name}: {answered[name]?.ToJsonString()} where the README shows {value?.ToJsonString()}");
+
+        (await client.DeleteAsync($"/orders/{Guid.Empty}", TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    }
+
     [GeneratedRegex(@"^```json\n(?<body>.*?)\n```", RegexOptions.Multiline | RegexOptions.Singleline)]
     private static partial Regex JsonBlock();
+
+    private sealed class ShippedOrders : IOrderService
+    {
+        public Result<OrderDto, OrderFault> Find(OrderId id) => Result.Error(OrderFault.AlreadyShipped);
+
+        public Result<OrderFault> Cancel(OrderId id) => Result.Success();
+    }
 
     private sealed class NoOrders : IOrders
     {
