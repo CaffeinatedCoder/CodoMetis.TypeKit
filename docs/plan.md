@@ -2,7 +2,7 @@
 
 Status: **1.0.0 released 2026-09-28** (nuget.org, GitHub release `v1.0.0`). Phases 0 to 11 are done;
 what is left for 1.x is listed at the end of phase 11, and package validation holds every pack to the
-1.0.0 surface. Phase 12 is 1.5.0, prepared for release on 2026-10-11. The decisions are in §8, Native AOT in §11. The fabric spike
+1.5.0 surface. Phase 12 is 1.5.0, released 2026-10-11; 1.5.1 followed the same day with a fix to parameter schemas. The decisions are in §8, Native AOT in §11. The fabric spike
 ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation comparison
 ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)), the EF mapping spike
 ([spikes/EfMapping](../spikes/EfMapping/README.md)) and the OpenAPI spike
