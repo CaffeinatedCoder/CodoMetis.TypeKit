@@ -517,6 +517,17 @@ Each phase ends green, and its guards have been proven by seeding the defect
       parity, and configuration binding, which the configuration binder's source generator does not do
       for `TypeConverter`/`IParsable` types (dotnet/runtime#83599). The CMTK0003/CMTK0008 gaps above
       stay Warnings (decision 34).
+    - **Ranges are not a TypeKit family**: CodoMetis.ValueRanges models them. A value object over one
+      (`IValidatedValue<ContractPeriod, DateRange, PeriodFault>`) works with both packages as they
+      ship, measured 2026-10-11 in [spikes/RangeValueObjects](../spikes/RangeValueObjects/README.md):
+      - it weaves, so phase 11's "abstract wrapped type" gap does not cover a type that parses to itself;
+      - `UseTypeKit()` composes onto the `daterange` mapping in either order;
+      - `.Value.Contains(day)` becomes `@>`;
+      - the generated JSON and OpenAPI mirror `DateRange` exactly.
+
+      No bridge package is needed. Open: a README section for the pattern, which states the host's
+      `AddRangeConverters()`; and CMTK1005 refusing `RangeSet<,>`, whose equality is a value's, though
+      `IEquatable` alone is no criterion (`ImmutableArray<T>`).
     - **2.0.0 is not scheduled.** It waits for breaking reasons: Metalama 2027.0 stable (decision 4),
       Warnings promoted to Errors (decision 34), and C# 15 unions (.NET 11, GA 2026-11-10), whose
       compiler-made types have a public `object? Value` and are serialized by System.Text.Json, so
