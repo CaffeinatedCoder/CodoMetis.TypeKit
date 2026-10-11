@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- -p:ClassifiedType=true compiles finding 6; DefineConstants on the command line would reach the generators too. -->
+    <DefineConstants Condition="'$(ClassifiedType)' == 'true'">$(DefineConstants);CLASSIFIED_TYPE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Telemetry" Version="10.10.0" />
+    <PackageReference Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.10.0" />
+    <PackageReference Include="Microsoft.Extensions.Compliance.Redaction" Version="10.10.0" />
+    <PackageReference Include="Serilog" Version="4.4.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Real value objects, woven by the real generators. -->
+    <ProjectReference Include="../../src/CodoMetis.TypeKit.Generators/CodoMetis.TypeKit.Generators.csproj" />
+  </ItemGroup>
+</Project>

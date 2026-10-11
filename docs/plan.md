@@ -495,6 +495,12 @@ Each phase ends green, and its guards have been proven by seeding the defect
     - **Sensitive value objects**: a marker that keeps a value out of `ToString()`, the debugger and
       logs (`Microsoft.Extensions.Compliance` classification, structured-logging destructuring). It
       extends decision 27 from refusals to every place a value is printed. No library does this.
+      Measured 2026-10-11 in [spikes/SensitiveValues](../spikes/SensitiveValues/README.md): the
+      `ToString()` seam the generators keep already masks a value in every formatting path and every
+      Microsoft.Extensions.Logging path, `[LogProperties]` included, so a marker would generate the one
+      line a user writes. A classification on the type makes the logging generator refuse the method
+      (LOGGEN035). The one leak is Serilog's `{@x}`, which destructures the public `Value` of every
+      value object, masked or not; a destructuring policy closes it.
     - **`Recover` on `Result`**: the error branch back to a success, which today needs `Match`.
       **✅ Implemented 2026-10-11** on both shapes, with `RecoverAsync` (an asynchronous selector, and
       continuations on a pending result). It returns a `Result`, so a selector recovers from some
