@@ -2,11 +2,12 @@
 
 Status: **1.0.0 released 2026-09-28** (nuget.org, GitHub release `v1.0.0`). Phases 0 to 11 are done;
 what is left for 1.x is listed at the end of phase 11, and package validation holds every pack to the
-1.0.0 surface. The decisions are in §8, Native AOT in §11. The fabric spike
+1.0.0 surface. Phase 12 scopes 1.5.0. The decisions are in §8, Native AOT in §11. The fabric spike
 ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation comparison
 ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)), the EF mapping spike
 ([spikes/EfMapping](../spikes/EfMapping/README.md)) and the OpenAPI spike
-([spikes/OpenApiSchemas](../spikes/OpenApiSchemas/README.md)) are done.
+([spikes/OpenApiSchemas](../spikes/OpenApiSchemas/README.md)) are done, and so is phase 12's
+`Result`-to-HTTP spike ([spikes/ResultHttp](../spikes/ResultHttp/README.md)).
 
 ## 1. Packages
 
@@ -447,6 +448,45 @@ Each phase ends green, and its guards have been proven by seeding the defect
       the value; `class Email : IValue<string>` reports one of its three errors at a time; `IValue<object>`
       writes `{}`. JSON on `Option<T>?` throws the wrong exception; a default marker converts.
       `UseTypeKit()` on a non-relational provider could refuse in `Validate`.
+12. **1.5.0: the boundaries. Scoped 2026-10-11.** Every item is additive, so it is a minor version. The
+    scope follows a survey of the competing libraries' trackers on 2026-10-11 (demand is small
+    everywhere, at most 22 reactions on one request), keeping what no library ships or what only
+    preview packages serve, and what follows from what TypeKit already holds to.
+    - **A `Result` as an HTTP response**, in `CodoMetis.TypeKit.AspNetCore`: a success as its value, a
+      fault as RFC 9457 problem details, with its status mapped from the fault in the host, so the
+      domain never references ASP.NET; and the endpoint's responses in the OpenAPI document. Mapping a
+      result to a response is not serializing it, so §9's refusal stands. The most-requested open item
+      in the field (FluentResults #149); the packages that answer it are previews or unmaintained.
+      Measured 2026-10-11 in [spikes/ResultHttp](../spikes/ResultHttp/README.md), under JIT and Native AOT,
+      minimal APIs and MVC: an explicit `ToHttpResult()` returning ASP.NET's own
+      `Results<Ok<T>, FaultProblem<TError>>`, a mapping per fault type registered in the host
+      (`AddFaultResponses`, which calls `AddProblemDetails()`, without which Native AOT writes no
+      problem), endpoint metadata recording only the fault type (MVC hands `PopulateMetadata` an empty
+      service provider), an operation transformer adding a problem response per mapped status, and a
+      startup filter that refuses a host with an endpoint whose fault type has no mapping. Returning
+      the `Result` itself from a handler is not offered: it documents a `Result`, and a Native AOT host
+      would need it in its JSON context.
+    - **A value object's fault as a validation error.** A body or parameter that `Create` refuses is a
+      `400` whose problem details name the member and the fault, as ASP.NET Core 10's validation
+      reports a data annotation, instead of a bare `400` from a `JsonException`. No library does this.
+    - **`CodoMetis.TypeKit.Testing`**: assertions for `Option`/`Result` (`ShouldBeSome()`,
+      `ShouldBeError(fault)`), which a type without `.Value` needs more than any other, and generators
+      of valid and refused values that go through `Create`.
+    - **Sensitive value objects**: a marker that keeps a value out of `ToString()`, the debugger and
+      logs (`Microsoft.Extensions.Compliance` classification, structured-logging destructuring). It
+      extends decision 27 from refusals to every place a value is printed. No library does this.
+    - **`Recover` on `Result`**: the error branch back to a success, which today needs `Match`.
+    - Candidates once those ship, each with its own measurement: a Dapper satellite (nothing registered
+      per type, through `GeneratedValueObjectAttribute.Accept`), Newtonsoft.Json under decision 26's
+      parity, and configuration binding, which the configuration binder's source generator does not do
+      for `TypeConverter`/`IParsable` types (dotnet/runtime#83599). The CMTK0003/CMTK0008 gaps above
+      stay Warnings (decision 34).
+    - **2.0.0 is not scheduled.** It waits for breaking reasons: Metalama 2027.0 stable (decision 4),
+      Warnings promoted to Errors (decision 34), and C# 15 unions (.NET 11, GA 2026-11-10), whose
+      compiler-made types have a public `object? Value` and are serialized by System.Text.Json, so
+      `Option`/`Result` take part in their pattern matching only after a spike shows neither returns.
+      A closed-set (smart enum) family, declared by interface and joining `.Generators` (§1), is its
+      candidate headline.
 
 ## 3. Discovery is by interface
 
