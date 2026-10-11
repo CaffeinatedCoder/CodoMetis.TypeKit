@@ -1,7 +1,7 @@
 # Publish to NuGet when a v* tag is pushed.
 #
 # Directory.Build.props is the single source of truth for the version. The tag is checked against
-# it rather than driving it, so a mistyped tag fails before anything is pushed. All five packages
+# it rather than driving it, so a mistyped tag fails before anything is pushed. All the packages
 # share that version and release together. They are discovered from the pack output, so a future
 # package is picked up without editing this file.
 #

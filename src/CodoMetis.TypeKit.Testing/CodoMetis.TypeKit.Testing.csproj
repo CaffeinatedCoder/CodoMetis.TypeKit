@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- For test projects: no test framework of its own, so it works under xUnit, NUnit and MSTest alike. -->
+    <PropertyGroup>
+        <Description>Test assertions for CodoMetis.TypeKit's Option and Result: hand a test the value or the error it expects, or fail with what the outcome was instead. No test framework dependency.</Description>
+        <PackageTags>testing;assertions;option;result;xunit;nunit;mstest</PackageTags>
+    </PropertyGroup>
+
+    <!-- Native AOT and trimming analyzers on, as in every runtime package. -->
+    <PropertyGroup>
+        <IsAotCompatible>true</IsAotCompatible>
+    </PropertyGroup>
+
+    <!--
+      New in 1.5.0, so there is no 1.0.0 of this package to validate against. The override applies only
+      while the baseline is 1.0.0: once the baseline moves to a release that has this package
+      (CONTRIBUTING.md, "Releasing"), it stops applying and the package is validated like the others,
+      with nothing to remember.
+    -->
+    <PropertyGroup Condition="'$(PackageValidationBaselineVersion)' == '1.0.0'">
+        <PackageValidationBaselineVersion />
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\CodoMetis.TypeKit\CodoMetis.TypeKit.csproj" />
+    </ItemGroup>
+
+</Project>

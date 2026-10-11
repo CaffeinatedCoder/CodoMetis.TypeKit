@@ -17,7 +17,8 @@ what is left for 1.x is listed at the end of phase 11, and package validation ho
 | `CodoMetis.TypeKit.Analyzers` | — | no | Roslyn analyzers and code fixes (§10). Nobody references it directly: it reaches every consumer through the base package |
 | `CodoMetis.TypeKit.Generators` | TypeKit, Metalama.Framework 2026.1.x (flows) | yes | Internal aspects, internal `TransitiveProjectFabric`, `AspectOrder`. Future generated type families join this package too: one fabric, one aspect order |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | TypeKit, EF Core Relational | no | Generic converter, convention, `.Value` / `GetValue` / `ValueOrNull` translators, `UseTypeKit()` |
-| `CodoMetis.TypeKit.AspNetCore` | TypeKit, Microsoft.AspNetCore.OpenApi | no | `AddTypeKit()`: one OpenAPI schema transformer (§7) |
+| `CodoMetis.TypeKit.AspNetCore` | TypeKit, Microsoft.AspNetCore.OpenApi | no | `AddTypeKit()`: one OpenAPI schema transformer (§7); `ToHttpResult()`, `AddFaultResponses` (decision 38) |
+| `CodoMetis.TypeKit.Testing` | TypeKit | no | `ShouldBeSome()`/`ShouldBeNone()`, `ShouldBeSuccess()`/`ShouldBeError()`: test assertions that hand back the content, with no test framework dependency (decision 40) |
 
 **The bare name is the cheapest package.** Someone who only wants `Option`/`Result` references
 `CodoMetis.TypeKit` and never receives Metalama by accident. Taking Metalama on is always an
@@ -33,7 +34,8 @@ objects from a referenced domain assembly never needs Metalama itself.
 | `CodoMetis.TypeKit.ValueObjects` | Every contract a user declares or constrains on: `IValue`, `IValidatedValue`, `IValueObject`, `IPlainValueObject`, `IValueObjectMaterializer`, and `StoredJsonConverterFactory` |
 | `CodoMetis.TypeKit.CompilerServices` | What only generated code and the satellites touch, all `[EditorBrowsable(Never)]`: `GeneratedValueObjectAttribute`, `IValueObjectVisitor`, `TranslatedAsWrappedValueAttribute`, `GeneratedFactories`, `GeneratedParsing`, `GeneratedFormatting`, `GeneratedJson`, `IStoredJsonConverterSource`. The name follows `System.Runtime.CompilerServices` |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | `ValueObjectConverter<,>`; the plugins, internal |
-| `CodoMetis.TypeKit.AspNetCore` | the schema transformer, internal |
+| `CodoMetis.TypeKit.AspNetCore` | the schema transformer, internal; `FaultProblem<TFault>` |
+| `CodoMetis.TypeKit.Testing` | the assertions and `TypeKitAssertionException` |
 | `Microsoft.EntityFrameworkCore` | `UseTypeKit()`, beside the providers' `UseNpgsql` (decision 22) |
 | `Microsoft.Extensions.DependencyInjection` | `AddEntityFrameworkTypeKit()` and `OpenApiOptions.AddTypeKit()`, beside `AddEntityFrameworkNpgsql` and `AddOpenApi` (decision 22) |
 
@@ -482,10 +484,14 @@ Each phase ends green, and its guards have been proven by seeding the defect
       validation problem. What remains is a minimal-API body, reachable only with `ThrowOnBadRequest`
       turned on for the whole host and an exception handler, and only once the converter's refusal
       carries its fault as data. The README's "Binding" said `AddProblemDetails()` gives a refused body
-      a response body; it needs `UseStatusCodePages()` too, which it now says.
+      a response body; it needs `UseStatusCodePages()` too, which it now says. **Dropped 2026-10-11**
+      (decision 39).
     - **`CodoMetis.TypeKit.Testing`**: assertions for `Option`/`Result` (`ShouldBeSome()`,
       `ShouldBeError(fault)`), which a type without `.Value` needs more than any other, and generators
-      of valid and refused values that go through `Create`.
+      of valid and refused values that go through `Create`. **✅ Assertions implemented 2026-10-11**
+      (decision 40): `AssertionTests` (23), the README's block run as a test and its quoted failure read
+      from the README, the smoke test's core consumer installing the package. Generators are not built
+      (decision 40).
     - **Sensitive value objects**: a marker that keeps a value out of `ToString()`, the debugger and
       logs (`Microsoft.Extensions.Compliance` classification, structured-logging destructuring). It
       extends decision 27 from refusals to every place a value is printed. No library does this.
@@ -1056,6 +1062,25 @@ libraries.
     value no member names is refused rather than answered, and the README's mapping ends in a throwing
     discard arm: the registration calls it for every member, so a missed member still fails at startup,
     and without the arm C# reports CS8524.
+
+39. **A value object's fault does not become a validation error** (2026-10-11, phase 12,
+    spikes/ValidationFaults). ASP.NET Core 10's validation never sees a value that failed to bind, a
+    refused route or query value has lost its fault, and MVC already reports a refused body with the
+    converter's message. What remained, a minimal-API body, needs `ThrowOnBadRequest` for the whole
+    host, an exception handler in its pipeline, and the fault carried as data by a new public type in
+    the base package: too much host-wide change for one of four positions. Reopen it if ASP.NET hands
+    a binding failure to a hook without `ThrowOnBadRequest`.
+40. **`CodoMetis.TypeKit.Testing` holds assertions that hand back the content** (2026-10-11, phase 12).
+    `ShouldBeSome()`, `ShouldBeSuccess()` and `ShouldBeError()` return the value or the error, so the
+    test compares it with the assertions it already uses, and the package depends on no test framework:
+    a failure is a `TypeKitAssertionException`, which every runner reports. A failure names the error
+    it found and never prints a value, as `Option` and `Result` do not; an uninitialized result fails
+    every assertion as uninitialized, since `default(TError)` would otherwise read as an expected
+    first-member fault. **No generators**: one that goes through `Create` is a single filter over the
+    test's own property-based library (`Gen.String.Where(s => Email.TryFrom(s).IsSome())` in CsCheck),
+    and shipping it would tie the package to one such library. The package is new in 1.5.0, so its
+    project clears the package-validation baseline while that is 1.0.0, a condition that lapses on its
+    own when the baseline moves.
 
 Still open:
 

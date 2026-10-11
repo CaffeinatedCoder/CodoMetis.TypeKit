@@ -28,10 +28,11 @@ This file is the canonical agent guide. There is no CLAUDE.md, on purpose.
 | `CodoMetis.TypeKit.Analyzers` | Analyzers and code fixes; reaches consumers through `CodoMetis.TypeKit` |
 | `CodoMetis.TypeKit.Generators` | Metalama aspects and the transitive fabric |
 | `CodoMetis.TypeKit.EntityFrameworkCore` | Converter, convention, `.Value` translation |
-| `CodoMetis.TypeKit.AspNetCore` | OpenAPI transformers |
+| `CodoMetis.TypeKit.AspNetCore` | OpenAPI transformers; a `Result` as an HTTP response |
+| `CodoMetis.TypeKit.Testing` | Test assertions for `Option` and `Result` |
 
 ## Structure
-- `src/` holds the five shipping projects, one per package, and `test/` the test projects.
+- `src/` holds the shipping projects, one per package, and `test/` the test projects.
 - `test/CodoMetis.TypeKit.Conventions.Tests` holds repository rules about packaging and
   boundaries, read from restore output (e.g. only `.Generators` may resolve Metalama). Projects
   are discovered by globbing `src/`, so a new package needs no edit there.

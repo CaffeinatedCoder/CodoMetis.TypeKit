@@ -2,7 +2,7 @@
 
 All notable changes to CodoMetis.TypeKit and its satellite packages.
 
-The five packages share one version number (the `Version` property in `Directory.Build.props`) and
+The packages share one version number (the `Version` property in `Directory.Build.props`) and
 are released together, so a version appears here even when a given package saw no change in it.
 Versions follow [Semantic Versioning](https://semver.org/). Entries are newest first.
 
@@ -24,6 +24,17 @@ section is the GitHub release's notes.
   fault type is not mapped does not start; a mapping that gives a member no error status, or throws
   for one, fails where it is registered. `AddFaultResponses` calls `AddProblemDetails()`, which a
   Native AOT host needs to write a problem.
+- **`CodoMetis.TypeKit.Testing`**, a new package for test projects: `ShouldBeSome()`, `ShouldBeNone()`,
+  `ShouldBeSuccess()` and `ShouldBeError()` (with or without the expected error) on `Option`, both
+  `Result` shapes. They hand back the value or the error for the test's own assertions, and otherwise
+  throw a `TypeKitAssertionException` that names the error found and never prints a value. An
+  uninitialized result fails every assertion as such. No test framework dependency.
+
+### Fixed
+
+- **`CodoMetis.TypeKit.AspNetCore`** README: a minimal API answers a body a value object refuses with
+  an empty `400`, with `AddProblemDetails()` too; it said that call gives the response a body, which
+  takes `UseStatusCodePages()` as well.
 
 ## 1.0.0 — 2026-09-28
 

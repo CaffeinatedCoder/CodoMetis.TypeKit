@@ -33,6 +33,7 @@ your own, and it can be declared inside another type.
 | [CodoMetis.TypeKit.Generators](src/CodoMetis.TypeKit.Generators/README.md) | The compile-time generation, in the project that declares value objects | yes |
 | [CodoMetis.TypeKit.EntityFrameworkCore](src/CodoMetis.TypeKit.EntityFrameworkCore/README.md) | Value objects as columns with nothing registered per type, and `.Value` in LINQ | no |
 | [CodoMetis.TypeKit.AspNetCore](src/CodoMetis.TypeKit.AspNetCore/README.md) | Value objects in the OpenAPI document, with the schema of the type they wrap; a `Result` as the response, a fault as problem details | no |
+| [CodoMetis.TypeKit.Testing](src/CodoMetis.TypeKit.Testing/README.md) | Test assertions for `Option` and `Result` that hand back the value or the error, and fail saying what the outcome was. No test framework dependency | no |
 
 The base package is the cheapest one: someone who only wants `Option` and `Result` never receives a
 code generator by accident. Taking Metalama on is a named choice, made once, in the domain project,
@@ -205,7 +206,7 @@ your projects. Thanks to the Metalama team.
 
 ## Status
 
-1.0.0 is the first release. The five packages share one version and follow Semantic Versioning:
+1.0.0 is the first release. The packages share one version and follow Semantic Versioning:
 the public API, the generated members of a value object, and the analyzer ids and severities are
 the contract. A new analyzer rule arrives as a warning or a suggestion in a minor version, and
 becomes an error only in a major one.

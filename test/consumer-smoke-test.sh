@@ -185,11 +185,12 @@ list_packages() {
 
 # ── core: the base package alone ─────────────────────────────────────────────────────────────────
 
-echo "==> core: only CodoMetis.TypeKit"
-new_project console core CodoMetis.TypeKit
+echo "==> core: only CodoMetis.TypeKit, and its test assertions"
+new_project console core CodoMetis.TypeKit CodoMetis.TypeKit.Testing
 
 cat > Program.cs <<'CSHARP'
 using CodoMetis.TypeKit;
+using CodoMetis.TypeKit.Testing;
 
 Option<int> some = Option.Some(3);
 Option<int> none = Option.None();
@@ -218,6 +219,11 @@ catch (InvalidOperationException)
 {
     Console.WriteLine("uninitialized=throws");
 }
+
+// The test assertions, from the package as a test project installs it.
+Console.WriteLine($"asserted={some.ShouldBeSome()}/{refused.ShouldBeError()}");
+try { ok.ShouldBeError("nope"); }
+catch (TypeKitAssertionException e) { Console.WriteLine($"assertion-failed={e.Message}"); }
 CSHARP
 
 run dotnet build
@@ -229,6 +235,7 @@ sed 's/^/      /' "$work/core.out"
 echo "==> core: asserting"
 assert_contains "> CodoMetis.TypeKit "           "$work/core.packages" "the base package resolved from the feed"
 assert_contains "> CodoMetis.TypeKit.Analyzers " "$work/core.packages" "the analyzer package arrived with it"
+assert_contains "> CodoMetis.TypeKit.Testing "   "$work/core.packages" "the test assertions resolved from the feed"
 assert_not_contains "Metalama"                   "$work/core.packages" "no Metalama in the graph of a base-only consumer"
 assert_versions "$work/core.packages"
 assert_contains "some=Some 3"          "$work/core.out" "Option.Some matches its value"
@@ -238,6 +245,8 @@ assert_contains "ok=Ok 5"              "$work/core.out" "a bare value converts t
 assert_contains "refused=Error nope"   "$work/core.out" "Result.Error converts to a failed Result"
 assert_contains "uninitialized=throws" "$work/core.out" "a default Result throws rather than picking a branch"
 assert_contains "cancelled=Ok/Error gone" "$work/core.out" "Result<TError> converts from the success marker and a bare error"
+assert_contains "asserted=3/nope"      "$work/core.out" "the assertions hand back the value and the error"
+assert_contains "assertion-failed=Expected an error, but the Result<Int32, String> is a success (its value is not printed)." "$work/core.out" "a failed assertion says what the outcome was"
 
 # The analyzers run in the consumer's compiler. Both rules at once: a default Option, and a value
 # object declared in a project that has no generator to implement it.
