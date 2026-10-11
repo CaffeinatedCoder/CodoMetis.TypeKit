@@ -528,6 +528,44 @@ Each phase ends green, and its guards have been proven by seeding the defect
       No bridge package is needed. Open: a README section for the pattern, which states the host's
       `AddRangeConverters()`; and CMTK1005 refusing `RangeSet<,>`, whose equality is a value's, though
       `IEquatable` alone is no criterion (`ImmutableArray<T>`).
+    - **`Patch<T>`, a field of a JSON Merge Patch (RFC 7396)**, proposed 2026-10-11. It has three states:
+      absent, null, or a value. System.Text.Json cannot tell an absent property from a null, so every
+      PATCH endpoint rebuilds this type by hand. It is a wire type on purpose, beside `Option`, which
+      still refuses JSON (decision 15): `Option` says whether a value exists, `Patch` whether a
+      request mentioned it. A spike must answer:
+      - **`default` is a state.** The serializer calls no converter for an absent property, so
+        `default(Patch<T>)` has to mean "absent". That makes this the one type of the package whose
+        `default` is meaningful. Is it exempt from CMTK0001 by its contract, and does that stay
+        clear of `[RequireCustomInitialization]`?
+      - **Native AOT.** A converter factory over an open `T` is `MakeGenericType`, which the refusing
+        converter avoided only because it never reads `T`. Find what works under a source-generated
+        context: an attribute per closed type, or a generated converter.
+      - **Value objects.** `Patch<Email>`: a JSON null and a value `Create` refuses each give the
+        response decision 39 measured.
+      - **The OpenAPI document.** The property is not required, and admits null exactly where `T`
+        does, in 3.1 and 3.0.
+      - **Applying it.** Without reflection over the target (§11): `patch.Name.IfPresent(v => order.Name = v)`,
+        not an `ApplyTo(entity)` that walks properties. Optionally an analyzer for a `Patch` that is
+        bound and never read.
+
+      It belongs in the base package, its OpenAPI part in the ASP.NET satellite. It is not ASP.NET
+      Core 10's JSON Patch (RFC 6902, a list of operations).
+    - **`FaultKind`, a fault's category for HTTP mapping**, proposed 2026-10-11. The categories are
+      NotFound, Conflict, Invalid, Forbidden and Unavailable, with nothing HTTP-specific in them, so
+      the domain can state them. The aim is for `AddFaultResponses<OrderFault>()` to map statuses by
+      kind without a hand-written switch. Decision 38 makes the fault an enum, so the kind has to be
+      attached to each enum member, for example `[FaultKind(FaultKind.NotFound)] NotFound`, and
+      cannot be a property of the fault. A spike must answer:
+      - **Native AOT.** Reading the members' attributes needs their fields preserved through
+        `DynamicallyAccessedMembers`. Measure it, or have the generators emit the table.
+      - **The startup check holds.** A member with neither a kind nor an explicit mapping still stops
+        the host.
+      - **The explicit mapping wins.** It overrides a member's kind, so decision 38's switch remains
+        the escape hatch.
+      - **Which status for each kind**, and whether a host may change a kind's default.
+
+      The change is additive: an `AddFaultResponses` overload, plus an attribute and an enum in the
+      base package (namespace `CodoMetis.TypeKit`, beside `Result`).
     - **2.0.0 is not scheduled.** It waits for breaking reasons: Metalama 2027.0 stable (decision 4),
       Warnings promoted to Errors (decision 34), and C# 15 unions (.NET 11, GA 2026-11-10), whose
       compiler-made types have a public `object? Value` and are serialized by System.Text.Json, so
