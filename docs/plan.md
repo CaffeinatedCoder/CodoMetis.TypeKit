@@ -636,6 +636,30 @@ Each phase ends green, and its guards have been proven by seeding the defect
       promoted to Errors (decision 34), and C# 15 unions (.NET 11, GA 2026-11-10). The compiler-made
       union types have a public `object? Value` and are serialized by System.Text.Json, so
       `Option`/`Result` take part in their pattern matching only after a spike shows neither returns.
+    - **Open: does 2.0.0 move to .NET 11?** Decision 20 is `net10.0` only, and C# 15 unions need
+      .NET 11. A 2.0.0 that uses them can target `net11.0` alone, which leaves a consumer on the .NET
+      10 LTS line on 1.x. It can target both, with unions only behind `net11.0`, at the cost of a
+      second target in every satellite (EF Core 11, Microsoft.AspNetCore.OpenApi 11) and a Native
+      AOT smoke run per target. Or it can stay on `net10.0` and leave unions to a later major, which
+      also settles the smart-enum spike's union question. The hinge is whether consumers on the LTS
+      line get the fault responses, smart enums and `Patch<T>` at all, and the preview below
+      answers it with measurements rather than in advance.
+    - **A preview to evaluate first** (proposed 2026-10-12): `2.0.0-preview.N`, built on the .NET 11
+      SDK and the Metalama 2027.0 preview, on a branch of its own, before either is stable. It
+      measures what C# 15 unions and 2027.0 buy before decisions 4 and 20 move for the release.
+      `main` keeps both decisions meanwhile, and a 1.5.x fix still ships from it. The release
+      workflow takes a preview tag as it is, since `v2.0.0-preview.1` passes the tag check against
+      `Version` and the changelog check against a dated `## 2.0.0-preview.1` section. The SDK comes
+      from `global.json`, though, so the branch pins the .NET 11 SDK there. The preview must answer:
+      - **The .NET 11 question above**, from what the unions actually change in `Option`, `Result`
+        and the smart-enum family.
+      - **Metalama 2027.0 on the .NET 11 SDK**: the aspects, the fabric and the analyzers build and
+        weave, and `[Durable]` returns to the `_value` placeholder (decision 4).
+      - **Package validation in a major**: against the 1.5.0 baseline it reports the intended breaks.
+        Whether they are suppressed per break or the baseline lapses for 2.0.0 is decided there, so
+        an unintended break still fails the pack.
+      - **Where it is published**: nuget.org, where the suffix marks it a pre-release, or a local
+        feed for the evaluation alone.
 
 ## 3. Discovery is by interface
 
