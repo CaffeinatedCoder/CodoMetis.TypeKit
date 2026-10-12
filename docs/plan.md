@@ -573,6 +573,47 @@ Each phase ends green, and its guards have been proven by seeding the defect
 
       The change is additive: an `AddFaultResponses` overload, plus an attribute and an enum in the
       base package (namespace `CodoMetis.TypeKit`, beside `Result`).
+    - **Fault responses a client can act on**, proposed 2026-10-12, with `FaultKind` above as its first
+      part. Decision 38's response carries a status and the fault's bare name, and its success is
+      `200` or `204`. An application whose client shows a refusal to a person, creates resources, or
+      reads with an ETag has to leave `ToHttpResult()` for each of those endpoints. The libraries
+      surveyed on 2026-10-12 map centrally too, but none models `Location` or `ETag`: Ardalis.Result
+      10.1.0, ErrorOr 2.1.1 and FluentResults. Ardalis and FluentResults allow a per-call status. RFC
+      9457 §3.1.1 makes `type` the primary identifier, and §3.1.4 has `detail` help the client correct
+      the problem. Five additive parts, each opt-in, so decision 38's default response is unchanged:
+      - **A response per member**: `AddFaultResponses<TFault>(f => FaultResponse.Status(409).WithType(uri))`,
+        an overload beside the `int` one, checked for every member at registration as that one is. It
+        adds `type` and `title`, which name the problem type and nothing of the input.
+      - **A sentence per occurrence**: `Fault<TFault>(TFault Kind, string? Detail)`, a record struct in
+        the base package. `Result<T, Fault<OrderFault>>` infers `TFault` from a type argument, which an
+        `IFault<TFault>` constraint could not, since C# infers nothing from a constraint. The mapping and
+        the document stay keyed on the enum. The sentence is the application's, so "the problem names
+        the fault, never the input" becomes the default rather than a guarantee, and the README says so.
+      - **A status per endpoint**: `.WithFaultStatus(OrderFault.NameTaken, 422)` as endpoint metadata,
+        read by `FaultProblem`, the operation transformer and the startup check. The same fault can
+        mean 404 on one route and 409 on another (RFC 9110 §15.5.10 defines 409 by the target resource).
+      - **The success the endpoint chooses**: `ToHttpResult(order => TypedResults.Created(uri, order))`,
+        returning `Results<TSuccess, FaultProblem<TFault>>`, so ASP.NET still describes the success. An
+        ETag needs a result of the application's own, and this is the hook for it.
+      - **The body the host shapes**: the fault reaches `CustomizeProblemDetails` as a request feature
+        (`IFaultFeature`: the fault type, the member, the detail), so a host can add extensions such as
+        an error code without the package naming any, plus an option to qualify `fault` as
+        `OrderFault.NotFound`, since two enums can share a member name in one client's switch.
+
+      A spike must answer, in [spikes/FaultResponses](../spikes/FaultResponses/README.md):
+      - **Native AOT** for each part, the `FaultKind` attribute table included.
+      - **Inference**: `ToHttpResult()` over `Result<T, Fault<TFault>>` and over `Result<T, TFault>`
+        resolves without type arguments and without an ambiguity between the two.
+      - **The document**: a per-endpoint status is listed for that operation only, a `type` URI appears
+        in it, and `fault` stays a string on the shared `ProblemDetails` component. A per-operation enum
+        is optional, never a union over every fault type, because a fault type added later would change
+        every operation's schema.
+      - **The startup check** refuses a `WithFaultStatus` for a fault type the endpoint does not answer
+        with, and a member that `FaultKind`, the mapping and the endpoint all leave unmapped.
+      - **MVC**: the endpoint metadata reaches the transformer, where finding 4 found
+        `PopulateMetadata` handed an empty service provider.
+      - **`CustomizeProblemDetails` sees the feature** under JIT and Native AOT, and the feature is
+        absent for every problem `ToHttpResult()` did not write.
     - **2.0.0 is not scheduled.** It waits for breaking reasons: Metalama 2027.0 stable (decision 4),
       Warnings promoted to Errors (decision 34), and C# 15 unions (.NET 11, GA 2026-11-10), whose
       compiler-made types have a public `object? Value` and are serialized by System.Text.Json, so
