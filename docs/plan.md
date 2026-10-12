@@ -2,7 +2,7 @@
 
 Status: **1.0.0 released 2026-09-28** (nuget.org, GitHub release `v1.0.0`). Phases 0 to 11 are done;
 what is left for 1.x is listed at the end of phase 11, and package validation holds every pack to the
-1.5.0 surface. Phase 12 is 1.5.0, released 2026-10-11; 1.5.1 followed the same day with a fix to parameter schemas. The decisions are in §8, Native AOT in §11. The fabric spike
+1.5.0 surface. Phase 12 is 1.5.0, released 2026-10-11; 1.5.1 followed the same day with a fix to parameter schemas. Phase 13 is the next release, 2.0.0 (decision 42). The decisions are in §8, Native AOT in §11. The fabric spike
 ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation comparison
 ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)), the EF mapping spike
 ([spikes/EfMapping](../spikes/EfMapping/README.md)) and the OpenAPI spike
@@ -535,46 +535,39 @@ Each phase ends green, and its guards have been proven by seeding the defect
       README section for the pattern, with no host registration needed for JSON; and CMTK1005 refusing
       `RangeSet<,>`, whose equality is a value's, though `IEquatable` alone is no criterion
       (`ImmutableArray<T>`).
-    - **`Patch<T>`, a field of a JSON Merge Patch (RFC 7396)**, proposed 2026-10-11. It has three states:
-      absent, null, or a value. System.Text.Json cannot tell an absent property from a null, so every
-      PATCH endpoint rebuilds this type by hand. It is a wire type on purpose, beside `Option`, which
-      still refuses JSON (decision 15): `Option` says whether a value exists, `Patch` whether a
-      request mentioned it. A spike must answer:
-      - **`default` is a state.** The serializer calls no converter for an absent property, so
-        `default(Patch<T>)` has to mean "absent". That makes this the one type of the package whose
-        `default` is meaningful. Is it exempt from CMTK0001 by its contract, and does that stay
-        clear of `[RequireCustomInitialization]`?
-      - **Native AOT.** A converter factory over an open `T` is `MakeGenericType`, which the refusing
-        converter avoided only because it never reads `T`. Find what works under a source-generated
-        context: an attribute per closed type, or a generated converter.
-      - **Value objects.** `Patch<Email>`: a JSON null and a value `Create` refuses each give the
-        response decision 39 measured.
-      - **The OpenAPI document.** The property is not required, and admits null exactly where `T`
-        does, in 3.1 and 3.0.
-      - **Applying it.** Without reflection over the target (§11): `patch.Name.IfPresent(v => order.Name = v)`,
-        not an `ApplyTo(entity)` that walks properties. Optionally an analyzer for a `Patch` that is
-        bound and never read.
 
-      It belongs in the base package, its OpenAPI part in the ASP.NET satellite. It is not ASP.NET
-      Core 10's JSON Patch (RFC 6902, a list of operations).
-    - **`FaultKind`, a fault's category for HTTP mapping**, proposed 2026-10-11. The categories are
-      NotFound, Conflict, Invalid, Forbidden and Unavailable, with nothing HTTP-specific in them, so
-      the domain can state them. The aim is for `AddFaultResponses<OrderFault>()` to map statuses by
-      kind without a hand-written switch. Decision 38 makes the fault an enum, so the kind has to be
-      attached to each enum member, for example `[FaultKind(FaultKind.NotFound)] NotFound`, and
-      cannot be a property of the fault. A spike must answer:
-      - **Native AOT.** Reading the members' attributes needs their fields preserved through
-        `DynamicallyAccessedMembers`. Measure it, or have the generators emit the table.
-      - **The startup check holds.** A member with neither a kind nor an explicit mapping still stops
-        the host.
-      - **The explicit mapping wins.** It overrides a member's kind, so decision 38's switch remains
-        the escape hatch.
+13. **2.0.0: closed sets, fault responses and merge patches.** Next; not started. Scoped 2026-10-12
+    (decision 42): the features proposed for 1.x ship in the major that already waits for the three
+    breaking reasons below, not as a 1.6.0 before it, because the smart-enum family changes what a
+    fault is, and fault responses built on enums first would be built twice.
+    - **A closed-set (smart enum) family**, declared by interface and joining `.Generators` (§1), the
+      release's headline. A member is a named instance with constant data. The generators emit `All`,
+      parsing and formatting by name, JSON, an OpenAPI string enum, and a `Match` with one required
+      delegate per member. C# never proves an enum `switch` complete; it only warns about a missing
+      discard (CS8524). As a fault type, the family carries what `FaultKind` (proposed 2026-10-11,
+      folded in here) would have read from attributes:
+      - **A kind per member**: NotFound, Conflict, Invalid, Forbidden or Unavailable, nothing
+        HTTP-specific, from which `AddFaultResponses` derives a status without a hand-written switch.
+        It is a property set where the member is declared, so Native AOT reads it without
+        reflection. The explicit mapping still overrides it, so decision 38's switch remains the
+        escape hatch.
+      - **An optional sentence per member**: the fault's remedy as a person reads it. It is optional
+        because a refusal that must not explain itself, a credential's or a secret's, has none on
+        purpose.
+      - **A generated qualified name** (`OrderFault.NotFound`) beside the bare one, so two fault types
+        that share a member name stay apart in one client.
+
+      A smart enum names a fault. It does not replace an error that carries data: a closed set of
+      shapes (`NotAmendable(Status)`, `OutsidePeriod(Date)`) is what C# 15 unions are for. Translating
+      one names a smart-enum member, and what varies per occurrence travels as
+      `Fault<TFault>.Detail` (below). A spike must answer:
       - **Which status for each kind**, and whether a host may change a kind's default.
-
-      The change is additive: an `AddFaultResponses` overload, plus an attribute and an enum in the
-      base package (namespace `CodoMetis.TypeKit`, beside `Result`).
-    - **Fault responses a client can act on**, proposed 2026-10-12, with `FaultKind` above as its first
-      part. Decision 38's response carries a status and the fault's bare name, and its success is
+      - **The startup check holds**: a member with neither a kind nor an explicit mapping still stops
+        the host.
+      - **C# 15 unions**: whether a smart enum is best expressed as one, or stays a generated type with
+        static members.
+      - **Persistence**: an EF column by name, mapped by `.EntityFrameworkCore` as value objects are.
+    - **Fault responses a client can act on**, proposed 2026-10-12. Decision 38's response carries a status and the fault's bare name, and its success is
       `200` or `204`. An application whose client shows a refusal to a person, creates resources, or
       reads with an ETag has to leave `ToHttpResult()` for each of those endpoints. The libraries
       surveyed on 2026-10-12 map centrally too, but none models `Location` or `ETag`: Ardalis.Result
@@ -601,7 +594,10 @@ Each phase ends green, and its guards have been proven by seeding the defect
         `OrderFault.NotFound`, since two enums can share a member name in one client's switch.
 
       A spike must answer, in [spikes/FaultResponses](../spikes/FaultResponses/README.md):
-      - **Native AOT** for each part, the `FaultKind` attribute table included.
+      - **Native AOT** for each part.
+      - **One reading of a fault.** The mapping, the startup check and the document read a fault type
+        through one internal abstraction, never `Enum` directly, so an enum fault and a smart-enum
+        fault (above) take the same path.
       - **Inference**: `ToHttpResult()` over `Result<T, Fault<TFault>>` and over `Result<T, TFault>`
         resolves without type arguments and without an ambiguity between the two.
       - **The document**: a per-endpoint status is listed for that operation only, a `type` URI appears
@@ -609,17 +605,37 @@ Each phase ends green, and its guards have been proven by seeding the defect
         is optional, never a union over every fault type, because a fault type added later would change
         every operation's schema.
       - **The startup check** refuses a `WithFaultStatus` for a fault type the endpoint does not answer
-        with, and a member that `FaultKind`, the mapping and the endpoint all leave unmapped.
+        with, and a member that the mapping, its kind and the endpoint all leave unmapped.
       - **MVC**: the endpoint metadata reaches the transformer, where finding 4 found
         `PopulateMetadata` handed an empty service provider.
       - **`CustomizeProblemDetails` sees the feature** under JIT and Native AOT, and the feature is
         absent for every problem `ToHttpResult()` did not write.
-    - **2.0.0 is not scheduled.** It waits for breaking reasons: Metalama 2027.0 stable (decision 4),
-      Warnings promoted to Errors (decision 34), and C# 15 unions (.NET 11, GA 2026-11-10), whose
-      compiler-made types have a public `object? Value` and are serialized by System.Text.Json, so
+    - **`Patch<T>`, a field of a JSON Merge Patch (RFC 7396)**, proposed 2026-10-11 for 1.x. It has
+      three states: absent, null, or a value. System.Text.Json cannot tell an absent property from a
+      null, so every PATCH endpoint rebuilds this type by hand. It is a wire type on purpose, beside
+      `Option`, which still refuses JSON (decision 15): `Option` says whether a value exists, `Patch`
+      whether a request mentioned it. A spike must answer:
+      - **`default` is a state.** The serializer calls no converter for an absent property, so
+        `default(Patch<T>)` has to mean "absent". That makes this the one type of the package whose
+        `default` is meaningful. Is it exempt from CMTK0001 by its contract, and does that stay
+        clear of `[RequireCustomInitialization]`?
+      - **Native AOT.** A converter factory over an open `T` is `MakeGenericType`, which the refusing
+        converter avoided only because it never reads `T`. Find what works under a source-generated
+        context: an attribute per closed type, or a generated converter.
+      - **Value objects.** `Patch<Email>`: a JSON null and a value `Create` refuses each give the
+        response decision 39 measured.
+      - **The OpenAPI document.** The property is not required, and admits null exactly where `T`
+        does, in 3.1 and 3.0.
+      - **Applying it.** Without reflection over the target (§11): `patch.Name.IfPresent(v => order.Name = v)`,
+        not an `ApplyTo(entity)` that walks properties. Optionally an analyzer for a `Patch` that is
+        bound and never read.
+
+      It belongs in the base package, its OpenAPI part in the ASP.NET satellite. It is not ASP.NET
+      Core 10's JSON Patch (RFC 6902, a list of operations).
+    - **The breaking reasons it waits for**, unchanged: Metalama 2027.0 stable (decision 4), Warnings
+      promoted to Errors (decision 34), and C# 15 unions (.NET 11, GA 2026-11-10). The compiler-made
+      union types have a public `object? Value` and are serialized by System.Text.Json, so
       `Option`/`Result` take part in their pattern matching only after a spike shows neither returns.
-      A closed-set (smart enum) family, declared by interface and joining `.Generators` (§1), is its
-      candidate headline.
 
 ## 3. Discovery is by interface
 
@@ -1210,6 +1226,14 @@ libraries.
 Still open:
 
 14. **context7.json.** The sibling repos register one. Add it once the repo is public.
+
+42. **2.0.0 is the next release, and it bundles the 1.x candidates** (2026-10-12, phase 13). The
+    fault responses, `Patch<T>` and the smart-enum family ship together in the major that already
+    waits for Metalama 2027.0 stable, decision 34's promotions and C# 15 unions. A 1.6.0 first was the
+    alternative. Every part is additive, so it would have been a minor version, but the fault mapping
+    would have been designed on enums with `FaultKind` attributes read by reflection, then rebuilt
+    once smart enums exist. The cost is time: nothing ships before the later of .NET 11's GA and
+    Metalama 2027.0 stable.
 
 ## 9. Option and Result
 

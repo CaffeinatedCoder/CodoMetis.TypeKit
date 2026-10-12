@@ -1,7 +1,8 @@
 # Spike: can a fault response carry what a client acts on, without giving up decision 38's checks?
 
 **Status: outline, not yet run.** Proposed 2026-10-12, from the "Fault responses a client can act
-on" candidate in [docs/plan.md](../../docs/plan.md) §2, which takes `FaultKind` as its first part.
+on" part of phase 13 (2.0.0) in [docs/plan.md](../../docs/plan.md) §2. The fault's kind is no longer
+a `FaultKind` attribute: it is a property of a smart-enum member, in the same phase.
 
 **Question.** Decision 38's `ToHttpResult()` answers a fault with its status and its bare name, and
 a success with `200` or `204`. An application that shows a refusal to a person, creates resources,
@@ -48,5 +49,5 @@ Each row is a claim the spike must settle. A seed that breaks the guard proves e
 | 9 | `CustomizeProblemDetails` sees `IFaultFeature` for a problem `ToHttpResult()` wrote, and not for any other problem | |
 | 10 | Qualified `fault` names are opt-in; the default stays the bare member name | |
 | 11 | `fault` stays a string on the shared `ProblemDetails` component; a per-operation enum, if offered, is opt-in and never a union across fault types | |
-| 12 | `FaultKind` attributes are read under Native AOT without a suppression, or the generators emit the table | |
+| 12 | The mapping, the startup check and the document read a fault type through one internal abstraction, so an enum fault and a smart-enum fault take the same path | |
 | 13 | Every part runs under Native AOT with no new trim or AOT warning | |
