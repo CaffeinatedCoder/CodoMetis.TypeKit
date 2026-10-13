@@ -59,7 +59,10 @@ since the verifier tests never weave.
 where a location maps (`#line`) to a `.razor` or `.cshtml` file: skipping generated code, as Roslyn
 does by default, silenced every rule inside Razor components, CMTK0001 included. Anything else
 generated stays unreported, which keeps EF's compiled model out of CMTK0004 (the smoke test's AOT
-consumer is the measurement). `GeneratedCode.Report` is the one reporting path.
+consumer is the measurement). `GeneratedCode.Report` is the one reporting path. CMTK0010 called
+`ReportDiagnostic` itself until 2.0.0's pre-tag review, and so reported from every generated file;
+`GeneratedCodeTests` holds each rule to the contract in a `.razor` and a `.cshtml` mapping, and
+reads the analyzers' sources for a direct `ReportDiagnostic`, so a rule added later is held too.
 
 **Transformed code (decided 2026-09-28, [decision 33](adr/0033-analyzers-run-code-metalama-transformed.md)).** Where Metalama compiles a project, source
 generators run after its transformation, so the Razor compiler's output is not in the source an

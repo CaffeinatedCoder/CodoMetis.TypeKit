@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -113,7 +112,10 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         var receiver = symbol is IMethodSymbol { IsGenericMethod: true } ? Receiver(name, context.SemanticModel, context.CancellationToken) : null;
 
         for (var i = 0; i < arguments.Count; i++)
-            Report(context.ReportDiagnostic, symbols, arguments[i], receiver, name.TypeArgumentList.Arguments[i].GetLocation());
+        {
+            foreach (var diagnostic in Diagnostics(symbols, arguments[i], receiver, name.TypeArgumentList.Arguments[i].GetLocation()))
+                context.Report(diagnostic);
+        }
     }
 
     /// <summary>Whether <paramref name="name"/> is inside the argument of a <c>nameof</c>, the operator and not a method of that name.</summary>
@@ -188,14 +190,19 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         var receiver = member is IMethodSymbol { IsGenericMethod: true } ? Receiver(name ?? reported, context.Operation.SemanticModel, context.CancellationToken) : null;
 
         foreach (var argument in arguments)
-            Report(context.ReportDiagnostic, symbols, argument, receiver, reported.GetLocation());
+        {
+            foreach (var diagnostic in Diagnostics(symbols, argument, receiver, reported.GetLocation()))
+                context.Report(diagnostic);
+        }
     }
 
-    private static void Report(Action<Diagnostic> report, TypeKitSymbols symbols, TypeArgument argument, ITypeSymbol? receiver, Location location)
-    {
-        foreach (var breach in Breaches(symbols, argument.Parameter, argument.Argument, receiver))
-            report(Diagnostic.Create(Rule, location, argument.Argument.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat), argument.Parameter.Name, Owner(argument.Owner), breach));
-    }
+    /// <summary>
+    /// One diagnostic per constraint <paramref name="argument"/> breaks, for the caller to report
+    /// through <see cref="GeneratedCode"/>, which keeps generated code that maps to no markup quiet.
+    /// </summary>
+    private static IEnumerable<Diagnostic> Diagnostics(TypeKitSymbols symbols, TypeArgument argument, ITypeSymbol? receiver, Location location) =>
+        Breaches(symbols, argument.Parameter, argument.Argument, receiver)
+            .Select(breach => Diagnostic.Create(Rule, location, argument.Argument.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat), argument.Parameter.Name, Owner(argument.Owner), breach));
 
     /// <summary>A type parameter, the argument it was given, and the generic that declares it.</summary>
     private readonly struct TypeArgument(ITypeParameterSymbol parameter, ITypeSymbol argument, ISymbol owner)

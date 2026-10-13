@@ -58,7 +58,7 @@ public sealed class AnalyzerHelpLinkTests
         }
     }
 
-    private static string RepositoryRoot()
+    internal static string RepositoryRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
             if (File.Exists(Path.Combine(directory.FullName, "CodoMetis.TypeKit.slnx")))
