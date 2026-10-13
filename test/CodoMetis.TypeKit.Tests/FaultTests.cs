@@ -1,9 +1,10 @@
 namespace CodoMetis.TypeKit.Tests;
 
 /// <summary>
-/// <see cref="Fault{TFault}"/>: a reason and a sentence about one occurrence. A bare reason converts
-/// to a fault without a detail, so comparing a fault with a reason compiled and was false whenever the
-/// fault carried a detail; the mixed comparisons are compile errors that name <c>Reason</c>.
+/// <see cref="Fault{TFault}"/>: a reason and a sentence about one occurrence. A bare reason converted
+/// to a fault without a detail, so comparing a fault with a reason, directly or through a collection, an
+/// equality comparer or an assertion, compiled and was false whenever the fault carried a detail. No
+/// reason converts now, and the mixed comparisons are compile errors that name <c>Reason</c>.
 /// </summary>
 public sealed class FaultTests
 {
@@ -11,6 +12,9 @@ public sealed class FaultTests
 
     private static string Consumer(string member) =>
         $$"""
+          using System;
+          using System.Collections.Generic;
+          using System.Linq;
           using CodoMetis.TypeKit;
 
           public enum OrderFault { NotFound, NameTaken }
@@ -36,7 +40,23 @@ public sealed class FaultTests
     }
 
     [Theory]
+    [InlineData("Fault<OrderFault> Make() => OrderFault.NotFound;", "CS0029")]
+    [InlineData("bool Same(Fault<OrderFault>? fault) => fault == OrderFault.NotFound;", "CS0019")]
+    [InlineData("bool Holds(List<Fault<OrderFault>> faults) => faults.Contains(OrderFault.NotFound);", "CS1503")]
+    [InlineData("bool Holds(HashSet<Fault<OrderFault>> faults) => faults.Contains(OrderFault.NotFound);", "CS1503")]
+    [InlineData("bool Holds(Fault<OrderFault>[] faults) => faults.Contains(OrderFault.NotFound);", "CS1929")]
+    [InlineData("bool Same(Fault<OrderFault> fault) => EqualityComparer<Fault<OrderFault>>.Default.Equals(fault, OrderFault.NotFound);", "CS0176")]
+    public void A_bare_reason_is_not_a_fault(string member, string error)
+    {
+        var compilation = ConsumerCompilation.Of(Consumer(member));
+
+        compilation.ErrorIds().ShouldBe([error], compilation.Problems());
+    }
+
+    [Theory]
     [InlineData("bool Same(Fault<OrderFault> fault) => fault.Reason == OrderFault.NotFound;")]
+    [InlineData("Fault<OrderFault> Make() => Fault.Of(OrderFault.NotFound);")]
+    [InlineData("bool Holds(List<Fault<OrderFault>> faults) => faults.Exists(fault => fault.Reason == OrderFault.NotFound);")]
     [InlineData("bool Same(Fault<OrderFault> fault, Fault<OrderFault> other) => fault == other;")]
     [InlineData("bool Same(Fault<OrderFault> fault) => fault == Fault.Of(OrderFault.NotFound, \"Order 7 is gone.\");")]
     public void Comparing_the_reason_or_two_faults_compiles(string member) =>

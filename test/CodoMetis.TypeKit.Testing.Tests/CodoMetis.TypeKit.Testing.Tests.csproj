@@ -4,4 +4,12 @@
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Testing\CodoMetis.TypeKit.Testing.csproj" />
     </ItemGroup>
 
+    <!--
+      Compiles a test's code against the built assertions at test time, so a claim about which
+      assertion a call binds to, or that it does not compile, fails as a test rather than as a build error.
+    -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    </ItemGroup>
+
 </Project>

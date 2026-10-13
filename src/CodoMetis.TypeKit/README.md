@@ -205,10 +205,11 @@ does not accept a `Result<T, Exception>`, and `MapError` turns the exception int
 **A fault with a sentence.** A fault is one of a fixed set, an enum's member or a closed set's, so
 what varies per occurrence travels beside it: `Fault<TFault>` holds the fault, its `Reason`, and an
 optional `Detail`. `Fault.Of(OrderFault.NotAmendable, "The order shipped on 3 May.")` infers the type,
-and a bare fault converts to one without a detail. CodoMetis.TypeKit.AspNetCore answers a
-`Result<T, Fault<TFault>>` as it answers the fault, with the detail as the problem's `detail`. A
-closed set whose members are faults declares `IFaultSet<TSelf>`, a `FaultKind` and an optional
-description per member, from which the host derives each status.
+and `Fault.Of(OrderFault.NotFound)` is one without a detail. A bare fault does not convert to one, so a
+comparison with it does not compile: `fault.Reason == OrderFault.NotFound` is the one meant.
+CodoMetis.TypeKit.AspNetCore answers a `Result<T, Fault<TFault>>` as it answers the fault, with the
+detail as the problem's `detail`. A closed set whose members are faults declares `IFaultSet<TSelf>`,
+a `FaultKind` and an optional description per member, from which the host derives each status.
 
 ## Not wire types
 

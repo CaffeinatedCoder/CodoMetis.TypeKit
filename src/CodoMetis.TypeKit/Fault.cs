@@ -14,14 +14,16 @@ namespace CodoMetis.TypeKit;
 /// it can say anything, so whether it quotes the request is the application's to decide.
 /// </para>
 /// <para>
-/// A reason converts to a fault without a detail, and <see cref="Fault.Of{TFault}"/> infers the type:
-/// <c>Result.Error(Fault.Of(OrderFault.NotAmendable, "The order shipped on 3 May."))</c>. Not a wire type:
+/// <see cref="Fault.Of{TFault}"/> makes one and infers the type, with a detail or without:
+/// <c>Result.Error(Fault.Of(OrderFault.NotAmendable, "The order shipped on 3 May."))</c>. A bare reason
+/// does not convert to a fault, since a fault compared with it would then be false whenever it carries
+/// a detail; compare <see cref="Reason"/> instead. Not a wire type:
 /// it is matched to a response, as the <see cref="Result{T, TError}"/> holding it is.
 /// </para>
 /// </remarks>
 /// <typeparam name="TFault">The reason's type: an enum or a closed set.</typeparam>
 [JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
-[RequireCustomInitialization("Use Fault.Of(reason, detail), or the reason itself.")]
+[RequireCustomInitialization("Use Fault.Of(reason) or Fault.Of(reason, detail).")]
 public readonly record struct Fault<TFault> where TFault : notnull
 {
     /// <summary>Creates the fault.</summary>
@@ -43,15 +45,13 @@ public readonly record struct Fault<TFault> where TFault : notnull
     /// <summary>A sentence about this occurrence, or <see langword="null"/>.</summary>
     public string? Detail { get; }
 
-    /// <summary>A reason as a fault without a detail.</summary>
-    /// <param name="reason">Which fault. Never null.</param>
-    public static implicit operator Fault<TFault>(TFault reason) => new(reason);
-
-    // A bare reason converts to a fault without a detail, so `fault == OrderFault.NotFound` compiled
-    // and was false whenever the fault carried one. The mixed forms are refused where they are
-    // written; the comparison that is meant is fault.Reason == reason.
+    // A bare reason does not convert to a fault: with the conversion, `fault == OrderFault.NotFound`,
+    // `faults.Contains(OrderFault.NotFound)` and `ShouldBeError(OrderFault.NotFound)` compiled and were
+    // false whenever the fault carried a detail. Without it the operators below would be CS0019, which
+    // does not name Reason, and `fault.Equals(OrderFault.NotFound)` would bind to Equals(object) and
+    // compile, always false; so the mixed forms stay declared, and refused where they are written.
     private const string MixedComparison =
-        "A Fault<TFault> is never compared with a bare reason: the reason converts to a fault without a detail, so the comparison is false whenever the fault carries one. Compare fault.Reason with the reason.";
+        "A Fault<TFault> is never compared with a bare reason: a fault carries a detail beside its reason, and the comparison that is meant is fault.Reason with the reason.";
 
     /// <summary>Refused: compare <see cref="Reason"/> with the reason.</summary>
     /// <param name="fault">The fault.</param>
