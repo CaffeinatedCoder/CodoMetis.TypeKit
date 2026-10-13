@@ -34,7 +34,9 @@ position, and the change lands in the hoisted component.
   simple name, so `Shop.Id` and `Stock.Id` shared one, and a stock id wrapping an `int` was documented
   as a uuid. `AddTypeKit()` wraps `CreateSchemaReferenceId`: a nested value object that got ASP.NET's
   default name is named after its nesting chain (`ShopId`, as its companion class is `ShopIdExtensions`);
-  a name the host's own delegate chose, or `null` for an inlined value object, is kept.
+  a name the host's own delegate chose, or `null` for an inlined value object, is kept. A name that
+  is also another type's, `Order.Status` beside a top-level `OrderStatus`, refuses the document
+  ([decision 55](adr/0055-component-name-claimed-twice-refused.md)).
 - **Known gaps, documented rather than fixed:** a validation attribute on a value-object property
   lands in the shared component, as ASP.NET does for any referenced schema (rules belong in `Create`);
   a property absent from a request body stays `default`, since System.Text.Json calls no converter

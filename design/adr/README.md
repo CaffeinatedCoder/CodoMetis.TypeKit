@@ -59,3 +59,6 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0050](0050-warnings-cmtk0003-alone-becomes-error-2.md) | Of the Warnings, CMTK0003 alone becomes an Error in 2.0.0 | 2026-10-13 | accepted |
 | [0051](0051-closed-set-parses-ignoring-case-only.md) | A closed set parses ignoring case only when asked, and refuses members that differ only in case | 2026-10-13 | accepted |
 | [0052](0052-cause-on-fault-joins-2-1.md) | A `Cause` on `Fault<TFault>` joins 2.1 | 2026-10-13 | accepted |
+| [0053](0053-fault-made-by-fault-of-alone.md) | A `Fault<TFault>` is made by `Fault.Of` alone | 2026-10-13 | accepted |
+| [0054](0054-abstract-value-object-refused.md) | An abstract type with a value-object marker is refused (CMTK1022) | 2026-10-13 | accepted |
+| [0055](0055-component-name-claimed-twice-refused.md) | A component name two types claim is refused; a qualified fault name follows the nesting chain | 2026-10-13 | accepted |

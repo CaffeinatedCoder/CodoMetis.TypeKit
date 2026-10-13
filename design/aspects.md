@@ -18,7 +18,8 @@
   any other, see below), CMTK1006 (a record class that is not `sealed`: a derived record compares
   equal only to its own type, which is not value equality), CMTK1007 (the name of the
   `GetValue`/`ValueOrNull` class is taken, see below), CMTK1008 (a comparison member beside the
-  seam, see below), CMTK1009 (a hand-written constructor, see below).
+  seam, see below), CMTK1009 (a hand-written constructor, see below), CMTK1022 (an abstract type,
+  reported by the fabric, [decision 54](adr/0054-abstract-value-object-refused.md)).
 - **No hand-written constructor (decided 2026-09-27).** A value object's one constructor is the
   generated private one, and a hand-written instance constructor is CMTK1009. The implementation
   aspect answers it before introducing its own, since it reads only its target: `Constructors` minus
