@@ -61,7 +61,7 @@ internal sealed class FaultResponses<TFault> where TFault : notnull
                     "A fault is answered as problem details; a success is the value of the Result." + FaultRefusals.Mapping,
                     parameter);
 
-            answers[fault] = new Answer(response.StatusCode, response.Type, response.Title, type.NameOf(fault), type.QualifiedNameOf(fault), FaultType<TFault>.DescriptionOf(fault));
+            answers[fault] = new Answer(response.StatusCode, response.Type is { } problemType ? FaultResponse.Written(problemType) : null, response.Title, type.NameOf(fault), type.QualifiedNameOf(fault), FaultType<TFault>.DescriptionOf(fault));
         }
 
         return new FaultResponses<TFault>(type, answers);
@@ -83,18 +83,21 @@ internal sealed class FaultResponses<TFault> where TFault : notnull
         [.. Type.Members.Select(fault => FaultStatuses.Override(endpointMetadata, fault, Type) ?? _answers[fault].Status).Distinct().Order()];
 
     /// <summary>The problem types of the members an endpoint answers with <paramref name="status"/>, for that response's description.</summary>
-    public IReadOnlyList<Uri> TypesOf(int status, IReadOnlyList<object> endpointMetadata) =>
+    public IReadOnlyList<string> TypesOf(int status, IReadOnlyList<object> endpointMetadata) =>
         [.. Type.Members.Where(fault => (FaultStatuses.Override(endpointMetadata, fault, Type) ?? _answers[fault].Status) == status)
                         .Select(fault => _answers[fault].Type)
-                        .OfType<Uri>()
+                        .OfType<string>()
                         .Distinct()];
 
     public static InvalidOperationException Unmapped() =>
         new($"No HTTP status is mapped for the fault type {FaultTypes.NameOf(typeof(TFault))}. " +
             $"Map each of its members with services.AddFaultResponses<{FaultTypes.NameOf(typeof(TFault))}>(fault => …)." + FaultRefusals.Mapping);
 
-    /// <summary>The mapped answer for one member: what the problem says, before an endpoint changes its status.</summary>
-    internal sealed record Answer(int Status, Uri? Type, string? Title, string Name, string QualifiedName, string? Description);
+    /// <summary>
+    /// The mapped answer for one member: what the problem says, before an endpoint changes its status. Its
+    /// <c>Type</c> is the problem's <c>type</c> as the response and the document write it (<see cref="FaultResponse.Written"/>).
+    /// </summary>
+    internal sealed record Answer(int Status, string? Type, string? Title, string Name, string QualifiedName, string? Description);
 }
 
 /// <summary>
@@ -111,7 +114,7 @@ internal abstract class FaultResponsesMetadata
     public abstract IReadOnlyList<int>? Statuses(IServiceProvider services, IReadOnlyList<object> endpointMetadata);
 
     /// <summary>The problem types listed for <paramref name="status"/>.</summary>
-    public abstract IReadOnlyList<Uri> Types(IServiceProvider services, int status, IReadOnlyList<object> endpointMetadata);
+    public abstract IReadOnlyList<string> Types(IServiceProvider services, int status, IReadOnlyList<object> endpointMetadata);
 
     /// <summary>What is wrong with the endpoint's status overrides for this fault type: a name no member has.</summary>
     public abstract IEnumerable<string> Problems(IServiceProvider services, IReadOnlyList<object> endpointMetadata);
@@ -130,7 +133,7 @@ internal sealed class FaultResponsesMetadata<TFault> : FaultResponsesMetadata wh
     public override IReadOnlyList<int>? Statuses(IServiceProvider services, IReadOnlyList<object> endpointMetadata) =>
         Responses(services)?.StatusesOf(endpointMetadata);
 
-    public override IReadOnlyList<Uri> Types(IServiceProvider services, int status, IReadOnlyList<object> endpointMetadata) =>
+    public override IReadOnlyList<string> Types(IServiceProvider services, int status, IReadOnlyList<object> endpointMetadata) =>
         Responses(services)?.TypesOf(status, endpointMetadata) ?? [];
 
     public override IEnumerable<string> Problems(IServiceProvider services, IReadOnlyList<object> endpointMetadata)

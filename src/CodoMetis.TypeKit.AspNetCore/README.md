@@ -202,6 +202,8 @@ A bare status converts to a `FaultResponse`, so the arms that need nothing else 
 is called. The document's problem response for a
 status lists the problem types answered with it in its description:
 `Payment Required. Problem types: https://example.com/problems/declined`.
+Both write the type as the URI it is: an escape stays escaped (`/problems/a%20b`, `%C3%BC`), an
+absolute URI given unescaped is escaped, and a relative one is written as given.
 
 ### A closed set as the fault type
 

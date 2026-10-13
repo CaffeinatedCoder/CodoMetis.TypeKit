@@ -64,6 +64,11 @@ public sealed class FaultResponse
     });
 
     /// <summary>The same response with the problem's <c>type</c>, a URI a client matches on.</summary>
+    /// <remarks>
+    /// The problem and the document write an absolute URI as <see cref="Uri.AbsoluteUri"/>, escaped as
+    /// RFC 3986 has it (<c>a%20b</c> stays <c>a%20b</c>, and an unescaped space or non-ASCII letter is escaped), and
+    /// a relative one as given. <see cref="Uri.ToString"/> would unescape it into no URI at all.
+    /// </remarks>
     /// <param name="type">The problem type's URI.</param>
     /// <returns>A new response.</returns>
     public FaultResponse WithType(Uri type)
@@ -71,6 +76,14 @@ public sealed class FaultResponse
         ArgumentNullException.ThrowIfNull(type);
         return new(StatusCode, type, Title);
     }
+
+    /// <summary>
+    /// A problem type as the response and the document write it: RFC 9457 makes <c>type</c> a URI
+    /// reference, so an absolute URI is <see cref="Uri.AbsoluteUri"/>, which keeps an escape escaped,
+    /// and a relative one is as given. Never <see cref="Uri.ToString"/>, which unescapes <c>%20</c> and
+    /// an escaped non-ASCII character.
+    /// </summary>
+    internal static string Written(Uri type) => type.IsAbsoluteUri ? type.AbsoluteUri : type.OriginalString;
 
     /// <summary>The same response with the problem's <c>title</c>, a summary of the problem type a person reads.</summary>
     /// <param name="title">The title. Never blank.</param>

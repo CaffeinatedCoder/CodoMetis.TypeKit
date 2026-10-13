@@ -62,7 +62,7 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
         {
             await TypedResults.Problem(
                     statusCode: status,
-                    type: answer.Type?.ToString(),
+                    type: answer.Type,
                     title: answer.Title,
                     detail: detail,
                     extensions: new Dictionary<string, object?> { [FaultResponsesOperationTransformer.FaultMember] = name })

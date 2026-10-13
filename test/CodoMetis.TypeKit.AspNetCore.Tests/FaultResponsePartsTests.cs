@@ -108,6 +108,36 @@ public sealed class FaultResponsePartsTests
         conflict["description"]!.GetValue<string>().ShouldBe($"Conflict. Problem types: {NameTakenType}");
     }
 
+    public enum TypedFault { Escaped }
+
+    /// <summary>
+    /// A problem type is written as the URI it is: <see cref="Uri.ToString"/> unescaped <c>%20</c> and an
+    /// escaped non-ASCII character, and the problem's <c>type</c> was then no URI at all, in the response
+    /// and in the document's description alike.
+    /// </summary>
+    [Theory]
+    [InlineData("https://example.com/problems/a%20b", "https://example.com/problems/a%20b")]
+    [InlineData("https://example.com/problems/%C3%BCber", "https://example.com/problems/%C3%BCber")]
+    [InlineData("https://example.com/problems/a%2Fb", "https://example.com/problems/a%2Fb")]
+    [InlineData("urn:example:problems:a%20b", "urn:example:problems:a%20b")]
+    [InlineData("https://example.com/problems/a b", "https://example.com/problems/a%20b")]   // given unescaped: written as a URI
+    [InlineData("/problems/a%20b", "/problems/a%20b")]                                     // relative: as given
+    public async Task A_problem_type_is_written_with_its_escapes(string given, string written)
+    {
+        var type = new Uri(given, UriKind.RelativeOrAbsolute);
+        await using var app = await StartAsync(
+            services: services =>
+            {
+                Responses(services);
+                services.AddFaultResponses<TypedFault>(_ => FaultResponse.Status(StatusCodes.Status409Conflict).WithType(type));
+            },
+            endpoints: app => app.MapGet("/typed", () => Result<int, TypedFault>.Error(TypedFault.Escaped).ToHttpResult()));
+
+        (await ProblemAsync(app, "/typed", HttpStatusCode.Conflict))["type"]!.GetValue<string>().ShouldBe(written);
+        (await DocumentAsync(app))["paths"]!["/typed"]!["get"]!["responses"]!["409"]!["description"]!.GetValue<string>()
+            .ShouldBe($"Conflict. Problem types: {written}");
+    }
+
     // 3: ToHttpResult over Result<T, Fault<TFault>>, Result<T, TFault> and a closed set's resolves without type arguments.
     [Fact]
     public void ToHttpResult_resolves_for_an_enum_a_fault_and_a_closed_set_without_type_arguments()
