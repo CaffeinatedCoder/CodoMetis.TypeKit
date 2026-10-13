@@ -114,7 +114,10 @@ public sealed class CustomersController(ICustomers customers) : ControllerBase
 MVC binds a route or query value object through the generated `TypeConverter`, and a body through
 the JSON converter as a minimal API does. The difference is the 400: MVC answers a refused body with
 its validation problem details, whose message is the `JsonException`'s, so the client reads
-`Email refused the JSON value (NoAt)` and never the text.
+`Email refused the JSON value (NoAt)` and never the text. The one exception is a value object used
+as a dictionary key: System.Text.Json puts the key in the `JsonException`'s `Path`, and MVC names the
+error after it (`"$.items.SE"`), so keep a secret out of a dictionary's keys
+([Logging and secrets](logging-and-secrets.md#refusals-never-quote-the-input)).
 
 ## A Result as a response
 
