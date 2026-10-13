@@ -102,6 +102,45 @@ public sealed class ClosedSetMappingTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// A facet configured on a closed set's column is kept, as on any string column: the text mapping is
+    /// looked up with the facets. Looked up without them, Npgsql answered <c>text</c> for each.
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(FacetRow.Id), "character varying(20)")]
+    [InlineData(nameof(FacetRow.Status), "character varying(12)")]
+    [InlineData(nameof(FacetRow.Tier), "character varying(7)")]
+    public void A_configured_column_facet_of_a_closed_set_is_kept_on_PostgreSQL(string property, string storeType)
+    {
+        using var db = new FacetDb(new DbContextOptionsBuilder<FacetDb>().UseNpgsql("Host=localhost;Database=none").UseTypeKit().Options);
+        var column = db.Model.FindEntityType(typeof(FacetRow))!.FindProperty(property)!;
+
+        column.GetRelationalTypeMapping().StoreType.ShouldBe(storeType);
+        column.GetColumnType().ShouldBe(storeType);
+        column.GetTypeMapping().Converter.ShouldNotBeNull().ProviderClrType.ShouldBe(typeof(string));
+    }
+
+    public sealed class FacetRow
+    {
+        public ProbeLevel Id { get; set; } = ProbeLevel.Low;
+
+        public ProbeStatus Status { get; set; } = ProbeStatus.Open;
+
+        public ProbeTier Tier { get; set; } = ProbeTier.Basic;
+    }
+
+    /// <summary>A maximum length on a key and on a property, and a column type.</summary>
+    public sealed class FacetDb(DbContextOptions<FacetDb> options) : DbContext(options)
+    {
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            var row = modelBuilder.Entity<FacetRow>();
+            row.Property(r => r.Id).HasMaxLength(20);
+            row.Property(r => r.Status).HasMaxLength(12);
+            row.Property(r => r.Tier).HasColumnType("character varying(7)");
+        }
+    }
+
     public sealed class Delivery
     {
         public ProbeStatus Status { get; set; } = ProbeStatus.Open;
