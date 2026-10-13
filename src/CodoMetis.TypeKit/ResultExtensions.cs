@@ -259,17 +259,29 @@ public static class Result
     /// <param name="action">The asynchronous call whose outcome is wanted.</param>
     /// <typeparam name="T">The type of the value.</typeparam>
     /// <returns>A success holding the value, or an error holding the exception thrown.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or its task produced null.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, returned no task, or its task produced null.</exception>
     /// <exception cref="ArgumentException"><typeparamref name="T"/> is itself a task; await it in the delegate.</exception>
     public static async Task<Result<T, Exception>> CatchAsync<T>(Func<Task<T>> action) where T : notnull
     {
         ArgumentNullException.ThrowIfNull(action);
         RefuseTask<T>(nameof(CatchAsync));
 
+        Task<T> task;
+        try
+        {
+            task = action();
+        }
+        catch (Exception exception) when (!IsCancellation(exception))
+        {
+            return Result<T, Exception>.Error(exception);
+        }
+
+        if (task is null) throw ThrowHelper.NullTask(nameof(action));
+
         T value;
         try
         {
-            value = await action().ConfigureAwait(false);
+            value = await task.ConfigureAwait(false);
         }
         catch (Exception exception) when (!IsCancellation(exception))
         {
@@ -285,14 +297,26 @@ public static class Result
     /// </summary>
     /// <param name="action">The asynchronous call whose outcome is wanted.</param>
     /// <returns>A success, or an error holding the exception thrown.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or returned no task.</exception>
     public static async Task<Result<Exception>> CatchAsync(Func<Task> action)
     {
         ArgumentNullException.ThrowIfNull(action);
 
+        Task task;
         try
         {
-            await action().ConfigureAwait(false);
+            task = action();
+        }
+        catch (Exception exception) when (!IsCancellation(exception))
+        {
+            return Result<Exception>.Error(exception);
+        }
+
+        if (task is null) throw ThrowHelper.NullTask(nameof(action));
+
+        try
+        {
+            await task.ConfigureAwait(false);
         }
         catch (Exception exception) when (!IsCancellation(exception))
         {
@@ -311,7 +335,7 @@ public static class Result
     /// <typeparam name="T">The type of the value.</typeparam>
     /// <typeparam name="TException">The exception that is an outcome; any other propagates.</typeparam>
     /// <returns>A success holding the value, or an error holding the exception thrown.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or its task produced null.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, returned no task, or its task produced null.</exception>
     /// <exception cref="ArgumentException"><typeparamref name="T"/> is itself a task; await it in the delegate.</exception>
     public static async Task<Result<T, TException>> CatchAsync<T, TException>(Func<Task<T>> action)
         where T : notnull
@@ -320,10 +344,22 @@ public static class Result
         ArgumentNullException.ThrowIfNull(action);
         RefuseTask<T>(nameof(CatchAsync));
 
+        Task<T> task;
+        try
+        {
+            task = action();
+        }
+        catch (TException exception) when (!IsCancellation(exception))
+        {
+            return Result<T, TException>.Error(exception);
+        }
+
+        if (task is null) throw ThrowHelper.NullTask(nameof(action));
+
         T value;
         try
         {
-            value = await action().ConfigureAwait(false);
+            value = await task.ConfigureAwait(false);
         }
         catch (TException exception) when (!IsCancellation(exception))
         {
@@ -340,15 +376,27 @@ public static class Result
     /// <param name="action">The asynchronous call whose outcome is wanted.</param>
     /// <typeparam name="TException">The exception that is an outcome; any other propagates.</typeparam>
     /// <returns>A success, or an error holding the exception thrown.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or returned no task.</exception>
     public static async Task<Result<TException>> CatchAsync<TException>(Func<Task> action)
         where TException : Exception
     {
         ArgumentNullException.ThrowIfNull(action);
 
+        Task task;
         try
         {
-            await action().ConfigureAwait(false);
+            task = action();
+        }
+        catch (TException exception) when (!IsCancellation(exception))
+        {
+            return Result<TException>.Error(exception);
+        }
+
+        if (task is null) throw ThrowHelper.NullTask(nameof(action));
+
+        try
+        {
+            await task.ConfigureAwait(false);
         }
         catch (TException exception) when (!IsCancellation(exception))
         {

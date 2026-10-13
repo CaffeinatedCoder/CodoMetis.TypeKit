@@ -46,6 +46,51 @@ public readonly record struct Fault<TFault> where TFault : notnull
     /// <summary>A reason as a fault without a detail.</summary>
     /// <param name="reason">Which fault. Never null.</param>
     public static implicit operator Fault<TFault>(TFault reason) => new(reason);
+
+    // A bare reason converts to a fault without a detail, so `fault == OrderFault.NotFound` compiled
+    // and was false whenever the fault carried one. The mixed forms are refused where they are
+    // written; the comparison that is meant is fault.Reason == reason.
+    private const string MixedComparison =
+        "A Fault<TFault> is never compared with a bare reason: the reason converts to a fault without a detail, so the comparison is false whenever the fault carries one. Compare fault.Reason with the reason.";
+
+    /// <summary>Refused: compare <see cref="Reason"/> with the reason.</summary>
+    /// <param name="fault">The fault.</param>
+    /// <param name="reason">The reason.</param>
+    /// <returns>Never: the operator does not compile.</returns>
+    [Obsolete(MixedComparison, error: true)]
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public static bool operator ==(Fault<TFault> fault, TFault reason) => throw new NotSupportedException();
+
+    /// <summary>Refused: compare <see cref="Reason"/> with the reason.</summary>
+    /// <param name="fault">The fault.</param>
+    /// <param name="reason">The reason.</param>
+    /// <returns>Never: the operator does not compile.</returns>
+    [Obsolete(MixedComparison, error: true)]
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public static bool operator !=(Fault<TFault> fault, TFault reason) => throw new NotSupportedException();
+
+    /// <summary>Refused: compare the reason with <see cref="Reason"/>.</summary>
+    /// <param name="reason">The reason.</param>
+    /// <param name="fault">The fault.</param>
+    /// <returns>Never: the operator does not compile.</returns>
+    [Obsolete(MixedComparison, error: true)]
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public static bool operator ==(TFault reason, Fault<TFault> fault) => throw new NotSupportedException();
+
+    /// <summary>Refused: compare the reason with <see cref="Reason"/>.</summary>
+    /// <param name="reason">The reason.</param>
+    /// <param name="fault">The fault.</param>
+    /// <returns>Never: the operator does not compile.</returns>
+    [Obsolete(MixedComparison, error: true)]
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public static bool operator !=(TFault reason, Fault<TFault> fault) => throw new NotSupportedException();
+
+    /// <summary>Refused: compare <see cref="Reason"/> with the reason.</summary>
+    /// <param name="reason">The reason.</param>
+    /// <returns>Never: the method does not compile.</returns>
+    [Obsolete(MixedComparison, error: true)]
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public bool Equals(TFault reason) => throw new NotSupportedException();
 }
 
 /// <summary>Creates a <see cref="Fault{TFault}"/>, inferring its type.</summary>

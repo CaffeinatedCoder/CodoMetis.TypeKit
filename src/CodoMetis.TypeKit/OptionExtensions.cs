@@ -579,6 +579,13 @@ public static class Option
             return index < 0 ? None<T>() : FirstOf(source.Skip(index).Take(1));
         }
 
+        /// <summary>Refused: a query skips to an index from the start, and one from the end would read every row to find it.</summary>
+        /// <param name="index">The index.</param>
+        /// <returns>Never: the overload does not compile.</returns>
+        [Obsolete("A query has no end until it is ordered, and ElementAtOrNone(^n) would read every row to find it. Order the query the other way and use ElementAtOrNone(int), or call AsEnumerable() to read it all on purpose.", error: true)]
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public Option<T> ElementAtOrNone(Index index) => throw new NotSupportedException();
+
         /// <summary>Refused: a query has no last element until it is ordered, and this would read every row to find one.</summary>
         /// <returns>Never: the overload does not compile.</returns>
         [Obsolete("A query has no last element until it is ordered, and LastOrNone would read every row to find one. Order it the other way and use FirstOrNone, or call AsEnumerable() to read it all on purpose.", error: true)]

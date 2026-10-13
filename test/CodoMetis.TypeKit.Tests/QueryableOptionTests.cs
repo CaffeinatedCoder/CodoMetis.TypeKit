@@ -51,6 +51,7 @@ public sealed class QueryableOptionTests
     [InlineData("Option<int> Last(IQueryable<int> query) => query.LastOrNone();", "FirstOrNone")]
     [InlineData("Option<int> Last(IQueryable<int> query) => query.LastOrNone(x => x > 1);", "FirstOrNone")]
     [InlineData("Result<int, string> Last(IQueryable<int> query) => query.LastOrError(x => x > 1, \"none\");", "FirstOrError")]
+    [InlineData("Option<int> Last(IQueryable<int> query) => query.ElementAtOrNone(^1);", "ElementAtOrNone(int)")]
     public void LastOrNone_and_LastOrError_on_a_query_are_compile_errors(string member, string advice)
     {
         var compilation = ConsumerCompilation.Of(Consumer(member));
@@ -63,6 +64,16 @@ public sealed class QueryableOptionTests
     [Fact]
     public void Reading_a_query_on_purpose_still_has_LastOrNone() =>
         ConsumerCompilation.Of(Consumer("Option<int> Last(IQueryable<int> query) => query.AsEnumerable().LastOrNone();")).Problems().ShouldBeEmpty();
+
+    /// <summary>An index from the start is the query's own overload; one from the end, which has no query, is a compile error, and the sequence overload stays reachable on purpose.</summary>
+    [Fact]
+    public void ElementAtOrNone_from_the_start_is_the_query_s_and_from_the_end_needs_AsEnumerable()
+    {
+        var (_, fromStart) = ConsumerCompilation.Of(Consumer("Option<int> At(IQueryable<int> query) => query.ElementAtOrNone(2);")).TheOnlyCall();
+        fromStart.ContainingType.ExtensionParameter.ShouldNotBeNull().Type.OriginalDefinition.ToDisplayString().ShouldBe("System.Linq.IQueryable<T>");
+
+        ConsumerCompilation.Of(Consumer("Option<int> At(IQueryable<int> query) => query.AsEnumerable().ElementAtOrNone(^1);")).Problems().ShouldBeEmpty();
+    }
 
     [Fact]
     public void A_query_answers_its_first_match_or_None()

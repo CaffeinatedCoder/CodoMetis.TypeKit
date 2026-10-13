@@ -33,6 +33,15 @@ internal static class ThrowHelper
     /// <returns>The exception, to throw.</returns>
     public static ArgumentNullException NullContent(string paramName) => new(paramName, NullContentMessage);
 
+    private const string NullTaskMessage =
+        "The delegate given to CatchAsync returned no task: a null cannot be awaited, and it is not an exception the call threw. "
+      + "Return the task, or make the lambda async." + Refusals.NullContent;
+
+    /// <summary>What <c>CatchAsync</c> throws for a delegate that returned a null task, before anything is awaited.</summary>
+    /// <param name="paramName">The delegate's parameter.</param>
+    /// <returns>The exception, to throw.</returns>
+    public static ArgumentNullException NullTask(string paramName) => new(paramName, NullTaskMessage);
+
     /// <summary>What <c>Patch&lt;T&gt;.Map</c> throws for a selector that returned null.</summary>
     /// <param name="paramName">The selector's parameter.</param>
     /// <returns>The exception, to throw.</returns>

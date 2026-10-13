@@ -113,6 +113,30 @@ public sealed class ResultCatchTests
         ran.ShouldBeFalse();
     }
 
+    /// <summary>
+    /// A delegate that returns no task is refused before anything is awaited, in every overload, as a
+    /// delegate that returns a null value is: it was an error holding the NullReferenceException the
+    /// await threw. A delegate that throws before it returns a task is still that exception as the error.
+    /// </summary>
+    [Fact]
+    public async Task CatchAsync_refuses_a_delegate_that_returns_no_task_and_keeps_one_that_throws_first()
+    {
+        (await Should.ThrowAsync<ArgumentNullException>(() => Result.CatchAsync<int>(() => null!))).ParamName.ShouldBe("action");
+        (await Should.ThrowAsync<ArgumentNullException>(() => Result.CatchAsync(() => null!))).ParamName.ShouldBe("action");
+        (await Should.ThrowAsync<ArgumentNullException>(() => Result.CatchAsync<int, InvalidOperationException>(() => null!))).ParamName.ShouldBe("action");
+        (await Should.ThrowAsync<ArgumentNullException>(() => Result.CatchAsync<InvalidOperationException>(() => null!))).ParamName.ShouldBe("action");
+
+        // Method groups, since a lambda that only throws converts to the valued and the command form alike.
+        static Task<int> ThrowsForAValue() => throw new InvalidOperationException("before any task");
+        static Task ThrowsForACommand() => throw new InvalidOperationException("before any task");
+
+        var thrown = await Result.CatchAsync(ThrowsForAValue);
+        thrown.Match(_ => "", error => error.Message).ShouldBe("before any task");
+
+        var command = await Result.CatchAsync<InvalidOperationException>(ThrowsForACommand);
+        command.Match(() => "", error => error.Message).ShouldBe("before any task");
+    }
+
     [Fact]
     public void A_cancellation_is_not_an_outcome()
     {
