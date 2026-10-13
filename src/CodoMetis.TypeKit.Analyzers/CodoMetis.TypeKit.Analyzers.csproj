@@ -2,7 +2,7 @@
 
     <!--
       Roslyn loads analyzers into the compiler's own process, so this targets netstandard2.0 whatever
-      the analysed code targets. It reaches consumers through CodoMetis.TypeKit (design/plan.md §10).
+      the analysed code targets. It reaches consumers through CodoMetis.TypeKit (design/analyzers.md).
     -->
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>

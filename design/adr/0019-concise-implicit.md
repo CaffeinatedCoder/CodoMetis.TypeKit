@@ -3,7 +3,7 @@
 Date: 2026-09-27
 Status: accepted
 
-Context: 2026-09-27, §9.
+Context: 2026-09-27, [Option and Result](../option-result.md).
 
 Markers where a target type exists, explicit type
 arguments where none does.

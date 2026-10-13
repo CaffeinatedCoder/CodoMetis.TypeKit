@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Status: accepted
 
-Context: 2026-09-28, §4.
+Context: 2026-09-28, [EF Core](../ef-core.md).
 
 EF's
 SQLite provider decides by the CLR type, and the only other way in is an annotation typed by the

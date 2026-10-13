@@ -1,6 +1,7 @@
 # Aspects
 
-- **Aspect-class count.** Ten classes. The Metalama Open Source edition (MIT) has no aspect-class
+- **Aspect-class count.** Eleven classes: ten for value objects and `ClosedSetAspect`, whose design is
+  its own note ([Closed sets](closed-sets.md)). The Metalama Open Source edition (MIT) has no aspect-class
   limit (pricing page, 2026-09-26). The unlicensed CI build confirms it (phase 6).
 - **Entry points.** `ValueObjectAspect` introduces three private helpers on every value
   object, and they are the only way the JSON, parsing and type-converter aspects create an
@@ -58,7 +59,7 @@
   `$"{amount}"` was "1,5" in de-DE while `amount.ToString()` was "1.5". Display text in a culture
   passes it: `string.Create(culture, $"{amount}")`.
 - **The wrapped value's JSON contract** comes from `GeneratedJson.TypeInfo<T>(options, builtIn)`
-  (decided 2026-09-27, [§11](native-aot.md)): the options' own contract when their resolver has one, so a host's
+  (decided 2026-09-27, [Native AOT](native-aot.md)): the options' own contract when their resolver has one, so a host's
   number handling and converters apply, and otherwise made in the serializer's order (a converter on
   the options, the type's `[JsonConverter]`, the built-in converter the aspect names by its property
   type). A source-generated context never sees what a value object wraps, and serializing through
@@ -165,8 +166,8 @@
     one's rules in its `Create`. Refused rather than made to work: a surface that follows the
     project layout is the silent failure this repo exists to prevent, and lifting a refusal later
     breaks nobody, while adding one after 1.0.0 would.
-  - The satellites keep their own refusal ([§7](openapi.md)): a value object declared by hand, with the
-    interfaces and `GeneratedValueObjectAttribute<,>` the satellites read ([§3](discovery.md)), can still wrap itself.
+  - The satellites keep their own refusal ([OpenAPI](openapi.md)): a value object declared by hand, with the
+    interfaces and `GeneratedValueObjectAttribute<,>` the satellites read ([Discovery](discovery.md)), can still wrap itself.
 - **Every JSON key goes through the wrapped type's own converter**, which knows the type's key
   format where it has one (an enum by name, a `Uri` as its text) and throws `NotSupportedException`
   where it has none. Writing the serialized value as the property name gave a `Uri` key quotes inside
@@ -206,7 +207,7 @@
   each aspect on 2026.1 as it lands, and use no 2027.0-only API.
 - **`AspectOrder`** lives in `CodoMetis.TypeKit.Generators`. Open point: ordering against a
   consumer's own aspects (fabric spike D).
-- **Not in scope:** a `Try`/`Unit` type ([§9](option-result.md) non-goals; an exception enters a result through
+- **Not in scope:** a `Try`/`Unit` type ([Option and Result](option-result.md) non-goals; an exception enters a result through
   `Result.Catch`, phase 13), clock-type analyzers, and decimal JSON converters (no aspect needs them,
   checked in phase 3). The text guards joined phase 13 on 2026-10-13, as string extensions in the
   base package.

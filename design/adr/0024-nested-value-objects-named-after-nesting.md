@@ -3,6 +3,6 @@
 Date: 2026-09-28
 Status: accepted
 
-Context: 2026-09-28, §7.
+Context: 2026-09-28, [OpenAPI](../openapi.md).
 
 , as their companion classes are.

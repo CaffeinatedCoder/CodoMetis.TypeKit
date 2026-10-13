@@ -3,7 +3,7 @@
 Date: 2026-09-27
 Status: accepted
 
-Context: 2026-09-27, [§3](../discovery.md), §11.
+Context: 2026-09-27, [Discovery](../discovery.md), [Native AOT](../native-aot.md).
 
 ,
 which the generators put on every value object, not `GetInterfaces()`. Measured under Native AOT:

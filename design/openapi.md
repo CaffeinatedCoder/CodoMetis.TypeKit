@@ -25,7 +25,7 @@ position, and the change lands in the hoisted component.
   exactly what a parameter of the wrapped type publishes.
 - **A value object that reaches itself** through what it wraps is an `InvalidOperationException`
   naming the chain, not a stack overflow.
-- **Source-generated JSON** ([§11](native-aot.md)): ASP.NET builds the wrapped type's schema from the host's JSON
+- **Source-generated JSON** ([Native AOT](native-aot.md)): ASP.NET builds the wrapped type's schema from the host's JSON
   contract for it, and a source-generated context has none for a type the host never serializes.
   The transformer then refuses with an `InvalidOperationException` naming the value object and the
   `[JsonSerializable(typeof(Guid))]` to add, rather than the serializer's message about a Guid. A

@@ -3,7 +3,7 @@
 Date: 2026-09-27
 Status: accepted
 
-Context: 2026-09-27, §9.
+Context: 2026-09-27, [Option and Result](../option-result.md).
 
 : a `[JsonConverter]` on every exported
 struct of the base package throws `NotSupportedException` in both directions. Not a lossless

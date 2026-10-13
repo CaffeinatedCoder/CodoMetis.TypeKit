@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Status: accepted
 
-Context: 2026-09-28, §9.
+Context: 2026-09-28, [Option and Result](../option-result.md).
 
 On a valued result the conversion
 said whether the operation succeeded where a reader expects the value: `if (await

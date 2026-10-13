@@ -5,4 +5,4 @@ Status: accepted
 
 Context: 2026-09-27.
 
-instead of reporting `default(TError)` ([§9](../option-result.md)).
+instead of reporting `default(TError)` ([Option and Result](../option-result.md)).

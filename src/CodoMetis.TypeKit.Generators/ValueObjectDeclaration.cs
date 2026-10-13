@@ -14,7 +14,7 @@ namespace CodoMetis.TypeKit.Generators;
 /// introduced: the seams it keeps, and what it declares that would collide with a generated member.
 /// </summary>
 /// <remarks>
-/// Every lookup enumerates a collection and compares names, never <c>OfName</c> (plan §5).
+/// Every lookup enumerates a collection and compares names, never <c>OfName</c> (design/aspects.md).
 /// </remarks>
 [CompileTime]
 internal static class ValueObjectDeclaration

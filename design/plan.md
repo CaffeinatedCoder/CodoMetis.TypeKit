@@ -12,6 +12,8 @@ you touch; the rest is reference.
 | [Discovery is by interface](discovery.md) | Why nothing is found by name, and how the analyzer and the satellites find a value object | with the area |
 | [EF Core](ef-core.md) | The mapping plugin, the convention, the translators, keys and collections | with the area |
 | [Aspects](aspects.md) | The aspects, the fabric, the seams, what the generators refuse | with the area |
+| [Closed sets](closed-sets.md) | The closed-set aspect, what must stay true of a set, and where each satellite meets one | with the area |
+| [Patch](patch.md) | `Patch<T>`'s three states, its converter under Native AOT, and where each satellite meets one | with the area |
 | [Test strategy](test-strategy.md) | What is tested where, and the guards that hold the repository to its rules | with the area |
 | [OpenAPI](openapi.md) | The schema transformers and what was measured in the document | with the area |
 | [Option and Result](option-result.md) | Their shape, the non-goals, the combinators and the async forms | with the area |

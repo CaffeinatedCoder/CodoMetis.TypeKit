@@ -6,4 +6,4 @@ Status: accepted
 Context: 2026-09-27.
 
 : pure `Option`/`Result`, not a LanguageExt-style framework.
-   They ship in the base package. No `Try`/`Unit` ([§9](../option-result.md)).
+   They ship in the base package. No `Try`/`Unit` ([Option and Result](../option-result.md)).

@@ -16,7 +16,7 @@ Context: 2026-09-27, before the first release, when renaming still costs nothing
   else.
 - Delegate parameters: `onSome`/`onNone`, `onSuccess`/`onError`, `selector`, `predicate`,
   `action`, as LINQ names them. They were `fnSome`, `map`, `fn`, `check` and `defaultProvider`.
-- Namespaces follow who uses a type ([§1](../packages.md)). The helpers only generated code calls moved to
+- Namespaces follow who uses a type ([Packages](../packages.md)). The helpers only generated code calls moved to
   `CodoMetis.TypeKit.CompilerServices`, hidden from IntelliSense, and `Accepted` and `KnownGood`
   became one `GeneratedFactories` whose methods name the exception each entry point throws.
 - Internally: `ValueObjectAspect` (was the implementation aspect), `ValueObjectContractAspect`,

@@ -6,4 +6,4 @@ Status: accepted
 Context: 2026-09-27.
 
 : `Result<T, TError>` (value first), `readonly record struct`,
-   private fields, non-positional ([§9](../option-result.md)).
+   private fields, non-positional ([Option and Result](../option-result.md)).

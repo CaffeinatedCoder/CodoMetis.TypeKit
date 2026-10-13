@@ -10,7 +10,7 @@ exception was is lost on the way to it: `Result.Catch` makes the exception the w
 `MapError` that turns it into the fault an endpoint answers drops it, so a log of the refusal cannot
 say what failed underneath. A cause nested under an error is the one FluentResults capability a
 TypeKit user plausibly misses; success messages and a list of reasons stay outside what a `Result`
-here is ([decision 5](0005-option-result.md), [§9](../option-result.md)).
+here is ([decision 5](0005-option-result.md), [Option and Result](../option-result.md)).
 
 In 2.1, additive: an optional `Exception? Cause` on `Fault<TFault>`, set through
 `Fault.Of(reason, detail, cause)`, kept beside the reason and the detail for the log and the fault

@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Status: accepted
 
-Context: 2026-09-28, §9.
+Context: 2026-09-28, [Option and Result](../option-result.md).
 
 `TapErrorAsync(Func<TError, Task>)` sits
 beside `Action<TError>`, as `TapAsync` already did. It ships in 1.0 because adding it later

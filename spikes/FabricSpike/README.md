@@ -47,7 +47,7 @@ dotnet run --project spikes/FabricSpike/Spike.App --no-build
 **A. The analyzer travels with the base package, not with the aspects.** Finding 8 is the
 fabric's price. With `[Inheritable]` on the interface, anyone who could name `IValue<T>` also got
 the aspect. Now they get it only by referencing `.Generators`. So `CodoMetis.TypeKit` brings the
-analyzer package along (plan [§10](../../design/analyzers.md)). When a type implements a marker and the compilation does not
+analyzer package along ([Analyzers](../../design/analyzers.md)). When a type implements a marker and the compilation does not
 reference `CodoMetis.TypeKit.Generators`, it reports an error (CMTK0002). For the same reason
 `ForbiddenStructDefaultInitializationAnalyzer` (CMTK0001) travels the same way, since it guards
 the interfaces wherever they are visible.

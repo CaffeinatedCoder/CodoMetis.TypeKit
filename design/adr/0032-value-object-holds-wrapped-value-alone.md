@@ -3,8 +3,7 @@
 Date: 2026-09-28
 Status: accepted
 
-Context: 2026-09-28,
-§5.
+Context: 2026-09-28, [Aspects](../aspects.md).
 
 Everything generated (JSON, parsing, the type converter, the EF column, comparison) carries
 the wrapped value, so other state (CMTK1012), a hand-written equality or an explicit

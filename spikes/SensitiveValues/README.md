@@ -34,7 +34,7 @@ prototype Serilog destructuring policy.
 | 4 | Serilog: `{Masked}` prints the mask, but `{@Masked}` destructures the public properties, `MaskedEmail { Value: "ann@example.com" }`, and so does `{@Signup}` for every value object inside. Every value object, masked or not, is logged as `{ Value: … }` there | ✅ |
 | 5 | A destructuring policy that turns any value object (recognised by `GeneratedValueObjectAttribute<,>`) into a scalar of its `ToString()`: `{@Masked}` and `{@Signup}` print the mask, and an unmasked value object prints its value as a plain string instead of `{ Value: … }` | ✅ |
 | 6 | A `DataClassificationAttribute` on the value object's *type*: the logging generator reports LOGGEN035 ("has a sensitive field/property in its type") and generates nothing for the method, which then fails with CS8795 | ✅ |
-| 7 | The debugger: no value object declares `[DebuggerDisplay]` or hides `Value`, so the debugger shows `ToString()`, the mask, and expands `Value`. [§9](../../design/option-result.md) already holds that the debugger is not a log | ✅ |
+| 7 | The debugger: no value object declares `[DebuggerDisplay]` or hides `Value`, so the debugger shows `ToString()`, the mask, and expands `Value`. [Option and Result](../../design/option-result.md) already holds that the debugger is not a log | ✅ |
 
 ## Consequences
 

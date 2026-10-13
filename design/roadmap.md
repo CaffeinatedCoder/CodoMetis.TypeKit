@@ -23,6 +23,19 @@ item names the decision that scoped it.
   a nullable element; `Patch<string?>` under `Traverse` and `Map`.
 - CMTK1021 groups names ignoring case, which misses the one `Match` collision `ToLowerInvariant` makes
   and ordinal case folding does not (the Kelvin sign); it fails loudly, as LAMA0611 and CS0100.
+- What the second outside review of 2026-10-13 rated can-wait. Analyzers: the CMTK0011 code fix
+  offered on a struct, which cannot have a non-public parameterless constructor (CS8958), and the
+  trivia it drops; CMTK0010 on an enum or a delegate under `[Concrete]` and on a type parameter whose
+  constraint already makes it a record, and its cost (`GetSymbolInfo` on every generic name, about
+  0.5 s on a 6.7k-line file); CMTK0003 on an async expression-bodied member in the IDE, where
+  Metalama has not run. Generators: a C# keyword in a namespace or a member name fails with LAMA0041,
+  not a CMTK error; generated members carry no XML documentation, so IntelliSense shows nothing for
+  them. Run time: the Serilog policy ignores `ToMaximumStringLength`; an inlined nullable closed set
+  does not admit null in the document; an exception error prints its whole `ToString()` in a Testing
+  message, and there are no async assertions; `query.FirstOrNone(func)` binds to the sequence
+  overload and reads every row; a closed set's `.Name` in a query is not translated (it throws); the
+  closed-set JSON read allocates a string per token; `CatchAsync` over a `ValueTask` and
+  `TraverseAsync` on `Option` and `Patch`.
 
 ## 2.x, with a spike first
 

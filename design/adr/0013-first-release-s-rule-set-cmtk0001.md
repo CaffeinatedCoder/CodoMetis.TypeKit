@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Status: accepted
 
-Context: 2026-09-28, [§10](../analyzers.md); CMTK0009 added the same
+Context: 2026-09-28, [Analyzers](../analyzers.md); CMTK0009 added the same
 day, at Warning, for the calls that hand out a default.
 
 CMTK0004 ships at Error

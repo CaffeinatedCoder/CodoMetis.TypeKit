@@ -6,4 +6,4 @@ Status: accepted
 Context: 2026-09-27.
 
 , not a
-   replaced `IValueConverterSelector` or a pre-convention scan ([§4](../ef-core.md), spikes/EfMapping).
+   replaced `IValueConverterSelector` or a pre-convention scan ([EF Core](../ef-core.md), spikes/EfMapping).

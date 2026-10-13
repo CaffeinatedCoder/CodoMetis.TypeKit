@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Status: accepted
 
-Context: 2026-09-28, §5.
+Context: 2026-09-28, [Aspects](../aspects.md).
 
 : `TryFrom`, `FromKnownGood`,
 `Revalidate`, `CompareTo(TSelf)` and `ToString()` may be written by hand and are kept; any other

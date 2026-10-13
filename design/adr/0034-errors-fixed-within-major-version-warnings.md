@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Status: accepted
 
-Context: 2026-09-28, §10.
+Context: 2026-09-28, [Analyzers](../analyzers.md).
 
 A new Error, or
 an Error that reports more, waits for a major version. A Warning or Info may report more forms in

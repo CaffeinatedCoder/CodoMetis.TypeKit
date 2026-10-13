@@ -84,7 +84,7 @@ is the value-less shape. Anything that turns this into a second LanguageExt is o
   gets the same message, and a dictionary key does too. That is what the serializer itself does for
   `System.Type`. It hands every type one converter typed `object`, which the serializer wraps: a
   converter per type needed `MakeGenericType`, and under Native AOT that failed for these structs
-  with the runtime's message instead of this one ([§11](native-aot.md)).
+  with the runtime's message instead of this one ([Native AOT](native-aot.md)).
 - A serialized shape says absent with `T?`; `ToOption()`/`OrNull()` convert at the boundary; a
   result is matched to a response or a document. An application that wants a wire format registers
   its own converter on its options, which takes precedence over the type's attribute, in a

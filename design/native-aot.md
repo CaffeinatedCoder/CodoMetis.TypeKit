@@ -20,11 +20,11 @@ host, EF Core through `dotnet ef dbcontext optimize --precompile-queries --nativ
   as `{}` (both measured). That is ILCompiler's behaviour, not a contract, so the smoke test cannot
   catch a return to `GetInterfaces()` at run time; the analyzers' IL2070, an error in the packages'
   build, does.
-- **JSON.** The generated converter's wrapped value goes through `GeneratedJson.TypeInfo` ([§5](aspects.md)), so a
+- **JSON.** The generated converter's wrapped value goes through `GeneratedJson.TypeInfo` ([Aspects](aspects.md)), so a
   context lists the value objects and never what they wrap. A value object wrapping a type the
   serializer has no converter for (a class of the application's) still needs that type in the
   context, and the serializer's refusal names it.
-- **OpenAPI.** The host's context lists what its value objects wrap ([§7](openapi.md)).
+- **OpenAPI.** The host's context lists what its value objects wrap ([OpenAPI](openapi.md)).
 - **EF Core** is experimental under Native AOT and needs a compiled model and precompiled queries;
   its `DbContext` constructors require dynamic code. With the satellite, a value object maps, writes,
   queries by `.Value`, binds as a parameter and reads a stored value without validation, in the

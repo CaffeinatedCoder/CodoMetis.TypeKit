@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Status: accepted
 
-Context: 2026-09-28, §9.
+Context: 2026-09-28, [Option and Result](../option-result.md).
 
 : it is offered on every
 expression of every file that imports the namespace, and collides with anyone else's.

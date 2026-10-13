@@ -3,4 +3,4 @@
 Date: 2026-09-27
 Status: accepted
 
-in the base package (2026-09-27, [§4](../ef-core.md)).
+in the base package (2026-09-27, [EF Core](../ef-core.md)).

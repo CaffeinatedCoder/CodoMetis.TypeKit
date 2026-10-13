@@ -3,7 +3,7 @@
 Date: 2026-09-28
 Status: accepted
 
-Context: 2026-09-28, §10.
+Context: 2026-09-28, [Analyzers](../analyzers.md).
 
 , through a
 `MetalamaTransformedCodeAnalyzer` item in the analyzer package's `buildTransitive` props. The

@@ -3,7 +3,7 @@
 Date: 2026-09-27
 Status: accepted
 
-Context: 2026-09-27, §11.
+Context: 2026-09-27, [Native AOT](../native-aot.md).
 
 : the run-time packages build with
 `IsAotCompatible`, the woven code is published with Native AOT in the smoke test, and a path that

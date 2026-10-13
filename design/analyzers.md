@@ -19,7 +19,7 @@ code fixes under `analyzers/dotnet/cs`). `CodoMetis.TypeKit` takes a package dep
   layout. The consumer smoke test (phase 6) asserts CMTK0001 fires, directly and transitively.
 
 Attributes stay in `CodoMetis.TypeKit`. The analyzer resolves them and the interfaces with
-`GetTypeByMetadataName` and compares symbols ([§3](discovery.md)), so it does not reference the base package.
+`GetTypeByMetadataName` and compares symbols ([Discovery](discovery.md)), so it does not reference the base package.
 Inside the analyzer, rules that react to attributes are kept apart from value-object rules, so the
 split stays mechanical if a generic analyzer package is ever wanted.
 

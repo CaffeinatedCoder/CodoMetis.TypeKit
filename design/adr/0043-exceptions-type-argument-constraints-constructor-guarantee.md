@@ -18,5 +18,5 @@ guards ship as string extensions and a fault in the base package, with no value 
 what CMTK0002 refuses, a woven one in a package of its own costs a private generators reference,
 a boundary exemption, a baseline override and a smoke consumer for one line per field, and the
 type cannot be refined (CMTK1005) or told apart from another field of the same type (CMTK0008).
-Public aspects are allowed in principle ([§5](../aspects.md)) and none exists. Clock-type analyzers and
+Public aspects are allowed in principle ([Aspects](../aspects.md)) and none exists. Clock-type analyzers and
 decimal JSON converters stay out.

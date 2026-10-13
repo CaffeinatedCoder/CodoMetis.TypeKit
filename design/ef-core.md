@@ -9,7 +9,7 @@
   property can also name it explicitly. Its expressions call its own public static
   `ProviderValue` and `Materialize`: an expression tree cannot call a static abstract member
   directly (CS8927), and EF's compiled model writes the expressions out as C# in the application's
-  assembly, where an internal helper did not compile ([§11](native-aot.md)). `UseTypeKit()` composes a plain
+  assembly, where an internal helper did not compile ([Native AOT](native-aot.md)). `UseTypeKit()` composes a plain
   `ValueConverter<TVO,T>` over the same expressions, the type the compiled model recreates, because a
   precompiled query casts a property's converter to its design-time type.
 - **No per-type comparer.** A `readonly record struct` already has value equality, and EF's default
@@ -59,7 +59,7 @@
   (`Properties<decimal>()`) matches the property's CLR type; the README says to configure the value
   object (`Properties<Amount>()`). Measured 2026-09-28 for precision, maximum length, column type and
   an enum conversion.
-- **Stored JSON (decided 2026-09-27).** The generated JSON converter applies `Create` ([§5](aspects.md)), which
+- **Stored JSON (decided 2026-09-27).** The generated JSON converter applies `Create` ([Aspects](aspects.md)), which
   is right for input and wrong for JSON the application stored itself (an event store, a document
   column): a rule added later would make old documents unreadable. `StoredJsonConverterFactory`, in
   the base package because it is a System.Text.Json concern, is the opt-in for such a store's

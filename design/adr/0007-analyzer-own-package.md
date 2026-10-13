@@ -5,4 +5,4 @@ Status: accepted
 
 Context: 2026-09-27.
 
-, reaching consumers through the base package ([§10](../analyzers.md)).
+, reaching consumers through the base package ([Analyzers](../analyzers.md)).

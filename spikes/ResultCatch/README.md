@@ -1,7 +1,7 @@
 # Spike: can an exception enter a `Result` through one factory, without a `Try` type?
 
 **Status: run 2026-10-13, answered.** Proposed 2026-10-13, from the "`Result.Catch`" part of phase 13
-(2.0.0) in the former plan's phase log (git, `design/plan.md` before 2026-10-13), [decision 43](../../design/adr/0043-exceptions-type-argument-constraints-constructor-guarantee.md). [§9](../../design/option-result.md) keeps `Try` and `Unit` out:
+(2.0.0) in the former plan's phase log (git, `design/plan.md` before 2026-10-13), [decision 43](../../design/adr/0043-exceptions-type-argument-constraints-constructor-guarantee.md). [Option and Result](../../design/option-result.md) keeps `Try` and `Unit` out:
 a `Try<T>` is `Result<T, Exception>` under a second name, and `Result<TError>` is the value-less
 shape a `Unit` would stand in for.
 
