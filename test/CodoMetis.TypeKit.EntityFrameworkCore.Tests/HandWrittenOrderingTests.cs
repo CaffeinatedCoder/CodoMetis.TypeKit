@@ -33,6 +33,11 @@ public sealed class HandWrittenOrderingTests : IDisposable
         ["Min"]                    = db => db.Ranked.Min(r => r.Rank),
         ["Max"]                    = db => db.Ranked.Select(r => r.Rank).Max(),
         ["a record class"]         = db => db.Ranked.OrderBy(r => r.Label).ToList(),
+
+        // Over a navigation the operators are Enumerable's: the first answered 1 where memory answers 3,
+        // the second 3 where memory answers 1.
+        ["OrderBy over a navigation"] = db => db.Parents.Select(p => p.Children.OrderBy(c => c.Rank).Select(c => c.Rank.Value).First()).ToList(),
+        ["Max over a navigation"]     = db => db.Parents.Select(p => p.Children.Max(c => c.Rank)).ToList(),
     };
 
     private readonly SqliteConnection _connection = new("Data Source=:memory:");
@@ -70,6 +75,9 @@ public sealed class HandWrittenOrderingTests : IDisposable
 
         db.Ranked.Where(r => r.Count > ProbeCount.From(1)).OrderBy(r => r.Count).Select(r => r.Count.Value).ToList().ShouldBe([2, 3]);
         db.Ranked.Max(r => r.Count).ShouldBe(ProbeCount.From(3));
+
+        db.Parents.Select(p => p.Children.OrderByDescending(c => c.Rank.Value).Select(c => c.Rank.Value).First()).ToList().ShouldBe([3]);
+        db.Parents.Select(p => p.Children.Max(c => c.Rank.Value)).ToList().ShouldBe([3]);
     }
 
     /// <summary>Two value objects captured from the query's closure compare in memory, before EF sees the query.</summary>
@@ -92,6 +100,8 @@ public sealed class HandWrittenOrderingTests : IDisposable
 
         foreach (var value in new[] { 1, 2, 3 })
             db.Add(new Ranked { Rank = ProbeDescending.From(value), Count = ProbeCount.From(value), Label = ProbeReversedLabel.From($"{value}") });
+
+        db.Add(new RankParent { Children = [new RankChild { Rank = ProbeDescending.From(1) }, new RankChild { Rank = ProbeDescending.From(3) }] });
 
         db.SaveChanges();
         db.ChangeTracker.Clear();
@@ -116,7 +126,25 @@ public sealed class Ranked
     public ProbeCount Count { get; set; }
 }
 
+public sealed class RankParent
+{
+    public int Id { get; set; }
+
+    public List<RankChild> Children { get; set; } = [];
+}
+
+public sealed class RankChild
+{
+    public int Id { get; set; }
+
+    public int ParentId { get; set; }
+
+    public ProbeDescending Rank { get; set; }
+}
+
 public sealed class RankedDb(DbContextOptions<RankedDb> options) : DbContext(options)
 {
     public DbSet<Ranked> Ranked => Set<Ranked>();
+
+    public DbSet<RankParent> Parents => Set<RankParent>();
 }
