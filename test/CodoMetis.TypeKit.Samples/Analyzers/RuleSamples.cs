@@ -24,6 +24,10 @@ public interface IOrders
     Task<Result<OrderFault>> CancelAsync(OrderId id);
 
     Result<OrderFault> Cancel(OrderId id);
+
+    IEnumerable<Result<OrderFault>> CancelEach(IEnumerable<OrderId> ids);
+
+    IAsyncEnumerable<Result<OrderFault>> CancelEachAsync(IEnumerable<OrderId> ids);
 }
 
 public interface IOrderIds
@@ -100,6 +104,21 @@ public static class Rules
         var cancelFirst = orders.CancelAsync(first);
         var cancelSecond = orders.CancelAsync(second);
         await Task.WhenAll(cancelFirst, cancelSecond);                      // silent: both tasks still hold their results
+        // end sample
+    }
+
+    /// <summary>The silent part is compiled outside the suppression, so a report on it fails the build.</summary>
+    public static async Task DroppedByWaitingOrLooping(IOrders orders, IEnumerable<OrderId> ids, OrderId id)
+    {
+#pragma warning disable CMTK0003 // what the sample shows the rule reporting
+        // sample: CodoMetis.TypeKit.Analyzers/cmtk0003-waits
+        orders.CancelAsync(id).Wait();                                   // CMTK0003: blocks until the Result exists, then forgets it
+        Task.WaitAll(ids.Select(orders.CancelAsync));                    // CMTK0003: the tasks become plain ones
+        await foreach (var outcome in orders.CancelEachAsync(ids)) { }   // CMTK0003: every Result, read by nobody
+        // end sample
+#pragma warning restore CMTK0003
+        // sample: CodoMetis.TypeKit.Analyzers/cmtk0003-waits
+        await foreach (var _ in orders.CancelEachAsync(ids)) { }         // a variable named _ says the drop is meant
         // end sample
     }
 

@@ -5,7 +5,8 @@ namespace CodoMetis.TypeKit.Analyzers.Tests;
 
 /// <summary>
 /// CMTK0003: a <c>Result</c> or <c>Option</c>, or a collection of them, dropped by an expression
-/// statement or by a conversion of its task to a plain <c>Task</c>.
+/// statement, by a conversion of its task to a plain <c>Task</c>, by <c>Wait</c>, or by a loop that
+/// never reads them.
 /// </summary>
 public sealed class IgnoredOutcomeAnalyzerTests
 {
@@ -46,6 +47,13 @@ public sealed class IgnoredOutcomeAnalyzerTests
 
             public Task<IReadOnlyList<Result<Fault>>> SaveAllAsync(int[] values) => Task.FromResult<IReadOnlyList<Result<Fault>>>([]);
 
+            public IEnumerable<Result<Fault>> SaveEach(int[] values) => values.Select(Save);
+
+            public async IAsyncEnumerable<Result<Fault>> SaveEachAsync(int[] values)
+            {
+                foreach (var value in values) yield return await CancelAsync(value);
+            }
+
             public Task RunAsync() => Task.CompletedTask;
 
             public int Count() => 1;
@@ -68,7 +76,7 @@ public sealed class IgnoredOutcomeAnalyzerTests
     }
 
     private static DiagnosticResult Cmtk0003(int location, string outcome, string method) =>
-        new DiagnosticResult("CMTK0003", DiagnosticSeverity.Warning).WithLocation(location).WithArguments(outcome, method);
+        new DiagnosticResult("CMTK0003", DiagnosticSeverity.Error).WithLocation(location).WithArguments(outcome, method);
 
     /// <summary>A second file, whose own using directives come first.</summary>
     private static AnalyzerTest<IgnoredOutcomeAnalyzer> TestWithFile(string file, params DiagnosticResult[] expected)
@@ -84,7 +92,7 @@ public sealed class IgnoredOutcomeAnalyzerTests
         var rule = new IgnoredOutcomeAnalyzer().SupportedDiagnostics.ShouldHaveSingleItem();
 
         rule.Id.ShouldBe("CMTK0003");
-        rule.DefaultSeverity.ShouldBe(DiagnosticSeverity.Warning);
+        rule.DefaultSeverity.ShouldBe(DiagnosticSeverity.Error);
         rule.IsEnabledByDefault.ShouldBeTrue();
     }
 
@@ -97,7 +105,7 @@ public sealed class IgnoredOutcomeAnalyzerTests
                 public static void Run(Service service) { {|#0:service.Save(1)|}; }
             }
             """,
-            new DiagnosticResult("CMTK0003", DiagnosticSeverity.Warning)
+            new DiagnosticResult("CMTK0003", DiagnosticSeverity.Error)
                 .WithLocation(0)
                 .WithMessage("The Result that 'Save' returns is ignored, so its outcome is never seen. Handle it, or discard it with '_ =' if nothing depends on it."))
             .RunAsync(TestContext.Current.CancellationToken);
@@ -413,6 +421,135 @@ public sealed class IgnoredOutcomeAnalyzerTests
                 public static Task Held(Task<Result<Fault>> first, Task<Result<Fault>> second) => Task.WhenAll(first, second);
 
                 public static Task Cast(Service service, int[] ids) => (Task)Task.WhenAll(ids.Select(service.CancelAsync));
+            }
+            """)
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// <c>Wait</c> blocks until the result exists and hands it to nobody, whatever reads what it returns;
+    /// <c>Task.WaitAll</c> over tasks the statement made converts them to plain ones; a lazy sequence a
+    /// call made without being given a result makes its results as it is materialised.
+    /// </summary>
+    [Fact]
+    public Task Waiting_for_or_materialising_results_the_statement_made_reports() =>
+        Test(
+            """
+            public static class Caller
+            {
+                public static async Task Run(Service service, int[] ids)
+                {
+                    {|#0:service.CancelAsync(1).Wait()|};
+                    if ({|#1:service.FindAsync().Wait(100)|}) { }
+                    {|#2:Task.WhenAll(service.CancelAsync(1), service.CancelAsync(2)).Wait()|};
+                    Task.WaitAll({|#3:ids.Select(service.CancelAsync)|});
+                    Task.WaitAll({|#4:ids.Select(i => service.CancelAsync(i)).ToArray()|});
+                    {|#5:service.SaveEach(ids).ToList()|};
+                    {|#6:await service.SaveEachAsync(ids).ToListAsync()|};
+                    Task.WaitAny({|#7:ids.Select(service.CancelAsync).ToArray()|});
+                    Drain({|#8:ids.Select(service.CancelAsync).ToArray()|});
+                }
+
+                private static void Drain(ReadOnlySpan<Task> tasks) { }
+            }
+            """,
+            Cmtk0003(0, "Result", "CancelAsync"),
+            Cmtk0003(1, "Option", "FindAsync"),
+            Cmtk0003(2, "collection of Results", "WhenAll"),
+            Cmtk0003(3, "collection of Results", "Select"),
+            Cmtk0003(4, "collection of Results", "ToArray"),
+            Cmtk0003(5, "collection of Results", "ToList"),
+            Cmtk0003(6, "collection of Results", "ToListAsync"),
+            Cmtk0003(7, "collection of Results", "ToArray"),
+            Cmtk0003(8, "collection of Results", "ToArray"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A task still held keeps its result after <c>Wait</c>, and so do held tasks after
+    /// <c>Task.WaitAll</c>; a plain task has none; a held sequence, or one filtered from what the
+    /// statement was given, made nothing; an explicit cast to plain tasks says the drop is intended.
+    /// </summary>
+    [Fact]
+    public Task Waiting_for_or_materialising_results_that_are_held_stays_silent() =>
+        Test(
+            """
+            public static class Caller
+            {
+                public static void Run(Service service, int[] ids, Task<Result<Fault>> held, List<Task<Result<Fault>>> pending, IEnumerable<Result<Fault>> each)
+                {
+                    var task = service.CancelAsync(1);
+                    task.Wait();
+                    held.Wait();
+                    service.RunAsync().Wait();
+                    Task.WaitAll(pending);
+                    Task.WaitAll(pending.ToArray());
+                    Task.WaitAll(task, held);
+                    Task.WaitAll(ids.Select(_ => service.RunAsync()));
+                    each.ToList();
+                    each.Where(result => result.TryGetError(out _)).ToList();
+                    _ = service.SaveEach(ids).ToList();
+                    var all = service.SaveEach(ids).ToList();
+                    Task.WaitAll((ReadOnlySpan<Task>)ids.Select(service.CancelAsync).ToArray());
+                    Task.WaitAll((IEnumerable<Task>)ids.Select(service.CancelAsync));
+                }
+            }
+            """)
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A loop over results its header made, whose body never reads the iteration variable, drains
+    /// them: a call, a method group passed to <c>Select</c>, an asynchronous stream with its
+    /// cancellation, a sequence of tasks.
+    /// </summary>
+    [Fact]
+    public Task A_loop_that_never_reads_the_results_its_header_made_reports() =>
+        Test(
+            """
+            public static class Caller
+            {
+                public static async Task Run(Service service, int[] ids, System.Threading.CancellationToken token)
+                {
+                    var count = 0;
+                    foreach (var outcome in {|#0:service.SaveAll(ids)|}) { }
+                    foreach (var outcome in {|#1:ids.Select(service.Save)|}) count++;
+                    await foreach (var outcome in {|#2:service.SaveEachAsync(ids)|}) { }
+                    await foreach (var outcome in {|#3:service.SaveEachAsync(ids).WithCancellation(token)|}) count++;
+                    foreach (var pending in {|#4:ids.Select(service.CancelAsync)|}) { }
+                }
+            }
+            """,
+            Cmtk0003(0, "sequence of Results", "SaveAll"),
+            Cmtk0003(1, "sequence of Results", "Select"),
+            Cmtk0003(2, "sequence of Results", "SaveEachAsync"),
+            Cmtk0003(3, "sequence of Results", "WithCancellation"),
+            Cmtk0003(4, "sequence of Results", "Select"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A loop that reads each result, even only inside a lambda, handles them; a variable named
+    /// <c>_</c> says the drop is intended; a held collection keeps its results; a loop over anything
+    /// else is not about results.
+    /// </summary>
+    [Fact]
+    public Task A_loop_that_reads_its_results_discards_them_or_walks_a_held_collection_stays_silent() =>
+        Test(
+            """
+            public static class Caller
+            {
+                public static async Task Run(Service service, int[] ids, List<Result<int, Fault>> loaded, IAsyncEnumerable<Result<Fault>> stream)
+                {
+                    var errors = 0;
+                    foreach (var outcome in service.SaveAll(ids)) if (outcome.TryGetError(out _)) errors++;
+                    await foreach (var outcome in service.SaveEachAsync(ids)) _ = outcome;
+                    foreach (var outcome in service.SaveEach(ids)) Run(() => outcome.TryGetError(out _));
+                    foreach (var _ in service.SaveAll(ids)) { }
+                    await foreach (var _ in service.SaveEachAsync(ids)) { }
+                    foreach (var outcome in loaded) { }
+                    await foreach (var outcome in stream) { }
+                    foreach (var outcome in loaded.Where(result => result.TryGetValue(out _, out _))) { }
+                    foreach (var count in service.Counts()) { }
+                }
+
+                private static void Run(Func<bool> check) { }
             }
             """)
             .RunAsync(TestContext.Current.CancellationToken);

@@ -419,8 +419,8 @@ They arrive with this package, so whoever can see the interfaces gets the guard:
   factory.
 - **CMTK0002**: a type implements `IValue<T>`, `IValidatedValue<,,>` or `IClosedSet<TSelf>` but the
   project does not reference `CodoMetis.TypeKit.Generators`, so nothing would be generated for it.
-- **CMTK0003** (warning): a `Result` or `Option` that a call returns, dropped. `_ = …` says it is
-  meant.
+- **CMTK0003**: a `Result` or `Option` that a call returns, dropped, waited for and forgotten, or
+  walked by a loop that never reads it. `_ = …` says it is meant.
 - **CMTK0004**: `Materialize`, which rebuilds a value object without its rules, called anywhere but
   the EF Core satellite.
 - **CMTK0005** (warning): `new OrderId[n]` and the like, which fill every slot with a default

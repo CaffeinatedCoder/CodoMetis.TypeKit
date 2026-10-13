@@ -10,8 +10,9 @@ namespace CodoMetis.TypeKit.Analyzers;
 
 /// <summary>
 /// CMTK0003: a <c>Result</c> or <c>Option</c> that a call returns, or a collection of them that the
-/// statement made, dropped by an expression statement, awaited or not, or by a conversion of its
-/// <c>Task</c> to a plain <c>Task</c>, a method group's included.
+/// statement made, dropped by an expression statement, awaited or not, by a conversion of its
+/// <c>Task</c> to a plain <c>Task</c>, a method group's included, by <c>Wait</c>, or by a loop that
+/// never reads them.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -38,7 +39,16 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// that is dropped. The collection is reported when the statement made the results in it
 /// (<see cref="MadeResults"/>). One that only passes on results the statement was given, as
 /// <c>await Task.WhenAll(first, second)</c> over tasks in variables or <c>pending.ToList()</c> do,
-/// leaves them where they were and is silent.
+/// leaves them where they were and is silent. A lazy sequence a call returns without being given any
+/// result, <c>orders.CancelEach(ids)</c>, makes its results as it is enumerated, so materialising it
+/// in the statement made them too.
+/// </para>
+/// <para>
+/// <c>orders.CancelAsync(id).Wait();</c> blocks until the result exists and hands it to nobody, and
+/// <c>Task.WaitAll(ids.Select(orders.CancelAsync))</c> converts the tasks it made to plain ones, as a
+/// single task's conversion does. A <c>foreach</c> or <c>await foreach</c> over results its header made,
+/// whose body never reads the iteration variable, drains them: an iteration variable named <c>_</c>
+/// says the drop is intended.
 /// </para>
 /// <para>
 /// <c>Tap</c>, <c>TapAsync</c>, <c>TapError</c> and <c>TapErrorAsync</c> return their receiver unchanged,
@@ -63,9 +73,9 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         title: "Result or Option ignored",
         messageFormat: "The {0} that '{1}' returns is ignored, so its outcome is never seen. Handle it, or discard it with '_ =' if nothing depends on it.",
         category: "Usage",
-        DiagnosticSeverity.Warning,
+        DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "A Result carries an error and an Option an absence; dropping either, or a collection of them, as a statement, or converting its Task to a plain Task, means nobody decides what happens then. Assign it to '_' to make an intended drop explicit.",
+        description: "A Result carries an error and an Option an absence; dropping either, or a collection of them, as a statement, by converting its Task to a plain Task, by waiting for it, or by a loop that never reads them, means nobody decides what happens then. Assign it to '_', or name a loop's variable '_', to make an intended drop explicit.",
         helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.IgnoredOutcome)
     );
 
@@ -91,11 +101,16 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
                 start.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1"),
                 start.Compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1"),
                 start.Compilation.GetSpecialType(SpecialType.System_Collections_Generic_ICollection_T),
-                start.Compilation.GetSpecialType(SpecialType.System_Collections_Generic_IReadOnlyCollection_T));
+                start.Compilation.GetSpecialType(SpecialType.System_Collections_Generic_IReadOnlyCollection_T),
+                start.Compilation.GetSpecialType(SpecialType.System_Collections_Generic_IEnumerable_T),
+                start.Compilation.GetTypeByMetadataName("System.Collections.Generic.IAsyncEnumerable`1"),
+                start.Compilation.GetTypeByMetadataName("System.ReadOnlySpan`1"));
 
             start.RegisterOperationAction(operation => Analyze(operation, symbols, tasks), OperationKind.ExpressionStatement);
             start.RegisterOperationAction(operation => AnalyzeConversion(operation, symbols, tasks), OperationKind.Conversion);
             start.RegisterOperationAction(operation => AnalyzeMethodGroup(operation, symbols, tasks), OperationKind.DelegateCreation);
+            start.RegisterOperationAction(operation => AnalyzeWait(operation, symbols, tasks), OperationKind.Invocation);
+            start.RegisterOperationAction(operation => AnalyzeLoop(operation, symbols, tasks), OperationKind.Loop);
             start.RegisterSyntaxNodeAction(
                 node => AnalyzeUnbound(node, symbols),
                 SyntaxKind.ExpressionStatement,
@@ -141,7 +156,8 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     /// Whether the results in the collection <paramref name="invocation"/> returns were made in the
     /// statement, and so exist nowhere else: the call was given no result to pass on and made them
     /// itself, or a call in the statement returns a result or a task of one, or a method group of such
-    /// a method is passed on (<c>ids.Select(orders.CancelAsync)</c>).
+    /// a method is passed on (<c>ids.Select(orders.CancelAsync)</c>), or a call that was given no result
+    /// returns a lazy sequence of them, which makes them as it is enumerated.
     /// </summary>
     /// <remarks>
     /// <c>Task.WhenAll(first, second)</c> over tasks in variables, and <c>pending.ToList()</c>, are given
@@ -149,34 +165,83 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     /// </remarks>
     private static bool MadeResults(IInvocationOperation invocation, TypeKitSymbols symbols, Tasks tasks)
     {
-        var given = Tasks.Mentions(invocation.Instance?.Type, symbols)
-                 || invocation.TargetMethod.Parameters.Any(parameter => Tasks.Mentions(parameter.Type, symbols));
-        if (!given) return true;
+        if (!Given(invocation, symbols)) return true;
 
         return invocation.Descendants().Any(operation => operation switch
         {
-            IInvocationOperation call           => (symbols.OutcomeName(call.Type) ?? tasks.PendingOutcome(call.Type, symbols)) is not null && !ReturnsItsStoredReceiver(call, symbols),
+            IInvocationOperation call           => (symbols.OutcomeName(call.Type) ?? tasks.PendingOutcome(call.Type, symbols)) is not null && !ReturnsItsStoredReceiver(call, symbols)
+                                                || tasks.SequenceOutcome(call.Type, symbols) is not null && !Given(call, symbols),
             IMethodReferenceOperation reference => (symbols.OutcomeName(reference.Method.ReturnType) ?? tasks.PendingOutcome(reference.Method.ReturnType, symbols)) is not null,
             _                                   => false
         });
     }
 
+    /// <summary>Whether the call was handed something that can carry a result, as its receiver or an argument.</summary>
+    private static bool Given(IInvocationOperation invocation, TypeKitSymbols symbols) =>
+        Tasks.Mentions(invocation.Instance?.Type, symbols)
+     || invocation.TargetMethod.Parameters.Any(parameter => Tasks.Mentions(parameter.Type, symbols));
+
     /// <summary>
     /// A call's <c>Task</c> of a result, or of a collection of results it made, converted implicitly to
-    /// a plain <c>Task</c>, which has no result to hand on.
+    /// a plain <c>Task</c>, which has no result to hand on; or tasks of results the statement made,
+    /// converted to plain tasks, an array, a sequence or a span of them, as <c>Task.WaitAll</c> takes.
     /// </summary>
     private static void AnalyzeConversion(OperationAnalysisContext context, TypeKitSymbols symbols, Tasks tasks)
     {
         var conversion = (IConversionOperation)context.Operation;
 
-        if (!conversion.IsImplicit || !SymbolEqualityComparer.Default.Equals(conversion.Type, tasks.Plain)) return;
-        if (conversion.Operand is not IInvocationOperation invocation) return;
+        if (!conversion.IsImplicit || conversion.Operand is not IInvocationOperation invocation) return;
+
+        string? outcome;
+        if (SymbolEqualityComparer.Default.Equals(conversion.Type, tasks.Plain))
+            outcome = tasks.PendingOutcome(invocation.Type, symbols)
+                   ?? DroppedCollection(tasks.CollectionOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks);
+        else if (tasks.HoldsPlainTasks(conversion.Type))
+            outcome = DroppedCollection(tasks.PendingOutcome(tasks.ElementOfSequence(invocation.Type), symbols), invocation, symbols, tasks);
+        else
+            return;
+
+        if (outcome is null) return;
+
+        context.Report(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+    }
+
+    /// <summary>
+    /// <c>Wait</c> on a task of a result, or of a collection of results, that the expression made:
+    /// <c>orders.CancelAsync(id).Wait()</c> blocks until the result exists and hands it to nobody,
+    /// whether the statement drops what <c>Wait</c> returns or an <c>if</c> reads it. A task still held
+    /// keeps its result.
+    /// </summary>
+    private static void AnalyzeWait(OperationAnalysisContext context, TypeKitSymbols symbols, Tasks tasks)
+    {
+        var wait = (IInvocationOperation)context.Operation;
+
+        if (wait.TargetMethod is not { Name: "Wait", IsStatic: false } method || !SymbolEqualityComparer.Default.Equals(method.ContainingType, tasks.Plain)) return;
+        if (wait.Instance is null || Unwrap(wait.Instance) is not IInvocationOperation invocation) return;
 
         var outcome = tasks.PendingOutcome(invocation.Type, symbols)
                    ?? DroppedCollection(tasks.CollectionOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks);
         if (outcome is null) return;
 
-        context.Report(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+        context.Report(Diagnostic.Create(Rule, wait.Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+    }
+
+    /// <summary>
+    /// A <c>foreach</c> or <c>await foreach</c> over results, or tasks of them, that its header made,
+    /// whose body never reads the iteration variable: <c>await foreach (var outcome in
+    /// orders.CancelEachAsync(ids)) { }</c> runs every cancellation and drops every result. A variable
+    /// named <c>_</c> says the drop is intended; a collection held in a variable, a parameter or a field
+    /// keeps its results.
+    /// </summary>
+    private static void AnalyzeLoop(OperationAnalysisContext context, TypeKitSymbols symbols, Tasks tasks)
+    {
+        if (context.Operation is not IForEachLoopOperation { LoopControlVariable: IVariableDeclaratorOperation { Symbol: { Name: not "_" } variable } } loop) return;
+        if ((symbols.OutcomeName(variable.Type) ?? tasks.PendingOutcome(variable.Type, symbols)) is not { } outcome) return;
+        if (Unwrap(loop.Collection) is not IInvocationOperation invocation || !MadeResults(invocation, symbols, tasks)) return;
+
+        if (loop.Body.Descendants().OfType<ILocalReferenceOperation>().Any(reference => SymbolEqualityComparer.Default.Equals(reference.Local, variable))) return;
+
+        context.Report(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), $"sequence of {outcome}s", invocation.TargetMethod.Name));
     }
 
     /// <summary>
@@ -263,7 +328,10 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         INamedTypeSymbol? generic,
         INamedTypeSymbol? genericValueTask,
         INamedTypeSymbol? collection,
-        INamedTypeSymbol? readOnlyCollection)
+        INamedTypeSymbol? readOnlyCollection,
+        INamedTypeSymbol? sequence,
+        INamedTypeSymbol? asyncSequence,
+        INamedTypeSymbol? readOnlySpan)
     {
         public INamedTypeSymbol? Plain { get; } = plain;
 
@@ -294,12 +362,48 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
             return symbols.OutcomeName(element) ?? PendingOutcome(element, symbols);
         }
 
-        private ITypeSymbol? ElementOf(INamedTypeSymbol type)
+        /// <summary>
+        /// <c>Result</c> or <c>Option</c> when <paramref name="type"/> is a sequence, lazy or not, of
+        /// results or of tasks of them: an array, or a type that is or implements
+        /// <c>IEnumerable&lt;T&gt;</c> or <c>IAsyncEnumerable&lt;T&gt;</c>.
+        /// </summary>
+        public string? SequenceOutcome(ITypeSymbol? type, TypeKitSymbols symbols)
+        {
+            var element = ElementOfSequence(type);
+
+            return symbols.OutcomeName(element) ?? PendingOutcome(element, symbols);
+        }
+
+        /// <summary>The element of an array, or of a type that is or implements <c>IEnumerable&lt;T&gt;</c> or <c>IAsyncEnumerable&lt;T&gt;</c>.</summary>
+        public ITypeSymbol? ElementOfSequence(ITypeSymbol? type) =>
+            type switch
+            {
+                IArrayTypeSymbol array => array.ElementType,
+                INamedTypeSymbol named => ElementOf(named, sequence, asyncSequence),
+                _                      => null
+            };
+
+        /// <summary>
+        /// Whether <paramref name="type"/> holds plain tasks, which have no result to hand on: an array
+        /// of <c>Task</c>, a sequence of them, or a <c>ReadOnlySpan&lt;Task&gt;</c>.
+        /// </summary>
+        public bool HoldsPlainTasks(ITypeSymbol? type) =>
+            type switch
+            {
+                IArrayTypeSymbol array => SymbolEqualityComparer.Default.Equals(array.ElementType, Plain),
+                INamedTypeSymbol { TypeArguments.Length: 1 } named => SymbolEqualityComparer.Default.Equals(named.TypeArguments[0], Plain)
+                                                                   && (SymbolEqualityComparer.Default.Equals(named.OriginalDefinition, readOnlySpan) || ElementOfSequence(named) is not null),
+                _ => false
+            };
+
+        private ITypeSymbol? ElementOf(INamedTypeSymbol type) => ElementOf(type, collection, readOnlyCollection);
+
+        private static ITypeSymbol? ElementOf(INamedTypeSymbol type, INamedTypeSymbol? first, INamedTypeSymbol? second)
         {
             foreach (var candidate in type.AllInterfaces.Insert(0, type))
             {
-                if (SymbolEqualityComparer.Default.Equals(candidate.OriginalDefinition, collection)
-                 || SymbolEqualityComparer.Default.Equals(candidate.OriginalDefinition, readOnlyCollection))
+                if (SymbolEqualityComparer.Default.Equals(candidate.OriginalDefinition, first)
+                 || SymbolEqualityComparer.Default.Equals(candidate.OriginalDefinition, second))
                     return candidate.TypeArguments[0];
             }
 

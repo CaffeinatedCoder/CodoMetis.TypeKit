@@ -103,7 +103,7 @@ public sealed class GeneratedCodeTests
 
     [Fact]
     public Task CMTK0003_reports_in_markup_only() =>
-        Verify<IgnoredOutcomeAnalyzer>("private void Run$(Service service) { {|#0:service.Load()|}; }", "CMTK0003", DiagnosticSeverity.Warning);
+        Verify<IgnoredOutcomeAnalyzer>("private void Run$(Service service) { {|#0:service.Load()|}; }", "CMTK0003", DiagnosticSeverity.Error);
 
     [Fact]
     public Task CMTK0004_reports_in_markup_only() =>

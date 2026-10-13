@@ -445,8 +445,9 @@ Each phase ends green, and its guards have been proven by seeding the defect
       at the named release on 2026-09-28, the next major in preview included) and "Built with Metalama".
       The Generators README links to the comparison. Both are GitHub-only and can be corrected without
       a release.
-    - Found and left for 1.x: CMTK0003 over `.Wait()` and `await foreach`; CMTK0008 over tuple `==`,
-      `Contains` and `is var`, and composite join keys (all Warnings, decision 34). Raw Metalama errors
+    - Found and left for 1.x: CMTK0003 over `.Wait()` and `await foreach` (closed in 2.0.0 before the
+      rule became an Error, decision 50); CMTK0008 over tuple `==`, `Contains` and `is var`, and
+      composite join keys (a Warning, decision 34). Raw Metalama errors
       for a value object named after a generated member (`From`, `TryFrom`, `MinValue`), a wrapped type
       whose `Parse` does not return it or that is abstract, and a public base member whose signature
       matches a generated one (LAMA0500). `ToString()` of a default `Uri`/`Version` value object throws; `IConvertible` quotes
@@ -516,7 +517,7 @@ Each phase ends green, and its guards have been proven by seeding the defect
       per type, through `GeneratedValueObjectAttribute.Accept`), Newtonsoft.Json under decision 26's
       parity, and configuration binding, which the configuration binder's source generator does not do
       for `TypeConverter`/`IParsable` types (dotnet/runtime#83599). The CMTK0003/CMTK0008 gaps above
-      stay Warnings (decision 34).
+      stay Warnings (decision 34); CMTK0003's are closed in 2.0.0 (decision 50).
     - **Ranges are not a TypeKit family**: CodoMetis.ValueRanges models them. A value object over one
       (`IValidatedValue<ContractPeriod, DateRange, PeriodFault>`) works with both packages as they
       ship, measured 2026-10-11 in [spikes/RangeValueObjects](../spikes/RangeValueObjects/README.md):
@@ -619,8 +620,19 @@ Each phase ends green, and its guards have been proven by seeding the defect
        `ToHttpResult(success)`, `IFaultFeature` and `FaultResponseOptions.QualifiedFaultNames`
        (decision 49). `FaultProblem<TFault>`'s constraint relaxed to `notnull`, the first difference
        the 1.5.1 baseline reports, suppressed alone (decision 48).
-    9. **The breaks**: decision 34's promotions, the two rules at Error, and the baseline's verdict
-       on each intended break.
+    9. **The breaks** ✅ 2026-10-13 (decision 50). CMTK0003 is the one Warning raised to Error, after
+       its gaps were closed: `Wait` on a task the expression made, tasks of results made in the
+       statement converted to plain ones (`Task.WaitAll`, `WaitAny`), a `foreach` or `await foreach`
+       whose body never reads the results its header made, and a lazy sequence of results a call made,
+       materialised and dropped (eleven seeds, each failing its guard; an explicit cast to plain tasks
+       stays silent, as a cast to `Task` does). The release-tracking file
+       records the change (RS2001 refuses a descriptor that disagrees, RS2007 a change that is none),
+       `AnalyzerHelpLinkTests` holds the README's severity column to every descriptor, and the
+       build-outcome consumer no longer raises CMTK0003 itself, so its reports there prove the
+       default. CMTK0010–0012 needed nothing: they ship at Error in this major and report only on
+       what it adds. The 1.5.1 baseline, run over all seven packages with the attribute and
+       parameter-name rules on as well, reports the one suppressed difference and compiler-emitted
+       attributes only.
     10. **`2.0.0-preview.1` to nuget.org** once steps 7 and 8 exist, the consumer smoke test
         against it, then the release.
     - **A closed-set (smart enum) family**, declared by interface and joining `.Generators` (§1), the
@@ -816,10 +828,10 @@ Each phase ends green, and its guards have been proven by seeding the defect
       ready-made type appears, a minor-version `CodoMetis.TypeKit.Text` holding `WrittenText` and
       `IssuedIdentifier` under those conditions is additive; removing one after shipping is not. No
       spike: every claim is a unit test over a string.
-    - **What 2.0.0 breaks**: Warnings promoted to Errors (decision 34), CMTK0010 and CMTK0011 at
-      Error, and whatever else the 1.5.0 baseline reports as intended. Whether an intended break is
-      suppressed per break or the baseline lapses for 2.0.0 is decided at the first one, so an
-      unintended break still fails the pack.
+    - **What 2.0.0 breaks** (decision 50): CMTK0003 at Error, the one Warning raised; CMTK0010–0012
+      new at Error; `FaultProblem<TFault>`'s constraint, suppressed alone against the 1.5.1 baseline
+      (decision 48); `FirstOrNone`/`FirstOrError` binding to the query overloads, and `LastOrNone`
+      on a query a compile error.
     - **What it does not wait for** (decision 44): Metalama 2027.0 stable, .NET 11 and C# 15 unions.
       The compiler-made union types have a public `object? Value` and are serialized by
       System.Text.Json, so `Option`/`Result` take part in their pattern matching only after a spike
@@ -1535,6 +1547,25 @@ Still open:
     - **An MVC action names its member in an attribute**, `[FaultStatus<OrderFault>(nameof(…), 422)]`,
       since an attribute takes only constants; a name no member has stops the host.
 
+50. **Of the Warnings, CMTK0003 alone becomes an Error in 2.0.0** (2026-10-13, phase 13). Decision 34
+    lets a major raise a Warning; the bar for raising one is that every report can be answered in the
+    code by a form that says what is meant, never by a suppression alone, and that its reach is
+    complete, since an Error cannot learn within the major. CMTK0003 meets both: `_ =`, a cast or a
+    loop variable named `_` says a drop is meant, and its reach is a return type rather than a list
+    of methods, complete once its 1.x gaps were closed (`Wait`, `Task.WaitAll`, a loop that never
+    reads its results, a lazy sequence materialised). The others stay. CMTK0005's array filled in a
+    loop and CMTK0006's member set in a second step (`OnInitialized`, `InitializeAsync`, a private
+    field `required` cannot reach) have only a suppression to say so. CMTK0008's shared identities
+    are answered by a cast an IDE reports as redundant, and its four known gaps would be frozen for
+    2.x. CMTK0009's reach is a list of framework methods, which the `net11.0` target of a 2.x minor
+    may lengthen, and a sequence checked for emptiness first is correct. CMTK0007 reports test
+    theories. The 1.5.1 baseline's verdict, over all seven packages: under package validation's
+    default rules one difference, CP0021 on `FaultProblem<TFault>` (decision 48); with the
+    attribute and parameter-name rules on as well, 29 compiler-emitted attributes (state machines
+    renumbered by members added before them, nullable-context bytes) and no renamed parameter. The
+    analyzer's severity and the query overloads' binding are behaviour no compatibility check reads;
+    the changelog states each.
+
 ## 9. Option and Result
 
 `Result<T,TError>`, `Result<TError>` and `Option<T>`, with the `Option.None()`, `Result.Success()` and
@@ -1693,7 +1724,7 @@ exist.
 |---|---|---|---|
 | CMTK0001 | No `default`/`default(T)`/`new()`/`new T()` of a value object or a `[RequireCustomInitialization]` type. An operand of `==`/`!=`, or an argument of a call whose name has the word `Equal`, `Equals` or `Compare` or ends in `Be` (`ThrowIfEqual`, `Assert.NotEqual`, `ShouldNotBe`), is exempt: a guard check is the only defence against the defaults the rule cannot see. So is a `default` assigned to an `out` parameter of a method returning `bool`, the Try pattern. Where a sibling branch does not bind (same-project value objects), the target type is taken from the enclosing conditional, switch arm or collection | Error | shipped in 1.0.0 |
 | CMTK0002 | Type implements `IValue<>`/`IValidatedValue<,,>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so it is never woven | Error | shipped in 1.0.0 |
-| CMTK0003 | `Result`/`Option` a call returns, dropped by an expression statement, awaited or not, or a `Task` of one converted to a plain `Task` (`Task Cancel() => CancelAsync();`); `_ =` opts out. `Tap`, `TapAsync`, `TapError` and `TapErrorAsync` on a stored result or task are exempt, since they return their receiver. Also a collection of results the statement made (an array, `ICollection<T>` or `IReadOnlyCollection<T>`, such as `await Task.WhenAll(ids.Select(orders.CancelAsync))`), and a method group of a `Task<Result>` method converted to a delegate returning `Task`; tasks held in variables are silent, and so is a lazy `IEnumerable<T>`, where nothing has run. CA1806 can only enforce this per method name, not per return type | Warning | shipped in 1.0.0 |
+| CMTK0003 | `Result`/`Option` a call returns, dropped by an expression statement, awaited or not, or a `Task` of one converted to a plain `Task` (`Task Cancel() => CancelAsync();`); `_ =` opts out. `Tap`, `TapAsync`, `TapError` and `TapErrorAsync` on a stored result or task are exempt, since they return their receiver. Also a collection of results the statement made (an array, `ICollection<T>` or `IReadOnlyCollection<T>`, such as `await Task.WhenAll(ids.Select(orders.CancelAsync))`), and a method group of a `Task<Result>` method converted to a delegate returning `Task`; tasks held in variables are silent, and so is a lazy `IEnumerable<T>`, where nothing has run, unless a call that was given no result returned it and the statement materialises it. Also `Wait` on a task the expression made, tasks of results the statement made converted to plain ones (`Task.WaitAll`, `WaitAny`), and a `foreach` or `await foreach` over results its header made whose body never reads the iteration variable; a variable named `_` opts out. CA1806 can only enforce this per method name, not per return type | Error | shipped in 1.0.0 at Warning; Error in 2.0.0 (decision 50), its 1.x gaps closed first |
 | CMTK0004 | `IValueObjectMaterializer<,>.Materialize`, `ValueObjectConverter<,>.Materialize` or a hand-written value object's public `Materialize`, called or referenced (expression trees included). The satellite's own call is compiled in the satellite; EF's compiled model is generated code, whose diagnostics are not reported (measured: reported, it is six errors in the smoke test's AOT consumer). `StoredJsonConverterFactory` goes through `IStoredJsonConverterSource`, not `Materialize` | Error | shipped in 1.0.0 |
 | CMTK0005 | `new T[n]`, `stackalloc T[n]`, `GC.AllocateUninitializedArray/AllocateArray<T>` or `Array.Resize` of a no-default struct: every new slot starts as `default`. A constant length of zero (for `Array.Resize` and the `GC` methods too) or initial elements are silent | Warning | shipped in 1.0.0 |
 | CMTK0006 | Field or auto-property of a no-default struct type in a class that no initializer, `required` or constructor sets; a non-public parameterless constructor (EF, serializers) and a record's copy constructor are exempt. Measured 2026-09-28 on the repository's EF entities and request types: 12 of 12 reports on settable properties of a type with only the implicit constructor, each a real way to a default. `required`, the fix the message names where it compiles, works with EF's compiled model, precompiled queries and Native AOT (the smoke test rerun with it). A `[SetsRequiredMembers]` constructor must assign the `required` members it promises | Warning | shipped in 1.0.0 |

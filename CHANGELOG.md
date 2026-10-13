@@ -13,7 +13,11 @@ section is the GitHub release's notes.
 ## 2.0.0 — Unreleased
 
 A major version: it targets `net10.0` and Metalama 2026.1 as 1.x does, and the breaks are the ones
-Semantic Versioning reserves for a major, listed under Changed as they land.
+Semantic Versioning reserves for a major, listed under Changed. Package validation against 1.5.1
+finds one difference in the public surface, `FaultProblem<TFault>`'s constraint, which still accepts
+every type argument it accepted; the others are behaviour no compatibility check reads, CMTK0003 at
+Error and `FirstOrNone` on a query. The new Error rules, CMTK0010 to CMTK0012, report only on what
+this release adds, so nothing that built against 1.5.1 meets them.
 
 ### Added
 
@@ -139,6 +143,14 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   compile errors that say to order the query and take the first, or to call `AsEnumerable()`.
 - **`CodoMetis.TypeKit.AspNetCore`**: `FaultProblem<TFault>` takes any `notnull` fault type, an enum or a
   closed set, where it took `struct, Enum`; every type argument it accepted is still accepted.
+- **`CodoMetis.TypeKit.Analyzers`**: CMTK0003, a dropped `Result` or `Option`, is an Error where it was
+  a Warning. A drop that nothing depends on is correct, and `_ = …`, a cast, or a loop variable named
+  `_` says so in the code, so the error never needs a suppression. It also reports what it missed:
+  `Wait` on a task of a result the expression made; tasks of results the statement made, passed to
+  `Task.WaitAll` or `Task.WaitAny`; a `foreach` or `await foreach` over results its header made whose
+  body never reads them; and a lazy sequence of results a call made, materialised by `ToList()` or
+  `ToListAsync()` and dropped. CMTK0005, CMTK0006, CMTK0008 and CMTK0009 stay Warnings, since correct
+  code can look the same and has nothing but a suppression to say so, and CMTK0007 stays Info.
 
 ## 1.5.1 — 2026-10-11
 

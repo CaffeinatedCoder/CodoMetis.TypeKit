@@ -14,7 +14,7 @@ appears to: an instance that passed no factory, or a value object that was never
 |---|---|---|
 | CMTK0001 | Error | `default`, `default(T)`, `new T()`, `new()` and `new T { }` of a value object, an `Option`, a `Result`, or a struct marked `[RequireCustomInitialization]`. Also through a type parameter whose constraints make it one of those. A default that is only compared (`id == default`, `id.Equals(default)`, `ThrowIfEqual(id, default)`, `Assert.NotEqual(default, id)`) is a guard and is not reported, nor is one assigned to an `out` parameter of a Try method that returns `bool`. |
 | CMTK0002 | Error | A type implements `IValue<T>`, `IValidatedValue<,,>` or `IClosedSet<TSelf>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so nothing is generated for it: no field, no `Value`, no factory, or for a closed set no name and no `Match`. |
-| CMTK0003 | Warning | A `Result` or `Option` that a call returns, or a collection of them that the statement made, dropped by a statement, awaited or not, or by converting its `Task` to a plain `Task`, a method group's included. |
+| CMTK0003 | Error | A `Result` or `Option` that a call returns, or a collection of them that the statement made, dropped by a statement, awaited or not, by converting its `Task` to a plain `Task`, a method group's included, by waiting for it, or by a loop that never reads it. `_` says the drop is meant. |
 | CMTK0004 | Error | `Materialize`, which rebuilds a value object without its rules, called or referenced anywhere but the EF Core satellite. |
 | CMTK0005 | Warning | An array or span of a value object, `Option`, `Result` or `[RequireCustomInitialization]` struct created with a length, so every slot starts as `default`. A constant length of zero is not reported. |
 | CMTK0006 | Warning | A field or auto-property of such a type in a class that no initializer, `required` or constructor sets, or a `required` one that a `[SetsRequiredMembers]` constructor does not set. |
@@ -173,7 +173,26 @@ a method group of such a method is passed on, or the call that returns the colle
 result and made them itself, as `orders.CancelAll(ids);` does. A call given results that something
 still holds only passes them on and is silent: `Task.WhenAll` over tasks in variables, fields or
 parameters, or `pending.ToList()`. A lazy `IEnumerable<T>`, such as a `Select` nobody enumerates, has
-made nothing yet; CA1806 reports a LINQ result that is dropped.
+made nothing yet; CA1806 reports a LINQ result that is dropped. A lazy sequence of results that a call
+returns without being given any, `orders.CancelEach(ids)`, makes them as it is enumerated, so
+`orders.CancelEach(ids).ToList();` is reported, and so is `await orders.CancelEachAsync(ids).ToListAsync();`.
+
+Waiting for a task drops its result as surely, and so does a loop that never reads what it walks:
+
+```csharp
+orders.CancelAsync(id).Wait();                                   // CMTK0003: blocks until the Result exists, then forgets it
+Task.WaitAll(ids.Select(orders.CancelAsync));                    // CMTK0003: the tasks become plain ones
+await foreach (var outcome in orders.CancelEachAsync(ids)) { }   // CMTK0003: every Result, read by nobody
+await foreach (var _ in orders.CancelEachAsync(ids)) { }         // a variable named _ says the drop is meant
+```
+
+`Wait` is reported on a task the expression made, whether the statement drops the `bool` a timeout
+overload returns or an `if` reads it. `Task.WaitAll` and `Task.WaitAny` take plain tasks, so tasks of
+results the statement made are converted and their results dropped, as one task's conversion is; an
+explicit cast to the plain tasks' type says that drop is intended. A
+`foreach` or `await foreach` is reported when its header made the results, by the rule above, and
+its body never reads the iteration variable. Tasks and collections that something still holds keep
+their results and are silent.
 
 `Tap`, `TapAsync`, `TapError` and `TapErrorAsync` return their receiver unchanged, and so do the
 `Task` continuations `TapAsync` and `TapErrorAsync`, so `result.Tap(log);` and `await pending.TapAsync(log);`
@@ -403,12 +422,13 @@ there too, put the line in a `.globalconfig` file, which applies to every file o
 The errors are the rules where the code is wrong whatever surrounds it: a `default` written out
 (CMTK0001), a value object nothing generates (CMTK0002), validation bypassed (CMTK0004), a type
 argument that breaks what its parameter declares (CMTK0010), a constructor a host will look for
-and not find (CMTK0011), and branches bound to members by their order (CMTK0012). A
-warning is what gets ignored, so these fail the build. The others are warnings, or for CMTK0007 Info,
-because correct code can look the same: an array filled in a loop straight after it is created
-(CMTK0005), a member a framework sets (CMTK0006), a sequence known not to be empty (CMTK0009), a
-drop that nothing depends on (CMTK0003), or a comparison of two identities that really are shared
-(CMTK0008).
+and not find (CMTK0011), and branches bound to members by their order (CMTK0012). So is a result
+dropped without saying so (CMTK0003): a drop that nothing depends on is correct, and `_` says it in
+the code, where every reader sees it. A warning is what gets ignored, so these fail the build. The
+others are warnings, or for CMTK0007 Info, because correct code can look the same and has nothing
+but a suppression to say so: an array filled in a loop straight after it is created (CMTK0005), a
+member set in a second step, such as a component's `OnInitialized` (CMTK0006), a sequence known not
+to be empty (CMTK0009), or a comparison of two identities that really are shared (CMTK0008).
 
 Within a major version, an Error never reports more than it did: a new Error rule, or an Error that
 reports more, waits for the next major version. A Warning or an Info may learn more forms in a minor

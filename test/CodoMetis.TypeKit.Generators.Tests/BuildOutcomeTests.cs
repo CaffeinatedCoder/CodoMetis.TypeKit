@@ -1218,12 +1218,12 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             await File.WriteAllTextAsync(Path.Combine(_directory, "OtherFile.cs"), OtherFile);
 
             // Only errors are read, so the rules that ship as warnings or a suggestion are raised here.
+            // CMTK0003 ships as an error, and is left to its own severity, so its reports here prove it.
             await File.WriteAllTextAsync(Path.Combine(_directory, ".editorconfig"),
                 """
                 root = true
 
                 [*.cs]
-                dotnet_diagnostic.CMTK0003.severity = error
                 dotnet_diagnostic.CMTK0005.severity = error
                 dotnet_diagnostic.CMTK0006.severity = error
                 dotnet_diagnostic.CMTK0007.severity = error
