@@ -3,7 +3,7 @@
 The Roslyn analyzers for [CodoMetis.TypeKit](https://www.nuget.org/packages/CodoMetis.TypeKit).
 You do not reference this package yourself: `CodoMetis.TypeKit` depends on it, so every project
 that can see `Option`, `Result` or the value-object contracts gets the rules, directly or through
-another project. Reference it directly only to take a newer analyzer than the base package you are on.
+another project. The two share a version and move together.
 
 The characteristic failure these rules prevent is code that compiles and does less than it
 appears to: an instance that passed no factory, or a value object that was never generated.
@@ -14,7 +14,7 @@ appears to: an instance that passed no factory, or a value object that was never
 |---|---|---|
 | CMTK0001 | Error | `default`, `default(T)`, `new T()`, `new()` and `new T { }` of a value object, an `Option`, a `Result`, or a struct marked `[RequireCustomInitialization]`. Also through a type parameter whose constraints make it one of those. A default that is only compared (`id == default`, `id.Equals(default)`, `ThrowIfEqual(id, default)`, `Assert.NotEqual(default, id)`) is a guard and is not reported, nor is one assigned to an `out` parameter of a Try method that returns `bool`. |
 | CMTK0002 | Error | A type implements `IValue<T>`, `IValidatedValue<,,>` or `IClosedSet<TSelf>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so nothing is generated for it: no field, no `Value`, no factory, or for a closed set no name and no `Match`. |
-| CMTK0003 | Error | A `Result` or `Option` that a call returns, or a collection or a tuple of them that the statement made, dropped. The drops: a statement, awaited or not; a conversion of its `Task` to a plain `Task`, a method group's included; `Wait`; a loop that never reads it; a branch of a conditional, a `switch` expression or a `??` that picked the call. `_` says the drop is meant. |
+| CMTK0003 | Error | A `Result` or `Option` that a call returns, or a collection or a tuple of them that the statement made, dropped. The drops: a statement, awaited or not; its `Task` converted to a plain `Task`, also where a method group is the conversion; `Wait`; a loop that never reads it; a branch of a conditional, a `switch` expression or a `??` that picked the call. `_` says the drop is meant. |
 | CMTK0004 | Error | `Materialize`, which rebuilds a value object without its rules, called or referenced anywhere but the EF Core satellite. |
 | CMTK0005 | Warning | An array or span of a value object, `Option`, `Result` or `[RequireCustomInitialization]` struct created with a length, so every slot starts as `default`. A constant length of zero is not reported. |
 | CMTK0006 | Warning | A field or auto-property of such a type in a class that no initializer, `required` or constructor sets, or a `required` one that a `[SetsRequiredMembers]` constructor does not set. |
@@ -50,9 +50,9 @@ Result<Order, OrderFault> pending = Result.Error(OrderFault.Empty);
 ```
 
 Code inside the type itself is exempt, since its factories have to construct it. A `Nullable<T>`
-of a value object is a null, not an instance, and is not reported. What the rule cannot see, such
-as an array created with a length or an unassigned field of a class, is why an uninitialized
-`Result` throws instead of reporting an error it never had.
+of a value object is a null, not an instance, and is not reported. An array created with a length
+or an unassigned field of a class can still hold a `default` the rule cannot see, so an
+uninitialized `Result` throws rather than report an error it never had.
 
 A default that is only compared is a guard against exactly those, or an assertion that one is not
 there, and is not reported:
@@ -224,7 +224,8 @@ OrderId[] kept = [.. rows.Select(r => OrderId.From(r.Id))];   // built from valu
 `stackalloc`, `GC.AllocateUninitializedArray`, `GC.AllocateArray` and `Array.Resize` are reported
 too; `Array.Resize` adds default slots whenever the new size is larger, which the rule cannot tell.
 A constant length or size of zero creates no slot, as `new OrderId[0]` does not, and is not reported.
-A warning, since filling such an array in a loop straight after is correct and indistinguishable.
+A warning, since an array filled in a loop straight after it is created is correct, and the rule
+cannot tell it from one that is not.
 
 ## CMTK0006
 
@@ -443,7 +444,8 @@ The errors are the rules where the code is wrong whatever surrounds it: a `defau
 argument that breaks what its parameter declares (CMTK0010), a constructor a host will look for
 and not find (CMTK0011), and branches bound to members by their order (CMTK0012). So is a result
 dropped without saying so (CMTK0003): a drop that nothing depends on is correct, and `_` says it in
-the code, where every reader sees it. A warning is what gets ignored, so these fail the build. The
+the code, where every reader sees it. These fail the build because a warning on correct code is
+rare for them and a missed one is a defect at run time. The
 others are warnings, or for CMTK0007 Info, because correct code can look the same and has nothing
 but a suppression to say so: an array filled in a loop straight after it is created (CMTK0005), a
 member set in a second step, such as a component's `OnInitialized` (CMTK0006), a sequence known not
