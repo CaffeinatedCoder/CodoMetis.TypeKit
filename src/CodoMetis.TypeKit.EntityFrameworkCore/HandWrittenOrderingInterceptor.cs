@@ -108,10 +108,27 @@ internal static class HandWrittenOrdering
             else if ((method.DeclaringType == typeof(Queryable) || method.DeclaringType == typeof(Enumerable)) && OrderedType(method) is { } ordered)
             {
                 Refuse(ordered, $"ordered by {method.Name}");
+
+                // A key the selector converts (to object, IComparable) is still ordered in memory by the
+                // value object's CompareTo, while EF drops the conversion and orders by the column.
+                if (KeySelector(node) is { } key) Refuse(Unconverted(key.Body).Type, $"ordered by {method.Name}");
             }
 
             return base.VisitMethodCall(node);
         }
+
+        /// <summary>The operator's key or value selector, quoted for <c>Queryable</c>, a lambda for <c>Enumerable</c>.</summary>
+        private static LambdaExpression? KeySelector(MethodCallExpression node) =>
+            node.Arguments.Count > 1 ? StripQuotes(node.Arguments[1]) as LambdaExpression : null;
+
+        private static Expression StripQuotes(Expression expression) =>
+            expression is UnaryExpression { NodeType: ExpressionType.Quote } quote ? StripQuotes(quote.Operand) : expression;
+
+        /// <summary>The expression under its boxing and reference conversions; a conversion operator, which changes the value, is kept.</summary>
+        private static Expression Unconverted(Expression expression) =>
+            expression is UnaryExpression { NodeType: ExpressionType.Convert or ExpressionType.ConvertChecked or ExpressionType.TypeAs, Method: null } conversion
+                ? Unconverted(conversion.Operand)
+                : expression;
 
         /// <summary>
         /// Whether EF evaluates the comparison before translating, in a filter: it reads no parameter

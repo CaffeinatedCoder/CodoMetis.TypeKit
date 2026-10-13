@@ -38,6 +38,10 @@ public sealed class HandWrittenOrderingTests : IDisposable
         // the second 3 where memory answers 1.
         ["OrderBy over a navigation"] = db => db.Parents.Select(p => p.Children.OrderBy(c => c.Rank).Select(c => c.Rank.Value).First()).ToList(),
         ["Max over a navigation"]     = db => db.Parents.Select(p => p.Children.Max(c => c.Rank)).ToList(),
+
+        // Boxed, the key still orders by CompareTo in memory, 3, 2, 1; EF dropped the cast and answered 1, 2, 3.
+        ["OrderBy a key cast to object"] = db => db.Ranked.OrderBy(r => (object)r.Rank).ToList(),
+        ["ThenBy a key cast to object"]  = db => db.Ranked.OrderBy(r => r.Id % 1).ThenBy(r => (object)r.Rank).ToList(),
     };
 
     private readonly SqliteConnection _connection = new("Data Source=:memory:");
