@@ -177,13 +177,16 @@ against 1.5.1 meets them.
   set as the fault type, `AddFaultResponses<TSet>()` answering every member by its kind (`NotFound` 404,
   `Conflict` 409, `Invalid` 422, `Forbidden` 403, `Unavailable` 503) with its description as the
   `detail`; a `FaultResponse` per member with a `type` and a `title`; a `Fault<TFault>`'s detail as the
-  problem's `detail`; `WithFaultStatus(fault, status)` on an endpoint and `[FaultStatus<TFault>]` on an
-  MVC action, for that endpoint's response and document entry; `ToHttpResult(success)`, the
+  problem's `detail`; `WithFaultStatus(fault, status)` on an endpoint or a route group and
+  `[FaultStatus<TFault>]` on an MVC action or a controller, for the response and document entry of
+  each endpoint it covers that answers with the fault type, so a group or a controller leaves the
+  others, a health check, alone, and an endpoint's or action's own status replaces it; `ToHttpResult(success)`, the
   endpoint's own success such as `Created`; and `IFaultFeature` on the request while the problem is
   written, for the host's `CustomizeProblemDetails`, with `FaultResponseOptions.QualifiedFaultNames`,
   which names a fault after its type's nesting chain (`Billing.Fault.NotFound`).
-  The startup check refuses a status for a fault type the endpoint does not answer with, and an
-  attribute naming no member.
+  The startup check refuses a status on an endpoint or action that does not answer with its fault
+  type, a status on a group or controller none of whose own endpoints does, and an attribute naming
+  no member.
 
 ### Changed
 
