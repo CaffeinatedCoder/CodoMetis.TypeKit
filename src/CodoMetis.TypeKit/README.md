@@ -607,6 +607,22 @@ surfaces as a `TypeInitializationException`, and the set cannot be used for the 
 instance, keep data a member needs in its own constructor's arguments, and read a name in a property
 or method rather than a static field initializer.
 
+### A closed set read before it is initialized
+
+**Thrown:** `InvalidOperationException: OrderStatus is still being initialized: a static field
+initializer of the set read All, or a member by name, before every member existed.` from `All`,
+`Parse`, `TryParse` and the JSON converter, surfacing as a `TypeInitializationException`, after which
+the set cannot be used for the rest of the process.
+
+**Why:** a static field initializer of the set runs while its members are still being created. `All`
+is filled once every member exists, and a member declared below the reading field is still null, so
+`public static readonly IReadOnlyList<OrderStatus> Snapshot = All;` held null, for a list typed as never
+null, and `Parse` handed out null for a later member.
+
+**Instead:** read `All` or parse a name in a static property or method, which runs once the set is
+initialized: `public static IEnumerable<OrderStatus> Active => All.Where(status => status != Cancelled);`.
+In a field initializer, refer to a member by its field, `Open`, rather than by its name.
+
 ### A task given to Catch
 
 **Thrown:** `ArgumentException: Catch was given a delegate whose value is a task…` from `Catch` when

@@ -43,6 +43,7 @@ public sealed partial class RefusalLinkTests
     private const string NullToValueObject = "A null given to a value object";
     private const string ClosedSetMember = "A closed set has no member of that name";
     private const string ClosedSetNotAMember = "An instance that is not a member of its set";
+    private const string ClosedSetInitializing = "A closed set read before it is initialized";
     private const string TaskGivenToCatch = "A task given to Catch";
 
     private enum Fault { TooLong }
@@ -54,6 +55,7 @@ public sealed partial class RefusalLinkTests
         ["Closed set Parse of an unknown name"] = (ClosedSetMember, () => throw CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMember("OrderStatus")),
         ["Closed set JSON of an unknown name"]  = (ClosedSetMember, () => throw CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMemberInJson("OrderStatus")),
         ["Closed set instance with no name"]    = (ClosedSetNotAMember, () => throw CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NotAMember("OrderStatus")),
+        ["Closed set read while initializing"]  = (ClosedSetInitializing, () => throw CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.StillInitializing("OrderStatus")),
         ["Option written as JSON"]          = (InJson, () => JsonSerializer.Serialize(Option.Some(1))),
         ["Option read from JSON"]           = (InJson, () => JsonSerializer.Deserialize<Option<int>>("1")),
         ["Option? written as a JSON null"]  = (InJson, () => JsonSerializer.Serialize<Option<int>?>(null)),

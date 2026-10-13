@@ -61,10 +61,18 @@ internal sealed partial class ClosedSetAspect
         meta.ThisType._all = ExpressionFactory.Parse(ClosedSetTypes.AllExpression(args.Set, args.Members)).Value;
     }
 
+    /// <summary>
+    /// Refused while the set's static fields are still being initialized: <c>All</c> is filled after
+    /// every member exists, so a static field of the set that read it held null for the process's life.
+    /// </summary>
     [Template]
     public static dynamic? AllTemplate
     {
-        get => meta.ThisType._all;
+        get
+        {
+            var args = (ClosedSetArguments)meta.Tags.Source!;
+            return meta.ThisType._all ?? throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.StillInitializing(args.Set.Name);
+        }
     }
 
     [Template]
@@ -75,7 +83,7 @@ internal sealed partial class ClosedSetAspect
         {
             if (name == candidate.Name)
             {
-                member = candidate.Value!;
+                member = candidate.Value ?? throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.StillInitializing(args.Set.Name);
                 return true;
             }
         }
@@ -98,7 +106,7 @@ internal sealed partial class ClosedSetAspect
         {
             if (string.Equals(name, candidate.Name, comparison))
             {
-                member = candidate.Value!;
+                member = candidate.Value ?? throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.StillInitializing(args.Set.Name);
                 return true;
             }
         }
@@ -114,7 +122,7 @@ internal sealed partial class ClosedSetAspect
         var args = (ClosedSetArguments)meta.Tags.Source!;
         foreach (var candidate in args.Members)
         {
-            if (name == candidate.Name) return candidate.Value;
+            if (name == candidate.Name) return candidate.Value ?? throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.StillInitializing(args.Set.Name);
         }
 
         throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMember(args.Set.Name);
@@ -128,7 +136,7 @@ internal sealed partial class ClosedSetAspect
         var comparison = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         foreach (var candidate in args.Members)
         {
-            if (string.Equals(name, candidate.Name, comparison)) return candidate.Value;
+            if (string.Equals(name, candidate.Name, comparison)) return candidate.Value ?? throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.StillInitializing(args.Set.Name);
         }
 
         throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMember(args.Set.Name);
@@ -151,7 +159,7 @@ internal sealed partial class ClosedSetAspect
         {
             if (s == candidate.Name)
             {
-                result = candidate.Value!;
+                result = candidate.Value ?? throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.StillInitializing(args.Set.Name);
                 return true;
             }
         }
@@ -232,7 +240,7 @@ internal sealed partial class ClosedSetAspect
         {
             foreach (var candidate in args.Members)
             {
-                if (name == candidate.Name) return candidate.Value;
+                if (name == candidate.Name) return candidate.Value ?? throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.StillInitializing(args.Set.Name);
             }
         }
 
@@ -257,7 +265,7 @@ internal sealed partial class ClosedSetAspect
         var name = reader.GetString();
         foreach (var candidate in args.Members)
         {
-            if (name == candidate.Name) return candidate.Value;
+            if (name == candidate.Name) return candidate.Value ?? throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.StillInitializing(args.Set.Name);
         }
 
         throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMemberInJson(args.Set.Name);

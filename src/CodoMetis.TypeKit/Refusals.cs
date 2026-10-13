@@ -44,4 +44,7 @@ internal static class Refusals
 
     /// <summary>A closed set's instance that is not one of its members, asked for its name.</summary>
     public const string ClosedSetNotAMember = " See " + Readme + "an-instance-that-is-not-a-member-of-its-set";
+
+    /// <summary>A closed set's <c>All</c>, or a member by name, read by the set's own static initializers.</summary>
+    public const string ClosedSetInitializing = " See " + Readme + "a-closed-set-read-before-it-is-initialized";
 }
