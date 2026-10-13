@@ -433,6 +433,41 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             Cmtk0010(6, "Handler", "T", "IFactory.Make<T>", "is not a concrete class, record or struct"))
             .RunAsync(TestContext.Current.CancellationToken);
 
+    /// <summary>
+    /// A null-conditional call with written arguments was reported twice, at the argument and at the
+    /// call; a <c>nameof</c> names a type and uses no argument of it; a type that does not exist is
+    /// the compiler's error alone.
+    /// </summary>
+    [Fact]
+    public Task A_null_conditional_call_once_and_a_nameof_or_a_missing_type_not_at_all() =>
+        Test(
+            """
+            public sealed class Holder
+            {
+                public void Inst<[Sealed] T>() { }
+                public void Take<[Sealed] T>(T value) { }
+            }
+
+            public static class Uses
+            {
+                public static Box<{|CS0246:Missing|}>? Unknown;
+
+                public static void Go(Holder? holder, Handler handler)
+                {
+                    holder?.Inst<{|#0:Handler|}>();
+                    holder?.Inst<OrderHandler>();
+                    holder?{|#1:.Take(handler)|};
+                    _ = nameof(Box<Handler>);
+                    _ = nameof(Box<Handler>.ToString);
+                    _ = typeof(Box<{|#2:Handler|}>);
+                }
+            }
+            """,
+            Cmtk0010(0, "Handler", "T", "Holder.Inst<T>", "is not sealed"),
+            Cmtk0010(1, "Handler", "T", "Holder.Take<T>", "is not sealed"),
+            Cmtk0010(2, "Handler", "T", "Box<T>", "is not sealed"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
     [Fact]
     public Task A_compilation_without_TypeKit_is_left_alone() =>
         new AnalyzerTest<TypeArgumentConstraintAnalyzer>("public sealed class Box<T> { } public static class U { public static Box<int> B; }", referenceTypeKit: false)

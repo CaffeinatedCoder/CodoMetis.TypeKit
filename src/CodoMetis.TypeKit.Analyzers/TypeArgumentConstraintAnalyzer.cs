@@ -93,6 +93,8 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         var name = (GenericNameSyntax)context.Node;
         // <see cref="Box{T}"/> names the generic's own parameter, which carries nothing: not a use.
         if (name.IsUnboundGenericName || name.IsPartOfStructuredTrivia()) return;
+        // nameof(Box<Handler>) is the text "Box": no argument of it is used.
+        if (InNameOf(name, context.SemanticModel, context.CancellationToken)) return;
 
         var info   = context.SemanticModel.GetSymbolInfo(name, context.CancellationToken);
         var symbol = info.Symbol ?? info.CandidateSymbols.FirstOrDefault();
@@ -112,6 +114,19 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
 
         for (var i = 0; i < arguments.Count; i++)
             Report(context.ReportDiagnostic, symbols, arguments[i], receiver, name.TypeArgumentList.Arguments[i].GetLocation());
+    }
+
+    /// <summary>Whether <paramref name="name"/> is inside the argument of a <c>nameof</c>, the operator and not a method of that name.</summary>
+    private static bool InNameOf(GenericNameSyntax name, SemanticModel model, CancellationToken token)
+    {
+        foreach (var invocation in name.Ancestors().OfType<InvocationExpressionSyntax>())
+        {
+            if (invocation.Expression is IdentifierNameSyntax { Identifier.ValueText: "nameof" } && invocation.ArgumentList.Span.Contains(name.Span)
+             && model.GetOperation(invocation, token) is INameOfOperation)
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>A call whose type arguments are inferred: nothing is written, so it is reported at the call.</summary>
@@ -163,8 +178,9 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     /// </summary>
     private static void AnalyzeInferred(OperationAnalysisContext context, TypeKitSymbols symbols, ISymbol member, SyntaxNode? name, SyntaxNode reported)
     {
-        // Written type arguments are a generic name, checked where they are written, the block's included.
-        if (name is GenericNameSyntax || name is MemberAccessExpressionSyntax { Name: GenericNameSyntax }) return;
+        // Written type arguments are a generic name, checked where they are written, the block's
+        // included; holder?.Inst<T>() is a member binding.
+        if (name is GenericNameSyntax or MemberAccessExpressionSyntax { Name: GenericNameSyntax } or MemberBindingExpressionSyntax { Name: GenericNameSyntax }) return;
 
         var arguments = Pairs(member);
         if (arguments.Count == 0) return;
@@ -263,6 +279,9 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     /// <summary>What <paramref name="argument"/> breaks of what <paramref name="parameter"/> declares, as the message's last clause.</summary>
     private static IEnumerable<string> Breaches(TypeKitSymbols symbols, ITypeParameterSymbol parameter, ITypeSymbol argument, ITypeSymbol? receiver)
     {
+        // Box<Missing> is the compiler's error (CS0246); what Missing would be is unknown.
+        if (argument.TypeKind is TypeKind.Error) yield break;
+
         foreach (var constraint in Effective(symbols, parameter, receiver))
         {
             if (argument is ITypeParameterSymbol forwarded)
