@@ -3,7 +3,7 @@ namespace CodoMetis.TypeKit.Conventions.Tests;
 /// <summary>
 /// Every package that ships run-time code is built with the trim and AOT analyzers on
 /// (<c>IsAotCompatible</c>), so a call that trimming or Native AOT cannot honour fails the build,
-/// where warnings are errors, instead of a consumer's publish (docs/plan.md §11).
+/// where warnings are errors, instead of a consumer's publish (design/plan.md §11).
 /// </summary>
 /// <remarks>
 /// Read from the packed assembly, which carries the SDK's <c>IsAotCompatible</c> metadata when the

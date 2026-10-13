@@ -1133,10 +1133,13 @@ custom attributes.
 5. **Performance.** Allocation tests hold the generated members to what the wrapped type allocates,
    and `benchmarks/` measures time against the wrapped types. The benchmarks are not a gate: they are
    run before a release and when a template changes.
-6. **README samples** (2026-09-28). Every C# block of the READMEs is a region in
+6. **README and docs samples** (2026-09-28; the `docs/` pages 2026-10-13, decision 45). Every C#
+   block of the READMEs and of the topic pages in `docs/` is a region in
    `test/CodoMetis.TypeKit.Samples`, which references the shipping projects as a consumer does, with
    the analyzer on. `ReadmeSampleTests` requires each block to equal exactly one region and each region
    to be shown, so a sample that stops compiling fails the build and an edit on one side fails the test.
+   A docs page is discovered by being in `docs/`, and the root README's "Documentation" table has to
+   link it.
    An output stated in a comment is asserted against the README's own comment, found by the expression
    the test evaluates. A pre-release audit had found samples that did not compile (a bare fault as a
    `Result<T, TError>`, `quantity.Value;` as a statement, an ellipsis as a lambda body), CMTK0006 on the
@@ -1432,6 +1435,19 @@ Still open:
     the first release after it is stable, minor or major as the fabric measurement says. The
     `2.0.0-preview.N` branch of 2026-10-12 becomes a preview of 2.0.0 itself from `main`; the .NET 11
     measurement is a 3.0.0 spike with no release attached.
+45. **Topic pages in `docs/`, compiled like the READMEs; the plan in `design/`** (2026-10-13, phase
+    13). The package READMEs stay the reference for each package, since nuget.org shows them and every
+    exception message and analyzer help link anchors into them. Guides, one topic each and written
+    around examples, are `docs/<topic>.md`, listed in the root README's "Documentation" table, which
+    `ReadmeSampleTests` reads: every page in `docs/` is compiled by being there (its samples are
+    `{file name}/{name}` in `test/CodoMetis.TypeKit.Samples/Docs`), must be linked from the table,
+    and the table links only pages that exist. The same code block is never in a README and a page,
+    since a block is compiled from exactly one region. A page's public-surface table (`option.md`,
+    `result.md`) is checked against the types by reflection, so a member added without a row fails.
+    The plan and the design notes moved to `design/`, so that `docs/` holds only what a consumer
+    reads and nothing there is exempt from compilation; `design/` is a solution folder. Eleven pages
+    ship with 2.0.0; `Patch<T>`, the closed sets, the fault responses and public aspects get theirs
+    as they land.
 
 ## 9. Option and Result
 

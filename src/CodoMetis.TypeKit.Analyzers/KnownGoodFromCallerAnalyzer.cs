@@ -26,7 +26,7 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// The call is recognised by syntax, since on a value object of the same project it does not bind
 /// where Metalama runs analyzers (<see cref="TypeKitSymbols.GeneratedMemberCall"/>). A value the code
 /// produced itself is not reported, since "a value the caller just produced" is
-/// legitimate (docs/plan.md §10): a constant, a local, a field, a method's result, an interpolation.
+/// legitimate (design/plan.md §10): a constant, a local, a field, a method's result, an interpolation.
 /// A parameter copied into a local first is therefore not seen. Info, because a private helper that
 /// only ever receives constants, and a test theory's parameters, are reported too.
 /// </para>

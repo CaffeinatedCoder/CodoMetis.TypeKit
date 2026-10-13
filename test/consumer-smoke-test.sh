@@ -16,14 +16,14 @@
 #
 # Four consumers:
 #   core     references only CodoMetis.TypeKit: Option and Result work, no Metalama arrives, and
-#            CMTK0001 and CMTK0002 fire (docs/plan.md §10).
+#            CMTK0001 and CMTK0002 fire (design/plan.md §10).
 #   layered  a domain library references CodoMetis.TypeKit.Generators, and an app reaches everything
 #            only through that library: the app uses the generated members, the transitive fabric
 #            generates a value object the app declares itself, and CMTK0001 fires in the app, in the
 #            domain library, and in a Razor component of a third project.
 #   host     a web host with both satellites: EF Core maps the value objects and translates .Value,
 #            and the OpenAPI document describes them.
-#   aot      the same ground published with Native AOT (docs/plan.md §11): no trim or AOT warning
+#   aot      the same ground published with Native AOT (design/plan.md §11): no trim or AOT warning
 #            from a package or from the code woven into the consumer, and the native binary does
 #            what the JIT build does.
 #
@@ -549,7 +549,7 @@ assert_contains "found=ABC:2"    "$work/host.out" "value objects round-trip thro
 # generators weave into a consumer, and they cannot tell that a run-time path still works. Under
 # Native AOT an interface nothing uses is removed from a type, and reflection over it finds nothing:
 # that is how the OpenAPI satellite once described every value object as {} with no warning at any
-# build (docs/plan.md §11). So this publishes a consumer with PublishAot, reads the publish warnings,
+# build (design/plan.md §11). So this publishes a consumer with PublishAot, reads the publish warnings,
 # and runs the native binary.
 #
 # The value objects live in namespace Shop, so a warning about woven code names Shop.; a warning in

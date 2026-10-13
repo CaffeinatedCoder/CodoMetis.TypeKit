@@ -1,7 +1,7 @@
 # Spike: can a fault response carry what a client acts on, without giving up decision 38's checks?
 
 **Status: outline, not yet run.** Proposed 2026-10-12, from the "Fault responses a client can act
-on" part of phase 13 (2.0.0) in [docs/plan.md](../../docs/plan.md) §2. The fault's kind is no longer
+on" part of phase 13 (2.0.0) in [design/plan.md](../../design/plan.md) §2. The fault's kind is no longer
 a `FaultKind` attribute: it is a property of a smart-enum member, in the same phase.
 
 **Question.** Decision 38's `ToHttpResult()` answers a fault with its status and its bare name, and

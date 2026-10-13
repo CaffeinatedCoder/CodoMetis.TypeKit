@@ -2,7 +2,7 @@
 
 **Question.** Can the value-object aspects be applied by a `TransitiveProjectFabric` shipped in the
 aspect package, so the package holding `IValue<T>` / `IValidatedValue<,,>` needs no Metalama at all?
-The answer decides the package boundaries in [docs/plan.md](../../docs/plan.md).
+The answer decides the package boundaries in [design/plan.md](../../design/plan.md).
 
 **Naming (2026-09-27).** The spike predates the package names. `Spike.Abstractions` stands for
 `CodoMetis.TypeKit` and `Spike.ValueObjects` for `CodoMetis.TypeKit.Generators`. The spike keeps
