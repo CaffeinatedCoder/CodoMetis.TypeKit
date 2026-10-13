@@ -10,6 +10,11 @@ A version's heading reads `## <version> — Unreleased` until the release is pre
 the release date. The release workflow refuses a tag whose section still says `Unreleased`, and the
 section is the GitHub release's notes.
 
+## 2.0.0 — Unreleased
+
+A major version: it targets `net10.0` and Metalama 2026.1 as 1.x does, and the breaks are the ones
+Semantic Versioning reserves for a major, listed under Changed as they land.
+
 ## 1.5.1 — 2026-10-11
 
 ### Fixed
