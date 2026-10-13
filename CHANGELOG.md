@@ -36,7 +36,9 @@ this release adds, so nothing that built against 1.5.1 meets them.
   by `CodoMetis.TypeKit.Generators`. A sealed partial class whose every instance is a `public static
   readonly` field, with constant data through a private constructor where the members carry some. The
   generators add `Name`, `QualifiedName`, `All` in declaration order and read-only, `Match` with one required delegate
-  per member, `TryParse` and `Parse` by name, `ToString()`, a JSON converter that writes the name and
+  per member, `TryParse` and `Parse` by name, each with an `ignoreCase` overload for a header or a
+  query string as a client typed it while JSON, the column, binding and `IParsable` stay ordinal,
+  `ToString()`, a JSON converter that writes the name and
   reads the member itself back, a private constructor where none is declared, and the attribute the
   satellites read. CMTK1013 to CMTK1019 refuse a declaration that is not partial, not sealed, without
   members, with a constructor that is not private, with another public static member of its own type,
@@ -45,8 +47,9 @@ this release adds, so nothing that built against 1.5.1 meets them.
   signature; any other generated member written by hand is CMTK1011. An instance the set's
   own code makes beside its members has no name, and reading it throws rather than write a null.
   CMTK0002 covers a closed set without the generators.
-  CMTK1021 refuses a member named as a generated member, or one whose `Match` parameter another
-  member's already is (`Open` and `open`). `Match` checks every delegate for null before it picks one,
+  CMTK1021 refuses a member named as a generated member, or two whose names differ only in case
+  (`Open` and `open`, `Express` and `EXPRESS`), one name to `Match`'s parameters and to
+  `TryParse(name, ignoreCase: true)`. `Match` checks every delegate for null before it picks one,
   and a set is a JSON dictionary key by its name.
   `CodoMetis.TypeKit.EntityFrameworkCore` maps a closed set to a text column of the member's name, in a
   primitive collection and a JSON column too, through a compiled model and under Native AOT
@@ -61,7 +64,11 @@ this release adds, so nothing that built against 1.5.1 meets them.
   absent, the one meaningful default of the package, and the analyzers leave it alone. Reading never
   refuses a null; a value object inside a patch keeps its own rule. `Match`, `TryGetValue`, `IfValue`,
   `IfPresent` and `ToOption` apply it without reflection; `IfPresent` hands a clear over as null, a
-  `T?` over a struct too, never as `default(T)`. Writing an absent patch is refused, and
+  `T?` over a struct too, never as `default(T)`. `Map` changes a value and keeps a clear and an
+  absence, and `Traverse` validates a value with a `Create`'s own fault,
+  `request.Email.Traverse(Email.Create)` as a `Result<Patch<Email>, EmailFault>`, a clear and an
+  absence passing through; a `Map` selector that answers null is refused, since a clear is the Null
+  state and never a value. Writing an absent patch is refused, and
   `[JsonIgnore(Condition = WhenWritingDefault)]` leaves it out. Under a source-generated context a
   primitive, a string, a `Guid`, a date, a `Uri` and a value object need no listing; a class or an
   enum does. Works under Native AOT: the converter is registered by the closed type's static
@@ -122,6 +129,16 @@ this release adds, so nothing that built against 1.5.1 meets them.
   CMTK0009 names each for `SingleOrDefault`, `ElementAtOrDefault` and `SingleOrDefaultAsync`. `Transpose()`
   between `Option<Result<T, TError>>` and `Result<Option<T>, TError>`, and `Option<T>.Traverse(selector)`
   for an optional input validated when present.
+- **`CodoMetis.TypeKit`**: `Choose(selector)` on a sequence, the values the selector answers `Some`
+  for, in order and lazily, a filter and a map in one; and `Choose()` on a sequence of options, the
+  values they hold. The arguments are checked at the call, as LINQ's are.
+- **`CodoMetis.TypeKit`**: `TraverseAsync` on a sequence, an asynchronous operation or command that
+  may fail applied to one element at a time, in order, nothing started after the first error. With a
+  cancellation token, the token is checked before each operation and handed to it, and a cancellation
+  propagates rather than becoming an error. Operations that may all run at once remain `Task.WhenAll`
+  over their tasks and `Sequence()` over what it answers.
+- **`CodoMetis.TypeKit.Testing`**: `ShouldBeValue()`, which hands the value back, `ShouldBeNull()` and
+  `ShouldBeAbsent()` on a `Patch<T>`, failing with the state the field was in and never the value.
 - **Documentation**: topic pages under `docs/`, linked from the root README's "Documentation" table:
   value objects, closed sets, `Option`, `Result`, written text, type constraints, merge patches,
   JSON, EF Core, ASP.NET Core, Native AOT, logging and secrets, testing, and migrating from 1.5,

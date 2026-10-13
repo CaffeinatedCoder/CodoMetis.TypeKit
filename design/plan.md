@@ -674,6 +674,33 @@ Each phase ends green, and its guards have been proven by seeding the defect
          test's `aot` consumer now measures: the base package's `FirstOrNone` on a query and the
          satellite's `FirstOrNoneAsync` throw "Query wasn't precompiled", and the operators written
          at the call site run.
+    9b. **A second review's picks** (2026-10-13): two outside reviews of the release were checked
+       against the code (one named `Choose`, result aggregation and a dictionary lookup as missing,
+       where `Zip`, `Sequence`, `Traverse` and `GetValueOrNone` exist, and read CMTK0006 as a `.Value`
+       guard), and the user took what held, each in this release:
+       - **`Choose`** ✅: on a sequence with a selector answering an option, and on a sequence of
+         options; lazy, the arguments checked at the call (F#'s `choose`, CSharpFunctionalExtensions'
+         `Choose`).
+       - **`Patch<T>.Map` and `Traverse`** ✅: a patch over what the request sent, validated into a
+         patch over the domain's type with `Create`'s own fault, a clear and an absence passing
+         through, `Option<T>.Traverse`'s pattern; a `Map` selector answering null is refused, since
+         a clear is the Null state and never a value.
+       - **`TraverseAsync`** ✅, sequential: one operation awaited at a time, in order, nothing
+         started after the first error; the token overloads check it before each operation and hand
+         it on, and a cancellation propagates, as `Catch` lets it. Concurrency stays explicit,
+         `Task.WhenAll` and `Sequence()`.
+       - **Patch assertions** ✅ in `.Testing`: `ShouldBeValue()` hands the value back,
+         `ShouldBeNull()` and `ShouldBeAbsent()` name the state, never the value.
+       - **A closed set parsed ignoring case** ✅ (decision 51): `Parse(name, ignoreCase)` and
+         `TryParse(name, ignoreCase, out member)`, opted into at the call; two members whose names
+         differ only in case are CMTK1021, which subsumes the `Match`-parameter collision.
+       - **The README** ✅ refreshed for 2.0.0: the status, the comparison tables' version, the pitch
+         naming closed sets and the release's other additions, and a closed-set comparison against
+         Ardalis.SmartEnum 8.2.0, Intellenum 2.0.1 and Thinktecture.Runtime.Extensions 10.5.1, read
+         from source and nuspecs on 2026-10-13.
+       - Not taken: error accumulation and a `Combine` (§9 non-goals). A stable external name for a
+         closed-set member, apart from its C# identifier, touches parsing, JSON, EF, OpenAPI and fault
+         identifiers at once and needs a spike first; it is 2.x.
     10. **`2.0.0-preview.1` to nuget.org** once steps 7 and 8 exist, the consumer smoke test
         against it, then the release.
     - **A closed-set (smart enum) family**, declared by interface and joining `.Generators` (§1), the
@@ -1608,6 +1635,16 @@ Still open:
     renumbered by members added before them, nullable-context bytes) and no renamed parameter. The
     analyzer's severity and the query overloads' binding are behaviour no compatibility check reads;
     the changelog states each.
+51. **A closed set parses ignoring case only when asked, and refuses members that differ only in
+    case** (2026-10-13, phase 13). The ordinal parse stays the default and the only one JSON, the
+    column, binding and `IParsable` use, since what is stored or sent is the name as it is. A header
+    or a query string a client typed is read with `ignoreCase: true` at the call, as
+    Ardalis.SmartEnum's `FromName(name, ignoreCase)` is, and not through a per-set setting, which
+    would change what the wire accepts without a word at the call site. With the overload, two
+    members whose names differ only in case are one name to the parse, so CMTK1021 refuses them at
+    the declaration, where it already refused the first-letter case (`Open`, `open`) that gave
+    `Match` one parameter twice. The peers meet such pairs at run time: Ardalis throws on the first
+    ignore-case lookup, Thinktecture on the first `Get`, and Intellenum answers the first declared.
 
 ## 9. Option and Result
 
