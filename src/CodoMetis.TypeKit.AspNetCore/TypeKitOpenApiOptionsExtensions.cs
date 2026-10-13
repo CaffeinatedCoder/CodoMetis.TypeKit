@@ -43,8 +43,10 @@ public static class TypeKitOpenApiOptionsExtensions
         ArgumentNullException.ThrowIfNull(options);
 
         ValueObjectSchemaReferenceIds.Apply(options);
+        PatchSchemaTransformer.Apply(options);
 
         return options.AddSchemaTransformer<ValueObjectSchemaTransformer>()
+                      .AddSchemaTransformer<PatchSchemaTransformer>()
                       .AddOperationTransformer<FaultResponsesOperationTransformer>();
     }
 }

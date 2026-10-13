@@ -574,8 +574,17 @@ Each phase ends green, and its guards have been proven by seeding the defect
        attributes are `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` in the base package; a
        generic name is checked where it is written, at the argument, and a call with inferred type
        arguments at the call.
-    6. **`Patch<T>`**, after its spike, in the base package and the ASP.NET satellite. It depends
-       on nothing above and nothing below.
+    6. **`Patch<T>`** ✅ 2026-10-13, after [spikes/MergePatch](../spikes/MergePatch/README.md), in the
+       base package and the ASP.NET satellite. The spike settled the AOT shape: a converter type built
+       with `MakeGenericType` has no constructor to invoke under Native AOT, a static field read by
+       reflection is trimmed, an open generic converter in `[JsonConverter]` is refused by the source
+       generator (SYSLIB1220); what works is a registry the closed `Patch<T>`'s static constructor
+       fills, which the factory runs for the type asked for (`RunClassConstructor`, one IL2059
+       suppression with that measurement as its reason). A primitive inside a patch takes the
+       serializer's built-in converter, since the source generator never sees what a patch wraps; a
+       class is listed in the context. The document inlines a patch as its argument's schema, never
+       required, always admitting null; a value object inside a patch is described through what it
+       wraps, since a source-generated host has no contract for it.
     7. **The closed-set family**, after its spike: the generators, then each satellite.
     8. **The fault responses**, after [spikes/FaultResponses](../spikes/FaultResponses/README.md),
        last, since they read a smart enum's kind.
@@ -653,7 +662,7 @@ Each phase ends green, and its guards have been proven by seeding the defect
         `PopulateMetadata` handed an empty service provider.
       - **`CustomizeProblemDetails` sees the feature** under JIT and Native AOT, and the feature is
         absent for every problem `ToHttpResult()` did not write.
-    - **`Patch<T>`, a field of a JSON Merge Patch (RFC 7396)**, proposed 2026-10-11 for 1.x. It has
+    - **`Patch<T>`, a field of a JSON Merge Patch (RFC 7396)**, proposed 2026-10-11 for 1.x; built 2026-10-13 (step 6 above answers the questions). It has
       three states: absent, null, or a value. System.Text.Json cannot tell an absent property from a
       null, so every PATCH endpoint rebuilds this type by hand. It is a wire type on purpose, beside
       `Option`, which still refuses JSON (decision 15): `Option` says whether a value exists, `Patch`

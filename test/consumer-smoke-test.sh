@@ -695,6 +695,7 @@ await using var app = builder.Build();
 app.MapOpenApi();
 app.MapGet("/orders/{id}", (OrderId id, Quantity? limit) => new OrderView(id, [Quantity.From(1)], Amount.From(1.5m)));
 app.MapPost("/orders", (OrderView body) => body.Amount);
+app.MapPatch("/orders/{id}", (OrderId id, OrderPatch patch) => $"{patch.Code.Match(code => $"Value({code.Value})", () => "Null", () => "Absent")} {patch.Note.Match(note => $"Value({note})", () => "Null", () => "Absent")}");
 app.MapGet("/codes/{text}", (string text) => Code.Create(text).ToHttpResult());
 await app.StartAsync();
 
@@ -712,6 +713,11 @@ Console.WriteLine($"openapi-parameter={document?["paths"]?["/orders/{id}"]?["get
 Console.WriteLine($"openapi-items={schemas?["OrderView"]?["properties"]?["quantities"]?["items"]?.ToJsonString() ?? "missing"}");
 await Check("bound", async () => ((int)(await http.GetAsync($"/orders/{Guid.NewGuid()}?limit=3")).StatusCode).ToString());
 await Check("malformed", async () => ((int)(await http.GetAsync("/orders/nope")).StatusCode).ToString());
+// A merge patch through the context: the patch's converter hides Code and string from the generator,
+// so the value object reads with its own converter and the string with the serializer's built-in one.
+await Check("patch", async () => await (await http.PatchAsync($"/orders/{Guid.NewGuid()}", new StringContent("""{"code":"ABC","note":null}""", System.Text.Encoding.UTF8, "application/json"))).Content.ReadAsStringAsync());
+await Check("patch-refused", async () => ((int)(await http.PatchAsync($"/orders/{Guid.NewGuid()}", new StringContent("""{"code":"abc"}""", System.Text.Encoding.UTF8, "application/json"))).StatusCode).ToString());
+Console.WriteLine($"openapi-patch={schemas?["OrderPatch"]?["properties"]?["code"]?.ToJsonString() ?? "missing"} required={schemas?["OrderPatch"]?["required"]?.ToJsonString() ?? "none"}");
 await Check("result-success", async () => await http.GetStringAsync("/codes/ABC"));
 await Check("result-fault", async () =>
 {
@@ -727,6 +733,8 @@ public sealed record Line(OrderId Id, Code Code, Name Name, Quantity Quantity, A
 
 public sealed record OrderView(OrderId Id, List<Quantity> Quantities, Amount Amount);
 
+public sealed record OrderPatch(Patch<Code> Code, Patch<string?> Note);
+
 public sealed record Holder(Option<int> Value);
 
 // Lists no wrapped type: the generated converters must not need one.
@@ -738,6 +746,7 @@ internal partial class ShopJson : JsonSerializerContext;
 
 // The web host's: what the endpoints exchange, and what their value objects wrap, for the schemas.
 [JsonSerializable(typeof(OrderView))]
+[JsonSerializable(typeof(OrderPatch))]
 [JsonSerializable(typeof(Amount))]
 [JsonSerializable(typeof(Code))]
 [JsonSerializable(typeof(string))]
@@ -858,6 +867,9 @@ assert_contains 'result-success="ABC"'             "$work/aot.out" "ToHttpResult
 assert_contains "result-fault=422 application/problem+json NotUpperCase" "$work/aot.out" "and a fault as problem details with its mapped status"
 assert_contains "result-responses=200,400,422"     "$work/aot.out" "the document lists the value and each mapped status"
 assert_contains "malformed=400"                    "$work/aot.out" "a malformed route parameter is a 400"
+assert_contains 'patch=Value(ABC) Null'            "$work/aot.out" "a Patch<T> reads a value object and a null through the context under Native AOT"
+assert_contains "patch-refused=400"                "$work/aot.out" "a value object a patch wraps still refuses"
+assert_contains 'openapi-patch={"type":["null","string"],"description":"A JSON Merge Patch field: absent leaves the value as it is, null clears it, a value sets it."} required=none' "$work/aot.out" "a patch property is its wrapped type's schema, inlined and nullable, and not required"
 assert_contains "ef-insert=1"                      "$work/aot.out" "EF Core writes value objects through the compiled model"
 assert_contains "ef-value=2"                       "$work/aot.out" ".Value translates in a precompiled query"
 assert_contains "ef-parameter=ABC"                 "$work/aot.out" "a value-object parameter is mapped at run time"

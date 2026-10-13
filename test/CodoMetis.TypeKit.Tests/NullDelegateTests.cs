@@ -70,6 +70,15 @@ public sealed class NullDelegateTests
         ["Option.FirstOrNone(IEnumerable<T>, Func<T, Boolean>): predicate"] = [() => new[] { 1 }.FirstOrNone(Null<Func<int, bool>>()), () => Array.Empty<int>().FirstOrNone(Null<Func<int, bool>>())],
         ["Option.LastOrNone(IEnumerable<T>, Func<T, Boolean>): predicate"]  = [() => new[] { 1 }.LastOrNone(Null<Func<int, bool>>()), () => Array.Empty<int>().LastOrNone(Null<Func<int, bool>>())],
 
+        ["Patch<T>.Match(Func<T, TResult>, Func<TResult>, Func<TResult>): onValue"] =
+            [() => Patch.Value(1).Match(Null<Func<int, int>>(), () => 0, () => 0), () => Patch.Null<int>().Match(Null<Func<int, int>>(), () => 0, () => 0), () => Patch.Absent<int>().Match(Null<Func<int, int>>(), () => 0, () => 0)],
+        ["Patch<T>.Match(Func<T, TResult>, Func<TResult>, Func<TResult>): onNull"] =
+            [() => Patch.Value(1).Match(x => x, Null<Func<int>>(), () => 0), () => Patch.Null<int>().Match(x => x, Null<Func<int>>(), () => 0), () => Patch.Absent<int>().Match(x => x, Null<Func<int>>(), () => 0)],
+        ["Patch<T>.Match(Func<T, TResult>, Func<TResult>, Func<TResult>): onAbsent"] =
+            [() => Patch.Value(1).Match(x => x, () => 0, Null<Func<int>>()), () => Patch.Null<int>().Match(x => x, () => 0, Null<Func<int>>()), () => Patch.Absent<int>().Match(x => x, () => 0, Null<Func<int>>())],
+        ["Patch<T>.IfValue(Action<T>): action"]   = [() => { Patch.Value(1).IfValue(Null<Action<int>>()); return null; }, () => { Patch.Null<int>().IfValue(Null<Action<int>>()); return null; }, () => { Patch.Absent<int>().IfValue(Null<Action<int>>()); return null; }],
+        ["Patch<T>.IfPresent(Action<T>): action"] = [() => { Patch.Value(1).IfPresent(Null<Action<int>>()); return null; }, () => { Patch.Null<int>().IfPresent(Null<Action<int>>()); return null; }, () => { Patch.Absent<int>().IfPresent(Null<Action<int>>()); return null; }],
+
         // Catch has no branches: the delegate is checked before anything runs. Overloads that differ
         // only in type parameters are keyed with them.
         ["Result.Catch<T>(Func<T>): action"]                             = [() => Result.Catch(Null<Func<int>>())],

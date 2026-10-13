@@ -23,6 +23,18 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   task, so an exception thrown after its first `await` is the error too. An `OperationCanceledException`
   passes through every overload, a delegate that returns a `Task` given to `Catch` is a compile error
   that names `CatchAsync`, and a delegate that returns null throws as `Result.Success(null)` does.
+- **`CodoMetis.TypeKit`**: `Patch<T>`, a field of a JSON Merge Patch (RFC 7396): absent, null or a
+  value, where System.Text.Json alone cannot tell an absent property from a null one. `default` is
+  absent, the one meaningful default of the package, and the analyzers leave it alone. Reading never
+  refuses a null; a value object inside a patch keeps its own rule. `Match`, `TryGetValue`, `IfValue`,
+  `IfPresent` and `ToOption` apply it without reflection. Writing an absent patch is refused, and
+  `[JsonIgnore(Condition = WhenWritingDefault)]` leaves it out. Under a source-generated context a
+  primitive, a string, a `Guid`, a date, a `Uri` and a value object need no listing; a class or an
+  enum does. Works under Native AOT: the converter is registered by the closed type's static
+  constructor, since a converter built by reflection has no code there.
+- **`CodoMetis.TypeKit.AspNetCore`**: `AddTypeKit()` describes a `Patch<T>` property as `T`'s schema,
+  inlined, not required and admitting null, in 3.1 and 3.0; a value object inside a patch through the
+  type it wraps.
 - **`CodoMetis.TypeKit.Analyzers`**: CMTK0010, the constraints a type parameter cannot declare.
   `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` (new in the base package) on a type parameter
   say what C# has no `where` for, and the rule reports a type argument that breaks it at any closed

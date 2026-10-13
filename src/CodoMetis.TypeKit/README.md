@@ -173,6 +173,8 @@ does not accept a `Result<T, Exception>`, and `MapError` turns the exception int
 
 ## Not wire types
 
+The one wire type here is `Patch<T>`, a merge patch's field (below).
+
 Neither `Option` nor `Result` serializes. System.Text.Json refuses both, in both directions, with a
 `NotSupportedException` that names the type and the alternative:
 
@@ -331,6 +333,52 @@ Not refused on purpose: unassigned code points, since the runtime's Unicode tabl
 standard and a name spelled with a newly assigned character would be refused until the SDK caught
 up; and confusable letters across scripts, which is a comparison question and not a rejection.
 
+## Merge patches
+
+A PATCH body in JSON Merge Patch (RFC 7396) says three things about a field: nothing, so it stays;
+`null`, so it is cleared; or a value. System.Text.Json cannot tell the first two apart, since it
+calls no converter for a property it does not find, so every PATCH endpoint rebuilt the distinction
+by hand. `Patch<T>` is that field, and the one wire type here, beside `Option`, which refuses JSON:
+an option says whether a value exists, a patch whether a request mentioned it.
+
+```csharp
+public sealed record OrderPatch(Patch<string> Name, Patch<string?> Nickname, Patch<int> Quantity);
+```
+
+```csharp
+var patch = JsonSerializer.Deserialize<OrderPatch>("""{"nickname":null,"quantity":2}""", JsonSerializerOptions.Web)!;
+var name = patch.Name;           // Absent, the field was not mentioned
+var nickname = patch.Nickname;   // Null, the field was null
+var quantity = patch.Quantity;   // Value: 2
+```
+
+`default(Patch<T>)` is `Absent`, the one `default` of this package that means something, and the
+analyzers leave it alone. Applying one needs no reflection:
+
+```csharp
+patch.Name.IfValue(name => order.Name = name);                 // a clear cannot reach a required field
+patch.Nickname.IfPresent(nickname => order.Nickname = nickname); // null clears an optional one
+order.Quantity = patch.Quantity.Match(
+    quantity => quantity,
+    () => throw new InvalidOperationException("Quantity cannot be cleared."),
+    () => order.Quantity);
+```
+
+Reading never refuses a null: the Null state is part of the wire format whatever `T` is, and whether
+a clear is accepted is the application's rule, said in `Match`. So a `Patch<T?>` over a struct is
+never needed, and a value object inside a patch keeps its own rule: `Patch<Email>` given a value
+`Create` refuses is refused as anywhere else, the input not quoted. Writing an absent patch is
+refused, since a converter cannot leave a property out; a property that is written takes
+`[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]`, and an absent patch is left out.
+
+Under a source-generated `JsonSerializerContext`, the context never sees `T`, since the patch's
+converter hides it: a primitive, a string, a `Guid`, a date or a `Uri` is read with the serializer's
+built-in converter and a value object with its own, and any other type, a class or an enum, is
+listed in the context, or the serializer refuses with its own message naming it. The OpenAPI document
+describes a patch property as `T`'s schema, not required, admitting null
+([CodoMetis.TypeKit.AspNetCore](https://www.nuget.org/packages/CodoMetis.TypeKit.AspNetCore)). This is
+not ASP.NET Core's JSON Patch (RFC 6902, a list of operations).
+
 ## The analyzers
 
 They arrive with this package, so whoever can see the interfaces gets the guard:
@@ -483,7 +531,7 @@ stored.
 
 ## Where things are
 
-`Option`, `Result`, `OrderId.New()`, `AsText()`, `AsIdentifier()`, `[RequireCustomInitialization]`, `[RequireParameterlessConstructor]` and the type-parameter attributes `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` live in `CodoMetis.TypeKit`;
+`Option`, `Result`, `OrderId.New()`, `AsText()`, `AsIdentifier()`, `Patch<T>`, `[RequireCustomInitialization]`, `[RequireParameterlessConstructor]` and the type-parameter attributes `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` live in `CodoMetis.TypeKit`;
 every value-object contract in `CodoMetis.TypeKit.ValueObjects`. What only the generated code and the
 satellites call is in `CodoMetis.TypeKit.CompilerServices`, hidden from IntelliSense. Targets .NET 10.
 Source and issues: [github.com/CaffeinatedCoder/CodoMetis.TypeKit](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit).

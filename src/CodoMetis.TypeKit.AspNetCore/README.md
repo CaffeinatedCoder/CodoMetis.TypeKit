@@ -108,6 +108,12 @@ no component at all), and both parameters are a bare `string`.
 - **What is already said is kept.** Whatever a value object's schema already says, from ASP.NET or
   another transformer, is not overwritten; only what it leaves open is filled in.
 
+**A merge patch.** A property typed `Patch<T>` (CodoMetis.TypeKit, a JSON Merge Patch field) is
+described as `T`'s schema, inlined where the property is rather than as a `PatchOfstring` component,
+never required, since absent is a state, and admitting null, since null is the clear. A value object
+inside a patch is described through the type it wraps, which is also what a source-generated host
+can do: the patch's converter hides the value object from its context.
+
 ## A Result as a response
 
 `ToHttpResult()` turns a `Result` into what an endpoint returns: a success as `200 OK` with its value
