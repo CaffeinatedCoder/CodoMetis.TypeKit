@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Text.Json;
 using CodoMetis.TypeKit.ClosedSets;
 using CodoMetis.TypeKit.CompilerServices;
@@ -12,6 +13,13 @@ namespace CodoMetis.TypeKit.Generators.Tests;
 /// its own project it is refused (CMTK1005, <see cref="BuildOutcomeTests"/>).
 /// </summary>
 public readonly partial record struct OverProbeStatus : IValue<ProbeStatus>;
+
+/// <summary>A set whose names differ from their upper and lower cases by an <c>i</c>, which tr-TR does not case as English does.</summary>
+public sealed partial class DocumentKind : IClosedSet<DocumentKind>
+{
+    public static readonly DocumentKind Invoice = new();
+    public static readonly DocumentKind I = new();
+}
 
 /// <summary>
 /// The closed-set family, generated for <see cref="ProbeStatus"/> and <see cref="ProbeTier"/>.
@@ -162,6 +170,35 @@ public sealed class ClosedSetTests
         var refusal = Should.Throw<FormatException>(() => ProbeStatus.Parse("nope", ignoreCase: true));
         refusal.Message.ShouldContain("ProbeStatus");
         refusal.Message.ShouldNotContain("nope");
+    }
+
+    /// <summary>
+    /// Ignoring case is ordinal, never the current culture's: in tr-TR <c>i</c> and <c>I</c> are not
+    /// one letter's two cases (each pairs with a dotted or dotless counterpart), and a comparison in the current
+    /// culture refused <c>INVOICE</c>, <c>invoice</c> and <c>i</c> for members named <c>Invoice</c> and
+    /// <c>I</c>, which an English-speaking server accepted.
+    /// </summary>
+    [Fact]
+    public void Ignoring_case_is_ordinal_whatever_the_current_culture()
+    {
+        var (culture, uiCulture) = (CultureInfo.CurrentCulture, CultureInfo.CurrentUICulture);
+        CultureInfo.CurrentCulture = CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("tr-TR");
+
+        try
+        {
+            ReferenceEquals(DocumentKind.Parse("INVOICE", ignoreCase: true), DocumentKind.Invoice).ShouldBeTrue();
+            ReferenceEquals(DocumentKind.Parse("invoice", ignoreCase: true), DocumentKind.Invoice).ShouldBeTrue();
+            ReferenceEquals(DocumentKind.Parse("i", ignoreCase: true), DocumentKind.I).ShouldBeTrue();
+
+            DocumentKind.TryParse("INVOICE", ignoreCase: true, out var invoice).ShouldBeTrue();
+            ReferenceEquals(invoice, DocumentKind.Invoice).ShouldBeTrue();
+            DocumentKind.TryParse("i", ignoreCase: true, out var i).ShouldBeTrue();
+            ReferenceEquals(i, DocumentKind.I).ShouldBeTrue();
+        }
+        finally
+        {
+            (CultureInfo.CurrentCulture, CultureInfo.CurrentUICulture) = (culture, uiCulture);
+        }
     }
 
     /// <summary>What is stored or sent is the name as it is: JSON, the type converter and <c>IParsable</c> stay ordinal.</summary>

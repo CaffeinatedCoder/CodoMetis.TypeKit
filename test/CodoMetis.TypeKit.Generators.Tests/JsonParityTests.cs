@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CodoMetis.TypeKit.Generators.Probes;
@@ -8,6 +9,19 @@ using NodaTime.Serialization.SystemTextJson;
 using NodaTime.Text;
 
 namespace CodoMetis.TypeKit.Generators.Tests;
+
+// The number families the probes do not cover, for the number-handling cells below.
+public readonly partial record struct ParityByte : IValue<byte>;
+public readonly partial record struct ParitySByte : IValue<sbyte>;
+public readonly partial record struct ParityShort : IValue<short>;
+public readonly partial record struct ParityUShort : IValue<ushort>;
+public readonly partial record struct ParityUInt : IValue<uint>;
+public readonly partial record struct ParityLong : IValue<long>;
+public readonly partial record struct ParityULong : IValue<ulong>;
+public readonly partial record struct ParityFloat : IValue<float>;
+public readonly partial record struct ParityHalf : IValue<Half>;
+public readonly partial record struct ParityInt128 : IValue<Int128>;
+public readonly partial record struct ParityUInt128 : IValue<UInt128>;
 
 /// <summary>
 /// A value object writes exactly the bytes the serializer writes for the value it wraps, under the same
@@ -85,6 +99,64 @@ public sealed class JsonParityTests
         JsonSerializer.Serialize(new Dictionary<ProbeCount, bool> { [ProbeCount.From(42)] = true }, Families["int"].Options("host converter")).ShouldBe("{\"key:42\":true}");
         JsonSerializer.Serialize(new Dictionary<ProbeName, int> { [ProbeName.From("Ab c")] = 1 }, Families["string"].Options("camel-case keys")).ShouldBe("{\"ab c\":1}");
     }
+
+    /// <summary>
+    /// Every number type the plan lists as one the serializer applies number handling to. Only the
+    /// serializer applies it, so the plan sends these through the serializer wherever the handling
+    /// changes the output; a type missing from its list is written by its converter directly, and a
+    /// <see cref="long"/> value object wrote <c>123</c> where a <see cref="long"/> is written <c>"123"</c>.
+    /// </summary>
+    private static readonly Dictionary<string, IParityCase> Numbers = new()
+    {
+        ["byte"] = NumberCase(ParityByte.From(123), (byte)123),
+        ["sbyte"] = NumberCase(ParitySByte.From(-12), (sbyte)-12),
+        ["short"] = NumberCase(ParityShort.From(-1234), (short)-1234),
+        ["ushort"] = NumberCase(ParityUShort.From(1234), (ushort)1234),
+        ["int"] = NumberCase(ProbeCount.From(42), 42),
+        ["uint"] = NumberCase(ParityUInt.From(123u), 123u),
+        ["long"] = NumberCase(ParityLong.From(9_007_199_254_740_993L), 9_007_199_254_740_993L),
+        ["ulong"] = NumberCase(ParityULong.From(18_000_000_000_000_000_000UL), 18_000_000_000_000_000_000UL),
+        ["float"] = NumberCase(ParityFloat.From(0.25f), 0.25f),
+        ["double"] = NumberCase(ProbeRatio.From(0.25), 0.25),
+        ["decimal"] = NumberCase(ProbeAmount.From(1.50m), 1.50m),
+        ["Half"] = NumberCase(ParityHalf.From((Half)0.5), (Half)0.5),
+        ["Int128"] = NumberCase(ParityInt128.From(Int128.MaxValue), Int128.MaxValue),
+        ["UInt128"] = NumberCase(ParityUInt128.From(UInt128.MaxValue), UInt128.MaxValue),
+    };
+
+    private static readonly JsonNumberHandling[] NumberHandlings =
+    [
+        JsonNumberHandling.Strict,
+        JsonNumberHandling.AllowReadingFromString,
+        JsonNumberHandling.WriteAsString,
+        JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowReadingFromString,
+        JsonNumberHandling.AllowNamedFloatingPointLiterals,
+        JsonNumberHandling.AllowNamedFloatingPointLiterals | JsonNumberHandling.AllowReadingFromString,
+    ];
+
+    public static TheoryData<string, JsonNumberHandling> NumberCells =>
+    [
+        .. from family in Numbers.Keys
+           from handling in NumberHandlings
+           select (family, handling)
+    ];
+
+    [Fact]
+    public void Every_number_family_and_every_number_handling_is_a_cell() => NumberCells.Count.ShouldBe(14 * 6);
+
+    [Theory]
+    [MemberData(nameof(NumberCells))]
+    public void A_number_value_object_follows_the_options_number_handling_as_its_wrapped_type(string family, JsonNumberHandling handling)
+    {
+        var @case = Numbers[family];
+
+        @case.AssertParity(new JsonSerializerOptions { NumberHandling = handling }, $"{family} under {handling}");
+    }
+
+    private static ParityCase<TValueObject, T> NumberCase<TValueObject, T>(TValueObject valueObject, T raw)
+        where TValueObject : IValueObject<TValueObject, T>
+        where T : notnull, INumberBase<T> =>
+        new(valueObject, raw, number => number.ToString(null, CultureInfo.InvariantCulture), text => T.Parse(text, CultureInfo.InvariantCulture), nodaTime: false);
 
     private static ParityCase<TValueObject, T> Case<TValueObject, T>(TValueObject valueObject, T raw, Func<T, string> format, Func<string, T> parse, bool nodaTime = false)
         where TValueObject : IValueObject<TValueObject, T>
