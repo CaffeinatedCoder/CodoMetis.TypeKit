@@ -16,10 +16,10 @@ namespace CodoMetis.TypeKit.Tests;
 /// </para>
 /// <para>
 /// Every entry is written as an escape and named in the second column, because the subject of this
-/// file is characters a reader cannot see. The five above <c>U+FFFF</c> are the ones a plausible
+/// file is characters a reader cannot see. The six above <c>U+FFFF</c> are the ones a plausible
 /// implementation gets wrong: <c>CharUnicodeInfo.GetUnicodeCategory</c> over a <see cref="char"/>
 /// answers <c>Surrogate</c> for either half of a pair and never the category of the character the
-/// pair encodes, so a per-<c>char</c> scan for <c>Format</c> accepts all five.
+/// pair encodes, so a per-<c>char</c> scan accepts all six.
 /// </para>
 /// </remarks>
 public sealed class StringTextExtensionsTests
@@ -32,6 +32,8 @@ public sealed class StringTextExtensionsTests
         { "\u034F", "COMBINING GRAPHEME JOINER" },
         { "\u115F", "HANGUL CHOSEONG FILLER" },
         { "\u1160", "HANGUL JUNGSEONG FILLER" },
+        { "\u17B4", "KHMER VOWEL INHERENT AQ" },
+        { "\u17B5", "KHMER VOWEL INHERENT AA" },
         { "\u180E", "MONGOLIAN VOWEL SEPARATOR" },
         { "\u200B", "ZERO WIDTH SPACE" },
         { "\u200E", "LEFT-TO-RIGHT MARK" },
@@ -44,6 +46,7 @@ public sealed class StringTextExtensionsTests
         { "\uFEFF", "ZERO WIDTH NO-BREAK SPACE" },
         { "\uFFA0", "HALFWIDTH HANGUL FILLER" },
         { "\uFFFE", "NONCHARACTER FFFE, a byte-order mark read in the wrong byte order" },
+        { "\U00016FE4", "KHITAN SMALL SCRIPT FILLER" },
         { "\U0001D173", "MUSICAL SYMBOL BEGIN BEAM" },
         { "\U000E0001", "LANGUAGE TAG" },
         { "\U000E0041", "TAG LATIN CAPITAL A" },
@@ -60,6 +63,28 @@ public sealed class StringTextExtensionsTests
     {
         { "\u200C", "ZERO WIDTH NON-JOINER" },
         { "\u200D", "ZERO WIDTH JOINER" }
+    };
+
+    /// <summary>
+    /// Unicode's prepended concatenation marks, of Unicode 16, whose tables the runtime follows: format
+    /// characters by category, yet each is drawn, as a sign that spans the digits or letters after it.
+    /// Refused as hidden, they refused Arabic and Syriac text the guard says it keeps.
+    /// </summary>
+    public static TheoryData<string, string> PrependedConcatenationMarks => new()
+    {
+        { "\u0600", "ARABIC NUMBER SIGN" },
+        { "\u0601", "ARABIC SIGN SANAH" },
+        { "\u0602", "ARABIC FOOTNOTE MARKER" },
+        { "\u0603", "ARABIC SIGN SAFHA" },
+        { "\u0604", "ARABIC SIGN SAMVAT" },
+        { "\u0605", "ARABIC NUMBER MARK ABOVE" },
+        { "\u06DD", "ARABIC END OF AYAH" },
+        { "\u070F", "SYRIAC ABBREVIATION MARK" },
+        { "\u0890", "ARABIC POUND MARK ABOVE" },
+        { "\u0891", "ARABIC PIASTRE MARK ABOVE" },
+        { "\u08E2", "ARABIC DISPUTED END OF AYAH" },
+        { "\U000110BD", "KAITHI NUMBER SIGN" },
+        { "\U000110CD", "KAITHI NUMBER SIGN ABOVE" }
     };
 
     /// <summary>
@@ -84,6 +109,22 @@ public sealed class StringTextExtensionsTests
     [MemberData(nameof(Hidden))]
     public void A_character_that_renders_as_nothing_is_refused_as_an_identifier(string character, string name) =>
         Refusal($"subject{character}id".AsIdentifier()).ShouldBe(TextFault.Hidden, name);
+
+    /// <summary>
+    /// The mark spans the digits after it, here the Arabic-Indic one, two and three; with nothing after
+    /// it, it draws itself, so a value of the mark alone is a character of its own and is kept too.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(PrependedConcatenationMarks))]
+    public void A_prepended_concatenation_mark_is_drawn_and_kept(string mark, string name)
+    {
+        var numbered = $"{mark}\u0661\u0662\u0663";
+
+        Kept(numbered.AsText()).ShouldBe(numbered, name);
+        Kept(numbered.AsIdentifier()).ShouldBe(numbered, name);
+        Kept(mark.AsText()).ShouldBe(mark, $"{name}, with nothing after it");
+        Kept(mark.AsIdentifier()).ShouldBe(mark, $"{name}, with nothing after it");
+    }
 
     [Theory]
     [MemberData(nameof(Joiners))]

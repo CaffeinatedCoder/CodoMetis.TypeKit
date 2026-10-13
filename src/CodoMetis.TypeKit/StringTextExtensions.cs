@@ -35,7 +35,9 @@ namespace CodoMetis.TypeKit;
 /// <para>
 /// Not refused: unassigned code points, since the runtime's Unicode tables lag the standard and a
 /// name spelled with a newly assigned character would be refused until the SDK caught up; the other
-/// noncharacters (<c>U+FFFF</c>, <c>U+FDD0</c>, <c>U+1FFFE</c>), which no runtime call refuses; and
+/// noncharacters (<c>U+FFFF</c>, <c>U+FDD0</c>, <c>U+1FFFE</c>), which no runtime call refuses; the
+/// prepended concatenation marks, which Unicode files as format characters although each is drawn, such
+/// as the Arabic number sign, including one with no digit after it, since it then draws itself; and
 /// confusable letters across scripts, which is a comparison question and not a rejection.
 /// </para>
 /// </remarks>
@@ -212,6 +214,7 @@ public static class StringTextExtensions
 
     private static bool IsRendered(Rune rune, bool tolerateJoiners) =>
         (tolerateJoiners && rune.Value is ZeroWidthNonJoiner or ZeroWidthJoiner)
+     || IsPrependedConcatenationMark(rune)
      || (Rune.GetUnicodeCategory(rune) switch
          {
              // Control covers NUL and the C0/C1 range; Format covers the zero-width spaces, the
@@ -232,10 +235,28 @@ public static class StringTextExtensions
     /// nevertheless files as letters, marks or symbols, so no category test reaches them.
     /// </summary>
     private static bool IsInvisibleDespiteItsCategory(Rune rune) =>
-        rune.Value is 0x034F  // COMBINING GRAPHEME JOINER          (NonSpacingMark)
-                   or 0x115F  // HANGUL CHOSEONG FILLER             (OtherLetter)
-                   or 0x1160  // HANGUL JUNGSEONG FILLER            (OtherLetter)
-                   or 0x2800  // BRAILLE PATTERN BLANK              (OtherSymbol)
-                   or 0x3164  // HANGUL FILLER                      (OtherLetter)
-                   or 0xFFA0; // HALFWIDTH HANGUL FILLER            (OtherLetter)
+        rune.Value is 0x034F   // COMBINING GRAPHEME JOINER          (NonSpacingMark)
+                   or 0x115F   // HANGUL CHOSEONG FILLER             (OtherLetter)
+                   or 0x1160   // HANGUL JUNGSEONG FILLER            (OtherLetter)
+                   or 0x17B4   // KHMER VOWEL INHERENT AQ            (NonSpacingMark)
+                   or 0x17B5   // KHMER VOWEL INHERENT AA            (NonSpacingMark)
+                   or 0x2800   // BRAILLE PATTERN BLANK              (OtherSymbol)
+                   or 0x3164   // HANGUL FILLER                      (OtherLetter)
+                   or 0xFFA0   // HALFWIDTH HANGUL FILLER            (OtherLetter)
+                   or 0x16FE4; // KHITAN SMALL SCRIPT FILLER         (NonSpacingMark)
+
+    /// <summary>
+    /// The prepended concatenation marks, which Unicode files as format characters although each is
+    /// drawn: a sign that spans the digits or letters after it. The set of Unicode 16, whose tables the
+    /// runtime follows. One with nothing after it draws itself, so it is a character of its own.
+    /// </summary>
+    private static bool IsPrependedConcatenationMark(Rune rune) =>
+        rune.Value is >= 0x0600 and <= 0x0605   // ARABIC NUMBER SIGN .. ARABIC NUMBER MARK ABOVE
+                   or 0x06DD                    // ARABIC END OF AYAH
+                   or 0x070F                    // SYRIAC ABBREVIATION MARK
+                   or 0x0890                    // ARABIC POUND MARK ABOVE
+                   or 0x0891                    // ARABIC PIASTRE MARK ABOVE
+                   or 0x08E2                    // ARABIC DISPUTED END OF AYAH
+                   or 0x110BD                   // KAITHI NUMBER SIGN
+                   or 0x110CD;                  // KAITHI NUMBER SIGN ABOVE
 }
