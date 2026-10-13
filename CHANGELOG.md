@@ -17,6 +17,12 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
 
 ### Added
 
+- **`CodoMetis.TypeKit`**: `Result.Catch`, the one place an exception becomes data. `Catch(() => …)`
+  runs the call and answers `Result<T, Exception>`, or `Result<Exception>` for an action;
+  `Catch<T, TException>` catches that type only and lets any other propagate; `CatchAsync` awaits the
+  task, so an exception thrown after its first `await` is the error too. An `OperationCanceledException`
+  passes through every overload, a delegate that returns a `Task` given to `Catch` is a compile error
+  that names `CatchAsync`, and a delegate that returns null throws as `Result.Success(null)` does.
 - **`CodoMetis.TypeKit`**: the text guards. `text.AsText()` is for text a person wrote: trimmed, every
   space separator folded to an ordinary space, composed to NFC so one name has one spelling, and
   refused when it carries a character that renders as nothing, such as a zero-width space, a Hangul

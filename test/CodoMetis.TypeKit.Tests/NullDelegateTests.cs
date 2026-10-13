@@ -70,6 +70,17 @@ public sealed class NullDelegateTests
         ["Option.FirstOrNone(IEnumerable<T>, Func<T, Boolean>): predicate"] = [() => new[] { 1 }.FirstOrNone(Null<Func<int, bool>>()), () => Array.Empty<int>().FirstOrNone(Null<Func<int, bool>>())],
         ["Option.LastOrNone(IEnumerable<T>, Func<T, Boolean>): predicate"]  = [() => new[] { 1 }.LastOrNone(Null<Func<int, bool>>()), () => Array.Empty<int>().LastOrNone(Null<Func<int, bool>>())],
 
+        // Catch has no branches: the delegate is checked before anything runs. Overloads that differ
+        // only in type parameters are keyed with them.
+        ["Result.Catch<T>(Func<T>): action"]                             = [() => Result.Catch(Null<Func<int>>())],
+        ["Result.Catch(Action): action"]                                 = [() => Result.Catch(Null<Action>())],
+        ["Result.Catch<T, TException>(Func<T>): action"]                 = [() => Result.Catch<int, FormatException>(Null<Func<int>>())],
+        ["Result.Catch<TException>(Action): action"]                     = [() => Result.Catch<FormatException>(Null<Action>())],
+        ["Result.CatchAsync<T>(Func<Task<T>>): action"]                  = [() => Result.CatchAsync(Null<Func<Task<int>>>())],
+        ["Result.CatchAsync(Func<Task>): action"]                        = [() => Result.CatchAsync(Null<Func<Task>>())],
+        ["Result.CatchAsync<T, TException>(Func<Task<T>>): action"]      = [() => Result.CatchAsync<int, FormatException>(Null<Func<Task<int>>>())],
+        ["Result.CatchAsync<TException>(Func<Task>): action"]            = [() => Result.CatchAsync<FormatException>(Null<Func<Task>>())],
+
         ["Result<TError>.Match(Func<TResult>, Func<TError, TResult>): onSuccess"] = [() => Ok.Match(Null<Func<int>>(), _ => 0), () => Failed.Match(Null<Func<int>>(), _ => 0)],
         ["Result<TError>.Match(Func<TResult>, Func<TError, TResult>): onError"]   = [() => Ok.Match(() => 0, Null<Func<string, int>>()), () => Failed.Match(() => 0, Null<Func<string, int>>())],
         ["Result<TError>.Match(Func<TResult>, Func<TResult>): onSuccess"]         = [() => Ok.Match(Null<Func<int>>(), () => 0), () => Failed.Match(Null<Func<int>>(), () => 0)],
@@ -216,15 +227,31 @@ public sealed class NullDelegateTests
         Cases.Keys.Except(parameters).ShouldBeEmpty("These cases name no public method of the assembly.");
     }
 
-    private static IEnumerable<string> DelegateParameters() =>
-        from type in typeof(Option<>).Assembly.GetExportedTypes()
-        // The compiler's grouping types for extension blocks carry skeleton members; the callable
-        // methods are the static ones on the enclosing class.
-        where !type.Name.Contains('<') && type.GetCustomAttribute<CompilerGeneratedAttribute>() is null
-        from method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
-        from parameter in method.GetParameters()
-        where typeof(Delegate).IsAssignableFrom(parameter.ParameterType)
-        select $"{Describe(type)}.{method.Name}({string.Join(", ", method.GetParameters().Select(p => Describe(p.ParameterType)))}): {parameter.Name}";
+    private static IEnumerable<string> DelegateParameters()
+    {
+        var methods =
+            from type in typeof(Option<>).Assembly.GetExportedTypes()
+            // The compiler's grouping types for extension blocks carry skeleton members; the callable
+            // methods are the static ones on the enclosing class.
+            where !type.Name.Contains('<') && type.GetCustomAttribute<CompilerGeneratedAttribute>() is null
+            from method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
+            // An overload that exists to be a compile error (Catch over a Task) cannot be called.
+            where method.GetCustomAttribute<ObsoleteAttribute>() is not { IsError: true }
+            select (Type: type, Method: method, Signature: $"({string.Join(", ", method.GetParameters().Select(p => Describe(p.ParameterType)))})");
+
+        // Overloads that differ only in their type parameters (Catch<T> beside Catch<T, TException>)
+        // are keyed with them; every other method keeps its bare name.
+        var byKey = methods.ToLookup(m => $"{Describe(m.Type)}.{m.Method.Name}{m.Signature}");
+
+        return from overloads in byKey
+               from m in overloads
+               let name = overloads.Count() > 1 && m.Method.IsGenericMethod
+                   ? $"{m.Method.Name}<{string.Join(", ", m.Method.GetGenericArguments().Select(a => a.Name))}>"
+                   : m.Method.Name
+               from parameter in m.Method.GetParameters()
+               where typeof(Delegate).IsAssignableFrom(parameter.ParameterType)
+               select $"{Describe(m.Type)}.{name}{m.Signature}: {parameter.Name}";
+    }
 
     private static string Describe(Type type) =>
         type.IsByRef ? Describe(type.GetElementType()!)

@@ -31,6 +31,261 @@ public static class Result
     public static Error<T> Error<T>(T error) where T : notnull =>
         error is null ? throw ThrowHelper.NullContent(nameof(error)) : new(error);
 
+    /// <summary>
+    /// Runs <paramref name="action"/> and returns its value as a success, or the exception it threw
+    /// as the error. The one place an exception becomes data.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// An <see cref="OperationCanceledException"/> passes through: a cancellation is not an outcome,
+    /// and caught it would read as a failure and <c>Recover</c> would run on it. A delegate that
+    /// returns a <see cref="Task"/> is refused at compile time, since the task's exception is thrown
+    /// after this call returns; <see cref="CatchAsync{T}(Func{Task{T}})"/> waits for it.
+    /// </para>
+    /// <para>
+    /// A delegate that returns null throws <see cref="ArgumentNullException"/>, as <see cref="Success{T}(T)"/>
+    /// does: a success over null is a defect of the delegate, not an outcome, and is not caught here.
+    /// </para>
+    /// </remarks>
+    /// <param name="action">The call whose outcome is wanted.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <returns>A success holding the value, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or returned null.</exception>
+    public static Result<T, Exception> Catch<T>(Func<T> action) where T : notnull
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        T value;
+        try
+        {
+            value = action();
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Result<T, Exception>.Error(exception);
+        }
+
+        return Result<T, Exception>.Success(value);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> and returns a success, or the exception it threw as the error.
+    /// </summary>
+    /// <remarks>
+    /// An <see cref="OperationCanceledException"/> passes through, and a delegate that returns a
+    /// <see cref="Task"/> is refused at compile time: see <see cref="Catch{T}(Func{T})"/>.
+    /// </remarks>
+    /// <param name="action">The call whose outcome is wanted.</param>
+    /// <returns>A success, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+    public static Result<Exception> Catch(Action action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        try
+        {
+            action();
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Result<Exception>.Error(exception);
+        }
+
+        return Result<Exception>.Success();
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> and returns its value as a success, or the
+    /// <typeparamref name="TException"/> it threw as the error. Any other exception propagates.
+    /// </summary>
+    /// <remarks>
+    /// Both type arguments are spelled, <c>Result.Catch&lt;int, FormatException&gt;(() =&gt; int.Parse(s))</c>,
+    /// since C# infers all of a method's type arguments or none. The error type then says what was
+    /// expected to fail. See <see cref="Catch{T}(Func{T})"/> for cancellation, tasks and null.
+    /// </remarks>
+    /// <param name="action">The call whose outcome is wanted.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <typeparam name="TException">The exception that is an outcome; any other propagates.</typeparam>
+    /// <returns>A success holding the value, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or returned null.</exception>
+    public static Result<T, TException> Catch<T, TException>(Func<T> action)
+        where T : notnull
+        where TException : Exception
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        T value;
+        try
+        {
+            value = action();
+        }
+        catch (TException exception) when (exception is not OperationCanceledException)
+        {
+            return Result<T, TException>.Error(exception);
+        }
+
+        return Result<T, TException>.Success(value);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> and returns a success, or the <typeparamref name="TException"/>
+    /// it threw as the error. Any other exception propagates.
+    /// </summary>
+    /// <remarks>
+    /// A lambda with an expression body converts to an <see cref="Action"/> and its value is
+    /// discarded, so <c>Result.Catch&lt;FormatException&gt;(() =&gt; int.Parse(s))</c> is this overload
+    /// and answers a <see cref="Result{TError}"/> without the number; the valued form spells both
+    /// type arguments. See <see cref="Catch{T}(Func{T})"/> for cancellation and tasks.
+    /// </remarks>
+    /// <param name="action">The call whose outcome is wanted.</param>
+    /// <typeparam name="TException">The exception that is an outcome; any other propagates.</typeparam>
+    /// <returns>A success, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+    public static Result<TException> Catch<TException>(Action action)
+        where TException : Exception
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        try
+        {
+            action();
+        }
+        catch (TException exception) when (exception is not OperationCanceledException)
+        {
+            return Result<TException>.Error(exception);
+        }
+
+        return Result<TException>.Success();
+    }
+
+    /// <summary>Refused: the task's exception is thrown after <c>Catch</c> has returned. Use <see cref="CatchAsync{T}(Func{Task{T}})"/>.</summary>
+    /// <remarks>
+    /// More specific than <see cref="Catch{T}(Func{T})"/> for a delegate returning a task, so the
+    /// compiler picks it and reports the error. A lambda that only throws has no return type and
+    /// lands here, or is ambiguous with a type argument; <c>int () =&gt; throw …</c> states it.
+    /// </remarks>
+    /// <param name="action">A delegate returning a task.</param>
+    /// <typeparam name="T">The type of the task's value.</typeparam>
+    /// <returns>Never: the overload does not compile.</returns>
+    [Obsolete("The delegate returns a Task, whose exception is thrown after Catch has returned. Use CatchAsync.", error: true)]
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public static Result<Task<T>, Exception> Catch<T>(Func<Task<T>> action) => throw new NotSupportedException();
+
+    /// <summary>Refused: the task's exception is thrown after <c>Catch</c> has returned. Use <see cref="CatchAsync(Func{Task})"/>.</summary>
+    /// <param name="action">A delegate returning a task.</param>
+    /// <returns>Never: the overload does not compile.</returns>
+    [Obsolete("The delegate returns a Task, whose exception is thrown after Catch has returned. Use CatchAsync.", error: true)]
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public static Result<Exception> Catch(Func<Task> action) => throw new NotSupportedException();
+
+    /// <summary>
+    /// Awaits <paramref name="action"/> and returns its value as a success, or the exception the
+    /// task threw as the error, whether before or after its first <c>await</c>.
+    /// </summary>
+    /// <remarks>
+    /// An <see cref="OperationCanceledException"/> passes through, so a cancelled token surfaces as
+    /// cancellation. A delegate returning a <c>ValueTask</c> needs <c>.AsTask()</c> or an <c>async</c>
+    /// lambda: a <c>ValueTask</c> overload beside this one is ambiguous for every <c>async</c> lambda.
+    /// See <see cref="Catch{T}(Func{T})"/> for null.
+    /// </remarks>
+    /// <param name="action">The asynchronous call whose outcome is wanted.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <returns>A success holding the value, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or its task produced null.</exception>
+    public static async Task<Result<T, Exception>> CatchAsync<T>(Func<Task<T>> action) where T : notnull
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        T value;
+        try
+        {
+            value = await action().ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Result<T, Exception>.Error(exception);
+        }
+
+        return Result<T, Exception>.Success(value);
+    }
+
+    /// <summary>
+    /// Awaits <paramref name="action"/> and returns a success, or the exception the task threw as
+    /// the error. See <see cref="CatchAsync{T}(Func{Task{T}})"/>.
+    /// </summary>
+    /// <param name="action">The asynchronous call whose outcome is wanted.</param>
+    /// <returns>A success, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+    public static async Task<Result<Exception>> CatchAsync(Func<Task> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        try
+        {
+            await action().ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Result<Exception>.Error(exception);
+        }
+
+        return Result<Exception>.Success();
+    }
+
+    /// <summary>
+    /// Awaits <paramref name="action"/> and returns its value as a success, or the
+    /// <typeparamref name="TException"/> the task threw as the error. Any other exception propagates.
+    /// See <see cref="CatchAsync{T}(Func{Task{T}})"/> and <see cref="Catch{T, TException}(Func{T})"/>.
+    /// </summary>
+    /// <param name="action">The asynchronous call whose outcome is wanted.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <typeparam name="TException">The exception that is an outcome; any other propagates.</typeparam>
+    /// <returns>A success holding the value, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or its task produced null.</exception>
+    public static async Task<Result<T, TException>> CatchAsync<T, TException>(Func<Task<T>> action)
+        where T : notnull
+        where TException : Exception
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        T value;
+        try
+        {
+            value = await action().ConfigureAwait(false);
+        }
+        catch (TException exception) when (exception is not OperationCanceledException)
+        {
+            return Result<T, TException>.Error(exception);
+        }
+
+        return Result<T, TException>.Success(value);
+    }
+
+    /// <summary>
+    /// Awaits <paramref name="action"/> and returns a success, or the <typeparamref name="TException"/>
+    /// the task threw as the error. Any other exception propagates. See <see cref="CatchAsync(Func{Task})"/>.
+    /// </summary>
+    /// <param name="action">The asynchronous call whose outcome is wanted.</param>
+    /// <typeparam name="TException">The exception that is an outcome; any other propagates.</typeparam>
+    /// <returns>A success, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+    public static async Task<Result<TException>> CatchAsync<TException>(Func<Task> action)
+        where TException : Exception
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        try
+        {
+            await action().ConfigureAwait(false);
+        }
+        catch (TException exception) when (exception is not OperationCanceledException)
+        {
+            return Result<TException>.Error(exception);
+        }
+
+        return Result<TException>.Success();
+    }
+
     /// <param name="instance">The result.</param>
     /// <typeparam name="T">The type of the value.</typeparam>
     /// <typeparam name="TError">The type of the error.</typeparam>

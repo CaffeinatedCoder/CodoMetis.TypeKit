@@ -147,6 +147,30 @@ returns, and what it throws reaches that `await`. A callback that returns a `Val
 `.AsTask()`, or an `async` lambda: `TapAsync` and `TapErrorAsync` would bind it to their synchronous
 overload and not wait for it, and `MapAsync` would hold the `ValueTask` as the value.
 
+**Exceptions as outcomes.** A call that throws has no way into a `Result` except a `try`/`catch`
+written by hand. `Result.Catch` runs the call and answers its value, or the exception as the error:
+the one place an exception becomes data.
+
+```csharp
+Result<int, Exception> parsed = Result.Catch(() => int.Parse("42"));                                   // Success: 42
+Result<int, Exception> refused = Result.Catch(() => int.Parse("x"));                                   // Error: FormatException
+Result<int, FormatException> narrowed = Result.Catch<int, FormatException>(() => int.Parse("x"));     // only that type; any other propagates
+Result<Exception> copied = Result.Catch(() => File.Copy(source, target));                             // a command: a success, or the exception
+Result<byte[], Exception> fetched = await Result.CatchAsync(() => client.GetByteArrayAsync(url));      // waits for the task; its exception is the error
+```
+
+`Catch<T, TException>` catches that type only and lets every other exception propagate, so the error
+type says what was expected to fail; both type arguments are spelled, since C# infers all or none,
+and `Catch<FormatException>(() => int.Parse(s))` with one is the command form, which discards the
+number. `CatchAsync` awaits the task, so an exception thrown after its first `await` is the error
+too. An `OperationCanceledException` passes through all of them: a cancellation is not an outcome,
+and caught it would read as a failure that `Recover` then runs on. A delegate that returns a `Task`
+given to `Catch` is a compile error, since the task's exception would be thrown after `Catch` had
+returned; a `ValueTask` needs `.AsTask()` or an `async` lambda, as above. A delegate that returns
+null throws, as `Result.Success(null)` does. `Map`, `Bind` and the rest are unchanged: a selector
+that throws propagates. An exception is for the code that called, not for a client: `ToHttpResult()`
+does not accept a `Result<T, Exception>`, and `MapError` turns the exception into a fault that it does.
+
 ## Not wire types
 
 Neither `Option` nor `Result` serializes. System.Text.Json refuses both, in both directions, with a

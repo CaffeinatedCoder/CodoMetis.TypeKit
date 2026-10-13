@@ -551,8 +551,14 @@ Each phase ends green, and its guards have been proven by seeding the defect
     2. **The text guards** ✅ 2026-10-13: `StringTextExtensions` and `TextFault` in the base package,
        `StringTextExtensionsTests` (the character table, pinned by code point), the README section
        "Written text" with its two compiled samples. No spike.
-    3. **`Result.Catch`**, after [spikes/ResultCatch](../spikes/ResultCatch/README.md), since the
-       async trap can change the shape.
+    3. **`Result.Catch`** ✅ 2026-10-13, after [spikes/ResultCatch](../spikes/ResultCatch/README.md).
+       The spike settled the shape: the async trap is an `[Obsolete(error: true)]` overload over a
+       task-returning delegate, more specific than `Func<T>`, so the compiler refuses it and names
+       `CatchAsync`; its cost is that a lambda that only throws must state its return type. No
+       `ValueTask` overloads: beside `Func<Task<T>>` they are ambiguous for every `async` lambda, as the
+       README already says of `MapAsync`. `Catch<T, TException>` spells both type arguments, and the
+       one-argument `Catch<TException>(Action)` is the command form. A delegate that returns null throws
+       rather than being caught: the value is computed inside the `try`, the success built outside it.
     4. **CMTK0011 and its code fix**: pure Roslyn, no spike.
     5. **CMTK0010**, after [spikes/TypeArgumentConstraints](../spikes/TypeArgumentConstraints/README.md),
        since the forwarding claim decides whether the rule is sound.
