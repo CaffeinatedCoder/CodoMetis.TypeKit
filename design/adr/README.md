@@ -58,3 +58,4 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0049](0049-fault-responses-client-can-act.md) | Fault responses a client can act on | 2026-10-13 | accepted |
 | [0050](0050-warnings-cmtk0003-alone-becomes-error-2.md) | Of the Warnings, CMTK0003 alone becomes an Error in 2.0.0 | 2026-10-13 | accepted |
 | [0051](0051-closed-set-parses-ignoring-case-only.md) | A closed set parses ignoring case only when asked, and refuses members that differ only in case | 2026-10-13 | accepted |
+| [0052](0052-cause-on-fault-joins-2-1.md) | A `Cause` on `Fault<TFault>` joins 2.1 | 2026-10-13 | accepted |

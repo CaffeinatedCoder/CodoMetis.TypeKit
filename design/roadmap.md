@@ -13,6 +13,9 @@ item names the decision that scoped it.
 
 ## 2.1, additive
 
+- An optional `Cause` on `Fault<TFault>`, an exception kept beside the reason and the detail for the
+  log and the fault feature, never written to the problem; `Fault.Of(reason, detail, cause)`, and a
+  `MapError` from a `Result<T, Exception>` that keeps the exception ([decision 52](adr/0052-cause-on-fault-joins-2-1.md)).
 - What the outside review of 2026-10-13 rated can-wait: the fault
   name is sent even for a member without a description; `Uri.ToString()` unescapes the problem
   `type`; the CMTK0011 code fix on a partial type whose other part has a primary constructor, and its
