@@ -14,7 +14,7 @@ appears to: an instance that passed no factory, or a value object that was never
 |---|---|---|
 | CMTK0001 | Error | `default`, `default(T)`, `new T()`, `new()` and `new T { }` of a value object, an `Option`, a `Result`, or a struct marked `[RequireCustomInitialization]`. Also through a type parameter whose constraints make it one of those. A default that is only compared (`id == default`, `id.Equals(default)`, `ThrowIfEqual(id, default)`, `Assert.NotEqual(default, id)`) is a guard and is not reported, nor is one assigned to an `out` parameter of a Try method that returns `bool`. |
 | CMTK0002 | Error | A type implements `IValue<T>`, `IValidatedValue<,,>` or `IClosedSet<TSelf>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so nothing is generated for it: no field, no `Value`, no factory, or for a closed set no name and no `Match`. |
-| CMTK0003 | Error | A `Result` or `Option` that a call returns, or a collection of them that the statement made, dropped. The drops: a statement, awaited or not; a conversion of its `Task` to a plain `Task`, a method group's included; `Wait`; a loop that never reads it; a branch of a conditional or a `switch` expression that picked the call. `_` says the drop is meant. |
+| CMTK0003 | Error | A `Result` or `Option` that a call returns, or a collection or a tuple of them that the statement made, dropped. The drops: a statement, awaited or not; a conversion of its `Task` to a plain `Task`, a method group's included; `Wait`; a loop that never reads it; a branch of a conditional, a `switch` expression or a `??` that picked the call. `_` says the drop is meant. |
 | CMTK0004 | Error | `Materialize`, which rebuilds a value object without its rules, called or referenced anywhere but the EF Core satellite. |
 | CMTK0005 | Warning | An array or span of a value object, `Option`, `Result` or `[RequireCustomInitialization]` struct created with a length, so every slot starts as `default`. A constant length of zero is not reported. |
 | CMTK0006 | Warning | A field or auto-property of such a type in a class that no initializer, `required` or constructor sets, or a `required` one that a `[SetsRequiredMembers]` constructor does not set. |
@@ -169,7 +169,9 @@ await Task.WhenAll(cancelFirst, cancelSecond);                      // silent: b
 ```
 
 A collection is an array, or a type that is or implements `ICollection<T>` or `IReadOnlyCollection<T>`
-(`List<T>`, `ImmutableArray<T>`, `IReadOnlyList<T>`), of results or of tasks of them. It is reported
+(`List<T>`, `ImmutableArray<T>`, `IReadOnlyList<T>`), of results, of tasks of them, or of key-value
+pairs whose value is one (`Dictionary<Guid, Result<…>>`, `ids.ToDictionary(id => id, orders.Cancel)`);
+a tuple that holds one, `(Result<…>, int)`, is held to the same rule. It is reported
 when the statement made the results in it: a call in the statement returns a result or a task of one,
 a method group of such a method is passed on, or the call that returns the collection was given no
 result and made them itself, as `orders.CancelAll(ids);` does. A call given results that something
@@ -195,6 +197,10 @@ explicit cast to the plain tasks' type says that drop is intended. A
 `foreach` or `await foreach` is reported when its header made the results, by the rule above, and
 its body never reads the iteration variable. Tasks and collections that something still holds keep
 their results and are silent.
+
+Out of reach: a lazy sequence of results drained by a call that reads none of them,
+`orders.CancelEach(ids).Count();`. The call is given the sequence, and nothing in its signature tells
+a count from a read; enumerate it with a loop that reads each result, or discard the count with `_ =`.
 
 `Tap`, `TapAsync`, `TapError` and `TapErrorAsync` return their receiver unchanged, and so do the
 `Task` continuations `TapAsync` and `TapErrorAsync`, so `result.Tap(log);` and `await pending.TapAsync(log);`

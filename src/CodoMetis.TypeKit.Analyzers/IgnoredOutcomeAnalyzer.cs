@@ -26,8 +26,8 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// silently: <c>Task Cancel(Guid id) =&gt; orders.CancelAsync(id);</c>, <c>return svc.DoAsync();</c>
 /// in a method returning <c>Task</c>, <c>Func&lt;Task&gt; f = () =&gt; svc.DoAsync();</c>. The implicit
 /// conversion of a call's task is reported; an explicit <c>(Task)</c> cast says the drop is intended.
-/// A call reached through a branch, <c>await (dry ? CancelAsync(id) : ShipAsync(id));</c> or a
-/// <c>switch</c> expression, is each branch's call, reported at the branch. <c>ConfigureAwait</c> and
+/// A call reached through a branch, <c>await (dry ? CancelAsync(id) : ShipAsync(id));</c>, a
+/// <c>switch</c> expression or <c>held ?? CancelAsync(id)</c>, is each branch's call, reported at the branch. <c>ConfigureAwait</c> and
 /// <c>WaitAsync</c> hand on the task they are called on: through them a call's task is still the
 /// call's, and a task the caller holds, <c>await held.ConfigureAwait(false);</c>, drops nothing.
 /// A <c>ValueTask&lt;T&gt;</c> has no conversion to <c>ValueTask</c>. A method group converts the same
@@ -39,8 +39,9 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// A collection of results is dropped as silently: <c>await Task.WhenAll(ids.Select(orders.CancelAsync));</c>
 /// awaits a <c>Result[]</c> nobody reads, and <c>ids.Select(orders.Cancel).ToList();</c> builds a list
 /// of them and forgets it. A collection is an array, or a type that is or implements
-/// <c>ICollection&lt;T&gt;</c> or <c>IReadOnlyCollection&lt;T&gt;</c>, of results or of tasks of them: its
-/// elements exist. A lazy <c>IEnumerable&lt;T&gt;</c> has run nothing, and CA1806 reports a LINQ query
+/// <c>ICollection&lt;T&gt;</c> or <c>IReadOnlyCollection&lt;T&gt;</c>, of results, of tasks of them or of
+/// key-value pairs whose value is one: its elements exist. A tuple that holds a result is held to the
+/// same rule. A lazy <c>IEnumerable&lt;T&gt;</c> has run nothing, and CA1806 reports a LINQ query
 /// that is dropped. The collection is reported when the statement made the results in it
 /// (<see cref="MadeResults"/>). One that only passes on results the statement was given, as
 /// <c>await Task.WhenAll(first, second)</c> over tasks in variables or <c>pending.ToList()</c> do,
@@ -109,7 +110,8 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
                 start.Compilation.GetSpecialType(SpecialType.System_Collections_Generic_IReadOnlyCollection_T),
                 start.Compilation.GetSpecialType(SpecialType.System_Collections_Generic_IEnumerable_T),
                 start.Compilation.GetTypeByMetadataName("System.Collections.Generic.IAsyncEnumerable`1"),
-                start.Compilation.GetTypeByMetadataName("System.ReadOnlySpan`1"));
+                start.Compilation.GetTypeByMetadataName("System.ReadOnlySpan`1"),
+                start.Compilation.GetTypeByMetadataName("System.Collections.Generic.KeyValuePair`2"));
 
             start.RegisterOperationAction(operation => Analyze(operation, symbols, tasks), OperationKind.ExpressionStatement);
             start.RegisterOperationAction(operation => AnalyzeConversion(operation, symbols, tasks), OperationKind.Conversion);
@@ -167,6 +169,10 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
                 foreach (var producer in Producers(whenTrue, tasks)) yield return producer;
                 foreach (var producer in Producers(whenFalse, tasks)) yield return producer;
                 break;
+            case ICoalesceOperation { Value: { } value, WhenNull: { } whenNull }:
+                foreach (var producer in Producers(value, tasks)) yield return producer;
+                foreach (var producer in Producers(whenNull, tasks)) yield return producer;
+                break;
             case ISwitchExpressionOperation chosen:
                 foreach (var arm in chosen.Arms)
                 {
@@ -179,19 +185,23 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
 
     /// <summary>
     /// What a value of <paramref name="type"/>, produced by <paramref name="invocation"/>, drops: a
-    /// <c>Result</c> or <c>Option</c> or a task of one, or a collection of them that the statement made,
-    /// awaited or not.
+    /// <c>Result</c> or <c>Option</c> or a task of one, or a collection or a tuple of them that the
+    /// statement made, awaited or not.
     /// </summary>
     private static string? DroppedOutcome(ITypeSymbol? type, IInvocationOperation invocation, TypeKitSymbols symbols, Tasks tasks)
     {
         if ((symbols.OutcomeName(type) ?? tasks.PendingOutcome(type, symbols)) is { } outcome)
             return ReturnsItsStoredReceiver(invocation, symbols) ? null : outcome;
 
-        return DroppedCollection(tasks.CollectionOutcome(type, symbols) ?? tasks.CollectionOutcome(tasks.Awaited(type), symbols), invocation, symbols, tasks);
+        return DroppedHolder(tasks.HolderOutcome(type, symbols) ?? tasks.HolderOutcome(tasks.Awaited(type), symbols), invocation, symbols, tasks);
     }
 
     private static string? DroppedCollection(string? element, IInvocationOperation invocation, TypeKitSymbols symbols, Tasks tasks) =>
-        element is not null && MadeResults(invocation, symbols, tasks) ? $"collection of {element}s" : null;
+        DroppedHolder(element is null ? null : $"collection of {element}s", invocation, symbols, tasks);
+
+    /// <summary><paramref name="holder"/>, a collection or a tuple of results, when the statement made the results in it.</summary>
+    private static string? DroppedHolder(string? holder, IInvocationOperation invocation, TypeKitSymbols symbols, Tasks tasks) =>
+        holder is not null && MadeResults(invocation, symbols, tasks) ? holder : null;
 
     /// <summary>
     /// Whether the results in the collection <paramref name="invocation"/> returns were made in the
@@ -246,7 +256,7 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         {
             var outcome = toPlainTask
                 ? tasks.PendingOutcome(invocation.Type, symbols)
-               ?? DroppedCollection(tasks.CollectionOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks)
+               ?? DroppedHolder(tasks.HolderOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks)
                 : DroppedCollection(tasks.PendingOutcome(tasks.ElementOfSequence(invocation.Type), symbols), invocation, symbols, tasks);
 
             if (outcome is null) continue;
@@ -270,7 +280,7 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         if (wait.Instance is null || tasks.PassedOn(wait.Instance) is not IInvocationOperation invocation) return;
 
         var outcome = tasks.PendingOutcome(invocation.Type, symbols)
-                   ?? DroppedCollection(tasks.CollectionOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks);
+                   ?? DroppedHolder(tasks.HolderOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks);
         if (outcome is null) return;
 
         context.Report(Diagnostic.Create(Rule, wait.Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
@@ -306,10 +316,9 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         if (creation.Target is not IMethodReferenceOperation reference || creation.Syntax is CastExpressionSyntax) return;
         if (creation.Type is not INamedTypeSymbol { DelegateInvokeMethod: { } invoke } || !SymbolEqualityComparer.Default.Equals(invoke.ReturnType, tasks.Plain)) return;
 
-        // A method that answers a collection of results makes them on every call through the delegate.
+        // A method that answers a collection or a tuple of results makes them on every call through the delegate.
         var returned = reference.Method.ReturnType;
-        var outcome  = tasks.PendingOutcome(returned, symbols)
-                    ?? (tasks.CollectionOutcome(tasks.Awaited(returned), symbols) is { } element ? $"collection of {element}s" : null);
+        var outcome  = tasks.PendingOutcome(returned, symbols) ?? tasks.HolderOutcome(tasks.Awaited(returned), symbols);
         if (outcome is null) return;
 
         context.Report(Diagnostic.Create(Rule, reference.Syntax.GetLocation(), outcome, reference.Method.Name));
@@ -386,7 +395,8 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         INamedTypeSymbol? readOnlyCollection,
         INamedTypeSymbol? sequence,
         INamedTypeSymbol? asyncSequence,
-        INamedTypeSymbol? readOnlySpan)
+        INamedTypeSymbol? readOnlySpan,
+        INamedTypeSymbol? keyValuePair)
     {
         public INamedTypeSymbol? Plain { get; } = plain;
 
@@ -423,11 +433,22 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
                 : null;
 
         /// <summary>
-        /// <c>Result</c> or <c>Option</c> when <paramref name="type"/> is a collection whose elements
-        /// exist, of results or of tasks of them: an array, or a type that is or implements
-        /// <c>ICollection&lt;T&gt;</c> or <c>IReadOnlyCollection&lt;T&gt;</c>. A lazy sequence is none.
+        /// What a value of <paramref name="type"/> holds results in, as the message names it: a
+        /// <see cref="CollectionOutcome">collection</see> (<c>collection of Results</c>) or a
+        /// <see cref="TupleOutcome">tuple</see> (<c>tuple holding a Result</c>) of them.
         /// </summary>
-        public string? CollectionOutcome(ITypeSymbol? type, TypeKitSymbols symbols)
+        public string? HolderOutcome(ITypeSymbol? type, TypeKitSymbols symbols) =>
+            CollectionOutcome(type, symbols) is { } element ? $"collection of {element}s"
+          : TupleOutcome(type, symbols) is { } held       ? $"tuple holding {(held is "Option" ? "an" : "a")} {held}"
+          : null;
+
+        /// <summary>
+        /// <c>Result</c> or <c>Option</c> when <paramref name="type"/> is a collection whose elements
+        /// exist, of results, of tasks of them or of key-value pairs whose value is one: an array, or a
+        /// type that is or implements <c>ICollection&lt;T&gt;</c> or <c>IReadOnlyCollection&lt;T&gt;</c>, a
+        /// dictionary included. A lazy sequence is none.
+        /// </summary>
+        private string? CollectionOutcome(ITypeSymbol? type, TypeKitSymbols symbols)
         {
             var element = type switch
             {
@@ -436,17 +457,35 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
                 _                      => null
             };
 
-            return symbols.OutcomeName(element) ?? PendingOutcome(element, symbols);
+            return ElementOutcome(element, symbols);
+        }
+
+        /// <summary>
+        /// <c>Result</c> or <c>Option</c> when <paramref name="type"/> is a tuple, nullable or not, with
+        /// an element that is one, a task of one, or a tuple holding one.
+        /// </summary>
+        private string? TupleOutcome(ITypeSymbol? type, TypeKitSymbols symbols)
+        {
+            if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable) type = nullable.TypeArguments[0];
+            if (type is not INamedTypeSymbol { IsTupleType: true } tuple) return null;
+
+            return tuple.TupleElements
+                        .Select(element => symbols.OutcomeName(element.Type) ?? PendingOutcome(element.Type, symbols) ?? TupleOutcome(element.Type, symbols))
+                        .FirstOrDefault(outcome => outcome is not null);
         }
 
         /// <summary>
         /// <c>Result</c> or <c>Option</c> when <paramref name="type"/> is a sequence, lazy or not, of
-        /// results or of tasks of them: an array, or a type that is or implements
-        /// <c>IEnumerable&lt;T&gt;</c> or <c>IAsyncEnumerable&lt;T&gt;</c>.
+        /// results, of tasks of them or of key-value pairs whose value is one: an array, or a type that
+        /// is or implements <c>IEnumerable&lt;T&gt;</c> or <c>IAsyncEnumerable&lt;T&gt;</c>.
         /// </summary>
-        public string? SequenceOutcome(ITypeSymbol? type, TypeKitSymbols symbols)
+        public string? SequenceOutcome(ITypeSymbol? type, TypeKitSymbols symbols) => ElementOutcome(ElementOfSequence(type), symbols);
+
+        /// <summary>A collection's element that is a result, a task of one, or a <c>KeyValuePair</c> whose value is either.</summary>
+        private string? ElementOutcome(ITypeSymbol? element, TypeKitSymbols symbols)
         {
-            var element = ElementOfSequence(type);
+            if (element is INamedTypeSymbol { TypeArguments.Length: 2 } pair && SymbolEqualityComparer.Default.Equals(pair.OriginalDefinition, keyValuePair))
+                element = pair.TypeArguments[1];
 
             return symbols.OutcomeName(element) ?? PendingOutcome(element, symbols);
         }

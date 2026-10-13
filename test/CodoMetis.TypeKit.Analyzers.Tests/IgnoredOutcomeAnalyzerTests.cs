@@ -54,6 +54,14 @@ public sealed class IgnoredOutcomeAnalyzerTests
                 foreach (var value in values) yield return await CancelAsync(value);
             }
 
+            public (Result<int, Fault>, int) Pair() => (Load(), 1);
+
+            public Task<(Result<int, Fault> Loaded, int Count)> PairAsync() => Task.FromResult<(Result<int, Fault>, int)>(Pair());
+
+            public Dictionary<int, Result<Fault>> Map(int[] values) => [];
+
+            public Task<IReadOnlyDictionary<int, Option<int>>> MapAsync() => Task.FromResult<IReadOnlyDictionary<int, Option<int>>>(new Dictionary<int, Option<int>>());
+
             public Task RunAsync() => Task.CompletedTask;
 
             public int Count() => 1;
@@ -345,6 +353,86 @@ public sealed class IgnoredOutcomeAnalyzerTests
             Cmtk0003(4, "Result", "CancelAsync"),
             Cmtk0003(5, "Result", "CancelAsync"),
             Cmtk0003(6, "collection of Results", "SaveAllAsync"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// Neighbours of the branch, collection and conversion forms were silent: a call picked by
+    /// <c>??</c>, awaited or converted to a plain task; a tuple that holds a result; a dictionary of
+    /// results, or a sequence of key-value pairs of them materialised.
+    /// </summary>
+    [Fact]
+    public Task A_result_dropped_through_a_coalesce_a_tuple_or_a_dictionary_reports() =>
+        Test(
+            """
+            public static class Neighbours
+            {
+                public static async Task Run(Service service, Task<Result<int, Fault>> held, int[] ids)
+                {
+                    await (held ?? {|#0:service.LoadAsync()|});
+                    {|#1:service.Pair()|};
+                    {|#2:await service.PairAsync()|};
+                    {|#3:service.PairAsync()|};
+                    {|#4:service.Map(ids)|};
+                    {|#5:ids.ToDictionary(i => i, i => service.Save(i))|};
+                    {|#6:await service.MapAsync()|};
+                    {|#7:ids.Select(i => new KeyValuePair<int, Result<Fault>>(i, service.Save(i))).ToList()|};
+                }
+
+                public static Func<Task> Deferred(Service service, Task<Result<int, Fault>> held) => () => held ?? {|#8:service.LoadAsync()|};
+
+                public static Task Converted(Service service) => {|#9:service.PairAsync()|};
+
+                public static Task Mapped(Service service) => {|#10:service.MapAsync()|};
+
+                public static void Groups(Service service)
+                {
+                    Func<Task> pairs = {|#11:service.PairAsync|};
+                    Func<Task> maps = {|#12:service.MapAsync|};
+                }
+            }
+            """,
+            Cmtk0003(0, "Result", "LoadAsync"),
+            Cmtk0003(1, "tuple holding a Result", "Pair"),
+            Cmtk0003(2, "tuple holding a Result", "PairAsync"),
+            Cmtk0003(3, "tuple holding a Result", "PairAsync"),
+            Cmtk0003(4, "collection of Results", "Map"),
+            Cmtk0003(5, "collection of Results", "ToDictionary"),
+            Cmtk0003(6, "collection of Options", "MapAsync"),
+            Cmtk0003(7, "collection of Results", "ToList"),
+            Cmtk0003(8, "Result", "LoadAsync"),
+            Cmtk0003(9, "tuple holding a Result", "PairAsync"),
+            Cmtk0003(10, "collection of Options", "MapAsync"),
+            Cmtk0003(11, "tuple holding a Result", "PairAsync"),
+            Cmtk0003(12, "collection of Options", "MapAsync"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A coalesce of held tasks, a tuple or a dictionary that is used or discarded, and a copy of a
+    /// held dictionary or of a held tuple's result drop nothing.
+    /// </summary>
+    [Fact]
+    public Task A_coalesce_a_tuple_or_a_dictionary_that_is_held_or_used_stays_silent() =>
+        Test(
+            """
+            public static class Neighbours
+            {
+                public static async Task Run(Service service, Task<Result<int, Fault>> held, Task<Result<int, Fault>> other, Dictionary<int, Result<Fault>> saved, (Result<int, Fault>, int) pair)
+                {
+                    await (held ?? other);
+                    _ = service.Pair();
+                    var (loaded, count) = service.Pair();
+                    _ = await service.PairAsync();
+                    _ = service.Map([1]);
+                    var kept = await service.MapAsync();
+                    saved.ToDictionary(entry => entry.Key, entry => entry.Value);
+                    saved.Where(entry => entry.Key > 0).ToList();
+                    ValueTuple.Create(pair.Item1, 1);
+                    service.Counts().ToDictionary(c => c, c => c);
+                }
+
+                public static Task Held(Task<Result<int, Fault>> held, Task<Result<int, Fault>> other) => held ?? other;
+            }
+            """)
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
