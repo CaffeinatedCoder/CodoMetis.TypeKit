@@ -16,7 +16,8 @@ code fixes under `analyzers/dotnet/cs`). `CodoMetis.TypeKit` takes a package dep
   - What does drop it: a project reference with `ReferenceOutputAssembly="false"` emits **no
     dependency at all**. The reference is therefore an ordinary one with `Private="false"`.
 - **Guards:** `AnalyzerPackagingTests` packs both packages and reads the nuspec and the package
-  layout. The consumer smoke test (phase 6) asserts CMTK0001 fires, directly and transitively.
+  layout, the code-fix assembly beside the analyzer's included. The consumer smoke test (phase 6)
+  asserts CMTK0001 fires, directly and transitively.
 
 Attributes stay in `CodoMetis.TypeKit`. The analyzer resolves them and the interfaces with
 `GetTypeByMetadataName` and compares symbols ([Discovery](discovery.md)), so it does not reference the base package.

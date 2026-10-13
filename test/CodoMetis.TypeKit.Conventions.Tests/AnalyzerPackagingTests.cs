@@ -60,6 +60,22 @@ public sealed class AnalyzerPackagingTests(AnalyzerPackagingTests.Packs packs)
             "The analyzer package has a lib/ folder, so every consumer would compile against the analyzer assembly.");
     }
 
+    /// <summary>
+    /// The code fixes are a project of their own (RS1038: an analyzer assembly must not reference
+    /// Workspaces), packed beside the analyzer by an item in the analyzer's project file. Without that
+    /// item the pack succeeds, the analyzer still ships and loads, and CMTK0011 and CMTK0012 lose their
+    /// fixes without a word; found by removing it while every other packaging test stayed green.
+    /// </summary>
+    [Fact]
+    public void The_analyzer_package_ships_the_code_fixes_beside_the_analyzer()
+    {
+        var entries = packs.Entries(AnalyzerPackage);
+
+        entries.ShouldContain($"analyzers/dotnet/cs/{AnalyzerPackage}.CodeFixes.dll",
+            $"{AnalyzerPackage} does not pack {AnalyzerPackage}.CodeFixes.dll under analyzers/dotnet/cs, so no IDE offers a CMTK code fix. " +
+            "Pack it with a None item beside the analyzer's own.");
+    }
+
     [Fact]
     public void The_analyzer_package_is_not_a_development_dependency()
     {
