@@ -168,6 +168,39 @@ public sealed class ResultCatchTests
         value.ShouldBe(7);
     }
 
+    /// <summary>
+    /// <c>CatchAsync</c> keeps <c>await</c>'s semantics: the error is what
+    /// <c>try { await task; } catch (Exception e)</c> catches, so for a task that faulted with several
+    /// exceptions, as <c>Task.WhenAll</c>'s does, the first of them, and a narrowed form looks at that one
+    /// alone. The task's <see cref="Task.Exception"/> holds them all, which is what a caller holds the
+    /// task for where every failure matters.
+    /// </summary>
+    [Fact]
+    public async Task CatchAsync_over_a_task_with_several_exceptions_answers_the_one_await_throws()
+    {
+        var first = new InvalidOperationException("first");
+        var second = new FormatException("second");
+
+        var both = Task.WhenAll(Task.FromException(first), Task.FromException(second));
+        Exception? awaited = null;
+        try { await both; }
+        catch (Exception exception) { awaited = exception; }
+
+        (await Result.CatchAsync(() => both)).TryGetError(out var error).ShouldBeTrue();
+        error.ShouldBeSameAs(first);
+        error.ShouldBeSameAs(awaited);
+        both.Exception!.InnerExceptions.ShouldBe([first, second], "every failure is on the task");
+
+        var values = Task.WhenAll(Task.FromException<int>(first), Task.FromException<int>(second));
+        (await Result.CatchAsync(() => values)).TryGetValue(out _, out var valued).ShouldBeFalse();
+        valued.ShouldBeSameAs(first);
+        (await Result.CatchAsync<int[], InvalidOperationException>(() => values)).TryGetValue(out _, out var narrowed).ShouldBeFalse();
+        narrowed.ShouldBeSameAs(first);
+        (await Should.ThrowAsync<InvalidOperationException>(() => Result.CatchAsync<int[], FormatException>(() => values))).ShouldBeSameAs(first, "the second exception is never looked at");
+        (await Result.CatchAsync<InvalidOperationException>(() => both)).TryGetError(out var command).ShouldBeTrue();
+        command.ShouldBeSameAs(first);
+    }
+
     [Fact]
     public async Task CatchAsync_lets_a_cancelled_token_through_as_cancellation()
     {

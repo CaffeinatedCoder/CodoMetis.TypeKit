@@ -203,6 +203,17 @@ how `HttpClient` reports its `Timeout` elapsing, the call failing, and `.Result`
 error too.
 `Map`, `Bind` and the rest are unchanged: a selector that throws propagates.
 
+`CatchAsync`'s error is what `await` throws, the exception `try { await task; } catch (Exception e)`
+would catch. A task that faulted with several exceptions, as `Task.WhenAll`'s does when more than one
+operation fails, throws the first of them, and a narrowed `CatchAsync` looks at that one alone. The
+task's `Exception` holds them all, so where every failure matters, hold the task:
+
+```csharp
+Task both = Task.WhenAll(File.WriteAllTextAsync(draft, "a"), File.WriteAllTextAsync(copy, "b"));
+Result<Exception> saved = await Result.CatchAsync(() => both);   // Error: DirectoryNotFoundException, the first of the two
+int failures = both.Exception?.InnerExceptions.Count ?? 0;        // 2, every failure is on the task
+```
+
 ## Query syntax
 
 ```csharp

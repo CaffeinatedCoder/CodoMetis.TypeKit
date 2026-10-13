@@ -190,6 +190,17 @@ public static class Usage
         return (url, narrowed, asFault, written, read);
     }
 
+    public static async Task<(Result<Exception> Saved, int Failures)> CatchingAll(string draft, string copy)
+    {
+        // sample: result/catch-all
+        Task both = Task.WhenAll(File.WriteAllTextAsync(draft, "a"), File.WriteAllTextAsync(copy, "b"));
+        Result<Exception> saved = await Result.CatchAsync(() => both);   // Error: DirectoryNotFoundException, the first of the two
+        int failures = both.Exception?.InnerExceptions.Count ?? 0;        // 2, every failure is on the task
+        // end sample
+
+        return (saved, failures);
+    }
+
     public static Result<Receipt, CheckoutFault> Query(Checkout checkout, CartId cartId)
     {
         // sample: result/query
@@ -328,6 +339,21 @@ public sealed class ResultTests
         {
             File.Delete(path);
         }
+    }
+
+    [Fact]
+    public async Task CatchAsync_over_WhenAll_answers_what_the_comments_say()
+    {
+        var missing = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        var draft = Path.Combine(missing, "draft.txt");
+        var copy = Path.Combine(missing, "copy.txt");
+
+        var (saved, failures) = await Usage.CatchingAll(draft, copy);
+
+        saved.ShouldBeShownIn(Readme, result => result.Match(() => "Success", error => $"Error: {error.GetType().Name}"), "await Result.CatchAsync(() => both)");
+        failures.ShouldBeShownIn(Readme, count => count.ToString(System.Globalization.CultureInfo.InvariantCulture), "both.Exception?.InnerExceptions.Count ?? 0");
+        saved.TryGetError(out var first).ShouldBeTrue();
+        first.Message.ShouldContain("draft.txt", Case.Sensitive, "the first operation's failure, not the second's");
     }
 
     [Fact]

@@ -287,6 +287,7 @@ public static class Result
     /// task threw as the error, whether before or after its first <c>await</c>.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// An <see cref="OperationCanceledException"/> passes through, so a cancelled token surfaces as
     /// cancellation, and so does an <see cref="AggregateException"/> of cancellations alone; a timeout,
     /// which <see cref="System.Net.Http.HttpClient"/> throws as a cancellation over a
@@ -294,6 +295,14 @@ public static class Result
     /// needs <c>.AsTask()</c> or an <c>async</c> lambda: a <c>ValueTask</c> overload beside this one is
     /// ambiguous for every <c>async</c> lambda.
     /// See <see cref="Catch{T}(Func{T})"/> for cancellations, timeouts and null.
+    /// </para>
+    /// <para>
+    /// The error is what <c>await</c> throws, the exception <c>try { await task; } catch (Exception e)</c>
+    /// catches, in every overload: for a task that faulted with several exceptions, as
+    /// <c>Task.WhenAll</c>'s does when more than one operation fails, the first of them, and a narrowed
+    /// overload looks at that one alone. The task's <see cref="Task.Exception"/> holds them all: where
+    /// every failure matters, hold the task, and read it once the result is an error.
+    /// </para>
     /// </remarks>
     /// <param name="action">The asynchronous call whose outcome is wanted.</param>
     /// <typeparam name="T">The type of the value.</typeparam>

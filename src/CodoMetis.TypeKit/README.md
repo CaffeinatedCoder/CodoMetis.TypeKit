@@ -192,7 +192,9 @@ type says what was expected to fail; both type arguments are spelled, since C# i
 and `Catch<FormatException>(() => { … })` with one is the command form, for a call without a
 value: given one that returns a value, which it would discard, it is a compile error naming the
 valued form. `CatchAsync` awaits the task, so an exception thrown after its first `await` is the error
-too. An `OperationCanceledException` passes through all of them, since a cancellation is not an
+too, and the error is what `await` throws: for a task that faulted with several exceptions, as
+`Task.WhenAll`'s does, the first of them, while the task's `Exception` holds them all, so hold the
+task where every failure matters. An `OperationCanceledException` passes through all of them, since a cancellation is not an
 outcome and `Recover` would run on it as on a failure, and so does an `AggregateException` that holds
 cancellations alone, as `Wait()` and `.Result` throw for a cancelled task; one that holds anything
 beside them is the error, as it was thrown. The exception is a timeout: `HttpClient` reports its
