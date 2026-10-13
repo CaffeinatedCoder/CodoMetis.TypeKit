@@ -77,13 +77,29 @@ public static class StringTextExtensions
         /// The two zero-width joiners are kept: they are ordinary orthography in Persian, Arabic and
         /// several Indic scripts, and a zero-width joiner is what holds an emoji sequence together.
         /// </para>
+        /// <para>
+        /// Composing needs the runtime's globalization data. In globalization-invariant mode
+        /// (<c>InvariantGlobalization</c> in the project, or <c>DOTNET_SYSTEM_GLOBALIZATION_INVARIANT</c>)
+        /// <see cref="string.Normalize()"/> returns its input unchanged, and one name would be kept in two
+        /// spellings, so this guard throws there rather than answer as if it had composed. Written text has
+        /// no guard in that mode: <see cref="AsIdentifier"/> is for a value another system issued, and
+        /// refuses the joiners this one keeps.
+        /// </para>
         /// </remarks>
         /// <returns>
         /// The text, or <see cref="TextFault.Blank"/> for a null, empty or whitespace-only string, or
         /// <see cref="TextFault.Hidden"/> for one carrying a character that renders as nothing or breaks
         /// the line.
         /// </returns>
-        public Result<string, TextFault> AsText() => Clean(text, tolerateJoiners: true, canonicalize: true);
+        /// <exception cref="PlatformNotSupportedException">
+        /// The process runs in globalization-invariant mode, where text cannot be composed, whatever the
+        /// string. Turn the mode off and make ICU available to the process; ICU alone does nothing while
+        /// the mode is on.
+        /// </exception>
+        public Result<string, TextFault> AsText() =>
+            Composition.IsAvailable
+                ? Clean(text, tolerateJoiners: true, canonicalize: true)
+                : throw Composition.Unavailable();
 
         /// <summary>
         /// The string as a value another system issued, a subject claim, a session id, a key: trimmed of
@@ -95,7 +111,9 @@ public static class StringTextExtensions
         /// Nothing is composed or folded, since an issued value is compared against what its issuer
         /// sends next time, and canonicalising it alters an attested value. Trimming survives because
         /// surrounding whitespace is a transport artefact. The zero-width joiners
-        /// <see cref="AsText"/> keeps are refused here, since no issuer needs one.
+        /// <see cref="AsText"/> keeps are refused here, since no issuer needs one. Since nothing is
+        /// composed, this guard needs no globalization data and works in globalization-invariant mode,
+        /// where it is still the guard for issued values only, not for text a person wrote.
         /// </para>
         /// <para>
         /// Refused as <see cref="TextFault.Hidden"/>, which lists them exactly, as <see cref="AsText"/>
@@ -278,4 +296,34 @@ public static class StringTextExtensions
                    or 0x08E2                    // ARABIC DISPUTED END OF AYAH
                    or 0x110BD                   // KAITHI NUMBER SIGN
                    or 0x110CD;                  // KAITHI NUMBER SIGN ABOVE
+
+    /// <summary>
+    /// Whether this process composes text at all, asked once. In globalization-invariant mode
+    /// <see cref="string.Normalize()"/> returns its input unchanged rather than throwing, and the
+    /// <c>System.Globalization.Invariant</c> switch is not set when the mode comes from the environment
+    /// variable, so the one reliable question is whether a decomposed letter composes.
+    /// </summary>
+    private static class Composition
+    {
+        public static readonly bool IsAvailable = Composes();
+
+        private static bool Composes()
+        {
+            try
+            {
+                return string.Concat("e", char.ConvertFromUtf32(0x0308)).Normalize(NormalizationForm.FormC) == char.ConvertFromUtf32(0x00EB);
+            }
+            catch (PlatformNotSupportedException)
+            {
+                return false;
+            }
+        }
+
+        public static PlatformNotSupportedException Unavailable() =>
+            new("AsText() composes text to Unicode normalization form C, and this process cannot: it runs in globalization-invariant mode " +
+                "(InvariantGlobalization in the project, or DOTNET_SYSTEM_GLOBALIZATION_INVARIANT), where string.Normalize returns its input unchanged " +
+                "and one name would be kept in two spellings. Written text has no guard in this mode. Turn invariant mode off and make ICU available " +
+                "to the process; ICU alone does nothing while the mode is on. AsIdentifier() is the guard for a value another system issued, not for text a person wrote." +
+                Refusals.TextWithoutComposition);
+    }
 }

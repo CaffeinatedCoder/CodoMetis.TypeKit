@@ -47,4 +47,7 @@ internal static class Refusals
 
     /// <summary>A closed set's <c>All</c>, or a member by name, read by the set's own static initializers.</summary>
     public const string ClosedSetInitializing = " See " + Readme + "a-closed-set-read-before-it-is-initialized";
+
+    /// <summary><c>AsText()</c> in a process that cannot compose text: globalization-invariant mode.</summary>
+    public const string TextWithoutComposition = " See " + Readme + "astext-in-globalization-invariant-mode";
 }

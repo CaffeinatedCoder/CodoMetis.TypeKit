@@ -34,5 +34,11 @@ host, EF Core through `dotnet ef dbcontext optimize --precompile-queries --nativ
     Such a value object on an entity is a `sealed partial record` instead;
   - EF 10's precompiled queries cast an entity to an internal interface, which does not compile for
     a **sealed** entity class.
+- **Globalization-invariant mode** ([decision 59](adr/0059-text-guard-refuses-what-it-cannot-normalize.md)).
+  Native AOT templates set `InvariantGlobalization`, and there `string.Normalize` returns its input
+  unchanged (measured with `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`, which leaves the
+  `System.Globalization.Invariant` switch unset). `AsText()` asks once whether a decomposed letter
+  composes, and throws `PlatformNotSupportedException` where it does not; `InvariantGlobalizationTests`
+  runs the test assembly again in that mode. The smoke test's consumers do not call `AsText()`.
 - **Third-party packages** report their own warnings (NodaTime.Serialization.SystemTextJson 1.4.0,
   EF Core). The smoke test asserts only that none names a CodoMetis package or a woven value object.

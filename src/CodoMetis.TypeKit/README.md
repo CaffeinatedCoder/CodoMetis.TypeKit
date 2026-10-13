@@ -388,7 +388,10 @@ Both refuse as `Hidden`, once the surrounding whitespace is trimmed:
 - a value of joiners, variation selectors and combining marks alone, which renders no character of
   its own.
 
-Both scan by `Rune`, so a character above the BMP is seen for what it is.
+Both scan by `Rune`, so a character above the BMP is seen for what it is. `AsText()` needs the
+runtime's globalization data to compose, and in globalization-invariant mode it throws
+([why](#astext-in-globalization-invariant-mode)), so written text has no guard there.
+`AsIdentifier()` composes nothing and works there, for the values it is for.
 
 `TextFault` has two members because the caller decides what a blank means: a required field makes
 `Blank` an error, an optional one makes it absence. `Hidden` is a refusal in both. A null is
@@ -671,6 +674,24 @@ spelled type argument chooses its overload itself.
 
 **Instead:** `CatchAsync`, which awaits the task: `await Result.CatchAsync(() => stream.ReadAsync(buffer).AsTask())`,
 or an `async` lambda. In `CatchAsync`, await the inner task in the delegate.
+
+### AsText in globalization-invariant mode
+
+**Thrown:** `PlatformNotSupportedException: AsText() composes text to Unicode normalization form C, and
+this process cannot…` from `AsText()`, whatever the string, in a process in globalization-invariant mode:
+`<InvariantGlobalization>true</InvariantGlobalization>` in the project, which Native AOT and container
+templates often set, or `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` in the environment.
+
+**Why:** in that mode `string.Normalize` returns its input unchanged, so `AsText()` would answer a name
+written with a combining diaeresis as a success, uncomposed, and one name would be kept in two
+spellings that compare unequal: the defect the guard exists to prevent, and silent.
+
+**Instead:** turn the mode off, `<InvariantGlobalization>false</InvariantGlobalization>` and no
+`DOTNET_SYSTEM_GLOBALIZATION_INVARIANT`, and make ICU available to the process (`libicu` on Debian
+and Ubuntu, `icu-libs` on Alpine). Both are needed: ICU installed while the mode stays on does
+nothing. Written text has no guard in this mode. `AsIdentifier()` is no replacement: it is the guard
+for a value another system issued, refuses the zero-width joiners that Persian, Arabic, Indic scripts
+and emoji sequences need, and folds no space.
 
 ### Materialize and CMTK0004
 

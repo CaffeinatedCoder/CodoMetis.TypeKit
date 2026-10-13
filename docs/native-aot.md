@@ -126,6 +126,18 @@ The reflection-based binder, outside Native AOT, binds a value object through it
 same: the reflection-based binder reads it through its type converter, the source generator does not,
 so bind its name as a `string` and `Parse` it.
 
+## Written text
+
+`AsText()` composes to Unicode normalization form C through the runtime's globalization data, and a
+Native AOT project often turns that data off with `<InvariantGlobalization>true</InvariantGlobalization>`,
+as the `webapiaot` template does. In that mode `string.Normalize` returns its input unchanged, so
+`AsText()` throws `PlatformNotSupportedException` on its first call, whatever the string, rather than
+keep one name in two spellings. An application that calls `AsText()` sets `InvariantGlobalization` to
+`false` and makes ICU available to the process (`icu-libs` on Alpine, `libicu` on Debian and Ubuntu);
+ICU installed while the mode stays on does nothing. `AsIdentifier()` composes nothing and works in
+either mode, but it is the guard for a value another system issued, not for written text
+([Written text](text.md#globalization-invariant-mode)).
+
 ## Serilog
 
 `Destructure.WithTypeKit()` works under Native AOT: a value object or a closed set is logged as what

@@ -46,6 +46,12 @@ public sealed partial class RefusalLinkTests
     private const string ClosedSetInitializing = "A closed set read before it is initialized";
     private const string TaskGivenToCatch = "A task given to Catch";
 
+    /// <summary>
+    /// The one refusal no call in this process can make: <c>AsText()</c> refuses only in globalization-invariant
+    /// mode, so <see cref="InvariantGlobalizationTests"/> checks its link in a process started in that mode.
+    /// </summary>
+    internal const string TextWithoutComposition = "AsText in globalization-invariant mode";
+
     private enum Fault { TooLong }
 
     private readonly record struct Code;
@@ -122,14 +128,23 @@ public sealed partial class RefusalLinkTests
 
         var thrown = Record.Exception(attempt).ShouldNotBeNull($"{refusal} threw nothing.");
         var own = thrown.GetBaseException();
-        var message = OwnMessage(own);
+        var link = ShouldEndWithLinkTo(OwnMessage(own), heading, refusal);
+
+        thrown.Message.ShouldContain(link, Case.Sensitive, $"{refusal}: the message the caller sees lost the link.");
+    }
+
+    /// <summary>That <paramref name="message"/> ends with a link to <paramref name="heading"/>'s subsection, and that the README has it.</summary>
+    /// <returns>The link.</returns>
+    internal static string ShouldEndWithLinkTo(string message, string heading, string? refusal = null)
+    {
+        refusal ??= heading;
 
         var link = LinkAtTheEnd().Match(message);
         link.Success.ShouldBeTrue($"{refusal}: the message does not end with a link to the package README: {message}");
         link.Groups["anchor"].Value.ShouldBe(Slug(heading), $"{refusal} links to another subsection than '{heading}'.");
         Anchors().ShouldContain(link.Groups["anchor"].Value, $"{refusal} links to #{link.Groups["anchor"].Value}, which no heading of the README produces, so the link opens the top of the page.");
 
-        thrown.Message.ShouldContain(link.Value, Case.Sensitive, $"{refusal}: the message the caller sees lost the link.");
+        return link.Value;
     }
 
     /// <summary>A subsection nothing links to is either stale or a refusal that lost its link.</summary>
@@ -140,7 +155,7 @@ public sealed partial class RefusalLinkTests
         subsections.Count.ShouldBeGreaterThanOrEqualTo(7, $"The README has no '## {WhyDoesThisThrow}' with its subsections.");
 
         subsections.Select(Slug).Except([Slug(BuildErrorOnly)]).Order()
-                   .ShouldBe(Refusals.Values.Select(entry => Slug(entry.Heading)).Distinct().Order(),
+                   .ShouldBe(Refusals.Values.Select(entry => Slug(entry.Heading)).Append(Slug(TextWithoutComposition)).Distinct().Order(),
                              "The subsections of the README and the headings the refusals link to differ.");
     }
 

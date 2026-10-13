@@ -28,6 +28,7 @@ and inside a value object. The examples import `CodoMetis.TypeKit`.
 | More than 30 combining marks in a row | refused: no script stacks that many, and composing a run takes time that grows with the square of its length | refused |
 | An unpaired surrogate, or `U+FFFE` | refused, where `Normalize` would throw | refused |
 | A null receiver | `Blank` | `Blank` |
+| In globalization-invariant mode | throws `PlatformNotSupportedException`, since it cannot compose there ([below](#globalization-invariant-mode)) | works, for issued values |
 
 ```csharp
 Result<string, TextFault> composed = "Zoe\u0308".AsText();            // Success: Zoë, composed to NFC: one code point for ë
@@ -106,6 +107,21 @@ Every generated way into `DisplayName`, JSON, a route parameter, `TryFrom`, appl
 length rule, so a document or a request that carries a hidden character is refused with `Hidden`
 before it reaches the domain. Where the guard is the whole rule, the fault type is `TextFault` itself,
 as `SubjectId` shows.
+
+## Globalization-invariant mode
+
+`AsText()` composes through the runtime's globalization data. A process in globalization-invariant
+mode has none: `<InvariantGlobalization>true</InvariantGlobalization>` in the project, which Native
+AOT and container templates often set, or `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`. There
+`string.Normalize` returns its input unchanged, and a guard that answered anyway would keep one name in
+two spellings, without a word. So `AsText()` throws `PlatformNotSupportedException` there, on its first
+call whatever the string, rather than on the first decomposed name a client happens to send.
+
+Written text has no guard in that mode. Where the application calls `AsText()`, turn the mode off and
+make ICU available to the process (`libicu` on Debian and Ubuntu, `icu-libs` on Alpine); ICU installed
+while the mode stays on does nothing. `AsIdentifier()` keeps working there, but only for what it is for,
+a value another system issued: it refuses the joiners a Persian name or an emoji sequence needs and
+folds no space, so it is no stand-in for `AsText()`.
 
 ## Where it does not belong
 
