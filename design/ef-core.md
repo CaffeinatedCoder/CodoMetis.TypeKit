@@ -39,6 +39,17 @@
   from a value object (or its `Nullable`) to what it wraps: the attribute is public, and a
   hand-marked `Length(this ProbeCode)` was translated as the column (`o."Code" = '3'`). Any other
   method carrying it is left to EF, which refuses the call.
+  - **Only on TypeKit's converter (decided 2026-10-13, [decision 56](adr/0056-value-translated-only-through-typekit-converter.md)).**
+    A column the application maps with its own `HasConversion` stores its own representation, and
+    `.Value` re-typed as the wrapped type queried the wrong one: `StartsWith("a")` against `"C:abc"`
+    answered no row. The translators act only where the operand's to-provider expression is
+    `ValueObjectConverter<,>.ProviderValue`, composed with an enum's converter where there is one,
+    which holds in a compiled model too; anywhere else EF refuses the query.
+  - **A hand-written ordering is refused in a query (decided 2026-10-13, [decision 57](adr/0057-hand-written-ordering-refused-in-query.md)).**
+    EF translates a comparison, an ordering and `Min`/`Max` to the column's order, not to a
+    hand-written `CompareTo`. The comparable aspect marks such a type `[HandWrittenOrdering]`, and an
+    `IQueryExpressionInterceptor` that `UseTypeKit()` registers refuses those operators on it before
+    translation, naming the value object; ordering by `.Value` stays allowed.
   - **The element of a primitive collection is converted, not re-typed (decided 2026-09-28).** EF
     infers a collection's element mapping from the columns that read its table expression (`unnest`,
     `json_each`, `OPENJSON`, `VALUES`), and a re-typed element column handed it the wrapped type's
@@ -50,9 +61,13 @@
 - **Keys over an integer are generated on add (decided 2026-09-28, [decision 23](adr/0023-value-object-key-over-integer-generated.md)).** EF's value
   generation convention reads the property's CLR type, so a value-object key was never generated: an
   entity added without one was stored as 0, and switching an `int` key to a value object dropped its
-  identity column. A convention plugin (first among the model-finalizing conventions, so a provider's
-  identity strategy sees it) marks a single-column, non-foreign key over `int`, `long` or `short` as
-  generated on add, at convention precedence. A key over a `Guid` is left alone: the application
+  identity column. A convention plugin marks a single-column, non-foreign key over the integer types
+  EF generates (`int`, `long`, `short`, `sbyte`, the unsigned ones and `char`, as EF's `IsInteger()`
+  minus `byte`) as generated on add, at convention precedence. It runs after the last
+  hierarchy-mapping and shared-table convention: SQLite re-decides a key from its CLR type when the
+  root's mapping strategy is set, which reset a TPH root's key to not generated, and a TPC key stays
+  generated only where the provider gave it a sequence, as for a plain `int`
+  ([decision 58](adr/0058-integer-key-follows-ef-rule.md)). A key over a `Guid` is left alone: the application
   assigns `OrderId.New()`, and a generated key that is already set makes EF take a new entity reached
   through a navigation for an existing one.
 - **Conventions for the wrapped type do not reach a value object.** `ConfigureConventions`

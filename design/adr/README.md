@@ -62,3 +62,6 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0053](0053-fault-made-by-fault-of-alone.md) | A `Fault<TFault>` is made by `Fault.Of` alone | 2026-10-13 | accepted |
 | [0054](0054-abstract-value-object-refused.md) | An abstract type with a value-object marker is refused (CMTK1022) | 2026-10-13 | accepted |
 | [0055](0055-component-name-claimed-twice-refused.md) | A component name two types claim is refused; a qualified fault name follows the nesting chain | 2026-10-13 | accepted |
+| [0056](0056-value-translated-only-through-typekit-converter.md) | `.Value` is translated only on a column TypeKit's converter stores | 2026-10-13 | accepted |
+| [0057](0057-hand-written-ordering-refused-in-query.md) | A query that orders by a hand-written `CompareTo` is refused | 2026-10-13 | accepted |
+| [0058](0058-integer-key-follows-ef-rule.md) | A value-object key is generated wherever EF generates its wrapped type's | 2026-10-13 | accepted |
