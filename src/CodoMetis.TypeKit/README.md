@@ -386,8 +386,8 @@ They arrive with this package, so whoever can see the interfaces gets the guard:
 - **CMTK0001**: `default(OrderId)`, `new OrderId()`, `new()` and `default` of a value object, an
   `Option`, a `Result` or a `[RequireCustomInitialization]` struct. Such an instance passed no
   factory.
-- **CMTK0002**: a type implements `IValue<T>` or `IValidatedValue<,,>` but the project does not
-  reference `CodoMetis.TypeKit.Generators`, so nothing would be generated for it.
+- **CMTK0002**: a type implements `IValue<T>`, `IValidatedValue<,,>` or `IClosedSet<TSelf>` but the
+  project does not reference `CodoMetis.TypeKit.Generators`, so nothing would be generated for it.
 - **CMTK0003** (warning): a `Result` or `Option` that a call returns, dropped. `_ = …` says it is
   meant.
 - **CMTK0004**: `Materialize`, which rebuilds a value object without its rules, called anywhere but
@@ -527,6 +527,23 @@ JSON then reads a `null` as `null`, and the value object is never asked to hold 
 members are its `public static readonly` fields, and a name that is none of them, compared
 ordinally, is refused. The message names the set and never the input. `TryParse` answers `false`
 instead, and `All` lists the names there are.
+
+### An instance that is not a member of its set
+
+**Thrown:** `InvalidOperationException: OrderStatus: this instance is not a member of the set, so it
+has no name.` from `Name`, `QualifiedName`, the generated `ToString()`, `Match`, the JSON converter
+and the EF Core column.
+
+**Why:** a closed set's constructors are private, but the set's own code can still call one outside
+a member's declaration, in a static method or a private field. That instance has no name, and
+written as JSON or stored in a column it would come back as nothing. A member's initializer or
+constructor, or any other static field initializer of the set, that reads a member's name sees the
+same thing, since the names are given after every static field is initialized; there the exception
+surfaces as a `TypeInitializationException`, and the set cannot be used for the rest of the process.
+
+**Instead:** return one of the members, `OrderStatus.Open`, wherever the set's code produces an
+instance, keep data a member needs in its own constructor's arguments, and read a name in a property
+or method rather than a static field initializer.
 
 ### Materialize and CMTK0004
 

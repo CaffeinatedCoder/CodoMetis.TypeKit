@@ -29,15 +29,21 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   generators add `Name`, `QualifiedName`, `All` in declaration order, `Match` with one required delegate
   per member, `TryParse` and `Parse` by name, `ToString()`, a JSON converter that writes the name and
   reads the member itself back, a private constructor where none is declared, and the attribute the
-  satellites read. CMTK1013 to CMTK1018 refuse a declaration that is not partial, not sealed, without
-  members, with a public constructor, with another public static member of its own type, or generic.
+  satellites read. CMTK1013 to CMTK1019 refuse a declaration that is not partial, not sealed, without
+  members, with a constructor that is not private, with another public static member of its own type,
+  generic, or with a member not initialized with `new` where it is declared; CMTK1020 refuses a
+  record. A hand-written `ToString()` is kept, and an overload of a generated method with another
+  signature; any other generated member written by hand is CMTK1011. An instance the set's
+  own code makes beside its members has no name, and reading it throws rather than write a null.
+  CMTK0002 covers a closed set without the generators.
   `CodoMetis.TypeKit.EntityFrameworkCore` maps a closed set to a text column of the member's name;
   `CodoMetis.TypeKit.AspNetCore` describes it as a string enum. Nothing is registered per set.
 - **`CodoMetis.TypeKit`**: `Patch<T>`, a field of a JSON Merge Patch (RFC 7396): absent, null or a
   value, where System.Text.Json alone cannot tell an absent property from a null one. `default` is
   absent, the one meaningful default of the package, and the analyzers leave it alone. Reading never
   refuses a null; a value object inside a patch keeps its own rule. `Match`, `TryGetValue`, `IfValue`,
-  `IfPresent` and `ToOption` apply it without reflection. Writing an absent patch is refused, and
+  `IfPresent` and `ToOption` apply it without reflection; `IfPresent` hands a clear over as null, a
+  `T?` over a struct too, never as `default(T)`. Writing an absent patch is refused, and
   `[JsonIgnore(Condition = WhenWritingDefault)]` leaves it out. Under a source-generated context a
   primitive, a string, a `Guid`, a date, a `Uri` and a value object need no listing; a class or an
   enum does. Works under Native AOT: the converter is registered by the closed type's static

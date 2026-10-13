@@ -38,4 +38,7 @@ internal static class Refusals
 
     /// <summary>A closed set asked for a member it does not have, by name, in text or JSON.</summary>
     public const string ClosedSetMember = " See " + Readme + "a-closed-set-has-no-member-of-that-name";
+
+    /// <summary>A closed set's instance that is not one of its members, asked for its name.</summary>
+    public const string ClosedSetNotAMember = " See " + Readme + "an-instance-that-is-not-a-member-of-its-set";
 }

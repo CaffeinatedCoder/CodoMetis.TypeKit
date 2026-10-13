@@ -57,6 +57,25 @@ public sealed class PatchTests
         seen.ShouldBe(["Ada", "<null>"]);
     }
 
+    /// <summary>
+    /// A clear over a struct reaches the action as null. It reached it as <c>default(T)</c>: a quantity
+    /// cleared to zero, or a struct value object handed over uninitialized.
+    /// </summary>
+    [Fact]
+    public void IfPresent_over_a_struct_clears_with_null_never_with_default()
+    {
+        int? quantity = 5;
+
+        Patch.Null<int>().IfPresent(q => quantity = q);
+        quantity.ShouldBeNull();
+
+        Patch.Value(3).IfPresent(q => quantity = q);
+        quantity.ShouldBe(3);
+
+        Patch.Absent<int>().IfPresent(q => quantity = q);
+        quantity.ShouldBe(3);
+    }
+
     [Fact]
     public void ToOption_is_Some_for_a_value_and_None_for_a_clear_or_an_absence()
     {

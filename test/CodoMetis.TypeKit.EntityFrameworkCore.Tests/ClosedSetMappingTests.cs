@@ -45,6 +45,22 @@ public sealed class ClosedSetMappingTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// An instance the set's own code made beside its members has no name. Before, a nullable column
+    /// stored its null name and read it back as no value at all.
+    /// </summary>
+    [Fact]
+    public void An_instance_that_is_not_a_member_is_never_stored()
+    {
+        using var db = new SetDb(Options);
+        db.Database.EnsureCreated();
+        db.Tickets.Add(new Ticket { Id = 3, Level = ProbeLevel.Unlisted() });
+
+        var thrown = Should.Throw<Exception>(() => db.SaveChanges());
+        var cause = thrown as InvalidOperationException ?? thrown.InnerException.ShouldBeOfType<InvalidOperationException>();
+        cause.Message.ShouldEndWith("#an-instance-that-is-not-a-member-of-its-set");
+    }
+
     public sealed class Ticket
     {
         public int Id { get; set; }
@@ -52,6 +68,8 @@ public sealed class ClosedSetMappingTests : IDisposable
         public ProbeStatus Status { get; set; } = ProbeStatus.Open;
 
         public ProbeTier Tier { get; set; } = ProbeTier.Basic;
+
+        public ProbeLevel? Level { get; set; }
     }
 
     public sealed class SetDb(DbContextOptions<SetDb> options) : DbContext(options)

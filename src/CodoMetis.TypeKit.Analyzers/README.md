@@ -13,7 +13,7 @@ appears to: an instance that passed no factory, or a value object that was never
 | Id | Severity | Reports |
 |---|---|---|
 | CMTK0001 | Error | `default`, `default(T)`, `new T()`, `new()` and `new T { }` of a value object, an `Option`, a `Result`, or a struct marked `[RequireCustomInitialization]`. Also through a type parameter whose constraints make it one of those. A default that is only compared (`id == default`, `id.Equals(default)`, `ThrowIfEqual(id, default)`, `Assert.NotEqual(default, id)`) is a guard and is not reported, nor is one assigned to an `out` parameter of a Try method that returns `bool`. |
-| CMTK0002 | Error | A type implements `IValue<T>` or `IValidatedValue<,,>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so nothing is generated for it: no field, no `Value`, no factory. |
+| CMTK0002 | Error | A type implements `IValue<T>`, `IValidatedValue<,,>` or `IClosedSet<TSelf>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so nothing is generated for it: no field, no `Value`, no factory, or for a closed set no name and no `Match`. |
 | CMTK0003 | Warning | A `Result` or `Option` that a call returns, or a collection of them that the statement made, dropped by a statement, awaited or not, or by converting its `Task` to a plain `Task`, a method group's included. |
 | CMTK0004 | Error | `Materialize`, which rebuilds a value object without its rules, called or referenced anywhere but the EF Core satellite. |
 | CMTK0005 | Warning | An array or span of a value object, `Option`, `Result` or `[RequireCustomInitialization]` struct created with a length, so every slot starts as `default`. A constant length of zero is not reported. |
@@ -112,6 +112,8 @@ CMTK0006 and CMTK0009 then treat it as they treat a value object.
 The generators apply through a transitive project fabric rather than an attribute on the interfaces,
 which keeps the base package free of Metalama. The price is that a project that sees the interfaces
 but not the generators compiles a value object with nothing in it, silently. This rule is that error.
+A closed set fails to compile there anyway, on the interface members nobody implemented; the rule
+says why.
 
 ```csharp
 public readonly partial record struct OrderId : IValue<Guid>;   // CMTK0002 without CodoMetis.TypeKit.Generators

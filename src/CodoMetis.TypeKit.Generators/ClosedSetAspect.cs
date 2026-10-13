@@ -20,13 +20,15 @@ internal sealed class ClosedSetArguments
 
 /// <summary>
 /// Generates a closed set: <c>Name</c>, <c>QualifiedName</c>, <c>All</c>, <c>Match</c>, <c>TryParse</c>,
-/// <c>Parse</c>, <c>ToString()</c>, the JSON converter, the discovery attribute, and a private
-/// constructor where the type declares none. Applied by <see cref="ValueObjectFabric"/>.
+/// <c>Parse</c>, <c>ToString()</c> where none is written by hand, the JSON converter, the discovery
+/// attribute, and a private constructor where the type declares none. Applied by <see cref="ValueObjectFabric"/>.
 /// </summary>
 /// <remarks>
 /// <para>
 /// A member's name is assigned by an initializer that runs after the static field initializers and
-/// before any static constructor body, so the declaration needs no <c>nameof</c>. <c>Match</c>'s
+/// before any static constructor body, so the declaration needs no <c>nameof</c>. Each member is its
+/// own instance (CMTK1019), so no name overwrites another; an instance without one is refused where its
+/// name is read. <c>Match</c>'s
 /// parameters are added per member; the template declares one <c>Func&lt;TResult&gt;</c> parameter,
 /// whose bound type the others copy, since Metalama 2026.1 cannot build a generic instance over the
 /// method builder's own type parameter (spikes/ClosedSets).
@@ -42,14 +44,26 @@ internal sealed partial class ClosedSetAspect : TypeAspect
 
         if (!target.IsPartial) problems.Add(ClosedSetNotPartial.WithArguments(target));
         if (!target.IsSealed) problems.Add(ClosedSetNotSealed.WithArguments(target));
+        if (target.IsRecord) problems.Add(ClosedSetRecord.WithArguments(target));
         if (target.IsGeneric || target.DeclaringType is { IsGeneric: true }) problems.Add(ClosedSetGeneric.WithArguments(target));
-        if (target.Constructors.Any(c => !c.IsImplicitlyDeclared && c.Accessibility == Accessibility.Public)) problems.Add(ClosedSetPublicConstructor.WithArguments(target));
+        if (target.Constructors.Any(c => !c.IsImplicitlyDeclared && c.Accessibility != Accessibility.Private)) problems.Add(ClosedSetPublicConstructor.WithArguments(target));
         if (members.Count == 0) problems.Add(ClosedSetNoMembers.WithArguments(target));
+
+        foreach (var member in members.Where(member => !ClosedSetTypes.IsCreatedWhereDeclared(member, target)))
+            problems.Add(ClosedSetMemberNotCreated.WithArguments((target, member.Name)));
 
         foreach (var field in target.Fields.Where(f => f.IsStatic && f.Accessibility == Accessibility.Public && f.Type.Equals(target) && f.Writeability != Writeability.ConstructorOnly))
             problems.Add(ClosedSetMemberNotAField.WithArguments((target, field.Name, "a static field that is not readonly")));
         foreach (var property in target.Properties.Where(p => p.IsStatic && p.Accessibility == Accessibility.Public && p.Type.Equals(target)))
             problems.Add(ClosedSetMemberNotAField.WithArguments((target, property.Name, "a static property")));
+
+        // A hand-written member the generators introduce failed the aspect with a Metalama error that
+        // names no fix; a hand-written ToString() is the seam and is kept instead.
+        var declaredByHand = ClosedSetTypes.GeneratedMembersDeclaredByHand(target, members.Count);
+        if (declaredByHand.Count > 0)
+            problems.Add(HandWrittenGeneratedMember.WithArguments((target, string.Join(", ", declaredByHand),
+                (declaredByHand.Count == 1 ? "the generators introduce it themselves; remove it" : "the generators introduce these themselves; remove them")
+              + ". The generated member a closed set may declare instead is ToString()")));
 
         if (problems.Count > 0)
         {
@@ -79,7 +93,8 @@ internal sealed partial class ClosedSetAspect : TypeAspect
         });
         builder.IntroduceProperty(nameof(NameTemplate), buildProperty: p => { p.Name = "Name"; p.Accessibility = Accessibility.Public; p.AddAttribute(CodeAnnotations.CompilerGenerated); });
         builder.IntroduceProperty(nameof(QualifiedNameTemplate), buildProperty: p => { p.Name = "QualifiedName"; p.Accessibility = Accessibility.Public; p.AddAttribute(CodeAnnotations.CompilerGenerated); });
-        builder.IntroduceMethod(nameof(ToStringTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = "ToString"; m.AddAttribute(CodeAnnotations.CompilerGenerated); });
+        if (!ClosedSetTypes.DeclaresToString(target))
+            builder.IntroduceMethod(nameof(ToStringTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = "ToString"; m.AddAttribute(CodeAnnotations.CompilerGenerated); });
 
         builder.AddInitializer(nameof(NamesInitializerTemplate), InitializerKind.BeforeTypeConstructor);
 

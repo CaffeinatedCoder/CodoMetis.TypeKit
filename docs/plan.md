@@ -588,7 +588,7 @@ Each phase ends green, and its guards have been proven by seeding the defect
     7. **The closed-set family** ✅ 2026-10-13, after [spikes/ClosedSets](../spikes/ClosedSets/README.md),
        which answered the compatibility question: a generated type with static members on Metalama
        2026.1 and `net10.0`, nothing newer needed. `IClosedSet<TSelf>` in the base package,
-       `ClosedSetAspect` in the generators (applied by the same transitive fabric), CMTK1013–1018, the
+       `ClosedSetAspect` in the generators (applied by the same transitive fabric), CMTK1013–1020, the
        discovery attribute `GeneratedClosedSetAttribute<TSet>` with a typed visitor, a text column in
        the EF satellite and a string enum in the OpenAPI satellite. The fault bits (a kind and a
        sentence per member) are step 8's, since the fault responses read them.

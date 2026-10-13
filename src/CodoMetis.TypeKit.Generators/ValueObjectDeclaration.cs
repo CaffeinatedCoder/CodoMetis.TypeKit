@@ -475,7 +475,7 @@ internal static class ValueObjectDeclaration
     /// <summary>Non-implicit members of <paramref name="target"/> with one of <paramref name="names"/>, of any kind.</summary>
     private static IEnumerable<string> MembersNamed(INamedType target, params string[] names) => MembersNamed(target, methods: true, names);
 
-    private static IEnumerable<string> MembersNamed(INamedType target, bool methods, params string[] names)
+    internal static IEnumerable<string> MembersNamed(INamedType target, bool methods, params string[] names)
     {
         foreach (var field in target.Fields)
             if (!field.IsImplicitlyDeclared && Enumerable.Contains(names, field.Name)) yield return field.ToDisplayString();

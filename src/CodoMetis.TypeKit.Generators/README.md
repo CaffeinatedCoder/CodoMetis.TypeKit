@@ -228,6 +228,14 @@ exception naming the set, never the input. The EF Core satellite maps a closed s
 of the member's name, and the ASP.NET Core satellite describes it as a string enum of the names,
 with nothing registered per set.
 
+Each member is initialized with `new` where it is declared (CMTK1019), and the constructors are
+private (CMTK1016); a record is refused (CMTK1020). A `ToString()` written by hand is kept, and the
+name is still what JSON, parsing and the column use; so is an overload of a generated method with
+another signature, such as `Parse(int rank)`. Any other generated member written by hand is CMTK1011. An instance the set's
+own code creates beside its members has no name, so reading its name throws rather than write a
+null. A JSON `null` reads as `null`, as for any class, unless the serializer's
+`RespectNullableAnnotations` refuses it.
+
 ## JSON
 
 The wire format is the wrapped value's, so an `OrderId` is a string and a `Quantity` a number:
@@ -319,14 +327,16 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1008 | A hand-written comparison operator, object `CompareTo` or explicit implementation of a comparison interface beside the generated ones. |
 | CMTK1009 | A hand-written instance constructor, including a positional record's parameter list such as `OrderId(Guid Value)`. The constructor and `Value` are generated; a static constructor is fine. |
 | CMTK1010 | Declared in more than one `partial` part: Metalama 2026.1 writes the generated `ToString()` into every part, which does not compile. A part a source generator adds, such as a `[GeneratedRegex]` method's, does not count. |
-| CMTK1011 | A hand-written member or attribute the generators introduce (see "Your own members"), an explicit implementation of an interface they implement, a hand-written equality, a `PrintMembers` without `ToString()`, or `Create` implemented explicitly. |
+| CMTK1011 | A hand-written member or attribute the generators introduce (see "Your own members", and for a closed set every generated member but `ToString()`, by signature), an explicit implementation of an interface they implement, a hand-written equality, a `PrintMembers` without `ToString()`, or `Create` implemented explicitly. |
 | CMTK1012 | Instance state besides the wrapped value: a field, an auto-property, a `required` member or a field-like event, declared or inherited. Compute it from `Value`, make it static, or wrap a type that holds all of it. |
 | CMTK1013 | A closed set not declared `partial`. |
 | CMTK1014 | A closed set not declared `sealed`: a set with subtypes is not closed. |
 | CMTK1015 | A closed set with no member: a member is a `public static readonly` field of the set's own type. |
-| CMTK1016 | A closed set with a public constructor, so an instance beside its members could be made. |
+| CMTK1016 | A closed set with a constructor that is not private, so an instance beside its members could be made. |
 | CMTK1017 | A closed set with a public static member of its own type that is not a readonly field: a property, or a field that is not `readonly`. |
 | CMTK1018 | A closed set that is generic or nested in a generic type. |
+| CMTK1019 | A closed set's member not initialized with `new` where it is declared, and with nothing else: `= Open` would give one instance two names, and a member set later, by a call, or by an expression that only starts with `new`, may be another member or null. |
+| CMTK1020 | A closed set declared as a record: `with` copies a member into an instance that is none, and a record compares by value where members are singletons. |
 
 The analyzers that come with the base package add CMTK0001 to CMTK0011; see
 [CodoMetis.TypeKit.Analyzers](https://www.nuget.org/packages/CodoMetis.TypeKit.Analyzers).

@@ -24,8 +24,19 @@ namespace CodoMetis.TypeKit.ClosedSets;
 /// </para>
 /// <para>
 /// The type must be a sealed partial class (CMTK1013, CMTK1014) with at least one member (CMTK1015),
-/// no public constructor (CMTK1016), and no other public static member of its own type (CMTK1017),
-/// since every one of those would be a member the generators cannot see as one.
+/// only private constructors (CMTK1016), no other public static member of its own type (CMTK1017),
+/// and not a record (CMTK1020), since every one of those would make an instance the generators cannot
+/// see as a member. Each member is initialized with <c>new</c> where it is declared, and with nothing
+/// else (CMTK1019): a member initialized with another member would give that instance two names. A
+/// <c>ToString()</c> written by hand is kept, as is an overload of a generated method with another
+/// signature; any other member the generators introduce, written by hand, is CMTK1011.
+/// </para>
+/// <para>
+/// An instance the set's own code creates beside its members has no name: <see cref="Name"/>, the
+/// generated <c>ToString()</c>, <c>Match</c>, JSON and the EF Core column throw for it rather than carry
+/// a null.
+/// A JSON <c>null</c> reads as <see langword="null"/>, as for any class; the serializer's
+/// <c>RespectNullableAnnotations</c> refuses it for a property that is not nullable.
 /// </para>
 /// <para>
 /// Without a reference to CodoMetis.TypeKit.Generators nothing is generated, and the analyzer
@@ -36,6 +47,7 @@ namespace CodoMetis.TypeKit.ClosedSets;
 public interface IClosedSet<TSelf> where TSelf : class, IClosedSet<TSelf>
 {
     /// <summary>The member's name: the name of the field that declares it.</summary>
+    /// <exception cref="InvalidOperationException">The instance is not one of the set's members.</exception>
     string Name { get; }
 
     /// <summary>The set's name and the member's, <c>OrderStatus.Open</c>, so two sets that share a member name stay apart.</summary>
@@ -48,5 +60,5 @@ public interface IClosedSet<TSelf> where TSelf : class, IClosedSet<TSelf>
     /// <param name="name">The name.</param>
     /// <param name="member">The member, or null.</param>
     /// <returns>Whether a member has that name.</returns>
-    static abstract bool TryParse(string? name, [MaybeNullWhen(false)] out TSelf member);
+    static abstract bool TryParse([NotNullWhen(true)] string? name, [MaybeNullWhen(false)] out TSelf member);
 }

@@ -67,11 +67,17 @@ internal static class AspectDiagnostics
         new("CMTK1015", Severity.Error, "'{0}' declares no member, so it is not generated: a member is a public static readonly field of the set's own type." + SeeBuildErrors);
 
     public static readonly DiagnosticDefinition<INamedType> ClosedSetPublicConstructor =
-        new("CMTK1016", Severity.Error, "'{0}' has a public constructor, so it is not generated: an instance beside its members could be made. Make the constructor private." + SeeBuildErrors);
+        new("CMTK1016", Severity.Error, "'{0}' has a constructor that is not private, so it is not generated: an instance beside its members could be made. Make the constructor private." + SeeBuildErrors);
 
     public static readonly DiagnosticDefinition<(INamedType, string, string)> ClosedSetMemberNotAField =
         new("CMTK1017", Severity.Error, "'{0}.{1}' is {2} of the set's own type, so '{0}' is not generated: a member is a public static readonly field, and nothing else of that type is public and static." + SeeBuildErrors);
 
     public static readonly DiagnosticDefinition<INamedType> ClosedSetGeneric =
         new("CMTK1018", Severity.Error, "'{0}' is generic or nested in a generic type, so it is not generated: a closed set's members are named instances, which a type parameter cannot have." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<(INamedType, string)> ClosedSetMemberNotCreated =
+        new("CMTK1019", Severity.Error, "'{0}.{1}' is not initialized with new, so '{0}' is not generated: each member is its own instance, created where it is declared. A member initialized with another would give that instance two names, and one left null would have none." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<INamedType> ClosedSetRecord =
+        new("CMTK1020", Severity.Error, "'{0}' is a record, so it is not generated: 'with' copies a member into an instance that is none, and a record compares by value where a closed set's members are singletons. Declare it a sealed partial class." + SeeBuildErrors);
 }

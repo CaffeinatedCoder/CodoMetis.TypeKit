@@ -54,7 +54,8 @@ public enum PatchState
 /// <para>
 /// Applied without reflection: <c>patch.Name.IfValue(name =&gt; order.Name = name)</c> for a field a
 /// clear cannot reach, <c>patch.Nickname.IfPresent(nickname =&gt; order.Nickname = nickname)</c> for one
-/// it can. <c>ToString()</c> never prints the value.
+/// it can, which receives a <c>T?</c>: null for a clear, over a struct as over a class. <c>ToString()</c>
+/// never prints the value.
 /// </para>
 /// </remarks>
 /// <typeparam name="T">The type of the value.</typeparam>
@@ -120,21 +121,11 @@ public readonly record struct Patch<T>
         if (_state == PatchState.Value) action(_value!);
     }
 
-    /// <summary>Runs <paramref name="action"/> with the value, or with null when the field was null, for a target a clear can reach. An absent field runs nothing.</summary>
-    /// <param name="action">What to do with the value or the clear.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
-    public void IfPresent(Action<T?> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-
-        if (_state != PatchState.Absent) action(_state == PatchState.Value ? _value : default);
-    }
-
     /// <summary>The state only, never the value.</summary>
     public override string ToString() => $"Patch {{ State = {_state} }}";
 }
 
-/// <summary>The three states of a <see cref="Patch{T}"/>, and <c>ToOption()</c>.</summary>
+/// <summary>The three states of a <see cref="Patch{T}"/>, <c>IfPresent</c> and <c>ToOption()</c>.</summary>
 public static class Patch
 {
     /// <summary>A field that was not mentioned: the <c>default</c>.</summary>
@@ -152,6 +143,44 @@ public static class Patch
     /// <typeparam name="T">The type of the value.</typeparam>
     /// <returns>A patch holding the value, or a null patch.</returns>
     public static Patch<T> Value<T>(T? value) => value is null ? Null<T>() : new(value, PatchState.Value);
+
+    /// <param name="patch">The patch.</param>
+    /// <typeparam name="T">The type of the value, a class.</typeparam>
+    extension<T>(Patch<T> patch) where T : class?
+    {
+        /// <summary>Runs <paramref name="action"/> with the value, or with null when the field was null, for a target a clear can reach. An absent field runs nothing.</summary>
+        /// <param name="action">What to do with the value or the clear.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+        public void IfPresent(Action<T?> action)
+        {
+            ArgumentNullException.ThrowIfNull(action);
+
+            if (patch.State == PatchState.Absent) return;
+
+            action(patch.TryGetValue(out var value) ? value : null);
+        }
+    }
+
+    /// <param name="patch">The patch.</param>
+    /// <typeparam name="T">The type of the value, a struct.</typeparam>
+    extension<T>(Patch<T> patch) where T : struct
+    {
+        /// <summary>
+        /// Runs <paramref name="action"/> with the value, or with null when the field was null, for a
+        /// target a clear can reach: a <c>T?</c>, so a clear is never <c>default(T)</c>, a zero or an
+        /// uninitialized value object. An absent field runs nothing.
+        /// </summary>
+        /// <param name="action">What to do with the value or the clear.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+        public void IfPresent(Action<T?> action)
+        {
+            ArgumentNullException.ThrowIfNull(action);
+
+            if (patch.State == PatchState.Absent) return;
+
+            action(patch.TryGetValue(out var value) ? value : null);
+        }
+    }
 
     /// <param name="patch">The patch.</param>
     /// <typeparam name="T">The type of the value.</typeparam>

@@ -77,7 +77,8 @@ public sealed class NullDelegateTests
         ["Patch<T>.Match(Func<T, TResult>, Func<TResult>, Func<TResult>): onAbsent"] =
             [() => Patch.Value(1).Match(x => x, () => 0, Null<Func<int>>()), () => Patch.Null<int>().Match(x => x, () => 0, Null<Func<int>>()), () => Patch.Absent<int>().Match(x => x, () => 0, Null<Func<int>>())],
         ["Patch<T>.IfValue(Action<T>): action"]   = [() => { Patch.Value(1).IfValue(Null<Action<int>>()); return null; }, () => { Patch.Null<int>().IfValue(Null<Action<int>>()); return null; }, () => { Patch.Absent<int>().IfValue(Null<Action<int>>()); return null; }],
-        ["Patch<T>.IfPresent(Action<T>): action"] = [() => { Patch.Value(1).IfPresent(Null<Action<int>>()); return null; }, () => { Patch.Null<int>().IfPresent(Null<Action<int>>()); return null; }, () => { Patch.Absent<int>().IfPresent(Null<Action<int>>()); return null; }],
+        ["Patch.IfPresent(Patch<T>, Action<T>): action"] = [() => { Patch.Value("a").IfPresent(Null<Action<string?>>()); return null; }, () => { Patch.Null<string>().IfPresent(Null<Action<string?>>()); return null; }, () => { Patch.Absent<string>().IfPresent(Null<Action<string?>>()); return null; }],
+        ["Patch.IfPresent(Patch<T>, Action<Nullable<T>>): action"] = [() => { Patch.Value(1).IfPresent(Null<Action<int?>>()); return null; }, () => { Patch.Null<int>().IfPresent(Null<Action<int?>>()); return null; }, () => { Patch.Absent<int>().IfPresent(Null<Action<int?>>()); return null; }],
 
         // Catch has no branches: the delegate is checked before anything runs. Overloads that differ
         // only in type parameters are keyed with them.

@@ -111,6 +111,14 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1017", "SetWithProperty")]
     [InlineData("CMTK1017", "SetWithMutableField")]
     [InlineData("CMTK1018", "SetGeneric")]
+    [InlineData("CMTK1016", "SetWithInternalConstructor")]
+    [InlineData("CMTK1019", "SetWithAlias.Legacy")]
+    [InlineData("CMTK1019", "SetWithFactoryMember.B")]
+    [InlineData("CMTK1019", "SetWithUninitializedMember.B")]
+    [InlineData("CMTK1019", "SetWithTrailingCall.B")]
+    [InlineData("CMTK1020", "SetRecord")]
+    [InlineData("CMTK1011", "SetWithName")]
+    [InlineData("CMTK1011", "SetWithExplicitAll")]
     public void A_declaration_that_cannot_be_generated_is_an_error(string id, string type) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains($"'{type}"), $"{id} on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
 
@@ -298,7 +306,20 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CS0535"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CMTK1019", "CMTK1020", "CS0535"], ignoreOrder: false, customMessage: consumer.Output);
+
+    /// <summary>
+    /// CS0535 is allowed above only for a refused closed set, whose interface members the generators
+    /// did not implement. A value object or a generated set that lost a member the same way is a
+    /// regression the list of ids alone would let through.
+    /// </summary>
+    [Fact]
+    public void CS0535_names_only_a_refused_closed_set() =>
+        consumer.Errors.Where(error => error.Id == "CS0535")
+                .ShouldAllBe(error => RefusedClosedSet().IsMatch(error.Message), consumer.Output);
+
+    [GeneratedRegex(@"^'(?:Consumer\.)?Set\w+(?:<T>)?' does not implement interface member ")]
+    private static partial Regex RefusedClosedSet();
 
     /// <summary>
     /// A generator error cannot carry a help link as an analyzer rule does (a Metalama 2026.1
@@ -312,7 +333,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
         var errors = consumer.Errors.Where(error => error.Id.StartsWith("CMTK1", StringComparison.Ordinal)).ToList();
 
-        errors.Select(error => error.Id).Distinct().Count().ShouldBe(19, $"Not every CMTK1000-CMTK1012 error was observed, so the check below is incomplete:{Environment.NewLine}{consumer.Output}");
+        errors.Select(error => error.Id).Distinct().Count().ShouldBe(21, $"Not every CMTK1000-CMTK1020 error was observed, so the check below is incomplete:{Environment.NewLine}{consumer.Output}");
         errors.Where(error => !error.Message.EndsWith($". See {link}", StringComparison.Ordinal))
               .Select(error => $"{error.Id}: {error.Message}")
               .ShouldBeEmpty("These errors do not end with the link to the Build errors table.");
@@ -395,6 +416,22 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public sealed partial class SetWithMutableField : IClosedSet<SetWithMutableField> { public static readonly SetWithMutableField A = new(); public static SetWithMutableField B = A; }
 
             public sealed partial class SetGeneric<T> : IClosedSet<SetGeneric<T>> { public static readonly SetGeneric<T> A = new(); }
+
+            public sealed partial class SetWithInternalConstructor : IClosedSet<SetWithInternalConstructor> { public static readonly SetWithInternalConstructor A = new(); internal SetWithInternalConstructor() { } }
+
+            public sealed partial class SetWithAlias : IClosedSet<SetWithAlias> { public static readonly SetWithAlias Open = new(); public static readonly SetWithAlias Legacy = Open; }
+
+            public sealed partial class SetWithFactoryMember : IClosedSet<SetWithFactoryMember> { public static readonly SetWithFactoryMember A = new(); public static readonly SetWithFactoryMember B = Make(); private static SetWithFactoryMember Make() => A; }
+
+            public sealed partial class SetWithUninitializedMember : IClosedSet<SetWithUninitializedMember> { public static readonly SetWithUninitializedMember A = new(); public static readonly SetWithUninitializedMember B; static SetWithUninitializedMember() { B = new(); } }
+
+            public sealed partial class SetWithTrailingCall : IClosedSet<SetWithTrailingCall> { public static readonly SetWithTrailingCall A = new(); public static readonly SetWithTrailingCall B = new SetWithTrailingCall().Same(); private SetWithTrailingCall Same() => A; }
+
+            public sealed partial record SetRecord : IClosedSet<SetRecord> { public static readonly SetRecord A = new(); }
+
+            public sealed partial class SetWithName : IClosedSet<SetWithName> { public static readonly SetWithName A = new(); public string Name => "A"; }
+
+            public sealed partial class SetWithExplicitAll : IClosedSet<SetWithExplicitAll> { public static readonly SetWithExplicitAll A = new(); static System.Collections.Generic.IReadOnlyList<SetWithExplicitAll> IClosedSet<SetWithExplicitAll>.All => [A]; }
 
             public readonly record struct NotPartial : IValue<int>;
 

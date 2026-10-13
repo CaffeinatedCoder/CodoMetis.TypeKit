@@ -6,8 +6,9 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace CodoMetis.TypeKit.Analyzers;
 
 /// <summary>
-/// CMTK0002: a type implements <c>IValue&lt;T&gt;</c> or <c>IValidatedValue&lt;,,&gt;</c>, but the
-/// project does not reference CodoMetis.TypeKit.Generators, so nothing is generated for it.
+/// CMTK0002: a type implements <c>IValue&lt;T&gt;</c>, <c>IValidatedValue&lt;,,&gt;</c> or
+/// <c>IClosedSet&lt;TSelf&gt;</c>, but the project does not reference CodoMetis.TypeKit.Generators, so
+/// nothing is generated for it.
 /// </summary>
 /// <remarks>
 /// The generators apply through a transitive fabric, not through an attribute on the interfaces,
@@ -20,12 +21,12 @@ public sealed class ValueObjectWithoutGeneratorsAnalyzer : DiagnosticAnalyzer
 {
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticIds.ValueObjectWithoutGenerators,
-        title: "Value object is not generated",
+        title: "Value object or closed set is not generated",
         messageFormat: "'{0}' implements {1}, but this project does not reference CodoMetis.TypeKit.Generators, so nothing is generated for it. Reference the CodoMetis.TypeKit.Generators package.",
         category: "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Value objects are generated at compile time by CodoMetis.TypeKit.Generators. Without it, a type that implements IValue<T> or IValidatedValue<,,> compiles, but has no field, no Value and no factory.",
+        description: "Value objects and closed sets are generated at compile time by CodoMetis.TypeKit.Generators. Without it, a type that implements IValue<T> or IValidatedValue<,,> compiles, but has no field, no Value and no factory, and one that implements IClosedSet<TSelf> fails with compiler errors about the members it does not implement.",
         helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.ValueObjectWithoutGenerators)
     );
 
@@ -53,7 +54,7 @@ public sealed class ValueObjectWithoutGeneratorsAnalyzer : DiagnosticAnalyzer
         // Only types the generators would pick up: an interface or abstract type is never generated.
         if (type.TypeKind is not (TypeKind.Struct or TypeKind.Class) || type.IsAbstract || type.IsStatic) return;
 
-        if (symbols.FindMarker(type, out _) is not { } marker) return;
+        if ((symbols.FindMarker(type, out _) ?? symbols.FindClosedSetMarker(type)) is not { } marker) return;
 
         // A partial declared in several files is reported where it can be: in the user's file, or in
         // the markup a Razor component's generated part maps to.

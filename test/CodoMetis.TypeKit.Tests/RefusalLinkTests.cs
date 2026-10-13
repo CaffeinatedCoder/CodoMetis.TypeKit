@@ -42,6 +42,7 @@ public sealed partial class RefusalLinkTests
     private const string Unreadable = "A value object could not read the input";
     private const string NullToValueObject = "A null given to a value object";
     private const string ClosedSetMember = "A closed set has no member of that name";
+    private const string ClosedSetNotAMember = "An instance that is not a member of its set";
 
     private enum Fault { TooLong }
 
@@ -51,6 +52,7 @@ public sealed partial class RefusalLinkTests
     {
         ["Closed set Parse of an unknown name"] = (ClosedSetMember, () => throw CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMember("OrderStatus")),
         ["Closed set JSON of an unknown name"]  = (ClosedSetMember, () => throw CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMemberInJson("OrderStatus")),
+        ["Closed set instance with no name"]    = (ClosedSetNotAMember, () => throw CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NotAMember("OrderStatus")),
         ["Option written as JSON"]          = (InJson, () => JsonSerializer.Serialize(Option.Some(1))),
         ["Option read from JSON"]           = (InJson, () => JsonSerializer.Deserialize<Option<int>>("1")),
         ["Option? written as a JSON null"]  = (InJson, () => JsonSerializer.Serialize<Option<int>?>(null)),

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Metalama.Framework.Aspects;
 
@@ -15,20 +16,29 @@ internal sealed partial class ClosedSetAspect
     {
     }
 
+    /// <summary>
+    /// An instance the set's own code made beside its members has no name, and neither has a member
+    /// read before the names initializer ran: refused, since a null name is written as JSON null and
+    /// stored as a null column, and read back as nothing.
+    /// </summary>
     [Template]
     public string NameTemplate
     {
-        get => meta.This._name;
+        get
+        {
+            var args = (ClosedSetArguments)meta.Tags.Source!;
+            return meta.This._name ?? throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NotAMember(args.Set.Name);
+        }
     }
 
     [Template]
     public string QualifiedNameTemplate
     {
-        get => meta.Target.Type.Name + "." + meta.This._name;
+        get => meta.Target.Type.Name + "." + meta.This.Name;
     }
 
     [Template]
-    public string ToStringTemplate() => meta.This._name;
+    public string ToStringTemplate() => meta.This.Name;
 
     /// <summary>After the static field initializers, before any static constructor body: each member learns its name.</summary>
     [Template]
@@ -48,14 +58,14 @@ internal sealed partial class ClosedSetAspect
     }
 
     [Template]
-    public static bool TryParseTemplate(string? name, out dynamic? member)
+    public static bool TryParseTemplate([NotNullWhen(true)] string? name, [NotNullWhen(true)] out dynamic? member)
     {
         var args = (ClosedSetArguments)meta.Tags.Source!;
         foreach (var candidate in args.Members)
         {
             if (name == candidate.Name)
             {
-                member = candidate.Value;
+                member = candidate.Value!;
                 return true;
             }
         }
@@ -88,10 +98,15 @@ internal sealed partial class ClosedSetAspect
             index++;
         }
 
-        throw new InvalidOperationException(args.Set.Name + ": not a member of the set.");
+        throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NotAMember(args.Set.Name);
     }
 
-    /// <summary>A <see cref="JsonException"/> naming the set, never the input; a JSON null is the serializer's own refusal.</summary>
+    /// <summary>
+    /// A <see cref="JsonException"/> naming the set, never the input. A JSON null never reaches this: a
+    /// set is a class, so the serializer reads null as null, and its <c>RespectNullableAnnotations</c>
+    /// refuses it for a property that is not nullable. Handling null here would refuse it for an
+    /// <c>OrderStatus?</c> property too, which the converter cannot tell apart.
+    /// </summary>
     [Template]
     public dynamic? JsonReadTemplate(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {

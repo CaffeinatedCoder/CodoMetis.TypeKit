@@ -643,6 +643,33 @@ ProbeLabel
   static op_LessThanOrEqual(ProbeLabel, ProbeLabel) : Boolean
   extension static ProbeLabelExtensions.GetValue(ProbeLabel) : String
   extension static ProbeLabelExtensions.ValueOrNull(ProbeLabel) : String
+ProbeLabelled
+  Match(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeLabelled>
+  attribute JsonConverterAttribute
+  implements IClosedSet<ProbeLabelled>
+  nested ProbeLabelledJsonConverter : JsonConverter<ProbeLabelled>
+  static All : IReadOnlyList<ProbeLabelled>
+  static Parse(String) : ProbeLabelled
+  static TryParse(String, out ProbeLabelled) : Boolean
+ProbeLevel
+  Match(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeLevel>
+  attribute JsonConverterAttribute
+  implements IClosedSet<ProbeLevel>
+  nested ProbeLevelJsonConverter : JsonConverter<ProbeLevel>
+  static All : IReadOnlyList<ProbeLevel>
+  static Parse(String) : ProbeLevel
+  static TryParse(String, out ProbeLevel) : Boolean
+  static Unlisted() : ProbeLevel
 ProbeLocalDate
   CompareTo(Object) : Int32
   CompareTo(ProbeLocalDate) : Int32
@@ -906,6 +933,23 @@ ProbePin
   static op_LessThanOrEqual(ProbePin, ProbePin) : Boolean
   extension static ProbePinExtensions.GetValue(ProbePin) : Int32
   extension static ProbePinExtensions.ValueOrNull(ProbePin?) : Int32?
+ProbePriority
+  Label : String
+  Match(Action, Action, Action) : Void
+  Match(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  Rank : Int32
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbePriority>
+  attribute JsonConverterAttribute
+  implements IClosedSet<ProbePriority>
+  nested ProbePriorityJsonConverter : JsonConverter<ProbePriority>
+  static All : IReadOnlyList<ProbePriority>
+  static Parse(Int32) : ProbePriority
+  static Parse(String) : ProbePriority
+  static TryParse(String, out ProbePriority) : Boolean
 ProbeRatio
   CompareTo(Object) : Int32
   CompareTo(ProbeRatio) : Int32

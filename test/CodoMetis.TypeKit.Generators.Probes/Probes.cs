@@ -211,3 +211,56 @@ public sealed partial class ProbeTier : IClosedSet<ProbeTier>
 
     public string? Perk { get; }
 }
+
+/// <summary>A closed set with a hand-written <c>ToString()</c>, the one seam: kept, while the name stays what JSON and parsing use.</summary>
+public sealed partial class ProbeLabelled : IClosedSet<ProbeLabelled>
+{
+    public static readonly ProbeLabelled Low = new("low priority");
+    public static readonly ProbeLabelled High = new("high priority");
+
+    private readonly string _label;
+
+    private ProbeLabelled(string label) => _label = label;
+
+    /// <summary>The label, not the name.</summary>
+    public override string ToString() => _label;
+}
+
+/// <summary>A closed set whose own code makes an instance beside its members, which therefore has no name.</summary>
+public sealed partial class ProbeLevel : IClosedSet<ProbeLevel>
+{
+    public static readonly ProbeLevel Low = new();
+    public static readonly ProbeLevel High = new();
+
+    /// <summary>Not a member: the private constructor is still the set's own to call.</summary>
+    public static ProbeLevel Unlisted() => new();
+}
+
+/// <summary>
+/// A closed set whose members are created in every form CMTK1019 accepts, with a comment, a qualified
+/// name, an object initializer and a literal holding brackets, and which declares overloads of the
+/// generated <c>Parse</c> and <c>Match</c> with other signatures: its own, kept.
+/// </summary>
+public sealed partial class ProbePriority : IClosedSet<ProbePriority>
+{
+    public static readonly ProbePriority Low = new(/* the lowest (1) */ 1);
+    public static readonly ProbePriority Normal = new global::CodoMetis.TypeKit.Generators.Probes.ProbePriority(2) { Label = "normal (the default)" };
+    public static readonly ProbePriority High = new(3) { Label = "high" };
+
+    private ProbePriority(int rank) => Rank = rank;
+
+    public int Rank { get; }
+
+    public string? Label { get; private init; }
+
+    /// <summary>The member of that rank: another signature than the generated <c>Parse(string)</c>.</summary>
+    public static ProbePriority Parse(int rank) => rank switch { 1 => Low, 2 => Normal, _ => High };
+
+    /// <summary>A switch that answers nothing: another signature than the generated <c>Match&lt;TResult&gt;</c>.</summary>
+    public void Match(Action low, Action normal, Action high)
+    {
+        if (ReferenceEquals(this, Low)) low();
+        else if (ReferenceEquals(this, Normal)) normal();
+        else high();
+    }
+}

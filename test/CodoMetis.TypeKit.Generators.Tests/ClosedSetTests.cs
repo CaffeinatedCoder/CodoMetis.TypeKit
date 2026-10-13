@@ -101,6 +101,82 @@ public sealed class ClosedSetTests
         Names<ProbeTier>().ShouldBe("Basic,Premium");
     }
 
+    /// <summary>
+    /// A found member is not null to the caller's nullable analysis: the generated <c>TryParse</c> says
+    /// so, as the interface does. Without it this test does not compile (CS8602, an error here).
+    /// </summary>
+    [Fact]
+    public void A_member_TryParse_found_is_not_null_to_the_compiler()
+    {
+        if (ProbeStatus.TryParse("Shipped", out var shipped)) shipped.Name.ShouldBe("Shipped");
+        else throw new InvalidOperationException("Shipped is a member.");
+    }
+
+    /// <summary>The one seam: a hand-written <c>ToString()</c> is kept, and the name is still what JSON and parsing use.</summary>
+    [Fact]
+    public void A_hand_written_ToString_is_kept_and_the_name_still_travels()
+    {
+        ProbeLabelled.High.ToString().ShouldBe("high priority");
+        $"{ProbeLabelled.Low}".ShouldBe("low priority");
+
+        ProbeLabelled.High.Name.ShouldBe("High");
+        JsonSerializer.Serialize(ProbeLabelled.High).ShouldBe("\"High\"");
+        ReferenceEquals(ProbeLabelled.Parse("High"), ProbeLabelled.High).ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// An instance the set's own code made beside its members has no name. Before, its name was null:
+    /// JSON wrote <c>null</c>, a nullable column stored one, and both read back as nothing.
+    /// </summary>
+    [Fact]
+    public void An_instance_that_is_not_a_member_is_refused_wherever_its_name_is_read()
+    {
+        var unlisted = ProbeLevel.Unlisted();
+        const string link = "#an-instance-that-is-not-a-member-of-its-set";
+
+        Should.Throw<InvalidOperationException>(() => unlisted.Name).Message.ShouldEndWith(link);
+        Should.Throw<InvalidOperationException>(() => unlisted.QualifiedName).Message.ShouldEndWith(link);
+        Should.Throw<InvalidOperationException>(() => unlisted.ToString()).Message.ShouldEndWith(link);
+        Should.Throw<InvalidOperationException>(() => unlisted.Match(low: () => 1, high: () => 2)).Message.ShouldEndWith(link);
+        Should.Throw<InvalidOperationException>(() => JsonSerializer.Serialize(unlisted)).Message.ShouldEndWith(link);
+
+        ProbeLevel.High.Name.ShouldBe("High");
+    }
+
+    /// <summary>
+    /// Every form of <c>new</c> CMTK1019 accepts is generated, and an overload of a generated method
+    /// with another signature is the set's own: kept beside the generated one, not CMTK1011.
+    /// </summary>
+    [Fact]
+    public void Members_created_in_any_form_and_overloads_of_another_signature_are_kept()
+    {
+        ProbePriority.All.Select(member => member.Name).ShouldBe(["Low", "Normal", "High"]);
+        ProbePriority.Normal.Label.ShouldBe("normal (the default)");
+
+        ReferenceEquals(ProbePriority.Parse(2), ProbePriority.Normal).ShouldBeTrue();
+        ReferenceEquals(ProbePriority.Parse("High"), ProbePriority.High).ShouldBeTrue();
+
+        var picked = "";
+        ProbePriority.Low.Match(low: () => picked = "low", normal: () => picked = "normal", high: () => picked = "high");
+        picked.ShouldBe("low");
+        ProbePriority.High.Match(low: () => 1, normal: () => 2, high: () => 3).ShouldBe(3);
+    }
+
+    /// <summary>
+    /// A set is a class, so a JSON null is the serializer's to read, as for any class: null, unless
+    /// <c>RespectNullableAnnotations</c> refuses it for a property that is not nullable. The converter
+    /// cannot refuse it itself without refusing it for an <c>OrderStatus?</c> property too.
+    /// </summary>
+    [Fact]
+    public void A_JSON_null_is_the_serializer_s_to_read()
+    {
+        const string json = """{"Status":null,"Tier":"Basic"}""";
+
+        JsonSerializer.Deserialize<Holder>(json)!.Status.ShouldBeNull();
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<Holder>(json, new JsonSerializerOptions { RespectNullableAnnotations = true }));
+        JsonSerializer.Deserialize<OptionalHolder>(json, new JsonSerializerOptions { RespectNullableAnnotations = true })!.Status.ShouldBeNull();
+    }
+
     private static string Names<TSet>() where TSet : class, IClosedSet<TSet> => string.Join(",", TSet.All.Select(member => member.Name));
 
     private sealed class Counter : IClosedSetVisitor<int>
@@ -109,4 +185,6 @@ public sealed class ClosedSetTests
     }
 
     private sealed record Holder(ProbeStatus Status, ProbeTier Tier);
+
+    private sealed record OptionalHolder(ProbeStatus? Status, ProbeTier Tier);
 }
