@@ -15,9 +15,10 @@ section is the GitHub release's notes.
 A major version: it targets `net10.0` and Metalama 2026.1 as 1.x does, and the breaks are the ones
 Semantic Versioning reserves for a major, listed under Changed. Package validation against 1.5.1
 finds one difference in the public surface, `FaultProblem<TFault>`'s constraint, which still accepts
-every type argument it accepted; the others are behaviour no compatibility check reads, CMTK0003 at
-Error and `FirstOrNone` on a query. The new Error rules, CMTK0010 to CMTK0012, report only on what
-this release adds, so nothing that built against 1.5.1 meets them.
+every type argument it accepted; the others are behaviour no compatibility check reads: CMTK0003 at
+Error, `FirstOrNone` on a query, CMTK1022, and the EF Core and OpenAPI refusals below. The new
+analyzer Errors, CMTK0010 to CMTK0012, report only on what this release adds, so nothing that built
+against 1.5.1 meets them.
 
 ### Added
 
@@ -33,7 +34,7 @@ this release adds, so nothing that built against 1.5.1 meets them.
   - A `ValueTask`, or a task spelled as the type argument, is refused before the delegate runs.
   - A delegate that returns null throws as `Result.Success(null)` does, and so does one given to
     `CatchAsync` that returns no task.
-- **The closed-set family**, the release's headline: `IClosedSet<TSelf>` in `CodoMetis.TypeKit`, generated
+- **The closed-set family**, the release's headline: `IClosedSet<TSelf>` in the `CodoMetis.TypeKit` package, generated
   by `CodoMetis.TypeKit.Generators`. A sealed partial class whose every instance is a `public static
   readonly` field, with constant data through a private constructor where the members carry some. The
   generators add `Name`, `QualifiedName`, `All` in declaration order and read-only, `Match` with one required delegate
@@ -46,11 +47,13 @@ this release adds, so nothing that built against 1.5.1 meets them.
   generic, or with a member not initialized with `new` where it is declared; CMTK1020 refuses a
   record. A hand-written `ToString()` is kept, and an overload of a generated method with another
   signature; any other generated member written by hand is CMTK1011. An instance the set's
-  own code makes beside its members has no name, and reading it throws rather than write a null.
+  own code makes beside its members has no name, and reading it throws rather than writing a null.
+  `All` and the name lookups throw while the set is still initialising, so a static field
+  initializer of the set itself never reads a half-built one.
   CMTK0002 covers a closed set without the generators.
   CMTK1021 refuses a member named as a generated member, or two whose names differ only in case
-  (`Open` and `open`, `Express` and `EXPRESS`): one name to `TryParse(name, ignoreCase: true)`, and
-  to `Match`'s parameters where the first letter is the difference. `Match` checks every delegate for null before it picks one,
+  (`Open` and `open`, `Express` and `EXPRESS`), which collide in `TryParse(name, ignoreCase: true)`, and
+  in `Match`'s parameters where the first letter is the difference. `Match` checks every delegate for null before it picks one,
   and a set is a JSON dictionary key by its name.
   `CodoMetis.TypeKit.EntityFrameworkCore` maps a closed set to a text column of the member's name, in a
   primitive collection and a JSON column too, through a compiled model and under Native AOT
@@ -63,8 +66,8 @@ this release adds, so nothing that built against 1.5.1 meets them.
 - **`CodoMetis.TypeKit`**: `Patch<T>`, a field of a JSON Merge Patch (RFC 7396): absent, null or a
   value, where System.Text.Json alone cannot tell an absent property from a null one. `default` is
   absent, the one meaningful default of the package, and the analyzers leave it alone. Reading never
-  refuses a null; a value object inside a patch keeps its own rule. `Match`, `TryGetValue`, `IfValue`,
-  `IfPresent` and `ToOption` apply it without reflection; `IfPresent` hands a clear over as null, a
+  refuses a null; a value object inside a patch keeps its own rule. `Match`, `TryGetValue`, `Tap`,
+  `IfPresent` and `ToOption` apply it without reflection, `Tap` and `IfPresent` returning the patch; `IfPresent` hands a clear over as null, a
   `T?` over a struct too, never as `default(T)`. `Map` changes a value and keeps a clear and an
   absence, and `Traverse` validates a value with a `Create`'s own fault,
   `request.Email.Traverse(Email.Create)` as a `Result<Patch<Email>, EmailFault>`, a clear and an
@@ -77,14 +80,14 @@ this release adds, so nothing that built against 1.5.1 meets them.
 - **`CodoMetis.TypeKit.AspNetCore`**: `AddTypeKit()` describes a `Patch<T>` property as `T`'s schema,
   inlined, not required and admitting null, in 3.1 and 3.0; a value object inside a patch through the
   type it wraps. Null joins what restricts the values, so a validator accepts it beside every value
-  the argument accepts: an enum's list, where a string enum's patch had admitted nothing and a closed
-  set's had refused null, the type, or a branch beside the argument's own; an `object`'s schema stays
-  unrestricted, where it had admitted only null.
+  the argument accepts: an enum's list, the type, or a branch beside the argument's own; an `object`'s
+  schema stays unrestricted.
 - **`CodoMetis.TypeKit.Analyzers`**: CMTK0010, the constraints a type parameter cannot declare.
   `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` (new in the base package) on a type parameter
   say what C# has no `where` for, and the rule reports a type argument that breaks it at any closed
   use: a base type, a member, a parameter, a local, a `typeof`, a call or a method group with its
-  arguments written or inferred. A type parameter forwarded without the attribute is a breach too, so the requirement
+  arguments written or inferred, a C# 14 extension member, and a generic attribute. A method that
+  implements an interface's, directly, statically or through a base class, carries its constraint. A type parameter forwarded without the attribute is a breach too, so the requirement
   follows the generic chain; `struct` proves `[Sealed]` and `[Concrete]`, `new()` proves `[Concrete]`.
 - **`CodoMetis.TypeKit.Analyzers`**: CMTK0011, with the package's first code fix. A type marked
   `[RequireParameterlessConstructor]` (new in the base package, with `ConstructorAccessibility`)
@@ -113,12 +116,11 @@ this release adds, so nothing that built against 1.5.1 meets them.
   `Queryable.FirstOrDefault`.
 - **`CodoMetis.TypeKit.Generators`**: a closed set implements `IParsable<TSelf>` explicitly, beside
   its own `Parse` and `TryParse`, and carries a type converter that reads and writes the member's
-  name, so the configuration binder binds a set where it bound null without a word, and generic
-  code parses one through `T.Parse`. A hand-written `IParsable<TSelf>`, `[JsonConverter]` or
-  `[TypeConverter]` is CMTK1011, where it failed inside the generated code.
+  name, so the configuration binder binds a set and generic code parses one through `T.Parse`. A
+  hand-written `IParsable<TSelf>`, `[JsonConverter]` or `[TypeConverter]` is CMTK1011.
 - **`CodoMetis.TypeKit.Serilog`**: `Destructure.WithTypeKit()` logs a closed set as what it prints,
-  its name or its own `ToString()`, where Serilog destructured it by its properties and logged its
-  constant data, `{ Rank: 2, Perk: "…", Name: "Premium", QualifiedName: … }`.
+  its name or its own `ToString()`, never its constant data, which Serilog alone would destructure
+  by its properties.
 - **`CodoMetis.TypeKit`**: an option's asynchronous steps, `MapAsync`, `BindAsync` and `TapAsync` over
   callbacks that return a `Task`, and the continuations of a `Task<Option<T>>`: `MapAsync`,
   `BindAsync`, `FilterAsync`, `TapAsync` and `ToResultAsync`, so a repository's lookup continues into
@@ -148,20 +150,20 @@ this release adds, so nothing that built against 1.5.1 meets them.
   value-object, result and smart-enum libraries, moved out of the README with its dated tables. Every C# block in them is compiled and its stated
   outputs are tested, as the READMEs' are, and the `Option` and `Result` pages list the complete
   public surface, checked against the types. The package READMEs remain the reference for each
-  package. The plan moved from `docs/plan.md` to `design/plan.md`, and on 2026-10-13 was split: a decision
-  record per decision under `design/adr/`, a design note per area, a roadmap, and `design/plan.md`
-  as the map; the phase log stays in git.
+  package.
 - **Fault responses a client can act on.** In `CodoMetis.TypeKit`: `FaultKind`, `IFault` and
-  `IFaultSet<TSelf>`, a closed set whose members carry a kind and an optional description, and
-  `Fault<TFault>`, a fault with a sentence about one occurrence (`Fault.Of(reason, detail)`). In
-  `CodoMetis.TypeKit.AspNetCore`, each opt-in, with decision 38's default response unchanged: a closed
+  `IFaultSet<TSelf>` (in `CodoMetis.TypeKit.ClosedSets`), a closed set whose members carry a kind and
+  an optional description, and `Fault<TFault>`, a fault with a sentence about one occurrence, made by
+  `Fault.Of(reason, detail)` alone and never compared with a bare reason. In
+  `CodoMetis.TypeKit.AspNetCore`, each opt-in, with 1.5's default response unchanged: a closed
   set as the fault type, `AddFaultResponses<TSet>()` answering every member by its kind (`NotFound` 404,
   `Conflict` 409, `Invalid` 422, `Forbidden` 403, `Unavailable` 503) with its description as the
   `detail`; a `FaultResponse` per member with a `type` and a `title`; a `Fault<TFault>`'s detail as the
   problem's `detail`; `WithFaultStatus(fault, status)` on an endpoint and `[FaultStatus<TFault>]` on an
   MVC action, for that endpoint's response and document entry; `ToHttpResult(success)`, the
   endpoint's own success such as `Created`; and `IFaultFeature` on the request while the problem is
-  written, for the host's `CustomizeProblemDetails`, with `FaultResponseOptions.QualifiedFaultNames`.
+  written, for the host's `CustomizeProblemDetails`, with `FaultResponseOptions.QualifiedFaultNames`,
+  which names a fault after its type's nesting chain (`Billing.Fault.NotFound`).
   The startup check refuses a status for a fault type the endpoint does not answer with, and an
   attribute naming no member.
 
@@ -182,34 +184,35 @@ this release adds, so nothing that built against 1.5.1 meets them.
   body never reads them; and a lazy sequence of results a call made, materialised by `ToList()` or
   `ToListAsync()` and dropped. CMTK0005, CMTK0006, CMTK0008 and CMTK0009 stay Warnings, since correct
   code can look the same and has nothing but a suppression to say so, and CMTK0007 stays Info.
+- **`CodoMetis.TypeKit.Analyzers`**: CMTK0003 also reports a result picked by `??`, a dropped tuple
+  holding one, a dropped dictionary of them, and a call's task passed through `ConfigureAwait` or
+  `WaitAsync` and dropped, awaited or not; a task the caller still holds stays silent through both.
+- **`CodoMetis.TypeKit.Generators`**: an abstract type that declares a value-object marker is CMTK1022,
+  an Error. It generated nothing, and a value held as it was written as `{}`; declare the marker on
+  the sealed type.
+- **`CodoMetis.TypeKit.EntityFrameworkCore`**: `.Value`, `GetValue()` and `ValueOrNull()` are translated
+  only on a column TypeKit's converter stores. On a column the application maps with its own
+  converter they queried the wrong representation and answered wrong rows; EF now refuses the query.
+- **`CodoMetis.TypeKit.EntityFrameworkCore`**: a query that compares, orders, or takes `Min`/`Max` of a
+  value object that declares its own `CompareTo` is refused, naming the value object. It was
+  translated to the column's order, the opposite of the in-memory one for a reversed ordering; order
+  by `.Value` where the column's order is meant.
+- **`CodoMetis.TypeKit.EntityFrameworkCore`**: a value-object key is generated on add wherever EF
+  generates its wrapped type's: over `sbyte`, `uint`, `ulong`, `ushort` and `char` too, and at the
+  root of a TPH hierarchy on SQLite, which stored 0. A TPC key on SQLite is not generated, as a plain
+  `int` key is not. A migration of such a model adds the identity.
+- **`CodoMetis.TypeKit.AspNetCore`**: a document in which a nested value object's or closed set's
+  component name, `Order.Status` as `OrderStatus`, is also another type's throws, naming both; one
+  component described both as one of them.
+- **`CodoMetis.TypeKit`**: every asynchronous combinator given a delegate that returns no task throws
+  an `ArgumentNullException` naming it, where the await threw a `NullReferenceException`.
+- **`CodoMetis.TypeKit.Testing`**: a failure names a nested type after its containing types,
+  `Option<Order.Line>`; a type nested in a generic one threw `ArgumentOutOfRangeException` instead.
 
 ## 1.5.1 — 2026-10-11
 
 ### Fixed
 
-- **`CodoMetis.TypeKit.Generators`**: a closed set declared in two partial files listed the members of
-  the second as null in `All`, and the names the satellites read threw; `All` is filled after every
-  part's fields. Two nested sets of one simple name shared one `QualifiedName` prefix; it is the
-  nesting chain, `Order.Status.Open`. A non-public static field of the set's own type compiled as no
-  member, whose name threw and which `TryParse` never found; it is CMTK1017. The nested JSON and type
-  converters are sealed.
-- **`CodoMetis.TypeKit.AspNetCore`**: a closed set was a string enum as a body property only; as a route
-  or query parameter it was a bare `string`, and in a list, an array parameter or a dictionary its
-  element was missing. It is the enum in every position, as a value object is described in each. Two
-  nested sets of one simple name shared one component; each is named after its nesting chain.
-- **`CodoMetis.TypeKit`**: `ElementAtOrNone(^n)` on a query bound to the sequence overload and read every
-  row; it is a compile error naming `ElementAtOrNone(int)` and `AsEnumerable()`. `fault == reason` on a
-  `Fault<TFault>` compiled through the implicit conversion and was false whenever the fault carried a
-  detail; the mixed comparisons and `Equals(reason)` are compile errors naming `Reason`. `CatchAsync`
-  given a delegate that returned no task answered an error holding the `NullReferenceException` the
-  await threw; it throws before anything is awaited, as `Result.Success(null)` does.
-- **`CodoMetis.TypeKit.Analyzers`**: CMTK0010 reported a `<see cref="Box{T}"/>` in a documentation
-  comment, and called an array not sealed; a cref is no use, and an array is sealed and concrete. A
-  method implementing an interface's method, or overriding one, without repeating the attribute let a
-  call through the class pass; it carries the constraint of what it implements. CMTK0003 missed a
-  result task picked by a conditional or a `switch` expression, awaited or converted to a plain task,
-  and a method group of a method answering a collection of results, converted to a delegate that
-  returns a plain task.
 - **`CodoMetis.TypeKit.AspNetCore`**: a value object bound as a route, query or header parameter is
   described as ASP.NET describes a parameter of the wrapped type. ASP.NET uses a type's own schema there
   only for a primitive, an enum, `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, `TimeSpan`,
