@@ -21,6 +21,7 @@ appears to: an instance that passed no factory, or a value object that was never
 | CMTK0007 | Info | `FromKnownGood` given a value that comes straight from a parameter. |
 | CMTK0008 | Warning | The wrapped values of two different value objects compared, `order.CustomerId.Value == product.Id.Value`, or the two value objects themselves through `Equals(object)`. |
 | CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. |
+| CMTK0011 | Error | A concrete type that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. The code fix writes or changes the constructor. |
 
 The ids are public contract and never change meaning. The generators' own build errors,
 CMTK1000 to CMTK1011, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
@@ -307,6 +308,36 @@ asynchronous forms, it is the type the task returns. An overload given a default
 element type whose default is null or an ordinary value, are not reported. EF Core's forms are
 recognised in any project that references EF Core. A warning, since code that checks the sequence is not empty first is correct and the rule cannot tell.
 
+## CMTK0011
+
+A type the host creates by reflection, an endpoint, a module, an entity configuration, needs a
+parameterless constructor, and C# demands one only through `new()`, which demands a public one and
+only where a type parameter says so. `[RequireParameterlessConstructor]` on the interface or base
+class says it once, and the error appears on the type that lacks the constructor, in whichever
+project declares it, where the host would otherwise have failed at run time.
+
+```csharp
+[RequireParameterlessConstructor]
+public interface IEndpoint { void Map(IEndpointRouteBuilder app); }
+
+[RequireParameterlessConstructor(ConstructorAccessibility.Internal)]
+public abstract class Module { }
+
+public sealed class OrderEndpoint(ILogger log) : IEndpoint   // CMTK0011: a primary constructor, so no parameterless one
+{
+    public void Map(IEndpointRouteBuilder app) { }
+}
+
+public sealed class Identity : Module;                       // CMTK0011: the implicit constructor is public, Module requires internal
+```
+
+A class that declares no constructor has a public parameterless one and satisfies `Public` as it
+is. A wrong accessibility is reported at the constructor, and the fix changes it there; a missing
+one is reported at the type, and the fix adds it. A record or class with a primary constructor gets
+no fix: every other constructor of such a type chains to the primary one, with arguments only its
+author knows. The requirement reaches a type through any chain of base classes and interfaces, and
+the attribute is read from metadata, so the marked type can live in another package.
+
 ## Configuration
 
 Severity follows the usual `.editorconfig` mechanism, for instance
@@ -315,7 +346,8 @@ for `.razor` and `.cshtml` files, not `[*.cs]`, not `[*.razor]`, not even `[*]`.
 there too, put the line in a `.globalconfig` file, which applies to every file of the project.
 
 The errors are the rules where the code is wrong whatever surrounds it: a `default` written out
-(CMTK0001), a value object nothing generates (CMTK0002), and validation bypassed (CMTK0004). A
+(CMTK0001), a value object nothing generates (CMTK0002), validation bypassed (CMTK0004), and a
+constructor a host will look for and not find (CMTK0011). A
 warning is what gets ignored, so these fail the build. The others are warnings, or for CMTK0007 Info,
 because correct code can look the same: an array filled in a loop straight after it is created
 (CMTK0005), a member a framework sets (CMTK0006), a sequence known not to be empty (CMTK0009), a

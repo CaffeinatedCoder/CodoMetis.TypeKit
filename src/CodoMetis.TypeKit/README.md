@@ -355,6 +355,9 @@ They arrive with this package, so whoever can see the interfaces gets the guard:
 - **CMTK0009** (warning): a call that hands out a `default` instance when it finds nothing,
   `ids.FirstOrDefault()` or `ProductCode.TryFrom(s).OrDefault()`. `FirstOrNone()`, `GetValueOrNone()`
   and `Or(fallback)` say what happens then.
+- **CMTK0011**: a type under an interface or base class marked `[RequireParameterlessConstructor]`
+  without the parameterless constructor it asks for, which the host would look for by reflection.
+  The code fix writes it.
 
 The rules also run in Razor components (`.razor`, `.cshtml`).
 
@@ -478,7 +481,7 @@ stored.
 
 ## Where things are
 
-`Option`, `Result`, `OrderId.New()`, `AsText()`, `AsIdentifier()` and `[RequireCustomInitialization]` live in `CodoMetis.TypeKit`;
+`Option`, `Result`, `OrderId.New()`, `AsText()`, `AsIdentifier()`, `[RequireCustomInitialization]` and `[RequireParameterlessConstructor]` live in `CodoMetis.TypeKit`;
 every value-object contract in `CodoMetis.TypeKit.ValueObjects`. What only the generated code and the
 satellites call is in `CodoMetis.TypeKit.CompilerServices`, hidden from IntelliSense. Targets .NET 10.
 Source and issues: [github.com/CaffeinatedCoder/CodoMetis.TypeKit](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit).

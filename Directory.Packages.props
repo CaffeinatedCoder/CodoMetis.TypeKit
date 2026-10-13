@@ -30,11 +30,12 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0" />
   </ItemGroup>
-  <!-- Test-only. xunit.v3 4.x is Microsoft Testing Platform v2: no VSTest adapter, no Test.Sdk. -->
+  <!-- Test-only, except Workspaces, which the analyzer package's code fixes compile against. xunit.v3 4.x is Microsoft Testing Platform v2: no VSTest adapter, no Test.Sdk. -->
   <ItemGroup>
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" Version="1.1.4" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing" Version="1.1.4" />
     <!--
             Locked to Microsoft.CodeAnalysis.CSharp above: the analyzer-testing package floors its
             Roslyn dependency at 1.0.1, so without this pin the verifier would run the analyzer on a

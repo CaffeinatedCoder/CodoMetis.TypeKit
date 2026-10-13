@@ -559,7 +559,14 @@ Each phase ends green, and its guards have been proven by seeding the defect
        README already says of `MapAsync`. `Catch<T, TException>` spells both type arguments, and the
        one-argument `Catch<TException>(Action)` is the command form. A delegate that returns null throws
        rather than being caught: the value is computed inside the `try`, the success built outside it.
-    4. **CMTK0011 and its code fix**: pure Roslyn, no spike.
+    4. **CMTK0011 and its code fix** ✅ 2026-10-13: `[RequireParameterlessConstructor]` and
+       `ConstructorAccessibility` in the base package, `RequiredParameterlessConstructorAnalyzer` in
+       `.Analyzers`, the fix in `CodeFixes/`, a project nested in the analyzer project's folder and
+       packed into the same package under `analyzers/dotnet/cs`: an analyzer assembly must not
+       reference Workspaces (RS1038), and a sibling under `src/` would be a package of its own to the
+       conventions. The fix spells the id and the property name it reads, held to the analyzer's by a
+       test. Named `Require…`, beside `[RequireCustomInitialization]`, since the rule requires and the
+       fix writes; nothing is introduced.
     5. **CMTK0010**, after [spikes/TypeArgumentConstraints](../spikes/TypeArgumentConstraints/README.md),
        since the forwarding claim decides whether the rule is sound.
     6. **`Patch<T>`**, after its spike, in the base package and the ASP.NET satellite. It depends
@@ -705,7 +712,7 @@ Each phase ends green, and its guards have been proven by seeding the defect
         included, and nothing is reported twice for one site.
       - **Reflection** (`MakeGenericType`) is out of reach, and the README says so.
       - **Error in a major version** is within decision 34; the rule never ships at Error in a minor.
-    - **`[EnsureParameterlessConstructor]`**, proposed 2026-10-13. A type the host creates by
+    - **`[RequireParameterlessConstructor]`** (proposed as `Ensure…` 2026-10-13; `Require…` as built, beside `[RequireCustomInitialization]`). A type the host creates by
       reflection, an endpoint, a module, an entity configuration, needs a parameterless constructor
       of a given accessibility, and C# checks that only through `new()`, which demands public. An
       attribute in the base package, on an interface or a base class, and an analyzer rule, CMTK0011,
@@ -1587,7 +1594,7 @@ exist.
 | CMTK0008 | The wrapped values of two different value objects compared (`==`, `!=`, ordering, `Equals`, `CompareTo`) through `.Value`, `?.Value`, `GetValue()` or `ValueOrNull()`: the typed ids unwrapped into the bug they prevent. Recognised by syntax, since `.Value` of a same-project value object does not bind where analyzers run. Also `string.Equals`, `object.Equals`, a comparer's `Equals`, `string.Compare`/`CompareOrdinal` over two such values (the forms MA0006 rewrites `==` into), and two value objects of different types through `Equals(object)`, which is always false. Also a LINQ join on two such values: a query's `join … on a.Value equals b.Value`, with or without `into`, and `Join`/`GroupJoin`/`LeftJoin`/`RightJoin` of `Enumerable`, `Queryable` and `AsyncEnumerable` whose key selectors are lambdas returning them, resolved by symbol, with the candidates where a key selector does not bind; a composite key is not looked into. A raw value on one side, or an explicit cast, is silent | Warning | shipped in 1.0.0 |
 | CMTK0009 | A call that returns the `default` of a no-default struct when it finds nothing: `Enumerable`/`Queryable` `FirstOrDefault`, `LastOrDefault`, `SingleOrDefault`, `ElementAtOrDefault`, `DefaultIfEmpty` without a default value, `Nullable<T>.GetValueOrDefault()`, `GetValueOrDefault(dictionary, key)`, `Activator.CreateInstance`, `RuntimeHelpers.GetUninitializedObject`, and `Option.OrDefault()`. The message names `FirstOrNone`, `GetValueOrNone` or `Or`. Warning, since a sequence checked for emptiness first is correct. Also `ImmutableArray`'s own, `Find`/`FindLast` of `List<T>`, `Array` and `ImmutableList<T>`, `ImmutableDictionary.GetValueOrDefault` and the immutable builders', and the async `FirstOrDefaultAsync`, `LastOrDefaultAsync`, `SingleOrDefaultAsync` and `ElementAtOrDefaultAsync` of `System.Linq.AsyncEnumerable` and EF Core, whose type is the method's type argument; EF Core's only where the project references it | Warning | shipped in 1.0.0 |
 | CMTK0010 | A type argument that violates a constraint attribute on its parameter (`[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]`), at any closed use: a base type, an implemented interface, a member type, a `typeof`, a call with inferred type arguments. A type parameter forwarded without the same attribute is a violation too. Reflection is out of reach | Error | proposed for 2.0.0 (phase 13), a major, so Error is within decision 34 |
-| CMTK0011 | A concrete type implementing or deriving from a type marked `[EnsureParameterlessConstructor]`, directly or through another type, without a parameterless constructor of the required accessibility; a type declaring no constructor satisfies `Public`. A wrong accessibility is reported at the constructor. The code fix writes or changes the constructor | Error | proposed for 2.0.0 (phase 13) |
+| CMTK0011 | A concrete type implementing or deriving from a type marked `[RequireParameterlessConstructor]`, directly or through another type, without a parameterless constructor of the required accessibility; a type declaring no constructor satisfies `Public`. A wrong accessibility is reported at the constructor. The code fix, the package's first, in `CodoMetis.TypeKit.Analyzers.CodeFixes.dll` beside the analyzer, writes or changes the constructor; a type with a primary constructor gets none | Error | built 2026-10-13 for 2.0.0 (phase 13) |
 | — | Code fixes for the aspect's shape diagnostics CMTK1000–1002 (missing `partial`/`record`/`readonly`) | — | proposed. The aspect keeps its own error as a backstop |
 
 **Rules that read calls see the source before weaving (measured 2026-09-28).** Metalama runs

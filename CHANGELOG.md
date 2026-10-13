@@ -23,6 +23,14 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   task, so an exception thrown after its first `await` is the error too. An `OperationCanceledException`
   passes through every overload, a delegate that returns a `Task` given to `Catch` is a compile error
   that names `CatchAsync`, and a delegate that returns null throws as `Result.Success(null)` does.
+- **`CodoMetis.TypeKit.Analyzers`**: CMTK0011, with the package's first code fix. A type marked
+  `[RequireParameterlessConstructor]` (new in the base package, with `ConstructorAccessibility`)
+  requires every concrete type that derives from or implements it, directly or through another, to
+  have a parameterless constructor of the given accessibility, for the host that creates such types
+  by reflection. A class that declares no constructor satisfies `Public` as it is; a missing
+  constructor is reported at the type and the fix adds it, a wrong accessibility at the constructor
+  and the fix changes it; a type with a primary constructor gets no fix. The code fixes ship in
+  `CodoMetis.TypeKit.Analyzers.CodeFixes.dll` inside the analyzer package.
 - **`CodoMetis.TypeKit`**: the text guards. `text.AsText()` is for text a person wrote: trimmed, every
   space separator folded to an ordinary space, composed to NFC so one name has one spelling, and
   refused when it carries a character that renders as nothing, such as a zero-width space, a Hangul

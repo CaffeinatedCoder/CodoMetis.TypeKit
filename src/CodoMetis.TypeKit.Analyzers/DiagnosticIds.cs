@@ -24,6 +24,10 @@ internal static class DiagnosticIds
 
     public const string DefaultProducingCall = "CMTK0009";
 
+    // CMTK0010 is reserved for the type-argument constraint rule (docs/plan.md §10).
+
+    public const string RequiredParameterlessConstructor = "CMTK0011";
+
     /// <summary>
     /// The rule's section of the analyzer README on GitHub, which an IDE opens from the diagnostic.
     /// The README's <c>## CMTK000N</c> headings give the anchors (AnalyzerHelpLinkTests).
