@@ -72,8 +72,11 @@ of that integer type is. On PostgreSQL and SQL Server it is an identity column, 
 key to a value object there changes no schema. A key over a `Guid` is the application's to assign,
 `Id = OrderId.New()` (a version 7 Guid, which sorts by creation time), and EF inserts it as given. For
 EF to generate it instead, configure `ValueGeneratedOnAdd()` on the property; EF then also takes an
-entity whose key is already set, reached through a navigation, for an existing one. An explicit
-configuration always wins over these defaults.
+entity whose key is already set, reached through a navigation, for an existing one. The root of an
+inheritance hierarchy follows the same rule under TPH and TPT. Under TPC, as for an `int` key, the key
+is generated only where the provider numbers the whole hierarchy from a sequence (PostgreSQL, SQL
+Server); SQLite has none, so there the application assigns it. An explicit configuration always wins
+over these defaults.
 
 **SQLite: configure integer keys with `UseAutoincrement()`.** SQLite fills such a key in, but EF's
 SQLite provider makes a key `AUTOINCREMENT` only when the property's CLR type is an integer, and a

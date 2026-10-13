@@ -11,11 +11,33 @@ internal sealed class ValueObjectKeyConventionSetPlugin : IConventionSetPlugin
 {
     public ConventionSet ModifyConventions(ConventionSet conventionSet)
     {
-        // First among the finalizing conventions: a provider's value-generation strategy (an identity
-        // column on PostgreSQL and SQL Server) is chosen there, for keys already generated on add.
-        conventionSet.ModelFinalizingConventions.Insert(0, new ValueObjectKeyValueGenerationConvention());
+        var finalizing = conventionSet.ModelFinalizingConventions;
+
+        // After the last of EF's finalizing conventions that change what its value-generation convention
+        // re-reads, and so before a provider's value-generation strategy (an identity column on PostgreSQL
+        // and SQL Server), which is chosen for keys already generated on add and comes after them.
+        finalizing.Insert(IndexAfterTheLastReset(finalizing), new ValueObjectKeyValueGenerationConvention());
+
+        // Last of all: a TPC key is generated only where the provider gave it a sequence.
+        finalizing.Add(new ValueObjectTpcKeyValueGenerationConvention());
 
         return conventionSet;
+    }
+
+    /// <summary>
+    /// EF's value-generation convention decides a key again, from its CLR type, whenever an entity type's
+    /// mapping strategy or table changes (<c>RelationalValueGenerationConvention.ProcessEntityTypeAnnotationChanged</c>),
+    /// and two finalizing conventions change them: <see cref="EntityTypeHierarchyMappingConvention"/> sets
+    /// the mapping strategy on every hierarchy's root, TPH where none is configured, and
+    /// <see cref="SharedTableConvention"/> makes table names unique. Decided before them, the key of a TPH
+    /// root went back to never generated on SQLite, whose provider reads the CLR type, and the second
+    /// entity added threw for a duplicate key (measured with EF Core 10.0.12).
+    /// </summary>
+    private static int IndexAfterTheLastReset(List<IModelFinalizingConvention> finalizing)
+    {
+        var last = finalizing.FindLastIndex(convention => convention is EntityTypeHierarchyMappingConvention or SharedTableConvention);
+
+        return last + 1;
     }
 }
 
@@ -42,15 +64,51 @@ internal sealed class ValueObjectKeyValueGenerationConvention : IModelFinalizing
     public void ProcessModelFinalizing(IConventionModelBuilder modelBuilder, IConventionContext<IConventionModelBuilder> context)
     {
         foreach (var entityType in modelBuilder.Metadata.GetEntityTypes())
-        {
-            if (entityType.BaseType is not null || entityType.FindPrimaryKey() is not { Properties: [var property] }) continue;
-            if (property.IsForeignKey()) continue;
-
-            if (ValueObjectTypes.Describe(Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType) is { WrappedType: var wrapped }
-             && IsGeneratedByTheDatabase(wrapped))
+            if (GeneratedKey(entityType) is { } property)
                 property.Builder.ValueGenerated(ValueGenerated.OnAdd);
-        }
+    }
+
+    /// <summary>The entity type's key, where it is a value object over an integer EF generates a key of.</summary>
+    internal static IConventionProperty? GeneratedKey(IConventionEntityType entityType)
+    {
+        if (entityType.BaseType is not null || entityType.FindPrimaryKey() is not { Properties: [var property] }) return null;
+        // As EF's own rule: the foreign key that links a TPT table to its base type's is no reason not to
+        // generate the key, and EntityTypeHierarchyMappingConvention has added it by now.
+        if (property.GetContainingForeignKeys().Any(foreignKey => !foreignKey.IsBaseLinking())) return null;
+
+        return ValueObjectTypes.Describe(Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType) is { WrappedType: var wrapped }
+            && IsGeneratedByTheDatabase(wrapped)
+                   ? property
+                   : null;
     }
 
     private static bool IsGeneratedByTheDatabase(Type wrapped) => wrapped == typeof(int) || wrapped == typeof(long) || wrapped == typeof(short);
+}
+
+/// <summary>
+/// A TPC hierarchy's key is generated only where the provider generates it from a sequence, as EF
+/// decides for an integer key: each table of the hierarchy would otherwise number its own rows, and
+/// two entities of different types would share a key.
+/// </summary>
+/// <remarks>
+/// EF refuses to generate an integer key under TPC (<c>RelationalValueGenerationConvention.MappingStrategyAllowsValueGeneration</c>)
+/// unless the provider gives it a sequence, which PostgreSQL's and SQL Server's do, as the column's
+/// default (<c>nextval</c>, <c>NEXT VALUE FOR</c>), and SQLite's does not. That default is what this
+/// reads, after every provider convention, so no provider is named.
+/// </remarks>
+internal sealed class ValueObjectTpcKeyValueGenerationConvention : IModelFinalizingConvention
+{
+    public void ProcessModelFinalizing(IConventionModelBuilder modelBuilder, IConventionContext<IConventionModelBuilder> context)
+    {
+        foreach (var entityType in modelBuilder.Metadata.GetEntityTypes())
+        {
+            if (entityType.GetMappingStrategy() != RelationalAnnotationNames.TpcMappingStrategy) continue;
+            if (ValueObjectKeyValueGenerationConvention.GeneratedKey(entityType) is not { } property) continue;
+            if (property.GetValueGeneratedConfigurationSource() != ConfigurationSource.Convention) continue;
+
+            if (StoreObjectIdentifier.Create(entityType, StoreObjectType.Table) is not { } table
+             || RelationalValueGenerationConvention.GetValueGenerated(property, table) is null)
+                property.Builder.ValueGenerated(null);
+        }
+    }
 }

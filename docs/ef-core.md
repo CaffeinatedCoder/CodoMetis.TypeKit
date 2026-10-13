@@ -94,7 +94,9 @@ value object's type, since EF applies `ConfigureConventions` by CLR type.
 A single-column key over an integer is generated on add, as a key of that integer type is: an
 identity column on PostgreSQL and SQL Server, so switching an `int` key to a value object there
 changes no schema. A key over a `Guid` is the application's to assign, `Id = OrderId.New()`, a version 7
-`Guid` that sorts by creation time; for EF to generate it, configure `ValueGeneratedOnAdd()`. A composite
+`Guid` that sorts by creation time; for EF to generate it, configure `ValueGeneratedOnAdd()`. The root
+of a TPH or TPT hierarchy is generated too; under TPC, as for an `int` key, only where the provider has
+a sequence for the hierarchy (PostgreSQL, SQL Server), not on SQLite. A composite
 key of value objects is `HasKey(x => new { x.Order, x.Line })`, as for primitives.
 
 ```csharp
