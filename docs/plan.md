@@ -543,9 +543,14 @@ Each phase ends green, and its guards have been proven by seeding the defect
     `net10.0` and Metalama 2026.1: nothing in it needs .NET 11, C# 15 unions or Metalama 2027.0, and
     it waits for none of them. The build order, each step a commit with its tests, and a spike
     before the part where one is listed:
-    1. **Open the release**: `Version` 2.0.0 and a `## 2.0.0 — Unreleased` changelog section. The
-       package-validation baseline stays 1.5.0 and reports nothing until the first intended break.
-    2. **The text guards** (below): no spike.
+    1. **Open the release** ✅ 2026-10-13: `Version` 2.0.0 and a `## 2.0.0 — Unreleased` changelog
+       section. The package-validation baseline is 1.5.1, the last release (it had stayed at 1.5.0,
+       which `ChangelogTests` only sees once the version being built moves on), and reports nothing
+       until the first intended break. After moving a baseline, restore the solution: the conventions
+       pack with `--no-restore`, and a baseline not yet in the local cache fails every pack.
+    2. **The text guards** ✅ 2026-10-13: `StringTextExtensions` and `TextFault` in the base package,
+       `StringTextExtensionsTests` (the character table, pinned by code point), the README section
+       "Written text" with its two compiled samples. No spike.
     3. **`Result.Catch`**, after [spikes/ResultCatch](../spikes/ResultCatch/README.md), since the
        async trap can change the shape.
     4. **CMTK0011 and its code fix**: pure Roslyn, no spike.

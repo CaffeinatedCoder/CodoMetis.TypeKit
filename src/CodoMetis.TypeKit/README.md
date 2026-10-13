@@ -264,6 +264,49 @@ var storeOptions = new JsonSerializerOptions { Converters = { new StoredJsonConv
 makes the analyzer refuse `default` and `new()` of it, as it does for `Option`, `Result` and every
 value object.
 
+## Written text
+
+Every application that stores what a person typed trims it and refuses a blank. Few refuse a
+zero-width space, a Hangul filler or NUL, which `IsNullOrWhiteSpace` lets through and `Trim`
+leaves in place, and fewer compose it, so a name written with `ü` and the same name written with
+`u` and a combining diaeresis are two rows of a unique index that render alike. Two extensions on
+`string` do all of it and answer with a `Result`:
+
+```csharp
+var name    = "  Jean\u00A0Paul ".AsText();        // Success: Jean Paul, trimmed, the no-break space folded to an ordinary one
+var subject = "subject\u200Bid".AsIdentifier();   // Error: Hidden, a zero-width space
+var missing = ((string?)null).AsText();            // Error: Blank
+```
+
+Which one to call is decided by who chose the value. `AsText()` is for text a person wrote: it
+trims, folds every space separator to an ordinary space, composes to NFC and refuses any character
+that renders as nothing, keeping the two zero-width joiners because they spell Persian, Arabic and
+Indic scripts and hold an emoji sequence together. `AsIdentifier()` is for a value another system
+issued, a subject claim, a session id, a key: it trims and alters nothing else, since an issued
+value is compared against what its issuer sends next time, and it refuses the joiners too. Both
+scan by `Rune`, so a character above the BMP is seen for what it is, and an unpaired surrogate is
+`Hidden` rather than an exception.
+
+`TextFault` has two members because the caller decides what a blank means: a required field makes
+`Blank` an error, an optional one makes it absence. `Hidden` is a refusal in both. A null is
+`Blank`, since the extension is the door a bound request property goes through and binding
+enforces no non-nullability.
+
+A value object over either guard is one line, and named for the field rather than for the guard,
+since `Description` says more than `Text` and two fields of one type can be assigned to each other:
+
+```csharp
+public readonly partial record struct Description : IValidatedValue<Description, string, TextFault>
+{
+    public static Result<Description, TextFault> Create(string value) =>
+        value.AsText().Map(text => new Description(text));
+}
+```
+
+Not refused on purpose: unassigned code points, since the runtime's Unicode tables lag the
+standard and a name spelled with a newly assigned character would be refused until the SDK caught
+up; and confusable letters across scripts, which is a comparison question and not a rejection.
+
 ## The analyzers
 
 They arrive with this package, so whoever can see the interfaces gets the guard:
@@ -411,7 +454,7 @@ stored.
 
 ## Where things are
 
-`Option`, `Result`, `OrderId.New()` and `[RequireCustomInitialization]` live in `CodoMetis.TypeKit`;
+`Option`, `Result`, `OrderId.New()`, `AsText()`, `AsIdentifier()` and `[RequireCustomInitialization]` live in `CodoMetis.TypeKit`;
 every value-object contract in `CodoMetis.TypeKit.ValueObjects`. What only the generated code and the
 satellites call is in `CodoMetis.TypeKit.CompilerServices`, hidden from IntelliSense. Targets .NET 10.
 Source and issues: [github.com/CaffeinatedCoder/CodoMetis.TypeKit](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit).

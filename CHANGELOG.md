@@ -15,6 +15,18 @@ section is the GitHub release's notes.
 A major version: it targets `net10.0` and Metalama 2026.1 as 1.x does, and the breaks are the ones
 Semantic Versioning reserves for a major, listed under Changed as they land.
 
+### Added
+
+- **`CodoMetis.TypeKit`**: the text guards. `text.AsText()` is for text a person wrote: trimmed, every
+  space separator folded to an ordinary space, composed to NFC so one name has one spelling, and
+  refused when it carries a character that renders as nothing, such as a zero-width space, a Hangul
+  filler or NUL, which `IsNullOrWhiteSpace` lets through; the two zero-width joiners are kept, since
+  they spell Persian, Arabic and Indic scripts and emoji sequences. `text.AsIdentifier()` is for a
+  value another system issued, a subject claim or a session id: trimmed and otherwise left as it
+  arrived, with the joiners refused too. Both answer `Result<string, TextFault>`, where `Blank` is
+  the caller's to read as an error or as absence and `Hidden` is a refusal in both; a null receiver
+  is `Blank`. A value object over either is one line, shown in the README.
+
 ## 1.5.1 — 2026-10-11
 
 ### Fixed
