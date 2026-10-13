@@ -33,7 +33,7 @@ public readonly record struct Fault<TFault> where TFault : notnull
     /// <exception cref="ArgumentException"><paramref name="detail"/> is empty or white space: say <see langword="null"/> for no detail.</exception>
     public Fault(TFault reason, string? detail = null)
     {
-        Reason = reason is null ? throw ThrowHelper.NullContent(nameof(reason)) : reason;
+        Reason = reason is null ? throw new ArgumentNullException(nameof(reason), "A fault's reason is one of its type's values; it is never null.") : reason;
         Detail = detail is not null && string.IsNullOrWhiteSpace(detail)
             ? throw new ArgumentException("A fault's detail is a sentence, or null for none; it is never blank.", nameof(detail))
             : detail;

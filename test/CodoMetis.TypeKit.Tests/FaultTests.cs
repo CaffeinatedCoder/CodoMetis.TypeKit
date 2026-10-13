@@ -85,6 +85,8 @@ public sealed class FaultTests
         var refusal = Should.Throw<ArgumentNullException>(() => Fault.Of<string>(null!));
 
         refusal.ParamName.ShouldBe("reason");
+        refusal.Message.ShouldStartWith("A fault's reason");
+        refusal.Message.ShouldNotContain("Option");
     }
 
     [Fact]
