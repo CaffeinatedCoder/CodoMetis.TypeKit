@@ -28,6 +28,8 @@ internal static class DiagnosticIds
 
     public const string RequiredParameterlessConstructor = "CMTK0011";
 
+    public const string PositionalMatchArgument = "CMTK0012";
+
     /// <summary>
     /// The rule's section of the analyzer README on GitHub, which an IDE opens from the diagnostic.
     /// The README's <c>## CMTK000N</c> headings give the anchors (AnalyzerHelpLinkTests).

@@ -23,9 +23,10 @@ appears to: an instance that passed no factory, or a value object that was never
 | CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. |
 | CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute, `[Abstract]`, `[Sealed]`, `[Record]` or `[Concrete]`, at any closed use: a base type, a member, a parameter, a local, a `typeof`, a call, written or inferred. A type parameter forwarded without the attribute is a breach too. |
 | CMTK0011 | Error | A concrete type that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. The code fix writes or changes the constructor. |
+| CMTK0012 | Error | A closed set's `Match` given an argument by position, which binds to whichever member is declared at that place, so reordering the members swaps the branches. The code fix names every argument. |
 
 The ids are public contract and never change meaning. The generators' own build errors,
-CMTK1000 to CMTK1011, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
+CMTK1000 to CMTK1021, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
 
 Every rule also runs in `.razor` and `.cshtml` files (see [Generated code](#generated-code-and-razor)).
 
@@ -372,6 +373,23 @@ no fix: every other constructor of such a type chains to the primary one, with a
 author knows. The requirement reaches a type through any chain of base classes and interfaces, and
 the attribute is read from metadata, so the marked type can live in another package.
 
+## CMTK0012
+
+A closed set's `Match` takes one delegate per member, in the order the members are declared, so
+every parameter has the same type. An argument by position binds to whichever member is declared
+at that place: reorder two members, and every such call swaps their branches and compiles as
+before. A named argument follows its member, and a member renamed or removed fails the call.
+
+```csharp
+var label = status.Match(() => "Open", () => "On its way", () => "Cancelled");   // CMTK0012: by position
+var named = status.Match(open: () => "Open", shipped: () => "On its way", cancelled: () => "Cancelled");
+```
+
+The code fix names each argument after the parameter it binds to now, so the call keeps its
+meaning. A parameter is the member's name with its first letter lower-cased, and a keyword is
+escaped: a member `New` is `@new:`. An overload the set declares itself, such as
+`Match(Func<OrderStatus, string>)`, is its own and is not reported.
+
 ## Configuration
 
 Severity follows the usual `.editorconfig` mechanism, for instance
@@ -381,8 +399,8 @@ there too, put the line in a `.globalconfig` file, which applies to every file o
 
 The errors are the rules where the code is wrong whatever surrounds it: a `default` written out
 (CMTK0001), a value object nothing generates (CMTK0002), validation bypassed (CMTK0004), a type
-argument that breaks what its parameter declares (CMTK0010), and a constructor a host will look for
-and not find (CMTK0011). A
+argument that breaks what its parameter declares (CMTK0010), a constructor a host will look for
+and not find (CMTK0011), and branches bound to members by their order (CMTK0012). A
 warning is what gets ignored, so these fail the build. The others are warnings, or for CMTK0007 Info,
 because correct code can look the same: an array filled in a loop straight after it is created
 (CMTK0005), a member a framework sets (CMTK0006), a sequence known not to be empty (CMTK0009), a

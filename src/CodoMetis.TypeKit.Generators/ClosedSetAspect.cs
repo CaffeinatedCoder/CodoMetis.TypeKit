@@ -57,9 +57,21 @@ internal sealed partial class ClosedSetAspect : TypeAspect
         foreach (var property in target.Properties.Where(p => p.IsStatic && p.Accessibility == Accessibility.Public && p.Type.Equals(target)))
             problems.Add(ClosedSetMemberNotAField.WithArguments((target, property.Name, "a static property")));
 
+        // A member named as a generated member failed the aspect (LAMA0506 beside Match, Parse and
+        // TryParse, LAMA0611 beside ToString), and two members whose names differ only in their first
+        // letter's case gave Match one parameter name twice (LAMA0611, CS0100).
+        var generatedNames = ClosedSetTypes.GeneratedNames(target);
+        foreach (var member in members.Where(member => generatedNames.Contains(member.Name)))
+            problems.Add(ClosedSetMemberNameTaken.WithArguments((target, member.Name, "has the name of a member the generators introduce")));
+        foreach (var shared in members.GroupBy(ClosedSetTypes.ParameterName).Where(group => group.Count() > 1))
+        {
+            foreach (var member in shared.Skip(1))
+                problems.Add(ClosedSetMemberNameTaken.WithArguments((target, member.Name, $"gives Match the parameter '{shared.Key}', as '{target.Name}.{shared.First().Name}' does")));
+        }
+
         // A hand-written member the generators introduce failed the aspect with a Metalama error that
         // names no fix; a hand-written ToString() is the seam and is kept instead.
-        var declaredByHand = ClosedSetTypes.GeneratedMembersDeclaredByHand(target, members.Count);
+        var declaredByHand = ClosedSetTypes.GeneratedMembersDeclaredByHand(target, members);
         if (declaredByHand.Count > 0)
             problems.Add(HandWrittenGeneratedMember.WithArguments((target, string.Join(", ", declaredByHand),
                 (declaredByHand.Count == 1 ? "the generators introduce it themselves; remove it" : "the generators introduce these themselves; remove them")
@@ -137,8 +149,8 @@ internal sealed partial class ClosedSetAspect : TypeAspect
             m.Accessibility = Accessibility.Public;
             m.AddAttribute(CodeAnnotations.CompilerGenerated);
             var func = m.Parameters[0].Type;
-            m.Parameters[0].Name = Camel(members[0].Name);
-            foreach (var member in members.Skip(1)) m.AddParameter(Camel(member.Name), func);
+            m.Parameters[0].Name = ClosedSetTypes.ParameterName(members[0]);
+            foreach (var member in members.Skip(1)) m.AddParameter(ClosedSetTypes.ParameterName(member), func);
         });
 
         var converter = builder.IntroduceClass($"{target.Name}JsonConverter", buildType: t =>
@@ -150,12 +162,11 @@ internal sealed partial class ClosedSetAspect : TypeAspect
         });
         converter.IntroduceMethod(nameof(JsonReadTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = "Read"; m.ReturnType = target; m.AddAttribute(CodeAnnotations.CompilerGenerated); });
         converter.IntroduceMethod(nameof(JsonWriteTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = "Write"; m.Parameters[1].Type = target; m.AddAttribute(CodeAnnotations.CompilerGenerated); });
+        converter.IntroduceMethod(nameof(JsonReadAsPropertyNameTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = "ReadAsPropertyName"; m.ReturnType = target; m.AddAttribute(CodeAnnotations.CompilerGenerated); });
+        converter.IntroduceMethod(nameof(JsonWriteAsPropertyNameTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = "WriteAsPropertyName"; m.Parameters[1].Type = target; m.AddAttribute(CodeAnnotations.CompilerGenerated); });
 
         builder.IntroduceAttribute(AttributeConstruction.Create(typeof(JsonConverterAttribute), constructorArguments: [converter.Target]));
         builder.IntroduceAttribute(AttributeConstruction.Create(TypeFactory.GetNamedType(typeof(GeneratedClosedSetAttribute<>)).WithTypeArguments(target)));
         builder.IntroduceAttribute(CodeAnnotations.CompilerGenerated);
     }
-
-    [CompileTime]
-    private static string Camel(string name) => char.ToLowerInvariant(name[0]) + name[1..];
 }

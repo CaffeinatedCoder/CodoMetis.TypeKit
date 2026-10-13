@@ -565,9 +565,18 @@ run dotnet add package NodaTime --version "$(central_version NodaTime)"
 
 cat > Shop.cs <<'CSHARP'
 using CodoMetis.TypeKit;
+using CodoMetis.TypeKit.ClosedSets;
 using CodoMetis.TypeKit.ValueObjects;
 
 namespace Shop;
+
+// A closed set: its name in JSON, as a value and a dictionary key, a string enum in OpenAPI, and a
+// text column in EF Core, a JSON column's included.
+public sealed partial class OrderStatus : IClosedSet<OrderStatus>
+{
+    public static readonly OrderStatus Open = new();
+    public static readonly OrderStatus Shipped = new();
+}
 
 // One per JSON strategy: a reader method (Guid), the serializer's contract for a number, the
 // fallback with a built-in converter (Uri, an enum), a string, and parsing through a TypeConverter.
@@ -670,6 +679,12 @@ await Check("stored", async () =>
     return JsonSerializer.Deserialize<Code>("\"abc\"", store)!.Value;
 });
 await Check("option-refused", async () => JsonSerializer.Serialize(new Holder(Option.Some(1)), ShopJson.Default.Holder));
+await Check("set-json", async () => JsonSerializer.Serialize(new Tracking(OrderStatus.Shipped, new() { [OrderStatus.Open] = 1 }), ShopJson.Default.Tracking));
+await Check("set-json-read", async () =>
+{
+    var tracking = JsonSerializer.Deserialize("""{"Status":"Open","Counts":{"Shipped":2}}""", ShopJson.Default.Tracking)!;
+    return $"{ReferenceEquals(tracking.Status, OrderStatus.Open)} {tracking.Counts[OrderStatus.Shipped]}";
+});
 
 // Parsing, including through a TypeConverter (NodaTime's LocalDate).
 await Check("parse", async () => $"{Quantity.Parse("42", null).Value} {Weekday.Parse("Monday", null).Value} {Link.Parse("https://p.test/", null).Value} {Day.Parse("2026-09-27", null).Value:yyyy-MM-dd}");
@@ -695,6 +710,7 @@ await using var app = builder.Build();
 app.MapOpenApi();
 app.MapGet("/orders/{id}", (OrderId id, Quantity? limit) => new OrderView(id, [Quantity.From(1)], Amount.From(1.5m)));
 app.MapPost("/orders", (OrderView body) => body.Amount);
+app.MapPost("/tracking", (Tracking body) => body.Status.Name);
 app.MapPatch("/orders/{id}", (OrderId id, OrderPatch patch) => $"{patch.Code.Match(code => $"Value({code.Value})", () => "Null", () => "Absent")} {patch.Note.Match(note => $"Value({note})", () => "Null", () => "Absent")}");
 app.MapGet("/codes/{text}", (string text) => Code.Create(text).ToHttpResult());
 await app.StartAsync();
@@ -711,6 +727,7 @@ var schemas = document?["components"]?["schemas"];
 Console.WriteLine($"openapi-component={schemas?["OrderId"]?.ToJsonString() ?? "missing"}");
 Console.WriteLine($"openapi-parameter={document?["paths"]?["/orders/{id}"]?["get"]?["parameters"]?[0]?["schema"]?.ToJsonString() ?? "missing"}");
 Console.WriteLine($"openapi-items={schemas?["OrderView"]?["properties"]?["quantities"]?["items"]?.ToJsonString() ?? "missing"}");
+Console.WriteLine($"openapi-set={schemas?["OrderStatus"]?.ToJsonString() ?? "missing"}");
 await Check("bound", async () => ((int)(await http.GetAsync($"/orders/{Guid.NewGuid()}?limit=3")).StatusCode).ToString());
 await Check("malformed", async () => ((int)(await http.GetAsync("/orders/nope")).StatusCode).ToString());
 // A merge patch through the context: the patch's converter hides Code and string from the generator,
@@ -737,16 +754,20 @@ public sealed record OrderPatch(Patch<Code> Code, Patch<string?> Note);
 
 public sealed record Holder(Option<int> Value);
 
+public sealed record Tracking(OrderStatus Status, Dictionary<OrderStatus, int> Counts);
+
 // Lists no wrapped type: the generated converters must not need one.
 [JsonSerializable(typeof(Line))]
 [JsonSerializable(typeof(Holder))]
 [JsonSerializable(typeof(Code))]
 [JsonSerializable(typeof(Amount))]
+[JsonSerializable(typeof(Tracking))]
 internal partial class ShopJson : JsonSerializerContext;
 
 // The web host's: what the endpoints exchange, and what their value objects wrap, for the schemas.
 [JsonSerializable(typeof(OrderView))]
 [JsonSerializable(typeof(OrderPatch))]
+[JsonSerializable(typeof(Tracking))]
 [JsonSerializable(typeof(Amount))]
 [JsonSerializable(typeof(Code))]
 [JsonSerializable(typeof(string))]
@@ -780,11 +801,26 @@ var id = OrderId.From(Guid.Parse("0199aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee"));
 
 await using var db = new StoreDb();
 await db.Database.OpenConnectionAsync();
-await db.Database.ExecuteSqlRawAsync("CREATE TABLE Orders (Id TEXT NOT NULL PRIMARY KEY, Code TEXT NOT NULL, Quantity INTEGER NOT NULL)");
+await db.Database.ExecuteSqlRawAsync("CREATE TABLE Orders (Id TEXT NOT NULL PRIMARY KEY, Code TEXT NOT NULL, Quantity INTEGER NOT NULL, Status TEXT NOT NULL, Delivery TEXT NOT NULL)");
 await Check("ef-insert", async () =>
 {
-    db.Orders.Add(new Order { Id = id, Code = Code.FromKnownGood("ABC"), Quantity = Quantity.From(2) });
+    db.Orders.Add(new Order { Id = id, Code = Code.FromKnownGood("ABC"), Quantity = Quantity.From(2), Status = OrderStatus.Shipped, Delivery = new() { Status = OrderStatus.Open, Quantity = Quantity.From(3) } });
     return (await db.SaveChangesAsync()).ToString();
+});
+db.ChangeTracker.Clear();
+await Check("ef-set-stored", async () =>
+{
+    await using var command = db.Database.GetDbConnection().CreateCommand();
+    command.CommandText = "SELECT Status || ' ' || Delivery FROM Orders";
+    return (string)(await command.ExecuteScalarAsync())!;
+});
+var shipped = OrderStatus.Shipped;
+await Check("ef-set-parameter", async () => (await db.Orders.Where(o => o.Status == shipped).SingleAsync()).Status.Name);
+db.ChangeTracker.Clear();
+await Check("ef-json-column", async () =>
+{
+    var order = await db.Orders.Where(o => o.Delivery.Status == OrderStatus.Open).SingleAsync();
+    return $"{order.Delivery.Status.Name} {order.Delivery.Quantity.Value}";
 });
 db.ChangeTracker.Clear();
 await Check("ef-value", async () => (await db.Orders.Where(o => o.Code.Value.StartsWith("AB")).SingleAsync()).Quantity.Value.ToString());
@@ -814,6 +850,15 @@ public class Order
     public OrderId Id { get; set; }
     public Code Code { get; set; } = null!;
     public Quantity Quantity { get; set; }
+    public OrderStatus Status { get; set; } = OrderStatus.Open;
+    public Delivery Delivery { get; set; } = new();
+}
+
+// Mapped to a JSON column: a closed set and a value object inside it.
+public class Delivery
+{
+    public OrderStatus Status { get; set; } = OrderStatus.Open;
+    public Quantity Quantity { get; set; }
 }
 
 // A key over an integer, which UseTypeKit() makes an identity key as it would be for an int.
@@ -829,6 +874,9 @@ public sealed class StoreDb : DbContext
     public DbSet<Shipment> Shipments => Set<Shipment>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder options) => options.UseSqlite("Data Source=:memory:").UseTypeKit();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<Order>().ComplexProperty(o => o.Delivery, delivery => delivery.ToJson());
 }
 CSHARP
 
@@ -862,12 +910,15 @@ assert_contains "openapi=200"                      "$work/aot.out" "the OpenAPI 
 assert_contains 'openapi-component={"type":"string","format":"uuid"}' "$work/aot.out" "OrderId is a uuid component"
 assert_contains 'openapi-parameter={"type":"string","format":"uuid"}' "$work/aot.out" "the route parameter is a uuid"
 assert_contains 'openapi-items={"$ref":"#/components/schemas/Quantity"}' "$work/aot.out" "a list of value objects keeps its items"
+assert_contains 'openapi-set={"enum":["Open","Shipped"],"type":"string"}' "$work/aot.out" "a closed set is a string enum of its members' names"
 assert_contains "bound=200"                        "$work/aot.out" "a route parameter binds through the generated TryParse"
 assert_contains 'result-success="ABC"'             "$work/aot.out" "ToHttpResult answers a success with its value"
 assert_contains "result-fault=422 application/problem+json NotUpperCase" "$work/aot.out" "and a fault as problem details with its mapped status"
 assert_contains "result-responses=200,400,422"     "$work/aot.out" "the document lists the value and each mapped status"
 assert_contains "malformed=400"                    "$work/aot.out" "a malformed route parameter is a 400"
 assert_contains 'patch=Value(ABC) Null'            "$work/aot.out" "a Patch<T> reads a value object and a null through the context under Native AOT"
+assert_contains 'set-json={"Status":"Shipped","Counts":{"Open":1}}' "$work/aot.out" "a closed set writes its name through the context, as a value and as a dictionary key"
+assert_contains "set-json-read=True 2"             "$work/aot.out" "and reads the members themselves back"
 assert_contains "patch-refused=400"                "$work/aot.out" "a value object a patch wraps still refuses"
 assert_contains 'openapi-patch={"type":["null","string"],"description":"A JSON Merge Patch field: absent leaves the value as it is, null clears it, a value sets it."} required=none' "$work/aot.out" "a patch property is its wrapped type's schema, inlined and nullable, and not required"
 assert_contains "ef-insert=1"                      "$work/aot.out" "EF Core writes value objects through the compiled model"
@@ -875,6 +926,9 @@ assert_contains "ef-value=2"                       "$work/aot.out" ".Value trans
 assert_contains "ef-parameter=ABC"                 "$work/aot.out" "a value-object parameter is mapped at run time"
 assert_contains "ef-stored=lower"                  "$work/aot.out" "a stored value the rules refuse is read without them"
 assert_contains "ef-identity=1,2"                  "$work/aot.out" "a key over an integer is generated by the database"
+assert_contains 'ef-set-stored=Shipped {"Quantity":3,"Status":"Open"}' "$work/aot.out" "a closed set is its name in a column and in a JSON column, through the compiled model"
+assert_contains "ef-set-parameter=Shipped"         "$work/aot.out" "a closed-set parameter is mapped at run time"
+assert_contains "ef-json-column=Open 3"            "$work/aot.out" "a JSON column reads a closed set and a value object back in a precompiled query"
 
 [[ $failed -eq 0 ]] || { echo; echo "consumer smoke test FAILED"; exit 1; }
 echo

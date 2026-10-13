@@ -177,6 +177,54 @@ public sealed class ClosedSetTests
         JsonSerializer.Deserialize<OptionalHolder>(json, new JsonSerializerOptions { RespectNullableAnnotations = true })!.Status.ShouldBeNull();
     }
 
+    /// <summary>
+    /// Every delegate is checked before a branch is picked, as Option's and Result's are: a null for a
+    /// member not matched passed until that member first arrived.
+    /// </summary>
+    [Fact]
+    public void Match_refuses_a_null_delegate_whichever_member_it_is_called_on()
+    {
+        foreach (var member in ProbeStatus.All)
+        {
+            Should.Throw<ArgumentNullException>(() => member.Match(open: null!, shipped: () => 2, cancelled: () => 3)).ParamName.ShouldBe("open");
+            Should.Throw<ArgumentNullException>(() => member.Match(open: () => 1, shipped: null!, cancelled: () => 3)).ParamName.ShouldBe("shipped");
+            Should.Throw<ArgumentNullException>(() => member.Match(open: () => 1, shipped: () => 2, cancelled: null!)).ParamName.ShouldBe("cancelled");
+        }
+    }
+
+    /// <summary>A dictionary key is the member's name, as the value is; the serializer refused a set as a key both ways before.</summary>
+    [Fact]
+    public void A_dictionary_key_is_the_name_and_reads_the_member_itself_back()
+    {
+        var counts = new Dictionary<ProbeStatus, int> { [ProbeStatus.Open] = 1, [ProbeStatus.Cancelled] = 3 };
+
+        var json = JsonSerializer.Serialize(counts);
+        json.ShouldBe("""{"Open":1,"Cancelled":3}""");
+
+        var back = JsonSerializer.Deserialize<Dictionary<ProbeStatus, int>>(json)!;
+        back.Keys.ShouldBe([ProbeStatus.Open, ProbeStatus.Cancelled]);
+        back[ProbeStatus.Cancelled].ShouldBe(3);
+
+        // As the value: no naming policy renames a key, which would not read back.
+        JsonSerializer.Serialize(counts, new JsonSerializerOptions { DictionaryKeyPolicy = JsonNamingPolicy.CamelCase }).ShouldBe(json);
+
+        var refusal = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<Dictionary<ProbeStatus, int>>("""{"Nope":1}"""));
+        refusal.Message.ShouldContain("ProbeStatus");
+        refusal.Message.ShouldNotContain("Nope");
+
+        Should.Throw<InvalidOperationException>(() => JsonSerializer.Serialize(new Dictionary<ProbeLevel, int> { [ProbeLevel.Unlisted()] = 1 }))
+              .Message.ShouldEndWith("#an-instance-that-is-not-a-member-of-its-set");
+    }
+
+    /// <summary>A member's name lower-cased may be a keyword; the parameter is still that name, escaped where it is written.</summary>
+    [Fact]
+    public void A_member_whose_parameter_is_a_keyword_is_matched_by_the_escaped_name()
+    {
+        ProbeKeyword.Default.Match(@new: () => "new", @default: () => "default").ShouldBe("default");
+        ProbeKeyword.New.Name.ShouldBe("New");
+        typeof(ProbeKeyword).GetMethod("Match")!.GetParameters().Select(parameter => parameter.Name).ShouldBe(["new", "default"]);
+    }
+
     private static string Names<TSet>() where TSet : class, IClosedSet<TSet> => string.Join(",", TSet.All.Select(member => member.Name));
 
     private sealed class Counter : IClosedSetVisitor<int>

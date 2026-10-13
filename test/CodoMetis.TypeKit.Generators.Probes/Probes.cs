@@ -264,3 +264,13 @@ public sealed partial class ProbePriority : IClosedSet<ProbePriority>
         else high();
     }
 }
+
+/// <summary>
+/// A closed set whose members are named as C# keywords once lower-cased: <c>Match</c>'s parameters
+/// are <c>new</c> and <c>default</c>, written <c>@new:</c> and <c>@default:</c> at a call.
+/// </summary>
+public sealed partial class ProbeKeyword : IClosedSet<ProbeKeyword>
+{
+    public static readonly ProbeKeyword New = new();
+    public static readonly ProbeKeyword Default = new();
+}

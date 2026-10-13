@@ -29,7 +29,7 @@ your own, and it can be declared inside another type.
 | Package | Role | Metalama |
 |---|---|---|
 | [CodoMetis.TypeKit](src/CodoMetis.TypeKit/README.md) | `Option<T>`, `Result<T, TError>`, `Result<TError>`, the value-object contracts, the text guards `AsText()` and `AsIdentifier()`, and the analyzers that guard them | no |
-| [CodoMetis.TypeKit.Analyzers](src/CodoMetis.TypeKit.Analyzers/README.md) | CMTK0001–CMTK0011: no `default` of a value object, an `Option` or a `Result`, written in source or handed out by `FirstOrDefault` and its kind; no value object nobody generates; no ignored result; no validation bypass; no comparing two value objects' values; no type argument that breaks what its parameter declares with `[Abstract]`, `[Sealed]`, `[Record]` or `[Concrete]`; no type without the constructor its host will look for. In Razor components too. Arrives with the base package | no |
+| [CodoMetis.TypeKit.Analyzers](src/CodoMetis.TypeKit.Analyzers/README.md) | CMTK0001–CMTK0012: no `default` of a value object, an `Option` or a `Result`, written in source or handed out by `FirstOrDefault` and its kind; no value object nobody generates; no ignored result; no validation bypass; no comparing two value objects' values; no type argument that breaks what its parameter declares with `[Abstract]`, `[Sealed]`, `[Record]` or `[Concrete]`; no type without the constructor its host will look for; no closed-set `Match` bound by position. In Razor components too. Arrives with the base package | no |
 | [CodoMetis.TypeKit.Generators](src/CodoMetis.TypeKit.Generators/README.md) | The compile-time generation, in the project that declares value objects | yes |
 | [CodoMetis.TypeKit.EntityFrameworkCore](src/CodoMetis.TypeKit.EntityFrameworkCore/README.md) | Value objects as columns with nothing registered per type, and `.Value` in LINQ | no |
 | [CodoMetis.TypeKit.AspNetCore](src/CodoMetis.TypeKit.AspNetCore/README.md) | Value objects in the OpenAPI document, with the schema of the type they wrap; a `Result` as the response, a fault as problem details | no |
@@ -121,7 +121,7 @@ services.AddOpenApi(options => options.AddTypeKit());                    // Orde
   identity column; its OpenAPI schema is the one ASP.NET publishes for the wrapped type. Only what
   the value object refuses changes.
 - **Loud failures.** A declaration that cannot be generated is a build error naming the
-  declaration, CMTK1000 to CMTK1012, never a type with nothing in it. The analyzers make `default`
+  declaration, CMTK1000 to CMTK1021, never a type with nothing in it. The analyzers make `default`
   of a value object, an `Option` or a `Result` an error.
 - **Discovery by interface.** The EF Core and OpenAPI satellites recognise a value object by the
   attribute the generators put beside `IValueObject<,>`, whose type arguments are constrained to it,
@@ -196,7 +196,7 @@ references `CodoMetis.TypeKit.Generators` and in every project that references t
 object is declared by implementing its interface, with no attribute and nothing registered.
 Templates write the generated members as ordinary C#, which a build can write out for you to read
 ([Reading the generated code](src/CodoMetis.TypeKit.Generators/README.md#reading-the-generated-code)).
-A declaration that cannot be generated fails the build with its name on it, CMTK1000 to CMTK1012,
+A declaration that cannot be generated fails the build with its name on it, CMTK1000 to CMTK1021,
 instead of compiling to less than it appears to. And Metalama runs the analyzers on the code it
 transformed, which is how they reach Razor components.
 

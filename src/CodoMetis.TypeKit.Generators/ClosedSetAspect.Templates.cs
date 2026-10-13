@@ -87,10 +87,19 @@ internal sealed partial class ClosedSetAspect
         throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMember(args.Set.Name);
     }
 
+    /// <summary>
+    /// Every delegate is checked before a branch is picked, as <c>Option</c> and <c>Result</c> check
+    /// theirs: a null for a member not matched passed until that member first arrived.
+    /// </summary>
     [Template]
     public TResult MatchTemplate<TResult>(Func<TResult> first)
     {
         var args = (ClosedSetArguments)meta.Tags.Source!;
+        foreach (var parameter in meta.Target.Parameters)
+        {
+            ArgumentNullException.ThrowIfNull(parameter.Value, parameter.Name);
+        }
+
         var index = meta.CompileTime(0);
         foreach (var member in args.Members)
         {
@@ -127,5 +136,29 @@ internal sealed partial class ClosedSetAspect
     public void JsonWriteTemplate(Utf8JsonWriter writer, dynamic? value, JsonSerializerOptions options)
     {
         writer.WriteStringValue((string)value!.Name);
+    }
+
+    /// <summary>
+    /// A dictionary key is the member's name too, which the serializer refused for a converter without
+    /// these two (NotSupportedException, both ways). Written as it is, as the value is: a
+    /// <c>DictionaryKeyPolicy</c> renames only on writing, so a renamed key would not read back.
+    /// </summary>
+    [Template]
+    public dynamic? JsonReadAsPropertyNameTemplate(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        var args = (ClosedSetArguments)meta.Tags.Source!;
+        var name = reader.GetString();
+        foreach (var candidate in args.Members)
+        {
+            if (name == candidate.Name) return candidate.Value;
+        }
+
+        throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMemberInJson(args.Set.Name);
+    }
+
+    [Template]
+    public void JsonWriteAsPropertyNameTemplate(Utf8JsonWriter writer, dynamic? value, JsonSerializerOptions options)
+    {
+        writer.WritePropertyName((string)value!.Name);
     }
 }

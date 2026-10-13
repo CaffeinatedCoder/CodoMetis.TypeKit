@@ -19,6 +19,17 @@ internal static class ClosedSetTypes
     public static IReadOnlyList<IField> Members(INamedType type) =>
         [.. type.Fields.Where(f => f.IsStatic && f.Accessibility == Accessibility.Public && f.Type.Equals(type) && f.Writeability == Writeability.ConstructorOnly)];
 
+    /// <summary>The names of what the generators introduce into the set itself; nothing else in it may have one (CMTK1011, CMTK1021).</summary>
+    public static IReadOnlyList<string> GeneratedNames(INamedType set) =>
+        ["Name", "QualifiedName", "All", "Match", "Parse", "TryParse", "ToString", "_name", "_all", $"{set.Name}JsonConverter"];
+
+    /// <summary>
+    /// The name of <paramref name="member"/>'s parameter of <c>Match</c>: its own, with the first letter
+    /// lower-cased. A keyword is escaped where the code is written, so <c>New</c> is <c>@new:</c> at a
+    /// call. The analyzer's CMTK0012 names the arguments by the same rule.
+    /// </summary>
+    public static string ParameterName(IField member) => char.ToLowerInvariant(member.Name[0]) + member.Name[1..];
+
     /// <summary>
     /// Whether <paramref name="member"/> is initialized with <c>new</c> of the set where it is declared,
     /// and with nothing else: <c>new()</c>, <c>new(1, null)</c>, <c>new OrderStatus()</c>, each with an
@@ -129,21 +140,23 @@ internal static class ClosedSetTypes
     }
 
     /// <summary>
-    /// The members the generators introduce, written by hand: a property, field or nested type of a
-    /// generated name, a method with a generated signature, or an explicit implementation of
+    /// The members the generators introduce, written by hand: a property, field, event or nested type
+    /// of a generated name, a method with a generated signature, or an explicit implementation of
     /// <c>IClosedSet&lt;TSelf&gt;</c>. Each failed the aspect with a Metalama error naming no fix. An
-    /// overload of another signature is the set's own and is kept, as is <c>ToString()</c>, the seam.
+    /// overload of another signature is the set's own and is kept, as is <c>ToString()</c>, the seam. A
+    /// member of the set with a generated name is CMTK1021's, which says to rename it.
     /// </summary>
-    public static IReadOnlyList<string> GeneratedMembersDeclaredByHand(INamedType set, int memberCount)
+    public static IReadOnlyList<string> GeneratedMembersDeclaredByHand(INamedType set, IReadOnlyList<IField> members)
     {
         var text = TypeFactory.GetType(SpecialType.String);
+        var memberNames = new HashSet<string>(members.Select(member => member.ToDisplayString()));
 
         return
         [
-            .. ValueObjectDeclaration.MembersNamed(set, methods: false, "Name", "QualifiedName", "All", "_name", "_all", $"{set.Name}JsonConverter"),
+            .. ValueObjectDeclaration.MembersNamed(set, methods: false, [.. GeneratedNames(set)]).Where(declared => !memberNames.Contains(declared)),
             .. set.Methods.Where(method => IsOwn(method) && method.Name == "Parse" && SameParameters(method, text)).Select(ValueObjectDeclaration.Describe),
             .. set.Methods.Where(method => IsOwn(method) && method.Name == "TryParse" && SameParameters(method, text, set)).Select(ValueObjectDeclaration.Describe),
-            .. set.Methods.Where(method => IsOwn(method) && IsGeneratedMatch(method, memberCount)).Select(ValueObjectDeclaration.Describe),
+            .. set.Methods.Where(method => IsOwn(method) && IsGeneratedMatch(method, members.Count)).Select(ValueObjectDeclaration.Describe),
             .. set.Methods.Where(method => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && method.ExplicitInterfaceImplementations.Any(OfClosedSet)).Select(ValueObjectDeclaration.Describe),
             .. set.Properties.Where(property => property is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && property.ExplicitInterfaceImplementations.Any(OfClosedSet)).Select(ValueObjectDeclaration.Describe),
         ];

@@ -36,8 +36,17 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   signature; any other generated member written by hand is CMTK1011. An instance the set's
   own code makes beside its members has no name, and reading it throws rather than write a null.
   CMTK0002 covers a closed set without the generators.
-  `CodoMetis.TypeKit.EntityFrameworkCore` maps a closed set to a text column of the member's name;
-  `CodoMetis.TypeKit.AspNetCore` describes it as a string enum. Nothing is registered per set.
+  CMTK1021 refuses a member named as a generated member, or one whose `Match` parameter another
+  member's already is (`Open` and `open`). `Match` checks every delegate for null before it picks one,
+  and a set is a JSON dictionary key by its name.
+  `CodoMetis.TypeKit.EntityFrameworkCore` maps a closed set to a text column of the member's name, in a
+  primitive collection and a JSON column too, through a compiled model and under Native AOT
+  (`ClosedSetConverter<TSet>` names it explicitly); `CodoMetis.TypeKit.AspNetCore` describes it as a
+  string enum. Nothing is registered per set.
+- **`CodoMetis.TypeKit.Analyzers`**: CMTK0012, a closed set's `Match` given an argument by position.
+  Every parameter has the same type, one delegate per member in declaration order, so reordering two
+  members swapped their branches at such a call and compiled. The code fix names every argument after
+  the parameter it binds to.
 - **`CodoMetis.TypeKit`**: `Patch<T>`, a field of a JSON Merge Patch (RFC 7396): absent, null or a
   value, where System.Text.Json alone cannot tell an absent property from a null one. `default` is
   absent, the one meaningful default of the package, and the analyzers leave it alone. Reading never

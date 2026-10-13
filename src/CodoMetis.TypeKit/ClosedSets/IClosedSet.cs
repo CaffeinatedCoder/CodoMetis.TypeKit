@@ -19,8 +19,10 @@ namespace CodoMetis.TypeKit.ClosedSets;
 /// </para>
 /// <para>
 /// Unlike an <c>enum</c>, a closed set's <c>switch</c> is complete by construction: <c>Match</c> takes
-/// a delegate per member, so a member added later fails every call site until it is handled. The
-/// type is a sealed class, so members are singletons and equality is reference equality.
+/// a delegate per member, so a member added later fails every call site until it is handled. Its
+/// arguments are named (CMTK0012), since by position they would follow the declaration order, and
+/// it refuses a null delegate before picking one. The type is a sealed class, so members are
+/// singletons and equality is reference equality.
 /// </para>
 /// <para>
 /// The type must be a sealed partial class (CMTK1013, CMTK1014) with at least one member (CMTK1015),
@@ -28,6 +30,7 @@ namespace CodoMetis.TypeKit.ClosedSets;
 /// and not a record (CMTK1020), since every one of those would make an instance the generators cannot
 /// see as a member. Each member is initialized with <c>new</c> where it is declared, and with nothing
 /// else (CMTK1019): a member initialized with another member would give that instance two names. A
+/// member takes no name the generators use, nor another's <c>Match</c> parameter (CMTK1021). A
 /// <c>ToString()</c> written by hand is kept, as is an overload of a generated method with another
 /// signature; any other member the generators introduce, written by hand, is CMTK1011.
 /// </para>

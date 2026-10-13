@@ -119,8 +119,37 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1020", "SetRecord")]
     [InlineData("CMTK1011", "SetWithName")]
     [InlineData("CMTK1011", "SetWithExplicitAll")]
+    [InlineData("CMTK1021", "SetWithMemberNamedParse.Parse")]
+    [InlineData("CMTK1021", "SetWithMemberNamedToString.ToString")]
+    [InlineData("CMTK1021", "SetWithMemberNamedAll.All")]
+    [InlineData("CMTK1021", "SetWithCasedMembers.open")]
     public void A_declaration_that_cannot_be_generated_is_an_error(string id, string type) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains($"'{type}"), $"{id} on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
+
+    /// <summary>
+    /// A member named as a generated member failed the aspect (LAMA0506 beside Match, Parse and
+    /// TryParse, LAMA0611 beside ToString), or was CMTK1011 telling the author to remove it; two members
+    /// whose names differ in their first letter's case gave Match one parameter twice (LAMA0611, CS0100).
+    /// </summary>
+    [Theory]
+    [InlineData("SetWithMemberNamedParse.Parse", "has the name of a member the generators introduce")]
+    [InlineData("SetWithMemberNamedAll.All", "has the name of a member the generators introduce")]
+    [InlineData("SetWithCasedMembers.open", "gives Match the parameter 'open', as 'SetWithCasedMembers.Open' does")]
+    public void A_member_name_the_generators_take_is_refused_with_the_reason(string member, string reason) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1021" && error.Message.StartsWith($"'{member}' {reason}, so ") && error.Message.Contains("rename the member"), consumer.Output);
+
+    [Fact]
+    public void A_member_is_never_told_to_be_removed_as_a_hand_written_generated_member() =>
+        consumer.Errors.ShouldNotContain(error => error.Id == "CMTK1011" && error.Message.Contains("SetWithMemberNamed"), consumer.Output);
+
+    /// <summary>
+    /// Before weaving, where Metalama runs analyzers, the generated Match does not exist in the project
+    /// that declares the set; CMTK0012 still reports a call by position, with the parameter names the
+    /// generators give, which the named call beside it compiles with.
+    /// </summary>
+    [Fact]
+    public void CMTK0012_reports_a_call_by_position_with_the_generators_names_in_the_declaring_project() =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK0012" && error.Message.StartsWith("'SetToMatch.Match' is given an argument by position") && error.Message.Contains("(@new:, open:)"), consumer.Output);
 
     /// <summary>
     /// Every value object over another one is refused, so a cycle would be refused without this
@@ -306,7 +335,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CMTK1019", "CMTK1020", "CS0535"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK0012", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CMTK1019", "CMTK1020", "CMTK1021", "CS0535"], ignoreOrder: false, customMessage: consumer.Output);
 
     /// <summary>
     /// CS0535 is allowed above only for a refused closed set, whose interface members the generators
@@ -333,7 +362,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
         var errors = consumer.Errors.Where(error => error.Id.StartsWith("CMTK1", StringComparison.Ordinal)).ToList();
 
-        errors.Select(error => error.Id).Distinct().Count().ShouldBe(21, $"Not every CMTK1000-CMTK1020 error was observed, so the check below is incomplete:{Environment.NewLine}{consumer.Output}");
+        errors.Select(error => error.Id).Distinct().Count().ShouldBe(22, $"Not every CMTK1000-CMTK1021 error was observed, so the check below is incomplete:{Environment.NewLine}{consumer.Output}");
         errors.Where(error => !error.Message.EndsWith($". See {link}", StringComparison.Ordinal))
               .Select(error => $"{error.Id}: {error.Message}")
               .ShouldBeEmpty("These errors do not end with the link to the Build errors table.");
@@ -432,6 +461,24 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public sealed partial class SetWithName : IClosedSet<SetWithName> { public static readonly SetWithName A = new(); public string Name => "A"; }
 
             public sealed partial class SetWithExplicitAll : IClosedSet<SetWithExplicitAll> { public static readonly SetWithExplicitAll A = new(); static System.Collections.Generic.IReadOnlyList<SetWithExplicitAll> IClosedSet<SetWithExplicitAll>.All => [A]; }
+
+            public sealed partial class SetWithMemberNamedParse : IClosedSet<SetWithMemberNamedParse> { public static readonly SetWithMemberNamedParse A = new(); public static readonly SetWithMemberNamedParse Parse = new(); }
+
+            public sealed partial class SetWithMemberNamedToString : IClosedSet<SetWithMemberNamedToString> { public static readonly new SetWithMemberNamedToString ToString = new(); }
+
+            public sealed partial class SetWithMemberNamedAll : IClosedSet<SetWithMemberNamedAll> { public static readonly SetWithMemberNamedAll All = new(); }
+
+            public sealed partial class SetWithCasedMembers : IClosedSet<SetWithCasedMembers> { public static readonly SetWithCasedMembers Open = new(); public static readonly SetWithCasedMembers open = new(); }
+
+            // Generated; the calls below are CMTK0012's, in the project that declares the set.
+            public sealed partial class SetToMatch : IClosedSet<SetToMatch> { public static readonly SetToMatch New = new(); public static readonly SetToMatch Open = new(); }
+
+            public static class MatchCalls
+            {
+                public static int ByPosition(SetToMatch set) => set.Match(() => 1, () => 2);
+
+                public static int Named(SetToMatch set) => set.Match(@new: () => 1, open: () => 2);
+            }
 
             public readonly record struct NotPartial : IValue<int>;
 

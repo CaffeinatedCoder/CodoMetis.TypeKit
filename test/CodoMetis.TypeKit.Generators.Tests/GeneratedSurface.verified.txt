@@ -604,6 +604,19 @@ ProbeIsbn
   static op_Inequality(ProbeIsbn, ProbeIsbn) : Boolean
   extension static ProbeIsbnExtensions.GetValue(ProbeIsbn) : ProbeIsbnText
   extension static ProbeIsbnExtensions.ValueOrNull(ProbeIsbn?) : ProbeIsbnText
+ProbeKeyword
+  Match(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeKeyword>
+  attribute JsonConverterAttribute
+  implements IClosedSet<ProbeKeyword>
+  nested ProbeKeywordJsonConverter : JsonConverter<ProbeKeyword>
+  static All : IReadOnlyList<ProbeKeyword>
+  static Parse(String) : ProbeKeyword
+  static TryParse(String, out ProbeKeyword) : Boolean
 ProbeLabel
   <Clone>$() : ProbeLabel
   CompareTo(Object) : Int32

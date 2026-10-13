@@ -80,4 +80,7 @@ internal static class AspectDiagnostics
 
     public static readonly DiagnosticDefinition<INamedType> ClosedSetRecord =
         new("CMTK1020", Severity.Error, "'{0}' is a record, so it is not generated: 'with' copies a member into an instance that is none, and a record compares by value where a closed set's members are singletons. Declare it a sealed partial class." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<(INamedType Type, string Member, string Reason)> ClosedSetMemberNameTaken =
+        new("CMTK1021", Severity.Error, "'{0}.{1}' {2}, so '{0}' is not generated: rename the member." + SeeBuildErrors);
 }

@@ -588,10 +588,16 @@ Each phase ends green, and its guards have been proven by seeding the defect
     7. **The closed-set family** ✅ 2026-10-13, after [spikes/ClosedSets](../spikes/ClosedSets/README.md),
        which answered the compatibility question: a generated type with static members on Metalama
        2026.1 and `net10.0`, nothing newer needed. `IClosedSet<TSelf>` in the base package,
-       `ClosedSetAspect` in the generators (applied by the same transitive fabric), CMTK1013–1020, the
+       `ClosedSetAspect` in the generators (applied by the same transitive fabric), CMTK1013–1021, the
        discovery attribute `GeneratedClosedSetAttribute<TSet>` with a typed visitor, a text column in
        the EF satellite and a string enum in the OpenAPI satellite. The fault bits (a kind and a
-       sentence per member) are step 8's, since the fault responses read them.
+       sentence per member) are step 8's, since the fault responses read them. Two reviews the same
+       day: the first's fixes are CMTK1019–1020 and the kept `ToString()`; the second's are CMTK0012
+       (arguments by position), CMTK1021 (a member named as a generated member, or two sharing a
+       `Match` parameter), null delegates refused before a branch is picked, dictionary keys, and
+       `ClosedSetConverter<TSet>`: the compiled model wrote the internal mapping's helpers out as C#
+       in the application (CS0122), so no closed set reached Native AOT. The smoke test's `aot`
+       consumer now publishes a set's JSON, its column, a parameter and a JSON column.
     8. **The fault responses**, after [spikes/FaultResponses](../spikes/FaultResponses/README.md),
        last, since they read a smart enum's kind.
     9. **The breaks**: decision 34's promotions, the two rules at Error, and the baseline's verdict
@@ -1615,6 +1621,7 @@ exist.
 | CMTK0009 | A call that returns the `default` of a no-default struct when it finds nothing: `Enumerable`/`Queryable` `FirstOrDefault`, `LastOrDefault`, `SingleOrDefault`, `ElementAtOrDefault`, `DefaultIfEmpty` without a default value, `Nullable<T>.GetValueOrDefault()`, `GetValueOrDefault(dictionary, key)`, `Activator.CreateInstance`, `RuntimeHelpers.GetUninitializedObject`, and `Option.OrDefault()`. The message names `FirstOrNone`, `GetValueOrNone` or `Or`. Warning, since a sequence checked for emptiness first is correct. Also `ImmutableArray`'s own, `Find`/`FindLast` of `List<T>`, `Array` and `ImmutableList<T>`, `ImmutableDictionary.GetValueOrDefault` and the immutable builders', and the async `FirstOrDefaultAsync`, `LastOrDefaultAsync`, `SingleOrDefaultAsync` and `ElementAtOrDefaultAsync` of `System.Linq.AsyncEnumerable` and EF Core, whose type is the method's type argument; EF Core's only where the project references it | Warning | shipped in 1.0.0 |
 | CMTK0010 | A type argument that breaks a constraint attribute on its parameter (`[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]`), at any closed use: a base type, an implemented interface, a member type, a local, a `typeof`, a call with its type arguments written (at the argument) or inferred (at the call). A type parameter forwarded without the same attribute is a breach too; `struct` proves `[Sealed]` and `[Concrete]`, `new()` proves `[Concrete]`. The open generic in its own body and an unbound `typeof` are silent. Reflection is out of reach | Error | built 2026-10-13 for 2.0.0 (phase 13), a major, so Error is within decision 34 |
 | CMTK0011 | A concrete type implementing or deriving from a type marked `[RequireParameterlessConstructor]`, directly or through another type, without a parameterless constructor of the required accessibility; a type declaring no constructor satisfies `Public`. A wrong accessibility is reported at the constructor. The code fix, the package's first, in `CodoMetis.TypeKit.Analyzers.CodeFixes.dll` beside the analyzer, writes or changes the constructor; a type with a primary constructor gets none | Error | built 2026-10-13 for 2.0.0 (phase 13) |
+| CMTK0012 | A closed set's generated `Match` given an argument by position: every parameter is a `Func<TResult>` in declaration order, so reordering two members swapped their branches and compiled. Bound, only the generated signature counts; unbound (the declaring project, before weaving), a call named `Match` on a closed set with one argument per member, its names the generators' rule (the member's name, first letter lower-cased, a keyword escaped). The code fix names every argument after the parameter it binds to now | Error | built 2026-10-13 for 2.0.0 (phase 13), after a review found the swap |
 | — | Code fixes for the aspect's shape diagnostics CMTK1000–1002 (missing `partial`/`record`/`readonly`) | — | proposed. The aspect keeps its own error as a backstop |
 
 **Rules that read calls see the source before weaving (measured 2026-09-28).** Metalama runs

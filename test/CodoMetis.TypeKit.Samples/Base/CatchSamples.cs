@@ -4,7 +4,7 @@ namespace ReadmeSamples.Base.Catching;
 
 public static class Outcomes
 {
-    public static async Task RunAsync(string source, string target, HttpClient client, Uri url)
+    public static async Task<Result<byte[], Exception>> RunAsync(string source, string target, HttpClient client, Uri url)
     {
         // sample: CodoMetis.TypeKit/catch
         Result<int, Exception> parsed = Result.Catch(() => int.Parse("42"));                                   // Success: 42
@@ -14,7 +14,8 @@ public static class Outcomes
         Result<byte[], Exception> fetched = await Result.CatchAsync(() => client.GetByteArrayAsync(url));      // waits for the task; its exception is the error
         // end sample
 
-        _ = (parsed, refused, narrowed, copied, fetched);
+        _ = (parsed, refused, narrowed, copied);
+        return fetched;
     }
 }
 
@@ -39,14 +40,28 @@ public sealed class CatchTests
         var target = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         try
         {
-            using var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromMilliseconds(100) };
-            await Outcomes.RunAsync(source, target, client, new Uri("http://127.0.0.1:1/unreachable"));
+            using var client = new HttpClient(new RefusingHandler());
+            var fetched = await Outcomes.RunAsync(source, target, client, new Uri("http://127.0.0.1:1/unreachable"));
+
             File.Exists(target).ShouldBeTrue();
+            fetched.TryGetValue(out _, out var error).ShouldBeFalse();
+            error.ShouldBeOfType<HttpRequestException>();
         }
         finally
         {
             File.Delete(source);
             File.Delete(target);
         }
+    }
+
+    /// <summary>
+    /// Refuses every request at once. A real socket with a short timeout raced: when the timeout fired
+    /// before the connection was refused, HttpClient threw a cancellation, which CatchAsync lets
+    /// through, and the test failed on a loaded machine.
+    /// </summary>
+    private sealed class RefusingHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromException<HttpResponseMessage>(new HttpRequestException("Connection refused."));
     }
 }
