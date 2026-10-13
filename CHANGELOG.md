@@ -92,7 +92,9 @@ this release adds, so nothing that built against 1.5.1 meets them.
   filler or NUL, which `IsNullOrWhiteSpace` lets through; the two zero-width joiners are kept, since
   they spell Persian, Arabic and Indic scripts and emoji sequences. `text.AsIdentifier()` is for a
   value another system issued, a subject claim or a session id: trimmed and otherwise left as it
-  arrived, with the joiners refused too. Both answer `Result<string, TextFault>`, where `Blank` is
+  arrived, with the joiners refused too. A variation selector is kept after the character it varies
+  and refused anywhere else, and a value of joiners, variation selectors and combining marks alone,
+  which renders nothing, is refused by both. Both answer `Result<string, TextFault>`, where `Blank` is
   the caller's to read as an error or as absence and `Hidden` is a refusal in both; a null receiver
   is `Blank`. A value object over either is one line, shown in the README.
 - **`CodoMetis.TypeKit`**: `FirstOrNone()`, `FirstOrNone(predicate)` and `FirstOrError(predicate, error)`

@@ -27,7 +27,7 @@ public readonly partial record struct SubjectId : IValidatedValue<SubjectId, str
 
 public static class Usage
 {
-    public static (Result<string, TextFault> Composed, Result<string, TextFault> Folded, Result<string, TextFault> Joined, Result<string, TextFault> Hidden, Result<string, TextFault> Filler, Result<string, TextFault> Issued, Result<string, TextFault> Forged) Guards()
+    public static (Result<string, TextFault> Composed, Result<string, TextFault> Folded, Result<string, TextFault> Joined, Result<string, TextFault> Hidden, Result<string, TextFault> Filler, Result<string, TextFault> Bare, Result<string, TextFault> Issued, Result<string, TextFault> Forged) Guards()
     {
         // sample: text/guards
         Result<string, TextFault> composed = "Zoe\u0308".AsText();            // Success: Zoë, composed to NFC: one code point for ë
@@ -35,11 +35,12 @@ public static class Usage
         Result<string, TextFault> joined = "\U0001F469\u200D\U0001F4BB".AsText();   // Success: 👩‍💻, the joiner holds the sequence together
         Result<string, TextFault> hidden = "Zoe\u200B".AsText();                // Error: Hidden, a zero-width space
         Result<string, TextFault> filler = "\u3164".AsText();                   // Error: Hidden, a Hangul filler that IsNullOrWhiteSpace accepts
+        Result<string, TextFault> bare = "\u200D".AsText();                     // Error: Hidden, a joiner with nothing to join
         Result<string, TextFault> issued = " a1b2-c3 ".AsIdentifier();          // Success: a1b2-c3, trimmed and otherwise as issued
         Result<string, TextFault> forged = "sub\u200Dject".AsIdentifier();      // Error: Hidden, a joiner in an identifier
         // end sample
 
-        return (composed, folded, joined, hidden, filler, issued, forged);
+        return (composed, folded, joined, hidden, filler, bare, issued, forged);
     }
 
     // sample: text/required-optional
@@ -90,10 +91,11 @@ public sealed class TextTests
         "\U0001F469\u200D\U0001F4BB".AsText().ShouldBeShownIn(Readme, Outcome);
         "Zoe\u200B".AsText().ShouldBeShownIn(Readme, Outcome);
         "\u3164".AsText().ShouldBeShownIn(Readme, Outcome);
+        "\u200D".AsText().ShouldBeShownIn(Readme, Outcome);
         " a1b2-c3 ".AsIdentifier().ShouldBeShownIn(Readme, Outcome);
         "sub\u200Dject".AsIdentifier().ShouldBeShownIn(Readme, Outcome);
 
-        var (composed, _, _, _, _, _, _) = Usage.Guards();
+        var (composed, _, _, _, _, _, _, _) = Usage.Guards();
         composed.TryGetValue(out var zoe, out _).ShouldBeTrue();
         zoe.ShouldBe("Zoë", "composed: one code point");
         zoe.Length.ShouldBe(3);

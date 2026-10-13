@@ -18,6 +18,8 @@ using them: which one, where, and inside a value object. The examples import `Co
 | Composes to NFC, so one spelling per name | yes | no, since an issued value is compared against what its issuer sends next time |
 | Refuses a character that renders as nothing | yes | yes |
 | The two zero-width joiners | kept: they spell Persian, Arabic and Indic scripts and hold an emoji sequence together | refused: no issuer needs one |
+| A variation selector | kept after the character it varies (an emoji's presentation, an ideograph's variant); elsewhere it selects nothing and is refused | the same |
+| A value of joiners, variation selectors and combining marks alone | refused: it renders no character of its own | refused |
 | A null receiver | `Blank` | `Blank` |
 
 ```csharp
@@ -26,6 +28,7 @@ Result<string, TextFault> folded = "Jean\u2003Paul".AsText();           // Succe
 Result<string, TextFault> joined = "\U0001F469\u200D\U0001F4BB".AsText();   // Success: 👩‍💻, the joiner holds the sequence together
 Result<string, TextFault> hidden = "Zoe\u200B".AsText();                // Error: Hidden, a zero-width space
 Result<string, TextFault> filler = "\u3164".AsText();                   // Error: Hidden, a Hangul filler that IsNullOrWhiteSpace accepts
+Result<string, TextFault> bare = "\u200D".AsText();                     // Error: Hidden, a joiner with nothing to join
 Result<string, TextFault> issued = " a1b2-c3 ".AsIdentifier();          // Success: a1b2-c3, trimmed and otherwise as issued
 Result<string, TextFault> forged = "sub\u200Dject".AsIdentifier();      // Error: Hidden, a joiner in an identifier
 ```

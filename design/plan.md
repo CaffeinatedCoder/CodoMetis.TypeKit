@@ -661,6 +661,12 @@ Each phase ends green, and its guards have been proven by seeding the defect
          `IList<T>` or `T[]` replaced a member that `All`, the JSON schema's enum and every
          enumeration then listed, while `Parse`, which reads the fields, answered the original. It
          is the array wrapped by `Array.AsReadOnly`, whose writes throw `NotSupportedException`.
+       - **Invisible text passed `AsText()`** ✅: a value of joiners alone (`"\u200D"`), of variation
+         selectors alone (filed as non-spacing marks, so no category test reached them), or of a
+         lone combining mark rendered nothing and was text. A value now needs a base character, and
+         a variation selector stands only directly after one, so emoji presentation, a flag, a
+         keycap and an ideographic variant survive; a joiner is not placed, since an Arabic letter
+         shown in its joining form on its own ends with one.
     10. **`2.0.0-preview.1` to nuget.org** once steps 7 and 8 exist, the consumer smoke test
         against it, then the release.
     - **A closed-set (smart enum) family**, declared by interface and joining `.Generators` (§1), the

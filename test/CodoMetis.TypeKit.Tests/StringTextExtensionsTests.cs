@@ -105,6 +105,62 @@ public sealed class StringTextExtensionsTests
     }
 
     /// <summary>
+    /// Characters that render only beside a base, as a whole value: a joiner, a variation selector or
+    /// a combining mark with nothing to join, select or sit on renders as nothing, and the value is
+    /// hidden rather than blank, whichever guard reads it.
+    /// </summary>
+    [Theory]
+    [InlineData("\u200D", "ZERO WIDTH JOINER")]
+    [InlineData("\u200C\u200D", "ZERO WIDTH NON-JOINER, ZERO WIDTH JOINER")]
+    [InlineData(" \u200D ", "ZERO WIDTH JOINER between spaces")]
+    [InlineData("\uFE0F", "VARIATION SELECTOR-16")]
+    [InlineData("\uFE0E\uFE0F", "VARIATION SELECTOR-15, VARIATION SELECTOR-16")]
+    [InlineData("\U000E0100", "VARIATION SELECTOR-17")]
+    [InlineData("\u180B", "MONGOLIAN FREE VARIATION SELECTOR ONE")]
+    [InlineData("\u200D\uFE0F", "ZERO WIDTH JOINER, VARIATION SELECTOR-16")]
+    [InlineData("\u0301", "COMBINING ACUTE ACCENT")]
+    [InlineData("\u0301\u200D", "COMBINING ACUTE ACCENT, ZERO WIDTH JOINER")]
+    public void A_value_that_renders_no_character_of_its_own_is_hidden(string value, string name)
+    {
+        Refusal(value.AsText()).ShouldBe(TextFault.Hidden, name);
+        Refusal(value.AsIdentifier()).ShouldBe(TextFault.Hidden, name);
+    }
+
+    /// <summary>
+    /// A variation selector chooses how the character before it is drawn, and draws nothing itself:
+    /// after a space, another selector, a joiner or nothing at all, it selects nothing and is a
+    /// hidden character in visible text.
+    /// </summary>
+    [Theory]
+    [InlineData("\uFE0FMustermann", "first")]
+    [InlineData("Muster \uFE0Fmann", "after a space")]
+    [InlineData("Muster\u2764\uFE0F\uFE0Fmann", "after another selector")]
+    [InlineData("Muster\u200D\uFE0Fmann", "after a joiner")]
+    [InlineData("Muster \U000E0100mann", "an ideographic selector after a space")]
+    public void A_variation_selector_that_selects_nothing_is_hidden(string value, string where)
+    {
+        Refusal(value.AsText()).ShouldBe(TextFault.Hidden, where);
+        Refusal(value.AsIdentifier()).ShouldBe(TextFault.Hidden, where);
+    }
+
+    /// <summary>
+    /// What the joiners and the selectors are for survives as text: emoji presentation, a flag and a
+    /// keycap, an ideographic variant, a Persian word with its non-joiner, a Devanagari conjunct, and
+    /// an Arabic letter shown in its joining form on its own, where the joiner ends the value.
+    /// </summary>
+    [Theory]
+    [InlineData("\u2764\uFE0F", "RED HEART, emoji presentation")]
+    [InlineData("\u2764\uFE0E", "RED HEART, text presentation")]
+    [InlineData("\U0001F3F3\uFE0F\u200D\U0001F308", "RAINBOW FLAG")]
+    [InlineData("1\uFE0F\u20E3", "KEYCAP DIGIT ONE")]
+    [InlineData("\u845B\U000E0100", "an ideographic variation sequence")]
+    [InlineData("\u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645", "Persian, with a non-joiner")]
+    [InlineData("\u0915\u094D\u200D\u0937", "Devanagari, a conjunct with a joiner")]
+    [InlineData("\u0647\u200D", "Arabic HEH in its initial form")]
+    public void A_variation_or_joining_sequence_survives_as_text(string value, string name) =>
+        Kept(value.AsText()).ShouldBe(value, name);
+
+    /// <summary>
     /// The two faults stay apart because the caller decides what a blank means: a required field
     /// turns it into an error, an optional one into absence. Collapsing them would make every
     /// optional field swallow a hidden character.

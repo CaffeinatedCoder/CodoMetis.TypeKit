@@ -343,7 +343,10 @@ trims, folds every space separator to an ordinary space, composes to NFC and ref
 that renders as nothing, keeping the two zero-width joiners because they spell Persian, Arabic and
 Indic scripts and hold an emoji sequence together. `AsIdentifier()` is for a value another system
 issued, a subject claim, a session id, a key: it trims and alters nothing else, since an issued
-value is compared against what its issuer sends next time, and it refuses the joiners too. Both
+value is compared against what its issuer sends next time, and it refuses the joiners too. A
+variation selector is kept after the character it varies and refused anywhere else, and a value of
+joiners, selectors and combining marks alone renders no character of its own and is refused by
+both. Both
 scan by `Rune`, so a character above the BMP is seen for what it is, and an unpaired surrogate is
 `Hidden` rather than an exception.
 

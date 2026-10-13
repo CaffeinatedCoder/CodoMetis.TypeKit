@@ -120,9 +120,25 @@ public static class StringTextExtensions
         return folded?.ToString() ?? text;
     }
 
+    /// <summary>
+    /// Whether the text carries a character that renders as nothing, or renders no character of its
+    /// own at all.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A joiner, a variation selector and a combining mark render only beside a base character, so a
+    /// value of nothing else, <c>"\u200D"</c> or <c>"\uFE0F"</c>, shows nothing and is hidden. A variation
+    /// selector chooses how the character before it is drawn: after a base it is an emoji's
+    /// presentation or an ideograph's variant, and anywhere else it selects nothing. A joiner is not
+    /// placed: an Arabic letter shown in its joining form on its own ends with one, which is
+    /// orthography; a value of joiners alone is caught by needing a base.
+    /// </para>
+    /// </remarks>
     private static bool IsHidden(string text, bool tolerateJoiners)
     {
-        var rest = text.AsSpan();
+        var rest            = text.AsSpan();
+        var afterBase       = false;
+        var rendersBase     = false;
 
         while (!rest.IsEmpty)
         {
@@ -131,11 +147,41 @@ public static class StringTextExtensions
 
             if (!IsRendered(rune, tolerateJoiners)) return true;
 
+            if (IsVariationSelector(rune))
+            {
+                if (!afterBase) return true;
+                afterBase = false;
+            }
+            else
+            {
+                afterBase   =  IsBase(rune);
+                rendersBase |= afterBase;
+            }
+
             rest = rest[consumed..];
         }
 
-        return false;
+        return !rendersBase;
     }
+
+    /// <summary>
+    /// A character drawn on its own: not a space, not a mark drawn on another, not a joiner and not a
+    /// variation selector.
+    /// </summary>
+    private static bool IsBase(Rune rune) =>
+        rune.Value is not (ZeroWidthNonJoiner or ZeroWidthJoiner)
+     && !Rune.IsWhiteSpace(rune)
+     && Rune.GetUnicodeCategory(rune) is not (UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark);
+
+    /// <summary>
+    /// The variation selectors, which Unicode files as non-spacing marks: the sixteen of the BMP, the
+    /// 240 ideographic ones, and the Mongolian free variation selectors.
+    /// </summary>
+    private static bool IsVariationSelector(Rune rune) =>
+        rune.Value is >= 0xFE00 and <= 0xFE0F
+                   or >= 0xE0100 and <= 0xE01EF
+                   or >= 0x180B and <= 0x180D
+                   or 0x180F;
 
     private static bool IsRendered(Rune rune, bool tolerateJoiners) =>
         (tolerateJoiners && rune.Value is ZeroWidthNonJoiner or ZeroWidthJoiner)
