@@ -2,7 +2,7 @@
 
 Status: **1.0.0 released 2026-09-28** (nuget.org, GitHub release `v1.0.0`). Phases 0 to 11 are done;
 what is left for 1.x is listed at the end of phase 11, and package validation holds every pack to the
-1.5.0 surface. Phase 12 is 1.5.0, released 2026-10-11; 1.5.1 followed the same day with a fix to parameter schemas. Phase 13 is the next release, 2.0.0 (decision 42). The decisions are in §8, Native AOT in §11. The fabric spike
+1.5.0 surface. Phase 12 is 1.5.0, released 2026-10-11; 1.5.1 followed the same day with a fix to parameter schemas. Phase 13 is the next release, 2.0.0 (decisions 42 and 44: `net10.0`, Metalama 2026.1). The decisions are in §8, Native AOT in §11. The fabric spike
 ([spikes/FabricSpike](../spikes/FabricSpike/README.md)), the translation comparison
 ([spikes/ValueTranslation](../spikes/ValueTranslation/README.md)), the EF mapping spike
 ([spikes/EfMapping](../spikes/EfMapping/README.md)) and the OpenAPI spike
@@ -536,10 +536,30 @@ Each phase ends green, and its guards have been proven by seeding the defect
       `RangeSet<,>`, whose equality is a value's, though `IEquatable` alone is no criterion
       (`ImmutableArray<T>`).
 
-13. **2.0.0: closed sets, fault responses and merge patches.** Next; not started. Scoped 2026-10-12
-    (decision 42): the features proposed for 1.x ship in the major that already waits for the three
-    breaking reasons below, not as a 1.6.0 before it, because the smart-enum family changes what a
-    fault is, and fault responses built on enums first would be built twice.
+13. **2.0.0: closed sets, fault responses, merge patches, exceptions, constraints and text.** Next;
+    not started. Scoped 2026-10-12 (decision 42): the features proposed for 1.x ship in the major,
+    not as a 1.6.0 before it, because the smart-enum family changes what a fault is, and fault
+    responses built on enums first would be built twice. Pinned 2026-10-13 (decision 44) to
+    `net10.0` and Metalama 2026.1: nothing in it needs .NET 11, C# 15 unions or Metalama 2027.0, and
+    it waits for none of them. The build order, each step a commit with its tests, and a spike
+    before the part where one is listed:
+    1. **Open the release**: `Version` 2.0.0 and a `## 2.0.0 — Unreleased` changelog section. The
+       package-validation baseline stays 1.5.0 and reports nothing until the first intended break.
+    2. **The text guards** (below): no spike.
+    3. **`Result.Catch`**, after [spikes/ResultCatch](../spikes/ResultCatch/README.md), since the
+       async trap can change the shape.
+    4. **CMTK0011 and its code fix**: pure Roslyn, no spike.
+    5. **CMTK0010**, after [spikes/TypeArgumentConstraints](../spikes/TypeArgumentConstraints/README.md),
+       since the forwarding claim decides whether the rule is sound.
+    6. **`Patch<T>`**, after its spike, in the base package and the ASP.NET satellite. It depends
+       on nothing above and nothing below.
+    7. **The closed-set family**, after its spike: the generators, then each satellite.
+    8. **The fault responses**, after [spikes/FaultResponses](../spikes/FaultResponses/README.md),
+       last, since they read a smart enum's kind.
+    9. **The breaks**: decision 34's promotions, the two rules at Error, and the baseline's verdict
+       on each intended break.
+    10. **`2.0.0-preview.1` to nuget.org** once steps 7 and 8 exist, the consumer smoke test
+        against it, then the release.
     - **A closed-set (smart enum) family**, declared by interface and joining `.Generators` (§1), the
       release's headline. A member is a named instance with constant data. The generators emit `All`,
       parsing and formatting by name, JSON, an OpenAPI string enum, and a `Match` with one required
@@ -564,8 +584,8 @@ Each phase ends green, and its guards have been proven by seeding the defect
       - **Which status for each kind**, and whether a host may change a kind's default.
       - **The startup check holds**: a member with neither a kind nor an explicit mapping still stops
         the host.
-      - **C# 15 unions**: whether a smart enum is best expressed as one, or stays a generated type with
-        static members.
+      - **A generated type with static members**, not a C# 15 union: 2.0.0 is `net10.0` (decision
+        44), and a union-shaped closed set is 3.0.0's question.
       - **Persistence**: an EF column by name, mapped by `.EntityFrameworkCore` as value objects are.
     - **Fault responses a client can act on**, proposed 2026-10-12. Decision 38's response carries a status and the fault's bare name, and its success is
       `200` or `204`. An application whose client shows a refusal to a person, creates resources, or
@@ -733,34 +753,29 @@ Each phase ends green, and its guards have been proven by seeding the defect
       ready-made type appears, a minor-version `CodoMetis.TypeKit.Text` holding `WrittenText` and
       `IssuedIdentifier` under those conditions is additive; removing one after shipping is not. No
       spike: every claim is a unit test over a string.
-    - **The breaking reasons it waits for**, unchanged: Metalama 2027.0 stable (decision 4), Warnings
-      promoted to Errors (decision 34), and C# 15 unions (.NET 11, GA 2026-11-10). The compiler-made
-      union types have a public `object? Value` and are serialized by System.Text.Json, so
-      `Option`/`Result` take part in their pattern matching only after a spike shows neither returns.
-    - **Open: does 2.0.0 move to .NET 11?** Decision 20 is `net10.0` only, and C# 15 unions need
-      .NET 11. A 2.0.0 that uses them can target `net11.0` alone, which leaves a consumer on the .NET
-      10 LTS line on 1.x. It can target both, with unions only behind `net11.0`, at the cost of a
-      second target in every satellite (EF Core 11, Microsoft.AspNetCore.OpenApi 11) and a Native
-      AOT smoke run per target. Or it can stay on `net10.0` and leave unions to a later major, which
-      also settles the smart-enum spike's union question. The hinge is whether consumers on the LTS
-      line get the fault responses, smart enums and `Patch<T>` at all, and the preview below
-      answers it with measurements rather than in advance.
-    - **A preview to evaluate first** (proposed 2026-10-12): `2.0.0-preview.N`, built on the .NET 11
-      SDK and the Metalama 2027.0 preview, on a branch of its own, before either is stable. It
-      measures what C# 15 unions and 2027.0 buy before decisions 4 and 20 move for the release.
-      `main` keeps both decisions meanwhile, and a 1.5.x fix still ships from it. The release
-      workflow takes a preview tag as it is, since `v2.0.0-preview.1` passes the tag check against
-      `Version` and the changelog check against a dated `## 2.0.0-preview.1` section. The SDK comes
-      from `global.json`, though, so the branch pins the .NET 11 SDK there. The preview must answer:
-      - **The .NET 11 question above**, from what the unions actually change in `Option`, `Result`
-        and the smart-enum family.
-      - **Metalama 2027.0 on the .NET 11 SDK**: the aspects, the fabric and the analyzers build and
-        weave, and `[Durable]` returns to the `_value` placeholder (decision 4).
-      - **Package validation in a major**: against the 1.5.0 baseline it reports the intended breaks.
-        Whether they are suppressed per break or the baseline lapses for 2.0.0 is decided there, so
-        an unintended break still fails the pack.
-      - **Where it is published**: nuget.org, where the suffix marks it a pre-release, or a local
-        feed for the evaluation alone.
+    - **What 2.0.0 breaks**: Warnings promoted to Errors (decision 34), CMTK0010 and CMTK0011 at
+      Error, and whatever else the 1.5.0 baseline reports as intended. Whether an intended break is
+      suppressed per break or the baseline lapses for 2.0.0 is decided at the first one, so an
+      unintended break still fails the pack.
+    - **What it does not wait for** (decision 44): Metalama 2027.0 stable, .NET 11 and C# 15 unions.
+      The compiler-made union types have a public `object? Value` and are serialized by
+      System.Text.Json, so `Option`/`Result` take part in their pattern matching only after a spike
+      shows neither returns, and that spike belongs to 3.0.0.
+    - **What comes after**: the Metalama 2027.0 upgrade (decision 4) joins the first release after
+      it is stable, as a minor if a consumer's own aspects beside the packed generators still build
+      and weave, measured as the fabric spike measured 2026.1 against the 2027.0 preview, and as a
+      major otherwise; `[Durable]` returns to the `_value` placeholder with it. A `net11.0` target
+      joins as a second target in a 2.x minor when a feature needs it, at the cost priced on
+      2026-10-12: EF Core 11 and Microsoft.AspNetCore.OpenApi 11 in the satellites and a Native AOT
+      smoke run per target. C# 15 unions and the `net10.0` drop are 3.0.0, timed to .NET 12 LTS
+      (November 2027) or to the end of .NET 10's life, whichever its consumers need.
+    - **The preview** (`2.0.0-preview.N`) is 2.0.0's own, from `main`, on the .NET 10 SDK and
+      Metalama 2026.1, published to nuget.org once the closed-set family and the fault responses
+      exist, so the surface gets consumer feedback before the tag. The release workflow takes a
+      preview tag as it is, since `v2.0.0-preview.1` passes the tag check against `Version` and the
+      changelog check against a dated `## 2.0.0-preview.1` section. The measurement of unions and
+      Metalama 2027.0 on the .NET 11 SDK moves to a 3.0.0 spike on a branch of its own, with no
+      release attached.
 
 ## 3. Discovery is by interface
 
@@ -1383,6 +1398,17 @@ Still open:
     type cannot be refined (CMTK1005) or told apart from another field of the same type (CMTK0008).
     Public aspects are allowed in principle (§5) and none exists. Clock-type analyzers and
     decimal JSON converters stay out.
+44. **2.0.0 is `net10.0` on Metalama 2026.1; the version number names the API, never the runtime**
+    (2026-10-13, phase 13). Dropping a target framework is a break of its own, so a `net11.0`-only
+    2.0.0 would have left every consumer on the .NET 10 LTS line (supported to November 2028) on
+    1.5.x, without the fault responses, the closed sets or `Patch<T>`, for a .NET 11 that is STS. The
+    breaks 2.0.0 actually has, decision 34's promotions and two rules at Error, are breaks on
+    `net10.0`, and none of its parts needs C# 15 unions. A `net11.0` target is additive and joins a
+    2.x minor when a feature needs it; unions in the public surface would be two contracts under one
+    version, so they and the `net10.0` drop are 3.0.0, timed to .NET 12 LTS. Metalama 2027.0 joins
+    the first release after it is stable, minor or major as the fabric measurement says. The
+    `2.0.0-preview.N` branch of 2026-10-12 becomes a preview of 2.0.0 itself from `main`; the .NET 11
+    measurement is a 3.0.0 spike with no release attached.
 
 ## 9. Option and Result
 
