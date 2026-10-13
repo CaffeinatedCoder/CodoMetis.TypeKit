@@ -3,8 +3,15 @@ using System.Text.Json;
 using CodoMetis.TypeKit.ClosedSets;
 using CodoMetis.TypeKit.CompilerServices;
 using CodoMetis.TypeKit.Generators.Probes;
+using CodoMetis.TypeKit.ValueObjects;
 
 namespace CodoMetis.TypeKit.Generators.Tests;
+
+/// <summary>
+/// A value object over a closed set of a referenced project, which is generated in full: over a set of
+/// its own project it is refused (CMTK1005, <see cref="BuildOutcomeTests"/>).
+/// </summary>
+public readonly partial record struct OverProbeStatus : IValue<ProbeStatus>;
 
 /// <summary>
 /// The closed-set family, generated for <see cref="ProbeStatus"/> and <see cref="ProbeTier"/>.
@@ -112,6 +119,25 @@ public sealed class ClosedSetTests
         refusal.Message.ShouldContain("ProbeStatus");
         refusal.Message.ShouldNotContain("Nope");
         refusal.Message.ShouldContain("#a-closed-set-has-no-member-of-that-name");
+    }
+
+    /// <summary>
+    /// Over a set of a referenced project the value-object aspects see what the closed-set aspect
+    /// generated there, so the value object parses and converts through the set's name. A guard against
+    /// the same-project refusal reaching further than the project it is about.
+    /// </summary>
+    [Fact]
+    public void A_value_object_over_a_set_of_a_referenced_project_parses_and_converts_by_name()
+    {
+        OverProbeStatus.Parse("Shipped", null).Value.ShouldBeSameAs(ProbeStatus.Shipped);
+        OverProbeStatus.TryParse("Nope", null, out _).ShouldBeFalse();
+
+        var converter = TypeDescriptor.GetConverter(typeof(OverProbeStatus));
+        converter.GetType().ShouldNotBe(typeof(TypeConverter), "the value object's own type converter, not the base one");
+        converter.ConvertFromInvariantString("Open").ShouldBe(OverProbeStatus.From(ProbeStatus.Open));
+        converter.ConvertToInvariantString(OverProbeStatus.From(ProbeStatus.Cancelled)).ShouldBe("Cancelled");
+
+        JsonSerializer.Serialize(OverProbeStatus.From(ProbeStatus.Open)).ShouldBe("\"Open\"");
     }
 
     /// <summary>

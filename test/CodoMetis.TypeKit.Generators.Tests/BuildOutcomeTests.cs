@@ -38,6 +38,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1005", "StructCycleOne")]
     [InlineData("CMTK1005", "StructCycleTwo")]
     [InlineData("CMTK1005", "WrapsAValueObject")]
+    [InlineData("CMTK1005", "WrapsASet")]
+    [InlineData("CMTK1005", "ValidatedOverASet")]
     [InlineData("CMTK1005", "ListBacked")]
     [InlineData("CMTK1005", "ImmutableArrayBacked")]
     [InlineData("CMTK1005", "PairBacked")]
@@ -191,6 +193,19 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("WrapsAValueObject", "it wraps 'Fine', which is a value object itself; wrap 'int' instead")]
     public void A_value_object_over_a_value_object_is_refused_with_what_it_reaches(string type, string reason) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1005" && error.Message.StartsWith($"'{type}'") && error.Message.Contains(reason), $"CMTK1005 on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
+
+    /// <summary>
+    /// The closed-set aspect runs after the value-object aspects, which do not see what it introduces:
+    /// over a set of its own project a value object was generated without <c>Parse</c>, <c>IParsable</c>
+    /// and its own type converter, while over the same set in a referenced project it had them
+    /// (<see cref="ClosedSetTests"/> holds that case). The refusal names the set and both ways out.
+    /// </summary>
+    [Theory]
+    [InlineData("WrapsASet")]
+    [InlineData("ValidatedOverASet")]
+    public void A_value_object_over_a_closed_set_of_its_own_project_is_refused_with_the_way_out(string type) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1005" && error.Message.StartsWith($"'{type}' cannot be generated as a value object: it wraps 'SetToWrap', a closed set declared in the same project")
+                                            && error.Message.Contains("declare the set in a referenced project, or wrap its name ('string') instead"), $"CMTK1005 on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
 
     /// <summary>
     /// A generic wrapped type failed inside the generated code (LAMA0611). The refusal says why, since
@@ -618,6 +633,17 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             // Over another value object, the surface depended on where that one was declared: over one
             // from the same project, parsing, comparison and the type converter were silently missing.
             public readonly partial record struct WrapsAValueObject : IValue<Fine>;
+
+            // Over a closed set of the same project, the value-object aspects ran before the set's and
+            // missed its parsing and type converter: no Parse, no IParsable, the base TypeConverter.
+            public sealed partial class SetToWrap : IClosedSet<SetToWrap> { public static readonly SetToWrap A = new(); }
+
+            public readonly partial record struct WrapsASet : IValue<SetToWrap>;
+
+            public sealed partial record ValidatedOverASet : IValidatedValue<ValidatedOverASet, SetToWrap, Fault>
+            {
+                public static Result<ValidatedOverASet, Fault> Create(SetToWrap value) => Result.Error(Fault.Refused);
+            }
 
             // Companion classes are named after the whole nesting chain, so these two coexist.
             public sealed class Order { public readonly partial record struct Id : IValue<System.Guid>; }

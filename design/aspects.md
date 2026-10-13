@@ -15,7 +15,7 @@
   marker), CMTK1004 (a validated marker whose first type argument is another type), CMTK1005 (a
   generic value object, one that derives from another value object, a wrapped type that is not
   a class, struct or enum, or one that is a value object: itself, one that reaches it again, or
-  any other, see below), CMTK1006 (a record class that is not `sealed`: a derived record compares
+  any other, or a closed set of the same project, see below), CMTK1006 (a record class that is not `sealed`: a derived record compares
   equal only to its own type, which is not value equality), CMTK1007 (the name of the
   `GetValue`/`ValueOrNull` class is taken, see below), CMTK1008 (a comparison member beside the
   seam, see below), CMTK1009 (a hand-written constructor, see below), CMTK1022 (an abstract type,
@@ -167,6 +167,12 @@
     one's rules in its `Create`. Refused rather than made to work: a surface that follows the
     project layout is the silent failure this repo exists to prevent, and lifting a refusal later
     breaks nobody, while adding one after 1.0.0 would.
+  - **A closed set of the same project** (decided 2026-10-13,
+    [decision 60](adr/0060-value-object-over-same-project-closed-set-refused.md)) is refused the same
+    way and for the same reason: `ClosedSetAspect` runs last in `AspectOrder`, and over a set of its own
+    project `OverSet : IValue<SetA>` lacked `Parse`, `TryParse`, `IParsable` and its own type converter
+    while its JSON worked; over the same set in a referenced project it had them. The message names the
+    set and says to declare it in a referenced project or to wrap its name.
   - The satellites keep their own refusal ([OpenAPI](openapi.md)): a value object declared by hand, with the
     interfaces and `GeneratedValueObjectAttribute<,>` the satellites read ([Discovery](discovery.md)), can still wrap itself.
 - **Every JSON key goes through the wrapped type's own converter**, which knows the type's key

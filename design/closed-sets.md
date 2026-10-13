@@ -49,6 +49,12 @@ CMTK1013 to CMTK1021, all Errors, each reported on the declaration it names; the
 fixes is in the [Generators README](../src/CodoMetis.TypeKit.Generators/README.md). A set the aspect
 cannot complete is never left half-generated.
 
+A value object over a set declared in the same project is CMTK1005
+([decision 60](adr/0060-value-object-over-same-project-closed-set-refused.md)): `ClosedSetAspect` runs
+after the value-object aspects, which do not see the set's `Parse`, `IParsable` and type converter, so
+the value object was generated without its own. Over a set of a referenced project it is generated in
+full (`ClosedSetTests`).
+
 ## Open
 
 - A stable external name for a member, apart from its C# identifier, waits for a spike
