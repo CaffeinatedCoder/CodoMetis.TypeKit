@@ -34,9 +34,12 @@ write `Option.None<T>()`. The lookups do the rest: `GetValueOrNone(key)` on a di
 throws for more than one, `ElementAtOrNone(index)`, and `ToOption()` on a nullable, `int?` or
 `string?`, which turns a null into `None`. On a query, `FirstOrNone`, `SingleOrNone` and
 `ElementAtOrNone` let the provider run the predicate and ask it for the rows they need, and
-`LastOrNone` is a compile error, since a query has no last row until it is ordered. CMTK0009 points
-at `FirstOrDefault()` and its kind, whose `default` for a value object or a `Result` is an instance
-that passed no factory.
+`LastOrNone` is a compile error, since a query has no last row until it is ordered. The predicate
+runs in the query when it is an expression, as a lambda written at the call is; a `Func<T, bool>` held
+in a variable, or a method group, binds to the sequence's overload instead, which reads every row and
+runs the condition in memory, without a warning. Pass an `Expression<Func<T, bool>>` there. CMTK0009
+points at `FirstOrDefault()` and its kind, whose `default` for a value object or a `Result` is an
+instance that passed no factory.
 
 ## Reaching the value
 
@@ -139,7 +142,7 @@ reads, which may be null: only what the selector finds is a value.
 | `None()` | `Option` | a `None` marker that converts to any `Option<T>` |
 | `None<T>()` | `Option` | `Option<T>` |
 | `ToOption()` | `T?` (a nullable struct or a reference) | `Option<T>`: `None` for null |
-| `FirstOrNone()`, `FirstOrNone(predicate)` | `IEnumerable<T>`, `IQueryable<T>` | the first element, or the first matching one; `None` for none. On a query the provider runs the predicate and returns one row |
+| `FirstOrNone()`, `FirstOrNone(predicate)` | `IEnumerable<T>`, `IQueryable<T>` | the first element, or the first matching one; `None` for none. On a query the provider runs the predicate and returns one row, when the predicate is an expression; a `Func` variable or a method group reads every row |
 | `LastOrNone()`, `LastOrNone(predicate)` | `IEnumerable<T>` | the last, likewise; a compile error on a query, which has no last row until it is ordered |
 | `SingleOrNone()`, `SingleOrNone(predicate)` | `IEnumerable<T>`, `IQueryable<T>` | the only element, or `None` for none; throws for more than one. A query is asked for two rows |
 | `ElementAtOrNone(index)` | `IEnumerable<T>` (an `int` or an `Index`), `IQueryable<T>` (an `int`) | the element at the index, or `None` past either end; an `Index` on a query is a compile error |

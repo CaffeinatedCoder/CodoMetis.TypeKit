@@ -55,7 +55,9 @@ not absence; `ElementAtOrNone(index)` answers the element at an index, on a sequ
 On a query, `FirstOrNone`, `FirstOrError`, `SingleOrNone` and `ElementAtOrNone` ask the provider for
 the element they need and let it run the predicate (a `WHERE` and a `LIMIT` in SQL). `LastOrNone`,
 `LastOrError` and an index from the end are compile errors there, since a query has no last element
-until it is ordered.
+until it is ordered. The predicate is an expression when the lambda is written at the call; a
+`Func<T, bool>` variable or a method group is not, binds to the sequence's overload, and reads every
+row, the condition run in memory. Hold an `Expression<Func<T, bool>>` instead.
 `Choose(selector)` keeps the values a selector answers `Some` for, in order and without the `None`s, a
 filter and a map in one, over elements that may be null (`nicknames.Choose(n => n.ToOption())`), and
 `Choose()` the values a sequence of options holds.

@@ -419,6 +419,11 @@ public static class Option
         }
 
         /// <summary>The first element that matches, or <c>None</c>.</summary>
+        /// <remarks>
+        /// On an <see cref="IQueryable{T}"/>, this overload is the one a <c>Func</c> held in a variable or a
+        /// method group binds to: it reads every row and runs the condition in memory. A lambda written at
+        /// the call, or an <c>Expression&lt;Func&lt;T, bool&gt;&gt;</c>, binds to the query's, which the provider runs.
+        /// </remarks>
         /// <param name="predicate">The condition to match.</param>
         /// <returns>The first matching element, or <c>None</c> if nothing matches.</returns>
         public Option<T> FirstOrNone(Func<T, bool> predicate) =>
@@ -451,6 +456,10 @@ public static class Option
         }
 
         /// <summary>The only element that matches, or <c>None</c>; more than one throws, as <c>SingleOrDefault</c> does.</summary>
+        /// <remarks>
+        /// On an <see cref="IQueryable{T}"/>, a <c>Func</c> held in a variable or a method group binds here
+        /// and reads every row; a lambda written at the call binds to the query's overload.
+        /// </remarks>
         /// <param name="predicate">The condition to match.</param>
         /// <returns>The only matching element, or <c>None</c> if nothing matches.</returns>
         /// <exception cref="InvalidOperationException">More than one element matches.</exception>

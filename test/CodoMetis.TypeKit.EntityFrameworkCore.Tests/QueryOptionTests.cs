@@ -73,6 +73,41 @@ public sealed class QueryOptionTests : IDisposable
         result.Carrier.ShouldBe("alpha");
     }
 
+    /// <summary>
+    /// What the documentation says of a condition EF cannot read. A lambda written at the call is an
+    /// expression and binds to the query's overload; a <c>Func</c> held in a variable, or a method group,
+    /// binds to the sequence's, which reads every row and runs the condition in memory. No analyzer
+    /// tells it yet, so this pins the behaviour the pages describe.
+    /// </summary>
+    [Fact]
+    public void A_Func_or_a_method_group_reads_every_row_and_runs_the_condition_in_memory()
+    {
+        using var db = Db();
+        Func<Shipment, bool> isBeta = s => s.Carrier == "beta";
+
+        db.Shipments.FirstOrNone(isBeta).TryGetValue(out var held).ShouldBeTrue();
+        held.Carrier.ShouldBe("beta");
+        var read = _commands.ShouldHaveSingleItem();
+        read.ShouldNotContain("WHERE");
+        read.ShouldNotContain("LIMIT");
+
+        _commands.Clear();
+        db.Shipments.SingleOrNone(IsGamma).TryGetValue(out var grouped).ShouldBeTrue();
+        grouped.Carrier.ShouldBe("gamma");
+        _commands.ShouldHaveSingleItem().ShouldNotContain("WHERE");
+
+        _commands.Clear();
+        db.Shipments.FirstOrError(isBeta, "none").TryGetValue(out _, out _).ShouldBeTrue();
+        _commands.ShouldHaveSingleItem().ShouldNotContain("WHERE");
+
+        _commands.Clear();
+        System.Linq.Expressions.Expression<Func<Shipment, bool>> isAlpha = s => s.Carrier == "alpha";
+        db.Shipments.FirstOrNone(isAlpha).TryGetValue(out _).ShouldBeTrue();
+        _commands.ShouldHaveSingleItem().ShouldContain("WHERE", Case.Sensitive, "an expression held in a variable still runs in the query");
+    }
+
+    private static bool IsGamma(Shipment shipment) => shipment.Carrier == "gamma";
+
     /// <summary>The database runs the condition and is asked for two rows: enough to tell one from many.</summary>
     [Fact]
     public async Task SingleOrNone_asks_for_two_rows_and_refuses_more_than_one()

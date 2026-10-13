@@ -1009,6 +1009,10 @@ public static class Result
     extension<T, TError>(IEnumerable<T> source) where T : notnull where TError : notnull
     {
         /// <summary>The first element that matches, or the given error.</summary>
+        /// <remarks>
+        /// On an <see cref="IQueryable{T}"/>, a <c>Func</c> held in a variable or a method group binds here
+        /// and reads every row; a lambda written at the call binds to the query's overload.
+        /// </remarks>
         /// <param name="predicate">The condition to match.</param>
         /// <param name="error">The error if nothing matches. Never null.</param>
         /// <returns>The first matching element, or <paramref name="error"/>.</returns>

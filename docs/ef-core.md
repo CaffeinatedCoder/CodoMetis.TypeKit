@@ -187,6 +187,12 @@ the domain wants an option:
 Option<Discount> discount = read.Discount.ToOption();   // None
 ```
 
+An element of a query as an option is `FirstOrNone`, `SingleOrNone` or `FirstOrNoneAsync`, which let
+the database run the condition and read one row ([the EF README](../src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found)).
+Only a condition written as a lambda at the call, or held as an `Expression<Func<T, bool>>`, runs there:
+a `Func<T, bool>` variable or a method group binds the synchronous ones to their overloads on a sequence,
+which read every row of the table and run the condition in memory, without a warning.
+
 ## Compiled models
 
 EF Core runs under Native AOT only through a compiled model and precompiled queries, and

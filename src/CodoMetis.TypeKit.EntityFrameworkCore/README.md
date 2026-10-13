@@ -180,7 +180,11 @@ Result<Order, OrderFault> found = db.Orders.FirstOrError(o => o.Id == id, OrderF
 database for one row and let it run the condition, `WHERE … LIMIT @p`, where `FirstOrDefaultAsync`
 hands back a `default` value object for nothing found (CMTK0009). `SingleOrNoneAsync` and
 `SingleOrNone` ask for two rows and throw for more than one, and `ElementAtOrNone` skips to its row,
-`OFFSET @p`. On a query, `LastOrNone` and
+`OFFSET @p`. That holds for a condition EF can read, an expression, which a lambda written at the
+call is. A `Func<Order, bool>` held in a variable, or a method group, binds `FirstOrNone`,
+`SingleOrNone` and `FirstOrError` to their overloads on a sequence: every row is read and the
+condition runs in memory, without a warning. Hold an `Expression<Func<Order, bool>>` instead;
+`FirstOrNoneAsync` takes only an expression, so a `Func` there does not compile. On a query, `LastOrNone` and
 `LastOrError` are compile errors: a query has no last row until it is ordered, so order it the
 other way and take the first, or call `AsEnumerable()` to read every row on purpose.
 
