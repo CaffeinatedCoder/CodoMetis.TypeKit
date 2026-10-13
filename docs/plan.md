@@ -632,6 +632,107 @@ Each phase ends green, and its guards have been proven by seeding the defect
 
       It belongs in the base package, its OpenAPI part in the ASP.NET satellite. It is not ASP.NET
       Core 10's JSON Patch (RFC 6902, a list of operations).
+    - **`Result.Catch`: an exception as an outcome**, proposed 2026-10-13. A call that throws has no
+      way into a `Result` today, so every caller writes the `try`/`catch` by hand, and a `Try<T>`
+      type would be `Result<T, Exception>` under a second name (§9). Four factories on the `Result`
+      static class, each returning a concrete result rather than a marker, since the delegate fixes
+      `T`:
+      - **`Catch<T>(Func<T>)`** to `Result<T, Exception>`, and **`Catch(Action)`** to
+        `Result<Exception>`, the value-less shape, which is why no `Unit` is needed.
+      - **`Catch<T, TException>(Func<T>)`** to `Result<T, TException>`, catching that type and
+        letting every other exception through, so the error type says what was expected to fail.
+      - **`CatchAsync`** for each, over `Task`, `Task<T>` and `ValueTask<T>`.
+      - **A cancellation is not an outcome**: `OperationCanceledException` passes through every
+        overload. Caught, a cancelled request would read as a failed one and `Recover` would run on
+        it.
+
+      `Map`, `Bind` and the rest stay as they are: a selector that throws propagates, as it does
+      now, so the one place an exception becomes data is the one that says so. A spike must answer,
+      in [spikes/ResultCatch](../spikes/ResultCatch/README.md):
+      - **Inference**: `Result.Catch(() => int.Parse(s))` infers `T`; `Catch<T, TException>` needs
+        both type arguments spelled, since C# infers all or none, unless a different shape avoids it.
+      - **The async trap**: `Result.Catch(() => client.GetAsync(url))` binds `T` to a `Task` and
+        catches nothing the task throws. Whether an `[Obsolete]` error overload, a CMTK rule, or
+        both, refuses it.
+      - **`ToHttpResult()` over `Result<T, Exception>`** is a compile error, since an exception is
+        not a fault a client acts on.
+      - **Native AOT**: nothing new is reflected, and the smoke test's `aot` consumer says so.
+    - **Constraints a type parameter cannot declare**, proposed 2026-10-13. C# has `where T : class`,
+      `struct`, `new()` and a base type, but no `where T : abstract`, `sealed` or `record`. A generic
+      base whose type argument must be an abstract record, such as the command or event family of an
+      aggregate, gets no help from the compiler, and the closed type that violates it compiles.
+      Attributes on a generic parameter in the base package, `[Abstract]`, `[Sealed]`, `[Record]` and
+      `[Concrete]`, and one analyzer rule, CMTK0010, reported at every closed use: a base type, an
+      implemented interface, a field, a parameter, a `typeof`, a call with its type arguments
+      inferred. An analyzer rather than an aspect, because the violation is at the use site, which
+      need not compile with Metalama, and the base package is Metalama-free (§3); an aspect on the
+      parameter would see the declaration and never the use. A spike must answer, in
+      [spikes/TypeArgumentConstraints](../spikes/TypeArgumentConstraints/README.md):
+      - **Forwarding**: `class Sub<U> : Base<U>` where `Base<[Abstract] T>` is a violation unless `U`
+        carries `[Abstract]` too, or the hole is the whole rule.
+      - **Every use site** is reached, inferred type arguments and generic methods' parameters
+        included, and nothing is reported twice for one site.
+      - **Reflection** (`MakeGenericType`) is out of reach, and the README says so.
+      - **Error in a major version** is within decision 34; the rule never ships at Error in a minor.
+    - **`[EnsureParameterlessConstructor]`**, proposed 2026-10-13. A type the host creates by
+      reflection, an endpoint, a module, an entity configuration, needs a parameterless constructor
+      of a given accessibility, and C# checks that only through `new()`, which demands public. An
+      attribute in the base package, on an interface or a base class, and an analyzer rule, CMTK0011,
+      on every concrete type that implements or derives from it, directly or through another type,
+      with a code fix that writes the constructor. An analyzer and not an aspect, although an
+      `[Inheritable]` aspect introducing the constructor was the first shape considered:
+      - **The check is the feature.** The constructor is one empty line; the value is the error at
+        the type that lacks it, and that error has to appear in a project that never compiles with
+        Metalama, where an inheritable aspect is silent, this repository's characteristic failure.
+      - **A code fix beats an introduction.** An introduced constructor demands `partial` on every
+        implementer and is invisible in the source; the fix writes it where the reader looks, and a
+        type that declares no constructor needs nothing, since it already has a public one.
+      - **What the rule checks**: a parameterless constructor of the required accessibility exists,
+        or none is declared and public was asked; a record's copy constructor is not one; a wrong
+        accessibility is reported at the constructor, with the fix changing it; an abstract type or
+        an interface is not checked, only its concrete descendants.
+      - **Public aspects stay possible** (§5): an aspect that is itself the feature may be public,
+        with the attribute and its diagnostics as its surface. This one is not the first, because
+        its feature is the check.
+    - **Written text**, proposed 2026-10-13. Trimming, refusing the characters that render as
+      nothing and composing to NFC is written again in every application that stores what a person
+      typed, and `IsNullOrWhiteSpace` is what it usually gets, which lets a zero-width space, a Hangul
+      filler and NUL through, and keeps a name written with `ü` and the same name written with `u` and a
+      combining diaeresis as two rows of a unique index, rendering alike. Two string extensions in the base package, each returning
+      `Result<string, TextFault>` with `TextFault.Blank` or `TextFault.Hidden`:
+      - **`text.AsText()`**, for text a person wrote: trimmed, every space separator folded to
+        `U+0020`, NFC-composed, every character that renders as nothing refused, the two zero-width
+        joiners tolerated because they spell Persian, Arabic and Indic scripts and emoji sequences.
+      - **`text.AsIdentifier()`**, for a value another system issued, a subject claim, a session id:
+        trimmed, nothing else altered, since canonicalising somebody else's identifier changes an
+        attested value, and the joiners refused too, since no issuer needs one.
+      - **A null receiver is `Blank`**, since the extension is the door a bound request property goes
+        through, and binding enforces no non-nullability.
+      - **Two faults, not one**, because a required field makes `Blank` an error and an optional one
+        makes it absence; `Hidden` is a refusal in both.
+      - **The scan is by `Rune`**: a `char` loop reports `Surrogate` for a character above the BMP and
+        misses the tag characters used to hide text in text; an unpaired surrogate is `Hidden`, not a
+        throw, since `Normalize` and a database driver both throw on it.
+      - **Not refused**: unassigned code points, since .NET's tables lag Unicode and a name spelled
+        with a newly assigned character would be refused until the SDK caught up; confusable letters
+        across scripts, which is a comparison-key question and not a rejection.
+
+      No value object ships with them, and no `.Text` package either (weighed 2026-10-13). The base
+      package is Metalama-free, so it cannot declare one for the generators, and a hand-written one is
+      what CMTK0002 exists to refuse. A package shipping a woven one would reference `.Generators`
+      with `PrivateAssets="all"` to keep Metalama away from its consumers, and would need an
+      exemption in the Metalama-boundary conventions, a package-validation baseline override, a
+      smoke consumer of its own under Native AOT, and a third state in the README's Metalama column.
+      All of that buys one line per field, and the type is a dead end: a field that later needs a
+      length limit cannot wrap it (CMTK1005) and is rewritten over `string`, and two fields of one
+      shared type lose what CMTK0008 and assignment give two named types. A consumer declares its
+      own in one line, `Create` being `value.AsText().Map(…)`, and names it for the field
+      (`Description`, `DisplayName`). The README shows that line. The extensions live in a class
+      named `StringTextExtensions`, so a consumer's value object named `Text` has no companion-class
+      collision with them (CMTK1007) and nothing is ambiguous with `System.Text`. If demand for a
+      ready-made type appears, a minor-version `CodoMetis.TypeKit.Text` holding `WrittenText` and
+      `IssuedIdentifier` under those conditions is additive; removing one after shipping is not. No
+      spike: every claim is a unit test over a string.
     - **The breaking reasons it waits for**, unchanged: Metalama 2027.0 stable (decision 4), Warnings
       promoted to Errors (decision 34), and C# 15 unions (.NET 11, GA 2026-11-10). The compiler-made
       union types have a public `object? Value` and are serialized by System.Text.Json, so
@@ -966,8 +1067,16 @@ custom attributes.
   each aspect on 2026.1 as it lands, and use no 2027.0-only API.
 - **`AspectOrder`** lives in `CodoMetis.TypeKit.Generators`. Open point: ordering against a
   consumer's own aspects (fabric spike D).
-- **Not in scope:** a `Try`/`Unit` type (§9 non-goals), clock-type analyzers, text-guarding types,
-  and decimal JSON converters (no aspect needs them, checked in phase 3).
+- **Not in scope:** a `Try`/`Unit` type (§9 non-goals; an exception enters a result through
+  `Result.Catch`, phase 13), clock-type analyzers, and decimal JSON converters (no aspect needs them,
+  checked in phase 3). The text guards joined phase 13 on 2026-10-13, as string extensions in the
+  base package.
+- **Public aspects (decided 2026-10-13, decision 43).** The value-object aspects are internal: the
+  fabric applies them, and their surface is what they generate. An aspect a consumer applies by hand
+  may be public when the aspect is the feature, with the attribute and its diagnostics as its
+  surface. None ships yet: the first candidate, a parameterless-constructor guarantee, went to the
+  analyzer and a code fix (phase 13), because its value is the error, which has to appear in a
+  project that never compiles with Metalama.
 
 ## 6. Test strategy
 
@@ -1258,6 +1367,22 @@ Still open:
     would have been designed on enums with `FaultKind` attributes read by reflection, then rebuilt
     once smart enums exist. The cost is time: nothing ships before the later of .NET 11's GA and
     Metalama 2027.0 stable.
+43. **Exceptions, type-argument constraints, a constructor guarantee and the text guards join
+    2.0.0** (2026-10-13, phase 13). The goals were reopened and four candidates weighed. `Try` stays
+    out, since it is `Result<T, Exception>` renamed, and `Result.Catch` takes its one job; `Unit`
+    stays out, since `Result<TError>` is the value-less shape. Constraints a type parameter cannot
+    declare (`[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]`) ship as attributes and an analyzer
+    rule, not as an aspect, because the violation is at a use site that need not compile with
+    Metalama. `[EnsureParameterlessConstructor]` ships as an attribute, an analyzer rule and a code
+    fix, not as an inheritable aspect, because its value is the error and an introduced constructor
+    would demand `partial` of every implementer and be silent without Metalama. The written-text
+    guards ship as string extensions and a fault in the base package, with no value object and no
+    `.Text` package: the base package cannot declare one for the generators, a hand-written one is
+    what CMTK0002 refuses, a woven one in a package of its own costs a private generators reference,
+    a boundary exemption, a baseline override and a smoke consumer for one line per field, and the
+    type cannot be refined (CMTK1005) or told apart from another field of the same type (CMTK0008).
+    Public aspects are allowed in principle (§5) and none exists. Clock-type analyzers and
+    decimal JSON converters stay out.
 
 ## 9. Option and Result
 
@@ -1267,8 +1392,9 @@ depend on them: `IValidatedValue.Create` returns a `Result`, and the generated `
 `Option`.
 
 **Non-goals.** No Either, no Validation applicative, no effect or IO types, no higher-kinded type
-emulation, no immutable collections, no `Try` or `Unit`. Anything that turns this into a second
-LanguageExt is out.
+emulation, no immutable collections. No `Try` type: it is `Result<T, Exception>` under another name,
+and an exception enters through `Result.Catch` (phase 13, decision 43). No `Unit`: `Result<TError>`
+is the value-less shape. Anything that turns this into a second LanguageExt is out.
 
 **Shape, decided 2026-09-27.**
 - **`Result<T, TError>`, value first.** Error-first (`Either e a`) exists in Haskell and Scala
@@ -1407,8 +1533,9 @@ Attributes stay in `CodoMetis.TypeKit`. The analyzer resolves them and the inter
 Inside the analyzer, rules that react to attributes are kept apart from value-object rules, so the
 split stays mechanical if a generic analyzer package is ever wanted.
 
-**Scope.** Code that compiles but is wrong about value objects, `Result`/`Option` and types that
-forbid `default`. General linting (clock types, style) stays out, since Meziantou and Roslynator
+**Scope.** Code that compiles but is wrong about value objects, `Result`/`Option`, types that
+forbid `default`, and what a type declares by attribute because C# cannot express it (a constraint
+on a type parameter, a constructor a host needs). General linting (clock types, style) stays out, since Meziantou and Roslynator
 exist.
 
 | Id | Rule | Severity | Status |
@@ -1422,6 +1549,8 @@ exist.
 | CMTK0007 | `FromKnownGood` given a value straight from a parameter of the enclosing method or lambda, or a member or element of one. A value the code produced itself is legitimate and silent; a parameter copied into a local first is not seen. Info, since test theories and helpers that only receive constants are reported too | Info | shipped in 1.0.0 |
 | CMTK0008 | The wrapped values of two different value objects compared (`==`, `!=`, ordering, `Equals`, `CompareTo`) through `.Value`, `?.Value`, `GetValue()` or `ValueOrNull()`: the typed ids unwrapped into the bug they prevent. Recognised by syntax, since `.Value` of a same-project value object does not bind where analyzers run. Also `string.Equals`, `object.Equals`, a comparer's `Equals`, `string.Compare`/`CompareOrdinal` over two such values (the forms MA0006 rewrites `==` into), and two value objects of different types through `Equals(object)`, which is always false. Also a LINQ join on two such values: a query's `join … on a.Value equals b.Value`, with or without `into`, and `Join`/`GroupJoin`/`LeftJoin`/`RightJoin` of `Enumerable`, `Queryable` and `AsyncEnumerable` whose key selectors are lambdas returning them, resolved by symbol, with the candidates where a key selector does not bind; a composite key is not looked into. A raw value on one side, or an explicit cast, is silent | Warning | shipped in 1.0.0 |
 | CMTK0009 | A call that returns the `default` of a no-default struct when it finds nothing: `Enumerable`/`Queryable` `FirstOrDefault`, `LastOrDefault`, `SingleOrDefault`, `ElementAtOrDefault`, `DefaultIfEmpty` without a default value, `Nullable<T>.GetValueOrDefault()`, `GetValueOrDefault(dictionary, key)`, `Activator.CreateInstance`, `RuntimeHelpers.GetUninitializedObject`, and `Option.OrDefault()`. The message names `FirstOrNone`, `GetValueOrNone` or `Or`. Warning, since a sequence checked for emptiness first is correct. Also `ImmutableArray`'s own, `Find`/`FindLast` of `List<T>`, `Array` and `ImmutableList<T>`, `ImmutableDictionary.GetValueOrDefault` and the immutable builders', and the async `FirstOrDefaultAsync`, `LastOrDefaultAsync`, `SingleOrDefaultAsync` and `ElementAtOrDefaultAsync` of `System.Linq.AsyncEnumerable` and EF Core, whose type is the method's type argument; EF Core's only where the project references it | Warning | shipped in 1.0.0 |
+| CMTK0010 | A type argument that violates a constraint attribute on its parameter (`[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]`), at any closed use: a base type, an implemented interface, a member type, a `typeof`, a call with inferred type arguments. A type parameter forwarded without the same attribute is a violation too. Reflection is out of reach | Error | proposed for 2.0.0 (phase 13), a major, so Error is within decision 34 |
+| CMTK0011 | A concrete type implementing or deriving from a type marked `[EnsureParameterlessConstructor]`, directly or through another type, without a parameterless constructor of the required accessibility; a type declaring no constructor satisfies `Public`. A wrong accessibility is reported at the constructor. The code fix writes or changes the constructor | Error | proposed for 2.0.0 (phase 13) |
 | — | Code fixes for the aspect's shape diagnostics CMTK1000–1002 (missing `partial`/`record`/`readonly`) | — | proposed. The aspect keeps its own error as a backstop |
 
 **Rules that read calls see the source before weaving (measured 2026-09-28).** Metalama runs
