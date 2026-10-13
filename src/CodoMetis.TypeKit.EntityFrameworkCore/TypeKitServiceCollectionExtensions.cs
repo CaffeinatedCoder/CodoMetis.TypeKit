@@ -28,7 +28,7 @@ public static class TypeKitServiceCollectionExtensions
             .TryAdd<IRelationalTypeMappingSourcePlugin, ValueObjectTypeMappingSourcePlugin>()
             .TryAdd<IMemberTranslatorPlugin, ValueObjectMemberTranslatorPlugin>()
             .TryAdd<IMethodCallTranslatorPlugin, ValueObjectMethodCallTranslatorPlugin>()
-            .TryAdd<IConventionSetPlugin, ValueObjectKeyConventionSetPlugin>()
+            .TryAdd<IConventionSetPlugin, TypeKitConventionSetPlugin>()
             .TryAdd<IInterceptor, HandWrittenOrderingInterceptor>();
 
         return serviceCollection;

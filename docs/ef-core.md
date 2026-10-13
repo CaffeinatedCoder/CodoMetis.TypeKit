@@ -150,7 +150,8 @@ Ordering in SQL follows the column's collation, while the generated comparison i
 for a string, as for any string column. A value object with its own `CompareTo(TSelf)` cannot be
 compared, ordered, or taken the `Min` or `Max` of in a query, since the database orders the column by
 the wrapped value: such a query is refused, naming the value object, and `.Value` says the wrapped
-value's order is meant (`OrderBy(i => i.Priority.Value)`).
+value's order is meant (`OrderBy(i => i.Priority.Value)`). A query filter that does the same is
+refused when the model is built.
 
 ## Reading back without validation
 

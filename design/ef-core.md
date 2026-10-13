@@ -48,8 +48,14 @@
   - **A hand-written ordering is refused in a query (decided 2026-10-13, [decision 57](adr/0057-hand-written-ordering-refused-in-query.md)).**
     EF translates a comparison, an ordering and `Min`/`Max` to the column's order, not to a
     hand-written `CompareTo`. The comparable aspect marks such a type `[HandWrittenOrdering]`, and an
-    `IQueryExpressionInterceptor` that `UseTypeKit()` registers refuses those operators on it before
-    translation, naming the value object; ordering by `.Value` stays allowed.
+    `IQueryExpressionInterceptor` that `UseTypeKit()` registers refuses those operators on it,
+    `Queryable`'s and `Enumerable`'s over a navigation alike, before translation, naming the value
+    object; ordering by `.Value` stays allowed. EF adds a query filter after the interceptor has seen
+    the query, so `HasQueryFilter(r => r.Rank > From(2))` kept the column's rows (2.0.0's review); a
+    model-finalized convention refuses such a filter, named or not, naming the entity type, when the
+    model is built (and so at `dbcontext optimize` and `migrations add`). A comparison in a filter that
+    reads neither the entity nor a query is left alone: EF evaluates it in memory, by `CompareTo`
+    (measured: `Floor > From(2)` on the context kept the rows memory keeps).
   - **The element of a primitive collection is converted, not re-typed (decided 2026-09-28).** EF
     infers a collection's element mapping from the columns that read its table expression (`unnest`,
     `json_each`, `OPENJSON`, `VALUES`), and a re-typed element column handed it the wrapped type's

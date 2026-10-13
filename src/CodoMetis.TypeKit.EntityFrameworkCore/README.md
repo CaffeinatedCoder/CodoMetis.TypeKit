@@ -142,7 +142,9 @@ database cannot run: the column orders by the wrapped value, the opposite of a d
 `ThenBy`, their descending forms, `Order`) or takes its `Min` or `Max` is therefore refused with an
 `InvalidOperationException` naming the value object. Compare or order by `.Value` where the wrapped
 value's order is meant (`OrderBy(o => o.Priority.Value)`), or order in memory after the query.
-Equality is not ordering, and stays allowed.
+Equality is not ordering, and stays allowed. A query filter (`HasQueryFilter`, named or not) that
+does the same is refused when the model is built, naming the entity type, since it applies to every
+query of that type.
 
 The mapping is tested on SQLite and PostgreSQL, the SQL of each translation is pinned on PostgreSQL,
 every wrapped-type family makes a round trip through a real PostgreSQL, and key generation is also

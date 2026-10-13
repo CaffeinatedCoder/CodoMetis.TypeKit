@@ -90,6 +90,49 @@ public sealed class HandWrittenOrderingTests : IDisposable
         db.Ranked.Count(r => one > Two).ShouldBe(3);
     }
 
+    /// <summary>
+    /// EF adds a query filter to the query after the interceptor has seen it, so a filter that compares
+    /// such a value object answered by the column's order: <c>Rank &gt; From(2)</c> kept 3 where memory
+    /// keeps 1. The filter is refused when the model is built, named or not, naming the entity type.
+    /// </summary>
+    [Theory]
+    [InlineData(typeof(FilteredByRankDb), "the query filter of FilteredRank")]
+    [InlineData(typeof(NamedFilterByRankDb), "the query filter \"AboveTwo\" of FilteredRank")]
+    [InlineData(typeof(FilteredByChildRankDb), "the query filter of RankParent")]
+    public void A_query_filter_that_orders_by_its_own_CompareTo_is_refused(Type context, string filter)
+    {
+        _connection.Open();
+        using var db = (DbContext)Activator.CreateInstance(context, new DbContextOptionsBuilder().UseSqlite(_connection).UseTypeKit().Options)!;
+
+        var refusal = Should.Throw<InvalidOperationException>(() =>
+        {
+            db.Database.EnsureCreated();
+            return db.Set<FilteredRank>().Select(r => r.Rank.Value).ToList();
+        }).Message;
+
+        refusal.ShouldContain($"ProbeDescending is compared with > in {filter}");
+        refusal.ShouldContain("its ordering is its own CompareTo, which the database cannot run");
+        refusal.ShouldContain("Compare or order by .Value explicitly");
+    }
+
+    /// <summary>
+    /// A filter by <c>.Value</c> is the column's order, and a comparison that reads nothing of the entity
+    /// is evaluated in memory, where <c>CompareTo</c> runs: <c>Floor &gt; From(2)</c> is true for the
+    /// descending order, so the rows above 1 are kept, where SQL's <c>1 &gt; 2</c> would have kept none.
+    /// </summary>
+    [Fact]
+    public void A_query_filter_by_Value_or_in_memory_is_not_refused()
+    {
+        _connection.Open();
+        using var db = new FilteredByValueDb(new DbContextOptionsBuilder<FilteredByValueDb>().UseSqlite(_connection).UseTypeKit().Options);
+        db.Database.EnsureCreated();
+        foreach (var value in new[] { 1, 2, 3 }) db.Add(new FilteredRank { Rank = ProbeDescending.From(value) });
+        db.SaveChanges();
+        db.ChangeTracker.Clear();
+
+        db.Set<FilteredRank>().Select(r => r.Rank.Value).Order().ToList().ShouldBe([2, 3]);
+    }
+
     public void Dispose() => _connection.Dispose();
 
     private RankedDb Seeded()
@@ -147,4 +190,46 @@ public sealed class RankedDb(DbContextOptions<RankedDb> options) : DbContext(opt
     public DbSet<Ranked> Ranked => Set<Ranked>();
 
     public DbSet<RankParent> Parents => Set<RankParent>();
+}
+
+public sealed class FilteredRank
+{
+    public int Id { get; set; }
+
+    public ProbeDescending Rank { get; set; }
+}
+
+/// <summary>A query filter that compares by the hand-written ordering.</summary>
+public sealed class FilteredByRankDb(DbContextOptions options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<FilteredRank>().HasQueryFilter(r => r.Rank > ProbeDescending.From(2));
+}
+
+/// <summary>The same as a named filter, beside one that is allowed.</summary>
+public sealed class NamedFilterByRankDb(DbContextOptions options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<FilteredRank>()
+                    .HasQueryFilter("Positive", r => r.Rank.Value > 0)
+                    .HasQueryFilter("AboveTwo", r => r.Rank > ProbeDescending.From(2));
+}
+
+/// <summary>A filter on another entity type, over its navigation.</summary>
+public sealed class FilteredByChildRankDb(DbContextOptions options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<FilteredRank>();
+        modelBuilder.Entity<RankParent>().HasQueryFilter(p => p.Children.Max(c => c.Rank) > ProbeDescending.From(2));
+    }
+}
+
+/// <summary>Filters that are allowed: by <c>.Value</c>, and a comparison of the context's own value, evaluated in memory.</summary>
+public sealed class FilteredByValueDb(DbContextOptions<FilteredByValueDb> options) : DbContext(options)
+{
+    public ProbeDescending Floor { get; set; } = ProbeDescending.From(1);
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<FilteredRank>().HasQueryFilter(r => Floor > ProbeDescending.From(2) && r.Rank.Value > 1);
 }
