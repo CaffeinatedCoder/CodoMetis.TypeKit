@@ -74,11 +74,14 @@ no component at all), and both parameters are a bare `string`.
   `JsonStringEnumConverter` an enum-backed value object is its names.
 - **Each value object keeps its own component**, named after it, so the document still says
   `OrderId` where the API means an order id. A value object nested in another type is named after
-  the whole chain, `Shop.Id` as `ShopId`, so `Shop.Id` and `Stock.Id` do not share one. Two value
+  the whole chain, `Shop.Id` as `ShopId`, so `Shop.Id` and `Stock.Id` do not share one; a nested
+  closed set too, `Order.Status` as `OrderStatus`. Where that name is another type's as well, a
+  top-level `OrderStatus` beside `Order.Status`, from any assembly, generating the document throws an
+  `InvalidOperationException` naming both, rather than describing both as one. Two value
   objects of one name in different namespaces (`Billing.InvoiceNo`, `Shipping.InvoiceNo`) do share
   one, as ASP.NET does for any two types of one name, and it describes both as the first it meets.
   A name your own `CreateSchemaReferenceId` gives, set before `AddTypeKit()`, is kept, so give one of
-  them its own name there. A host that prefers value objects inlined returns `null` for them, the
+  them its own name there, or rename one. A host that prefers value objects inlined returns `null` for them, the
   nullable ones included, after `AddTypeKit()`:
 
   ```csharp
