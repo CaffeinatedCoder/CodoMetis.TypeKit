@@ -26,7 +26,7 @@ appears to: an instance that passed no factory, or a value object that was never
 | CMTK0012 | Error | A closed set's `Match` given an argument by position, which binds to whichever member is declared at that place, so reordering the members swaps the branches. The code fix names every argument. |
 
 The ids are public contract and never change meaning. The generators' own build errors,
-CMTK1000 to CMTK1021, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
+CMTK1000 to CMTK1022, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
 
 Every rule also runs in `.razor` and `.cshtml` files (see [Generated code](#generated-code-and-razor)).
 

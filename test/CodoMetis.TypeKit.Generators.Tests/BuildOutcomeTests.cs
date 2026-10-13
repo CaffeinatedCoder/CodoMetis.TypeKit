@@ -118,6 +118,12 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1019", "SetWithUninitializedMember.B")]
     [InlineData("CMTK1019", "SetWithTrailingCall.B")]
     [InlineData("CMTK1020", "SetRecord")]
+    [InlineData("CMTK1014", "SetAbstract")]
+    [InlineData("CMTK1022", "AbstractRecord")]
+    [InlineData("CMTK1022", "AbstractClass")]
+    [InlineData("CMTK1022", "AbstractValidated")]
+    [InlineData("CMTK1022", "AbstractThroughInterface")]
+    [InlineData("CMTK1022", "AbstractHolder.AbstractNested")]
     [InlineData("CMTK1011", "SetWithName")]
     [InlineData("CMTK1011", "SetWithExplicitAll")]
     [InlineData("CMTK1011", "SetWithParsable")]
@@ -342,6 +348,19 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     public void A_hand_written_constructor_is_refused_by_name(string type, string constructor) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1009" && error.Message.StartsWith($"'{type}' declares {constructor},"), $"CMTK1009 on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
 
+    /// <summary>
+    /// An abstract type with a marker was given no aspect and no word: it compiled with no member
+    /// generated, and a value held as it, of a sealed type derived from it, had no <c>Value</c> and was
+    /// written as <c>{}</c>. It is refused where it is declared, once, as a value object it cannot be.
+    /// </summary>
+    [Fact]
+    public void An_abstract_value_object_is_refused_once_with_the_reason() =>
+        consumer.Errors.Where(error => error.Message.Contains("'AbstractRecord'"))
+                .ShouldHaveSingleItem(consumer.Output)
+                .ShouldSatisfyAllConditions(
+                    error => error.Id.ShouldBe("CMTK1022"),
+                    error => error.Message.ShouldStartWith("'AbstractRecord' is abstract, so it is not generated: an abstract type cannot be a value object. A value held as 'AbstractRecord' would have no Value, and its JSON would be '{}'."));
+
     /// <summary>A static constructor makes no instance, so the value object is still generated.</summary>
     [Fact]
     public void A_static_constructor_is_allowed() =>
@@ -357,7 +376,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK0012", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CMTK1019", "CMTK1020", "CMTK1021", "CS0535"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK0012", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CMTK1019", "CMTK1020", "CMTK1021", "CMTK1022", "CS0535"], ignoreOrder: false, customMessage: consumer.Output);
 
     /// <summary>
     /// CS0535 is allowed above only for a refused closed set, whose interface members the generators
@@ -384,7 +403,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
         var errors = consumer.Errors.Where(error => error.Id.StartsWith("CMTK1", StringComparison.Ordinal)).ToList();
 
-        errors.Select(error => error.Id).Distinct().Count().ShouldBe(22, $"Not every CMTK1000-CMTK1021 error was observed, so the check below is incomplete:{Environment.NewLine}{consumer.Output}");
+        errors.Select(error => error.Id).Distinct().Count().ShouldBe(23, $"Not every CMTK1000-CMTK1022 error was observed, so the check below is incomplete:{Environment.NewLine}{consumer.Output}");
         errors.Where(error => !error.Message.EndsWith($". See {link}", StringComparison.Ordinal))
               .Select(error => $"{error.Id}: {error.Message}")
               .ShouldBeEmpty("These errors do not end with the link to the Build errors table.");
@@ -480,6 +499,9 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             public sealed partial record SetRecord : IClosedSet<SetRecord> { public static readonly SetRecord A = new(); }
 
+            // Abstract, so a closed set it is not: refused as unsealed, never skipped.
+            public abstract partial class SetAbstract : IClosedSet<SetAbstract> { }
+
             public sealed partial class SetWithName : IClosedSet<SetWithName> { public static readonly SetWithName A = new(); public string Name => "A"; }
 
             public sealed partial class SetWithExplicitAll : IClosedSet<SetWithExplicitAll> { public static readonly SetWithExplicitAll A = new(); static System.Collections.Generic.IReadOnlyList<SetWithExplicitAll> IClosedSet<SetWithExplicitAll>.All => [A]; }
@@ -557,6 +579,25 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public partial record NotSealed : IValue<string>;
 
             public sealed partial record DerivesFromAValueObject : NotSealed;
+
+            // Abstract: given no aspect and no word, while a value held as one, of a sealed type
+            // derived from it, had no Value and was written as {}.
+            public abstract partial record AbstractRecord : IValue<string>;
+
+            public sealed partial record DerivesFromAbstract : AbstractRecord;
+
+            public abstract class AbstractClass : IValue<int> { }
+
+            public abstract partial record AbstractValidated : IValidatedValue<AbstractValidated, int, Fault>
+            {
+                public static Result<AbstractValidated, Fault> Create(int value) => Result.Error(Fault.Refused);
+            }
+
+            public interface IAbstractIdentifier : IValue<System.Guid> { }
+
+            public abstract partial record AbstractThroughInterface : IAbstractIdentifier;
+
+            public static class AbstractHolder { public abstract partial record AbstractNested : IValue<long>; }
 
             // A value object that reaches itself through what it wraps has no finite form: its JSON
             // converter serializes the wrapped value through the options, which is its own converter

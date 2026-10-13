@@ -355,6 +355,7 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1019 | A closed set's member not initialized with `new` where it is declared, and with nothing else: `= Open` would give one instance two names, and a member set later, by a call, or by an expression that only starts with `new`, may be another member or null. |
 | CMTK1020 | A closed set declared as a record: `with` copies a member into an instance that is none, and a record compares by value where members are singletons. |
 | CMTK1021 | A closed set's member named as a member the generators introduce (`Name`, `QualifiedName`, `All`, `Match`, `Parse`, `TryParse`, `ToString`, the JSON or type converter), or whose name differs from another member's only in case: one name to `TryParse(name, ignoreCase: true)`, and to `Match`'s parameters where the first letter is the difference. |
+| CMTK1022 | An abstract type with a value-object marker: it would get no member, and a value held as it, of a type derived from it, would have no `Value` and be written as `{}`. Declare the marker on the sealed type. An abstract closed set is CMTK1014. |
 
 The analyzers that come with the base package add CMTK0001 to CMTK0012; see
 [CodoMetis.TypeKit.Analyzers](https://www.nuget.org/packages/CodoMetis.TypeKit.Analyzers).

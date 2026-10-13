@@ -83,4 +83,7 @@ internal static class AspectDiagnostics
 
     public static readonly DiagnosticDefinition<(INamedType Type, string Member, string Reason)> ClosedSetMemberNameTaken =
         new("CMTK1021", Severity.Error, "'{0}.{1}' {2}, so '{0}' is not generated: rename the member." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<INamedType> AbstractValueObject =
+        new("CMTK1022", Severity.Error, "'{0}' is abstract, so it is not generated: an abstract type cannot be a value object. A value held as '{0}' would have no Value, and its JSON would be '{{}}'. Declare the marker on a sealed type." + SeeBuildErrors);
 }
