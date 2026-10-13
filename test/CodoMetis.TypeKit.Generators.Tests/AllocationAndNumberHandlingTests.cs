@@ -170,6 +170,36 @@ public sealed class AllocationAndNumberHandlingTests
         }
     }
 
+    [JsonNumberHandling(JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowReadingFromString)]
+    public sealed record RawCounted(int Count);
+
+    [JsonNumberHandling(JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowReadingFromString)]
+    public sealed record CountedOnTheType(ProbeCount Count);
+
+    public sealed record CountedOnTheProperty([property: JsonNumberHandling(JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowReadingFromString)] ProbeCount Count);
+
+    public sealed record Counted(ProbeCount Count);
+
+    /// <summary>
+    /// What the docs state as the one exception to "the wrapped type's JSON": number handling given by
+    /// an attribute. On the containing type it reaches the numbers the serializer writes itself and not
+    /// a value object, whose converter cannot see it; on the property the serializer refuses it for
+    /// anything but a number. The options carry it to the value object. Pinned so the docs cannot say
+    /// more than holds.
+    /// </summary>
+    [Fact]
+    public void Number_handling_by_attribute_does_not_reach_a_value_object_and_the_options_do()
+    {
+        JsonSerializer.Serialize(new RawCounted(5)).ShouldBe("""{"Count":"5"}""");
+        JsonSerializer.Serialize(new CountedOnTheType(ProbeCount.From(5))).ShouldBe("""{"Count":5}""");
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<CountedOnTheType>("""{"Count":"5"}"""));
+        Should.Throw<InvalidOperationException>(() => JsonSerializer.Serialize(new CountedOnTheProperty(ProbeCount.From(5))));
+
+        var options = new JsonSerializerOptions { NumberHandling = JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowReadingFromString };
+        JsonSerializer.Serialize(new Counted(ProbeCount.From(5)), options).ShouldBe("""{"Count":"5"}""");
+        JsonSerializer.Deserialize<Counted>("""{"Count":"5"}""", options)!.Count.ShouldBe(ProbeCount.From(5));
+    }
+
     private static string Outcome<T>(Func<T> action)
     {
         try

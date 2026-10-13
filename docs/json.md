@@ -52,6 +52,16 @@ for every wrapped-type family under several sets of options. One addition of the
 `DateTime` is written as UTC, a `Local` one converted and an `Unspecified` one taken as UTC with its
 digits kept, so a stored instant reads back as the instant it was.
 
+One exception: number handling given by an attribute rather than by the options. A
+`[JsonNumberHandling]` on a record or class applies to the number properties the serializer writes
+itself, and a value object's converter cannot see it. Under
+`[JsonNumberHandling(JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowReadingFromString)]`,
+`record Counted(int Count)` writes `{"Count":"5"}` and reads `"5"`, while `record Counted(Quantity Count)`
+writes `{"Count":5}` and refuses `"5"` with a `JsonException`, which ASP.NET Core answers with 400. On
+a value-object property the serializer refuses the attribute outright (`InvalidOperationException`:
+it is valid only on a number). Set the number handling on the options, or on a source-generated
+context's `[JsonSourceGenerationOptions(NumberHandling = ...)]`: both reach the value object.
+
 ## Refusals
 
 Every generated way in applies `Create`, and a refusal names the value object and the rule, or the

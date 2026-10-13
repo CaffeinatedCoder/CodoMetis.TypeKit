@@ -275,6 +275,15 @@ property by an `OrderId` therefore changes no JSON, and a test compares the two 
 family under several sets of options. One addition: a `DateTime` is written as UTC, a `Local` one
 converted and an `Unspecified` one taken as UTC with its digits kept.
 
+One exception: number handling given by an attribute rather than by the options. A
+`[JsonNumberHandling]` on the containing type reaches the number properties the serializer writes
+itself, and a value object's converter never sees it: under
+`[JsonNumberHandling(WriteAsString | AllowReadingFromString)]`, `record Dto(int Count)` writes
+`{"Count":"5"}` and reads `"5"`, while `record Dto(Quantity Count)` writes `{"Count":5}` and refuses
+`"5"` with a `JsonException`. On the property itself the serializer refuses the attribute for any type
+but a number (`InvalidOperationException`). Set the number handling on the options, or on a
+source-generated context's `[JsonSourceGenerationOptions]`, which do reach the value object.
+
 Numbers and dates are read as strictly as the serializer reads the wrapped type. What it cannot read
 is a `JsonException` naming the value object and the wrapped type ("Quantity could not read the JSON
 value as Int32."), with no inner exception that could carry the text; ASP.NET Core answers it with 400.
@@ -314,9 +323,18 @@ var shown  = $"{Amount.From(1.5m)}";                       // "1.5"
 ```
 
 A null `IFormatProvider` means the invariant culture in every generated `Parse`, `TryParse`,
-`ToString` and `TryFormat`, so `Parse(x.ToString(), null)` round-trips wherever the process runs. A
-provider that is given is used as given where the wrapped type's parsing and formatting take one; a
-`Uri`, a NodaTime type and a type parsed through a constructor or a provider-less `Parse` ignore it.
+`ToString` and `TryFormat`, so the text does not depend on the culture the process runs in:
+`ToString()` is the wrapped type's own default text under the invariant culture, and the type
+converter and `$"{x}"` write the same. It reads back as the same value wherever the wrapped type's
+own does: numbers (`float`, `double` and `Half` included), `BigInteger`, `Guid`, `DateOnly`,
+`TimeSpan`, `Version`, `Uri`, enums and strings. It does not for `TimeOnly`, `DateTime` and
+`DateTimeOffset`, whose default text drops what the invariant culture's short patterns drop:
+`TimeOnly(3, 4, 5, 123)` prints `03:04`, a `DateTime` loses its fraction of a second and its `Kind`,
+a `DateTimeOffset` its fraction. Format those with `"O"` (`x.ToString("O", null)`), which a `TimeOnly`
+and a `DateTimeOffset` read back exactly, or keep them in their JSON form, which a `DateTime` reads
+back as the UTC instant it wrote. A provider that is given is used as given where the wrapped type's
+parsing and formatting take one; a `Uri`, a NodaTime type and a type parsed through a constructor or a
+provider-less `Parse` ignore it.
 
 Text the wrapped type cannot read is a `FormatException` naming the value object and the wrapped
 type ("Quantity could not read the input as Int32."), an overflow included, with no inner exception:
@@ -333,7 +351,7 @@ implementation of `IComparable<TSelf>`, `IComparable` or `IComparisonOperators` 
 A database cannot run it: it orders the column by the wrapped value. The type then carries
 `[HandWrittenOrdering]`, and an EF Core query that compares, orders, or takes the `Min` or `Max` of
 it is refused, naming the value object, rather than answered in the column's order
-([CodoMetis.TypeKit.EntityFrameworkCore](../CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries)).
+([CodoMetis.TypeKit.EntityFrameworkCore](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries)).
 Compare or order by `.Value` where the wrapped value's order is meant.
 
 ## Build errors

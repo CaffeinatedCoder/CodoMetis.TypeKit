@@ -35,8 +35,10 @@ internal sealed class ParsableImplementationArguments
     /// <summary>
     /// The provider the generated parsing hands to the wrapped type. A null provider means the
     /// invariant culture, not the current one as in the BCL: the generated <c>ToString()</c> is
-    /// invariant, so <c>Parse(x.ToString(), null)</c> has to round-trip, and with the current
-    /// culture it parsed "1.5" as 15 in de-DE. A provider that is given is used as given.
+    /// invariant, so what it writes has to read back the same wherever the process runs, and with the
+    /// current culture "1.5" was parsed as 15 in de-DE. It is as lossless as the wrapped type's own
+    /// default text: <c>TimeOnly</c>, <c>DateTime</c> and <c>DateTimeOffset</c> lose seconds or a
+    /// fraction in it. A provider that is given is used as given.
     /// </summary>
     public const string Provider = "(provider ?? global::System.Globalization.CultureInfo.InvariantCulture)";
 

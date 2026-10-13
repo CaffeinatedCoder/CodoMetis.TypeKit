@@ -51,9 +51,14 @@
   type parameters reach an explicit implementation. `Parse` is `TryParse` and a throw (below).
 - **Parsing culture (decided 2026-09-27).** In the generated `Parse`/`TryParse` a null
   `IFormatProvider` means the invariant culture, unlike the BCL, because the generated `ToString()`
-  is invariant: `Parse(x.ToString(), null)` must round-trip, and with the current culture it parsed
-  "1.5" as 15 in de-DE. A provider that is given is used as given. The type converter already did
-  this.
+  is invariant: what it writes must read back the same wherever the process runs, and with the
+  current culture "1.5" was parsed as 15 in de-DE. A provider that is given is used as given. The
+  type converter already did this. The text is the wrapped type's own default text, so it is as
+  lossless as that, no more (measured 2026-10-13): `Parse(x.ToString(), null)` gives `x` back for the
+  numbers, `Guid`, `DateOnly`, `TimeSpan`, `BigInteger`, `Version` and `Uri`, and not for `TimeOnly`
+  (`03:04` for 03:04:05.123), `DateTime` (fraction and `Kind`) and `DateTimeOffset` (fraction), whose
+  invariant short patterns drop them; the type converter and interpolation write the same text. The
+  docs say so and point at `"O"` and the JSON form.
 - **Formatting culture (decided 2026-09-27),** the counterpart: a null provider means the invariant
   culture in the generated `ToString(format, provider)`, both `TryFormat`s and `IConvertible`.
   Interpolation, `string.Format` and `Convert.ToString` pass null, and with the current culture
@@ -69,7 +74,11 @@
   writes and reads its values and keys through `GeneratedJsonPlan<T>`, the converter the options have
   for `T` or else the built-in (or NodaTime's) one: exactly what the serializer writes for a `T`, so a
   host's converter, number handling, enum converter and `DictionaryKeyPolicy` apply, and swapping a
-  primitive for a value object changes no JSON. The earlier per-family readers and writers wrote
+  primitive for a value object changes no JSON. A `[JsonNumberHandling]` on the containing type or
+  the property is the exception (measured 2026-10-13): the serializer applies it to the numbers it
+  writes itself, the plan reads only the options' and the wrapped type's contract, and a converter
+  cannot see its caller's attribute, so the docs say to set it on the options or the context. The
+  earlier per-family readers and writers wrote
   `TimeOnly` as `"13:45:30.0000000"` and `DateTime` keys with seven fractional digits, ignored a
   host's converter for `Guid`, `DateTime` and integer keys, and skipped the key policy.
   `JsonParityTests` compares a value object with its wrapped type for 14 families under five option

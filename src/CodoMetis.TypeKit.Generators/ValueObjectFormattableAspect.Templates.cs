@@ -40,8 +40,10 @@ internal sealed partial class ValueObjectFormattableAspect
     // Overrides the record-generated ToString() with the invariant culture. The BCL's own ToString()
     // uses the current culture; this one does not, because a value object's text is an identifier
     // or a wire value more often than a display string, and the generated Parse treats a null
-    // provider as invariant too, so Parse(x.ToString(), null) round-trips. Callers who need a
-    // culture pass it: x.ToString(format, culture), or string.Create(culture, $"{x}").
+    // provider as invariant too, so Parse(x.ToString(), null) reads it back as far as the wrapped
+    // type's default text is lossless (TimeOnly, DateTime and DateTimeOffset drop seconds or a
+    // fraction in theirs). Callers who need a culture pass it: x.ToString(format, culture), or
+    // string.Create(culture, $"{x}").
     [Template]
     public string ToStringOverrideTemplate() => meta.This.ToString(null, CultureInfo.InvariantCulture);
 

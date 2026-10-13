@@ -185,7 +185,12 @@ bool sortable = typeof(IComparable<Homepage>).IsAssignableFrom(typeof(Homepage))
 The generated members follow what the wrapped type offers: parsing where it parses, formatting where
 it formats, comparison where it is comparable. A `Uri` parses and formats but has no ordering; NodaTime's
 types parse through their type converters. A null `IFormatProvider` means the invariant culture
-throughout, so `Parse(x.ToString(), null)` round-trips wherever the process runs.
+throughout, so a value object's text is the same wherever the process runs, and `Parse(x.ToString(), null)`
+gives `x` back wherever the wrapped type's own text is lossless: numbers, `Guid`, `DateOnly`,
+`TimeSpan`, `Version`, `Uri`, enums, strings. `TimeOnly`, `DateTime` and `DateTimeOffset` print the
+invariant culture's short patterns, as the BCL types do, and lose seconds (`TimeOnly`) or the fraction
+of a second (and a `DateTime` its `Kind`) on the way: use `x.ToString("O", null)` or the JSON form for
+those ([Parsing and formatting](../src/CodoMetis.TypeKit.Generators/README.md#parsing-and-formatting)).
 
 What cannot be wrapped is refused at build time (CMTK1005): a generic type, a tuple included, because
 a `List<T>` compares by reference; a nullable; an array; and another value object, since wrapping

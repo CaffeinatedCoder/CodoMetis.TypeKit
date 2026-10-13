@@ -40,6 +40,24 @@ public sealed partial class DocumentationLinkTests
         headings.ShouldContain(link.Anchor, $"{location} links #{link.Anchor}, which is no heading of {link.Path}. The headings are: {string.Join(", ", headings)}.");
     }
 
+    public static TheoryData<string> PackageReadmes => [.. Repository.ShippingProjects().Select(project => $"src/{project}/README.md")];
+
+    /// <summary>
+    /// A package README is packed into its package, and nuget.org renders it there, where a link
+    /// relative to the repository opens nothing. It links another file by its absolute GitHub address,
+    /// as every other package README does; an in-page anchor stays relative.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(PackageReadmes))]
+    public void A_package_README_links_other_files_by_their_absolute_address(string readme)
+    {
+        PackageReadmes.Count.ShouldBeGreaterThanOrEqualTo(5);
+        File.Exists(Path.Combine(Repository.Root, readme)).ShouldBeTrue($"{readme} does not exist.");
+
+        Links.Value.Where(link => link.Page == readme).Select(link => link.Location).ShouldBeEmpty(
+            $"{readme} is packed into its package, where a relative link opens nothing on nuget.org. Link https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/... instead.");
+    }
+
     /// <summary>The positive control: links with and without anchors are found, external and in-page links are left alone, and the slug is GitHub's.</summary>
     [Fact]
     public void Links_and_headings_are_read_as_GitHub_reads_them()
