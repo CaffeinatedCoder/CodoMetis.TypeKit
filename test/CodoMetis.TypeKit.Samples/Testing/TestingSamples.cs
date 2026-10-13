@@ -9,7 +9,7 @@ using ReadmeSamples.Root.QuickStart;
 
 namespace ReadmeSamples.Testing;
 
-public sealed record OrderPatch(Patch<string> Name, Patch<string?> Nickname, Patch<int> Quantity);
+public sealed record OrderPatch(Patch<string> Name, Patch<string> Nickname, Patch<int> Quantity);
 
 public sealed partial class TestingSamples
 {

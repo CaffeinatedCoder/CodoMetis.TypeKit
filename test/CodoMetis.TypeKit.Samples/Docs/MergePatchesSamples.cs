@@ -22,7 +22,7 @@ public sealed partial record Email : IValidatedValue<Email, string, EmailFault>
         value.Contains('@') ? new Email(value) : Result.Error(EmailFault.NoAt);
 }
 
-public sealed record ContactPatch(Patch<Email> Email, Patch<string?> Phone, Patch<int> Floor);
+public sealed record ContactPatch(Patch<Email> Email, Patch<string> Phone, Patch<int> Floor);
 // end sample
 
 // sample: merge-patches/apply
@@ -51,7 +51,7 @@ public static class ContactPatching
 
 // sample: merge-patches/writing
 public sealed record ContactChange(
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] Patch<string?> Phone,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] Patch<string> Phone,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] Patch<int> Floor);
 // end sample
 
@@ -125,8 +125,8 @@ public static class Usage
     public static (string Clear, string Set) Write()
     {
         // sample: merge-patches/writing-use
-        string clear = JsonSerializer.Serialize(new ContactChange(Patch.Null<string?>(), Patch.Absent<int>()), JsonSerializerOptions.Web);   // {"phone":null}
-        string set = JsonSerializer.Serialize(new ContactChange(Patch.Absent<string?>(), Patch.Value(4)), JsonSerializerOptions.Web);       // {"floor":4}
+        string clear = JsonSerializer.Serialize(new ContactChange(Patch.Null<string>(), Patch.Absent<int>()), JsonSerializerOptions.Web);   // {"phone":null}
+        string set = JsonSerializer.Serialize(new ContactChange(Patch.Absent<string>(), Patch.Value(4)), JsonSerializerOptions.Web);       // {"floor":4}
         // end sample
 
         return (clear, set);
@@ -136,7 +136,7 @@ public static class Usage
     public static void WriteRefused()
     {
         // sample: merge-patches/writing-use
-        JsonSerializer.Serialize(new ContactPatch(Patch.Absent<Email>(), Patch.Null<string?>(), Patch.Value(4)));                         // NotSupportedException naming Email and WhenWritingDefault
+        JsonSerializer.Serialize(new ContactPatch(Patch.Absent<Email>(), Patch.Null<string>(), Patch.Value(4)));                         // NotSupportedException naming Email and WhenWritingDefault
         // end sample
     }
 
@@ -232,9 +232,9 @@ public sealed class MergePatchesTests
     {
         var (clear, set) = Usage.Write();
 
-        clear.ShouldBeShownIn(Page, json => json, "JsonSerializer.Serialize(new ContactChange(Patch.Null<string?>(), Patch.Absent<int>()), JsonSerializerOptions.Web)");
-        set.ShouldBeShownIn(Page, json => json, "JsonSerializer.Serialize(new ContactChange(Patch.Absent<string?>(), Patch.Value(4)), JsonSerializerOptions.Web)");
-        SampleOutputs.ShouldRefuseAsShownIn(() => JsonSerializer.Serialize(new ContactPatch(Patch.Absent<Email>(), Patch.Null<string?>(), Patch.Value(4))), Page, input: "555");
+        clear.ShouldBeShownIn(Page, json => json, "JsonSerializer.Serialize(new ContactChange(Patch.Null<string>(), Patch.Absent<int>()), JsonSerializerOptions.Web)");
+        set.ShouldBeShownIn(Page, json => json, "JsonSerializer.Serialize(new ContactChange(Patch.Absent<string>(), Patch.Value(4)), JsonSerializerOptions.Web)");
+        SampleOutputs.ShouldRefuseAsShownIn(() => JsonSerializer.Serialize(new ContactPatch(Patch.Absent<Email>(), Patch.Null<string>(), Patch.Value(4))), Page, input: "555");
         Should.Throw<NotSupportedException>(Usage.WriteRefused);
     }
 

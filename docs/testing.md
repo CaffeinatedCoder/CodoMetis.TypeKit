@@ -60,7 +60,7 @@ same: `ShouldBeValue()` hands the value back, `ShouldBeNull()` is a clear, and `
 field the document left out.
 
 ```csharp
-public sealed record CodePatch(Patch<ProductCode> Code, Patch<string?> Note, Patch<int> Quantity);
+public sealed record CodePatch(Patch<ProductCode> Code, Patch<string> Note, Patch<int> Quantity);
 ```
 
 ```csharp

@@ -20,7 +20,7 @@ public sealed partial record Email : IValidatedValue<Email, string, EmailFault>
         value.Contains('@') ? new Email(value) : Result.Error(EmailFault.NoAt);
 }
 
-public sealed record ContactPatch(Patch<Email> Email, Patch<string?> Phone, Patch<int> Floor);
+public sealed record ContactPatch(Patch<Email> Email, Patch<string> Phone, Patch<int> Floor);
 ```
 
 ```csharp
@@ -100,7 +100,9 @@ The exception's `Path` is the field's, `$.email`, as it is for a property that i
 answer to the client can name the field. In an endpoint, that is the 400 any body a value object
 refuses gets, with problem details where the host adds `UseStatusCodePages()` ([ASP.NET Core](aspnet-core.md#what-a-refused-value-answers)). A `null` is
 not a refusal but the `Null` state, which `Apply` turns into a fault of its own, so a `Patch<Email?>`
-is never needed.
+is never needed. A patch's `T` is `notnull`, as an option's is: `Patch<Email?>` or `Patch<string?>` is
+a warning (CS8714) at the declaration, and over the value's own type every member hands the value as
+it is, never null.
 
 ## Validating one
 
@@ -136,14 +138,14 @@ skip a default:
 
 ```csharp
 public sealed record ContactChange(
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] Patch<string?> Phone,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] Patch<string> Phone,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] Patch<int> Floor);
 ```
 
 ```csharp
-string clear = JsonSerializer.Serialize(new ContactChange(Patch.Null<string?>(), Patch.Absent<int>()), JsonSerializerOptions.Web);   // {"phone":null}
-string set = JsonSerializer.Serialize(new ContactChange(Patch.Absent<string?>(), Patch.Value(4)), JsonSerializerOptions.Web);       // {"floor":4}
-JsonSerializer.Serialize(new ContactPatch(Patch.Absent<Email>(), Patch.Null<string?>(), Patch.Value(4)));                         // NotSupportedException naming Email and WhenWritingDefault
+string clear = JsonSerializer.Serialize(new ContactChange(Patch.Null<string>(), Patch.Absent<int>()), JsonSerializerOptions.Web);   // {"phone":null}
+string set = JsonSerializer.Serialize(new ContactChange(Patch.Absent<string>(), Patch.Value(4)), JsonSerializerOptions.Web);       // {"floor":4}
+JsonSerializer.Serialize(new ContactPatch(Patch.Absent<Email>(), Patch.Null<string>(), Patch.Value(4)));                         // NotSupportedException naming Email and WhenWritingDefault
 ```
 
 `Patch.Value(null)` is the `Null` state, so a client that holds a nullable value can pass it as it is.

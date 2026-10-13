@@ -26,6 +26,16 @@ package, is the one wire type there, and is hand-written, not generated. Measure
   the location the serializer appended to its default sentence, which named `$`. Inside a patched
   object the path ends at the patched property, since a converter cannot extend the serializer's
   path (`PatchTests`).
+- **`T` is `notnull`**, as `Option<T>`'s is: a value is never null, a clear being the Null state.
+  Unconstrained, a `Patch<string?>` handed its value to `Match`, `Tap`, `Map` and `Traverse` as a
+  `string?`, so `p => p.Trim()` warned (CS8602) and `Traverse(Email.Create)` did not match (CS8622).
+  Handing the non-null `T` to a `Patch<string?>` and a `Patch<string>` alike cannot be written
+  (measured 2026-10-13): overload resolution ignores nullability, so one member serves both; over
+  `Patch<T?> where T : class` a `Patch<string>` receiver is CS8620, two blocks over `Patch<T>` and
+  `Patch<T?>` lower to one signature (CS0111), and `[DisallowNull]` on a delegate's parameter does not
+  reach a lambda's (CS8602, CS8622). So the declaration is warned instead, once (CS8714), and a
+  `Patch<int?>`, which has no contract under a source-generated context either, with it
+  (`PatchNullabilityTests`).
 - **Writing an absent patch is refused**, since a converter cannot leave a property out;
   `[JsonIgnore(Condition = WhenWritingDefault)]` leaves it out instead.
 - **`ToString()` never prints the value**, as for `Option` and `Result`.

@@ -36,8 +36,16 @@ public enum PatchState
 /// <para>
 /// Reading never refuses a null: the Null state is part of the wire format whatever <typeparamref name="T"/>
 /// is, and whether a clear is accepted is the application's rule, said in <see cref="Match{TResult}"/>.
-/// A <c>Patch&lt;T?&gt;</c> over a struct is therefore never needed. A value <typeparamref name="T"/>'s
-/// own converter refuses, a value object's rule, is refused as it is anywhere else.
+/// A value <typeparamref name="T"/>'s own converter refuses, a value object's rule, is refused as it is
+/// anywhere else.
+/// </para>
+/// <para>
+/// <typeparamref name="T"/> is the value's type, <c>notnull</c> as an option's is, since a value is never
+/// null: <c>Patch&lt;string&gt;</c> for a field that can be cleared, not <c>Patch&lt;string?&gt;</c>. Over a
+/// nullable type every member would hand the value as nullable, so <c>p =&gt; p.Trim()</c> in
+/// <see cref="Map{TResult}"/> warned and <c>Traverse(Email.Create)</c> did not match; the declaration is
+/// warned instead (CS8714), once. A <c>Patch&lt;int?&gt;</c> is refused the same way, and has no contract
+/// under a source-generated context either.
 /// </para>
 /// <para>
 /// Writing an absent patch is refused: a converter cannot leave a property out. Mark a property that
@@ -62,7 +70,7 @@ public enum PatchState
 /// <typeparam name="T">The type of the value.</typeparam>
 [JsonConverter(typeof(PatchJsonConverterFactory))]
 [DebuggerDisplay("{State}")]
-public readonly record struct Patch<T>
+public readonly record struct Patch<T> where T : notnull
 {
     private readonly T?         _value;
     private readonly PatchState _state;
@@ -155,22 +163,22 @@ public static class Patch
     /// <summary>A field that was not mentioned: the <c>default</c>.</summary>
     /// <typeparam name="T">The type of the value.</typeparam>
     /// <returns>An absent patch.</returns>
-    public static Patch<T> Absent<T>() => default;
+    public static Patch<T> Absent<T>() where T : notnull => default;
 
     /// <summary>A field that was null: a clear.</summary>
     /// <typeparam name="T">The type of the value.</typeparam>
     /// <returns>A null patch.</returns>
-    public static Patch<T> Null<T>() => new(default, PatchState.Null);
+    public static Patch<T> Null<T>() where T : notnull => new(default, PatchState.Null);
 
     /// <summary>A field that carried <paramref name="value"/>; a null value is the Null state.</summary>
     /// <param name="value">The value.</param>
     /// <typeparam name="T">The type of the value.</typeparam>
     /// <returns>A patch holding the value, or a null patch.</returns>
-    public static Patch<T> Value<T>(T? value) => value is null ? Null<T>() : new(value, PatchState.Value);
+    public static Patch<T> Value<T>(T? value) where T : notnull => value is null ? Null<T>() : new(value, PatchState.Value);
 
     /// <param name="patch">The patch.</param>
     /// <typeparam name="T">The type of the value, a class.</typeparam>
-    extension<T>(Patch<T> patch) where T : class?
+    extension<T>(Patch<T> patch) where T : class
     {
         /// <summary>Runs <paramref name="action"/> with the value, or with null when the field was null, for a target a clear can reach. An absent field runs nothing.</summary>
         /// <param name="action">What to do with the value or the clear.</param>
@@ -222,7 +230,7 @@ public static class Patch
 /// The JSON converter behind <see cref="Patch{T}"/>: a JSON null is the Null state, a value is read
 /// with <typeparamref name="T"/>'s contract, and an absent property never reaches it.
 /// </summary>
-internal sealed class PatchJsonConverter<T> : JsonConverter<Patch<T>>
+internal sealed class PatchJsonConverter<T> : JsonConverter<Patch<T>> where T : notnull
 {
     /// <summary>A JSON null is a state, not the serializer's default.</summary>
     public override bool HandleNull => true;

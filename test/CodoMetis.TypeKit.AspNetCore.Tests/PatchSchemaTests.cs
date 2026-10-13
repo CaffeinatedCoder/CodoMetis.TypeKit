@@ -16,7 +16,7 @@ namespace CodoMetis.TypeKit.AspNetCore.Tests;
 /// </summary>
 public sealed class PatchSchemaTests
 {
-    public sealed record OrderPatch(Patch<string?> Name, Patch<int> Quantity, Patch<ProbeCode> Code, Patch<ProbeId> Id, Patch<Lines?> Lines);
+    public sealed record OrderPatch(Patch<string> Name, Patch<int> Quantity, Patch<ProbeCode> Code, Patch<ProbeId> Id, Patch<Lines> Lines);
 
     public sealed record Lines(int Count);
 
@@ -41,7 +41,7 @@ public sealed class PatchSchemaTests
 
     /// <summary>One patch per kind of schema: a type, an enum without a type, an enum with one, branches, none at all.</summary>
     public sealed record KindsPatch(
-        Patch<string?> Name, Patch<int> Quantity, Patch<ProbeCode> Code, Patch<ProbeId> Id, Patch<Lines> Lines,
+        Patch<string> Name, Patch<int> Quantity, Patch<ProbeCode> Code, Patch<ProbeId> Id, Patch<Lines> Lines,
         Patch<Colour> Colour, Patch<ProbeStatus> Status, Patch<Size> Size, Patch<int[]> Numbers, Patch<Shape> Shape, Patch<object> Anything, Patch<Either> Either);
 
     /// <summary>The same arguments, unpatched: what each value is judged against.</summary>

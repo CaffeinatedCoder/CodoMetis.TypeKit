@@ -422,7 +422,7 @@ by hand. `Patch<T>` is that field, and the one wire type here; `Option` refuses 
 whether a value exists, a patch whether a request mentioned it.
 
 ```csharp
-public sealed record OrderPatch(Patch<string> Name, Patch<string?> Nickname, Patch<int> Quantity);
+public sealed record OrderPatch(Patch<string> Name, Patch<string> Nickname, Patch<int> Quantity);
 ```
 
 ```csharp
@@ -445,8 +445,11 @@ order.Quantity = patch.Quantity.Match(
 ```
 
 Reading never refuses a null: the Null state is part of the wire format whatever `T` is, and whether
-a clear is accepted is the application's rule, said in `Match`. So a `Patch<T?>` over a struct is
-never needed, and a value object inside a patch keeps its own rule: `Patch<Email>` given a value
+a clear is accepted is the application's rule, said in `Match`. So a `Patch<T?>` is never needed:
+`T` is the value's type and `notnull`, as an option's is, so `Patch<string>` is a field that can be
+cleared, and `Patch<string?>` is a warning (CS8714) at its declaration rather than a nullable handed
+to every `Match`, `Map` and `Traverse` though a value is never null. A value object inside a patch
+keeps its own rule: `Patch<Email>` given a value
 `Create` refuses is refused as anywhere else, the input not quoted. Where the refusal should be the
 endpoint's own fault, the request carries a `Patch<string>` and `Traverse` validates it:
 `request.Email.Traverse(Email.Create)` is a `Result<Patch<Email>, EmailFault>`, a clear and an

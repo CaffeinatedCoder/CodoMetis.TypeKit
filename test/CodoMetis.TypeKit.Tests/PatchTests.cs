@@ -18,7 +18,7 @@ public sealed class PatchTests
 
     private static JsonSerializerOptions Options(string resolver) => resolver == "reflection" ? Reflection : Generated;
 
-    private static string Show<T>(Patch<T> patch) => patch.Match(value => $"Value({value})", () => "Null", () => "Absent");
+    private static string Show<T>(Patch<T> patch) where T : notnull => patch.Match(value => $"Value({value})", () => "Null", () => "Absent");
 
     [Fact]
     public void Default_is_absent_and_the_states_are_told_apart()
@@ -29,7 +29,7 @@ public sealed class PatchTests
         Patch.Absent<int>().ShouldBe(absent);
         Patch.Null<int>().State.ShouldBe(PatchState.Null);
         Patch.Value(3).State.ShouldBe(PatchState.Value);
-        Patch.Value<string?>(null).State.ShouldBe(PatchState.Null, "a null value is the Null state");
+        Patch.Value<string>(null).State.ShouldBe(PatchState.Null, "a null value is the Null state");
     }
 
     [Fact]
@@ -228,10 +228,10 @@ public sealed class PatchTests
     {
         var options = Options(resolver);
 
-        JsonSerializer.Serialize(new Outgoing(Patch.Null<string?>(), Patch.Absent<int>()), options).ShouldBe("""{"name":null}""");
-        JsonSerializer.Serialize(new Outgoing(Patch.Value<string?>("Ada"), Patch.Value(2)), options).ShouldBe("""{"name":"Ada","quantity":2}""");
+        JsonSerializer.Serialize(new Outgoing(Patch.Null<string>(), Patch.Absent<int>()), options).ShouldBe("""{"name":null}""");
+        JsonSerializer.Serialize(new Outgoing(Patch.Value<string>("Ada"), Patch.Value(2)), options).ShouldBe("""{"name":"Ada","quantity":2}""");
 
-        var refusal = Should.Throw<NotSupportedException>(() => JsonSerializer.Serialize(new BareOutgoing(Patch.Absent<string?>()), options));
+        var refusal = Should.Throw<NotSupportedException>(() => JsonSerializer.Serialize(new BareOutgoing(Patch.Absent<string>()), options));
         refusal.Message.ShouldContain("WhenWritingDefault");
     }
 
@@ -264,18 +264,18 @@ public sealed class PatchTests
         public override void Write(Utf8JsonWriter writer, Code value, JsonSerializerOptions options) => writer.WriteStringValue(value.Value);
     }
 
-    public sealed record Update(Patch<string?> Name, Patch<int> Quantity, Patch<Code> Code, Patch<Address?> Address);
+    public sealed record Update(Patch<string> Name, Patch<int> Quantity, Patch<Code> Code, Patch<Address> Address);
 
     /// <summary>The same field without a patch, whose refusal is the one a patch's should match.</summary>
     public sealed record Plain(int Quantity);
 
-    public sealed record UpdateWithoutAddress(Patch<Address?> Address);
+    public sealed record UpdateWithoutAddress(Patch<Address> Address);
 
     public sealed record Outgoing(
-        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] Patch<string?> Name,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] Patch<string> Name,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] Patch<int> Quantity);
 
-    public sealed record BareOutgoing(Patch<string?> Name);
+    public sealed record BareOutgoing(Patch<string> Name);
 }
 
 // A class a patch wraps is listed, since the patch's converter hides it from the generator; a primitive

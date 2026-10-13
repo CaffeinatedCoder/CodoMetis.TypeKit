@@ -11,7 +11,7 @@ public static class PatchAssertions
     /// <param name="patch">The patch under test.</param>
     /// <returns>The value.</returns>
     /// <exception cref="TypeKitAssertionException">The field was null or not mentioned.</exception>
-    public static T ShouldBeValue<T>(this Patch<T> patch) =>
+    public static T ShouldBeValue<T>(this Patch<T> patch) where T : notnull =>
         patch.TryGetValue(out var value)
             ? value
             : throw new TypeKitAssertionException($"Expected a value, but the {Outcomes.Name<Patch<T>>()} is {Describe(patch.State)}.");
@@ -19,7 +19,7 @@ public static class PatchAssertions
     /// <summary>Fails unless the field was null: a clear.</summary>
     /// <param name="patch">The patch under test.</param>
     /// <exception cref="TypeKitAssertionException">The field carried a value, which is not printed, or was not mentioned.</exception>
-    public static void ShouldBeNull<T>(this Patch<T> patch)
+    public static void ShouldBeNull<T>(this Patch<T> patch) where T : notnull
     {
         if (patch.State != PatchState.Null)
             throw new TypeKitAssertionException($"Expected Null, a clear, but the {Outcomes.Name<Patch<T>>()} {Was(patch.State)}.");
@@ -28,7 +28,7 @@ public static class PatchAssertions
     /// <summary>Fails unless the field was not mentioned.</summary>
     /// <param name="patch">The patch under test.</param>
     /// <exception cref="TypeKitAssertionException">The field carried a value, which is not printed, or was null.</exception>
-    public static void ShouldBeAbsent<T>(this Patch<T> patch)
+    public static void ShouldBeAbsent<T>(this Patch<T> patch) where T : notnull
     {
         if (patch.State != PatchState.Absent)
             throw new TypeKitAssertionException($"Expected Absent, but the {Outcomes.Name<Patch<T>>()} {Was(patch.State)}.");

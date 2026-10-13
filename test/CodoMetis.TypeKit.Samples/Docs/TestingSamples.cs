@@ -34,7 +34,7 @@ public sealed record CodeRequest(ProductCode Code);
 // end sample
 
 // sample: testing/code-patch
-public sealed record CodePatch(Patch<ProductCode> Code, Patch<string?> Note, Patch<int> Quantity);
+public sealed record CodePatch(Patch<ProductCode> Code, Patch<string> Note, Patch<int> Quantity);
 // end sample
 
 /// <summary>The page's tests, run as written.</summary>

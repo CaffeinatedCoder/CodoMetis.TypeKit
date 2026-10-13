@@ -788,7 +788,7 @@ public sealed record Line(OrderId Id, Code Code, Name Name, Quantity Quantity, A
 
 public sealed record OrderView(OrderId Id, List<Quantity> Quantities, Amount Amount);
 
-public sealed record OrderPatch(Patch<Code> Code, Patch<string?> Note);
+public sealed record OrderPatch(Patch<Code> Code, Patch<string> Note);
 
 public sealed record Holder(Option<int> Value);
 

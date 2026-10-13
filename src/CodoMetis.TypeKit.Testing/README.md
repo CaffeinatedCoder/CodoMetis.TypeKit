@@ -20,7 +20,7 @@ Email.TryFrom("nobody").ShouldBeNone();
 ```
 
 A `Patch<T>` field of a request says whether the request mentioned it, and the assertions say the
-same; `OrderPatch` here has `Patch<string> Name`, `Patch<string?> Nickname` and `Patch<int> Quantity`:
+same; `OrderPatch` here has `Patch<string> Name`, `Patch<string> Nickname` and `Patch<int> Quantity`:
 
 ```csharp
 OrderPatch patch = JsonSerializer.Deserialize<OrderPatch>("""{"nickname":null,"quantity":2}""", JsonSerializerOptions.Web)!;

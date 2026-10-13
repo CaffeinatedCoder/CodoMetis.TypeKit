@@ -11,7 +11,7 @@ public sealed class Order
 }
 
 // sample: CodoMetis.TypeKit/patch
-public sealed record OrderPatch(Patch<string> Name, Patch<string?> Nickname, Patch<int> Quantity);
+public sealed record OrderPatch(Patch<string> Name, Patch<string> Nickname, Patch<int> Quantity);
 // end sample
 
 public static class Applying
@@ -33,7 +33,7 @@ public sealed class PatchTests
 {
     private const string Readme = "src/CodoMetis.TypeKit/README.md";
 
-    private static string Render<T>(Patch<T> patch) => patch.Match(value => $"Value: {value}", () => "Null", () => "Absent");
+    private static string Render<T>(Patch<T> patch) where T : notnull => patch.Match(value => $"Value: {value}", () => "Null", () => "Absent");
 
     [Fact]
     public void A_document_reads_as_the_comments_state()

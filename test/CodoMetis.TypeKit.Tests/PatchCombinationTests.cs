@@ -9,7 +9,7 @@ public sealed class PatchCombinationTests
 {
     private static Result<int, string> Positive(int n) => n > 0 ? n : Result.Error($"{n} is not positive");
 
-    private static string Show<T>(Patch<T> patch) => patch.Match(value => $"Value({value})", () => "Null", () => "Absent");
+    private static string Show<T>(Patch<T> patch) where T : notnull => patch.Match(value => $"Value({value})", () => "Null", () => "Absent");
 
     [Fact]
     public void Map_changes_the_value_and_keeps_a_clear_and_an_absence()

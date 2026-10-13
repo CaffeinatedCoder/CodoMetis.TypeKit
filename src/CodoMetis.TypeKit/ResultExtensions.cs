@@ -1337,7 +1337,7 @@ public static class Result
 
     /// <param name="patch">A field of a merge patch, validated when it carries a value.</param>
     /// <typeparam name="T">The type of the value.</typeparam>
-    extension<T>(Patch<T> patch)
+    extension<T>(Patch<T> patch) where T : notnull
     {
         /// <summary>
         /// Applies an operation that may fail to the value, if the field carried one: a patch over
