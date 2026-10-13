@@ -57,7 +57,7 @@ CMTK0010, CMTK0011 and CMTK0012 are new errors too, but each reports only on wha
 type-parameter attributes, `[RequireParameterlessConstructor]` and a closed set's `Match`. No code
 that built against 1.5 meets them.
 
-## An abstract value object is a build error
+## Value objects that are build errors now
 
 In 1.5, an abstract type that declared a value-object marker built: it generated nothing of its own,
 its sealed derived types were generated, and a value held as the abstract type was written to JSON as
@@ -71,6 +71,18 @@ base for what the types share:
 public abstract record Money;
 public sealed partial record Euro : Money, IValue<decimal>;    // the marker on the sealed type, which is generated
 ```
+
+CMTK1005 refuses two more declarations 1.5 built. A value object over `object` was written to JSON as
+`{}`: wrap the type the value has. A value object named as a member the generators add to it, which
+1.5 mostly failed on inside the generated code, built where the member was not generated: one named
+`Revalidate` that is not validated, or `CompareTo` over a type with no order. Rename it.
+
+## TryParse lets an exception from Create through
+
+Over a wrapped type parsed by a type converter, a static `Parse` or a string constructor, a
+generated `TryParse` turned an exception thrown by your `Create` into `false`. In 2.0 it propagates,
+as it does from `Parse` and from `TryParse` over a wrapped type with a `TryParse` of its own. Return a
+fault from `Create` for input you mean to refuse.
 
 ## Queries and documents that ran wrongly now throw
 

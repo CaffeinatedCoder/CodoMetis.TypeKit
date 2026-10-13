@@ -16,7 +16,8 @@ A major version: it targets `net10.0` and Metalama 2026.1 as 1.x does, and the b
 Semantic Versioning reserves for a major, listed under Changed. Package validation against 1.5.1
 finds one difference in the public surface, `FaultProblem<TFault>`'s constraint, which still accepts
 every type argument it accepted; the others are behaviour no compatibility check reads: CMTK0003 at
-Error, `FirstOrNone` on a query, CMTK1022, and the EF Core and OpenAPI refusals below. The new
+Error, `FirstOrNone` on a query, CMTK1022 and the new CMTK1005 refusals, `TryParse` letting an
+exception from `Create` through, and the EF Core and OpenAPI refusals below. The new
 analyzer Errors, CMTK0010 to CMTK0012, report only on what this release adds, so nothing that built
 against 1.5.1 meets them.
 
@@ -59,7 +60,9 @@ against 1.5.1 meets them.
   CMTK1021 refuses a member named as a generated member, or two whose names differ only in case
   (`Open` and `open`, `Express` and `EXPRESS`), which collide in `TryParse(name, ignoreCase: true)`, and
   in `Match`'s parameters where the first letter is the difference. `Match` checks every delegate for null before it picks one,
-  and a set is a JSON dictionary key by its name.
+  and a set is a JSON dictionary key by its name. A value object can wrap a closed set, from its own
+  project too, and is generated in full: `ClosedSetAspect` runs first, so the value object's
+  `Parse`, `TryParse`, `IParsable` and type converter see what the set's aspect adds.
   `CodoMetis.TypeKit.EntityFrameworkCore` maps a closed set to a text column of the member's name, in a
   primitive collection and a JSON column too, through a compiled model and under Native AOT
   (`ClosedSetConverter<TSet>` names it explicitly); `CodoMetis.TypeKit.AspNetCore` describes it as a
@@ -239,6 +242,26 @@ against 1.5.1 meets them.
   an `ArgumentNullException` naming it, where the await threw a `NullReferenceException`.
 - **`CodoMetis.TypeKit.Testing`**: a failure names a nested type after its containing types,
   `Option<Order.Line>`; a type nested in a generic one threw `ArgumentOutOfRangeException` instead.
+- **`CodoMetis.TypeKit.Generators`**: CMTK1005 refuses a value object over `object`, which was
+  written to JSON as `{}`, and over `System.Enum`, and one named as a member the generators add to a
+  value object (`From`, `TryFrom`, `FromKnownGood`, `Revalidate`, `Parse`, `TryParse`, `TryFormat`,
+  `MinValue`, `MaxValue`, `CompareTo`). CMTK1021 refuses a closed set named as one of its generated
+  members, and CMTK1011 a hand-written `operator ==` or `!=` between two of the type. Apart from
+  `object`, a value object named `Revalidate` that is not validated and one named `CompareTo` over a
+  type with no order, each failed inside the generated code before, as LAMA0611 or a bare CS0111,
+  naming nothing the user wrote.
+- **`CodoMetis.TypeKit.Generators`**: `TryParse` over a wrapped type parsed by a type converter, a
+  static `Parse` or a string constructor lets an exception from `Create` through, as `Parse` does and
+  as `TryParse` over a wrapped type with a `TryParse` of its own did; it answered `false`.
+
+### Fixed
+
+- **`CodoMetis.TypeKit.Generators`**: a value object marked `[Obsolete(..., error: true)]`, or nested in
+  such a type, builds; its companion class failed with CS0619 inside the generated code.
+- **`CodoMetis.TypeKit.Generators`**: a default instance of a value object over a reference type
+  formats as an empty string everywhere, `ToString`, `IFormattable`, `TryFormat`, the type converter
+  and `Convert.ToString`, as one over a `string` already did for `ToString`, where it threw a
+  `NullReferenceException`; its `IConvertible` answers as `Convert` answers for null.
 
 ## 1.5.1 — 2026-10-11
 
