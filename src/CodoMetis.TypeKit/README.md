@@ -600,7 +600,9 @@ converter, or `JsonException: Quantity could not read the JSON value as Int32.` 
 **Why:** the wrapped type's own message quotes the input ("The input string '…' was not in a correct
 format."), so it is replaced, and not kept as the inner exception either; see the
 [design](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/design/adr/README.md),
-decision 27. A JSON error still carries its path.
+decision 27. A JSON error still carries its path, and for a value object read as a dictionary key
+the path ends in the key itself (`$.items.SE`), which MVC uses as the error's name in its 400: keep a
+secret out of a dictionary's keys.
 
 **Instead:** `TryParse` for text that may not parse. Text that is yours to log, log before parsing.
 

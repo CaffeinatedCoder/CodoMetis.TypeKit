@@ -341,7 +341,9 @@ provider-less `Parse` ignore it.
 
 Text the wrapped type cannot read is a `FormatException` naming the value object and the wrapped
 type ("Quantity could not read the input as Int32."), an overflow included, with no inner exception:
-the wrapped type's own message quotes the input. A refusal by `Create` names the fault instead.
+the wrapped type's own message quotes the input. A refusal by `Create` names the fault instead. The
+one place the input still appears is System.Text.Json's own: a refused dictionary key ends the
+`JsonException`'s `Path`.
 `TryParse` answers `false` for both, and lets anything else through as `Parse` does: an exception
 `Create` throws is a bug to see, not text to refuse.
 
