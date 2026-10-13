@@ -323,20 +323,52 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    /// <summary>Whether <paramref name="argument"/> meets <paramref name="constraint"/>; an array is a sealed, concrete class.</summary>
+    /// <summary>
+    /// Whether <paramref name="argument"/> meets <paramref name="constraint"/>. An array is a sealed,
+    /// concrete class. An enum and a delegate are concrete, as they are sealed: an enum is a value type,
+    /// which <c>new()</c> and <c>struct</c> accept, and a delegate a sealed class made from a target and
+    /// a method; <c>dynamic</c> is <c>object</c>. Their bases, <c>Enum</c>, <c>Delegate</c>,
+    /// <c>MulticastDelegate</c> and <c>ValueType</c>, are abstract classes.
+    /// </summary>
     private static bool Satisfies(ITypeSymbol argument, TypeArgumentConstraint constraint) => constraint switch
     {
         TypeArgumentConstraint.Abstract => argument is INamedTypeSymbol { TypeKind: TypeKind.Class, IsAbstract: true, IsStatic: false },
         TypeArgumentConstraint.Sealed   => argument.TypeKind is TypeKind.Struct or TypeKind.Enum or TypeKind.Array || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Delegate, IsSealed: true, IsStatic: false },
         TypeArgumentConstraint.Record   => argument is INamedTypeSymbol { IsRecord: true },
-        _                               => argument.TypeKind is TypeKind.Array || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct, IsAbstract: false, IsStatic: false },
+        _                               => argument.TypeKind is TypeKind.Array or TypeKind.Enum or TypeKind.Delegate or TypeKind.Dynamic
+                                        || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct, IsAbstract: false, IsStatic: false },
     };
 
-    /// <summary>A forwarding type parameter proves a constraint by carrying the attribute, or by a C# constraint that implies it.</summary>
-    private static bool Proves(TypeKitSymbols symbols, ITypeParameterSymbol forwarded, TypeArgumentConstraint constraint) =>
-        Effective(symbols, forwarded, receiver: null).Contains(constraint)
-     || (constraint is TypeArgumentConstraint.Sealed or TypeArgumentConstraint.Concrete && forwarded.HasValueTypeConstraint)
-     || (constraint is TypeArgumentConstraint.Concrete && forwarded.HasConstructorConstraint);
+    /// <summary>
+    /// A forwarding type parameter proves a constraint by carrying the attribute, or by C# constraints
+    /// that leave it no argument that breaks it:
+    /// <list type="bullet">
+    /// <item><c>[Sealed]</c>: <c>struct</c> or <c>unmanaged</c>, which admit structs and enums alone; or a
+    /// bound, <c>where T : U</c>, that proves it, since a sealed type has no other subtype.</item>
+    /// <item><c>[Concrete]</c>: <c>new()</c>, or whatever proves <c>[Sealed]</c>, since a sealed type is
+    /// never abstract.</item>
+    /// <item><c>[Record]</c>: a bound that is a record, or proves it, since only records derive from
+    /// records (CS8865).</item>
+    /// <item><c>[Abstract]</c>: nothing but the attribute; no C# constraint excludes a concrete type.</item>
+    /// </list>
+    /// A cycle of constraints is the compiler's error, cut off by depth.
+    /// </summary>
+    private static bool Proves(TypeKitSymbols symbols, ITypeParameterSymbol forwarded, TypeArgumentConstraint constraint, int depth = 0)
+    {
+        if (Effective(symbols, forwarded, receiver: null).Contains(constraint)) return true;
+        if (depth >= 8) return false;
+
+        return constraint switch
+        {
+            TypeArgumentConstraint.Sealed   => forwarded.HasValueTypeConstraint
+                                            || forwarded.ConstraintTypes.OfType<ITypeParameterSymbol>().Any(bound => Proves(symbols, bound, TypeArgumentConstraint.Sealed, depth + 1)),
+            TypeArgumentConstraint.Concrete => forwarded.HasConstructorConstraint
+                                            || Proves(symbols, forwarded, TypeArgumentConstraint.Sealed, depth + 1),
+            TypeArgumentConstraint.Record   => forwarded.ConstraintTypes.Any(bound => bound is INamedTypeSymbol { IsRecord: true }
+                                                                                   || bound is ITypeParameterSymbol parameter && Proves(symbols, parameter, TypeArgumentConstraint.Record, depth + 1)),
+            _                               => false,
+        };
+    }
 
     /// <summary>
     /// The constraints a type parameter declares, with those of the parameter it implements or

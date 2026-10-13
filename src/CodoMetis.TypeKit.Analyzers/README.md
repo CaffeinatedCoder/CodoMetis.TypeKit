@@ -367,13 +367,14 @@ public abstract class Sound<[Abstract] TCommand> : Decider<TCommand, OrderPlaced
 
 | Attribute | Accepts | A forwarding type parameter satisfies it when |
 |---|---|---|
-| `[Abstract]` | an abstract class or record; not an interface | it carries `[Abstract]` |
-| `[Sealed]` | a sealed class or record, a struct, an enum | it carries `[Sealed]` or is constrained to `struct` |
-| `[Record]` | a record class or record struct | it carries `[Record]` |
-| `[Concrete]` | a class, record or struct that is not abstract, static or an interface; no constructor is demanded, unlike `new()` | it carries `[Concrete]` or is constrained to `struct` or `new()` |
+| `[Abstract]` | an abstract class or record; not an interface | it carries `[Abstract]`; no C# constraint proves it |
+| `[Sealed]` | a sealed class or record, a struct, an enum, a delegate, an array | it carries `[Sealed]`, is constrained to `struct` or `unmanaged`, or is bound (`where T : U`) to a parameter that proves `[Sealed]` |
+| `[Record]` | a record class or record struct | it carries `[Record]`, or is bound to a record or to a parameter that proves `[Record]`: only records derive from records |
+| `[Concrete]` | a class, record or struct that is not abstract, static or an interface, an enum, a delegate, an array; no constructor is demanded, unlike `new()` | it carries `[Concrete]`, is constrained to `new()`, or proves `[Sealed]`: a sealed type is never abstract |
 
-A type parameter given as the argument must carry the attribute itself, or the requirement would end
-at the first forwarding parameter and `Sound<PlaceOrder>` would never be reported. A generic
+A type parameter given as the argument must carry the attribute itself, or be constrained so that no
+argument can break it, as the table's last column says; otherwise the requirement would end at the
+first forwarding parameter and `Sound<PlaceOrder>` would never be reported. A generic
 attribute, `[Handles<PlaceOrder>]`, is a use like any other. So is a member of a C# 14 extension
 block with a constrained type parameter, `extension<[Concrete] T>(T value)`: its argument comes from
 the receiver, so `handler.Go()`, `handler.Count`, `Handler.Make()`, a method group and an operator are

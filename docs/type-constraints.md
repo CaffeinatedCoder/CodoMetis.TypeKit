@@ -14,7 +14,7 @@ examples import `CodoMetis.TypeKit`.
 | `[Abstract]` | an abstract class or record | a concrete type, and an interface |
 | `[Sealed]` | a sealed class or record, a struct, an enum | a type that can be derived from |
 | `[Record]` | a record class or record struct | a class or a struct |
-| `[Concrete]` | a class, record or struct that can be instantiated | an abstract or static type, and an interface. No constructor is demanded, unlike `new()` |
+| `[Concrete]` | a class, record or struct that can be instantiated, an enum, a delegate | an abstract or static type, an interface, and the abstract bases `Enum`, `Delegate` and `ValueType`. No constructor is demanded, unlike `new()` |
 
 An aggregate whose events are a closed family, and whose identifier is a value object:
 
@@ -58,8 +58,8 @@ string hidden = Snapshots.Describe(new Balance());       // CMTK0010: Balance is
 
 ## Forwarding
 
-A type parameter given as the argument must carry the attribute itself, or the requirement would end
-at the first forwarding parameter:
+A type parameter given as the argument must carry the attribute itself, or be constrained as the
+table below says, or the requirement would end at the first forwarding parameter:
 
 ```csharp
 public abstract class Leaky<TEvent> : Aggregate<TEvent, AccountId>;               // CMTK0010: TEvent does not carry [Abstract]
@@ -73,8 +73,17 @@ A method that implements an interface's method, or overrides a base class's, car
 of the method it implements whether or not it repeats the attribute, so a call through the class is
 held to what the interface declared. Repeat the attribute anyway, so the declaration says so.
 
-`struct` proves `[Sealed]` and `[Concrete]`, and `new()` proves `[Concrete]`, so a parameter under
-those C# constraints needs no attribute. The open generic inside its own body and an unbound
+A parameter whose C# constraints already leave it no argument that breaks the attribute needs no
+attribute:
+
+| Attribute | Proved by |
+|---|---|
+| `[Abstract]` | nothing but `[Abstract]`: no C# constraint excludes a concrete type |
+| `[Sealed]` | `struct` or `unmanaged`, or a bound `where T : U` with `U` proving `[Sealed]`, since a sealed type has no other subtype |
+| `[Record]` | a bound that is a record, `where T : AccountEvent`, or a `U` proving `[Record]`, since only records derive from records |
+| `[Concrete]` | `new()`, or anything that proves `[Sealed]`, `[Sealed]` itself included, since a sealed type is never abstract |
+
+The open generic inside its own body and an unbound
 `typeof(Aggregate<,>)` are never reported. Reflection, `MakeGenericType`, is out of reach, and the
 attributes carry no run-time check: the guarantee is the build.
 

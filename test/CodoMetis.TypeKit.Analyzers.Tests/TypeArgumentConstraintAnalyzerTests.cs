@@ -190,6 +190,88 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             Cmtk0010(0, "T", "T", "Factory<T>", "is a type parameter that does not carry [Concrete]"))
             .RunAsync(TestContext.Current.CancellationToken);
 
+    /// <summary>
+    /// <c>[Concrete]</c> is a type that is not abstract, static or an interface, the type a host can
+    /// instantiate. An enum is a value type, which <c>new()</c> and <c>struct</c> both accept, and a
+    /// <c>struct</c> parameter that proves <c>[Concrete]</c> can be one; a delegate is a sealed class,
+    /// made from a target and a method, as a class with only a parameterised constructor is made from
+    /// its arguments; <c>dynamic</c> is <c>object</c>. Their abstract bases are not.
+    /// </summary>
+    [Fact]
+    public Task Concrete_accepts_an_enum_a_delegate_and_dynamic_and_refuses_their_abstract_bases() =>
+        Test(
+            """
+            public delegate void Handled(Handler handler);
+
+            public static class Instantiable
+            {
+                public static Factory<DayOfWeek> Enum;
+                public static Factory<Handled> Delegate;
+                public static Factory<Action<int>> FrameworkDelegate;
+                public static Factory<dynamic> Dynamic;
+                public static Factory<object> Object;
+                public static Factory<int?> NullableStruct;
+                public static Factory<(int, string)> Tuple;
+                public static Factory<{|#0:System.Enum|}> EnumBase;
+                public static Factory<{|#1:System.Delegate|}> DelegateBase;
+                public static Factory<{|#2:MulticastDelegate|}> MulticastBase;
+                public static Factory<{|#3:ValueType|}> ValueTypeBase;
+            }
+            """,
+            Cmtk0010(0, "Enum", "T", "Factory<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(1, "Delegate", "T", "Factory<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(2, "MulticastDelegate", "T", "Factory<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(3, "ValueType", "T", "Factory<T>", "is not a concrete class, record or struct"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A forwarding parameter whose own constraints already prove what the attribute asks needs no
+    /// attribute. Only records derive from records (CS8865), so a parameter bound to a record, or to a
+    /// parameter that proves <c>[Record]</c>, is a record. A sealed type has no other subtype, so a
+    /// parameter bound to one that proves <c>[Sealed]</c> is that type. A sealed type is never abstract,
+    /// so whatever proves <c>[Sealed]</c> proves <c>[Concrete]</c>, <c>unmanaged</c> included. Nothing
+    /// but the attribute proves <c>[Abstract]</c>: C# has no constraint that excludes a concrete type.
+    /// </summary>
+    [Fact]
+    public Task A_constraint_that_already_proves_the_attribute_is_a_proof() =>
+        Test(
+            """
+            public sealed class Journal<[Record] T> { }
+
+            public static class Proven
+            {
+                public static Journal<T> BoundToARecord<T>() where T : Command => new();
+                public static Journal<T> BoundThroughAParameter<T, U>() where T : U where U : Command => new();
+                public static Journal<T> BoundToARecordParameter<T, [Record] U>() where T : U => new();
+                public static Box<T> BoundToASealedParameter<T, [Sealed] U>() where T : U => new();
+                public static Factory<T> SealedIsConcrete<[Sealed] T>() => new();
+                public static Factory<T> BoundToASealedParameterIsConcrete<T, [Sealed] U>() where T : U => new();
+                public static Box<T> Unmanaged<T>() where T : unmanaged => new();
+                public static Factory<T> UnmanagedIsConcrete<T>() where T : unmanaged => new();
+            }
+
+            public static class Unproven
+            {
+                public static Journal<{|#0:T|}> BoundToAClass<T>() where T : Handler => new();
+                public static Decider<{|#1:T|}, PlaceOrder> BoundToAnAbstractRecord<T>() where T : Command => null!;
+                public static Decider<{|#2:T|}, PlaceOrder> BoundToAnAbstractParameter<T, [Abstract] U>() where T : U => null!;
+                public static Factory<{|#3:T|}> BoundToAConcreteParameter<T, [Concrete] U>() where T : U => new();
+                public static Factory<{|#4:T|}> BoundToEnum<T>() where T : System.Enum => new();
+                public static Factory<{|#5:T|}> RecordIsNotConcrete<[Record] T>() => new();
+                public static Box<{|#6:T|}> ConcreteIsNotSealed<[Concrete] T>() => new();
+                public static Journal<{|#7:T|}> AStructIsNoRecord<T>() where T : struct => new();
+            }
+            """,
+            Cmtk0010(0, "T", "T", "Journal<T>", "is a type parameter that does not carry [Record]"),
+            Cmtk0010(1, "T", "TCommand", "Decider<TCommand, TEvent>", "is a type parameter that does not carry [Abstract]"),
+            Cmtk0010(2, "T", "TCommand", "Decider<TCommand, TEvent>", "is a type parameter that does not carry [Abstract]"),
+            Cmtk0010(3, "T", "T", "Factory<T>", "is a type parameter that does not carry [Concrete]"),
+            Cmtk0010(4, "T", "T", "Factory<T>", "is a type parameter that does not carry [Concrete]"),
+            Cmtk0010(5, "T", "T", "Factory<T>", "is a type parameter that does not carry [Concrete]"),
+            Cmtk0010(6, "T", "T", "Box<T>", "is a type parameter that does not carry [Sealed]"),
+            Cmtk0010(7, "T", "T", "Journal<T>", "is a type parameter that does not carry [Record]"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
     [Fact]
     public Task Each_constraint_accepts_and_refuses_what_it_says() =>
         Test(
