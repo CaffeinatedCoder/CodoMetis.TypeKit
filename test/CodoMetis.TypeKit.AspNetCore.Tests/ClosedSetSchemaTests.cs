@@ -1,10 +1,25 @@
 using System.Text.Json.Nodes;
 using CodoMetis.TypeKit.Generators.Probes;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
 
 namespace CodoMetis.TypeKit.AspNetCore.Tests;
+
+/// <summary>
+/// An MVC action with closed-set parameters, top-level since MVC discovers only top-level public
+/// controllers: the transformer reaches its parameters through their model metadata.
+/// </summary>
+[ApiController]
+public sealed class TicketsController : ControllerBase
+{
+    [HttpGet("/mvc/tickets/{status}")]
+    public int ByRoute(ProbeStatus status) => 0;
+
+    [HttpGet("/mvc/tickets")]
+    public int ByQuery([FromQuery] ProbeStatus status) => 0;
+}
 
 /// <summary>A closed set in the document: a string enum of its members' names, as an <c>enum</c> is described.</summary>
 public sealed class ClosedSetSchemaTests
@@ -74,6 +89,22 @@ public sealed class ClosedSetSchemaTests
             var element = document.Property(nameof(Board), property)[keyword].ShouldNotBeNull($"'{property}' lost its {keyword}");
 
             Names(document.Resolve(element)).ShouldBe(["Open", "Shipped", "Cancelled"], property);
+        }
+    }
+
+    /// <summary>MVC names a bound parameter's type in its model metadata, where a minimal API names it in the parameter's type: both are the enum.</summary>
+    [Theory]
+    [MemberData(nameof(Versions))]
+    public async Task An_MVC_closed_set_parameter_is_the_string_enum_too(OpenApiSpecVersion version)
+    {
+        var document = await ProbeHost.DocumentAsync(openApi => openApi.AddTypeKit(), version: version);
+
+        foreach (var path in new[] { "/mvc/tickets/{status}", "/mvc/tickets" })
+        {
+            var parameter = document.Resolve(document.Parameter(path, "get", "status"));
+
+            parameter["type"]!.GetValue<string>().ShouldBe("string", $"{path}: {parameter.ToJsonString()}");
+            Names(parameter).ShouldBe(["Open", "Shipped", "Cancelled"], path);
         }
     }
 
