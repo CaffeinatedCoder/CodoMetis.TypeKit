@@ -138,8 +138,8 @@ app.MapDelete("/orders/{id}", (OrderId id) => orders.Cancel(id).ToHttpResult());
 { "type": "https://tools.ietf.org/html/rfc9110#section-15.5.10", "title": "Conflict", "status": 409, "fault": "AlreadyShipped", "traceId": "…" }
 ```
 
-- **The domain declares faults, the host their statuses.** The fault type is an enum the domain owns;
-  only the host references ASP.NET. A problem names the fault, never anything of the request.
+- **The domain declares faults, the host their statuses.** The fault type is an enum or a closed set
+  the domain owns; only the host references ASP.NET. A problem names the fault, never anything of the request.
 - **The document says it too.** The endpoint's return type is ASP.NET's own
   `Results<Ok<OrderDto>, FaultProblem<OrderFault>>`, so the operation describes the value, and
   `AddTypeKit()` adds a problem response for every status the fault type is mapped to, as
@@ -157,7 +157,7 @@ app.MapDelete("/orders/{id}", (OrderId id) => orders.Cancel(id).ToHttpResult());
 
 ### Mapping faults to statuses
 
-`AddFaultResponses` maps every member of the enum when it is called, so a mapping that throws for a
+`AddFaultResponses` maps every member of the fault type when it is called, so a mapping that throws for a
 member, or gives one a status that is no error (outside 400 to 599), fails there, at startup. That is
 what the discard arm above relies on: a member the `switch` misses throws while the host starts, not
 when the fault first occurs. Without the arm, C# warns (CS8524) that a cast could produce a value no
@@ -168,6 +168,127 @@ type and each endpoint that answers with it. The check comes with the first `Add
 a host that never calls it refuses the first fault an endpoint reports, and its OpenAPI document,
 with the same message. A value no member names, which only a cast makes, is refused rather than
 answered with a status the document does not list.
+
+### A response per fault
+
+A mapping can say more than a status: RFC 9457 makes the problem's `type` its primary identifier,
+which a client matches on, and `title` its summary. Both name the problem type and nothing of the
+request; without them, ASP.NET writes the status's own.
+
+```csharp
+builder.Services.AddFaultResponses<PaymentFault>(fault => fault switch
+{
+    PaymentFault.Declined  => FaultResponse.Status(StatusCodes.Status402PaymentRequired).WithType(new Uri("https://example.com/problems/declined")),
+    PaymentFault.Duplicate => StatusCodes.Status409Conflict,
+    _ => throw new ArgumentOutOfRangeException(nameof(fault)),
+});
+```
+
+A bare status converts to a `FaultResponse`, so the arms that need nothing else stay a number. Every
+member is still mapped and checked when this is called. The document's problem response for a
+status lists the problem types answered with it in its description:
+`Payment Required. Problem types: https://example.com/problems/declined`.
+
+### A closed set as the fault type
+
+A closed set whose members are faults declares `IFaultSet<TSelf>`: each member carries a `FaultKind`,
+nothing HTTP-specific, and optionally a sentence a person reads.
+
+```csharp
+public sealed partial class AccountFault : IFaultSet<AccountFault>
+{
+    public static readonly AccountFault NotFound = new(FaultKind.NotFound, "The account does not exist.");
+    public static readonly AccountFault EmailTaken = new(FaultKind.Conflict, "Another account uses that email address.");
+    public static readonly AccountFault Locked = new(FaultKind.Forbidden, null);   // a refusal that must not explain itself
+
+    private AccountFault(FaultKind kind, string? description) { Kind = kind; Description = description; }
+
+    public FaultKind Kind { get; }
+    public string? Description { get; }
+}
+```
+
+```csharp
+builder.Services.AddFaultResponses<AccountFault>();   // every member by its kind, its description as the detail
+```
+
+A kind gives the status: `NotFound` 404, `Conflict` 409, `Invalid` 422, `Forbidden` 403 and
+`Unavailable` 503. A member whose kind is `default`, which is no kind, fails this call. The
+description becomes the problem's `detail`, so a client can show it; a member without one has no
+`detail`. To change some members, map them all, with the rest as their kind says:
+`fault => fault == AccountFault.Locked ? 423 : FaultResponse.For(fault.Kind)`. Any closed set can be a
+fault type with a mapping of its own, `AddFaultResponses<TSet>(fault => …)`, and `ToHttpResult()`
+takes a result over either.
+
+### A sentence per occurrence
+
+What varies per occurrence travels in a `Fault<TFault>` (CodoMetis.TypeKit): the fault, and a sentence
+about this one. The response, the mapping and the document stay keyed on the fault type.
+
+```csharp
+Result<Account, Fault<AccountFault>> taken = Result.Error(Fault.Of(AccountFault.EmailTaken, "The address has been in use since 3 May."));
+```
+
+```csharp
+app.MapPut("/accounts/{id:int}/email", (int id, NewAccount body) => accounts.Rename(id, body.Email).ToHttpResult());
+```
+
+The detail is the problem's `detail`, in place of the member's description. It is the application's
+sentence, written as it is: a fault's name never quotes the request, and whether a detail does is the
+application's to decide.
+
+### A status per endpoint
+
+The same fault can mean 404 on one route and 409 on another. An endpoint changes the status of one
+fault for itself, in its response and in its document entry:
+
+```csharp
+app.MapPost("/accounts", (NewAccount body) => accounts.Open(body).ToHttpResult())
+   .WithFaultStatus(AccountFault.EmailTaken, StatusCodes.Status422UnprocessableEntity);
+```
+
+An MVC action says it with an attribute, naming the member, since an attribute takes only constants:
+
+```csharp
+[HttpPost("/mvc/accounts")]
+[FaultStatus<AccountFault>(nameof(AccountFault.EmailTaken), StatusCodes.Status422UnprocessableEntity)]
+public Results<Ok<Account>, FaultProblem<AccountFault>> Open(NewAccount body) => accounts.Open(body).ToHttpResult();
+```
+
+A status outside 400 to 599 is refused where it is set. A status for a fault type the endpoint does
+not answer with, or an attribute naming no member, stops the host from starting, naming the endpoint.
+
+### The success the endpoint chooses
+
+A success is `200 OK` with its value unless the endpoint says otherwise, with any of ASP.NET's typed
+results, so the document still describes it:
+
+```csharp
+app.MapPost("/v2/accounts", (NewAccount body) => accounts.Open(body).ToHttpResult(account => TypedResults.Created($"/accounts/{account.Id}", account)));
+```
+
+The operation lists `201` with the account as its body, beside the problem responses, and the
+response carries the `Location` header. A result of the application's own, one that sets an ETag,
+takes the same place.
+
+### What the host adds to a problem
+
+While `ToHttpResult()` writes a problem, the request carries an `IFaultFeature`: the fault type, the
+fault, the name the problem gives it and its detail. A `CustomizeProblemDetails` of the host's reads
+it to add what the package does not name, and finds it on no other problem the request writes.
+
+```csharp
+builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+{
+    if (context.HttpContext.Features.Get<IFaultFeature>() is { } fault)
+        context.ProblemDetails.Extensions["code"] = $"ACC-{fault.Name}";   // the host's own extension, for this fault only
+});
+builder.Services.Configure<FaultResponseOptions>(options => options.QualifiedFaultNames = true);   // "fault": "AccountFault.EmailTaken"
+```
+
+`QualifiedFaultNames` writes `fault` with its type, so two fault types that share a member name stay
+apart in one client; the default is the bare name. `fault` stays a string on the document's shared
+problem schema, since an enum of every fault type would change every operation when one is added.
 
 ## NodaTime
 

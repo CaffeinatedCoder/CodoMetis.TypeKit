@@ -137,6 +137,18 @@ destructures an object by its public properties, so `{@Quote}` would log a membe
 with it; `Destructure.WithTypeKit()` (CodoMetis.TypeKit.Serilog) logs a member as what it prints, its
 name or its own `ToString()`, as it does a value object ([Logging and secrets](logging-and-secrets.md)).
 
+## As a fault type
+
+A closed set whose members are faults declares `IFaultSet<TSelf>` in place of `IClosedSet<TSelf>`:
+each member carries a `FaultKind`, `NotFound`, `Conflict`, `Invalid`, `Forbidden` or `Unavailable`,
+nothing HTTP-specific, and optionally a `Description`, a sentence a person reads, both through its
+private constructor. In CodoMetis.TypeKit.AspNetCore, `AddFaultResponses<TSet>()` answers every
+member by its kind, with its description as the problem's `detail`, so the domain names its faults
+and the host maps nothing by hand
+([the satellite's README](../src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type)).
+Any other closed set is a fault type too, with a mapping of its own. What varies per occurrence
+travels beside the member, as a `Fault<TSet>` with a detail.
+
 ## What the generators refuse
 
 A declaration they cannot complete fails the build, naming it; the generators'

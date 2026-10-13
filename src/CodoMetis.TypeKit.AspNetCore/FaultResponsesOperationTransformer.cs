@@ -10,8 +10,9 @@ using HttpJsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 namespace CodoMetis.TypeKit.AspNetCore;
 
 /// <summary>
-/// Adds a problem-details response for every status an endpoint's fault type is mapped to, as
-/// <c>ProducesProblem(status)</c> would.
+/// Adds a problem-details response for every status an endpoint answers its fault type with, as
+/// <c>ProducesProblem(status)</c> would: the mapped ones, with the endpoint's <c>WithFaultStatus</c> in
+/// place of the mapped status for the members it names.
 /// </summary>
 /// <remarks>
 /// The mapping is read here, from the application's services, and not in the endpoint's metadata,
@@ -19,16 +20,20 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// components when operation transformers run, so the problem schema is added as the component the
 /// host's <see cref="OpenApiOptions.CreateSchemaReferenceId"/> names, and referred to (finding 6). A
 /// response the operation already has is kept, which also makes a second <c>AddTypeKit()</c> a no-op.
+/// A response's description is the status's reason phrase, followed by the problem types of the
+/// members answered with it where the mapping gives any; <c>fault</c> stays a string on the shared
+/// problem schema, since an enum of every fault type would change every operation when one is added.
 /// </remarks>
 internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTransformer
 {
     public async Task TransformAsync(OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
     {
         IOpenApiSchema? problem = null;
+        IReadOnlyList<object> endpointMetadata = [.. context.Description.ActionDescriptor.EndpointMetadata];
 
-        foreach (var metadata in context.Description.ActionDescriptor.EndpointMetadata.OfType<FaultResponsesMetadata>().Distinct())
+        foreach (var metadata in endpointMetadata.OfType<FaultResponsesMetadata>().Distinct())
         {
-            var statuses = metadata.Statuses(context.ApplicationServices)
+            var statuses = metadata.Statuses(context.ApplicationServices, endpointMetadata)
                         ?? throw new InvalidOperationException(
                                $"No HTTP status is mapped for the fault type {metadata.FaultName}. " +
                                $"Map each of its members with services.AddFaultResponses<{metadata.FaultName}>(fault => …)." + FaultRefusals.Mapping);
@@ -40,9 +45,12 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
                 if (operation.Responses.ContainsKey(key)) continue;
 
                 problem ??= await ProblemSchemaAsync(context, cancellationToken);
+                var types = metadata.Types(context.ApplicationServices, status, endpointMetadata);
                 operation.Responses[key] = new OpenApiResponse
                 {
-                    Description = ReasonPhrases.GetReasonPhrase(status),
+                    Description = types.Count == 0
+                        ? ReasonPhrases.GetReasonPhrase(status)
+                        : $"{ReasonPhrases.GetReasonPhrase(status)}. Problem types: {string.Join(", ", types)}",
                     Content = new Dictionary<string, OpenApiMediaType> { ["application/problem+json"] = new() { Schema = problem } },
                 };
             }

@@ -620,6 +620,25 @@ ProbeKeyword
   static All : IReadOnlyList<ProbeKeyword>
   static Parse(String) : ProbeKeyword
   static TryParse(String, out ProbeKeyword) : Boolean
+ProbeKindlessFault
+  Kind : FaultKind
+  Match(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeKindlessFault>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeKindlessFault>
+  implements IFault
+  implements IFaultSet<ProbeKindlessFault>
+  implements IParsable<ProbeKindlessFault>
+  nested ProbeKindlessFaultJsonConverter : JsonConverter<ProbeKindlessFault>
+  nested ProbeKindlessFaultTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeKindlessFault>
+  static Parse(String) : ProbeKindlessFault
+  static TryParse(String, out ProbeKindlessFault) : Boolean
 ProbeLabel
   <Clone>$() : ProbeLabel
   CompareTo(Object) : Int32
@@ -817,6 +836,26 @@ ProbeName
   static op_LessThanOrEqual(ProbeName, ProbeName) : Boolean
   extension static ProbeNameExtensions.GetValue(ProbeName) : String
   extension static ProbeNameExtensions.ValueOrNull(ProbeName?) : String
+ProbeOrderFault
+  Description : String
+  Kind : FaultKind
+  Match(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeOrderFault>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeOrderFault>
+  implements IFault
+  implements IFaultSet<ProbeOrderFault>
+  implements IParsable<ProbeOrderFault>
+  nested ProbeOrderFaultJsonConverter : JsonConverter<ProbeOrderFault>
+  nested ProbeOrderFaultTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeOrderFault>
+  static Parse(String) : ProbeOrderFault
+  static TryParse(String, out ProbeOrderFault) : Boolean
 ProbeOverride
   CompareTo(Object) : Int32
   CompareTo(ProbeOverride) : Int32

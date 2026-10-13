@@ -6,8 +6,8 @@ namespace CodoMetis.TypeKit;
 
 /// <summary>
 /// The JSON converter behind <see cref="Option{T}"/>, <see cref="Result{TError}"/>,
-/// <see cref="Result{T,TError}"/> and the <c>Option.None</c>, <c>Result.Success</c> and <c>Result.Error</c>
-/// markers. It refuses to read or write any of them, because none of them is a wire type.
+/// <see cref="Result{T,TError}"/>, <see cref="Fault{TFault}"/> and the <c>Option.None</c>,
+/// <c>Result.Success</c> and <c>Result.Error</c> markers. It refuses to read or write any of them, because none of them is a wire type.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -55,7 +55,7 @@ namespace CodoMetis.TypeKit;
 public sealed class NotWireTypeJsonConverterFactory : JsonConverterFactory
 {
     private static readonly Type[] RefusedDefinitions =
-        [typeof(Option<>), typeof(Result<>), typeof(Result<,>), typeof(Success<>), typeof(Error<>)];
+        [typeof(Option<>), typeof(Result<>), typeof(Result<,>), typeof(Success<>), typeof(Error<>), typeof(Fault<>)];
 
     /// <inheritdoc/>
     public override bool CanConvert(Type typeToConvert) => IsRefused(typeToConvert);

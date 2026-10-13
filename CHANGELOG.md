@@ -116,6 +116,19 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   outputs are tested, as the READMEs' are, and the `Option` and `Result` pages list the complete
   public surface, checked against the types. The package READMEs remain the reference for each
   package. The plan moved from `docs/plan.md` to `design/plan.md`.
+- **Fault responses a client can act on.** In `CodoMetis.TypeKit`: `FaultKind`, `IFault` and
+  `IFaultSet<TSelf>`, a closed set whose members carry a kind and an optional description, and
+  `Fault<TFault>`, a fault with a sentence about one occurrence (`Fault.Of(reason, detail)`). In
+  `CodoMetis.TypeKit.AspNetCore`, each opt-in, with decision 38's default response unchanged: a closed
+  set as the fault type, `AddFaultResponses<TSet>()` answering every member by its kind (`NotFound` 404,
+  `Conflict` 409, `Invalid` 422, `Forbidden` 403, `Unavailable` 503) with its description as the
+  `detail`; a `FaultResponse` per member with a `type` and a `title`; a `Fault<TFault>`'s detail as the
+  problem's `detail`; `WithFaultStatus(fault, status)` on an endpoint and `[FaultStatus<TFault>]` on an
+  MVC action, for that endpoint's response and document entry; `ToHttpResult(success)`, the
+  endpoint's own success such as `Created`; and `IFaultFeature` on the request while the problem is
+  written, for the host's `CustomizeProblemDetails`, with `FaultResponseOptions.QualifiedFaultNames`.
+  The startup check refuses a status for a fault type the endpoint does not answer with, and an
+  attribute naming no member.
 
 ### Changed
 
@@ -124,6 +137,8 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   `IEnumerable<T>` ones read every row and ran it in memory. A predicate the provider cannot
   translate now throws where it ran in memory before. `LastOrNone` and `LastOrError` on a query are
   compile errors that say to order the query and take the first, or to call `AsEnumerable()`.
+- **`CodoMetis.TypeKit.AspNetCore`**: `FaultProblem<TFault>` takes any `notnull` fault type, an enum or a
+  closed set, where it took `struct, Enum`; every type argument it accepted is still accepted.
 
 ## 1.5.1 — 2026-10-11
 

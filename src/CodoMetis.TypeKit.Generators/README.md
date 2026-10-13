@@ -234,7 +234,9 @@ reads a string through `TypeDescriptor` bind a set. The binder's source generato
 converter ([dotnet/runtime#83599](https://github.com/dotnet/runtime/issues/83599)): under it, as under
 Native AOT, bind the name as a `string` and `Parse` it.
 The EF Core satellite maps a closed set to a text column of the member's name, and the ASP.NET Core
-satellite describes it as a string enum of the names, with nothing registered per set.
+satellite describes it as a string enum of the names, with nothing registered per set. A set whose
+members are faults declares `IFaultSet<TSelf>`, a `FaultKind` and an optional description per member,
+and the ASP.NET Core satellite answers it by kind.
 
 Each member is initialized with `new` where it is declared (CMTK1019), and the constructors are
 private (CMTK1016); a record is refused (CMTK1020). A member may not take the name of a generated

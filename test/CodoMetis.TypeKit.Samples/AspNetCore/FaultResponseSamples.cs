@@ -1,0 +1,210 @@
+using System.Net;
+using System.Text.Json.Nodes;
+using CodoMetis.TypeKit;
+using CodoMetis.TypeKit.AspNetCore;
+using CodoMetis.TypeKit.ClosedSets;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace ReadmeSamples.Web.Faults;
+
+public enum PaymentFault { Declined, Duplicate }
+
+// sample: CodoMetis.TypeKit.AspNetCore/fault-set
+public sealed partial class AccountFault : IFaultSet<AccountFault>
+{
+    public static readonly AccountFault NotFound = new(FaultKind.NotFound, "The account does not exist.");
+    public static readonly AccountFault EmailTaken = new(FaultKind.Conflict, "Another account uses that email address.");
+    public static readonly AccountFault Locked = new(FaultKind.Forbidden, null);   // a refusal that must not explain itself
+
+    private AccountFault(FaultKind kind, string? description) { Kind = kind; Description = description; }
+
+    public FaultKind Kind { get; }
+    public string? Description { get; }
+}
+// end sample
+
+public sealed record Account(int Id, string Email);
+
+public sealed record NewAccount(string Email);
+
+public interface IAccounts
+{
+    Result<Account, AccountFault> Open(NewAccount body);
+
+    Result<Account, Fault<AccountFault>> Rename(int id, string email);
+}
+
+public static class Faults
+{
+    public static void Responses(WebApplicationBuilder builder)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-response
+        builder.Services.AddFaultResponses<PaymentFault>(fault => fault switch
+        {
+            PaymentFault.Declined  => FaultResponse.Status(StatusCodes.Status402PaymentRequired).WithType(new Uri("https://example.com/problems/declined")),
+            PaymentFault.Duplicate => StatusCodes.Status409Conflict,
+            _ => throw new ArgumentOutOfRangeException(nameof(fault)),
+        });
+        // end sample
+
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-set-mapping
+        builder.Services.AddFaultResponses<AccountFault>();   // every member by its kind, its description as the detail
+        // end sample
+    }
+
+    public static void Endpoints(WebApplication app, IAccounts accounts)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-status
+        app.MapPost("/accounts", (NewAccount body) => accounts.Open(body).ToHttpResult())
+           .WithFaultStatus(AccountFault.EmailTaken, StatusCodes.Status422UnprocessableEntity);
+        // end sample
+
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-success
+        app.MapPost("/v2/accounts", (NewAccount body) => accounts.Open(body).ToHttpResult(account => TypedResults.Created($"/accounts/{account.Id}", account)));
+        // end sample
+
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-detail
+        app.MapPut("/accounts/{id:int}/email", (int id, NewAccount body) => accounts.Rename(id, body.Email).ToHttpResult());
+        // end sample
+    }
+
+    public static Result<Account, Fault<AccountFault>> Taken()
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-detail-domain
+        Result<Account, Fault<AccountFault>> taken = Result.Error(Fault.Of(AccountFault.EmailTaken, "The address has been in use since 3 May."));
+        // end sample
+
+        return taken;
+    }
+
+    public static void Shaped(WebApplicationBuilder builder)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-feature
+        builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+        {
+            if (context.HttpContext.Features.Get<IFaultFeature>() is { } fault)
+                context.ProblemDetails.Extensions["code"] = $"ACC-{fault.Name}";   // the host's own extension, for this fault only
+        });
+        builder.Services.Configure<FaultResponseOptions>(options => options.QualifiedFaultNames = true);   // "fault": "AccountFault.EmailTaken"
+        // end sample
+    }
+}
+
+// Internal, so no host of this assembly discovers it: the sample is the action's declaration.
+[ApiController]
+internal sealed class AccountsController(IAccounts accounts) : ControllerBase
+{
+    // sample: CodoMetis.TypeKit.AspNetCore/fault-status-mvc
+    [HttpPost("/mvc/accounts")]
+    [FaultStatus<AccountFault>(nameof(AccountFault.EmailTaken), StatusCodes.Status422UnprocessableEntity)]
+    public Results<Ok<Account>, FaultProblem<AccountFault>> Open(NewAccount body) => accounts.Open(body).ToHttpResult();
+    // end sample
+}
+
+/// <summary>A domain that answers every call with one outcome, for the tests below.</summary>
+public sealed class FixedAccounts(Result<Account, AccountFault> open) : IAccounts
+{
+    public Result<Account, AccountFault> Open(NewAccount body) => open;
+
+    public Result<Account, Fault<AccountFault>> Rename(int id, string email) => Faults.Taken();
+}
+
+public sealed class FaultResponseSampleTests
+{
+    private static async Task<WebApplication> StartAsync(Result<Account, AccountFault> open, bool shaped = false)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        builder.Services.AddOpenApi(options => options.AddTypeKit());
+        Faults.Responses(builder);
+        if (shaped) Faults.Shaped(builder);
+
+        var app = builder.Build();
+        app.MapOpenApi();
+        Faults.Endpoints(app, new FixedAccounts(open));
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        return app;
+    }
+
+    private static StringContent Body() => new("""{"email":"ann@example.com"}""", System.Text.Encoding.UTF8, "application/json");
+
+    [Fact]
+    public async Task A_fault_set_is_answered_by_kind_and_the_endpoint_s_status_where_it_sets_one()
+    {
+        await using var app = await StartAsync(Result.Error(AccountFault.EmailTaken));
+
+        using var strict = await app.GetTestClient().PostAsync("/accounts", Body(), TestContext.Current.CancellationToken);
+        strict.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity, "WithFaultStatus");
+
+        using var byKind = await app.GetTestClient().PostAsync("/v2/accounts", Body(), TestContext.Current.CancellationToken);
+        byKind.StatusCode.ShouldBe(HttpStatusCode.Conflict, "the member's kind");
+        var problem = JsonNode.Parse(await byKind.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!;
+        problem["detail"]!.GetValue<string>().ShouldBe("Another account uses that email address.");
+    }
+
+    [Fact]
+    public async Task The_endpoint_s_own_success_is_a_201_with_its_location()
+    {
+        await using var app = await StartAsync(new Account(7, "ann@example.com"));
+
+        using var created = await app.GetTestClient().PostAsync("/v2/accounts", Body(), TestContext.Current.CancellationToken);
+        created.StatusCode.ShouldBe(HttpStatusCode.Created);
+        created.Headers.Location!.ToString().ShouldBe("/accounts/7");
+    }
+
+    [Fact]
+    public async Task An_occurrence_s_detail_replaces_the_member_s_description()
+    {
+        await using var app = await StartAsync(new Account(7, "ann@example.com"));
+
+        using var response = await app.GetTestClient().PutAsync("/accounts/7/email", Body(), TestContext.Current.CancellationToken);
+        var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!;
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        problem["detail"]!.GetValue<string>().ShouldBe("The address has been in use since 3 May.");
+    }
+
+    [Fact]
+    public async Task The_host_shapes_the_problem_and_qualifies_the_fault_name()
+    {
+        await using var app = await StartAsync(Result.Error(AccountFault.EmailTaken), shaped: true);
+
+        using var response = await app.GetTestClient().PostAsync("/v2/accounts", Body(), TestContext.Current.CancellationToken);
+        var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!;
+
+        problem["fault"]!.GetValue<string>().ShouldBe("AccountFault.EmailTaken");
+        problem["code"]!.GetValue<string>().ShouldBe("ACC-AccountFault.EmailTaken");
+    }
+
+    [Fact]
+    public async Task A_type_URI_reaches_the_problem_and_the_document()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        builder.Services.AddOpenApi(options => options.AddTypeKit());
+        Faults.Responses(builder);
+        await using var app = builder.Build();
+        app.MapOpenApi();
+        app.MapPost("/payments", () => Result<int, PaymentFault>.Error(PaymentFault.Declined).ToHttpResult());
+        await app.StartAsync(TestContext.Current.CancellationToken);
+
+        using var response = await app.GetTestClient().PostAsync("/payments", content: null, TestContext.Current.CancellationToken);
+        var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!;
+        response.StatusCode.ShouldBe(HttpStatusCode.PaymentRequired);
+        problem["type"]!.GetValue<string>().ShouldBe("https://example.com/problems/declined");
+
+        var document = JsonNode.Parse(await app.GetTestClient().GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken))!;
+        document["paths"]!["/payments"]!["post"]!["responses"]!["402"]!["description"]!.GetValue<string>()
+            .ShouldBe("Payment Required. Problem types: https://example.com/problems/declined");
+    }
+}

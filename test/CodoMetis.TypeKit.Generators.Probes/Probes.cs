@@ -274,3 +274,35 @@ public sealed partial class ProbeKeyword : IClosedSet<ProbeKeyword>
     public static readonly ProbeKeyword New = new();
     public static readonly ProbeKeyword Default = new();
 }
+
+/// <summary>
+/// A fault set: each member's kind, from which a host derives its status, and a description where the
+/// member has one. <c>Locked</c> must not explain itself, so it has none.
+/// </summary>
+public sealed partial class ProbeOrderFault : IFaultSet<ProbeOrderFault>
+{
+    public static readonly ProbeOrderFault NotFound = new(FaultKind.NotFound, "The order does not exist.");
+    public static readonly ProbeOrderFault NameTaken = new(FaultKind.Conflict, "Another order has that name.");
+    public static readonly ProbeOrderFault Locked = new(FaultKind.Forbidden, null);
+
+    private ProbeOrderFault(FaultKind kind, string? description)
+    {
+        Kind = kind;
+        Description = description;
+    }
+
+    public FaultKind Kind { get; }
+
+    public string? Description { get; }
+}
+
+/// <summary>A fault set with a member whose kind is <c>default</c>, which is no kind: refused where the faults are mapped.</summary>
+public sealed partial class ProbeKindlessFault : IFaultSet<ProbeKindlessFault>
+{
+    public static readonly ProbeKindlessFault Known = new(FaultKind.Invalid);
+    public static readonly ProbeKindlessFault Unset = new(default);
+
+    private ProbeKindlessFault(FaultKind kind) => Kind = kind;
+
+    public FaultKind Kind { get; }
+}

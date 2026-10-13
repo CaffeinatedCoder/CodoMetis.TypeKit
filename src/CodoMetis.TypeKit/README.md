@@ -194,6 +194,14 @@ null throws, as `Result.Success(null)` does. `Map`, `Bind` and the rest are unch
 that throws propagates. An exception is for the code that called, not for a client: `ToHttpResult()`
 does not accept a `Result<T, Exception>`, and `MapError` turns the exception into a fault that it does.
 
+**A fault with a sentence.** A fault is one of a fixed set, an enum's member or a closed set's, so
+what varies per occurrence travels beside it: `Fault<TFault>` holds the fault, its `Reason`, and an
+optional `Detail`. `Fault.Of(OrderFault.NotAmendable, "The order shipped on 3 May.")` infers the type,
+and a bare fault converts to one without a detail. CodoMetis.TypeKit.AspNetCore answers a
+`Result<T, Fault<TFault>>` as it answers the fault, with the detail as the problem's `detail`. A
+closed set whose members are faults declares `IFaultSet<TSelf>`, a `FaultKind` and an optional
+description per member, from which the host derives each status.
+
 ## Not wire types
 
 The one wire type here is `Patch<T>`, a merge patch's field (below).

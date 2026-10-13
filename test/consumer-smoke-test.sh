@@ -578,6 +578,18 @@ public sealed partial class OrderStatus : IClosedSet<OrderStatus>
     public static readonly OrderStatus Shipped = new();
 }
 
+// A fault set: each member's kind gives its status, its description the problem's detail.
+public sealed partial class AccountFault : IFaultSet<AccountFault>
+{
+    public static readonly AccountFault NotFound = new(FaultKind.NotFound, "The account does not exist.");
+    public static readonly AccountFault EmailTaken = new(FaultKind.Conflict, null);
+
+    private AccountFault(FaultKind kind, string? description) { Kind = kind; Description = description; }
+
+    public FaultKind Kind { get; }
+    public string? Description { get; }
+}
+
 // One per JSON strategy: a reader method (Guid), the serializer's contract for a number, the
 // fallback with a built-in converter (Uri, an enum), a string, and parsing through a TypeConverter.
 public readonly partial record struct OrderId : IValue<Guid>;
@@ -650,6 +662,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using CodoMetis.TypeKit;
+using CodoMetis.TypeKit.AspNetCore;
 using CodoMetis.TypeKit.ValueObjects;
 using Shop;
 
@@ -705,6 +718,12 @@ builder.Services.AddFaultResponses<CodeFault>(fault => fault switch
     CodeFault.NotUpperCase => StatusCodes.Status422UnprocessableEntity,
     _ => throw new ArgumentOutOfRangeException(nameof(fault)),
 });
+// A fault set answered by its kinds, and the fault on the request for the host's own extension.
+builder.Services.AddFaultResponses<AccountFault>();
+builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+{
+    if (context.HttpContext.Features.Get<IFaultFeature>() is { } fault) context.ProblemDetails.Extensions["code"] = $"ACC-{fault.Name}";
+});
 
 await using var app = builder.Build();
 app.MapOpenApi();
@@ -713,6 +732,10 @@ app.MapPost("/orders", (OrderView body) => body.Amount);
 app.MapPost("/tracking", (Tracking body) => body.Status.Name);
 app.MapPatch("/orders/{id}", (OrderId id, OrderPatch patch) => $"{patch.Code.Match(code => $"Value({code.Value})", () => "Null", () => "Absent")} {patch.Note.Match(note => $"Value({note})", () => "Null", () => "Absent")}");
 app.MapGet("/codes/{text}", (string text) => Code.Create(text).ToHttpResult());
+app.MapGet("/accounts/{id}", (string id) => (id == "taken" ? Result<string, AccountFault>.Error(AccountFault.EmailTaken) : Result<string, AccountFault>.Error(AccountFault.NotFound)).ToHttpResult());
+app.MapGet("/strict/accounts/{id}", (string id) => Result<string, AccountFault>.Error(AccountFault.EmailTaken).ToHttpResult()).WithFaultStatus(AccountFault.EmailTaken, StatusCodes.Status422UnprocessableEntity);
+app.MapGet("/detailed/accounts/{id}", (string id) => Result<string, Fault<AccountFault>>.Error(Fault.Of(AccountFault.EmailTaken, "In use since 3 May.")).ToHttpResult());
+app.MapPost("/accounts", () => Result<string, AccountFault>.Success("a1").ToHttpResult(id => TypedResults.Created($"/accounts/{id}", id)));
 await app.StartAsync();
 
 using var http = new HttpClient { BaseAddress = new Uri(app.Urls.First()) };
@@ -743,6 +766,21 @@ await Check("result-fault", async () =>
     return $"{(int)response.StatusCode} {response.Content.Headers.ContentType?.MediaType} {problem?["fault"]}";
 });
 Console.WriteLine($"result-responses={string.Join(",", document?["paths"]?["/codes/{text}"]?["get"]?["responses"]?.AsObject().Select(r => r.Key) ?? [])}");
+async Task<string> Problem(string path)
+{
+    var response = await http.GetAsync(path);
+    var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync());
+    return $"{(int)response.StatusCode} {problem?["fault"]} {problem?["detail"]?.ToString() ?? "-"} {problem?["code"]}";
+}
+await Check("fault-kind", () => Problem("/accounts/missing"));
+await Check("fault-strict", () => Problem("/strict/accounts/x"));
+await Check("fault-detail", () => Problem("/detailed/accounts/x"));
+await Check("fault-created", async () =>
+{
+    var response = await http.PostAsync("/accounts", content: null);
+    return $"{(int)response.StatusCode} {response.Headers.Location}";
+});
+Console.WriteLine($"fault-responses={string.Join(",", document?["paths"]?["/strict/accounts/{id}"]?["get"]?["responses"]?.AsObject().Select(r => r.Key) ?? [])}");
 await app.StopAsync();
 
 public sealed record Line(OrderId Id, Code Code, Name Name, Quantity Quantity, Amount Amount, Link Link, Weekday Weekday,
@@ -915,6 +953,11 @@ assert_contains "bound=200"                        "$work/aot.out" "a route para
 assert_contains 'result-success="ABC"'             "$work/aot.out" "ToHttpResult answers a success with its value"
 assert_contains "result-fault=422 application/problem+json NotUpperCase" "$work/aot.out" "and a fault as problem details with its mapped status"
 assert_contains "result-responses=200,400,422"     "$work/aot.out" "the document lists the value and each mapped status"
+assert_contains "fault-kind=404 NotFound The account does not exist. ACC-NotFound" "$work/aot.out" "a fault set is answered by its kind, its description the detail, the host's extension from the fault feature"
+assert_contains "fault-strict=422 EmailTaken - ACC-EmailTaken" "$work/aot.out" "an endpoint's status replaces the kind's"
+assert_contains "fault-detail=409 EmailTaken In use since 3 May. ACC-EmailTaken" "$work/aot.out" "a Fault's detail reaches the problem"
+assert_contains "fault-created=201 /accounts/a1"   "$work/aot.out" "the endpoint's own success, with its Location"
+assert_contains "fault-responses=200,404,422"      "$work/aot.out" "the document lists the endpoint's status in place of the kind's"
 assert_contains "malformed=400"                    "$work/aot.out" "a malformed route parameter is a 400"
 assert_contains 'patch=Value(ABC) Null'            "$work/aot.out" "a Patch<T> reads a value object and a null through the context under Native AOT"
 assert_contains 'set-json={"Status":"Shipped","Counts":{"Open":1}}' "$work/aot.out" "a closed set writes its name through the context, as a value and as a dictionary key"

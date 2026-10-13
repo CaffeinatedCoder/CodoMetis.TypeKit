@@ -609,8 +609,16 @@ Each phase ends green, and its guards have been proven by seeding the defect
        `ValueTask` receiver); `Transpose`, `SingleOrNone` and `ElementAtOrNone` ✅ (more than one is a
        refusal, as `SingleOrDefault`'s; a negative index on a query is `None` without a query, since
        `Skip(-1)` skips nothing).
-    8. **The fault responses**, after [spikes/FaultResponses](../spikes/FaultResponses/README.md),
-       last, since they read a smart enum's kind.
+    8. **The fault responses** ✅ 2026-10-13, after [spikes/FaultResponses](../spikes/FaultResponses/README.md),
+       whose candidate was the satellite itself and whose thirteen claims are its tests and the smoke
+       test's AOT consumer. In the base package: `FaultKind`, `IFault` and `IFaultSet<TSelf>` (a kind
+       and an optional description per member), and `Fault<TFault>` (a reason and a detail, refused
+       by JSON and by CMTK0001 when `default`). In the ASP.NET satellite: one internal `FaultType<TFault>`
+       for an enum and a closed set alike, `FaultResponse` (status, `type`, `title`),
+       `AddFaultResponses<TSet>()` by kind, `WithFaultStatus` and `[FaultStatus<TFault>]`,
+       `ToHttpResult(success)`, `IFaultFeature` and `FaultResponseOptions.QualifiedFaultNames`
+       (decision 49). `FaultProblem<TFault>`'s constraint relaxed to `notnull`, the first difference
+       the 1.5.1 baseline reports, suppressed alone (decision 48).
     9. **The breaks**: decision 34's promotions, the two rules at Error, and the baseline's verdict
        on each intended break.
     10. **`2.0.0-preview.1` to nuget.org** once steps 7 and 8 exist, the consumer smoke test
@@ -1498,6 +1506,34 @@ Still open:
     `[Obsolete(error: true)]`, as `Catch`'s task trap is, since a query has no last element until it
     is ordered. EF's `FirstOrNoneAsync` lives in the satellite, in EF's namespace; under Native AOT
     neither is precompiled (measured), which the EF README says with the call-site form to use.
+48. **An intended break is suppressed alone; the baseline stays** (2026-10-13, phase 13). The plan
+    left the choice to the first break package validation reported, and it came with the fault
+    responses: `FaultProblem<TFault>` takes `notnull` where it took `struct, Enum` (CP0021), so that a
+    closed set can be a fault type. Each intended break gets its own entry in the project's
+    `CompatibilitySuppressions.xml` (generated with `-p:ApiCompatGenerateSuppressionFile=true`, then
+    read before it is committed), and the 1.5.1 baseline keeps comparing every other member, so an
+    unintended break still fails the pack. Letting the baseline lapse for 2.0.0 would have passed one.
+49. **Fault responses a client can act on** (2026-10-13, phase 13, spikes/FaultResponses). The five
+    parts ship as proposed, with these choices measured or made on the way:
+    - **A kind's status is fixed**: `NotFound` 404, `Conflict` 409, `Invalid` 422 (RFC 9110
+      §15.5.21, a well-formed request a rule refuses), `Forbidden` 403, `Unavailable` 503. No
+      host-wide table: a mapping of the host's own, calling `FaultResponse.For(kind)` for the members
+      it keeps, is the escape hatch, as decision 38's switch is. `FaultKind` starts at 1, so a
+      `default` kind is refused where the set is mapped.
+    - **`Fault<TFault>`'s fault is its `Reason`**, not its `Kind` as first proposed: a member's
+      `FaultKind` is its `Kind`, and `fault.Kind.Kind` would have read as a stutter. A blank detail is
+      refused; `null` says there is none.
+    - **A description is the `detail`**: RFC 9457 §3.1.4 has `detail` help the client correct the
+      problem, and §3.1.3 keeps `title` the same for every occurrence of a type, which a status's own
+      title already is. An occurrence's detail replaces the member's description.
+    - **`IFault` is non-generic**, beside `IFaultSet<TSelf>`, so the satellite reads a member's kind
+      with an interface check whatever the fault type, and `Description` defaults to `null`.
+    - **Overloads by constraint live in two classes**, since C# forbids two methods that differ in
+      constraints alone; with the type arguments inferred, the one whose constraint fails drops out.
+    - **The document lists problem types in the response's description**, and `fault` stays a string
+      on the shared problem schema; a per-operation enum is not offered.
+    - **An MVC action names its member in an attribute**, `[FaultStatus<OrderFault>(nameof(…), 422)]`,
+      since an attribute takes only constants; a name no member has stops the host.
 
 ## 9. Option and Result
 
