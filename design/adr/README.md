@@ -65,3 +65,4 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0056](0056-value-translated-only-through-typekit-converter.md) | `.Value` is translated only on a column TypeKit's converter stores | 2026-10-13 | accepted |
 | [0057](0057-hand-written-ordering-refused-in-query.md) | A query that orders by a hand-written `CompareTo` is refused | 2026-10-13 | accepted |
 | [0058](0058-integer-key-follows-ef-rule.md) | A value-object key is generated wherever EF generates its wrapped type's | 2026-10-13 | accepted |
+| [0062](0062-asynchronous-callbacks-run-where-awaited-task-completed.md) | An asynchronous callback runs where the task it waited for completed | 2026-10-13 | accepted |

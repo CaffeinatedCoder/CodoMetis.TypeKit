@@ -89,6 +89,21 @@ public sealed class Shop
         return (discount, country, label, seen, greeting, nicknames.ToList(), known.ToList());
     }
 
+    public Task<Option<Customer>> FindAsync(CustomerId id) => Task.FromResult(Customers.GetValueOrNone(id));
+
+    public async Task<string> Pending()
+    {
+        var shop = this;
+        var ann = Ann;
+
+        // sample: option/pending
+        Option<Customer> loaded = await shop.FindAsync(ann.Id);              // the await returns to the caller's context
+        string shown = loaded.Map(customer => customer.Name).Or("unknown");   // "Ann", the selector on that context too
+        // end sample
+
+        return shown;
+    }
+
     // sample: option/boundary
     static Customer FromDto(CustomerDto dto) => new(CustomerId.New(), dto.Name, "standard", dto.Nickname.ToOption(), Option.None());
 
@@ -167,6 +182,16 @@ public sealed class OptionTests
         shop.Visits.ShouldBe([shop.Ann.Id], "Tap ran once");
         nicknames.ShouldBe(["Annie"], "Choose kept the one nickname and dropped nothing else");
         known.ShouldBe([shop.Ann], "the unknown id was dropped");
+    }
+
+    [Fact]
+    public async Task A_pending_option_answers_what_the_comment_says()
+    {
+        var shop = new Shop();
+
+        var shown = await shop.Pending();
+
+        shown.ShouldBeShownIn(Readme, Quoted, "loaded.Map(customer => customer.Name).Or(\"unknown\")");
     }
 
     [Fact]

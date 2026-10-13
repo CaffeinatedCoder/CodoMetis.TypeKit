@@ -6,6 +6,13 @@ namespace CodoMetis.TypeKit;
 /// Creates <see cref="Option{T}"/> instances, and adds the LINQ vocabulary, the zips and the
 /// conversions to and from nullables, sequences and results.
 /// </summary>
+/// <remarks>
+/// The continuations of a pending option (<c>MapAsync</c>, <c>BindAsync</c>, <c>FilterAsync</c>,
+/// <c>TapAsync</c>) never resume on the caller's <see cref="SynchronizationContext"/>, as
+/// <see cref="Result"/>'s do not: a callback runs at once, on the caller's context, when the option was
+/// already known, and otherwise wherever its task completed, without that context. In a UI or a Blazor
+/// component, await the option and call the synchronous combinator on it, or marshal inside the callback.
+/// </remarks>
 public static class Option
 {
     /// <summary>Creates an option that holds <paramref name="value"/>.</summary>

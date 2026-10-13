@@ -6,8 +6,22 @@ namespace CodoMetis.TypeKit;
 /// continuations of a result that is still being produced (<c>Task&lt;Result&lt;…&gt;&gt;</c>).
 /// </summary>
 /// <remarks>
+/// <para>
 /// Everything here stops at the first error, in argument or sequence order. Nothing collects
 /// errors: that is a validation applicative, which this package leaves out on purpose.
+/// </para>
+/// <para>
+/// The asynchronous members never resume on the caller's <see cref="SynchronizationContext"/>: every
+/// <c>await</c> in them is <c>ConfigureAwait(false)</c>, so they cannot deadlock a caller that blocks
+/// on a chain. A callback therefore runs where the task it waits for completed: at once, on the
+/// caller's thread and context, when that task had already completed, and otherwise wherever it
+/// completed, usually a thread-pool thread without the caller's context. That covers a continuation of
+/// a pending result (<c>MapAsync</c>, <c>BindAsync</c>, <c>TapAsync</c> and the rest), every operation
+/// of <c>TraverseAsync</c> after the first, and every step after one that waited. The caller's own
+/// <c>await</c> of the chain returns to its context as usual. In a UI or a Blazor component, where a
+/// callback touches state bound to the dispatcher or the renderer, await the task and call the
+/// synchronous combinator on what it answers, or marshal inside the callback.
+/// </para>
 /// </remarks>
 public static class Result
 {

@@ -149,6 +149,16 @@ public static class Usage
         return asyncLedger;
     }
 
+    public static async Task<string> OnTheCallersContext(Checkout checkout, CartId cartId)
+    {
+        // sample: result/context
+        Result<Cart, CheckoutFault> found = await checkout.FindCartAsync(cartId);   // the await returns to the caller's context
+        string lineCount = found.Map(cart => $"{cart.Lines.Count} lines").Match(text => text, fault => $"refused: {fault}");   // "2 lines", the selector on that context too
+        // end sample
+
+        return lineCount;
+    }
+
     public static (Result<IReadOnlyList<Line>, CheckoutFault> Lines, Result<IReadOnlyList<Reservation>, CheckoutFault> All, Result<decimal, CheckoutFault> Amount, Result<Line, CheckoutFault> Bulk, string Summary, string Stopped) Collect(
         Checkout checkout, Cart cart, List<LineRequest> requested, List<LineRequest> refused, List<Result<Reservation, CheckoutFault>> reservations, Result<decimal, CheckoutFault> unitPrice, Result<int, CheckoutFault> quantity)
     {
@@ -279,6 +289,17 @@ public sealed class ResultTests
 
         (await Usage.PipelineAsync(checkout, checkout.Empty.Id, audit)).ShouldBe("not charged: CartEmpty");
         audit.ShouldBe(["not charged: CartEmpty"]);
+    }
+
+    [Fact]
+    public async Task Continuing_after_the_await_answers_what_the_comment_says()
+    {
+        var checkout = new Checkout();
+
+        var lineCount = await Usage.OnTheCallersContext(checkout, checkout.Cart.Id);
+
+        lineCount.ShouldBeShownIn(Readme, Quoted, "found.Map(cart => $\"{cart.Lines.Count} lines\").Match(text => text, fault => $\"refused: {fault}\")");
+        (await Usage.OnTheCallersContext(checkout, CartId.New())).ShouldBe("refused: CartUnknown");
     }
 
     [Fact]

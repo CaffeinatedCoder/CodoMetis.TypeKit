@@ -65,6 +65,15 @@ is the value-less shape. Anything that turns this into a second LanguageExt is o
   throws. Callbacks return `Task` ([decision 30](adr/0030-asynchronous-callbacks-return-task.md)): `TapAsync` and `TapErrorAsync` take a
   `Func<…, Task>` beside the `Action`, so an `async` lambda is awaited; a `ValueTask` one needs
   `.AsTask()`.
+- **A callback runs where the task it waited for completed (decided 2026-10-13,
+  [decision 62](adr/0062-asynchronous-callbacks-run-where-awaited-task-completed.md)).** Every `await`
+  in the package is `ConfigureAwait(false)`, so nothing resumes on the caller's
+  `SynchronizationContext` and its awaits cannot deadlock a caller blocked on a chain. The price, measured: a
+  callback after a pending task runs without the caller's context, one after a completed task runs at
+  once on it, so in a UI or a Blazor component a callback that touches dispatcher-bound state works or
+  fails by timing. That is documented rather than changed: await the task and call the synchronous
+  combinator, or marshal inside the callback. `AsynchronousContextTests` holds every public member
+  that returns a task to it.
 
 **Decided 2026-09-27: an uninitialized `Result` throws.**
 - A `default` result is `State == Uninitialized`. If the branching members tested only

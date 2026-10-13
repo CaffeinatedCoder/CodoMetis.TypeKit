@@ -149,6 +149,26 @@ throws reaches the chain's `await`. A callback that returns a `ValueTask` needs 
 `async` lambda: `TapAsync` and `TapErrorAsync` would otherwise bind to their synchronous overload and
 not wait, and `MapAsync` would hold the `ValueTask` as the value.
 
+## Where a callback runs
+
+Every `await` inside the package is `ConfigureAwait(false)`, so nothing resumes on the caller's
+`SynchronizationContext`, and a caller that blocks on a chain with `.Result` or `.Wait()` is not
+deadlocked by the package's own awaits. A callback therefore runs where the task it waits for completed. When that task has
+already completed, the callback runs at once, on the caller's thread and context; when it is still
+pending, the callback runs wherever the task completes, usually a thread-pool thread, without the
+caller's context. That holds for every continuation of a pending result, for `TraverseAsync` after its
+first operation, and for every step after one that waited. The caller's own `await` of the chain
+returns to its context as always.
+
+In a Blazor component or a WPF window, a callback that touches state bound to the renderer or the
+dispatcher would work or fail by timing. There, await the task and continue with the synchronous
+combinators, or marshal inside the callback (`InvokeAsync`, `Dispatcher.Invoke`):
+
+```csharp
+Result<Cart, CheckoutFault> found = await checkout.FindCartAsync(cartId);   // the await returns to the caller's context
+string lineCount = found.Map(cart => $"{cart.Lines.Count} lines").Match(text => text, fault => $"refused: {fault}");   // "2 lines", the selector on that context too
+```
+
 ## Collecting results
 
 ```csharp

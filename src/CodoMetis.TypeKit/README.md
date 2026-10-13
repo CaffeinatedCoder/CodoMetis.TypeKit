@@ -80,7 +80,9 @@ Result<Customer, SignInFault> active = await repository.FindByEmailAsync(email) 
 
 `MapAsync`, `BindAsync`, `FilterAsync`, `TapAsync` and `ToResultAsync` continue a pending option, and
 an option has `MapAsync`, `BindAsync` and `TapAsync` over callbacks that return a `Task`. Each checks
-its delegates, and `ToResultAsync` its error, before the option is known.
+its delegates, and `ToResultAsync` its error, before the option is known. A callback runs where the
+task it waits for completed, not on the caller's synchronization context when that task was still
+pending, as a pending result's does (below).
 
 ## Result&lt;T, TError&gt; and Result&lt;TError&gt;
 
@@ -174,7 +176,12 @@ The asynchronous steps take callbacks that return a `Task`, and wait for them:
 `.TapErrorAsync(fault => audit.RecordAsync(fault))` has recorded the fault when the chain's `await`
 returns, and what it throws reaches that `await`. A callback that returns a `ValueTask` needs
 `.AsTask()`, or an `async` lambda: `TapAsync` and `TapErrorAsync` would bind it to their synchronous
-overload and not wait for it, and `MapAsync` would hold the `ValueTask` as the value.
+overload and not wait for it, and `MapAsync` would hold the `ValueTask` as the value. Nothing in the
+package resumes on the caller's synchronization context, so its awaits never deadlock a caller that
+blocks on a chain, and a callback runs where the task it waits for completed: at once, on the caller's
+context, when that task had already completed, and without it, usually on a thread-pool thread, when
+it was still pending. In a UI or a Blazor component, await the task and continue with the synchronous
+combinators ([where a callback runs](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/result.md#where-a-callback-runs)).
 
 **Exceptions as outcomes.** A call that throws has no way into a `Result` except a `try`/`catch`
 written by hand. `Result.Catch` runs the call and answers its value, or the exception as the error.

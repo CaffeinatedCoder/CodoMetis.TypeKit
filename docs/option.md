@@ -82,6 +82,20 @@ answers `Some` for and drops the `None`s, a filter and a map in one, lazily as a
 a sequence of options, `Choose()` alone keeps the values they hold. `Select`, `SelectMany` and `Where` make query
 syntax work, and each `from` after the first sees the earlier ranges, as above.
 
+## A pending option
+
+A lookup that is still running is a `Task<Option<T>>`, and `MapAsync`, `BindAsync`, `FilterAsync`,
+`TapAsync` and `ToResultAsync` continue it as [Result's async chains](result.md#async-chains) continue
+a pending result, awaited once at the end. A callback there runs where the task it waits for completed:
+at once on the caller's synchronization context when the lookup had already finished, and without it,
+usually on a thread-pool thread, when it had not ([Where a callback runs](result.md#where-a-callback-runs)).
+In a Blazor component or a WPF window, await the lookup and continue with the synchronous members:
+
+```csharp
+Option<Customer> loaded = await shop.FindAsync(ann.Id);              // the await returns to the caller's context
+string shown = loaded.Map(customer => customer.Name).Or("unknown");   // "Ann", the selector on that context too
+```
+
 ## At the boundary
 
 An option is not a wire type, not a column and not a route parameter: System.Text.Json refuses it in
