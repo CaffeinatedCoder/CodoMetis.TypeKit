@@ -110,7 +110,8 @@ no component at all), and both parameters are a bare `string`.
 
 **A merge patch.** A property typed `Patch<T>` (CodoMetis.TypeKit, a JSON Merge Patch field) is
 described as `T`'s schema, inlined where the property is rather than as a `PatchOfstring` component,
-never required, since absent is a state, and admitting null, since null is the clear. A value object
+never required, since absent is a state, and admitting null, since null is the clear: beside the
+type, in an enum's list of values, or as a branch beside the argument's own. A value object
 inside a patch is described through the type it wraps, which is also what a source-generated host
 can do: the patch's converter hides the value object from its context.
 

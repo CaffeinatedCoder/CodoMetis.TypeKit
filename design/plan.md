@@ -645,6 +645,14 @@ Each phase ends green, and its guards have been proven by seeding the defect
          `CatchAsync` a task whose value is a task. Two-type-argument refusals were measured and
          dropped: they make a lambda that only throws, or returns `null!`, ambiguous, and the calls
          they would refuse are already the compiler's conversion errors.
+       - **A patch's schema refused or admitted the wrong values** ✅, measured by validating values
+         with JsonSchema.Net (test-only) against the document, 3.0's `nullable` read as 3.0.3 defines
+         it: a string enum's patch was `"type": "null"` beside its names and admitted nothing, a
+         closed set's listed no null in its enum and refused it, and `Patch<object>` was
+         `"type": "null"` and admitted only null. Null now joins what restricts the values: the
+         enum's list, the type, or, for a schema combining subschemas, a branch beside them.
+         ASP.NET's own polymorphic schema needed no branch, its derived schemas stating no type; a
+         host's `oneOf` of typed schemas does, and guards it.
     10. **`2.0.0-preview.1` to nuget.org** once steps 7 and 8 exist, the consumer smoke test
         against it, then the release.
     - **A closed-set (smart enum) family**, declared by interface and joining `.Generators` (§1), the

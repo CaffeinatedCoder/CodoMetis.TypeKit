@@ -68,7 +68,10 @@ this release adds, so nothing that built against 1.5.1 meets them.
   constructor, since a converter built by reflection has no code there.
 - **`CodoMetis.TypeKit.AspNetCore`**: `AddTypeKit()` describes a `Patch<T>` property as `T`'s schema,
   inlined, not required and admitting null, in 3.1 and 3.0; a value object inside a patch through the
-  type it wraps.
+  type it wraps. Null joins what restricts the values, so a validator accepts it beside every value
+  the argument accepts: an enum's list, where a string enum's patch had admitted nothing and a closed
+  set's had refused null, the type, or a branch beside the argument's own; an `object`'s schema stays
+  unrestricted, where it had admitted only null.
 - **`CodoMetis.TypeKit.Analyzers`**: CMTK0010, the constraints a type parameter cannot declare.
   `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` (new in the base package) on a type parameter
   say what C# has no `where` for, and the rule reports a type argument that breaks it at any closed

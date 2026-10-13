@@ -130,7 +130,9 @@ app.MapPatch("/contacts/{id}", (int id, ContactPatch patch) => TypedResults.NoCo
 The body binds as any other: each property of `ContactPatch` is read by its patch, and one the
 request leaves out is `Absent`. With `AddTypeKit()`, the document describes a patch property as its
 argument's schema, inlined rather than as a component of its own, admitting `null`, and never
-required, in OpenAPI 3.1 and 3.0. A value object inside a patch is described through the type it
+required, in OpenAPI 3.1 and 3.0. Null joins whatever restricts the values: the type, an enum's list
+(a closed set's names, an enum written as strings), or a branch beside the argument's own branches,
+so a validator accepts null and judges every other value as it judges the argument's. A value object inside a patch is described through the type it
 wraps, so `email` is a `string`. This is not ASP.NET Core's JSON Patch (RFC 6902,
 `application/json-patch+json`), which is a list of operations.
 

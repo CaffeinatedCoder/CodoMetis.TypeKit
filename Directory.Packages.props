@@ -60,6 +60,8 @@
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
     <!-- The ASP.NET Core satellite's tests: a probe host whose OpenAPI document they read. -->
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
+    <!-- The same tests validate values against the document's schemas, as a client's validator would. -->
+    <PackageVersion Include="JsonSchema.Net" Version="9.4.0" />
   </ItemGroup>
   <!-- Benchmarks only (benchmarks/), never a shipping or test dependency. -->
   <ItemGroup>
