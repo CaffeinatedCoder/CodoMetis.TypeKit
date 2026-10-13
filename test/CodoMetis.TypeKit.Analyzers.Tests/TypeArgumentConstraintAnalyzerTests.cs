@@ -118,6 +118,49 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             Cmtk0010(0, "PlaceOrder", "T", "Runner.Run<T>", "is not an abstract class or record"))
             .RunAsync(TestContext.Current.CancellationToken);
 
+    /// <summary>
+    /// A method group whose type arguments are inferred from the delegate it converts to has no
+    /// generic name and is no call: reported at the group, wherever it converts, a local function's
+    /// included. One with its arguments written is the generic name's, reported there once.
+    /// </summary>
+    [Fact]
+    public Task A_method_group_with_inferred_type_arguments_is_reported_at_the_group() =>
+        Test(
+            """
+            public static class Groups
+            {
+                public static void Register(Action<PlaceOrder> handler) { }
+
+                public static void Go()
+                {
+                    Action<PlaceOrder> run = {|#0:Runner.Run|};
+                    Register({|#1:Runner.Run|});
+                    var cast = (Action<PlaceOrder>){|#2:Runner.Run|};
+                    Action<Point> seal = Runner.Seal;
+                    Action<OrderHandler> sealedHandler = Runner.Seal;
+                    Action<Handler> open = {|#3:Runner.Seal|};
+                    Action<PlaceOrder> local = {|#4:Local|};
+                    Action<PlaceOrder> written = Runner.Run<{|#5:PlaceOrder|}>;
+
+                    static void Local<[Abstract] T>(T command) { }
+                }
+
+                public static void Fine()
+                {
+                    Action<Command> run = Runner.Run;
+                    Register(Runner.Run<Command>);
+                    Func<Action<Command>> later = () => Runner.Run;
+                }
+            }
+            """,
+            Cmtk0010(0, "PlaceOrder", "T", "Runner.Run<T>", "is not an abstract class or record"),
+            Cmtk0010(1, "PlaceOrder", "T", "Runner.Run<T>", "is not an abstract class or record"),
+            Cmtk0010(2, "PlaceOrder", "T", "Runner.Run<T>", "is not an abstract class or record"),
+            Cmtk0010(3, "Handler", "T", "Runner.Seal<T>", "is not sealed"),
+            Cmtk0010(4, "PlaceOrder", "T", "Groups.Local<T>", "is not an abstract class or record"),
+            Cmtk0010(5, "PlaceOrder", "T", "Runner.Run<T>", "is not an abstract class or record"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
     /// <summary>A forwarding parameter carries the attribute, or the requirement ends at it.</summary>
     [Fact]
     public Task A_forwarding_type_parameter_must_carry_the_attribute() =>

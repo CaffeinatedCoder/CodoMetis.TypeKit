@@ -36,8 +36,9 @@ public sealed class Ledger : Aggregate<Deposited, AccountId>;       // CMTK0010:
 ```
 
 The rule reports at every closed use of the generic: a base type as above, an implemented interface,
-a field, a property, a parameter, a local, a `typeof`, and a call, whether its type arguments are
-written or inferred. A written argument is reported where it is written; an inferred one at the call.
+a field, a property, a parameter, a local, a `typeof`, a call, and a method group converted to a
+delegate, whether its type arguments are written or inferred. A written argument is reported where it
+is written; an inferred one at the call, or at the method group, whose arguments come from the delegate.
 
 ```csharp
 public static class Snapshots

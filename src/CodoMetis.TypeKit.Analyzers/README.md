@@ -21,7 +21,7 @@ appears to: an instance that passed no factory, or a value object that was never
 | CMTK0007 | Info | `FromKnownGood` given a value that comes straight from a parameter. |
 | CMTK0008 | Warning | The wrapped values of two different value objects compared, `order.CustomerId.Value == product.Id.Value`, or the two value objects themselves through `Equals(object)`. |
 | CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. |
-| CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute, `[Abstract]`, `[Sealed]`, `[Record]` or `[Concrete]`, at any closed use: a base type, a member, a parameter, a local, a `typeof`, a call, written or inferred. A type parameter forwarded without the attribute is a breach too. |
+| CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute, `[Abstract]`, `[Sealed]`, `[Record]` or `[Concrete]`, at any closed use: a base type, a member, a parameter, a local, a `typeof`, a call or a method group, written or inferred. A type parameter forwarded without the attribute is a breach too. |
 | CMTK0011 | Error | A concrete type that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. The code fix writes or changes the constructor. |
 | CMTK0012 | Error | A closed set's `Match` given an argument by position, which binds to whichever member is declared at that place, so reordering the members swaps the branches. The code fix names every argument. |
 
@@ -340,7 +340,8 @@ C# has `where T : class`, `struct`, `new()` and a base type, but no `where T : a
 or `record`. A generic whose argument must be an abstract record, the command family of an
 aggregate, gets no help from the compiler, and the closed type that breaks it compiles. Four
 attributes on a type parameter say what C# cannot, and this rule reports the use that breaks it,
-at the argument where one is written and at the call where the arguments are inferred:
+at the argument where one is written, and where the arguments are inferred at the call, or at the
+method group that takes them from the delegate it converts to (`Action<PlaceOrder> run = Runner.Run;`):
 
 ```csharp
 public abstract class Decider<[Abstract] TCommand, [Record] TEvent> { }

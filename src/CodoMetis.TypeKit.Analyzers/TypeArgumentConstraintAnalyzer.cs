@@ -18,7 +18,9 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// The constraint is declared where C# cannot express it (<c>where T : abstract</c>), and the
 /// violation is at the use site, which may be in any project, so this is an analyzer and not an
 /// aspect. Every generic name written in source is checked where it is written, at the argument;
-/// a call whose type arguments are inferred has no such name and is checked at the call.
+/// a call whose type arguments are inferred has no such name and is checked at the call, and a
+/// method group whose type arguments are inferred from the delegate it converts to
+/// (<c>Action&lt;PlaceOrder&gt; run = Runner.Run;</c>) at the group.
 /// </para>
 /// <para>
 /// A type parameter given as the argument satisfies a constraint only when it carries the same
@@ -56,6 +58,7 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
 
             start.RegisterSyntaxNodeAction(node => AnalyzeGenericName(node, symbols), SyntaxKind.GenericName);
             start.RegisterOperationAction(operation => AnalyzeInvocation(operation, symbols), OperationKind.Invocation);
+            start.RegisterOperationAction(operation => AnalyzeMethodGroup(operation, symbols), OperationKind.MethodReference);
         });
     }
 
@@ -88,12 +91,28 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeInvocation(OperationAnalysisContext context, TypeKitSymbols symbols)
     {
         var invocation = (IInvocationOperation)context.Operation;
-        var method     = invocation.TargetMethod;
+        var expression = invocation.Syntax is InvocationExpressionSyntax call ? call.Expression : null;
+
+        AnalyzeInferred(context, symbols, invocation.TargetMethod, expression, invocation.Syntax);
+    }
+
+    /// <summary>
+    /// A method group whose type arguments are inferred from the delegate it converts to, as an
+    /// assignment, an argument or a cast: nothing is written, so it is reported at the group.
+    /// </summary>
+    private static void AnalyzeMethodGroup(OperationAnalysisContext context, TypeKitSymbols symbols)
+    {
+        var reference = (IMethodReferenceOperation)context.Operation;
+
+        AnalyzeInferred(context, symbols, reference.Method, reference.Syntax, reference.Syntax);
+    }
+
+    private static void AnalyzeInferred(OperationAnalysisContext context, TypeKitSymbols symbols, IMethodSymbol method, SyntaxNode? name, SyntaxNode reported)
+    {
         if (!method.IsGenericMethod) return;
 
         // Written type arguments are a generic name, checked where they are written.
-        var expression = invocation.Syntax is InvocationExpressionSyntax call ? call.Expression : null;
-        if (expression is GenericNameSyntax || expression is MemberAccessExpressionSyntax { Name: GenericNameSyntax }) return;
+        if (name is GenericNameSyntax || name is MemberAccessExpressionSyntax { Name: GenericNameSyntax }) return;
 
         var parameters = method.OriginalDefinition.TypeParameters;
         var arguments  = method.TypeArguments;
@@ -102,7 +121,7 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         for (var i = 0; i < parameters.Length; i++)
         {
             foreach (var breach in Breaches(symbols, parameters[i], arguments[i]))
-                context.Report(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), arguments[i].ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat), parameters[i].Name, Owner(method), breach));
+                context.Report(Diagnostic.Create(Rule, reported.GetLocation(), arguments[i].ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat), parameters[i].Name, Owner(method), breach));
         }
     }
 
