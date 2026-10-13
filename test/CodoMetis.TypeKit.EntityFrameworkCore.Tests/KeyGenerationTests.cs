@@ -164,6 +164,40 @@ public sealed class KeyGenerationTests : IDisposable
         ulongs.Select(e => e.Id.Value).ShouldBe([1ul, 2ul]);
     }
 
+    public static TheoryData<string, Type, Type> ForeignKeyKeys
+    {
+        get
+        {
+            var keys = new TheoryData<string, Type, Type>();
+            foreach (var provider in Providers)
+                foreach (var (byValueObject, byWrapped) in ForeignKeyKeysDb.Pairs)
+                    keys.Add(provider, byValueObject, byWrapped);
+            return keys;
+        }
+    }
+
+    /// <summary>
+    /// A key that is also a foreign key takes its value from the principal, so EF never generates it,
+    /// and a key over an integer is no exception: the dependent of a one-to-one sharing its principal's
+    /// key, one splitting its principal's table, and an owned type, whose key is its owner's.
+    /// </summary>
+    /// <remarks>
+    /// Without the convention's foreign-key check each of them was generated on add on SQLite (measured);
+    /// Npgsql and SQL Server reset it themselves when they choose the key's value-generation strategy.
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(ForeignKeyKeys))]
+    public void A_key_that_is_also_a_foreign_key_is_never_generated(string provider, Type dependentByValueObject, Type dependentByWrapped)
+    {
+        using var db = new ForeignKeyKeysDb(Options<ForeignKeyKeysDb>(provider));
+
+        var valueObjectKey = Key(db, dependentByValueObject);
+
+        valueObjectKey.IsForeignKey().ShouldBeTrue();
+        valueObjectKey.ValueGenerated.ShouldBe(Key(db, dependentByWrapped).ValueGenerated, $"{dependentByValueObject.Name} on {provider}");
+        valueObjectKey.ValueGenerated.ShouldBe(ValueGenerated.Never, $"{dependentByValueObject.Name} on {provider}");
+    }
+
     public void Dispose() => _connection.Dispose();
 
     private HierarchyKeysDb Create(string provider) => new(Options<HierarchyKeysDb>(provider));
@@ -410,5 +444,57 @@ public sealed class SqliteIntegerKeysDb(DbContextOptions<SqliteIntegerKeysDb> op
         modelBuilder.Entity<KeyedByUInt16>();
         modelBuilder.Entity<KeyedByUInt32>();
         modelBuilder.Entity<KeyedByUInt64>();
+    }
+}
+
+public class SharedKeyPrincipal { public ShipmentNo Id { get; set; } }
+
+public class SharedKeyDependent { public ShipmentNo Id { get; set; } }
+
+public class SharedKeyPrincipalInt { public int Id { get; set; } }
+
+public class SharedKeyDependentInt { public int Id { get; set; } }
+
+public class SplitHead { public ShipmentNo Id { get; set; } }
+
+public class SplitBody { public ShipmentNo Id { get; set; } }
+
+public class SplitHeadInt { public int Id { get; set; } }
+
+public class SplitBodyInt { public int Id { get; set; } }
+
+public class Owner { public ShipmentNo Id { get; set; } public OwnedPart Part { get; set; } = new(); }
+
+public class OwnedPart { public string Note { get; set; } = ""; }
+
+public class OwnerInt { public int Id { get; set; } public OwnedPartInt Part { get; set; } = new(); }
+
+public class OwnedPartInt { public string Note { get; set; } = ""; }
+
+/// <summary>
+/// Three dependents whose key is a foreign key to their principal's, each beside the same shape keyed
+/// by <c>int</c>: a one-to-one sharing the key, a one-to-one splitting the table, and an owned type.
+/// </summary>
+public sealed class ForeignKeyKeysDb(DbContextOptions<ForeignKeyKeysDb> options) : DbContext(options)
+{
+    public static readonly (Type ByValueObject, Type ByWrapped)[] Pairs =
+    [
+        (typeof(SharedKeyDependent), typeof(SharedKeyDependentInt)),
+        (typeof(SplitBody), typeof(SplitBodyInt)),
+        (typeof(OwnedPart), typeof(OwnedPartInt)),
+    ];
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<SharedKeyPrincipal>().HasOne<SharedKeyDependent>().WithOne().HasForeignKey<SharedKeyDependent>(d => d.Id);
+        modelBuilder.Entity<SharedKeyPrincipalInt>().HasOne<SharedKeyDependentInt>().WithOne().HasForeignKey<SharedKeyDependentInt>(d => d.Id);
+
+        modelBuilder.Entity<SplitHead>().ToTable("Split").HasOne<SplitBody>().WithOne().HasForeignKey<SplitBody>(b => b.Id);
+        modelBuilder.Entity<SplitBody>().ToTable("Split");
+        modelBuilder.Entity<SplitHeadInt>().ToTable("SplitInt").HasOne<SplitBodyInt>().WithOne().HasForeignKey<SplitBodyInt>(b => b.Id);
+        modelBuilder.Entity<SplitBodyInt>().ToTable("SplitInt");
+
+        modelBuilder.Entity<Owner>().OwnsOne(o => o.Part);
+        modelBuilder.Entity<OwnerInt>().OwnsOne(o => o.Part);
     }
 }
