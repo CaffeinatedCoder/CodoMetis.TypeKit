@@ -226,10 +226,15 @@ against 1.5.1 meets them.
   by `.Value` where the column's order is meant. The refusal covers an ordering over a navigation and
   a key cast to `object`, and a query filter that does so is refused when the model is built, naming
   the entity type and the filter.
-- **`CodoMetis.TypeKit.EntityFrameworkCore`**: a value-object key is generated on add wherever EF
-  generates its wrapped type's: over `sbyte`, `uint`, `ulong`, `ushort` and `char` too, and at the
-  root of a TPH hierarchy on SQLite, which stored 0. A TPC key on SQLite is not generated, as a plain
-  `int` key is not. A migration of such a model adds the identity.
+- **`CodoMetis.TypeKit.EntityFrameworkCore`**: a value-object key is declared generated on add wherever
+  EF declares a key of its wrapped type generated: over `sbyte`, `uint`, `ulong` and `ushort` too, and
+  at the root of a TPH hierarchy on SQLite, which stored 0. A TPC key on SQLite is not generated, as a
+  plain `int` key is not. The provider decides whether a value is generated, as for a plain key: on PostgreSQL a
+  migration adds an identity to a key over `sbyte`, `ushort` or `uint`, and SQL Server's migrations
+  generator refuses that change ("the column needs to be dropped and recreated"). A key over `char`
+  stays the application's to assign, on every provider, since none generates one. A key over `ulong`
+  added with its default value throws `OverflowException` at `Add` on SQL Server and PostgreSQL, whose
+  column is a `decimal`; configure `ValueGeneratedNever()` on it and assign it.
 - **`CodoMetis.TypeKit.AspNetCore`**: the OpenAPI document describes `fault`, an optional string, on
   the problem schema the fault responses refer to, in 3.1 and 3.0 and inline where the host inlines
   problem details, with a description of the form the host writes. 1.5's `ProblemDetails` component

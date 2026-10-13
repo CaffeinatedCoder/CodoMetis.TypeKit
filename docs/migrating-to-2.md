@@ -94,7 +94,8 @@ Three things that ran in 1.5 and answered wrongly throw in 2.0:
   property with TypeKit's converter, or compare the value object itself.
 - **Ordering by a hand-written `CompareTo`.** A query that compares, orders, or takes `Min` or `Max` of
   a value object that declares its own `CompareTo` was ordered by the column, the opposite of the
-  in-memory order for a reversed one; it is refused now, in a query filter too. Order by `.Value`
+  in-memory order for a reversed one; it is refused now, and a query filter that does so is refused
+  when the model is built. Order by `.Value`
   where the column's order is meant ([EF Core](ef-core.md#queries)).
 - **A component name two types claim.** A document in which a nested value object's or closed set's
   component name, `Order.Status` as `OrderStatus`, is also another type's described both as one; it
@@ -119,6 +120,19 @@ A test that asserts an exception or a message meets these:
   containing types (`Result<AssertionTests.Fault>`, `Api.OrderFault`), where 1.5 gave the type's name
   alone.
 - CMTK0009's message names `SingleOrNone` and `ElementAtOrNone` beside the other replacements.
+
+## Keys over small integer types
+
+A value-object key over `sbyte`, `ushort`, `uint` or `ulong` is now declared generated on add, as EF
+declares a plain key of that type, so a migration created against your 1.5 snapshot alters the key
+column. On PostgreSQL it adds an identity to a key over `sbyte`, `ushort` or `uint`, which applies
+cleanly; on SQL Server the migrations generator refuses the change for all four ("To change the
+IDENTITY property of a column, the column needs to be dropped and recreated"). A key over `ulong` is
+not generated on PostgreSQL, since `numeric(20,0)` has no identity, and adding an entity with a
+default `ulong` key throws `OverflowException` at `Add` on PostgreSQL and SQL Server, where 1.5
+stored 0. To keep 1.5's behaviour for any of these keys, configure `ValueGeneratedNever()` on it and
+assign the key. A key over `char` is unchanged: the application's to assign, a default `'\0'` stored
+as it is ([EF Core](ef-core.md#keys)).
 
 ## A query's FirstOrNone runs in the database
 
