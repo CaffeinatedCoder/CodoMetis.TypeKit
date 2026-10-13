@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <!--
+      A consumer as the docs ask one to be: a documentation file, so a referencing project's
+      IntelliSense has something to read. Warnings stay warnings here, so the build reports every
+      CS1591 rather than stopping at the first; the README records them.
+    -->
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <MetalamaEmitCompilerTransformedFiles>true</MetalamaEmitCompilerTransformedFiles>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Spike.Aspects\Spike.Aspects.csproj" />
+    </ItemGroup>
+</Project>
