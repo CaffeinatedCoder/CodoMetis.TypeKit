@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- The value object is declared here, so the route analyzer sees it unwoven (OpenApiSchemas finding 1). -->
+    <NoWarn>$(NoWarn);ASP0020</NoWarn>
+    <!-- Trim and AOT analyzers on, as in the packages, so a candidate that needs a suppression shows it here. -->
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Aot)' == 'true'">
+    <PublishAot>true</PublishAot>
+    <DefineConstants>$(DefineConstants);AOT</DefineConstants>
+  </PropertyGroup>
+  <!-- -p:Factory=Static|Registry picks the factory the attribute names: the static-field reader or the registry; the default is MakeGenericType. -->
+  <PropertyGroup Condition="'$(Factory)' == 'Static'">
+    <DefineConstants>$(DefineConstants);FACTORY_STATIC</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Factory)' == 'Registry'">
+    <DefineConstants>$(DefineConstants);FACTORY_REGISTRY</DefineConstants>
+  </PropertyGroup>
+  <!-- -p:OpenGeneric=true compiles shape B, an open generic converter type in [JsonConverter], which may not compile at all. -->
+  <PropertyGroup Condition="'$(OpenGeneric)' == 'true'">
+    <DefineConstants>$(DefineConstants);OPEN_GENERIC</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- A real value object, woven by the real generators; the real OpenAPI satellite; the analyzers as a consumer gets them. -->
+    <ProjectReference Include="../../src/CodoMetis.TypeKit.Generators/CodoMetis.TypeKit.Generators.csproj" />
+    <ProjectReference Include="../../src/CodoMetis.TypeKit.AspNetCore/CodoMetis.TypeKit.AspNetCore.csproj" />
+    <ProjectReference Include="../../src/CodoMetis.TypeKit.Analyzers/CodoMetis.TypeKit.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+</Project>
