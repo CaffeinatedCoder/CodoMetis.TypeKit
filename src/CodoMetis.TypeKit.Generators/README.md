@@ -16,7 +16,7 @@ those projects. No Metalama license key is needed, there or here: the generators
 Open Source edition.
 
 How this compares with Vogen, Thinktecture.Runtime.Extensions and StronglyTypedId, and when one of
-them is the better choice: [How it compares](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit#how-it-compares).
+them is the better choice: [How it compares](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/comparison.md).
 
 ## Built with Metalama
 

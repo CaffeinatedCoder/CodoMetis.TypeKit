@@ -143,8 +143,9 @@ this release adds, so nothing that built against 1.5.1 meets them.
   `ShouldBeAbsent()` on a `Patch<T>`, failing with the state the field was in and never the value.
 - **Documentation**: topic pages under `docs/`, linked from the root README's "Documentation" table:
   value objects, closed sets, `Option`, `Result`, written text, type constraints, merge patches,
-  JSON, EF Core, ASP.NET Core, Native AOT, logging and secrets, testing, and migrating from 1.5,
-  what builds or runs differently for code that built against it. Every C# block in them is compiled and its stated
+  JSON, EF Core, ASP.NET Core, Native AOT, logging and secrets, testing, migrating from 1.5,
+  what builds or runs differently for code that built against it, and the comparison with the
+  value-object, result and smart-enum libraries, moved out of the README with its dated tables. Every C# block in them is compiled and its stated
   outputs are tested, as the READMEs' are, and the `Option` and `Result` pages list the complete
   public surface, checked against the types. The package READMEs remain the reference for each
   package. The plan moved from `docs/plan.md` to `design/plan.md`.

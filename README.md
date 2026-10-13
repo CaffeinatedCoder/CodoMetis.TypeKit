@@ -134,6 +134,7 @@ compiled and its stated outputs are tested, as the READMEs' are.
 | [Logging and secrets](docs/logging-and-secrets.md) | A value that must not be printed, what still carries it, Serilog, Microsoft.Extensions.Logging, refusals that never quote the input |
 | [Testing](docs/testing.md) | Assertions for `Option`, `Result` and `Patch<T>`, table-driven tests of `Create`, EF Core on SQLite, endpoints on the test server |
 | [Migrating from 1.5 to 2.0](docs/migrating-to-2.md) | What builds or runs differently: CMTK0003 as an error, a query's `FirstOrNone` in the database, names that 2.0 adds, fault responses, Native AOT |
+| [How it compares](docs/comparison.md) | What to choose instead for a need TypeKit does not meet, and the detail tables against the value-object, result and smart-enum libraries, versioned and dated |
 
 ## What it holds to
 
@@ -176,12 +177,7 @@ compiled and its stated outputs are tested, as the READMEs' are.
 
 ## How it compares
 
-Good libraries exist for both halves of TypeKit, and some needs are better met by one of them. What
-follows was read from each library's source at the release named, on 28 September 2026 for value
-objects, `Option` and `Result`, including the next major where one is in preview, and on 13 October
-2026 for closed sets. If something here is wrong or has changed, please open an issue.
-
-### Choose TypeKit when
+Good libraries exist for both halves of TypeKit, and some needs are better met by one of them.
 
 - You build on .NET 10 with System.Text.Json, EF Core and ASP.NET Core, and want value objects that
   change no contract: the JSON, the column and the OpenAPI schema stay the wrapped type's, with nothing
@@ -193,62 +189,9 @@ objects, `Option` and `Result`, including the next major where one is in preview
   ignored result reported, no silent `{}` on the wire.
 - You publish with Native AOT.
 
-### Choose something else when
-
-| If you need | Consider | Because |
-|---|---|---|
-| .NET Framework, .NET Standard or a .NET before 10 | Vogen for value objects; CSharpFunctionalExtensions, ErrorOr or FluentResults for results | TypeKit targets .NET 10 only; these ship for .NET Standard 2.0 |
-| Newtonsoft.Json, Dapper, LINQ to DB, MongoDB, Orleans, ServiceStack or protobuf-net for value objects | Vogen | It ships an opt-in integration for each. TypeKit covers System.Text.Json, EF Core and ASP.NET Core |
-| A plain Roslyn source generator in the build rather than Metalama | Vogen or Thinktecture.Runtime.Extensions | TypeKit's generators run on Metalama (open source, no license key) in the project that declares value objects |
-| Value objects of several members, or discriminated unions | Thinktecture.Runtime.Extensions | It has `[ComplexValueObject]` and `[Union]`. A TypeKit value object wraps exactly one value; its closed sets are the smart enums |
-| Several errors per failure, of typed kinds | ErrorOr | An `ErrorOr<T>` carries a list of errors. A TypeKit `Result` carries one `TError`, which can be a list of your own |
-| Errors with reasons, success messages and causes | FluentResults | Its results carry reasons, errors and successes, and an error can name what caused it |
-| A functional-programming framework: `Either`, `Fin`, effects, immutable collections | LanguageExt (4.4.9; 5.0 in beta) | TypeKit's `Option` and `Result` are deliberately small, with no effect or validation types |
-| Unions of arbitrary types | OneOf | `OneOf<T0, T1, …>` is general-purpose; TypeKit has only `Option` and `Result` |
-| A `Result` on the wire | CSharpFunctionalExtensions | It ships opt-in System.Text.Json converters for its `Result`. TypeKit refuses to serialize `Option` and `Result`, by design |
-| A smart enum whose JSON or column is a number, or whose wire name differs from its C# identifier | Ardalis.SmartEnum, Intellenum or Thinktecture.Runtime.Extensions | A TypeKit closed set is its member's name everywhere, and the name is the field's |
-| Only your own closed set of outcomes, on .NET 11 | C#'s union types | They arrive with .NET 11 |
-| Years of production use behind the library | Any of the above | TypeKit is new: 1.0.0 shipped in September 2026 |
-
-### Value objects in detail
-
-| | TypeKit 2.0.0 | Vogen 8.0.7 (9.0.0-beta.2 the same) | Thinktecture.Runtime.Extensions 10.5.0 | StronglyTypedId 1.0.0-beta08 |
-|---|---|---|---|---|
-| Declared by | Implementing `IValue<T>` or `IValidatedValue<…>` on a `partial record` | `[ValueObject<T>]` on a partial type | `[ValueObject<T>]`, `[ComplexValueObject]` or `[SmartEnum<T>]` on a partial type | `[StronglyTypedId]` on a partial struct |
-| Validation | `Create` returns a `Result`, and every generated way in applies it | `Validate` returns a `Validation`; `From` throws | A `ValidateFactoryArguments` partial method | None |
-| EF Core | `UseTypeKit()` maps every value object, nothing per type; `.Value` in a query translates to the column | A generated converter per value object, which you register; comparing with a primitive in a query is an error (VOG034) | Packages per EF Core version (8, 9, 10) | Through a template of your own |
-| OpenAPI | The schema ASP.NET publishes for the wrapped type | A generated schema transformer, type and format from a built-in table; Swashbuckle support | Swashbuckle filters | None built in |
-| JSON | System.Text.Json, the wrapped type's JSON byte for byte | System.Text.Json by default; Newtonsoft.Json and more, opt-in | System.Text.Json, Newtonsoft.Json, MessagePack | System.Text.Json (more through templates) |
-| Targets | `net10.0` | `netstandard2.0`, .NET Framework projects included | `net8.0`, `net9.0` | `netstandard2.0` |
-| Generated by | Metalama, in the declaring project | A Roslyn source generator | Roslyn source generators | A Roslyn source generator |
-| License | MIT | Apache-2.0 | BSD-3-Clause | MIT |
-
-### Option and Result in detail
-
-| | TypeKit 2.0.0 | LanguageExt 4.4.9 (5.0.0-beta-77) | CSharpFunctionalExtensions 3.7.0 | ErrorOr 2.1.1 |
-|---|---|---|---|---|
-| Reaching the value | `Match`, `TryGetValue` and the combinators; no `.Value` | `Match`, `IfNone` and the like; no public `.Value` on `Option` | `.Value`, which throws on a failure | `.Value`, which returns `default` on an error |
-| A `default` instance | `Option`: `None`. `Result`: throws when used, and is an error in source (CMTK0001) | `Option`: `None` | `Maybe`: none. `Result<T>`: a success holding `default(T)` | A success holding `default(T)` |
-| An ignored result | Reported (CMTK0003) | No analyzer | No analyzer of its own | No analyzer |
-| System.Text.Json | Refused in both directions, rather than written as `{}` | No converter of its own | Opt-in converters | No converter for the type |
-| Targets | `net10.0` | `netstandard2.0` (5.0 beta: `net10.0`) | `netstandard2.0`, `net6.0`, `net8.0` | `netstandard2.0`, `net8.0`, `net10.0` |
-
-### Closed sets in detail
-
-| | TypeKit 2.0.0 | Ardalis.SmartEnum 8.2.0 | Intellenum 2.0.1 | Thinktecture.Runtime.Extensions 10.5.1 |
-|---|---|---|---|---|
-| Declared by | Implementing `IClosedSet<TSelf>` on a `sealed partial class`, one `public static readonly` field per member | Deriving from `SmartEnum<TEnum>`, each member `new("Name", value)` | `[Intellenum]` on a partial class; members as fields, `[Member]` attributes or a static constructor | `[SmartEnum<TKey>]` on a partial class, each member `new("KEY")` |
-| Data on a member | Properties, set through the private constructor | The subclass's own fields | One underlying value; richer data through a custom underlying type | Declared properties, which become constructor parameters |
-| Deciding by member | `Match`, one required delegate per member, every argument named (CMTK0012) | `When(…).Then(…)`; nothing requires every member | A `switch` over `.Value` with generated constants; nothing requires every member | Generated `Switch` and `Map`, every member a required argument |
-| Parsing by name | `Parse` and `TryParse`, ordinal; `ignoreCase: true` on request, and two members differing only in case refused at build (CMTK1021) | `FromName` and `TryFromName`, ordinal; `ignoreCase` on request, a case clash thrown at the first such lookup | `FromName` and `TryFromName`, ordinal; `ignoreCase` on request, the first declared answers | `Get` and `TryGet`, ignoring case by default; a case clash thrown at the first lookup |
-| JSON | System.Text.Json, the name, nothing registered | A separate package per serializer, a converter attribute per type; the name or the value | Generated into your assembly; the value, as an `enum` writes | A separate package per serializer; the key |
-| EF Core | `UseTypeKit()`, a text column of the name, nothing per set | A separate package, a convention or per model; the value | An opt-in generated converter, registered per property; the value | A separate package per EF version, `UseThinktectureValueConverters()`; the key |
-| OpenAPI | `AddTypeKit()`, a string enum of the names | None built in | None built in | A Swashbuckle package |
-| Analyzers | CMTK1013–1021 refuse a declaration that cannot be generated, CMTK0012 an argument by position | None | INTELLENUM001–030 | TTRESG rules, with refactorings |
-| A wire name apart from the identifier | No: the name is the field's | Yes, the constructor's name | Yes, `new("STD", 1)` | Yes, the key |
-| Targets | `net10.0` | `netstandard2.0`, `net6.0` to `net8.0` | `netstandard2.0` | `net8.0`, `net9.0` |
-| Generated by | Metalama, in the declaring project | Nothing: a run-time base class | A Roslyn source generator | Roslyn source generators |
-| License | MIT | MIT | Apache-2.0 | BSD-3-Clause |
+What to choose instead for the needs TypeKit does not meet, and the detail tables against Vogen,
+Thinktecture.Runtime.Extensions, StronglyTypedId, LanguageExt, CSharpFunctionalExtensions, ErrorOr,
+Ardalis.SmartEnum and Intellenum, versioned and dated, are on [How it compares](docs/comparison.md).
 
 ## Built with Metalama
 
