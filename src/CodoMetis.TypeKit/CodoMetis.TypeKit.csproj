@@ -5,7 +5,7 @@
       Metalama, directly or transitively; MetalamaBoundaryTests fails the build if it does.
     -->
     <PropertyGroup>
-        <Description>Option and Result types that cannot be misused, the contracts for strongly-typed value objects and closed sets (smart enums), a merge patch's field, and the text guards.</Description>
+        <Description>Option and Result types that cannot be misused, and the contracts for value objects and closed sets (smart enums): one validation rule and one typed fault, carried through JSON, EF Core, OpenAPI and HTTP problem details by the TypeKit packages. Also a merge patch's field and the text guards.</Description>
         <PackageTags>option;result;maybe;railway-oriented-programming;functional;error-handling;value-object;strongly-typed-id;primitive-obsession;ddd;domain-driven-design;native-aot</PackageTags>
     </PropertyGroup>
 

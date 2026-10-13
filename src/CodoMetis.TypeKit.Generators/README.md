@@ -1,9 +1,10 @@
 # CodoMetis.TypeKit.Generators
 
-Compile-time generation of strongly-typed value objects for
+Compile-time generation of value objects and closed sets (smart enums) for
 [CodoMetis.TypeKit](https://www.nuget.org/packages/CodoMetis.TypeKit), built on
 [Metalama](https://www.postsharp.net/metalama). One line becomes a complete value object, with
-its JSON converter, parsing, formatting, comparison, type converter and query companions.
+its JSON converter, parsing, formatting, comparison, type converter and query companions, each
+applying the one `Create` you wrote.
 
 ```bash
 dotnet add package CodoMetis.TypeKit.Generators

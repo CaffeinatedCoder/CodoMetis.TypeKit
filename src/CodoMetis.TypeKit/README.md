@@ -1,8 +1,11 @@
 # CodoMetis.TypeKit
 
-`Option<T>` and `Result<T, TError>` that cannot be misused, and the contracts for strongly-typed
-value objects. This is the base package: it brings no code generator and no Metalama, only the
-types, and the analyzers that keep them honest.
+`Option<T>` and `Result<T, TError>` that cannot be misused, and the contracts that value objects and
+closed sets (smart enums) are generated from, so validation, outcomes and the EF Core and ASP.NET Core
+packages share one model: a value object's `Create` answers a `Result`, and its fault is the error the
+rest of the application handles. Also `Patch<T>`, a merge patch's field, and the text guards. This is
+the base package: it brings no code generator and no Metalama, only the types, and the analyzers that
+keep them honest.
 
 ```bash
 dotnet add package CodoMetis.TypeKit

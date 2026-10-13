@@ -1,7 +1,11 @@
 # CodoMetis.TypeKit
 
-Strong types for .NET 10: `Option` and `Result` types that cannot be misused, and value objects and
-closed sets that are written as one line and generated at compile time.
+Strong types for .NET 10, with one set of rules from the request to the database. Value objects and
+closed sets (smart enums) are written as one line and generated at compile time. A value object's one
+`Create` is what JSON, route binding, parsing and `TryFrom` apply, and the fault it returns reaches an
+HTTP problem response as a typed `Result`, with nothing to translate between libraries on the way.
+EF Core and the OpenAPI document see the type it wraps. `Option` and `Result` cannot be misused: no
+`.Value`, no `default` in source, no ignored result.
 
 [![.NET](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/actions/workflows/dotnet.yml/badge.svg)](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/actions/workflows/dotnet.yml)
 [![NuGet](https://img.shields.io/nuget/v/CodoMetis.TypeKit.svg)](https://www.nuget.org/packages/CodoMetis.TypeKit)
@@ -184,6 +188,9 @@ compiled and its stated outputs are tested, as the READMEs' are.
 
 Good libraries exist for both halves of TypeKit. TypeKit fits when:
 
+- You want the value objects, the outcomes and the HTTP and database adapters to share one model:
+  the fault `Email.Create` returns is the error of a `Result` pipeline and then the problem response,
+  without mapping between a validation library, a result library and an adapter.
 - You build on .NET 10 with System.Text.Json, EF Core and ASP.NET Core, and want value objects that
   change no contract: the JSON, the column and the OpenAPI schema stay the wrapped type's, with nothing
   registered per type, and `.Value` works inside a LINQ query.
