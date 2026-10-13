@@ -299,7 +299,9 @@ builder.Services.Configure<FaultResponseOptions>(options => options.QualifiedFau
 ```
 
 `QualifiedFaultNames` writes `fault` with its type, so two fault types that share a member name stay
-apart in one client; the default is the bare name. `fault` stays a string on the document's shared
+apart in one client; the default is the bare name. A nested type is qualified after its nesting chain,
+an enum as a closed set's `QualifiedName` is, so `Billing.Fault` and `Shipping.Fault` give
+`Billing.Fault.NotFound` and `Shipping.Fault.NotFound`. `fault` stays a string on the document's shared
 problem schema, since an enum of every fault type would change every operation when one is added.
 
 ## NodaTime

@@ -90,8 +90,8 @@ internal sealed class FaultResponses<TFault> where TFault : notnull
                         .Distinct()];
 
     public static InvalidOperationException Unmapped() =>
-        new($"No HTTP status is mapped for the fault type {typeof(TFault).Name}. " +
-            $"Map each of its members with services.AddFaultResponses<{typeof(TFault).Name}>(fault => …)." + FaultRefusals.Mapping);
+        new($"No HTTP status is mapped for the fault type {FaultTypes.NameOf(typeof(TFault))}. " +
+            $"Map each of its members with services.AddFaultResponses<{FaultTypes.NameOf(typeof(TFault))}>(fault => …)." + FaultRefusals.Mapping);
 
     /// <summary>The mapped answer for one member: what the problem says, before an endpoint changes its status.</summary>
     internal sealed record Answer(int Status, Uri? Type, string? Title, string Name, string QualifiedName, string? Description);
@@ -125,7 +125,7 @@ internal sealed class FaultResponsesMetadata<TFault> : FaultResponsesMetadata wh
 
     public override Type FaultType => typeof(TFault);
 
-    public override string FaultName => typeof(TFault).Name;
+    public override string FaultName { get; } = FaultTypes.NameOf(typeof(TFault));
 
     public override IReadOnlyList<int>? Statuses(IServiceProvider services, IReadOnlyList<object> endpointMetadata) =>
         Responses(services)?.StatusesOf(endpointMetadata);

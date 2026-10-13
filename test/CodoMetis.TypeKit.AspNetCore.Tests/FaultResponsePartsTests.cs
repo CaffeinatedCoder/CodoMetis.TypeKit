@@ -78,7 +78,7 @@ public sealed class FaultResponsePartsTests
             fault => fault == OrderFault.NameTaken ? FaultResponse.Status(status).WithType(NameTakenType) : 404));
 
         refusal.ParamName.ShouldBe("responseOf");
-        refusal.Message.ShouldStartWith($"OrderFault.NameTaken is mapped to {status}, which is not an error status (400 to 599).");
+        refusal.Message.ShouldStartWith($"FaultResponsePartsTests.OrderFault.NameTaken is mapped to {status}, which is not an error status (400 to 599).");
     }
 
     /// <summary>A kind is required: a member whose kind is <c>default</c> has none, and the set is refused where it is mapped, naming the member.</summary>
@@ -179,8 +179,8 @@ public sealed class FaultResponsePartsTests
         var refusal = await Should.ThrowAsync<InvalidOperationException>(() => StartAsync(endpoints: app =>
             app.MapGet("/stray/{id:int}", (int id) => Find(id).ToHttpResult()).WithFaultStatus(OrderFault.NameTaken, 422)));
 
-        refusal.Message.ShouldContain("WithFaultStatus(OrderFault.NameTaken, 422) is set on");
-        refusal.Message.ShouldContain("which answers with no OrderFault");
+        refusal.Message.ShouldContain("WithFaultStatus(FaultResponsePartsTests.OrderFault.NameTaken, 422) is set on");
+        refusal.Message.ShouldContain("which answers with no FaultResponsePartsTests.OrderFault");
     }
 
     // 7: MVC: the attribute reaches the response and the operation transformer.
@@ -199,7 +199,7 @@ public sealed class FaultResponsePartsTests
     {
         var refusal = await Should.ThrowAsync<InvalidOperationException>(() => StartAsync(mvc: typeof(MisnamedController)));
 
-        refusal.Message.ShouldContain("[FaultStatus<OrderFault>(\"Taken\", 422)] names no member of OrderFault");
+        refusal.Message.ShouldContain("[FaultStatus<FaultResponsePartsTests.OrderFault>(\"Taken\", 422)] names no member of FaultResponsePartsTests.OrderFault");
     }
 
     // 8: the endpoint's own success: 201 with its body in the document, and a Location header.
@@ -268,7 +268,7 @@ public sealed class FaultResponsePartsTests
             services.Configure<FaultResponseOptions>(options => options.QualifiedFaultNames = true);
         });
 
-        (await ProblemAsync(app, "/orders/9", HttpStatusCode.NotFound))["fault"]!.GetValue<string>().ShouldBe("OrderFault.NotFound");
+        (await ProblemAsync(app, "/orders/9", HttpStatusCode.NotFound))["fault"]!.GetValue<string>().ShouldBe("FaultResponsePartsTests.OrderFault.NotFound");
         (await ProblemAsync(app, "/catalog/9", HttpStatusCode.NotFound))["fault"]!.GetValue<string>().ShouldBe("ProbeOrderFault.NotFound");
     }
 

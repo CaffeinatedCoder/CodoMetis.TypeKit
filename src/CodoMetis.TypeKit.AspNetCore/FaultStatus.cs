@@ -34,7 +34,7 @@ namespace CodoMetis.TypeKit.AspNetCore
         public string? Problem(FaultType<TFault> type) =>
             type.Members.Contains(fault) ? null : $"{Describe()} names a value no member of {type.TypeName} has";
 
-        public string Describe() => $"WithFaultStatus({typeof(TFault).Name}.{fault}, {status})";
+        public string Describe() => $"WithFaultStatus({FaultTypes.NameOf(typeof(TFault))}.{fault}, {status})";
     }
 
     /// <summary>The ordered override: the last status the endpoint's metadata sets for a member, as ASP.NET reads metadata.</summary>
@@ -98,7 +98,7 @@ namespace CodoMetis.TypeKit.AspNetCore
         string? IFaultStatus<TFault>.Problem(FaultType<TFault> type) =>
             type.TryFind(Fault, out _) ? null : $"{((IFaultStatus)this).Describe()} names no member of {type.TypeName}";
 
-        string IFaultStatus.Describe() => $"[FaultStatus<{typeof(TFault).Name}>(\"{Fault}\", {Status})]";
+        string IFaultStatus.Describe() => $"[FaultStatus<{FaultTypes.NameOf(typeof(TFault))}>(\"{Fault}\", {Status})]";
     }
 }
 

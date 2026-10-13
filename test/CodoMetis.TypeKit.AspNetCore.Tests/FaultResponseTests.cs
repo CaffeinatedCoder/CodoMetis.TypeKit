@@ -213,11 +213,11 @@ public sealed partial class FaultResponseTests
         var refusal = await Should.ThrowAsync<InvalidOperationException>(() =>
             StartAsync(services => services.AddFaultResponses<OtherFault>(_ => StatusCodes.Status410Gone), mvc: mvc));
 
-        refusal.Message.ShouldStartWith("No HTTP status is mapped for the fault type OrderFault, which these endpoints answer with: ");
+        refusal.Message.ShouldStartWith("No HTTP status is mapped for the fault type FaultResponseTests.OrderFault, which these endpoints answer with: ");
         refusal.Message.ShouldContain("HTTP: GET /orders/{id:int}");
         refusal.Message.ShouldContain("HTTP: DELETE /orders/{id:int}");
         if (mvc) refusal.Message.ShouldContain("OrdersController.Get");
-        refusal.Message.ShouldContain("services.AddFaultResponses<OrderFault>(fault => …)");
+        refusal.Message.ShouldContain("services.AddFaultResponses<FaultResponseTests.OrderFault>(fault => …)");
     }
 
     /// <summary>
@@ -233,10 +233,10 @@ public sealed partial class FaultResponseTests
         (await client.GetStringAsync("/orders/1", TestContext.Current.CancellationToken)).ShouldBe("""{"id":1,"item":"Book"}""");
 
         var refusal = await Should.ThrowAsync<InvalidOperationException>(() => client.GetAsync("/orders/2", TestContext.Current.CancellationToken));
-        refusal.Message.ShouldStartWith("No HTTP status is mapped for the fault type OrderFault. Map each of its members with services.AddFaultResponses<OrderFault>(fault => …).");
+        refusal.Message.ShouldStartWith("No HTTP status is mapped for the fault type FaultResponseTests.OrderFault. Map each of its members with services.AddFaultResponses<FaultResponseTests.OrderFault>(fault => …).");
 
         var document = await Should.ThrowAsync<InvalidOperationException>(() => client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken));
-        document.Message.ShouldStartWith("No HTTP status is mapped for the fault type OrderFault.");
+        document.Message.ShouldStartWith("No HTTP status is mapped for the fault type FaultResponseTests.OrderFault.");
     }
 
     [Fact]
@@ -246,7 +246,7 @@ public sealed partial class FaultResponseTests
 
         var refusal = await Should.ThrowAsync<InvalidOperationException>(() => app.GetTestClient().GetAsync("/orders/42", TestContext.Current.CancellationToken));
 
-        refusal.Message.ShouldStartWith("OrderFault has no member with the value 42, so no status is mapped for it.");
+        refusal.Message.ShouldStartWith("FaultResponseTests.OrderFault has no member with the value 42, so no status is mapped for it.");
     }
 
     [Fact]
@@ -256,7 +256,7 @@ public sealed partial class FaultResponseTests
         MapOrders(services);
 
         Should.Throw<InvalidOperationException>(() => MapOrders(services))
-              .Message.ShouldBe("The fault type OrderFault is mapped already. Map it once, with a status for each member.");
+              .Message.ShouldBe("The fault type FaultResponseTests.OrderFault is mapped already. Map it once, with a status for each member.");
     }
 
     [Theory]
@@ -269,7 +269,7 @@ public sealed partial class FaultResponseTests
             fault => fault == OrderFault.NotYours ? status : StatusCodes.Status404NotFound));
 
         refusal.ParamName.ShouldBe("statusOf");
-        refusal.Message.ShouldStartWith($"OrderFault.NotYours is mapped to {status}, which is not an error status (400 to 599).");
+        refusal.Message.ShouldStartWith($"FaultResponseTests.OrderFault.NotYours is mapped to {status}, which is not an error status (400 to 599).");
     }
 
     [Fact]

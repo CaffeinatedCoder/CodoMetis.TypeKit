@@ -117,8 +117,9 @@ public sealed class FaultResponseOptions
 {
     /// <summary>
     /// Whether the problem's <c>fault</c> member is qualified with its type, <c>OrderFault.NotFound</c>,
-    /// so two fault types that share a member name stay apart in one client. Off by default: the bare
-    /// member name, <c>NotFound</c>.
+    /// so two fault types that share a member name stay apart in one client. A nested type is named
+    /// after its nesting chain, <c>Billing.Fault.NotFound</c>, an enum as a closed set's
+    /// <c>QualifiedName</c> is. Off by default: the bare member name, <c>NotFound</c>.
     /// </summary>
     public bool QualifiedFaultNames { get; set; }
 }

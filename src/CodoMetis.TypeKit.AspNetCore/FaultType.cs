@@ -62,9 +62,19 @@ internal sealed class FaultType<TFault> where TFault : notnull
 /// <summary>Makes the <see cref="FaultType{TFault}"/> of an enum or a closed set, each under the constraint that says which.</summary>
 internal static class FaultTypes
 {
-    public static FaultType<TEnum> Enum<TEnum>() where TEnum : struct, Enum =>
-        new(typeof(TEnum).Name, System.Enum.GetValues<TEnum>(), static fault => fault.ToString(), static fault => $"{typeof(TEnum).Name}.{fault}");
+    /// <summary>
+    /// An enum's members, each qualified after the enum's nesting chain, <c>Billing.Fault.NotFound</c>,
+    /// as a closed set's generated <c>QualifiedName</c> is, so two nested enums of one simple name stay apart.
+    /// </summary>
+    public static FaultType<TEnum> Enum<TEnum>() where TEnum : struct, Enum
+    {
+        var typeName = NameOf(typeof(TEnum));
+        return new(typeName, System.Enum.GetValues<TEnum>(), static fault => fault.ToString(), fault => $"{typeName}.{fault}");
+    }
 
     public static FaultType<TSet> Set<TSet>() where TSet : class, IClosedSet<TSet> =>
-        new(typeof(TSet).Name, TSet.All, static fault => fault.Name, static fault => fault.QualifiedName);
+        new(NameOf(typeof(TSet)), TSet.All, static fault => fault.Name, static fault => fault.QualifiedName);
+
+    /// <summary>A fault type's name as every message names it, and as C# writes it: <c>Billing.Fault</c> for a nested one.</summary>
+    public static string NameOf(Type faultType) => TypeNames.NestingChain(faultType, ".");
 }

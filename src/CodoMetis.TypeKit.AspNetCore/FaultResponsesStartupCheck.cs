@@ -29,16 +29,17 @@ internal sealed class FaultResponsesStartupCheck : IStartupFilter
         var unmapped = endpoints.Endpoints
             .SelectMany(endpoint => endpoint.Metadata.OfType<FaultResponsesMetadata>().Select(metadata => (Endpoint: endpoint, Metadata: metadata)))
             .Where(pair => pair.Metadata.Statuses(services, pair.Endpoint.Metadata) is null)
-            .GroupBy(pair => pair.Metadata.FaultName, pair => Name(pair.Endpoint))
+            // By type, not by name: two nested types of one simple name are two refusals.
+            .GroupBy(pair => pair.Metadata.FaultType, pair => (pair.Metadata.FaultName, Endpoint: Name(pair.Endpoint)))
             .Select(fault =>
-                $"No HTTP status is mapped for the fault type {fault.Key}, which these endpoints answer with: " +
-                $"{string.Join(", ", fault.Distinct())}. Map each of its members with services.AddFaultResponses<{fault.Key}>(fault => …).");
+                $"No HTTP status is mapped for the fault type {fault.First().FaultName}, which these endpoints answer with: " +
+                $"{string.Join(", ", fault.Select(pair => pair.Endpoint).Distinct())}. Map each of its members with services.AddFaultResponses<{fault.First().FaultName}>(fault => …).");
 
         // A status for a fault type the endpoint never answers with is stale, or set on the wrong endpoint.
         var stray = endpoints.Endpoints
             .SelectMany(endpoint => endpoint.Metadata.OfType<IFaultStatus>()
                 .Where(status => !endpoint.Metadata.OfType<FaultResponsesMetadata>().Any(answered => answered.FaultType == status.FaultType))
-                .Select(status => $"{status.Describe()} is set on {Name(endpoint)}, which answers with no {status.FaultType.Name}."));
+                .Select(status => $"{status.Describe()} is set on {Name(endpoint)}, which answers with no {FaultTypes.NameOf(status.FaultType)}."));
 
         var nameless = endpoints.Endpoints
             .SelectMany(endpoint => endpoint.Metadata.OfType<FaultResponsesMetadata>().Distinct()
