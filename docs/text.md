@@ -2,9 +2,10 @@
 
 Every application that stores what a person typed trims it and refuses a blank. Few refuse a
 zero-width space, a Hangul filler or NUL, which `IsNullOrWhiteSpace` lets through and `Trim` leaves
-in place, and fewer compose it, so a name written with `ü` and the same name written with `u` and a
-combining diaeresis are two rows of a unique index that render alike. Two extensions on `string` in
-`CodoMetis.TypeKit` do all of it and answer with a `Result<string, TextFault>`. The
+in place. Fewer compose it, so a name written with `ü` and the same name written with `u` and a
+combining diaeresis are two rows of a unique index that render alike. `AsText()` does all of this for
+text a person wrote, and `AsIdentifier()` trims and refuses for a value another system issued; both
+are extensions on `string` in `CodoMetis.TypeKit` and answer with a `Result<string, TextFault>`. The
 [base README](../src/CodoMetis.TypeKit/README.md#written-text) is their reference; this page is about
 using them: which one, where, and inside a value object. The examples import `CodoMetis.TypeKit`.
 

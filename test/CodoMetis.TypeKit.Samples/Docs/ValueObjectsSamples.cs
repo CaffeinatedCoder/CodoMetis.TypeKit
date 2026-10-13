@@ -89,7 +89,7 @@ public readonly partial record struct Homepage : IValue<Uri>;
 // sample: value-objects/own-compare-to
 public readonly partial record struct Priority : IValue<int>
 {
-    public int CompareTo(Priority other) => other.Value.CompareTo(Value);   // 1 sorts before 2; the operators follow
+    public int CompareTo(Priority other) => other.Value.CompareTo(Value);   // 1 ranks above 2; the operators follow
 }
 // end sample
 

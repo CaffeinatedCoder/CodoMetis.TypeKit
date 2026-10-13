@@ -125,7 +125,7 @@ public static class Usage
     public static void Refused()
     {
         // sample: json/option-refused
-        JsonSerializer.Serialize(new Profile(Option.Some("Annie")));   // NotSupportedException naming Option and nullable, the alternative
+        JsonSerializer.Serialize(new Profile(Option.Some("Annie")));   // NotSupportedException naming Option and nullable
         // end sample
     }
 

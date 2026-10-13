@@ -41,7 +41,10 @@ int version = id.Value.Version;                                          // 7
 ```
 
 `New()` is an extension on every plain value object over a `Guid`, in the `CodoMetis.TypeKit`
-namespace, so the file that calls it imports that. An identifier over an integer is what the database
+namespace, so the file that calls it imports that. Identifiers created in different milliseconds sort
+by creation time; two of one millisecond do not order against each other, and SQL Server's
+`uniqueidentifier` compares other bytes first. `New(timestamp)` keeps only the milliseconds and throws
+`ArgumentOutOfRangeException` for a time before the Unix epoch. An identifier over an integer is what the database
 assigns: `From` builds one from a known number, and EF Core fills a key in on insert
 ([EF Core](ef-core.md#keys)). Two identifiers of different types never compare: `orderId == customerId`
 does not compile, and comparing their `.Value`s is CMTK0008.
@@ -88,9 +91,10 @@ shows one message shows the first thing to fix.
 ## Faults
 
 A fault names the rule, never the input. The text a value object refused can be a password or an
-address, and the fault is what reaches an exception message, a log and a problem-details response
-([ASP.NET Core](aspnet-core.md#a-result-as-a-response)). An enum is enough for most value objects. A fault
-that must carry something carries the rule's own data:
+address, and the fault is what reaches an exception message and a log. An enum is enough for most
+value objects, and `ToHttpResult()` turns an enum, a closed set or a `Fault<TFault>` into problem
+details ([ASP.NET Core](aspnet-core.md#a-result-as-a-response)). A fault that must carry something
+carries the rule's own data, and an endpoint maps it to a response itself:
 
 ```csharp
 public abstract record QuantityFault
@@ -218,7 +222,7 @@ introduce, written by hand, is CMTK1011, and any instance state beside the wrapp
 ```csharp
 public readonly partial record struct Priority : IValue<int>
 {
-    public int CompareTo(Priority other) => other.Value.CompareTo(Value);   // 1 sorts before 2; the operators follow
+    public int CompareTo(Priority other) => other.Value.CompareTo(Value);   // 1 ranks above 2; the operators follow
 }
 ```
 

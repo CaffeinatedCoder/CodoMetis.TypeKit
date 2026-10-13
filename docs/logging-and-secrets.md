@@ -104,6 +104,8 @@ A refusal names the value object and the rule, or the wrapped type it could not 
 inner exception that quotes the text: the wrapped type's own `FormatException` would. What reaches a
 log through this package is therefore the type and the fault. The fault's text is yours, so keep the
 input out of it ([Value objects](value-objects.md#faults)), and a `FromKnownGood` given a literal names
-the literal, since the literal is the expression. ASP.NET's own 400 for a refused route value quotes
-the input, as it does for a `Guid`; a body refused by the JSON converter does not
+the literal, since the literal is the expression. ASP.NET's own refusal of a route or query value
+quotes the input, as it does for a `Guid`: in MVC's model-state message ("The value '…' is not
+valid."), which reaches the response, and in a minimal API's log entry and developer exception page.
+A body refused by the JSON converter does not
 ([ASP.NET Core](aspnet-core.md#what-a-refused-value-answers)).

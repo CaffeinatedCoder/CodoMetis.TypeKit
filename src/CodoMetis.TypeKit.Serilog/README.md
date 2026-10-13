@@ -7,6 +7,8 @@ objects and closed sets: each is logged as what it prints, also where Serilog de
 dotnet add package CodoMetis.TypeKit.Serilog
 ```
 
+It needs Serilog 4.0.0 or later.
+
 ```csharp
 using Serilog;
 

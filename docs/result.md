@@ -43,8 +43,10 @@ public Result<CheckoutFault> Charge(decimal total) =>              // a success 
 A bare value converts to a valued success; an error goes through `Result.Error(...)`, because in a
 `Result<long, int>` a bare `5` could be either. `Result<TError>` has no value, so there a bare error
 converts, and so does the `Result.Success()` marker. The fault type is yours: an enum for most
-operations, a record where a fault carries the rule's data ([Value objects](value-objects.md#faults)).
-It never carries the input.
+operations, a closed set when each fault carries constant data, a `Fault<TFault>` when one occurrence
+carries a sentence, a record where a fault carries the rule's data
+([Value objects](value-objects.md#faults)). Keep the input out of it: a fault reaches messages and
+logs. `ToHttpResult()` takes the first three.
 
 ## Reaching the outcome
 
@@ -62,11 +64,11 @@ Option<Reservation> maybe = reserved.ToOption();   // the fault dropped, where o
 `Match` takes both branches and returns what they return. `TryGetValue(out value, out error)` gives
 the branch and the content in one call: `value` is non-null when it returns true, `error` when it
 returns false. Only `Result<TError>` converts to `bool`, so `if (checkout.Charge(total))` reads as it
-should; a valued result in an `if` would say whether the call succeeded where a reader expects its
-value, and `if (await users.IsEmailTakenAsync(email))` over a `Result<bool, DbFault>` would take the
-branch for a success holding `false`. `State` tells the three states apart without throwing:
+should. A valued result does not: `if (await users.IsEmailTakenAsync(email))` over a
+`Result<bool, DbFault>` would take the branch for a success holding `false`. `State` tells the three states apart without throwing:
 `Success`, `Error`, and `Uninitialized` for a `default`, which an array slot or an unassigned field
 still produces and on which every branching member throws rather than inventing a `default(TError)`.
+CMTK0005 reports an array of results created with a length, CMTK0001 a `default` in source.
 
 ## A pipeline
 
@@ -193,10 +195,9 @@ An exception is for the code that called, not for a client: `ToHttpResult()` doe
 `Catch<T, TException>` spells both type arguments, since C# infers all or none. `CatchAsync` awaits
 the task, so an exception thrown after its first `await` is the error too; a delegate that returns a
 `Task` given to `Catch` is a compile error naming `CatchAsync`, since the task's exception would be
-thrown after `Catch` had returned. An `OperationCanceledException` passes through every overload: a
-cancellation is not an outcome, and caught it would read as a failure that `Recover` then runs on.
-A timeout is the exception: one over a `TimeoutException`, which `HttpClient` throws when its
-`Timeout` elapses, is the call failing and is the error.
+thrown after `Catch` had returned. An `OperationCanceledException` passes through every overload,
+since a cancellation is not an outcome, except one over a `TimeoutException`: that is how `HttpClient`
+reports its `Timeout` elapsing, the call failing, and it is the error.
 `Map`, `Bind` and the rest are unchanged: a selector that throws propagates.
 
 ## Query syntax

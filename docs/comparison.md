@@ -27,7 +27,7 @@ other side, and the detail.
 
 ## Value objects in detail
 
-| | TypeKit 2.0.0 | Vogen 8.0.7 (9.0.0-beta.2 the same) | Thinktecture.Runtime.Extensions 10.5.0 | StronglyTypedId 1.0.0-beta08 |
+| | TypeKit 2.0.0 | Vogen 8.0.7 (the 9.0.0-beta.2 tag the same) | Thinktecture.Runtime.Extensions 10.5.0 | StronglyTypedId 1.0.0-beta08 |
 |---|---|---|---|---|
 | Declared by | Implementing `IValue<T>` or `IValidatedValue<…>` on a `partial record` | `[ValueObject<T>]` on a partial type | `[ValueObject<T>]`, `[ComplexValueObject]` or `[SmartEnum<T>]` on a partial type | `[StronglyTypedId]` on a partial struct |
 | Validation | `Create` returns a `Result`, and every generated way in applies it | `Validate` returns a `Validation`; `From` throws | A `ValidateFactoryArguments` partial method | None |

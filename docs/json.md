@@ -1,7 +1,7 @@
 # JSON
 
-A value object's JSON is its wrapped type's, byte for byte, under whatever options the application
-uses, as a value and as a dictionary key. The generated converter reads and writes through the
+A value object's JSON is its wrapped type's under whatever options the application uses, as a value
+and as a dictionary key; the one addition is a `DateTime`, written as UTC (below). The generated converter reads and writes through the
 serializer's own contract for the wrapped type, so replacing a `Guid` property by an `OrderId`
 changes no document, and only what the value object refuses changes. `Option` and `Result` are not
 wire types and refuse System.Text.Json in both directions. The
@@ -128,7 +128,7 @@ public sealed record Profile(Option<string> Nickname);
 ```
 
 ```csharp
-JsonSerializer.Serialize(new Profile(Option.Some("Annie")));   // NotSupportedException naming Option and nullable, the alternative
+JsonSerializer.Serialize(new Profile(Option.Some("Annie")));   // NotSupportedException naming Option and nullable
 ```
 
 A converter registered on the options takes precedence over the refusal, so an application that

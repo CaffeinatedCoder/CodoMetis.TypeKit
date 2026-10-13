@@ -46,11 +46,13 @@ Option<decimal> discount =                                       // a later from
 
 Create one with `Option.Some(value)` and `Option.None()`, or lift a nullable with `ToOption()`.
 `GetValueOrNone(key)` looks a key up in a dictionary, and `FirstOrNone()` and `LastOrNone()` take
-the end of a sequence, with or without a predicate. On a query, `FirstOrNone` and `FirstOrError` ask
-the provider for one element and let it run the predicate (a `WHERE` and a `LIMIT` in SQL), and `LastOrNone` is a
-compile error, since a query has no last element until it is ordered. `SingleOrNone()` answers the
-only element, `None` for none, and throws for more than one, as `SingleOrDefault` does, since many
-is a defect and not absence; `ElementAtOrNone(index)` answers the element at an index, `^1` included.
+the end of a sequence, with or without a predicate. `SingleOrNone()` answers the only element,
+`None` for none, and throws for more than one, as `SingleOrDefault` does, since many is a defect and
+not absence; `ElementAtOrNone(index)` answers the element at an index, on a sequence `^1` included.
+On a query, `FirstOrNone`, `FirstOrError`, `SingleOrNone` and `ElementAtOrNone` ask the provider for
+the element they need and let it run the predicate (a `WHERE` and a `LIMIT` in SQL). `LastOrNone`,
+`LastOrError` and an index from the end are compile errors there, since a query has no last element
+until it is ordered.
 `Choose(selector)` keeps the values a selector answers `Some` for, in order and without the `None`s, a
 filter and a map in one, and `Choose()` the values a sequence of options holds.
 An optional input that is validated when present is `Traverse`: `dto.Phone.ToOption().Traverse(Phone.Create)`
@@ -59,7 +61,7 @@ and a `Result<Option<…>>` back.
 `Option.None()` takes its type from where it goes (`return Option.None();`, a conditional beside
 `Some`); where nothing supplies one, as with `var`, write `Option.None<T>()`.
 `Some(null)` throws, so an option that reports a value always has one. A `default(Option<T>)` is
-`None`. `Or(fallback)` and `OrDefault()` unwrap with a fallback, `OrNull()` unwraps into a nullable,
+`None`. `Or(fallback)` unwraps with a fallback, `OrDefault()` with `default`, `OrNull()` into a nullable,
 `int?` for an `Option<int>` and `string?` for an `Option<string>`, and `ToResult(error)` turns
 absence into an error. `ToString()` never
 prints the content, so an option is safe to log; the debugger shows it.
@@ -187,10 +189,10 @@ type says what was expected to fail; both type arguments are spelled, since C# i
 and `Catch<FormatException>(() => { … })` with one is the command form, for a call without a
 value: given one that returns a value, which it would discard, it is a compile error naming the
 valued form. `CatchAsync` awaits the task, so an exception thrown after its first `await` is the error
-too. An `OperationCanceledException` passes through all of them: a cancellation is not an outcome,
-and caught it would read as a failure that `Recover` then runs on. A timeout is the exception: one
-over a `TimeoutException` is how `HttpClient` reports its `Timeout` elapsing, which is the call
-failing, so it is the error, and a narrowed `Catch` names `TaskCanceledException` or
+too. An `OperationCanceledException` passes through all of them, since a cancellation is not an
+outcome and `Recover` would run on it as on a failure. The exception is a timeout: `HttpClient`
+reports its `Timeout` elapsing as an `OperationCanceledException` over a `TimeoutException`, which
+is the call failing, so it is the error. A narrowed `Catch` names `TaskCanceledException` or
 `OperationCanceledException` to catch it alone. A delegate that returns a `Task`, an `async` lambda
 among them, given to `Catch` or its command form is a compile error naming `CatchAsync`, since the
 task's exception would be thrown after `Catch` had returned. A `ValueTask`, or a task spelled as the
@@ -379,8 +381,8 @@ up; and confusable letters across scripts, which is a comparison question and no
 A PATCH body in JSON Merge Patch (RFC 7396) says three things about a field: nothing, so it stays;
 `null`, so it is cleared; or a value. System.Text.Json cannot tell the first two apart, since it
 calls no converter for a property it does not find, so every PATCH endpoint rebuilt the distinction
-by hand. `Patch<T>` is that field, and the one wire type here, beside `Option`, which refuses JSON:
-an option says whether a value exists, a patch whether a request mentioned it.
+by hand. `Patch<T>` is that field, and the one wire type here; `Option` refuses JSON. An option says
+whether a value exists, a patch whether a request mentioned it.
 
 ```csharp
 public sealed record OrderPatch(Patch<string> Name, Patch<string?> Nickname, Patch<int> Quantity);
@@ -467,7 +469,7 @@ rule table.
 This package works in a trimmed or Native AOT application, and the packages are built with the
 trim and AOT analyzers on. The one exception is `FirstOrNone`, `FirstOrError`, `SingleOrNone` and
 `ElementAtOrNone` on an EF Core query, which compose the query where EF cannot precompile it and throw
-there; write EF's operators at the call site and take the option of the list. With source-generated JSON, which Native AOT requires, list the value
+there; write EF's operators at the call site and take the first element of the list. With source-generated JSON, which Native AOT requires, list the value
 objects (or the types that hold them) in your `JsonSerializerContext`, not what they wrap: the
 generated converters build the wrapped type's contract themselves, from a converter on your options,
 the type's own `[JsonConverter]`, or the serializer's built-in one. Only a value object wrapping a
@@ -577,10 +579,15 @@ JSON then reads a `null` as `null`, and the value object is never asked to hold 
 
 ### A closed set has no member of that name
 
-`OrderStatus.Parse("nope")` and a JSON `"nope"` for an `OrderStatus` property throw: a closed set's
-members are its `public static readonly` fields, and a name that is none of them, compared
-ordinally, is refused. The message names the set and never the input. `TryParse` answers `false`
-instead, and `All` lists the names there are.
+**Thrown:** `FormatException: OrderStatus has no member of that name.` from `Parse` and the
+type converter, or `JsonException` with the same message from JSON, also for a token that is
+not a string.
+
+**Why:** a closed set's members are its `public static readonly` fields, and a name that is none of
+them, compared ordinally, is refused. The message names the set and never the input.
+
+**Instead:** `TryParse` answers `false`, `Parse(name, ignoreCase: true)` accepts any casing, and
+`All` lists the names there are.
 
 ### An instance that is not a member of its set
 

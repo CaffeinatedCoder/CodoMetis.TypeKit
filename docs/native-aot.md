@@ -59,6 +59,11 @@ reads without the rules. A converter of your own over an open `T` has to be a co
 type, not a factory: a factory builds the converter for each `T` by `MakeGenericType`
 ([JSON](json.md#option-and-result-at-the-wire)).
 
+Two nested types of one simple name in one context, a value object or a closed set `Billing.Status`
+beside `Shipping.Status`, give the context two properties of one name: the source generator reports
+SYSLIB1031, and the second type throws `NotSupportedException` when it is serialized. Name one with
+`[JsonSerializable(typeof(Shipping.Status), TypeInfoPropertyName = "ShippingStatus")]`.
+
 ## OpenAPI
 
 The document asks for something the JSON does not. ASP.NET builds a value object's schema from its
@@ -121,6 +126,13 @@ The reflection-based binder, outside Native AOT, binds a value object through it
 same: the reflection-based binder reads it through its type converter, the source generator does not,
 so bind its name as a `string` and `Parse` it.
 
+## Serilog
+
+`Destructure.WithTypeKit()` works under Native AOT: a value object or a closed set is logged as what
+it prints. Serilog's own destructuring of other objects reads their properties by reflection, which
+it reports (IL2072), and a record whose properties the trimmer removed is logged empty, `Held {  }`.
+Log such an object's fields by name, or keep its properties with `[DynamicallyAccessedMembers]`.
+
 ## Discovery without reflection
 
 The satellites recognise a value object at run time by the attribute the generators put on it,
@@ -142,7 +154,7 @@ string described = Describe(typeof(OrderId));   // "OrderId wraps Guid"
 string plain = Describe(typeof(Guid));          // "Guid is no value object"
 ```
 
-Code that needs the two types as type parameters calls `Accept` with an `IValueObjectVisitor<T>`
+Code that needs the two types as type parameters calls `Accept` with an `IValueObjectVisitor<TResult>`
 and is handed them, without `MakeGenericType`. The attribute lives in
 `CodoMetis.TypeKit.CompilerServices`, hidden from IntelliSense because nothing but this kind of code
 needs it.

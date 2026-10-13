@@ -152,8 +152,9 @@ private constructor. In CodoMetis.TypeKit.AspNetCore, `AddFaultResponses<TSet>()
 member by its kind, with its description as the problem's `detail`, so the domain names its faults
 and the host maps nothing by hand
 ([the satellite's README](../src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type)).
-Any other closed set is a fault type too, with a mapping of its own. What varies per occurrence
-travels beside the member, as a `Fault<TSet>` with a detail.
+Any other closed set is a fault type too, with a mapping of its own. A sentence about one occurrence
+travels beside the member, as a `Fault<TSet>` with a detail; structured data per occurrence is the
+next section's case.
 
 ## What the generators refuse
 

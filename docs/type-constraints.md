@@ -123,13 +123,13 @@ public sealed class Importer : Plugin;                     // CMTK0011: the impl
 
 A record's copy constructor does not count. The attribute is read from metadata, so the marked
 interface can live in another package, and a host's contract reaches every implementation in every
-project. The check is the feature: an aspect could introduce the constructor, but only in a project
-that compiles with Metalama, and the error has to appear in one that does not.
+project. It is a check and not an aspect that adds the constructor, since an aspect runs only in a
+project that compiles with Metalama, and the error has to appear in one that does not.
 
 ## Severity
 
 Both rules are errors, since the code is wrong whatever surrounds it: a type argument that breaks
-what its parameter declares fails at the first `MakeGenericType` or reflection-driven construction,
-at run time, where the build could have said so. Both arrived in 2.0.0, a major version, which is the
+what its parameter declares is what the host's reflection-driven construction then fails on, at run
+time, where the build could have said so. Both arrived in 2.0.0, a major version, which is the
 only kind that adds a rule at Error. The ids are public contract; the severity follows
 `.editorconfig` as every rule's does (`dotnet_diagnostic.CMTK0010.severity = warning`).

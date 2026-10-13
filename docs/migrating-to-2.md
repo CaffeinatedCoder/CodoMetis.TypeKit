@@ -22,7 +22,7 @@ CMTK0003, a `Result` or `Option` a call returns and nobody reads, was a warning 
 error in 2.0. It also reports what 1.x missed: `Wait()` on a task of a result, tasks of results
 passed to `Task.WaitAll` or `Task.WaitAny`, a `foreach` or `await foreach` that never reads the
 results it walks, and a lazy sequence of results turned into a list and dropped. A build that
-treated warnings as errors already met every 1.x form, so the new ones are what to look for.
+treated warnings as errors already failed on every 1.x form; only the new forms are new errors.
 
 ```csharp
 await orders.CancelAsync(id);                                 // CMTK0003: an error since 2.0
@@ -85,10 +85,10 @@ new member is an instance member, nothing is ambiguous and yours is silently no 
 | `Result` | `Catch`, `CatchAsync` |
 
 2.0 also adds types to the `CodoMetis.TypeKit` namespace: `Patch<T>` and `Patch`, `PatchState`,
-`Fault<TFault>` and `Fault`, `FaultKind`, `IFault`, `IFaultSet<TSelf>`, `TextFault`,
+`PatchJsonConverterFactory`, `Fault<TFault>` and `Fault`, `TextFault`, `StringTextExtensions`,
 `AbstractAttribute`, `SealedAttribute`, `RecordAttribute`, `ConcreteAttribute`,
-`RequireParameterlessConstructorAttribute` and `ConstructorAccessibility`, and `IClosedSet<TSelf>` to
-`CodoMetis.TypeKit.ClosedSets`. A type of yours with one of these names, imported beside the
+`RequireParameterlessConstructorAttribute` and `ConstructorAccessibility`; and `IClosedSet<TSelf>`,
+`IFaultSet<TSelf>`, `IFault` and `FaultKind` to `CodoMetis.TypeKit.ClosedSets`. A type of yours with one of these names, imported beside the
 package's namespace, makes a use ambiguous (CS0104): qualify one of them, or alias yours.
 
 ## Fault responses

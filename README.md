@@ -35,13 +35,17 @@ public sealed partial class OrderStatus : IClosedSet<OrderStatus>
 }
 ```
 
-The generators add `Match` with one required delegate per member, so a member added later fails
-every call until it is handled, `All`, parsing by name, JSON as the name, an OpenAPI string enum
-and a text column in EF Core, with nothing registered per set. Beside the types that are generated:
-`Patch<T>`, the field of a JSON Merge Patch, absent, null or a value; `Result.Catch`, which turns an
-exception into a result; `AsText()` and `AsIdentifier()`, for text a person wrote and a value
-another system issued; and `[Sealed]`, `[Concrete]` and `[RequireParameterlessConstructor]`, the
-constraints C# has no `where` for, checked by the analyzers.
+The generators add `All`, parsing by name, JSON as the name, an OpenAPI string enum and a text
+column in EF Core, with nothing registered per set. `Match` takes one required delegate per member,
+so a member added later fails every call until it is handled.
+
+Beside the generated types, the base package holds:
+
+- `Patch<T>`, a field of a JSON Merge Patch: absent, null or a value.
+- `Result.Catch`, which turns an exception into a result.
+- `AsText()` and `AsIdentifier()`, for text a person wrote and a value another system issued.
+- `[Sealed]`, `[Concrete]` and `[RequireParameterlessConstructor]`, constraints C# has no `where`
+  for, checked by the analyzers.
 
 ## Packages
 
@@ -56,9 +60,7 @@ constraints C# has no `where` for, checked by the analyzers.
 | [CodoMetis.TypeKit.Testing](src/CodoMetis.TypeKit.Testing/README.md) | Test assertions for `Option`, `Result` and `Patch<T>` that hand back the value or the error, and fail saying what the outcome was. No test framework dependency | no |
 
 The base package is the cheapest one: someone who only wants `Option` and `Result` never receives a
-code generator by accident. Taking Metalama on is a named choice, made once, in the domain project,
-and it needs no Metalama license key: the generators build on Metalama's Open Source edition, in this
-repository and in yours.
+code generator by accident. Taking Metalama on is a named choice, made once, in the domain project.
 The EF Core and ASP.NET Core packages work at run time against the interfaces, so a host that maps
 value objects from a referenced domain assembly needs no generator itself.
 
@@ -150,8 +152,10 @@ compiled and its stated outputs are tested, as the READMEs' are.
   the generated `TryFrom`, `FromKnownGood`, JSON converter, parsing and type converter all apply
   it. The fault you return from `Create` is what each of them reports: the `JsonException`, the
   `FormatException` and the `FromKnownGood` exception all name your `EmailFault.NoAt`. The two
-  validation-free paths, reading a database column and reading JSON the application stored itself,
-  are explicit, named, and unreachable from input.
+  validation-free paths are explicit and named: the EF Core satellite reads a database column
+  through the materializer, and `StoredJsonConverterFactory` reads JSON the application stored
+  itself. Register that factory only on the options you read your own JSON with, never on those
+  that read a request.
 - **No factory throws on input by accident.** A validated value object has no `From`. Its ways in
   are `Create`, which returns a `Result`, `TryFrom`, which returns an `Option`, and `FromKnownGood`,
   whose name says the caller vouches for the value and whose exception blames the call site.
@@ -160,24 +164,25 @@ compiled and its stated outputs are tested, as the READMEs' are.
   `FromKnownGood` names the caller's expression, and `Option` and `Result` print nothing. So a value
   that is a secret does not reach a message or a log through this package, as long as your fault
   type does not carry it.
-- **Swapping a primitive for a value object changes no contract.** Its JSON is the wrapped type's,
-  byte for byte, under your options; its column is the wrapped type's, a key over an integer still an
-  identity column; its OpenAPI schema is the one ASP.NET publishes for the wrapped type. Only what
-  the value object refuses changes.
+- **Swapping a primitive for a value object keeps the contract.** Its JSON is the wrapped type's
+  under your options; its column is the wrapped type's, a key over an integer still an identity
+  column; its OpenAPI schema is the one ASP.NET publishes for the wrapped type. What changes is what
+  the value object refuses, a JSON `null` for a struct value object included, and under a
+  source-generated context an enum-backed value object needs its enum listed
+  ([JSON](src/CodoMetis.TypeKit.Generators/README.md#json)).
 - **Loud failures.** A declaration that cannot be generated is a build error naming the
   declaration, CMTK1000 to CMTK1021, never a type with nothing in it. The analyzers make `default`
   of a value object, an `Option` or a `Result` an error.
 - **Discovery by interface.** The EF Core and OpenAPI satellites recognise a value object by the
-  attribute the generators put beside `IValueObject<,>`, whose type arguments are constrained to it,
-  never by a name, a namespace or an assembly prefix, and never by `GetInterfaces()`, which trimming
-  breaks.
+  attribute the generators put beside `IValueObject<,>`, whose type arguments are constrained to that
+  interface. Renaming a type or a namespace changes nothing, and trimming keeps the attribute.
 - **Native AOT.** The run-time packages build with the trim and AOT analyzers on, and a consumer
   with value objects, source-generated JSON, OpenAPI and EF Core is published with Native AOT and run
   on every CI build. Each package's README says what, if anything, Native AOT asks of you.
 
 ## How it compares
 
-Good libraries exist for both halves of TypeKit, and some needs are better met by one of them.
+Good libraries exist for both halves of TypeKit. TypeKit fits when:
 
 - You build on .NET 10 with System.Text.Json, EF Core and ASP.NET Core, and want value objects that
   change no contract: the JSON, the column and the OpenAPI schema stay the wrapped type's, with nothing

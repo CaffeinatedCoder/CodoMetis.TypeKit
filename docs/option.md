@@ -27,9 +27,9 @@ Option<int> parsed = int.TryParse(text, out var number) ? Option.Some(number) : 
 Option<int> none = Option.None<int>();                                          // where nothing supplies the type
 ```
 
-`Option.Some(value)` and `Option.None()` build one by hand; `None()` takes its type from where it goes,
-a `return`, a conditional beside a `Some`, a parameter, and where nothing supplies one, as with `var`,
-`Option.None<T>()` says it. The lookups do the rest: `GetValueOrNone(key)` on a dictionary,
+`Option.Some(value)` and `Option.None()` build one by hand. `None()` takes its type from where it goes:
+a `return`, a conditional beside a `Some`, a parameter. Where nothing supplies one, as with `var`,
+write `Option.None<T>()`. The lookups do the rest: `GetValueOrNone(key)` on a dictionary,
 `FirstOrNone()` and `LastOrNone()` on a sequence, with or without a predicate, `SingleOrNone()`, which
 throws for more than one, `ElementAtOrNone(index)`, and `ToOption()` on a nullable, `int?` or
 `string?`, which turns a null into `None`. On a query, `FirstOrNone`, `SingleOrNone` and
@@ -127,7 +127,7 @@ Every public member, on `Option<T>`, on the static class `Option`, and as extens
 | `FirstOrNone()`, `FirstOrNone(predicate)` | `IEnumerable<T>`, `IQueryable<T>` | the first element, or the first matching one; `None` for none. On a query the provider runs the predicate and returns one row |
 | `LastOrNone()`, `LastOrNone(predicate)` | `IEnumerable<T>` | the last, likewise; a compile error on a query, which has no last row until it is ordered |
 | `SingleOrNone()`, `SingleOrNone(predicate)` | `IEnumerable<T>`, `IQueryable<T>` | the only element, or `None` for none; throws for more than one. A query is asked for two rows |
-| `ElementAtOrNone(index)` | `IEnumerable<T>` (an `int` or an `Index`), `IQueryable<T>` (an `int`) | the element at the index, or `None` past either end; an `Index` from the end on a query is a compile error |
+| `ElementAtOrNone(index)` | `IEnumerable<T>` (an `int` or an `Index`), `IQueryable<T>` (an `int`) | the element at the index, or `None` past either end; an `Index` on a query is a compile error |
 | `GetValueOrNone(key)` | `IReadOnlyDictionary<TKey, TValue>` | `Option<TValue>` |
 | `Choose(selector)` | `IEnumerable<T>` | the values the selector answers `Some` for, in order and lazily: a filter and a map in one |
 | `Choose()` | `IEnumerable<Option<T>>` | the values of the options that hold one, in order and lazily |
@@ -135,7 +135,7 @@ Every public member, on `Option<T>`, on the static class `Option`, and as extens
 | `Match(onSome, onNone)` | `Option<T>` | what the branch returns |
 | `TryGetValue(out value)` | `Option<T>` | `bool`; `value` is non-null when true |
 | `Or(fallback)` | `Option<T>` | `T` |
-| `OrDefault()` | `Option<T>` where `T : struct` | `T`, `default` for `None` |
+| `OrDefault()` | `Option<T>` where `T : struct` | `T`, `default` for `None`; CMTK0009 for a value object, whose `default` is no value |
 | `OrNull()` | `Option<T>` | `T?`: `int?` for an `Option<int>`, `string?` for an `Option<string>` |
 | `AsEnumerable()` | `Option<T>` | zero or one element |
 | `Map(selector)` | `Option<T>` | `Option<TResult>`; throws if the selector returns null |
