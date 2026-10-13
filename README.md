@@ -92,6 +92,31 @@ db.Customers.Where(c => c.Email.Value.EndsWith("@example.com"));        // WHERE
 services.AddOpenApi(options => options.AddTypeKit());                    // OrderId: {"type":"string","format":"uuid"}
 ```
 
+## Documentation
+
+The package READMEs above are the reference for each package: what it adds, its setup, and the
+rules it holds to, which is also where every exception message and analyzer help link lands. The
+pages below are the guides, one topic each, written around examples. Every C# block in them is
+compiled and its stated outputs are tested, as the READMEs' are.
+
+| Page | Covers |
+|---|---|
+| [Value objects](docs/value-objects.md) | Declaring one, struct or class, identifiers, validated text and numbers, faults, which factory to call, your own members, generic code over value objects |
+| [Option](docs/option.md) | Absence as a type: creating, matching, combining, converting at the boundary, and the complete public surface |
+| [Result](docs/result.md) | Outcomes as a type: faults, pipelines, async chains, collecting results, an exception as an outcome, errors across layers, and the complete public surface |
+| [Written text](docs/text.md) | `AsText()` and `AsIdentifier()`: what each cleans and refuses, a value object over either, a required and an optional field |
+| [Type constraints](docs/type-constraints.md) | `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` on a type parameter, `[RequireParameterlessConstructor]` and its code fix |
+| [JSON](docs/json.md) | What a value object writes and reads, refusals, stored documents, `Option` and `Result` at the wire, a converter of your own, source-generated contexts |
+| [EF Core](docs/ef-core.md) | Columns, keys, conventions, queries and the SQL they become, seed data, reading back without validation, SQLite in tests |
+| [ASP.NET Core](docs/aspnet-core.md) | Binding in minimal APIs and MVC, what a refused value answers, a `Result` as a response, the OpenAPI document, problem details |
+| [Native AOT](docs/native-aot.md) | What is measured, the project settings, JSON contexts, OpenAPI, EF Core's compiled model, configuration binding, discovery without reflection |
+| [Logging and secrets](docs/logging-and-secrets.md) | A value that must not be printed, what still carries it, Serilog, Microsoft.Extensions.Logging, refusals that never quote the input |
+| [Testing](docs/testing.md) | Assertions for `Option` and `Result`, table-driven tests of `Create`, EF Core on SQLite, endpoints on the test server |
+
+Still to come in 2.0.0, each page written when its feature lands ([the plan](design/plan.md#2-phases),
+phase 13): `Patch<T>`, the closed-set (smart enum) family, fault responses a client can act on, and
+public aspects.
+
 ## What it holds to
 
 - **No `.Value` on `Option` or `Result`.** The content is reached through `Match`, `TryGetValue`
@@ -212,7 +237,7 @@ the public API, the generated members of a value object, and the analyzer ids an
 the contract. A new analyzer rule arrives as a warning or a suggestion in a minor version, and
 becomes an error only in a major one.
 [CHANGELOG.md](CHANGELOG.md) lists what each version changed. The plan, the decisions and their
-evidence are in [docs/plan.md](docs/plan.md), and the measurements that decided the design are in
+evidence are in [design/plan.md](design/plan.md), and the measurements that decided the design are in
 [spikes/](spikes/).
 
 ## Building

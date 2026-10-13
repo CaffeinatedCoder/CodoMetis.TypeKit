@@ -46,6 +46,12 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   arrived, with the joiners refused too. Both answer `Result<string, TextFault>`, where `Blank` is
   the caller's to read as an error or as absence and `Hidden` is a refusal in both; a null receiver
   is `Blank`. A value object over either is one line, shown in the README.
+- **Documentation**: topic pages under `docs/`, linked from the root README's "Documentation" table:
+  value objects, `Option`, `Result`, written text, type constraints, JSON, EF Core, ASP.NET Core,
+  Native AOT, logging and secrets, and testing. Every C# block in them is compiled and its stated
+  outputs are tested, as the READMEs' are, and the `Option` and `Result` pages list the complete
+  public surface, checked against the types. The package READMEs remain the reference for each
+  package. The plan moved from `docs/plan.md` to `design/plan.md`.
 
 ## 1.5.1 — 2026-10-11
 
