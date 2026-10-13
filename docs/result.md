@@ -196,8 +196,11 @@ An exception is for the code that called, not for a client: `ToHttpResult()` doe
 the task, so an exception thrown after its first `await` is the error too; a delegate that returns a
 `Task` given to `Catch` is a compile error naming `CatchAsync`, since the task's exception would be
 thrown after `Catch` had returned. An `OperationCanceledException` passes through every overload,
-since a cancellation is not an outcome, except one over a `TimeoutException`: that is how `HttpClient`
-reports its `Timeout` elapsing, the call failing, and it is the error.
+since a cancellation is not an outcome, and so does an `AggregateException` that holds cancellations
+alone, as `Wait()` and `.Result` throw for a cancelled task; one that holds anything beside them is the
+error, as it was thrown. A cancellation over a `TimeoutException` is the error, wrapped or not: that is
+how `HttpClient` reports its `Timeout` elapsing, the call failing, and `.Result` on such a call is the
+error too.
 `Map`, `Bind` and the rest are unchanged: a selector that throws propagates.
 
 ## Query syntax

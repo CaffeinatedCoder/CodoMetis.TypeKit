@@ -193,10 +193,12 @@ and `Catch<FormatException>(() => { … })` with one is the command form, for a 
 value: given one that returns a value, which it would discard, it is a compile error naming the
 valued form. `CatchAsync` awaits the task, so an exception thrown after its first `await` is the error
 too. An `OperationCanceledException` passes through all of them, since a cancellation is not an
-outcome and `Recover` would run on it as on a failure. The exception is a timeout: `HttpClient`
-reports its `Timeout` elapsing as an `OperationCanceledException` over a `TimeoutException`, which
-is the call failing, so it is the error. A narrowed `Catch` names `TaskCanceledException` or
-`OperationCanceledException` to catch it alone. A delegate that returns a `Task`, an `async` lambda
+outcome and `Recover` would run on it as on a failure, and so does an `AggregateException` that holds
+cancellations alone, as `Wait()` and `.Result` throw for a cancelled task; one that holds anything
+beside them is the error, as it was thrown. The exception is a timeout: `HttpClient` reports its
+`Timeout` elapsing as an `OperationCanceledException` over a `TimeoutException`, which is the call
+failing, so it is the error, wrapped or not, `.Result` on such a call included. A narrowed `Catch`
+names `TaskCanceledException` or `OperationCanceledException` to catch it alone. A delegate that returns a `Task`, an `async` lambda
 among them, given to `Catch` or its command form is a compile error naming `CatchAsync`, since the
 task's exception would be thrown after `Catch` had returned. A `ValueTask`, or a task spelled as the
 type argument (`Catch<Task<int>, …>`), is refused when called, before the delegate runs; `CatchAsync`

@@ -237,6 +237,115 @@ public sealed class ResultCatchTests
         await Should.ThrowAsync<OperationCanceledException>(() => Result.CatchAsync(async Task<int> () => { await Task.Yield(); throw cancelled; }));
     }
 
+    private static Task<int> Cancelled => Task.FromCanceled<int>(new CancellationToken(canceled: true));
+
+    private static Task CancelledCommand => Task.FromCanceled(new CancellationToken(canceled: true));
+
+    private static void WaitsForACancelledTask() => CancelledCommand.Wait();
+
+    private static int ReadsACancelledTask() => Cancelled.Result;
+
+    /// <summary>
+    /// <c>Task.Wait()</c> and <c>.Result</c> throw a cancelled task's cancellation inside an
+    /// <see cref="AggregateException"/>. One that holds nothing but cancellations is a cancellation, and
+    /// passes through every overload as it was thrown: it was the error, so <c>Recover</c> ran on a
+    /// cancelled call.
+    /// </summary>
+    [Fact]
+    public async Task A_cancellation_that_Wait_or_Result_wraps_passes_through_every_overload()
+    {
+        Should.Throw<AggregateException>(() => Result.Catch(() => Cancelled.Result)).InnerException.ShouldBeOfType<TaskCanceledException>();
+        Should.Throw<AggregateException>(() => Result.Catch(() => CancelledCommand.Wait())).InnerException.ShouldBeOfType<TaskCanceledException>();
+        Should.Throw<AggregateException>(() => Result.Catch<int, AggregateException>(() => Cancelled.Result));
+        Should.Throw<AggregateException>(() => Result.Catch<int, Exception>(() => Cancelled.Result));
+        Should.Throw<AggregateException>(() => Result.Catch<AggregateException>(() => CancelledCommand.Wait()));
+        Should.Throw<AggregateException>(() => Result.Catch<Exception>(() => CancelledCommand.Wait()));
+
+        await Should.ThrowAsync<AggregateException>(() => Result.CatchAsync(async () => { await Task.Yield(); return Cancelled.Result; }));
+        await Should.ThrowAsync<AggregateException>(() => Result.CatchAsync(async () => { await Task.Yield(); CancelledCommand.Wait(); }));
+        await Should.ThrowAsync<AggregateException>(() => Result.CatchAsync<int, AggregateException>(async () => { await Task.Yield(); return Cancelled.Result; }));
+        await Should.ThrowAsync<AggregateException>(() => Result.CatchAsync<AggregateException>(async () => { await Task.Yield(); CancelledCommand.Wait(); }));
+    }
+
+    /// <summary>Nothing catches and rethrows it: the instance thrown arrives, with the stack of its throw.</summary>
+    [Fact]
+    public void A_wrapped_cancellation_arrives_as_it_was_thrown()
+    {
+        var wrapped = new AggregateException(new OperationCanceledException(), new AggregateException(new TaskCanceledException()));
+
+        Should.Throw<AggregateException>(() => Result.Catch(int () => throw wrapped)).ShouldBeSameAs(wrapped, "nested aggregates of cancellations are a cancellation too");
+        Should.Throw<AggregateException>(() => Result.Catch(void () => throw wrapped)).ShouldBeSameAs(wrapped);
+
+        Should.Throw<AggregateException>(() => Result.Catch(ReadsACancelledTask)).StackTrace!.ShouldContain(nameof(ReadsACancelledTask), Case.Sensitive, "the stack is the original throw's");
+        Should.Throw<AggregateException>(() => Result.Catch(WaitsForACancelledTask)).StackTrace!.ShouldContain(nameof(WaitsForACancelledTask), Case.Sensitive, "the stack is the original throw's");
+    }
+
+    /// <summary>
+    /// A cancellation beside a failure, as <c>Task.WaitAll</c> throws for one task cancelled and one
+    /// faulted, is not a cancellation alone: the aggregate is the error, as it was thrown.
+    /// </summary>
+    [Fact]
+    public async Task An_aggregate_that_mixes_a_cancellation_with_a_failure_is_the_error()
+    {
+        Result.Catch(() => Task.WaitAll(CancelledCommand, Task.FromException(Boom))).TryGetError(out var waited).ShouldBeTrue();
+        waited.ShouldBeOfType<AggregateException>().InnerExceptions.Select(inner => inner.GetType()).ShouldBe([typeof(TaskCanceledException), typeof(InvalidOperationException)]);
+
+        var mixed = new AggregateException(new OperationCanceledException(), Boom);
+
+        Result.Catch(int () => throw mixed).TryGetValue(out _, out var valued).ShouldBeFalse();
+        valued.ShouldBeSameAs(mixed);
+        Result.Catch(void () => throw mixed).TryGetError(out var command).ShouldBeTrue();
+        command.ShouldBeSameAs(mixed);
+        Result.Catch<int, AggregateException>(() => throw mixed).TryGetValue(out _, out var narrowed).ShouldBeFalse();
+        narrowed.ShouldBeSameAs(mixed);
+        Result.Catch<AggregateException>(void () => throw mixed).TryGetError(out var narrowedCommand).ShouldBeTrue();
+        narrowedCommand.ShouldBeSameAs(mixed);
+
+        (await Result.CatchAsync(async Task<int> () => { await Task.Yield(); throw mixed; })).TryGetValue(out _, out var later).ShouldBeFalse();
+        later.ShouldBeSameAs(mixed);
+        (await Result.CatchAsync(async () => { await Task.Yield(); throw mixed; })).TryGetError(out var laterCommand).ShouldBeTrue();
+        laterCommand.ShouldBeSameAs(mixed);
+    }
+
+    /// <summary>
+    /// A timeout is the error wrapped or not (decision 46). An aggregate that holds one, alone or beside
+    /// cancellations, is not a cancellation alone, and is the error as it was thrown.
+    /// </summary>
+    [Fact]
+    public async Task A_wrapped_timeout_is_the_error()
+    {
+        Result.Catch(() => Task.FromException<int>(Timeout).Result).TryGetValue(out _, out var read).ShouldBeFalse();
+        read.ShouldBeOfType<AggregateException>().InnerException.ShouldBeSameAs(Timeout);
+
+        var beside = new AggregateException(new OperationCanceledException(), Timeout);
+        Result.Catch(void () => throw beside).TryGetError(out var command).ShouldBeTrue();
+        command.ShouldBeSameAs(beside);
+        Result.Catch<int, AggregateException>(() => throw beside).TryGetValue(out _, out var narrowed).ShouldBeFalse();
+        narrowed.ShouldBeSameAs(beside);
+        (await Result.CatchAsync(async Task<int> () => { await Task.Yield(); throw beside; })).TryGetValue(out _, out var later).ShouldBeFalse();
+        later.ShouldBeSameAs(beside);
+    }
+
+    /// <summary>
+    /// <c>.Result</c> and <c>Wait()</c> on a cancelled task throw a new <see cref="TaskCanceledException"/>
+    /// naming the task, without the exception the task was cancelled with (measured on .NET 10): for an
+    /// <see cref="HttpClient"/> call whose <c>Timeout</c> elapsed, the <see cref="TimeoutException"/> is gone
+    /// from what is thrown. It is still the task's, and the timeout is the error, as <c>CatchAsync</c> answers it.
+    /// </summary>
+    [Fact]
+    public void An_HttpClient_timeout_read_through_Result_is_the_error()
+    {
+        using var client = new HttpClient(new WaitingHandler()) { Timeout = TimeSpan.FromMilliseconds(1) };
+
+        var fetched = Result.Catch(() => client.GetByteArrayAsync(new Uri("http://timeout.test/")).Result);
+
+        fetched.TryGetValue(out _, out var error).ShouldBeFalse();
+        var thrown = error.ShouldBeOfType<AggregateException>().InnerException.ShouldBeOfType<TaskCanceledException>();
+        thrown.InnerException.ShouldBeNull("the runtime's own exception for a cancelled task holds no inner exception");
+
+        Should.Throw<AggregateException>(() => Result.Catch(() => client.GetByteArrayAsync(new Uri("http://timeout.test/"), new CancellationToken(canceled: true)).Result));
+    }
+
     private static readonly TaskCanceledException Timeout = new("The request was canceled due to the configured HttpClient.Timeout elapsing.", new TimeoutException());
 
     private static async Task<int> TimesOutLaterAsync()

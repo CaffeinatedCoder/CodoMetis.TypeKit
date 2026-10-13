@@ -38,10 +38,14 @@ public static class Result
     /// <remarks>
     /// <para>
     /// An <see cref="OperationCanceledException"/> passes through: a cancellation is not an outcome,
-    /// and caught it would read as a failure and <c>Recover</c> would run on it. One whose
-    /// <see cref="Exception.InnerException"/> is a <see cref="TimeoutException"/> is the error: that is
-    /// how <see cref="System.Net.Http.HttpClient"/> reports its <c>Timeout</c> elapsing, a failure of
-    /// the call and not the caller's cancellation. A delegate that returns a <see cref="Task"/> is
+    /// and caught it would read as a failure and <c>Recover</c> would run on it. So does an
+    /// <see cref="AggregateException"/> that holds cancellations and nothing else, as <c>Task.Wait()</c>
+    /// and <c>.Result</c> throw for a cancelled task; one that holds anything beside them is the error.
+    /// A cancellation whose <see cref="Exception.InnerException"/> is a <see cref="TimeoutException"/> is
+    /// the error, wrapped or not: that is how <see cref="System.Net.Http.HttpClient"/> reports its
+    /// <c>Timeout</c> elapsing, a failure of the call and not the caller's cancellation, and <c>.Result</c>
+    /// on that call is the error too, although what it throws no longer holds the
+    /// <see cref="TimeoutException"/>: the cancelled task still does. A delegate that returns a <see cref="Task"/> is
     /// refused at compile time, since the task's exception is thrown after this call returns;
     /// <see cref="CatchAsync{T}(Func{Task{T}})"/> waits for it.
     /// </para>
@@ -168,12 +172,46 @@ public static class Result
 
     /// <summary>
     /// Whether <paramref name="exception"/> is a cancellation, which every <c>Catch</c> lets through: an
-    /// <see cref="OperationCanceledException"/> that is no timeout. <see cref="System.Net.Http.HttpClient"/>
-    /// throws a <see cref="TaskCanceledException"/> over a <see cref="TimeoutException"/> when its
-    /// <c>Timeout</c> elapses, which is the call failing, so that one is caught.
+    /// <see cref="OperationCanceledException"/> that is no timeout, or an <see cref="AggregateException"/>
+    /// that holds such cancellations and nothing else, as <c>Task.Wait()</c> and <c>.Result</c> throw for
+    /// a cancelled task. An aggregate that holds anything else beside them, a timeout included, is the error.
     /// </summary>
-    private static bool IsCancellation(Exception exception) =>
-        exception is OperationCanceledException { InnerException: not TimeoutException };
+    private static bool IsCancellation(Exception exception)
+    {
+        if (exception is not AggregateException aggregate) return IsUnwrappedCancellation(exception);
+
+        var inner = aggregate.Flatten().InnerExceptions;
+
+        return inner.Count > 0 && inner.All(IsUnwrappedCancellation);
+    }
+
+    private static bool IsUnwrappedCancellation(Exception exception) =>
+        exception is OperationCanceledException cancellation && !IsTimeout(cancellation);
+
+    /// <summary>
+    /// Whether <paramref name="cancellation"/> is a timeout, the call failing rather than the caller
+    /// cancelling: <see cref="System.Net.Http.HttpClient"/> throws a <see cref="TaskCanceledException"/> over a
+    /// <see cref="TimeoutException"/> when its <c>Timeout</c> elapses. <c>Task.Wait()</c> and <c>.Result</c>
+    /// on that cancelled task throw a new one instead, naming the task and holding no inner exception
+    /// (measured on .NET 10), so the task's own cancellation is read: the task has completed, and
+    /// <c>GetResult</c> rethrows it without waiting.
+    /// </summary>
+    private static bool IsTimeout(OperationCanceledException cancellation)
+    {
+        if (cancellation.InnerException is TimeoutException) return true;
+        if (cancellation is not TaskCanceledException { InnerException: null, Task: { IsCanceled: true } task }) return false;
+
+        try
+        {
+            task.GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException own)
+        {
+            return own.InnerException is TimeoutException;
+        }
+
+        return false;
+    }
 
     /// <summary>Refused: the task's exception is thrown after <c>Catch</c> has returned. Use <see cref="CatchAsync{T}(Func{Task{T}})"/>.</summary>
     /// <remarks>
@@ -250,11 +288,12 @@ public static class Result
     /// </summary>
     /// <remarks>
     /// An <see cref="OperationCanceledException"/> passes through, so a cancelled token surfaces as
-    /// cancellation; a timeout, which <see cref="System.Net.Http.HttpClient"/> throws as a cancellation
-    /// over a <see cref="TimeoutException"/>, is the error. A delegate returning a <c>ValueTask</c>
+    /// cancellation, and so does an <see cref="AggregateException"/> of cancellations alone; a timeout,
+    /// which <see cref="System.Net.Http.HttpClient"/> throws as a cancellation over a
+    /// <see cref="TimeoutException"/>, is the error. A delegate returning a <c>ValueTask</c>
     /// needs <c>.AsTask()</c> or an <c>async</c> lambda: a <c>ValueTask</c> overload beside this one is
     /// ambiguous for every <c>async</c> lambda.
-    /// See <see cref="Catch{T}(Func{T})"/> for null.
+    /// See <see cref="Catch{T}(Func{T})"/> for cancellations, timeouts and null.
     /// </remarks>
     /// <param name="action">The asynchronous call whose outcome is wanted.</param>
     /// <typeparam name="T">The type of the value.</typeparam>
