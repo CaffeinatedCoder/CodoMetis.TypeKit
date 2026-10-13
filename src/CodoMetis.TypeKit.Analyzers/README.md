@@ -378,7 +378,7 @@ reported at the use, and where the arguments are written, the block's come first
 (`handler.Take<Handler, PlaceOrder>(order)`). A method that implements an interface's method carries
 its constraint, a static method implementing a `static abstract` one included, and so does a base
 class's method that implements the interface for a derived class, when it is reached through the
-derived class. The open generic
+derived class, a type parameter constrained to it, or `base.` inside it. The open generic
 inside its own body, an unbound `typeof(Decider<,>)`, a `nameof(Decider<PlaceOrder, OrderPlaced>)`,
 which uses no argument, and a type argument that does not exist, which is the compiler's error, are
 never reported. Reflection,

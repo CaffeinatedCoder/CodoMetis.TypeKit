@@ -253,6 +253,8 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
 
         var receiver = named switch
         {
+            // base.Send<T>() runs on this object, whose type is the one written around it.
+            MemberAccessExpressionSyntax { Expression: BaseExpressionSyntax } => model.GetEnclosingSymbol(named.SpanStart, token)?.ContainingType,
             MemberAccessExpressionSyntax access   => model.GetTypeInfo(access.Expression, token).Type,
             MemberBindingExpressionSyntax binding => binding.Ancestors().OfType<ConditionalAccessExpressionSyntax>().FirstOrDefault(conditional => conditional.WhenNotNull.Span.Contains(binding.Span)) is { } conditional
                                                          ? model.GetTypeInfo(conditional.Expression, token).Type
@@ -263,6 +265,18 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
 
         return receiver is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable ? nullable.TypeArguments[0] : receiver;
     }
+
+    /// <summary>
+    /// The types a receiver stands for: itself, or for a type parameter the types it is constrained to,
+    /// <c>where TSender : OpenSender</c>. A cycle of constraints is the compiler's error, cut off by depth.
+    /// </summary>
+    private static IEnumerable<ITypeSymbol> Through(ITypeSymbol? receiver, int depth) => receiver switch
+    {
+        null                                      => [],
+        ITypeParameterSymbol parameter when depth < 8 => parameter.ConstraintTypes.SelectMany(constraint => Through(constraint, depth + 1)),
+        ITypeParameterSymbol                      => [],
+        _                                         => [receiver],
+    };
 
     /// <summary>
     /// The generic as its declaration names it: <c>Decider&lt;TCommand, TEvent&gt;</c>,
@@ -348,9 +362,7 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
 
         if (method.ExplicitInterfaceImplementations.Length > 0 || method.DeclaredAccessibility != Accessibility.Public) yield break;
 
-        foreach (var type in SymbolEqualityComparer.Default.Equals(receiver?.OriginalDefinition, method.ContainingType) || receiver is null
-                     ? [method.ContainingType]
-                     : new[] { method.ContainingType, receiver })
+        foreach (var type in Through(receiver, depth: 0).Prepend(method.ContainingType).Distinct<ITypeSymbol>(SymbolEqualityComparer.Default))
         {
             foreach (var contract in type.AllInterfaces)
             {

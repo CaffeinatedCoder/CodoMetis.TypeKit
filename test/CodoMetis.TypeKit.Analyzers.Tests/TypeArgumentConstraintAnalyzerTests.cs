@@ -404,7 +404,10 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             public sealed class DerivedSender : BaseSender, ISender
             {
                 public void Inside(Handler handler) => Send<{|#0:Handler|}>(handler);
+                public void Based(Handler handler) => base.Send<{|#8:Handler|}>(handler);
             }
+
+            public class OpenSender : BaseSender, ISender { }
 
             public static class Calls
             {
@@ -422,6 +425,8 @@ public sealed class TypeArgumentConstraintAnalyzerTests
                 }
 
                 public static void Generic<TFactory>() where TFactory : IFactory => TFactory.Make<{|#6:Handler|}>();
+
+                public static void Constrained<TSender>(TSender sender, Handler handler) where TSender : OpenSender => sender.Send<{|#7:Handler|}>(handler);
             }
             """,
             Cmtk0010(0, "Handler", "T", "BaseSender.Send<T>", "is not a concrete class, record or struct"),
@@ -430,7 +435,9 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             Cmtk0010(3, "Handler", "T", "BaseSender.Send<T>", "is not a concrete class, record or struct"),
             Cmtk0010(4, "Handler", "T", "BaseSender.Send<T>", "is not a concrete class, record or struct"),
             Cmtk0010(5, "Handler", "T", "BaseSender.Send<T>", "is not a concrete class, record or struct"),
-            Cmtk0010(6, "Handler", "T", "IFactory.Make<T>", "is not a concrete class, record or struct"))
+            Cmtk0010(6, "Handler", "T", "IFactory.Make<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(7, "Handler", "T", "BaseSender.Send<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(8, "Handler", "T", "BaseSender.Send<T>", "is not a concrete class, record or struct"))
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
