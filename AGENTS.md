@@ -67,6 +67,45 @@ The SDK is pinned in `global.json` (10.0.4xx band, `latestPatch`). Tests run on 
 Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TRX output is
 `--report-xunit-trx`. The build treats warnings as errors, including CS1591 on shipping projects.
 
+## Finding code
+
+The codebase-memory MCP server keeps a code graph of this repository, the project
+`CodoMetis.TypeKit`. It is the fastest way into the code, and it misses whole kinds of reference
+here, so it leads and the source decides.
+
+- **The graph first** to locate a symbol, list a type's implementers, trace callers and callees, and
+  size a change's impact (`search_graph`, `trace_path`, `query_graph`, `get_code_snippet`).
+- **Then the source and its tests**, read before concluding or editing. An edge is a lead.
+- **Text search** (`git grep`, `search_code`) for literals, messages, diagnostic ids,
+  configuration, documentation, and what the generators emit.
+- **An empty result proves nothing.** Fall back to text search when the graph is unavailable, stale
+  or silent, and never conclude "unused", "no other caller" or "safe to change" from it alone.
+  Measured on 2026-10-13, the graph:
+  - finds types, interfaces, enums and ordinary methods, a type's implementers through generic
+    interfaces (84 of the Samples' 88 value objects), and the callers of an ordinary method across
+    files;
+  - has no node for a member of a C# 14 `extension(...)` block, which holds most of the `Option` and
+    `Result` extensions (`Choose`, `FirstOrNone`, `Transpose`, `Sequence`, the continuations of a
+    `Task<Result<...>>`) and `AsText`, and puts the calls inside one on the file;
+  - has nothing Metalama generates: none of the tests' 222 `.From(` calls has an edge, nor has a call
+    to `TryFrom`, `FromKnownGood`, `Parse` or a converter, and a template an aspect introduces by
+    `nameof` looks unreferenced. Read woven code as the Generators README's "Reading the generated
+    code" says;
+  - misses a reference that is not a call: a DI registration, a type argument, `typeof`, an attribute;
+  - resolves a call on a generic instance poorly (`Option<T>.Match` has one resolved caller, where
+    the repository writes `.Match(` about 200 times across its types) and guesses wrong callers: a low-confidence `suffix_match` edge, or a same-named method of another API
+    (Metalama's `Diagnostics.Report` listed as calling `GeneratedCode.Report`). Overloads share one
+    node.
+- **Refresh it**, since it does not follow the working tree: `index_repository` with the repository
+  root as `repo_path` and `name: "CodoMetis.TypeKit"`, at the start of a session and after a branch
+  switch, a rebase, a merge or a pull (about 6 s). Without `name` it starts a second project under a
+  derived name. `index_status` reports the checkout's HEAD, not the commit the graph was built from,
+  so refresh rather than check.
+- It indexes `spikes/` and leaves out `.claude/`, `bin` and `obj`, so an agent in a worktree under
+  `.claude/worktrees/` reads the main checkout's graph, not its own: index the worktree under a name
+  of its own and delete that project when done, or search the source. `.codebase-memory/`, the
+  tool's local artifact, is ignored by git.
+
 ## Rules that are easy to break
 
 - **`CodoMetis.TypeKit` stays Metalama-free.** Nothing in the base package may reference

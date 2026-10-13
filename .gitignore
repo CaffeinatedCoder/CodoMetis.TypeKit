@@ -30,3 +30,6 @@ Thumbs.db
 
 # Benchmark runs: the numbers worth keeping go into benchmarks/README.md
 BenchmarkDotNet.Artifacts/
+
+# The codebase-memory MCP server's local graph artifact: rebuilt per checkout, never committed
+.codebase-memory/
