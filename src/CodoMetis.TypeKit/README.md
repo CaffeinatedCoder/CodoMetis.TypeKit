@@ -492,7 +492,7 @@ the refusal of writing an absent `Patch<T>`, which no document can carry: mark t
 `[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]`.
 
 **Why:** without it a `Some` is written as `{}` and read back as `None`, and nothing is raised; see
-[Not wire types](#not-wire-types) and the [design](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/design/plan.md#9-option-and-result).
+[Not wire types](#not-wire-types) and the [design](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/design/option-result.md).
 
 **Instead:** say absent with `T?` in the shape, and convert at the boundary: `dto.Nickname.ToOption()`
 on the way in, `nickname.OrNull()` on the way out. `Match` a result to a response. A source-generated
@@ -559,7 +559,7 @@ converter, or `JsonException: Quantity could not read the JSON value as Int32.` 
 
 **Why:** the wrapped type's own message quotes the input ("The input string '…' was not in a correct
 format."), so it is replaced, and not kept as the inner exception either; see the
-[design](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/design/plan.md#8-decisions),
+[design](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/design/adr/README.md),
 decision 27. A JSON error still carries its path.
 
 **Instead:** `TryParse` for text that may not parse. Text that is yours to log, log before parsing.

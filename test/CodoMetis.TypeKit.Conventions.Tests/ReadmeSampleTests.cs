@@ -11,7 +11,7 @@ namespace CodoMetis.TypeKit.Conventions.Tests;
 /// A pre-release audit compiled the READMEs' blocks and found a bare fault returned from a method typed
 /// <c>Result&lt;T, TError&gt;</c>, statements that are not statements (<c>quantity.Value;</c>), and SQL in a
 /// comment that the query does not produce. The consumer smoke test had found the first once before
-/// (design/plan.md §9). Each was fixed by hand, and nothing kept the next one out.
+/// (design/option-result.md). Each was fixed by hand, and nothing kept the next one out.
 /// </para>
 /// <para>
 /// A block that cannot compile on purpose, showing a compile error, says so above its fence:

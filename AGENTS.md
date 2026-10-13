@@ -12,8 +12,9 @@ that are written as one line and generated at compile time by Metalama.
 - **Satellites** map value objects to EF Core columns, where `.Value` works in LINQ as it does in
   memory, and to OpenAPI schemas.
 
-The packages are being built phase by phase: **read [design/plan.md](design/plan.md) before changing
-anything.** It holds the package map, the phase order and the decisions.
+**Read [design/plan.md](design/plan.md) before changing anything.** It is the map of `design/`: the
+[roadmap](design/roadmap.md), the [decision records](design/adr/README.md), one dated file per
+decision with its evidence, and a design note per area.
 
 This file is the canonical agent guide. There is no CLAUDE.md, on purpose.
 
@@ -47,7 +48,8 @@ This file is the canonical agent guide. There is no CLAUDE.md, on purpose.
 - `spikes/` holds experiments that decided something. Each one has a README with the question,
   the answer and the evidence. Spikes are not in the main solution and are never packed.
 - `docs/` holds the topic pages a consumer reads, one per topic, each linked from the root README's
-  "Documentation" table; `design/` holds the plan and the design notes, which no test compiles.
+  "Documentation" table; `design/` holds the roadmap, the decision records and the design notes,
+  which no test compiles but whose links the conventions check.
 
 Never hard-code a positional path (`../../`) to reach the repo root. Walk up to the
 `CodoMetis.TypeKit.slnx` marker instead.
@@ -93,7 +95,7 @@ Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TR
   `JsonSerializer` call that takes only options, in the packages or in woven code: a typed call
   (`GeneratedValueObjectAttribute.Accept`, `GeneratedJson.TypeInfo`) or an interface instead. An
   `[UnconditionalSuppressMessage]` needs a measured reason, and the smoke test's `aot` consumer is
-  the measurement (design/plan.md §11).
+  the measurement ([design/native-aot.md](design/native-aot.md)).
 - **Aspects stay internal.** Their public surface is what they generate, and nothing else.
 - **A value object's JSON is its wrapped type's, byte for byte**, under whatever options the
   application uses, values and dictionary keys alike (`JsonParityTests`). Never write or read the
@@ -120,7 +122,8 @@ Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TR
   characteristic failures. Prefer a diagnostic or an exception to a plausible result.
 
 ## Workflow
-1. Read `design/plan.md` and the relevant spike README before starting.
+1. Read `design/plan.md`, the roadmap, the decision records and the design note for the area you
+   touch, and the relevant spike README, before starting. A decision is changed by a new record.
 2. Run `dotnet test` after each change.
 3. **Prove every fix by reverting it.** See `.claude/skills/verify-the-guard`. The same applies to a
    new analyzer test or a convention test: seed the defect it claims to catch.

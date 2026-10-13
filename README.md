@@ -218,9 +218,9 @@ The packages share one version and follow Semantic Versioning:
 the public API, the generated members of a value object, and the analyzer ids and severities are
 the contract. A new analyzer rule arrives as a warning or a suggestion in a minor version, and
 becomes an error only in a major one.
-[CHANGELOG.md](CHANGELOG.md) lists what each version changed. The plan, the decisions and their
-evidence are in [design/plan.md](design/plan.md), and the measurements that decided the design are in
-[spikes/](spikes/).
+[CHANGELOG.md](CHANGELOG.md) lists what each version changed. The design notes, the decision records
+and the roadmap are under [design/](design/plan.md), and the measurements that decided the design are
+in [spikes/](spikes/).
 
 ## Building
 

@@ -1,0 +1,34 @@
+# Packages
+
+| Package | Depends on | Metalama | Contents |
+|---|---|---|---|
+| `CodoMetis.TypeKit` | Analyzers (flows, [§10](analyzers.md)) | **no** | `Option<T>`, `Result<T,TError>`, `Result<TError>` and their extensions, all carrying `NotWireTypeJsonConverterFactory` ([§9](option-result.md)); the value-object contracts `IValueObject<,>`, `IPlainValueObject<,>`, `IValue<T>`, `IValidatedValue<,,>`, `IValueObjectMaterializer<,>` ([§4](ef-core.md)); `RequireCustomInitializationAttribute`; `GuidValueExtensions` (`OrderId.New()` from a version 7 Guid); and what only generated code and the satellites use ([§3](discovery.md), [§5](aspects.md), [§11](native-aot.md)): `GeneratedValueObjectAttribute<,>`, `IValueObjectVisitor<>`, `TranslatedAsWrappedValueAttribute`, `GeneratedFactories`, `GeneratedParsing`, `GeneratedFormatting`, `GeneratedJson`, `IStoredJsonConverterSource` |
+| `CodoMetis.TypeKit.Analyzers` | — | no | Roslyn analyzers and code fixes ([§10](analyzers.md)). Nobody references it directly: it reaches every consumer through the base package |
+| `CodoMetis.TypeKit.Generators` | TypeKit, Metalama.Framework 2026.1.x (flows) | yes | Internal aspects, internal `TransitiveProjectFabric`, `AspectOrder`. Future generated type families join this package too: one fabric, one aspect order |
+| `CodoMetis.TypeKit.EntityFrameworkCore` | TypeKit, EF Core Relational | no | Generic converter, convention, `.Value` / `GetValue` / `ValueOrNull` translators, `UseTypeKit()` |
+| `CodoMetis.TypeKit.AspNetCore` | TypeKit, Microsoft.AspNetCore.OpenApi | no | `AddTypeKit()`: one OpenAPI schema transformer ([§7](openapi.md)); `ToHttpResult()`, `AddFaultResponses` ([decision 38](adr/0038-result-becomes-response-explicit-tohttpresult-faults.md)) |
+| `CodoMetis.TypeKit.Serilog` | TypeKit, Serilog 4.0.0 | no | `Destructure.WithTypeKit()`: one destructuring policy that logs every value object as its `ToString()` ([decision 41](adr/0041-sensitive-value-object-declares-tostring-serilog.md)) |
+| `CodoMetis.TypeKit.Testing` | TypeKit | no | `ShouldBeSome()`/`ShouldBeNone()`, `ShouldBeSuccess()`/`ShouldBeError()`: test assertions that hand back the content, with no test framework dependency ([decision 40](adr/0040-codometis-typekit-testing-holds-assertions-hand.md)) |
+
+**The bare name is the cheapest package.** Someone who only wants `Option`/`Result` references
+`CodoMetis.TypeKit` and never receives Metalama by accident. Taking Metalama on is always an
+explicit, named choice (`.Generators`). The EF and ASP.NET packages depend on the base package,
+not on `.Generators`. They work at run time against the interfaces, so a host that maps value
+objects from a referenced domain assembly never needs Metalama itself.
+
+**Namespaces:**
+
+| Namespace | Holds |
+|---|---|
+| `CodoMetis.TypeKit` | `Option`, `Result`, `ResultState`, the markers, `NotWireTypeJsonConverterFactory`, `RequireCustomInitializationAttribute`, `GuidValueExtensions` (`New()` is call-site vocabulary, like `Option`) |
+| `CodoMetis.TypeKit.ValueObjects` | Every contract a user declares or constrains on: `IValue`, `IValidatedValue`, `IValueObject`, `IPlainValueObject`, `IValueObjectMaterializer`, and `StoredJsonConverterFactory` |
+| `CodoMetis.TypeKit.CompilerServices` | What only generated code and the satellites touch, all `[EditorBrowsable(Never)]`: `GeneratedValueObjectAttribute`, `IValueObjectVisitor`, `TranslatedAsWrappedValueAttribute`, `GeneratedFactories`, `GeneratedParsing`, `GeneratedFormatting`, `GeneratedJson`, `IStoredJsonConverterSource`. The name follows `System.Runtime.CompilerServices` |
+| `CodoMetis.TypeKit.EntityFrameworkCore` | `ValueObjectConverter<,>`; the plugins, internal |
+| `CodoMetis.TypeKit.AspNetCore` | the schema transformer, internal; `FaultProblem<TFault>` |
+| `CodoMetis.TypeKit.Serilog` | the destructuring policy, internal |
+| `Serilog` | `WithTypeKit()`, beside Serilog's own configuration methods ([decision 22](adr/0022-registration-extensions-live-framework-s-namespaces.md)) |
+| `CodoMetis.TypeKit.Testing` | the assertions and `TypeKitAssertionException` |
+| `Microsoft.EntityFrameworkCore` | `UseTypeKit()`, beside the providers' `UseNpgsql` ([decision 22](adr/0022-registration-extensions-live-framework-s-namespaces.md)) |
+| `Microsoft.Extensions.DependencyInjection` | `AddEntityFrameworkTypeKit()` and `OpenApiOptions.AddTypeKit()`, beside `AddEntityFrameworkNpgsql` and `AddOpenApi` ([decision 22](adr/0022-registration-extensions-live-framework-s-namespaces.md)) |
+
+The internal aspects live in `CodoMetis.TypeKit.Generators`. Users never type that namespace.

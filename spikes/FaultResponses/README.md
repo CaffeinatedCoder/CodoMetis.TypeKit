@@ -1,7 +1,7 @@
-# Spike: can a fault response carry what a client acts on, without giving up decision 38's checks?
+# Spike: can a fault response carry what a client acts on, without giving up [decision 38](../../design/adr/0038-result-becomes-response-explicit-tohttpresult-faults.md)'s checks?
 
 **Status: run 2026-10-13, answered.** From the "Fault responses a client can act on" part of phase 13
-(2.0.0) in [design/plan.md](../../design/plan.md) §2. The fault's kind is no longer a `FaultKind`
+(2.0.0) in [the phase log](../../design/history.md). The fault's kind is no longer a `FaultKind`
 attribute: it is a property of a closed-set member, in the same phase.
 
 **Question.** Decision 38's `ToHttpResult()` answers a fault with its status and its bare name, and
@@ -47,14 +47,14 @@ status check removed, the problem types dropped from the document), and each see
 - **A kind's default status**: `NotFound` 404, `Conflict` 409, `Invalid` 422, `Forbidden` 403,
   `Unavailable` 503, through `FaultResponse.For(kind)`. A host does not change the table; a mapping
   of its own, which can call `FaultResponse.For` for the members it keeps, is the escape hatch, as
-  decision 38's switch is. `FaultKind` starts at 1, so a member whose kind is `default` is refused
+  [decision 38](../../design/adr/0038-result-becomes-response-explicit-tohttpresult-faults.md)'s switch is. `FaultKind` starts at 1, so a member whose kind is `default` is refused
   where the set is mapped.
 - **Where a sentence goes.** RFC 9457 §3.1.4: `detail` helps the client correct this occurrence. A
   member's description is the `detail` by default, and a `Fault<TFault>`'s detail replaces it; the
   `title` is the problem type's summary, a `FaultResponse`'s or the status's own.
 - **The constraint relaxed.** `FaultProblem<TFault>` takes `notnull` where it took `struct, Enum`.
   Package validation reports it (CP0021) though no closed type it accepted is refused now; it is the
-  first intended difference from the 1.5.1 baseline, suppressed alone (decision 48).
+  first intended difference from the 1.5.1 baseline, suppressed alone ([decision 48](../../design/adr/0048-intended-break-suppressed-alone-baseline-stays.md)).
 
 ## Findings
 
@@ -63,7 +63,7 @@ status check removed, the problem types dropped from the document), and each see
 | 1 | The `FaultResponse` overload checks every member at registration, as the `int` one does, and refuses a status outside 400 to 599 | measured: `A_response_per_member_is_checked_where_it_is_mapped` (200, 302, 600 refused, naming `OrderFault.NameTaken` and `responseOf`); a kind that is no `FaultKind` refused naming the member |
 | 2 | A `type` URI and `title` reach the body and the operation's problem response, and nothing of the input does | measured: the body carries both; the response's description lists the problem types answered with that status (`Conflict. Problem types: …`) |
 | 3 | `ToHttpResult()` over `Result<T, Fault<TFault>>`, over `Result<T, TFault>` and over a closed set's resolves without type arguments, with no ambiguity | measured: the tests call each without type arguments and compile |
-| 4 | `Detail` reaches the body only when set, and the default response is unchanged from 1.5.1 | measured: the default body's members are 1.5.1's (`fault`, `status`, `title`, `traceId`, `type`), and decision 38's tests pass unchanged; `detail` appears for a `Fault` with one and a set member with a description, never for one without |
+| 4 | `Detail` reaches the body only when set, and the default response is unchanged from 1.5.1 | measured: the default body's members are 1.5.1's (`fault`, `status`, `title`, `traceId`, `type`), and [decision 38](../../design/adr/0038-result-becomes-response-explicit-tohttpresult-faults.md)'s tests pass unchanged; `detail` appears for a `Fault` with one and a set member with a description, never for one without |
 | 5 | `WithFaultStatus` changes the status for that endpoint only, in the response and in that operation's document entry | measured: 422 on the endpoint, 409 elsewhere; the endpoint's operation lists 422 in place of 409 |
 | 6 | The startup check refuses a `WithFaultStatus` naming a fault type the endpoint does not answer with | measured; and an MVC attribute naming no member |
 | 7 | MVC: the per-endpoint metadata reaches the operation transformer (ResultHttp finding 4 found `PopulateMetadata` handed an empty service provider) | measured: `[FaultStatus<OrderFault>(nameof(OrderFault.NameTaken), 422)]` on an action changes its response and its operation; the transformer reads it from the endpoint's metadata, with the services from the document's context |

@@ -1,7 +1,7 @@
 # Spike: can an attribute on a type parameter constrain its arguments where C# cannot?
 
 **Status: run 2026-10-13, answered.** Proposed 2026-10-13, from the "Constraints a type parameter
-cannot declare" part of phase 13 (2.0.0) in [design/plan.md](../../design/plan.md) §2, decision 43, and
+cannot declare" part of phase 13 (2.0.0) in [the phase log](../../design/history.md), [decision 43](../../design/adr/0043-exceptions-type-argument-constraints-constructor-guarantee.md), and
 the CMTK0010 row of §10.
 
 **Question.** C# has `where T : class`, `struct`, `new()` and a base type, but no `where T :
@@ -12,7 +12,7 @@ analyzer rule, CMTK0010, make the violation an error at every closed use, in eve
 without Metalama?
 
 An analyzer rather than an aspect, because an aspect on the parameter sees the declaration and
-never the use, and the use site need not compile with Metalama (§3: the base package is
+never the use, and the use site need not compile with Metalama ([§3](../../design/discovery.md): the base package is
 Metalama-free, and discovery is by the attribute symbol).
 
 **Answer: yes.** Measured 2026-10-13 on .NET SDK 10.0.401 with the rule as `.Analyzers` ships it
@@ -54,6 +54,6 @@ Each row is a claim the spike must settle. A seed that breaks the guard proves e
 | 8 | `[Record]` accepts a record class and a record struct; `[Abstract]` accepts an abstract class or record and refuses an interface; `[Sealed]` accepts a sealed class, a struct and a record struct; `[Concrete]` refuses an abstract type and an interface | measured: a sealed record, a struct and an enum pass `[Sealed]`, an interface fails it and `[Abstract]`; an abstract class fails `[Record]` and `[Concrete]`; a struct passes `[Concrete]` |
 | 9 | The four attributes compose: `[Abstract, Record]` requires both | measured: `[Abstract, Record]` reports each attribute broken, so an abstract class reports `is not a record` alone |
 | 10 | The open generic itself (`Base<TCommand, TEvent>` inside its own body) is never reported | measured: `Decider<TCommand, TEvent>` inside its own body and `typeof(Decider<,>)` report nothing; the library builds clean |
-| 11 | A closed use in a Razor component is reported (§10, generated code with a mapped location) | measured: `Probe.razor(4,9): error CMTK0010` in a Razor class library |
+| 11 | A closed use in a Razor component is reported ([§10](../../design/analyzers.md), generated code with a mapped location) | measured: `Probe.razor(4,9): error CMTK0010` in a Razor class library |
 | 12 | `MakeGenericType` at run time is out of reach, stated in the README, and the attribute carries no run-time check | by design: no run-time check, the README says `MakeGenericType` is out of reach |
 | 13 | The attributes have `AttributeTargets.GenericParameter` only, so a misplaced one is CS0592 | measured in `TypeArgumentConstraintAnalyzerTests`: `[Abstract]` on a class is CS0592 |

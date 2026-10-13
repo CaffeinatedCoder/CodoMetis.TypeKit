@@ -4,15 +4,21 @@ using System.Text.RegularExpressions;
 namespace CodoMetis.TypeKit.Conventions.Tests;
 
 /// <summary>
-/// Every relative link in the root README, the package READMEs and the <c>docs/</c> pages opens a
-/// file or directory that exists, and every anchor in one is a heading of the file it points at, derived as
+/// Every relative link in the root README, the package READMEs, the <c>docs/</c> pages and the
+/// <c>design/</c> pages opens a file or directory that exists, and every anchor in one is a heading of the file it points at, derived as
 /// GitHub derives it. A link to a renamed page is a 404; a link to a renamed heading opens the top
 /// of the page, silently, which is the worse of the two.
 /// </summary>
 public sealed partial class DocumentationLinkTests
 {
     private static readonly Lazy<IReadOnlyList<Link>> Links = new(() =>
-        [.. ReadmeSamples.Readmes().SelectMany(page => RelativeLinks(page, File.ReadAllText(Path.Combine(Repository.Root, page))))]);
+        [.. ReadmeSamples.Readmes().Concat(DesignPages()).SelectMany(page => RelativeLinks(page, File.ReadAllText(Path.Combine(Repository.Root, page))))]);
+
+    /// <summary>The design notes, the decision records and the roadmap under <c>design/</c>: linked like the pages, compiled by nothing.</summary>
+    private static IEnumerable<string> DesignPages() =>
+        Directory.EnumerateFiles(Path.Combine(Repository.Root, "design"), "*.md", SearchOption.AllDirectories)
+                 .Select(path => Path.GetRelativePath(Repository.Root, path).Replace('\\', '/'))
+                 .Order(StringComparer.Ordinal);
 
     public static TheoryData<string> Locations => [.. Links.Value.Select(link => link.Location)];
 
