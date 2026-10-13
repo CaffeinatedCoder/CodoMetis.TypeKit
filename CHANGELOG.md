@@ -99,6 +99,11 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
 - **`CodoMetis.TypeKit.Serilog`**: `Destructure.WithTypeKit()` logs a closed set as what it prints,
   its name or its own `ToString()`, where Serilog destructured it by its properties and logged its
   constant data, `{ Rank: 2, Perk: "…", Name: "Premium", QualifiedName: … }`.
+- **`CodoMetis.TypeKit`**: an option's asynchronous steps, `MapAsync`, `BindAsync` and `TapAsync` over
+  callbacks that return a `Task`, and the continuations of a `Task<Option<T>>`: `MapAsync`,
+  `BindAsync`, `FilterAsync`, `TapAsync` and `ToResultAsync`, so a repository's lookup continues into
+  a `Result` pipeline. Each checks its delegates, and `ToResultAsync` its error, before the option is
+  known, as the `Task<Result<…>>` continuations do.
 
 ### Changed
 

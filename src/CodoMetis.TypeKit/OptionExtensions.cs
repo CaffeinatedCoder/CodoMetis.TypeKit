@@ -272,6 +272,111 @@ public static class Option
         public T? OrNull() => option.TryGetValue(out var value) ? value : null;
     }
 
+    /// <param name="task">An option that is still being produced, such as a repository's lookup.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <remarks>
+    /// The continuations of <c>Task&lt;Result&lt;…&gt;&gt;</c> for an option: every delegate, and an
+    /// error for <c>ToResultAsync</c>, is checked before the option is known, as before a branch is
+    /// picked. A callback that returns a <c>Task</c> is waited for; one that returns a
+    /// <c>ValueTask</c> needs <c>.AsTask()</c> or an <c>async</c> lambda, as for a result.
+    /// </remarks>
+    extension<T>(Task<Option<T>> task) where T : notnull
+    {
+        /// <summary>Transforms the value once the option is known, if there is one.</summary>
+        /// <param name="selector">Called with the value if there is one. It must not return null.</param>
+        /// <typeparam name="TResult">The type of the transformed value.</typeparam>
+        /// <returns>The transformed value, or <c>None</c> without calling <paramref name="selector"/>.</returns>
+        public async Task<Option<TResult>> MapAsync<TResult>(Func<T, TResult> selector) where TResult : notnull
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return (await task.ConfigureAwait(false)).Map(selector);
+        }
+
+        /// <summary>Transforms the value once the option is known, with an asynchronous function.</summary>
+        /// <param name="selector">Called with the value if there is one. Its task must not produce null.</param>
+        /// <typeparam name="TResult">The type of the transformed value.</typeparam>
+        /// <returns>The transformed value, or <c>None</c> without calling <paramref name="selector"/>.</returns>
+        public async Task<Option<TResult>> MapAsync<TResult>(Func<T, Task<TResult>> selector) where TResult : notnull
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return await (await task.ConfigureAwait(false)).MapAsync(selector).ConfigureAwait(false);
+        }
+
+        /// <summary>Chains an operation that may itself produce no value, once the option is known.</summary>
+        /// <param name="selector">Called with the value if there is one.</param>
+        /// <typeparam name="TResult">The type of the chained option's value.</typeparam>
+        /// <returns>The option <paramref name="selector"/> returned, or <c>None</c> without calling it.</returns>
+        public async Task<Option<TResult>> BindAsync<TResult>(Func<T, Option<TResult>> selector) where TResult : notnull
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return (await task.ConfigureAwait(false)).Bind(selector);
+        }
+
+        /// <summary>Chains an asynchronous operation that may itself produce no value, once the option is known.</summary>
+        /// <param name="selector">Called with the value if there is one.</param>
+        /// <typeparam name="TResult">The type of the chained option's value.</typeparam>
+        /// <returns>The option <paramref name="selector"/> produced, or <c>None</c> without calling it.</returns>
+        public async Task<Option<TResult>> BindAsync<TResult>(Func<T, Task<Option<TResult>>> selector) where TResult : notnull
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return await (await task.ConfigureAwait(false)).BindAsync(selector).ConfigureAwait(false);
+        }
+
+        /// <summary>Keeps the value once the option is known, only if it satisfies <paramref name="predicate"/>.</summary>
+        /// <param name="predicate">Called with the value if there is one.</param>
+        /// <returns>The option if it holds a value that passes, otherwise <c>None</c>.</returns>
+        public async Task<Option<T>> FilterAsync(Func<T, bool> predicate)
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(predicate);
+
+            return (await task.ConfigureAwait(false)).Filter(predicate);
+        }
+
+        /// <summary>Runs a side effect on the value once the option is known, if there is one.</summary>
+        /// <param name="action">Called with the value if there is one.</param>
+        /// <returns>The option, unchanged.</returns>
+        public async Task<Option<T>> TapAsync(Action<T> action)
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(action);
+
+            return (await task.ConfigureAwait(false)).Tap(action);
+        }
+
+        /// <summary>Runs an asynchronous side effect on the value once the option is known, if there is one.</summary>
+        /// <param name="action">Called with the value if there is one.</param>
+        /// <returns>The option, unchanged, once <paramref name="action"/> has completed.</returns>
+        public async Task<Option<T>> TapAsync(Func<T, Task> action)
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(action);
+
+            return await (await task.ConfigureAwait(false)).TapAsync(action).ConfigureAwait(false);
+        }
+
+        /// <summary>Turns absence into <paramref name="error"/> once the option is known: the step from a lookup into a <c>Result</c> pipeline.</summary>
+        /// <param name="error">The error for <c>None</c>. Never null.</param>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success with the value, or <paramref name="error"/>.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="error"/> is null, whether or not the option has a value.</exception>
+        public async Task<Result<T, TError>> ToResultAsync<TError>(TError error) where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            if (error is null) throw ThrowHelper.NullContent(nameof(error));
+
+            return (await task.ConfigureAwait(false)).ToResult(error);
+        }
+    }
+
     /// <param name="source">The sequence.</param>
     /// <typeparam name="T">The type of the elements.</typeparam>
     extension<T>(IEnumerable<T> source) where T : notnull

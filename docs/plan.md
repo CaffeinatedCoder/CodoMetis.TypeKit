@@ -605,7 +605,8 @@ Each phase ends green, and its guards have been proven by seeding the defect
        reflection binder now binds a set; the binder's source generator reads no type converter,
        dotnet/runtime#83599); Serilog for closed sets ✅ (measured first: `{@Tier}` logged
        `ProbeTier { Rank: 2, Perk: "Priority support.", … }`); continuations of a
-       `Task<Option<T>>`; `Transpose`, `SingleOrNone` and `ElementAtOrNone`.
+       `Task<Option<T>>` ✅ (the `Task<Result>` set's shapes: no `OrAsync`, no `MatchAsync`, no
+       `ValueTask` receiver); `Transpose`, `SingleOrNone` and `ElementAtOrNone`.
     8. **The fault responses**, after [spikes/FaultResponses](../spikes/FaultResponses/README.md),
        last, since they read a smart enum's kind.
     9. **The breaks**: decision 34's promotions, the two rules at Error, and the baseline's verdict

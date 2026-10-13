@@ -57,6 +57,19 @@ compile error, since a query has no last element until it is ordered.
 absence into an error. `ToString()` never
 prints the content, so an option is safe to log; the debugger shows it.
 
+A lookup that is still running is a `Task<Option<T>>`, and continues as a pending result does:
+
+```csharp
+Result<Customer, SignInFault> active = await repository.FindByEmailAsync(email)   // Task<Option<Customer>>
+    .FilterAsync(c => c.IsActive)
+    .TapAsync(c => audit.SeenAsync(c))                                             // waited for
+    .ToResultAsync(SignInFault.Unknown);                                           // into a Result pipeline
+```
+
+`MapAsync`, `BindAsync`, `FilterAsync`, `TapAsync` and `ToResultAsync` continue a pending option, and
+an option has `MapAsync`, `BindAsync` and `TapAsync` over callbacks that return a `Task`. Each checks
+its delegates, and `ToResultAsync` its error, before the option is known.
+
 ## Result&lt;T, TError&gt; and Result&lt;TError&gt;
 
 The outcome of an operation: a value or an error of your own type, or for a command that produces

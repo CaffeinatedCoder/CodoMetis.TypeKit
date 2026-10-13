@@ -39,6 +39,10 @@ public sealed class NullDelegateTests
     // A pending result that fails: only a delegate checked before the task is awaited reports itself
     // rather than the task's own exception.
     private static Task<Result<int, string>> PendingFault        => Task.FromException<Result<int, string>>(new TimeoutException());
+
+    private static Task<Option<int>> PendingSome        => Task.FromResult(Some);
+    private static Task<Option<int>> PendingNone        => Task.FromResult(None);
+    private static Task<Option<int>> PendingOptionFault => Task.FromException<Option<int>>(new TimeoutException());
     private static Task<Result<string>>      PendingCommandFault => Task.FromException<Result<string>>(new TimeoutException());
 
     private static readonly Dictionary<string, Func<object?>[]> Cases = new()
@@ -49,6 +53,20 @@ public sealed class NullDelegateTests
         ["Option<T>.Map(Func<T, TResult>): selector"]                      = [() => Some.Map(Null<Func<int, int>>()), () => None.Map(Null<Func<int, int>>())],
         ["Option<T>.Tap(Action<T>): action"]                          = [() => Some.Tap(Null<Action<int>>()), () => None.Tap(Null<Action<int>>())],
         ["Option<T>.Filter(Func<T, Boolean>): predicate"]                 = [() => Some.Filter(Null<Func<int, bool>>()), () => None.Filter(Null<Func<int, bool>>())],
+
+        ["Option<T>.MapAsync(Func<T, Task<TResult>>): selector"]               = [() => Some.MapAsync(Null<Func<int, Task<int>>>()), () => None.MapAsync(Null<Func<int, Task<int>>>())],
+        ["Option<T>.BindAsync(Func<T, Task<Option<TResult>>>): selector"]      = [() => Some.BindAsync(Null<Func<int, Task<Option<int>>>>()), () => None.BindAsync(Null<Func<int, Task<Option<int>>>>())],
+        ["Option<T>.TapAsync(Func<T, Task>): action"]                          = [() => Some.TapAsync(Null<Func<int, Task>>()), () => None.TapAsync(Null<Func<int, Task>>())],
+
+        ["Option.MapAsync(Task<Option<T>>, Func<T, TResult>): selector"]       = [() => PendingSome.MapAsync(Null<Func<int, int>>()), () => PendingNone.MapAsync(Null<Func<int, int>>()), () => PendingOptionFault.MapAsync(Null<Func<int, int>>())],
+        ["Option.MapAsync(Task<Option<T>>, Func<T, Task<TResult>>): selector"] = [() => PendingSome.MapAsync(Null<Func<int, Task<int>>>()), () => PendingNone.MapAsync(Null<Func<int, Task<int>>>()), () => PendingOptionFault.MapAsync(Null<Func<int, Task<int>>>())],
+        ["Option.BindAsync(Task<Option<T>>, Func<T, Option<TResult>>): selector"] =
+            [() => PendingSome.BindAsync(Null<Func<int, Option<int>>>()), () => PendingNone.BindAsync(Null<Func<int, Option<int>>>()), () => PendingOptionFault.BindAsync(Null<Func<int, Option<int>>>())],
+        ["Option.BindAsync(Task<Option<T>>, Func<T, Task<Option<TResult>>>): selector"] =
+            [() => PendingSome.BindAsync(Null<Func<int, Task<Option<int>>>>()), () => PendingNone.BindAsync(Null<Func<int, Task<Option<int>>>>()), () => PendingOptionFault.BindAsync(Null<Func<int, Task<Option<int>>>>())],
+        ["Option.FilterAsync(Task<Option<T>>, Func<T, Boolean>): predicate"] = [() => PendingSome.FilterAsync(Null<Func<int, bool>>()), () => PendingNone.FilterAsync(Null<Func<int, bool>>()), () => PendingOptionFault.FilterAsync(Null<Func<int, bool>>())],
+        ["Option.TapAsync(Task<Option<T>>, Action<T>): action"]     = [() => PendingSome.TapAsync(Null<Action<int>>()), () => PendingNone.TapAsync(Null<Action<int>>()), () => PendingOptionFault.TapAsync(Null<Action<int>>())],
+        ["Option.TapAsync(Task<Option<T>>, Func<T, Task>): action"] = [() => PendingSome.TapAsync(Null<Func<int, Task>>()), () => PendingNone.TapAsync(Null<Func<int, Task>>()), () => PendingOptionFault.TapAsync(Null<Func<int, Task>>())],
 
         ["Option.Select(Option<T>, Func<T, TResult>): selector"]               = [() => Some.Select(Null<Func<int, int>>()), () => None.Select(Null<Func<int, int>>())],
         ["Option.SelectMany(Option<T>, Func<T, Option<TResult>>): selector"]   = [() => Some.SelectMany(Null<Func<int, Option<int>>>()), () => None.SelectMany(Null<Func<int, Option<int>>>())],
