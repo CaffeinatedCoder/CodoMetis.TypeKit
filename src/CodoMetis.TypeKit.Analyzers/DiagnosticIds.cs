@@ -24,7 +24,7 @@ internal static class DiagnosticIds
 
     public const string DefaultProducingCall = "CMTK0009";
 
-    // CMTK0010 is reserved for the type-argument constraint rule (docs/plan.md §10).
+    public const string TypeArgumentConstraint = "CMTK0010";
 
     public const string RequiredParameterlessConstructor = "CMTK0011";
 

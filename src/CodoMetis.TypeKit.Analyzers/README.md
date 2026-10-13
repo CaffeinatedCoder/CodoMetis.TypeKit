@@ -21,6 +21,7 @@ appears to: an instance that passed no factory, or a value object that was never
 | CMTK0007 | Info | `FromKnownGood` given a value that comes straight from a parameter. |
 | CMTK0008 | Warning | The wrapped values of two different value objects compared, `order.CustomerId.Value == product.Id.Value`, or the two value objects themselves through `Equals(object)`. |
 | CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. |
+| CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute, `[Abstract]`, `[Sealed]`, `[Record]` or `[Concrete]`, at any closed use: a base type, a member, a parameter, a local, a `typeof`, a call, written or inferred. A type parameter forwarded without the attribute is a breach too. |
 | CMTK0011 | Error | A concrete type that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. The code fix writes or changes the constructor. |
 
 The ids are public contract and never change meaning. The generators' own build errors,
@@ -308,6 +309,37 @@ asynchronous forms, it is the type the task returns. An overload given a default
 element type whose default is null or an ordinary value, are not reported. EF Core's forms are
 recognised in any project that references EF Core. A warning, since code that checks the sequence is not empty first is correct and the rule cannot tell.
 
+## CMTK0010
+
+C# has `where T : class`, `struct`, `new()` and a base type, but no `where T : abstract`, `sealed`
+or `record`. A generic whose argument must be an abstract record, the command family of an
+aggregate, gets no help from the compiler, and the closed type that breaks it compiles. Four
+attributes on a type parameter say what C# cannot, and this rule reports the use that breaks it,
+at the argument where one is written and at the call where the arguments are inferred:
+
+```csharp
+public abstract class Decider<[Abstract] TCommand, [Record] TEvent> { }
+
+public sealed record PlaceOrder : Command;
+
+public sealed class OrderDecider : Decider<PlaceOrder, OrderPlaced> { }   // CMTK0010: PlaceOrder is not abstract
+
+public abstract class Leaky<TCommand> : Decider<TCommand, OrderPlaced> { }           // CMTK0010: TCommand does not carry [Abstract]
+public abstract class Sound<[Abstract] TCommand> : Decider<TCommand, OrderPlaced> { }
+```
+
+| Attribute | Accepts | A forwarding type parameter satisfies it when |
+|---|---|---|
+| `[Abstract]` | an abstract class or record; not an interface | it carries `[Abstract]` |
+| `[Sealed]` | a sealed class or record, a struct, an enum | it carries `[Sealed]` or is constrained to `struct` |
+| `[Record]` | a record class or record struct | it carries `[Record]` |
+| `[Concrete]` | a class, record or struct that is not abstract, static or an interface; no constructor is demanded, unlike `new()` | it carries `[Concrete]` or is constrained to `struct` or `new()` |
+
+A type parameter given as the argument must carry the attribute itself, or the requirement would end
+at the first forwarding parameter and `Sound<PlaceOrder>` would never be reported. The open generic
+inside its own body and an unbound `typeof(Decider<,>)` are never reported. Reflection,
+`MakeGenericType`, is out of reach, and the attributes carry no run-time check.
+
 ## CMTK0011
 
 A type the host creates by reflection, an endpoint, a module, an entity configuration, needs a
@@ -346,8 +378,9 @@ for `.razor` and `.cshtml` files, not `[*.cs]`, not `[*.razor]`, not even `[*]`.
 there too, put the line in a `.globalconfig` file, which applies to every file of the project.
 
 The errors are the rules where the code is wrong whatever surrounds it: a `default` written out
-(CMTK0001), a value object nothing generates (CMTK0002), validation bypassed (CMTK0004), and a
-constructor a host will look for and not find (CMTK0011). A
+(CMTK0001), a value object nothing generates (CMTK0002), validation bypassed (CMTK0004), a type
+argument that breaks what its parameter declares (CMTK0010), and a constructor a host will look for
+and not find (CMTK0011). A
 warning is what gets ignored, so these fail the build. The others are warnings, or for CMTK0007 Info,
 because correct code can look the same: an array filled in a loop straight after it is created
 (CMTK0005), a member a framework sets (CMTK0006), a sequence known not to be empty (CMTK0009), a

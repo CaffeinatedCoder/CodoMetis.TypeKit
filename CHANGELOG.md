@@ -23,6 +23,12 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   task, so an exception thrown after its first `await` is the error too. An `OperationCanceledException`
   passes through every overload, a delegate that returns a `Task` given to `Catch` is a compile error
   that names `CatchAsync`, and a delegate that returns null throws as `Result.Success(null)` does.
+- **`CodoMetis.TypeKit.Analyzers`**: CMTK0010, the constraints a type parameter cannot declare.
+  `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` (new in the base package) on a type parameter
+  say what C# has no `where` for, and the rule reports a type argument that breaks it at any closed
+  use: a base type, a member, a parameter, a local, a `typeof`, a call with its arguments written
+  or inferred. A type parameter forwarded without the attribute is a breach too, so the requirement
+  follows the generic chain; `struct` proves `[Sealed]` and `[Concrete]`, `new()` proves `[Concrete]`.
 - **`CodoMetis.TypeKit.Analyzers`**: CMTK0011, with the package's first code fix. A type marked
   `[RequireParameterlessConstructor]` (new in the base package, with `ConstructorAccessibility`)
   requires every concrete type that derives from or implements it, directly or through another, to

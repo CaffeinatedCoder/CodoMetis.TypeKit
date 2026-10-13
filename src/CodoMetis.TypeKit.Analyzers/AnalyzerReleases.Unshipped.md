@@ -5,4 +5,5 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------------------------------------------------------------
+CMTK0010 | Usage | Error | TypeArgumentConstraintAnalyzer, a type argument that breaks [Abstract], [Sealed], [Record] or [Concrete] on its parameter
 CMTK0011 | Usage | Error | RequiredParameterlessConstructorAnalyzer, a concrete type under [RequireParameterlessConstructor] without the constructor it requires

@@ -24,6 +24,15 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// go silent and fail.
 /// </para>
 /// </remarks>
+/// <summary>What a type parameter can demand of its argument by attribute; the names are the attributes'.</summary>
+internal enum TypeArgumentConstraint
+{
+    Abstract,
+    Sealed,
+    Record,
+    Concrete,
+}
+
 internal sealed class TypeKitSymbols
 {
     /// <summary>
@@ -39,6 +48,7 @@ internal sealed class TypeKitSymbols
     private readonly ImmutableArray<INamedTypeSymbol> _validatedMarkers;
     private readonly ImmutableArray<INamedTypeSymbol> _requireCustomInitialization;
     private readonly ImmutableArray<INamedTypeSymbol> _requireParameterlessConstructor;
+    private readonly ImmutableArray<(TypeArgumentConstraint Kind, INamedTypeSymbol Attribute)> _constraintAttributes;
     private readonly ImmutableArray<INamedTypeSymbol> _materializers;
     private readonly ImmutableArray<INamedTypeSymbol> _converters;
     private readonly ImmutableArray<INamedTypeSymbol> _outcomes;
@@ -59,6 +69,7 @@ internal sealed class TypeKitSymbols
         ImmutableArray<INamedTypeSymbol> validatedMarkers,
         ImmutableArray<INamedTypeSymbol> requireCustomInitialization,
         ImmutableArray<INamedTypeSymbol> requireParameterlessConstructor,
+        ImmutableArray<(TypeArgumentConstraint Kind, INamedTypeSymbol Attribute)> constraintAttributes,
         ImmutableArray<INamedTypeSymbol> materializers,
         ImmutableArray<INamedTypeSymbol> converters,
         ImmutableArray<INamedTypeSymbol> outcomes,
@@ -72,6 +83,7 @@ internal sealed class TypeKitSymbols
         _validatedMarkers            = validatedMarkers;
         _requireCustomInitialization = requireCustomInitialization;
         _requireParameterlessConstructor = requireParameterlessConstructor;
+        _constraintAttributes = constraintAttributes;
         _materializers               = materializers;
         _converters                  = converters;
         _resultClasses               = resultClasses;
@@ -98,6 +110,10 @@ internal sealed class TypeKitSymbols
         var validatedMarkers = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.ValueObjects.IValidatedValue`3");
         var attributes       = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.RequireCustomInitializationAttribute");
         var constructors     = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.RequireParameterlessConstructorAttribute");
+        var constraints      = ImmutableArray.CreateRange(
+            from kind in new[] { TypeArgumentConstraint.Abstract, TypeArgumentConstraint.Sealed, TypeArgumentConstraint.Record, TypeArgumentConstraint.Concrete }
+            from attribute in compilation.GetTypesByMetadataName($"CodoMetis.TypeKit.{kind}Attribute")
+            select (kind, attribute));
         var materializers    = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.ValueObjects.IValueObjectMaterializer`2");
         var converters       = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.EntityFrameworkCore.ValueObjectConverter`2");
         var outcomes         = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.Result`1")
@@ -106,12 +122,12 @@ internal sealed class TypeKitSymbols
         var resultClasses    = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.Result");
         var optionClasses    = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.Option");
 
-        if (valueMarkers.IsEmpty && validatedMarkers.IsEmpty && attributes.IsEmpty && constructors.IsEmpty && materializers.IsEmpty) return null;
+        if (valueMarkers.IsEmpty && validatedMarkers.IsEmpty && attributes.IsEmpty && constructors.IsEmpty && constraints.IsEmpty && materializers.IsEmpty) return null;
 
         var referencesGenerators = compilation.ReferencedAssemblyNames.Any(identity =>
             string.Equals(identity.Name, GeneratorsAssembly, StringComparison.OrdinalIgnoreCase));
 
-        return new TypeKitSymbols(valueMarkers, validatedMarkers, attributes, constructors, materializers, converters, outcomes, resultClasses, optionClasses, referencesGenerators);
+        return new TypeKitSymbols(valueMarkers, validatedMarkers, attributes, constructors, constraints, materializers, converters, outcomes, resultClasses, optionClasses, referencesGenerators);
     }
 
     /// <summary>
@@ -364,6 +380,21 @@ internal sealed class TypeKitSymbols
         type.GetAttributes()
             .FirstOrDefault(attribute => attribute.AttributeClass is { } attributeClass
                                       && _requireCustomInitialization.Contains(attributeClass, SymbolEqualityComparer.Default));
+
+    /// <summary>Whether the compilation can see any of <c>[Abstract]</c>, <c>[Sealed]</c>, <c>[Record]</c> and <c>[Concrete]</c>.</summary>
+    public bool HasTypeArgumentConstraints => !_constraintAttributes.IsEmpty;
+
+    /// <summary>The constraints a type parameter declares by attribute, in attribute order.</summary>
+    public IEnumerable<TypeArgumentConstraint> ConstraintsOn(ITypeParameterSymbol parameter)
+    {
+        foreach (var attribute in parameter.GetAttributes())
+        {
+            foreach (var (kind, attributeClass) in _constraintAttributes)
+            {
+                if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, attributeClass)) yield return kind;
+            }
+        }
+    }
 
     /// <summary>Whether the compilation can see <c>[RequireParameterlessConstructor]</c> at all.</summary>
     public bool HasRequireParameterlessConstructor => !_requireParameterlessConstructor.IsEmpty;
