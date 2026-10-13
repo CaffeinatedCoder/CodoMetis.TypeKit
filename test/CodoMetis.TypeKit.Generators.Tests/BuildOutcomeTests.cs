@@ -162,7 +162,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("SetWithMemberNamedParse.Parse", "has the name of a member the generators introduce")]
     [InlineData("SetWithMemberNamedAll.All", "has the name of a member the generators introduce")]
     [InlineData("SetWithCasedMembers.open", "differs from 'SetWithCasedMembers.Open' only in case, which Match's parameters and TryParse(name, ignoreCase: true) cannot tell apart")]
-    [InlineData("SetWithCaseVariants.EXPRESS", "differs from 'SetWithCaseVariants.Express' only in case, which Match's parameters and TryParse(name, ignoreCase: true) cannot tell apart")]
+    [InlineData("SetWithCaseVariants.EXPRESS", "differs from 'SetWithCaseVariants.Express' only in case, which TryParse(name, ignoreCase: true) cannot tell apart")]
     public void A_member_name_the_generators_take_is_refused_with_the_reason(string member, string reason) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1021" && error.Message.StartsWith($"'{member}' {reason}, so ") && error.Message.Contains("rename the member"), consumer.Output);
 
@@ -176,6 +176,22 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("SetWithJsonConverterAttribute", "the attribute JsonConverter")]
     public void What_the_generators_implement_or_attach_is_refused_by_name_on_a_set(string type, string declared) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(declared), consumer.Output);
+
+    /// <summary>
+    /// A member whose name starts with the Kelvin sign (U+212A) and one that starts with K are two names
+    /// to <c>TryParse(name, ignoreCase: true)</c>, which ignores case ordinally, and one to <c>Match</c>,
+    /// whose parameters lower-case the first letter: both are <c>kelvin</c>, and the set failed inside
+    /// the generated code (LAMA0611, CS0100). CMTK1021 groups by each transform.
+    /// </summary>
+    [Fact]
+    public void A_member_whose_Match_parameter_another_has_is_refused_with_the_reason()
+    {
+        var kelvinSign = ((char)0x212A).ToString();
+
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1021"
+                                            && error.Message.StartsWith($"'SetWithKelvinSign.{kelvinSign}elvin' gives Match the parameter name 'kelvin' that 'SetWithKelvinSign.Kelvin' gives it too, so ")
+                                            && error.Message.Contains("rename the member"), consumer.Output);
+    }
 
     [Fact]
     public void A_member_is_never_told_to_be_removed_as_a_hand_written_generated_member() =>
@@ -1363,6 +1379,10 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public sealed partial class SetWithInternalMember : IClosedSet<SetWithInternalMember> { public static readonly SetWithInternalMember A = new(); internal static readonly SetWithInternalMember Draft = new(); }
 
             public sealed partial class SetWithCaseVariants : IClosedSet<SetWithCaseVariants> { public static readonly SetWithCaseVariants Express = new(); public static readonly SetWithCaseVariants EXPRESS = new(); }
+
+            // The second member's first letter is the Kelvin sign (U+212A), written as an escape: ignoring
+            // case ordinally tells it from K, and Match's parameters, lower-cased, do not (LAMA0611, CS0100).
+            public sealed partial class SetWithKelvinSign : IClosedSet<SetWithKelvinSign> { public static readonly SetWithKelvinSign Kelvin = new(); public static readonly SetWithKelvinSign \u212Aelvin = new(); }
 
             public sealed partial class SetWithIgnoreCaseTryParse : IClosedSet<SetWithIgnoreCaseTryParse> { public static readonly SetWithIgnoreCaseTryParse A = new(); public static bool TryParse(string? name, bool ignoreCase, out SetWithIgnoreCaseTryParse? member) { member = A; return true; } }
 

@@ -28,7 +28,9 @@ The consumer's guide is [docs/closed-sets.md](../docs/closed-sets.md).
   the EF column, binding and `IParsable` read the name as stored or sent; `ignoreCase: true` is an
   overload the caller opts into. Two members whose names differ only in case are refused (CMTK1021),
   since they are one name to that overload and, where the first letter differs, one `Match`
-  parameter.
+  parameter. CMTK1021 compares by each transform itself, ordinal ignoring case for the overload and
+  the parameters' own lower-casing of the first letter for `Match`: they differ for the Kelvin sign
+  (U+212A), which only the second takes for `K` (decided 2026-10-13, after a LAMA0611).
 - **No refusal quotes the input** ([decision 27](adr/0027-no-refusal-quotes-input.md)): an unknown
   name is a `FormatException` or a `JsonException` naming the set, and its message links the
   README's entry ([decision 37](adr/0037-refusal-s-message-landing-page.md)).

@@ -64,8 +64,10 @@ internal sealed partial class ClosedSetAspect : TypeAspect
 
         // A member named as a generated member failed the aspect (LAMA0506 beside Match, Parse and
         // TryParse, LAMA0611 beside ToString). Two members whose names differ only in case are one
-        // name to TryParse(name, ignoreCase: true), and where the difference is the first letter's
-        // they gave Match one parameter name twice (LAMA0611, CS0100).
+        // name to TryParse(name, ignoreCase: true), and two whose Match parameters are one name gave
+        // Match one parameter twice (LAMA0611, CS0100). Each is found by the transform itself, not by
+        // one standing in for both: ignoring case ordinally left 'Kelvin' and a Kelvin sign's
+        // 'Kelvin' (U+212A) apart, while the parameters' lower-casing made both 'kelvin'.
         var generatedNames = ClosedSetTypes.GeneratedNames(target);
 
         // A set named as a generated member failed inside the generated code (LAMA0611, CS0542: a
@@ -74,11 +76,8 @@ internal sealed partial class ClosedSetAspect : TypeAspect
 
         foreach (var member in members.Where(member => generatedNames.Contains(member.Name)))
             problems.Add(ClosedSetMemberNameTaken.WithArguments((target, member.Name, "has the name of a member the generators introduce")));
-        foreach (var shared in members.GroupBy(member => member.Name, StringComparer.OrdinalIgnoreCase).Where(group => group.Count() > 1))
-        {
-            foreach (var member in shared.Skip(1))
-                problems.Add(ClosedSetMemberNameTaken.WithArguments((target, member.Name, $"differs from '{target.Name}.{shared.First().Name}' only in case, which Match's parameters and TryParse(name, ignoreCase: true) cannot tell apart")));
-        }
+        foreach (var (member, earlier, reason) in ClosedSetTypes.CaseCollisions(members))
+            problems.Add(ClosedSetMemberNameTaken.WithArguments((target, member.Name, reason.Replace("{0}", $"'{target.Name}.{earlier.Name}'"))));
 
         // A hand-written member the generators introduce failed the aspect with a Metalama error that
         // names no fix; a hand-written ToString() is the seam and is kept instead.

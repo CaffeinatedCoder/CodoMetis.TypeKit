@@ -42,6 +42,37 @@ internal static class ClosedSetTypes
     public static string ParameterName(IField member) => char.ToLowerInvariant(member.Name[0]) + member.Name[1..];
 
     /// <summary>
+    /// Each member that collides with one declared before it, with that one and why: by
+    /// <c>TryParse(name, ignoreCase: true)</c>'s comparison (<see cref="StringComparison.OrdinalIgnoreCase"/>),
+    /// by <see cref="ParameterName"/>, the transform that names <c>Match</c>'s parameters, or by both.
+    /// The reason holds <c>{0}</c> where the earlier member is named. The two transforms differ: the
+    /// Kelvin sign (U+212A) lower-cases to <c>k</c>, so it names the same parameter as <c>K</c>, while
+    /// ignoring case ordinally keeps the two apart (it upper-cases, and the sign has no upper case of
+    /// its own).
+    /// </summary>
+    public static IEnumerable<(IField Member, IField Earlier, string Reason)> CaseCollisions(IReadOnlyList<IField> members)
+    {
+        for (var index = 1; index < members.Count; index++)
+        {
+            var member = members[index];
+
+            foreach (var earlier in members.Take(index))
+            {
+                var parse = string.Equals(member.Name, earlier.Name, StringComparison.OrdinalIgnoreCase);
+                var match = string.Equals(ParameterName(member), ParameterName(earlier), StringComparison.Ordinal);
+
+                if (!parse && !match) continue;
+
+                yield return (member, earlier,
+                    parse && match ? "differs from {0} only in case, which Match's parameters and TryParse(name, ignoreCase: true) cannot tell apart"
+                    : parse ? "differs from {0} only in case, which TryParse(name, ignoreCase: true) cannot tell apart"
+                    : $"gives Match the parameter name '{ParameterName(member)}' that {{0}} gives it too");
+                break;
+            }
+        }
+    }
+
+    /// <summary>
     /// Whether <paramref name="member"/> is initialized with <c>new</c> of the set where it is declared,
     /// and with nothing else: <c>new()</c>, <c>new(1, null)</c>, <c>new OrderStatus()</c>, each with an
     /// optional object initializer. Not <c>= Open</c>, which makes one instance two members whose names
