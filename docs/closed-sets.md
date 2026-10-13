@@ -136,6 +136,10 @@ turns on, reads no type converter: there, bind the name as a `string` and `Parse
 [Native AOT](native-aot.md#configuration-binding) shows for a value object. A set also implements
 `IParsable<TSelf>`, explicitly, so generic code parses one through `T.Parse`.
 
+A value object can wrap a set, `IValue<Shipping>`, declared in the same project or another: it
+parses, converts and serializes by the member's name, as the set does, and a validated one applies its
+`Create` to the member.
+
 ## In logs
 
 `ToString()` is the name, so Microsoft.Extensions.Logging logs a member as `Express`. Serilog
@@ -174,11 +178,6 @@ A declaration they cannot complete fails the build, naming it; the generators'
 | has a member named as a generated member, or two whose names differ only in case (`Open`, `open`), which collide in `Match`'s parameters and in `TryParse(name, ignoreCase: true)`, or is itself named as a generated member (`Name`, `Match`): a member cannot have the name of its type | CMTK1021 |
 | writes a generated member by hand, `ToString()` apart | CMTK1011 |
 | is compiled without CodoMetis.TypeKit.Generators | CMTK0002 |
-
-A value object that wraps a set declared in the same project is refused too (CMTK1005): the set's
-parsing and type converter are generated after the value object's, which would be generated without
-its own. Declare the set in a referenced project, where a value object over it is generated in full,
-or wrap the member's name.
 
 The set's own code can still call its private constructor beside its members, and such an instance
 has no name: `Name`, `ToString()`, `Match`, JSON and the column throw for it, rather than carry a

@@ -23,8 +23,7 @@ namespace CodoMetis.TypeKit.Generators;
 /// </para>
 /// <para>
 /// The aspect is handed what owns its companion class's name, and whether what it wraps is a value
-/// object or a closed set of the same project (<see cref="ValueObjectTypes.WrappedTypeRefusal"/>).
-/// Both read types other than its
+/// object (<see cref="ValueObjectTypes.WrappedValueObjectRefusal"/>). Both read types other than its
 /// target, so they are computed here, where nothing has been introduced yet, rather than in an
 /// aspect. The factory below still runs in parallel on one code model, so they find a type by
 /// enumerating a collection, never by <c>OfName</c>, whose index is not safe for parallel callers
@@ -39,7 +38,7 @@ internal sealed class ValueObjectFabric : TransitiveProjectFabric
                .Where(ValueObjectTypes.IsValueObject)
                .AddAspect(type => new ValueObjectAspect(
                               CompanionClass.NameOwner(type),
-                              ValueObjectTypes.WrappedTypeRefusal(type)));
+                              ValueObjectTypes.WrappedValueObjectRefusal(type)));
 
         // An abstract type gets no aspect, so it is refused here, where it is selected.
         amender.SelectTypes(includeNestedTypes: true)

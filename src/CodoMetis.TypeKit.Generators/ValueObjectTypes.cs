@@ -50,35 +50,9 @@ internal static class ValueObjectTypes
      && Markers(type).Count > 0;
 
     /// <summary>
-    /// Why <paramref name="valueObject"/> cannot be generated over what it wraps, read from types
-    /// other than itself: a value object (<see cref="WrappedValueObjectRefusal"/>) or a closed set of
-    /// the same project (<see cref="SameProjectClosedSetRefusal"/>). <see langword="null"/> when it
-    /// wraps neither. Called from the fabric only, since it reads types other than the aspect's target
-    /// (<see cref="ValueObjectFabric"/>).
-    /// </summary>
-    public static string? WrappedTypeRefusal(INamedType valueObject) =>
-        WrappedValueObjectRefusal(valueObject) ?? SameProjectClosedSetRefusal(valueObject);
-
-    /// <summary>
-    /// Why <paramref name="valueObject"/> cannot be generated over the closed set it wraps, or
-    /// <see langword="null"/> when what it wraps is no closed set declared in the same project.
-    /// </summary>
-    /// <remarks>
-    /// The closed-set aspect runs after the value-object aspects (<c>AspectOrder</c>), and they do not
-    /// see what it introduces: over a set of its own project a value object was generated without
-    /// <c>Parse</c>, <c>TryParse</c>, <c>IParsable</c> and its own type converter, while its JSON worked,
-    /// and over the same set in a referenced project it got all of them (measured 2026-10-13). A
-    /// surface that follows the project layout is refused, as for a value object over a value object.
-    /// </remarks>
-    private static string? SameProjectClosedSetRefusal(INamedType valueObject) =>
-        WrappedNamedType(valueObject) is { } set && ClosedSetTypes.IsClosedSet(set) && !set.DeclaringAssembly.IsExternal
-            ? $"it wraps '{set.ToDisplayString()}', a closed set declared in the same project, whose parsing and type converter are generated after the value object's and would be missing from it; "
-            + "declare the set in a referenced project, or wrap its name ('string') instead"
-            : null;
-
-    /// <summary>
     /// Why <paramref name="valueObject"/> cannot be generated over what it wraps, or
-    /// <see langword="null"/> when that is not a value object.
+    /// <see langword="null"/> when that is not a value object. Called from the fabric only, since it
+    /// reads types other than the aspect's target (<see cref="ValueObjectFabric"/>).
     /// </summary>
     /// <remarks>
     /// <para>
@@ -97,7 +71,7 @@ internal static class ValueObjectTypes
     /// <c>Create</c>.
     /// </para>
     /// </remarks>
-    private static string? WrappedValueObjectRefusal(INamedType valueObject)
+    public static string? WrappedValueObjectRefusal(INamedType valueObject)
     {
         List<INamedType> chain = [valueObject];
         var next = WrappedNamedType(valueObject);

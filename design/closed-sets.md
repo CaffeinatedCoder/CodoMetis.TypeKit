@@ -2,7 +2,7 @@
 
 A closed set is a `sealed partial class` implementing `IClosedSet<TSelf>` (or `IFaultSet<TSelf>`),
 whose members are its `public static readonly` fields of its own type. `ClosedSetAspect`, applied
-by the same transitive fabric as the value-object aspects and last in `AspectOrder`, generates the
+by the same transitive fabric as the value-object aspects and first in `AspectOrder`, generates the
 rest. Measured in [spikes/ClosedSets](../spikes/ClosedSets/README.md); shipped in 2.0.0
 ([decision 42](adr/0042-2-0-0-next-release-bundles.md), [decision 44](adr/0044-2-0-0-net10-0-metalama.md)).
 The consumer's guide is [docs/closed-sets.md](../docs/closed-sets.md).
@@ -49,11 +49,15 @@ CMTK1013 to CMTK1021, all Errors, each reported on the declaration it names; the
 fixes is in the [Generators README](../src/CodoMetis.TypeKit.Generators/README.md). A set the aspect
 cannot complete is never left half-generated.
 
-A value object over a set declared in the same project is CMTK1005
-([decision 60](adr/0060-value-object-over-same-project-closed-set-refused.md)): `ClosedSetAspect` runs
-after the value-object aspects, which do not see the set's `Parse`, `IParsable` and type converter, so
-the value object was generated without its own. Over a set of a referenced project it is generated in
-full (`ClosedSetTests`).
+## Wrapped by a value object
+
+A value object over a set, `IValue<OrderStatus>`, is generated in full wherever the set is declared
+([decision 60](adr/0060-value-object-over-closed-set-generated-in-full.md)): `ClosedSetAspect` runs
+first, so the value-object aspects see the set's `IParsable`, `Parse` and `[TypeConverter]` and build
+the value object's parsing and type converter on them. Last, it ran after them, and over a set of the
+same project the value object had no parsing and the base `TypeConverter`. Held by
+`ClosedSetWrappingTests` (a struct, a record class, a nested set, a validated one, and a set of a
+referenced project) and by CMTK1011 still refusing a hand-written `Parse` there.
 
 ## Open
 

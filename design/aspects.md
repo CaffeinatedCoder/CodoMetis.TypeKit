@@ -15,7 +15,7 @@
   marker), CMTK1004 (a validated marker whose first type argument is another type), CMTK1005 (a
   generic value object, one that derives from another value object, a wrapped type that is not
   a class, struct or enum, or one that is a value object: itself, one that reaches it again, or
-  any other, or a closed set of the same project, see below), CMTK1006 (a record class that is not `sealed`: a derived record compares
+  any other, see below), CMTK1006 (a record class that is not `sealed`: a derived record compares
   equal only to its own type, which is not value equality), CMTK1007 (the name of the
   `GetValue`/`ValueOrNull` class is taken, see below), CMTK1008 (a comparison member beside the
   seam, see below), CMTK1009 (a hand-written constructor, see below), CMTK1022 (an abstract type,
@@ -199,12 +199,13 @@
     one's rules in its `Create`. Refused rather than made to work: a surface that follows the
     project layout is the silent failure this repo exists to prevent, and lifting a refusal later
     breaks nobody, while adding one after 1.0.0 would.
-  - **A closed set of the same project** (decided 2026-10-13,
-    [decision 60](adr/0060-value-object-over-same-project-closed-set-refused.md)) is refused the same
-    way and for the same reason: `ClosedSetAspect` runs last in `AspectOrder`, and over a set of its own
-    project `OverSet : IValue<SetA>` lacked `Parse`, `TryParse`, `IParsable` and its own type converter
-    while its JSON worked; over the same set in a referenced project it had them. The message names the
-    set and says to declare it in a referenced project or to wrap its name.
+  - **A closed set is not refused** (decided 2026-10-13,
+    [decision 60](adr/0060-value-object-over-closed-set-generated-in-full.md)), wherever it is declared.
+    Over a set of its own project `OverSet : IValue<SetA>` lacked `Parse`, `TryParse`, `IParsable` and
+    its own type converter while its JSON worked, because `ClosedSetAspect` ran last, after the
+    value-object aspects. It is a different aspect class, so ordering fixes what ordering cannot for a
+    value object over a value object: `ClosedSetAspect` runs first, and the value-object aspects see the
+    set's `IParsable`, `Parse` and `[TypeConverter]` as they see a referenced set's.
   - The satellites keep their own refusal ([OpenAPI](openapi.md)): a value object declared by hand, with the
     interfaces and `GeneratedValueObjectAttribute<,>` the satellites read ([Discovery](discovery.md)), can still wrap itself.
 - **Every JSON key goes through the wrapped type's own converter**, which knows the type's key
@@ -244,8 +245,12 @@
 - **Metalama 2026.1.** Aspect state uses `IDurableRef`, which exists in 2026.1. `[Durable]` on the
   `_value` template placeholder is 2027.0-only and stays out until the upgrade ([decision 4](adr/0004-metalama-2026-1-x-latest-stable.md)). Build
   each aspect on 2026.1 as it lands, and use no 2027.0-only API.
-- **`AspectOrder`** lives in `CodoMetis.TypeKit.Generators`. Open point: ordering against a
-  consumer's own aspects (fabric spike D).
+- **`AspectOrder`** lives in `CodoMetis.TypeKit.Generators`: `ClosedSetAspect` first, then
+  `ValueObjectAspect`, which leaves the state the other value-object aspects read
+  ([decision 60](adr/0060-value-object-over-closed-set-generated-in-full.md)). The closed-set aspect reads
+  nothing the value-object aspects introduce: the set's own fields, constructors, initializer text,
+  methods, attributes and interfaces, none of which they touch, and no member's data type (checked
+  2026-10-13). Open point: ordering against a consumer's own aspects (fabric spike D).
 - **Not in scope:** a `Try`/`Unit` type ([Option and Result](option-result.md) non-goals; an exception enters a result through
   `Result.Catch`, phase 13), clock-type analyzers, and decimal JSON converters (no aspect needs them,
   checked in phase 3). The text guards joined phase 13 on 2026-10-13, as string extensions in the
