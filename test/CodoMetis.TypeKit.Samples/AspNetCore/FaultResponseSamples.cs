@@ -67,6 +67,12 @@ public static class Faults
            .WithFaultStatus(AccountFault.EmailTaken, StatusCodes.Status422UnprocessableEntity);
         // end sample
 
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-status-group
+        var v3 = app.MapGroup("/v3").WithFaultStatus(AccountFault.EmailTaken, StatusCodes.Status422UnprocessableEntity);
+        v3.MapPost("/accounts", (NewAccount body) => accounts.Open(body).ToHttpResult());   // answers with AccountFault: the 422 applies
+        v3.MapGet("/health", () => "ok");                                                  // answers with none: left alone
+        // end sample
+
         // sample: CodoMetis.TypeKit.AspNetCore/fault-success
         app.MapPost("/v2/accounts", (NewAccount body) => accounts.Open(body).ToHttpResult(account => TypedResults.Created($"/accounts/{account.Id}", account)));
         // end sample
@@ -149,6 +155,22 @@ public sealed class FaultResponseSampleTests
         byKind.StatusCode.ShouldBe(HttpStatusCode.Conflict, "the member's kind");
         var problem = JsonNode.Parse(await byKind.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!;
         problem["detail"]!.GetValue<string>().ShouldBe("Another account uses that email address.");
+    }
+
+    /// <summary>The README's group: its status applies to the endpoint that answers with the fault type, and leaves the health check alone.</summary>
+    [Fact]
+    public async Task A_group_s_status_applies_to_its_fault_endpoint_and_leaves_its_health_check_alone()
+    {
+        await using var app = await StartAsync(Result.Error(AccountFault.EmailTaken));
+        var client = app.GetTestClient();
+
+        using var refused = await client.PostAsync("/v3/accounts", Body(), TestContext.Current.CancellationToken);
+        refused.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        (await client.GetStringAsync("/v3/health", TestContext.Current.CancellationToken)).ShouldBe("ok");
+
+        var paths = JsonNode.Parse(await client.GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken))!["paths"]!;
+        paths["/v3/accounts"]!["post"]!["responses"]!.AsObject().Select(response => response.Key).Order().ShouldBe(["200", "403", "404", "422"]);
+        paths["/v3/health"]!["get"]!["responses"]!.AsObject().Select(response => response.Key).ShouldBe(["200"]);
     }
 
     [Fact]

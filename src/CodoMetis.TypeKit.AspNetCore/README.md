@@ -266,9 +266,30 @@ An MVC action says it with an attribute, naming the member, since an attribute t
 public Results<Ok<Account>, FaultProblem<AccountFault>> Open(NewAccount body) => accounts.Open(body).ToHttpResult();
 ```
 
-On a controller class, the attribute applies to every action of it. A status outside 400 to 599 is
-refused where it is set. A status for a fault type the endpoint does not answer with, or an attribute
-naming no member, stops the host from starting, naming the endpoint.
+A route group says it for its endpoints, and a controller class, with the same attribute, for its
+actions. Such a status applies to the endpoints of that group or controller that answer with the
+fault type and leaves the others alone, so a group can hold a health check beside them:
+
+```csharp
+var v3 = app.MapGroup("/v3").WithFaultStatus(AccountFault.EmailTaken, StatusCodes.Status422UnprocessableEntity);
+v3.MapPost("/accounts", (NewAccount body) => accounts.Open(body).ToHttpResult());   // answers with AccountFault: the 422 applies
+v3.MapGet("/health", () => "ok");                                                  // answers with none: left alone
+```
+
+What stops the host from starting, naming the status and its endpoints:
+
+- a status on one endpoint or action that answers with no fault of that type;
+- a status on a group or a controller none of whose own endpoints answers with that type. An endpoint
+  of another group or controller does not count, and a controller that derives from a base class
+  with the attribute is a controller of its own;
+- an attribute naming no member.
+
+The same holds for any convention builder that covers several endpoints, such as the one
+`MapControllers()` returns. A status outside 400 to 599 is refused where it is set. Where several
+statuses name one member, the last in ASP.NET's metadata order wins: an endpoint's own over its
+group's, an inner group's over an outer group's, an action's over its controller's. ASP.NET puts the
+metadata of `MapControllers()`'s builder after every attribute, so a status set there wins over an
+action's own.
 
 ### The success the endpoint chooses
 

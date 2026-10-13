@@ -59,14 +59,24 @@ namespace CodoMetis.TypeKit.AspNetCore
     }
 
     /// <summary>
-    /// An MVC action's status for one fault, in place of the host's: <c>[FaultStatus&lt;OrderFault&gt;(nameof(OrderFault.NameTaken), 422)]</c>.
-    /// A minimal API endpoint says it with <c>.WithFaultStatus(OrderFault.NameTaken, 422)</c>.
+    /// An MVC action's or controller's status for one fault, in place of the host's:
+    /// <c>[FaultStatus&lt;OrderFault&gt;(nameof(OrderFault.NameTaken), 422)]</c>. A minimal API endpoint or
+    /// route group says it with <c>.WithFaultStatus(OrderFault.NameTaken, 422)</c>.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The member is named, since an attribute takes only constants, and <c>nameof</c> keeps the name
     /// in step with the member. A name no member has stops the host from starting, as an endpoint
     /// whose fault type is not mapped does. The response, the operation's document entry and the
     /// startup check all read it.
+    /// </para>
+    /// <para>
+    /// On an action, the action must answer with <typeparamref name="TFault"/>, or the host does not
+    /// start. On a controller class, it applies to the actions that answer with
+    /// <typeparamref name="TFault"/> and leaves the others alone; the host does not start only when none
+    /// of that controller's actions does. A controller that derives from a base class with the
+    /// attribute is a controller of its own. An action's own status replaces its controller's.
+    /// </para>
     /// </remarks>
     /// <typeparam name="TFault">The fault type, an enum or a closed set.</typeparam>
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = true)]
@@ -105,17 +115,28 @@ namespace CodoMetis.TypeKit.AspNetCore
 // Beside WithMetadata and the other endpoint conventions.
 namespace Microsoft.AspNetCore.Builder
 {
-    /// <summary>A status for one fault on one endpoint, in place of the host's.</summary>
+    /// <summary>A status for one fault on one endpoint, or on a group of them, in place of the host's.</summary>
     public static class TypeKitFaultStatusEndpointConventionBuilderExtensions
     {
         /// <summary>
-        /// Answers <paramref name="fault"/> with <paramref name="status"/> on this endpoint, in place of the
-        /// status the host maps it to: the same fault can be a 404 on one route and a 409 on another.
+        /// Answers <paramref name="fault"/> with <paramref name="status"/> on this endpoint, or on the
+        /// endpoints of this group that answer with <typeparamref name="TFault"/>, in place of the status
+        /// the host maps it to: the same fault can be a 404 on one route and a 409 on another.
         /// </summary>
         /// <remarks>
-        /// The response, the operation's document entry and the startup check all read it. A status for
-        /// a fault type the endpoint does not answer with stops the host from starting, so a stale one is
-        /// found before it misleads.
+        /// <para>
+        /// The response, the operation's document entry and the startup check all read it. On one
+        /// endpoint, a status for a fault type the endpoint does not answer with stops the host from
+        /// starting, so a stale one is found before it misleads.
+        /// </para>
+        /// <para>
+        /// On a route group, or any builder that covers several endpoints such as the one
+        /// <c>MapControllers()</c> returns, it applies to the endpoints that answer with
+        /// <typeparamref name="TFault"/> and leaves the others, a health check, alone. The host does not
+        /// start only when none of the endpoints of that group answers with <typeparamref name="TFault"/>;
+        /// an endpoint of another group does not count. An endpoint's own status replaces its group's,
+        /// and an inner group's an outer group's.
+        /// </para>
         /// </remarks>
         /// <param name="builder">The endpoint, or a group or convention of endpoints.</param>
         /// <param name="fault">The fault, an enum member or a closed set's member.</param>
