@@ -17,7 +17,7 @@ other side, and the detail.
 | A plain Roslyn source generator in the build rather than Metalama | Vogen or Thinktecture.Runtime.Extensions | TypeKit's generators run on Metalama (open source, no license key) in the project that declares value objects |
 | Value objects of several members, or discriminated unions | Thinktecture.Runtime.Extensions | It has `[ComplexValueObject]` and `[Union]`. A TypeKit value object wraps exactly one value; its closed sets are the smart enums |
 | Several errors per failure, of typed kinds | ErrorOr | An `ErrorOr<T>` carries a list of errors. A TypeKit `Result` carries one `TError`, which can be a list of your own |
-| Errors with reasons, success messages and causes | FluentResults | Its results carry reasons, errors and successes, and an error can name what caused it |
+| Errors with reasons, success messages and causes | FluentResults | Its results carry reasons, errors and successes, an error can name what caused it, and both take metadata. A TypeKit `Result` carries one `TError`: a `Fault<TFault>` adds a sentence about the occurrence and `Catch` the exception, but there are no success messages, no list of reasons and no cause chain |
 | A functional-programming framework: `Either`, `Fin`, effects, immutable collections | LanguageExt (4.4.9; 5.0 in beta) | TypeKit's `Option` and `Result` are deliberately small, with no effect or validation types |
 | Unions of arbitrary types | OneOf | `OneOf<T0, T1, …>` is general-purpose; TypeKit has only `Option` and `Result` |
 | A `Result` on the wire | CSharpFunctionalExtensions | It ships opt-in System.Text.Json converters for its `Result`. TypeKit refuses to serialize `Option` and `Result`, by design |
