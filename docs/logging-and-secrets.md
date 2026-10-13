@@ -112,3 +112,11 @@ A body refused by the JSON converter does not
 System.Text.Json's: a value object used as a dictionary key is read from the property name, and the
 `JsonException` for a refused or unreadable key carries the key in its `Path` (`$.items.SE`), which
 MVC uses as the error's name in its 400. Keep a secret out of a dictionary's keys.
+
+## What a fault response tells the client
+
+A fault answered with `ToHttpResult()` names its member in the problem's `fault`, for every member,
+whatever its status or description: the name is meant for the client. Two refusals the client must
+not tell apart, an unknown user and a wrong password, therefore become one fault before the response,
+as [ASP.NET Core](../src/CodoMetis.TypeKit.AspNetCore/README.md#faults-a-client-must-not-tell-apart)
+shows; the domain keeps both for its log.

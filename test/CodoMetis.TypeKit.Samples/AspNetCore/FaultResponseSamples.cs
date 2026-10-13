@@ -42,6 +42,39 @@ public interface IAccounts
     Result<Account, Fault<AccountFault>> Rename(int id, string email);
 }
 
+// sample: CodoMetis.TypeKit.AspNetCore/one-fault-for-two-causes
+public enum SignInFault { UnknownUser, WrongPassword }   // the domain's: which check refused
+public enum LoginFault { InvalidCredentials }            // what the client is told
+
+// end sample
+public sealed record Credentials(string User, string Password);
+
+public sealed record Session(string Token);
+
+public interface ISignIn
+{
+    Result<Session, SignInFault> SignIn(Credentials credentials);
+}
+
+/// <summary>The README's sign-in: the domain tells its two refusals apart, the response does not.</summary>
+public static class SignIns
+{
+    public static void Responses(WebApplicationBuilder builder)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/one-fault-for-two-causes
+        builder.Services.AddFaultResponses<LoginFault>(_ => StatusCodes.Status401Unauthorized);
+
+        // end sample
+    }
+
+    public static void Endpoints(WebApplication app, ISignIn accounts)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/one-fault-for-two-causes
+        app.MapPost("/login", (Credentials credentials) => accounts.SignIn(credentials).MapError(_ => LoginFault.InvalidCredentials).ToHttpResult());
+        // end sample
+    }
+}
+
 public static class Faults
 {
     public static void Responses(WebApplicationBuilder builder)
@@ -228,5 +261,55 @@ public sealed class FaultResponseSampleTests
         var document = JsonNode.Parse(await app.GetTestClient().GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken))!;
         document["paths"]!["/payments"]!["post"]!["responses"]!["402"]!["description"]!.GetValue<string>()
             .ShouldBe("Payment Required. Problem types: https://example.com/problems/declined");
+    }
+}
+
+/// <summary>
+/// What the README's "Faults a client must not tell apart" says: one status for two causes still names
+/// which it was, and mapped to one member at the boundary, the two answer alike, the trace id aside.
+/// </summary>
+public sealed class SignInSampleTests
+{
+    private sealed class Refusing : ISignIn
+    {
+        public Result<Session, SignInFault> SignIn(Credentials credentials) =>
+            Result.Error(credentials.User == "ann" ? SignInFault.WrongPassword : SignInFault.UnknownUser);
+    }
+
+    [Fact]
+    public async Task Two_causes_mapped_to_one_fault_answer_alike_where_one_status_alone_tells_them_apart()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        SignIns.Responses(builder);
+        builder.Services.AddFaultResponses<SignInFault>(_ => StatusCodes.Status401Unauthorized);
+
+        await using var app = builder.Build();
+        var accounts = new Refusing();
+        SignIns.Endpoints(app, accounts);
+        app.MapPost("/login-telling", (Credentials credentials) => accounts.SignIn(credentials).ToHttpResult());   // one status, the domain's faults
+        await app.StartAsync(TestContext.Current.CancellationToken);
+
+        var unknownUser = await AnswerAsync(app, "/login", "nobody");
+        var wrongPassword = await AnswerAsync(app, "/login", "ann");
+        unknownUser.Status.ShouldBe(HttpStatusCode.Unauthorized);
+        unknownUser.Body["fault"]!.GetValue<string>().ShouldBe("InvalidCredentials");
+        wrongPassword.Status.ShouldBe(unknownUser.Status);
+        JsonNode.DeepEquals(wrongPassword.Body, unknownUser.Body)
+            .ShouldBeTrue($"{wrongPassword.Body.ToJsonString()} tells itself apart from {unknownUser.Body.ToJsonString()}");
+
+        (await AnswerAsync(app, "/login-telling", "nobody")).Body["fault"]!.GetValue<string>().ShouldBe("UnknownUser");
+        (await AnswerAsync(app, "/login-telling", "ann")).Body["fault"]!.GetValue<string>().ShouldBe("WrongPassword");
+    }
+
+    private static async Task<(HttpStatusCode Status, JsonObject Body)> AnswerAsync(WebApplication app, string path, string user)
+    {
+        using var content = new StringContent($$"""{"user":"{{user}}","password":"secret"}""", System.Text.Encoding.UTF8, "application/json");
+        using var response = await app.GetTestClient().PostAsync(path, content, TestContext.Current.CancellationToken);
+        var body = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!.AsObject();
+        body.Remove("traceId");
+
+        return (response.StatusCode, body);
     }
 }

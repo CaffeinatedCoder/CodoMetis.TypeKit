@@ -337,6 +337,27 @@ responses refer to as well, so the description also says that only a problem ans
 carries it. It stays a string, since an enum of every fault type would change every operation when
 one is added. A document without a fault response keeps the schema as ASP.NET writes it.
 
+### Faults a client must not tell apart
+
+Every problem `ToHttpResult()` writes names its fault in `fault`, for every member, whether it has a
+description or not: the name is part of the response's contract, as its status is, and the document
+describes it. A status alone hides nothing. A sign-in that answers 401 for an unknown user and for a
+wrong password still says `UnknownUser` or `WrongPassword`, and so which accounts exist. Where two
+causes must not be told apart, make them one fault before `ToHttpResult()`, mapping the domain's
+faults to a member of the boundary's own:
+
+```csharp
+public enum SignInFault { UnknownUser, WrongPassword }   // the domain's: which check refused
+public enum LoginFault { InvalidCredentials }            // what the client is told
+
+builder.Services.AddFaultResponses<LoginFault>(_ => StatusCodes.Status401Unauthorized);
+
+app.MapPost("/login", (Credentials credentials) => accounts.SignIn(credentials).MapError(_ => LoginFault.InvalidCredentials).ToHttpResult());
+```
+
+Both causes then answer alike, status, `type`, `title`, `fault` and `detail`. The domain keeps its two
+faults for its own use, a log or a lockout count; a `Fault<TFault>`'s detail stays behind with them.
+
 ## NodaTime
 
 ASP.NET cannot see through NodaTime's JSON converters, so once they are on the host's JSON options

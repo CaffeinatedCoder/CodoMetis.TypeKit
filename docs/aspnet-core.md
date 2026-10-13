@@ -163,6 +163,13 @@ such as a `201 Created`, and the fault on the request for a `CustomizeProblemDet
 [Mapping faults to statuses](../src/CodoMetis.TypeKit.AspNetCore/README.md#mapping-faults-to-statuses)
 and the sections after it show each.
 
+Every problem names its fault in `fault`, for every member, with a description or without one: the
+name reaches the client as the status does. Where two causes must not be told apart, an unknown user
+and a wrong password, which would say which accounts exist, map them to one member before
+`ToHttpResult()`, as the README's
+[Faults a client must not tell apart](../src/CodoMetis.TypeKit.AspNetCore/README.md#faults-a-client-must-not-tell-apart)
+shows.
+
 ## The document
 
 With `AddTypeKit()`, every value object is the schema ASP.NET publishes for the type it wraps,

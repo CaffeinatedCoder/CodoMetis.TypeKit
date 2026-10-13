@@ -70,3 +70,4 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0061](0061-scope-s-fault-status-applies-where-fault-type-answered.md) | A scope's fault status applies where its fault type is answered | 2026-10-13 | accepted |
 | [0062](0062-asynchronous-callbacks-run-where-awaited-task-completed.md) | An asynchronous callback runs where the task it waited for completed | 2026-10-13 | accepted |
 | [0063](0063-char-keys-application-assigned-ulong-documented.md) | A key over `char` is the application's to assign; a default key over `ulong` throws at `Add` | 2026-10-13 | accepted |
+| [0064](0064-fault-name-reaches-client-causes-not-told-apart-one-fault.md) | A fault's name reaches the client; causes it must not tell apart are one fault | 2026-10-13 | accepted |
