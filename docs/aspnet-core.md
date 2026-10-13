@@ -151,9 +151,9 @@ and the sections after it show each.
 ## The document
 
 With `AddTypeKit()`, every value object is the schema ASP.NET publishes for the type it wraps,
-wherever it appears. One in a body keeps a component named after it, `CustomerId` and `Email` below;
-a route or query parameter is described inline, as ASP.NET describes a parameter of the wrapped type,
-so `page` is an integer and `PageSize` has no component. The fault responses are listed on every
+wherever it appears. One in a body keeps a component named after it; a route or query parameter is
+described inline, as ASP.NET describes a parameter of the wrapped type, so the `id` below is a `uuid`
+string with no component of its own. The fault responses are listed on every
 operation that returns the fault type:
 
 ```json

@@ -148,11 +148,12 @@ app.MapDelete("/orders/{id}", (OrderId id) => orders.Cancel(id).ToHttpResult());
 ```
 
 - **The domain declares faults, the host their statuses.** The fault type is an enum or a closed set
-  the domain owns; only the host references ASP.NET. A problem names the fault, never anything of the request.
+  the domain owns; only the host references ASP.NET. The package adds nothing of the request to a
+  problem: it names the fault, and a `Fault<TFault>`'s detail is your sentence ([below](#a-sentence-per-occurrence)).
 - **The document says it too.** The endpoint's return type is ASP.NET's own
   `Results<Ok<OrderDto>, FaultProblem<OrderFault>>`, so the operation describes the value, and
   `AddTypeKit()` adds a problem response for every status the fault type is mapped to, as
-  `ProducesProblem` would. In minimal APIs and in MVC, an action returning the same type.
+  `ProducesProblem` would. An MVC action returning the same type is described the same way.
 - **Not a wire format.** The `Result` is matched to a response, not serialized: returning the
   `Result` itself from a handler is still refused, and the document would promise a `Result`.
 - **The host's problem details apply.** `AddFaultResponses` calls `AddProblemDetails()`, so a
@@ -172,10 +173,10 @@ what the discard arm above relies on: a member the `switch` misses throws while 
 when the fault first occurs. Without the arm, C# warns (CS8524) that a cast could produce a value no
 member names. A fault type is mapped once.
 
-A host with an endpoint whose fault type is not mapped does not start: the exception names the fault
-type and each endpoint that answers with it. The check comes with the first `AddFaultResponses` call;
-a host that never calls it refuses the first fault an endpoint reports, and its OpenAPI document,
-with the same message. A value no member names, which only a cast makes, is refused rather than
+A host with an endpoint whose fault type is not mapped does not start: an
+`InvalidOperationException` names the fault type and each endpoint that answers with it. The check
+comes with the first `AddFaultResponses` call. A host that never calls it throws the same exception
+when an endpoint first reports a fault, and when its OpenAPI document is generated. A value no member names, which only a cast makes, is refused rather than
 answered with a status the document does not list.
 
 ### A response per fault
