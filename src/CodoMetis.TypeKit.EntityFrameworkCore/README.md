@@ -122,6 +122,13 @@ re-typed, not cast, so an index on it still serves the query. The element of a p
 converted, which works everywhere and may add a cast. `ValueOrNull()` is for an optional value
 object, where `.Value` would first unwrap the `Nullable`.
 
+They translate only where the column holds the wrapped value, which is where TypeKit's converter
+stores it: the one `UseTypeKit()` applies, or `ValueObjectConverter<,>` named in `HasConversion`. A
+property the application converts itself (`HasConversion(c => "C:" + c.Value, …)`, a converter type,
+a conversion in `ConfigureConventions`) does not hold `.Value`, so a query that reads it there is
+refused with EF's "could not be translated", rather than compared with what the column holds.
+Comparing the value object itself (`o.Code == code`) goes through that converter and still works.
+
 Ordering in SQL follows the database's collation for the column, while the generated comparison in
 memory is ordinal for a string, as it is for any string column.
 

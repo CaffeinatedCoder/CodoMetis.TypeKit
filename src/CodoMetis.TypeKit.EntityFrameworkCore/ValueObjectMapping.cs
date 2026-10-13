@@ -1,6 +1,9 @@
 using System.Collections.Concurrent;
+using System.Linq.Expressions;
+using System.Reflection;
 using CodoMetis.TypeKit.CompilerServices;
 using CodoMetis.TypeKit.ValueObjects;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Storage.Json;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -43,6 +46,21 @@ internal abstract class ValueObjectMapping
     /// <summary>The value object's reader/writer over the wrapped type's, or <see langword="null"/> where the wrapped type has none.</summary>
     protected abstract JsonValueReaderWriter? ReaderWriterOver(JsonValueReaderWriter? wrapped);
 
+    /// <summary>
+    /// Whether a column converted by <paramref name="converter"/> holds the wrapped value, as the
+    /// wrapped type's own mapping (whose converter is <paramref name="wrappedConverter"/>) stores it:
+    /// whether the converter is this value object's <see cref="ValueObjectConverter{TValueObject,T}"/>,
+    /// alone or composed onto the wrapped type's.
+    /// </summary>
+    /// <remarks>
+    /// Read from the conversion expression, not the converter's type: <c>UseTypeKit()</c> composes a plain
+    /// <see cref="ValueConverter{TModel,TProvider}"/>, a compiled model creates its converters again from
+    /// the expressions it wrote out, and an application can name <see cref="ValueObjectConverter{TValueObject,T}"/>
+    /// itself. Every one of them calls <see cref="ValueObjectConverter{TValueObject,T}.ProviderValue"/>
+    /// on the value object and nothing else, before the wrapped type's own conversion, if it has one.
+    /// </remarks>
+    public abstract bool StoresTheWrappedValue(ValueConverter converter, ValueConverter? wrappedConverter);
+
     public RelationalTypeMapping ComposeOnto(RelationalTypeMapping wrapped) =>
         (RelationalTypeMapping)wrapped.WithComposedConverter(Converter, jsonValueReaderWriter: ReaderWriterOver(wrapped.JsonValueReaderWriter));
 
@@ -52,6 +70,52 @@ internal abstract class ValueObjectMapping
     {
         public override ValueConverter Converter { get; } =
             new ValueConverter<TValueObject, T>(ValueObjectConverter<TValueObject, T>.ToProvider, ValueObjectConverter<TValueObject, T>.FromProvider);
+
+        private static readonly MethodInfo ProviderValue = ((MethodCallExpression)ValueObjectConverter<TValueObject, T>.ToProvider.Body).Method;
+
+        public override bool StoresTheWrappedValue(ValueConverter converter, ValueConverter? wrappedConverter)
+        {
+            if (converter.ConvertToProviderExpression is not { Parameters: [var instance] } toProvider || instance.Type != typeof(TValueObject)) return false;
+
+            // The conversion with ProviderValue(instance) taken out is what remains to be applied to the
+            // wrapped value: nothing, or exactly the wrapped type's own conversion.
+            var wrapped   = Expression.Parameter(typeof(T), "value");
+            var unwrapped = new ProviderValueReplacer(instance, wrapped);
+            var remaining = unwrapped.Visit(toProvider.Body);
+
+            if (unwrapped.Replaced != 1 || unwrapped.InstanceLeft) return false;
+
+            var expected = wrappedConverter?.ConvertToProviderExpression is { Parameters: [var value] } wrappedToProvider
+                               ? ReplacingExpressionVisitor.Replace(value, wrapped, wrappedToProvider.Body)
+                               : wrapped;
+
+            return ExpressionEqualityComparer.Instance.Equals(remaining, expected);
+        }
+
+        /// <summary>Replaces <c>ProviderValue(instance)</c> with the wrapped value, and notes any other use of the instance.</summary>
+        private sealed class ProviderValueReplacer(ParameterExpression instance, ParameterExpression wrapped) : ExpressionVisitor
+        {
+            public int Replaced { get; private set; }
+
+            public bool InstanceLeft { get; private set; }
+
+            protected override Expression VisitMethodCall(MethodCallExpression node)
+            {
+                if (node.Object is null && node.Method == ProviderValue && node.Arguments is [var argument] && argument == instance)
+                {
+                    Replaced++;
+                    return wrapped;
+                }
+
+                return base.VisitMethodCall(node);
+            }
+
+            protected override Expression VisitParameter(ParameterExpression node)
+            {
+                if (node == instance) InstanceLeft = true;
+                return node;
+            }
+        }
 
         // The wrapped mapping's reader/writer handles values of the wrapped type, converted or not, so
         // it is a JsonValueReaderWriter<T>; anything else is left to EF's own composition.
