@@ -117,6 +117,87 @@ public sealed class ResultCatchTests
         await Should.ThrowAsync<OperationCanceledException>(() => Result.CatchAsync<Exception>(() => Task.Delay(10, cts.Token)));
     }
 
+    /// <summary>
+    /// HttpClient reports its <c>Timeout</c> elapsing as a <see cref="TaskCanceledException"/> over a
+    /// <see cref="TimeoutException"/>: the call failed, and nobody cancelled it. A handler that waits
+    /// for its token leaves the timeout as the only way out, so this does not race.
+    /// </summary>
+    [Fact]
+    public async Task CatchAsync_answers_an_HttpClient_timeout_as_the_error()
+    {
+        using var client = new HttpClient(new WaitingHandler()) { Timeout = TimeSpan.FromMilliseconds(1) };
+
+        var fetched = await Result.CatchAsync(() => client.GetByteArrayAsync(new Uri("http://timeout.test/")));
+
+        fetched.TryGetValue(out _, out var error).ShouldBeFalse();
+        error.ShouldBeOfType<TaskCanceledException>().InnerException.ShouldBeOfType<TimeoutException>();
+    }
+
+    [Fact]
+    public async Task Every_overload_answers_a_timeout_as_the_error()
+    {
+        Result.Catch(int () => throw Timeout).TryGetValue(out _, out var valued).ShouldBeFalse();
+        valued.ShouldBeSameAs(Timeout);
+        Result.Catch(void () => throw Timeout).TryGetError(out var command).ShouldBeTrue();
+        command.ShouldBeSameAs(Timeout);
+        Result.Catch<int, OperationCanceledException>(() => throw Timeout).TryGetValue(out _, out var narrowed).ShouldBeFalse();
+        narrowed.ShouldBeSameAs(Timeout);
+        Result.Catch<TaskCanceledException>(void () => throw Timeout).TryGetError(out var narrowedCommand).ShouldBeTrue();
+        narrowedCommand.ShouldBeSameAs(Timeout);
+
+        (await Result.CatchAsync(TimesOutLaterAsync)).TryGetValue(out _, out var later).ShouldBeFalse();
+        later.ShouldBeSameAs(Timeout);
+        (await Result.CatchAsync(TimesOutLaterCommandAsync)).TryGetError(out var laterCommand).ShouldBeTrue();
+        laterCommand.ShouldBeSameAs(Timeout);
+        (await Result.CatchAsync<int, OperationCanceledException>(TimesOutLaterAsync)).TryGetValue(out _, out var laterNarrowed).ShouldBeFalse();
+        laterNarrowed.ShouldBeSameAs(Timeout);
+        (await Result.CatchAsync<OperationCanceledException>(TimesOutLaterCommandAsync)).TryGetError(out var laterNarrowedCommand).ShouldBeTrue();
+        laterNarrowedCommand.ShouldBeSameAs(Timeout);
+    }
+
+    /// <summary>A timeout is still the exception it is: a narrowed catch of another type lets it propagate.</summary>
+    [Fact]
+    public async Task A_narrowed_catch_of_another_type_lets_a_timeout_propagate()
+    {
+        Should.Throw<TaskCanceledException>(() => Result.Catch<int, HttpRequestException>(() => throw Timeout));
+        await Should.ThrowAsync<TaskCanceledException>(() => Result.CatchAsync<int, HttpRequestException>(TimesOutLaterAsync));
+    }
+
+    /// <summary>Only a timeout is the error: a cancellation over any other inner exception, or none, still passes through.</summary>
+    [Fact]
+    public async Task A_cancellation_that_is_no_timeout_still_passes_through()
+    {
+        var cancelled = new OperationCanceledException("cancelled", new IOException("the stream closed"));
+
+        Should.Throw<OperationCanceledException>(() => Result.Catch(int () => throw cancelled));
+        Should.Throw<OperationCanceledException>(() => Result.Catch(void () => throw new TaskCanceledException()));
+        await Should.ThrowAsync<OperationCanceledException>(() => Result.CatchAsync(async Task<int> () => { await Task.Yield(); throw cancelled; }));
+    }
+
+    private static readonly TaskCanceledException Timeout = new("The request was canceled due to the configured HttpClient.Timeout elapsing.", new TimeoutException());
+
+    private static async Task<int> TimesOutLaterAsync()
+    {
+        await Task.Yield();
+        throw Timeout;
+    }
+
+    private static async Task TimesOutLaterCommandAsync()
+    {
+        await Task.Yield();
+        throw Timeout;
+    }
+
+    /// <summary>Answers nothing until its token is cancelled, which only the client's timeout does.</summary>
+    private sealed class WaitingHandler : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            await Task.Delay(System.Threading.Timeout.Infinite, cancellationToken);
+            throw new InvalidOperationException("The client's timeout is the only way out.");
+        }
+    }
+
     /// <summary>A success over null is the delegate's defect, not an outcome, and is not caught.</summary>
     [Fact]
     public async Task A_delegate_that_returns_null_is_refused_rather_than_caught()

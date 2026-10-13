@@ -164,7 +164,10 @@ type says what was expected to fail; both type arguments are spelled, since C# i
 and `Catch<FormatException>(() => int.Parse(s))` with one is the command form, which discards the
 number. `CatchAsync` awaits the task, so an exception thrown after its first `await` is the error
 too. An `OperationCanceledException` passes through all of them: a cancellation is not an outcome,
-and caught it would read as a failure that `Recover` then runs on. A delegate that returns a `Task`
+and caught it would read as a failure that `Recover` then runs on. A timeout is the exception: one
+over a `TimeoutException` is how `HttpClient` reports its `Timeout` elapsing, which is the call
+failing, so it is the error, and a narrowed `Catch` names `TaskCanceledException` or
+`OperationCanceledException` to catch it alone. A delegate that returns a `Task`
 given to `Catch` is a compile error, since the task's exception would be thrown after `Catch` had
 returned; a `ValueTask` needs `.AsTask()` or an `async` lambda, as above. A delegate that returns
 null throws, as `Result.Success(null)` does. `Map`, `Bind` and the rest are unchanged: a selector

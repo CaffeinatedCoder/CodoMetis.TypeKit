@@ -21,8 +21,10 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   runs the call and answers `Result<T, Exception>`, or `Result<Exception>` for an action;
   `Catch<T, TException>` catches that type only and lets any other propagate; `CatchAsync` awaits the
   task, so an exception thrown after its first `await` is the error too. An `OperationCanceledException`
-  passes through every overload, a delegate that returns a `Task` given to `Catch` is a compile error
-  that names `CatchAsync`, and a delegate that returns null throws as `Result.Success(null)` does.
+  passes through every overload, unless it is a timeout (one over a `TimeoutException`, as
+  `HttpClient` throws when its `Timeout` elapses), which is the error; a delegate that returns a
+  `Task` given to `Catch` is a compile error that names `CatchAsync`, and a delegate that returns
+  null throws as `Result.Success(null)` does.
 - **The closed-set family**, the release's headline: `IClosedSet<TSelf>` in `CodoMetis.TypeKit`, generated
   by `CodoMetis.TypeKit.Generators`. A sealed partial class whose every instance is a `public static
   readonly` field, with constant data through a private constructor where the members carry some. The

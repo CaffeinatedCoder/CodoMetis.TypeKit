@@ -38,9 +38,12 @@ public static class Result
     /// <remarks>
     /// <para>
     /// An <see cref="OperationCanceledException"/> passes through: a cancellation is not an outcome,
-    /// and caught it would read as a failure and <c>Recover</c> would run on it. A delegate that
-    /// returns a <see cref="Task"/> is refused at compile time, since the task's exception is thrown
-    /// after this call returns; <see cref="CatchAsync{T}(Func{Task{T}})"/> waits for it.
+    /// and caught it would read as a failure and <c>Recover</c> would run on it. One whose
+    /// <see cref="Exception.InnerException"/> is a <see cref="TimeoutException"/> is the error: that is
+    /// how <see cref="System.Net.Http.HttpClient"/> reports its <c>Timeout</c> elapsing, a failure of
+    /// the call and not the caller's cancellation. A delegate that returns a <see cref="Task"/> is
+    /// refused at compile time, since the task's exception is thrown after this call returns;
+    /// <see cref="CatchAsync{T}(Func{Task{T}})"/> waits for it.
     /// </para>
     /// <para>
     /// A delegate that returns null throws <see cref="ArgumentNullException"/>, as <see cref="Success{T}(T)"/>
@@ -60,7 +63,7 @@ public static class Result
         {
             value = action();
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (!IsCancellation(exception))
         {
             return Result<T, Exception>.Error(exception);
         }
@@ -86,7 +89,7 @@ public static class Result
         {
             action();
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (!IsCancellation(exception))
         {
             return Result<Exception>.Error(exception);
         }
@@ -119,7 +122,7 @@ public static class Result
         {
             value = action();
         }
-        catch (TException exception) when (exception is not OperationCanceledException)
+        catch (TException exception) when (!IsCancellation(exception))
         {
             return Result<T, TException>.Error(exception);
         }
@@ -150,13 +153,22 @@ public static class Result
         {
             action();
         }
-        catch (TException exception) when (exception is not OperationCanceledException)
+        catch (TException exception) when (!IsCancellation(exception))
         {
             return Result<TException>.Error(exception);
         }
 
         return Result<TException>.Success();
     }
+
+    /// <summary>
+    /// Whether <paramref name="exception"/> is a cancellation, which every <c>Catch</c> lets through: an
+    /// <see cref="OperationCanceledException"/> that is no timeout. <see cref="System.Net.Http.HttpClient"/>
+    /// throws a <see cref="TaskCanceledException"/> over a <see cref="TimeoutException"/> when its
+    /// <c>Timeout</c> elapses, which is the call failing, so that one is caught.
+    /// </summary>
+    private static bool IsCancellation(Exception exception) =>
+        exception is OperationCanceledException { InnerException: not TimeoutException };
 
     /// <summary>Refused: the task's exception is thrown after <c>Catch</c> has returned. Use <see cref="CatchAsync{T}(Func{Task{T}})"/>.</summary>
     /// <remarks>
@@ -184,8 +196,10 @@ public static class Result
     /// </summary>
     /// <remarks>
     /// An <see cref="OperationCanceledException"/> passes through, so a cancelled token surfaces as
-    /// cancellation. A delegate returning a <c>ValueTask</c> needs <c>.AsTask()</c> or an <c>async</c>
-    /// lambda: a <c>ValueTask</c> overload beside this one is ambiguous for every <c>async</c> lambda.
+    /// cancellation; a timeout, which <see cref="System.Net.Http.HttpClient"/> throws as a cancellation
+    /// over a <see cref="TimeoutException"/>, is the error. A delegate returning a <c>ValueTask</c>
+    /// needs <c>.AsTask()</c> or an <c>async</c> lambda: a <c>ValueTask</c> overload beside this one is
+    /// ambiguous for every <c>async</c> lambda.
     /// See <see cref="Catch{T}(Func{T})"/> for null.
     /// </remarks>
     /// <param name="action">The asynchronous call whose outcome is wanted.</param>
@@ -201,7 +215,7 @@ public static class Result
         {
             value = await action().ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (!IsCancellation(exception))
         {
             return Result<T, Exception>.Error(exception);
         }
@@ -224,7 +238,7 @@ public static class Result
         {
             await action().ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (!IsCancellation(exception))
         {
             return Result<Exception>.Error(exception);
         }
@@ -253,7 +267,7 @@ public static class Result
         {
             value = await action().ConfigureAwait(false);
         }
-        catch (TException exception) when (exception is not OperationCanceledException)
+        catch (TException exception) when (!IsCancellation(exception))
         {
             return Result<T, TException>.Error(exception);
         }
@@ -278,7 +292,7 @@ public static class Result
         {
             await action().ConfigureAwait(false);
         }
-        catch (TException exception) when (exception is not OperationCanceledException)
+        catch (TException exception) when (!IsCancellation(exception))
         {
             return Result<TException>.Error(exception);
         }
