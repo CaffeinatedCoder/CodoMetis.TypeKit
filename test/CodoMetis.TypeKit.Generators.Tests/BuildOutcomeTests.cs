@@ -110,6 +110,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1016", "SetWithPublicConstructor")]
     [InlineData("CMTK1017", "SetWithProperty")]
     [InlineData("CMTK1017", "SetWithMutableField")]
+    [InlineData("CMTK1017", "SetWithInternalMember")]
     [InlineData("CMTK1018", "SetGeneric")]
     [InlineData("CMTK1016", "SetWithInternalConstructor")]
     [InlineData("CMTK1019", "SetWithAlias.Legacy")]
@@ -498,6 +499,9 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public sealed partial class SetWithMemberNamedAll : IClosedSet<SetWithMemberNamedAll> { public static readonly SetWithMemberNamedAll All = new(); }
 
             public sealed partial class SetWithCasedMembers : IClosedSet<SetWithCasedMembers> { public static readonly SetWithCasedMembers Open = new(); public static readonly SetWithCasedMembers open = new(); }
+
+            // Read as a member, it was none: its name threw and TryParse never found it.
+            public sealed partial class SetWithInternalMember : IClosedSet<SetWithInternalMember> { public static readonly SetWithInternalMember A = new(); internal static readonly SetWithInternalMember Draft = new(); }
 
             public sealed partial class SetWithCaseVariants : IClosedSet<SetWithCaseVariants> { public static readonly SetWithCaseVariants Express = new(); public static readonly SetWithCaseVariants EXPRESS = new(); }
 

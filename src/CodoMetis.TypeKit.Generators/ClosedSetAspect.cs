@@ -54,9 +54,12 @@ internal sealed partial class ClosedSetAspect : TypeAspect
         foreach (var member in members.Where(member => !ClosedSetTypes.IsCreatedWhereDeclared(member, target)))
             problems.Add(ClosedSetMemberNotCreated.WithArguments((target, member.Name)));
 
-        foreach (var field in target.Fields.Where(f => f.IsStatic && f.Accessibility == Accessibility.Public && f.Type.Equals(target) && f.Writeability != Writeability.ConstructorOnly))
-            problems.Add(ClosedSetMemberNotAField.WithArguments((target, field.Name, "a static field that is not readonly")));
-        foreach (var property in target.Properties.Where(p => p.IsStatic && p.Accessibility == Accessibility.Public && p.Type.Equals(target)))
+        // Any static field or property of the set's own type that is not a public readonly field: a
+        // writable one may be replaced, and a non-public one is an instance that is no member, whose
+        // name throws and which TryParse never finds, while the declaration reads as a member.
+        foreach (var field in target.Fields.Where(f => f.IsStatic && f.Type.Equals(target) && (f.Accessibility != Accessibility.Public || f.Writeability != Writeability.ConstructorOnly)))
+            problems.Add(ClosedSetMemberNotAField.WithArguments((target, field.Name, field.Accessibility != Accessibility.Public ? "a static field that is not public" : "a static field that is not readonly")));
+        foreach (var property in target.Properties.Where(p => p.IsStatic && p.Type.Equals(target)))
             problems.Add(ClosedSetMemberNotAField.WithArguments((target, property.Name, "a static property")));
 
         // A member named as a generated member failed the aspect (LAMA0506 beside Match, Parse and
@@ -113,15 +116,17 @@ internal sealed partial class ClosedSetAspect : TypeAspect
 
         builder.AddInitializer(nameof(NamesInitializerTemplate), InitializerKind.BeforeTypeConstructor);
 
-        // The array wrapped, never the array itself: cast to IList<T> or T[], it was writable, and a
-        // member replaced there was listed while Parse, which reads the fields, answered the original.
+        // Assigned by the initializer below, with the names: as a field initializer it ran with the
+        // part it was introduced into, before the fields of a part in another file, which were null in
+        // it. The array wrapped, never the array itself: cast to IList<T> or T[], it was writable, and
+        // a member replaced there was listed while Parse, which reads the fields, answered the original.
         var listType = TypeFactory.GetNamedType(typeof(IReadOnlyList<>)).WithTypeArguments(target);
         builder.IntroduceField(nameof(_all), IntroductionScope.Static, OverrideStrategy.Fail, f =>
         {
             f.Accessibility = Accessibility.Private;
             f.Type = listType;
             f.Writeability = Writeability.ConstructorOnly;
-            f.InitializerExpression = ExpressionFactory.Parse($"global::System.Array.AsReadOnly(new {ValueObjectTypes.SourceName(target)}[] {{ {string.Join(", ", members.Select(m => $"{ValueObjectTypes.SourceName(target)}.{m.Name}"))} }})");
+            f.InitializerExpression = ExpressionFactory.Parse("null!");
             f.AddAttribute(CodeAnnotations.CompilerGenerated);
         });
         builder.IntroduceProperty(nameof(AllTemplate), buildProperty: p =>
@@ -196,6 +201,7 @@ internal sealed partial class ClosedSetAspect : TypeAspect
             t.Accessibility = Accessibility.Public;
             t.BaseType = TypeFactory.GetNamedType(typeof(JsonConverter<>)).WithTypeArguments(target);
             t.IsStatic = false;
+            t.IsSealed = true;
             t.AddAttribute(CodeAnnotations.CompilerGenerated);
         });
         converter.IntroduceMethod(nameof(JsonReadTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = "Read"; m.ReturnType = target; m.AddAttribute(CodeAnnotations.CompilerGenerated); });
@@ -210,6 +216,7 @@ internal sealed partial class ClosedSetAspect : TypeAspect
             t.Accessibility = Accessibility.Public;
             t.BaseType = TypeFactory.GetNamedType(typeof(TypeConverter));
             t.IsStatic = false;
+            t.IsSealed = true;
             t.AddAttribute(CodeAnnotations.CompilerGenerated);
         });
         typeConverter.IntroduceMethod(nameof(CanConvertFromTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = nameof(TypeConverter.CanConvertFrom); m.AddAttribute(CodeAnnotations.CompilerGenerated); });

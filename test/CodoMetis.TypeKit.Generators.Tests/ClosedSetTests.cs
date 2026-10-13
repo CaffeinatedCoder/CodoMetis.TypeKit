@@ -74,6 +74,30 @@ public sealed class ClosedSetTests
         ProbeTier.Basic.Match(basic: () => 1, premium: () => 2).ShouldBe(1);
     }
 
+    /// <summary>
+    /// <c>All</c> was a field initializer of the part the generators introduced it into, which ran before
+    /// the fields of a part in another file: <c>All</c> listed them as null, and the names the satellites
+    /// read threw. It is filled with the names, after every part's fields.
+    /// </summary>
+    [Fact]
+    public void A_set_declared_in_two_files_lists_the_members_of_both()
+    {
+        ProbeSplit.All.ShouldBe([ProbeSplit.First, ProbeSplit.Second]);
+        ProbeSplit.All.ShouldAllBe(member => member != null);
+        ProbeSplit.TryParse("Second", out var second).ShouldBeTrue();
+        second.Name.ShouldBe("Second");
+        new GeneratedClosedSetAttribute<ProbeSplit>().Names.ShouldBe(["First", "Second"]);
+    }
+
+    /// <summary>Two nested sets of one simple name are told apart by their containers, in a log and in a fault's identifier.</summary>
+    [Fact]
+    public void A_nested_set_is_qualified_by_its_containing_types()
+    {
+        ProbeOrder.Status.Open.QualifiedName.ShouldBe("ProbeOrder.Status.Open");
+        ProbeShipment.Status.Sent.QualifiedName.ShouldBe("ProbeShipment.Status.Sent");
+        ProbeStatus.Open.QualifiedName.ShouldBe("ProbeStatus.Open");
+    }
+
     [Fact]
     public void TryParse_and_Parse_find_a_member_by_name_and_refuse_without_quoting()
     {

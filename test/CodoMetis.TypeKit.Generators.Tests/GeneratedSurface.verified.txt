@@ -844,6 +844,24 @@ ProbeName
   static op_LessThanOrEqual(ProbeName, ProbeName) : Boolean
   extension static ProbeNameExtensions.GetValue(ProbeName) : String
   extension static ProbeNameExtensions.ValueOrNull(ProbeName?) : String
+ProbeOrder.Status
+  Match(Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeOrder.Status>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeOrder.Status>
+  implements IParsable<ProbeOrder.Status>
+  nested StatusJsonConverter : JsonConverter<ProbeOrder.Status>
+  nested StatusTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeOrder.Status>
+  static Parse(String) : ProbeOrder.Status
+  static Parse(String, Boolean) : ProbeOrder.Status
+  static TryParse(String, Boolean, out ProbeOrder.Status) : Boolean
+  static TryParse(String, out ProbeOrder.Status) : Boolean
 ProbeOrderFault
   Description : String
   Kind : FaultKind
@@ -1115,6 +1133,24 @@ ProbeSecret
   static op_LessThanOrEqual(ProbeSecret, ProbeSecret) : Boolean
   extension static ProbeSecretExtensions.GetValue(ProbeSecret) : String
   extension static ProbeSecretExtensions.ValueOrNull(ProbeSecret) : String
+ProbeShipment.Status
+  Match(Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeShipment.Status>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeShipment.Status>
+  implements IParsable<ProbeShipment.Status>
+  nested StatusJsonConverter : JsonConverter<ProbeShipment.Status>
+  nested StatusTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeShipment.Status>
+  static Parse(String) : ProbeShipment.Status
+  static Parse(String, Boolean) : ProbeShipment.Status
+  static TryParse(String, Boolean, out ProbeShipment.Status) : Boolean
+  static TryParse(String, out ProbeShipment.Status) : Boolean
 ProbeSku
   Equals(Object) : Boolean
   Equals(ProbeSku) : Boolean
@@ -1173,6 +1209,24 @@ ProbeSpan
   static op_Inequality(ProbeSpan, ProbeSpan) : Boolean
   extension static ProbeSpanExtensions.GetValue(ProbeSpan) : ProbeSpanText
   extension static ProbeSpanExtensions.ValueOrNull(ProbeSpan?) : ProbeSpanText
+ProbeSplit
+  Match(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeSplit>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeSplit>
+  implements IParsable<ProbeSplit>
+  nested ProbeSplitJsonConverter : JsonConverter<ProbeSplit>
+  nested ProbeSplitTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeSplit>
+  static Parse(String) : ProbeSplit
+  static Parse(String, Boolean) : ProbeSplit
+  static TryParse(String, Boolean, out ProbeSplit) : Boolean
+  static TryParse(String, out ProbeSplit) : Boolean
 ProbeStatus
   Match(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
   Name : String

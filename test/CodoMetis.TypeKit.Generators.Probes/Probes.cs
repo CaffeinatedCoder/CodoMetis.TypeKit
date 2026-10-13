@@ -195,6 +195,30 @@ public sealed partial class ProbeStatus : IClosedSet<ProbeStatus>
     public static readonly ProbeStatus Cancelled = new();
 }
 
+/// <summary>A closed set declared in two parts, this one and <c>SplitProbes.cs</c>: <c>All</c> lists the member of either.</summary>
+public sealed partial class ProbeSplit : IClosedSet<ProbeSplit>
+{
+    public static readonly ProbeSplit First = new();
+}
+
+/// <summary>Two nested sets of one simple name, told apart by their containers.</summary>
+public static class ProbeOrder
+{
+    public sealed partial class Status : IClosedSet<Status>
+    {
+        public static readonly Status Open = new();
+    }
+}
+
+/// <summary>See <see cref="ProbeOrder"/>.</summary>
+public static class ProbeShipment
+{
+    public sealed partial class Status : IClosedSet<Status>
+    {
+        public static readonly Status Sent = new();
+    }
+}
+
 /// <summary>A closed set with constant data per member, through a private constructor.</summary>
 public sealed partial class ProbeTier : IClosedSet<ProbeTier>
 {

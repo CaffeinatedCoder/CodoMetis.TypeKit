@@ -34,16 +34,21 @@ internal sealed partial class ClosedSetAspect
         }
     }
 
+    /// <summary>The set's name, with its containing types for a nested set, and the member's: two <c>Status</c> sets stay apart.</summary>
     [Template]
     public string QualifiedNameTemplate
     {
-        get => meta.Target.Type.Name + "." + meta.This.Name;
+        get => ClosedSetTypes.NestingChain(meta.Target.Type) + "." + meta.This.Name;
     }
 
     [Template]
     public string ToStringTemplate() => meta.This.Name;
 
-    /// <summary>After the static field initializers, before any static constructor body: each member learns its name.</summary>
+    /// <summary>
+    /// After the static field initializers of every part, before any static constructor body: each
+    /// member learns its name, and <c>All</c> is filled, since a field initializer ran with its own
+    /// part only and listed a member declared in another file as null.
+    /// </summary>
     [Template]
     public static void NamesInitializerTemplate()
     {
@@ -52,6 +57,8 @@ internal sealed partial class ClosedSetAspect
         {
             member.Value!._name = member.Name;
         }
+
+        meta.ThisType._all = ExpressionFactory.Parse(ClosedSetTypes.AllExpression(args.Set, args.Members)).Value;
     }
 
     [Template]

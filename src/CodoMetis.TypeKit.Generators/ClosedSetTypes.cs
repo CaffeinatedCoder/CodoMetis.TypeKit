@@ -22,6 +22,14 @@ internal static class ClosedSetTypes
     public static IReadOnlyList<IField> Members(INamedType type) =>
         [.. type.Fields.Where(f => f.IsStatic && f.Accessibility == Accessibility.Public && f.Type.Equals(type) && f.Writeability == Writeability.ConstructorOnly)];
 
+    /// <summary>The set's name with its containing types, dotted: <c>Order.Status</c> for a set nested in <c>Order</c>.</summary>
+    public static string NestingChain(INamedType set) =>
+        set.DeclaringType is { } declaring ? NestingChain(declaring) + "." + set.Name : set.Name;
+
+    /// <summary>The expression that makes <c>All</c>: the members in declaration order, wrapped read-only.</summary>
+    public static string AllExpression(INamedType set, IReadOnlyList<IField> members) =>
+        $"global::System.Array.AsReadOnly(new {ValueObjectTypes.SourceName(set)}[] {{ {string.Join(", ", members.Select(member => $"{ValueObjectTypes.SourceName(set)}.{member.Name}"))} }})";
+
     /// <summary>The names of what the generators introduce into the set itself; nothing else in it may have one (CMTK1011, CMTK1021).</summary>
     public static IReadOnlyList<string> GeneratedNames(INamedType set) =>
         ["Name", "QualifiedName", "All", "Match", "Parse", "TryParse", "ToString", "_name", "_all", $"{set.Name}JsonConverter", $"{set.Name}TypeConverter"];
