@@ -62,6 +62,38 @@ public sealed class FaultTests
     public void Comparing_the_reason_or_two_faults_compiles(string member) =>
         ConsumerCompilation.Of(Consumer(member)).Problems().ShouldBeEmpty();
 
+    /// <summary>
+    /// No detail is <c>null</c>, so a blank one is a mistake, and refused where it is made: a detail of
+    /// spaces is written into a problem's <c>detail</c> as a sentence that says nothing.
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("\t\n")]
+    public void A_blank_detail_is_refused(string detail)
+    {
+        var refusal = Should.Throw<ArgumentException>(() => Fault.Of(OrderFault.NotFound, detail));
+
+        refusal.ParamName.ShouldBe("detail");
+        refusal.ShouldNotBeOfType<ArgumentNullException>();
+    }
+
+    /// <summary>A reason that is a class, a closed set's member, can be null, and a fault of no reason is refused.</summary>
+    [Fact]
+    public void A_null_reason_is_refused()
+    {
+        var refusal = Should.Throw<ArgumentNullException>(() => Fault.Of<string>(null!));
+
+        refusal.ParamName.ShouldBe("reason");
+    }
+
+    [Fact]
+    public void A_fault_without_a_detail_has_none()
+    {
+        Fault.Of(OrderFault.NotFound).Detail.ShouldBeNull();
+        Fault.Of(OrderFault.NotFound, null).Detail.ShouldBeNull();
+    }
+
     [Fact]
     public void Two_faults_are_equal_by_reason_and_detail()
     {
