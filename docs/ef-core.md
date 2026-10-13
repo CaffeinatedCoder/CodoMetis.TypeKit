@@ -144,8 +144,13 @@ db.Invoices.GroupBy(i => i.Currency).Select(g => new { Currency = g.Key, Sum = g
 A table's column is re-typed, not cast, so an index on it still serves the query. The element of a
 primitive collection, a property in a JSON column and a parameter are converted, which may add a
 cast. A property with a converter of the application's own does not hold `.Value`, so `.Value` on it
-is refused ("could not be translated"); comparing the value object itself still works. Ordering in SQL follows the column's collation, while the generated comparison in memory is
-ordinal for a string, as for any string column.
+is refused ("could not be translated"); comparing the value object itself still works.
+
+Ordering in SQL follows the column's collation, while the generated comparison in memory is ordinal
+for a string, as for any string column. A value object with its own `CompareTo(TSelf)` cannot be
+compared, ordered, or taken the `Min` or `Max` of in a query, since the database orders the column by
+the wrapped value: such a query is refused, naming the value object, and `.Value` says the wrapped
+value's order is meant (`OrderBy(i => i.Priority.Value)`).
 
 ## Reading back without validation
 

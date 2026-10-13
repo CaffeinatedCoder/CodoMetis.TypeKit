@@ -188,6 +188,24 @@ public sealed class ComparisonTests
         typeof(ProbeDescending).GetInterfaces().ShouldContain(typeof(IComparisonOperators<ProbeDescending, ProbeDescending, bool>));
     }
 
+    /// <summary>
+    /// The seam taken is said on the type, for code that orders where <c>CompareTo</c> cannot run: the
+    /// EF satellite refuses to compare or order such a value object in SQL, where the column's order is
+    /// the wrapped value's. Only there: a value object ordered by what it wraps carries nothing.
+    /// </summary>
+    [Fact]
+    public void A_hand_written_CompareTo_is_said_on_the_type()
+    {
+        typeof(ProbeDescending).GetCustomAttribute<HandWrittenOrderingAttribute>().ShouldNotBeNull();
+        typeof(ProbeReversedLabel).GetCustomAttribute<HandWrittenOrderingAttribute>().ShouldNotBeNull();
+
+        typeof(ProbeCount).GetCustomAttribute<HandWrittenOrderingAttribute>().ShouldBeNull();
+        typeof(ProbeLabel).GetCustomAttribute<HandWrittenOrderingAttribute>().ShouldBeNull();
+        typeof(ProbePin).GetCustomAttribute<HandWrittenOrderingAttribute>().ShouldBeNull();
+
+        (ProbeReversedLabel.From("a") > ProbeReversedLabel.From("b")).ShouldBeTrue();
+    }
+
     [Fact]
     public void The_non_generic_CompareTo_orders_null_first_and_refuses_another_type()
     {

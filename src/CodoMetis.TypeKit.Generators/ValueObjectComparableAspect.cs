@@ -1,6 +1,8 @@
 using System.Numerics;
+using CodoMetis.TypeKit.CompilerServices;
 using Metalama.Framework.Aspects;
 using Metalama.Framework.Code;
+using Metalama.Framework.Code.DeclarationBuilders;
 
 namespace CodoMetis.TypeKit.Generators;
 
@@ -50,6 +52,12 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
             builder.SkipAspect();
             return;
         }
+
+        // The seam taken: run-time code that orders values where CompareTo cannot run, a database
+        // ordering a column by the wrapped value, reads this and refuses rather than answer the
+        // opposite order (the EF satellite).
+        if (DeclaresCompareTo(builder.Target))
+            builder.IntroduceAttribute(AttributeConstruction.Create(typeof(HandWrittenOrderingAttribute)));
 
         builder.Tags = new ComparableImplementationArguments
         {
@@ -148,6 +156,12 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
                      [typeof(IComparable<>).ToNamedType(), typeof(IComparable).ToNamedType(), typeof(IComparisonOperators<,,>).ToNamedType()]))
             yield return member;
     }
+
+    /// <summary>The seam: a <c>CompareTo(TSelf)</c> the type declares itself, which the generated one then leaves in place.</summary>
+    private static bool DeclaresCompareTo(INamedType target) =>
+        target.Methods.Any(method => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false, Name: nameof(IComparable<int>.CompareTo) }
+                                  && method.Parameters is [var other]
+                                  && other.Type.Equals(target));
 
     /// <summary>
     /// The operand type: nullable for a record class, as <c>IComparable&lt;T&gt;.CompareTo(T?)</c> and

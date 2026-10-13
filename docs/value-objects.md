@@ -231,6 +231,10 @@ var first = new[] { Priority.From(3), Priority.From(1) }.Min();   // 3
 bool urgent = Priority.From(1) > Priority.From(2);                // true
 ```
 
+A database cannot run a hand-written `CompareTo`, so an EF Core query that compares or orders such a
+value object is refused ([EF Core](ef-core.md#queries)); order by `.Value` where the wrapped value's
+order is meant.
+
 A computed property, a static member and a constant are fine, as `Email.Domain` and `Quantity.Limit`
 above. A `ToString()` that masks a secret is in [Logging and secrets](logging-and-secrets.md).
 

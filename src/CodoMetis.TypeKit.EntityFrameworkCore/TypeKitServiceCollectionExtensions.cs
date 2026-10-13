@@ -1,4 +1,5 @@
 using CodoMetis.TypeKit.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
 using Microsoft.EntityFrameworkCore.Query;
@@ -21,13 +22,14 @@ public static class TypeKitServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(serviceCollection);
 
-        // All four are plugins, which EF collects from every registration: nothing of EF's or of
-        // another library's is replaced.
+        // Plugins and an interceptor, which EF collects from every registration: nothing of EF's or of
+        // another library's is replaced, and an application's own interceptors still run.
         new EntityFrameworkRelationalServicesBuilder(serviceCollection)
             .TryAdd<IRelationalTypeMappingSourcePlugin, ValueObjectTypeMappingSourcePlugin>()
             .TryAdd<IMemberTranslatorPlugin, ValueObjectMemberTranslatorPlugin>()
             .TryAdd<IMethodCallTranslatorPlugin, ValueObjectMethodCallTranslatorPlugin>()
-            .TryAdd<IConventionSetPlugin, ValueObjectKeyConventionSetPlugin>();
+            .TryAdd<IConventionSetPlugin, ValueObjectKeyConventionSetPlugin>()
+            .TryAdd<IInterceptor, HandWrittenOrderingInterceptor>();
 
         return serviceCollection;
     }

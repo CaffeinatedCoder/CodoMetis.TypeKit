@@ -288,6 +288,7 @@ internal static class ValueObjectDeclaration
             if (type.Equals(TypeFactory.GetNamedType(typeof(JsonConverterAttribute)))
              || type.Equals(TypeFactory.GetNamedType(typeof(CompilerGeneratedAttribute)))
              || type.Definition.Equals(TypeFactory.GetNamedType(typeof(GeneratedValueObjectAttribute<,>)))
+             || type.Equals(TypeFactory.GetNamedType(typeof(HandWrittenOrderingAttribute)))
              || (parse != ValueParseStrategy.Unsupported && type.Equals(TypeFactory.GetNamedType(typeof(TypeConverterAttribute)))))
                 found.Add($"the attribute {(type.Name.EndsWith(nameof(Attribute), StringComparison.Ordinal) ? type.Name.Substring(0, type.Name.Length - nameof(Attribute).Length) : type.Name)}");
         }

@@ -328,7 +328,13 @@ the wrapped type's own message quotes the input. A refusal by `Create` names the
 differently, declare `CompareTo(TSelf)` yourself: it is kept, and the object overload, the operators
 and the interfaces are derived from it. Any other hand-written comparison member, an explicit
 implementation of `IComparable<TSelf>`, `IComparable` or `IComparisonOperators` included, is an error
-(CMTK1008), so the ordering can never disagree with itself.
+(CMTK1008), so in memory every comparison agrees with your `CompareTo`.
+
+A database cannot run it: it orders the column by the wrapped value. The type then carries
+`[HandWrittenOrdering]`, and an EF Core query that compares, orders, or takes the `Min` or `Max` of
+it is refused, naming the value object, rather than answered in the column's order
+([CodoMetis.TypeKit.EntityFrameworkCore](../CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries)).
+Compare or order by `.Value` where the wrapped value's order is meant.
 
 ## Build errors
 

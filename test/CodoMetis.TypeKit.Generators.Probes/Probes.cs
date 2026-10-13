@@ -78,6 +78,15 @@ public readonly partial record struct ProbeDescending : IValue<int>
 }
 
 /// <summary>
+/// The comparison seam on a record class, whose operand is nullable: the declared ordering must be
+/// recognised there too.
+/// </summary>
+public sealed partial record ProbeReversedLabel : IValue<string>
+{
+    public int CompareTo(ProbeReversedLabel? other) => other is null ? 1 : string.CompareOrdinal(other.Value, Value);
+}
+
+/// <summary>
 /// Declares its own <c>ToString()</c>, the formatting seam, to hide what it wraps: it is kept, and no
 /// formatting interface is generated, so interpolation and <c>string.Format</c> reach it too. A record
 /// class over a string, as a secret usually is.

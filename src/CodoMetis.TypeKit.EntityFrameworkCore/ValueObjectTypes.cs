@@ -16,6 +16,7 @@ namespace CodoMetis.TypeKit.EntityFrameworkCore;
 internal static class ValueObjectTypes
 {
     private static readonly ConcurrentDictionary<Type, GeneratedValueObjectAttribute?> Descriptions = new();
+    private static readonly ConcurrentDictionary<Type, bool> HandWrittenOrderings = new();
 
     /// <summary>The value object's attribute, or <see langword="null"/> for any other type.</summary>
     public static GeneratedValueObjectAttribute? Describe(Type type) =>
@@ -25,4 +26,9 @@ internal static class ValueObjectTypes
                 : null);
 
     public static bool IsValueObject(Type type) => Describe(type) is not null;
+
+    /// <summary>Whether <paramref name="type"/> is a value object that declares its own <c>CompareTo(TSelf)</c> (<see cref="HandWrittenOrderingAttribute"/>).</summary>
+    public static bool HasHandWrittenOrdering(Type type) =>
+        HandWrittenOrderings.GetOrAdd(type, static candidate =>
+            IsValueObject(candidate) && candidate.GetCustomAttribute<HandWrittenOrderingAttribute>(inherit: false) is not null);
 }

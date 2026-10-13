@@ -78,6 +78,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "HandWrittenMinValue")]
     [InlineData("CMTK1011", "HandWrittenJsonConverter")]
     [InlineData("CMTK1011", "HandWrittenTypeConverter")]
+    [InlineData("CMTK1011", "HandWrittenOrdering")]
     [InlineData("CMTK1011", "HandWrittenInterface")]
     [InlineData("CMTK1011", "ExplicitCreate")]
     [InlineData("CMTK1011", "ExplicitCreateBesidePublic")]
@@ -230,6 +231,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("HandWrittenMinValue", "HandWrittenMinValue.MinValue")]
     [InlineData("HandWrittenJsonConverter", "the attribute JsonConverter")]
     [InlineData("HandWrittenTypeConverter", "the attribute TypeConverter")]
+    [InlineData("HandWrittenOrdering", "the attribute HandWrittenOrdering")]
     [InlineData("HandWrittenInterface", "the interface IValueObject<HandWrittenInterface, int>")]
     [InlineData("ExplicitCreate", "Create only as an explicit implementation of IValidatedValue<ExplicitCreate, string, Fault>")]
     [InlineData("ExplicitCreateBesidePublic", "Create both as a static method and as an explicit implementation of IValidatedValue<ExplicitCreateBesidePublic, string, Fault>, so it is not generated: every generated way in calls ExplicitCreateBesidePublic.Create and generic code calling T.Create reaches the explicit one")]
@@ -790,6 +792,10 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             [System.ComponentModel.TypeConverter(typeof(System.ComponentModel.Int32Converter))]
             public readonly partial record struct HandWrittenTypeConverter : IValue<int>;
+
+            // Says the ordering is hand-written where it is not, and EF would refuse to order it.
+            [CodoMetis.TypeKit.CompilerServices.HandWrittenOrdering]
+            public readonly partial record struct HandWrittenOrdering : IValue<int>;
 
             public readonly partial record struct HandWrittenInterface : IValue<int>, IValueObject<HandWrittenInterface, int>
             {

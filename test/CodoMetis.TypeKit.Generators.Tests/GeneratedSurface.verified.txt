@@ -305,6 +305,7 @@ ProbeDescending
   Value : Int32
   attribute CompilerGeneratedAttribute
   attribute GeneratedValueObjectAttribute<ProbeDescending, Int32>
+  attribute HandWrittenOrderingAttribute
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -1096,6 +1097,46 @@ ProbeRatio
   static op_LessThanOrEqual(ProbeRatio, ProbeRatio) : Boolean
   extension static ProbeRatioExtensions.GetValue(ProbeRatio) : Double
   extension static ProbeRatioExtensions.ValueOrNull(ProbeRatio?) : Double?
+ProbeReversedLabel
+  <Clone>$() : ProbeReversedLabel
+  CompareTo(Object) : Int32
+  CompareTo(ProbeReversedLabel) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeReversedLabel) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  Value : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeReversedLabel, String>
+  attribute HandWrittenOrderingAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeReversedLabel>
+  implements IComparisonOperators<ProbeReversedLabel, ProbeReversedLabel, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeReversedLabel, ProbeReversedLabel, Boolean>
+  implements IEquatable<ProbeReversedLabel>
+  implements IFormattable
+  implements IParsable<ProbeReversedLabel>
+  implements IPlainValueObject<ProbeReversedLabel, String>
+  implements IValue<String>
+  implements IValueObject<ProbeReversedLabel, String>
+  implements IValueObjectMaterializer<ProbeReversedLabel, String>
+  nested ProbeReversedLabelJsonConverter : JsonConverter<ProbeReversedLabel>, IStoredJsonConverterSource
+  nested ProbeReversedLabelTypeConverter : TypeConverter
+  static From(String) : ProbeReversedLabel
+  static Parse(String, IFormatProvider) : ProbeReversedLabel
+  static TryParse(String, IFormatProvider, out ProbeReversedLabel) : Boolean
+  static op_Equality(ProbeReversedLabel, ProbeReversedLabel) : Boolean
+  static op_GreaterThan(ProbeReversedLabel, ProbeReversedLabel) : Boolean
+  static op_GreaterThanOrEqual(ProbeReversedLabel, ProbeReversedLabel) : Boolean
+  static op_Inequality(ProbeReversedLabel, ProbeReversedLabel) : Boolean
+  static op_LessThan(ProbeReversedLabel, ProbeReversedLabel) : Boolean
+  static op_LessThanOrEqual(ProbeReversedLabel, ProbeReversedLabel) : Boolean
+  extension static ProbeReversedLabelExtensions.GetValue(ProbeReversedLabel) : String
+  extension static ProbeReversedLabelExtensions.ValueOrNull(ProbeReversedLabel) : String
 ProbeSecret
   <Clone>$() : ProbeSecret
   CompareTo(Object) : Int32
