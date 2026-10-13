@@ -27,7 +27,9 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// in a method returning <c>Task</c>, <c>Func&lt;Task&gt; f = () =&gt; svc.DoAsync();</c>. The implicit
 /// conversion of a call's task is reported; an explicit <c>(Task)</c> cast says the drop is intended.
 /// A call reached through a branch, <c>await (dry ? CancelAsync(id) : ShipAsync(id));</c> or a
-/// <c>switch</c> expression, is each branch's call, reported at the branch.
+/// <c>switch</c> expression, is each branch's call, reported at the branch. <c>ConfigureAwait</c> and
+/// <c>WaitAsync</c> hand on the task they are called on: through them a call's task is still the
+/// call's, and a task the caller holds, <c>await held.ConfigureAwait(false);</c>, drops nothing.
 /// A <c>ValueTask&lt;T&gt;</c> has no conversion to <c>ValueTask</c>. A method group converts the same
 /// way to a delegate that returns <c>Task</c>: <c>Func&lt;Guid, Task&gt; f = orders.CancelAsync;</c>, or
 /// <c>bus.Subscribe&lt;Guid&gt;(orders.CancelAsync)</c> for a <c>Func&lt;T, Task&gt;</c> parameter. A cast
@@ -131,41 +133,44 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         var awaited = expression is IAwaitOperation { Operation: var inner } ? inner : null;
         var dropped = Unwrap(awaited ?? expression);
 
-        foreach (var call in Producers(dropped))
-        {
-            // await LoadAsync().ConfigureAwait(false): the result is LoadAsync's, and so is the name.
-            var invocation = call is { TargetMethod.Name: "ConfigureAwait", Instance: IInvocationOperation configured } ? configured : call;
+        // await LoadAsync().ConfigureAwait(false): the result is LoadAsync's, and so is the name; on a
+        // task still held, await held.WaitAsync(t), nothing is dropped.
+        var passedOn = tasks.PassedOn(dropped);
 
-            // The statement's own call keeps the statement's type and location; a branch's call its own.
-            var own  = ReferenceEquals(call, dropped);
-            var type = own ? expression.Type : awaited is null ? invocation.Type : tasks.Awaited(invocation.Type);
+        foreach (var invocation in Producers(dropped, tasks))
+        {
+            // The statement's own call keeps the statement's location, and its type unless a
+            // pass-through stands between them; a branch's call keeps its own.
+            var own  = ReferenceEquals(invocation, passedOn);
+            var type = own && ReferenceEquals(invocation, dropped) ? expression.Type : awaited is null ? invocation.Type : tasks.Awaited(invocation.Type);
             if (DroppedOutcome(type, invocation, symbols, tasks) is not { } outcome) continue;
 
-            context.Report(Diagnostic.Create(Rule, (own ? expression : call).Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+            context.Report(Diagnostic.Create(Rule, (own ? expression : invocation).Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
         }
     }
 
     /// <summary>
     /// The calls whose values <paramref name="operation"/> drops as one: the call itself, or each
-    /// branch's call of a conditional or a <c>switch</c> expression, through implicit conversions and
-    /// null-conditional accesses. A branch that is no call, a variable or a literal, drops nothing of
+    /// branch's call of a conditional or a <c>switch</c> expression, through implicit conversions,
+    /// null-conditional accesses and the task's <c>ConfigureAwait</c> and <c>WaitAsync</c>, which hand on
+    /// the task they are called on. A branch that is no call, a variable or a literal, drops nothing of
     /// its own.
     /// </summary>
-    private static IEnumerable<IInvocationOperation> Producers(IOperation operation)
+    private static IEnumerable<IInvocationOperation> Producers(IOperation operation, Tasks tasks)
     {
-        switch (Unwrap(operation))
+        switch (tasks.PassedOn(operation))
         {
             case IInvocationOperation invocation:
                 yield return invocation;
                 break;
             case IConditionalOperation { Type: not null, WhenTrue: { } whenTrue, WhenFalse: { } whenFalse }:
-                foreach (var producer in Producers(whenTrue)) yield return producer;
-                foreach (var producer in Producers(whenFalse)) yield return producer;
+                foreach (var producer in Producers(whenTrue, tasks)) yield return producer;
+                foreach (var producer in Producers(whenFalse, tasks)) yield return producer;
                 break;
             case ISwitchExpressionOperation chosen:
                 foreach (var arm in chosen.Arms)
                 {
-                    foreach (var producer in Producers(arm.Value)) yield return producer;
+                    foreach (var producer in Producers(arm.Value, tasks)) yield return producer;
                 }
 
                 break;
@@ -203,8 +208,10 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     {
         if (!Given(invocation, symbols)) return true;
 
+        // held.WaitAsync(t) hands on a task that is still held; a call under one is a descendant of its own.
         return invocation.Descendants().Any(operation => operation switch
         {
+            IInvocationOperation call when tasks.PassesOn(call) => false,
             IInvocationOperation call           => (symbols.OutcomeName(call.Type) ?? tasks.PendingOutcome(call.Type, symbols)) is not null && !ReturnsItsStoredReceiver(call, symbols)
                                                 || tasks.SequenceOutcome(call.Type, symbols) is not null && !Given(call, symbols),
             IMethodReferenceOperation reference => (symbols.OutcomeName(reference.Method.ReturnType) ?? tasks.PendingOutcome(reference.Method.ReturnType, symbols)) is not null,
@@ -232,7 +239,10 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         if (!toPlainTask && !tasks.HoldsPlainTasks(conversion.Type)) return;
 
         // The call, or each branch's call where a conditional or a switch expression was converted whole.
-        foreach (var invocation in Producers(conversion.Operand))
+        // A pass-through between the conversion and the call, LoadAsync().WaitAsync(t), is reported whole.
+        var passedOn = tasks.PassedOn(conversion.Operand);
+
+        foreach (var invocation in Producers(conversion.Operand, tasks))
         {
             var outcome = toPlainTask
                 ? tasks.PendingOutcome(invocation.Type, symbols)
@@ -241,7 +251,8 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
 
             if (outcome is null) continue;
 
-            context.Report(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+            var reported = ReferenceEquals(invocation, passedOn) ? conversion.Operand : invocation;
+            context.Report(Diagnostic.Create(Rule, reported.Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
         }
     }
 
@@ -256,7 +267,7 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         var wait = (IInvocationOperation)context.Operation;
 
         if (wait.TargetMethod is not { Name: "Wait", IsStatic: false } method || !SymbolEqualityComparer.Default.Equals(method.ContainingType, tasks.Plain)) return;
-        if (wait.Instance is null || Unwrap(wait.Instance) is not IInvocationOperation invocation) return;
+        if (wait.Instance is null || tasks.PassedOn(wait.Instance) is not IInvocationOperation invocation) return;
 
         var outcome = tasks.PendingOutcome(invocation.Type, symbols)
                    ?? DroppedCollection(tasks.CollectionOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks);
@@ -378,6 +389,28 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         INamedTypeSymbol? readOnlySpan)
     {
         public INamedTypeSymbol? Plain { get; } = plain;
+
+        /// <summary>
+        /// What <paramref name="operation"/> hands on, through implicit conversions, null-conditional
+        /// accesses and any number of <see cref="PassesOn"/> calls: <c>held.ConfigureAwait(false)</c> is
+        /// <c>held</c>, <c>LoadAsync().WaitAsync(t)</c> the <c>LoadAsync()</c> call.
+        /// </summary>
+        public IOperation PassedOn(IOperation operation)
+        {
+            var current = Unwrap(operation);
+            while (current is IInvocationOperation { Instance: { } instance } call && PassesOn(call)) current = Unwrap(instance);
+
+            return current;
+        }
+
+        /// <summary>
+        /// <c>ConfigureAwait</c> and <c>WaitAsync</c> of <c>Task&lt;T&gt;</c> or <c>ValueTask&lt;T&gt;</c>,
+        /// every overload: each completes with the task's own result and makes none.
+        /// </summary>
+        public bool PassesOn(IInvocationOperation call) =>
+            call.TargetMethod is { IsStatic: false, Name: "ConfigureAwait" or "WaitAsync" } method
+         && (SymbolEqualityComparer.Default.Equals(method.ContainingType.OriginalDefinition, generic)
+          || SymbolEqualityComparer.Default.Equals(method.ContainingType.OriginalDefinition, genericValueTask));
 
         /// <summary>A <c>Task</c> or <c>ValueTask</c> of a result, not awaited: the result is dropped with it.</summary>
         public string? PendingOutcome(ITypeSymbol? type, TypeKitSymbols symbols) => symbols.OutcomeName(Awaited(type));

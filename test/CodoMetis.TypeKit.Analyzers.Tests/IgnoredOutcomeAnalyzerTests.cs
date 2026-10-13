@@ -163,6 +163,81 @@ public sealed class IgnoredOutcomeAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
+    /// <c>ConfigureAwait</c> and <c>WaitAsync</c> hand on the task they are called on: a task the caller
+    /// still holds keeps its result through them, as it does through <c>await held;</c>. They were
+    /// reported as the producers of the result, at Error.
+    /// </summary>
+    [Fact]
+    public Task A_held_task_passed_through_ConfigureAwait_or_WaitAsync_stays_silent() =>
+        Test(
+            """
+            public static class Caller
+            {
+                private static readonly Task<Result<int, Fault>> Field = Task.FromResult<Result<int, Fault>>(1);
+
+                public static async Task Run(Task<Result<int, Fault>> held, Task<Result<int, Fault>> other, ValueTask<Result<Fault>> valueHeld, bool dry, System.Threading.CancellationToken t)
+                {
+                    await held;
+                    await held.ConfigureAwait(false);
+                    await held.ConfigureAwait(ConfigureAwaitOptions.None);
+                    await Field.ConfigureAwait(false);
+                    await (dry ? held : other).ConfigureAwait(false);
+                    await valueHeld.ConfigureAwait(false);
+                    await held.WaitAsync(t);
+                    await held.WaitAsync(TimeSpan.FromSeconds(1));
+                    await held.WaitAsync(TimeSpan.FromSeconds(1), t);
+                    await held.WaitAsync(TimeSpan.FromSeconds(1), TimeProvider.System);
+                    await held.WaitAsync(TimeSpan.FromSeconds(1), TimeProvider.System, t);
+                    await held.WaitAsync(t).ConfigureAwait(false);
+                    held.WaitAsync(t);
+                    held.ConfigureAwait(false);
+                    held.WaitAsync(t).Wait();
+                    await Task.WhenAll(held.WaitAsync(t), other);
+                }
+
+                public static Task Handed(Task<Result<int, Fault>> held, System.Threading.CancellationToken t) => held.WaitAsync(t);
+            }
+            """)
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A task a call made, passed through <c>ConfigureAwait</c> or <c>WaitAsync</c>, is still that
+    /// call's result, dropped and named after the call: awaited, not awaited, waited for, converted to
+    /// a plain task, or picked by a branch.
+    /// </summary>
+    [Fact]
+    public Task A_call_s_task_passed_through_ConfigureAwait_or_WaitAsync_reports_naming_the_call() =>
+        Test(
+            """
+            public static class Caller
+            {
+                public static async Task Run(Service service, Task<Result<int, Fault>> held, bool dry, System.Threading.CancellationToken t)
+                {
+                    {|#0:await service.LoadAsync().ConfigureAwait(ConfigureAwaitOptions.None)|};
+                    {|#1:await service.SaveAsync().ConfigureAwait(false)|};
+                    {|#2:await service.LoadAsync().WaitAsync(t)|};
+                    {|#3:await service.LoadAsync().WaitAsync(TimeSpan.FromSeconds(1), TimeProvider.System, t).ConfigureAwait(false)|};
+                    {|#4:service.LoadAsync().WaitAsync(t)|};
+                    {|#5:service.LoadAsync().ConfigureAwait(false)|};
+                    await (dry ? held : {|#6:service.LoadAsync()|}).ConfigureAwait(false);
+                    {|#7:service.LoadAsync().WaitAsync(t).Wait()|};
+                }
+
+                public static Task Handed(Service service, System.Threading.CancellationToken t) => {|#8:service.LoadAsync().WaitAsync(t)|};
+            }
+            """,
+            Cmtk0003(0, "Result", "LoadAsync"),
+            Cmtk0003(1, "Result", "SaveAsync"),
+            Cmtk0003(2, "Result", "LoadAsync"),
+            Cmtk0003(3, "Result", "LoadAsync"),
+            Cmtk0003(4, "Result", "LoadAsync"),
+            Cmtk0003(5, "Result", "LoadAsync"),
+            Cmtk0003(6, "Result", "LoadAsync"),
+            Cmtk0003(7, "Result", "LoadAsync"),
+            Cmtk0003(8, "Result", "LoadAsync"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
     /// <c>Tap</c>, <c>TapAsync</c>, <c>TapError</c> and <c>TapErrorAsync</c> return their receiver:
     /// dropping it loses nothing only when the receiver is still held.
     /// </summary>

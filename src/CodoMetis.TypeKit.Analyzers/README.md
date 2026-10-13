@@ -151,8 +151,10 @@ Func<Guid, Task> cancel = orders.CancelAsync;             // CMTK0003
 bus.Subscribe<Guid>(orders.CancelAsync);                  // CMTK0003: the parameter is a Func<T, Task>
 ```
 
-A task you still hold is not dropped, and an explicit cast, to `Task` or to the delegate type, says
-the drop is intended. A `ValueTask<T>` has no conversion to `ValueTask`.
+A task you still hold is not dropped, awaited as it is or through `ConfigureAwait` or `WaitAsync`,
+which hand on the task they are called on; through them, a call's task is still that call's
+(`await orders.CancelAsync(id).ConfigureAwait(false);` is reported, naming `CancelAsync`). An
+explicit cast, to `Task` or to the delegate type, says the drop is intended. A `ValueTask<T>` has no conversion to `ValueTask`.
 
 A collection of results is dropped as silently as one result:
 
