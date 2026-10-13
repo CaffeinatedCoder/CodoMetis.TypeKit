@@ -19,10 +19,18 @@ included.
 ## A dropped Result is a build error
 
 CMTK0003, a `Result` or `Option` a call returns and nobody reads, was a warning in 1.x and is an
-error in 2.0. It also reports what 1.x missed: `Wait()` on a task of a result, tasks of results
-passed to `Task.WaitAll` or `Task.WaitAny`, a `foreach` or `await foreach` that never reads the
-results it walks, and a lazy sequence of results turned into a list and dropped. A build that
-treated warnings as errors already failed on every 1.x form; only the new forms are new errors.
+error in 2.0. It also reports what 1.x missed:
+
+- `Wait()` on a task of a result, with a timeout too, even where the `bool` that form answers is read;
+- tasks of results gathered into an array or a sequence and passed to `Task.WaitAll`;
+- a `foreach` or `await foreach` that never reads the results it walks;
+- a lazy sequence of results turned into a list and dropped;
+- a task picked by `?:`, a `switch` or `??` and awaited, its result never read;
+- a tuple or a dictionary holding results, dropped.
+
+Tasks passed to `Task.WaitAll` or `Task.WaitAny` as separate arguments were reported by 1.x already.
+A build that treated warnings as errors already failed on every 1.x form; only the new forms are new
+errors.
 
 ```csharp
 await orders.CancelAsync(id);                                 // CMTK0003: an error since 2.0
@@ -33,7 +41,8 @@ await foreach (var _ in orders.CancelEachAsync(ids)) { }      // a loop variable
 ```
 
 Every report is answered in the code and never needs a suppression: `_ =` for a drop nothing
-depends on, a cast to `Task` for a task converted on purpose, a loop variable named `_`. To migrate
+depends on, a cast to `Task` for a task converted on purpose (`((Task)orders.CancelAsync(id)).Wait(timeout)`
+waits without the result), a loop variable named `_`. To migrate
 a large codebase in steps, lower the rule for a while:
 
 ```ini
@@ -44,6 +53,57 @@ dotnet_diagnostic.CMTK0003.severity = warning
 CMTK0010, CMTK0011 and CMTK0012 are new errors too, but each reports only on what 2.0 adds: the
 type-parameter attributes, `[RequireParameterlessConstructor]` and a closed set's `Match`. No code
 that built against 1.5 meets them.
+
+## An abstract value object is a build error
+
+In 1.5, an abstract type that declared a value-object marker built: it generated nothing of its own,
+its sealed derived types were generated, and a value held as the abstract type was written to JSON as
+`{}`. In 2.0 the declaration is CMTK1022. Declare the marker on the sealed type, and keep the abstract
+base for what the types share:
+
+```csharp
+// public abstract partial record Money : IValue<decimal>;     1.5 built these; 2.0: CMTK1022
+// public sealed partial record Euro : Money;
+
+public abstract record Money;
+public sealed partial record Euro : Money, IValue<decimal>;    // the marker on the sealed type, which is generated
+```
+
+## Queries and documents that ran wrongly now throw
+
+Three things that ran in 1.5 and answered wrongly throw in 2.0:
+
+- **`.Value` on a column with a converter of the application's own.** `.Value`, `GetValue()` and
+  `ValueOrNull()` queried the representation TypeKit's converter would have stored, not the one the
+  application's `HasConversion` stores, and answered wrong rows; EF now refuses the query. Map the
+  property with TypeKit's converter, or compare the value object itself.
+- **Ordering by a hand-written `CompareTo`.** A query that compares, orders, or takes `Min` or `Max` of
+  a value object that declares its own `CompareTo` was ordered by the column, the opposite of the
+  in-memory order for a reversed one; it is refused now, in a query filter too. Order by `.Value`
+  where the column's order is meant ([EF Core](ef-core.md#queries)).
+- **A component name two types claim.** A document in which a nested value object's or closed set's
+  component name, `Order.Status` as `OrderStatus`, is also another type's described both as one; it
+  throws now, naming both. Rename one, or give one its own name in `CreateSchemaReferenceId`
+  ([the ASP.NET Core README](../src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says)).
+
+## Rebuild libraries and compiled models
+
+A library whose value objects 1.5's generators wove lacks what 2.0 reads at run time, such as the
+mark the hand-written-ordering refusal looks for, so the refusal does not reach its value objects
+until the library is rebuilt against 2.0. A compiled model generated with 1.5 keeps 1.5's decisions,
+the key generation below among them. Rebuild every project that references
+`CodoMetis.TypeKit.Generators`, and regenerate a compiled model (`dotnet ef dbcontext optimize`).
+
+## Messages that changed
+
+A test that asserts an exception or a message meets these:
+
+- An asynchronous combinator given a delegate that returns no task throws an `ArgumentNullException`
+  naming the delegate, where the `await` threw a `NullReferenceException`.
+- A `CodoMetis.TypeKit.Testing` failure, and a fault mapping's refusal, name a nested type after its
+  containing types (`Result<AssertionTests.Fault>`, `Api.OrderFault`), where 1.5 gave the type's name
+  alone.
+- CMTK0009's message names `SingleOrNone` and `ElementAtOrNone` beside the other replacements.
 
 ## A query's FirstOrNone runs in the database
 

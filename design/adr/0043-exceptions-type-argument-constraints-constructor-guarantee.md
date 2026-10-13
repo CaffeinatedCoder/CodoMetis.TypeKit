@@ -10,7 +10,7 @@ out, since it is `Result<T, Exception>` renamed, and `Result.Catch` takes its on
 stays out, since `Result<TError>` is the value-less shape. Constraints a type parameter cannot
 declare (`[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]`) ship as attributes and an analyzer
 rule, not as an aspect, because the violation is at a use site that need not compile with
-Metalama. `[EnsureParameterlessConstructor]` ships as an attribute, an analyzer rule and a code
+Metalama. `[EnsureParameterlessConstructor]` (shipped as `[RequireParameterlessConstructor]`) ships as an attribute, an analyzer rule and a code
 fix, not as an inheritable aspect, because its value is the error and an introduced constructor
 would demand `partial` of every implementer and be silent without Metalama. The written-text
 guards ship as string extensions and a fault in the base package, with no value object and no

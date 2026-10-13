@@ -167,12 +167,16 @@ compiled and its stated outputs are tested, as the READMEs' are.
   rule, or the wrapped type it could not read, and carries no inner exception that quotes the text;
   `FromKnownGood` names the caller's expression, and `Option` and `Result` print nothing. So a value
   that is a secret does not reach a message or a log through this package, as long as your fault
-  type does not carry it.
+  type does not carry it. The exception is System.Text.Json's own: a refused dictionary key is in
+  the `JsonException`'s `Path`, and so in MVC's 400
+  ([Logging and secrets](docs/logging-and-secrets.md#refusals-never-quote-the-input)).
 - **Swapping a primitive for a value object keeps the contract.** Its JSON is the wrapped type's
-  under your options; its column is the wrapped type's, a key over an integer still an identity
-  column; its OpenAPI schema is the one ASP.NET publishes for the wrapped type. What changes is what
-  the value object refuses, a JSON `null` for a struct value object included, and under a
-  source-generated context an enum-backed value object needs its enum listed
+  under your options, apart from a `DateTime`, which is written as UTC, and number handling set by an
+  attribute on the containing type, which no converter sees
+  ([JSON](docs/json.md#the-wrapped-types-json)); its column is the wrapped type's, a key over an
+  integer still an identity column; its OpenAPI schema is the one ASP.NET publishes for the wrapped
+  type. What changes is what the value object refuses, a JSON `null` for a struct value object
+  included, and under a source-generated context an enum-backed value object needs its enum listed
   ([JSON](src/CodoMetis.TypeKit.Generators/README.md#json)).
 - **Loud failures.** A declaration that cannot be generated is a build error naming the
   declaration, CMTK1000 to CMTK1022, never a type with nothing in it. The analyzers make `default`
@@ -217,8 +221,8 @@ A declaration that cannot be generated fails the build with its name on it, CMTK
 instead of compiling to less than it appears to. And Metalama runs the analyzers on the code it
 transformed, which is how they reach Razor components.
 
-Metalama is in `CodoMetis.TypeKit.Generators` alone. `CodoMetis.TypeKit`, the analyzers and both
-satellites do not reference it, so a project that only wants `Option` and `Result` never receives
+Metalama is in `CodoMetis.TypeKit.Generators` alone. `CodoMetis.TypeKit`, the analyzers and the
+four satellites do not reference it, so a project that only wants `Option` and `Result` never receives
 it. It is open source under the MIT license, and building with it needs no license key, here or in
 your projects. Thanks to the Metalama team.
 

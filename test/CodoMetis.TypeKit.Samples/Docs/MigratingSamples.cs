@@ -7,6 +7,14 @@ public readonly partial record struct OrderId : IValue<Guid>;
 
 public enum OrderFault { Unknown }
 
+// sample: migrating-to-2/abstract
+// public abstract partial record Money : IValue<decimal>;     1.5 built these; 2.0: CMTK1022
+// public sealed partial record Euro : Money;
+
+public abstract record Money;
+public sealed partial record Euro : Money, IValue<decimal>;    // the marker on the sealed type, which is generated
+// end sample
+
 public interface IOrders
 {
     Task<Result<OrderFault>> CancelAsync(OrderId id);

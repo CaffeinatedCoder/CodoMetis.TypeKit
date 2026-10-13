@@ -108,4 +108,7 @@ the literal, since the literal is the expression. ASP.NET's own refusal of a rou
 quotes the input, as it does for a `Guid`: in MVC's model-state message ("The value '…' is not
 valid."), which reaches the response, and in a minimal API's log entry and developer exception page.
 A body refused by the JSON converter does not
-([ASP.NET Core](aspnet-core.md#what-a-refused-value-answers)).
+([ASP.NET Core](aspnet-core.md#what-a-refused-value-answers)), with one exception that is
+System.Text.Json's: a value object used as a dictionary key is read from the property name, and the
+`JsonException` for a refused or unreadable key carries the key in its `Path` (`$.items.SE`), which
+MVC uses as the error's name in its 400. Keep a secret out of a dictionary's keys.

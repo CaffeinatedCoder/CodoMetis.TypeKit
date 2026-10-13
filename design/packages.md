@@ -25,13 +25,14 @@ objects from a referenced domain assembly never needs Metalama itself.
 | `CodoMetis.TypeKit.ClosedSets` | `IClosedSet<>`, `IFault`, `IFaultSet<>`, `FaultKind`: what a user declares a closed set or a fault set with |
 | `CodoMetis.TypeKit.ValueObjects` | Every contract a user declares or constrains on: `IValue`, `IValidatedValue`, `IValueObject`, `IPlainValueObject`, `IValueObjectMaterializer`, and `StoredJsonConverterFactory` |
 | `CodoMetis.TypeKit.CompilerServices` | What only generated code and the satellites touch, all `[EditorBrowsable(Never)]`: `GeneratedValueObjectAttribute`, `GeneratedClosedSetAttribute`, `IValueObjectVisitor`, `IClosedSetVisitor`, `TranslatedAsWrappedValueAttribute`, `HandWrittenOrderingAttribute`, `GeneratedFactories`, `GeneratedParsing`, `GeneratedFormatting`, `GeneratedJson`, `GeneratedJsonPlan`, `GeneratedClosedSets`, `IStoredJsonConverterSource`. The name follows `System.Runtime.CompilerServices` |
-| `CodoMetis.TypeKit.EntityFrameworkCore` | `ValueObjectConverter<,>`; the plugins, internal |
-| `CodoMetis.TypeKit.AspNetCore` | the schema transformers, internal; `FaultProblem<TFault>`, `FaultResponseOptions`, `IFaultFeature` |
-| `Microsoft.AspNetCore.Http` | `ToHttpResult()`, beside ASP.NET's own `Results` ([decision 22](adr/0022-registration-extensions-live-framework-s-namespaces.md)) |
+| `CodoMetis.TypeKit.EntityFrameworkCore` | `ValueObjectConverter<,>`, `ClosedSetConverter<TSet>`; the plugins, internal |
+| `CodoMetis.TypeKit.AspNetCore` | the schema transformers, internal; `FaultProblem<TFault>`, `FaultResponse`, `FaultResponseOptions`, `FaultStatusAttribute<TFault>`, `IFaultFeature` |
+| `Microsoft.AspNetCore.Http` | `ToHttpResult()`, for a `Result` and for a closed set's fault (`TypeKitHttpResultExtensions`, `TypeKitClosedSetHttpResultExtensions`), beside ASP.NET's own `Results` ([decision 22](adr/0022-registration-extensions-live-framework-s-namespaces.md)) |
+| `Microsoft.AspNetCore.Builder` | `WithFaultStatus()`, beside `WithMetadata` and the other endpoint conventions ([decision 22](adr/0022-registration-extensions-live-framework-s-namespaces.md)) |
 | `CodoMetis.TypeKit.Serilog` | the destructuring policy, internal |
 | `Serilog` | `WithTypeKit()`, beside Serilog's own configuration methods ([decision 22](adr/0022-registration-extensions-live-framework-s-namespaces.md)) |
 | `CodoMetis.TypeKit.Testing` | the assertions and `TypeKitAssertionException` |
-| `Microsoft.EntityFrameworkCore` | `UseTypeKit()`, beside the providers' `UseNpgsql` ([decision 22](adr/0022-registration-extensions-live-framework-s-namespaces.md)) |
+| `Microsoft.EntityFrameworkCore` | `UseTypeKit()`, beside the providers' `UseNpgsql`, and `FirstOrNoneAsync()`/`SingleOrNoneAsync()`, beside EF's `FirstOrDefaultAsync` ([decision 22](adr/0022-registration-extensions-live-framework-s-namespaces.md)) |
 | `Microsoft.Extensions.DependencyInjection` | `AddEntityFrameworkTypeKit()`, `OpenApiOptions.AddTypeKit()` and `AddFaultResponses()`, beside `AddEntityFrameworkNpgsql` and `AddOpenApi` ([decision 22](adr/0022-registration-extensions-live-framework-s-namespaces.md)) |
 
 The internal aspects live in `CodoMetis.TypeKit.Generators`. Users never type that namespace.
