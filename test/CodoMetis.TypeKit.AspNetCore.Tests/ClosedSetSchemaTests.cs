@@ -108,6 +108,59 @@ public sealed class ClosedSetSchemaTests
         }
     }
 
+    public sealed record Assignment(ProbeStatus? Status, ProbeStatus Required, List<ProbeStatus?> History, Dictionary<string, ProbeStatus?> ByName);
+
+    /// <summary>
+    /// A nullable set admits null wherever a referenced one does, also where the host inlines sets
+    /// (decision 36). Inlined, the property was the bare enum, and a validator or a generated client
+    /// refused the null the application reads. Elements and parameters admit what a referenced set's
+    /// do: ASP.NET describes no null there, as for a <c>List&lt;string?&gt;</c>.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Versions))]
+    public async Task An_inlined_closed_set_admits_null_wherever_a_referenced_one_does(OpenApiSpecVersion version)
+    {
+        var referenced = await AssignmentsAsync(version, inlined: false);
+        var inlined = await AssignmentsAsync(version, inlined: true);
+
+        inlined.Property(nameof(Assignment), "status").ToJsonString().ShouldNotContain("$ref", customMessage: "the set is not inlined");
+        PatchSchemaTests.Validator(inlined, inlined.Property(nameof(Assignment), "status"), version)("null")
+            .ShouldBeTrue($"an inlined nullable set refuses null: {inlined.Property(nameof(Assignment), "status").ToJsonString()}");
+
+        foreach (var (property, values) in new (string, string[])[]
+                 {
+                     ("status", ["null", "\"Open\"", "\"Nope\""]),
+                     ("required", ["null", "\"Open\"", "\"Nope\""]),
+                     ("history", ["[\"Open\"]", "[null]", "[\"Nope\"]"]),
+                     ("byName", ["{\"a\":\"Open\"}", "{\"a\":null}", "{\"a\":\"Nope\"}"]),
+                 })
+        {
+            var asReferenced = PatchSchemaTests.Validator(referenced, referenced.Property(nameof(Assignment), property), version);
+            var asInlined = PatchSchemaTests.Validator(inlined, inlined.Property(nameof(Assignment), property), version);
+
+            foreach (var value in values)
+                asInlined(value).ShouldBe(asReferenced(value), $"'{property}' inlined judges {value} unlike referenced: {inlined.Property(nameof(Assignment), property).ToJsonString()}");
+        }
+
+        inlined.Parameter("/assignments", "get", "status").ShouldDescribeTheSameAs(referenced.Parameter("/assignments", "get", "status"), "the status parameter");
+    }
+
+    private static Task<OpenApiJson> AssignmentsAsync(OpenApiSpecVersion version, bool inlined) =>
+        ProbeHost.DocumentAsync(
+            openApi =>
+            {
+                openApi.AddTypeKit();
+                if (inlined)
+                    openApi.CreateSchemaReferenceId = type =>
+                        ClosedSetSchemaTransformer.Describe(type.Type) is null ? Microsoft.AspNetCore.OpenApi.OpenApiOptions.CreateDefaultSchemaReferenceId(type) : null;
+            },
+            version: version,
+            endpoints: app =>
+            {
+                app.MapPost("/assignments", int (Assignment assignment) => 0);
+                app.MapGet("/assignments", int (ProbeStatus? status) => 0);
+            });
+
     /// <summary>Two nested sets of one simple name shared one component, named after the first described, whose names then stood for both.</summary>
     [Fact]
     public async Task Two_nested_sets_of_one_simple_name_are_two_components()

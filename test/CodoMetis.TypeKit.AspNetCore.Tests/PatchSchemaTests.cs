@@ -122,7 +122,7 @@ public sealed class PatchSchemaTests
     /// <c>nullable</c> read as 3.0.3 defines it: null added to a type the same schema states, and
     /// nothing where it states none.
     /// </summary>
-    private static Func<string, bool> Validator(OpenApiJson document, JsonNode schema, OpenApiSpecVersion version)
+    internal static Func<string, bool> Validator(OpenApiJson document, JsonNode schema, OpenApiSpecVersion version)
     {
         var inlined = Inline(document, schema.DeepClone());
         if (version == OpenApiSpecVersion.OpenApi3_0) ReadNullable(inlined);

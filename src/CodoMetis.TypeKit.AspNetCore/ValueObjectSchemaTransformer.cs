@@ -127,7 +127,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
     /// The component a type gets in this document, or <see langword="null"/> where the host inlines it: the
     /// document's own <see cref="OpenApiOptions.CreateSchemaReferenceId"/>, which ASP.NET asks too.
     /// </summary>
-    private static string? SchemaReferenceId(JsonTypeInfo type, OpenApiSchemaTransformerContext context) =>
+    internal static string? SchemaReferenceId(JsonTypeInfo type, OpenApiSchemaTransformerContext context) =>
         context.ApplicationServices.GetRequiredService<IOptionsMonitor<OpenApiOptions>>().Get(context.DocumentName).CreateSchemaReferenceId(type);
 
     /// <summary>

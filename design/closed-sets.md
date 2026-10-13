@@ -41,7 +41,7 @@ The consumer's guide is [docs/closed-sets.md](../docs/closed-sets.md).
 |---|---|---|
 | JSON | The name, as a value and as a dictionary key; no naming policy renames it, since a renamed name would not read back | `ClosedSetTests` |
 | EF Core | A text column of the name through `ClosedSetConverter<TSet>`, found by the type-mapping plugin through the discovery attribute, as a value object is ([EF Core](ef-core.md)); an unknown stored name throws when read | `ClosedSetMappingTests` |
-| OpenAPI | A string enum of the names, as a component named after the nesting chain ([decision 24](adr/0024-nested-value-objects-named-after-nesting.md)), in every position a parameter or a property can take | `ClosedSetSchemaTests`, `ClosedSetBindingTests` |
+| OpenAPI | A string enum of the names, as a component named after the nesting chain ([decision 24](adr/0024-nested-value-objects-named-after-nesting.md)), in every position a parameter or a property can take; a nullable property admits null, inlined too ([decision 36](adr/0036-nullable-value-object-admits-null-openapi.md)) | `ClosedSetSchemaTests`, `ClosedSetBindingTests` |
 | Fault responses | An `IFaultSet<TSelf>` member carries a `FaultKind` and an optional description, and `AddFaultResponses<TSet>()` maps every member by kind ([decision 49](adr/0049-fault-responses-client-can-act.md)) | `FaultResponseTests` |
 | Serilog | Logged as what it prints, never destructured into its constant data ([decision 41](adr/0041-sensitive-value-object-declares-tostring-serilog.md)) | the Serilog tests |
 

@@ -34,13 +34,19 @@ internal sealed class ClosedSetSchemaTransformer : IOpenApiSchemaTransformer
 
         if (Describe(info.Type) is { } set)
         {
-            Fill(schema, set);
+            // Where the set is a component, ASP.NET puts the null of a nullable property around the reference.
+            // Inlined, the schema is this property's own, and the null goes in it (decision 36), as ASP.NET
+            // puts it in an inlined nullable string's type and an inlined nullable enum's values.
+            var admitsNull = context.JsonPropertyInfo is { IsGetNullable: true } or { IsSetNullable: true }
+                          && ValueObjectSchemaTransformer.SchemaReferenceId(info, context) is null;
+
+            Fill(schema, set, admitsNull);
             return;
         }
 
         if (context is { JsonPropertyInfo: null, ParameterDescription: { } parameter } && ParameterSet(parameter) is { } parameterSet)
         {
-            Fill(schema, parameterSet);
+            Fill(schema, parameterSet, admitsNull: false);
             return;
         }
 
@@ -53,12 +59,15 @@ internal sealed class ClosedSetSchemaTransformer : IOpenApiSchemaTransformer
             schema.AdditionalProperties = await context.GetOrCreateSchemaAsync(element, parameterDescription: null, cancellationToken);
     }
 
-    private static void Fill(OpenApiSchema schema, GeneratedClosedSetAttribute set)
+    private static void Fill(OpenApiSchema schema, GeneratedClosedSetAttribute set, bool admitsNull)
     {
         schema.Properties?.Clear();
         schema.Required?.Clear();
-        schema.Type = JsonSchemaType.String;
+        schema.Type = admitsNull ? JsonSchemaType.String | JsonSchemaType.Null : JsonSchemaType.String;
         schema.Enum = [.. set.Names.Select(name => (System.Text.Json.Nodes.JsonNode)name)];
+
+        // An enum lists every value a validator accepts, so the null is one of them too.
+        if (admitsNull) schema.Enum.Add(null!);
     }
 
     /// <summary>The set a parameter binds to: minimal APIs name it in the parameter's type, MVC in its model metadata.</summary>

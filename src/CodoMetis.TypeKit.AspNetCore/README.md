@@ -95,6 +95,9 @@ no component at all), and both parameters are a bare `string`.
           : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
   ```
 
+  Inlined, a nullable value object or closed set admits null in its own schema wherever a referenced
+  one admits it around its reference: a closed set's property is then the enum of its names and null.
+
 - **Rules belong in `Create`, not on the property.** A validation attribute on a value-object
   property (`[MaxLength]`, `[Range]`) lands in the value object's shared component, as ASP.NET does
   for any referenced schema, so it then applies to every other use too. `Create` is where every way
