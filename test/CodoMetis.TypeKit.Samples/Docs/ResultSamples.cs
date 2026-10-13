@@ -54,6 +54,12 @@ public sealed class Checkout
 
     public Task<Result<Cart, CheckoutFault>> FindCartAsync(CartId id) => Task.FromResult(FindCart(id));
 
+    public Task<Result<Cart, CheckoutFault>> LoadCartAsync(CartId id, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(FindCart(id));
+    }
+
     private bool InStock(Cart cart) => cart.Lines.All(line => stock.TryGetValue(line.Sku, out var item) && item.Stock >= line.Quantity);
 
     // sample: result/two-shapes
@@ -157,6 +163,18 @@ public static class Usage
         // end sample
 
         return (lines, all, amount, bulk, summary, stopped);
+    }
+
+    public static async Task<(Result<IReadOnlyList<Reservation>, CheckoutFault> Reserved, Result<CheckoutFault> Charged, Result<IReadOnlyList<Cart>, CheckoutFault> Found)> CollectAsync(
+        Checkout checkout, List<Cart> carts, List<decimal> totals, List<CartId> ids, CancellationToken cancellationToken)
+    {
+        // sample: result/collect-async
+        Result<IReadOnlyList<Reservation>, CheckoutFault> reserved = await carts.TraverseAsync(checkout.ReserveAsync);     // one at a time, in order; nothing starts after a fault
+        Result<CheckoutFault> charged = await totals.TraverseAsync(checkout.ChargeAsync);                                   // a command per element, likewise
+        Result<IReadOnlyList<Cart>, CheckoutFault> found = await ids.TraverseAsync(checkout.LoadCartAsync, cancellationToken);   // the token checked before each, and handed to it
+        // end sample
+
+        return (reserved, charged, found);
     }
 
     public static async Task<(Result<Uri, Exception> Url, Result<Uri, UriFormatException> Narrowed, Result<Uri, ApiFault> AsFault, Result<Exception> Written, Result<string, Exception> Read)> Catching(string text, string path)
@@ -274,6 +292,20 @@ public sealed class ResultTests
         product.ShouldBe(30m);
         bulk.TryGetValue(out _, out var noBulk).ShouldBeFalse();
         noBulk.ShouldBe(CheckoutFault.OutOfStock);
+    }
+
+    [Fact]
+    public async Task Collecting_asynchronously_runs_one_operation_at_a_time_and_stops_at_a_fault()
+    {
+        var checkout = new Checkout();
+
+        var (reserved, charged, found) = await Usage.CollectAsync(checkout, [checkout.Cart, checkout.Empty], [10m, 20m], [checkout.Cart.Id], TestContext.Current.CancellationToken);
+
+        reserved.TryGetValue(out _, out var fault).ShouldBeFalse();
+        fault.ShouldBe(CheckoutFault.CartEmpty);
+        ((bool)charged).ShouldBeTrue();
+        found.TryGetValue(out var carts, out _).ShouldBeTrue();
+        carts.ShouldBe([checkout.Cart]);
     }
 
     [Fact]

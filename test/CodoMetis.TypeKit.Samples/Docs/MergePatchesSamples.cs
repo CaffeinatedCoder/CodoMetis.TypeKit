@@ -9,6 +9,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace ReadmeSamples.Docs.MergePatches;
 
+// sample: merge-patches/validate
+public sealed record ContactRequest(Patch<string> Email, Patch<int> Floor);
+// end sample
+
 // sample: merge-patches/types
 public enum EmailFault { NoAt }
 
@@ -102,6 +106,22 @@ public static class Usage
         // end sample
     }
 
+    public static (Result<Patch<Email>, EmailFault> Refused, Result<Patch<Email>, EmailFault> Clear, Result<Patch<Email>, EmailFault> Untouched, Patch<int> Tenfold) Validate()
+    {
+        // sample: merge-patches/validate-use
+        ContactRequest nobody = JsonSerializer.Deserialize<ContactRequest>("""{"email":"nobody"}""", JsonSerializerOptions.Web)!;
+        ContactRequest cleared = JsonSerializer.Deserialize<ContactRequest>("""{"email":null}""", JsonSerializerOptions.Web)!;
+        ContactRequest moved = JsonSerializer.Deserialize<ContactRequest>("""{"floor":3}""", JsonSerializerOptions.Web)!;
+
+        Result<Patch<Email>, EmailFault> refused = nobody.Email.Traverse(Email.Create);    // Error: NoAt, the endpoint's own fault
+        Result<Patch<Email>, EmailFault> clear = cleared.Email.Traverse(Email.Create);     // Success: Null, nothing to validate
+        Result<Patch<Email>, EmailFault> untouched = moved.Email.Traverse(Email.Create);   // Success: Absent
+        Patch<int> tenfold = moved.Floor.Map(floor => floor * 10);                          // Value: 30, a clear and an absence kept as they are
+        // end sample
+
+        return (refused, clear, untouched, tenfold);
+    }
+
     public static (string Clear, string Set) Write()
     {
         // sample: merge-patches/writing-use
@@ -186,6 +206,18 @@ public sealed class MergePatchesTests
         _ = contact.Apply(JsonSerializer.Deserialize<ContactPatch>("""{"floor":null}""", JsonSerializerOptions.Web)!);
 
         contact.Floor.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Validating_a_patch_answers_what_the_comments_say()
+    {
+        var (refused, clear, untouched, tenfold) = Usage.Validate();
+        string Validated(Result<Patch<Email>, EmailFault> result) => result.Match(patch => $"Success: {patch.State}", fault => $"Error: {fault}");
+
+        refused.ShouldBeShownIn(Page, Validated, "nobody.Email.Traverse(Email.Create)");
+        clear.ShouldBeShownIn(Page, Validated, "cleared.Email.Traverse(Email.Create)");
+        untouched.ShouldBeShownIn(Page, Validated, "moved.Email.Traverse(Email.Create)");
+        tenfold.ShouldBeShownIn(Page, patch => patch.Match(value => $"Value: {value}", () => "Null", () => "Absent"), "moved.Floor.Map(floor => floor * 10)");
     }
 
     [Fact]

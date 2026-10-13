@@ -55,6 +55,26 @@ Shouldly or whatever the test already uses. A failure names the error, which is 
 to see, and never prints a value, as `Option` and `Result` never do. An uninitialized result fails
 every assertion, saying it is a default instance.
 
+A request's `Patch<T>` fields say which of them the request mentioned, and the assertions say the
+same: `ShouldBeValue()` hands the value back, `ShouldBeNull()` is a clear, and `ShouldBeAbsent()` a
+field the document left out.
+
+```csharp
+public sealed record CodePatch(Patch<ProductCode> Code, Patch<string?> Note, Patch<int> Quantity);
+```
+
+```csharp
+[Fact]
+public void A_patch_says_what_the_request_mentioned()
+{
+    CodePatch patch = JsonSerializer.Deserialize<CodePatch>("""{"note":null,"quantity":2}""", JsonSerializerOptions.Web)!;
+
+    patch.Quantity.ShouldBeValue().ShouldBe(2);   // the value, for the test's own assertions
+    patch.Note.ShouldBeNull();                    // a clear
+    patch.Code.ShouldBeAbsent();                  // not in the document
+}
+```
+
 ## Create as a table
 
 The rules are the value object's contract, and a table says all of them in one place:

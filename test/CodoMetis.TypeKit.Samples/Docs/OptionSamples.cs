@@ -65,15 +65,19 @@ public sealed class Shop
         return (greeting, tier, limit, sum, known);
     }
 
-    public (Option<decimal> Discount, Option<string> Country, Option<(string Name, string Town)> Label, Option<Customer> Seen, Option<string> Greeting) Combine(Option<Customer> found)
+    public (Option<decimal> Discount, Option<string> Country, Option<(string Name, string Town)> Label, Option<Customer> Seen, Option<string> Greeting, List<string> Nicknames, List<Customer> Known) Combine(Option<Customer> found)
     {
         var visits = Visits;
+        var customers = Customers;
+        var ids = new List<CustomerId> { Ann.Id, CustomerId.New() };
 
         // sample: option/combine
         Option<decimal> discount = found.Filter(customer => customer.Tier == "gold").Map(_ => 0.1m);   // Some, Ann is gold
         Option<string> country = found.Bind(customer => customer.Address).Map(address => address.Country);   // Some, the Option<Address> flattened and then mapped
         Option<(string Name, string Town)> label = found.Zip(found.Bind(c => c.Address), (c, a) => (c.Name, a.Town));   // Some, only when both are
         Option<Customer> seen = found.Tap(customer => visits.Add(customer.Id));   // runs for Some, hands the option on
+        IEnumerable<string> nicknames = customers.Values.Choose(customer => customer.Nickname);   // "Annie", the nicknames of those who have one: a filter and a map in one
+        IEnumerable<Customer> known = ids.Choose(id => customers.GetValueOrNone(id));          // the customers the ids find, the unknown ones dropped
 
         Option<string> greeting =
             from customer in found
@@ -82,7 +86,7 @@ public sealed class Shop
             select $"{customer.Name} in {address.Town}";   // Some
         // end sample
 
-        return (discount, country, label, seen, greeting);
+        return (discount, country, label, seen, greeting, nicknames.ToList(), known.ToList());
     }
 
     // sample: option/boundary
@@ -158,9 +162,11 @@ public sealed class OptionTests
         found.Bind(customer => customer.Address).Map(address => address.Country).ShouldBeShownIn(Readme, SomeOrNone);
         found.Zip(found.Bind(c => c.Address), (c, a) => (c.Name, a.Town)).ShouldBeShownIn(Readme, SomeOrNone);
 
-        var (discount, country, label, seen, greeting) = shop.Combine(found);
+        var (discount, country, label, seen, greeting, nicknames, known) = shop.Combine(found);
         (discount, country, label, seen, greeting).ShouldBe((Option.Some(0.1m), Option.Some("DE"), Option.Some(("Ann", "Berlin")), found, Option.Some("Ann in Berlin")));
         shop.Visits.ShouldBe([shop.Ann.Id], "Tap ran once");
+        nicknames.ShouldBe(["Annie"], "Choose kept the one nickname and dropped nothing else");
+        known.ShouldBe([shop.Ann], "the unknown id was dropped");
     }
 
     [Fact]

@@ -989,6 +989,123 @@ public static class Result
 
             return source.Select(selector).Sequence();
         }
+
+        /// <summary>
+        /// Applies an asynchronous operation that may fail to every element, one at a time and in
+        /// order, stopping at the first error: the next element's operation is not started after one
+        /// failed. Operations that may all run at once are <c>Task.WhenAll</c> over their tasks and
+        /// <c>Sequence()</c> over what it answers.
+        /// </summary>
+        /// <param name="selector">Called with each element and awaited, until one fails.</param>
+        /// <typeparam name="TResult">The type of each produced value.</typeparam>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success with every produced value, in order, or the first error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        public async Task<Result<IReadOnlyList<TResult>, TError>> TraverseAsync<TResult, TError>(Func<T, Task<Result<TResult, TError>>> selector)
+            where TResult : notnull
+            where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            var values = source.TryGetNonEnumeratedCount(out var count) ? new List<TResult>(count) : [];
+
+            foreach (var element in source)
+            {
+                var result = await selector(element).ConfigureAwait(false);
+                if (!result.TryGetValue(out var value, out var error)) return Result<IReadOnlyList<TResult>, TError>.Error(error);
+
+                values.Add(value);
+            }
+
+            return Result<IReadOnlyList<TResult>, TError>.Success(values);
+        }
+
+        /// <summary>
+        /// Applies an asynchronous operation that may fail to every element, one at a time and in
+        /// order, stopping at the first error, with a cancellation token handed to each operation and
+        /// checked before each: once cancelled, the next operation is not started and the
+        /// <see cref="OperationCanceledException"/> propagates, since a cancellation is not an error.
+        /// </summary>
+        /// <param name="selector">Called with each element and the token, and awaited, until one fails.</param>
+        /// <param name="cancellationToken">Checked before each operation, and handed to it.</param>
+        /// <typeparam name="TResult">The type of each produced value.</typeparam>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success with every produced value, in order, or the first error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled before an operation started.</exception>
+        public async Task<Result<IReadOnlyList<TResult>, TError>> TraverseAsync<TResult, TError>(Func<T, CancellationToken, Task<Result<TResult, TError>>> selector, CancellationToken cancellationToken)
+            where TResult : notnull
+            where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            var values = source.TryGetNonEnumeratedCount(out var count) ? new List<TResult>(count) : [];
+
+            foreach (var element in source)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var result = await selector(element, cancellationToken).ConfigureAwait(false);
+                if (!result.TryGetValue(out var value, out var error)) return Result<IReadOnlyList<TResult>, TError>.Error(error);
+
+                values.Add(value);
+            }
+
+            return Result<IReadOnlyList<TResult>, TError>.Success(values);
+        }
+
+        /// <summary>
+        /// Applies an asynchronous command that may fail to every element, one at a time and in
+        /// order, stopping at the first error: the next element's command is not started after one
+        /// failed.
+        /// </summary>
+        /// <param name="selector">Called with each element and awaited, until one fails.</param>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success if every command succeeded, or the first error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        public async Task<Result<TError>> TraverseAsync<TError>(Func<T, Task<Result<TError>>> selector) where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            foreach (var element in source)
+            {
+                var result = await selector(element).ConfigureAwait(false);
+                if (result.TryGetError(out var error)) return Result<TError>.Error(error);
+            }
+
+            return Result<TError>.Success();
+        }
+
+        /// <summary>
+        /// Applies an asynchronous command that may fail to every element, one at a time and in
+        /// order, stopping at the first error, with a cancellation token handed to each command and
+        /// checked before each: once cancelled, the next command is not started and the
+        /// <see cref="OperationCanceledException"/> propagates, since a cancellation is not an error.
+        /// </summary>
+        /// <param name="selector">Called with each element and the token, and awaited, until one fails.</param>
+        /// <param name="cancellationToken">Checked before each command, and handed to it.</param>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success if every command succeeded, or the first error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled before a command started.</exception>
+        public async Task<Result<TError>> TraverseAsync<TError>(Func<T, CancellationToken, Task<Result<TError>>> selector, CancellationToken cancellationToken) where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            foreach (var element in source)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var result = await selector(element, cancellationToken).ConfigureAwait(false);
+                if (result.TryGetError(out var error)) return Result<TError>.Error(error);
+            }
+
+            return Result<TError>.Success();
+        }
     }
 
     /// <param name="results">The results.</param>
@@ -1101,6 +1218,34 @@ public static class Result
             ArgumentNullException.ThrowIfNull(selector);
 
             return option.Map(selector).Transpose();
+        }
+    }
+
+    /// <param name="patch">A field of a merge patch, validated when it carries a value.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    extension<T>(Patch<T> patch)
+    {
+        /// <summary>
+        /// Applies an operation that may fail to the value, if the field carried one: a patch over
+        /// what the request sent is validated into a patch over the domain's type,
+        /// <c>request.Email.Traverse(Email.Create)</c>, and a clear or an absent field passes through
+        /// as it is, since there is nothing to validate.
+        /// </summary>
+        /// <param name="selector">Called with the value when the field carried one.</param>
+        /// <typeparam name="TResult">The type of the produced value.</typeparam>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success holding a patch in the same state, with the produced value when the field carried one, or the error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        public Result<Patch<TResult>, TError> Traverse<TResult, TError>(Func<T, Result<TResult, TError>> selector)
+            where TResult : notnull
+            where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(selector);
+
+            if (!patch.TryGetValue(out var value))
+                return Result<Patch<TResult>, TError>.Success(patch.State == PatchState.Null ? Patch.Null<TResult>() : Patch.Absent<TResult>());
+
+            return selector(value).Map(static produced => Patch.Value(produced));
         }
     }
 

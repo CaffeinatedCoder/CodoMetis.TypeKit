@@ -100,6 +100,32 @@ In an endpoint, that is the 400 problem details any body a value object refuses 
 not a refusal but the `Null` state, which `Apply` turns into a fault of its own, so a `Patch<Email?>`
 is never needed.
 
+## Validating one
+
+Where the refusal should be the endpoint's own fault rather than a 400, the request carries a patch
+over what was sent, and `Traverse` validates it into a patch over the domain's type: the value is
+validated when the field carried one, with `Create`'s own fault, and a clear or an absent field
+passes through, since there is nothing to validate. `Map` changes the value the same way and keeps
+a clear and an absence as they are.
+
+```csharp
+public sealed record ContactRequest(Patch<string> Email, Patch<int> Floor);
+```
+
+```csharp
+ContactRequest nobody = JsonSerializer.Deserialize<ContactRequest>("""{"email":"nobody"}""", JsonSerializerOptions.Web)!;
+ContactRequest cleared = JsonSerializer.Deserialize<ContactRequest>("""{"email":null}""", JsonSerializerOptions.Web)!;
+ContactRequest moved = JsonSerializer.Deserialize<ContactRequest>("""{"floor":3}""", JsonSerializerOptions.Web)!;
+
+Result<Patch<Email>, EmailFault> refused = nobody.Email.Traverse(Email.Create);    // Error: NoAt, the endpoint's own fault
+Result<Patch<Email>, EmailFault> clear = cleared.Email.Traverse(Email.Create);     // Success: Null, nothing to validate
+Result<Patch<Email>, EmailFault> untouched = moved.Email.Traverse(Email.Create);   // Success: Absent
+Patch<int> tenfold = moved.Floor.Map(floor => floor * 10);                          // Value: 30, a clear and an absence kept as they are
+```
+
+`CodoMetis.TypeKit.Testing` asserts the state: `ShouldBeValue()` hands the value back, `ShouldBeNull()`
+is a clear and `ShouldBeAbsent()` a field the document left out ([Testing](testing.md)).
+
 ## Writing one
 
 A client, or a test, writes a patch body with the same type. A converter cannot leave its property

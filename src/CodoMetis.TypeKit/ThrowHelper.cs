@@ -13,6 +13,10 @@ internal static class ThrowHelper
         "An Option or a Result never holds null: an option that reports a value always has one, and a result's value "
       + "and error are never null. ToOption() turns a null into None." + Refusals.NullContent;
 
+    private const string NullPatchValueMessage =
+        "A patch never holds null as its value: a clear is the Null state, Patch.Null(), and a value is never null. "
+      + "Map's selector returned null for a value." + Refusals.NullContent;
+
     /// <summary>
     /// A <see cref="ResultState.Uninitialized"/> result is a bug at the site that produced it. Picking
     /// either branch would hand the caller a plausible answer, and for the error branch a fabricated
@@ -28,4 +32,9 @@ internal static class ThrowHelper
     /// <param name="paramName">The parameter that was null.</param>
     /// <returns>The exception, to throw.</returns>
     public static ArgumentNullException NullContent(string paramName) => new(paramName, NullContentMessage);
+
+    /// <summary>What <c>Patch&lt;T&gt;.Map</c> throws for a selector that returned null.</summary>
+    /// <param name="paramName">The selector's parameter.</param>
+    /// <returns>The exception, to throw.</returns>
+    public static ArgumentNullException NullPatchValue(string paramName) => new(paramName, NullPatchValueMessage);
 }

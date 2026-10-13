@@ -33,6 +33,10 @@ public readonly partial record struct ProductCode : IValidatedValue<ProductCode,
 public sealed record CodeRequest(ProductCode Code);
 // end sample
 
+// sample: testing/code-patch
+public sealed record CodePatch(Patch<ProductCode> Code, Patch<string?> Note, Patch<int> Quantity);
+// end sample
+
 /// <summary>The page's tests, run as written.</summary>
 public sealed class ProductCodeTests
 {
@@ -49,6 +53,18 @@ public sealed class ProductCodeTests
 
         ProductCode.TryFrom("ABC").ShouldBeSome().ShouldBe(code);
         ProductCode.TryFrom("abc").ShouldBeNone();
+    }
+    // end sample
+
+    // sample: testing/patch
+    [Fact]
+    public void A_patch_says_what_the_request_mentioned()
+    {
+        CodePatch patch = JsonSerializer.Deserialize<CodePatch>("""{"note":null,"quantity":2}""", JsonSerializerOptions.Web)!;
+
+        patch.Quantity.ShouldBeValue().ShouldBe(2);   // the value, for the test's own assertions
+        patch.Note.ShouldBeNull();                    // a clear
+        patch.Code.ShouldBeAbsent();                  // not in the document
     }
     // end sample
 

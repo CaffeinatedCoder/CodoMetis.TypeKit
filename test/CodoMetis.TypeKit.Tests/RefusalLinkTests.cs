@@ -67,6 +67,7 @@ public sealed partial class RefusalLinkTests
 
         ["Option.Some(null)"]               = (NullContent, () => Option.Some<string>(null!)),
         ["Map to null"]                     = (NullContent, () => Option.Some("x").Map(_ => (string)null!)),
+        ["Patch Map to null"]               = (NullContent, () => Patch.Value("x").Map(_ => (string)null!)),
         ["FirstOrNone over a null"]         = (NullContent, () => new string[] { null! }.FirstOrNone()),
         ["ToResult(null)"]                  = (NullContent, () => Option.Some(1).ToResult((string)null!)),
         ["Result.Success(null)"]            = (NullContent, () => Result.Success<string>(null!)),

@@ -486,6 +486,22 @@ public static class Option
             var last = source.TakeLast(index.Value).ToList();
             return last.Count == index.Value ? Some(last[0]) : None<T>();
         }
+
+        /// <summary>
+        /// The values <paramref name="selector"/> finds: for each element it answers with <c>Some</c>,
+        /// that value, in order, and nothing for a <c>None</c>. A filter and a map in one, as F#'s
+        /// <c>choose</c>, and lazy, as a LINQ operator is.
+        /// </summary>
+        /// <param name="selector">Called with each element as the sequence is read.</param>
+        /// <typeparam name="TResult">The type of the values.</typeparam>
+        /// <returns>The values found, in order.</returns>
+        public IEnumerable<TResult> Choose<TResult>(Func<T, Option<TResult>> selector) where TResult : notnull
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return Chosen(source, selector);
+        }
     }
 
     /// <param name="source">The query.</param>
@@ -614,6 +630,20 @@ public static class Option
         }
     }
 
+    /// <param name="options">The options.</param>
+    /// <typeparam name="T">The type of the values.</typeparam>
+    extension<T>(IEnumerable<Option<T>> options) where T : notnull
+    {
+        /// <summary>The values of the options that hold one, in order: a sequence of lookups to what was found. Lazy, as a LINQ operator is.</summary>
+        /// <returns>The values, in order.</returns>
+        public IEnumerable<T> Choose()
+        {
+            ArgumentNullException.ThrowIfNull(options);
+
+            return Chosen(options, static option => option);
+        }
+    }
+
     /// <param name="instance">The nullable value.</param>
     /// <typeparam name="T">The underlying value type.</typeparam>
     extension<T>(in T? instance) where T : struct
@@ -632,5 +662,14 @@ public static class Option
         /// <returns>The reference, or <c>None</c> for <see langword="null"/>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Option<T> ToOption() => instance is not null ? Some(instance) : None<T>();
+    }
+
+    /// <summary>The iterator behind both <c>Choose</c>, apart so the arguments are checked when the call is made, not when the sequence is read.</summary>
+    private static IEnumerable<TResult> Chosen<T, TResult>(IEnumerable<T> source, Func<T, Option<TResult>> selector) where TResult : notnull
+    {
+        foreach (var element in source)
+        {
+            if (selector(element).TryGetValue(out var value)) yield return value;
+        }
     }
 }

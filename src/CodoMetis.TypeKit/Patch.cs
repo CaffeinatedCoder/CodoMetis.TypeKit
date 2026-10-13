@@ -121,6 +121,26 @@ public readonly record struct Patch<T>
         if (_state == PatchState.Value) action(_value!);
     }
 
+    /// <summary>
+    /// A patch of what <paramref name="selector"/> makes of the value: a field that carried one
+    /// carries the produced value, a clear stays a clear, and an absent field stays absent.
+    /// </summary>
+    /// <param name="selector">Called with the value when the field carried one.</param>
+    /// <typeparam name="TResult">The type of the produced value.</typeparam>
+    /// <returns>A patch in the same state.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null, or returned null: a clear is the Null state, never a value.</exception>
+    public Patch<TResult> Map<TResult>(Func<T, TResult> selector) where TResult : notnull
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        if (_state != PatchState.Value) return new Patch<TResult>(default, _state);
+
+        var produced = selector(_value!);
+        if (produced is null) throw ThrowHelper.NullPatchValue(nameof(selector));
+
+        return new Patch<TResult>(produced, PatchState.Value);
+    }
+
     /// <summary>The state only, never the value.</summary>
     public override string ToString() => $"Patch {{ State = {_state} }}";
 }

@@ -2,10 +2,14 @@
 using CodoMetis.TypeKit.Testing;
 
 // end sample
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using CodoMetis.TypeKit;
 using ReadmeSamples.Root.QuickStart;
 
 namespace ReadmeSamples.Testing;
+
+public sealed record OrderPatch(Patch<string> Name, Patch<string?> Nickname, Patch<int> Quantity);
 
 public sealed partial class TestingSamples
 {
@@ -26,6 +30,21 @@ public sealed partial class TestingSamples
 
         email.Value.ShouldBe("ops@example.com");
         fault.ShouldBe(EmailFault.Blank);
+    }
+
+    /// <summary>The README's patch block, run: each line passes, or this test fails with its assertion.</summary>
+    [Fact]
+    public void The_patch_assertions_pass_as_the_README_shows()
+    {
+        // sample: CodoMetis.TypeKit.Testing/patch
+        OrderPatch patch = JsonSerializer.Deserialize<OrderPatch>("""{"nickname":null,"quantity":2}""", JsonSerializerOptions.Web)!;
+
+        int quantity = patch.Quantity.ShouldBeValue();   // the value, handed back
+        patch.Nickname.ShouldBeNull();                   // a clear
+        patch.Name.ShouldBeAbsent();                     // not in the document
+        // end sample
+
+        quantity.ShouldBe(2);
     }
 
     /// <summary>The failure message the README quotes, read from the README, is the one the assertion throws.</summary>

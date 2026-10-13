@@ -126,6 +126,11 @@ public sealed class UninitializedResultTests
 
         ["Traverse(IEnumerable<T>, Func<T, Result<TResult, TError>>)"] = () => Task.FromResult(new[] { 1 }.Traverse(_ => default(Result<int, string>))),
         ["Traverse(IEnumerable<T>, Func<T, Result<TError>>)"]          = () => Task.FromResult(new[] { 1 }.Traverse(_ => default(Result<string>))),
+        ["Traverse(Patch<T>, Func<T, Result<TResult, TError>>)"]        = () => Task.FromResult(Patch.Value(1).Traverse(_ => default(Result<int, string>))),
+        ["TraverseAsync(IEnumerable<T>, Func<T, Task<Result<TResult, TError>>>)"] = () => new[] { 1 }.TraverseAsync(_ => Task.FromResult(default(Result<int, string>))),
+        ["TraverseAsync(IEnumerable<T>, Func<T, CancellationToken, Task<Result<TResult, TError>>>, CancellationToken)"] = () => new[] { 1 }.TraverseAsync((_, _) => Task.FromResult(default(Result<int, string>)), CancellationToken.None),
+        ["TraverseAsync(IEnumerable<T>, Func<T, Task<Result<TError>>>)"]          = () => new[] { 1 }.TraverseAsync(_ => Task.FromResult(default(Result<string>))),
+        ["TraverseAsync(IEnumerable<T>, Func<T, CancellationToken, Task<Result<TError>>>, CancellationToken)"] = () => new[] { 1 }.TraverseAsync((_, _) => Task.FromResult(default(Result<string>)), CancellationToken.None),
         ["Sequence(IEnumerable<Result<T, TError>>)"]                   = () => Task.FromResult(new[] { Value, default }.Sequence()),
         ["Sequence(IEnumerable<Result<TError>>)"]                      = () => Task.FromResult(new[] { Result<string>.Success(), default }.Sequence()),
     };

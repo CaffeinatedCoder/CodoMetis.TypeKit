@@ -64,6 +64,8 @@ Option<decimal> discount = found.Filter(customer => customer.Tier == "gold").Map
 Option<string> country = found.Bind(customer => customer.Address).Map(address => address.Country);   // Some, the Option<Address> flattened and then mapped
 Option<(string Name, string Town)> label = found.Zip(found.Bind(c => c.Address), (c, a) => (c.Name, a.Town));   // Some, only when both are
 Option<Customer> seen = found.Tap(customer => visits.Add(customer.Id));   // runs for Some, hands the option on
+IEnumerable<string> nicknames = customers.Values.Choose(customer => customer.Nickname);   // "Annie", the nicknames of those who have one: a filter and a map in one
+IEnumerable<Customer> known = ids.Choose(id => customers.GetValueOrNone(id));          // the customers the ids find, the unknown ones dropped
 
 Option<string> greeting =
     from customer in found
@@ -75,7 +77,9 @@ Option<string> greeting =
 `Map` changes the value and keeps absence; `Bind` takes a selector that is itself optional, so an
 `Option<Option<T>>` never appears; `Filter` turns a value that fails the predicate into `None`;
 `Zip` combines two to six options into one value when every one of them is `Some`; `Tap` runs an
-action on a value and returns the option unchanged. `Select`, `SelectMany` and `Where` make query
+action on a value and returns the option unchanged. `Choose` keeps, in order, the values a selector
+answers `Some` for and drops the `None`s, a filter and a map in one, lazily as a LINQ operator is; over
+a sequence of options, `Choose()` alone keeps the values they hold. `Select`, `SelectMany` and `Where` make query
 syntax work, and each `from` after the first sees the earlier ranges, as above.
 
 ## At the boundary
@@ -125,6 +129,8 @@ Every public member, on `Option<T>`, on the static class `Option`, and as extens
 | `SingleOrNone()`, `SingleOrNone(predicate)` | `IEnumerable<T>`, `IQueryable<T>` | the only element, or `None` for none; throws for more than one. A query is asked for two rows |
 | `ElementAtOrNone(index)` | `IEnumerable<T>` (an `int` or an `Index`), `IQueryable<T>` (an `int`) | the element at the index, or `None` past either end |
 | `GetValueOrNone(key)` | `IReadOnlyDictionary<TKey, TValue>` | `Option<TValue>` |
+| `Choose(selector)` | `IEnumerable<T>` | the values the selector answers `Some` for, in order and lazily: a filter and a map in one |
+| `Choose()` | `IEnumerable<Option<T>>` | the values of the options that hold one, in order and lazily |
 | `IsSome()`, `IsNone()` | `Option<T>` | `bool` |
 | `Match(onSome, onNone)` | `Option<T>` | what the branch returns |
 | `TryGetValue(out value)` | `Option<T>` | `bool`; `value` is non-null when true |

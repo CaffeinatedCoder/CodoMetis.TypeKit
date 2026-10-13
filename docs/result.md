@@ -163,6 +163,18 @@ string stopped = refused.Traverse(checkout.ToLine).Match(list => $"{list.Count} 
 argument order, and `Traverse` calls its selector for nothing after it. None of them collects errors:
 a fault type that is a list of your own is how several faults travel together.
 
+An asynchronous operation runs one element at a time with `TraverseAsync`, each awaited before the
+next starts, so nothing starts after a fault. With a cancellation token, the token is checked before
+each operation and handed to it, and a cancellation propagates rather than becoming an error.
+Operations that may all run at once are `Task.WhenAll` over their tasks and `Sequence()` over what
+it answers.
+
+```csharp
+Result<IReadOnlyList<Reservation>, CheckoutFault> reserved = await carts.TraverseAsync(checkout.ReserveAsync);     // one at a time, in order; nothing starts after a fault
+Result<CheckoutFault> charged = await totals.TraverseAsync(checkout.ChargeAsync);                                   // a command per element, likewise
+Result<IReadOnlyList<Cart>, CheckoutFault> found = await ids.TraverseAsync(checkout.LoadCartAsync, cancellationToken);   // the token checked before each, and handed to it
+```
+
 ## An exception as an outcome
 
 A call that throws has no way into a `Result` except a `try`/`catch` written by hand. `Result.Catch`
@@ -222,6 +234,8 @@ extensions in the `CodoMetis.TypeKit` namespace. `T` and `TError` are `notnull` 
 | `FirstOrError(predicate, error)`, `LastOrError(predicate, error)` | `IEnumerable<T>`; `FirstOrError` on `IQueryable<T>` too | the first or last match, or the error; on a query the provider runs the predicate, and `LastOrError` is a compile error |
 | `Traverse(selector)` | `IEnumerable<T>` | `Result<IReadOnlyList<TResult>, TError>`, or `Result<TError>` for a command selector; stops at the first error |
 | `Traverse(selector)` | `Option<T>` | `Result<Option<TResult>, TError>`: an optional input validated when present |
+| `Traverse(selector)` | `Patch<T>` | `Result<Patch<TResult>, TError>`: a patch field validated when it carries a value; a clear or an absence passes through |
+| `TraverseAsync(selector)`, `TraverseAsync(selector, cancellationToken)` | `IEnumerable<T>` | as `Traverse`, one operation awaited at a time; nothing starts after an error, or once the token is cancelled |
 | `Transpose()` | `Option<Result<T, TError>>`, `Result<Option<T>, TError>` | the one turned inside out: `None` is a success without a value, an error stays the error |
 | `Sequence()` | `IEnumerable<Result<T, TError>>`, `IEnumerable<Result<TError>>` | the list of values, or the first error |
 

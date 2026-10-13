@@ -51,6 +51,8 @@ the provider for one element and let it run the predicate (a `WHERE` and a `LIMI
 compile error, since a query has no last element until it is ordered. `SingleOrNone()` answers the
 only element, `None` for none, and throws for more than one, as `SingleOrDefault` does, since many
 is a defect and not absence; `ElementAtOrNone(index)` answers the element at an index, `^1` included.
+`Choose(selector)` keeps the values a selector answers `Some` for, in order and without the `None`s, a
+filter and a map in one, and `Choose()` the values a sequence of options holds.
 An optional input that is validated when present is `Traverse`: `dto.Phone.ToOption().Traverse(Phone.Create)`
 is a `Result<Option<Phone>, PhoneFault>`, and `Transpose()` turns an `Option<Result<…>>` inside out,
 and a `Result<Option<…>>` back.
@@ -159,7 +161,9 @@ Result<IReadOnlyList<Sku>, SkuFault> all = parsed.Sequence();
 ```
 
 `Zip` (two to six results), `Traverse` and `Sequence` stop at the first error, in argument or
-sequence order, and `Traverse` calls nothing after it. None of them collects errors.
+sequence order, and `Traverse` calls nothing after it. None of them collects errors. `TraverseAsync`
+awaits one operation at a time, in order, and starts none after an error, or once the cancellation
+token it is given is cancelled; operations that may all run at once are `Task.WhenAll` and `Sequence()`.
 
 The asynchronous steps take callbacks that return a `Task`, and wait for them:
 `.TapErrorAsync(fault => audit.RecordAsync(fault))` has recorded the fault when the chain's `await`
@@ -404,7 +408,10 @@ order.Quantity = patch.Quantity.Match(
 Reading never refuses a null: the Null state is part of the wire format whatever `T` is, and whether
 a clear is accepted is the application's rule, said in `Match`. So a `Patch<T?>` over a struct is
 never needed, and a value object inside a patch keeps its own rule: `Patch<Email>` given a value
-`Create` refuses is refused as anywhere else, the input not quoted. Writing an absent patch is
+`Create` refuses is refused as anywhere else, the input not quoted. Where the refusal should be the
+endpoint's own fault, the request carries a `Patch<string>` and `Traverse` validates it:
+`request.Email.Traverse(Email.Create)` is a `Result<Patch<Email>, EmailFault>`, a clear and an
+absence passed through, and `Map` changes a value the same way. Writing an absent patch is
 refused, since a converter cannot leave a property out; a property that is written takes
 `[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]`, and an absent patch is left out.
 
@@ -490,7 +497,8 @@ there too.
 
 **Thrown:** `ArgumentNullException` from `Option.Some(null)`, `Result.Success(null)` or
 `Result.Error(null)`, from a `Map` or `MapError` whose selector returns null, from `FirstOrNone()`
-over a null element, or for a null error given to `ToResult`, `Ensure` or `FirstOrError`.
+over a null element, or for a null error given to `ToResult`, `Ensure` or `FirstOrError`. A
+`Patch<T>.Map` whose selector returns null throws the same: a clear is the Null state, never a value.
 
 **Why:** an option that reports a value always has one, and a result's value and error are never
 null. `notnull` is not checked at run time, so the factories check it.
