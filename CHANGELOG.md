@@ -26,8 +26,13 @@ against 1.5.1 meets them.
   - `Catch(() => …)` runs the call and answers `Result<T, Exception>`, or `Result<Exception>` for an
     action. `Catch<T, TException>` catches that type only and lets any other propagate.
   - `CatchAsync` awaits the task, so an exception thrown after its first `await` is the error too.
-  - An `OperationCanceledException` passes through every overload. A timeout, one over a
-    `TimeoutException` as `HttpClient` throws when its `Timeout` elapses, is the error.
+  - An `OperationCanceledException` passes through every overload, and so does an
+    `AggregateException` that holds only cancellations, as `Wait()` and `.Result` throw for a
+    cancelled task; one that holds anything beside them is the error, as thrown. A timeout, one over a
+    `TimeoutException` as `HttpClient` throws when its `Timeout` elapses, is the error, wrapped or
+    not, `.Result` on a timed-out call included.
+  - `CatchAsync`'s error is what `await` throws: for a task that faulted with several exceptions,
+    such as `Task.WhenAll`'s, the first of them, while the task's `Exception` holds them all.
   - A delegate that returns a `Task`, an `async` lambda among them, given to `Catch` or to its command
     form `Catch<TException>` is a compile error naming `CatchAsync`. So is a delegate that returns any
     value given to the command form, which would discard it.
@@ -61,8 +66,9 @@ against 1.5.1 meets them.
   string enum. Nothing is registered per set.
 - **`CodoMetis.TypeKit.Analyzers`**: CMTK0012, a closed set's `Match` given an argument by position.
   Every parameter has the same type, one delegate per member in declaration order, so reordering two
-  members swapped their branches at such a call and compiled. The code fix names every argument after
-  the parameter it binds to.
+  members swapped their branches at such a call and compiled. A conditional call is reported too,
+  `status?.Match(…)?.ToUpper()` among them. The code fix names every argument after the parameter it
+  binds to.
 - **`CodoMetis.TypeKit`**: `Patch<T>`, a field of a JSON Merge Patch (RFC 7396): absent, null or a
   value, where System.Text.Json alone cannot tell an absent property from a null one. `default` is
   absent, the one meaningful default of the package, and the analyzers leave it alone. Reading never
@@ -72,7 +78,8 @@ against 1.5.1 meets them.
   absence, and `Traverse` validates a value with a `Create`'s own fault,
   `request.Email.Traverse(Email.Create)` as a `Result<Patch<Email>, EmailFault>`, a clear and an
   absence passing through; a `Map` selector that answers null is refused, since a clear is the Null
-  state and never a value. Writing an absent patch is refused, and
+  state and never a value. A value the patch cannot read is refused at the property's path
+  (`$.email`, `$[1].quantity`), with the nested refusal's own message. Writing an absent patch is refused, and
   `[JsonIgnore(Condition = WhenWritingDefault)]` leaves it out. Under a source-generated context a
   primitive, a string, a `Guid`, a date, a `Uri` and a value object need no listing; a class or an
   enum does. Works under Native AOT: the converter is registered by the closed type's static
@@ -89,13 +96,16 @@ against 1.5.1 meets them.
   arguments written or inferred, a C# 14 extension member, and a generic attribute. A method that
   implements an interface's, directly, statically or through a base class, carries its constraint. A type parameter forwarded without the attribute is a breach too, so the requirement
   follows the generic chain; `struct` proves `[Sealed]` and `[Concrete]`, `new()` proves `[Concrete]`.
+  Like every rule, it reports in generated code only where the code maps to a `.razor` or `.cshtml`
+  file.
 - **`CodoMetis.TypeKit.Analyzers`**: CMTK0011, with the package's first code fix. A type marked
   `[RequireParameterlessConstructor]` (new in the base package, with `ConstructorAccessibility`)
   requires every concrete type that derives from or implements it, directly or through another, to
   have a parameterless constructor of the given accessibility, for the host that creates such types
   by reflection. A class that declares no constructor satisfies `Public` as it is; a missing
   constructor is reported at the type and the fix adds it, a wrong accessibility at the constructor
-  and the fix changes it; a type with a primary constructor gets no fix. The code fixes ship in
+  and the fix changes it; a type with a primary constructor gets no fix. A struct is never reported:
+  its parameterless constructor is public and can be nothing else. The code fixes ship in
   `CodoMetis.TypeKit.Analyzers.CodeFixes.dll` inside the analyzer package.
 - **`CodoMetis.TypeKit`**: the text guards. `text.AsText()` is for text a person wrote: trimmed, every
   space separator folded to an ordinary space, composed to NFC so one name has one spelling, and
@@ -105,7 +115,15 @@ against 1.5.1 meets them.
   value another system issued, a subject claim or a session id: trimmed and otherwise left as it
   arrived, with the joiners refused too. A variation selector is kept after the character it varies
   and refused anywhere else, and a value of joiners, variation selectors and combining marks alone,
-  which renders nothing, is refused by both. Both answer `Result<string, TextFault>`, where `Blank` is
+  which renders nothing, is refused by both. Both also refuse, as `Hidden`, a control character (a tab
+  or a line break inside the value, so a multi-line field does not go through them), a format
+  character (the soft hyphen, the byte-order mark, the bidirectional marks), private use, the line and
+  paragraph separators, an unpaired surrogate and `U+FFFE`, the Khmer inherent vowels and the Khitan
+  filler, and more than 30 combining marks in a row, which composing would reorder in quadratic time;
+  the Arabic number sign and the other prepended concatenation marks are drawn and kept. No string
+  makes either throw. `AsText()` composes to NFC, not NFKC, and throws `PlatformNotSupportedException`
+  in globalization-invariant mode, where `string.Normalize` composes nothing: turn the mode off and
+  make ICU available, since written text has no guard there. Both answer `Result<string, TextFault>`, where `Blank` is
   the caller's to read as an error or as absence and `Hidden` is a refusal in both; a null receiver
   is `Blank`. A value object over either is one line, shown in the README.
 - **`CodoMetis.TypeKit`**: `FirstOrNone()`, `FirstOrNone(predicate)` and `FirstOrError(predicate, error)`
@@ -187,6 +205,9 @@ against 1.5.1 meets them.
 - **`CodoMetis.TypeKit.Analyzers`**: CMTK0003 also reports a result picked by `??`, a dropped tuple
   holding one, a dropped dictionary of them, and a call's task passed through `ConfigureAwait` or
   `WaitAsync` and dropped, awaited or not; a task the caller still holds stays silent through both.
+  A chain of taps on a result or a task the caller holds, `result.Tap(log).TapError(warn);` or
+  `await pending.TapAsync(a).TapErrorAsync(b);`, is silent, since each tap returns its receiver; 1.x
+  reported it. A chain that starts at a call still reports.
 - **`CodoMetis.TypeKit.Generators`**: an abstract type that declares a value-object marker is CMTK1022,
   an Error. It generated nothing, and a value held as it was written as `{}`; declare the marker on
   the sealed type.
@@ -201,6 +222,11 @@ against 1.5.1 meets them.
   generates its wrapped type's: over `sbyte`, `uint`, `ulong`, `ushort` and `char` too, and at the
   root of a TPH hierarchy on SQLite, which stored 0. A TPC key on SQLite is not generated, as a plain
   `int` key is not. A migration of such a model adds the identity.
+- **`CodoMetis.TypeKit.AspNetCore`**: the OpenAPI document describes `fault`, an optional string, on
+  the problem schema the fault responses refer to, in 3.1 and 3.0 and inline where the host inlines
+  problem details, with a description of the form the host writes. 1.5's `ProblemDetails` component
+  had only ASP.NET's members, so a client generated from it never saw `fault`. A document without a
+  fault response is unchanged.
 - **`CodoMetis.TypeKit.AspNetCore`**: a document in which a nested value object's or closed set's
   component name, `Order.Status` as `OrderStatus`, is also another type's throws, naming both; one
   component described both as one of them.

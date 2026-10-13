@@ -40,6 +40,9 @@ _ = await orders.CancelAsync(id);                             // the drop, said 
 await foreach (var _ in orders.CancelEachAsync(ids)) { }      // a loop variable named _ says it too
 ```
 
+A chain of taps on a result or a task you hold, `result.Tap(log).TapError(warn);`, was reported by
+1.x and no longer is, since each tap returns its receiver.
+
 Every report is answered in the code and never needs a suppression: `_ =` for a drop nothing
 depends on, a cast to `Task` for a task converted on purpose (`((Task)orders.CancelAsync(id)).Wait(timeout)`
 waits without the result), a loop variable named `_`. To migrate
@@ -153,8 +156,11 @@ package's namespace, makes a use ambiguous (CS0104): qualify one of them, or ali
 
 ## Fault responses
 
-Nothing to change. `AddFaultResponses<TFault>(fault => …)` maps an enum as it did, and answers with
-the same response. `FaultProblem<TFault>` takes any non-null fault type where it took `struct, Enum`,
+Nothing to change in the code. `AddFaultResponses<TFault>(fault => …)` maps an enum as it did, and
+answers with the same response. The OpenAPI document of a host with fault responses describes
+`fault`, an optional string, on the shared `ProblemDetails` component, so a client generated from it
+gains an optional `fault` member on its problem type; ASP.NET's own problem responses never set it.
+Regenerate clients, and update a checked-in snapshot of the document. `FaultProblem<TFault>` takes any non-null fault type where it took `struct, Enum`,
 so that a closed set can be one, and every type argument it accepted still is. To answer each fault
 by its kind instead of by a switch, make the fault type a closed set:
 [Closed sets](closed-sets.md#as-a-fault-type).
