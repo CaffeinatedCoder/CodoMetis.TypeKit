@@ -91,11 +91,13 @@ value object's type, since EF applies `ConfigureConventions` by CLR type.
 
 ## Keys
 
-A single-column key over an integer is generated on add, as a key of that integer type is: an
-identity column on PostgreSQL and SQL Server, so switching an `int` key to a value object there
-changes no schema. Where the provider has no identity for the type, a plain key is not generated
-either: on PostgreSQL a `ulong` key is a `numeric(20,0)` and a `char` key a `character(1)`, neither of
-which can be an identity, so configure `ValueGeneratedNever()` on such a key and assign it. A key over
+A single-column key over an integer is declared generated on add, as a key of that integer type is,
+and the provider generates it as it would a plain one: an identity column on PostgreSQL and SQL
+Server, so switching an `int` key to a value object there changes no schema. Two exceptions. A key
+over `char` is the application's to assign on every provider, since none generates one; a default
+`'\0'` is stored as it is, so assign a meaningful character. A key over `ulong` added with its default
+value throws `OverflowException` at `Add` on SQL Server and PostgreSQL, whose column is a `decimal`;
+configure `ValueGeneratedNever()` on it and assign it. A key over
 a `Guid` is the application's to assign, `Id = OrderId.New()`, a version 7
 `Guid` that sorts by creation time; for EF to generate it, configure `ValueGeneratedOnAdd()`. The root
 of a TPH or TPT hierarchy is generated too; under TPC, as for an `int` key, only where the provider has

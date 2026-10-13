@@ -67,14 +67,28 @@ would be a `default` instance.) A property can still name the converter explicit
 modelBuilder.Entity<Order>().Property(o => o.Code).HasConversion<ValueObjectConverter<ProductCode, string>>();
 ```
 
-**Keys.** A single-column key over an integer is generated on add, as a key of that integer type is.
-That is EF's own list: `int`, `long`, `short`, `sbyte`, `uint`, `ulong`, `ushort` and `char`, and not
-`byte`. On PostgreSQL and SQL Server it is an identity column, so switching an `int`
-key to a value object there changes no schema. Where the provider has no identity for the type, the key
-is no more generated than a plain one: on PostgreSQL a `ulong` is a `numeric(20,0)`, which cannot be an
-identity, and a `char` a `character(1)`, on which PostgreSQL refuses one when the table is created or
-migrated (22023), as it does for a plain `char` key. Configure `ValueGeneratedNever()` on such a key
-and assign it. A key over a `Guid` is the application's to assign,
+**Keys.** A single-column key over an integer is declared generated on add, as a key of that integer
+type is: `int`, `long`, `short`, `sbyte`, `uint`, `ulong` and `ushort`, EF's own list, and not `byte`.
+Whether a value is then generated is the provider's to decide, as for a plain key. On PostgreSQL and
+SQL Server it is an identity column, so switching an `int` key to a value object there changes no
+schema; where the provider has none for the type, the key is no more generated than a plain one (on
+PostgreSQL a `ulong` is a `numeric(20,0)`, which cannot be an identity). Two exceptions, because EF
+picks the generator that fills a value object's key at `Add` by the column's type, not by the type it
+wraps:
+
+- **A key over `char` is the application's to assign.** It is never declared generated, on any
+  provider: none generates a `char` key (PostgreSQL refuses an identity on `character(1)`, SQLite an
+  `AUTOINCREMENT` on `TEXT`, and SQL Server has no identity for `nvarchar(1)`), and on SQL Server
+  `Add` gave the value object a character of a GUID string, which was stored. This stops the invented
+  value; it does not check that the application set a meaningful one. A default key, `'\0'`, is
+  stored as it is, and a second such row fails on the primary key. `ValueGeneratedOnAdd()` or a value
+  generator of your own on the property still applies.
+- **A default key over `ulong` throws at `Add` where the column is a `decimal`** (SQL Server,
+  PostgreSQL): EF's temporary value for the column is a negative `decimal`, and converting it back
+  throws `OverflowException`, where a plain `ulong` key gets a temporary `ulong`. Configure
+  `ValueGeneratedNever()` on such a key and assign it.
+
+A key over a `Guid` is the application's to assign,
 `Id = OrderId.New()` (a version 7 Guid, which sorts by creation time), and EF inserts it as given. For
 EF to generate it instead, configure `ValueGeneratedOnAdd()` on the property; EF then also takes an
 entity whose key is already set, reached through a navigation, for an existing one. The root of an

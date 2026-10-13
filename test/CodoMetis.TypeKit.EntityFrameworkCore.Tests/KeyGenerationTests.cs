@@ -123,9 +123,10 @@ public sealed class KeyGenerationTests : IDisposable
     }
 
     /// <summary>
-    /// EF generates a key of every integer type but <c>byte</c>, unsigned ones and <c>char</c> included
+    /// EF generates a key of every integer type but <c>byte</c>, unsigned ones included
     /// (<c>ValueGenerationConvention</c>), and a key over one follows it. Those over <c>uint</c>,
-    /// <c>ulong</c>, <c>ushort</c>, <c>sbyte</c> and <c>char</c> were never generated.
+    /// <c>ulong</c>, <c>ushort</c> and <c>sbyte</c> were never generated. <c>char</c>, which EF counts
+    /// as an integer too, is the application's to assign (<see cref="A_key_over_char_is_the_application_s_to_assign"/>).
     /// </summary>
     [Theory]
     [MemberData(nameof(IntegerKeys))]
@@ -134,6 +135,71 @@ public sealed class KeyGenerationTests : IDisposable
         using var db = new IntegerKeysDb(Options<IntegerKeysDb>(provider));
 
         Key(db, keyedByValueObject).ValueGenerated.ShouldBe(Key(db, keyedByWrapped).ValueGenerated, $"{keyedByValueObject.Name} on {provider}");
+    }
+
+    public static TheoryData<string> AllProviders => [.. Providers];
+
+    /// <summary>
+    /// No provider generates a <c>char</c> key: PostgreSQL refuses an identity on <c>character(1)</c>, and
+    /// a plain one on SQL Server or SQLite reaches the insert without a value. Marked generated, the value
+    /// object's key on SQL Server got a character of a GUID string at <c>Add</c>, which was then stored
+    /// (EF picks the generator by the column's type, <c>nvarchar</c>). So it is not generated: the key the
+    /// application set is the key added, a default one included, as in 1.5.1.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(AllProviders))]
+    public void A_key_over_char_is_the_application_s_to_assign(string provider)
+    {
+        using var db = new CharAndULongKeysDb(Options<CharAndULongKeysDb>(provider));
+
+        var unassigned = new KeyedByChar();
+        var assigned = new KeyedByChar { Id = CharKey.From('B') };
+        db.AddRange(unassigned, assigned);
+
+        // The entry's value, which EF inserts; a temporary one is kept there, not on the entity.
+        var added = db.Entry(unassigned).Property(e => e.Id);
+        added.CurrentValue.Value.ShouldBe('\0', $"on {provider}, Add invented a key");
+        added.IsTemporary.ShouldBeFalse($"on {provider}");
+        unassigned.Id.Value.ShouldBe('\0', $"on {provider}, Add invented a key");
+        assigned.Id.Value.ShouldBe('B');
+        Key(db, typeof(KeyedByChar)).ValueGenerated.ShouldBe(ValueGenerated.Never, $"on {provider}");
+    }
+
+    /// <summary>The application's own configuration of a <c>char</c> key still wins: generated on add, or its own generator.</summary>
+    [Theory]
+    [MemberData(nameof(AllProviders))]
+    public void A_char_key_the_application_configures_keeps_its_configuration(string provider)
+    {
+        using var db = new CharAndULongKeysDb(Options<CharAndULongKeysDb>(provider));
+
+        Key(db, typeof(GeneratedOnAddCharKey)).ValueGenerated.ShouldBe(ValueGenerated.OnAdd, $"on {provider}");
+
+        var own = new OwnGeneratorCharKey();
+        db.Add(own);
+        own.Id.Value.ShouldBe('A', $"on {provider}");
+    }
+
+    /// <summary>
+    /// Pinned as documented, not as wanted: where the provider stores a <c>ulong</c> as a <c>decimal</c>
+    /// (SQL Server, PostgreSQL), EF gives a value object's default key a temporary <c>decimal</c>, which is
+    /// negative, and converting it back throws at <c>Add</c>; a plain <c>ulong</c> key gets a temporary
+    /// <c>ulong</c>. Configured <c>ValueGeneratedNever()</c>, the key the application assigns is added.
+    /// </summary>
+    [Theory]
+    [InlineData("sqlserver")]
+    [InlineData("npgsql")]
+    public void A_default_key_over_ulong_throws_at_Add_where_the_column_is_a_decimal(string provider)
+    {
+        using var db = new CharAndULongKeysDb(Options<CharAndULongKeysDb>(provider));
+
+        Should.Throw<OverflowException>(() => db.Add(new KeyedByUInt64()));
+
+        var assigned = new AssignedUInt64Key { Id = UInt64Key.From(42) };
+        db.Add(assigned);
+
+        assigned.Id.Value.ShouldBe(42ul);
+        db.Entry(assigned).Property(e => e.Id).IsTemporary.ShouldBeFalse();
+        Key(db, typeof(AssignedUInt64Key)).ValueGenerated.ShouldBe(ValueGenerated.Never);
     }
 
     /// <summary>
@@ -408,7 +474,10 @@ public class KeyedByChar { public CharKey Id { get; set; } }
 
 public class KeyedByPlainChar { public char Id { get; set; } }
 
-/// <summary>A key over each integer type, beside a key of that type itself. For the model only: SQLite refuses EF's own <c>char</c> key.</summary>
+/// <summary>
+/// A key over each integer type, beside a key of that type itself, for the model only. Not <c>char</c>,
+/// which no provider generates and a value object's key leaves to the application (<see cref="CharAndULongKeysDb"/>).
+/// </summary>
 public sealed class IntegerKeysDb(DbContextOptions<IntegerKeysDb> options) : DbContext(options)
 {
     public static readonly (Type ByValueObject, Type ByWrapped)[] Pairs =
@@ -420,7 +489,6 @@ public sealed class IntegerKeysDb(DbContextOptions<IntegerKeysDb> options) : DbC
         (typeof(KeyedByUInt32), typeof(KeyedByUint)),
         (typeof(KeyedByUInt64), typeof(KeyedByUlong)),
         (typeof(KeyedByByte), typeof(KeyedByPlainByte)),
-        (typeof(KeyedByChar), typeof(KeyedByPlainChar)),
     ];
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -430,6 +498,36 @@ public sealed class IntegerKeysDb(DbContextOptions<IntegerKeysDb> options) : DbC
             modelBuilder.Entity(byValueObject);
             modelBuilder.Entity(byWrapped);
         }
+    }
+}
+
+/// <summary>A <c>char</c> key configured to be generated on add.</summary>
+public class GeneratedOnAddCharKey { public CharKey Id { get; set; } }
+
+/// <summary>A <c>char</c> key given a value generator of the application's own.</summary>
+public class OwnGeneratorCharKey { public CharKey Id { get; set; } }
+
+/// <summary>A <c>ulong</c> key the application assigns, as the README says to configure it.</summary>
+public class AssignedUInt64Key { public UInt64Key Id { get; set; } }
+
+/// <summary>Hands out the letter A, as an application's own generator would hand out its keys.</summary>
+public sealed class LetterKeyGenerator : Microsoft.EntityFrameworkCore.ValueGeneration.ValueGenerator<CharKey>
+{
+    public override bool GeneratesTemporaryValues => false;
+
+    public override CharKey Next(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry) => CharKey.From('A');
+}
+
+/// <summary>Keys over <c>char</c> and <c>ulong</c>, by convention and as an application configures them.</summary>
+public sealed class CharAndULongKeysDb(DbContextOptions<CharAndULongKeysDb> options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<KeyedByChar>();
+        modelBuilder.Entity<GeneratedOnAddCharKey>().Property(e => e.Id).ValueGeneratedOnAdd();
+        modelBuilder.Entity<OwnGeneratorCharKey>().Property(e => e.Id).HasValueGenerator<LetterKeyGenerator>();
+        modelBuilder.Entity<KeyedByUInt64>();
+        modelBuilder.Entity<AssignedUInt64Key>().Property(e => e.Id).ValueGeneratedNever();
     }
 }
 

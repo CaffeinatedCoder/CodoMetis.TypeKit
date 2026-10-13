@@ -69,3 +69,4 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0060](0060-value-object-over-closed-set-generated-in-full.md) | A value object over a closed set is generated in full wherever the set is declared | 2026-10-13 | accepted |
 | [0061](0061-scope-s-fault-status-applies-where-fault-type-answered.md) | A scope's fault status applies where its fault type is answered | 2026-10-13 | accepted |
 | [0062](0062-asynchronous-callbacks-run-where-awaited-task-completed.md) | An asynchronous callback runs where the task it waited for completed | 2026-10-13 | accepted |
+| [0063](0063-char-keys-application-assigned-ulong-documented.md) | A key over `char` is the application's to assign; a default key over `ulong` throws at `Add` | 2026-10-13 | accepted |

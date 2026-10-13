@@ -68,8 +68,8 @@
   generation convention reads the property's CLR type, so a value-object key was never generated: an
   entity added without one was stored as 0, and switching an `int` key to a value object dropped its
   identity column. A convention plugin marks a single-column, non-foreign key over the integer types
-  EF generates (`int`, `long`, `short`, `sbyte`, the unsigned ones and `char`, as EF's `IsInteger()`
-  minus `byte`) as generated on add, at convention precedence. It runs after the last
+  EF generates (`int`, `long`, `short`, `sbyte` and the unsigned ones, as EF's `IsInteger()` minus
+  `byte` and `char`) as generated on add, at convention precedence. It runs after the last
   hierarchy-mapping and shared-table convention: SQLite re-decides a key from its CLR type when the
   root's mapping strategy is set, which reset a TPH root's key to not generated, and a TPC key stays
   generated only where the provider gave it a sequence, as for a plain `int`
@@ -79,23 +79,31 @@
   every entity was stored with 0). The model tests build each shape for SQLite, Npgsql and SQL
   Server, an abstract TPC root included. Where the provider has no identity for the type, a plain key
   is not generated either, and neither is the value object's (measured on PostgreSQL 18: a `ulong` is
-  `numeric(20,0)`, strategy none; a `char` is `character(1)`, whose identity PostgreSQL refuses with
-  22023 at creation and in the `AlterColumn` a 1.5.1 snapshot produces). That `AlterColumn` adds the
-  identity to a key over `sbyte`, `ushort` or `uint` on PostgreSQL; SQL Server's migrations generator
-  refuses it for those and `ulong` ("To change the IDENTITY property of a column, the column needs to
-  be dropped and recreated"), as for any key whose identity changes. A key over a `Guid` is left
-  alone: the application assigns `OrderId.New()`, and a generated key that is already set makes EF
-  take a new entity reached through a navigation for an existing one.
-  - **Open: the value generator is chosen by the column's type (measured 2026-10-13).** EF picks a
-    key's generator by its CLR type, else by its converter's provider type, which for a value object
-    is the column's: where the provider stores the wrapped type through a converter of its own, a
-    default key gets another generator than a plain key. A default `ulong` key throws
-    `OverflowException` on `Add` on SQL Server and PostgreSQL (EF's temporary `decimal` is negative),
-    where a plain one gets a temporary value; a default `char` key on SQL Server gets a permanent
-    character from a GUID string, where a plain one fails at insert. An assigned key is unaffected.
-    (The models and `Add` measured on all three providers, the inserts on PostgreSQL 18; SQL Server's
-    inserts follow from its models, unrun.) A fix needs a value generator per key that a compiled
-    model can write and that leaves HiLo alone.
+  `numeric(20,0)`, strategy none). From a 1.5.1 snapshot, the `AlterColumn` that declares a key
+  generated adds the identity to a key over `sbyte`, `ushort` or `uint` on PostgreSQL; SQL Server's
+  migrations generator refuses it for those and `ulong` ("To change the IDENTITY property of a column,
+  the column needs to be dropped and recreated"), as for any key whose identity changes. A key over a
+  `Guid` is left alone: the application assigns `OrderId.New()`, and a generated key that is already
+  set makes EF take a new entity reached through a navigation for an existing one.
+  - **Declared generated is not parity (decided 2026-10-13, [decision 63](adr/0063-char-keys-application-assigned-ulong-documented.md)).**
+    The convention declares a key generated (`ValueGenerated`); the provider supplies the mechanism,
+    and EF picks the generator that fills a key at `Add` by its CLR type, else by its converter's
+    provider type, which for a value object is the column's. Where the provider stores the wrapped
+    type through a converter of its own, a value object's default key therefore gets another
+    generator than a plain key. Two consequences, measured on all three providers' models and `Add`,
+    and on PostgreSQL 18's inserts:
+    - **A key over `char` is never declared generated.** No provider generates one: PostgreSQL refuses
+      an identity on `character(1)` (22023, at creation and in the `AlterColumn` from a 1.5.1
+      snapshot), SQLite refuses the `TEXT … AUTOINCREMENT` column of a plain key, and a plain key on
+      SQL Server (`nvarchar(1)`, no identity) reaches the insert with only a temporary value, which EF
+      leaves out (read from the model; no SQL Server here). On SQL Server the value object's key, declared generated, got a permanent
+      character of a GUID string at `Add`, which was stored. It is `Never`, as in 1.5.1; an explicit
+      `ValueGeneratedOnAdd()` or value generator still applies. A default `'\0'` is stored as it is.
+    - **A default key over `ulong` throws `OverflowException` at `Add`** on SQL Server and PostgreSQL,
+      whose column is a `decimal`: EF's temporary `decimal` is negative. A plain `ulong` key gets a
+      temporary `ulong`. It stays declared generated, since it fails loudly and a fix needs a value
+      generator per key that a compiled model can write and that leaves HiLo alone; the workaround is
+      `ValueGeneratedNever()` and an assigned key, which a test pins with the exception.
 - **Conventions for the wrapped type do not reach a value object.** `ConfigureConventions`
   (`Properties<decimal>()`) matches the property's CLR type; the README says to configure the value
   object (`Properties<Amount>()`). Measured 2026-09-28 for precision, maximum length, column type and
