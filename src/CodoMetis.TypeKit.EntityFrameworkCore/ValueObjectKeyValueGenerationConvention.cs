@@ -49,7 +49,8 @@ internal sealed class ValueObjectKeyConventionSetPlugin : IConventionSetPlugin
 /// </summary>
 /// <remarks>
 /// <para>
-/// Only integers, where only the database can produce the key. A value object over a
+/// The integer types are those EF generates a key of (<see cref="IsGeneratedByTheDatabase"/>), so a
+/// value-object key follows what EF does for the type it wraps. A value object over a
 /// <see cref="Guid"/> is left as EF leaves it, never generated: an identifier the application
 /// creates itself (<c>OrderId.New()</c>) is then always inserted, whereas a generated key that is set
 /// makes EF take a new entity reached through a navigation for an existing one.
@@ -82,7 +83,14 @@ internal sealed class ValueObjectKeyValueGenerationConvention : IModelFinalizing
                    : null;
     }
 
-    private static bool IsGeneratedByTheDatabase(Type wrapped) => wrapped == typeof(int) || wrapped == typeof(long) || wrapped == typeof(short);
+    /// <summary>
+    /// EF's own rule for a key of the wrapped type (<c>ValueGenerationConvention.CanBeGenerated</c> in
+    /// EF Core 10): every integer type but <see cref="byte"/>, the unsigned ones, <see cref="sbyte"/> and
+    /// <see cref="char"/> included.
+    /// </summary>
+    private static bool IsGeneratedByTheDatabase(Type wrapped) =>
+        wrapped == typeof(int) || wrapped == typeof(long) || wrapped == typeof(short) || wrapped == typeof(sbyte)
+     || wrapped == typeof(uint) || wrapped == typeof(ulong) || wrapped == typeof(ushort) || wrapped == typeof(char);
 }
 
 /// <summary>

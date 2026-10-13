@@ -67,8 +67,9 @@ would be a `default` instance.) A property can still name the converter explicit
 modelBuilder.Entity<Order>().Property(o => o.Code).HasConversion<ValueObjectConverter<ProductCode, string>>();
 ```
 
-**Keys.** A single-column key over an integer (`int`, `long`, `short`) is generated on add, as a key
-of that integer type is. On PostgreSQL and SQL Server it is an identity column, so switching an `int`
+**Keys.** A single-column key over an integer is generated on add, as a key of that integer type is.
+That is EF's own list: `int`, `long`, `short`, `sbyte`, `uint`, `ulong`, `ushort` and `char`, and not
+`byte`. On PostgreSQL and SQL Server it is an identity column, so switching an `int`
 key to a value object there changes no schema. A key over a `Guid` is the application's to assign,
 `Id = OrderId.New()` (a version 7 Guid, which sorts by creation time), and EF inserts it as given. For
 EF to generate it instead, configure `ValueGeneratedOnAdd()` on the property; EF then also takes an
