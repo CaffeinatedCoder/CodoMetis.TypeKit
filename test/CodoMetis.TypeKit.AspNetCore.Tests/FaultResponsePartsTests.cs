@@ -38,6 +38,9 @@ public sealed class FaultResponsePartsTests
     private static Result<Order, Fault<OrderFault>> RenameWithDetail(int id) =>
         id == 1 ? new Order(1, "renamed") : Result.Error(Fault.Of(OrderFault.NameTaken, "Order 7 is called that."));
 
+    private static Result<Fault<OrderFault>> ArchiveWithDetail(int id) =>
+        id == 1 ? Result.Success() : Result.Error(Fault.Of(OrderFault.NameTaken, "Order 7 is called that."));
+
     private static Result<Order, ProbeOrderFault> Find(int id) => id switch
     {
         1 => new Order(1, "book"),
@@ -134,6 +137,34 @@ public sealed class FaultResponsePartsTests
     }
 
     /// <summary>
+    /// Every overload over a <see cref="Fault{TFault}"/> carries the occurrence's detail to the problem:
+    /// the valued one, the command, and each with the endpoint's own success.
+    /// </summary>
+    [Theory]
+    [InlineData("PUT", "/detailed/orders/2")]            // Result<T, Fault<TFault>>
+    [InlineData("DELETE", "/detailed/orders/2")]         // Result<Fault<TFault>>
+    [InlineData("POST", "/detailed/orders/2/copies")]    // Result<T, Fault<TFault>>, with the endpoint's success
+    [InlineData("POST", "/detailed/orders/2/archive")]   // Result<Fault<TFault>>, with the endpoint's success
+    public async Task An_occurrence_s_detail_reaches_the_problem_through_every_overload(string method, string path)
+    {
+        await using var app = await StartAsync(endpoints: app =>
+        {
+            app.MapDelete("/detailed/orders/{id:int}", (int id) => ArchiveWithDetail(id).ToHttpResult());
+            app.MapPost("/detailed/orders/{id:int}/copies", (int id) => RenameWithDetail(id).ToHttpResult(order => TypedResults.Created($"/orders/{order.Id}", order)));
+            app.MapPost("/detailed/orders/{id:int}/archive", (int id) => ArchiveWithDetail(id).ToHttpResult(() => TypedResults.Accepted("/jobs/7")));
+        });
+
+        using var request = new HttpRequestMessage(new HttpMethod(method), path);
+        using var response = await app.GetTestClient().SendAsync(request, TestContext.Current.CancellationToken);
+        var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!;
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict, $"{method} {path}");
+        problem["fault"]!.GetValue<string>().ShouldBe("NameTaken");
+        problem.AsObject().ContainsKey("detail").ShouldBeTrue($"{method} {path} lost the occurrence's detail: {problem.ToJsonString()}");
+        problem["detail"]!.GetValue<string>().ShouldBe("Order 7 is called that.");
+    }
+
+    /// <summary>
     /// A closed set answered by its kinds: 404, 409 and 403 with nothing mapped by hand, and a member's
     /// description as the problem's detail, where the member has one.
     /// </summary>
@@ -165,6 +196,43 @@ public sealed class FaultResponsePartsTests
         var paths = (await DocumentAsync(app))["paths"]!;
         paths["/strict/orders/{id}"]!["put"]!["responses"]!.AsObject().Select(response => response.Key).Order().ShouldBe(["200", "404", "422"]);
         paths["/orders/{id}"]!["put"]!["responses"]!.AsObject().Select(response => response.Key).Order().ShouldBe(["200", "404", "409"]);
+    }
+
+    /// <summary>
+    /// A route group's status reaches every endpoint of it, and an endpoint's own replaces it for that
+    /// endpoint: the last status the metadata sets, as ASP.NET reads metadata, in the response and the document.
+    /// </summary>
+    [Fact]
+    public async Task A_group_s_status_reaches_its_endpoints_and_an_endpoint_s_own_replaces_it()
+    {
+        await using var app = await StartAsync(endpoints: app =>
+        {
+            var archive = app.MapGroup("/archive").WithFaultStatus(OrderFault.NotFound, StatusCodes.Status410Gone);
+            archive.MapPut("/orders/{id:int}", (int id) => Rename(id).ToHttpResult());
+            archive.MapPut("/restored/orders/{id:int}", (int id) => Rename(id).ToHttpResult()).WithFaultStatus(OrderFault.NotFound, StatusCodes.Status404NotFound);
+        });
+
+        (await ProblemAsync(app, "/archive/orders/9", HttpStatusCode.Gone))["fault"]!.GetValue<string>().ShouldBe("NotFound");
+        await ProblemAsync(app, "/archive/restored/orders/9", HttpStatusCode.NotFound);
+        await ProblemAsync(app, "/archive/restored/orders/2", HttpStatusCode.Conflict);
+
+        var paths = (await DocumentAsync(app))["paths"]!;
+        paths["/archive/orders/{id}"]!["put"]!["responses"]!.AsObject().Select(response => response.Key).Order().ShouldBe(["200", "409", "410"]);
+        paths["/archive/restored/orders/{id}"]!["put"]!["responses"]!.AsObject().Select(response => response.Key).Order().ShouldBe(["200", "404", "409"]);
+    }
+
+    /// <summary>The same for MVC: a controller's attribute reaches every action of it, and an action's own replaces it.</summary>
+    [Fact]
+    public async Task A_controller_s_status_attribute_reaches_its_actions_and_an_action_s_own_replaces_it()
+    {
+        await using var app = await StartAsync(mvc: typeof(ArchiveController));
+
+        await ProblemAsync(app, "/mvc/archive/orders/9", HttpStatusCode.Gone);
+        await ProblemAsync(app, "/mvc/archive/restored/orders/9", HttpStatusCode.NotFound);
+
+        var paths = (await DocumentAsync(app))["paths"]!;
+        paths["/mvc/archive/orders/{id}"]!["put"]!["responses"]!.AsObject().Select(response => response.Key).Order().ShouldBe(["200", "409", "410"]);
+        paths["/mvc/archive/restored/orders/{id}"]!["put"]!["responses"]!.AsObject().Select(response => response.Key).Order().ShouldBe(["200", "404", "409"]);
     }
 
     [Fact]
@@ -358,6 +426,18 @@ public sealed class FaultResponsePartsTests
         [HttpPut("/mvc/orders/{id:int}")]
         [FaultStatus<OrderFault>(nameof(OrderFault.NameTaken), StatusCodes.Status422UnprocessableEntity)]
         public Results<Ok<Order>, FaultProblem<OrderFault>> Rename(int id) => FaultResponsePartsTests.Rename(id).ToHttpResult();
+    }
+
+    [ApiController]
+    [FaultStatus<OrderFault>(nameof(OrderFault.NotFound), StatusCodes.Status410Gone)]
+    public sealed class ArchiveController : ControllerBase
+    {
+        [HttpPut("/mvc/archive/orders/{id:int}")]
+        public Results<Ok<Order>, FaultProblem<OrderFault>> Rename(int id) => FaultResponsePartsTests.Rename(id).ToHttpResult();
+
+        [HttpPut("/mvc/archive/restored/orders/{id:int}")]
+        [FaultStatus<OrderFault>(nameof(OrderFault.NotFound), StatusCodes.Status404NotFound)]
+        public Results<Ok<Order>, FaultProblem<OrderFault>> Restore(int id) => FaultResponsePartsTests.Rename(id).ToHttpResult();
     }
 
     [ApiController]
