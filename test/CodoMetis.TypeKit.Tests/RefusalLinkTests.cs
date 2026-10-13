@@ -43,6 +43,7 @@ public sealed partial class RefusalLinkTests
     private const string NullToValueObject = "A null given to a value object";
     private const string ClosedSetMember = "A closed set has no member of that name";
     private const string ClosedSetNotAMember = "An instance that is not a member of its set";
+    private const string TaskGivenToCatch = "A task given to Catch";
 
     private enum Fault { TooLong }
 
@@ -93,6 +94,10 @@ public sealed partial class RefusalLinkTests
         ["unreadable text, Parse"]          = (Unreadable, () => throw GeneratedParsing.Unreadable<Code, int>()),
         ["unreadable text, static Parse"]   = (Unreadable, () => GeneratedParsing.Guarded<Code, int>("x", static text => int.Parse(text, CultureInfo.InvariantCulture))),
         ["unreadable text, type converter"] = (Unreadable, () => GeneratedParsing.ConvertFromString<Code, int>("x", null)),
+
+        ["Catch over a spelled task"]       = (TaskGivenToCatch, () => Result.Catch<Task<int>, InvalidOperationException>(() => Task.FromResult(1))),
+        ["Catch over a ValueTask"]          = (TaskGivenToCatch, () => Result.Catch(() => ValueTask.CompletedTask)),
+        ["CatchAsync over a task of a task"] = (TaskGivenToCatch, () => Result.CatchAsync(() => Task.FromResult(Task.FromResult(1))).GetAwaiter().GetResult()),
 
         ["From(null)"]                      = (NullToValueObject, () => throw GeneratedFactories.NullRefused<Code>("value")),
         ["a JSON null"]                     = (NullToValueObject, () => throw GeneratedJson.NullToken<Code>()),

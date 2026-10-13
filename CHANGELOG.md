@@ -27,8 +27,11 @@ this release adds, so nothing that built against 1.5.1 meets them.
   task, so an exception thrown after its first `await` is the error too. An `OperationCanceledException`
   passes through every overload, unless it is a timeout (one over a `TimeoutException`, as
   `HttpClient` throws when its `Timeout` elapses), which is the error; a delegate that returns a
-  `Task` given to `Catch` is a compile error that names `CatchAsync`, and a delegate that returns
-  null throws as `Result.Success(null)` does.
+  `Task`, an `async` lambda among them, given to `Catch` or to its command form `Catch<TException>`
+  is a compile error that names `CatchAsync`, and so is a delegate that returns any value given to the
+  command form, which would discard it; a `ValueTask`, or a task spelled as the type argument, is
+  refused before the delegate runs; and a delegate that returns null throws as `Result.Success(null)`
+  does.
 - **The closed-set family**, the release's headline: `IClosedSet<TSelf>` in `CodoMetis.TypeKit`, generated
   by `CodoMetis.TypeKit.Generators`. A sealed partial class whose every instance is a `public static
   readonly` field, with constant data through a private constructor where the members carry some. The

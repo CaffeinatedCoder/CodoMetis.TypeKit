@@ -54,9 +54,11 @@ public static class Result
     /// <typeparam name="T">The type of the value.</typeparam>
     /// <returns>A success holding the value, or an error holding the exception thrown.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or returned null.</exception>
+    /// <exception cref="ArgumentException"><typeparamref name="T"/> is a task, a <c>Task</c> or a <c>ValueTask</c>; use <c>CatchAsync</c>.</exception>
     public static Result<T, Exception> Catch<T>(Func<T> action) where T : notnull
     {
         ArgumentNullException.ThrowIfNull(action);
+        RefuseTask<T>(nameof(Catch));
 
         T value;
         try
@@ -111,11 +113,13 @@ public static class Result
     /// <typeparam name="TException">The exception that is an outcome; any other propagates.</typeparam>
     /// <returns>A success holding the value, or an error holding the exception thrown.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or returned null.</exception>
+    /// <exception cref="ArgumentException"><typeparamref name="T"/> is a task, a <c>Task</c> or a <c>ValueTask</c>; use <c>CatchAsync</c>.</exception>
     public static Result<T, TException> Catch<T, TException>(Func<T> action)
         where T : notnull
         where TException : Exception
     {
         ArgumentNullException.ThrowIfNull(action);
+        RefuseTask<T>(nameof(Catch));
 
         T value;
         try
@@ -135,10 +139,11 @@ public static class Result
     /// it threw as the error. Any other exception propagates.
     /// </summary>
     /// <remarks>
-    /// A lambda with an expression body converts to an <see cref="Action"/> and its value is
-    /// discarded, so <c>Result.Catch&lt;FormatException&gt;(() =&gt; int.Parse(s))</c> is this overload
-    /// and answers a <see cref="Result{TError}"/> without the number; the valued form spells both
-    /// type arguments. See <see cref="Catch{T}(Func{T})"/> for cancellation and tasks.
+    /// A delegate that returns a value is refused at compile time, a task's included, since this
+    /// overload would discard it: <c>Result.Catch&lt;int, FormatException&gt;(() =&gt; int.Parse(s))</c>
+    /// spells both type arguments, and <c>CatchAsync</c> waits for a task. A statement lambda that
+    /// drops a value says so, <c>() =&gt; { _ = list.Remove(item); }</c>. See
+    /// <see cref="Catch{T}(Func{T})"/> for cancellation.
     /// </remarks>
     /// <param name="action">The call whose outcome is wanted.</param>
     /// <typeparam name="TException">The exception that is an outcome; any other propagates.</typeparam>
@@ -190,6 +195,55 @@ public static class Result
     [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
     public static Result<Exception> Catch(Func<Task> action) => throw new NotSupportedException();
 
+    /// <summary>Refused: the task's exception is thrown after <c>Catch</c> has returned. Use <see cref="CatchAsync{TException}(Func{Task})"/>.</summary>
+    /// <remarks>
+    /// Without it, a delegate returning a task, an <c>async</c> lambda among them, converts to the
+    /// command form's <see cref="Action"/>: the task is discarded, and an <c>async</c> lambda becomes
+    /// <c>async void</c>, whose exception reaches no caller at all.
+    /// </remarks>
+    /// <param name="action">A delegate returning a task.</param>
+    /// <typeparam name="TException">The exception that would be an outcome.</typeparam>
+    /// <returns>Never: the overload does not compile.</returns>
+    [Obsolete("The delegate returns a Task, whose exception is thrown after Catch has returned. Use CatchAsync.", error: true)]
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public static Result<TException> Catch<TException>(Func<Task> action) where TException : Exception => throw new NotSupportedException();
+
+    /// <summary>
+    /// Refused: the command form would discard the value, and with a <c>ValueTask</c> its exception.
+    /// Use <see cref="Catch{T, TException}(Func{T})"/>, or <see cref="CatchAsync{T, TException}(Func{Task{T}})"/> for a task.
+    /// </summary>
+    /// <remarks>
+    /// A lambda with an expression body converts to <see cref="Action"/> and its value is dropped, so
+    /// <c>Catch&lt;FormatException&gt;(() =&gt; int.Parse(s))</c> answered without the number, and
+    /// <c>Catch&lt;IOException&gt;(() =&gt; stream.ReadAsync(buffer))</c> without the read's exception: a
+    /// <c>ValueTask&lt;T&gt;</c> converts to no task type an overload could name. Every value converts to
+    /// <see cref="object"/>, so this overload is the better match for any of them; a task is
+    /// <see cref="Catch{TException}(Func{Task})"/>'s, the more specific one.
+    /// </remarks>
+    /// <param name="action">A delegate returning a value.</param>
+    /// <typeparam name="TException">The exception that would be an outcome.</typeparam>
+    /// <returns>Never: the overload does not compile.</returns>
+    [Obsolete("The delegate returns a value, which Catch<TException> would discard, a ValueTask's exception with it. Spell the value's type, Catch<T, TException>, or use CatchAsync for a task.", error: true)]
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public static Result<TException> Catch<TException>(Func<object?> action) where TException : Exception => throw new NotSupportedException();
+
+    /// <summary>
+    /// Refuses a value that is itself a task, before the delegate runs: its exception would be thrown
+    /// after <c>Catch</c> had returned a success. The overloads over a task-returning delegate refuse
+    /// it at compile time; this is the type argument spelled as a task, <c>Catch&lt;Task&lt;int&gt;, …&gt;</c>,
+    /// and a <c>ValueTask</c>, which no overload can name beside <c>Task</c> without making every
+    /// <c>async</c> lambda ambiguous.
+    /// </summary>
+    private static void RefuseTask<T>(string method)
+    {
+        var type = typeof(T);
+        if (typeof(Task).IsAssignableFrom(type) || type == typeof(ValueTask) || type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ValueTask<>))
+            throw new ArgumentException(
+                $"{method} was given a delegate whose value is a task, whose exception would be thrown after {method} had returned a success. "
+              + (method == nameof(Catch) ? "Use CatchAsync." : "Await the inner task in the delegate.") + Refusals.TaskGivenToCatch,
+                "action");
+    }
+
     /// <summary>
     /// Awaits <paramref name="action"/> and returns its value as a success, or the exception the
     /// task threw as the error, whether before or after its first <c>await</c>.
@@ -206,9 +260,11 @@ public static class Result
     /// <typeparam name="T">The type of the value.</typeparam>
     /// <returns>A success holding the value, or an error holding the exception thrown.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or its task produced null.</exception>
+    /// <exception cref="ArgumentException"><typeparamref name="T"/> is itself a task; await it in the delegate.</exception>
     public static async Task<Result<T, Exception>> CatchAsync<T>(Func<Task<T>> action) where T : notnull
     {
         ArgumentNullException.ThrowIfNull(action);
+        RefuseTask<T>(nameof(CatchAsync));
 
         T value;
         try
@@ -256,11 +312,13 @@ public static class Result
     /// <typeparam name="TException">The exception that is an outcome; any other propagates.</typeparam>
     /// <returns>A success holding the value, or an error holding the exception thrown.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or its task produced null.</exception>
+    /// <exception cref="ArgumentException"><typeparamref name="T"/> is itself a task; await it in the delegate.</exception>
     public static async Task<Result<T, TException>> CatchAsync<T, TException>(Func<Task<T>> action)
         where T : notnull
         where TException : Exception
     {
         ArgumentNullException.ThrowIfNull(action);
+        RefuseTask<T>(nameof(CatchAsync));
 
         T value;
         try

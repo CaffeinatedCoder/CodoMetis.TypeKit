@@ -63,15 +63,54 @@ public sealed class ResultCatchTests
 
     /// <summary>
     /// A lambda with an expression body converts to <see cref="Action"/>, so the one-type-argument
-    /// form over a value-returning call is the value-less overload, and the value is discarded. The
-    /// valued form spells both type arguments; the README says so.
+    /// form over a value-returning call would discard the value, and a <c>ValueTask</c>'s exception with
+    /// it. That is a compile error naming the valued form; a statement lambda is a command.
+    /// </summary>
+    [Theory]
+    [InlineData("Result.Catch<FormatException>(() => int.Parse(text))", "CS0619")]
+    [InlineData("Result.Catch<FormatException>(() => Items.Remove(text))", "CS0619")]
+    [InlineData("Result.Catch<FormatException>(() => { Items.Remove(text); })", "")]
+    [InlineData("Result.Catch<FormatException>(() => Items.Clear())", "")]
+    [InlineData("Result.Catch<int, FormatException>(() => int.Parse(text))", "")]
+    public void A_one_type_argument_Catch_over_a_value_is_a_compile_error_naming_the_valued_form(string call, string error)
+    {
+        var compilation = ConsumerCompilation.Of($$"""
+            using System;
+            using System.Collections.Generic;
+            using CodoMetis.TypeKit;
+
+            static class Consumer
+            {
+                static readonly List<string> Items = [];
+                static object Call(string text) => {{call}};
+            }
+            """);
+
+        compilation.ErrorIds().ShouldBe(error.Length == 0 ? [] : [error], compilation.Problems());
+        if (error.Length > 0) compilation.Problems().ShouldContain("Catch<T, TException>");
+    }
+
+    /// <summary>
+    /// A task's type spelled as the value, or inferred where no overload can name it (a
+    /// <c>ValueTask</c>), would make the task's exception arrive after a success was returned. It is
+    /// refused before the delegate runs, and the message names <c>CatchAsync</c>; <c>CatchAsync</c>
+    /// whose task's value is another task is refused the same way.
     /// </summary>
     [Fact]
-    public void A_one_type_argument_Catch_over_a_value_is_the_value_less_overload()
+    public async Task A_task_as_the_value_is_refused_before_the_delegate_runs()
     {
-        var bound = Result.Catch<FormatException>(() => int.Parse("42"));
+        var ran = false;
+        Task<int> Fails() { ran = true; return Task.FromException<int>(Boom); }
 
-        bound.ShouldBeOfType<Result<FormatException>>();
+        Should.Throw<ArgumentException>(() => Result.Catch<Task<int>, InvalidOperationException>(Fails)).Message.ShouldContain("Use CatchAsync.");
+        Should.Throw<ArgumentException>(() => Result.Catch<Task<int>>(Fails));
+        Should.Throw<ArgumentException>(() => Result.Catch<Task, InvalidOperationException>(Fails));
+        Should.Throw<ArgumentException>(() => Result.Catch(() => { ran = true; return new ValueTask<int>(1); }));
+        Should.Throw<ArgumentException>(() => Result.Catch(() => { ran = true; return ValueTask.CompletedTask; }));
+        (await Should.ThrowAsync<ArgumentException>(() => Result.CatchAsync(() => Task.FromResult(Fails())))).Message.ShouldContain("Await the inner task");
+        await Should.ThrowAsync<ArgumentException>(() => Result.CatchAsync<Task<int>, InvalidOperationException>(() => Task.FromResult(Fails())));
+
+        ran.ShouldBeFalse();
     }
 
     [Fact]
@@ -217,17 +256,32 @@ public sealed class ResultCatchTests
 
     /// <summary>
     /// A delegate returning a task given to <c>Catch</c> would bind <c>T</c> to the task and catch
-    /// nothing it throws. The overload over a task-returning delegate is more specific, so the
-    /// compiler picks it, and it is an error that names <c>CatchAsync</c>.
+    /// nothing it throws, and given to the command form <c>Catch&lt;TException&gt;</c> would be
+    /// discarded, an <c>async</c> lambda as <c>async void</c>. The overloads over a task-returning
+    /// delegate are more specific, so the compiler picks them, and they are errors that name
+    /// <c>CatchAsync</c>. A <c>ValueTask</c> has no such overload (it would make every <c>async</c> lambda
+    /// ambiguous): the command form's refusal of any value covers it, and the valued form refuses it at
+    /// run time.
     /// </summary>
     [Theory]
     [InlineData("Result.Catch(() => FetchAsync())")]
     [InlineData("Result.Catch(FetchAsync)")]
     [InlineData("Result.Catch(() => DoAsync())")]
     [InlineData("Result.Catch(DoAsync)")]
+    [InlineData("Result.Catch(async () => await FetchAsync())")]
+    [InlineData("Result.Catch(async () => await DoAsync())")]
+    [InlineData("Result.Catch<InvalidOperationException>(() => FetchAsync())")]
+    [InlineData("Result.Catch<InvalidOperationException>(FetchAsync)")]
+    [InlineData("Result.Catch<InvalidOperationException>(() => DoAsync())")]
+    [InlineData("Result.Catch<InvalidOperationException>(DoAsync)")]
+    [InlineData("Result.Catch<InvalidOperationException>(async () => await DoAsync())")]
+    [InlineData("Result.Catch<InvalidOperationException>(async () => { await DoAsync(); })")]
+    [InlineData("Result.Catch<InvalidOperationException>(() => DoValueAsync())")]
+    [InlineData("Result.Catch<InvalidOperationException>(() => FetchValueAsync())")]
     public void A_task_returning_delegate_given_to_Catch_is_a_compile_error_naming_CatchAsync(string call)
     {
         var compilation = ConsumerCompilation.Of($$"""
+            using System;
             using System.Threading.Tasks;
             using CodoMetis.TypeKit;
 
@@ -235,12 +289,42 @@ public sealed class ResultCatchTests
             {
                 static Task<int> FetchAsync() => Task.FromResult(1);
                 static Task DoAsync() => Task.CompletedTask;
+                static ValueTask<int> FetchValueAsync() => new(1);
+                static ValueTask DoValueAsync() => ValueTask.CompletedTask;
                 static object Call() => {{call}};
             }
             """);
 
         compilation.ErrorIds().ShouldBe(["CS0619"], compilation.Problems());
         compilation.Problems().ShouldContain("CatchAsync");
+    }
+
+    /// <summary>
+    /// The valued form with the value's type spelled cannot take a task at all: the compiler's own
+    /// conversion error, with no overload to make it compile. A refusal overload there would make a
+    /// lambda that only throws, or returns <c>null!</c>, ambiguous.
+    /// </summary>
+    [Theory]
+    [InlineData("Result.Catch<int, InvalidOperationException>(() => FetchAsync())")]
+    [InlineData("Result.Catch<int, InvalidOperationException>(FetchAsync)")]
+    [InlineData("Result.Catch<int, InvalidOperationException>(async () => await FetchAsync())")]
+    [InlineData("Result.Catch<int, InvalidOperationException>(() => FetchValueAsync())")]
+    public void A_task_given_to_the_valued_Catch_with_its_value_type_spelled_does_not_compile(string call)
+    {
+        var compilation = ConsumerCompilation.Of($$"""
+            using System;
+            using System.Threading.Tasks;
+            using CodoMetis.TypeKit;
+
+            static class Consumer
+            {
+                static Task<int> FetchAsync() => Task.FromResult(1);
+                static ValueTask<int> FetchValueAsync() => new(1);
+                static object Call() => {{call}};
+            }
+            """);
+
+        compilation.ErrorIds().ShouldNotBeEmpty(compilation.Problems());
     }
 
     /// <summary>
@@ -254,6 +338,8 @@ public sealed class ResultCatchTests
     [InlineData("Result.Catch<int>(int () => throw new Exception())", "")]
     [InlineData("Result.Catch(() => throw new Exception())", "CS0619")]
     [InlineData("Result.Catch(void () => throw new Exception())", "")]
+    [InlineData("Result.Catch<InvalidOperationException>(() => throw new Exception())", "CS0121")]
+    [InlineData("Result.Catch<InvalidOperationException>(void () => throw new Exception())", "")]
     public void A_lambda_that_only_throws_states_its_return_type(string call, string error)
     {
         var compilation = ConsumerCompilation.Of($$"""

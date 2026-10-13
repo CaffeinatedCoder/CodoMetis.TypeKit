@@ -181,15 +181,18 @@ Result<byte[], Exception> fetched = await Result.CatchAsync(() => client.GetByte
 
 `Catch<T, TException>` catches that type only and lets every other exception propagate, so the error
 type says what was expected to fail; both type arguments are spelled, since C# infers all or none,
-and `Catch<FormatException>(() => int.Parse(s))` with one is the command form, which discards the
-number. `CatchAsync` awaits the task, so an exception thrown after its first `await` is the error
+and `Catch<FormatException>(() => { … })` with one is the command form, for a call without a
+value: given one that returns a value, which it would discard, it is a compile error naming the
+valued form. `CatchAsync` awaits the task, so an exception thrown after its first `await` is the error
 too. An `OperationCanceledException` passes through all of them: a cancellation is not an outcome,
 and caught it would read as a failure that `Recover` then runs on. A timeout is the exception: one
 over a `TimeoutException` is how `HttpClient` reports its `Timeout` elapsing, which is the call
 failing, so it is the error, and a narrowed `Catch` names `TaskCanceledException` or
-`OperationCanceledException` to catch it alone. A delegate that returns a `Task`
-given to `Catch` is a compile error, since the task's exception would be thrown after `Catch` had
-returned; a `ValueTask` needs `.AsTask()` or an `async` lambda, as above. A delegate that returns
+`OperationCanceledException` to catch it alone. A delegate that returns a `Task`, an `async` lambda
+among them, given to `Catch` or its command form is a compile error naming `CatchAsync`, since the
+task's exception would be thrown after `Catch` had returned. A `ValueTask`, or a task spelled as the
+type argument (`Catch<Task<int>, …>`), is refused when called, before the delegate runs; `CatchAsync`
+takes a `ValueTask` through `.AsTask()` or an `async` lambda, as above. A delegate that returns
 null throws, as `Result.Success(null)` does. `Map`, `Bind` and the rest are unchanged: a selector
 that throws propagates. An exception is for the code that called, not for a client: `ToHttpResult()`
 does not accept a `Result<T, Exception>`, and `MapError` turns the exception into a fault that it does.
@@ -575,6 +578,21 @@ surfaces as a `TypeInitializationException`, and the set cannot be used for the 
 **Instead:** return one of the members, `OrderStatus.Open`, wherever the set's code produces an
 instance, keep data a member needs in its own constructor's arguments, and read a name in a property
 or method rather than a static field initializer.
+
+### A task given to Catch
+
+**Thrown:** `ArgumentException: Catch was given a delegate whose value is a task…` from `Catch` when
+its value's type is a `Task` or a `ValueTask`, spelled (`Catch<Task<int>, HttpRequestException>`) or
+inferred from a delegate that returns a `ValueTask`; and from `CatchAsync` when the task's value is
+another task. Nothing has run: the delegate is refused before it is called.
+
+**Why:** the task's exception is thrown after `Catch` has returned, so the answer would be a success
+whatever the call does. A delegate that returns a `Task` is refused at compile time; a `ValueTask`
+converts to no task type an overload could name without making every `async` lambda ambiguous, and a
+spelled type argument chooses its overload itself.
+
+**Instead:** `CatchAsync`, which awaits the task: `await Result.CatchAsync(() => stream.ReadAsync(buffer).AsTask())`,
+or an `async` lambda. In `CatchAsync`, await the inner task in the delegate.
 
 ### Materialize and CMTK0004
 

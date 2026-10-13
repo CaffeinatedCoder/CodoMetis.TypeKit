@@ -633,6 +633,18 @@ Each phase ends green, and its guards have been proven by seeding the defect
        what it adds. The 1.5.1 baseline, run over all seven packages with the attribute and
        parameter-name rules on as well, reports the one suppressed difference and compiler-emitted
        attributes only.
+    9a. **A review's findings** (2026-10-13), each a commit:
+       - **`Catch` over a task** ✅: the command form `Catch<TException>(Action)` took a delegate
+         returning a task and discarded it, an `async` lambda as `async void`; a task spelled as the
+         type argument (`Catch<Task<int>, …>`) and an inferred `ValueTask` were a success holding the
+         task. `Catch<TException>(Func<Task>)` is refused at compile time, and so is
+         `Catch<TException>(Func<object?>)`, any value the command form would discard, which is the
+         only overload a `ValueTask<T>` reaches (the spike's ambiguity rules out `ValueTask`
+         overloads beside `Task` ones: measured again, every `async` lambda became CS0121). A task
+         as the value, spelled or inferred, is refused at run time before the delegate runs, and in
+         `CatchAsync` a task whose value is a task. Two-type-argument refusals were measured and
+         dropped: they make a lambda that only throws, or returns `null!`, ambiguous, and the calls
+         they would refuse are already the compiler's conversion errors.
     10. **`2.0.0-preview.1` to nuget.org** once steps 7 and 8 exist, the consumer smoke test
         against it, then the release.
     - **A closed-set (smart enum) family**, declared by interface and joining `.Generators` (§1), the
