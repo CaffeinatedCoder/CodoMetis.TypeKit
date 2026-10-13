@@ -221,7 +221,7 @@ public sealed class OptionTests
         var page = SampleOutputs.Readme(Readme);
         var surface = page[page.IndexOf("## The surface", StringComparison.Ordinal)..];
 
-        var members = PublicMembers(typeof(Option<>), typeof(Option), typeof(ValueTypeOptionExtensions));
+        var members = PublicMembers(typeof(Option<>), typeof(Option), typeof(ValueTypeOptionExtensions), typeof(SequenceOptionExtensions));
 
         members.Length.ShouldBeGreaterThanOrEqualTo(20, string.Join(", ", members));
         members.Where(member => !Regex.IsMatch(surface, $@"`{Regex.Escape(member)}[`(<,]")).ShouldBeEmpty("Every public member has a row in the surface table.");

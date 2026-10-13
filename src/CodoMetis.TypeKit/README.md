@@ -57,7 +57,8 @@ the element they need and let it run the predicate (a `WHERE` and a `LIMIT` in S
 `LastOrError` and an index from the end are compile errors there, since a query has no last element
 until it is ordered.
 `Choose(selector)` keeps the values a selector answers `Some` for, in order and without the `None`s, a
-filter and a map in one, and `Choose()` the values a sequence of options holds.
+filter and a map in one, over elements that may be null (`nicknames.Choose(n => n.ToOption())`), and
+`Choose()` the values a sequence of options holds.
 An optional input that is validated when present is `Traverse`: `dto.Phone.ToOption().Traverse(Phone.Create)`
 is a `Result<Option<Phone>, PhoneFault>`, and `Transpose()` turns an `Option<Result<…>>` inside out,
 and a `Result<Option<…>>` back.

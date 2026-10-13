@@ -59,4 +59,39 @@ public sealed class ChooseTests
         Should.Throw<ArgumentNullException>(() => ((IEnumerable<Option<int>>)null!).Choose()).ParamName.ShouldBe("options");
         Should.Throw<ArgumentNullException>(() => new[] { 1 }.Choose((Func<int, Option<int>>)null!)).ParamName.ShouldBe("selector");
     }
+
+    /// <summary>
+    /// Only what the selector finds must be non-null; the elements it reads may be null, and its answer
+    /// for a null is its own. The elements' <c>T</c> was <c>notnull</c>, so a sequence of <c>string?</c>
+    /// or <c>int?</c> warned (CS8714, and CS8622 for the lambda) where warnings are errors.
+    /// </summary>
+    [Fact]
+    public void Choose_with_a_selector_reads_a_sequence_with_null_elements()
+    {
+        string?[] nicknames = ["Annie", null, "Bo"];
+        int?[] floors = [3, null, 5];
+
+        nicknames.Choose(nickname => nickname.ToOption()).ShouldBe(["Annie", "Bo"]);
+        floors.Choose(floor => floor.ToOption()).ShouldBe([3, 5]);
+        nicknames.Choose(nickname => nickname is null ? Option.Some("none") : Option.None()).ShouldBe(["none"]);
+    }
+
+    /// <summary>The same calls in a consumer's compilation, nullable annotations on: no warning at all.</summary>
+    [Theory]
+    [InlineData("IEnumerable<string?> nicknames", "nicknames.Choose(nickname => nickname is null ? Option.None<string>() : Option.Some(nickname))")]
+    [InlineData("IEnumerable<string?> nicknames", "nicknames.Choose(nickname => nickname.ToOption())")]
+    [InlineData("IEnumerable<int?> floors", "floors.Choose(floor => floor.ToOption())")]
+    [InlineData("IEnumerable<int?> floors", "floors.Choose(floor => floor is { } value ? Option.Some(value * 10) : Option.None<int>())")]
+    [InlineData("IEnumerable<int> numbers", "numbers.Choose(n => n > 0 ? Option.Some(n) : Option.None<int>())")]
+    [InlineData("IEnumerable<Option<int>> options", "options.Choose()")]
+    public void Choose_compiles_without_a_warning_over_nullable_and_non_nullable_elements(string parameter, string call) =>
+        ConsumerCompilation.Of($$"""
+            using System.Collections.Generic;
+            using CodoMetis.TypeKit;
+
+            public static class Checks
+            {
+                public static object Run({{parameter}}) => {{call}};
+            }
+            """).Problems().ShouldBeEmpty();
 }

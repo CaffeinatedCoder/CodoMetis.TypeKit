@@ -130,7 +130,8 @@ the caller has to act on, which hands the rest to [Result](result.md).
 ## The surface
 
 Every public member, on `Option<T>`, on the static class `Option`, and as extensions in the
-`CodoMetis.TypeKit` namespace. `T` is `notnull` throughout.
+`CodoMetis.TypeKit` namespace. `T` is `notnull` throughout, but for the elements `Choose(selector)`
+reads, which may be null: only what the selector finds is a value.
 
 | Member | On | Returns |
 |---|---|---|
@@ -143,7 +144,7 @@ Every public member, on `Option<T>`, on the static class `Option`, and as extens
 | `SingleOrNone()`, `SingleOrNone(predicate)` | `IEnumerable<T>`, `IQueryable<T>` | the only element, or `None` for none; throws for more than one. A query is asked for two rows |
 | `ElementAtOrNone(index)` | `IEnumerable<T>` (an `int` or an `Index`), `IQueryable<T>` (an `int`) | the element at the index, or `None` past either end; an `Index` on a query is a compile error |
 | `GetValueOrNone(key)` | `IReadOnlyDictionary<TKey, TValue>` | `Option<TValue>` |
-| `Choose(selector)` | `IEnumerable<T>` | the values the selector answers `Some` for, in order and lazily: a filter and a map in one |
+| `Choose(selector)` | `IEnumerable<T>`, its elements nullable or not | the values the selector answers `Some` for, in order and lazily: a filter and a map in one |
 | `Choose()` | `IEnumerable<Option<T>>` | the values of the options that hold one, in order and lazily |
 | `IsSome()`, `IsNone()` | `Option<T>` | `bool` |
 | `Match(onSome, onNone)` | `Option<T>` | what the branch returns |
