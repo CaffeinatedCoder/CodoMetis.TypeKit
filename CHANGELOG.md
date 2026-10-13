@@ -35,7 +35,7 @@ this release adds, so nothing that built against 1.5.1 meets them.
 - **The closed-set family**, the release's headline: `IClosedSet<TSelf>` in `CodoMetis.TypeKit`, generated
   by `CodoMetis.TypeKit.Generators`. A sealed partial class whose every instance is a `public static
   readonly` field, with constant data through a private constructor where the members carry some. The
-  generators add `Name`, `QualifiedName`, `All` in declaration order, `Match` with one required delegate
+  generators add `Name`, `QualifiedName`, `All` in declaration order and read-only, `Match` with one required delegate
   per member, `TryParse` and `Parse` by name, `ToString()`, a JSON converter that writes the name and
   reads the member itself back, a private constructor where none is declared, and the attribute the
   satellites read. CMTK1013 to CMTK1019 refuse a declaration that is not partial, not sealed, without

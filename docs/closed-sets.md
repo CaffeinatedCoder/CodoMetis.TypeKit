@@ -41,7 +41,7 @@ bool known = Shipping.TryParse("Drone", out _);                    // false, nam
 Shipping.Parse("Drone");                                           // FormatException naming Shipping and member, never the name
 ```
 
-`All` holds the members in declaration order. `QualifiedName` keeps two sets that share a member
+`All` holds the members in declaration order, read-only: no cast to `IList<T>` or an array writes it. `QualifiedName` keeps two sets that share a member
 name apart in one log or one client. `ToString()` is the name, unless the set writes its own, which
 is kept, for a label, while the name stays what JSON, parsing and the column use.
 

@@ -112,13 +112,15 @@ internal sealed partial class ClosedSetAspect : TypeAspect
 
         builder.AddInitializer(nameof(NamesInitializerTemplate), InitializerKind.BeforeTypeConstructor);
 
+        // The array wrapped, never the array itself: cast to IList<T> or T[], it was writable, and a
+        // member replaced there was listed while Parse, which reads the fields, answered the original.
         var listType = TypeFactory.GetNamedType(typeof(IReadOnlyList<>)).WithTypeArguments(target);
         builder.IntroduceField(nameof(_all), IntroductionScope.Static, OverrideStrategy.Fail, f =>
         {
             f.Accessibility = Accessibility.Private;
             f.Type = listType;
             f.Writeability = Writeability.ConstructorOnly;
-            f.InitializerExpression = ExpressionFactory.Parse($"new {ValueObjectTypes.SourceName(target)}[] {{ {string.Join(", ", members.Select(m => $"{ValueObjectTypes.SourceName(target)}.{m.Name}"))} }}");
+            f.InitializerExpression = ExpressionFactory.Parse($"global::System.Array.AsReadOnly(new {ValueObjectTypes.SourceName(target)}[] {{ {string.Join(", ", members.Select(m => $"{ValueObjectTypes.SourceName(target)}.{m.Name}"))} }})");
             f.AddAttribute(CodeAnnotations.CompilerGenerated);
         });
         builder.IntroduceProperty(nameof(AllTemplate), buildProperty: p =>

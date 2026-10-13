@@ -20,6 +20,36 @@ public sealed class ClosedSetTests
         ProbeTier.All.Select(member => member.Name).ShouldBe(["Basic", "Premium"]);
     }
 
+    /// <summary>
+    /// <c>All</c> cannot be written through a cast: a member replaced there would be listed, offered
+    /// and documented while <c>Parse</c> still answered the original. A write that succeeds is undone
+    /// before the test fails, so the set other tests read stays whole.
+    /// </summary>
+    [Fact]
+    public void All_cannot_be_written_through_a_cast()
+    {
+        ProbeStatus.All.ShouldNotBeAssignableTo<ProbeStatus[]>();
+
+        var list = (IList<ProbeStatus>)ProbeStatus.All;
+        var replaced = false;
+        try
+        {
+            list[0] = ProbeStatus.Cancelled;
+            replaced = true;
+        }
+        catch (NotSupportedException)
+        {
+        }
+        finally
+        {
+            if (replaced) list[0] = ProbeStatus.Open;
+        }
+
+        replaced.ShouldBeFalse("All was written through IList<T>");
+        Should.Throw<NotSupportedException>(() => list.Clear());
+        ProbeStatus.All[0].ShouldBeSameAs(ProbeStatus.Open);
+    }
+
     [Fact]
     public void Name_QualifiedName_and_ToString_come_from_the_field()
     {

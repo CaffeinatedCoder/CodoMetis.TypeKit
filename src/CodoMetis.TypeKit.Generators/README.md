@@ -211,7 +211,7 @@ public sealed partial class Tier : IClosedSet<Tier>
 ```
 
 The generators add `Name` from the field's name, `QualifiedName` (`OrderStatus.Open`), `All` in
-declaration order, `Match` with one required delegate per member named after it, `TryParse` and
+declaration order and read-only, `Match` with one required delegate per member named after it, `TryParse` and
 `Parse` by name, `ToString()`, a JSON converter that writes the name and reads the member itself
 back, and a private parameterless constructor where the type declares none:
 

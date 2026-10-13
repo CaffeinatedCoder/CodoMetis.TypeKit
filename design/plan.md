@@ -657,6 +657,10 @@ Each phase ends green, and its guards have been proven by seeding the defect
          type arguments from the delegate, with no generic name written and no call, and was
          silent. Every method reference is checked as an inferred call is, at the group; a group
          with its arguments written stays the generic name's, reported once.
+       - **A closed set's `All` was writable** ✅: it was the backing array, so a cast to
+         `IList<T>` or `T[]` replaced a member that `All`, the JSON schema's enum and every
+         enumeration then listed, while `Parse`, which reads the fields, answered the original. It
+         is the array wrapped by `Array.AsReadOnly`, whose writes throw `NotSupportedException`.
     10. **`2.0.0-preview.1` to nuget.org** once steps 7 and 8 exist, the consumer smoke test
         against it, then the release.
     - **A closed-set (smart enum) family**, declared by interface and joining `.Generators` (§1), the
