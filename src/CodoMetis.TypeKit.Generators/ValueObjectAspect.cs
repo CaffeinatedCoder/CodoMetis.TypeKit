@@ -215,6 +215,18 @@ internal sealed partial class ValueObjectAspect : TypeAspect
             return false;
         }
 
+        // object holds a value of any type, and the serializer writes an object by the type of what it
+        // holds, which a converter called directly does not: OverObject.From(5) was written as {} where an
+        // object property holding 5 is written as 5 (measured 2026-10-13). An interface or an abstract
+        // class is written and read as the serializer writes it (its declared members, or polymorphic
+        // where the type says so), so it stays allowed.
+        if (namedValueType.SpecialType == SpecialType.Object)
+        {
+            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target,
+                "the wrapped type 'object' holds a value of any type, which the serializer writes by its run-time type and a value object's converter cannot (5 was written as {}); wrap the type the value has")));
+            return false;
+        }
+
         // A generic wrapped type, tuples included, failed inside the generated code (LAMA0611): its
         // name lost its type arguments there, and a named tuple broke the attribute. Refused rather than
         // made to work, because a value object's equality is its wrapped value's, and a generic type's

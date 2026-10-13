@@ -160,6 +160,13 @@
   value a `HashSet` kept.
 - **A nullable wrapped type is CMTK1005.** The markers' `notnull` constraint is only a warning
   (CS8714), and `IValue<int?>` then failed inside the generated code as LAMA0611/0612.
+- **`object` as the wrapped type is CMTK1005 (decided 2026-10-13).** The serializer writes an `object`
+  by the run-time type of what it holds; the plan calls the `object` converter directly, which does
+  not, so `OverObject.From(5)` was written as `{}` where an `object` property holding 5 is written as
+  5. Measured beside it: an interface (`IDisposable`, a `[JsonPolymorphic]` one) and an abstract class
+  (a plain one, an abstract record, a `[JsonPolymorphic]` one), and `ValueType` and `Array`, are written and
+  read exactly as the serializer writes and reads the declared type, refusals included, so they stay
+  allowed.
 - **A value object never wraps a value object (decided 2026-09-27).** CMTK1005, answered in the
   fabric because it reads the wrapped types (see "An aspect never scans its namespace" below).
   - **A cycle** (`sealed partial record SelfWrap : IValue<SelfWrap>`, or A wraps B wraps A) has no

@@ -31,6 +31,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1005", "Outer<T>.Middle.DeeplyNested")]
     [InlineData("CMTK1005", "ArrayBacked")]
     [InlineData("CMTK1005", "NullableBacked")]
+    [InlineData("CMTK1005", "ObjectBacked")]
     [InlineData("CMTK1005", "DerivesFromAValueObject")]
     [InlineData("CMTK1005", "WrapsItself")]
     [InlineData("CMTK1005", "CycleOne")]
@@ -216,6 +217,27 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("NamedTupleBacked", "the wrapped type '(int X, int Y)' is generic")]
     public void A_generic_wrapped_type_is_refused_with_the_reason(string type, string reason) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1005" && error.Message.StartsWith($"'{type}'") && error.Message.Contains(reason) && error.Message.Contains("compares by reference"), consumer.Output);
+
+    /// <summary>
+    /// A value object over <c>object</c> compiled, and its converter wrote <c>OverObject.From(5)</c> as
+    /// <c>{}</c> where an <c>object</c> property holding 5 is written as 5: the serializer writes an
+    /// object by its run-time type, which a converter called directly does not.
+    /// </summary>
+    [Fact]
+    public void A_value_object_over_object_is_refused_with_the_reason() =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1005" && error.Message.StartsWith("'ObjectBacked' cannot be generated as a value object: the wrapped type 'object' holds a value of any type")
+                                            && error.Message.Contains("wrap the type the value has"), consumer.Output);
+
+    /// <summary>
+    /// An interface or an abstract class is written and read as the serializer writes and reads it (its
+    /// declared members, polymorphic where the type declares it, refused on reading where the serializer
+    /// refuses it), so it is wrapped. A guard against the refusal of <c>object</c> reaching further.
+    /// </summary>
+    [Theory]
+    [InlineData("InterfaceBacked")]
+    [InlineData("AbstractClassBacked")]
+    public void An_interface_or_an_abstract_class_is_wrapped(string type) =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'"), consumer.Output);
 
     /// <summary>
     /// Metalama writes its override of the record's <c>ToString()</c> into every part of a declaration,
@@ -590,6 +612,14 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             // Violates the notnull constraint, which is only a warning (CS8714). Without its own
             // refusal, the generated JSON converter and parsing fail to compile (LAMA0611/0612).
             public readonly partial record struct NullableBacked : IValue<int?>;
+
+            // Written as {} where an object property holding the same value is written as that value.
+            public readonly partial record struct ObjectBacked : IValue<object>;
+
+            // Written and read as the serializer writes and reads the declared type: wrapped.
+            public readonly partial record struct InterfaceBacked : IValue<System.IDisposable>;
+
+            public readonly partial record struct AbstractClassBacked : IValue<System.IO.Stream>;
 
             // A record class that can be derived from: equality across a hierarchy is not value
             // equality, and a derived value object failed inside the generated code (LAMA0611).
