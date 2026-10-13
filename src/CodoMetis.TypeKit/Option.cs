@@ -117,7 +117,7 @@ public readonly record struct Option<T> where T : notnull
     {
         ArgumentNullException.ThrowIfNull(selector);
 
-        return _hasValue ? Option.Some(await selector(_value!).ConfigureAwait(false)) : Option.None<TResult>();
+        return _hasValue ? Option.Some(await ThrowHelper.Awaitable(selector(_value!), nameof(MapAsync), nameof(selector)).ConfigureAwait(false)) : Option.None<TResult>();
     }
 
     /// <summary>Chains an asynchronous operation that may itself produce no value.</summary>
@@ -128,7 +128,7 @@ public readonly record struct Option<T> where T : notnull
     {
         ArgumentNullException.ThrowIfNull(selector);
 
-        return _hasValue ? await selector(_value!).ConfigureAwait(false) : Option.None<TResult>();
+        return _hasValue ? await ThrowHelper.Awaitable(selector(_value!), nameof(BindAsync), nameof(selector)).ConfigureAwait(false) : Option.None<TResult>();
     }
 
     /// <summary>Runs an asynchronous side effect on the value, if there is one.</summary>
@@ -139,7 +139,7 @@ public readonly record struct Option<T> where T : notnull
         ArgumentNullException.ThrowIfNull(action);
 
         if (_hasValue)
-            await action(_value!).ConfigureAwait(false);
+            await ThrowHelper.Awaitable(action(_value!), nameof(TapAsync), nameof(action)).ConfigureAwait(false);
 
         return this;
     }

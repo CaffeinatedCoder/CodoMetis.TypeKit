@@ -42,6 +42,22 @@ internal static class ThrowHelper
     /// <returns>The exception, to throw.</returns>
     public static ArgumentNullException NullTask(string paramName) => new(paramName, NullTaskMessage);
 
+    /// <summary>
+    /// What an asynchronous combinator throws for a delegate that returned a null task, as
+    /// <c>CatchAsync</c> does: awaited, it was a <see cref="NullReferenceException"/> naming nothing.
+    /// </summary>
+    /// <param name="task">What the delegate returned.</param>
+    /// <param name="method">The combinator, named in the message.</param>
+    /// <param name="paramName">The delegate's parameter.</param>
+    /// <returns>The task, never null.</returns>
+    public static Task<T> Awaitable<T>(Task<T>? task, string method, string paramName) => task ?? throw NullTaskFrom(method, paramName);
+
+    /// <inheritdoc cref="Awaitable{T}(Task{T}?, string, string)"/>
+    public static Task Awaitable(Task? task, string method, string paramName) => task ?? throw NullTaskFrom(method, paramName);
+
+    private static ArgumentNullException NullTaskFrom(string method, string paramName) =>
+        new(paramName, $"The delegate given to {method} returned no task: a null cannot be awaited. Return the task, or make the lambda async.{Refusals.NullContent}");
+
     /// <summary>What <c>Patch&lt;T&gt;.Map</c> throws for a selector that returned null.</summary>
     /// <param name="paramName">The selector's parameter.</param>
     /// <returns>The exception, to throw.</returns>

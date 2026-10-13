@@ -205,7 +205,7 @@ public readonly record struct Result<TError> where TError : notnull
         ArgumentNullException.ThrowIfNull(action);
 
         if (Succeeded)
-            await action().ConfigureAwait(false);
+            await ThrowHelper.Awaitable(action(), nameof(TapAsync), nameof(action)).ConfigureAwait(false);
 
         return this;
     }
@@ -219,7 +219,7 @@ public readonly record struct Result<TError> where TError : notnull
         ArgumentNullException.ThrowIfNull(action);
 
         if (!Succeeded)
-            await action(_error!).ConfigureAwait(false);
+            await ThrowHelper.Awaitable(action(_error!), nameof(TapErrorAsync), nameof(action)).ConfigureAwait(false);
 
         return this;
     }
@@ -234,7 +234,7 @@ public readonly record struct Result<TError> where TError : notnull
         ArgumentNullException.ThrowIfNull(selector);
 
         return Succeeded
-            ? Result<TResult, TError>.Success(await selector().ConfigureAwait(false))
+            ? Result<TResult, TError>.Success(await ThrowHelper.Awaitable(selector(), nameof(MapAsync), nameof(selector)).ConfigureAwait(false))
             : Result<TResult, TError>.Error(_error!);
     }
 
@@ -246,7 +246,7 @@ public readonly record struct Result<TError> where TError : notnull
     {
         ArgumentNullException.ThrowIfNull(selector);
 
-        return Succeeded ? await selector().ConfigureAwait(false) : Error(_error!);
+        return Succeeded ? await ThrowHelper.Awaitable(selector(), nameof(BindAsync), nameof(selector)).ConfigureAwait(false) : Error(_error!);
     }
 
     /// <summary>Gives an error a second chance with an asynchronous function. A success is kept unchanged.</summary>
@@ -257,7 +257,7 @@ public readonly record struct Result<TError> where TError : notnull
     {
         ArgumentNullException.ThrowIfNull(selector);
 
-        return Succeeded ? this : await selector(_error!).ConfigureAwait(false);
+        return Succeeded ? this : await ThrowHelper.Awaitable(selector(_error!), nameof(RecoverAsync), nameof(selector)).ConfigureAwait(false);
     }
 
     /// <summary>Unwraps the error, if this is one.</summary>

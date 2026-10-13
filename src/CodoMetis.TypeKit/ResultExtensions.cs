@@ -1049,6 +1049,7 @@ public static class Result
         /// <typeparam name="TError">The type of the error.</typeparam>
         /// <returns>A success with every produced value, in order, or the first error.</returns>
         /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="selector"/> returned no task.</exception>
         public async Task<Result<IReadOnlyList<TResult>, TError>> TraverseAsync<TResult, TError>(Func<T, Task<Result<TResult, TError>>> selector)
             where TResult : notnull
             where TError : notnull
@@ -1060,7 +1061,7 @@ public static class Result
 
             foreach (var element in source)
             {
-                var result = await selector(element).ConfigureAwait(false);
+                var result = await ThrowHelper.Awaitable(selector(element), nameof(TraverseAsync), nameof(selector)).ConfigureAwait(false);
                 if (!result.TryGetValue(out var value, out var error)) return Result<IReadOnlyList<TResult>, TError>.Error(error);
 
                 values.Add(value);
@@ -1081,6 +1082,7 @@ public static class Result
         /// <typeparam name="TError">The type of the error.</typeparam>
         /// <returns>A success with every produced value, in order, or the first error.</returns>
         /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="selector"/> returned no task.</exception>
         /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled before an operation started.</exception>
         public async Task<Result<IReadOnlyList<TResult>, TError>> TraverseAsync<TResult, TError>(Func<T, CancellationToken, Task<Result<TResult, TError>>> selector, CancellationToken cancellationToken)
             where TResult : notnull
@@ -1095,7 +1097,7 @@ public static class Result
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var result = await selector(element, cancellationToken).ConfigureAwait(false);
+                var result = await ThrowHelper.Awaitable(selector(element, cancellationToken), nameof(TraverseAsync), nameof(selector)).ConfigureAwait(false);
                 if (!result.TryGetValue(out var value, out var error)) return Result<IReadOnlyList<TResult>, TError>.Error(error);
 
                 values.Add(value);
@@ -1113,6 +1115,7 @@ public static class Result
         /// <typeparam name="TError">The type of the error.</typeparam>
         /// <returns>A success if every command succeeded, or the first error.</returns>
         /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="selector"/> returned no task.</exception>
         public async Task<Result<TError>> TraverseAsync<TError>(Func<T, Task<Result<TError>>> selector) where TError : notnull
         {
             ArgumentNullException.ThrowIfNull(source);
@@ -1120,7 +1123,7 @@ public static class Result
 
             foreach (var element in source)
             {
-                var result = await selector(element).ConfigureAwait(false);
+                var result = await ThrowHelper.Awaitable(selector(element), nameof(TraverseAsync), nameof(selector)).ConfigureAwait(false);
                 if (result.TryGetError(out var error)) return Result<TError>.Error(error);
             }
 
@@ -1138,6 +1141,7 @@ public static class Result
         /// <typeparam name="TError">The type of the error.</typeparam>
         /// <returns>A success if every command succeeded, or the first error.</returns>
         /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="selector"/> returned no task.</exception>
         /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled before a command started.</exception>
         public async Task<Result<TError>> TraverseAsync<TError>(Func<T, CancellationToken, Task<Result<TError>>> selector, CancellationToken cancellationToken) where TError : notnull
         {
@@ -1148,7 +1152,7 @@ public static class Result
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var result = await selector(element, cancellationToken).ConfigureAwait(false);
+                var result = await ThrowHelper.Awaitable(selector(element, cancellationToken), nameof(TraverseAsync), nameof(selector)).ConfigureAwait(false);
                 if (result.TryGetError(out var error)) return Result<TError>.Error(error);
             }
 

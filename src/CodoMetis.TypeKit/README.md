@@ -510,7 +510,8 @@ there too.
 over a null element, or for a null error given to `ToResult`, `Ensure` or `FirstOrError`. A
 `Patch<T>.Map` whose selector returns null throws the same: a clear is the Null state, never a value.
 So does `CatchAsync` for a delegate that returns no task: a null cannot be awaited, and it is not an
-exception the call threw.
+exception the call threw. Every other asynchronous combinator, `MapAsync`, `BindAsync`, `TapAsync`,
+`TapErrorAsync`, `RecoverAsync` and `TraverseAsync`, refuses such a delegate the same way.
 
 **Why:** an option that reports a value always has one, and a result's value and error are never
 null. `notnull` is not checked at run time, so the factories check it.
