@@ -80,7 +80,10 @@
   Server, an abstract TPC root included. Where the provider has no identity for the type, a plain key
   is not generated either, and neither is the value object's (measured on PostgreSQL 18: a `ulong` is
   `numeric(20,0)`, strategy none; a `char` is `character(1)`, whose identity PostgreSQL refuses with
-  22023 at creation and in the `AlterColumn` a 1.5.1 snapshot produces). A key over a `Guid` is left
+  22023 at creation and in the `AlterColumn` a 1.5.1 snapshot produces). That `AlterColumn` adds the
+  identity to a key over `sbyte`, `ushort` or `uint` on PostgreSQL; SQL Server's migrations generator
+  refuses it for those and `ulong` ("To change the IDENTITY property of a column, the column needs to
+  be dropped and recreated"), as for any key whose identity changes. A key over a `Guid` is left
   alone: the application assigns `OrderId.New()`, and a generated key that is already set makes EF
   take a new entity reached through a navigation for an existing one.
   - **Open: the value generator is chosen by the column's type (measured 2026-10-13).** EF picks a
