@@ -1,8 +1,7 @@
 # Roadmap
 
-What is open, and nothing else. Done work is in the [changelog](../CHANGELOG.md) and in git, and the
-phase log that recorded it until 2026-10-13 is kept as [history](history.md). Each item names the
-decision that scoped it.
+What is open, and nothing else. Done work is in the [changelog](../CHANGELOG.md) and in git. Each
+item names the decision that scoped it.
 
 ## 2.0.0, before the tag
 
@@ -14,19 +13,18 @@ decision that scoped it.
 
 ## 2.1, additive
 
-- What the outside review of 2026-10-13 rated can-wait ([history](history.md), step 9c): the fault
+- What the outside review of 2026-10-13 rated can-wait: the fault
   name is sent even for a member without a description; `Uri.ToString()` unescapes the problem
   `type`; the CMTK0011 code fix on a partial type whose other part has a primary constructor, and its
   doc comment beside an attribute; CMTK0003 over `WhenAny` of held tasks; `Choose` on a sequence with
   a nullable element; `Patch<string?>` under `Traverse` and `Map`.
 - CMTK1021 groups names ignoring case, which misses the one `Match` collision `ToLowerInvariant` makes
   and ordinal case folding does not (the Kelvin sign); it fails loudly, as LAMA0611 and CS0100.
-- A `context7.json`, once the repository is public ([decision 14](adr/0014-context7-json.md)).
 
 ## 2.x, with a spike first
 
 - A stable external name for a closed-set member, apart from its C# identifier: parsing, JSON, EF,
-  OpenAPI and the fault identifiers at once ([history](history.md), step 9b).
+  OpenAPI and the fault identifiers at once (proposed in the review of 2026-10-13).
 - The Metalama 2027.0 upgrade ([decision 4](adr/0004-metalama-2026-1-x-latest-stable.md)): a minor if a consumer's own aspects beside the packed
   generators still build and weave, measured as the fabric spike measured 2026.1 against the 2027.0
   preview, and a major otherwise; `[Durable]` returns to the `_value` placeholder with it.

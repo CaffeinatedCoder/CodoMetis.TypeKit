@@ -1,7 +1,7 @@
 # Spike: can a fault response carry what a client acts on, without giving up [decision 38](../../design/adr/0038-result-becomes-response-explicit-tohttpresult-faults.md)'s checks?
 
 **Status: run 2026-10-13, answered.** From the "Fault responses a client can act on" part of phase 13
-(2.0.0) in [the phase log](../../design/history.md). The fault's kind is no longer a `FaultKind`
+(2.0.0) in the former plan's phase log (git, `design/plan.md` before 2026-10-13). The fault's kind is no longer a `FaultKind`
 attribute: it is a property of a closed-set member, in the same phase.
 
 **Question.** Decision 38's `ToHttpResult()` answers a fault with its status and its bare name, and

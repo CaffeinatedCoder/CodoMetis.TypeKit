@@ -149,8 +149,8 @@ this release adds, so nothing that built against 1.5.1 meets them.
   outputs are tested, as the READMEs' are, and the `Option` and `Result` pages list the complete
   public surface, checked against the types. The package READMEs remain the reference for each
   package. The plan moved from `docs/plan.md` to `design/plan.md`, and on 2026-10-13 was split: a decision
-  record per decision under `design/adr/`, a design note per area, a roadmap, the phase log as
-  history, and `design/plan.md` as the map.
+  record per decision under `design/adr/`, a design note per area, a roadmap, and `design/plan.md`
+  as the map; the phase log stays in git.
 - **Fault responses a client can act on.** In `CodoMetis.TypeKit`: `FaultKind`, `IFault` and
   `IFaultSet<TSelf>`, a closed set whose members carry a kind and an optional description, and
   `Fault<TFault>`, a fault with a sentence about one occurrence (`Fault.Of(reason, detail)`). In

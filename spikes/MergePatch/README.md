@@ -1,7 +1,7 @@
 # Spike: can a merge-patch field tell absent from null, read a value object, and survive Native AOT?
 
 **Status: run 2026-10-13, answered.** From the "`Patch<T>`" part of phase 13 (2.0.0) in
-[the phase log](../../design/history.md).
+the former plan's phase log (git, `design/plan.md` before 2026-10-13).
 
 **Question.** A JSON Merge Patch (RFC 7396) field has three states, absent, null and a value, and
 System.Text.Json calls no converter for a property it does not find. Can one struct in the base

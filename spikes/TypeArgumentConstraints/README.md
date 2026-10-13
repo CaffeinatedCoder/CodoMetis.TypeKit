@@ -1,7 +1,7 @@
 # Spike: can an attribute on a type parameter constrain its arguments where C# cannot?
 
 **Status: run 2026-10-13, answered.** Proposed 2026-10-13, from the "Constraints a type parameter
-cannot declare" part of phase 13 (2.0.0) in [the phase log](../../design/history.md), [decision 43](../../design/adr/0043-exceptions-type-argument-constraints-constructor-guarantee.md), and
+cannot declare" part of phase 13 (2.0.0) in the former plan's phase log (git, `design/plan.md` before 2026-10-13), [decision 43](../../design/adr/0043-exceptions-type-argument-constraints-constructor-guarantee.md), and
 the CMTK0010 row of §10.
 
 **Question.** C# has `where T : class`, `struct`, `new()` and a base type, but no `where T :

@@ -20,7 +20,7 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0011](0011-openapi-schema-transformer.md) | OpenAPI through one schema transformer | 2026-09-27 | accepted |
 | [0012](0012-asp0020-documented-suppressed.md) | ASP0020 is documented, not suppressed | 2026-09-27 | accepted |
 | [0013](0013-first-release-s-rule-set-cmtk0001.md) | The first release's rule set is CMTK0001–CMTK0009 | 2026-09-28 | accepted |
-| [0014](0014-context7-json.md) | context7.json. | 2026-10-13 | open |
+| [0014](0014-context7-json.md) | A `context7.json` links the repository to its Context7 entry | 2026-10-13 | accepted |
 | [0015](0015-option-result-wire-types.md) | `Option`/`Result` are not wire types | 2026-09-27 | accepted |
 | [0016](0016-native-aot-wherever-platform-allows.md) | Native AOT wherever the platform allows it | 2026-09-27 | accepted |
 | [0017](0017-run-time-discovery-reads-generatedvalueobjectattribute-tvalueobject.md) | Run-time discovery reads `GeneratedValueObjectAttribute<TValueObject, T>` | 2026-09-27 | accepted |

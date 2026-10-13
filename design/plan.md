@@ -17,9 +17,9 @@ you touch; the rest is reference.
 | [Option and Result](option-result.md) | Their shape, the non-goals, the combinators and the async forms | with the area |
 | [Analyzer package and rule set](analyzers.md) | Packaging, the rule table with severities, and the limits of each rule | with the area |
 | [Native AOT](native-aot.md) | What is measured, how, and what each package asks of a consumer | with the area |
-| [History](history.md) | The phase log from 1.0.0 to 2.0.0 as it was kept until 2026-10-13, with the measurements it recorded | closed |
 
 The spikes that decided something are in [spikes/](../spikes/), each with a README stating the
 question, the answer and the evidence. A spike's README names the decision it led to.
 
-Until 2026-10-13 all of this was one file, `design/plan.md`, and links into its sections land here.
+Until 2026-10-13 all of this was one file, `design/plan.md`, with a phase log that git holds
+(`git show 4237abb:design/plan.md`) and the changelog summarises; links into its sections land here.
