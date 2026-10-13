@@ -109,6 +109,12 @@
   An overflow is a `FormatException` too. `UnreadableInputTests` feeds a secret through every strategy
   and entry point and searches the whole exception chain. Out of reach: `JsonException.Path`, which
   the serializer fills with an unreadable dictionary key, and ASP.NET's own binding messages.
+- **`TryParse` catches the wrapped type's refusal alone (decided 2026-10-13).** Over a type with no
+  `TryParse` of its own (a type converter, a static `Parse`, a string constructor) the generated
+  `TryParse` wrapped the inner parse and `Create` in a bare `catch`, so an exception `Create` threw was
+  a `false` there, while `Parse`, and `TryParse` over an `int`, let it through. It catches only the
+  `FormatException` the inner parse throws for unreadable text (`GeneratedParsing.Unreadable`), around
+  the inner parse alone (`ThrowingCreateTests`).
 - **`Uri` parses relative or absolute (decided 2026-09-28)**, as JSON and `UriTypeConverter` read it:
   `new Uri(s)` made "/orders/7" a `file://` URI on Unix and threw for "orders/7".
 - **A hand-written `ToString()` is a seam (decided 2026-09-28, [decision 28](adr/0028-seams-declared-everything-else-refused.md)).** It was replaced

@@ -342,6 +342,8 @@ provider-less `Parse` ignore it.
 Text the wrapped type cannot read is a `FormatException` naming the value object and the wrapped
 type ("Quantity could not read the input as Int32."), an overflow included, with no inner exception:
 the wrapped type's own message quotes the input. A refusal by `Create` names the fault instead.
+`TryParse` answers `false` for both, and lets anything else through as `Parse` does: an exception
+`Create` throws is a bug to see, not text to refuse.
 
 ## Comparison
 

@@ -42,18 +42,17 @@ internal sealed partial class ValueObjectParsableAspect
             return (bool)ExpressionFactory.Parse($"(s is not null && {tag.TryFromText}(s, out result))", TypeFactory.GetType(SpecialType.Boolean), false).Value!;
         }
 
-        // The remaining strategies have no TryParse of their own: their inner parse throws.
+        // The remaining strategies have no TryParse of their own: their inner parse throws, and what it
+        // throws for text the wrapped type cannot read is GeneratedParsing.Unreadable, a FormatException.
+        // Only that is caught, around the inner parse alone: a bare catch around the wrapping as well
+        // made an exception from Create a false, where Parse, and TryParse over a type with a TryParse
+        // of its own, let it through.
         if (s is null) return false;
 
-        try
-        {
-            return (bool)ExpressionFactory.Parse($"{tag.TryFromText}({tag.InnerParse()}, out result)", TypeFactory.GetType(SpecialType.Boolean), false).Value!;
-        }
-        catch
-        {
-            result = meta.Default(tag.ValueObjectType);
-            return false;
-        }
+        meta.InsertStatement($"{ValueObjectTypes.SourceName(tag.ValueType)} __inner;");
+        meta.InsertStatement($"try {{ __inner = {tag.InnerParse()}; }} catch (global::System.FormatException) {{ return false; }}");
+
+        return (bool)ExpressionFactory.Parse($"{tag.TryFromText}(__inner, out result)", TypeFactory.GetType(SpecialType.Boolean), false).Value!;
     }
 
     [Template]
