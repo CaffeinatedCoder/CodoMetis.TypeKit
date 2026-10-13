@@ -99,10 +99,18 @@ internal sealed class ValueObjectKeyValueGenerationConvention : IModelFinalizing
 /// two entities of different types would share a key.
 /// </summary>
 /// <remarks>
+/// <para>
 /// EF refuses to generate an integer key under TPC (<c>RelationalValueGenerationConvention.MappingStrategyAllowsValueGeneration</c>)
 /// unless the provider gives it a sequence, which PostgreSQL's and SQL Server's do, as the column's
 /// default (<c>nextval</c>, <c>NEXT VALUE FOR</c>), and SQLite's does not. That default is what this
 /// reads, after every provider convention, so no provider is named.
+/// </para>
+/// <para>
+/// It reads it in the first table the key is mapped to, as the providers' own value-generation
+/// conventions do (<c>GetMappedStoreObjects</c>): an abstract root has no table of its own, only its
+/// derived types', and reading the root's own table found none and took a sequence's generation away
+/// (measured with Npgsql 10.0.3: every entity was stored with 0).
+/// </para>
 /// </remarks>
 internal sealed class ValueObjectTpcKeyValueGenerationConvention : IModelFinalizingConvention
 {
@@ -114,8 +122,8 @@ internal sealed class ValueObjectTpcKeyValueGenerationConvention : IModelFinaliz
             if (ValueObjectKeyValueGenerationConvention.GeneratedKey(entityType) is not { } property) continue;
             if (property.GetValueGeneratedConfigurationSource() != ConfigurationSource.Convention) continue;
 
-            if (StoreObjectIdentifier.Create(entityType, StoreObjectType.Table) is not { } table
-             || RelationalValueGenerationConvention.GetValueGenerated(property, table) is null)
+            var table = property.GetMappedStoreObjects(StoreObjectType.Table).FirstOrDefault();
+            if (table.Name is null || RelationalValueGenerationConvention.GetValueGenerated(property, table) is null)
                 property.Builder.ValueGenerated(null);
         }
     }

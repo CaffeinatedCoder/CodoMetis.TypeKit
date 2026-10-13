@@ -67,7 +67,11 @@
   hierarchy-mapping and shared-table convention: SQLite re-decides a key from its CLR type when the
   root's mapping strategy is set, which reset a TPH root's key to not generated, and a TPC key stays
   generated only where the provider gave it a sequence, as for a plain `int`
-  ([decision 58](adr/0058-integer-key-follows-ef-rule.md)). A key over a `Guid` is left alone: the application
+  ([decision 58](adr/0058-integer-key-follows-ef-rule.md)). The sequence is read in the first table
+  the key is mapped to, as the providers' own conventions read it: an abstract TPC root has no table
+  of its own, and reading the root's table took the generation away (2.0.0's review: on PostgreSQL
+  every entity was stored with 0). The model tests build each shape for SQLite, Npgsql and SQL
+  Server, an abstract TPC root included. A key over a `Guid` is left alone: the application
   assigns `OrderId.New()`, and a generated key that is already set makes EF take a new entity reached
   through a navigation for an existing one.
 - **Conventions for the wrapped type do not reach a value object.** `ConfigureConventions`

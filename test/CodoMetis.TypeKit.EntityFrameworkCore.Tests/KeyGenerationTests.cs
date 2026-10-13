@@ -7,7 +7,8 @@ namespace CodoMetis.TypeKit.EntityFrameworkCore.Tests;
 
 /// <summary>
 /// A value-object key over an integer is generated as a key of that integer is, in every mapping of an
-/// inheritance hierarchy, compared with the same hierarchy keyed by a plain <c>int</c>.
+/// inheritance hierarchy, compared with the same hierarchy keyed by a plain <c>int</c>, in the models
+/// of SQLite, Npgsql and SQL Server.
 /// </summary>
 /// <remarks>
 /// EF decides a hierarchy root's key generation again when it sets the root's mapping strategy, in a
@@ -19,19 +20,29 @@ public sealed class KeyGenerationTests : IDisposable
 {
     private readonly SqliteConnection _connection = new("Data Source=:memory:");
 
-    public static TheoryData<string, Type, Type> Hierarchies => new()
+    /// <summary>The providers a model is built for. SQL Server's is built without a server, for the model alone.</summary>
+    private static readonly string[] Providers = ["sqlite", "npgsql", "sqlserver"];
+
+    public static TheoryData<string, Type, Type> Hierarchies
     {
-        { "sqlite", typeof(TphByValueObject), typeof(TphByInt) },
-        { "sqlite", typeof(TptByValueObject), typeof(TptByInt) },
-        { "sqlite", typeof(TpcByValueObject), typeof(TpcByInt) },
-        { "npgsql", typeof(TphByValueObject), typeof(TphByInt) },
-        { "npgsql", typeof(TptByValueObject), typeof(TptByInt) },
-        { "npgsql", typeof(TpcByValueObject), typeof(TpcByInt) },
-    };
+        get
+        {
+            var hierarchies = new TheoryData<string, Type, Type>();
+            foreach (var provider in Providers)
+            {
+                hierarchies.Add(provider, typeof(TphByValueObject), typeof(TphByInt));
+                hierarchies.Add(provider, typeof(TptByValueObject), typeof(TptByInt));
+                hierarchies.Add(provider, typeof(TpcByValueObject), typeof(TpcByInt));
+                hierarchies.Add(provider, typeof(AbstractTpcByValueObject), typeof(AbstractTpcByLong));
+            }
+            return hierarchies;
+        }
+    }
 
     /// <summary>
-    /// The same decision as for <c>int</c>: generated under TPH and TPT on both providers, and under TPC
-    /// only on PostgreSQL, from a sequence, since SQLite has none and each table would number its own rows.
+    /// The same decision as for the wrapped type: generated under TPH and TPT on every provider, and under
+    /// TPC only on PostgreSQL and SQL Server, from a sequence, since SQLite has none and each table would
+    /// number its own rows. An abstract TPC root included, whose key is mapped only to its derived types' tables.
     /// </summary>
     [Theory]
     [MemberData(nameof(Hierarchies))]
@@ -45,6 +56,24 @@ public sealed class KeyGenerationTests : IDisposable
         valueObjectKey.ValueGenerated.ShouldBe(intKey.ValueGenerated, $"{keyedByValueObject.Name} on {provider}");
         valueObjectKey.GetDefaultValueSql()?.Replace(keyedByValueObject.Name, "Root", StringComparison.Ordinal)
                       .ShouldBe(intKey.GetDefaultValueSql()?.Replace(keyedByInt.Name, "Root", StringComparison.Ordinal), $"{keyedByValueObject.Name} on {provider}");
+    }
+
+    /// <summary>
+    /// An abstract root has no table of its own, only its derived types' tables, and the provider's
+    /// sequence is the key's default in each of them: the convention looked for the root's own table,
+    /// found none, and took the generation away, so on PostgreSQL every entity was stored with 0.
+    /// </summary>
+    [Theory]
+    [InlineData("npgsql", """nextval('"AbstractTpcByValueObjectSequence"')""")]
+    [InlineData("sqlserver", "NEXT VALUE FOR [AbstractTpcByValueObjectSequence]")]
+    public void An_abstract_TPC_root_s_key_is_generated_from_its_sequence(string provider, string sequenceDefault)
+    {
+        using var db = Create(provider);
+
+        var key = Key(db, typeof(AbstractTpcByValueObject));
+
+        key.ValueGenerated.ShouldBe(ValueGenerated.OnAdd);
+        key.GetDefaultValueSql().ShouldBe(sequenceDefault);
     }
 
     /// <summary>What the review reproduced, on a database: a base entity and a derived one, each given its own key.</summary>
@@ -86,7 +115,7 @@ public sealed class KeyGenerationTests : IDisposable
         get
         {
             var keys = new TheoryData<string, Type, Type>();
-            foreach (var provider in new[] { "sqlite", "npgsql" })
+            foreach (var provider in Providers)
                 foreach (var (byValueObject, byWrapped) in IntegerKeysDb.Pairs)
                     keys.Add(provider, byValueObject, byWrapped);
             return keys;
@@ -141,8 +170,10 @@ public sealed class KeyGenerationTests : IDisposable
 
     private DbContextOptions<TDb> Options<TDb>(string provider) where TDb : DbContext => provider switch
     {
-        "sqlite" => new DbContextOptionsBuilder<TDb>().UseSqlite(_connection).UseTypeKit().Options,
-        _        => new DbContextOptionsBuilder<TDb>().UseNpgsql("Host=localhost;Database=none").UseTypeKit().Options,
+        "sqlite"    => new DbContextOptionsBuilder<TDb>().UseSqlite(_connection).UseTypeKit().Options,
+        "npgsql"    => new DbContextOptionsBuilder<TDb>().UseNpgsql("Host=localhost;Database=none").UseTypeKit().Options,
+        "sqlserver" => new DbContextOptionsBuilder<TDb>().UseSqlServer("Server=localhost;Database=none").UseTypeKit().Options,
+        _           => throw new ArgumentOutOfRangeException(nameof(provider), provider, null),
     };
 
     private static IProperty Key(DbContext db, Type root) => db.Model.FindEntityType(root)!.FindPrimaryKey()!.Properties.Single();
@@ -220,7 +251,56 @@ public class TpcByIntDerived : TpcByInt
     public string Extra { get; set; } = "";
 }
 
-/// <summary>Each mapping strategy twice, keyed by a value object over <c>int</c> and by <c>int</c>; TPH is EF's default.</summary>
+/// <summary>A TPC root that is abstract, so mapped to no table of its own: the review's shape, keyed over <c>long</c>.</summary>
+public abstract class AbstractTpcByValueObject
+{
+    public Int64Key Id { get; set; }
+
+    public string Name { get; set; } = "";
+}
+
+public sealed class AbstractTpcByValueObjectCar : AbstractTpcByValueObject
+{
+    public int Doors { get; set; }
+}
+
+public sealed class AbstractTpcByValueObjectBike : AbstractTpcByValueObject
+{
+    public int Gears { get; set; }
+}
+
+public abstract class AbstractTpcByLong
+{
+    public long Id { get; set; }
+
+    public string Name { get; set; } = "";
+}
+
+public sealed class AbstractTpcByLongCar : AbstractTpcByLong
+{
+    public int Doors { get; set; }
+}
+
+public sealed class AbstractTpcByLongBike : AbstractTpcByLong
+{
+    public int Gears { get; set; }
+}
+
+/// <summary>The abstract TPC root alone, for a database.</summary>
+public sealed class AbstractTpcDb(DbContextOptions<AbstractTpcDb> options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<AbstractTpcByValueObject>().UseTpcMappingStrategy();
+        modelBuilder.Entity<AbstractTpcByValueObjectCar>();
+        modelBuilder.Entity<AbstractTpcByValueObjectBike>();
+    }
+}
+
+/// <summary>
+/// Each mapping strategy twice, keyed by a value object over <c>int</c> and by <c>int</c>; TPH is EF's
+/// default. And an abstract TPC root twice, over <c>long</c>.
+/// </summary>
 public sealed class HierarchyKeysDb(DbContextOptions<HierarchyKeysDb> options) : DbContext(options)
 {
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -237,6 +317,12 @@ public sealed class HierarchyKeysDb(DbContextOptions<HierarchyKeysDb> options) :
         modelBuilder.Entity<TpcByValueObjectDerived>();
         modelBuilder.Entity<TpcByInt>().UseTpcMappingStrategy();
         modelBuilder.Entity<TpcByIntDerived>();
+        modelBuilder.Entity<AbstractTpcByValueObject>().UseTpcMappingStrategy();
+        modelBuilder.Entity<AbstractTpcByValueObjectCar>();
+        modelBuilder.Entity<AbstractTpcByValueObjectBike>();
+        modelBuilder.Entity<AbstractTpcByLong>().UseTpcMappingStrategy();
+        modelBuilder.Entity<AbstractTpcByLongCar>();
+        modelBuilder.Entity<AbstractTpcByLongBike>();
     }
 }
 

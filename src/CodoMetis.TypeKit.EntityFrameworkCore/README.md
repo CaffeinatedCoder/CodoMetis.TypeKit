@@ -76,7 +76,7 @@ EF to generate it instead, configure `ValueGeneratedOnAdd()` on the property; EF
 entity whose key is already set, reached through a navigation, for an existing one. The root of an
 inheritance hierarchy follows the same rule under TPH and TPT. Under TPC, as for an `int` key, the key
 is generated only where the provider numbers the whole hierarchy from a sequence (PostgreSQL, SQL
-Server); SQLite has none, so there the application assigns it. An explicit configuration always wins
+Server), an abstract root's included; SQLite has none, so there the application assigns it. An explicit configuration always wins
 over these defaults.
 
 **SQLite: configure integer keys with `UseAutoincrement()`.** SQLite fills such a key in, but EF's
@@ -145,7 +145,8 @@ value's order is meant (`OrderBy(o => o.Priority.Value)`), or order in memory af
 Equality is not ordering, and stays allowed.
 
 The mapping is tested on SQLite and PostgreSQL, the SQL of each translation is pinned on PostgreSQL,
-and every wrapped-type family makes a round trip through a real PostgreSQL.
+every wrapped-type family makes a round trip through a real PostgreSQL, and key generation is also
+checked in SQL Server's model.
 
 ## An Option for nothing found
 
