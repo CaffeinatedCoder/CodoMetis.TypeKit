@@ -91,6 +91,11 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   `FirstOrNoneAsync`, with or without a predicate, in EF Core's namespace; CMTK0009 names it for
   `FirstOrDefaultAsync` where the project references the satellite, and names `FirstOrNone` for
   `Queryable.FirstOrDefault`.
+- **`CodoMetis.TypeKit.Generators`**: a closed set implements `IParsable<TSelf>` explicitly, beside
+  its own `Parse` and `TryParse`, and carries a type converter that reads and writes the member's
+  name, so the configuration binder binds a set where it bound null without a word, and generic
+  code parses one through `T.Parse`. A hand-written `IParsable<TSelf>`, `[JsonConverter]` or
+  `[TypeConverter]` is CMTK1011, where it failed inside the generated code.
 
 ### Changed
 

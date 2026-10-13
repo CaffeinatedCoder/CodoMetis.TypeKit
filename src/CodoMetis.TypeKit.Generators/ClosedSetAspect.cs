@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 using CodoMetis.TypeKit.CompilerServices;
 using Metalama.Framework.Advising;
@@ -20,8 +21,9 @@ internal sealed class ClosedSetArguments
 
 /// <summary>
 /// Generates a closed set: <c>Name</c>, <c>QualifiedName</c>, <c>All</c>, <c>Match</c>, <c>TryParse</c>,
-/// <c>Parse</c>, <c>ToString()</c> where none is written by hand, the JSON converter, the discovery
-/// attribute, and a private constructor where the type declares none. Applied by <see cref="ValueObjectFabric"/>.
+/// <c>Parse</c>, <c>IParsable&lt;TSelf&gt;</c> explicitly, <c>ToString()</c> where none is written by
+/// hand, the JSON converter, the type converter, the discovery attribute, and a private constructor
+/// where the type declares none. Applied by <see cref="ValueObjectFabric"/>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -143,6 +145,22 @@ internal sealed partial class ClosedSetAspect : TypeAspect
             m.AddAttribute(CodeAnnotations.CompilerGenerated);
         });
 
+        // IParsable<TSelf>, explicitly: Parse(string) and TryParse(string, out) are the set's own
+        // surface, and the provider means nothing to a name. Generic code calling T.Parse reaches it.
+        var parsable = builder.ImplementInterface(TypeFactory.GetNamedType(typeof(IParsable<>)).WithTypeArguments(target));
+        parsable.ExplicitMembers.IntroduceMethod(nameof(ParsableParseTemplate), IntroductionScope.Static, OverrideStrategy.Fail, m =>
+        {
+            m.Name = "Parse";
+            m.ReturnType = target;
+            m.AddAttribute(CodeAnnotations.CompilerGenerated);
+        });
+        parsable.ExplicitMembers.IntroduceMethod(nameof(ParsableTryParseTemplate), IntroductionScope.Static, OverrideStrategy.Fail, m =>
+        {
+            m.Name = "TryParse";
+            m.Parameters[2].Type = target;
+            m.AddAttribute(CodeAnnotations.CompilerGenerated);
+        });
+
         builder.IntroduceMethod(nameof(MatchTemplate), IntroductionScope.Instance, OverrideStrategy.Fail, m =>
         {
             m.Name = "Match";
@@ -165,7 +183,22 @@ internal sealed partial class ClosedSetAspect : TypeAspect
         converter.IntroduceMethod(nameof(JsonReadAsPropertyNameTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = "ReadAsPropertyName"; m.ReturnType = target; m.AddAttribute(CodeAnnotations.CompilerGenerated); });
         converter.IntroduceMethod(nameof(JsonWriteAsPropertyNameTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = "WriteAsPropertyName"; m.Parameters[1].Type = target; m.AddAttribute(CodeAnnotations.CompilerGenerated); });
 
+        // The reflection-based configuration binder, MVC and anything else that reads a string through
+        // TypeDescriptor find a set by its type converter alone; without one a set bound to null.
+        var typeConverter = builder.IntroduceClass($"{target.Name}TypeConverter", buildType: t =>
+        {
+            t.Accessibility = Accessibility.Public;
+            t.BaseType = TypeFactory.GetNamedType(typeof(TypeConverter));
+            t.IsStatic = false;
+            t.AddAttribute(CodeAnnotations.CompilerGenerated);
+        });
+        typeConverter.IntroduceMethod(nameof(CanConvertFromTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = nameof(TypeConverter.CanConvertFrom); m.AddAttribute(CodeAnnotations.CompilerGenerated); });
+        typeConverter.IntroduceMethod(nameof(CanConvertToTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = nameof(TypeConverter.CanConvertTo); m.AddAttribute(CodeAnnotations.CompilerGenerated); });
+        typeConverter.IntroduceMethod(nameof(ConvertFromTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = nameof(TypeConverter.ConvertFrom); m.AddAttribute(CodeAnnotations.CompilerGenerated); });
+        typeConverter.IntroduceMethod(nameof(ConvertToTemplate), IntroductionScope.Instance, OverrideStrategy.Override, m => { m.Name = nameof(TypeConverter.ConvertTo); m.AddAttribute(CodeAnnotations.CompilerGenerated); });
+
         builder.IntroduceAttribute(AttributeConstruction.Create(typeof(JsonConverterAttribute), constructorArguments: [converter.Target]));
+        builder.IntroduceAttribute(AttributeConstruction.Create(typeof(TypeConverterAttribute), constructorArguments: [typeConverter.Target]));
         builder.IntroduceAttribute(AttributeConstruction.Create(TypeFactory.GetNamedType(typeof(GeneratedClosedSetAttribute<>)).WithTypeArguments(target)));
         builder.IntroduceAttribute(CodeAnnotations.CompilerGenerated);
     }

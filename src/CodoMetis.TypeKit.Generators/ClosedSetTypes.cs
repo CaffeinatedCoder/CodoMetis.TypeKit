@@ -1,4 +1,7 @@
+using System.ComponentModel;
+using System.Text.Json.Serialization;
 using CodoMetis.TypeKit.ClosedSets;
+using CodoMetis.TypeKit.CompilerServices;
 using Metalama.Framework.Aspects;
 using Metalama.Framework.Code;
 
@@ -21,7 +24,7 @@ internal static class ClosedSetTypes
 
     /// <summary>The names of what the generators introduce into the set itself; nothing else in it may have one (CMTK1011, CMTK1021).</summary>
     public static IReadOnlyList<string> GeneratedNames(INamedType set) =>
-        ["Name", "QualifiedName", "All", "Match", "Parse", "TryParse", "ToString", "_name", "_all", $"{set.Name}JsonConverter"];
+        ["Name", "QualifiedName", "All", "Match", "Parse", "TryParse", "ToString", "_name", "_all", $"{set.Name}JsonConverter", $"{set.Name}TypeConverter"];
 
     /// <summary>
     /// The name of <paramref name="member"/>'s parameter of <c>Match</c>: its own, with the first letter
@@ -141,8 +144,9 @@ internal static class ClosedSetTypes
 
     /// <summary>
     /// The members the generators introduce, written by hand: a property, field, event or nested type
-    /// of a generated name, a method with a generated signature, or an explicit implementation of
-    /// <c>IClosedSet&lt;TSelf&gt;</c>. Each failed the aspect with a Metalama error naming no fix. An
+    /// of a generated name, a method with a generated signature, an explicit implementation of
+    /// <c>IClosedSet&lt;TSelf&gt;</c>, <c>IParsable&lt;TSelf&gt;</c> declared, or an attribute the
+    /// generators put on the set. Each failed the aspect with a Metalama error naming no fix. An
     /// overload of another signature is the set's own and is kept, as is <c>ToString()</c>, the seam. A
     /// member of the set with a generated name is CMTK1021's, which says to rename it.
     /// </summary>
@@ -159,6 +163,11 @@ internal static class ClosedSetTypes
             .. set.Methods.Where(method => IsOwn(method) && IsGeneratedMatch(method, members.Count)).Select(ValueObjectDeclaration.Describe),
             .. set.Methods.Where(method => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && method.ExplicitInterfaceImplementations.Any(OfClosedSet)).Select(ValueObjectDeclaration.Describe),
             .. set.Properties.Where(property => property is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && property.ExplicitInterfaceImplementations.Any(OfClosedSet)).Select(ValueObjectDeclaration.Describe),
+            .. set.ImplementedInterfaces.Where(implemented => implemented.Equals(TypeFactory.GetNamedType(typeof(IParsable<>)).WithTypeArguments(set))).Select(implemented => $"the interface {implemented.ToDisplayString()}"),
+            .. set.Attributes.Where(attribute => attribute.Type.Equals(TypeFactory.GetNamedType(typeof(JsonConverterAttribute)))
+                                              || attribute.Type.Equals(TypeFactory.GetNamedType(typeof(TypeConverterAttribute)))
+                                              || attribute.Type.Definition.Equals(TypeFactory.GetNamedType(typeof(GeneratedClosedSetAttribute<>))))
+                             .Select(attribute => $"the attribute {attribute.Type.Name.Substring(0, attribute.Type.Name.Length - nameof(Attribute).Length)}"),
         ];
     }
 

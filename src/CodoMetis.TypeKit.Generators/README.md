@@ -228,6 +228,11 @@ position would follow the declaration order and swap branches when two members a
 analyzer requires every argument named (CMTK0012), and its code fix names them. `Match` checks every
 delegate for null before it picks one. `Parse` and the JSON converter refuse an unknown name with an
 exception naming the set, never the input, and a set is a dictionary key in JSON by its name too.
+`IParsable<TSelf>` is implemented explicitly, for generic code that parses through `T.Parse`, and a
+type converter reads and writes the name, so the configuration binder, MVC and anything else that
+reads a string through `TypeDescriptor` bind a set. The binder's source generator reads no type
+converter ([dotnet/runtime#83599](https://github.com/dotnet/runtime/issues/83599)): under it, as under
+Native AOT, bind the name as a `string` and `Parse` it.
 The EF Core satellite maps a closed set to a text column of the member's name, and the ASP.NET Core
 satellite describes it as a string enum of the names, with nothing registered per set.
 
@@ -331,7 +336,7 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1008 | A hand-written comparison operator, object `CompareTo` or explicit implementation of a comparison interface beside the generated ones. |
 | CMTK1009 | A hand-written instance constructor, including a positional record's parameter list such as `OrderId(Guid Value)`. The constructor and `Value` are generated; a static constructor is fine. |
 | CMTK1010 | Declared in more than one `partial` part: Metalama 2026.1 writes the generated `ToString()` into every part, which does not compile. A part a source generator adds, such as a `[GeneratedRegex]` method's, does not count. |
-| CMTK1011 | A hand-written member or attribute the generators introduce (see "Your own members", and for a closed set every generated member but `ToString()`, by signature), an explicit implementation of an interface they implement, a hand-written equality, a `PrintMembers` without `ToString()`, or `Create` implemented explicitly. |
+| CMTK1011 | A hand-written member or attribute the generators introduce (see "Your own members", and for a closed set every generated member but `ToString()`, by signature, `IParsable<TSelf>`, `[JsonConverter]` and `[TypeConverter]`), an explicit implementation of an interface they implement, a hand-written equality, a `PrintMembers` without `ToString()`, or `Create` implemented explicitly. |
 | CMTK1012 | Instance state besides the wrapped value: a field, an auto-property, a `required` member or a field-like event, declared or inherited. Compute it from `Value`, make it static, or wrap a type that holds all of it. |
 | CMTK1013 | A closed set not declared `partial`. |
 | CMTK1014 | A closed set not declared `sealed`: a set with subtypes is not closed. |
@@ -341,7 +346,7 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1018 | A closed set that is generic or nested in a generic type. |
 | CMTK1019 | A closed set's member not initialized with `new` where it is declared, and with nothing else: `= Open` would give one instance two names, and a member set later, by a call, or by an expression that only starts with `new`, may be another member or null. |
 | CMTK1020 | A closed set declared as a record: `with` copies a member into an instance that is none, and a record compares by value where members are singletons. |
-| CMTK1021 | A closed set's member named as a member the generators introduce (`Name`, `QualifiedName`, `All`, `Match`, `Parse`, `TryParse`, `ToString`, the converter), or whose `Match` parameter, its name with the first letter lower-cased, another member's already is. |
+| CMTK1021 | A closed set's member named as a member the generators introduce (`Name`, `QualifiedName`, `All`, `Match`, `Parse`, `TryParse`, `ToString`, the JSON or type converter), or whose `Match` parameter, its name with the first letter lower-cased, another member's already is. |
 
 The analyzers that come with the base package add CMTK0001 to CMTK0012; see
 [CodoMetis.TypeKit.Analyzers](https://www.nuget.org/packages/CodoMetis.TypeKit.Analyzers).

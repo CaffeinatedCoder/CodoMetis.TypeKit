@@ -12,8 +12,10 @@ namespace CodoMetis.TypeKit.ClosedSets;
 /// CodoMetis.TypeKit.Generators generates everything else: <see cref="Name"/> from the field's name,
 /// <see cref="QualifiedName"/> (<c>OrderStatus.Open</c>), <see cref="All"/> in declaration order,
 /// <c>Match</c> with one required delegate per member named after it, <c>Parse</c> and
-/// <see cref="TryParse"/> by name, <c>ToString()</c>, a JSON converter that writes the name and reads
-/// the member back, and a private parameterless constructor where the type declares none. A member
+/// <see cref="TryParse"/> by name, <see cref="IParsable{TSelf}"/> explicitly, <c>ToString()</c>, a JSON
+/// converter that writes the name and reads the member back, a type converter for what reads a string
+/// through <c>TypeDescriptor</c> (the configuration binder, MVC), and a private parameterless
+/// constructor where the type declares none. A member
 /// may carry constant data through a private constructor the type declares, as
 /// <c>new(FaultKind.NotFound, "The order does not exist.")</c>.
 /// </para>

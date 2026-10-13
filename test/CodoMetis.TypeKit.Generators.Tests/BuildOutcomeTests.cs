@@ -119,6 +119,9 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1020", "SetRecord")]
     [InlineData("CMTK1011", "SetWithName")]
     [InlineData("CMTK1011", "SetWithExplicitAll")]
+    [InlineData("CMTK1011", "SetWithParsable")]
+    [InlineData("CMTK1011", "SetWithTypeConverterAttribute")]
+    [InlineData("CMTK1011", "SetWithJsonConverterAttribute")]
     [InlineData("CMTK1021", "SetWithMemberNamedParse.Parse")]
     [InlineData("CMTK1021", "SetWithMemberNamedToString.ToString")]
     [InlineData("CMTK1021", "SetWithMemberNamedAll.All")]
@@ -137,6 +140,17 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("SetWithCasedMembers.open", "gives Match the parameter 'open', as 'SetWithCasedMembers.Open' does")]
     public void A_member_name_the_generators_take_is_refused_with_the_reason(string member, string reason) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1021" && error.Message.StartsWith($"'{member}' {reason}, so ") && error.Message.Contains("rename the member"), consumer.Output);
+
+    /// <summary>
+    /// What the generators implement and attach, written by hand, failed the aspect or the generated
+    /// code: <c>IParsable</c> twice, an attribute twice (CS0579). The error names each.
+    /// </summary>
+    [Theory]
+    [InlineData("SetWithParsable", "the interface IParsable<SetWithParsable>")]
+    [InlineData("SetWithTypeConverterAttribute", "the attribute TypeConverter")]
+    [InlineData("SetWithJsonConverterAttribute", "the attribute JsonConverter")]
+    public void What_the_generators_implement_or_attach_is_refused_by_name_on_a_set(string type, string declared) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(declared), consumer.Output);
 
     [Fact]
     public void A_member_is_never_told_to_be_removed_as_a_hand_written_generated_member() =>
@@ -461,6 +475,14 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public sealed partial class SetWithName : IClosedSet<SetWithName> { public static readonly SetWithName A = new(); public string Name => "A"; }
 
             public sealed partial class SetWithExplicitAll : IClosedSet<SetWithExplicitAll> { public static readonly SetWithExplicitAll A = new(); static System.Collections.Generic.IReadOnlyList<SetWithExplicitAll> IClosedSet<SetWithExplicitAll>.All => [A]; }
+
+            public sealed partial class SetWithParsable : IClosedSet<SetWithParsable>, System.IParsable<SetWithParsable> { public static readonly SetWithParsable A = new(); }
+
+            [System.ComponentModel.TypeConverter(typeof(System.ComponentModel.StringConverter))]
+            public sealed partial class SetWithTypeConverterAttribute : IClosedSet<SetWithTypeConverterAttribute> { public static readonly SetWithTypeConverterAttribute A = new(); }
+
+            [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+            public sealed partial class SetWithJsonConverterAttribute : IClosedSet<SetWithJsonConverterAttribute> { public static readonly SetWithJsonConverterAttribute A = new(); }
 
             public sealed partial class SetWithMemberNamedParse : IClosedSet<SetWithMemberNamedParse> { public static readonly SetWithMemberNamedParse A = new(); public static readonly SetWithMemberNamedParse Parse = new(); }
 

@@ -612,8 +612,11 @@ ProbeKeyword
   attribute CompilerGeneratedAttribute
   attribute GeneratedClosedSetAttribute<ProbeKeyword>
   attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
   implements IClosedSet<ProbeKeyword>
+  implements IParsable<ProbeKeyword>
   nested ProbeKeywordJsonConverter : JsonConverter<ProbeKeyword>
+  nested ProbeKeywordTypeConverter : TypeConverter
   static All : IReadOnlyList<ProbeKeyword>
   static Parse(String) : ProbeKeyword
   static TryParse(String, out ProbeKeyword) : Boolean
@@ -664,8 +667,11 @@ ProbeLabelled
   attribute CompilerGeneratedAttribute
   attribute GeneratedClosedSetAttribute<ProbeLabelled>
   attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
   implements IClosedSet<ProbeLabelled>
+  implements IParsable<ProbeLabelled>
   nested ProbeLabelledJsonConverter : JsonConverter<ProbeLabelled>
+  nested ProbeLabelledTypeConverter : TypeConverter
   static All : IReadOnlyList<ProbeLabelled>
   static Parse(String) : ProbeLabelled
   static TryParse(String, out ProbeLabelled) : Boolean
@@ -677,8 +683,11 @@ ProbeLevel
   attribute CompilerGeneratedAttribute
   attribute GeneratedClosedSetAttribute<ProbeLevel>
   attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
   implements IClosedSet<ProbeLevel>
+  implements IParsable<ProbeLevel>
   nested ProbeLevelJsonConverter : JsonConverter<ProbeLevel>
+  nested ProbeLevelTypeConverter : TypeConverter
   static All : IReadOnlyList<ProbeLevel>
   static Parse(String) : ProbeLevel
   static TryParse(String, out ProbeLevel) : Boolean
@@ -957,8 +966,11 @@ ProbePriority
   attribute CompilerGeneratedAttribute
   attribute GeneratedClosedSetAttribute<ProbePriority>
   attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
   implements IClosedSet<ProbePriority>
+  implements IParsable<ProbePriority>
   nested ProbePriorityJsonConverter : JsonConverter<ProbePriority>
+  nested ProbePriorityTypeConverter : TypeConverter
   static All : IReadOnlyList<ProbePriority>
   static Parse(Int32) : ProbePriority
   static Parse(String) : ProbePriority
@@ -1118,8 +1130,11 @@ ProbeStatus
   attribute CompilerGeneratedAttribute
   attribute GeneratedClosedSetAttribute<ProbeStatus>
   attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
   implements IClosedSet<ProbeStatus>
+  implements IParsable<ProbeStatus>
   nested ProbeStatusJsonConverter : JsonConverter<ProbeStatus>
+  nested ProbeStatusTypeConverter : TypeConverter
   static All : IReadOnlyList<ProbeStatus>
   static Parse(String) : ProbeStatus
   static TryParse(String, out ProbeStatus) : Boolean
@@ -1133,8 +1148,11 @@ ProbeTier
   attribute CompilerGeneratedAttribute
   attribute GeneratedClosedSetAttribute<ProbeTier>
   attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
   implements IClosedSet<ProbeTier>
+  implements IParsable<ProbeTier>
   nested ProbeTierJsonConverter : JsonConverter<ProbeTier>
+  nested ProbeTierTypeConverter : TypeConverter
   static All : IReadOnlyList<ProbeTier>
   static Parse(String) : ProbeTier
   static TryParse(String, out ProbeTier) : Boolean

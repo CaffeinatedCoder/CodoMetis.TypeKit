@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.Json;
 using CodoMetis.TypeKit.ClosedSets;
 using CodoMetis.TypeKit.CompilerServices;
@@ -224,6 +225,49 @@ public sealed class ClosedSetTests
         ProbeKeyword.New.Name.ShouldBe("New");
         typeof(ProbeKeyword).GetMethod("Match")!.GetParameters().Select(parameter => parameter.Name).ShouldBe(["new", "default"]);
     }
+
+    /// <summary>Generic code that parses through <see cref="IParsable{TSelf}"/> reaches a set, implemented explicitly beside its own <c>Parse</c>.</summary>
+    [Fact]
+    public void Generic_code_parses_a_set_through_IParsable()
+    {
+        ReferenceEquals(ParseAs<ProbeStatus>("Shipped"), ProbeStatus.Shipped).ShouldBeTrue();
+        TryParseAs<ProbeStatus>("Cancelled", out var cancelled).ShouldBeTrue();
+        ReferenceEquals(cancelled, ProbeStatus.Cancelled).ShouldBeTrue();
+        TryParseAs<ProbeStatus>("shipped", out _).ShouldBeFalse("names compare ordinally");
+        TryParseAs<ProbeStatus>(null, out _).ShouldBeFalse();
+
+        var refusal = Should.Throw<FormatException>(() => ParseAs<ProbeStatus>("Nope"));
+        refusal.Message.ShouldContain("ProbeStatus");
+        refusal.Message.ShouldNotContain("Nope");
+        Should.Throw<ArgumentNullException>(() => ParseAs<ProbeStatus>(null!));
+
+        typeof(ProbeStatus).GetMethods().Where(method => method.Name == "Parse").ShouldHaveSingleItem("the provider overload is explicit");
+    }
+
+    /// <summary>
+    /// What reads a string through <see cref="TypeDescriptor"/>, the reflection-based configuration
+    /// binder and MVC among them, finds a set by its type converter alone: without one, a set bound to
+    /// null with no error.
+    /// </summary>
+    [Fact]
+    public void The_type_converter_reads_and_writes_the_name()
+    {
+        var converter = TypeDescriptor.GetConverter(typeof(ProbeStatus));
+
+        converter.CanConvertFrom(typeof(string)).ShouldBeTrue();
+        converter.CanConvertTo(typeof(string)).ShouldBeTrue();
+        ReferenceEquals(converter.ConvertFromInvariantString("Shipped"), ProbeStatus.Shipped).ShouldBeTrue();
+        converter.ConvertToInvariantString(ProbeStatus.Cancelled).ShouldBe("Cancelled");
+
+        var refusal = Should.Throw<FormatException>(() => converter.ConvertFromInvariantString("Nope"));
+        refusal.Message.ShouldNotContain("Nope");
+        Should.Throw<InvalidOperationException>(() => TypeDescriptor.GetConverter(typeof(ProbeLevel)).ConvertToInvariantString(ProbeLevel.Unlisted()))
+              .Message.ShouldEndWith("#an-instance-that-is-not-a-member-of-its-set");
+    }
+
+    private static T ParseAs<T>(string s) where T : IParsable<T> => T.Parse(s, null);
+
+    private static bool TryParseAs<T>(string? s, [System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out T result) where T : IParsable<T> => T.TryParse(s, null, out result);
 
     private static string Names<TSet>() where TSet : class, IClosedSet<TSet> => string.Join(",", TSet.All.Select(member => member.Name));
 

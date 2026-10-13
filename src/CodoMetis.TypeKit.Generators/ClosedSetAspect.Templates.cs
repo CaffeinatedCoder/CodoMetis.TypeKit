@@ -1,6 +1,9 @@
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Text.Json;
 using Metalama.Framework.Aspects;
+using Metalama.Framework.Code.SyntaxBuilders;
 
 namespace CodoMetis.TypeKit.Generators;
 
@@ -85,6 +88,66 @@ internal sealed partial class ClosedSetAspect
         }
 
         throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMember(args.Set.Name);
+    }
+
+    /// <summary><c>IParsable&lt;TSelf&gt;.Parse</c>: the set's own <c>Parse</c>; the provider means nothing to a name.</summary>
+    [Template]
+    public static dynamic? ParsableParseTemplate(string s, IFormatProvider? provider)
+    {
+        ArgumentNullException.ThrowIfNull(s);
+        return meta.ThisType.Parse(s);
+    }
+
+    /// <summary><c>IParsable&lt;TSelf&gt;.TryParse</c>: the member of that name, compared ordinally, as the set's own <c>TryParse</c>.</summary>
+    [Template]
+    public static bool ParsableTryParseTemplate([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out dynamic result)
+    {
+        var args = (ClosedSetArguments)meta.Tags.Source!;
+        foreach (var candidate in args.Members)
+        {
+            if (s == candidate.Name)
+            {
+                result = candidate.Value!;
+                return true;
+            }
+        }
+
+        result = null!;
+        return false;
+    }
+
+    [Template]
+    public bool CanConvertFromTemplate(ITypeDescriptorContext? context, Type sourceType) =>
+        sourceType == typeof(string) || meta.Base.CanConvertFrom(context, sourceType);
+
+    [Template]
+    public bool CanConvertToTemplate(ITypeDescriptorContext? context, Type? destinationType) =>
+        destinationType == typeof(string) || meta.Base.CanConvertTo(context, destinationType);
+
+    /// <summary>A name is read with the set's own <c>Parse</c>: a <see cref="FormatException"/> naming the set, never the input.</summary>
+    [Template]
+    public object? ConvertFromTemplate(ITypeDescriptorContext? context, CultureInfo? culture, object value)
+    {
+        if (value is string s)
+        {
+            var args = (ClosedSetArguments)meta.Tags.Source!;
+            return ExpressionFactory.Parse($"{ValueObjectTypes.SourceName(args.Set)}.Parse(s)").Value;
+        }
+
+        return meta.Base.ConvertFrom(context, culture, value);
+    }
+
+    /// <summary>A member is written as its name, which throws for an instance that is no member.</summary>
+    [Template]
+    public object? ConvertToTemplate(ITypeDescriptorContext? context, CultureInfo? culture, object? value, Type destinationType)
+    {
+        if (destinationType == typeof(string) && value is not null)
+        {
+            var args = (ClosedSetArguments)meta.Tags.Source!;
+            return ExpressionFactory.Parse($"(({ValueObjectTypes.SourceName(args.Set)})value).Name").Value;
+        }
+
+        return meta.Base.ConvertTo(context, culture, value, destinationType);
     }
 
     /// <summary>
