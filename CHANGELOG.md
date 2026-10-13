@@ -220,7 +220,9 @@ against 1.5.1 meets them.
 - **`CodoMetis.TypeKit.EntityFrameworkCore`**: a query that compares, orders, or takes `Min`/`Max` of a
   value object that declares its own `CompareTo` is refused, naming the value object. It was
   translated to the column's order, the opposite of the in-memory one for a reversed ordering; order
-  by `.Value` where the column's order is meant.
+  by `.Value` where the column's order is meant. The refusal covers an ordering over a navigation and
+  a key cast to `object`, and a query filter that does so is refused when the model is built, naming
+  the entity type and the filter.
 - **`CodoMetis.TypeKit.EntityFrameworkCore`**: a value-object key is generated on add wherever EF
   generates its wrapped type's: over `sbyte`, `uint`, `ulong`, `ushort` and `char` too, and at the
   root of a TPH hierarchy on SQLite, which stored 0. A TPC key on SQLite is not generated, as a plain
