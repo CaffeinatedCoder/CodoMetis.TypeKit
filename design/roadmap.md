@@ -16,25 +16,27 @@ item names the decision that scoped it.
 - An optional `Cause` on `Fault<TFault>`, an exception kept beside the reason and the detail for the
   log and the fault feature, never written to the problem; `Fault.Of(reason, detail, cause)`, and a
   `MapError` from a `Result<T, Exception>` that keeps the exception ([decision 52](adr/0052-cause-on-fault-joins-2-1.md)).
-- What the outside review of 2026-10-13 rated can-wait: the fault
-  name is sent even for a member without a description; `Uri.ToString()` unescapes the problem
-  `type`; the CMTK0011 code fix on a partial type whose other part has a primary constructor, and its
-  doc comment beside an attribute; CMTK0003 over `WhenAny` of held tasks; `Choose` on a sequence with
-  a nullable element; `Patch<string?>` under `Traverse` and `Map`.
-- CMTK1021 groups names ignoring case, which misses the one `Match` collision `ToLowerInvariant` makes
-  and ordinal case folding does not (the Kelvin sign); it fails loudly, as LAMA0611 and CS0100.
-- What the second outside review of 2026-10-13 rated can-wait. Analyzers: the trivia the CMTK0011
-  code fix drops; CMTK0010 on an enum or a delegate under `[Concrete]` and on a type parameter whose
-  constraint already makes it a record, and its cost (`GetSymbolInfo` on every generic name, about
-  0.5 s on a 6.7k-line file); CMTK0003 on an async expression-bodied member in the IDE, where
-  Metalama has not run. Generators: a C# keyword in a namespace or a member name fails with LAMA0041,
-  not a CMTK error; generated members carry no XML documentation, so IntelliSense shows nothing for
-  them. Run time: the Serilog policy ignores `ToMaximumStringLength`; an inlined nullable closed set
-  does not admit null in the document; an exception error prints its whole `ToString()` in a Testing
-  message, and there are no async assertions; `query.FirstOrNone(func)` binds to the sequence
-  overload and reads every row; a closed set's `.Name` in a query is not translated (it throws); the
-  closed-set JSON read allocates a string per token; `CatchAsync` over a `ValueTask` and
-  `TraverseAsync` on `Option` and `Patch`.
+- An opt-in that withholds the `fault` name from the response for chosen members or a whole fault
+  type, so two causes can share a status without a mapping at the boundary; additive
+  ([decision 64](adr/0064-fault-name-reaches-client-causes-not-told-apart-one-fault.md)).
+- CMTK0009, a Warning, which may learn ([decision 34](adr/0034-errors-fixed-within-major-version-warnings.md)),
+  reports `FirstOrNone`, `SingleOrNone` and `FirstOrError` on an `IQueryable<T>` given a
+  `Func<T, bool>` or a method group, which binds to the sequence overload and reads every row.
+- Documentation for generated members, so IntelliSense shows them: it needs Metalama to copy a
+  template's XML comment to the member it introduces, or to take one through the builder, measured
+  absent in 2026.1.29 and 2027.0.3-preview (`spikes/IntroducedMemberDocs`). Ask upstream; then
+  document every generated member and test a consumer's XML documentation file.
+- A default value-object key over `ulong` generated as a plain one is, which needs a per-key value
+  generator a compiled model can write ([decision 63](adr/0063-char-keys-application-assigned-ulong-documented.md)).
+- CMTK0003: `WhenAny` over held tasks; an async expression-bodied member in the IDE, where Metalama has
+  not run; and decide whether a tap on a property or an indexer, and a result a cache's `GetOrAdd`
+  still holds, are drops, which it reports today.
+- CMTK0010's cost: `GetSymbolInfo` on every generic name, about 0.5 s on a 6.7k-line file.
+- Generators: a C# keyword in a namespace or a member name fails with LAMA0041, not a CMTK error.
+- Run time: the Serilog policy ignores `ToMaximumStringLength`; an exception error prints its whole
+  `ToString()` in a Testing message, and there are no async assertions; a closed set's `.Name` in a
+  query is not translated (it throws); the closed-set JSON read allocates a string per token;
+  `CatchAsync` over a `ValueTask` and `TraverseAsync` on `Option` and `Patch`.
 
 ## 2.x, with a spike first
 

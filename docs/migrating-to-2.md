@@ -141,7 +141,9 @@ the `IEnumerable<T>` overloads: every row was read and the condition ran in memo
 to `IQueryable<T>` overloads that hand the condition to the provider, so the answer is the same and
 one row is read. A condition the provider cannot translate now throws where it used to run in
 memory; say so with `AsEnumerable()`. `LastOrNone` and `LastOrError` on a query are compile errors
-whose message says what to write instead.
+whose message says what to write instead. A lambda written at the call is an expression and runs in
+the query; a `Func<T, bool>` variable or a method group still binds to the sequence's overload and
+reads every row, as in 1.5, so hold an `Expression<Func<T, bool>>` instead.
 
 ```csharp
 Option<Order> large = orders.FirstOrNone(o => o.Total > 100);                    // 2.0: WHERE and LIMIT 1 in the query; 1.5 read every row
@@ -174,7 +176,7 @@ new member is an instance member, nothing is ambiguous and yours is silently no 
 | `Result` | `Catch`, `CatchAsync` |
 
 2.0 also adds types to the `CodoMetis.TypeKit` namespace: `Patch<T>` and `Patch`, `PatchState`,
-`PatchJsonConverterFactory`, `Fault<TFault>` and `Fault`, `TextFault`, `StringTextExtensions`,
+`PatchJsonConverterFactory`, `SequenceOptionExtensions`, `Fault<TFault>` and `Fault`, `TextFault`, `StringTextExtensions`,
 `AbstractAttribute`, `SealedAttribute`, `RecordAttribute`, `ConcreteAttribute`,
 `RequireParameterlessConstructorAttribute` and `ConstructorAccessibility`; and `IClosedSet<TSelf>`,
 `IFaultSet<TSelf>`, `IFault` and `FaultKind` to `CodoMetis.TypeKit.ClosedSets`. A type of yours with one of these names, imported beside the

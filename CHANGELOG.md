@@ -18,7 +18,7 @@ Still `net10.0` and Metalama 2026.1. What builds or runs differently, and what t
 ### Breaking
 
 - CMTK0003, a dropped `Result` or `Option`, is an Error, and reports more forms (`Wait()`, loops that never read, `??`, tuples).
-- `FirstOrNone`/`FirstOrError` on an `IQueryable` run in the query; `LastOrNone`/`LastOrError` on a query no longer compile.
+- `FirstOrNone`/`FirstOrError` on an `IQueryable` run in the query (a `Func` variable still reads every row); `LastOrNone`/`LastOrError` on a query no longer compile.
 - CMTK1022 refuses an abstract value object; CMTK1005 refuses one over `object` or `System.Enum`, or named as a generated member.
 - A generated `TryParse` lets an exception from `Create` through instead of answering `false`.
 - EF Core refuses `.Value` on a column with the application's own converter, and ordering by a hand-written `CompareTo`, in queries and query filters.
@@ -31,7 +31,7 @@ Still `net10.0` and Metalama 2026.1. What builds or runs differently, and what t
 
 - **Closed sets** (`IClosedSet<TSelf>`): a fixed set of named instances with `Match`, `Parse`, JSON, EF Core, OpenAPI and Serilog support; CMTK1013 to CMTK1021 refuse what cannot be generated.
 - **Fault responses a client can act on**: `Fault<TFault>`, fault sets with a kind per member, `FaultResponse`, `WithFaultStatus`/`[FaultStatus<T>]` per endpoint, group or controller, `ToHttpResult(success)` and `IFaultFeature`.
-- **`Patch<T>`**: a JSON Merge Patch field (absent, null or a value), with `Map`, `Traverse`, OpenAPI and test assertions.
+- **`Patch<T>`**: a JSON Merge Patch field (absent, null or a value; `T` is `notnull`, so `Patch<string>` is a clearable string), with `Map`, `Traverse`, OpenAPI and test assertions.
 - **`Result.Catch`/`CatchAsync`**: an exception as a result; a cancellation passes through, a timeout is the error.
 - **Text guards**: `AsText()` and `AsIdentifier()` trim, compose to NFC (`AsText`) and refuse invisible characters.
 - **Type constraints**: `[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]` (CMTK0010) and `[RequireParameterlessConstructor]` (CMTK0011, with a code fix).
