@@ -97,7 +97,7 @@ public sealed class NullDelegateTests
             [() => Patch.Value(1).Match(x => x, Null<Func<int>>(), () => 0), () => Patch.Null<int>().Match(x => x, Null<Func<int>>(), () => 0), () => Patch.Absent<int>().Match(x => x, Null<Func<int>>(), () => 0)],
         ["Patch<T>.Match(Func<T, TResult>, Func<TResult>, Func<TResult>): onAbsent"] =
             [() => Patch.Value(1).Match(x => x, () => 0, Null<Func<int>>()), () => Patch.Null<int>().Match(x => x, () => 0, Null<Func<int>>()), () => Patch.Absent<int>().Match(x => x, () => 0, Null<Func<int>>())],
-        ["Patch<T>.IfValue(Action<T>): action"]   = [() => { Patch.Value(1).IfValue(Null<Action<int>>()); return null; }, () => { Patch.Null<int>().IfValue(Null<Action<int>>()); return null; }, () => { Patch.Absent<int>().IfValue(Null<Action<int>>()); return null; }],
+        ["Patch<T>.Tap(Action<T>): action"]   = [() => { Patch.Value(1).Tap(Null<Action<int>>()); return null; }, () => { Patch.Null<int>().Tap(Null<Action<int>>()); return null; }, () => { Patch.Absent<int>().Tap(Null<Action<int>>()); return null; }],
         ["Patch.IfPresent(Patch<T>, Action<T>): action"] = [() => { Patch.Value("a").IfPresent(Null<Action<string?>>()); return null; }, () => { Patch.Null<string>().IfPresent(Null<Action<string?>>()); return null; }, () => { Patch.Absent<string>().IfPresent(Null<Action<string?>>()); return null; }],
         ["Patch<T>.Map(Func<T, TResult>): selector"]   = [() => Patch.Value(1).Map(Null<Func<int, int>>()), () => Patch.Null<int>().Map(Null<Func<int, int>>()), () => Patch.Absent<int>().Map(Null<Func<int, int>>())],
         ["Result.Traverse(Patch<T>, Func<T, Result<TResult, TError>>): selector"] =

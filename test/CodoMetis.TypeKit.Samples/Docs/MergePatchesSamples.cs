@@ -41,7 +41,7 @@ public static class ContactPatching
     {
         if (patch.Email.State == PatchState.Null) return ContactFault.EmailRequired;   // a required field refuses a clear
 
-        patch.Email.IfValue(email => contact.Email = email);
+        patch.Email.Tap(email => contact.Email = email);
         patch.Phone.IfPresent(phone => contact.Phone = phone);   // an optional one: null clears it
         patch.Floor.IfPresent(floor => contact.Floor = floor);   // a struct's clear arrives as int?, null, never as 0
         return Result.Success();

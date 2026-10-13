@@ -52,10 +52,11 @@ public enum PatchState
 /// serializer refuses with its own message naming the context.
 /// </para>
 /// <para>
-/// Applied without reflection: <c>patch.Name.IfValue(name =&gt; order.Name = name)</c> for a field a
-/// clear cannot reach, <c>patch.Nickname.IfPresent(nickname =&gt; order.Nickname = nickname)</c> for one
-/// it can, which receives a <c>T?</c>: null for a clear, over a struct as over a class. <c>ToString()</c>
-/// never prints the value.
+/// Applied without reflection: <c>patch.Name.Tap(name =&gt; order.Name = name)</c> for a field a
+/// clear cannot reach, as <see cref="Option{T}.Tap"/> runs on a value, and
+/// <c>patch.Nickname.IfPresent(nickname =&gt; order.Nickname = nickname)</c> for one it can, which
+/// receives a <c>T?</c>: null for a clear, over a struct as over a class. Both return the patch
+/// unchanged. <c>ToString()</c> never prints the value.
 /// </para>
 /// </remarks>
 /// <typeparam name="T">The type of the value.</typeparam>
@@ -113,12 +114,15 @@ public readonly record struct Patch<T>
 
     /// <summary>Runs <paramref name="action"/> with the value when the field carried one, for a target a clear cannot reach.</summary>
     /// <param name="action">What to do with the value.</param>
+    /// <returns>This patch, unchanged.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
-    public void IfValue(Action<T> action)
+    public Patch<T> Tap(Action<T> action)
     {
         ArgumentNullException.ThrowIfNull(action);
 
         if (_state == PatchState.Value) action(_value!);
+
+        return this;
     }
 
     /// <summary>
@@ -170,14 +174,15 @@ public static class Patch
     {
         /// <summary>Runs <paramref name="action"/> with the value, or with null when the field was null, for a target a clear can reach. An absent field runs nothing.</summary>
         /// <param name="action">What to do with the value or the clear.</param>
+        /// <returns>The patch, unchanged.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
-        public void IfPresent(Action<T?> action)
+        public Patch<T> IfPresent(Action<T?> action)
         {
             ArgumentNullException.ThrowIfNull(action);
 
-            if (patch.State == PatchState.Absent) return;
+            if (patch.State != PatchState.Absent) action(patch.TryGetValue(out var value) ? value : null);
 
-            action(patch.TryGetValue(out var value) ? value : null);
+            return patch;
         }
     }
 
@@ -191,14 +196,15 @@ public static class Patch
         /// uninitialized value object. An absent field runs nothing.
         /// </summary>
         /// <param name="action">What to do with the value or the clear.</param>
+        /// <returns>The patch, unchanged.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
-        public void IfPresent(Action<T?> action)
+        public Patch<T> IfPresent(Action<T?> action)
         {
             ArgumentNullException.ThrowIfNull(action);
 
-            if (patch.State == PatchState.Absent) return;
+            if (patch.State != PatchState.Absent) action(patch.TryGetValue(out var value) ? value : null);
 
-            action(patch.TryGetValue(out var value) ? value : null);
+            return patch;
         }
     }
 

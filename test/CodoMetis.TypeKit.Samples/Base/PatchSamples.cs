@@ -19,7 +19,7 @@ public static class Applying
     public static void Apply(Order order, OrderPatch patch)
     {
         // sample: CodoMetis.TypeKit/patch-apply
-        patch.Name.IfValue(name => order.Name = name);                 // a clear cannot reach a required field
+        patch.Name.Tap(name => order.Name = name);                       // a clear cannot reach a required field
         patch.Nickname.IfPresent(nickname => order.Nickname = nickname); // null clears an optional one
         order.Quantity = patch.Quantity.Match(
             quantity => quantity,

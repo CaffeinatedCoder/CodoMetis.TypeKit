@@ -400,7 +400,7 @@ var quantity = patch.Quantity;   // Value: 2
 analyzers leave it alone. Applying one needs no reflection:
 
 ```csharp
-patch.Name.IfValue(name => order.Name = name);                 // a clear cannot reach a required field
+patch.Name.Tap(name => order.Name = name);                       // a clear cannot reach a required field
 patch.Nickname.IfPresent(nickname => order.Nickname = nickname); // null clears an optional one
 order.Quantity = patch.Quantity.Match(
     quantity => quantity,

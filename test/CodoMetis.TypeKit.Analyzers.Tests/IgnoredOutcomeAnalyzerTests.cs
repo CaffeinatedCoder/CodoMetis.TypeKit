@@ -142,6 +142,27 @@ public sealed class IgnoredOutcomeAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
+    /// A patch is no outcome: its <c>Tap</c> and <c>IfPresent</c> return it, as <c>Option</c>'s <c>Tap</c>
+    /// returns the option, and a statement that drops it drops nothing anyone has to decide on.
+    /// </summary>
+    [Fact]
+    public Task A_patch_s_Tap_and_IfPresent_as_statements_are_silent() =>
+        Test(
+            """
+            public static class Caller
+            {
+                public static void Run(Patch<int> quantity, Patch<string> nickname, List<int> seen)
+                {
+                    quantity.Tap(seen.Add);
+                    quantity.IfPresent(value => seen.Add(value ?? 0));
+                    nickname.IfPresent(value => seen.Add(value?.Length ?? 0));
+                    Patch.Value(3).Tap(seen.Add);
+                }
+            }
+            """)
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
     /// <c>Tap</c>, <c>TapAsync</c>, <c>TapError</c> and <c>TapErrorAsync</c> return their receiver:
     /// dropping it loses nothing only when the receiver is still held.
     /// </summary>

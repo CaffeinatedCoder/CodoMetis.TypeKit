@@ -30,7 +30,7 @@ PatchState phone = patch.Phone.State;   // Null, a clear
 PatchState floor = patch.Floor.State;   // Value
 ```
 
-| In the document | `State` | `Match` calls | `TryGetValue` | `IfValue` runs | `IfPresent` runs | `ToOption()` |
+| In the document | `State` | `Match` calls | `TryGetValue` | `Tap` runs | `IfPresent` runs | `ToOption()` |
 |---|---|---|---|---|---|---|
 | not mentioned | `Absent` | `onAbsent` | false | no | no | `None` |
 | `null` | `Null` | `onNull` | false | no | with `null` | `None` |
@@ -62,7 +62,7 @@ public static class ContactPatching
     {
         if (patch.Email.State == PatchState.Null) return ContactFault.EmailRequired;   // a required field refuses a clear
 
-        patch.Email.IfValue(email => contact.Email = email);
+        patch.Email.Tap(email => contact.Email = email);
         patch.Phone.IfPresent(phone => contact.Phone = phone);   // an optional one: null clears it
         patch.Floor.IfPresent(floor => contact.Floor = floor);   // a struct's clear arrives as int?, null, never as 0
         return Result.Success();
@@ -81,11 +81,11 @@ int? floor = contact.Floor;                                  // 3
 Result<ContactFault> refused = contact.Apply(clearEmail);   // Error: EmailRequired
 ```
 
-`IfValue` runs only for a value, for a target a clear cannot reach; `IfPresent` runs for a value and
-for a clear; `Match` takes all three, for a rule that has to say what each means, and `ToOption()`
-is for a caller to whom a clear and an absence are the same. Refusing a clear of a required field,
-as `Apply` does, says so to the client; ignoring it with `IfValue` alone would accept the request and
-do less than it asked.
+`Tap` runs only for a value, for a target a clear cannot reach, as `Option`'s `Tap` does; `IfPresent`
+runs for a value and for a clear. Both return the patch unchanged. `Match` takes all three, for a rule
+that has to say what each means, and `ToOption()` is for a caller to whom a clear and an absence are
+the same. Refusing a clear of a required field, as `Apply` does, says so to the client; ignoring it
+with `Tap` alone would accept the request and do less than it asked.
 
 ## A value object inside a patch
 

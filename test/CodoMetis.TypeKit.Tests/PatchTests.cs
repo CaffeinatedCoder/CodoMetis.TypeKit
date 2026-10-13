@@ -33,7 +33,7 @@ public sealed class PatchTests
     }
 
     [Fact]
-    public void Match_TryGetValue_IfValue_and_IfPresent_follow_the_state()
+    public void Match_TryGetValue_Tap_and_IfPresent_follow_the_state()
     {
         var seen = new List<string>();
 
@@ -45,9 +45,9 @@ public sealed class PatchTests
         value.ShouldBe("Ada");
         Patch.Null<string>().TryGetValue(out _).ShouldBeFalse();
 
-        Patch.Value("Ada").IfValue(seen.Add);
-        Patch.Null<string>().IfValue(seen.Add);
-        Patch.Absent<string>().IfValue(seen.Add);
+        Patch.Value("Ada").Tap(seen.Add);
+        Patch.Null<string>().Tap(seen.Add);
+        Patch.Absent<string>().Tap(seen.Add);
         seen.ShouldBe(["Ada"]);
 
         seen.Clear();
@@ -55,6 +55,36 @@ public sealed class PatchTests
         Patch.Null<string>().IfPresent(v => seen.Add(v ?? "<null>"));
         Patch.Absent<string>().IfPresent(v => seen.Add(v ?? "<null>"));
         seen.ShouldBe(["Ada", "<null>"]);
+    }
+
+    /// <summary>
+    /// One name per concept (decision 18): a side effect on the value is <c>Tap</c>, as on <c>Option</c>
+    /// and <c>Result</c>, and returns the patch as theirs return the receiver. It was <c>IfValue</c>,
+    /// returning nothing, and <c>IfPresent</c>, the form a clear reaches, returned nothing beside it.
+    /// </summary>
+    [Fact]
+    public void The_side_effects_are_named_and_shaped_as_Option_s_Tap()
+    {
+        typeof(Patch<int>).GetMethods().Select(method => method.Name).ShouldNotContain("IfValue");
+        typeof(Patch<int>).GetMethod(nameof(Patch<int>.Tap))!.ReturnType.ShouldBe(typeof(Patch<int>));
+        typeof(Option<int>).GetMethod(nameof(Option<int>.Tap))!.ReturnType.ShouldBe(typeof(Option<int>));
+        typeof(Patch).GetMethods()
+                     .Where(method => method.Name == "IfPresent")
+                     .ShouldAllBe(method => method.ReturnType.IsGenericType && method.ReturnType.GetGenericTypeDefinition() == typeof(Patch<>));
+        typeof(Patch).GetMethods().Count(method => method.Name == "IfPresent").ShouldBe(2);
+    }
+
+    [Fact]
+    public void Tap_and_IfPresent_return_the_patch_unchanged()
+    {
+        foreach (var patch in new[] { Patch.Value("Ada"), Patch.Null<string>(), Patch.Absent<string>() })
+        {
+            patch.Tap(_ => { }).ShouldBe(patch);
+            patch.IfPresent(_ => { }).ShouldBe(patch);
+        }
+
+        Patch.Value(3).IfPresent(_ => { }).ShouldBe(Patch.Value(3));
+        Patch.Null<int>().IfPresent(_ => { }).ShouldBe(Patch.Null<int>());
     }
 
     /// <summary>
