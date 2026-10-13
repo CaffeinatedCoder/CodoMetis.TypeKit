@@ -102,10 +102,12 @@ compiled and its stated outputs are tested, as the READMEs' are.
 | Page | Covers |
 |---|---|
 | [Value objects](docs/value-objects.md) | Declaring one, struct or class, identifiers, validated text and numbers, faults, which factory to call, your own members, generic code over value objects |
+| [Closed sets](docs/closed-sets.md) | Smart enums: declaring one, data on its members, `Match`, JSON and dictionary keys, EF Core columns, configuration, logging, what the generators refuse, when an `enum` is still right |
 | [Option](docs/option.md) | Absence as a type: creating, matching, combining, converting at the boundary, and the complete public surface |
 | [Result](docs/result.md) | Outcomes as a type: faults, pipelines, async chains, collecting results, an exception as an outcome, errors across layers, and the complete public surface |
 | [Written text](docs/text.md) | `AsText()` and `AsIdentifier()`: what each cleans and refuses, a value object over either, a required and an optional field |
 | [Type constraints](docs/type-constraints.md) | `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` on a type parameter, `[RequireParameterlessConstructor]` and its code fix |
+| [Merge patches](docs/merge-patches.md) | `Patch<T>`: absent, null or a value, applying a patch, value objects inside one, writing one, the OpenAPI document, source-generated contexts |
 | [JSON](docs/json.md) | What a value object writes and reads, refusals, stored documents, `Option` and `Result` at the wire, a converter of your own, source-generated contexts |
 | [EF Core](docs/ef-core.md) | Columns, keys, conventions, queries and the SQL they become, seed data, reading back without validation, SQLite in tests |
 | [ASP.NET Core](docs/aspnet-core.md) | Binding in minimal APIs and MVC, what a refused value answers, a `Result` as a response, the OpenAPI document, problem details |
@@ -113,12 +115,8 @@ compiled and its stated outputs are tested, as the READMEs' are.
 | [Logging and secrets](docs/logging-and-secrets.md) | A value that must not be printed, what still carries it, Serilog, Microsoft.Extensions.Logging, refusals that never quote the input |
 | [Testing](docs/testing.md) | Assertions for `Option` and `Result`, table-driven tests of `Create`, EF Core on SQLite, endpoints on the test server |
 
-`Patch<T>` and the closed-set (smart enum) family have landed in 2.0.0 and are documented in the
-[base package's README](src/CodoMetis.TypeKit/README.md#merge-patches) and
-[the generators' README](src/CodoMetis.TypeKit.Generators/README.md#closed-sets) until their pages
-are written. Still to come in 2.0.0, each page written when its feature lands
-([the plan](design/plan.md#2-phases), phase 13): fault responses a client can act on, and public
-aspects.
+Still to come in 2.0.0, each page written when its feature lands ([the plan](design/plan.md#2-phases),
+phase 13): fault responses a client can act on, and public aspects.
 
 ## What it holds to
 

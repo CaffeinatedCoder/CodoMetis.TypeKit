@@ -94,8 +94,8 @@ properties and not an `Amount` that wraps one. Configure the value object instea
 `configurationBuilder.Properties<Amount>().HavePrecision(18, 2)`.
 
 **Closed sets.** A closed set (`IClosedSet<TSelf>`) is a text column of the member's name, read back
-as the member itself, in a table, a primitive collection (a JSON array of names) and a JSON column
-alike, with nothing registered per set. A name the set no longer has throws when it is read, rather
+as the member itself, in a table, a primitive collection of names (`text[]` on PostgreSQL, a JSON
+array elsewhere) and a JSON column alike, with nothing registered per set. A name the set no longer has throws when it is read, rather
 than reading as null, and an instance that is no member throws when it is written.
 `ClosedSetConverter<TSet>` names the converter for an explicit configuration.
 

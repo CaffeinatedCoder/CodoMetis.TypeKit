@@ -1478,8 +1478,8 @@ Still open:
     `result.md`) is checked against the types by reflection, so a member added without a row fails.
     The plan and the design notes moved to `design/`, so that `docs/` holds only what a consumer
     reads and nothing there is exempt from compilation; `design/` is a solution folder. Eleven pages
-    ship with 2.0.0; `Patch<T>`, the closed sets, the fault responses and public aspects get theirs
-    as they land.
+    came first; `merge-patches.md` and `closed-sets.md` joined them once the docs branch merged into
+    2.0.0 (2026-10-13), and the fault responses and public aspects get theirs as they land.
 
 46. **A timeout caught by `Result.Catch` is the error** (2026-10-13, phase 13). Every overload let
     an `OperationCanceledException` through, and `HttpClient` throws one over a `TimeoutException`
