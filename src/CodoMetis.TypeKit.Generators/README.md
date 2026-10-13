@@ -212,8 +212,9 @@ public sealed partial class Tier : IClosedSet<Tier>
 
 The generators add `Name` from the field's name, `QualifiedName` (`OrderStatus.Open`), `All` in
 declaration order and read-only, `Match` with one required delegate per member named after it, `TryParse` and
-`Parse` by name, `ToString()`, a JSON converter that writes the name and reads the member itself
-back, and a private parameterless constructor where the type declares none:
+`Parse` by name, each ordinal or ignoring case when asked, `ToString()`, a JSON converter that
+writes the name and reads the member itself back, and a private parameterless constructor where the
+type declares none:
 
 ```csharp
 var label = status.Match(open: () => "Open", shipped: () => "On its way", cancelled: () => "Cancelled");   // every member, or it does not compile
@@ -228,6 +229,9 @@ position would follow the declaration order and swap branches when two members a
 analyzer requires every argument named (CMTK0012), and its code fix names them. `Match` checks every
 delegate for null before it picks one. `Parse` and the JSON converter refuse an unknown name with an
 exception naming the set, never the input, and a set is a dictionary key in JSON by its name too.
+`Parse(name, ignoreCase: true)` and `TryParse(name, ignoreCase: true, out member)` accept any casing,
+for a header or a query string as a client typed it; JSON, the type converter, binding and
+`IParsable` stay ordinal, since what is stored or sent is the name as it is.
 `IParsable<TSelf>` is implemented explicitly, for generic code that parses through `T.Parse`, and a
 type converter reads and writes the name, so the configuration binder, MVC and anything else that
 reads a string through `TypeDescriptor` bind a set. The binder's source generator reads no type
@@ -240,7 +244,8 @@ and the ASP.NET Core satellite answers it by kind.
 
 Each member is initialized with `new` where it is declared (CMTK1019), and the constructors are
 private (CMTK1016); a record is refused (CMTK1020). A member may not take the name of a generated
-member, nor share its `Match` parameter with another (`Open` and `open`), CMTK1021. A `ToString()`
+member, nor differ from another's only in case (`Open` and `open`), which `Match`'s parameters and
+`TryParse(name, ignoreCase: true)` cannot tell apart, CMTK1021. A `ToString()`
 written by hand is kept, and the name is still what JSON, parsing and the column use; so is an overload of a generated method with
 another signature, such as `Parse(int rank)`. Any other generated member written by hand is CMTK1011. An instance the set's
 own code creates beside its members has no name, so reading its name throws rather than write a
@@ -348,7 +353,7 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1018 | A closed set that is generic or nested in a generic type. |
 | CMTK1019 | A closed set's member not initialized with `new` where it is declared, and with nothing else: `= Open` would give one instance two names, and a member set later, by a call, or by an expression that only starts with `new`, may be another member or null. |
 | CMTK1020 | A closed set declared as a record: `with` copies a member into an instance that is none, and a record compares by value where members are singletons. |
-| CMTK1021 | A closed set's member named as a member the generators introduce (`Name`, `QualifiedName`, `All`, `Match`, `Parse`, `TryParse`, `ToString`, the JSON or type converter), or whose `Match` parameter, its name with the first letter lower-cased, another member's already is. |
+| CMTK1021 | A closed set's member named as a member the generators introduce (`Name`, `QualifiedName`, `All`, `Match`, `Parse`, `TryParse`, `ToString`, the JSON or type converter), or whose name differs from another member's only in case: one name to `Match`'s parameters, which lower-case the first letter, and to `TryParse(name, ignoreCase: true)`. |
 
 The analyzers that come with the base package add CMTK0001 to CMTK0012; see
 [CodoMetis.TypeKit.Analyzers](https://www.nuget.org/packages/CodoMetis.TypeKit.Analyzers).

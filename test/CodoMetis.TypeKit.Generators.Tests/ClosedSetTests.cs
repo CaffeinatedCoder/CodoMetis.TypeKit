@@ -90,6 +90,39 @@ public sealed class ClosedSetTests
         refusal.Message.ShouldContain("#a-closed-set-has-no-member-of-that-name");
     }
 
+    /// <summary>
+    /// A header or a query string a client typed: the ordinal parse stays the default, and the
+    /// ignore-case one is opted into at the call. Unknown names are refused as the ordinal one refuses them.
+    /// </summary>
+    [Fact]
+    public void TryParse_and_Parse_ignore_case_when_asked()
+    {
+        ProbeStatus.TryParse("shipped", ignoreCase: true, out var shipped).ShouldBeTrue();
+        ReferenceEquals(shipped, ProbeStatus.Shipped).ShouldBeTrue();
+        ProbeStatus.TryParse("SHIPPED", ignoreCase: false, out _).ShouldBeFalse("ordinal when not asked");
+        ProbeStatus.TryParse("shipped", ignoreCase: true, out _).ShouldBeTrue();
+        ProbeStatus.TryParse("Shipped", ignoreCase: false, out _).ShouldBeTrue();
+        ProbeStatus.TryParse("drone", ignoreCase: true, out _).ShouldBeFalse();
+        ProbeStatus.TryParse(null, ignoreCase: true, out _).ShouldBeFalse();
+
+        ReferenceEquals(ProbeStatus.Parse("OPEN", ignoreCase: true), ProbeStatus.Open).ShouldBeTrue();
+        ReferenceEquals(ProbeStatus.Parse("Open", ignoreCase: false), ProbeStatus.Open).ShouldBeTrue();
+        Should.Throw<FormatException>(() => ProbeStatus.Parse("OPEN", ignoreCase: false));
+
+        var refusal = Should.Throw<FormatException>(() => ProbeStatus.Parse("nope", ignoreCase: true));
+        refusal.Message.ShouldContain("ProbeStatus");
+        refusal.Message.ShouldNotContain("nope");
+    }
+
+    /// <summary>What is stored or sent is the name as it is: JSON, the type converter and <c>IParsable</c> stay ordinal.</summary>
+    [Fact]
+    public void JSON_the_type_converter_and_IParsable_stay_ordinal()
+    {
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<ProbeStatus>("\"shipped\""));
+        Should.Throw<FormatException>(() => System.ComponentModel.TypeDescriptor.GetConverter(typeof(ProbeStatus)).ConvertFromInvariantString("shipped"));
+        TryParseAs<ProbeStatus>("shipped", out _).ShouldBeFalse();
+    }
+
     [Fact]
     public void JSON_is_the_name_and_reads_the_member_itself_back()
     {
@@ -271,7 +304,8 @@ public sealed class ClosedSetTests
         refusal.Message.ShouldNotContain("Nope");
         Should.Throw<ArgumentNullException>(() => ParseAs<ProbeStatus>(null!));
 
-        typeof(ProbeStatus).GetMethods().Where(method => method.Name == "Parse").ShouldHaveSingleItem("the provider overload is explicit");
+        typeof(ProbeStatus).GetMethods().Where(method => method.Name == "Parse").Select(method => method.GetParameters().Length)
+                           .ShouldBe([1, 2], "the set's own Parse(name) and Parse(name, ignoreCase); the provider overload is explicit");
     }
 
     /// <summary>

@@ -126,18 +126,25 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1021", "SetWithMemberNamedToString.ToString")]
     [InlineData("CMTK1021", "SetWithMemberNamedAll.All")]
     [InlineData("CMTK1021", "SetWithCasedMembers.open")]
+    [InlineData("CMTK1021", "SetWithCaseVariants.EXPRESS")]
+    [InlineData("CMTK1011", "SetWithIgnoreCaseTryParse")]
+    [InlineData("CMTK1011", "SetWithIgnoreCaseParse")]
     public void A_declaration_that_cannot_be_generated_is_an_error(string id, string type) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains($"'{type}"), $"{id} on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
 
     /// <summary>
     /// A member named as a generated member failed the aspect (LAMA0506 beside Match, Parse and
-    /// TryParse, LAMA0611 beside ToString), or was CMTK1011 telling the author to remove it; two members
-    /// whose names differ in their first letter's case gave Match one parameter twice (LAMA0611, CS0100).
+    /// TryParse, LAMA0611 beside ToString), or was CMTK1011 telling the author to remove it. Two members
+    /// whose names differ only in case are one name to <c>TryParse(name, ignoreCase: true)</c>; where
+    /// the difference is the first letter's, they also gave Match one parameter twice (LAMA0611, CS0100),
+    /// and where it is elsewhere (<c>Express</c>, <c>EXPRESS</c>) the set was generated and the
+    /// ignore-case parse found the first declared.
     /// </summary>
     [Theory]
     [InlineData("SetWithMemberNamedParse.Parse", "has the name of a member the generators introduce")]
     [InlineData("SetWithMemberNamedAll.All", "has the name of a member the generators introduce")]
-    [InlineData("SetWithCasedMembers.open", "gives Match the parameter 'open', as 'SetWithCasedMembers.Open' does")]
+    [InlineData("SetWithCasedMembers.open", "differs from 'SetWithCasedMembers.Open' only in case, which Match's parameters and TryParse(name, ignoreCase: true) cannot tell apart")]
+    [InlineData("SetWithCaseVariants.EXPRESS", "differs from 'SetWithCaseVariants.Express' only in case, which Match's parameters and TryParse(name, ignoreCase: true) cannot tell apart")]
     public void A_member_name_the_generators_take_is_refused_with_the_reason(string member, string reason) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1021" && error.Message.StartsWith($"'{member}' {reason}, so ") && error.Message.Contains("rename the member"), consumer.Output);
 
@@ -491,6 +498,12 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public sealed partial class SetWithMemberNamedAll : IClosedSet<SetWithMemberNamedAll> { public static readonly SetWithMemberNamedAll All = new(); }
 
             public sealed partial class SetWithCasedMembers : IClosedSet<SetWithCasedMembers> { public static readonly SetWithCasedMembers Open = new(); public static readonly SetWithCasedMembers open = new(); }
+
+            public sealed partial class SetWithCaseVariants : IClosedSet<SetWithCaseVariants> { public static readonly SetWithCaseVariants Express = new(); public static readonly SetWithCaseVariants EXPRESS = new(); }
+
+            public sealed partial class SetWithIgnoreCaseTryParse : IClosedSet<SetWithIgnoreCaseTryParse> { public static readonly SetWithIgnoreCaseTryParse A = new(); public static bool TryParse(string? name, bool ignoreCase, out SetWithIgnoreCaseTryParse? member) { member = A; return true; } }
+
+            public sealed partial class SetWithIgnoreCaseParse : IClosedSet<SetWithIgnoreCaseParse> { public static readonly SetWithIgnoreCaseParse A = new(); public static SetWithIgnoreCaseParse Parse(string name, bool ignoreCase) => A; }
 
             // Generated; the calls below are CMTK0012's, in the project that declares the set.
             public sealed partial class SetToMatch : IClosedSet<SetToMatch> { public static readonly SetToMatch New = new(); public static readonly SetToMatch Open = new(); }

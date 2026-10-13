@@ -56,7 +56,7 @@ public sealed class CheckoutOptions
 
 public static class Usage
 {
-    public static (string Name, string Qualified, string All, bool Same, bool Known) Members()
+    public static (string Name, string Qualified, string All, bool Same, bool Known, bool Typed) Members()
     {
         // sample: closed-sets/members
         string name = Shipping.Express.Name;                               // "Express"
@@ -64,9 +64,10 @@ public static class Usage
         string all = string.Join(" ", Shipping.All.Select(s => s.Name));   // "Standard Express Pickup"
         bool same = Shipping.Parse("Express") == Shipping.Express;         // true, members are singletons
         bool known = Shipping.TryParse("Drone", out _);                    // false, names compare ordinally
+        bool typed = Shipping.TryParse("express", ignoreCase: true, out _); // true, when asked: a header or a query string as a client typed it
         // end sample
 
-        return (name, qualified, all, same, known);
+        return (name, qualified, all, same, known, typed);
     }
 
     /// <summary>The block's last line, which throws: the same region, apart, so the lines above can run.</summary>
@@ -132,13 +133,14 @@ public sealed class ClosedSetsTests
     [Fact]
     public void A_set_answers_what_the_comments_say()
     {
-        var (name, qualified, all, same, known) = Usage.Members();
+        var (name, qualified, all, same, known, typed) = Usage.Members();
 
         name.ShouldBeShownIn(Page, Quoted, "Shipping.Express.Name");
         qualified.ShouldBeShownIn(Page, Quoted, "Shipping.Express.QualifiedName");
         all.ShouldBeShownIn(Page, Quoted, "string.Join(\" \", Shipping.All.Select(s => s.Name))");
         same.ShouldBeShownIn(Page, Lower, "Shipping.Parse(\"Express\") == Shipping.Express");
         known.ShouldBeShownIn(Page, Lower, "Shipping.TryParse(\"Drone\", out _)");
+        typed.ShouldBeShownIn(Page, Lower, "Shipping.TryParse(\"express\", ignoreCase: true, out _)");
         SampleOutputs.ShouldRefuseAsShownIn(() => Shipping.Parse("Drone"), Page, input: "Drone");
         Should.Throw<FormatException>(Usage.ParseRefused);
 

@@ -77,6 +77,29 @@ internal sealed partial class ClosedSetAspect
         return false;
     }
 
+    /// <summary>
+    /// The member of that name, compared ordinally, or ignoring case when asked: a header or a query
+    /// string typed by a client. Two members whose names differ only in case are refused where the
+    /// set is declared (CMTK1021), so there is one member to find.
+    /// </summary>
+    [Template]
+    public static bool TryParseIgnoreCaseTemplate([NotNullWhen(true)] string? name, bool ignoreCase, [NotNullWhen(true)] out dynamic? member)
+    {
+        var args = (ClosedSetArguments)meta.Tags.Source!;
+        var comparison = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        foreach (var candidate in args.Members)
+        {
+            if (string.Equals(name, candidate.Name, comparison))
+            {
+                member = candidate.Value!;
+                return true;
+            }
+        }
+
+        member = null;
+        return false;
+    }
+
     /// <summary>A <see cref="FormatException"/> naming the set, never the input.</summary>
     [Template]
     public static dynamic? ParseTemplate(string? name)
@@ -85,6 +108,20 @@ internal sealed partial class ClosedSetAspect
         foreach (var candidate in args.Members)
         {
             if (name == candidate.Name) return candidate.Value;
+        }
+
+        throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMember(args.Set.Name);
+    }
+
+    /// <summary>The member of that name, compared ordinally or ignoring case when asked; a <see cref="FormatException"/> naming the set, never the input.</summary>
+    [Template]
+    public static dynamic? ParseIgnoreCaseTemplate(string? name, bool ignoreCase)
+    {
+        var args = (ClosedSetArguments)meta.Tags.Source!;
+        var comparison = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        foreach (var candidate in args.Members)
+        {
+            if (string.Equals(name, candidate.Name, comparison)) return candidate.Value;
         }
 
         throw global::CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMember(args.Set.Name);

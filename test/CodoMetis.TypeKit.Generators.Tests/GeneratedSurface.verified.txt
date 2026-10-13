@@ -619,6 +619,8 @@ ProbeKeyword
   nested ProbeKeywordTypeConverter : TypeConverter
   static All : IReadOnlyList<ProbeKeyword>
   static Parse(String) : ProbeKeyword
+  static Parse(String, Boolean) : ProbeKeyword
+  static TryParse(String, Boolean, out ProbeKeyword) : Boolean
   static TryParse(String, out ProbeKeyword) : Boolean
 ProbeKindlessFault
   Kind : FaultKind
@@ -638,6 +640,8 @@ ProbeKindlessFault
   nested ProbeKindlessFaultTypeConverter : TypeConverter
   static All : IReadOnlyList<ProbeKindlessFault>
   static Parse(String) : ProbeKindlessFault
+  static Parse(String, Boolean) : ProbeKindlessFault
+  static TryParse(String, Boolean, out ProbeKindlessFault) : Boolean
   static TryParse(String, out ProbeKindlessFault) : Boolean
 ProbeLabel
   <Clone>$() : ProbeLabel
@@ -693,6 +697,8 @@ ProbeLabelled
   nested ProbeLabelledTypeConverter : TypeConverter
   static All : IReadOnlyList<ProbeLabelled>
   static Parse(String) : ProbeLabelled
+  static Parse(String, Boolean) : ProbeLabelled
+  static TryParse(String, Boolean, out ProbeLabelled) : Boolean
   static TryParse(String, out ProbeLabelled) : Boolean
 ProbeLevel
   Match(Func<TResult>, Func<TResult>) : TResult
@@ -709,6 +715,8 @@ ProbeLevel
   nested ProbeLevelTypeConverter : TypeConverter
   static All : IReadOnlyList<ProbeLevel>
   static Parse(String) : ProbeLevel
+  static Parse(String, Boolean) : ProbeLevel
+  static TryParse(String, Boolean, out ProbeLevel) : Boolean
   static TryParse(String, out ProbeLevel) : Boolean
   static Unlisted() : ProbeLevel
 ProbeLocalDate
@@ -855,6 +863,8 @@ ProbeOrderFault
   nested ProbeOrderFaultTypeConverter : TypeConverter
   static All : IReadOnlyList<ProbeOrderFault>
   static Parse(String) : ProbeOrderFault
+  static Parse(String, Boolean) : ProbeOrderFault
+  static TryParse(String, Boolean, out ProbeOrderFault) : Boolean
   static TryParse(String, out ProbeOrderFault) : Boolean
 ProbeOverride
   CompareTo(Object) : Int32
@@ -1013,6 +1023,8 @@ ProbePriority
   static All : IReadOnlyList<ProbePriority>
   static Parse(Int32) : ProbePriority
   static Parse(String) : ProbePriority
+  static Parse(String, Boolean) : ProbePriority
+  static TryParse(String, Boolean, out ProbePriority) : Boolean
   static TryParse(String, out ProbePriority) : Boolean
 ProbeRatio
   CompareTo(Object) : Int32
@@ -1176,6 +1188,8 @@ ProbeStatus
   nested ProbeStatusTypeConverter : TypeConverter
   static All : IReadOnlyList<ProbeStatus>
   static Parse(String) : ProbeStatus
+  static Parse(String, Boolean) : ProbeStatus
+  static TryParse(String, Boolean, out ProbeStatus) : Boolean
   static TryParse(String, out ProbeStatus) : Boolean
 ProbeTier
   Match(Func<TResult>, Func<TResult>) : TResult
@@ -1194,6 +1208,8 @@ ProbeTier
   nested ProbeTierTypeConverter : TypeConverter
   static All : IReadOnlyList<ProbeTier>
   static Parse(String) : ProbeTier
+  static Parse(String, Boolean) : ProbeTier
+  static TryParse(String, Boolean, out ProbeTier) : Boolean
   static TryParse(String, out ProbeTier) : Boolean
 ProbeTime
   CompareTo(Object) : Int32

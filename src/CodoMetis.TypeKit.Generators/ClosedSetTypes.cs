@@ -153,13 +153,14 @@ internal static class ClosedSetTypes
     public static IReadOnlyList<string> GeneratedMembersDeclaredByHand(INamedType set, IReadOnlyList<IField> members)
     {
         var text = TypeFactory.GetType(SpecialType.String);
+        var boolean = TypeFactory.GetType(SpecialType.Boolean);
         var memberNames = new HashSet<string>(members.Select(member => member.ToDisplayString()));
 
         return
         [
             .. ValueObjectDeclaration.MembersNamed(set, methods: false, [.. GeneratedNames(set)]).Where(declared => !memberNames.Contains(declared)),
-            .. set.Methods.Where(method => IsOwn(method) && method.Name == "Parse" && SameParameters(method, text)).Select(ValueObjectDeclaration.Describe),
-            .. set.Methods.Where(method => IsOwn(method) && method.Name == "TryParse" && SameParameters(method, text, set)).Select(ValueObjectDeclaration.Describe),
+            .. set.Methods.Where(method => IsOwn(method) && method.Name == "Parse" && (SameParameters(method, text) || SameParameters(method, text, boolean))).Select(ValueObjectDeclaration.Describe),
+            .. set.Methods.Where(method => IsOwn(method) && method.Name == "TryParse" && (SameParameters(method, text, set) || SameParameters(method, text, boolean, set))).Select(ValueObjectDeclaration.Describe),
             .. set.Methods.Where(method => IsOwn(method) && IsGeneratedMatch(method, members.Count)).Select(ValueObjectDeclaration.Describe),
             .. set.Methods.Where(method => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && method.ExplicitInterfaceImplementations.Any(OfClosedSet)).Select(ValueObjectDeclaration.Describe),
             .. set.Properties.Where(property => property is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && property.ExplicitInterfaceImplementations.Any(OfClosedSet)).Select(ValueObjectDeclaration.Describe),

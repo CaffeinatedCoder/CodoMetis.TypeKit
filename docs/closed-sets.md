@@ -38,12 +38,17 @@ string qualified = Shipping.Express.QualifiedName;                 // "Shipping.
 string all = string.Join(" ", Shipping.All.Select(s => s.Name));   // "Standard Express Pickup"
 bool same = Shipping.Parse("Express") == Shipping.Express;         // true, members are singletons
 bool known = Shipping.TryParse("Drone", out _);                    // false, names compare ordinally
+bool typed = Shipping.TryParse("express", ignoreCase: true, out _); // true, when asked: a header or a query string as a client typed it
 Shipping.Parse("Drone");                                           // FormatException naming Shipping and member, never the name
 ```
 
 `All` holds the members in declaration order, read-only: no cast to `IList<T>` or an array writes it. `QualifiedName` keeps two sets that share a member
 name apart in one log or one client. `ToString()` is the name, unless the set writes its own, which
-is kept, for a label, while the name stays what JSON, parsing and the column use.
+is kept, for a label, while the name stays what JSON, parsing and the column use. `Parse` and
+`TryParse` compare names ordinally; with `ignoreCase: true` they accept any casing, for what a client
+typed, while JSON, the column, binding and `IParsable` stay ordinal, since what is stored or sent is
+the name as it is. Two members whose names differ only in case are refused (CMTK1021), so there is one
+member to find.
 
 ## Deciding by member
 
@@ -164,7 +169,7 @@ A declaration they cannot complete fails the build, naming it; the generators'
 | is generic, or nested in a generic type | CMTK1018 |
 | has a member not created with `new` where it is declared: `Legacy = Open` would give one instance two names | CMTK1019 |
 | is a record: `with` would copy a member into an instance that is none | CMTK1020 |
-| has a member named as a generated member, or two whose `Match` parameters coincide (`Open`, `open`) | CMTK1021 |
+| has a member named as a generated member, or two whose names differ only in case (`Open`, `open`), one name to `Match`'s parameters and to `TryParse(name, ignoreCase: true)` | CMTK1021 |
 | writes a generated member by hand, `ToString()` apart | CMTK1011 |
 | is compiled without CodoMetis.TypeKit.Generators | CMTK0002 |
 

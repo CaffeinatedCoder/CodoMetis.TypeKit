@@ -20,8 +20,8 @@ internal sealed class ClosedSetArguments
 }
 
 /// <summary>
-/// Generates a closed set: <c>Name</c>, <c>QualifiedName</c>, <c>All</c>, <c>Match</c>, <c>TryParse</c>,
-/// <c>Parse</c>, <c>IParsable&lt;TSelf&gt;</c> explicitly, <c>ToString()</c> where none is written by
+/// Generates a closed set: <c>Name</c>, <c>QualifiedName</c>, <c>All</c>, <c>Match</c>, <c>TryParse</c>
+/// and <c>Parse</c>, each ordinal and each with an <c>ignoreCase</c> overload, <c>IParsable&lt;TSelf&gt;</c> explicitly, <c>ToString()</c> where none is written by
 /// hand, the JSON converter, the type converter, the discovery attribute, and a private constructor
 /// where the type declares none. Applied by <see cref="ValueObjectFabric"/>.
 /// </summary>
@@ -60,15 +60,16 @@ internal sealed partial class ClosedSetAspect : TypeAspect
             problems.Add(ClosedSetMemberNotAField.WithArguments((target, property.Name, "a static property")));
 
         // A member named as a generated member failed the aspect (LAMA0506 beside Match, Parse and
-        // TryParse, LAMA0611 beside ToString), and two members whose names differ only in their first
-        // letter's case gave Match one parameter name twice (LAMA0611, CS0100).
+        // TryParse, LAMA0611 beside ToString). Two members whose names differ only in case are one
+        // name to TryParse(name, ignoreCase: true), and where the difference is the first letter's
+        // they gave Match one parameter name twice (LAMA0611, CS0100).
         var generatedNames = ClosedSetTypes.GeneratedNames(target);
         foreach (var member in members.Where(member => generatedNames.Contains(member.Name)))
             problems.Add(ClosedSetMemberNameTaken.WithArguments((target, member.Name, "has the name of a member the generators introduce")));
-        foreach (var shared in members.GroupBy(ClosedSetTypes.ParameterName).Where(group => group.Count() > 1))
+        foreach (var shared in members.GroupBy(member => member.Name, StringComparer.OrdinalIgnoreCase).Where(group => group.Count() > 1))
         {
             foreach (var member in shared.Skip(1))
-                problems.Add(ClosedSetMemberNameTaken.WithArguments((target, member.Name, $"gives Match the parameter '{shared.Key}', as '{target.Name}.{shared.First().Name}' does")));
+                problems.Add(ClosedSetMemberNameTaken.WithArguments((target, member.Name, $"differs from '{target.Name}.{shared.First().Name}' only in case, which Match's parameters and TryParse(name, ignoreCase: true) cannot tell apart")));
         }
 
         // A hand-written member the generators introduce failed the aspect with a Metalama error that
@@ -140,6 +141,23 @@ internal sealed partial class ClosedSetAspect : TypeAspect
             m.AddAttribute(CodeAnnotations.CompilerGenerated);
         });
         builder.IntroduceMethod(nameof(ParseTemplate), IntroductionScope.Static, OverrideStrategy.Fail, m =>
+        {
+            m.Name = "Parse";
+            m.Accessibility = Accessibility.Public;
+            m.ReturnType = target;
+            m.AddAttribute(CodeAnnotations.CompilerGenerated);
+        });
+
+        // The same two with ignoreCase, opted into at the call: JSON, the column, binding and
+        // IParsable stay ordinal, since what is stored or sent is the name as it is.
+        builder.IntroduceMethod(nameof(TryParseIgnoreCaseTemplate), IntroductionScope.Static, OverrideStrategy.Fail, m =>
+        {
+            m.Name = "TryParse";
+            m.Accessibility = Accessibility.Public;
+            m.Parameters[2].Type = target.ToNullable();
+            m.AddAttribute(CodeAnnotations.CompilerGenerated);
+        });
+        builder.IntroduceMethod(nameof(ParseIgnoreCaseTemplate), IntroductionScope.Static, OverrideStrategy.Fail, m =>
         {
             m.Name = "Parse";
             m.Accessibility = Accessibility.Public;
