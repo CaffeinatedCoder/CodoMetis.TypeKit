@@ -603,7 +603,8 @@ Each phase ends green, and its guards have been proven by seeding the defect
        `FirstOrNone`/`FirstOrError` on a query and EF's `FirstOrNoneAsync` ✅ (decision 47); a closed
        set's `[TypeConverter]` and `IParsable` ✅ (explicit, since `Parse(string)` is its surface; the
        reflection binder now binds a set; the binder's source generator reads no type converter,
-       dotnet/runtime#83599); Serilog for closed sets; continuations of a
+       dotnet/runtime#83599); Serilog for closed sets ✅ (measured first: `{@Tier}` logged
+       `ProbeTier { Rank: 2, Perk: "Priority support.", … }`); continuations of a
        `Task<Option<T>>`; `Transpose`, `SingleOrNone` and `ElementAtOrNone`.
     8. **The fault responses**, after [spikes/FaultResponses](../spikes/FaultResponses/README.md),
        last, since they read a smart enum's kind.

@@ -70,6 +70,38 @@ public sealed class DestructuringTests
         Render("{@Plain}", new Plain("Ann", 42)).ShouldBe("Plain { Name: \"Ann\", Age: 42 }");
     }
 
+    public sealed record Order(ProbeStatus Status, ProbeTier Tier);
+
+    /// <summary>
+    /// A closed set is logged as what it prints, its name, as Microsoft.Extensions.Logging logs it.
+    /// Destructured by its properties, it was <c>{ Rank: 2, Perk: "…", Name: …, QualifiedName: … }</c>:
+    /// its constant data reached the log through a path the set never chose.
+    /// </summary>
+    [Fact]
+    public void A_closed_set_is_logged_as_its_name_when_destructured()
+    {
+        Render("{@Tier}", ProbeTier.Premium).ShouldBe("\"Premium\"");
+        Render("{@Order}", new Order(ProbeStatus.Shipped, ProbeTier.Basic)).ShouldBe("Order { Status: \"Shipped\", Tier: \"Basic\" }");
+        Render("{@List}", new List<ProbeStatus> { ProbeStatus.Open, ProbeStatus.Cancelled }).ShouldBe("[\"Open\", \"Cancelled\"]");
+    }
+
+    /// <summary>A hand-written <c>ToString()</c> is the set's seam, and what it prints is what is logged.</summary>
+    [Fact]
+    public void A_closed_set_with_its_own_ToString_is_logged_as_what_it_prints() =>
+        Render("{@Level}", ProbeLabelled.High).ShouldBe("\"high priority\"");
+
+    /// <summary>
+    /// An instance that is no member has no name, and its <c>ToString()</c> throws. Serilog catches it
+    /// and says so in the event: the log shows the defect rather than a null, and the call still logs.
+    /// </summary>
+    [Fact]
+    public void An_instance_that_is_no_member_is_logged_as_the_failure_to_capture_it() =>
+        Render("{@Level}", ProbeLevel.Unlisted()).ShouldBe("\"Capturing the property value threw an exception: InvalidOperationException\"");
+
+    [Fact]
+    public void Without_it_a_destructured_closed_set_shows_its_data() =>
+        Render(configure: null, "{@Tier}", ProbeTier.Premium).ShouldContain("Priority support.");
+
     private static string Render(string template, object? value) =>
         Render(configure: destructure => destructure.WithTypeKit(), template, value);
 

@@ -96,6 +96,9 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   name, so the configuration binder binds a set where it bound null without a word, and generic
   code parses one through `T.Parse`. A hand-written `IParsable<TSelf>`, `[JsonConverter]` or
   `[TypeConverter]` is CMTK1011, where it failed inside the generated code.
+- **`CodoMetis.TypeKit.Serilog`**: `Destructure.WithTypeKit()` logs a closed set as what it prints,
+  its name or its own `ToString()`, where Serilog destructured it by its properties and logged its
+  constant data, `{ Rank: 2, Perk: "…", Name: "Premium", QualifiedName: … }`.
 
 ### Changed
 
