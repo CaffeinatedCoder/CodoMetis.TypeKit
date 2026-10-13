@@ -21,11 +21,24 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// host's <see cref="OpenApiOptions.CreateSchemaReferenceId"/> names, and referred to (finding 6). A
 /// response the operation already has is kept, which also makes a second <c>AddTypeKit()</c> a no-op.
 /// A response's description is the status's reason phrase, followed by the problem types of the
-/// members answered with it where the mapping gives any; <c>fault</c> stays a string on the shared
-/// problem schema, since an enum of every fault type would change every operation when one is added.
+/// members answered with it where the mapping gives any. The problem schema those responses refer to
+/// gains an optional <c>fault</c> string, the member a client of a fault response matches on: on the
+/// shared component, which ASP.NET's own problem responses refer to as well, so its description says
+/// which problems carry it. A string, since an enum of every fault type would change every operation
+/// when one is added. A document without a fault response is left as ASP.NET writes it.
 /// </remarks>
 internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTransformer
 {
+    /// <summary>The problem's extension member <see cref="FaultProblem{TFault}"/> writes.</summary>
+    internal const string FaultMember = "fault";
+
+    /// <summary>What <c>fault</c> holds, as the host writes it: the member's name, or its qualified name.</summary>
+    internal static string FaultDescription(bool qualified) =>
+        (qualified
+            ? "The fault this problem reports: the name of its member, qualified with its type's (Type.Member, a nested type after its nesting chain)."
+            : "The fault this problem reports: the name of its member.")
+      + " Present only on a problem that answers a fault of the endpoint's Result.";
+
     public async Task TransformAsync(OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
     {
         IOpenApiSchema? problem = null;
@@ -61,15 +74,38 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
     {
         var schema = await context.GetOrCreateSchemaAsync(typeof(ProblemDetails), parameterDescription: null, cancellationToken);
 
-        var json = context.ApplicationServices.GetRequiredService<IOptions<HttpJsonOptions>>().Value.SerializerOptions;
-        var id = context.ApplicationServices.GetRequiredService<IOptionsMonitor<OpenApiOptions>>().Get(context.DocumentName)
-                        .CreateSchemaReferenceId(json.GetTypeInfo(typeof(ProblemDetails)));
+        var services = context.ApplicationServices;
+        var json = services.GetRequiredService<IOptions<HttpJsonOptions>>().Value.SerializerOptions;
+        var id = services.GetRequiredService<IOptionsMonitor<OpenApiOptions>>().Get(context.DocumentName)
+                         .CreateSchemaReferenceId(json.GetTypeInfo(typeof(ProblemDetails)));
+        var qualified = services.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true;
 
         // A host that inlines it gets it inline, as ASP.NET writes its own problem responses there.
-        if (id is null || context.Document is not { } document) return schema;
+        if (id is null || context.Document is not { } document) return WithFault(schema, qualified);
 
-        if (document.Components?.Schemas?.ContainsKey(id) != true) document.AddComponent(id, schema);
+        if (document.Components?.Schemas?.TryGetValue(id, out var component) != true || component is null)
+        {
+            document.AddComponent(id, schema);
+            component = schema;
+        }
 
+        WithFault(component, qualified);
         return new OpenApiSchemaReference(id, document);
+    }
+
+    /// <summary>
+    /// Describes <c>fault</c> on the problem schema, beside what ASP.NET describes of
+    /// <see cref="ProblemDetails"/>, where nothing describes it yet: a <c>fault</c> another transformer
+    /// already gave the schema is kept, and a second fault response finds it there.
+    /// </summary>
+    private static IOpenApiSchema WithFault(IOpenApiSchema schema, bool qualified)
+    {
+        if (schema is OpenApiSchema problem && problem.Properties?.ContainsKey(FaultMember) != true)
+        {
+            problem.Properties ??= new Dictionary<string, IOpenApiSchema>(StringComparer.Ordinal);
+            problem.Properties[FaultMember] = new OpenApiSchema { Type = JsonSchemaType.String, Description = FaultDescription(qualified) };
+        }
+
+        return schema;
     }
 }

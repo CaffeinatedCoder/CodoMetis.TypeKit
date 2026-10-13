@@ -165,6 +165,9 @@ operation that returns the fault type:
         "409": { "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } } } } }
 ```
 
+The `ProblemDetails` component those responses refer to describes `fault` too, as an optional string,
+so a client generated from the document has the member it matches on.
+
 A rule belongs in `Create`, not on the property: a validation attribute on a value-object property
 lands in the value object's shared component and then applies to every other use.
 

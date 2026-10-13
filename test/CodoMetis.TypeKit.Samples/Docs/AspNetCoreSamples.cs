@@ -234,6 +234,7 @@ public sealed partial class AspNetCoreTests
 
         foreach (var (path, item) in shown) document["paths"]![path].ShouldContainSchema(item!, path);
         document.Component("CustomerId").ShouldContainSchema(JsonNode.Parse("""{"type":"string","format":"uuid"}""")!, "CustomerId");
+        document.Component("ProblemDetails")["properties"].ShouldContainSchema(JsonNode.Parse("""{"fault":{"type":"string"}}""")!, "ProblemDetails, which the page says describes fault");
         var page = document["paths"]!["/customers"]!["get"]!["parameters"]!.AsArray().Single(parameter => parameter!["name"]!.GetValue<string>() == "page");
         page!["schema"]!["type"]!.ToJsonString().ShouldContain("integer", Case.Sensitive, "a query parameter is described as a parameter of the wrapped type, inline");
     }

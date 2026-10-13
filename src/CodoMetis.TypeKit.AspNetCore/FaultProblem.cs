@@ -20,8 +20,8 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// </para>
 /// <para>
 /// The endpoint's OpenAPI operation lists a problem response for every status the fault type is
-/// answered with (<c>AddTypeKit()</c>), and a host with an endpoint whose fault type is not mapped does
-/// not start. The problem names the fault, and a <c>type</c> and <c>title</c> where the mapping gives
+/// answered with (<c>AddTypeKit()</c>), whose schema describes <c>fault</c> as an optional string,
+/// and a host with an endpoint whose fault type is not mapped does not start. The problem names the fault, and a <c>type</c> and <c>title</c> where the mapping gives
 /// them; its <c>detail</c> is the occurrence's (<see cref="Fault{TFault}.Detail"/>), or else a fault set
 /// member's description, and nothing else of the request reaches it.
 /// </para>
@@ -65,7 +65,7 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
                     type: answer.Type?.ToString(),
                     title: answer.Title,
                     detail: detail,
-                    extensions: new Dictionary<string, object?> { ["fault"] = name })
+                    extensions: new Dictionary<string, object?> { [FaultResponsesOperationTransformer.FaultMember] = name })
                 .ExecuteAsync(httpContext);
         }
         finally

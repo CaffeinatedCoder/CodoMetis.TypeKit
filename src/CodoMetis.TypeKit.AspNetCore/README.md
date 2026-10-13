@@ -302,8 +302,14 @@ builder.Services.Configure<FaultResponseOptions>(options => options.QualifiedFau
 `QualifiedFaultNames` writes `fault` with its type, so two fault types that share a member name stay
 apart in one client; the default is the bare name. A nested type is qualified after its nesting chain,
 an enum as a closed set's `QualifiedName` is, so `Billing.Fault` and `Shipping.Fault` give
-`Billing.Fault.NotFound` and `Shipping.Fault.NotFound`. `fault` stays a string on the document's shared
-problem schema, since an enum of every fault type would change every operation when one is added.
+`Billing.Fault.NotFound` and `Shipping.Fault.NotFound`.
+
+The document describes `fault` as an optional string on the problem schema the fault responses refer
+to, so a generated client has the member to match on; its description says which of the two forms
+this host writes. That schema is the shared `ProblemDetails` component, which ASP.NET's own problem
+responses refer to as well, so the description also says that only a problem answering a fault
+carries it. It stays a string, since an enum of every fault type would change every operation when
+one is added. A document without a fault response keeps the schema as ASP.NET writes it.
 
 ## NodaTime
 

@@ -37,6 +37,15 @@ position, and the change lands in the hoisted component.
   a name the host's own delegate chose, or `null` for an inlined value object, is kept. A name that
   is also another type's, `Order.Status` beside a top-level `OrderStatus`, refuses the document
   ([decision 55](adr/0055-component-name-claimed-twice-refused.md)).
+- **Fault responses** ([decision 49](adr/0049-fault-responses-client-can-act.md)): an operation
+  transformer adds a problem response per status an endpoint answers its fault type with, referring to
+  the problem schema the host's `CreateSchemaReferenceId` names (the shared `ProblemDetails`
+  component, or an inline schema). That schema gains an optional `fault` string, the member a client
+  matches on, whose description says which form the host writes (`QualifiedFaultNames`) and that only
+  a problem answering a fault carries it; what a schema already says of `fault` is kept. ASP.NET's own
+  problem responses refer to the same component (measured, 10.0.12: whichever endpoint comes first,
+  and a second document without a fault response keeps it bare); an inline schema of theirs is another
+  instance and stays bare. A document without a fault response is ASP.NET's, byte for byte.
 - **Known gaps, documented rather than fixed:** a validation attribute on a value-object property
   lands in the shared component, as ASP.NET does for any referenced schema (rules belong in `Create`);
   a property absent from a request body stays `default`, since System.Text.Json calls no converter
