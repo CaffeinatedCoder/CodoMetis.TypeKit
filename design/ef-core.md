@@ -77,9 +77,22 @@
   the key is mapped to, as the providers' own conventions read it: an abstract TPC root has no table
   of its own, and reading the root's table took the generation away (2.0.0's review: on PostgreSQL
   every entity was stored with 0). The model tests build each shape for SQLite, Npgsql and SQL
-  Server, an abstract TPC root included. A key over a `Guid` is left alone: the application
-  assigns `OrderId.New()`, and a generated key that is already set makes EF take a new entity reached
-  through a navigation for an existing one.
+  Server, an abstract TPC root included. Where the provider has no identity for the type, a plain key
+  is not generated either, and neither is the value object's (measured on PostgreSQL 18: a `ulong` is
+  `numeric(20,0)`, strategy none; a `char` is `character(1)`, whose identity PostgreSQL refuses with
+  22023 at creation and in the `AlterColumn` a 1.5.1 snapshot produces). A key over a `Guid` is left
+  alone: the application assigns `OrderId.New()`, and a generated key that is already set makes EF
+  take a new entity reached through a navigation for an existing one.
+  - **Open: the value generator is chosen by the column's type (measured 2026-10-13).** EF picks a
+    key's generator by its CLR type, else by its converter's provider type, which for a value object
+    is the column's: where the provider stores the wrapped type through a converter of its own, a
+    default key gets another generator than a plain key. A default `ulong` key throws
+    `OverflowException` on `Add` on SQL Server and PostgreSQL (EF's temporary `decimal` is negative),
+    where a plain one gets a temporary value; a default `char` key on SQL Server gets a permanent
+    character from a GUID string, where a plain one fails at insert. An assigned key is unaffected.
+    (The models and `Add` measured on all three providers, the inserts on PostgreSQL 18; SQL Server's
+    inserts follow from its models, unrun.) A fix needs a value generator per key that a compiled
+    model can write and that leaves HiLo alone.
 - **Conventions for the wrapped type do not reach a value object.** `ConfigureConventions`
   (`Properties<decimal>()`) matches the property's CLR type; the README says to configure the value
   object (`Properties<Amount>()`). Measured 2026-09-28 for precision, maximum length, column type and

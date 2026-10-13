@@ -447,6 +447,18 @@ public sealed class SqliteIntegerKeysDb(DbContextOptions<SqliteIntegerKeysDb> op
     }
 }
 
+/// <summary>The keys over the integer types PostgreSQL has an identity column for, beyond <c>int</c> and <c>long</c>.</summary>
+public sealed class PostgreSqlIntegerKeysDb(DbContextOptions<PostgreSqlIntegerKeysDb> options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<KeyedByInt16>();
+        modelBuilder.Entity<KeyedBySByte>();
+        modelBuilder.Entity<KeyedByUInt16>();
+        modelBuilder.Entity<KeyedByUInt32>();
+    }
+}
+
 public class SharedKeyPrincipal { public ShipmentNo Id { get; set; } }
 
 public class SharedKeyDependent { public ShipmentNo Id { get; set; } }

@@ -70,7 +70,11 @@ modelBuilder.Entity<Order>().Property(o => o.Code).HasConversion<ValueObjectConv
 **Keys.** A single-column key over an integer is generated on add, as a key of that integer type is.
 That is EF's own list: `int`, `long`, `short`, `sbyte`, `uint`, `ulong`, `ushort` and `char`, and not
 `byte`. On PostgreSQL and SQL Server it is an identity column, so switching an `int`
-key to a value object there changes no schema. A key over a `Guid` is the application's to assign,
+key to a value object there changes no schema. Where the provider has no identity for the type, the key
+is no more generated than a plain one: on PostgreSQL a `ulong` is a `numeric(20,0)`, which cannot be an
+identity, and a `char` a `character(1)`, on which PostgreSQL refuses one when the table is created or
+migrated (22023), as it does for a plain `char` key. Configure `ValueGeneratedNever()` on such a key
+and assign it. A key over a `Guid` is the application's to assign,
 `Id = OrderId.New()` (a version 7 Guid, which sorts by creation time), and EF inserts it as given. For
 EF to generate it instead, configure `ValueGeneratedOnAdd()` on the property; EF then also takes an
 entity whose key is already set, reached through a navigation, for an existing one. The root of an
