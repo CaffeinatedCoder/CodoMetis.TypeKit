@@ -127,7 +127,7 @@ Every public member, on `Option<T>`, on the static class `Option`, and as extens
 | `FirstOrNone()`, `FirstOrNone(predicate)` | `IEnumerable<T>`, `IQueryable<T>` | the first element, or the first matching one; `None` for none. On a query the provider runs the predicate and returns one row |
 | `LastOrNone()`, `LastOrNone(predicate)` | `IEnumerable<T>` | the last, likewise; a compile error on a query, which has no last row until it is ordered |
 | `SingleOrNone()`, `SingleOrNone(predicate)` | `IEnumerable<T>`, `IQueryable<T>` | the only element, or `None` for none; throws for more than one. A query is asked for two rows |
-| `ElementAtOrNone(index)` | `IEnumerable<T>` (an `int` or an `Index`), `IQueryable<T>` (an `int`) | the element at the index, or `None` past either end |
+| `ElementAtOrNone(index)` | `IEnumerable<T>` (an `int` or an `Index`), `IQueryable<T>` (an `int`) | the element at the index, or `None` past either end; an `Index` from the end on a query is a compile error |
 | `GetValueOrNone(key)` | `IReadOnlyDictionary<TKey, TValue>` | `Option<TValue>` |
 | `Choose(selector)` | `IEnumerable<T>` | the values the selector answers `Some` for, in order and lazily: a filter and a map in one |
 | `Choose()` | `IEnumerable<Option<T>>` | the values of the options that hold one, in order and lazily |

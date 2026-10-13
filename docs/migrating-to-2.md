@@ -76,11 +76,20 @@ new member is an instance member, nothing is ambiguous and yours is silently no 
 | `Option<T>` | `MapAsync`, `BindAsync`, `TapAsync` (instance members), `Traverse` |
 | `Task<Option<T>>` | `MapAsync`, `BindAsync`, `FilterAsync`, `TapAsync`, `ToResultAsync` |
 | `Option<Result<T, TError>>`, `Result<Option<T>, TError>` | `Transpose` |
-| a sequence | `SingleOrNone`, `ElementAtOrNone` |
+| a sequence | `SingleOrNone`, `ElementAtOrNone`, `Choose`, `TraverseAsync` |
+| a sequence of options | `Choose` |
+| `Patch<T>` | `Map`, `Traverse` |
 | a query | `FirstOrNone`, `FirstOrError`, `SingleOrNone`, `ElementAtOrNone` |
 | an EF Core query | `FirstOrNoneAsync`, `SingleOrNoneAsync`, in EF Core's namespace |
 | `string` | `AsText`, `AsIdentifier` |
 | `Result` | `Catch`, `CatchAsync` |
+
+2.0 also adds types to the `CodoMetis.TypeKit` namespace: `Patch<T>` and `Patch`, `PatchState`,
+`Fault<TFault>` and `Fault`, `FaultKind`, `IFault`, `IFaultSet<TSelf>`, `TextFault`,
+`AbstractAttribute`, `SealedAttribute`, `RecordAttribute`, `ConcreteAttribute`,
+`RequireParameterlessConstructorAttribute` and `ConstructorAccessibility`, and `IClosedSet<TSelf>` to
+`CodoMetis.TypeKit.ClosedSets`. A type of yours with one of these names, imported beside the
+package's namespace, makes a use ambiguous (CS0104): qualify one of them, or alias yours.
 
 ## Fault responses
 

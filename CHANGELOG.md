@@ -21,17 +21,18 @@ this release adds, so nothing that built against 1.5.1 meets them.
 
 ### Added
 
-- **`CodoMetis.TypeKit`**: `Result.Catch`, the one place an exception becomes data. `Catch(() => …)`
-  runs the call and answers `Result<T, Exception>`, or `Result<Exception>` for an action;
-  `Catch<T, TException>` catches that type only and lets any other propagate; `CatchAsync` awaits the
-  task, so an exception thrown after its first `await` is the error too. An `OperationCanceledException`
-  passes through every overload, unless it is a timeout (one over a `TimeoutException`, as
-  `HttpClient` throws when its `Timeout` elapses), which is the error; a delegate that returns a
-  `Task`, an `async` lambda among them, given to `Catch` or to its command form `Catch<TException>`
-  is a compile error that names `CatchAsync`, and so is a delegate that returns any value given to the
-  command form, which would discard it; a `ValueTask`, or a task spelled as the type argument, is
-  refused before the delegate runs; and a delegate that returns null throws as `Result.Success(null)`
-  does.
+- **`CodoMetis.TypeKit`**: `Result.Catch`, which turns an exception into a result.
+  - `Catch(() => …)` runs the call and answers `Result<T, Exception>`, or `Result<Exception>` for an
+    action. `Catch<T, TException>` catches that type only and lets any other propagate.
+  - `CatchAsync` awaits the task, so an exception thrown after its first `await` is the error too.
+  - An `OperationCanceledException` passes through every overload. A timeout, one over a
+    `TimeoutException` as `HttpClient` throws when its `Timeout` elapses, is the error.
+  - A delegate that returns a `Task`, an `async` lambda among them, given to `Catch` or to its command
+    form `Catch<TException>` is a compile error naming `CatchAsync`. So is a delegate that returns any
+    value given to the command form, which would discard it.
+  - A `ValueTask`, or a task spelled as the type argument, is refused before the delegate runs.
+  - A delegate that returns null throws as `Result.Success(null)` does, and so does one given to
+    `CatchAsync` that returns no task.
 - **The closed-set family**, the release's headline: `IClosedSet<TSelf>` in `CodoMetis.TypeKit`, generated
   by `CodoMetis.TypeKit.Generators`. A sealed partial class whose every instance is a `public static
   readonly` field, with constant data through a private constructor where the members carry some. The
@@ -48,8 +49,8 @@ this release adds, so nothing that built against 1.5.1 meets them.
   own code makes beside its members has no name, and reading it throws rather than write a null.
   CMTK0002 covers a closed set without the generators.
   CMTK1021 refuses a member named as a generated member, or two whose names differ only in case
-  (`Open` and `open`, `Express` and `EXPRESS`), one name to `Match`'s parameters and to
-  `TryParse(name, ignoreCase: true)`. `Match` checks every delegate for null before it picks one,
+  (`Open` and `open`, `Express` and `EXPRESS`): one name to `TryParse(name, ignoreCase: true)`, and
+  to `Match`'s parameters where the first letter is the difference. `Match` checks every delegate for null before it picks one,
   and a set is a JSON dictionary key by its name.
   `CodoMetis.TypeKit.EntityFrameworkCore` maps a closed set to a text column of the member's name, in a
   primitive collection and a JSON column too, through a compiled model and under Native AOT
@@ -124,8 +125,9 @@ this release adds, so nothing that built against 1.5.1 meets them.
   a `Result` pipeline. Each checks its delegates, and `ToResultAsync` its error, before the option is
   known, as the `Task<Result<…>>` continuations do.
 - **`CodoMetis.TypeKit`**: `SingleOrNone`, with or without a predicate, which throws for more than one
-  element as `SingleOrDefault` does, and `ElementAtOrNone`, by `int` or `Index`, on a sequence and on a
-  query (two rows and one, asked of the provider); `SingleOrNoneAsync` in the EF Core satellite; and
+  element as `SingleOrDefault` does, and `ElementAtOrNone`, by `int` or `Index` on a sequence and by
+  `int` on a query (two rows and one, asked of the provider; an `Index` from the end on a query is a
+  compile error, as `LastOrNone` is); `SingleOrNoneAsync` in the EF Core satellite; and
   CMTK0009 names each for `SingleOrDefault`, `ElementAtOrDefault` and `SingleOrDefaultAsync`. `Transpose()`
   between `Option<Result<T, TError>>` and `Result<Option<T>, TError>`, and `Option<T>.Traverse(selector)`
   for an optional input validated when present.
@@ -182,6 +184,29 @@ this release adds, so nothing that built against 1.5.1 meets them.
 
 ### Fixed
 
+- **`CodoMetis.TypeKit.Generators`**: a closed set declared in two partial files listed the members of
+  the second as null in `All`, and the names the satellites read threw; `All` is filled after every
+  part's fields. Two nested sets of one simple name shared one `QualifiedName` prefix; it is the
+  nesting chain, `Order.Status.Open`. A non-public static field of the set's own type compiled as no
+  member, whose name threw and which `TryParse` never found; it is CMTK1017. The nested JSON and type
+  converters are sealed.
+- **`CodoMetis.TypeKit.AspNetCore`**: a closed set was a string enum as a body property only; as a route
+  or query parameter it was a bare `string`, and in a list, an array parameter or a dictionary its
+  element was missing. It is the enum in every position, as a value object is described in each. Two
+  nested sets of one simple name shared one component; each is named after its nesting chain.
+- **`CodoMetis.TypeKit`**: `ElementAtOrNone(^n)` on a query bound to the sequence overload and read every
+  row; it is a compile error naming `ElementAtOrNone(int)` and `AsEnumerable()`. `fault == reason` on a
+  `Fault<TFault>` compiled through the implicit conversion and was false whenever the fault carried a
+  detail; the mixed comparisons and `Equals(reason)` are compile errors naming `Reason`. `CatchAsync`
+  given a delegate that returned no task answered an error holding the `NullReferenceException` the
+  await threw; it throws before anything is awaited, as `Result.Success(null)` does.
+- **`CodoMetis.TypeKit.Analyzers`**: CMTK0010 reported a `<see cref="Box{T}"/>` in a documentation
+  comment, and called an array not sealed; a cref is no use, and an array is sealed and concrete. A
+  method implementing an interface's method, or overriding one, without repeating the attribute let a
+  call through the class pass; it carries the constraint of what it implements. CMTK0003 missed a
+  result task picked by a conditional or a `switch` expression, awaited or converted to a plain task,
+  and a method group of a method answering a collection of results, converted to a delegate that
+  returns a plain task.
 - **`CodoMetis.TypeKit.AspNetCore`**: a value object bound as a route, query or header parameter is
   described as ASP.NET describes a parameter of the wrapped type. ASP.NET uses a type's own schema there
   only for a primitive, an enum, `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, `TimeSpan`,

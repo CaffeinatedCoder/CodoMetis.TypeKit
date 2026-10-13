@@ -69,6 +69,10 @@ public abstract class Sound<[Abstract] TEvent> : Aggregate<TEvent, AccountId>;  
 public sealed class Sealed<T> : Aggregate<AccountEvent, T> where T : struct;      // struct proves [Sealed], and [Concrete]
 ```
 
+A method that implements an interface's method, or overrides a base class's, carries the constraint
+of the method it implements whether or not it repeats the attribute, so a call through the class is
+held to what the interface declared. Repeat the attribute anyway, so the declaration says so.
+
 `struct` proves `[Sealed]` and `[Concrete]`, and `new()` proves `[Concrete]`, so a parameter under
 those C# constraints needs no attribute. The open generic inside its own body and an unbound
 `typeof(Aggregate<,>)` are never reported. Reflection, `MakeGenericType`, is out of reach, and the

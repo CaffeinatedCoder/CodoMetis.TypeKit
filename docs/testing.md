@@ -51,8 +51,8 @@ string failure = Result.Catch(() => ProductCode.Create("abc").ShouldBeSuccess())
 
 A failure is a `TypeKitAssertionException`, which every framework reports as the test's failure, so
 the package depends on nothing but `CodoMetis.TypeKit`; the assertions sit beside xUnit's `Assert`,
-Shouldly or whatever the test already uses. A failure names the error, which is what a test needs
-to see, and never prints a value, as `Option` and `Result` never do. An uninitialized result fails
+Shouldly or whatever the test already uses. A failure prints the error through its `ToString()`,
+which is what a test needs to see, and never prints a value, as `Option` and `Result` never do. An uninitialized result fails
 every assertion, saying it is a default instance.
 
 A request's `Patch<T>` fields say which of them the request mentioned, and the assertions say the

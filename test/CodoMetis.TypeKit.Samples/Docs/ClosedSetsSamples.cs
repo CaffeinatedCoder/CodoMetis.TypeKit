@@ -63,7 +63,7 @@ public static class Usage
         string qualified = Shipping.Express.QualifiedName;                 // "Shipping.Express"
         string all = string.Join(" ", Shipping.All.Select(s => s.Name));   // "Standard Express Pickup"
         bool same = Shipping.Parse("Express") == Shipping.Express;         // true, members are singletons
-        bool known = Shipping.TryParse("Drone", out _);                    // false, names compare ordinally
+        bool known = Shipping.TryParse("Drone", out _);                    // false, no such member
         bool typed = Shipping.TryParse("express", ignoreCase: true, out _); // true, when asked: a header or a query string as a client typed it
         // end sample
 

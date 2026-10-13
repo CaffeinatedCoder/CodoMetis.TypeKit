@@ -178,8 +178,7 @@ Result<IReadOnlyList<Cart>, CheckoutFault> found = await ids.TraverseAsync(check
 ## An exception as an outcome
 
 A call that throws has no way into a `Result` except a `try`/`catch` written by hand. `Result.Catch`
-runs the call and answers its value or the exception as the error, the one place an exception becomes
-data:
+runs the call and answers its value or the exception as the error:
 
 ```csharp
 Result<Uri, Exception> url = Result.Catch(() => new Uri(text));                                        // Error: UriFormatException
@@ -263,7 +262,8 @@ extensions in the `CodoMetis.TypeKit` namespace. `T` and `TError` are `notnull` 
 | `Tap(action)`, `TapError(action)` | both | runs the action on that branch, hands the result on |
 | `Zip(b, …, selector)` | `Result<T, TError>` with two to six results | one value from all, or the first error |
 | `Select`, `SelectMany` | `Result<T, TError>` | query syntax over `Map` and `Bind` |
-| `MapAsync`, `BindAsync`, `MapErrorAsync`, `RecoverAsync`, `EnsureAsync`, `TapAsync`, `TapErrorAsync` | both, and `Task<Result<…>>` | the same, taking or continuing a task; the chain is awaited once |
+| `MapAsync`, `BindAsync`, `RecoverAsync`, `TapAsync`, `TapErrorAsync` | both, and `Task<Result<…>>` | the same, taking or continuing a task; the chain is awaited once |
+| `MapErrorAsync`, `EnsureAsync` | `Task<Result<…>>`; `EnsureAsync` on `Task<Result<T, TError>>` | `MapError` and `Ensure`, once the result is known |
 
 Equality is a record struct's. `ToString()` prints the state and never the value or the error, so a
 result is safe to log; the debugger shows both.

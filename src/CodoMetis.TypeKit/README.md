@@ -172,8 +172,7 @@ returns, and what it throws reaches that `await`. A callback that returns a `Val
 overload and not wait for it, and `MapAsync` would hold the `ValueTask` as the value.
 
 **Exceptions as outcomes.** A call that throws has no way into a `Result` except a `try`/`catch`
-written by hand. `Result.Catch` runs the call and answers its value, or the exception as the error:
-the one place an exception becomes data.
+written by hand. `Result.Catch` runs the call and answers its value, or the exception as the error.
 
 ```csharp
 Result<int, Exception> parsed = Result.Catch(() => int.Parse("42"));                                   // Success: 42
@@ -213,7 +212,8 @@ description per member, from which the host derives each status.
 
 The one wire type here is `Patch<T>`, a merge patch's field (below).
 
-Neither `Option` nor `Result` serializes. System.Text.Json refuses both, in both directions, with a
+Neither `Option` nor `Result` serializes, nor does `Fault<TFault>`, which is matched to a response as
+the result holding it is. System.Text.Json refuses them, in both directions, with a
 `NotSupportedException` that names the type and the alternative:
 
 ```csharp
@@ -448,10 +448,13 @@ They arrive with this package, so whoever can see the interfaces gets the guard:
   `ids.FirstOrDefault()` or `ProductCode.TryFrom(s).OrDefault()`. `FirstOrNone()`, `GetValueOrNone()`
   and `Or(fallback)` say what happens then.
 - **CMTK0010**: a type argument that breaks what its parameter declares with `[Abstract]`, `[Sealed]`,
-  `[Record]` or `[Concrete]`, the constraints C# has no `where` for, at any closed use.
+  `[Record]` or `[Concrete]`, the constraints C# has no `where` for, at any closed use. A method
+  implementing an interface's method, or overriding one, carries the constraint of what it implements.
 - **CMTK0011**: a type under an interface or base class marked `[RequireParameterlessConstructor]`
   without the parameterless constructor it asks for, which the host would look for by reflection.
   The code fix writes it.
+- **CMTK0012**: a closed set's `Match` given an argument by position, where reordering two members
+  would swap their branches and compile. The code fix names every argument.
 
 The rules also run in Razor components (`.razor`, `.cshtml`).
 
@@ -461,8 +464,10 @@ rule table.
 
 ## Native AOT
 
-Everything here works in a trimmed or Native AOT application, and the packages are built with the
-trim and AOT analyzers on. With source-generated JSON, which Native AOT requires, list the value
+This package works in a trimmed or Native AOT application, and the packages are built with the
+trim and AOT analyzers on. The one exception is `FirstOrNone`, `FirstOrError`, `SingleOrNone` and
+`ElementAtOrNone` on an EF Core query, which compose the query where EF cannot precompile it and throw
+there; write EF's operators at the call site and take the option of the list. With source-generated JSON, which Native AOT requires, list the value
 objects (or the types that hold them) in your `JsonSerializerContext`, not what they wrap: the
 generated converters build the wrapped type's contract themselves, from a converter on your options,
 the type's own `[JsonConverter]`, or the serializer's built-in one. Only a value object wrapping a
@@ -482,7 +487,9 @@ call instead.
 
 **Thrown:** `NotSupportedException: Option<Customer> is not a wire type…`, or `Result<Order, OrderFault>
 is an outcome, not a wire type…`, when System.Text.Json reads or writes an `Option`, a `Result`, a
-marker such as `Option.None()`, or a nullable of any of them.
+`Fault<TFault>`, a marker such as `Option.None()`, or a nullable of any of them. The same link ends
+the refusal of writing an absent `Patch<T>`, which no document can carry: mark the property
+`[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]`.
 
 **Why:** without it a `Some` is written as `{}` and read back as `None`, and nothing is raised; see
 [Not wire types](#not-wire-types) and the [design](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/design/plan.md#9-option-and-result).
@@ -499,6 +506,8 @@ there too.
 `Result.Error(null)`, from a `Map` or `MapError` whose selector returns null, from `FirstOrNone()`
 over a null element, or for a null error given to `ToResult`, `Ensure` or `FirstOrError`. A
 `Patch<T>.Map` whose selector returns null throws the same: a clear is the Null state, never a value.
+So does `CatchAsync` for a delegate that returns no task: a null cannot be awaited, and it is not an
+exception the call threw.
 
 **Why:** an option that reports a value always has one, and a result's value and error are never
 null. `notnull` is not checked at run time, so the factories check it.

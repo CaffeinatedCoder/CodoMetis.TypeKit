@@ -1,12 +1,12 @@
 # Closed sets
 
-An `enum` names its members and nothing more: C# never proves a `switch` over one complete, a member
-carries no data, and on the wire it is a number unless a converter says otherwise. A closed set, a
+An `enum` names its members and nothing more: C# only warns when a `switch` expression over one
+misses a member and says nothing for a `switch` statement, a member carries no data, and on the wire
+it is a number unless a converter says otherwise. A closed set, a
 smart enum, is a sealed class whose every instance is a named member declared as a field of it, with
 whatever data and behaviour the members need; the generators add the rest. The
 [generators' README](../src/CodoMetis.TypeKit.Generators/README.md#closed-sets) is its reference;
-this page is about using one: declaring it, deciding by member, on the wire, in the database, from
-configuration and in logs. The examples import `CodoMetis.TypeKit.ClosedSets`.
+this page is about using one. The examples import `CodoMetis.TypeKit.ClosedSets`.
 
 ## Declaring one
 
@@ -37,7 +37,7 @@ string name = Shipping.Express.Name;                               // "Express"
 string qualified = Shipping.Express.QualifiedName;                 // "Shipping.Express"
 string all = string.Join(" ", Shipping.All.Select(s => s.Name));   // "Standard Express Pickup"
 bool same = Shipping.Parse("Express") == Shipping.Express;         // true, members are singletons
-bool known = Shipping.TryParse("Drone", out _);                    // false, names compare ordinally
+bool known = Shipping.TryParse("Drone", out _);                    // false, no such member
 bool typed = Shipping.TryParse("express", ignoreCase: true, out _); // true, when asked: a header or a query string as a client typed it
 Shipping.Parse("Drone");                                           // FormatException naming Shipping and member, never the name
 ```
@@ -45,15 +45,16 @@ Shipping.Parse("Drone");                                           // FormatExce
 `All` holds the members in declaration order, read-only: no cast to `IList<T>` or an array writes it. `QualifiedName` keeps two sets that share a member
 name apart in one log or one client. `ToString()` is the name, unless the set writes its own, which
 is kept, for a label, while the name stays what JSON, parsing and the column use. `Parse` and
-`TryParse` compare names ordinally; with `ignoreCase: true` they accept any casing, for what a client
-typed, while JSON, the column, binding and `IParsable` stay ordinal, since what is stored or sent is
-the name as it is. Two members whose names differ only in case are refused (CMTK1021), so there is one
-member to find.
+`TryParse` compare names ordinally, and with `ignoreCase: true` accept any casing. JSON, the column,
+`IParsable` and a bound route or query parameter stay ordinal, since what is stored or sent is the
+name as it is: a header or a query string a client typed in any casing is bound as a `string` and
+parsed with `ignoreCase: true`. Two members whose names differ only in case are refused (CMTK1021),
+so there is one member to find.
 
 ## Deciding by member
 
 `Match` takes one delegate per member, each named after it, and a member added later fails every
-call until it is handled, which a `switch` over an `enum` never does:
+call until it is handled, where a `switch` over an `enum` at most warns:
 
 ```csharp
 string label = shipping.Match(
@@ -84,9 +85,9 @@ A member is its name, as a value and as a dictionary key, and reads back as the 
 naming policy renames it, since a renamed name would not read back. A JSON `null` reads as `null`,
 as for any class, unless the serializer's `RespectNullableAnnotations` refuses it for a property that
 is not nullable. In the OpenAPI document, with `AddTypeKit()`, a set is a string enum of its names,
-`{"enum":["Standard","Express","Pickup"],"type":"string"}`, with nothing registered per set. A
-minimal-API route or query parameter binds through the generated `TryParse`, and an unknown name is
-a 400; a set declared in the same project as the endpoint trips ASP0020 on a route parameter, as a
+`{"enum":["Standard","Express","Pickup"],"type":"string"}`, as a property, a parameter or a
+collection's element, with nothing registered per set. A minimal-API route or query parameter binds
+through the generated `TryParse`, ordinally, and an unknown name is a 400; a set declared in the same project as the endpoint trips ASP0020 on a route parameter, as a
 value object does
 ([why, and the pragma](../src/CodoMetis.TypeKit.AspNetCore/README.md#a-route-parameter-declared-in-the-same-project)).
 
@@ -165,7 +166,7 @@ A declaration they cannot complete fails the build, naming it; the generators'
 | is not `sealed`: a set with subtypes is not closed | CMTK1014 |
 | declares no member | CMTK1015 |
 | has a constructor that is not private | CMTK1016 |
-| has another public static member of its own type: a property, or a field that is not `readonly` | CMTK1017 |
+| has another static member of its own type: a property, a field that is not `readonly`, or a field that is not public, an instance that is no member | CMTK1017 |
 | is generic, or nested in a generic type | CMTK1018 |
 | has a member not created with `new` where it is declared: `Legacy = Open` would give one instance two names | CMTK1019 |
 | is a record: `with` would copy a member into an instance that is none | CMTK1020 |

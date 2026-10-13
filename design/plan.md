@@ -701,6 +701,35 @@ Each phase ends green, and its guards have been proven by seeding the defect
        - Not taken: error accumulation and a `Combine` (§9 non-goals). A stable external name for a
          closed-set member, apart from its C# identifier, touches parsing, JSON, EF, OpenAPI and fault
          identifiers at once and needs a spike first; it is 2.x.
+    9c. **An outside review before the tag** (2026-10-13, a separate Opus 5.5 session over the three
+       commits and the library), its must-fix findings each fixed with a seeded test:
+       - A closed set in two partial files listed the second file's members as null in `All` (a field
+         initializer runs with its own part); `All` is filled by the names initializer, after every
+         part's fields. Two nested sets of one simple name shared a `QualifiedName` prefix and one
+         OpenAPI component; both are the nesting chain. A non-public static field of the set's type
+         was an instance that is no member; CMTK1017. The nested converters are sealed.
+       - A closed set was a string enum as a body property only: a route or query parameter was a bare
+         `string`, a container's element was missing. The transformer takes the value-object
+         transformer's three positions.
+       - `ElementAtOrNone(^n)` on a query read every row through the sequence overload; refused as
+         `LastOrNone` is. `fault == reason` on a `Fault<TFault>` compiled and was false with a detail;
+         the mixed forms are refused, naming `Reason`. `CatchAsync` over a delegate returning no task
+         was an error holding a `NullReferenceException`; it throws before awaiting.
+       - CMTK0010 reported doc-comment crefs and called arrays not sealed; a method implementing or
+         overriding a constrained method without the attribute let a call through the class pass.
+         CMTK0003 missed a result task picked by a conditional or a `switch` expression and a method
+         group answering a collection of results: decision 50's "complete" was not, and is now
+         measured by those forms too.
+       - Documentation: the claims the review found misleading corrected (a set as a parameter, the
+         `Index` form on a query, "everything works" under Native AOT, `AsText()` and line breaks,
+         `CatchAsync` over a null task, the `ignoreCase` overloads and binding, the Testing messages'
+         error, the EF limitations' count), the migration guide's name list completed, `Fault<T>` under
+         "Not wire types", `WithTitle`, the command `ToHttpResult(success)` and `[FaultStatus]` on a
+         class documented, the package descriptions naming closed sets, and the prose it flagged.
+       - Can wait for 2.1, recorded here: the fault name is sent even for a member without a
+         description; `Uri.ToString()` unescapes the problem `type`; the CMTK0011 code fix on a partial
+         type with a primary constructor elsewhere, and its doc comment beside an attribute; CMTK0003
+         over `WhenAny` of held tasks; `Choose`'s `notnull` receiver; `Patch<string?>` under `Traverse`.
     10. **`2.0.0-preview.1` to nuget.org** once steps 7 and 8 exist, the consumer smoke test
         against it, then the release.
     - **A closed-set (smart enum) family**, declared by interface and joining `.Generators` (§1), the

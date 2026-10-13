@@ -36,7 +36,8 @@ patch.Name.ShouldBeAbsent();                     // not in the document
 - **No test framework.** A failure is a `TypeKitAssertionException`, and every framework reports an
   exception from a test as its failure. The package depends on `CodoMetis.TypeKit` alone.
 - **A failure says what the outcome was**: `Expected a success, but the Result<Email, EmailFault> is
-  the error NoAt.` It names the error, which is what a test needs to see, and never prints a value, as
-  `Option`, `Result` and `Patch<T>` themselves never do.
+  the error NoAt.` It prints the error through its `ToString()`, which is what a test needs to see, so
+  an exception's message or a `Fault`'s detail appears; it never prints a value, as `Option`, `Result`
+  and `Patch<T>` themselves never do.
 - **An uninitialized result fails every assertion**, saying it is a default instance, neither a
   success nor an error.

@@ -1,12 +1,12 @@
 # Native AOT
 
-Everything in the packages works in a trimmed or Native AOT application, and every package builds
-with the trim and AOT analyzers on, warnings as errors. That cannot see the code the generators weave
-into a consumer, or tell that a run-time path still works, so the consumer smoke test publishes two
-consumers with `PublishAot` on every CI build, a web host with JSON and OpenAPI and a console
-application with EF Core's compiled model, and runs the native binaries. This page is what Native AOT
-asks of an application that uses value objects, in one place; each package README has its own
-section.
+The packages work in a trimmed or Native AOT application, with one exception, the query helpers on
+an EF Core query ([EF Core](#ef-core) below), and every package builds with the trim and AOT analyzers
+on, warnings as errors. The analyzers cannot see the code the generators weave into a consumer, nor
+tell that a run-time path still works, so the consumer smoke test publishes two consumers with
+`PublishAot` on every CI build, a web host with JSON and OpenAPI and a console application with EF
+Core's compiled model, and runs the native binaries. This page is what Native AOT asks of an
+application that uses value objects; each package README has its own section.
 
 ## The project
 
@@ -117,7 +117,7 @@ string bound = host.Match(h => h.Value, fault => fault.ToString());             
 ```
 
 The reflection-based binder, outside Native AOT, binds a value object through its generated
-`TypeConverter`; the line above works in both, which is the point of writing it. A closed set is the
+`TypeConverter`; the line above works in both. A closed set is the
 same: the reflection-based binder reads it through its type converter, the source generator does not,
 so bind its name as a `string` and `Parse` it.
 

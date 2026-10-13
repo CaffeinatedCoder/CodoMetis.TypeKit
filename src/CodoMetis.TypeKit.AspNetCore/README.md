@@ -20,8 +20,9 @@ value objects references `CodoMetis.TypeKit.Generators`.
 builder.Services.AddOpenApi(options => options.AddTypeKit());
 ```
 
-`AddTypeKit()` adds one schema transformer, and names the component of a nested value object (see
-below). Nothing is registered per type and no assembly is scanned, and its position among the
+`AddTypeKit()` adds a schema transformer each for value objects, closed sets and merge patches, an
+operation transformer for the fault responses, and names the component of a nested value object or
+closed set (see below). Nothing is registered per type and no assembly is scanned, and its position among the
 document's other transformers does not matter. It lives in
 `Microsoft.Extensions.DependencyInjection`, beside `AddOpenApi`, which a web project imports
 implicitly.
@@ -109,11 +110,15 @@ no component at all), and both parameters are a bare `string`.
   another transformer, is not overwritten; only what it leaves open is filled in.
 
 **A merge patch.** A property typed `Patch<T>` (CodoMetis.TypeKit, a JSON Merge Patch field) is
-described as `T`'s schema, inlined where the property is rather than as a `PatchOfstring` component,
-never required, since absent is a state, and admitting null, since null is the clear: beside the
-type, in an enum's list of values, or as a branch beside the argument's own. A value object
-inside a patch is described through the type it wraps, which is also what a source-generated host
-can do: the patch's converter hides the value object from its context.
+described as `T`'s schema:
+
+- inlined where the property is, rather than as a `PatchOfstring` component;
+- never required, since absent is a state;
+- admitting null, since null is the clear: beside the type, in an enum's list of values, or as a
+  branch beside the argument's own.
+
+A value object inside a patch is described through the type it wraps, which is also what a
+source-generated host can do: the patch's converter hides the value object from its context.
 
 ## A Result as a response
 
@@ -185,8 +190,9 @@ builder.Services.AddFaultResponses<PaymentFault>(fault => fault switch
 });
 ```
 
-A bare status converts to a `FaultResponse`, so the arms that need nothing else stay a number. Every
-member is still mapped and checked when this is called. The document's problem response for a
+A bare status converts to a `FaultResponse`, so the arms that need nothing else stay a number;
+`WithTitle("…")` sets the `title` the same way. Every member is still mapped and checked when this
+is called. The document's problem response for a
 status lists the problem types answered with it in its description:
 `Payment Required. Problem types: https://example.com/problems/declined`.
 
@@ -256,8 +262,9 @@ An MVC action says it with an attribute, naming the member, since an attribute t
 public Results<Ok<Account>, FaultProblem<AccountFault>> Open(NewAccount body) => accounts.Open(body).ToHttpResult();
 ```
 
-A status outside 400 to 599 is refused where it is set. A status for a fault type the endpoint does
-not answer with, or an attribute naming no member, stops the host from starting, naming the endpoint.
+On a controller class, the attribute applies to every action of it. A status outside 400 to 599 is
+refused where it is set. A status for a fault type the endpoint does not answer with, or an attribute
+naming no member, stops the host from starting, naming the endpoint.
 
 ### The success the endpoint chooses
 
@@ -270,7 +277,8 @@ app.MapPost("/v2/accounts", (NewAccount body) => accounts.Open(body).ToHttpResul
 
 The operation lists `201` with the account as its body, beside the problem responses, and the
 response carries the `Location` header. A result of the application's own, one that sets an ETag,
-takes the same place.
+takes the same place. A `Result<TError>` takes a factory without a value, `ToHttpResult(() =>
+TypedResults.Accepted("/jobs/7"))`.
 
 ### What the host adds to a problem
 

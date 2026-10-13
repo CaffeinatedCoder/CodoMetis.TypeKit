@@ -38,8 +38,8 @@ public sealed partial class OrderStatus : IClosedSet<OrderStatus>
 The generators add `Match` with one required delegate per member, so a member added later fails
 every call until it is handled, `All`, parsing by name, JSON as the name, an OpenAPI string enum
 and a text column in EF Core, with nothing registered per set. Beside the types that are generated:
-`Patch<T>`, the field of a JSON Merge Patch, absent, null or a value; `Result.Catch`, the one place
-an exception becomes data; `AsText()` and `AsIdentifier()`, for text a person wrote and a value
+`Patch<T>`, the field of a JSON Merge Patch, absent, null or a value; `Result.Catch`, which turns an
+exception into a result; `AsText()` and `AsIdentifier()`, for text a person wrote and a value
 another system issued; and `[Sealed]`, `[Concrete]` and `[RequireParameterlessConstructor]`, the
 constraints C# has no `where` for, checked by the analyzers.
 

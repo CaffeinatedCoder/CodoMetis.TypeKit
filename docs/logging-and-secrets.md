@@ -32,8 +32,8 @@ string record = new Session(token, "Ann").ToString();                   // Sessi
 string json = JsonSerializer.Serialize(token);                          // "tok-123", a conversion, not display
 ```
 
-What still carries the value is what must: its JSON, the type converter and the database column,
-which are conversions; and the debugger, which shows `ToString()` but expands `Value`. A `Session`
+Still carrying the value, since they are conversions and not display: its JSON, the type converter
+and the database column; and the debugger, which shows `ToString()` but expands `Value`. A `Session`
 written as JSON carries the token, so the shape that is logged is not the shape that is sent.
 
 ## Serilog

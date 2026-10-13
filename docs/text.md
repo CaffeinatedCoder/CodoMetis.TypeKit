@@ -17,6 +17,7 @@ using them: which one, where, and inside a value object. The examples import `Co
 | Folds every space separator to an ordinary space | yes | no |
 | Composes to NFC, so one spelling per name | yes | no, since an issued value is compared against what its issuer sends next time |
 | Refuses a character that renders as nothing | yes | yes |
+| A line break, a tab or another control character | refused as `Hidden`: a value is one line, so a multi-line comment is split into lines first, or stays the `string` it is | refused |
 | The two zero-width joiners | kept: they spell Persian, Arabic and Indic scripts and hold an emoji sequence together | refused: no issuer needs one |
 | A variation selector | kept after the character it varies (an emoji's presentation, an ideograph's variant); elsewhere it selects nothing and is refused | the same |
 | A value of joiners, variation selectors and combining marks alone | refused: it renders no character of its own | refused |
