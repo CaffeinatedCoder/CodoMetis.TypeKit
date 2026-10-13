@@ -46,7 +46,9 @@ Option<decimal> discount =                                       // a later from
 
 Create one with `Option.Some(value)` and `Option.None()`, or lift a nullable with `ToOption()`.
 `GetValueOrNone(key)` looks a key up in a dictionary, and `FirstOrNone()` and `LastOrNone()` take
-the end of a sequence, with or without a predicate.
+the end of a sequence, with or without a predicate. On a query, `FirstOrNone` and `FirstOrError` ask
+the provider for one element and let it run the predicate (a `WHERE` and a `LIMIT` in SQL), and `LastOrNone` is a
+compile error, since a query has no last element until it is ordered.
 `Option.None()` takes its type from where it goes (`return Option.None();`, a conditional beside
 `Some`); where nothing supplies one, as with `var`, write `Option.None<T>()`.
 `Some(null)` throws, so an option that reports a value always has one. A `default(Option<T>)` is

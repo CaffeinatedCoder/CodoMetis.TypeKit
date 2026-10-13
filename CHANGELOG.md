@@ -85,6 +85,20 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   arrived, with the joiners refused too. Both answer `Result<string, TextFault>`, where `Blank` is
   the caller's to read as an error or as absence and `Hidden` is a refusal in both; a null receiver
   is `Blank`. A value object over either is one line, shown in the README.
+- **`CodoMetis.TypeKit`**: `FirstOrNone()`, `FirstOrNone(predicate)` and `FirstOrError(predicate, error)`
+  on an `IQueryable<T>`, which hand the predicate to the query provider as an expression and ask it
+  for one element, a `WHERE` and a `LIMIT` in SQL. `CodoMetis.TypeKit.EntityFrameworkCore` adds
+  `FirstOrNoneAsync`, with or without a predicate, in EF Core's namespace; CMTK0009 names it for
+  `FirstOrDefaultAsync` where the project references the satellite, and names `FirstOrNone` for
+  `Queryable.FirstOrDefault`.
+
+### Changed
+
+- **`CodoMetis.TypeKit`**: `FirstOrNone(predicate)` and `FirstOrError(predicate, error)` on an EF Core
+  query, or any `IQueryable<T>`, bind to the new overloads: the predicate runs in the query, where the
+  `IEnumerable<T>` ones read every row and ran it in memory. A predicate the provider cannot
+  translate now throws where it ran in memory before. `LastOrNone` and `LastOrError` on a query are
+  compile errors that say to order the query and take the first, or to call `AsEnumerable()`.
 
 ## 1.5.1 — 2026-10-11
 

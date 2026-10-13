@@ -65,6 +65,8 @@ public sealed class DefaultProducingCallAnalyzerTests
 
     private const string NullableFirst = "Select a nullable first, as in Select(x => (Plain?)x), so that nothing found is null";
 
+    private const string FirstOrNoneAsync = "Use FirstOrNoneAsync, which returns an Option and asks the query for one element, or select a nullable first, as in Select(x => (Plain?)x)";
+
     private const string MissingKey = " for a missing key";
 
     private const string GetValueOrNone = "Use GetValueOrNone, which returns an Option, or pass a default value";
@@ -125,7 +127,10 @@ public sealed class DefaultProducingCallAnalyzerTests
             Cmtk0009(9, "FirstOrDefault", "Plain", NothingFound, FirstOrNone))
             .RunAsync(TestContext.Current.CancellationToken);
 
-    /// <summary>In a query, <c>FirstOrNone</c> would run it on the client; a nullable projection is translated.</summary>
+    /// <summary>
+    /// In a query, <c>FirstOrNone</c> asks the provider for one element, as <c>Skip(index).FirstOrNone()</c>
+    /// does; the rest have no query form beside the nullable projection, which every provider translates.
+    /// </summary>
     [Fact]
     public Task Every_query_form_without_a_default_value_reports() =>
         Test(
@@ -142,10 +147,10 @@ public sealed class DefaultProducingCallAnalyzerTests
                 }
             }
             """,
-            Cmtk0009(0, "FirstOrDefault", "Plain", NothingFound, "Select a nullable first, as in Select(x => (Plain?)x), so that nothing found is null"),
+            Cmtk0009(0, "FirstOrDefault", "Plain", NothingFound, "Use FirstOrNone, which returns an Option and asks the query for one element, or select a nullable first, as in Select(x => (Plain?)x)"),
             Cmtk0009(1, "LastOrDefault", "Plain", NothingFound, "Select a nullable first, as in Select(x => (Plain?)x), so that nothing found is null"),
             Cmtk0009(2, "SingleOrDefault", "Plain", NothingFound, "Select a nullable first, as in Select(x => (Plain?)x), so that nothing found is null"),
-            Cmtk0009(3, "ElementAtOrDefault", "Plain", " for an index past the end", "Select a nullable first, as in Select(x => (Plain?)x), so that nothing found is null"),
+            Cmtk0009(3, "ElementAtOrDefault", "Plain", " for an index past the end", "Use Skip(index).FirstOrNone(), which returns an Option and asks the query for one element"),
             Cmtk0009(4, "DefaultIfEmpty", "Plain", " for an empty sequence", "Select a nullable first, as in Select(x => (Plain?)x), so that nothing found is null"))
             .RunAsync(TestContext.Current.CancellationToken);
 
@@ -328,15 +333,31 @@ public sealed class DefaultProducingCallAnalyzerTests
                 }
             }
             """,
-            Cmtk0009(0, "FirstOrDefaultAsync", "Plain", NothingFound, NullableFirst),
-            Cmtk0009(1, "FirstOrDefaultAsync", "Plain", NothingFound, NullableFirst),
+            Cmtk0009(0, "FirstOrDefaultAsync", "Plain", NothingFound, FirstOrNoneAsync),
+            Cmtk0009(1, "FirstOrDefaultAsync", "Plain", NothingFound, FirstOrNoneAsync),
             Cmtk0009(2, "LastOrDefaultAsync", "Plain", NothingFound, NullableFirst),
             Cmtk0009(3, "LastOrDefaultAsync", "Plain", NothingFound, NullableFirst),
             Cmtk0009(4, "SingleOrDefaultAsync", "Plain", NothingFound, NullableFirst),
             Cmtk0009(5, "SingleOrDefaultAsync", "Plain", NothingFound, NullableFirst),
             Cmtk0009(6, "ElementAtOrDefaultAsync", "Plain", PastTheEnd, NullableFirst),
-            Cmtk0009(7, "FirstOrDefaultAsync", "Plain", NothingFound, NullableFirst))
+            Cmtk0009(7, "FirstOrDefaultAsync", "Plain", NothingFound, FirstOrNoneAsync))
             .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary><c>FirstOrNoneAsync</c> is the EF Core satellite's: a project that references EF Core without it is told the nullable projection.</summary>
+    [Fact]
+    public Task Without_the_satellite_FirstOrDefaultAsync_is_told_the_nullable_projection()
+    {
+        var test = new AnalyzerTest<DefaultProducingCallAnalyzer>("using Microsoft.EntityFrameworkCore;" + Environment.NewLine + Subjects +
+            """
+            public static class C
+            {
+                public static async Task Run(IQueryable<Plain> ids) { var first = await {|#0:ids.FirstOrDefaultAsync()|}; }
+            }
+            """);
+        test.TestState.AdditionalReferences.Add(MetadataReference.CreateFromFile(typeof(Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions).Assembly.Location));
+        test.ExpectedDiagnostics.Add(Cmtk0009(0, "FirstOrDefaultAsync", "Plain", NothingFound, NullableFirst));
+        return test.RunAsync(TestContext.Current.CancellationToken);
+    }
 
     /// <summary>
     /// The new forms keep the rule's line: an overload given a default value, and an element type whose

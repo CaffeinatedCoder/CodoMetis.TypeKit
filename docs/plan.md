@@ -598,6 +598,11 @@ Each phase ends green, and its guards have been proven by seeding the defect
        `ClosedSetConverter<TSet>`: the compiled model wrote the internal mapping's helpers out as C#
        in the application (CS0122), so no closed set reached Native AOT. The smoke test's `aot`
        consumer now publishes a set's JSON, its column, a parameter and a JSON column.
+    7a. **The research picks** (2026-10-13): a research agent reviewed what 2.0.0 lacks against the
+       peers and the issue trackers, and the user took its top five, each a commit:
+       `FirstOrNone`/`FirstOrError` on a query and EF's `FirstOrNoneAsync` ✅ (decision 47); a closed
+       set's `[TypeConverter]` and `IParsable`; Serilog for closed sets; continuations of a
+       `Task<Option<T>>`; `Transpose`, `SingleOrNone` and `ElementAtOrNone`.
     8. **The fault responses**, after [spikes/FaultResponses](../spikes/FaultResponses/README.md),
        last, since they read a smart enum's kind.
     9. **The breaks**: decision 34's promotions, the two rules at Error, and the baseline's verdict
@@ -1463,6 +1468,14 @@ Still open:
     `InnerException` is a `TimeoutException` is caught, every other one still passes through. No
     `CancellationToken` overload: the shape tells the two apart without one, and a token cancelled by
     the caller still surfaces as cancellation.
+47. **`FirstOrNone` on a query runs in the query** (2026-10-13, phase 13). The `IEnumerable<T>`
+    overloads were the only ones, so `db.Orders.FirstOrNone(o => o.Id == id)` read the table and ran
+    the predicate in memory, with no warning (reproduced: no `WHERE`, no `LIMIT`). `IQueryable<T>`
+    overloads take an expression and `Take(1)`, a break only for a predicate the provider cannot
+    translate, which now throws: a major's to make. `LastOrNone` and `LastOrError` on a query are
+    `[Obsolete(error: true)]`, as `Catch`'s task trap is, since a query has no last element until it
+    is ordered. EF's `FirstOrNoneAsync` lives in the satellite, in EF's namespace; under Native AOT
+    neither is precompiled (measured), which the EF README says with the call-site form to use.
 
 ## 9. Option and Result
 

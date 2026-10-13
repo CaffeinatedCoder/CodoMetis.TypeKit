@@ -863,6 +863,31 @@ public static class Result
                 : source.LastOrNone(predicate).ToResult(error);
     }
 
+    /// <param name="source">The query.</param>
+    /// <typeparam name="T">The type of the elements.</typeparam>
+    /// <typeparam name="TError">The type of the error.</typeparam>
+    /// <remarks>The provider runs the condition and is asked for one element, as <c>Option.FirstOrNone</c> on a query is.</remarks>
+    extension<T, TError>(IQueryable<T> source) where T : notnull where TError : notnull
+    {
+        /// <summary>The first element that matches, or the given error: the provider runs the condition, and is asked for one.</summary>
+        /// <param name="predicate">The condition to match, translated by the query provider.</param>
+        /// <param name="error">The error if nothing matches. Never null.</param>
+        /// <returns>The first matching element, or <paramref name="error"/>.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
+        public Result<T, TError> FirstOrError(System.Linq.Expressions.Expression<Func<T, bool>> predicate, TError error) =>
+            error is null
+                ? throw ThrowHelper.NullContent(nameof(error))
+                : source.FirstOrNone(predicate).ToResult(error);
+
+        /// <summary>Refused: a query has no last element until it is ordered, and this would read every row to find one.</summary>
+        /// <param name="predicate">The condition to match.</param>
+        /// <param name="error">The error if nothing matches.</param>
+        /// <returns>Never: the overload does not compile.</returns>
+        [Obsolete("A query has no last element until it is ordered, and LastOrError would read every row to find one. Order it the other way and use FirstOrError, or call AsEnumerable() to read it all on purpose.", error: true)]
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public Result<T, TError> LastOrError(System.Linq.Expressions.Expression<Func<T, bool>> predicate, TError error) => throw new NotSupportedException();
+    }
+
     /// <param name="source">The sequence.</param>
     /// <typeparam name="T">The type of the elements.</typeparam>
     extension<T>(IEnumerable<T> source)

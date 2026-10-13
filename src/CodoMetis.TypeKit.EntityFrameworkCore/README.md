@@ -128,6 +128,25 @@ memory is ordinal for a string, as it is for any string column.
 The mapping is tested on SQLite and PostgreSQL, the SQL of each translation is pinned on PostgreSQL,
 and every wrapped-type family makes a round trip through a real PostgreSQL.
 
+## An Option for nothing found
+
+```csharp
+Option<Order> order = await db.Orders.FirstOrNoneAsync(o => o.Id == id);   // the database runs the condition and returns one row
+Option<Order> earliest = db.Orders.OrderBy(o => o.PlacedAt).FirstOrNone(); // the same, synchronous
+Result<Order, OrderFault> found = db.Orders.FirstOrError(o => o.Id == id, OrderFault.NotFound);
+```
+
+`FirstOrNoneAsync`, and the base package's `FirstOrNone` and `FirstOrError` on a query, ask the
+database for one row and let it run the condition, `WHERE … LIMIT @p`, where `FirstOrDefaultAsync`
+hands back a `default` value object for nothing found (CMTK0009). On a query, `LastOrNone` and
+`LastOrError` are compile errors: a query has no last row until it is ordered, so order it the
+other way and take the first, or call `AsEnumerable()` to read every row on purpose.
+
+Under Native AOT, EF runs only the queries it precompiled, and it precompiles a query where the
+application calls one of EF's own operators, which these are not: they throw "Query wasn't
+precompiled" there (measured with EF Core 10.0.12). Write `Where(…).Take(1).ToListAsync()` at the
+call site instead, and take the first element of the list.
+
 ## Reading back skips validation
 
 A column is read through `IValueObjectMaterializer<,>`, not through `Create`. A rule added to a

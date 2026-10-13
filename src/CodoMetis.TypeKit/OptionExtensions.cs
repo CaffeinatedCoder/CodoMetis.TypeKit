@@ -325,6 +325,60 @@ public static class Option
                   .LastOrDefault();
     }
 
+    /// <param name="source">The query.</param>
+    /// <typeparam name="T">The type of the elements.</typeparam>
+    /// <remarks>
+    /// A query is asked for one element, so the provider runs the condition and the limit where the
+    /// query runs: a <c>WHERE</c> and a <c>LIMIT</c> in SQL. Through the <see cref="IEnumerable{T}"/> overloads, an
+    /// <see cref="IQueryable{T}"/> was read in full and its condition compiled and run in memory, on
+    /// every row of the table.
+    /// </remarks>
+    extension<T>(IQueryable<T> source) where T : notnull
+    {
+        /// <summary>The first element of the query, or <c>None</c>: the provider is asked for one.</summary>
+        /// <returns>The first element, or <c>None</c> if the query has none.</returns>
+        /// <exception cref="ArgumentNullException">The first element is null.</exception>
+        public Option<T> FirstOrNone()
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            return FirstOf(source.Take(1));
+        }
+
+        /// <summary>The first element that matches, or <c>None</c>: the provider runs the condition, and is asked for one.</summary>
+        /// <param name="predicate">The condition to match, translated by the query provider.</param>
+        /// <returns>The first matching element, or <c>None</c> if nothing matches.</returns>
+        /// <exception cref="ArgumentNullException">The first matching element is null.</exception>
+        public Option<T> FirstOrNone(System.Linq.Expressions.Expression<Func<T, bool>> predicate)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(predicate);
+
+            return FirstOf(source.Where(predicate).Take(1));
+        }
+
+        /// <summary>Refused: a query has no last element until it is ordered, and this would read every row to find one.</summary>
+        /// <returns>Never: the overload does not compile.</returns>
+        [Obsolete("A query has no last element until it is ordered, and LastOrNone would read every row to find one. Order it the other way and use FirstOrNone, or call AsEnumerable() to read it all on purpose.", error: true)]
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public Option<T> LastOrNone() => throw new NotSupportedException();
+
+        /// <summary>Refused: a query has no last element until it is ordered, and this would read every row to find one.</summary>
+        /// <param name="predicate">The condition to match.</param>
+        /// <returns>Never: the overload does not compile.</returns>
+        [Obsolete("A query has no last element until it is ordered, and LastOrNone would read every row to find one. Order it the other way and use FirstOrNone, or call AsEnumerable() to read it all on purpose.", error: true)]
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public Option<T> LastOrNone(System.Linq.Expressions.Expression<Func<T, bool>> predicate) => throw new NotSupportedException();
+    }
+
+    /// <summary>The first element a query limited to one answers, or <c>None</c>.</summary>
+    private static Option<T> FirstOf<T>(IQueryable<T> limited) where T : notnull
+    {
+        using var enumerator = limited.GetEnumerator();
+
+        return enumerator.MoveNext() ? Some(enumerator.Current) : None<T>();
+    }
+
     /// <param name="dictionary">The dictionary.</param>
     /// <typeparam name="TKey">The type of the keys.</typeparam>
     /// <typeparam name="TValue">The type of the values.</typeparam>
