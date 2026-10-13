@@ -110,8 +110,10 @@ public sealed class PositionalMatchArgumentAnalyzer : DiagnosticAnalyzer
                 if (model.GetSymbolInfo(access.Expression, cancellationToken).Symbol is ITypeSymbol) return null;
                 return model.GetTypeInfo(access.Expression, cancellationToken).Type as INamedTypeSymbol;
 
+            // The ?. that binds the call is the one whose WhenNotNull holds it. In s?.Match(…)?.ToUpper()
+            // the nearest one around the call is the second, whose receiver is the call itself.
             case MemberBindingExpressionSyntax binding when binding.Name.Identifier.ValueText == Match:
-                return invocation.FirstAncestorOrSelf<ConditionalAccessExpressionSyntax>() is { } conditional
+                return invocation.Ancestors().OfType<ConditionalAccessExpressionSyntax>().FirstOrDefault(conditional => conditional.WhenNotNull.Span.Contains(invocation.Span)) is { } conditional
                     ? model.GetTypeInfo(conditional.Expression, cancellationToken).Type as INamedTypeSymbol
                     : null;
 

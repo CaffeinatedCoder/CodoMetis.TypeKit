@@ -73,8 +73,10 @@ public sealed class PositionalMatchArgumentAnalyzerTests
         return test;
     }
 
-    private static DiagnosticResult Cmtk0012(string set, string names) =>
-        new DiagnosticResult("CMTK0012", DiagnosticSeverity.Error).WithLocation(0).WithArguments(set, names);
+    private static DiagnosticResult Cmtk0012(string set, string names) => Cmtk0012(0, set, names);
+
+    private static DiagnosticResult Cmtk0012(int location, string set, string names) =>
+        new DiagnosticResult("CMTK0012", DiagnosticSeverity.Error).WithLocation(location).WithArguments(set, names);
 
     [Fact]
     public void The_descriptor_is_the_published_contract()
@@ -145,6 +147,43 @@ public sealed class PositionalMatchArgumentAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
+    /// A conditional call followed by another conditional access, <c>s?.Match(…)?.ToUpper()</c>: the
+    /// nearest <c>?.</c> around the call is the one after it, whose receiver is the call's own result.
+    /// The receiver is the one whose <c>?.</c> binds the call, bound or not.
+    /// </summary>
+    [Fact]
+    public Task A_conditional_call_followed_by_a_conditional_access_is_reported() =>
+        Test(
+            """
+            sealed class Holder
+            {
+                public Subjects.Status Status { get; set; } = Subjects.Status.Open;
+            }
+
+            static class Use
+            {
+                static string Upper(Subjects.Status? s) => s?.Match({|#0:() => "a"|}, () => "b", () => "c")?.ToUpper();
+
+                static string Trimmed(Holder h) => h.Status?.Match({|#1:() => " a"|}, () => "b", () => "c")?.Trim();
+
+                static string Awaited(Subjects.Status? s) => s?.Match({|#2:() => System.Threading.Tasks.Task.FromResult("a")|}, () => System.Threading.Tasks.Task.FromResult("b"), () => System.Threading.Tasks.Task.FromResult("c"))?.Result;
+
+                static string Unbound(Subjects.Unwoven? u) => u?{|CS1061:.Match|}({|#3:() => 1|}, () => 2)?.ToString();
+
+                static string Nested(Holder? h) => h?.Status?.Match({|#4:() => "a"|}, () => "b", () => "c")?.Trim()?.ToUpper();
+
+                static int? Length(Subjects.Status? s) => s?.Match({|#5:() => "a"|}, () => "b", () => "c").Length;
+            }
+            """,
+            Cmtk0012(0, "Status", "open:, shipped:, @new:"),
+            Cmtk0012(1, "Status", "open:, shipped:, @new:"),
+            Cmtk0012(2, "Status", "open:, shipped:, @new:"),
+            Cmtk0012(3, "Unwoven", "low:, high:"),
+            Cmtk0012(4, "Status", "open:, shipped:, @new:"),
+            Cmtk0012(5, "Status", "open:, shipped:, @new:"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
     /// Before weaving, in the project that declares the set, the call does not bind; one argument per
     /// member on a closed set is the generated <c>Match</c>, and the names are the generators' rule.
     /// </summary>
@@ -207,6 +246,49 @@ public sealed class PositionalMatchArgumentAnalyzerTests
             """)
             {
                 ExpectedDiagnostics = { Cmtk0012("Status", "open:, shipped:, @new:") },
+            }
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    [Fact]
+    public Task The_fix_names_the_arguments_of_a_conditional_call_followed_by_a_conditional_access() =>
+        new CodeFixTest<PositionalMatchArgumentAnalyzer, PositionalMatchArgumentCodeFixProvider>(
+            Sets + """
+            sealed class Holder
+            {
+                public Subjects.Status Status { get; set; } = Subjects.Status.Open;
+            }
+
+            static class Use
+            {
+                static string Upper(Subjects.Status? s) => s?.Match({|#0:() => "a"|}, () => "b", () => "c")?.ToUpper();
+
+                static string Trimmed(Holder h) => h.Status?.Match({|#1:() => " a"|}, () => "b", () => "c")?.Trim();
+
+                static int? Unbound(Subjects.Unwoven? u) => u?{|CS1061:.Match|}({|#2:() => 1|}, () => 2)?.GetHashCode();
+            }
+            """,
+            Sets + """
+            sealed class Holder
+            {
+                public Subjects.Status Status { get; set; } = Subjects.Status.Open;
+            }
+
+            static class Use
+            {
+                static string Upper(Subjects.Status? s) => s?.Match(open: () => "a", shipped: () => "b", @new: () => "c")?.ToUpper();
+
+                static string Trimmed(Holder h) => h.Status?.Match(open: () => " a", shipped: () => "b", @new: () => "c")?.Trim();
+
+                static int? Unbound(Subjects.Unwoven? u) => u?{|CS1061:.Match|}(low: () => 1, high: () => 2)?.GetHashCode();
+            }
+            """)
+            {
+                ExpectedDiagnostics =
+                {
+                    Cmtk0012(0, "Status", "open:, shipped:, @new:"),
+                    Cmtk0012(1, "Status", "open:, shipped:, @new:"),
+                    Cmtk0012(2, "Unwoven", "low:, high:"),
+                },
             }
             .RunAsync(TestContext.Current.CancellationToken);
 }
