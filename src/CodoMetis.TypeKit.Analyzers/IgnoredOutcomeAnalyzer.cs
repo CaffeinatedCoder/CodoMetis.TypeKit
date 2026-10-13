@@ -59,8 +59,10 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// <para>
 /// <c>Tap</c>, <c>TapAsync</c>, <c>TapError</c> and <c>TapErrorAsync</c> return their receiver unchanged,
 /// and so do the <c>Task</c> continuations of those names, so <c>result.Tap(log);</c> or
-/// <c>await pending.TapAsync(log);</c> on a variable drops nothing the caller does not still hold. On
-/// anything else, such as <c>Find(id).Tap(log);</c>, the result is gone and is reported.
+/// <c>await pending.TapAsync(log);</c> on a variable drops nothing the caller does not still hold. Nor
+/// does a chain of them, <c>result.Tap(log).TapError(warn);</c>, or one on what a held task completes
+/// with, <c>(await pending).Tap(log);</c>. On anything else, such as <c>Find(id).Tap(log);</c>, the
+/// result is gone and is reported.
 /// </para>
 /// <para>
 /// In a project that declares value objects, Metalama runs analyzers on the source before weaving,
@@ -191,7 +193,7 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     private static string? DroppedOutcome(ITypeSymbol? type, IInvocationOperation invocation, TypeKitSymbols symbols, Tasks tasks)
     {
         if ((symbols.OutcomeName(type) ?? tasks.PendingOutcome(type, symbols)) is { } outcome)
-            return ReturnsItsStoredReceiver(invocation, symbols) ? null : outcome;
+            return ReturnsItsStoredReceiver(invocation, symbols, tasks) ? null : outcome;
 
         return DroppedHolder(tasks.HolderOutcome(type, symbols) ?? tasks.HolderOutcome(tasks.Awaited(type), symbols), invocation, symbols, tasks);
     }
@@ -222,7 +224,7 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         return invocation.Descendants().Any(operation => operation switch
         {
             IInvocationOperation call when tasks.PassesOn(call) => false,
-            IInvocationOperation call           => (symbols.OutcomeName(call.Type) ?? tasks.PendingOutcome(call.Type, symbols)) is not null && !ReturnsItsStoredReceiver(call, symbols)
+            IInvocationOperation call           => (symbols.OutcomeName(call.Type) ?? tasks.PendingOutcome(call.Type, symbols)) is not null && !ReturnsItsStoredReceiver(call, symbols, tasks)
                                                 || tasks.SequenceOutcome(call.Type, symbols) is not null && !Given(call, symbols),
             IMethodReferenceOperation reference => (symbols.OutcomeName(reference.Method.ReturnType) ?? tasks.PendingOutcome(reference.Method.ReturnType, symbols)) is not null,
             _                                   => false
@@ -364,26 +366,37 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     /// outcome's own <c>Tap</c>, <c>TapAsync</c>, <c>TapError</c> and <c>TapErrorAsync</c>, and the
     /// <c>Task</c> continuations <c>TapAsync</c> and <c>TapErrorAsync</c>, which return the task's result as it was.
     /// </summary>
-    private static bool ReturnsItsStoredReceiver(IInvocationOperation invocation, TypeKitSymbols symbols)
+    private static bool ReturnsItsStoredReceiver(IInvocationOperation invocation, TypeKitSymbols symbols, Tasks tasks)
     {
         var method = invocation.TargetMethod;
 
         if (method is { IsStatic: false, Name: "Tap" or "TapAsync" or "TapError" or "TapErrorAsync" } && symbols.OutcomeName(method.ContainingType) is not null)
-            return IsStored(invocation.Instance);
+            return IsStored(invocation.Instance, symbols, tasks);
 
         // pending.TapAsync(log) binds to the extension block's member, with the task as its instance;
         // Result.TapAsync(pending, log) to its implementation, with the task as the first argument.
         if (method.Name is "TapAsync" or "TapErrorAsync" && symbols.IsDeclaredByResultClass(method))
-            return IsStored(invocation.Instance ?? invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == 0)?.Value);
+            return IsStored(invocation.Instance ?? invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == 0)?.Value, symbols, tasks);
 
         return false;
     }
 
-    private static bool IsStored(IOperation? receiver)
+    /// <summary>
+    /// Whether the caller still holds <paramref name="receiver"/>: a local, a parameter or a field; a
+    /// tap that returned such a receiver, so that <c>r.Tap(log).TapError(warn)</c> holds at every link;
+    /// or what a task so held completes with, awaited in the chain, <c>(await pending).Tap(log)</c>.
+    /// </summary>
+    private static bool IsStored(IOperation? receiver, TypeKitSymbols symbols, Tasks tasks)
     {
         while (receiver is IConversionOperation { IsImplicit: true } conversion) receiver = conversion.Operand;
 
-        return receiver is ILocalReferenceOperation or IParameterReferenceOperation or IFieldReferenceOperation;
+        return receiver switch
+        {
+            ILocalReferenceOperation or IParameterReferenceOperation or IFieldReferenceOperation => true,
+            IInvocationOperation tap                                                             => ReturnsItsStoredReceiver(tap, symbols, tasks),
+            IAwaitOperation { Operation: var awaited }                                           => IsStored(tasks.PassedOn(awaited), symbols, tasks),
+            _                                                                                    => false,
+        };
     }
 
     /// <summary>The task and collection types, resolved once per compilation.</summary>

@@ -204,7 +204,9 @@ a count from a read; enumerate it with a loop that reads each result, or discard
 
 `Tap`, `TapAsync`, `TapError` and `TapErrorAsync` return their receiver unchanged, and so do the
 `Task` continuations `TapAsync` and `TapErrorAsync`, so `result.Tap(log);` and `await pending.TapAsync(log);`
-on a variable, parameter or field are silent. `Find(id).Tap(log);` drops the result and is reported.
+on a variable, parameter or field are silent, and so is a chain of them, `result.Tap(log).TapError(warn);`,
+or one on what a held task completes with, `(await pending).Tap(log);`. `Find(id).Tap(log);` drops
+the result and is reported, and so does `Find(id).Tap(log).TapError(warn);`.
 
 ## CMTK0004
 

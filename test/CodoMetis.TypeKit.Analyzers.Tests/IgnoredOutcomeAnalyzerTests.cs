@@ -287,6 +287,56 @@ public sealed class IgnoredOutcomeAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
+    /// A chain of taps on a stored result or task hands back what the caller still holds, link by
+    /// link: each <c>Tap</c> returns its receiver, and that receiver is the previous <c>Tap</c>, which
+    /// returned a stored one. So is a tap on what a held task completes with, awaited in the chain. A
+    /// chain that starts at a call, or passes through a combinator that makes a new result, drops it.
+    /// </summary>
+    [Fact]
+    public Task A_chain_of_taps_on_a_stored_result_or_task_is_silent_and_on_a_call_reports() =>
+        Test(
+            """
+            public static class Caller
+            {
+                private static Result<int, Fault> _field = 1;
+
+                public static async Task Run(Service service, Result<int, Fault> parameter, Result<Fault> command, Option<int> option, Task<Result<int, Fault>> pending)
+                {
+                    var local = service.Load();
+                    parameter.Tap(_ => { }).TapError(_ => { });
+                    local.Tap(_ => { }).Tap(_ => { }).TapError(_ => { });
+                    _field.TapError(_ => { }).Tap(_ => { });
+                    command.Tap(() => { }).TapError(_ => { });
+                    option.Tap(_ => { }).Tap(_ => { });
+                    await local.TapAsync(_ => Task.CompletedTask).TapErrorAsync(_ => { });
+                    await pending.TapAsync(_ => { }).TapErrorAsync(_ => { });
+                    await pending.TapAsync(_ => { }).TapErrorAsync(_ => Task.CompletedTask).ConfigureAwait(false);
+                    await parameter.Tap(_ => { }).TapErrorAsync(_ => Task.CompletedTask);
+
+                    var held = await pending;
+                    held.Tap(_ => { }).TapError(_ => { });
+                    (await pending).Tap(_ => { }).TapError(_ => { });
+                    (await pending.TapAsync(_ => { })).TapError(_ => { });
+                    (await pending.TapAsync(_ => { }).ConfigureAwait(false)).TapError(_ => { });
+
+                    {|#0:service.Load().Tap(_ => { }).TapError(_ => { })|};
+                    {|#1:await service.LoadAsync().TapAsync(_ => { }).TapErrorAsync(_ => { })|};
+                    {|#2:(await service.LoadAsync().TapAsync(_ => { })).TapError(_ => { })|};
+                    {|#3:(await service.LoadAsync()).Tap(_ => { })|};
+                    {|#4:local.Map(x => x + 1).Tap(_ => { })|};
+                    {|#5:await pending.MapAsync(x => x + 1).TapAsync(_ => { })|};
+                }
+            }
+            """,
+            Cmtk0003(0, "Result", "TapError"),
+            Cmtk0003(1, "Result", "TapErrorAsync"),
+            Cmtk0003(2, "Result", "TapError"),
+            Cmtk0003(3, "Result", "Tap"),
+            Cmtk0003(4, "Result", "Tap"),
+            Cmtk0003(5, "Result", "TapAsync"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
     /// The <c>Task</c> continuations <c>TapAsync</c> and <c>TapErrorAsync</c> return the task's result
     /// unchanged, so awaiting them on a task the caller still holds drops nothing, as the instance
     /// <c>Tap</c> does not.
