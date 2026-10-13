@@ -224,7 +224,7 @@ public sealed class MergePatchesTests
     public void A_value_object_inside_a_patch_keeps_its_rule()
     {
         SampleOutputs.ShouldRefuseAsShownIn(() => JsonSerializer.Deserialize<ContactPatch>("""{"email":"nobody"}""", JsonSerializerOptions.Web), Page, input: "nobody");
-        Should.Throw<JsonException>(Usage.Refused);
+        Should.Throw<JsonException>(Usage.Refused).Path.ShouldBe("$.email", "the page says the path is the field's");
     }
 
     [Fact]

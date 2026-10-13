@@ -18,6 +18,14 @@ package, is the one wire type there, and is hand-written, not generated. Measure
 - **Reading never refuses a null.** Null is a state of the wire format whatever `T` is; whether a
   clear is accepted is the application's rule, said in `Match`. A value object inside a patch is
   read by its own converter, so its rule applies there as anywhere else.
+- **A refusal is at the patched property's path.** The converter reads the value with a nested
+  `JsonSerializer.Deserialize`, which sets the path within that value, `$`, and the serializer keeps
+  a path it finds set, so a client was told `$` for a bad field. The converter throws the refusal
+  again without a path, and the serializer sets the property's, `$.quantity` or `$[1].quantity`, as
+  for a property of `T`. The nested sentence is kept, a value object's own refusal among them, less
+  the location the serializer appended to its default sentence, which named `$`. Inside a patched
+  object the path ends at the patched property, since a converter cannot extend the serializer's
+  path (`PatchTests`).
 - **Writing an absent patch is refused**, since a converter cannot leave a property out;
   `[JsonIgnore(Condition = WhenWritingDefault)]` leaves it out instead.
 - **`ToString()` never prints the value**, as for `Option` and `Result`.

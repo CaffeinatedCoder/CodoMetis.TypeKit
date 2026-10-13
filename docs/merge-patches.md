@@ -96,8 +96,9 @@ rule: a value `Create` refuses is refused as anywhere else, and the refusal does
 JsonSerializer.Deserialize<ContactPatch>("""{"email":"nobody"}""", JsonSerializerOptions.Web);   // JsonException naming Email and NoAt, never the text
 ```
 
-In an endpoint, that is the 400 any body a value object refuses gets, with problem details where the
-host adds `UseStatusCodePages()` ([ASP.NET Core](aspnet-core.md#what-a-refused-value-answers)). A `null` is
+The exception's `Path` is the field's, `$.email`, as it is for a property that is no patch, so the
+answer to the client can name the field. In an endpoint, that is the 400 any body a value object
+refuses gets, with problem details where the host adds `UseStatusCodePages()` ([ASP.NET Core](aspnet-core.md#what-a-refused-value-answers)). A `null` is
 not a refusal but the `Null` state, which `Apply` turns into a fault of its own, so a `Patch<Email?>`
 is never needed.
 

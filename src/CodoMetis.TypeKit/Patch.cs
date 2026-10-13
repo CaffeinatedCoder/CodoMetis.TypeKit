@@ -231,7 +231,32 @@ internal sealed class PatchJsonConverter<T> : JsonConverter<Patch<T>>
     {
         if (reader.TokenType == JsonTokenType.Null) return Patch.Null<T>();
 
-        return Patch.Value(JsonSerializer.Deserialize(ref reader, Contract(options)));
+        try
+        {
+            return Patch.Value(JsonSerializer.Deserialize(ref reader, Contract(options)));
+        }
+        catch (JsonException nested) when (nested.Path is not null)
+        {
+            throw AtThePatchedProperty(nested);
+        }
+    }
+
+    /// <summary>
+    /// The nested call reads the value as a document of its own, so its refusal carries the path within
+    /// that document, <c>$</c>, and the serializer keeps a path it finds set: a client was told
+    /// <c>$</c> where a property of <typeparamref name="T"/> gives <c>$.quantity</c>. Thrown again without
+    /// one, the serializer sets the patched property's path, <c>$.quantity</c> or <c>$[1].quantity</c>.
+    /// The nested refusal's sentence is kept, a value object's own among them, less the location the
+    /// nested call appended to the serializer's default sentence, which named <c>$</c>; its inner
+    /// exception is kept, the nested exception itself is not, since its message names <c>$</c> too.
+    /// Nothing of the input is added.
+    /// </summary>
+    private static JsonException AtThePatchedProperty(JsonException nested)
+    {
+        var appended = $" Path: {nested.Path} | LineNumber: {nested.LineNumber} | BytePositionInLine: {nested.BytePositionInLine}.";
+        var message  = nested.Message.EndsWith(appended, StringComparison.Ordinal) ? nested.Message[..^appended.Length] : nested.Message;
+
+        return new JsonException(message, nested.InnerException);
     }
 
     public override void Write(Utf8JsonWriter writer, Patch<T> value, JsonSerializerOptions options)

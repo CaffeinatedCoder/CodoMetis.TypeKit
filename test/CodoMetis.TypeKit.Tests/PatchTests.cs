@@ -161,6 +161,67 @@ public sealed class PatchTests
         refusal.Message.ShouldNotContain("abc");
     }
 
+    /// <summary>
+    /// The converter reads the value with a nested call, which reports the path within the value it
+    /// reads, <c>$</c>, and the serializer kept it: an HTTP 400 for a bad field of a PATCH could not name
+    /// the field. The path is the patched property's now, as for a property of the wrapped type, and the
+    /// message names no other.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Resolvers))]
+    public void A_value_the_wrapped_type_cannot_read_is_refused_at_the_property_s_path(string resolver)
+    {
+        var options = Options(resolver);
+
+        var plain = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<Plain>("""{"quantity":"SECRET-7f3a"}""", options));
+        var patch = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<Update>("""{"quantity":"SECRET-7f3a"}""", options));
+
+        plain.Path.ShouldBe("$.quantity");
+        patch.Path.ShouldBe(plain.Path);
+        patch.LineNumber.ShouldBe(plain.LineNumber);
+        patch.BytePositionInLine.ShouldBe(plain.BytePositionInLine);
+        patch.Message.ShouldStartWith("The JSON value could not be converted to System.Int32.");
+        patch.Message.ShouldNotContain("Path:");
+        patch.Message.ShouldNotContain("SECRET");
+    }
+
+    /// <summary>A value object's own refusal is the message the caller sees, at the property's path.</summary>
+    [Theory]
+    [MemberData(nameof(Resolvers))]
+    public void A_value_object_s_refusal_inside_a_patch_keeps_its_message_at_the_property_s_path(string resolver)
+    {
+        var refusal = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<Update>("""{"name":"Ada","code":"abc"}""", Options(resolver)));
+
+        refusal.Path.ShouldBe("$.code");
+        refusal.Message.ShouldBe("Code refused the JSON value (NotUpperCase).");
+    }
+
+    /// <summary>In a list of patches the path names the element and its property.</summary>
+    [Theory]
+    [MemberData(nameof(Resolvers))]
+    public void A_refusal_in_an_array_of_patches_names_the_element(string resolver)
+    {
+        var options = Options(resolver);
+
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<List<Update>>("""[{}, {"quantity":"x"}]""", options)).Path.ShouldBe("$[1].quantity");
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<List<Update>>("""[{}, {"code":"abc"}]""", options)).Path.ShouldBe("$[1].code");
+    }
+
+    /// <summary>
+    /// A converter cannot extend the serializer's path, so inside a patched object the path ends at the
+    /// patched property: coarser than the property within, and never the nested call's `$.city`, which
+    /// names a property the document does not have at its root.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Resolvers))]
+    public void Inside_a_patched_object_the_path_ends_at_the_patched_property(string resolver)
+    {
+        var refusal = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<Update>("""{"address":{"city":5}}""", Options(resolver)));
+
+        refusal.Path.ShouldBe("$.address");
+        refusal.Message.ShouldNotContain("Path:");
+    }
+
     [Theory]
     [MemberData(nameof(Resolvers))]
     public void Writing_leaves_an_absent_patch_out_under_WhenWritingDefault_and_refuses_it_otherwise(string resolver)
@@ -205,6 +266,9 @@ public sealed class PatchTests
 
     public sealed record Update(Patch<string?> Name, Patch<int> Quantity, Patch<Code> Code, Patch<Address?> Address);
 
+    /// <summary>The same field without a patch, whose refusal is the one a patch's should match.</summary>
+    public sealed record Plain(int Quantity);
+
     public sealed record UpdateWithoutAddress(Patch<Address?> Address);
 
     public sealed record Outgoing(
@@ -217,6 +281,8 @@ public sealed class PatchTests
 // A class a patch wraps is listed, since the patch's converter hides it from the generator; a primitive
 // and a type with its own converter need not be.
 [JsonSerializable(typeof(PatchTests.Update))]
+[JsonSerializable(typeof(List<PatchTests.Update>))]
+[JsonSerializable(typeof(PatchTests.Plain))]
 [JsonSerializable(typeof(PatchTests.Address))]
 [JsonSerializable(typeof(PatchTests.Outgoing))]
 [JsonSerializable(typeof(PatchTests.BareOutgoing))]
