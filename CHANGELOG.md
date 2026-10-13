@@ -12,261 +12,46 @@ section is the GitHub release's notes.
 
 ## 2.0.0 — Unreleased
 
-A major version: it targets `net10.0` and Metalama 2026.1 as 1.x does, and the breaks are the ones
-Semantic Versioning reserves for a major, listed under Changed. Package validation against 1.5.1
-finds one difference in the public surface, `FaultProblem<TFault>`'s constraint, which still accepts
-every type argument it accepted; the others are behaviour no compatibility check reads: CMTK0003 at
-Error, `FirstOrNone` on a query, CMTK1022 and the new CMTK1005 refusals, `TryParse` letting an
-exception from `Create` through, and the EF Core and OpenAPI refusals below. The new
-analyzer Errors, CMTK0010 to CMTK0012, report only on what this release adds, so nothing that built
-against 1.5.1 meets them.
+Still `net10.0` and Metalama 2026.1. What builds or runs differently, and what to write instead:
+[Migrating from 1.5 to 2.0](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/migrating-to-2.md).
+
+### Breaking
+
+- CMTK0003, a dropped `Result` or `Option`, is an Error, and reports more forms (`Wait()`, loops that never read, `??`, tuples).
+- `FirstOrNone`/`FirstOrError` on an `IQueryable` run in the query; `LastOrNone`/`LastOrError` on a query no longer compile.
+- CMTK1022 refuses an abstract value object; CMTK1005 refuses one over `object` or `System.Enum`, or named as a generated member.
+- A generated `TryParse` lets an exception from `Create` through instead of answering `false`.
+- EF Core refuses `.Value` on a column with the application's own converter, and ordering by a hand-written `CompareTo`, in queries and query filters.
+- EF Core: value-object keys over `sbyte`, `ushort`, `uint` and `ulong` are generated as EF generates the plain type, so a migration may alter the column.
+- OpenAPI: a component name claimed by two types throws.
+- Async combinators throw `ArgumentNullException` for a delegate that returns no task.
+- `FaultProblem<TFault>` takes any `notnull` fault type.
 
 ### Added
 
-- **`CodoMetis.TypeKit`**: `Result.Catch`, which turns an exception into a result.
-  - `Catch(() => …)` runs the call and answers `Result<T, Exception>`, or `Result<Exception>` for an
-    action. `Catch<T, TException>` catches that type only and lets any other propagate.
-  - `CatchAsync` awaits the task, so an exception thrown after its first `await` is the error too.
-  - An `OperationCanceledException` passes through every overload, and so does an
-    `AggregateException` that holds only cancellations, as `Wait()` and `.Result` throw for a
-    cancelled task; one that holds anything beside them is the error, as thrown. A timeout, one over a
-    `TimeoutException` as `HttpClient` throws when its `Timeout` elapses, is the error, wrapped or
-    not, `.Result` on a timed-out call included.
-  - `CatchAsync`'s error is what `await` throws: for a task that faulted with several exceptions,
-    such as `Task.WhenAll`'s, the first of them, while the task's `Exception` holds them all.
-  - A delegate that returns a `Task`, an `async` lambda among them, given to `Catch` or to its command
-    form `Catch<TException>` is a compile error naming `CatchAsync`. So is a delegate that returns any
-    value given to the command form, which would discard it.
-  - A `ValueTask`, or a task spelled as the type argument, is refused before the delegate runs.
-  - A delegate that returns null throws as `Result.Success(null)` does, and so does one given to
-    `CatchAsync` that returns no task.
-- **The closed-set family**, the release's headline: `IClosedSet<TSelf>` in the `CodoMetis.TypeKit` package, generated
-  by `CodoMetis.TypeKit.Generators`. A sealed partial class whose every instance is a `public static
-  readonly` field, with constant data through a private constructor where the members carry some. The
-  generators add `Name`, `QualifiedName`, `All` in declaration order and read-only, `Match` with one required delegate
-  per member, `TryParse` and `Parse` by name, each with an `ignoreCase` overload for a header or a
-  query string as a client typed it while JSON, the column, binding and `IParsable` stay ordinal,
-  `ToString()`, a JSON converter that writes the name and
-  reads the member itself back, a private constructor where none is declared, and the attribute the
-  satellites read. CMTK1013 to CMTK1019 refuse a declaration that is not partial, not sealed, without
-  members, with a constructor that is not private, with another public static member of its own type,
-  generic, or with a member not initialized with `new` where it is declared; CMTK1020 refuses a
-  record. A hand-written `ToString()` is kept, and an overload of a generated method with another
-  signature; any other generated member written by hand is CMTK1011. An instance the set's
-  own code makes beside its members has no name, and reading it throws rather than writing a null.
-  `All` and the name lookups throw while the set is still initialising, so a static field
-  initializer of the set itself never reads a half-built one.
-  CMTK0002 covers a closed set without the generators.
-  CMTK1021 refuses a member named as a generated member, or two whose names differ only in case
-  (`Open` and `open`, `Express` and `EXPRESS`), which collide in `TryParse(name, ignoreCase: true)`, and
-  in `Match`'s parameters where the first letter is the difference. `Match` checks every delegate for null before it picks one,
-  and a set is a JSON dictionary key by its name. A value object can wrap a closed set, from its own
-  project too, and is generated in full: `ClosedSetAspect` runs first, so the value object's
-  `Parse`, `TryParse`, `IParsable` and type converter see what the set's aspect adds.
-  `CodoMetis.TypeKit.EntityFrameworkCore` maps a closed set to a text column of the member's name, in a
-  primitive collection and a JSON column too, through a compiled model and under Native AOT
-  (`ClosedSetConverter<TSet>` names it explicitly); `CodoMetis.TypeKit.AspNetCore` describes it as a
-  string enum. Nothing is registered per set.
-- **`CodoMetis.TypeKit.Analyzers`**: CMTK0012, a closed set's `Match` given an argument by position.
-  Every parameter has the same type, one delegate per member in declaration order, so reordering two
-  members swapped their branches at such a call and compiled. A conditional call is reported too,
-  `status?.Match(…)?.ToUpper()` among them. The code fix names every argument after the parameter it
-  binds to.
-- **`CodoMetis.TypeKit`**: `Patch<T>`, a field of a JSON Merge Patch (RFC 7396): absent, null or a
-  value, where System.Text.Json alone cannot tell an absent property from a null one. `default` is
-  absent, the one meaningful default of the package, and the analyzers leave it alone. Reading never
-  refuses a null; a value object inside a patch keeps its own rule. `Match`, `TryGetValue`, `Tap`,
-  `IfPresent` and `ToOption` apply it without reflection, `Tap` and `IfPresent` returning the patch; `IfPresent` hands a clear over as null, a
-  `T?` over a struct too, never as `default(T)`. `Map` changes a value and keeps a clear and an
-  absence, and `Traverse` validates a value with a `Create`'s own fault,
-  `request.Email.Traverse(Email.Create)` as a `Result<Patch<Email>, EmailFault>`, a clear and an
-  absence passing through; a `Map` selector that answers null is refused, since a clear is the Null
-  state and never a value. A value the patch cannot read is refused at the property's path
-  (`$.email`, `$[1].quantity`), with the nested refusal's own message. Writing an absent patch is refused, and
-  `[JsonIgnore(Condition = WhenWritingDefault)]` leaves it out. Under a source-generated context a
-  primitive, a string, a `Guid`, a date, a `Uri` and a value object need no listing; a class or an
-  enum does. Works under Native AOT: the converter is registered by the closed type's static
-  constructor, since a converter built by reflection has no code there.
-- **`CodoMetis.TypeKit.AspNetCore`**: `AddTypeKit()` describes a `Patch<T>` property as `T`'s schema,
-  inlined, not required and admitting null, in 3.1 and 3.0; a value object inside a patch through the
-  type it wraps. Null joins what restricts the values, so a validator accepts it beside every value
-  the argument accepts: an enum's list, the type, or a branch beside the argument's own; an `object`'s
-  schema stays unrestricted.
-- **`CodoMetis.TypeKit.Analyzers`**: CMTK0010, the constraints a type parameter cannot declare.
-  `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` (new in the base package) on a type parameter
-  say what C# has no `where` for, and the rule reports a type argument that breaks it at any closed
-  use: a base type, a member, a parameter, a local, a `typeof`, a call or a method group with its
-  arguments written or inferred, a C# 14 extension member, and a generic attribute. A method that
-  implements an interface's, directly, statically or through a base class, carries its constraint. A type parameter forwarded without the attribute is a breach too, so the requirement
-  follows the generic chain; `struct` proves `[Sealed]` and `[Concrete]`, `new()` proves `[Concrete]`.
-  Like every rule, it reports in generated code only where the code maps to a `.razor` or `.cshtml`
-  file.
-- **`CodoMetis.TypeKit.Analyzers`**: CMTK0011, with the package's first code fix. A type marked
-  `[RequireParameterlessConstructor]` (new in the base package, with `ConstructorAccessibility`)
-  requires every concrete type that derives from or implements it, directly or through another, to
-  have a parameterless constructor of the given accessibility, for the host that creates such types
-  by reflection. A class that declares no constructor satisfies `Public` as it is; a missing
-  constructor is reported at the type and the fix adds it, a wrong accessibility at the constructor
-  and the fix changes it; a type with a primary constructor gets no fix. A struct is never reported:
-  its parameterless constructor is public and can be nothing else. The code fixes ship in
-  `CodoMetis.TypeKit.Analyzers.CodeFixes.dll` inside the analyzer package.
-- **`CodoMetis.TypeKit`**: the text guards. `text.AsText()` is for text a person wrote: trimmed, every
-  space separator folded to an ordinary space, composed to NFC so one name has one spelling, and
-  refused when it carries a character that renders as nothing, such as a zero-width space, a Hangul
-  filler or NUL, which `IsNullOrWhiteSpace` lets through; the two zero-width joiners are kept, since
-  they spell Persian, Arabic and Indic scripts and emoji sequences. `text.AsIdentifier()` is for a
-  value another system issued, a subject claim or a session id: trimmed and otherwise left as it
-  arrived, with the joiners refused too. A variation selector is kept after the character it varies
-  and refused anywhere else, and a value of joiners, variation selectors and combining marks alone,
-  which renders nothing, is refused by both. Both also refuse, as `Hidden`, a control character (a tab
-  or a line break inside the value, so a multi-line field does not go through them), a format
-  character (the soft hyphen, the byte-order mark, the bidirectional marks), private use, the line and
-  paragraph separators, an unpaired surrogate and `U+FFFE`, the Khmer inherent vowels and the Khitan
-  filler, and more than 30 combining marks in a row, which composing would reorder in quadratic time;
-  the Arabic number sign and the other prepended concatenation marks are drawn and kept. No string
-  makes either throw. `AsText()` composes to NFC, not NFKC, and throws `PlatformNotSupportedException`
-  in globalization-invariant mode, where `string.Normalize` composes nothing: turn the mode off and
-  make ICU available, since written text has no guard there. Both answer `Result<string, TextFault>`, where `Blank` is
-  the caller's to read as an error or as absence and `Hidden` is a refusal in both; a null receiver
-  is `Blank`. A value object over either is one line, shown in the README.
-- **`CodoMetis.TypeKit`**: `FirstOrNone()`, `FirstOrNone(predicate)` and `FirstOrError(predicate, error)`
-  on an `IQueryable<T>`, which hand the predicate to the query provider as an expression and ask it
-  for one element, a `WHERE` and a `LIMIT` in SQL. `CodoMetis.TypeKit.EntityFrameworkCore` adds
-  `FirstOrNoneAsync`, with or without a predicate, in EF Core's namespace; CMTK0009 names it for
-  `FirstOrDefaultAsync` where the project references the satellite, and names `FirstOrNone` for
-  `Queryable.FirstOrDefault`.
-- **`CodoMetis.TypeKit.Generators`**: a closed set implements `IParsable<TSelf>` explicitly, beside
-  its own `Parse` and `TryParse`, and carries a type converter that reads and writes the member's
-  name, so the configuration binder binds a set and generic code parses one through `T.Parse`. A
-  hand-written `IParsable<TSelf>`, `[JsonConverter]` or `[TypeConverter]` is CMTK1011.
-- **`CodoMetis.TypeKit.Serilog`**: `Destructure.WithTypeKit()` logs a closed set as what it prints,
-  its name or its own `ToString()`, never its constant data, which Serilog alone would destructure
-  by its properties.
-- **`CodoMetis.TypeKit`**: an option's asynchronous steps, `MapAsync`, `BindAsync` and `TapAsync` over
-  callbacks that return a `Task`, and the continuations of a `Task<Option<T>>`: `MapAsync`,
-  `BindAsync`, `FilterAsync`, `TapAsync` and `ToResultAsync`, so a repository's lookup continues into
-  a `Result` pipeline. Each checks its delegates, and `ToResultAsync` its error, before the option is
-  known, as the `Task<Result<…>>` continuations do.
-- **`CodoMetis.TypeKit`**: `SingleOrNone`, with or without a predicate, which throws for more than one
-  element as `SingleOrDefault` does, and `ElementAtOrNone`, by `int` or `Index` on a sequence and by
-  `int` on a query (two rows and one, asked of the provider; an `Index` from the end on a query is a
-  compile error, as `LastOrNone` is); `SingleOrNoneAsync` in the EF Core satellite; and
-  CMTK0009 names each for `SingleOrDefault`, `ElementAtOrDefault` and `SingleOrDefaultAsync`. `Transpose()`
-  between `Option<Result<T, TError>>` and `Result<Option<T>, TError>`, and `Option<T>.Traverse(selector)`
-  for an optional input validated when present.
-- **`CodoMetis.TypeKit`**: `Choose(selector)` on a sequence, the values the selector answers `Some`
-  for, in order and lazily, a filter and a map in one; and `Choose()` on a sequence of options, the
-  values they hold. The arguments are checked at the call, as LINQ's are.
-- **`CodoMetis.TypeKit`**: `TraverseAsync` on a sequence, an asynchronous operation or command that
-  may fail applied to one element at a time, in order, nothing started after the first error. With a
-  cancellation token, the token is checked before each operation and handed to it, and a cancellation
-  propagates rather than becoming an error. Operations that may all run at once remain `Task.WhenAll`
-  over their tasks and `Sequence()` over what it answers.
-- **`CodoMetis.TypeKit.Testing`**: `ShouldBeValue()`, which hands the value back, `ShouldBeNull()` and
-  `ShouldBeAbsent()` on a `Patch<T>`, failing with the state the field was in and never the value.
-- **Documentation**: topic pages under `docs/`, linked from the root README's "Documentation" table:
-  value objects, closed sets, `Option`, `Result`, written text, type constraints, merge patches,
-  JSON, EF Core, ASP.NET Core, Native AOT, logging and secrets, testing, migrating from 1.5,
-  what builds or runs differently for code that built against it, and the comparison with the
-  value-object, result and smart-enum libraries, moved out of the README with its dated tables. Every C# block in them is compiled and its stated
-  outputs are tested, as the READMEs' are, and the `Option` and `Result` pages list the complete
-  public surface, checked against the types. The package READMEs remain the reference for each
-  package.
-- **Fault responses a client can act on.** In `CodoMetis.TypeKit`: `FaultKind`, `IFault` and
-  `IFaultSet<TSelf>` (in `CodoMetis.TypeKit.ClosedSets`), a closed set whose members carry a kind and
-  an optional description, and `Fault<TFault>`, a fault with a sentence about one occurrence, made by
-  `Fault.Of(reason, detail)` alone and never compared with a bare reason. In
-  `CodoMetis.TypeKit.AspNetCore`, each opt-in, with 1.5's default response unchanged: a closed
-  set as the fault type, `AddFaultResponses<TSet>()` answering every member by its kind (`NotFound` 404,
-  `Conflict` 409, `Invalid` 422, `Forbidden` 403, `Unavailable` 503) with its description as the
-  `detail`; a `FaultResponse` per member with a `type` and a `title`; a `Fault<TFault>`'s detail as the
-  problem's `detail`; `WithFaultStatus(fault, status)` on an endpoint or a route group and
-  `[FaultStatus<TFault>]` on an MVC action or a controller, for the response and document entry of
-  each endpoint it covers that answers with the fault type, so a group or a controller leaves the
-  others, a health check, alone, and an endpoint's or action's own status replaces it; `ToHttpResult(success)`, the
-  endpoint's own success such as `Created`; and `IFaultFeature` on the request while the problem is
-  written, for the host's `CustomizeProblemDetails`, with `FaultResponseOptions.QualifiedFaultNames`,
-  which names a fault after its type's nesting chain (`Billing.Fault.NotFound`).
-  The startup check refuses a status on an endpoint or action that does not answer with its fault
-  type, a status on a group or controller none of whose own endpoints does, and an attribute naming
-  no member.
+- **Closed sets** (`IClosedSet<TSelf>`): a fixed set of named instances with `Match`, `Parse`, JSON, EF Core, OpenAPI and Serilog support; CMTK1013 to CMTK1021 refuse what cannot be generated.
+- **Fault responses a client can act on**: `Fault<TFault>`, fault sets with a kind per member, `FaultResponse`, `WithFaultStatus`/`[FaultStatus<T>]` per endpoint, group or controller, `ToHttpResult(success)` and `IFaultFeature`.
+- **`Patch<T>`**: a JSON Merge Patch field (absent, null or a value), with `Map`, `Traverse`, OpenAPI and test assertions.
+- **`Result.Catch`/`CatchAsync`**: an exception as a result; a cancellation passes through, a timeout is the error.
+- **Text guards**: `AsText()` and `AsIdentifier()` trim, compose to NFC (`AsText`) and refuse invisible characters.
+- **Type constraints**: `[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]` (CMTK0010) and `[RequireParameterlessConstructor]` (CMTK0011, with a code fix).
+- **CMTK0012**: a closed set's `Match` called by position, with a code fix.
+- **`Option`**: async steps and `Task<Option<T>>` continuations, `SingleOrNone`, `ElementAtOrNone`, `Choose`, `Transpose`, `Traverse`; EF Core's `FirstOrNoneAsync` and `SingleOrNoneAsync`.
+- **`TraverseAsync`** on a sequence: one at a time, cancellable.
+- **Docs**: topic pages under `docs/`, every code block compiled.
 
 ### Changed
 
-- **`CodoMetis.TypeKit`**: `FirstOrNone(predicate)` and `FirstOrError(predicate, error)` on an EF Core
-  query, or any `IQueryable<T>`, bind to the new overloads: the predicate runs in the query, where the
-  `IEnumerable<T>` ones read every row and ran it in memory. A predicate the provider cannot
-  translate now throws where it ran in memory before. `LastOrNone` and `LastOrError` on a query are
-  compile errors that say to order the query and take the first, or to call `AsEnumerable()`.
-- **`CodoMetis.TypeKit.AspNetCore`**: `FaultProblem<TFault>` takes any `notnull` fault type, an enum or a
-  closed set, where it took `struct, Enum`; every type argument it accepted is still accepted.
-- **`CodoMetis.TypeKit.Analyzers`**: CMTK0003, a dropped `Result` or `Option`, is an Error where it was
-  a Warning. A drop that nothing depends on is correct, and `_ = …`, a cast, or a loop variable named
-  `_` says so in the code, so the error never needs a suppression. It also reports what it missed:
-  `Wait` on a task of a result the expression made; tasks of results the statement made, passed to
-  `Task.WaitAll` or `Task.WaitAny`; a `foreach` or `await foreach` over results its header made whose
-  body never reads them; and a lazy sequence of results a call made, materialised by `ToList()` or
-  `ToListAsync()` and dropped. CMTK0005, CMTK0006, CMTK0008 and CMTK0009 stay Warnings, since correct
-  code can look the same and has nothing but a suppression to say so, and CMTK0007 stays Info.
-- **`CodoMetis.TypeKit.Analyzers`**: CMTK0003 also reports a result picked by `??`, a dropped tuple
-  holding one, a dropped dictionary of them, and a call's task passed through `ConfigureAwait` or
-  `WaitAsync` and dropped, awaited or not; a task the caller still holds stays silent through both.
-  A chain of taps on a result or a task the caller holds, `result.Tap(log).TapError(warn);` or
-  `await pending.TapAsync(a).TapErrorAsync(b);`, is silent, since each tap returns its receiver; 1.x
-  reported it. A chain that starts at a call still reports.
-- **`CodoMetis.TypeKit.Generators`**: an abstract type that declares a value-object marker is CMTK1022,
-  an Error. It generated nothing, and a value held as it was written as `{}`; declare the marker on
-  the sealed type.
-- **`CodoMetis.TypeKit.EntityFrameworkCore`**: `.Value`, `GetValue()` and `ValueOrNull()` are translated
-  only on a column TypeKit's converter stores. On a column the application maps with its own
-  converter they queried the wrong representation and answered wrong rows; EF now refuses the query.
-- **`CodoMetis.TypeKit.EntityFrameworkCore`**: a query that compares, orders, or takes `Min`/`Max` of a
-  value object that declares its own `CompareTo` is refused, naming the value object. It was
-  translated to the column's order, the opposite of the in-memory one for a reversed ordering; order
-  by `.Value` where the column's order is meant. The refusal covers an ordering over a navigation and
-  a key cast to `object`, and a query filter that does so is refused when the model is built, naming
-  the entity type and the filter.
-- **`CodoMetis.TypeKit.EntityFrameworkCore`**: a value-object key is declared generated on add wherever
-  EF declares a key of its wrapped type generated: over `sbyte`, `uint`, `ulong` and `ushort` too, and
-  at the root of a TPH hierarchy on SQLite, which stored 0. A TPC key on SQLite is not generated, as a
-  plain `int` key is not. The provider decides whether a value is generated, as for a plain key: on PostgreSQL a
-  migration adds an identity to a key over `sbyte`, `ushort` or `uint`, and SQL Server's migrations
-  generator refuses that change ("the column needs to be dropped and recreated"). A key over `char`
-  stays the application's to assign, on every provider, since none generates one. A key over `ulong`
-  added with its default value throws `OverflowException` at `Add` on SQL Server and PostgreSQL, whose
-  column is a `decimal`; configure `ValueGeneratedNever()` on it and assign it.
-- **`CodoMetis.TypeKit.AspNetCore`**: the OpenAPI document describes `fault`, an optional string, on
-  the problem schema the fault responses refer to, in 3.1 and 3.0 and inline where the host inlines
-  problem details, with a description of the form the host writes. 1.5's `ProblemDetails` component
-  had only ASP.NET's members, so a client generated from it never saw `fault`. A document without a
-  fault response is unchanged.
-- **`CodoMetis.TypeKit.AspNetCore`**: a document in which a nested value object's or closed set's
-  component name, `Order.Status` as `OrderStatus`, is also another type's throws, naming both; one
-  component described both as one of them.
-- **`CodoMetis.TypeKit`**: every asynchronous combinator given a delegate that returns no task throws
-  an `ArgumentNullException` naming it, where the await threw a `NullReferenceException`.
-- **`CodoMetis.TypeKit.Testing`**: a failure names a nested type after its containing types,
-  `Option<Order.Line>`; a type nested in a generic one threw `ArgumentOutOfRangeException` instead.
-- **`CodoMetis.TypeKit.Generators`**: CMTK1005 refuses a value object over `object`, which was
-  written to JSON as `{}`, and over `System.Enum`, and one named as a member the generators add to a
-  value object (`From`, `TryFrom`, `FromKnownGood`, `Revalidate`, `Parse`, `TryParse`, `TryFormat`,
-  `MinValue`, `MaxValue`, `CompareTo`). CMTK1021 refuses a closed set named as one of its generated
-  members, and CMTK1011 a hand-written `operator ==` or `!=` between two of the type. Apart from
-  `object`, a value object named `Revalidate` that is not validated and one named `CompareTo` over a
-  type with no order, each failed inside the generated code before, as LAMA0611 or a bare CS0111,
-  naming nothing the user wrote.
-- **`CodoMetis.TypeKit.Generators`**: `TryParse` over a wrapped type parsed by a type converter, a
-  static `Parse` or a string constructor lets an exception from `Create` through, as `Parse` does and
-  as `TryParse` over a wrapped type with a `TryParse` of its own did; it answered `false`.
+- The OpenAPI problem schema describes `fault`: regenerate clients.
+- CMTK0003 no longer reports a chain of taps on a result the caller holds.
+- EF Core: a `char` key stays the application's to assign; a default `ulong` key throws `OverflowException` at `Add` (use `ValueGeneratedNever()`).
+- Testing failures name a nested type with its containing types.
 
 ### Fixed
 
-- **`CodoMetis.TypeKit.Generators`**: a value object marked `[Obsolete(..., error: true)]`, or nested in
-  such a type, builds; its companion class failed with CS0619 inside the generated code.
-- **`CodoMetis.TypeKit.Generators`**: a default instance of a value object over a reference type
-  formats as an empty string everywhere, `ToString`, `IFormattable`, `TryFormat`, the type converter
-  and `Convert.ToString`, as one over a `string` already did for `ToString`, where it threw a
-  `NullReferenceException`; its `IConvertible` answers as `Convert` answers for null.
+- A value object marked `[Obsolete(error: true)]` builds.
+- A default value object over a reference type formats as `""` instead of throwing.
+- Where the host inlines enums, a nullable value object over one admits null in the OpenAPI document.
 
 ## 1.5.1 — 2026-10-11
 
