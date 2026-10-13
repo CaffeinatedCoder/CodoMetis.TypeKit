@@ -216,6 +216,42 @@ public sealed class IgnoredOutcomeAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
+    /// A result task reached through a branch was silent: the ternary or the <c>switch</c> expression
+    /// that picked it, awaited or converted whole to a plain task; and a method group that answers a
+    /// collection of results, converted to a delegate that returns a plain task.
+    /// </summary>
+    [Fact]
+    public Task A_result_dropped_through_a_branch_or_a_collection_s_method_group_reports() =>
+        Test(
+            """
+            public static class Branches
+            {
+                public static async Task Run(Service service, bool dry, int id)
+                {
+                    await (dry ? {|#0:service.CancelAsync(id)|} : {|#1:service.CancelAsync(0)|});
+                    await (id switch { 1 => {|#2:service.CancelAsync(1)|}, _ => {|#3:service.CancelAsync(2)|} });
+                    await (dry ? service.RunAsync() : Task.CompletedTask);
+                }
+
+                public static Task Submit(Service service, bool draft, int id) => draft ? {|#4:service.CancelAsync(id)|} : {|#5:service.CancelAsync(0)|};
+
+                public static void Hold(Service service)
+                {
+                    Func<int[], Task> all = {|#6:service.SaveAllAsync|};
+                    Func<Task> run = service.RunAsync;
+                }
+            }
+            """,
+            Cmtk0003(0, "Result", "CancelAsync"),
+            Cmtk0003(1, "Result", "CancelAsync"),
+            Cmtk0003(2, "Result", "CancelAsync"),
+            Cmtk0003(3, "Result", "CancelAsync"),
+            Cmtk0003(4, "Result", "CancelAsync"),
+            Cmtk0003(5, "Result", "CancelAsync"),
+            Cmtk0003(6, "collection of Results", "SaveAllAsync"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
     /// A <c>Task</c> of a result converts implicitly to <c>Task</c>, which drops the result as silently
     /// as a statement does: an expression-bodied member, a <c>return</c>, a lambda, an argument.
     /// </summary>

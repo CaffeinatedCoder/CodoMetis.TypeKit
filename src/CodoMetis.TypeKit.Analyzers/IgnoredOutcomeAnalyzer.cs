@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -25,6 +26,8 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// silently: <c>Task Cancel(Guid id) =&gt; orders.CancelAsync(id);</c>, <c>return svc.DoAsync();</c>
 /// in a method returning <c>Task</c>, <c>Func&lt;Task&gt; f = () =&gt; svc.DoAsync();</c>. The implicit
 /// conversion of a call's task is reported; an explicit <c>(Task)</c> cast says the drop is intended.
+/// A call reached through a branch, <c>await (dry ? CancelAsync(id) : ShipAsync(id));</c> or a
+/// <c>switch</c> expression, is each branch's call, reported at the branch.
 /// A <c>ValueTask&lt;T&gt;</c> has no conversion to <c>ValueTask</c>. A method group converts the same
 /// way to a delegate that returns <c>Task</c>: <c>Func&lt;Guid, Task&gt; f = orders.CancelAsync;</c>, or
 /// <c>bus.Subscribe&lt;Guid&gt;(orders.CancelAsync)</c> for a <c>Func&lt;T, Task&gt;</c> parameter. A cast
@@ -125,15 +128,48 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         var expression = ((IExpressionStatementOperation)context.Operation).Operation;
 
         // Only a value a call produced: an assignment or an increment is a statement for its effect.
-        var call = expression is IAwaitOperation { Operation: var awaited } ? awaited : Unwrap(expression);
-        if (call is not IInvocationOperation invocation) return;
+        var awaited = expression is IAwaitOperation { Operation: var inner } ? inner : null;
+        var dropped = Unwrap(awaited ?? expression);
 
-        // await LoadAsync().ConfigureAwait(false): the result is LoadAsync's, and so is the name.
-        if (invocation is { TargetMethod.Name: "ConfigureAwait", Instance: IInvocationOperation configured }) invocation = configured;
+        foreach (var call in Producers(dropped))
+        {
+            // await LoadAsync().ConfigureAwait(false): the result is LoadAsync's, and so is the name.
+            var invocation = call is { TargetMethod.Name: "ConfigureAwait", Instance: IInvocationOperation configured } ? configured : call;
 
-        if (DroppedOutcome(expression.Type, invocation, symbols, tasks) is not { } outcome) return;
+            // The statement's own call keeps the statement's type and location; a branch's call its own.
+            var own  = ReferenceEquals(call, dropped);
+            var type = own ? expression.Type : awaited is null ? invocation.Type : tasks.Awaited(invocation.Type);
+            if (DroppedOutcome(type, invocation, symbols, tasks) is not { } outcome) continue;
 
-        context.Report(Diagnostic.Create(Rule, expression.Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+            context.Report(Diagnostic.Create(Rule, (own ? expression : call).Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+        }
+    }
+
+    /// <summary>
+    /// The calls whose values <paramref name="operation"/> drops as one: the call itself, or each
+    /// branch's call of a conditional or a <c>switch</c> expression, through implicit conversions and
+    /// null-conditional accesses. A branch that is no call, a variable or a literal, drops nothing of
+    /// its own.
+    /// </summary>
+    private static IEnumerable<IInvocationOperation> Producers(IOperation operation)
+    {
+        switch (Unwrap(operation))
+        {
+            case IInvocationOperation invocation:
+                yield return invocation;
+                break;
+            case IConditionalOperation { Type: not null, WhenTrue: { } whenTrue, WhenFalse: { } whenFalse }:
+                foreach (var producer in Producers(whenTrue)) yield return producer;
+                foreach (var producer in Producers(whenFalse)) yield return producer;
+                break;
+            case ISwitchExpressionOperation chosen:
+                foreach (var arm in chosen.Arms)
+                {
+                    foreach (var producer in Producers(arm.Value)) yield return producer;
+                }
+
+                break;
+        }
     }
 
     /// <summary>
@@ -190,20 +226,23 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     {
         var conversion = (IConversionOperation)context.Operation;
 
-        if (!conversion.IsImplicit || conversion.Operand is not IInvocationOperation invocation) return;
+        if (!conversion.IsImplicit) return;
 
-        string? outcome;
-        if (SymbolEqualityComparer.Default.Equals(conversion.Type, tasks.Plain))
-            outcome = tasks.PendingOutcome(invocation.Type, symbols)
-                   ?? DroppedCollection(tasks.CollectionOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks);
-        else if (tasks.HoldsPlainTasks(conversion.Type))
-            outcome = DroppedCollection(tasks.PendingOutcome(tasks.ElementOfSequence(invocation.Type), symbols), invocation, symbols, tasks);
-        else
-            return;
+        var toPlainTask = SymbolEqualityComparer.Default.Equals(conversion.Type, tasks.Plain);
+        if (!toPlainTask && !tasks.HoldsPlainTasks(conversion.Type)) return;
 
-        if (outcome is null) return;
+        // The call, or each branch's call where a conditional or a switch expression was converted whole.
+        foreach (var invocation in Producers(conversion.Operand))
+        {
+            var outcome = toPlainTask
+                ? tasks.PendingOutcome(invocation.Type, symbols)
+               ?? DroppedCollection(tasks.CollectionOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks)
+                : DroppedCollection(tasks.PendingOutcome(tasks.ElementOfSequence(invocation.Type), symbols), invocation, symbols, tasks);
 
-        context.Report(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+            if (outcome is null) continue;
+
+            context.Report(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+        }
     }
 
     /// <summary>
@@ -255,7 +294,12 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
 
         if (creation.Target is not IMethodReferenceOperation reference || creation.Syntax is CastExpressionSyntax) return;
         if (creation.Type is not INamedTypeSymbol { DelegateInvokeMethod: { } invoke } || !SymbolEqualityComparer.Default.Equals(invoke.ReturnType, tasks.Plain)) return;
-        if (tasks.PendingOutcome(reference.Method.ReturnType, symbols) is not { } outcome) return;
+
+        // A method that answers a collection of results makes them on every call through the delegate.
+        var returned = reference.Method.ReturnType;
+        var outcome  = tasks.PendingOutcome(returned, symbols)
+                    ?? (tasks.CollectionOutcome(tasks.Awaited(returned), symbols) is { } element ? $"collection of {element}s" : null);
+        if (outcome is null) return;
 
         context.Report(Diagnostic.Create(Rule, reference.Syntax.GetLocation(), outcome, reference.Method.Name));
     }

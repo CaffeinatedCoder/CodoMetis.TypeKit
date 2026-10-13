@@ -28,6 +28,12 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// <c>[Concrete]</c>, <c>new()</c> for <c>[Concrete]</c>). Otherwise the requirement would end at
 /// the first forwarding parameter, and <c>Sub&lt;ConcreteCommand&gt;</c> would compile.
 /// </para>
+/// <para>
+/// A method that implements an interface's method, or overrides a base class's, carries the
+/// constraint of the method it implements whether or not it repeats the attribute, so a call through
+/// the class is held to what the interface declared. A <c>cref</c> in a documentation comment names
+/// the generic's own parameters and is not a use; an array is sealed and concrete.
+/// </para>
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
@@ -66,7 +72,8 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeGenericName(SyntaxNodeAnalysisContext context, TypeKitSymbols symbols)
     {
         var name = (GenericNameSyntax)context.Node;
-        if (name.IsUnboundGenericName) return;
+        // <see cref="Box{T}"/> names the generic's own parameter, which carries nothing: not a use.
+        if (name.IsUnboundGenericName || name.IsPartOfStructuredTrivia()) return;
 
         var info   = context.SemanticModel.GetSymbolInfo(name, context.CancellationToken);
         var symbol = info.Symbol ?? info.CandidateSymbols.FirstOrDefault();
@@ -136,7 +143,7 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     /// <summary>What <paramref name="argument"/> breaks of what <paramref name="parameter"/> declares, as the message's last clause.</summary>
     private static IEnumerable<string> Breaches(TypeKitSymbols symbols, ITypeParameterSymbol parameter, ITypeSymbol argument)
     {
-        foreach (var constraint in symbols.ConstraintsOn(parameter))
+        foreach (var constraint in Effective(symbols, parameter))
         {
             if (argument is ITypeParameterSymbol forwarded)
             {
@@ -156,17 +163,54 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         }
     }
 
+    /// <summary>Whether <paramref name="argument"/> meets <paramref name="constraint"/>; an array is a sealed, concrete class.</summary>
     private static bool Satisfies(ITypeSymbol argument, TypeArgumentConstraint constraint) => constraint switch
     {
         TypeArgumentConstraint.Abstract => argument is INamedTypeSymbol { TypeKind: TypeKind.Class, IsAbstract: true, IsStatic: false },
-        TypeArgumentConstraint.Sealed   => argument.TypeKind is TypeKind.Struct or TypeKind.Enum || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Delegate, IsSealed: true, IsStatic: false },
+        TypeArgumentConstraint.Sealed   => argument.TypeKind is TypeKind.Struct or TypeKind.Enum or TypeKind.Array || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Delegate, IsSealed: true, IsStatic: false },
         TypeArgumentConstraint.Record   => argument is INamedTypeSymbol { IsRecord: true },
-        _                               => argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct, IsAbstract: false, IsStatic: false },
+        _                               => argument.TypeKind is TypeKind.Array || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct, IsAbstract: false, IsStatic: false },
     };
 
     /// <summary>A forwarding type parameter proves a constraint by carrying the attribute, or by a C# constraint that implies it.</summary>
     private static bool Proves(TypeKitSymbols symbols, ITypeParameterSymbol forwarded, TypeArgumentConstraint constraint) =>
-        symbols.ConstraintsOn(forwarded).Contains(constraint)
+        Effective(symbols, forwarded).Contains(constraint)
      || (constraint is TypeArgumentConstraint.Sealed or TypeArgumentConstraint.Concrete && forwarded.HasValueTypeConstraint)
      || (constraint is TypeArgumentConstraint.Concrete && forwarded.HasConstructorConstraint);
+
+    /// <summary>
+    /// The constraints a type parameter declares, with those of the parameter it implements or
+    /// overrides: <c>Sender.Send&lt;T&gt;</c> implementing <c>ISender.Send&lt;[Concrete] T&gt;</c> carries
+    /// <c>[Concrete]</c> whether or not it repeats the attribute, so a call through the class is held
+    /// to it. Without this, the requirement ended at the interface.
+    /// </summary>
+    private static IEnumerable<TypeArgumentConstraint> Effective(TypeKitSymbols symbols, ITypeParameterSymbol parameter)
+    {
+        var own = symbols.ConstraintsOn(parameter);
+        if (parameter.DeclaringMethod is not { } method) return own;
+
+        return own.Concat(Implemented(method.OriginalDefinition)
+                              .Where(implemented => parameter.Ordinal < implemented.OriginalDefinition.TypeParameters.Length)
+                              .SelectMany(implemented => Effective(symbols, implemented.OriginalDefinition.TypeParameters[parameter.Ordinal])))
+                  .Distinct();
+    }
+
+    /// <summary>The methods <paramref name="method"/> overrides or implements, explicitly or implicitly, by its declaration.</summary>
+    private static IEnumerable<IMethodSymbol> Implemented(IMethodSymbol method)
+    {
+        if (method.OverriddenMethod is { } overridden) yield return overridden;
+
+        foreach (var explicitly in method.ExplicitInterfaceImplementations) yield return explicitly;
+
+        if (method.ExplicitInterfaceImplementations.Length > 0 || method.IsStatic || method.DeclaredAccessibility != Accessibility.Public) yield break;
+
+        foreach (var contract in method.ContainingType.AllInterfaces)
+        {
+            foreach (var member in contract.GetMembers(method.Name).OfType<IMethodSymbol>())
+            {
+                if (member.IsGenericMethod && SymbolEqualityComparer.Default.Equals(method.ContainingType.FindImplementationForInterfaceMember(member)?.OriginalDefinition, method))
+                    yield return member;
+            }
+        }
+    }
 }

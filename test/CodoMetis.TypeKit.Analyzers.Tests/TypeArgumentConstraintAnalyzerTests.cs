@@ -258,6 +258,56 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>Robustness, not a guard: without CodoMetis.TypeKit there is nothing to look at, and nothing may fail.</summary>
+    /// <summary>
+    /// A <c>cref</c> in a documentation comment names the generic's own parameter, which carries
+    /// nothing, and was reported on every documented API; an array is a sealed, concrete class and
+    /// was "not sealed".
+    /// </summary>
+    [Fact]
+    public Task A_doc_comment_cref_and_an_array_argument_are_not_breaches() =>
+        Test(
+            """
+            /// <summary>See <see cref="Box{T}"/>, <see cref="Factory{T}"/>, <see cref="Decider{TCommand, TEvent}"/> and <see cref="Runner.Run{T}(T)"/>.</summary>
+            public static class Documented
+            {
+                public static Box<string[]> Sealed => new();
+                public static Factory<int[]> Concrete => new();
+                public static Decider<{|#0:string[]|}, PlaceOrder>? Abstract => null;
+            }
+            """,
+            Cmtk0010(0, "string[]", "TCommand", "Decider<TCommand, TEvent>", "is not an abstract class or record"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A method implementing an interface's method, or overriding a base class's, carries the
+    /// constraint whether or not it repeats the attribute: a call through the class was silent.
+    /// </summary>
+    [Fact]
+    public Task An_implementation_or_an_override_carries_the_constraint_of_what_it_implements() =>
+        Test(
+            """
+            public interface ISender { void Send<[Concrete] T>(T handler); }
+            public sealed class Sender : ISender { public void Send<T>(T handler) { } }
+            public abstract class Base { public abstract void Go<[Sealed] T>(); }
+            public sealed class Derived : Base { public override void Go<T>() { } }
+
+            public static class Calls
+            {
+                public static void Go(Sender sender, Derived derived, IHandler handler, OrderHandler concrete)
+                {
+                    sender.Send<{|#0:IHandler|}>(handler);
+                    {|#1:sender.Send(handler)|};
+                    sender.Send(concrete);
+                    derived.Go<{|#2:Handler|}>();
+                    derived.Go<OrderHandler>();
+                }
+            }
+            """,
+            Cmtk0010(0, "IHandler", "T", "Sender.Send<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(1, "IHandler", "T", "Sender.Send<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(2, "Handler", "T", "Derived.Go<T>", "is not sealed"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
     [Fact]
     public Task A_compilation_without_TypeKit_is_left_alone() =>
         new AnalyzerTest<TypeArgumentConstraintAnalyzer>("public sealed class Box<T> { } public static class U { public static Box<int> B; }", referenceTypeKit: false)
