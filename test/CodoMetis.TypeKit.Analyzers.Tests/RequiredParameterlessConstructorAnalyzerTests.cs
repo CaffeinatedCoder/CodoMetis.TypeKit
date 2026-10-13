@@ -324,14 +324,7 @@ public sealed class RequiredParameterlessConstructorAnalyzerTests
     public Task The_fix_writes_the_non_public_constructor_a_class_only_has_implicitly() =>
         new CodeFixTest<RequiredParameterlessConstructorAnalyzer, RequiredParameterlessConstructorCodeFixProvider>(
             Subjects + "public sealed class {|#0:Identity|} : Subjects.Module { }",
-            Subjects + """
-            public sealed class Identity : Subjects.Module
-            {
-                internal Identity()
-                {
-                }
-            }
-            """)
+            Subjects + "public sealed class Identity : Subjects.Module { internal Identity() { } }")
             {
                 ExpectedDiagnostics = { Cmtk0011("Identity", "has the implicit public parameterless constructor", "Module", "internal") },
             }
@@ -396,14 +389,7 @@ public sealed class RequiredParameterlessConstructorAnalyzerTests
     public Task The_fix_s_title_says_an_internal() =>
         new CodeFixTest<RequiredParameterlessConstructorAnalyzer, RequiredParameterlessConstructorCodeFixProvider>(
             Subjects + "public sealed class {|#0:Identity|} : Subjects.Module { }",
-            Subjects + """
-            public sealed class Identity : Subjects.Module
-            {
-                internal Identity()
-                {
-                }
-            }
-            """)
+            Subjects + "public sealed class Identity : Subjects.Module { internal Identity() { } }")
             {
                 ExpectedDiagnostics = { Cmtk0011("Identity", "has the implicit public parameterless constructor", "Module", "internal") },
                 CodeActionVerifier  = (action, verifier) => verifier.Equal("Add an internal parameterless constructor", action.Title),
@@ -484,6 +470,256 @@ public sealed class RequiredParameterlessConstructorAnalyzerTests
             {
                 ExpectedDiagnostics = { Cmtk0011("Orders", "declares no parameterless constructor", "IEndpoint", "public") },
                 FixedState = { ExpectedDiagnostics = { Cmtk0011("Orders", "declares no parameterless constructor", "IEndpoint", "public") } },
+            }
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A primary constructor in another part of a partial type binds every constructor of the type, the
+    /// one the fix would add included (CS8862), so the fix is withheld there as it is in the same part.
+    /// The rule reports at the first part, which has no parameter list.
+    /// </summary>
+    [Fact]
+    public Task A_partial_type_whose_other_part_has_a_primary_constructor_gets_no_fix()
+    {
+        const string first  = "public sealed partial class {|#0:Orders|} : Subjects.IEndpoint { }";
+        const string second = "public sealed partial class Orders(int port) { public int Port => port; }";
+
+        return new CodeFixTest<RequiredParameterlessConstructorAnalyzer, RequiredParameterlessConstructorCodeFixProvider>(Subjects + first, Subjects + first)
+        {
+            TestState           = { Sources = { ("Second.cs", second) } },
+            FixedState          = { Sources = { ("Second.cs", second) }, ExpectedDiagnostics = { Cmtk0011("Orders", "declares no parameterless constructor", "IEndpoint", "public") } },
+            ExpectedDiagnostics = { Cmtk0011("Orders", "declares no parameterless constructor", "IEndpoint", "public") },
+        }
+        .RunAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// The fix adds a constructor and touches nothing else: the type's doc comment, its attributes and a
+    /// comment beside one stay where they are, and the members keep their layout.
+    /// </summary>
+    [Fact]
+    public Task The_fix_keeps_the_type_s_doc_comment_attributes_and_comments() =>
+        new CodeFixTest<RequiredParameterlessConstructorAnalyzer, RequiredParameterlessConstructorCodeFixProvider>(
+            Subjects + """
+            /// <summary>The orders endpoint.</summary>
+            [System.Serializable] // the host serializes it
+            [System.Diagnostics.DebuggerDisplay("Orders")]
+            public sealed class {|#0:Orders|} : Subjects.IEndpoint // mapped by the host
+            {
+                // the port the host gives
+                public Orders(int port) {   }
+
+                public int  Port { get; }
+            }
+            """,
+            Subjects + """
+            /// <summary>The orders endpoint.</summary>
+            [System.Serializable] // the host serializes it
+            [System.Diagnostics.DebuggerDisplay("Orders")]
+            public sealed class Orders : Subjects.IEndpoint // mapped by the host
+            {
+                public Orders()
+                {
+                }
+
+                // the port the host gives
+                public Orders(int port) {   }
+
+                public int  Port { get; }
+            }
+            """)
+            {
+                ExpectedDiagnostics = { Cmtk0011("Orders", "declares no parameterless constructor", "IEndpoint", "public") },
+            }
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A constructor without modifiers keeps its doc comment, its attribute and a comment beside it where
+    /// they are: the accessibility goes before the name, after the attributes, and so does a comment
+    /// after a modifier that is replaced.
+    /// </summary>
+    [Fact]
+    public Task The_fix_keeps_the_constructor_s_doc_comment_attributes_and_comments() =>
+        new CodeFixTest<RequiredParameterlessConstructorAnalyzer, RequiredParameterlessConstructorCodeFixProvider>(
+            Subjects + """
+            public class Identity : Subjects.Module
+            {
+                /// <summary>For the host.</summary>
+                [System.Obsolete("For the host")] // not for code
+                {|#0:Identity|}() { }
+            }
+
+            public class Inline : Subjects.Module
+            {
+                [System.Obsolete("For the host")] {|#1:Inline|}() { }
+            }
+
+            public class Commented : Subjects.Module
+            {
+                /// <summary>For the host.</summary>
+                protected /* the host's */ {|#2:Commented|}() { }
+            }
+            """,
+            Subjects + """
+            public class Identity : Subjects.Module
+            {
+                /// <summary>For the host.</summary>
+                [System.Obsolete("For the host")] // not for code
+                internal Identity() { }
+            }
+
+            public class Inline : Subjects.Module
+            {
+                [System.Obsolete("For the host")] internal Inline() { }
+            }
+
+            public class Commented : Subjects.Module
+            {
+                /// <summary>For the host.</summary>
+                internal /* the host's */ Commented() { }
+            }
+            """)
+            {
+                ExpectedDiagnostics =
+                {
+                    Cmtk0011("Identity", "declares a private parameterless constructor", "Module", "internal"),
+                    new DiagnosticResult("CMTK0011", DiagnosticSeverity.Error).WithLocation(1).WithArguments("Inline", "declares a private parameterless constructor", "Module", "internal"),
+                    new DiagnosticResult("CMTK0011", DiagnosticSeverity.Error).WithLocation(2).WithArguments("Commented", "declares a protected parameterless constructor", "Module", "internal"),
+                },
+            }
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>The added constructor is indented as the members around it are, with tabs where they use tabs.</summary>
+    [Fact]
+    public Task The_fix_indents_as_the_members_do() =>
+        new CodeFixTest<RequiredParameterlessConstructorAnalyzer, RequiredParameterlessConstructorCodeFixProvider>(
+            Subjects + "public class {|#0:Orders|} : Subjects.IEndpoint\n{\n\tpublic int Port;\n\n\tpublic Orders(int port) { Port = port; }\n}\n",
+            Subjects + "public class Orders : Subjects.IEndpoint\n{\n\tpublic Orders()\n\t{\n\t}\n\n\tpublic int Port;\n\n\tpublic Orders(int port) { Port = port; }\n}\n")
+            {
+                ExpectedDiagnostics = { Cmtk0011("Orders", "declares no parameterless constructor", "IEndpoint", "public") },
+            }
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A body with no member is indented one level inside its braces, a nested and generic type's
+    /// included; the constructor is named as the type is written, a keyword escaped.
+    /// </summary>
+    [Fact]
+    public Task The_fix_indents_an_empty_body_one_level_inside_its_braces() =>
+        new CodeFixTest<RequiredParameterlessConstructorAnalyzer, RequiredParameterlessConstructorCodeFixProvider>(
+            Subjects + """
+            public class Outer
+            {
+                public sealed class {|#0:Inner|}<T> : Subjects.Module
+                {
+                }
+            }
+
+            public sealed class {|#1:@event|} : Subjects.Module
+            {
+            }
+            """,
+            Subjects + """
+            public class Outer
+            {
+                public sealed class Inner<T> : Subjects.Module
+                {
+                    internal Inner()
+                    {
+                    }
+                }
+            }
+
+            public sealed class @event : Subjects.Module
+            {
+                internal @event()
+                {
+                }
+            }
+            """)
+            {
+                ExpectedDiagnostics =
+                {
+                    Cmtk0011("Inner", "has the implicit public parameterless constructor", "Module", "internal"),
+                    new DiagnosticResult("CMTK0011", DiagnosticSeverity.Error).WithLocation(1).WithArguments("event", "has the implicit public parameterless constructor", "Module", "internal"),
+                },
+            }
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A file with CRLF line endings stays CRLF throughout: the lines the fix adds end as the file's
+    /// do, whatever the machine running the fix uses.
+    /// </summary>
+    [Fact]
+    public Task The_fix_keeps_the_file_s_line_endings() =>
+        new CodeFixTest<RequiredParameterlessConstructorAnalyzer, RequiredParameterlessConstructorCodeFixProvider>(
+            (Subjects + """
+            public sealed class {|#0:Orders|} : Subjects.IEndpoint
+            {
+                public Orders(int port) { }
+            }
+
+            public class Identity : Subjects.Module
+            {
+                public {|#1:Identity|}() { }
+            }
+
+            """).ReplaceLineEndings("\r\n"),
+            (Subjects + """
+            public sealed class Orders : Subjects.IEndpoint
+            {
+                public Orders()
+                {
+                }
+
+                public Orders(int port) { }
+            }
+
+            public class Identity : Subjects.Module
+            {
+                internal Identity() { }
+            }
+
+            """).ReplaceLineEndings("\r\n"))
+            {
+                // One add and one change, each a fix-all pass of its own.
+                NumberOfFixAllIterations = 2,
+                ExpectedDiagnostics =
+                {
+                    Cmtk0011("Orders", "declares no parameterless constructor", "IEndpoint", "public"),
+                    new DiagnosticResult("CMTK0011", DiagnosticSeverity.Error).WithLocation(1).WithArguments("Identity", "declares a public parameterless constructor", "Module", "internal"),
+                },
+            }
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A type written on one line gets the constructor on that line, and one ending in <c>;</c> gets a
+    /// body there to hold it, the comment after the <c>;</c> kept after the body.
+    /// </summary>
+    [Fact]
+    public Task The_fix_keeps_a_type_on_one_line_on_its_line() =>
+        new CodeFixTest<RequiredParameterlessConstructorAnalyzer, RequiredParameterlessConstructorCodeFixProvider>(
+            Subjects + """
+            public sealed class {|#0:Importer|} : Subjects.Module; // found by scanning
+
+            public sealed record {|#1:Activated|} : Subjects.IActivated;
+
+            public class {|#2:Gauge|} : Subjects.Widget { public Gauge(int size) { } }
+            """,
+            Subjects + """
+            public sealed class Importer : Subjects.Module { internal Importer() { } } // found by scanning
+
+            public sealed record Activated : Subjects.IActivated { private Activated() { } }
+
+            public class Gauge : Subjects.Widget { protected internal Gauge() { } public Gauge(int size) { } }
+            """)
+            {
+                ExpectedDiagnostics =
+                {
+                    Cmtk0011("Importer", "has the implicit public parameterless constructor", "Module", "internal"),
+                    new DiagnosticResult("CMTK0011", DiagnosticSeverity.Error).WithLocation(1).WithArguments("Activated", "has the implicit public parameterless constructor", "IActivated", "private"),
+                    new DiagnosticResult("CMTK0011", DiagnosticSeverity.Error).WithLocation(2).WithArguments("Gauge", "declares no parameterless constructor", "Widget", "protected internal"),
+                },
             }
             .RunAsync(TestContext.Current.CancellationToken);
 }

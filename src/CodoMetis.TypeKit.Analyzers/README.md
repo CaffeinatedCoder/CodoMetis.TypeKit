@@ -413,9 +413,12 @@ public sealed class Identity : Module;                       // CMTK0011: the im
 
 A class that declares no constructor has a public parameterless one and satisfies `Public` as it
 is. A wrong accessibility is reported at the constructor, and the fix changes it there; a missing
-one is reported at the type, and the fix adds it. A record or class with a primary constructor gets
-no fix: every other constructor of such a type chains to the primary one, with arguments only its
-author knows. The requirement reaches a type through any chain of base classes and interfaces, and
+one is reported at the type, and the fix adds it. A record or class with a primary constructor, in
+any of its parts, gets no fix: every other constructor of such a type chains to the primary one,
+with arguments only its author knows. The fix touches nothing but the constructor: doc comments,
+attributes, comments and the members' layout stay as written, the lines it adds are indented as the
+members are and end as the file's lines do, and a type written on one line gets the constructor on
+that line. The requirement reaches a type through any chain of base classes and interfaces, and
 the attribute is read from metadata, so the marked type can live in another package.
 
 A struct or record struct is never reported. It always has a public parameterless constructor, the

@@ -127,7 +127,7 @@ public sealed class Importer : Plugin;                     // CMTK0011: the impl
 | declares no constructor, and another accessibility is required | at the type | adds `internal Importer() { }` |
 | declares constructors, none parameterless | at the type | adds one |
 | has a parameterless constructor of the wrong accessibility | at the constructor | changes it |
-| has a primary constructor | at the type | none: every other constructor would chain to the primary one, with arguments only its author knows |
+| has a primary constructor, in any of its parts | at the type | none: every other constructor would chain to the primary one, with arguments only its author knows |
 | is abstract, or an interface | no: only concrete descendants are checked | |
 | is a struct or a record struct | no: its parameterless constructor is public and can be nothing else (CS8958), so it satisfies `Public` as it is and no other accessibility can be asked of it | |
 
