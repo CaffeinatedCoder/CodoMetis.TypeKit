@@ -86,6 +86,9 @@ public sealed class NullDelegateTests
         ["Option.Zip(Option<T>, Option<T2>, Option<T3>, Option<T4>, Option<T5>, Option<T6>, Func<T, T2, T3, T4, T5, T6, TResult>): selector"] =
             [() => Some.Zip(Some, Some, Some, Some, Some, Null<Func<int, int, int, int, int, int, int>>()), () => None.Zip(Some, Some, Some, Some, Some, Null<Func<int, int, int, int, int, int, int>>())],
         ["Option.FirstOrNone(IEnumerable<T>, Func<T, Boolean>): predicate"] = [() => new[] { 1 }.FirstOrNone(Null<Func<int, bool>>()), () => Array.Empty<int>().FirstOrNone(Null<Func<int, bool>>())],
+        ["Option.SingleOrNone(IEnumerable<T>, Func<T, Boolean>): predicate"] = [() => new[] { 1 }.SingleOrNone(Null<Func<int, bool>>()), () => Array.Empty<int>().SingleOrNone(Null<Func<int, bool>>())],
+        ["Result.Traverse(Option<T>, Func<T, Result<TResult, TError>>): selector"] =
+            [() => Some.Traverse(Null<Func<int, Result<int, string>>>()), () => None.Traverse(Null<Func<int, Result<int, string>>>())],
         ["Option.LastOrNone(IEnumerable<T>, Func<T, Boolean>): predicate"]  = [() => new[] { 1 }.LastOrNone(Null<Func<int, bool>>()), () => Array.Empty<int>().LastOrNone(Null<Func<int, bool>>())],
 
         ["Patch<T>.Match(Func<T, TResult>, Func<TResult>, Func<TResult>): onValue"] =

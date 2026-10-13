@@ -81,6 +81,9 @@ public sealed class UninitializedResultTests
     {
         ["Select(Result<T, TError>, Func<T, TResult>)"] = () => Task.FromResult(default(Result<int, string>).Select(x => x)),
         ["ToOption(Result<T, TError>)"]                 = () => Task.FromResult(default(Result<int, string>).ToOption()),
+        ["Transpose(Option<Result<T, TError>>)"]       = () => Task.FromResult(Option.Some(default(Result<int, string>)).Transpose()),
+        ["Transpose(Result<Option<T>, TError>)"]       = () => Task.FromResult(default(Result<Option<int>, string>).Transpose()),
+        ["Traverse(Option<T>, Func<T, Result<TResult, TError>>)"] = () => Task.FromResult(Option.Some(1).Traverse(_ => default(Result<int, string>))),
         ["SelectMany(Result<T, TError>, Func<T, Result<TNext, TError>>, Func<T, TNext, TResult>)"] =
             () => Task.FromResult(default(Result<int, string>).SelectMany(_ => Value, (x, _) => x)),
 

@@ -294,12 +294,13 @@ var first = ids.FirstOrDefault();                    // CMTK0009: an OrderId nob
 | Call | Instead |
 |---|---|
 | `Enumerable.FirstOrDefault`, `LastOrDefault`, and `ImmutableArray`'s own | `FirstOrNone`, `LastOrNone`, which return an `Option`, or the overload that takes a default value |
-| `Enumerable.SingleOrDefault`, `DefaultIfEmpty`, and `ImmutableArray`'s own | the overload that takes a default value |
-| `Enumerable.ElementAtOrDefault`, and `ImmutableArray`'s own | `Skip(index).FirstOrNone()` |
-| `Queryable.FirstOrDefault`, `ElementAtOrDefault` | `FirstOrNone`, `Skip(index).FirstOrNone()`, which ask the query for one element, or the nullable projection below |
-| The rest on `Queryable` | select a nullable first, `Select(x => (OrderId?)x).LastOrDefault()`, which a query provider translates |
-| EF Core's `FirstOrDefaultAsync` | `FirstOrNoneAsync` of `CodoMetis.TypeKit.EntityFrameworkCore`, named where the project references it, or the nullable projection |
-| EF Core's `LastOrDefaultAsync`, `SingleOrDefaultAsync`, `ElementAtOrDefaultAsync` | the same nullable projection, `Select(x => (OrderId?)x).SingleOrDefaultAsync()`; EF Core has no overload that takes a default value |
+| `Enumerable.SingleOrDefault`, and `ImmutableArray`'s own | `SingleOrNone`, which returns an `Option` and still throws for more than one, or the overload that takes a default value |
+| `Enumerable.DefaultIfEmpty`, and `ImmutableArray`'s own | the overload that takes a default value |
+| `Enumerable.ElementAtOrDefault`, and `ImmutableArray`'s own | `ElementAtOrNone(index)` |
+| `Queryable.FirstOrDefault`, `SingleOrDefault`, `ElementAtOrDefault` | `FirstOrNone`, `SingleOrNone`, `ElementAtOrNone`, which ask the query for one element (two for `SingleOrNone`), or the nullable projection below |
+| `Queryable.LastOrDefault`, `DefaultIfEmpty` | select a nullable first, `Select(x => (OrderId?)x).LastOrDefault()`, which a query provider translates |
+| EF Core's `FirstOrDefaultAsync`, `SingleOrDefaultAsync` | `FirstOrNoneAsync`, `SingleOrNoneAsync` of `CodoMetis.TypeKit.EntityFrameworkCore`, named where the project references it, or the nullable projection |
+| EF Core's `LastOrDefaultAsync`, `ElementAtOrDefaultAsync` | the same nullable projection, `Select(x => (OrderId?)x).LastOrDefaultAsync()`; EF Core has no overload that takes a default value |
 | `FirstOrDefaultAsync`, `LastOrDefaultAsync`, `SingleOrDefaultAsync`, `DefaultIfEmpty` on an `IAsyncEnumerable<T>` | the overload that takes a default value |
 | `ElementAtOrDefaultAsync` on an `IAsyncEnumerable<T>` | the nullable projection |
 | `Find`, `FindLast` of a `List<T>`, an array (`Array.Find`) or an `ImmutableList<T>` | `FirstOrNone(predicate)`, `LastOrNone(predicate)` |

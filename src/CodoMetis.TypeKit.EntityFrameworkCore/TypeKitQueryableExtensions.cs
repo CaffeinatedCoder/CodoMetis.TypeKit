@@ -5,8 +5,9 @@ using CodoMetis.TypeKit;
 namespace Microsoft.EntityFrameworkCore;
 
 /// <summary>
-/// <c>FirstOrNoneAsync</c>: the first element of a query as an <see cref="Option{T}"/>, asked of the
-/// database, where <c>FirstOrDefaultAsync</c> hands back a <c>default</c> for nothing found.
+/// <c>FirstOrNoneAsync</c> and <c>SingleOrNoneAsync</c>: an element of a query as an
+/// <see cref="Option{T}"/>, asked of the database, where <c>FirstOrDefaultAsync</c> and
+/// <c>SingleOrDefaultAsync</c> hand back a <c>default</c> for nothing found.
 /// </summary>
 /// <remarks>
 /// The condition and the limit run in the query, <c>WHERE … LIMIT @p</c>, as they do for the base
@@ -44,6 +45,32 @@ public static class TypeKitQueryableExtensions
 
             return FirstOfAsync(source.Where(predicate).Take(1), cancellationToken);
         }
+
+        /// <summary>The only element of the query, or <c>None</c>: the database is asked for two, and more than one throws.</summary>
+        /// <param name="cancellationToken">Cancels the query.</param>
+        /// <returns>The only element, or <c>None</c> if the query has none.</returns>
+        /// <exception cref="InvalidOperationException">The query has more than one element.</exception>
+        /// <exception cref="ArgumentNullException">The only element is null.</exception>
+        public Task<Option<T>> SingleOrNoneAsync(CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            return SingleOfAsync(source.Take(2), cancellationToken);
+        }
+
+        /// <summary>The only element that matches, or <c>None</c>: the database runs the condition and is asked for two.</summary>
+        /// <param name="predicate">The condition to match, translated to SQL.</param>
+        /// <param name="cancellationToken">Cancels the query.</param>
+        /// <returns>The only matching element, or <c>None</c> if nothing matches.</returns>
+        /// <exception cref="InvalidOperationException">More than one element matches.</exception>
+        /// <exception cref="ArgumentNullException">The only matching element is null.</exception>
+        public Task<Option<T>> SingleOrNoneAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(predicate);
+
+            return SingleOfAsync(source.Where(predicate).Take(2), cancellationToken);
+        }
     }
 
     private static async Task<Option<T>> FirstOfAsync<T>(IQueryable<T> limited, CancellationToken cancellationToken) where T : notnull
@@ -52,5 +79,20 @@ public static class TypeKitQueryableExtensions
             return Option.Some(element);
 
         return Option.None<T>();
+    }
+
+    private static async Task<Option<T>> SingleOfAsync<T>(IQueryable<T> limited, CancellationToken cancellationToken) where T : notnull
+    {
+        var found = Option.None<T>();
+
+        await foreach (var element in limited.AsAsyncEnumerable().WithCancellation(cancellationToken).ConfigureAwait(false))
+        {
+            if (found.IsSome())
+                throw new InvalidOperationException("The query holds more than one element, so SingleOrNoneAsync has no single one to answer. Use FirstOrNoneAsync where any one will do.");
+
+            found = Option.Some(element);
+        }
+
+        return found;
     }
 }

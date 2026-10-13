@@ -138,7 +138,9 @@ Result<Order, OrderFault> found = db.Orders.FirstOrError(o => o.Id == id, OrderF
 
 `FirstOrNoneAsync`, and the base package's `FirstOrNone` and `FirstOrError` on a query, ask the
 database for one row and let it run the condition, `WHERE … LIMIT @p`, where `FirstOrDefaultAsync`
-hands back a `default` value object for nothing found (CMTK0009). On a query, `LastOrNone` and
+hands back a `default` value object for nothing found (CMTK0009). `SingleOrNoneAsync` and
+`SingleOrNone` ask for two rows and throw for more than one, and `ElementAtOrNone` skips to its row,
+`OFFSET @p`. On a query, `LastOrNone` and
 `LastOrError` are compile errors: a query has no last row until it is ordered, so order it the
 other way and take the first, or call `AsEnumerable()` to read every row on purpose.
 

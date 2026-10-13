@@ -48,7 +48,12 @@ Create one with `Option.Some(value)` and `Option.None()`, or lift a nullable wit
 `GetValueOrNone(key)` looks a key up in a dictionary, and `FirstOrNone()` and `LastOrNone()` take
 the end of a sequence, with or without a predicate. On a query, `FirstOrNone` and `FirstOrError` ask
 the provider for one element and let it run the predicate (a `WHERE` and a `LIMIT` in SQL), and `LastOrNone` is a
-compile error, since a query has no last element until it is ordered.
+compile error, since a query has no last element until it is ordered. `SingleOrNone()` answers the
+only element, `None` for none, and throws for more than one, as `SingleOrDefault` does, since many
+is a defect and not absence; `ElementAtOrNone(index)` answers the element at an index, `^1` included.
+An optional input that is validated when present is `Traverse`: `dto.Phone.ToOption().Traverse(Phone.Create)`
+is a `Result<Option<Phone>, PhoneFault>`, and `Transpose()` turns an `Option<Result<…>>` inside out,
+and a `Result<Option<…>>` back.
 `Option.None()` takes its type from where it goes (`return Option.None();`, a conditional beside
 `Some`); where nothing supplies one, as with `var`, write `Option.None<T>()`.
 `Some(null)` throws, so an option that reports a value always has one. A `default(Option<T>)` is

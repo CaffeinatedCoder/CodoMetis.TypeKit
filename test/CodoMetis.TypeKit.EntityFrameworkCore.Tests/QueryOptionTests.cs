@@ -73,6 +73,44 @@ public sealed class QueryOptionTests : IDisposable
         result.Carrier.ShouldBe("alpha");
     }
 
+    /// <summary>The database runs the condition and is asked for two rows: enough to tell one from many.</summary>
+    [Fact]
+    public async Task SingleOrNone_asks_for_two_rows_and_refuses_more_than_one()
+    {
+        await using var db = Db();
+
+        db.Shipments.SingleOrNone(s => s.Carrier == "beta").TryGetValue(out var found).ShouldBeTrue();
+        found.Carrier.ShouldBe("beta");
+        var sql = _commands.ShouldHaveSingleItem();
+        sql.ShouldContain("WHERE \"s\".\"Carrier\" = 'beta'");
+        sql.ShouldContain("LIMIT @p");
+
+        Should.Throw<InvalidOperationException>(() => db.Shipments.SingleOrNone());
+        db.Shipments.SingleOrNone(s => s.Carrier == "delta").TryGetValue(out _).ShouldBeFalse();
+
+        (await db.Shipments.SingleOrNoneAsync(s => EF.Functions.Like(s.Carrier, "g%"), TestContext.Current.CancellationToken)).TryGetValue(out var async).ShouldBeTrue();
+        async.Carrier.ShouldBe("gamma");
+        await Should.ThrowAsync<InvalidOperationException>(() => db.Shipments.SingleOrNoneAsync(TestContext.Current.CancellationToken));
+        (await db.Shipments.Where(s => s.Carrier == "delta").SingleOrNoneAsync(TestContext.Current.CancellationToken)).TryGetValue(out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ElementAtOrNone_skips_to_the_row_in_the_query()
+    {
+        using var db = Db();
+
+        db.Shipments.OrderBy(s => s.Carrier).ElementAtOrNone(1).TryGetValue(out var second).ShouldBeTrue();
+        second.Carrier.ShouldBe("beta");
+        var sql = _commands.ShouldHaveSingleItem();
+        sql.ShouldContain("LIMIT @p");
+        sql.ShouldContain("OFFSET @p");
+
+        db.Shipments.ElementAtOrNone(3).TryGetValue(out _).ShouldBeFalse();
+        _commands.Clear();
+        db.Shipments.ElementAtOrNone(-1).TryGetValue(out _).ShouldBeFalse();
+        _commands.ShouldBeEmpty("a negative index asks nothing of the database");
+    }
+
     [Fact]
     public async Task FirstOrNoneAsync_reads_one_row_and_answers_None_for_nothing_found()
     {

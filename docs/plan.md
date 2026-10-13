@@ -606,7 +606,9 @@ Each phase ends green, and its guards have been proven by seeding the defect
        dotnet/runtime#83599); Serilog for closed sets ✅ (measured first: `{@Tier}` logged
        `ProbeTier { Rank: 2, Perk: "Priority support.", … }`); continuations of a
        `Task<Option<T>>` ✅ (the `Task<Result>` set's shapes: no `OrAsync`, no `MatchAsync`, no
-       `ValueTask` receiver); `Transpose`, `SingleOrNone` and `ElementAtOrNone`.
+       `ValueTask` receiver); `Transpose`, `SingleOrNone` and `ElementAtOrNone` ✅ (more than one is a
+       refusal, as `SingleOrDefault`'s; a negative index on a query is `None` without a query, since
+       `Skip(-1)` skips nothing).
     8. **The fault responses**, after [spikes/FaultResponses](../spikes/FaultResponses/README.md),
        last, since they read a smart enum's kind.
     9. **The breaks**: decision 34's promotions, the two rules at Error, and the baseline's verdict

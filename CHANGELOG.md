@@ -104,6 +104,12 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   `BindAsync`, `FilterAsync`, `TapAsync` and `ToResultAsync`, so a repository's lookup continues into
   a `Result` pipeline. Each checks its delegates, and `ToResultAsync` its error, before the option is
   known, as the `Task<Result<…>>` continuations do.
+- **`CodoMetis.TypeKit`**: `SingleOrNone`, with or without a predicate, which throws for more than one
+  element as `SingleOrDefault` does, and `ElementAtOrNone`, by `int` or `Index`, on a sequence and on a
+  query (two rows and one, asked of the provider); `SingleOrNoneAsync` in the EF Core satellite; and
+  CMTK0009 names each for `SingleOrDefault`, `ElementAtOrDefault` and `SingleOrDefaultAsync`. `Transpose()`
+  between `Option<Result<T, TError>>` and `Result<Option<T>, TError>`, and `Option<T>.Traverse(selector)`
+  for an optional input validated when present.
 
 ### Changed
 

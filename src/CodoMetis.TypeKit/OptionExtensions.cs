@@ -428,6 +428,64 @@ public static class Option
                   .Select(Some)
                   .DefaultIfEmpty(None<T>())
                   .LastOrDefault();
+
+        /// <summary>
+        /// The only element, or <c>None</c> for an empty sequence. More than one is not absence: it
+        /// throws, as <c>SingleOrDefault</c> does, since reading it as <c>None</c> would hide the defect.
+        /// </summary>
+        /// <returns>The only element, or <c>None</c> if there is none.</returns>
+        /// <exception cref="InvalidOperationException">The sequence holds more than one element.</exception>
+        /// <exception cref="ArgumentNullException">The only element is null.</exception>
+        public Option<T> SingleOrNone()
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            return SingleOf(source);
+        }
+
+        /// <summary>The only element that matches, or <c>None</c>; more than one throws, as <c>SingleOrDefault</c> does.</summary>
+        /// <param name="predicate">The condition to match.</param>
+        /// <returns>The only matching element, or <c>None</c> if nothing matches.</returns>
+        /// <exception cref="InvalidOperationException">More than one element matches.</exception>
+        /// <exception cref="ArgumentNullException">The only matching element is null.</exception>
+        public Option<T> SingleOrNone(Func<T, bool> predicate)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(predicate);
+
+            return SingleOf(source.Where(predicate));
+        }
+
+        /// <summary>The element at <paramref name="index"/>, or <c>None</c> past either end.</summary>
+        /// <param name="index">The zero-based index; a negative one is <c>None</c>.</param>
+        /// <returns>The element, or <c>None</c> if there is none at that index.</returns>
+        /// <exception cref="ArgumentNullException">The element is null.</exception>
+        public Option<T> ElementAtOrNone(int index)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            if (index < 0) return None<T>();
+            if (source is IReadOnlyList<T> list) return index < list.Count ? Some(list[index]) : None<T>();
+
+            return FirstOf(source.Skip(index));
+        }
+
+        /// <summary>The element at <paramref name="index"/>, from the start or from the end (<c>^1</c> is the last), or <c>None</c> past either end.</summary>
+        /// <param name="index">The index.</param>
+        /// <returns>The element, or <c>None</c> if there is none at that index.</returns>
+        /// <exception cref="ArgumentNullException">The element is null.</exception>
+        public Option<T> ElementAtOrNone(Index index)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            if (!index.IsFromEnd) return source.ElementAtOrNone(index.Value);
+            if (index.Value == 0) return None<T>();
+            if (source is IReadOnlyList<T> list) return index.Value <= list.Count ? Some(list[^index.Value]) : None<T>();
+
+            // The last n elements, of which the first is the one asked for, if there are n.
+            var last = source.TakeLast(index.Value).ToList();
+            return last.Count == index.Value ? Some(last[0]) : None<T>();
+        }
     }
 
     /// <param name="source">The query.</param>
@@ -462,6 +520,41 @@ public static class Option
             return FirstOf(source.Where(predicate).Take(1));
         }
 
+        /// <summary>The only element of the query, or <c>None</c>: the provider is asked for two, and more than one throws.</summary>
+        /// <returns>The only element, or <c>None</c> if the query has none.</returns>
+        /// <exception cref="InvalidOperationException">The query has more than one element.</exception>
+        /// <exception cref="ArgumentNullException">The only element is null.</exception>
+        public Option<T> SingleOrNone()
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            return SingleOf(source.Take(2));
+        }
+
+        /// <summary>The only element that matches, or <c>None</c>: the provider runs the condition and is asked for two.</summary>
+        /// <param name="predicate">The condition to match, translated by the query provider.</param>
+        /// <returns>The only matching element, or <c>None</c> if nothing matches.</returns>
+        /// <exception cref="InvalidOperationException">More than one element matches.</exception>
+        /// <exception cref="ArgumentNullException">The only matching element is null.</exception>
+        public Option<T> SingleOrNone(System.Linq.Expressions.Expression<Func<T, bool>> predicate)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(predicate);
+
+            return SingleOf(source.Where(predicate).Take(2));
+        }
+
+        /// <summary>The element at <paramref name="index"/>, or <c>None</c>: the provider skips to it and is asked for one.</summary>
+        /// <param name="index">The zero-based index; a negative one is <c>None</c>, without a query, since a query skips nothing for it.</param>
+        /// <returns>The element, or <c>None</c> if there is none at that index.</returns>
+        /// <exception cref="ArgumentNullException">The element is null.</exception>
+        public Option<T> ElementAtOrNone(int index)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            return index < 0 ? None<T>() : FirstOf(source.Skip(index).Take(1));
+        }
+
         /// <summary>Refused: a query has no last element until it is ordered, and this would read every row to find one.</summary>
         /// <returns>Never: the overload does not compile.</returns>
         [Obsolete("A query has no last element until it is ordered, and LastOrNone would read every row to find one. Order it the other way and use FirstOrNone, or call AsEnumerable() to read it all on purpose.", error: true)]
@@ -476,12 +569,24 @@ public static class Option
         public Option<T> LastOrNone(System.Linq.Expressions.Expression<Func<T, bool>> predicate) => throw new NotSupportedException();
     }
 
-    /// <summary>The first element a query limited to one answers, or <c>None</c>.</summary>
-    private static Option<T> FirstOf<T>(IQueryable<T> limited) where T : notnull
+    /// <summary>The first element, or <c>None</c>; on a query, one limited to one, so it reads one row.</summary>
+    private static Option<T> FirstOf<T>(IEnumerable<T> limited) where T : notnull
     {
         using var enumerator = limited.GetEnumerator();
 
         return enumerator.MoveNext() ? Some(enumerator.Current) : None<T>();
+    }
+
+    /// <summary>The only element, <c>None</c> for none, and a refusal for more; on a query, one limited to two.</summary>
+    private static Option<T> SingleOf<T>(IEnumerable<T> elements) where T : notnull
+    {
+        using var enumerator = elements.GetEnumerator();
+        if (!enumerator.MoveNext()) return None<T>();
+
+        var single = enumerator.Current;
+        if (enumerator.MoveNext()) throw new InvalidOperationException("The sequence holds more than one element, so SingleOrNone has no single one to answer. Use FirstOrNone where any one will do.");
+
+        return Some(single);
     }
 
     /// <param name="dictionary">The dictionary.</param>

@@ -159,8 +159,8 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
                  {
                      ("FirstOrDefault", "Use FirstOrNone, which returns an Option, or pass a default value", nothingFound, firstOrNoneInQuery),
                      ("LastOrDefault", "Use LastOrNone, which returns an Option, or pass a default value", nothingFound, nullableFirst),
-                     ("SingleOrDefault", defaultValue, nothingFound, nullableFirst),
-                     ("ElementAtOrDefault", "Use Skip(index).FirstOrNone(), which returns an Option", pastTheEnd, "Use Skip(index).FirstOrNone(), which returns an Option and asks the query for one element"),
+                     ("SingleOrDefault", "Use SingleOrNone, which returns an Option, or pass a default value", nothingFound, "Use SingleOrNone, which returns an Option and asks the query for two elements, or select a nullable first, as in Select(x => ({0}?)x)"),
+                     ("ElementAtOrDefault", "Use ElementAtOrNone, which returns an Option", pastTheEnd, "Use ElementAtOrNone, which returns an Option and asks the query for one element"),
                      ("DefaultIfEmpty", defaultValue, " for an empty sequence", nullableFirst),
                  })
         {
@@ -178,9 +178,14 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
         var asyncEnumerables = compilation.GetTypesByMetadataName("System.Linq.AsyncEnumerable");
         var entityFramework  = compilation.GetTypeByMetadataName("Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions");
 
-        // FirstOrNoneAsync is the EF Core satellite's, so it is named only where the project can call it.
-        var firstOrNoneAsync = compilation.GetTypeByMetadataName("Microsoft.EntityFrameworkCore.TypeKitQueryableExtensions") is not null
+        // FirstOrNoneAsync and SingleOrNoneAsync are the EF Core satellite's, so they are named only where
+        // the project can call them.
+        var satellite = compilation.GetTypeByMetadataName("Microsoft.EntityFrameworkCore.TypeKitQueryableExtensions") is not null;
+        var firstOrNoneAsync = satellite
             ? "Use FirstOrNoneAsync, which returns an Option and asks the query for one element, or select a nullable first, as in Select(x => ({0}?)x)"
+            : nullableFirst;
+        var singleOrNoneAsync = satellite
+            ? "Use SingleOrNoneAsync, which returns an Option and asks the query for two elements, or select a nullable first, as in Select(x => ({0}?)x)"
             : nullableFirst;
 
         foreach (var (name, advice, circumstance) in new[]
@@ -197,7 +202,7 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
                 AddWithoutDefaultValue(forms, asyncEnumerable, name, new Form(Kind.Sequence, Produced.TypeArgument, circumstance, advice));
             }
 
-            AddWithoutDefaultValue(forms, entityFramework, name, new Form(Kind.Sequence, Produced.TypeArgument, circumstance, name == "FirstOrDefaultAsync" ? firstOrNoneAsync : nullableFirst));
+            AddWithoutDefaultValue(forms, entityFramework, name, new Form(Kind.Sequence, Produced.TypeArgument, circumstance, name switch { "FirstOrDefaultAsync" => firstOrNoneAsync, "SingleOrDefaultAsync" => singleOrNoneAsync, _ => nullableFirst }));
         }
 
         // List<T>.Find and its kind return default(T) when nothing matches, as FirstOrDefault does.

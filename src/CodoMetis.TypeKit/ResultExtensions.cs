@@ -983,6 +983,69 @@ public static class Result
         }
     }
 
+    /// <param name="option">An optional input that is validated when present.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <typeparam name="TError">The type of the error.</typeparam>
+    extension<T, TError>(Option<Result<T, TError>> option) where T : notnull where TError : notnull
+    {
+        /// <summary>
+        /// Turns an optional result inside out: <c>None</c> is a success with no value, a success is a
+        /// success with the value, and an error stays the error.
+        /// </summary>
+        /// <returns>A success holding an option, or the error.</returns>
+        /// <exception cref="InvalidOperationException">The option holds an uninitialized result.</exception>
+        public Result<Option<T>, TError> Transpose()
+        {
+            if (!option.TryGetValue(out var result)) return Result<Option<T>, TError>.Success(Option.None<T>());
+
+            return result.TryGetValue(out var value, out var error)
+                ? Result<Option<T>, TError>.Success(Option.Some(value))
+                : Result<Option<T>, TError>.Error(error);
+        }
+    }
+
+    /// <param name="result">A result whose value may be absent.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <typeparam name="TError">The type of the error.</typeparam>
+    extension<T, TError>(Result<Option<T>, TError> result) where T : notnull where TError : notnull
+    {
+        /// <summary>
+        /// Turns a result of an option inside out: a success with no value is <c>None</c>, a success
+        /// with a value is that success, and an error is an option holding the error.
+        /// </summary>
+        /// <returns>An option holding a result, or <c>None</c>.</returns>
+        /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+        public Option<Result<T, TError>> Transpose()
+        {
+            if (!result.TryGetValue(out var option, out var error)) return Option.Some(Result<T, TError>.Error(error));
+
+            return option.TryGetValue(out var value) ? Option.Some(Result<T, TError>.Success(value)) : Option.None<Result<T, TError>>();
+        }
+    }
+
+    /// <param name="option">An optional input.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    extension<T>(Option<T> option) where T : notnull
+    {
+        /// <summary>
+        /// Applies an operation that may fail to the value, if there is one: an optional input is
+        /// validated when present, <c>dto.Phone.ToOption().Traverse(Phone.Create)</c>.
+        /// </summary>
+        /// <param name="selector">Called with the value if there is one.</param>
+        /// <typeparam name="TResult">The type of the produced value.</typeparam>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success with no value for <c>None</c>, a success with the produced value, or its error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        public Result<Option<TResult>, TError> Traverse<TResult, TError>(Func<T, Result<TResult, TError>> selector)
+            where TResult : notnull
+            where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return option.Map(selector).Transpose();
+        }
+    }
+
     /// <summary>
     /// A zip inspects every argument before the first error wins: an uninitialized result is a bug
     /// wherever it stands, and short-circuiting would let one after an error pass unnoticed.
