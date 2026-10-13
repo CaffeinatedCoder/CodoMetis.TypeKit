@@ -271,5 +271,5 @@ string outcome = CreateAll<Email, string, EmailFault>(["ops@example.com", "nobod
 
 Set `<MetalamaEmitCompilerTransformedFiles>true</MetalamaEmitCompilerTransformedFiles>` in the
 declaring project and read `obj/Debug/net10.0/metalama/`: every generated member is there as ordinary
-C#. A declaration the generators cannot complete fails the build with CMTK1000 to CMTK1012, listed in
+C#. A declaration the generators cannot complete fails the build with CMTK1000 to CMTK1012 or CMTK1022, listed in
 the [Generators README](../src/CodoMetis.TypeKit.Generators/README.md#build-errors).

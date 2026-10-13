@@ -171,7 +171,7 @@ compiled and its stated outputs are tested, as the READMEs' are.
   source-generated context an enum-backed value object needs its enum listed
   ([JSON](src/CodoMetis.TypeKit.Generators/README.md#json)).
 - **Loud failures.** A declaration that cannot be generated is a build error naming the
-  declaration, CMTK1000 to CMTK1021, never a type with nothing in it. The analyzers make `default`
+  declaration, CMTK1000 to CMTK1022, never a type with nothing in it. The analyzers make `default`
   of a value object, an `Option` or a `Result` an error.
 - **Discovery by interface.** The EF Core and OpenAPI satellites recognise a value object by the
   attribute the generators put beside `IValueObject<,>`, whose type arguments are constrained to that
@@ -206,7 +206,7 @@ references `CodoMetis.TypeKit.Generators` and in every project that references t
 object is declared by implementing its interface, with no attribute and nothing registered.
 Templates write the generated members as ordinary C#, which a build can write out for you to read
 ([Reading the generated code](src/CodoMetis.TypeKit.Generators/README.md#reading-the-generated-code)).
-A declaration that cannot be generated fails the build with its name on it, CMTK1000 to CMTK1021,
+A declaration that cannot be generated fails the build with its name on it, CMTK1000 to CMTK1022,
 instead of compiling to less than it appears to. And Metalama runs the analyzers on the code it
 transformed, which is how they reach Razor components.
 
