@@ -29,6 +29,10 @@ public sealed class StringTextExtensionsTests
     {
         { "\u0000", "NUL" },
         { "\u0009", "TAB" },
+        { "\u000A", "LINE FEED" },
+        { "\u000D", "CARRIAGE RETURN" },
+        { "\u000D\u000A", "CARRIAGE RETURN, LINE FEED" },
+        { "\u00AD", "SOFT HYPHEN" },
         { "\u034F", "COMBINING GRAPHEME JOINER" },
         { "\u115F", "HANGUL CHOSEONG FILLER" },
         { "\u1160", "HANGUL JUNGSEONG FILLER" },
@@ -37,6 +41,7 @@ public sealed class StringTextExtensionsTests
         { "\u180E", "MONGOLIAN VOWEL SEPARATOR" },
         { "\u200B", "ZERO WIDTH SPACE" },
         { "\u200E", "LEFT-TO-RIGHT MARK" },
+        { "\u200F", "RIGHT-TO-LEFT MARK" },
         { "\u202E", "RIGHT-TO-LEFT OVERRIDE" },
         { "\u2028", "LINE SEPARATOR" },
         { "\u2029", "PARAGRAPH SEPARATOR" },
@@ -354,6 +359,18 @@ public sealed class StringTextExtensionsTests
         Refusal(stacked.AsText()).ShouldBe(TextFault.Hidden);
         Refusal(stacked.AsIdentifier()).ShouldBe(TextFault.Hidden);
     }
+
+    /// <summary>
+    /// The form is C, not KC: compatibility characters are what the person wrote, and folding a
+    /// ligature, a superscript or a fullwidth letter to its plain form changes the text, where
+    /// composing changes only its encoding.
+    /// </summary>
+    [Theory]
+    [InlineData("\uFB01le", "LATIN SMALL LIGATURE FI")]
+    [InlineData("x\u00B2", "SUPERSCRIPT TWO")]
+    [InlineData("\uFF21\uFF22", "FULLWIDTH LATIN CAPITAL LETTER A, B")]
+    public void A_compatibility_character_is_kept_as_written(string value, string name) =>
+        Kept(value.AsText()).ShouldBe(value, name);
 
     [Fact]
     public void Surrounding_whitespace_is_not_content()

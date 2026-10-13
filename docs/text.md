@@ -4,24 +4,29 @@ Every application that stores what a person typed trims it and refuses a blank. 
 zero-width space, a Hangul filler or NUL, which `IsNullOrWhiteSpace` lets through and `Trim` leaves
 in place. Fewer compose it, so a name written with `ü` and the same name written with `u` and a
 combining diaeresis are two rows of a unique index that render alike. `AsText()` does all of this for
-text a person wrote, and `AsIdentifier()` trims and refuses for a value another system issued; both
-are extensions on `string` in `CodoMetis.TypeKit` and answer with a `Result<string, TextFault>`. The
-[base README](../src/CodoMetis.TypeKit/README.md#written-text) is their reference; this page is about
-using them: which one, where, and inside a value object. The examples import `CodoMetis.TypeKit`.
+a line of text a person wrote, and `AsIdentifier()` trims and refuses for a value another system
+issued; both are extensions on `string` in `CodoMetis.TypeKit` and answer with a
+`Result<string, TextFault>`. The [base README](../src/CodoMetis.TypeKit/README.md#written-text) is
+their reference and lists exactly what they refuse; this page is about using them: which one, where,
+and inside a value object. The examples import `CodoMetis.TypeKit`.
 
 ## Two guards
 
 | | `AsText()` | `AsIdentifier()` |
 |---|---|---|
-| For | text a person wrote: a name, a description, a comment | a value another system issued: a subject claim, a session id, a key |
+| For | one line of text a person wrote: a name, a title, a subject line | a value another system issued: a subject claim, a session id, a key |
 | Trims | yes | yes |
 | Folds every space separator to an ordinary space | yes | no |
-| Composes to NFC, so one spelling per name | yes | no, since an issued value is compared against what its issuer sends next time |
+| Composes to NFC, so one spelling per name | yes, and only that: a ligature, a superscript or a fullwidth letter stays as written, as NFKC would not keep it | no, since an issued value is compared against what its issuer sends next time |
 | Refuses a character that renders as nothing | yes | yes |
-| A line break, a tab or another control character | refused as `Hidden`: a value is one line, so a multi-line comment is split into lines first, or stays the `string` it is | refused |
+| A line break, a tab or another control character | refused as `Hidden`: a value is one line, so a multi-line field such as a comment does not go through the guard | refused |
+| A format character: a soft hyphen, a byte-order mark, a bidirectional mark or override, a tag character | refused, so an Arabic name ending in a right-to-left mark is refused too | refused |
+| The Arabic number sign, the end of ayah and the other prepended concatenation marks | kept: format characters by category, but drawn, spanning the digits after them | kept |
 | The two zero-width joiners | kept: they spell Persian, Arabic and Indic scripts and hold an emoji sequence together | refused: no issuer needs one |
 | A variation selector | kept after the character it varies (an emoji's presentation, an ideograph's variant); elsewhere it selects nothing and is refused | the same |
 | A value of joiners, variation selectors and combining marks alone | refused: it renders no character of its own | refused |
+| More than 30 combining marks in a row | refused: no script stacks that many, and composing a run takes time that grows with the square of its length | refused |
+| An unpaired surrogate, or `U+FFFE` | refused, where `Normalize` would throw | refused |
 | A null receiver | `Blank` | `Blank` |
 
 ```csharp
@@ -37,9 +42,10 @@ Result<string, TextFault> forged = "sub\u200Dject".AsIdentifier();      // Error
 
 Both scan by `Rune`, so a character above the Basic Multilingual Plane is seen for what it is, and an
 unpaired surrogate is `Hidden` rather than an exception, which `Normalize` and a database driver would
-both throw on. Not refused on purpose: unassigned code points, since the runtime's Unicode tables lag
-the standard and a name spelled with a newly assigned character would be refused until the SDK caught
-up; and confusable letters across scripts, which is a comparison question and not a rejection.
+both throw on. No string makes either guard throw, and none makes either take more than linear time.
+Not refused on purpose: unassigned code points, since the runtime's Unicode tables lag the standard
+and a name spelled with a newly assigned character would be refused until the SDK caught up; and
+confusable letters across scripts, which is a comparison question and not a rejection.
 
 ## Required and optional
 
@@ -105,6 +111,8 @@ as `SubjectId` shows.
 
 - **A password or a secret.** Composing or folding it changes what the person typed; compare it as
   given, and never through a guard that would also put it in a fault.
+- **A multi-line field**, such as a comment or a message body: a line break is a control character,
+  refused as `Hidden`. Guard each line, or keep the field as the `string` it is.
 - **Text another system will parse**, such as a path or a URL: it has its own rules, and trimming it
   is already a change.
 - **A comparison key.** Confusable letters across scripts and case folding are a comparison's

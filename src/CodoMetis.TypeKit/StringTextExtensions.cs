@@ -54,16 +54,24 @@ public static class StringTextExtensions
     extension(string? text)
     {
         /// <summary>
-        /// The string as text a person wrote, as it will be kept: trimmed, every space separator folded
-        /// to an ordinary space, composed to Unicode normalization form C, and refused if it carries a
-        /// character that renders as nothing.
+        /// The string as one line of text a person wrote, as it will be kept: trimmed, every space
+        /// separator folded to an ordinary space, composed to Unicode normalization form C, and refused if
+        /// it carries a character that renders as nothing or breaks the line.
         /// </summary>
         /// <remarks>
         /// <para>
         /// Neither canonicalisation is a convenience. Two canonically equivalent spellings of one name,
         /// or one name spaced with a no-break space, compare unequal under every ordinal comparison and
         /// under a unique index a database compares byte by byte, while rendering identically on every
-        /// screen.
+        /// screen. The form is C, not KC: a ligature, a superscript or a fullwidth letter is kept as written.
+        /// </para>
+        /// <para>
+        /// Refused as <see cref="TextFault.Hidden"/>, which lists them exactly: a control character, a tab
+        /// and a line break among them, so a multi-line field such as a comment does not go through this
+        /// guard; a format character, a soft hyphen, the byte-order mark and the bidirectional marks among
+        /// them; a private-use character; a line or paragraph separator; a character that renders nothing
+        /// whatever its category; a variation selector that varies nothing; more than 30 combining marks in
+        /// a row; and a value of no character of its own.
         /// </para>
         /// <para>
         /// The two zero-width joiners are kept: they are ordinary orthography in Persian, Arabic and
@@ -72,24 +80,35 @@ public static class StringTextExtensions
         /// </remarks>
         /// <returns>
         /// The text, or <see cref="TextFault.Blank"/> for a null, empty or whitespace-only string, or
-        /// <see cref="TextFault.Hidden"/> for one carrying a character that renders as nothing.
+        /// <see cref="TextFault.Hidden"/> for one carrying a character that renders as nothing or breaks
+        /// the line.
         /// </returns>
         public Result<string, TextFault> AsText() => Clean(text, tolerateJoiners: true, canonicalize: true);
 
         /// <summary>
         /// The string as a value another system issued, a subject claim, a session id, a key: trimmed of
         /// surrounding whitespace, otherwise exactly as it arrived, and refused if it carries a
-        /// character that renders as nothing.
+        /// character that renders as nothing or breaks the line.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// Nothing is composed or folded, since an issued value is compared against what its issuer
         /// sends next time, and canonicalising it alters an attested value. Trimming survives because
         /// surrounding whitespace is a transport artefact. The zero-width joiners
         /// <see cref="AsText"/> keeps are refused here, since no issuer needs one.
+        /// </para>
+        /// <para>
+        /// Refused as <see cref="TextFault.Hidden"/>, which lists them exactly, as <see cref="AsText"/>
+        /// refuses them, and the two zero-width joiners besides: a control character, a tab and a line
+        /// break among them; a format character; a private-use character; a line or paragraph separator;
+        /// a character that renders nothing whatever its category; a variation selector that varies
+        /// nothing; more than 30 combining marks in a row; and a value of no character of its own.
+        /// </para>
         /// </remarks>
         /// <returns>
         /// The value, or <see cref="TextFault.Blank"/> for a null, empty or whitespace-only string, or
-        /// <see cref="TextFault.Hidden"/> for one carrying a character that renders as nothing.
+        /// <see cref="TextFault.Hidden"/> for one carrying a character that renders as nothing or breaks
+        /// the line.
         /// </returns>
         public Result<string, TextFault> AsIdentifier() => Clean(text, tolerateJoiners: false, canonicalize: false);
     }

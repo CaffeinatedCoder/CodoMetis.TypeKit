@@ -360,17 +360,35 @@ var subject = "subject\u200Bid".AsIdentifier();   // Error: Hidden, a zero-width
 var missing = ((string?)null).AsText();            // Error: Blank
 ```
 
-Which one to call is decided by who chose the value. `AsText()` is for text a person wrote: it
-trims, folds every space separator to an ordinary space, composes to NFC and refuses any character
-that renders as nothing, keeping the two zero-width joiners because they spell Persian, Arabic and
-Indic scripts and hold an emoji sequence together. `AsIdentifier()` is for a value another system
+Which one to call is decided by who chose the value. `AsText()` is for one line of text a person
+wrote, a name, a title: it trims, folds every space separator to an ordinary space, composes to NFC
+(not NFKC, so a ligature or a fullwidth letter stays as written) and refuses a character that renders
+as nothing or breaks the line, keeping the two zero-width joiners because they spell Persian, Arabic
+and Indic scripts and hold an emoji sequence together. `AsIdentifier()` is for a value another system
 issued, a subject claim, a session id, a key: it trims and alters nothing else, since an issued
-value is compared against what its issuer sends next time, and it refuses the joiners too. A
-variation selector is kept after the character it varies and refused anywhere else, and a value of
-joiners, selectors and combining marks alone renders no character of its own and is refused by
-both. Both
-scan by `Rune`, so a character above the BMP is seen for what it is, and an unpaired surrogate is
-`Hidden` rather than an exception.
+value is compared against what its issuer sends next time, and it refuses the joiners too.
+
+Both refuse as `Hidden`, once the surrounding whitespace is trimmed:
+
+- a control character: NUL, a tab, a line feed, a carriage return, the rest of the C0 and C1 ranges.
+  A multi-line field, such as a comment, does not go through either guard;
+- a format character: the soft hyphen, the zero-width space, the word joiner, the byte-order mark, the
+  bidirectional marks, embeddings, overrides and isolates (so an Arabic name ending in a right-to-left
+  mark is refused), the invisible operators and the tag characters. Not the Arabic number sign, the end
+  of ayah and the other prepended concatenation marks, which are drawn, even with nothing after them;
+- a private-use character, and the line and paragraph separators;
+- an unpaired surrogate, and `U+FFFE`, a byte-order mark read in the wrong byte order: what
+  `string.Normalize` throws on, refused rather than thrown over;
+- a character that renders nothing whatever its category: the combining grapheme joiner, the Hangul
+  fillers, the Braille pattern blank, the Khmer inherent vowels and the Khitan filler;
+- a variation selector anywhere but after the character it varies (an emoji's presentation, an
+  ideograph's variant);
+- more than 30 combining marks in a row: no script stacks that many, and composing a run reorders it in
+  time that grows with the square of its length;
+- a value of joiners, variation selectors and combining marks alone, which renders no character of
+  its own.
+
+Both scan by `Rune`, so a character above the BMP is seen for what it is.
 
 `TextFault` has two members because the caller decides what a blank means: a required field makes
 `Blank` an error, an optional one makes it absence. `Hidden` is a refusal in both. A null is
