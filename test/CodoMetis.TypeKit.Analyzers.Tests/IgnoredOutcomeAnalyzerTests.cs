@@ -318,8 +318,10 @@ public sealed class IgnoredOutcomeAnalyzerTests
                     (await pending).Tap(_ => { }).TapError(_ => { });
                     (await pending.TapAsync(_ => { })).TapError(_ => { });
                     (await pending.TapAsync(_ => { }).ConfigureAwait(false)).TapError(_ => { });
+                    await pending.WaitAsync(TimeSpan.FromSeconds(1)).TapAsync(_ => { }).TapErrorAsync(_ => { });
 
                     {|#0:service.Load().Tap(_ => { }).TapError(_ => { })|};
+                    {|#6:await service.LoadAsync().WaitAsync(TimeSpan.FromSeconds(1)).TapAsync(_ => { })|};
                     {|#1:await service.LoadAsync().TapAsync(_ => { }).TapErrorAsync(_ => { })|};
                     {|#2:(await service.LoadAsync().TapAsync(_ => { })).TapError(_ => { })|};
                     {|#3:(await service.LoadAsync()).Tap(_ => { })|};
@@ -333,7 +335,8 @@ public sealed class IgnoredOutcomeAnalyzerTests
             Cmtk0003(2, "Result", "TapError"),
             Cmtk0003(3, "Result", "Tap"),
             Cmtk0003(4, "Result", "Tap"),
-            Cmtk0003(5, "Result", "TapAsync"))
+            Cmtk0003(5, "Result", "TapAsync"),
+            Cmtk0003(6, "Result", "TapAsync"))
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>

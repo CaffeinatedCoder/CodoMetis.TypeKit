@@ -385,19 +385,17 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     /// Whether the caller still holds <paramref name="receiver"/>: a local, a parameter or a field; a
     /// tap that returned such a receiver, so that <c>r.Tap(log).TapError(warn)</c> holds at every link;
     /// or what a task so held completes with, awaited in the chain, <c>(await pending).Tap(log)</c>.
+    /// <c>ConfigureAwait</c> and <c>WaitAsync</c> hand on the task they are called on, so
+    /// <c>pending.WaitAsync(t).TapAsync(log)</c> is a tap on <c>pending</c>.
     /// </summary>
-    private static bool IsStored(IOperation? receiver, TypeKitSymbols symbols, Tasks tasks)
-    {
-        while (receiver is IConversionOperation { IsImplicit: true } conversion) receiver = conversion.Operand;
-
-        return receiver switch
+    private static bool IsStored(IOperation? receiver, TypeKitSymbols symbols, Tasks tasks) =>
+        receiver is not null && tasks.PassedOn(receiver) switch
         {
             ILocalReferenceOperation or IParameterReferenceOperation or IFieldReferenceOperation => true,
             IInvocationOperation tap                                                             => ReturnsItsStoredReceiver(tap, symbols, tasks),
-            IAwaitOperation { Operation: var awaited }                                           => IsStored(tasks.PassedOn(awaited), symbols, tasks),
+            IAwaitOperation { Operation: var awaited }                                           => IsStored(awaited, symbols, tasks),
             _                                                                                    => false,
         };
-    }
 
     /// <summary>The task and collection types, resolved once per compilation.</summary>
     private sealed class Tasks(
