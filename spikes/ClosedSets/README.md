@@ -1,7 +1,7 @@
 # Spike: can a closed set be a generated type with static members, on Metalama 2026.1 and .NET 10?
 
 **Status: run 2026-10-13, answered.** From the "closed-set (smart enum) family" part of phase 13
-(2.0.0) in [docs/plan.md](../../docs/plan.md) §2. Decision 44 pins 2.0.0 to `net10.0` and Metalama
+(2.0.0) in [design/plan.md](../../design/plan.md) §2. Decision 44 pins 2.0.0 to `net10.0` and Metalama
 2026.1, so the family is a generated type with static members, not a C# 15 union; this spike is the
 measurement that nothing in it needs anything newer.
 

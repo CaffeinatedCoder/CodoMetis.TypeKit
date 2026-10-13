@@ -12,7 +12,7 @@ that are written as one line and generated at compile time by Metalama.
 - **Satellites** map value objects to EF Core columns, where `.Value` works in LINQ as it does in
   memory, and to OpenAPI schemas.
 
-The packages are being built phase by phase: **read [docs/plan.md](docs/plan.md) before changing
+The packages are being built phase by phase: **read [design/plan.md](design/plan.md) before changing
 anything.** It holds the package map, the phase order and the decisions.
 
 This file is the canonical agent guide. There is no CLAUDE.md, on purpose.
@@ -40,12 +40,14 @@ This file is the canonical agent guide. There is no CLAUDE.md, on purpose.
 - Central package management (`Directory.Packages.props`). The versions of shipping references
   are floors for consumers, so raising one is a release decision. `spikes/` opts out of it and
   pins what each spike measured.
-- `test/CodoMetis.TypeKit.Samples` holds every C# block of the READMEs as compiled code, between
-  `// sample: {README}/{name}` and `// end sample`, beside tests that check the outputs the blocks
-  state in comments. `ReadmeSampleTests` (conventions) holds each block to exactly one region.
+- `test/CodoMetis.TypeKit.Samples` holds every C# block of the READMEs and of the `docs/` pages as
+  compiled code, between `// sample: {page}/{name}` and `// end sample`, beside tests that check the
+  outputs the blocks state in comments. `{page}` is `README`, a package id, or a docs page's file name
+  without `.md`. `ReadmeSampleTests` (conventions) holds each block to exactly one region.
 - `spikes/` holds experiments that decided something. Each one has a README with the question,
   the answer and the evidence. Spikes are not in the main solution and are never packed.
-- `docs/` holds the plan and the design notes.
+- `docs/` holds the topic pages a consumer reads, one per topic, each linked from the root README's
+  "Documentation" table; `design/` holds the plan and the design notes, which no test compiles.
 
 Never hard-code a positional path (`../../`) to reach the repo root. Walk up to the
 `CodoMetis.TypeKit.slnx` marker instead.
@@ -91,7 +93,7 @@ Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TR
   `JsonSerializer` call that takes only options, in the packages or in woven code: a typed call
   (`GeneratedValueObjectAttribute.Accept`, `GeneratedJson.TypeInfo`) or an interface instead. An
   `[UnconditionalSuppressMessage]` needs a measured reason, and the smoke test's `aot` consumer is
-  the measurement (docs/plan.md §11).
+  the measurement (design/plan.md §11).
 - **Aspects stay internal.** Their public surface is what they generate, and nothing else.
 - **A value object's JSON is its wrapped type's, byte for byte**, under whatever options the
   application uses, values and dictionary keys alike (`JsonParityTests`). Never write or read the
@@ -104,18 +106,21 @@ Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TR
   introduce is CMTK1011. A new generated member joins that check, or a hand-written one is kept silently.
 - **Diagnostic ids (`CMTK`) are public contract.** Never renumber a shipped rule, and never ship a
   new rule at Error severity in a minor version.
-- **A README's C# block is compiled code.** Change it and its region in
+- **A README's or a docs page's C# block is compiled code.** Change it and its region in
   `test/CodoMetis.TypeKit.Samples` together, or `ReadmeSampleTests` fails; the region's scaffolding
   (the types and variables it assumes) stays outside the markers. An output a block states in a comment
   (SQL, JSON, a string) is read from the README by the test beside the region, so correct the comment,
   never the test. A block that cannot compile on purpose says `<!-- not compiled: {reason} -->` above
   its fence; an analyzer diagnostic in a comment is no reason, the sample suppresses it around the region.
+  A page in `docs/` is compiled by being there and must be linked from the root README's
+  "Documentation" table; a package README is the reference for its package, a docs page the guide for
+  a topic, and the same code block is never in both.
 - **Silent is worse than broken.** A value object that compiles without being generated, an
   analyzer that stops firing, or a converter that materialises `default` are this repo's
   characteristic failures. Prefer a diagnostic or an exception to a plausible result.
 
 ## Workflow
-1. Read `docs/plan.md` and the relevant spike README before starting.
+1. Read `design/plan.md` and the relevant spike README before starting.
 2. Run `dotnet test` after each change.
 3. **Prove every fix by reverting it.** See `.claude/skills/verify-the-guard`. The same applies to a
    new analyzer test or a convention test: seed the defect it claims to catch.

@@ -40,12 +40,55 @@ internal static partial class ReadmeSamples
 
     public const string RootReadme = "README.md";
 
-    /// <summary>The root README and every shipping package's, discovered from <c>src/</c>.</summary>
-    public static IReadOnlyList<string> Readmes() =>
-        [RootReadme, .. Repository.ShippingProjects().Select(project => $"src/{project}/README.md")];
+    public const string DocsDirectory = "docs";
 
-    /// <summary>The prefix of the samples a README shows: <c>README</c>, or the package id.</summary>
-    public static string Prefix(string readme) => readme == RootReadme ? "README" : readme.Split('/')[1];
+    /// <summary>
+    /// Every page whose C# is compiled: the root README, every shipping package's, discovered from
+    /// <c>src/</c>, and every topic page in <c>docs/</c> (<see cref="DocsPages"/>).
+    /// </summary>
+    public static IReadOnlyList<string> Readmes() =>
+        [RootReadme, .. Repository.ShippingProjects().Select(project => $"src/{project}/README.md"), .. DocsPages()];
+
+    /// <summary>
+    /// The topic pages, discovered from <c>docs/</c>: every Markdown file there. A page is compiled by
+    /// being there, so one that is forgotten in the root README's table fails
+    /// <see cref="ReadmeSampleTests"/> rather than going unread. The plan and the design notes live in
+    /// <c>design/</c>, whose code is sketches and is not compiled.
+    /// </summary>
+    public static IReadOnlyList<string> DocsPages() =>
+    [
+        .. Directory.EnumerateFiles(Path.Combine(Repository.Root, DocsDirectory), "*.md", SearchOption.TopDirectoryOnly)
+                    .Select(path => $"{DocsDirectory}/{Path.GetFileName(path)}")
+                    .Order(StringComparer.Ordinal)
+    ];
+
+    /// <summary>
+    /// The prefix of the samples a page shows: <c>README</c> for the root README, the package id for
+    /// a package's, and the file name without <c>.md</c> for a topic page (<c>docs/ef-core.md</c> shows
+    /// <c>ef-core/…</c>).
+    /// </summary>
+    public static string Prefix(string readme) =>
+        readme == RootReadme                 ? "README"
+      : readme.StartsWith("src/", StringComparison.Ordinal) ? readme.Split('/')[1]
+      : Path.GetFileNameWithoutExtension(readme);
+
+    /// <summary>
+    /// The pages the root README's "Documentation" section links under <c>docs/</c>, in order, each
+    /// without its anchor: the table of contents a reader starts from.
+    /// </summary>
+    public static IReadOnlyList<string> DocumentationLinks(string markdown)
+    {
+        var section = DocumentationSection().Match(markdown.ReplaceLineEndings("\n"));
+        if (!section.Success) throw new InvalidOperationException($"{RootReadme} has no '## Documentation' section.");
+
+        return [.. DocsLink().Matches(section.Groups["body"].Value).Select(link => link.Groups["page"].Value)];
+    }
+
+    [GeneratedRegex(@"^## Documentation\n(?<body>.*?)(?=^## |\z)", RegexOptions.Multiline | RegexOptions.Singleline)]
+    private static partial Regex DocumentationSection();
+
+    [GeneratedRegex(@"\]\((?<page>docs/[^)#\s]+)(?:#[^)\s]*)?\)")]
+    private static partial Regex DocsLink();
 
     public static IReadOnlyList<CodeBlock> CodeBlocks() =>
         [.. Readmes().SelectMany(readme => CodeBlocks(readme, File.ReadAllText(Path.Combine(Repository.Root, readme))))];

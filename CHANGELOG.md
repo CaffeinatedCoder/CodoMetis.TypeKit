@@ -110,6 +110,12 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   CMTK0009 names each for `SingleOrDefault`, `ElementAtOrDefault` and `SingleOrDefaultAsync`. `Transpose()`
   between `Option<Result<T, TError>>` and `Result<Option<T>, TError>`, and `Option<T>.Traverse(selector)`
   for an optional input validated when present.
+- **Documentation**: topic pages under `docs/`, linked from the root README's "Documentation" table:
+  value objects, `Option`, `Result`, written text, type constraints, JSON, EF Core, ASP.NET Core,
+  Native AOT, logging and secrets, and testing. Every C# block in them is compiled and its stated
+  outputs are tested, as the READMEs' are, and the `Option` and `Result` pages list the complete
+  public surface, checked against the types. The package READMEs remain the reference for each
+  package. The plan moved from `docs/plan.md` to `design/plan.md`.
 
 ### Changed
 

@@ -136,7 +136,7 @@ jobs:
         run: dotnet pack CodoMetis.TypeKit.slnx -c Release --no-build -o dist
 
       # The smoke test publishes a consumer with Native AOT, which links with the platform's clang
-      # and zlib (docs/plan.md §11).
+      # and zlib (design/plan.md §11).
       - name: Native AOT prerequisites
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang zlib1g-dev
 

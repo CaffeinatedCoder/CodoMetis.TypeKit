@@ -92,6 +92,34 @@ db.Customers.Where(c => c.Email.Value.EndsWith("@example.com"));        // WHERE
 services.AddOpenApi(options => options.AddTypeKit());                    // OrderId: {"type":"string","format":"uuid"}
 ```
 
+## Documentation
+
+The package READMEs above are the reference for each package: what it adds, its setup, and the
+rules it holds to, which is also where every exception message and analyzer help link lands. The
+pages below are the guides, one topic each, written around examples. Every C# block in them is
+compiled and its stated outputs are tested, as the READMEs' are.
+
+| Page | Covers |
+|---|---|
+| [Value objects](docs/value-objects.md) | Declaring one, struct or class, identifiers, validated text and numbers, faults, which factory to call, your own members, generic code over value objects |
+| [Option](docs/option.md) | Absence as a type: creating, matching, combining, converting at the boundary, and the complete public surface |
+| [Result](docs/result.md) | Outcomes as a type: faults, pipelines, async chains, collecting results, an exception as an outcome, errors across layers, and the complete public surface |
+| [Written text](docs/text.md) | `AsText()` and `AsIdentifier()`: what each cleans and refuses, a value object over either, a required and an optional field |
+| [Type constraints](docs/type-constraints.md) | `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` on a type parameter, `[RequireParameterlessConstructor]` and its code fix |
+| [JSON](docs/json.md) | What a value object writes and reads, refusals, stored documents, `Option` and `Result` at the wire, a converter of your own, source-generated contexts |
+| [EF Core](docs/ef-core.md) | Columns, keys, conventions, queries and the SQL they become, seed data, reading back without validation, SQLite in tests |
+| [ASP.NET Core](docs/aspnet-core.md) | Binding in minimal APIs and MVC, what a refused value answers, a `Result` as a response, the OpenAPI document, problem details |
+| [Native AOT](docs/native-aot.md) | What is measured, the project settings, JSON contexts, OpenAPI, EF Core's compiled model, configuration binding, discovery without reflection |
+| [Logging and secrets](docs/logging-and-secrets.md) | A value that must not be printed, what still carries it, Serilog, Microsoft.Extensions.Logging, refusals that never quote the input |
+| [Testing](docs/testing.md) | Assertions for `Option` and `Result`, table-driven tests of `Create`, EF Core on SQLite, endpoints on the test server |
+
+`Patch<T>` and the closed-set (smart enum) family have landed in 2.0.0 and are documented in the
+[base package's README](src/CodoMetis.TypeKit/README.md#merge-patches) and
+[the generators' README](src/CodoMetis.TypeKit.Generators/README.md#closed-sets) until their pages
+are written. Still to come in 2.0.0, each page written when its feature lands
+([the plan](design/plan.md#2-phases), phase 13): fault responses a client can act on, and public
+aspects.
+
 ## What it holds to
 
 - **No `.Value` on `Option` or `Result`.** The content is reached through `Match`, `TryGetValue`
@@ -156,7 +184,7 @@ next major where one is in preview. If something here is wrong or has changed, p
 | .NET Framework, .NET Standard or a .NET before 10 | Vogen for value objects; CSharpFunctionalExtensions, ErrorOr or FluentResults for results | TypeKit targets .NET 10 only; these ship for .NET Standard 2.0 |
 | Newtonsoft.Json, Dapper, LINQ to DB, MongoDB, Orleans, ServiceStack or protobuf-net for value objects | Vogen | It ships an opt-in integration for each. TypeKit covers System.Text.Json, EF Core and ASP.NET Core |
 | A plain Roslyn source generator in the build rather than Metalama | Vogen or Thinktecture.Runtime.Extensions | TypeKit's generators run on Metalama (open source, no license key) in the project that declares value objects |
-| Value objects of several members, smart enums or discriminated unions | Thinktecture.Runtime.Extensions | It has `[ComplexValueObject]`, `[SmartEnum<T>]` and `[Union]`. A TypeKit value object wraps exactly one value |
+| Value objects of several members, or discriminated unions | Thinktecture.Runtime.Extensions | It has `[ComplexValueObject]` and `[Union]`. A TypeKit value object wraps exactly one value; its closed sets are the smart enums |
 | Several errors per failure, of typed kinds | ErrorOr | An `ErrorOr<T>` carries a list of errors. A TypeKit `Result` carries one `TError`, which can be a list of your own |
 | Errors with reasons, success messages and causes | FluentResults | Its results carry reasons, errors and successes, and an error can name what caused it |
 | A functional-programming framework: `Either`, `Fin`, effects, immutable collections | LanguageExt (4.4.9; 5.0 in beta) | TypeKit's `Option` and `Result` are deliberately small, with no effect or validation types |
@@ -212,7 +240,7 @@ the public API, the generated members of a value object, and the analyzer ids an
 the contract. A new analyzer rule arrives as a warning or a suggestion in a minor version, and
 becomes an error only in a major one.
 [CHANGELOG.md](CHANGELOG.md) lists what each version changed. The plan, the decisions and their
-evidence are in [docs/plan.md](docs/plan.md), and the measurements that decided the design are in
+evidence are in [design/plan.md](design/plan.md), and the measurements that decided the design are in
 [spikes/](spikes/).
 
 ## Building
