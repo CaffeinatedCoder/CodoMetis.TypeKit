@@ -90,6 +90,15 @@
   `JsonSerializer.Serialize`/`Deserialize` per value cost 35–40% (measured). The plan is kept per
   converter instance for the options it last saw; a static plan per wrapped type cost 8% on writes.
   The enum's built-in converter is made once per plan: made per call it allocated 4.7 KB per value.
+- **A default instance over a reference type formats as `""`** (decided 2026-10-13). It is not supposed
+  to exist (CMTK0001), but EF Core, MVC and serializers make one, and it holds null. Its `ToString()`
+  over a string was already `""`; over a `Uri`, a `Version` or an `IPAddress` it, interpolation,
+  `IFormattable`, both `TryFormat`s and the type converter threw `NullReferenceException`, as did
+  `Convert.ToString` and `IConvertible` over a string. Every generated format answers `""` now (the
+  span formats write nothing), and `IConvertible` over a reference type goes through `Convert` with the
+  value as an object, which is the value's own conversion and, for null, Convert's: `""`, a number's
+  default, `TypeCode.Empty` (`DefaultInstanceFormattingTests`). Harmless rather than loud, because a
+  default instance already printed `""` over a string and the BCL prints a null that way.
 - **Formatting and comparison never box** (decided 2026-09-28). The wrapped type's `ToString`,
   `TryFormat` and UTF-8 `TryFormat` are called through `GeneratedFormatting`, a constrained generic
   call that also reaches an explicit implementation, and comparison through `Comparer<T>.Default`,

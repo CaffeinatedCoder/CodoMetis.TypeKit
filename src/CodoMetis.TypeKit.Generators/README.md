@@ -345,6 +345,9 @@ the wrapped type's own message quotes the input. A refusal by `Create` names the
 `TryParse` answers `false` for both, and lets anything else through as `Parse` does: an exception
 `Create` throws is a bug to see, not text to refuse.
 
+A default instance, which CMTK0001 keeps out of your own code but EF Core, MVC and serializers can
+make, formats as `""` over a reference type, as it always did over a string.
+
 ## Comparison
 
 `CompareTo` and the operators follow the wrapped type's ordering, ordinal for a string. To order

@@ -56,9 +56,12 @@ internal sealed partial class ValueObjectFormattableAspect
         IFormatProvider?   provider
     )
     {
+        var tag = (FormattableImplementationArguments)meta.Tags.Source!;
+
         charsWritten = 0;
 
-        return (bool)Formatted($"{GeneratedFormatting}.TryFormat(this.Value, destination, out charsWritten, format, provider {InvariantIfNull})", SpecialType.Boolean).Value!;
+        // A default instance over a reference type holds null, whose text is "" (WrappedText).
+        return (bool)Formatted((tag.ValueType.IsReferenceType == true ? "this.Value is null || " : "") + $"{GeneratedFormatting}.TryFormat(this.Value, destination, out charsWritten, format, provider {InvariantIfNull})", SpecialType.Boolean).Value!;
     }
 
     // Satisfies IUtf8SpanFormattable.TryFormat — only emitted when T : IUtf8SpanFormattable.
@@ -70,8 +73,10 @@ internal sealed partial class ValueObjectFormattableAspect
         IFormatProvider?   provider
     )
     {
+        var tag = (FormattableImplementationArguments)meta.Tags.Source!;
+
         bytesWritten = 0;
 
-        return (bool)Formatted($"{GeneratedFormatting}.TryFormatUtf8(this.Value, utf8Destination, out bytesWritten, format, provider {InvariantIfNull})", SpecialType.Boolean).Value!;
+        return (bool)Formatted((tag.ValueType.IsReferenceType == true ? "this.Value is null || " : "") + $"{GeneratedFormatting}.TryFormatUtf8(this.Value, utf8Destination, out bytesWritten, format, provider {InvariantIfNull})", SpecialType.Boolean).Value!;
     }
 }

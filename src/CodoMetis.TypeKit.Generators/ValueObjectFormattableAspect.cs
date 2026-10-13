@@ -122,12 +122,21 @@ internal sealed partial class ValueObjectFormattableAspect : TypeAspect
     /// converter writes the wrapped value through it too, so it keeps doing so for a value object that
     /// declares its own <c>ToString()</c> and gets no formatting interfaces.
     /// </summary>
+    /// <remarks>
+    /// A default instance of a struct value object over a reference type holds null, and its text is
+    /// <c>""</c>, as interpolating that null gives and as a string's always was: formatting it through
+    /// the wrapped type threw <c>NullReferenceException</c> over a <c>Uri</c>, a <c>Version</c> or an
+    /// <c>IPAddress</c> (decided 2026-10-13). The generated span formats write nothing for it.
+    /// </remarks>
     internal static string WrappedText(INamedType valueType, string value, string format, string provider) =>
         ResolveStrategy(valueType) switch
         {
             ValueFormatStrategy.String => $"({value} ?? string.Empty)",
+            ValueFormatStrategy.Formattable or ValueFormatStrategy.SpanFormattable when valueType.IsReferenceType == true =>
+                $"({value} is null ? string.Empty : global::CodoMetis.TypeKit.CompilerServices.GeneratedFormatting.ToString({value}, {format}, {provider}))",
             ValueFormatStrategy.Formattable or ValueFormatStrategy.SpanFormattable => $"global::CodoMetis.TypeKit.CompilerServices.GeneratedFormatting.ToString({value}, {format}, {provider})",
             // No formatting knowledge: the format and the provider have nothing to apply to.
+            _ when valueType.IsReferenceType == true => $"({value}?.ToString() ?? string.Empty)",
             _ => $"({value}.ToString() ?? string.Empty)"
         };
 
