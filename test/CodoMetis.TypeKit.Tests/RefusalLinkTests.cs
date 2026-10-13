@@ -41,6 +41,7 @@ public sealed partial class RefusalLinkTests
     private const string KnownGood = "FromKnownGood refused a value";
     private const string Unreadable = "A value object could not read the input";
     private const string NullToValueObject = "A null given to a value object";
+    private const string ClosedSetMember = "A closed set has no member of that name";
 
     private enum Fault { TooLong }
 
@@ -48,6 +49,8 @@ public sealed partial class RefusalLinkTests
 
     private static readonly Dictionary<string, (string Heading, Func<object?> Refusal)> Refusals = new()
     {
+        ["Closed set Parse of an unknown name"] = (ClosedSetMember, () => throw CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMember("OrderStatus")),
+        ["Closed set JSON of an unknown name"]  = (ClosedSetMember, () => throw CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMemberInJson("OrderStatus")),
         ["Option written as JSON"]          = (InJson, () => JsonSerializer.Serialize(Option.Some(1))),
         ["Option read from JSON"]           = (InJson, () => JsonSerializer.Deserialize<Option<int>>("1")),
         ["Option? written as a JSON null"]  = (InJson, () => JsonSerializer.Serialize<Option<int>?>(null)),

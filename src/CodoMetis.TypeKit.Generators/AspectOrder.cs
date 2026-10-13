@@ -14,5 +14,6 @@ using Metalama.Framework.Aspects;
     typeof(ValueObjectMinMaxValueAspect),
     typeof(ValueObjectTypeConverterAspect),
     typeof(ValueObjectConvertibleAspect),
-    typeof(ValueObjectCompanionAspect)
+    typeof(ValueObjectCompanionAspect),
+    typeof(ClosedSetAspect)
 )]

@@ -104,6 +104,13 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1012", "WithRequiredMember")]
     [InlineData("CMTK1012", "WithInheritedState")]
     [InlineData("CMTK1012", "WithEvent")]
+    [InlineData("CMTK1013", "SetNotPartial")]
+    [InlineData("CMTK1014", "SetNotSealed")]
+    [InlineData("CMTK1015", "SetWithoutMembers")]
+    [InlineData("CMTK1016", "SetWithPublicConstructor")]
+    [InlineData("CMTK1017", "SetWithProperty")]
+    [InlineData("CMTK1017", "SetWithMutableField")]
+    [InlineData("CMTK1018", "SetGeneric")]
     public void A_declaration_that_cannot_be_generated_is_an_error(string id, string type) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains($"'{type}"), $"{id} on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
 
@@ -284,12 +291,14 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     /// <summary>
     /// The declarations are refused with the errors above, never by an aspect that failed on them:
     /// an exception in an aspect or a compile error in the code it generated surfaces as LAMA0041 or
-    /// LAMA0611, which tells the user nothing about their declaration.
+    /// LAMA0611, which tells the user nothing about their declaration. CS0535 is the one compiler
+    /// error that accompanies a refused closed set: its interface has members the generators would
+    /// have implemented, and the CMTK error beside it says why they did not.
     /// </summary>
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CS0535"], ignoreOrder: false, customMessage: consumer.Output);
 
     /// <summary>
     /// A generator error cannot carry a help link as an analyzer rule does (a Metalama 2026.1
@@ -303,7 +312,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
         var errors = consumer.Errors.Where(error => error.Id.StartsWith("CMTK1", StringComparison.Ordinal)).ToList();
 
-        errors.Select(error => error.Id).Distinct().Count().ShouldBe(13, $"Not every CMTK1000-CMTK1012 error was observed, so the check below is incomplete:{Environment.NewLine}{consumer.Output}");
+        errors.Select(error => error.Id).Distinct().Count().ShouldBe(19, $"Not every CMTK1000-CMTK1012 error was observed, so the check below is incomplete:{Environment.NewLine}{consumer.Output}");
         errors.Where(error => !error.Message.EndsWith($". See {link}", StringComparison.Ordinal))
               .Select(error => $"{error.Id}: {error.Message}")
               .ShouldBeEmpty("These errors do not end with the link to the Build errors table.");
@@ -368,9 +377,24 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
         private const string Declarations =
             """
             using CodoMetis.TypeKit;
+            using CodoMetis.TypeKit.ClosedSets;
             using CodoMetis.TypeKit.ValueObjects;
 
             namespace Consumer;
+
+            public sealed class SetNotPartial : IClosedSet<SetNotPartial> { public static readonly SetNotPartial A = new(); }
+
+            public partial class SetNotSealed : IClosedSet<SetNotSealed> { public static readonly SetNotSealed A = new(); }
+
+            public sealed partial class SetWithoutMembers : IClosedSet<SetWithoutMembers> { }
+
+            public sealed partial class SetWithPublicConstructor : IClosedSet<SetWithPublicConstructor> { public static readonly SetWithPublicConstructor A = new(); public SetWithPublicConstructor() { } }
+
+            public sealed partial class SetWithProperty : IClosedSet<SetWithProperty> { public static readonly SetWithProperty A = new(); public static SetWithProperty B => A; }
+
+            public sealed partial class SetWithMutableField : IClosedSet<SetWithMutableField> { public static readonly SetWithMutableField A = new(); public static SetWithMutableField B = A; }
+
+            public sealed partial class SetGeneric<T> : IClosedSet<SetGeneric<T>> { public static readonly SetGeneric<T> A = new(); }
 
             public readonly record struct NotPartial : IValue<int>;
 

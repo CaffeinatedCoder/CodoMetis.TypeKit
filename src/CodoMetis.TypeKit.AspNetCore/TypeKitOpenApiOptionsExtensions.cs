@@ -47,6 +47,7 @@ public static class TypeKitOpenApiOptionsExtensions
 
         return options.AddSchemaTransformer<ValueObjectSchemaTransformer>()
                       .AddSchemaTransformer<PatchSchemaTransformer>()
+                      .AddSchemaTransformer<ClosedSetSchemaTransformer>()
                       .AddOperationTransformer<FaultResponsesOperationTransformer>();
     }
 }

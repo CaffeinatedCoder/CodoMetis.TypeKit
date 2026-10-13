@@ -182,6 +182,52 @@ public sealed partial record ApiKey : IValue<string>
   `DataClassificationAttribute` on the value object's type makes the logging generator report
   LOGGEN035 and generate nothing for the method.
 
+## Closed sets
+
+An `enum` names its members and nothing else: a `switch` over one is never proven complete (C#
+only warns about a missing discard), a member carries no data, and the names are integers on the
+wire unless a converter says otherwise. A closed set is a sealed class whose every instance is a
+named member, declared as a `public static readonly` field, with constant data through a private
+constructor where the members carry some:
+
+```csharp
+public sealed partial class OrderStatus : IClosedSet<OrderStatus>
+{
+    public static readonly OrderStatus Open = new();
+    public static readonly OrderStatus Shipped = new();
+    public static readonly OrderStatus Cancelled = new();
+}
+
+public sealed partial class Tier : IClosedSet<Tier>
+{
+    public static readonly Tier Basic = new(1, null);
+    public static readonly Tier Premium = new(2, "Priority support.");
+
+    private Tier(int rank, string? perk) { Rank = rank; Perk = perk; }
+
+    public int Rank { get; }
+    public string? Perk { get; }
+}
+```
+
+The generators add `Name` from the field's name, `QualifiedName` (`OrderStatus.Open`), `All` in
+declaration order, `Match` with one required delegate per member named after it, `TryParse` and
+`Parse` by name, `ToString()`, a JSON converter that writes the name and reads the member itself
+back, and a private parameterless constructor where the type declares none:
+
+```csharp
+var label = status.Match(open: () => "Open", shipped: () => "On its way", cancelled: () => "Cancelled");   // every member, or it does not compile
+var names = OrderStatus.All.Select(s => s.Name);                  // Open Shipped Cancelled
+var same = OrderStatus.Parse("Shipped") == OrderStatus.Shipped;   // True, members are singletons
+var json = JsonSerializer.Serialize(Tier.Premium);                // "Premium"
+```
+
+Members are singletons, so equality is reference equality, and a member added later fails every
+`Match` until it is handled. `Parse` and the JSON converter refuse an unknown name with an
+exception naming the set, never the input. The EF Core satellite maps a closed set to a text column
+of the member's name, and the ASP.NET Core satellite describes it as a string enum of the names,
+with nothing registered per set.
+
 ## JSON
 
 The wire format is the wrapped value's, so an `OrderId` is a string and a `Quantity` a number:
@@ -275,8 +321,14 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1010 | Declared in more than one `partial` part: Metalama 2026.1 writes the generated `ToString()` into every part, which does not compile. A part a source generator adds, such as a `[GeneratedRegex]` method's, does not count. |
 | CMTK1011 | A hand-written member or attribute the generators introduce (see "Your own members"), an explicit implementation of an interface they implement, a hand-written equality, a `PrintMembers` without `ToString()`, or `Create` implemented explicitly. |
 | CMTK1012 | Instance state besides the wrapped value: a field, an auto-property, a `required` member or a field-like event, declared or inherited. Compute it from `Value`, make it static, or wrap a type that holds all of it. |
+| CMTK1013 | A closed set not declared `partial`. |
+| CMTK1014 | A closed set not declared `sealed`: a set with subtypes is not closed. |
+| CMTK1015 | A closed set with no member: a member is a `public static readonly` field of the set's own type. |
+| CMTK1016 | A closed set with a public constructor, so an instance beside its members could be made. |
+| CMTK1017 | A closed set with a public static member of its own type that is not a readonly field: a property, or a field that is not `readonly`. |
+| CMTK1018 | A closed set that is generic or nested in a generic type. |
 
-The analyzers that come with the base package add CMTK0001 to CMTK0009; see
+The analyzers that come with the base package add CMTK0001 to CMTK0011; see
 [CodoMetis.TypeKit.Analyzers](https://www.nuget.org/packages/CodoMetis.TypeKit.Analyzers).
 
 ## Reading the generated code

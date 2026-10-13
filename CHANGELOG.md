@@ -23,6 +23,16 @@ Semantic Versioning reserves for a major, listed under Changed as they land.
   task, so an exception thrown after its first `await` is the error too. An `OperationCanceledException`
   passes through every overload, a delegate that returns a `Task` given to `Catch` is a compile error
   that names `CatchAsync`, and a delegate that returns null throws as `Result.Success(null)` does.
+- **The closed-set family**, the release's headline: `IClosedSet<TSelf>` in `CodoMetis.TypeKit`, generated
+  by `CodoMetis.TypeKit.Generators`. A sealed partial class whose every instance is a `public static
+  readonly` field, with constant data through a private constructor where the members carry some. The
+  generators add `Name`, `QualifiedName`, `All` in declaration order, `Match` with one required delegate
+  per member, `TryParse` and `Parse` by name, `ToString()`, a JSON converter that writes the name and
+  reads the member itself back, a private constructor where none is declared, and the attribute the
+  satellites read. CMTK1013 to CMTK1018 refuse a declaration that is not partial, not sealed, without
+  members, with a public constructor, with another public static member of its own type, or generic.
+  `CodoMetis.TypeKit.EntityFrameworkCore` maps a closed set to a text column of the member's name;
+  `CodoMetis.TypeKit.AspNetCore` describes it as a string enum. Nothing is registered per set.
 - **`CodoMetis.TypeKit`**: `Patch<T>`, a field of a JSON Merge Patch (RFC 7396): absent, null or a
   value, where System.Text.Json alone cannot tell an absent property from a null one. `default` is
   absent, the one meaningful default of the package, and the analyzers leave it alone. Reading never

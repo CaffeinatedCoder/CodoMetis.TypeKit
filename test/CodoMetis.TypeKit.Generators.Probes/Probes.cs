@@ -1,3 +1,4 @@
+using CodoMetis.TypeKit.ClosedSets;
 using CodoMetis.TypeKit.ValueObjects;
 
 namespace CodoMetis.TypeKit.Generators.Probes;
@@ -184,4 +185,29 @@ public abstract record ProbeMaskingRecord
 {
     /// <summary>What every derived record prints.</summary>
     public sealed override string ToString() => "***";
+}
+
+/// <summary>A closed set with no data and no constructor: the generators add a private one.</summary>
+public sealed partial class ProbeStatus : IClosedSet<ProbeStatus>
+{
+    public static readonly ProbeStatus Open = new();
+    public static readonly ProbeStatus Shipped = new();
+    public static readonly ProbeStatus Cancelled = new();
+}
+
+/// <summary>A closed set with constant data per member, through a private constructor.</summary>
+public sealed partial class ProbeTier : IClosedSet<ProbeTier>
+{
+    public static readonly ProbeTier Basic = new(1, null);
+    public static readonly ProbeTier Premium = new(2, "Priority support.");
+
+    private ProbeTier(int rank, string? perk)
+    {
+        Rank = rank;
+        Perk = perk;
+    }
+
+    public int Rank { get; }
+
+    public string? Perk { get; }
 }

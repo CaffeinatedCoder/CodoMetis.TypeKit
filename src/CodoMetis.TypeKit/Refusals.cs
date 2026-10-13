@@ -35,4 +35,7 @@ internal static class Refusals
 
     /// <summary>The wrapped type could not read JSON or text at all.</summary>
     public const string UnreadableInput = " See " + Readme + "a-value-object-could-not-read-the-input";
+
+    /// <summary>A closed set asked for a member it does not have, by name, in text or JSON.</summary>
+    public const string ClosedSetMember = " See " + Readme + "a-closed-set-has-no-member-of-that-name";
 }

@@ -585,7 +585,13 @@ Each phase ends green, and its guards have been proven by seeding the defect
        class is listed in the context. The document inlines a patch as its argument's schema, never
        required, always admitting null; a value object inside a patch is described through what it
        wraps, since a source-generated host has no contract for it.
-    7. **The closed-set family**, after its spike: the generators, then each satellite.
+    7. **The closed-set family** ✅ 2026-10-13, after [spikes/ClosedSets](../spikes/ClosedSets/README.md),
+       which answered the compatibility question: a generated type with static members on Metalama
+       2026.1 and `net10.0`, nothing newer needed. `IClosedSet<TSelf>` in the base package,
+       `ClosedSetAspect` in the generators (applied by the same transitive fabric), CMTK1013–1018, the
+       discovery attribute `GeneratedClosedSetAttribute<TSet>` with a typed visitor, a text column in
+       the EF satellite and a string enum in the OpenAPI satellite. The fault bits (a kind and a
+       sentence per member) are step 8's, since the fault responses read them.
     8. **The fault responses**, after [spikes/FaultResponses](../spikes/FaultResponses/README.md),
        last, since they read a smart enum's kind.
     9. **The breaks**: decision 34's promotions, the two rules at Error, and the baseline's verdict

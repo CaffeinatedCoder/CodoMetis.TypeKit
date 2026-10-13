@@ -1053,6 +1053,34 @@ ProbeSpan
   static op_Inequality(ProbeSpan, ProbeSpan) : Boolean
   extension static ProbeSpanExtensions.GetValue(ProbeSpan) : ProbeSpanText
   extension static ProbeSpanExtensions.ValueOrNull(ProbeSpan?) : ProbeSpanText
+ProbeStatus
+  Match(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeStatus>
+  attribute JsonConverterAttribute
+  implements IClosedSet<ProbeStatus>
+  nested ProbeStatusJsonConverter : JsonConverter<ProbeStatus>
+  static All : IReadOnlyList<ProbeStatus>
+  static Parse(String) : ProbeStatus
+  static TryParse(String, out ProbeStatus) : Boolean
+ProbeTier
+  Match(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  Perk : String
+  QualifiedName : String
+  Rank : Int32
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeTier>
+  attribute JsonConverterAttribute
+  implements IClosedSet<ProbeTier>
+  nested ProbeTierJsonConverter : JsonConverter<ProbeTier>
+  static All : IReadOnlyList<ProbeTier>
+  static Parse(String) : ProbeTier
+  static TryParse(String, out ProbeTier) : Boolean
 ProbeTime
   CompareTo(Object) : Int32
   CompareTo(ProbeTime) : Int32

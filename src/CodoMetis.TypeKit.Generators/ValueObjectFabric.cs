@@ -31,10 +31,16 @@ namespace CodoMetis.TypeKit.Generators;
 /// </remarks>
 internal sealed class ValueObjectFabric : TransitiveProjectFabric
 {
-    public override void AmendProject(IProjectAmender amender) =>
+    public override void AmendProject(IProjectAmender amender)
+    {
         amender.SelectTypes(includeNestedTypes: true)
                .Where(ValueObjectTypes.IsValueObject)
                .AddAspect(type => new ValueObjectAspect(
                               CompanionClass.NameOwner(type),
                               ValueObjectTypes.WrappedValueObjectRefusal(type)));
+
+        amender.SelectTypes(includeNestedTypes: true)
+               .Where(ClosedSetTypes.IsClosedSet)
+               .AddAspect(_ => new ClosedSetAspect());
+    }
 }

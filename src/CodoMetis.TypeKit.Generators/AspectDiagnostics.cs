@@ -56,4 +56,22 @@ internal static class AspectDiagnostics
 
     public static readonly DiagnosticDefinition<(INamedType Type, string Members)> StateBesideTheWrappedValue =
         new("CMTK1012", Severity.Error, "'{0}' holds {1} besides its wrapped value, so it is not generated: its JSON, parsing, type converter and EF Core column carry the wrapped value alone, so the rest is lost on every round trip, and the record's equality compares it too. Compute it from Value in a property without a backing field, make it static, or wrap a type of your own that holds all of it." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<INamedType> ClosedSetNotPartial =
+        new("CMTK1013", Severity.Error, "'{0}' is a closed set and must be declared partial." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<INamedType> ClosedSetNotSealed =
+        new("CMTK1014", Severity.Error, "'{0}' is a closed set and must be declared sealed, so it is not generated: a set with subtypes is not closed." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<INamedType> ClosedSetNoMembers =
+        new("CMTK1015", Severity.Error, "'{0}' declares no member, so it is not generated: a member is a public static readonly field of the set's own type." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<INamedType> ClosedSetPublicConstructor =
+        new("CMTK1016", Severity.Error, "'{0}' has a public constructor, so it is not generated: an instance beside its members could be made. Make the constructor private." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<(INamedType, string, string)> ClosedSetMemberNotAField =
+        new("CMTK1017", Severity.Error, "'{0}.{1}' is {2} of the set's own type, so '{0}' is not generated: a member is a public static readonly field, and nothing else of that type is public and static." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<INamedType> ClosedSetGeneric =
+        new("CMTK1018", Severity.Error, "'{0}' is generic or nested in a generic type, so it is not generated: a closed set's members are named instances, which a type parameter cannot have." + SeeBuildErrors);
 }

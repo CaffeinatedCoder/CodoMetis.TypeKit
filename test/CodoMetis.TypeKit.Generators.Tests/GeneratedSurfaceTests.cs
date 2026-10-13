@@ -45,7 +45,7 @@ public sealed class GeneratedSurfaceTests
     private static string Render(Assembly assembly)
     {
         var valueObjects = assembly.GetTypes()
-                                   .Where(type => type.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IValueObject<,>)))
+                                   .Where(type => type.GetInterfaces().Any(i => i.IsGenericType && (i.GetGenericTypeDefinition() == typeof(IValueObject<,>) || i.GetGenericTypeDefinition() == typeof(CodoMetis.TypeKit.ClosedSets.IClosedSet<>))))
                                    .OrderBy(type => type.FullName, StringComparer.Ordinal)
                                    .ToList();
 
