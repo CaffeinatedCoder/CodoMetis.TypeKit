@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace CodoMetis.TypeKit.Tests;
 
 /// <summary>
@@ -6,11 +8,11 @@ namespace CodoMetis.TypeKit.Tests;
 /// <remarks>
 /// <para>
 /// The character table is the point of this file. Every entry is a code point that walks through
-/// <c>IsNullOrWhiteSpace</c> and survives <c>Trim</c>, and between them they are refused for four
-/// different structural reasons: category <c>Control</c>, category <c>Format</c>, a category that
-/// claims "letter" or "symbol" while the glyph is empty, and a plane above the BMP. Pinning them by
-/// value rather than by category means a runtime that reclassifies one fails here instead of
-/// quietly reopening the defect.
+/// <c>IsNullOrWhiteSpace</c> and survives <c>Trim</c> inside a value, and between them they are refused
+/// for five different structural reasons: category <c>Control</c>, category <c>Format</c>, a category
+/// that claims "letter", "mark" or "symbol" while the glyph is empty, a plane above the BMP, and a code
+/// point <c>string.Normalize</c> throws on. Pinning them by value rather than by category means a
+/// runtime that reclassifies one fails here instead of quietly reopening the defect.
 /// </para>
 /// <para>
 /// Every entry is written as an escape and named in the second column, because the subject of this
@@ -41,6 +43,7 @@ public sealed class StringTextExtensionsTests
         { "\u3164", "HANGUL FILLER" },
         { "\uFEFF", "ZERO WIDTH NO-BREAK SPACE" },
         { "\uFFA0", "HALFWIDTH HANGUL FILLER" },
+        { "\uFFFE", "NONCHARACTER FFFE, a byte-order mark read in the wrong byte order" },
         { "\U0001D173", "MUSICAL SYMBOL BEGIN BEAM" },
         { "\U000E0001", "LANGUAGE TAG" },
         { "\U000E0041", "TAG LATIN CAPITAL A" },
@@ -235,6 +238,82 @@ public sealed class StringTextExtensionsTests
         Refusal("Muster\uD834mann".AsIdentifier()).ShouldBe(TextFault.Hidden);
     }
 
+    /// <summary>
+    /// <c>string.Normalize</c> throws on two things, an unpaired surrogate and <c>U+FFFE</c>, and
+    /// <c>AsText()</c> threw on the second. Every scalar value after a letter, through both guards:
+    /// nothing a client can send makes either throw.
+    /// </summary>
+    [Fact]
+    public void No_scalar_value_makes_either_guard_throw()
+    {
+        var swept  = 0;
+        var thrown = new List<string>();
+
+        for (var value = 0; value <= 0x10FFFF; value++)
+        {
+            if (!Rune.IsValid(value)) continue;
+
+            var text = string.Concat("a", char.ConvertFromUtf32(value));
+            swept++;
+
+            try
+            {
+                _ = text.AsText();
+                _ = text.AsIdentifier();
+            }
+            catch (Exception exception)
+            {
+                thrown.Add($"U+{value:X4}: {exception.GetType().Name}");
+            }
+        }
+
+        swept.ShouldBe(0x110000 - 0x800, "every scalar value: all code points but the surrogates");
+        thrown.ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Composition reorders a run of combining marks by their classes in time that grows with the
+    /// square of the run: a letter and 160,000 marks of each of two classes took a minute. No script
+    /// stacks more than a few on one character, and UAX #15's Stream-Safe Text Format bounds a run at
+    /// 30, so a longer one is refused, by both guards, before anything is composed.
+    /// </summary>
+    [Fact]
+    public void More_than_30_combining_marks_in_a_row_are_hidden()
+    {
+        var thirty    = "a" + string.Concat(Enumerable.Repeat("\u0301\u0316", 15));
+        var thirtyOne = thirty + "\u0301";
+
+        Kept(thirty.AsText()).ShouldBe(thirty.Normalize(NormalizationForm.FormC));
+        Kept(thirty.AsIdentifier()).ShouldBe(thirty);
+        Refusal(thirtyOne.AsText()).ShouldBe(TextFault.Hidden);
+        Refusal(thirtyOne.AsIdentifier()).ShouldBe(TextFault.Hidden);
+    }
+
+    /// <summary>A run is of marks in a row: a base character between two runs of 30 ends the first.</summary>
+    [Fact]
+    public void Runs_of_marks_on_separate_characters_are_counted_apart()
+    {
+        var marks = string.Concat(Enumerable.Repeat("\u0301\u0316", 15));
+        var two   = $"a{marks}b{marks}";
+
+        Kept(two.AsText()).ShouldBe(two.Normalize(NormalizationForm.FormC));
+        Kept(two.AsIdentifier()).ShouldBe(two);
+    }
+
+    /// <summary>
+    /// The shape that pinned a core: a letter, then marks of one class, then marks of another, which
+    /// composition reorders. Refused at the 31st mark, it answers at once; composed, it answered a
+    /// success after 25 seconds.
+    /// </summary>
+    [Fact]
+    public void A_long_stack_of_marks_is_refused_rather_than_composed()
+    {
+        var stacked = "a" + new string('\u0301', 100_000) + new string('\u0316', 100_000);
+
+        Refusal(stacked.AsText()).ShouldBe(TextFault.Hidden);
+        Refusal(stacked.AsIdentifier()).ShouldBe(TextFault.Hidden);
+    }
+
     [Fact]
     public void Surrounding_whitespace_is_not_content()
     {
@@ -272,5 +351,8 @@ public sealed class StringTextExtensionsTests
         result.Match(text => text, fault => throw new ShouldAssertException($"Refused as {fault}."));
 
     private static TextFault Refusal(Result<string, TextFault> result) =>
-        result.Match(text => throw new ShouldAssertException($"Kept \"{text}\"."), fault => fault);
+        result.Match(text => throw new ShouldAssertException($"Kept \"{Shown(text)}\"."), fault => fault);
+
+    /// <summary>The text a failure prints, cut short: a refusal that failed prints the value, which can be 200,000 marks.</summary>
+    private static string Shown(string text) => text.Length <= 80 ? text : $"{text[..80]}... ({text.Length} chars)";
 }

@@ -20,19 +20,33 @@ namespace CodoMetis.TypeKit;
 /// category test cannot see a character above the Basic Multilingual Plane, and reports
 /// <see cref="UnicodeCategory.Surrogate"/> where the real category is <see cref="UnicodeCategory.Format"/>,
 /// which is how the tag characters used to hide text inside text pass such a test. An unpaired surrogate
-/// is not a character: <see cref="string.Normalize()"/> throws on it, so it is refused as
-/// <see cref="TextFault.Hidden"/> rather than thrown over.
+/// is not a character, and <c>U+FFFE</c>, the byte-order mark read in the wrong byte order, is the one
+/// noncharacter <see cref="string.Normalize()"/> refuses: it throws on both, so both are refused as
+/// <see cref="TextFault.Hidden"/> rather than thrown over, by both guards, so that no string makes either
+/// throw.
+/// </para>
+/// <para>
+/// Both refuse a run of more than 30 combining marks in a row as <see cref="TextFault.Hidden"/>: no
+/// script stacks that many on one character, and composing such a run reorders it in time that grows with
+/// the square of its length, so one request body of stacked marks could hold a core for a minute. Thirty
+/// is the bound of the Stream-Safe Text Format of Unicode Standard Annex #15. The scan that counts them
+/// is linear, and stops at the 31st.
 /// </para>
 /// <para>
 /// Not refused: unassigned code points, since the runtime's Unicode tables lag the standard and a
-/// name spelled with a newly assigned character would be refused until the SDK caught up; and
+/// name spelled with a newly assigned character would be refused until the SDK caught up; the other
+/// noncharacters (<c>U+FFFF</c>, <c>U+FDD0</c>, <c>U+1FFFE</c>), which no runtime call refuses; and
 /// confusable letters across scripts, which is a comparison question and not a rejection.
 /// </para>
 /// </remarks>
 public static class StringTextExtensions
 {
-    private const int ZeroWidthNonJoiner = 0x200C;
-    private const int ZeroWidthJoiner    = 0x200D;
+    private const int ZeroWidthNonJoiner   = 0x200C;
+    private const int ZeroWidthJoiner      = 0x200D;
+    private const int SwappedByteOrderMark = 0xFFFE;
+
+    /// <summary>The longest run of combining marks kept: the Stream-Safe Text Format's bound (UAX #15).</summary>
+    private const int LongestRunOfMarks = 30;
 
     /// <param name="text">The string, which may be null: a null is <see cref="TextFault.Blank"/>.</param>
     extension(string? text)
@@ -121,8 +135,9 @@ public static class StringTextExtensions
     }
 
     /// <summary>
-    /// Whether the text carries a character that renders as nothing, or renders no character of its
-    /// own at all.
+    /// Whether the text carries a character that renders as nothing, a code point composition throws
+    /// on, or a run of marks too long to compose in linear time, or renders no character of its own at
+    /// all.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -139,13 +154,18 @@ public static class StringTextExtensions
         var rest            = text.AsSpan();
         var afterBase       = false;
         var rendersBase     = false;
+        var marksInARow     = 0;
 
         while (!rest.IsEmpty)
         {
-            if (Rune.DecodeFromUtf16(rest, out var rune, out var consumed) != OperationStatus.Done)
+            // An unpaired surrogate and U+FFFE are what string.Normalize throws on.
+            if (Rune.DecodeFromUtf16(rest, out var rune, out var consumed) != OperationStatus.Done || rune.Value == SwappedByteOrderMark)
                 return true;
 
             if (!IsRendered(rune, tolerateJoiners)) return true;
+
+            marksInARow = IsCombiningMark(rune) ? marksInARow + 1 : 0;
+            if (marksInARow > LongestRunOfMarks) return true;
 
             if (IsVariationSelector(rune))
             {
@@ -171,7 +191,14 @@ public static class StringTextExtensions
     private static bool IsBase(Rune rune) =>
         rune.Value is not (ZeroWidthNonJoiner or ZeroWidthJoiner)
      && !Rune.IsWhiteSpace(rune)
-     && Rune.GetUnicodeCategory(rune) is not (UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark);
+     && !IsCombiningMark(rune);
+
+    /// <summary>
+    /// A mark drawn on another character. Every character that composition may reorder is one, so a
+    /// bound on a run of these bounds the reordering.
+    /// </summary>
+    private static bool IsCombiningMark(Rune rune) =>
+        Rune.GetUnicodeCategory(rune) is UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark;
 
     /// <summary>
     /// The variation selectors, which Unicode files as non-spacing marks: the sixteen of the BMP, the
