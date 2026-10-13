@@ -308,6 +308,131 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             Cmtk0010(2, "Handler", "T", "Derived.Go<T>", "is not sealed"))
             .RunAsync(TestContext.Current.CancellationToken);
 
+    /// <summary>
+    /// A C# 14 extension block's type parameter is inferred from the receiver at a use: for a method,
+    /// a property, a static member, a method group and an operator alike, reported at the use. Written,
+    /// the block's arguments come first in the member's list (<c>handler.Take&lt;Handler, Handler&gt;(handler)</c>,
+    /// measured on Roslyn 5.0.0), and each is reported where it is written. Only the lowered
+    /// <c>Ex.Go(handler)</c> was reported.
+    /// </summary>
+    [Fact]
+    public Task An_extension_block_s_type_parameter_is_checked_at_every_member_use() =>
+        Test(
+            """
+            public static class Ex
+            {
+                extension<[Concrete] T>(T value)
+                {
+                    public void Go() { }
+                    public void Take<[Sealed] TOther>(TOther other) { }
+                    public int Prop => 1;
+                    public static void Make() { }
+                }
+
+                extension<[Concrete] T>(T value) where T : class
+                {
+                    public static T operator +(T left, int right) => left;
+                }
+            }
+
+            public static class ExtensionUses
+            {
+                public static void Go(Handler handler, OrderHandler concrete)
+                {
+                    {|#0:handler.Go()|};
+                    _ = {|#1:handler.Prop|};
+                    {|#2:Handler.Make()|};
+                    Action group = {|#3:handler.Go|};
+                    {|#4:Ex.Go(handler)|};
+                    {|#5:handler.Take(concrete)|};
+                    handler.Take<{|#6:Handler|}, {|#7:Handler|}>(handler);
+                    _ = {|#8:handler + 1|};
+
+                    concrete.Go();
+                    _ = concrete.Prop;
+                    OrderHandler.Make();
+                    Action fine = concrete.Go;
+                    concrete.Take(concrete);
+                    concrete.Take<OrderHandler, OrderHandler>(concrete);
+                    _ = concrete + 1;
+                }
+            }
+            """,
+            Cmtk0010(0, "Handler", "T", "Ex.extension<T>(T)", "is not a concrete class, record or struct"),
+            Cmtk0010(1, "Handler", "T", "Ex.extension<T>(T)", "is not a concrete class, record or struct"),
+            Cmtk0010(2, "Handler", "T", "Ex.extension<T>(T)", "is not a concrete class, record or struct"),
+            Cmtk0010(3, "Handler", "T", "Ex.extension<T>(T)", "is not a concrete class, record or struct"),
+            Cmtk0010(4, "Handler", "T", "Ex.Go<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(5, "Handler", "T", "Ex.extension<T>(T)", "is not a concrete class, record or struct"),
+            Cmtk0010(6, "Handler", "T", "Ex.extension<T>(T)", "is not a concrete class, record or struct"),
+            Cmtk0010(7, "Handler", "TOther", "Ex.Take<TOther>", "is not sealed"),
+            Cmtk0010(8, "Handler", "T", "Ex.extension<T>(T)", "is not a concrete class, record or struct"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>A generic attribute's name binds to its constructor, and its type argument was not checked.</summary>
+    [Fact]
+    public Task A_generic_attribute_s_type_argument_is_checked() =>
+        Test(
+            """
+            [AttributeUsage(AttributeTargets.All)]
+            public sealed class MarkAttribute<[Concrete] T> : Attribute { }
+
+            [Mark<{|#0:Handler|}>] public sealed class Marked { }
+            [MarkAttribute<{|#1:Handler|}>] public sealed class MarkedInFull { }
+            [Mark<OrderHandler>] public sealed class Fine { }
+            """,
+            Cmtk0010(0, "Handler", "T", "MarkAttribute<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(1, "Handler", "T", "MarkAttribute<T>", "is not a concrete class, record or struct"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A static method implementing a static abstract interface method, and a base class's method that
+    /// implements an interface for a derived class, carry the interface's constraint; both were
+    /// silent. Through the base class itself, which implements nothing, there is no constraint.
+    /// </summary>
+    [Fact]
+    public Task A_static_abstract_or_a_base_class_implementation_carries_the_interface_s_constraint() =>
+        Test(
+            """
+            public interface IFactory { static abstract void Make<[Concrete] T>(); }
+            public sealed class Factory : IFactory { public static void Make<T>() { } }
+            public class FactoryBase { public static void Make<T>() { } }
+            public sealed class DerivedFactory : FactoryBase, IFactory { }
+
+            public interface ISender { void Send<[Concrete] T>(T handler); }
+            public class BaseSender { public void Send<T>(T handler) { } }
+            public sealed class DerivedSender : BaseSender, ISender
+            {
+                public void Inside(Handler handler) => Send<{|#0:Handler|}>(handler);
+            }
+
+            public static class Calls
+            {
+                public static void Go(DerivedSender derived, BaseSender plain, Handler handler, OrderHandler concrete)
+                {
+                    Factory.Make<{|#1:Handler|}>();
+                    DerivedFactory.Make<{|#2:Handler|}>();
+                    Factory.Make<OrderHandler>();
+                    derived.Send<{|#3:Handler|}>(handler);
+                    {|#4:derived.Send(handler)|};
+                    Action<Handler> group = {|#5:derived.Send|};
+                    derived.Send(concrete);
+                    plain.Send(handler);
+                    FactoryBase.Make<Handler>();
+                }
+
+                public static void Generic<TFactory>() where TFactory : IFactory => TFactory.Make<{|#6:Handler|}>();
+            }
+            """,
+            Cmtk0010(0, "Handler", "T", "BaseSender.Send<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(1, "Handler", "T", "Factory.Make<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(2, "Handler", "T", "FactoryBase.Make<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(3, "Handler", "T", "BaseSender.Send<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(4, "Handler", "T", "BaseSender.Send<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(5, "Handler", "T", "BaseSender.Send<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(6, "Handler", "T", "IFactory.Make<T>", "is not a concrete class, record or struct"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
     [Fact]
     public Task A_compilation_without_TypeKit_is_left_alone() =>
         new AnalyzerTest<TypeArgumentConstraintAnalyzer>("public sealed class Box<T> { } public static class U { public static Box<int> B; }", referenceTypeKit: false)

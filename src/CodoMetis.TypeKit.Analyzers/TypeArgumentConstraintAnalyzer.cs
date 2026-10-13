@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -20,7 +22,10 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// aspect. Every generic name written in source is checked where it is written, at the argument;
 /// a call whose type arguments are inferred has no such name and is checked at the call, and a
 /// method group whose type arguments are inferred from the delegate it converts to
-/// (<c>Action&lt;PlaceOrder&gt; run = Runner.Run;</c>) at the group.
+/// (<c>Action&lt;PlaceOrder&gt; run = Runner.Run;</c>) at the group. A generic attribute's name binds
+/// to its constructor and is checked as its type. A member of a generic C# 14 extension block takes
+/// the block's type arguments from its receiver: a call, a property, a method group or an operator is
+/// checked at the use, and a written list starts with the block's arguments.
 /// </para>
 /// <para>
 /// A type parameter given as the argument satisfies a constraint only when it carries the same
@@ -31,7 +36,9 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// <para>
 /// A method that implements an interface's method, or overrides a base class's, carries the
 /// constraint of the method it implements whether or not it repeats the attribute, so a call through
-/// the class is held to what the interface declared. A <c>cref</c> in a documentation comment names
+/// the class is held to what the interface declared: a static method implementing a <c>static
+/// abstract</c> one, and a base class's method implementing it for the derived class it is reached
+/// through, included. A <c>cref</c> in a documentation comment names
 /// the generic's own parameters and is not a use; an array is sealed and concrete.
 /// </para>
 /// </remarks>
@@ -65,10 +72,22 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
             start.RegisterSyntaxNodeAction(node => AnalyzeGenericName(node, symbols), SyntaxKind.GenericName);
             start.RegisterOperationAction(operation => AnalyzeInvocation(operation, symbols), OperationKind.Invocation);
             start.RegisterOperationAction(operation => AnalyzeMethodGroup(operation, symbols), OperationKind.MethodReference);
+            start.RegisterOperationAction(operation => AnalyzeProperty(operation, symbols), OperationKind.PropertyReference);
+            start.RegisterOperationAction(
+                operation => AnalyzeOperator(operation, symbols),
+                OperationKind.Binary,
+                OperationKind.Unary,
+                OperationKind.Increment,
+                OperationKind.Decrement,
+                OperationKind.CompoundAssignment);
         });
     }
 
-    /// <summary>A generic name written in source, a type's or a method's: each argument against its parameter, reported at the argument.</summary>
+    /// <summary>
+    /// A generic name written in source, a type's, an attribute's or a method's: each argument against
+    /// its parameter, reported at the argument. A member of a generic extension block takes the
+    /// block's arguments first and its own after them, <c>handler.Take&lt;Handler, Handler&gt;(handler)</c>.
+    /// </summary>
     private static void AnalyzeGenericName(SyntaxNodeAnalysisContext context, TypeKitSymbols symbols)
     {
         var name = (GenericNameSyntax)context.Node;
@@ -78,20 +97,21 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         var info   = context.SemanticModel.GetSymbolInfo(name, context.CancellationToken);
         var symbol = info.Symbol ?? info.CandidateSymbols.FirstOrDefault();
 
-        var (parameters, arguments) = symbol switch
+        var arguments = symbol switch
         {
-            INamedTypeSymbol type when type.IsGenericType => (type.OriginalDefinition.TypeParameters, type.TypeArguments),
-            IMethodSymbol method when method.IsGenericMethod => (method.OriginalDefinition.TypeParameters, method.TypeArguments),
-            _                                            => (ImmutableArray<ITypeParameterSymbol>.Empty, ImmutableArray<ITypeSymbol>.Empty),
+            INamedTypeSymbol type when type.IsGenericType => Pairs(type),
+            // [Mark<Handler>] binds to the attribute's constructor.
+            IMethodSymbol { MethodKind: MethodKind.Constructor, ContainingType: { IsGenericType: true } type } => Pairs(type),
+            IMethodSymbol method => Pairs(method),
+            _                    => [],
         };
 
-        if (parameters.Length != arguments.Length || parameters.Length != name.TypeArgumentList.Arguments.Count) return;
+        if (arguments.Count == 0 || arguments.Count != name.TypeArgumentList.Arguments.Count) return;
 
-        for (var i = 0; i < parameters.Length; i++)
-        {
-            foreach (var breach in Breaches(symbols, parameters[i], arguments[i]))
-                context.Report(Diagnostic.Create(Rule, name.TypeArgumentList.Arguments[i].GetLocation(), arguments[i].ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat), parameters[i].Name, Owner(symbol!), breach));
-        }
+        var receiver = symbol is IMethodSymbol { IsGenericMethod: true } ? Receiver(name, context.SemanticModel, context.CancellationToken) : null;
+
+        for (var i = 0; i < arguments.Count; i++)
+            Report(context.ReportDiagnostic, symbols, arguments[i], receiver, name.TypeArgumentList.Arguments[i].GetLocation());
     }
 
     /// <summary>A call whose type arguments are inferred: nothing is written, so it is reported at the call.</summary>
@@ -114,36 +134,136 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         AnalyzeInferred(context, symbols, reference.Method, reference.Syntax, reference.Syntax);
     }
 
-    private static void AnalyzeInferred(OperationAnalysisContext context, TypeKitSymbols symbols, IMethodSymbol method, SyntaxNode? name, SyntaxNode reported)
+    /// <summary>A property of a generic extension block, <c>handler.Prop</c>: the block's arguments are inferred from the receiver.</summary>
+    private static void AnalyzeProperty(OperationAnalysisContext context, TypeKitSymbols symbols)
     {
-        if (!method.IsGenericMethod) return;
+        var reference = (IPropertyReferenceOperation)context.Operation;
 
-        // Written type arguments are a generic name, checked where they are written.
-        if (name is GenericNameSyntax || name is MemberAccessExpressionSyntax { Name: GenericNameSyntax }) return;
-
-        var parameters = method.OriginalDefinition.TypeParameters;
-        var arguments  = method.TypeArguments;
-        if (parameters.Length != arguments.Length) return;
-
-        for (var i = 0; i < parameters.Length; i++)
-        {
-            foreach (var breach in Breaches(symbols, parameters[i], arguments[i]))
-                context.Report(Diagnostic.Create(Rule, reported.GetLocation(), arguments[i].ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat), parameters[i].Name, Owner(method), breach));
-        }
+        AnalyzeInferred(context, symbols, reference.Property, null, reference.Syntax);
     }
 
-    /// <summary>The generic as its declaration names it: <c>Decider&lt;TCommand, TEvent&gt;</c>, <c>Runner.Run&lt;T&gt;</c>.</summary>
+    /// <summary>A user-defined operator of a generic extension block, <c>handler + 1</c>: the block's arguments are inferred from the operands.</summary>
+    private static void AnalyzeOperator(OperationAnalysisContext context, TypeKitSymbols symbols)
+    {
+        var method = context.Operation switch
+        {
+            IBinaryOperation binary                 => binary.OperatorMethod,
+            IUnaryOperation unary                   => unary.OperatorMethod,
+            IIncrementOrDecrementOperation step     => step.OperatorMethod,
+            ICompoundAssignmentOperation compound   => compound.OperatorMethod,
+            _                                       => null,
+        };
+
+        if (method is not null) AnalyzeInferred(context, symbols, method, null, context.Operation.Syntax);
+    }
+
+    /// <summary>
+    /// A member used with no generic name: the type arguments of its extension block, which are never
+    /// written at such a use, and its own when they are inferred, all reported at <paramref name="reported"/>.
+    /// </summary>
+    private static void AnalyzeInferred(OperationAnalysisContext context, TypeKitSymbols symbols, ISymbol member, SyntaxNode? name, SyntaxNode reported)
+    {
+        // Written type arguments are a generic name, checked where they are written, the block's included.
+        if (name is GenericNameSyntax || name is MemberAccessExpressionSyntax { Name: GenericNameSyntax }) return;
+
+        var arguments = Pairs(member);
+        if (arguments.Count == 0) return;
+
+        var receiver = member is IMethodSymbol { IsGenericMethod: true } ? Receiver(name ?? reported, context.Operation.SemanticModel, context.CancellationToken) : null;
+
+        foreach (var argument in arguments)
+            Report(context.ReportDiagnostic, symbols, argument, receiver, reported.GetLocation());
+    }
+
+    private static void Report(Action<Diagnostic> report, TypeKitSymbols symbols, TypeArgument argument, ITypeSymbol? receiver, Location location)
+    {
+        foreach (var breach in Breaches(symbols, argument.Parameter, argument.Argument, receiver))
+            report(Diagnostic.Create(Rule, location, argument.Argument.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat), argument.Parameter.Name, Owner(argument.Owner), breach));
+    }
+
+    /// <summary>A type parameter, the argument it was given, and the generic that declares it.</summary>
+    private readonly struct TypeArgument(ITypeParameterSymbol parameter, ITypeSymbol argument, ISymbol owner)
+    {
+        public ITypeParameterSymbol Parameter { get; } = parameter;
+
+        public ITypeSymbol Argument { get; } = argument;
+
+        public ISymbol Owner { get; } = owner;
+    }
+
+    /// <summary>The type arguments of a generic type, in order.</summary>
+    private static List<TypeArgument> Pairs(INamedTypeSymbol type) =>
+        Zip(type.OriginalDefinition.TypeParameters, type.TypeArguments, type);
+
+    /// <summary>
+    /// The type arguments a member's use gives, in the order they are written: its generic extension
+    /// block's, then a method's own.
+    /// </summary>
+    private static List<TypeArgument> Pairs(ISymbol member)
+    {
+        var pairs = member.ContainingType is { IsExtension: true, IsGenericType: true } extension ? Pairs(extension) : [];
+
+        if (member is IMethodSymbol { IsGenericMethod: true } method)
+            pairs.AddRange(Zip(method.OriginalDefinition.TypeParameters, method.TypeArguments, method));
+
+        return pairs;
+    }
+
+    private static List<TypeArgument> Zip(ImmutableArray<ITypeParameterSymbol> parameters, ImmutableArray<ITypeSymbol> arguments, ISymbol owner) =>
+        parameters.Length == arguments.Length
+            ? parameters.Zip(arguments, (parameter, argument) => new TypeArgument(parameter, argument, owner)).ToList()
+            : [];
+
+    /// <summary>
+    /// The type a member is reached through, whose interfaces a method may implement by inheritance:
+    /// <c>derived.Send&lt;T&gt;</c> binds to <c>BaseSender.Send&lt;T&gt;</c>, which implements
+    /// <c>ISender.Send&lt;T&gt;</c> for <c>DerivedSender</c> alone. <paramref name="named"/> is the name,
+    /// its member access or binding, or the call's expression; an unqualified name is reached through
+    /// the type it is written in.
+    /// </summary>
+    private static ITypeSymbol? Receiver(SyntaxNode named, SemanticModel? model, CancellationToken token)
+    {
+        if (model is null) return null;
+
+        if (named is SimpleNameSyntax simple)
+        {
+            named = simple.Parent switch
+            {
+                MemberAccessExpressionSyntax access when access.Name == simple => access,
+                MemberBindingExpressionSyntax binding                           => binding,
+                _                                                               => simple,
+            };
+        }
+
+        var receiver = named switch
+        {
+            MemberAccessExpressionSyntax access   => model.GetTypeInfo(access.Expression, token).Type,
+            MemberBindingExpressionSyntax binding => binding.Ancestors().OfType<ConditionalAccessExpressionSyntax>().FirstOrDefault(conditional => conditional.WhenNotNull.Span.Contains(binding.Span)) is { } conditional
+                                                         ? model.GetTypeInfo(conditional.Expression, token).Type
+                                                         : null,
+            SimpleNameSyntax                      => model.GetEnclosingSymbol(named.SpanStart, token)?.ContainingType,
+            _                                     => null,
+        };
+
+        return receiver is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable ? nullable.TypeArguments[0] : receiver;
+    }
+
+    /// <summary>
+    /// The generic as its declaration names it: <c>Decider&lt;TCommand, TEvent&gt;</c>,
+    /// <c>Runner.Run&lt;T&gt;</c>, an extension block's <c>Ex.extension&lt;T&gt;(T)</c>.
+    /// </summary>
     private static string Owner(ISymbol symbol) => symbol switch
     {
+        INamedTypeSymbol { IsExtension: true } extension => $"{extension.ContainingType.Name}.{extension.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)}",
         INamedTypeSymbol type => type.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
-        IMethodSymbol method  => $"{method.ContainingType.Name}.{method.Name}<{string.Join(", ", method.OriginalDefinition.TypeParameters.Select(parameter => parameter.Name))}>",
+        IMethodSymbol method  => $"{(method.ContainingType.IsExtension ? method.ContainingType.ContainingType : method.ContainingType).Name}.{method.Name}<{string.Join(", ", method.OriginalDefinition.TypeParameters.Select(parameter => parameter.Name))}>",
         _                     => symbol.Name,
     };
 
     /// <summary>What <paramref name="argument"/> breaks of what <paramref name="parameter"/> declares, as the message's last clause.</summary>
-    private static IEnumerable<string> Breaches(TypeKitSymbols symbols, ITypeParameterSymbol parameter, ITypeSymbol argument)
+    private static IEnumerable<string> Breaches(TypeKitSymbols symbols, ITypeParameterSymbol parameter, ITypeSymbol argument, ITypeSymbol? receiver)
     {
-        foreach (var constraint in Effective(symbols, parameter))
+        foreach (var constraint in Effective(symbols, parameter, receiver))
         {
             if (argument is ITypeParameterSymbol forwarded)
             {
@@ -174,7 +294,7 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
 
     /// <summary>A forwarding type parameter proves a constraint by carrying the attribute, or by a C# constraint that implies it.</summary>
     private static bool Proves(TypeKitSymbols symbols, ITypeParameterSymbol forwarded, TypeArgumentConstraint constraint) =>
-        Effective(symbols, forwarded).Contains(constraint)
+        Effective(symbols, forwarded, receiver: null).Contains(constraint)
      || (constraint is TypeArgumentConstraint.Sealed or TypeArgumentConstraint.Concrete && forwarded.HasValueTypeConstraint)
      || (constraint is TypeArgumentConstraint.Concrete && forwarded.HasConstructorConstraint);
 
@@ -182,34 +302,44 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     /// The constraints a type parameter declares, with those of the parameter it implements or
     /// overrides: <c>Sender.Send&lt;T&gt;</c> implementing <c>ISender.Send&lt;[Concrete] T&gt;</c> carries
     /// <c>[Concrete]</c> whether or not it repeats the attribute, so a call through the class is held
-    /// to it. Without this, the requirement ended at the interface.
+    /// to it. Without this, the requirement ended at the interface. A method a base class declares
+    /// implements an interface for a derived class that lists it, so the type the method is reached
+    /// through, <paramref name="receiver"/>, is asked too.
     /// </summary>
-    private static IEnumerable<TypeArgumentConstraint> Effective(TypeKitSymbols symbols, ITypeParameterSymbol parameter)
+    private static IEnumerable<TypeArgumentConstraint> Effective(TypeKitSymbols symbols, ITypeParameterSymbol parameter, ITypeSymbol? receiver)
     {
         var own = symbols.ConstraintsOn(parameter);
         if (parameter.DeclaringMethod is not { } method) return own;
 
-        return own.Concat(Implemented(method.OriginalDefinition)
+        return own.Concat(Implemented(method.OriginalDefinition, receiver)
                               .Where(implemented => parameter.Ordinal < implemented.OriginalDefinition.TypeParameters.Length)
-                              .SelectMany(implemented => Effective(symbols, implemented.OriginalDefinition.TypeParameters[parameter.Ordinal])))
+                              .SelectMany(implemented => Effective(symbols, implemented.OriginalDefinition.TypeParameters[parameter.Ordinal], receiver)))
                   .Distinct();
     }
 
-    /// <summary>The methods <paramref name="method"/> overrides or implements, explicitly or implicitly, by its declaration.</summary>
-    private static IEnumerable<IMethodSymbol> Implemented(IMethodSymbol method)
+    /// <summary>
+    /// The methods <paramref name="method"/> overrides or implements, explicitly or implicitly, by its
+    /// declaration or for <paramref name="receiver"/>; a static method implements a static abstract one.
+    /// </summary>
+    private static IEnumerable<IMethodSymbol> Implemented(IMethodSymbol method, ITypeSymbol? receiver)
     {
         if (method.OverriddenMethod is { } overridden) yield return overridden;
 
         foreach (var explicitly in method.ExplicitInterfaceImplementations) yield return explicitly;
 
-        if (method.ExplicitInterfaceImplementations.Length > 0 || method.IsStatic || method.DeclaredAccessibility != Accessibility.Public) yield break;
+        if (method.ExplicitInterfaceImplementations.Length > 0 || method.DeclaredAccessibility != Accessibility.Public) yield break;
 
-        foreach (var contract in method.ContainingType.AllInterfaces)
+        foreach (var type in SymbolEqualityComparer.Default.Equals(receiver?.OriginalDefinition, method.ContainingType) || receiver is null
+                     ? [method.ContainingType]
+                     : new[] { method.ContainingType, receiver })
         {
-            foreach (var member in contract.GetMembers(method.Name).OfType<IMethodSymbol>())
+            foreach (var contract in type.AllInterfaces)
             {
-                if (member.IsGenericMethod && SymbolEqualityComparer.Default.Equals(method.ContainingType.FindImplementationForInterfaceMember(member)?.OriginalDefinition, method))
-                    yield return member;
+                foreach (var member in contract.GetMembers(method.Name).OfType<IMethodSymbol>())
+                {
+                    if (member.IsGenericMethod && member.IsStatic == method.IsStatic && SymbolEqualityComparer.Default.Equals(type.FindImplementationForInterfaceMember(member)?.OriginalDefinition, method))
+                        yield return member;
+                }
             }
         }
     }

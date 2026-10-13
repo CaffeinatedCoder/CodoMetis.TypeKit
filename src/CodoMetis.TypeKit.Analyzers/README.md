@@ -21,7 +21,7 @@ appears to: an instance that passed no factory, or a value object that was never
 | CMTK0007 | Info | `FromKnownGood` given a value that comes straight from a parameter. |
 | CMTK0008 | Warning | The wrapped values of two different value objects compared, `order.CustomerId.Value == product.Id.Value`, or the two value objects themselves through `Equals(object)`. |
 | CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. |
-| CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute, `[Abstract]`, `[Sealed]`, `[Record]` or `[Concrete]`, at any closed use: a base type, a member, a parameter, a local, a `typeof`, a call or a method group, written or inferred. A type parameter forwarded without the attribute is a breach too, and a method implementing an interface's method, or overriding one, carries the constraint of what it implements. |
+| CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute, `[Abstract]`, `[Sealed]`, `[Record]` or `[Concrete]`, at any closed use: a base type, a member, a parameter, a local, a `typeof`, an attribute, a call or a method group, written or inferred, and a member of a generic extension block, whose arguments the receiver gives. A type parameter forwarded without the attribute is a breach too, and a method implementing an interface's method, or overriding one, carries the constraint of what it implements, a static one and one a base class declares included. |
 | CMTK0011 | Error | A concrete type that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. The code fix writes or changes the constructor. |
 | CMTK0012 | Error | A closed set's `Match` given an argument by position, which binds to whichever member is declared at that place, so reordering the members swaps the branches. The code fix names every argument. |
 
@@ -370,7 +370,15 @@ public abstract class Sound<[Abstract] TCommand> : Decider<TCommand, OrderPlaced
 | `[Concrete]` | a class, record or struct that is not abstract, static or an interface; no constructor is demanded, unlike `new()` | it carries `[Concrete]` or is constrained to `struct` or `new()` |
 
 A type parameter given as the argument must carry the attribute itself, or the requirement would end
-at the first forwarding parameter and `Sound<PlaceOrder>` would never be reported. The open generic
+at the first forwarding parameter and `Sound<PlaceOrder>` would never be reported. A generic
+attribute, `[Handles<PlaceOrder>]`, is a use like any other. So is a member of a C# 14 extension
+block with a constrained type parameter, `extension<[Concrete] T>(T value)`: its argument comes from
+the receiver, so `handler.Go()`, `handler.Count`, `Handler.Make()`, a method group and an operator are
+reported at the use, and where the arguments are written, the block's come first
+(`handler.Take<Handler, PlaceOrder>(order)`). A method that implements an interface's method carries
+its constraint, a static method implementing a `static abstract` one included, and so does a base
+class's method that implements the interface for a derived class, when it is reached through the
+derived class. The open generic
 inside its own body and an unbound `typeof(Decider<,>)` are never reported. Reflection,
 `MakeGenericType`, is out of reach, and the attributes carry no run-time check.
 
