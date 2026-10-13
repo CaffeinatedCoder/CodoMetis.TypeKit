@@ -382,3 +382,17 @@ The generated members cover the request itself:
 
   Both minimal APIs and MVC then answer a body without it with 400. An optional constructor
   parameter (`Discount? Discount`) then needs a default value (`= null`).
+- **A query, header or form value missing from an MVC request is not refused either.** MVC binds
+  nothing for a non-nullable struct and calls the action with `default`, as it does for a `Guid` or
+  an `int`, and the model state stays valid; for a struct value object that is again an instance
+  that passed no factory. A minimal API answers 400, and MVC already requires a class value object
+  or a closed set, as it does any non-nullable reference type. Mark the parameter `[BindRequired]`,
+  and MVC answers 400 ("A value for the 'id' parameter or property was not provided."), or make it
+  nullable where it is optional, and the action receives `null`:
+
+  ```csharp
+  using Microsoft.AspNetCore.Mvc.ModelBinding;   // BindRequired
+
+  [HttpGet("/mvc/orders")]
+  public OrderDto Find([FromQuery, BindRequired] OrderId id, [FromQuery] Quantity? limit) => orders.Find(id, limit);
+  ```

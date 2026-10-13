@@ -49,7 +49,10 @@ position, and the change lands in the hoisted component.
 - **Known gaps, documented rather than fixed:** a validation attribute on a value-object property
   lands in the shared component, as ASP.NET does for any referenced schema (rules belong in `Create`);
   a property absent from a request body stays `default`, since System.Text.Json calls no converter
-  for it (`required`, `RespectRequiredConstructorParameters`); a minimal API answers a refused body
+  for it (`required`, `RespectRequiredConstructorParameters`); a query, header or form value absent
+  from an MVC request reaches the action as `default` for a struct value object, MVC's rule for any
+  non-nullable struct, where a minimal API answers 400 (`[BindRequired]`, or a nullable parameter;
+  measured 2026-10-13, MvcBindingTests); a minimal API answers a refused body
   with an empty 400; MVC's own binding message quotes the input, as it does for a `Guid`.
 - **ASP0020** ([decision 12](adr/0012-asp0020-documented-suppressed.md)): a minimal-API route parameter whose value object is declared in the
   same project fails the build, because the route analyzer reads the source before Metalama weaves

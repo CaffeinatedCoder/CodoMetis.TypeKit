@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -63,6 +64,9 @@ public sealed class CustomersController(ICustomers customers) : ControllerBase
 {
     [HttpGet("{id}")]
     public Results<Ok<CustomerDto>, FaultProblem<CustomerFault>> Get([FromRoute] CustomerId id) => customers.Find(id).ToHttpResult();   // the generated TypeConverter binds it
+
+    [HttpGet]
+    public IReadOnlyList<CustomerDto> List([FromQuery] Email? email, [FromQuery, BindRequired] PageSize page) => customers.List(email, page);   // without [BindRequired], no page is a default PageSize
 
     [HttpPost]
     public Results<Ok<CustomerDto>, FaultProblem<CustomerFault>> Post(RegisterCustomer body) => customers.Register(body).ToHttpResult();
@@ -180,6 +184,11 @@ public sealed partial class AspNetCoreTests
         problem.ShouldContain("Email");
         problem.ShouldNotContain("nobody");
         (await client.GetAsync($"/mvc/customers/{customers.Ann.Id}", token)).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        using var unpaged = await client.GetAsync("/mvc/customers", token);
+        unpaged.StatusCode.ShouldBe(HttpStatusCode.BadRequest, "page is [BindRequired]; without it MVC would call the action with a default PageSize");
+        (await unpaged.Content.ReadAsStringAsync(token)).ShouldContain("A value for the 'page' parameter or property was not provided.");
+        (await client.GetAsync("/mvc/customers?page=50", token)).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
     /// <summary>The problem the page shows, read from its first JSON block, against what the host answers for an unknown id.</summary>

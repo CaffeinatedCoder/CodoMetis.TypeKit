@@ -79,11 +79,19 @@ generators add `IParsable`; the binding is right, and the README shows the pragm
 | `GET /customers?page=500` | 400: `Create` refused it, through `TryParse` |
 | `POST /customers` with `"email": "nobody"` | 400: the `JsonException` names `Email` and `NoAt`, never the text, and is logged; the body is empty unless the host adds `UseStatusCodePages()` |
 | `POST /customers` without `email` | 200 with a default `Email`, unless `RespectRequiredConstructorParameters` is set, then 400 |
+| `GET /mvc/customers` without `page` | 400, since the action marks `page` `[BindRequired]`; without it, the action gets a default `PageSize` |
 
-The last row is the one to act on: System.Text.Json calls no converter for a property the body
+The last two rows are the ones to act on. System.Text.Json calls no converter for a property the body
 lacks, so it stays `default`, an instance that passed no factory. The README's
 [Binding](../src/CodoMetis.TypeKit.AspNetCore/README.md#binding) shows the two lines that make both
 minimal APIs and MVC answer 400 instead.
+
+MVC does the same with a query, header or form value the request lacks: for a non-nullable struct, a
+struct value object as much as a `Guid` or an `int`, it binds nothing, keeps the model state valid
+and calls the action with `default`. A minimal API answers 400, and MVC already requires a closed set
+or a class value object, as any non-nullable reference type. Mark a struct value object's parameter
+`[BindRequired]` (`Microsoft.AspNetCore.Mvc.ModelBinding`), as the controller below does for `page`,
+and MVC answers 400; or make it nullable where it is optional.
 
 ## Binding in MVC
 
@@ -94,6 +102,9 @@ public sealed class CustomersController(ICustomers customers) : ControllerBase
 {
     [HttpGet("{id}")]
     public Results<Ok<CustomerDto>, FaultProblem<CustomerFault>> Get([FromRoute] CustomerId id) => customers.Find(id).ToHttpResult();   // the generated TypeConverter binds it
+
+    [HttpGet]
+    public IReadOnlyList<CustomerDto> List([FromQuery] Email? email, [FromQuery, BindRequired] PageSize page) => customers.List(email, page);   // without [BindRequired], no page is a default PageSize
 
     [HttpPost]
     public Results<Ok<CustomerDto>, FaultProblem<CustomerFault>> Post(RegisterCustomer body) => customers.Register(body).ToHttpResult();
