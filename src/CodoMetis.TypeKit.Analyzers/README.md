@@ -22,7 +22,7 @@ appears to: an instance that passed no factory, or a value object that was never
 | CMTK0008 | Warning | The wrapped values of two different value objects compared, `order.CustomerId.Value == product.Id.Value`, or the two value objects themselves through `Equals(object)`. |
 | CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. |
 | CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute, `[Abstract]`, `[Sealed]`, `[Record]` or `[Concrete]`, at any closed use: a base type, a member, a parameter, a local, a `typeof`, an attribute, a call or a method group, written or inferred, and a member of a generic extension block, whose arguments the receiver gives. A type parameter forwarded without the attribute is a breach too, and a method implementing an interface's method, or overriding one, carries the constraint of what it implements, a static one and one a base class declares included. |
-| CMTK0011 | Error | A concrete type that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. The code fix writes or changes the constructor. |
+| CMTK0011 | Error | A concrete class that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. A struct is never reported: its parameterless constructor is public and can be nothing else. The code fix writes or changes the constructor. |
 | CMTK0012 | Error | A closed set's `Match` given an argument by position, which binds to whichever member is declared at that place, so reordering the members swaps the branches. The code fix names every argument. |
 
 The ids are public contract and never change meaning. The generators' own build errors,
@@ -416,6 +416,10 @@ one is reported at the type, and the fix adds it. A record or class with a prima
 no fix: every other constructor of such a type chains to the primary one, with arguments only its
 author knows. The requirement reaches a type through any chain of base classes and interfaces, and
 the attribute is read from metadata, so the marked type can live in another package.
+
+A struct or record struct is never reported. It always has a public parameterless constructor, the
+implicit one or one it declares, and C# allows it no other (CS8958): it satisfies `Public` as it is,
+and no other accessibility can be asked of it.
 
 ## CMTK0012
 

@@ -18,7 +18,8 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// </summary>
 /// <remarks>
 /// A type with a primary constructor gets no fix: every other constructor of such a type chains to
-/// the primary one, and the arguments to chain with are the author's to choose.
+/// the primary one, and the arguments to chain with are the author's to choose. Nor does a struct,
+/// which the rule never reports: its parameterless constructor can only be public.
 /// </remarks>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(RequiredParameterlessConstructorCodeFixProvider))]
 [Shared]
@@ -51,6 +52,11 @@ public sealed class RequiredParameterlessConstructorCodeFixProvider : CodeFixPro
             var node     = root.FindNode(diagnostic.Location.SourceSpan);
             var spelling = Spell(required);
 
+            // A struct's parameterless constructor is public and can be nothing else (CS8958): the rule
+            // reports none, and a fix that wrote another accessibility there would not compile.
+            if (node.FirstAncestorOrSelf<TypeDeclarationSyntax>() is { } declaring && declaring.Kind() is SyntaxKind.StructDeclaration or SyntaxKind.RecordStructDeclaration)
+                continue;
+
             if (node.FirstAncestorOrSelf<ConstructorDeclarationSyntax>() is { } constructor)
             {
                 context.RegisterCodeFix(
@@ -64,7 +70,7 @@ public sealed class RequiredParameterlessConstructorCodeFixProvider : CodeFixPro
             {
                 context.RegisterCodeFix(
                     CodeAction.Create(
-                        $"Add a {spelling} parameterless constructor",
+                        $"Add {(required == Accessibility.Internal ? "an" : "a")} {spelling} parameterless constructor",
                         cancellationToken => Task.FromResult(context.Document.WithSyntaxRoot(root.ReplaceNode(type, WithConstructor(type, required)))),
                         equivalenceKey: $"{DiagnosticId}:add"),
                     diagnostic);

@@ -16,6 +16,7 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// when it lacks the constructor. The rule puts that error on the type, in whichever project
 /// declares it. A class that declares no constructor has a public one and is silent for
 /// <c>Public</c>; a wrong accessibility is reported at the constructor, so the fix changes it there.
+/// A struct is never reported: its parameterless constructor is public and can be nothing else.
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class RequiredParameterlessConstructorAnalyzer : DiagnosticAnalyzer
@@ -55,9 +56,12 @@ public sealed class RequiredParameterlessConstructorAnalyzer : DiagnosticAnalyze
     {
         var type = (INamedTypeSymbol)context.Symbol;
 
-        // Only a type the host could create: an interface, an abstract or static type is never
-        // constructed, and carries the requirement for its descendants.
-        if (type.TypeKind is not (TypeKind.Class or TypeKind.Struct) || type.IsAbstract || type.IsStatic || type.IsAnonymousType) return;
+        // Only a class the host could create: an interface, an abstract or static type is never
+        // constructed, and carries the requirement for its descendants. A struct always has a public
+        // parameterless constructor, the implicit one or one it declares, and can have no other
+        // (CS8958): it satisfies Public as it is, and an Error for any other accessibility could only
+        // be suppressed, never answered in the code.
+        if (type.TypeKind is not TypeKind.Class || type.IsAbstract || type.IsStatic || type.IsAnonymousType) return;
 
         var parameterless = type.InstanceConstructors.FirstOrDefault(constructor => constructor.Parameters.IsEmpty);
         var reported      = new HashSet<Accessibility>();
@@ -68,7 +72,7 @@ public sealed class RequiredParameterlessConstructorAnalyzer : DiagnosticAnalyze
 
             var state = parameterless is null                   ? "declares no parameterless constructor"
                       : parameterless.IsImplicitlyDeclared      ? "has the implicit public parameterless constructor"
-                      :                                           $"declares a {Spell(parameterless.DeclaredAccessibility)} parameterless constructor";
+                      :                                           $"declares {WithArticle(parameterless.DeclaredAccessibility)} parameterless constructor";
 
             // At the constructor where one is declared, so the fix changes it there; at the type
             // otherwise, where the fix adds one.
@@ -97,4 +101,8 @@ public sealed class RequiredParameterlessConstructorAnalyzer : DiagnosticAnalyze
         Accessibility.ProtectedAndInternal => "private protected",
         _                                  => "private",
     };
+
+    /// <summary>The accessibility as C# writes it, after the article English gives it: "an internal", "a protected internal".</summary>
+    private static string WithArticle(Accessibility accessibility) =>
+        (accessibility == Accessibility.Internal ? "an " : "a ") + Spell(accessibility);
 }

@@ -16,7 +16,9 @@ namespace CodoMetis.TypeKit;
 /// A class that declares no constructor has a public parameterless one and satisfies
 /// <see cref="ConstructorAccessibility.Public"/> as it is. A record or class with a primary
 /// constructor has none, and its fix is written by hand, since every other constructor of such a
-/// type chains to the primary one.
+/// type chains to the primary one. A struct is never reported: its parameterless constructor is
+/// public and can be nothing else, so it satisfies <see cref="ConstructorAccessibility.Public"/> and
+/// no other accessibility can be asked of it.
 /// </para>
 /// </remarks>
 /// <param name="accessibility">The accessibility the constructor must have.</param>

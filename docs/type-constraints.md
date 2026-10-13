@@ -120,6 +120,7 @@ public sealed class Importer : Plugin;                     // CMTK0011: the impl
 | has a parameterless constructor of the wrong accessibility | at the constructor | changes it |
 | has a primary constructor | at the type | none: every other constructor would chain to the primary one, with arguments only its author knows |
 | is abstract, or an interface | no: only concrete descendants are checked | |
+| is a struct or a record struct | no: its parameterless constructor is public and can be nothing else (CS8958), so it satisfies `Public` as it is and no other accessibility can be asked of it | |
 
 A record's copy constructor does not count. The attribute is read from metadata, so the marked
 interface can live in another package, and a host's contract reaches every implementation in every

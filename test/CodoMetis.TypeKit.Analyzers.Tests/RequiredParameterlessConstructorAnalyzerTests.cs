@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Testing;
 
@@ -29,6 +30,12 @@ public sealed class RequiredParameterlessConstructorAnalyzerTests
 
             [RequireParameterlessConstructor(ConstructorAccessibility.Private)]
             public interface IActivated { }
+
+            [RequireParameterlessConstructor(ConstructorAccessibility.ProtectedInternal)]
+            public abstract class Widget { }
+
+            [RequireParameterlessConstructor(ConstructorAccessibility.PrivateProtected)]
+            public abstract class Gadget { }
         }
 
         """;
@@ -89,6 +96,106 @@ public sealed class RequiredParameterlessConstructorAnalyzerTests
             }
             """,
             Cmtk0011("Orders", "declares a private parameterless constructor", "IEndpoint", "public"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// The state names the declared accessibility with its article, as English writes it: "an
+    /// internal", "a protected internal". Every accessibility C# lets a class's constructor have.
+    /// </summary>
+    [Theory]
+    [InlineData("internal", "declares an internal parameterless constructor")]
+    [InlineData("protected", "declares a protected parameterless constructor")]
+    [InlineData("protected internal", "declares a protected internal parameterless constructor")]
+    [InlineData("private protected", "declares a private protected parameterless constructor")]
+    [InlineData("private", "declares a private parameterless constructor")]
+    public Task The_message_names_the_declared_accessibility_with_its_article(string declared, string state) =>
+        Test(
+            $$"""
+            public class Orders : Subjects.IEndpoint
+            {
+                {{declared}} {|#0:Orders|}() { }
+            }
+            """,
+            new DiagnosticResult("CMTK0011", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithMessage($"'Orders' {state}, but IEndpoint requires one that is public"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    [Fact]
+    public Task A_public_constructor_against_a_non_public_requirement_says_a_public() =>
+        Test(
+            """
+            public class Identity : Subjects.Module
+            {
+                public {|#0:Identity|}() { }
+            }
+            """,
+            new DiagnosticResult("CMTK0011", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithMessage("'Identity' declares a public parameterless constructor, but Module requires one that is internal"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// The two accessibilities of two keywords, read from the attribute's enum by position (3 and 4):
+    /// each is satisfied by its own constructor, in either keyword order, and not by the other's.
+    /// </summary>
+    [Fact]
+    public Task Protected_internal_and_private_protected_are_each_required_as_written() =>
+        Test(
+            """
+            public class WidgetOne : Subjects.Widget { protected internal WidgetOne() { } }
+
+            public class WidgetTwo : Subjects.Widget { internal protected WidgetTwo() { } }
+
+            public class GadgetOne : Subjects.Gadget { private protected GadgetOne() { } }
+
+            public class GadgetTwo : Subjects.Gadget { protected private GadgetTwo() { } }
+
+            public class WidgetWrong : Subjects.Widget { private protected {|#0:WidgetWrong|}() { } }
+
+            public class GadgetWrong : Subjects.Gadget { protected internal {|#1:GadgetWrong|}() { } }
+
+            public class {|#2:WidgetImplicit|} : Subjects.Widget { }
+
+            public class {|#3:GadgetImplicit|} : Subjects.Gadget { }
+            """,
+            Cmtk0011("WidgetWrong", "declares a private protected parameterless constructor", "Widget", "protected internal"),
+            new DiagnosticResult("CMTK0011", DiagnosticSeverity.Error).WithLocation(1).WithArguments("GadgetWrong", "declares a protected internal parameterless constructor", "Gadget", "private protected"),
+            new DiagnosticResult("CMTK0011", DiagnosticSeverity.Error).WithLocation(2).WithArguments("WidgetImplicit", "has the implicit public parameterless constructor", "Widget", "protected internal"),
+            new DiagnosticResult("CMTK0011", DiagnosticSeverity.Error).WithLocation(3).WithArguments("GadgetImplicit", "has the implicit public parameterless constructor", "Gadget", "private protected"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A struct always has a public parameterless constructor, the implicit one or one it declares, and
+    /// can have no other (CS8958). It satisfies <c>Public</c> as it is, and no other accessibility can
+    /// be asked of it, so no requirement is reported on it: an Error its author could answer only by a
+    /// suppression would be no rule.
+    /// </summary>
+    [Theory]
+    [InlineData("Public")]
+    [InlineData("Internal")]
+    [InlineData("Protected")]
+    [InlineData("ProtectedInternal")]
+    [InlineData("PrivateProtected")]
+    [InlineData("Private")]
+    public Task A_struct_or_record_struct_is_never_reported(string accessibility) =>
+        Test(
+            $$"""
+            [RequireParameterlessConstructor(ConstructorAccessibility.{{accessibility}})]
+            public interface IJob { }
+
+            public struct Implicit : IJob { }
+
+            public struct Declared : IJob { public Declared() { } }
+
+            public struct Parameterised : IJob { public Parameterised(int port) { } }
+
+            public record struct Record : IJob;
+
+            public readonly record struct DeclaredRecord : IJob { public DeclaredRecord() { } }
+
+            public record struct Positional(int Port) : IJob;
+            """)
             .RunAsync(TestContext.Current.CancellationToken);
 
     [Fact]
@@ -229,6 +336,144 @@ public sealed class RequiredParameterlessConstructorAnalyzerTests
                 ExpectedDiagnostics = { Cmtk0011("Identity", "has the implicit public parameterless constructor", "Module", "internal") },
             }
             .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>The two accessibilities of two keywords, added as C# writes them.</summary>
+    [Theory]
+    [InlineData("Widget", "protected internal")]
+    [InlineData("Gadget", "private protected")]
+    public Task The_fix_adds_a_constructor_of_two_keywords(string marked, string modifiers) =>
+        new CodeFixTest<RequiredParameterlessConstructorAnalyzer, RequiredParameterlessConstructorCodeFixProvider>(
+            Subjects + $$"""
+            public class {|#0:Orders|} : Subjects.{{marked}}
+            {
+                public Orders(int port) { }
+            }
+            """,
+            Subjects + $$"""
+            public class Orders : Subjects.{{marked}}
+            {
+                {{modifiers}} Orders()
+                {
+                }
+
+                public Orders(int port) { }
+            }
+            """)
+            {
+                ExpectedDiagnostics = { Cmtk0011("Orders", "declares no parameterless constructor", marked, modifiers) },
+                CodeActionVerifier  = (action, verifier) => verifier.Equal($"Add a {modifiers} parameterless constructor", action.Title),
+            }
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>Each keyword of the wrong accessibility goes, whichever accessibility of one or two keywords replaces it.</summary>
+    [Theory]
+    [InlineData("Widget", "public", "a public", "protected internal")]
+    [InlineData("Widget", "private protected", "a private protected", "protected internal")]
+    [InlineData("Gadget", "protected internal", "a protected internal", "private protected")]
+    [InlineData("Gadget", "internal", "an internal", "private protected")]
+    public Task The_fix_changes_a_constructor_to_one_of_two_keywords(string marked, string declared, string named, string required) =>
+        new CodeFixTest<RequiredParameterlessConstructorAnalyzer, RequiredParameterlessConstructorCodeFixProvider>(
+            Subjects + $$"""
+            public class Orders : Subjects.{{marked}}
+            {
+                {{declared}} {|#0:Orders|}() { }
+            }
+            """,
+            Subjects + $$"""
+            public class Orders : Subjects.{{marked}}
+            {
+                {{required}} Orders() { }
+            }
+            """)
+            {
+                ExpectedDiagnostics = { Cmtk0011("Orders", $"declares {named} parameterless constructor", marked, required) },
+                CodeActionVerifier  = (action, verifier) => verifier.Equal($"Make the constructor {required}", action.Title),
+            }
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>The action's title agrees its article with the accessibility, as the message does.</summary>
+    [Fact]
+    public Task The_fix_s_title_says_an_internal() =>
+        new CodeFixTest<RequiredParameterlessConstructorAnalyzer, RequiredParameterlessConstructorCodeFixProvider>(
+            Subjects + "public sealed class {|#0:Identity|} : Subjects.Module { }",
+            Subjects + """
+            public sealed class Identity : Subjects.Module
+            {
+                internal Identity()
+                {
+                }
+            }
+            """)
+            {
+                ExpectedDiagnostics = { Cmtk0011("Identity", "has the implicit public parameterless constructor", "Module", "internal") },
+                CodeActionVerifier  = (action, verifier) => verifier.Equal("Add an internal parameterless constructor", action.Title),
+            }
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// The rule reports no struct, so the fix never meets one. Handed a diagnostic there all the same,
+    /// as the rule gave one before 2.0.0 was tagged, it offers nothing: <c>internal S() { }</c> in a
+    /// struct is CS8958. The diagnostics are made here, at each place the rule reported, with the
+    /// rule's own descriptor; a class beside them gets its fix, so the property they carry is one the
+    /// fix reads.
+    /// </summary>
+    [Fact]
+    public async Task The_fix_offers_nothing_on_a_struct()
+    {
+        const string source =
+            """
+            public interface IJob { }
+
+            public struct Implicit : IJob { }
+
+            public struct Declared : IJob { public Declared() { } }
+
+            public record struct Record : IJob;
+
+            public readonly record struct DeclaredRecord : IJob { public DeclaredRecord() { } }
+
+            public sealed class Control : IJob { public Control(int port) { } }
+            """;
+
+        var token = TestContext.Current.CancellationToken;
+        var rule  = new RequiredParameterlessConstructorAnalyzer().SupportedDiagnostics.ShouldHaveSingleItem();
+
+        using var workspace = new AdhocWorkspace();
+        var document = workspace.AddProject("Structs", LanguageNames.CSharp).AddDocument("Structs.cs", source);
+        var root     = await document.GetSyntaxRootAsync(token) ?? throw new InvalidOperationException("No syntax root.");
+
+        // Where the rule reported: at a declared parameterless constructor, or at the type.
+        var places = root.DescendantNodes().OfType<Microsoft.CodeAnalysis.CSharp.Syntax.TypeDeclarationSyntax>()
+                         .Where(type => type.BaseList is not null)
+                         .Select(type => (type.Identifier.ValueText,
+                                          Location: type.Members.OfType<Microsoft.CodeAnalysis.CSharp.Syntax.ConstructorDeclarationSyntax>()
+                                                        .FirstOrDefault(constructor => constructor.ParameterList.Parameters.Count == 0)?.Identifier.GetLocation()
+                                                 ?? type.Identifier.GetLocation()))
+                         .ToList();
+
+        places.Count.ShouldBe(5, "The source's types were not found, so this test checks nothing.");
+
+        foreach (var (name, location) in places)
+        {
+            var diagnostic = Diagnostic.Create(
+                rule,
+                location,
+                ImmutableDictionary<string, string?>.Empty.Add(RequiredParameterlessConstructorAnalyzer.RequiredProperty, nameof(Accessibility.Internal)),
+                name,
+                "declares no parameterless constructor",
+                "IJob",
+                "internal");
+
+            var actions = new List<string>();
+            await new RequiredParameterlessConstructorCodeFixProvider().RegisterCodeFixesAsync(
+                new Microsoft.CodeAnalysis.CodeFixes.CodeFixContext(document, diagnostic, (action, _) => actions.Add(action.Title), token));
+
+            if (name == "Control")
+                actions.ShouldBe(["Add an internal parameterless constructor"], "The class beside the structs got no fix, so the diagnostics here carry nothing the fix reads.");
+            else
+                actions.ShouldBeEmpty($"The fix offers '{string.Join("', '", actions)}' on the struct {name}, which can have no parameterless constructor but a public one (CS8958).");
+        }
+    }
 
     /// <summary>Every other constructor of a type with a primary constructor chains to it, with arguments only the author knows.</summary>
     [Fact]
