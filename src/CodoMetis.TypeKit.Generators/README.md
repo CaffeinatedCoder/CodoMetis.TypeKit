@@ -88,8 +88,8 @@ Any non-generic class, struct or enum, with the exceptions CMTK1005 lists. The g
 follow what the wrapped type offers: parsing where it can be parsed, formatting where it formats, and
 comparison where it is comparable. Numbers, `bool`, `char`, `string`, `Guid`, `DateTime`,
 `DateTimeOffset`, `DateOnly`, `TimeOnly` and enums have all of it; a `Uri` has no ordering, and neither
-do NodaTime's `OffsetDateTime`, `ZonedDateTime`, `Period` and `Interval`, whose `Interval` has no type
-converter to parse through either. An enum parses as `Enum.TryParse` does, case-sensitively: a name, a
+do NodaTime's `OffsetDateTime`, `ZonedDateTime`, `Period` and `Interval`, and `Interval` also has no
+type converter to parse through. An enum parses as `Enum.TryParse` does, case-sensitively: a name, a
 comma-separated list of names, or a number, which need not name a member.
 
 A generic wrapped type, a tuple included, is refused (CMTK1005): a `List<T>` or an `ImmutableArray<T>`
@@ -115,10 +115,12 @@ does.
 | `{TSelf}Extensions.GetValue()` and `ValueOrNull()` | every value object an extension class can reach (not a `private` or `protected` nested one) | For EF Core queries, where they translate to the column. |
 | `IValueObjectMaterializer<TSelf, T>` | every value object | Explicit, invisible on the type. Rebuilds an instance without validation, for the EF Core satellite. |
 
-Every generated way into a validated value object goes through `Create`. The only exception is the
-explicit materializer, for values the application wrote itself. Inside the type, your own members can
-reach the private constructor, which applies no rules, because `Create` needs it: call it from
-`Create` only. Another way in is a static method that calls `From` or `Create`.
+Every generated way into a validated value object goes through `Create`. Two paths skip it, both for
+values the application wrote itself: the explicit materializer, which the EF Core satellite reads a
+column through, and `StoredJsonConverterFactory`, registered only on the options that read the
+application's own JSON. Inside the type, your own members can reach the private constructor, which
+applies no rules, because `Create` needs it: call it from `Create` only. For another way in, write a
+static method that calls `From` or `Create`.
 
 `default(Email)` is not one of those ways, and the analyzer refuses it (CMTK0001), but an array slot or
 a JSON document without the property can still produce it (CMTK0005, and "A missing property" below).
@@ -135,9 +137,9 @@ interfaces the generators implement, and `IConvertible` where they generate it. 
 implementation of a member of an interface they implement, such as `IParsable<TSelf>.Parse` or
 `IFormattable.ToString`: every caller through the interface would reach it rather than the generated
 member, and a generic `T.Parse` would skip `Create`. `Create` is declared once, `public static`, and
-never as an explicit interface implementation: alone, the generated code cannot call it, and beside a
-public one, generic code calling `T.Create` would reach its rules instead of the ones every generated
-way in applies.
+never as an explicit interface implementation. The generated code cannot call an explicit one; and
+beside a public one, generic code calling `T.Create` would reach the explicit one's rules, not those
+every generated way in applies.
 
 To change what a value object prints, declare `ToString()`: a record's `PrintMembers(StringBuilder)` is
 CMTK1011 without it, since the generated `ToString()` prints the wrapped value and never calls it.
@@ -245,12 +247,12 @@ and the ASP.NET Core satellite answers it by kind.
 
 Each member is initialized with `new` where it is declared (CMTK1019), and the constructors are
 private (CMTK1016); a record is refused (CMTK1020). A member may not take the name of a generated
-member, nor differ from another's only in case (`Open` and `open`), one name to
-`TryParse(name, ignoreCase: true)`, CMTK1021. A `ToString()`
-written by hand is kept, and the name is still what JSON, parsing and the column use; so is an overload of a generated method with
-another signature, such as `Parse(int rank)`. Any other generated member written by hand is CMTK1011. An instance the set's
-own code creates beside its members has no name, so reading its name throws rather than write a
-null. A JSON `null` reads as `null`, as for any class, unless the serializer's
+member, nor differ from another's only in case (`Open` and `open`), since
+`TryParse(name, ignoreCase: true)` could not tell them apart (CMTK1021). A `ToString()` written by
+hand is kept, and the name is still what JSON, parsing and the column use. An overload of a generated
+method with another signature, such as `Parse(int rank)`, is kept too. Any other generated member
+written by hand is CMTK1011. An instance the set's own code creates beside its members has no name,
+so reading its name throws rather than writing a null. A JSON `null` reads as `null`, as for any class, unless the serializer's
 `RespectNullableAnnotations` refuses it.
 
 ## JSON
@@ -354,7 +356,7 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1018 | A closed set that is generic or nested in a generic type. |
 | CMTK1019 | A closed set's member not initialized with `new` where it is declared, and with nothing else: `= Open` would give one instance two names, and a member set later, by a call, or by an expression that only starts with `new`, may be another member or null. |
 | CMTK1020 | A closed set declared as a record: `with` copies a member into an instance that is none, and a record compares by value where members are singletons. |
-| CMTK1021 | A closed set's member named as a member the generators introduce (`Name`, `QualifiedName`, `All`, `Match`, `Parse`, `TryParse`, `ToString`, the JSON or type converter), or whose name differs from another member's only in case: one name to `TryParse(name, ignoreCase: true)`, and to `Match`'s parameters where the first letter is the difference. |
+| CMTK1021 | A closed set's member named as a member the generators introduce (`Name`, `QualifiedName`, `All`, `Match`, `Parse`, `TryParse`, `ToString`, the JSON or type converter), or whose name differs from another member's only in case: they collide in `TryParse(name, ignoreCase: true)`, and in `Match`'s parameters where the first letter is the difference. |
 | CMTK1022 | An abstract type with a value-object marker: it would get no member, and a value held as it, of a type derived from it, would have no `Value` and be written as `{}`. Declare the marker on the sealed type. An abstract closed set is CMTK1014. |
 
 The analyzers that come with the base package add CMTK0001 to CMTK0012; see
