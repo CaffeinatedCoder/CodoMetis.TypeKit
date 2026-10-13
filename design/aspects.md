@@ -214,7 +214,7 @@
     one's rules in its `Create`. Refused rather than made to work: a surface that follows the
     project layout is the silent failure this repo exists to prevent, and lifting a refusal later
     breaks nobody, while adding one after 1.0.0 would.
-  - **A closed set is not refused** (decided 2026-10-13,
+  - **A closed set as the wrapped type is not refused** (decided 2026-10-13,
     [decision 60](adr/0060-value-object-over-closed-set-generated-in-full.md)), wherever it is declared.
     Over a set of its own project `OverSet : IValue<SetA>` lacked `Parse`, `TryParse`, `IParsable` and
     its own type converter while its JSON worked, because `ClosedSetAspect` ran last, after the
