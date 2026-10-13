@@ -124,7 +124,8 @@ this release adds, so nothing that built against 1.5.1 meets them.
   for an optional input validated when present.
 - **Documentation**: topic pages under `docs/`, linked from the root README's "Documentation" table:
   value objects, closed sets, `Option`, `Result`, written text, type constraints, merge patches,
-  JSON, EF Core, ASP.NET Core, Native AOT, logging and secrets, and testing. Every C# block in them is compiled and its stated
+  JSON, EF Core, ASP.NET Core, Native AOT, logging and secrets, testing, and migrating from 1.5,
+  what builds or runs differently for code that built against it. Every C# block in them is compiled and its stated
   outputs are tested, as the READMEs' are, and the `Option` and `Result` pages list the complete
   public surface, checked against the types. The package READMEs remain the reference for each
   package. The plan moved from `docs/plan.md` to `design/plan.md`.

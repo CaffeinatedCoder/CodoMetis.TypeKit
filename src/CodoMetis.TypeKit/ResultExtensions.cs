@@ -924,7 +924,7 @@ public static class Result
     /// <param name="source">The query.</param>
     /// <typeparam name="T">The type of the elements.</typeparam>
     /// <typeparam name="TError">The type of the error.</typeparam>
-    /// <remarks>The provider runs the condition and is asked for one element, as <c>Option.FirstOrNone</c> on a query is.</remarks>
+    /// <remarks>The provider runs the condition and is asked for one element, as <c>Option.FirstOrNone</c> on a query is, and like it, the query is not precompiled under Native AOT and throws there.</remarks>
     extension<T, TError>(IQueryable<T> source) where T : notnull where TError : notnull
     {
         /// <summary>The first element that matches, or the given error: the provider runs the condition, and is asked for one.</summary>

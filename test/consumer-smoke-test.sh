@@ -826,6 +826,7 @@ run dotnet add package Microsoft.EntityFrameworkCore.Sqlite --version "$ef_versi
 run dotnet add package Microsoft.EntityFrameworkCore.Design --version "$ef_version"
 
 cat > Program.cs <<'CSHARP'
+using CodoMetis.TypeKit;
 using Microsoft.EntityFrameworkCore;
 using Shop;
 
@@ -870,6 +871,14 @@ await Check("ef-stored", async () =>
     await db.Database.ExecuteSqlRawAsync("UPDATE Orders SET Code = 'lower'");
     return (await db.Orders.Where(o => o.Id == id).SingleAsync()).Code.Value;
 });
+db.ChangeTracker.Clear();
+// The query helpers compose the query inside the package, where EF's precompiler, which works on
+// the application's own call sites, never sees it: measured here, with the workaround the docs give.
+await Check("ef-first-or-none", () => Task.FromResult(db.Orders.FirstOrNone(o => o.Code.Value.StartsWith("lo")).IsSome().ToString()));
+db.ChangeTracker.Clear();
+await Check("ef-first-or-none-async", async () => (await db.Orders.FirstOrNoneAsync(o => o.Code.Value.StartsWith("lo"))).IsSome().ToString());
+db.ChangeTracker.Clear();
+await Check("ef-first-or-none-written", async () => (await db.Orders.Where(o => o.Code.Value.StartsWith("lo")).Take(1).ToListAsync()).FirstOrNone().IsSome().ToString());
 db.ChangeTracker.Clear();
 await db.Database.ExecuteSqlRawAsync("CREATE TABLE Shipments (Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, Carrier TEXT NOT NULL)");
 await Check("ef-identity", async () =>
@@ -972,6 +981,9 @@ assert_contains "ef-identity=1,2"                  "$work/aot.out" "a key over a
 assert_contains 'ef-set-stored=Shipped {"Quantity":3,"Status":"Open"}' "$work/aot.out" "a closed set is its name in a column and in a JSON column, through the compiled model"
 assert_contains "ef-set-parameter=Shipped"         "$work/aot.out" "a closed-set parameter is mapped at run time"
 assert_contains "ef-json-column=Open 3"            "$work/aot.out" "a JSON column reads a closed set and a value object back in a precompiled query"
+assert_contains "ef-first-or-none=THREW InvalidOperationException: Query wasn't precompiled" "$work/aot.out" "a query helper is not precompiled, as the docs say: the base package's FirstOrNone on a query"
+assert_contains "ef-first-or-none-async=THREW InvalidOperationException: Query wasn't precompiled" "$work/aot.out" "and the EF satellite's FirstOrNoneAsync"
+assert_contains "ef-first-or-none-written=True"    "$work/aot.out" "the docs' workaround, the operators written at the call site, runs"
 
 [[ $failed -eq 0 ]] || { echo; echo "consumer smoke test FAILED"; exit 1; }
 echo

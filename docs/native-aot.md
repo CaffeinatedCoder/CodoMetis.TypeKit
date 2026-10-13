@@ -85,6 +85,14 @@ a sealed entity class does not compile in precompiled queries; and a converter n
 `HasConversion` is not what the precompiled queries cast to, so the mapping stays `UseTypeKit()`'s
 ([EF Core](ef-core.md#compiled-models)).
 
+EF precompiles a query where the application calls one of EF's operators, and runs no other. The
+query helpers compose their query inside the package, where it never looks: `FirstOrNone`,
+`FirstOrError`, `SingleOrNone` and `ElementAtOrNone` on a query, and the EF satellite's
+`FirstOrNoneAsync` and `SingleOrNoneAsync`, throw `InvalidOperationException: Query wasn't
+precompiled and dynamic code isn't supported with NativeAOT.` Write the operators at the call site
+and take the option of the list: `(await db.Orders.Where(o => o.Total > 100).Take(1).ToListAsync()).FirstOrNone()`.
+The smoke test's consumer measures both the refusal and that call.
+
 ## Configuration binding
 
 `PublishAot` and `PublishTrimmed` turn on the configuration binding source generator, which binds

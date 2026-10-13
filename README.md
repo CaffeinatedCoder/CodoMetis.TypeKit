@@ -110,13 +110,11 @@ compiled and its stated outputs are tested, as the READMEs' are.
 | [Merge patches](docs/merge-patches.md) | `Patch<T>`: absent, null or a value, applying a patch, value objects inside one, writing one, the OpenAPI document, source-generated contexts |
 | [JSON](docs/json.md) | What a value object writes and reads, refusals, stored documents, `Option` and `Result` at the wire, a converter of your own, source-generated contexts |
 | [EF Core](docs/ef-core.md) | Columns, keys, conventions, queries and the SQL they become, seed data, reading back without validation, SQLite in tests |
-| [ASP.NET Core](docs/aspnet-core.md) | Binding in minimal APIs and MVC, what a refused value answers, a `Result` as a response, the OpenAPI document, problem details |
+| [ASP.NET Core](docs/aspnet-core.md) | Binding in minimal APIs and MVC, what a refused value answers, a `Result` as a response, fault responses a client can act on, the OpenAPI document, problem details |
 | [Native AOT](docs/native-aot.md) | What is measured, the project settings, JSON contexts, OpenAPI, EF Core's compiled model, configuration binding, discovery without reflection |
 | [Logging and secrets](docs/logging-and-secrets.md) | A value that must not be printed, what still carries it, Serilog, Microsoft.Extensions.Logging, refusals that never quote the input |
 | [Testing](docs/testing.md) | Assertions for `Option` and `Result`, table-driven tests of `Create`, EF Core on SQLite, endpoints on the test server |
-
-Still to come in 2.0.0, each page written when its feature lands ([the plan](design/plan.md#2-phases),
-phase 13): fault responses a client can act on, and public aspects.
+| [Migrating from 1.5 to 2.0](docs/migrating-to-2.md) | What builds or runs differently: CMTK0003 as an error, a query's `FirstOrNone` in the database, names that 2.0 adds, fault responses, Native AOT |
 
 ## What it holds to
 

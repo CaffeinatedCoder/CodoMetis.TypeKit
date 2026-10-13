@@ -537,8 +537,8 @@ Each phase ends green, and its guards have been proven by seeding the defect
       `RangeSet<,>`, whose equality is a value's, though `IEquatable` alone is no criterion
       (`ImmutableArray<T>`).
 
-13. **2.0.0: closed sets, fault responses, merge patches, exceptions, constraints and text.** Next;
-    not started. Scoped 2026-10-12 (decision 42): the features proposed for 1.x ship in the major,
+13. **2.0.0: closed sets, fault responses, merge patches, exceptions, constraints and text.** In
+    progress: steps 1 to 9a done (2026-10-13), the preview and the release to come. Scoped 2026-10-12 (decision 42): the features proposed for 1.x ship in the major,
     not as a 1.6.0 before it, because the smart-enum family changes what a fault is, and fault
     responses built on enums first would be built twice. Pinned 2026-10-13 (decision 44) to
     `net10.0` and Metalama 2026.1: nothing in it needs .NET 11, C# 15 unions or Metalama 2027.0, and
@@ -667,6 +667,13 @@ Each phase ends green, and its guards have been proven by seeding the defect
          a variation selector stands only directly after one, so emoji presentation, a flag, a
          keycap and an ideographic variant survive; a joiner is not placed, since an Arabic letter
          shown in its joining form on its own ends with one.
+       - **The docs** ✅: the README no longer lists fault responses (documented in the ASP.NET Core
+         README and guide since step 8) or public aspects (none planned) as still to come;
+         `docs/migrating-to-2.md` lists what builds or runs differently for 1.5 code, compiled like
+         every page; and the Native AOT page states the query helpers' limitation, which the smoke
+         test's `aot` consumer now measures: the base package's `FirstOrNone` on a query and the
+         satellite's `FirstOrNoneAsync` throw "Query wasn't precompiled", and the operators written
+         at the call site run.
     10. **`2.0.0-preview.1` to nuget.org** once steps 7 and 8 exist, the consumer smoke test
         against it, then the release.
     - **A closed-set (smart enum) family**, declared by interface and joining `.Generators` (§1), the
@@ -1533,7 +1540,9 @@ Still open:
     The plan and the design notes moved to `design/`, so that `docs/` holds only what a consumer
     reads and nothing there is exempt from compilation; `design/` is a solution folder. Eleven pages
     came first; `merge-patches.md` and `closed-sets.md` joined them once the docs branch merged into
-    2.0.0 (2026-10-13), and the fault responses and public aspects get theirs as they land.
+    2.0.0 (2026-10-13). The fault responses are in the ASP.NET Core and closed-set pages, no public
+    aspect is planned (decision 43 allows one, and none exists), and `migrating-to-2.md` lists what
+    builds or runs differently for 1.5 code.
 
 46. **A timeout caught by `Result.Catch` is the error** (2026-10-13, phase 13). Every overload let
     an `OperationCanceledException` through, and `HttpClient` throws one over a `TimeoutException`

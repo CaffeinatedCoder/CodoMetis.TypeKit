@@ -491,10 +491,18 @@ public static class Option
     /// <param name="source">The query.</param>
     /// <typeparam name="T">The type of the elements.</typeparam>
     /// <remarks>
+    /// <para>
     /// A query is asked for one element, so the provider runs the condition and the limit where the
     /// query runs: a <c>WHERE</c> and a <c>LIMIT</c> in SQL. Through the <see cref="IEnumerable{T}"/> overloads, an
     /// <see cref="IQueryable{T}"/> was read in full and its condition compiled and run in memory, on
     /// every row of the table.
+    /// </para>
+    /// <para>
+    /// Under Native AOT, EF Core runs only the queries it precompiled where the application calls its
+    /// operators, and these compose the query here: they throw "Query wasn't precompiled" (measured
+    /// with EF Core 10.0.12 in the smoke test). Write <c>Where(…).Take(1).ToList()</c> at the call site
+    /// and take <c>FirstOrNone()</c> of the list.
+    /// </para>
     /// </remarks>
     extension<T>(IQueryable<T> source) where T : notnull
     {
