@@ -152,10 +152,13 @@ since C# keeps it in every derived record; one that is not sealed is CMTK1011, b
 `IConvertible` on it are refused as they are on the value object.
 
 Equality is the wrapped value's, as the ordering, the JSON and the column are, so a hand-written
-`Equals(TSelf)`, `GetHashCode()` or `IEquatable<TSelf>.Equals` is CMTK1011: it would make values equal
-that sort apart. To make values that differ only in form equal, such as "abc" and "ABC", normalise them
+`Equals(TSelf)`, `GetHashCode()`, `IEquatable<TSelf>.Equals`, or `operator ==` or `!=` between two of
+the type, is CMTK1011: it would make values equal that sort apart. To make values that differ only in form equal, such as "abc" and "ABC", normalise them
 in `Create` (a plain value object becomes an `IValidatedValue` for that), so that equal values hold
 the same wrapped value.
+
+An `[Obsolete]` on a value object, or on a type it is nested in, is copied to its `{TSelf}Extensions`
+class, which names the value object outside it: with `error: true` that use failed the build.
 
 A value object holds its wrapped value and nothing else. Its JSON, parsing, type converter and column
 carry that value alone, while a record's equality compares every field, so any other instance state
@@ -365,13 +368,13 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1002 | A struct not declared `readonly`. |
 | CMTK1003 | More than one marker, such as `IValue<int>, IValue<string>`. |
 | CMTK1004 | An `IValidatedValue<TSelf, …>` whose `TSelf` is another type. |
-| CMTK1005 | Generic or nested in a generic type (nesting in a non-generic type is fine), `file`-local or nested in a `file`-local type, named `Value`, derived from another value object, or wrapping `object`, an array, a pointer, a nullable type, a generic type (a tuple included), a value object (itself included) or a closed set declared in the same project. Wrap what the other value object wraps instead; declare the set in a referenced project, where the value object gets its parsing and type converter, or wrap its name. |
+| CMTK1005 | Generic or nested in a generic type (nesting in a non-generic type is fine), `file`-local or nested in a `file`-local type, named `Value` or as another member the generators introduce (`From`, `TryFrom`, `FromKnownGood`, `Revalidate`, `Parse`, `TryParse`, `TryFormat`, `MinValue`, `MaxValue`, `CompareTo`), derived from another value object, or wrapping `object`, `System.Enum`, an array, a pointer, a nullable type, a generic type (a tuple included), a value object (itself included) or a closed set declared in the same project. Wrap what the other value object wraps instead; declare the set in a referenced project, where the value object gets its parsing and type converter, or wrap its name. |
 | CMTK1006 | A record class not declared `sealed`. |
 | CMTK1007 | The `{TSelf}Extensions` companion's name is taken by a declared type or by another value object's companion. |
 | CMTK1008 | A hand-written comparison operator, object `CompareTo` or explicit implementation of a comparison interface beside the generated ones. |
 | CMTK1009 | A hand-written instance constructor, including a positional record's parameter list such as `OrderId(Guid Value)`. The constructor and `Value` are generated; a static constructor is fine. |
 | CMTK1010 | Declared in more than one `partial` part: Metalama 2026.1 writes the generated `ToString()` into every part, which does not compile. A part a source generator adds, such as a `[GeneratedRegex]` method's, does not count. |
-| CMTK1011 | A hand-written member or attribute the generators introduce (see "Your own members", and for a closed set every generated member but `ToString()`, by signature, `IParsable<TSelf>`, `[JsonConverter]` and `[TypeConverter]`), an explicit implementation of an interface they implement, a hand-written equality, a `PrintMembers` without `ToString()`, or `Create` implemented explicitly. |
+| CMTK1011 | A hand-written member or attribute the generators introduce (see "Your own members", and for a closed set every generated member but `ToString()`, by signature, `IParsable<TSelf>`, `[JsonConverter]` and `[TypeConverter]`), an explicit implementation of an interface they implement, a hand-written equality (an `operator ==` or `!=` between two of the type included, which C# also reports as CS0111), a `PrintMembers` without `ToString()`, or `Create` implemented explicitly. |
 | CMTK1012 | Instance state besides the wrapped value: a field, an auto-property, a `required` member or a field-like event, declared or inherited. Compute it from `Value`, make it static, or wrap a type that holds all of it. |
 | CMTK1013 | A closed set not declared `partial`. |
 | CMTK1014 | A closed set not declared `sealed`: a set with subtypes is not closed. |
@@ -381,7 +384,7 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1018 | A closed set that is generic or nested in a generic type. |
 | CMTK1019 | A closed set's member not initialized with `new` where it is declared, and with nothing else: `= Open` would give one instance two names, and a member set later, by a call, or by an expression that only starts with `new`, may be another member or null. |
 | CMTK1020 | A closed set declared as a record: `with` copies a member into an instance that is none, and a record compares by value where members are singletons. |
-| CMTK1021 | A closed set's member named as a member the generators introduce (`Name`, `QualifiedName`, `All`, `Match`, `Parse`, `TryParse`, `ToString`, the JSON or type converter), or whose name differs from another member's only in case: they collide in `TryParse(name, ignoreCase: true)`, and in `Match`'s parameters where the first letter is the difference. |
+| CMTK1021 | A closed set's member named as a member the generators introduce (`Name`, `QualifiedName`, `All`, `Match`, `Parse`, `TryParse`, `ToString`, the JSON or type converter), a set itself named as one of them (a member cannot have the name of its type), or a member whose name differs from another member's only in case: they collide in `TryParse(name, ignoreCase: true)`, and in `Match`'s parameters where the first letter is the difference. |
 | CMTK1022 | An abstract type with a value-object marker: it would get no member, and a value held as it, of a type derived from it, would have no `Value` and be written as `{}`. Declare the marker on the sealed type. An abstract closed set is CMTK1014. |
 
 The analyzers that come with the base package add CMTK0001 to CMTK0012; see

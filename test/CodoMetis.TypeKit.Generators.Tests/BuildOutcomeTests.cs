@@ -32,6 +32,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1005", "ArrayBacked")]
     [InlineData("CMTK1005", "NullableBacked")]
     [InlineData("CMTK1005", "ObjectBacked")]
+    [InlineData("CMTK1005", "EnumBacked")]
     [InlineData("CMTK1005", "DerivesFromAValueObject")]
     [InlineData("CMTK1005", "WrapsItself")]
     [InlineData("CMTK1005", "CycleOne")]
@@ -47,6 +48,11 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1005", "TupleBacked")]
     [InlineData("CMTK1005", "NamedTupleBacked")]
     [InlineData("CMTK1005", "Named.Value")]
+    [InlineData("CMTK1005", "VoNames.Parse")]
+    [InlineData("CMTK1005", "VoNames.From")]
+    [InlineData("CMTK1005", "VoNames.TryFrom")]
+    [InlineData("CMTK1005", "VoNames.CompareTo")]
+    [InlineData("CMTK1005", "VoNames.MinValue")]
     [InlineData("CMTK1005", "FileLocal")]
     [InlineData("CMTK1005", "FileLocalBelowRegion")]
     [InlineData("CMTK1005", "FileLocalBelowPragma")]
@@ -138,6 +144,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1021", "SetWithMemberNamedAll.All")]
     [InlineData("CMTK1021", "SetWithCasedMembers.open")]
     [InlineData("CMTK1021", "SetWithCaseVariants.EXPRESS")]
+    [InlineData("CMTK1021", "SetNames.Name")]
+    [InlineData("CMTK1021", "SetNames.Match")]
     [InlineData("CMTK1011", "SetWithIgnoreCaseTryParse")]
     [InlineData("CMTK1011", "SetWithIgnoreCaseParse")]
     public void A_declaration_that_cannot_be_generated_is_an_error(string id, string type) =>
@@ -219,6 +227,36 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1005" && error.Message.StartsWith($"'{type}'") && error.Message.Contains(reason) && error.Message.Contains("compares by reference"), consumer.Output);
 
     /// <summary>
+    /// A type named as a member the generators introduce into it failed inside the generated code
+    /// (LAMA0611, CS0542: a member cannot have the name of its type), naming nothing the user wrote:
+    /// a closed set named <c>Name</c>, a value object named <c>Parse</c>. Each is refused by name.
+    /// </summary>
+    [Theory]
+    [InlineData("CMTK1021", "SetNames.Name", "'SetNames.Name' has the name of a member the generators introduce into it, and a member cannot have the name of its type, so 'SetNames.Name' is not generated: rename the set.")]
+    [InlineData("CMTK1005", "VoNames.Parse", "'VoNames.Parse' cannot be generated as a value object: a value object cannot be named 'Parse', the name of a member the generators introduce, since a member cannot have the name of its type; rename it.")]
+    public void A_type_named_as_a_generated_member_is_refused_by_name(string id, string type, string message) =>
+        consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith(message), $"{id} on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
+
+    /// <summary>
+    /// <c>System.Enum</c> is no enum: its generic <c>Enum.Parse&lt;TEnum&gt;(string)</c> was taken for a
+    /// <c>Parse</c> of its own, and the generated parsing failed (LAMA0611, CS0411).
+    /// </summary>
+    [Fact]
+    public void A_value_object_over_System_Enum_is_refused_with_the_reason() =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1005" && error.Message.StartsWith("'EnumBacked' cannot be generated as a value object: the wrapped type 'Enum' is the base of every enum and no enum itself; wrap the enum type"), consumer.Output);
+
+    /// <summary>
+    /// The companion class names the value object outside it, and an <c>[Obsolete(error: true)]</c> on
+    /// the value object, or on a type it is nested in, failed there (LAMA0611, CS0619). The companion
+    /// carries the attribute now, and inside an obsolete declaration C# reports no use of one.
+    /// </summary>
+    [Theory]
+    [InlineData("Retired")]
+    [InlineData("RetiredHolder")]
+    public void An_obsolete_value_object_is_generated(string type) =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}"), consumer.Output);
+
+    /// <summary>
     /// A value object over <c>object</c> compiled, and its converter wrote <c>OverObject.From(5)</c> as
     /// <c>{}</c> where an <c>object</c> property holding 5 is written as 5: the serializer writes an
     /// object by its run-time type, which a converter called directly does not.
@@ -231,11 +269,14 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     /// <summary>
     /// An interface or an abstract class is written and read as the serializer writes and reads it (its
     /// declared members, polymorphic where the type declares it, refused on reading where the serializer
-    /// refuses it), so it is wrapped. A guard against the refusal of <c>object</c> reaching further.
+    /// refuses it), so it is wrapped. A guard against the refusal of <c>object</c> reaching further. A type
+    /// whose only static <c>Parse(string)</c> is generic is wrapped without parsing: the generic one was
+    /// taken for its own and failed inside the generated code (LAMA0611, CS0411), as for <c>System.Enum</c>.
     /// </summary>
     [Theory]
     [InlineData("InterfaceBacked")]
     [InlineData("AbstractClassBacked")]
+    [InlineData("GenericParserBacked")]
     public void An_interface_or_an_abstract_class_is_wrapped(string type) =>
         consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'"), consumer.Output);
 
@@ -410,7 +451,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     /// an exception in an aspect or a compile error in the code it generated surfaces as LAMA0041 or
     /// LAMA0611, which tells the user nothing about their declaration. CS0535 is the one compiler
     /// error that accompanies a refused closed set: its interface has members the generators would
-    /// have implemented, and the CMTK error beside it says why they did not.
+    /// have implemented, and the CMTK error beside it says why they did not. A declaration whose error is
+    /// the compiler's own is built apart (<see cref="EqualityOperatorBuildTests"/>).
     /// </summary>
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
@@ -422,12 +464,21 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     /// did not implement. A value object or a generated set that lost a member the same way is a
     /// regression the list of ids alone would let through.
     /// </summary>
+    /// <summary>
+    /// A compiler error in a project hid every LAMA0611 inside a declaration's own file, so the build
+    /// that holds the value objects has none: what an aspect generated that does not compile is seen
+    /// there, by <see cref="Every_error_is_one_of_the_intended_ones"/>.
+    /// </summary>
+    [Fact]
+    public void The_declarations_build_without_a_compiler_error() =>
+        consumer.DeclarationErrors.ShouldNotContain(error => error.Id.StartsWith("CS", StringComparison.Ordinal), consumer.Output);
+
     [Fact]
     public void CS0535_names_only_a_refused_closed_set() =>
         consumer.Errors.Where(error => error.Id == "CS0535")
                 .ShouldAllBe(error => RefusedClosedSet().IsMatch(error.Message), consumer.Output);
 
-    [GeneratedRegex(@"^'(?:Consumer\.)?Set\w+(?:<T>)?' does not implement interface member ")]
+    [GeneratedRegex(@"^'(?:Consumer\.)?Set\w+(?:\.\w+)?(?:<T>)?' does not implement interface member ")]
     private static partial Regex RefusedClosedSet();
 
     /// <summary>
@@ -512,64 +563,6 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             namespace Consumer;
 
-            public sealed class SetNotPartial : IClosedSet<SetNotPartial> { public static readonly SetNotPartial A = new(); }
-
-            public partial class SetNotSealed : IClosedSet<SetNotSealed> { public static readonly SetNotSealed A = new(); }
-
-            public sealed partial class SetWithoutMembers : IClosedSet<SetWithoutMembers> { }
-
-            public sealed partial class SetWithPublicConstructor : IClosedSet<SetWithPublicConstructor> { public static readonly SetWithPublicConstructor A = new(); public SetWithPublicConstructor() { } }
-
-            public sealed partial class SetWithProperty : IClosedSet<SetWithProperty> { public static readonly SetWithProperty A = new(); public static SetWithProperty B => A; }
-
-            public sealed partial class SetWithMutableField : IClosedSet<SetWithMutableField> { public static readonly SetWithMutableField A = new(); public static SetWithMutableField B = A; }
-
-            public sealed partial class SetGeneric<T> : IClosedSet<SetGeneric<T>> { public static readonly SetGeneric<T> A = new(); }
-
-            public sealed partial class SetWithInternalConstructor : IClosedSet<SetWithInternalConstructor> { public static readonly SetWithInternalConstructor A = new(); internal SetWithInternalConstructor() { } }
-
-            public sealed partial class SetWithAlias : IClosedSet<SetWithAlias> { public static readonly SetWithAlias Open = new(); public static readonly SetWithAlias Legacy = Open; }
-
-            public sealed partial class SetWithFactoryMember : IClosedSet<SetWithFactoryMember> { public static readonly SetWithFactoryMember A = new(); public static readonly SetWithFactoryMember B = Make(); private static SetWithFactoryMember Make() => A; }
-
-            public sealed partial class SetWithUninitializedMember : IClosedSet<SetWithUninitializedMember> { public static readonly SetWithUninitializedMember A = new(); public static readonly SetWithUninitializedMember B; static SetWithUninitializedMember() { B = new(); } }
-
-            public sealed partial class SetWithTrailingCall : IClosedSet<SetWithTrailingCall> { public static readonly SetWithTrailingCall A = new(); public static readonly SetWithTrailingCall B = new SetWithTrailingCall().Same(); private SetWithTrailingCall Same() => A; }
-
-            public sealed partial record SetRecord : IClosedSet<SetRecord> { public static readonly SetRecord A = new(); }
-
-            // Abstract, so a closed set it is not: refused as unsealed, never skipped.
-            public abstract partial class SetAbstract : IClosedSet<SetAbstract> { }
-
-            public sealed partial class SetWithName : IClosedSet<SetWithName> { public static readonly SetWithName A = new(); public string Name => "A"; }
-
-            public sealed partial class SetWithExplicitAll : IClosedSet<SetWithExplicitAll> { public static readonly SetWithExplicitAll A = new(); static System.Collections.Generic.IReadOnlyList<SetWithExplicitAll> IClosedSet<SetWithExplicitAll>.All => [A]; }
-
-            public sealed partial class SetWithParsable : IClosedSet<SetWithParsable>, System.IParsable<SetWithParsable> { public static readonly SetWithParsable A = new(); }
-
-            [System.ComponentModel.TypeConverter(typeof(System.ComponentModel.StringConverter))]
-            public sealed partial class SetWithTypeConverterAttribute : IClosedSet<SetWithTypeConverterAttribute> { public static readonly SetWithTypeConverterAttribute A = new(); }
-
-            [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
-            public sealed partial class SetWithJsonConverterAttribute : IClosedSet<SetWithJsonConverterAttribute> { public static readonly SetWithJsonConverterAttribute A = new(); }
-
-            public sealed partial class SetWithMemberNamedParse : IClosedSet<SetWithMemberNamedParse> { public static readonly SetWithMemberNamedParse A = new(); public static readonly SetWithMemberNamedParse Parse = new(); }
-
-            public sealed partial class SetWithMemberNamedToString : IClosedSet<SetWithMemberNamedToString> { public static readonly new SetWithMemberNamedToString ToString = new(); }
-
-            public sealed partial class SetWithMemberNamedAll : IClosedSet<SetWithMemberNamedAll> { public static readonly SetWithMemberNamedAll All = new(); }
-
-            public sealed partial class SetWithCasedMembers : IClosedSet<SetWithCasedMembers> { public static readonly SetWithCasedMembers Open = new(); public static readonly SetWithCasedMembers open = new(); }
-
-            // Read as a member, it was none: its name threw and TryParse never found it.
-            public sealed partial class SetWithInternalMember : IClosedSet<SetWithInternalMember> { public static readonly SetWithInternalMember A = new(); internal static readonly SetWithInternalMember Draft = new(); }
-
-            public sealed partial class SetWithCaseVariants : IClosedSet<SetWithCaseVariants> { public static readonly SetWithCaseVariants Express = new(); public static readonly SetWithCaseVariants EXPRESS = new(); }
-
-            public sealed partial class SetWithIgnoreCaseTryParse : IClosedSet<SetWithIgnoreCaseTryParse> { public static readonly SetWithIgnoreCaseTryParse A = new(); public static bool TryParse(string? name, bool ignoreCase, out SetWithIgnoreCaseTryParse? member) { member = A; return true; } }
-
-            public sealed partial class SetWithIgnoreCaseParse : IClosedSet<SetWithIgnoreCaseParse> { public static readonly SetWithIgnoreCaseParse A = new(); public static SetWithIgnoreCaseParse Parse(string name, bool ignoreCase) => A; }
-
             // Generated; the calls below are CMTK0012's, in the project that declares the set.
             public sealed partial class SetToMatch : IClosedSet<SetToMatch> { public static readonly SetToMatch New = new(); public static readonly SetToMatch Open = new(); }
 
@@ -620,6 +613,10 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public readonly partial record struct InterfaceBacked : IValue<System.IDisposable>;
 
             public readonly partial record struct AbstractClassBacked : IValue<System.IO.Stream>;
+
+            public sealed class GenericParser { public static T Parse<T>(string text) where T : new() => new(); }
+
+            public readonly partial record struct GenericParserBacked : IValue<GenericParser>;
 
             // A record class that can be derived from: equality across a hierarchy is not value
             // equality, and a derived value object failed inside the generated code (LAMA0611).
@@ -766,6 +763,33 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             // Its generated property would have its name (CS0542), and a file-local type crashed
             // Metalama (LAMA0001).
             public static class Named { public readonly partial record struct Value : IValue<int>; }
+
+            // Named as a member the generators introduce: LAMA0611 (CS0542) inside the generated code.
+            public static class VoNames
+            {
+                public readonly partial record struct Parse : IValue<int>;
+
+                public readonly partial record struct From : IValue<int>;
+
+                public readonly partial record struct TryFrom : IValidatedValue<TryFrom, int, Fault>
+                {
+                    public static Result<TryFrom, Fault> Create(int value) => Result.Error(Fault.Refused);
+                }
+
+                public readonly partial record struct CompareTo : IValue<int>;
+
+                public readonly partial record struct MinValue : IValue<int>;
+            }
+
+            // Enum.Parse<TEnum>(string) was taken for a Parse of its own: LAMA0611 (CS0411).
+            public readonly partial record struct EnumBacked : IValue<System.Enum>;
+
+            // The companion class named the value object outside it: LAMA0611 (CS0619).
+            [System.Obsolete("Retired.", error: true)]
+            public readonly partial record struct Retired : IValue<int>;
+
+            [System.Obsolete("Retired.", error: true)]
+            public static class RetiredHolder { public readonly partial record struct Inner : IValue<int>; }
 
             file readonly partial record struct FileLocal : IValue<int>;
 
@@ -1290,10 +1314,91 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             """;
 
         /// <summary>
+        /// The closed sets the generators refuse, built apart: a refused set does not implement its
+        /// interface (CS0535), and beside a compiler error Metalama reported no error in the code it
+        /// generated into a declaration's own file, so in one project with the value objects a LAMA0611
+        /// there went unseen (measured 2026-10-13 with a generic static Parse taken for the wrapped type's).
+        /// </summary>
+        private const string RefusedSets =
+            """
+            using CodoMetis.TypeKit.ClosedSets;
+
+            namespace Consumer;
+
+            public sealed class SetNotPartial : IClosedSet<SetNotPartial> { public static readonly SetNotPartial A = new(); }
+
+            public partial class SetNotSealed : IClosedSet<SetNotSealed> { public static readonly SetNotSealed A = new(); }
+
+            public sealed partial class SetWithoutMembers : IClosedSet<SetWithoutMembers> { }
+
+            public sealed partial class SetWithPublicConstructor : IClosedSet<SetWithPublicConstructor> { public static readonly SetWithPublicConstructor A = new(); public SetWithPublicConstructor() { } }
+
+            public sealed partial class SetWithProperty : IClosedSet<SetWithProperty> { public static readonly SetWithProperty A = new(); public static SetWithProperty B => A; }
+
+            public sealed partial class SetWithMutableField : IClosedSet<SetWithMutableField> { public static readonly SetWithMutableField A = new(); public static SetWithMutableField B = A; }
+
+            public sealed partial class SetGeneric<T> : IClosedSet<SetGeneric<T>> { public static readonly SetGeneric<T> A = new(); }
+
+            public sealed partial class SetWithInternalConstructor : IClosedSet<SetWithInternalConstructor> { public static readonly SetWithInternalConstructor A = new(); internal SetWithInternalConstructor() { } }
+
+            public sealed partial class SetWithAlias : IClosedSet<SetWithAlias> { public static readonly SetWithAlias Open = new(); public static readonly SetWithAlias Legacy = Open; }
+
+            public sealed partial class SetWithFactoryMember : IClosedSet<SetWithFactoryMember> { public static readonly SetWithFactoryMember A = new(); public static readonly SetWithFactoryMember B = Make(); private static SetWithFactoryMember Make() => A; }
+
+            public sealed partial class SetWithUninitializedMember : IClosedSet<SetWithUninitializedMember> { public static readonly SetWithUninitializedMember A = new(); public static readonly SetWithUninitializedMember B; static SetWithUninitializedMember() { B = new(); } }
+
+            public sealed partial class SetWithTrailingCall : IClosedSet<SetWithTrailingCall> { public static readonly SetWithTrailingCall A = new(); public static readonly SetWithTrailingCall B = new SetWithTrailingCall().Same(); private SetWithTrailingCall Same() => A; }
+
+            public sealed partial record SetRecord : IClosedSet<SetRecord> { public static readonly SetRecord A = new(); }
+
+            // Abstract, so a closed set it is not: refused as unsealed, never skipped.
+            public abstract partial class SetAbstract : IClosedSet<SetAbstract> { }
+
+            public sealed partial class SetWithName : IClosedSet<SetWithName> { public static readonly SetWithName A = new(); public string Name => "A"; }
+
+            public sealed partial class SetWithExplicitAll : IClosedSet<SetWithExplicitAll> { public static readonly SetWithExplicitAll A = new(); static System.Collections.Generic.IReadOnlyList<SetWithExplicitAll> IClosedSet<SetWithExplicitAll>.All => [A]; }
+
+            public sealed partial class SetWithParsable : IClosedSet<SetWithParsable>, System.IParsable<SetWithParsable> { public static readonly SetWithParsable A = new(); }
+
+            [System.ComponentModel.TypeConverter(typeof(System.ComponentModel.StringConverter))]
+            public sealed partial class SetWithTypeConverterAttribute : IClosedSet<SetWithTypeConverterAttribute> { public static readonly SetWithTypeConverterAttribute A = new(); }
+
+            [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+            public sealed partial class SetWithJsonConverterAttribute : IClosedSet<SetWithJsonConverterAttribute> { public static readonly SetWithJsonConverterAttribute A = new(); }
+
+            public sealed partial class SetWithMemberNamedParse : IClosedSet<SetWithMemberNamedParse> { public static readonly SetWithMemberNamedParse A = new(); public static readonly SetWithMemberNamedParse Parse = new(); }
+
+            public sealed partial class SetWithMemberNamedToString : IClosedSet<SetWithMemberNamedToString> { public static readonly new SetWithMemberNamedToString ToString = new(); }
+
+            public sealed partial class SetWithMemberNamedAll : IClosedSet<SetWithMemberNamedAll> { public static readonly SetWithMemberNamedAll All = new(); }
+
+            public sealed partial class SetWithCasedMembers : IClosedSet<SetWithCasedMembers> { public static readonly SetWithCasedMembers Open = new(); public static readonly SetWithCasedMembers open = new(); }
+
+            // Read as a member, it was none: its name threw and TryParse never found it.
+            public sealed partial class SetWithInternalMember : IClosedSet<SetWithInternalMember> { public static readonly SetWithInternalMember A = new(); internal static readonly SetWithInternalMember Draft = new(); }
+
+            public sealed partial class SetWithCaseVariants : IClosedSet<SetWithCaseVariants> { public static readonly SetWithCaseVariants Express = new(); public static readonly SetWithCaseVariants EXPRESS = new(); }
+
+            public sealed partial class SetWithIgnoreCaseTryParse : IClosedSet<SetWithIgnoreCaseTryParse> { public static readonly SetWithIgnoreCaseTryParse A = new(); public static bool TryParse(string? name, bool ignoreCase, out SetWithIgnoreCaseTryParse? member) { member = A; return true; } }
+
+            public sealed partial class SetWithIgnoreCaseParse : IClosedSet<SetWithIgnoreCaseParse> { public static readonly SetWithIgnoreCaseParse A = new(); public static SetWithIgnoreCaseParse Parse(string name, bool ignoreCase) => A; }
+
+            // Named as a generated member: LAMA0611 (CS0542) inside the generated code.
+            public static class SetNames
+            {
+                public sealed partial class Name : IClosedSet<Name> { public static readonly Name A = new(); }
+
+                public sealed partial class Match : IClosedSet<Match> { public static readonly Match A = new(); }
+            }
+            """;
+
+        /// <summary>
         /// Under the ignored <c>artifacts/</c> rather than the temp folder: on macOS that is behind the
         /// <c>/var</c> symlink, and NuGet's relative project paths then resolve against the wrong side.
         /// </summary>
         private readonly string _directory = Path.Combine(RepositoryRoot(), "artifacts", $"consumer-{Guid.NewGuid():N}");
+
+        private readonly string _setsDirectory = Path.Combine(RepositoryRoot(), "artifacts", $"consumer-{Guid.NewGuid():N}");
 
         /// <summary>A second file, so a declaration can be split across files.</summary>
         private const string OtherFile =
@@ -1311,16 +1416,47 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             }
             """;
 
+        /// <summary>The errors of both builds.</summary>
         public IReadOnlyList<Diagnostic> Errors { get; private set; } = [];
+
+        /// <summary>The errors of the build without the refused closed sets, where no compiler error hides a LAMA0611.</summary>
+        public IReadOnlyList<Diagnostic> DeclarationErrors { get; private set; } = [];
 
         public string Output { get; private set; } = "";
 
         public async ValueTask InitializeAsync()
         {
-            Directory.CreateDirectory(_directory);
+            var declarations = Build(_directory, new Dictionary<string, string> { ["Declarations.cs"] = Declarations, ["OtherFile.cs"] = OtherFile });
+            var sets = Build(_setsDirectory, new Dictionary<string, string> { ["RefusedSets.cs"] = RefusedSets });
+
+            var (declarationOutput, declarationErrors) = await declarations;
+            var (setOutput, setErrors) = await sets;
+
+            DeclarationErrors = declarationErrors;
+            Errors = [.. declarationErrors.Concat(setErrors).Distinct()];
+            Output = declarationOutput + setOutput;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            foreach (var directory in new[] { _directory, _setsDirectory })
+                if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+
+            return ValueTask.CompletedTask;
+        }
+
+        /// <summary>
+        /// Builds a consumer of the generators and the analyzer in <paramref name="directory"/> from
+        /// <paramref name="sources"/>, and reads its errors. A declaration whose build error is the
+        /// compiler's own (CS0111) belongs in a consumer of its own: beside it, Metalama reported no error
+        /// in the code it generated into a declaration's own file, which the other guards rely on.
+        /// </summary>
+        internal static async Task<(string Output, IReadOnlyList<Diagnostic> Errors)> Build(string directory, IReadOnlyDictionary<string, string> sources)
+        {
+            Directory.CreateDirectory(directory);
 
             var src = Path.Combine(RepositoryRoot(), "src");
-            await File.WriteAllTextAsync(Path.Combine(_directory, "Consumer.csproj"),
+            await File.WriteAllTextAsync(Path.Combine(directory, "Consumer.csproj"),
                 $"""
                  <Project Sdk="Microsoft.NET.Sdk">
                    <PropertyGroup>
@@ -1334,12 +1470,12 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                    </ItemGroup>
                  </Project>
                  """);
-            await File.WriteAllTextAsync(Path.Combine(_directory, "Declarations.cs"), Declarations);
-            await File.WriteAllTextAsync(Path.Combine(_directory, "OtherFile.cs"), OtherFile);
+            foreach (var (name, source) in sources)
+                await File.WriteAllTextAsync(Path.Combine(directory, name), source);
 
             // Only errors are read, so the rules that ship as warnings or a suggestion are raised here.
             // CMTK0003 ships as an error, and is left to its own severity, so its reports here prove it.
-            await File.WriteAllTextAsync(Path.Combine(_directory, ".editorconfig"),
+            await File.WriteAllTextAsync(Path.Combine(directory, ".editorconfig"),
                 """
                 root = true
 
@@ -1353,9 +1489,9 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             // Stop MSBuild's upward search here, so the repository's own build settings (warnings as
             // errors, documentation, central package management) do not apply to the consumer.
-            await File.WriteAllTextAsync(Path.Combine(_directory, "Directory.Build.props"), "<Project />");
-            await File.WriteAllTextAsync(Path.Combine(_directory, "Directory.Build.targets"), "<Project />");
-            await File.WriteAllTextAsync(Path.Combine(_directory, "Directory.Packages.props"),
+            await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Build.props"), "<Project />");
+            await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Build.targets"), "<Project />");
+            await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Packages.props"),
                 "<Project><PropertyGroup><ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally></PropertyGroup></Project>");
 
             // --no-dependencies and RestoreRecursive=false: the referenced projects are already built
@@ -1364,7 +1500,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             // passed on: without it the consumer builds in Debug and, in a Release run such as CI's,
             // finds no referenced assembly at all.
             using var process = Process.Start(new ProcessStartInfo(
-                "dotnet", ["build", _directory, "-c", Configuration, "--no-dependencies", "-p:RestoreRecursive=false", "-nodeReuse:false", "-clp:NoSummary"])
+                "dotnet", ["build", directory, "-c", Configuration, "--no-dependencies", "-p:RestoreRecursive=false", "-nodeReuse:false", "-clp:NoSummary"])
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError  = true,
@@ -1375,16 +1511,11 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             var errors = process.StandardError.ReadToEndAsync();
             await process.WaitForExitAsync();
 
-            Output = await output + await errors;
-            Errors = [.. DiagnosticLine().Matches(Output).Select(match => new Diagnostic(match.Groups["id"].Value, match.Groups["message"].Value)).Distinct()];
+            var text = await output + await errors;
+            IReadOnlyList<Diagnostic> found = [.. DiagnosticLine().Matches(text).Select(match => new Diagnostic(match.Groups["id"].Value, match.Groups["message"].Value)).Distinct()];
 
-            Errors.ShouldNotBeEmpty($"The consumer build reported no errors at all, so it did not run as intended:{Environment.NewLine}{Output}");
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);
-            return ValueTask.CompletedTask;
+            found.ShouldNotBeEmpty($"The consumer build reported no errors at all, so it did not run as intended:{Environment.NewLine}{text}");
+            return (text, found);
         }
 
         /// <summary>The configuration this test assembly, and so the projects it references, was built in.</summary>

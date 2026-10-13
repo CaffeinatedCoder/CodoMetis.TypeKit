@@ -139,11 +139,17 @@ internal sealed partial class ValueObjectAspect : TypeAspect
             return false;
         }
 
-        // Its generated property is named Value, and a member cannot have its type's name (CS0542,
-        // inside the generated code).
+        // A member cannot have its type's name (CS0542, inside the generated code, as LAMA0611): Value,
+        // and every other member the generators introduce into a value object of some wrapped type.
         if (target.Name == nameof(IValueObject<,>.Value))
         {
             builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, $"a value object cannot be named '{nameof(IValueObject<,>.Value)}', the name of its generated property; rename it")));
+            return false;
+        }
+
+        if (ValueObjectDeclaration.GeneratedMemberNames.Contains(target.Name))
+        {
+            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target, $"a value object cannot be named '{target.Name}', the name of a member the generators introduce, since a member cannot have the name of its type; rename it")));
             return false;
         }
 
@@ -224,6 +230,16 @@ internal sealed partial class ValueObjectAspect : TypeAspect
         {
             builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target,
                 "the wrapped type 'object' holds a value of any type, which the serializer writes by its run-time type and a value object's converter cannot (5 was written as {}); wrap the type the value has")));
+            return false;
+        }
+
+        // System.Enum is the base of every enum and no enum itself: its generic Enum.Parse<TEnum>(string)
+        // was taken for a Parse of its own, and the generated parsing failed inside the generated code
+        // (LAMA0611, CS0411), naming nothing the user wrote.
+        if (namedValueType.Equals(TypeFactory.GetNamedType(typeof(Enum))))
+        {
+            builder.Diagnostics.Report(UnsupportedValueObject.WithArguments((target,
+                "the wrapped type 'Enum' is the base of every enum and no enum itself; wrap the enum type")));
             return false;
         }
 

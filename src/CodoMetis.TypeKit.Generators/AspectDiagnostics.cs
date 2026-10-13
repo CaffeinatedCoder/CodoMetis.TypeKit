@@ -84,6 +84,13 @@ internal static class AspectDiagnostics
     public static readonly DiagnosticDefinition<(INamedType Type, string Member, string Reason)> ClosedSetMemberNameTaken =
         new("CMTK1021", Severity.Error, "'{0}.{1}' {2}, so '{0}' is not generated: rename the member." + SeeBuildErrors);
 
+    /// <summary>
+    /// CMTK1021's collision the other way round: the set itself, not one of its members, has the name of
+    /// a generated member, which C# refuses inside a type of that name (CS0542).
+    /// </summary>
+    public static readonly DiagnosticDefinition<INamedType> ClosedSetNamedAsGeneratedMember =
+        new("CMTK1021", Severity.Error, "'{0}' has the name of a member the generators introduce into it, and a member cannot have the name of its type, so '{0}' is not generated: rename the set." + SeeBuildErrors);
+
     public static readonly DiagnosticDefinition<INamedType> AbstractValueObject =
         new("CMTK1022", Severity.Error, "'{0}' is abstract, so it is not generated: an abstract type cannot be a value object. A value held as '{0}' would have no Value, and its JSON would be '{{}}'. Declare the marker on a sealed type." + SeeBuildErrors);
 }

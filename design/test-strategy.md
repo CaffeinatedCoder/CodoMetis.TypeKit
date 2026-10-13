@@ -30,3 +30,11 @@
    once before ([Option and Result](option-result.md)). Seeded: a README or sample edited alone, the bare fault back in both, the committed
    READMEs, a changed SQL, JSON or string output, an opt-out on a compiled block or without a reason, an
    unlabelled fence, and either parser finding nothing each fail their test.
+7. **Build outcomes** (2026-10-13). A declaration the generators refuse is an error, which no compiling
+   project can observe, so `BuildOutcomeTests` builds throwaway consumers against the generators and the
+   analyzer and reads their errors: every refusal by id and message, and no LAMA error, which would
+   name nothing the user wrote. A compiler error in a consumer hides every LAMA0611 inside a
+   declaration's own file (measured with a seeded generic `Parse`: reported alone, unseen beside a
+   CS0535), so the refused closed sets, which do not implement their interface, are built apart from
+   the value objects, whose build must have no compiler error, and a declaration whose error is C#'s own
+   (CS0111) has a consumer of its own (`EqualityOperatorBuildTests`).

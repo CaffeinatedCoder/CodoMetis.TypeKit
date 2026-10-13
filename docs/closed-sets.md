@@ -171,7 +171,7 @@ A declaration they cannot complete fails the build, naming it; the generators'
 | is generic, or nested in a generic type | CMTK1018 |
 | has a member not created with `new` where it is declared: `Legacy = Open` would give one instance two names | CMTK1019 |
 | is a record: `with` would copy a member into an instance that is none | CMTK1020 |
-| has a member named as a generated member, or two whose names differ only in case (`Open`, `open`), which collide in `Match`'s parameters and in `TryParse(name, ignoreCase: true)` | CMTK1021 |
+| has a member named as a generated member, or two whose names differ only in case (`Open`, `open`), which collide in `Match`'s parameters and in `TryParse(name, ignoreCase: true)`, or is itself named as a generated member (`Name`, `Match`): a member cannot have the name of its type | CMTK1021 |
 | writes a generated member by hand, `ToString()` apart | CMTK1011 |
 | is compiled without CodoMetis.TypeKit.Generators | CMTK0002 |
 

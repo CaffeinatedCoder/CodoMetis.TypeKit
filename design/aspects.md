@@ -144,6 +144,22 @@
   - CMTK1005 adds a generic wrapped type, tuples included (its equality is not value equality: a
     `List<T>` compares by reference), a value object named `Value` (CS0542), and a `file`-local one
     (LAMA0001, which failed the whole project).
+- **Build failures that named nothing the user wrote (decided 2026-10-13, the pre-tag review).** Each
+  was LAMA0611 or a bare compiler error:
+  - A value object named as any other member the generators introduce (`From`, `TryFrom`,
+    `FromKnownGood`, `Revalidate`, `Parse`, `TryParse`, `TryFormat`, `MinValue`, `MaxValue`,
+    `CompareTo`, the private helpers) is CMTK1005, whatever it wraps, so the rule is one list
+    (`ValueObjectDeclaration.GeneratedMemberNames`); a closed set named as one of its generated members
+    (`Name`, `All`, `Match`, ...) is CMTK1021, a second definition of that id with the set's own message.
+    Both were CS0542 inside the generated code.
+  - `IValue<System.Enum>` is CMTK1005: `Enum.Parse<TEnum>(string)` was taken for a static `Parse` of its
+    own (CS0411). The static-`Parse` strategy now takes only a non-generic one.
+  - An `[Obsolete(error: true)]` on a value object, or on a type it is nested in, made the companion
+    class's use of it CS0619. It is made to work, not refused: the companion class carries the nearest
+    `[Obsolete]`, and C# reports no use of an obsolete type inside an obsolete declaration. Nothing else
+    generated names the value object outside it. A closed set is generated inside itself and built.
+  - A hand-written `operator ==`/`!=` between two of the type is CMTK1011 beside C#'s own CS0111, which
+    names only `op_Equality`; it is a hand-written equality like `Equals(TSelf)`.
 - **A `DateTime` is UTC on the wire (decided 2026-09-27).** Written and read, value and key, through
   `GeneratedJson.AsUtc`: a `Local` value converts, and an `Unspecified` one (an offset-less string, a
   column without a time zone) is taken as UTC with its digits kept. `ToUniversalTime()` read it as

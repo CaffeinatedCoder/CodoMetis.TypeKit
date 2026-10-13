@@ -216,7 +216,9 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
         if (valueType.Constructors.Any(constructor => constructor is { Accessibility: Accessibility.Public, Parameters: [{ Type.SpecialType: SpecialType.String }] }))
             return ValueParseStrategy.StringConstructor;
 
-        if (valueType.Methods.Any(method => method is { Name: "Parse", IsStatic: true, Accessibility: Accessibility.Public, Parameters: [{ Type.SpecialType: SpecialType.String }] }))
+        // Not a generic one, such as Enum.Parse<TEnum>(string), whose type argument the generated call
+        // cannot infer (LAMA0611, CS0411).
+        if (valueType.Methods.Any(method => method is { Name: "Parse", IsStatic: true, Accessibility: Accessibility.Public, TypeParameters.Count: 0, Parameters: [{ Type.SpecialType: SpecialType.String }] }))
             return ValueParseStrategy.StaticParse;
 
         return ValueParseStrategy.Unsupported;

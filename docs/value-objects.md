@@ -194,9 +194,10 @@ those ([Parsing and formatting](../src/CodoMetis.TypeKit.Generators/README.md#pa
 
 What cannot be wrapped is refused at build time (CMTK1005): a generic type, a tuple included, because
 a `List<T>` compares by reference; a nullable; an array; `object`, which the serializer writes by the
-type of what it holds and a value object's converter cannot; and another value object, since wrapping
-what it wraps says the same with one type. An interface or an abstract class is wrapped, and its JSON
-is the serializer's for that type, polymorphic where the type declares it.
+type of what it holds and a value object's converter cannot; `System.Enum`, which is no enum; and
+another value object, since wrapping what it wraps says the same with one type. An interface or an
+abstract class is wrapped, and its JSON is the serializer's for that type, polymorphic where the type
+declares it.
 
 ## Which factory
 

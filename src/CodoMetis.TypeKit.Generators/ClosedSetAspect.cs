@@ -67,6 +67,11 @@ internal sealed partial class ClosedSetAspect : TypeAspect
         // name to TryParse(name, ignoreCase: true), and where the difference is the first letter's
         // they gave Match one parameter name twice (LAMA0611, CS0100).
         var generatedNames = ClosedSetTypes.GeneratedNames(target);
+
+        // A set named as a generated member failed inside the generated code (LAMA0611, CS0542: a
+        // member cannot have the name of its type), naming nothing the user wrote.
+        if (generatedNames.Contains(target.Name)) problems.Add(ClosedSetNamedAsGeneratedMember.WithArguments(target));
+
         foreach (var member in members.Where(member => generatedNames.Contains(member.Name)))
             problems.Add(ClosedSetMemberNameTaken.WithArguments((target, member.Name, "has the name of a member the generators introduce")));
         foreach (var shared in members.GroupBy(member => member.Name, StringComparer.OrdinalIgnoreCase).Where(group => group.Count() > 1))
