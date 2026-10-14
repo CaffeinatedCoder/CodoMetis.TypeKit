@@ -21,7 +21,11 @@ The consumer's guide is [docs/closed-sets.md](../docs/closed-sets.md).
   (`InitializerKind.BeforeTypeConstructor`) assigns each member's name and builds `All`, so a member
   needs no `nameof`, and the parts of a set split across files are all initialised when it runs.
   The cost is a window: a static field initializer of the set itself runs before it, and anything
-  generated that it reads there is refused rather than answered from a half-built set.
+  generated that it reads there is refused rather than answered from a half-built set. A member
+  written in the static constructor's body would hold an instance already named as another, and one
+  written in a field initializer would give one instance two names, all of which compiles: the
+  analyzer refuses every write to a member outside its declaration (CMTK0013, decided 2026-10-14
+  before the tag, after a review found `Open = Closed` turning `Closed.Match` to the open branch).
 - **`All` is a wrapper, never the array.** Cast to `IList<T>` or `T[]`, the array was writable, and
   a member replaced there was listed while `Parse` answered the original.
 - **Ordinal unless asked** ([decision 51](adr/0051-closed-set-parses-ignoring-case-only.md)): JSON,

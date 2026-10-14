@@ -53,8 +53,8 @@ a large codebase in steps, lower the rule for a while:
 dotnet_diagnostic.CMTK0003.severity = warning
 ```
 
-CMTK0010, CMTK0011 and CMTK0012 are new errors too, but each reports only on what 2.0 adds: the
-type-parameter attributes, `[RequireParameterlessConstructor]` and a closed set's `Match`. No code
+CMTK0010 to CMTK0013 are new errors too, but each reports only on what 2.0 adds: the
+type-parameter attributes, `[RequireParameterlessConstructor]` and closed sets. No code
 that built against 1.5 meets them.
 
 ## Value objects that are build errors now

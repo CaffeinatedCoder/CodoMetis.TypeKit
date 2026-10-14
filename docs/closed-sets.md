@@ -177,6 +177,7 @@ A declaration they cannot complete fails the build, naming it; the generators'
 | is a record: `with` would copy a member into an instance that is none | CMTK1020 |
 | has a member named as a generated member, or two whose names differ only in case (`Open`, `open`), which collide in `Match`'s parameters and in `TryParse(name, ignoreCase: true)`, or two whose `Match` parameters would have one name (a Kelvin sign and a `K`), or is itself named as a generated member (`Name`, `Match`): a member cannot have the name of its type | CMTK1021 |
 | writes a generated member by hand, `ToString()` apart | CMTK1011 |
+| writes a member outside its declaration, in its static constructor or another field's initializer: `Open = Closed` would leave `Open` holding the instance named `Closed` | CMTK0013 |
 | is compiled without CodoMetis.TypeKit.Generators | CMTK0002 |
 
 The set's own code can still call its private constructor beside its members, and such an instance

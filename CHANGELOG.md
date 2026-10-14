@@ -36,6 +36,7 @@ Still `net10.0` and Metalama 2026.1. What builds or runs differently, and what t
 - **Text guards**: `AsText()` and `AsIdentifier()` trim, compose to NFC (`AsText`) and refuse invisible characters.
 - **Type constraints**: `[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]` (CMTK0010) and `[RequireParameterlessConstructor]` (CMTK0011, with a code fix).
 - **CMTK0012**: a closed set's `Match` called by position, with a code fix.
+- **CMTK0013**: a closed set's member written outside its declaration, after it was named.
 - **`Option`**: async steps and `Task<Option<T>>` continuations, `SingleOrNone`, `ElementAtOrNone`, `Choose`, `Transpose`, `Traverse`; EF Core's `FirstOrNoneAsync` and `SingleOrNoneAsync`.
 - **`TraverseAsync`** on a sequence: one at a time, cancellable.
 - **Docs**: topic pages under `docs/`, every code block compiled.

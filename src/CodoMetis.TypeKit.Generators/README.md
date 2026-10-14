@@ -249,8 +249,9 @@ satellite describes it as a string enum of the names, with nothing registered pe
 members are faults declares `IFaultSet<TSelf>`, a `FaultKind` and an optional description per member,
 and the ASP.NET Core satellite answers it by kind.
 
-Each member is initialized with `new` where it is declared (CMTK1019), and the constructors are
-private (CMTK1016); a record is refused (CMTK1020). A member may not take the name of a generated
+Each member is initialized with `new` where it is declared (CMTK1019), and never written again
+(CMTK0013, the analyzer's: a member assigned in the static constructor would hold an instance named
+and listed as another), and the constructors are private (CMTK1016); a record is refused (CMTK1020). A member may not take the name of a generated
 member, nor differ from another's only in case (`Open` and `open`), since
 `TryParse(name, ignoreCase: true)` could not tell them apart (CMTK1021). A `ToString()` written by
 hand is kept, and the name is still what JSON, parsing and the column use. An overload of a generated
@@ -394,7 +395,7 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1021 | A closed set's member named as a member the generators introduce (`Name`, `QualifiedName`, `All`, `Match`, `Parse`, `TryParse`, `ToString`, the JSON or type converter), a set itself named as one of them (a member cannot have the name of its type), or a member whose name differs from another member's only in case: they collide in `TryParse(name, ignoreCase: true)`, and in `Match`'s parameters where the first letter is the difference; or two members whose `Match` parameters would have one name, which lower-casing the first letter gives a member starting with the Kelvin sign (U+212A) and one starting with `K`. |
 | CMTK1022 | An abstract type with a value-object marker: it would get no member, and a value held as it, of a type derived from it, would have no `Value` and be written as `{}`. Declare the marker on the sealed type. An abstract closed set is CMTK1014. |
 
-The analyzers that come with the base package add CMTK0001 to CMTK0012; see
+The analyzers that come with the base package add CMTK0001 to CMTK0013; see
 [CodoMetis.TypeKit.Analyzers](https://www.nuget.org/packages/CodoMetis.TypeKit.Analyzers).
 
 ## Reading the generated code

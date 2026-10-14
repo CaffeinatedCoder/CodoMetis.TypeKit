@@ -500,6 +500,8 @@ They arrive with this package, so whoever can see the interfaces gets the guard:
   The code fix writes it.
 - **CMTK0012**: a closed set's `Match` given an argument by position, where reordering two members
   would swap their branches and compile. The code fix names every argument.
+- **CMTK0013**: a closed set's member written outside its declaration, in the static constructor or
+  another field's initializer, so it holds an instance named and listed as another member.
 
 The rules also run in Razor components (`.razor`, `.cshtml`).
 

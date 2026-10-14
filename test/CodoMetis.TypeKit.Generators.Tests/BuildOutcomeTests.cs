@@ -207,6 +207,15 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
         consumer.Errors.ShouldContain(error => error.Id == "CMTK0012" && error.Message.StartsWith("'SetToMatch.Match' is given an argument by position") && error.Message.Contains("(@new:, open:)"), consumer.Output);
 
     /// <summary>
+    /// A member assigned in the static constructor compiles, and the generators named it before that
+    /// body ran: <c>Closed.Match</c> took the <c>open</c> branch, and <c>Parse("Open")</c> was written as
+    /// <c>"Closed"</c>. CMTK0013 reports it in the project that declares the set, beside the weaving.
+    /// </summary>
+    [Fact]
+    public void CMTK0013_reports_a_member_assigned_in_the_static_constructor() =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK0013" && error.Message.StartsWith("'SetReassigned.Open' is written outside its declaration"), consumer.Output);
+
+    /// <summary>
     /// Every value object over another one is refused, so a cycle would be refused without this
     /// reason too, but not told that it loops, or through which types.
     /// </summary>
@@ -460,7 +469,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK0012", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CMTK1019", "CMTK1020", "CMTK1021", "CMTK1022", "CS0535"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK0012", "CMTK0013", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CMTK1019", "CMTK1020", "CMTK1021", "CMTK1022", "CS0535"], ignoreOrder: false, customMessage: consumer.Output);
 
     /// <summary>
     /// CS0535 is allowed above only for a refused closed set, whose interface members the generators
@@ -574,6 +583,15 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                 public static int ByPosition(SetToMatch set) => set.Match(() => 1, () => 2);
 
                 public static int Named(SetToMatch set) => set.Match(@new: () => 1, open: () => 2);
+            }
+
+            // Generated, and named before the static constructor's body, which then swaps a member: CMTK0013's.
+            public sealed partial class SetReassigned : IClosedSet<SetReassigned>
+            {
+                public static readonly SetReassigned Open = new();
+                public static readonly SetReassigned Closed = new();
+
+                static SetReassigned() { Open = Closed; }
             }
 
             public readonly record struct NotPartial : IValue<int>;

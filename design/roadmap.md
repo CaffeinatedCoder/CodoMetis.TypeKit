@@ -7,7 +7,7 @@ item names the decision that scoped it.
 
 - `2.0.0-preview.1` to nuget.org, on hold since 2026-10-13 until the user says so, then the consumer
   smoke test against it ([decision 42](adr/0042-2-0-0-next-release-bundles.md)).
-- The release: date the changelog's section, move the unshipped analyzer rows (CMTK0010 to CMTK0012
+- The release: date the changelog's section, move the unshipped analyzer rows (CMTK0010 to CMTK0013
   new, CMTK0003 changed) to `AnalyzerReleases.Shipped.md` under the release, merge so the help links'
   headings exist on `main`, and tag `v2.0.0`. The release workflow and `ChangelogTests` check each.
 

@@ -24,6 +24,7 @@ appears to: an instance that passed no factory, or a value object that was never
 | CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute, `[Abstract]`, `[Sealed]`, `[Record]` or `[Concrete]`, at any closed use: a base type, a member, a parameter, a local, a `typeof`, an attribute, a call or a method group, written or inferred, and a member of a generic extension block, whose arguments the receiver gives. A type parameter forwarded without the attribute is a breach too, and a method implementing an interface's method, or overriding one, carries the constraint of what it implements, a static one and one a base class declares included. |
 | CMTK0011 | Error | A concrete class that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. A struct is never reported: its parameterless constructor is public and can be nothing else. The code fix writes or changes the constructor. |
 | CMTK0012 | Error | A closed set's `Match` given an argument by position, which binds to whichever member is declared at that place, so reordering the members swaps the branches. The code fix names every argument. |
+| CMTK0013 | Error | A closed set's member written outside its declaration: in the static constructor, after the generators named the instance it held, or in another static field's initializer, before. |
 
 The ids are public contract and never change meaning. The generators' own build errors,
 CMTK1000 to CMTK1022, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
@@ -446,6 +447,28 @@ meaning. A parameter is the member's name with its first letter lower-cased, and
 escaped: a member `New` is `@new:`. An overload the set declares itself, such as
 `Match(Func<OrderStatus, string>)`, is its own and is not reported.
 
+## CMTK0013
+
+The generators give each member of a closed set its name, and fill `All`, after the static field
+initializers and before the static constructor's body. A member written in that body keeps the
+field pointing at an instance already named as another member; one written in another field's
+initializer gives one instance two names. Both compile, and C# allows the write nowhere else.
+
+```csharp
+public sealed partial class OrderStatus : IClosedSet<OrderStatus>
+{
+    public static readonly OrderStatus Open = new();
+    public static readonly OrderStatus Closed = new();
+
+    static OrderStatus() { Open = Closed; }   // CMTK0013: Open now holds the instance named "Closed"
+}
+```
+
+There, `OrderStatus.Closed.Match(open: …, closed: …)` takes the `open` branch, `Parse("Open")` is
+written back as `"Closed"`, and `All[0]` is not `Parse("Open")`. An assignment, `??=`, a
+deconstruction, a `ref` or `out` argument and a `ref` taken to the member are each reported. A
+static constructor that only reads the members, to build a lookup, is silent.
+
 ## Configuration
 
 Severity follows the usual `.editorconfig` mechanism, for instance
@@ -456,8 +479,8 @@ there too, put the line in a `.globalconfig` file, which applies to every file o
 The errors are the rules where the code is wrong whatever surrounds it: a `default` written out
 (CMTK0001), a value object nothing generates (CMTK0002), validation bypassed (CMTK0004), a type
 argument that breaks what its parameter declares (CMTK0010), a constructor a host will look for
-and not find (CMTK0011), and branches bound to members by their order (CMTK0012). So is a result
-dropped without saying so (CMTK0003): a drop that nothing depends on is correct, and `_` says it in
+and not find (CMTK0011), branches bound to members by their order (CMTK0012), and a member that
+answers to another's name (CMTK0013). So is a result dropped without saying so (CMTK0003): a drop that nothing depends on is correct, and `_` says it in
 the code, where every reader sees it. These fail the build because a warning on correct code is
 rare for them and a missed one is a defect at run time. The
 others are warnings, or for CMTK0007 Info, because correct code can look the same and has nothing

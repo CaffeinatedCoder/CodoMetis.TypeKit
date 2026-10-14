@@ -31,7 +31,8 @@ namespace CodoMetis.TypeKit.ClosedSets;
 /// only private constructors (CMTK1016), no other public static member of its own type (CMTK1017),
 /// and not a record (CMTK1020), since every one of those would make an instance the generators cannot
 /// see as a member. Each member is initialized with <c>new</c> where it is declared, and with nothing
-/// else (CMTK1019): a member initialized with another member would give that instance two names. A
+/// else (CMTK1019), and never written again (CMTK0013): a member initialized or assigned with another
+/// member would give that instance two names, or answer to another's. A
 /// member takes no name the generators use, nor another's <c>Match</c> parameter (CMTK1021). A
 /// <c>ToString()</c> written by hand is kept, as is an overload of a generated method with another
 /// signature; any other member the generators introduce, written by hand, is CMTK1011.
