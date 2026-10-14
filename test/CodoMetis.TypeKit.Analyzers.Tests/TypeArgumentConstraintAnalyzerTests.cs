@@ -51,6 +51,38 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             {
                 public static void Zip<[Distinct] TA, [Distinct] TB>(TA a, TB b) { }
             }
+
+            public interface IContract { }
+            [Flags] public enum Rights { None = 0, Read = 1, Write = 2 }
+            public enum Plain { A, B }
+            public readonly struct Frozen { }
+            public readonly record struct FrozenRecord(int Value);
+            public struct Mutable { public int Value; }
+            public readonly struct Id : CodoMetis.TypeKit.ValueObjects.IValue<int> { }
+            public class IdClass : CodoMetis.TypeKit.ValueObjects.IValue<int> { }
+            public class Colour : CodoMetis.TypeKit.ClosedSets.IClosedSet<Colour>
+            {
+                public string Name => "";
+                public string QualifiedName => "";
+                public static System.Collections.Generic.IReadOnlyList<Colour> All => [];
+                public static bool TryParse(string? name, out Colour member) { member = null!; return false; }
+            }
+            public sealed class Refusal : CodoMetis.TypeKit.ClosedSets.IFaultSet<Refusal>
+            {
+                public string Name => "";
+                public string QualifiedName => "";
+                public static System.Collections.Generic.IReadOnlyList<Refusal> All => [];
+                public static bool TryParse(string? name, out Refusal member) { member = null!; return false; }
+                public CodoMetis.TypeKit.ClosedSets.FaultKind Kind => CodoMetis.TypeKit.ClosedSets.FaultKind.NotFound;
+                public string? Description => null;
+            }
+
+            public sealed class Proxy<[Interface] T> { }
+            public sealed class Derivable<[Unsealed] T> { }
+            public sealed class Keyed<[ValueObject] T> { }
+            public sealed class Named<[ClosedSet] T> { }
+            public sealed class Flagged<[FlagsEnum] T> { }
+            public sealed class Pinned<[ReadOnlyStruct] T> { }
         }
 
         """;
@@ -813,6 +845,116 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             """,
             Cmtk0010(0, "DayOfWeek", "T2", "Fault<T1, T2>", "is the same type as the argument for 'T1'"),
             Cmtk0010(1, "DayOfWeek", "T3", "Fault<T1, T2, T3>", "is the same type as the argument for 'T1'"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// Six more unary constraints. An interface, not a class implementing one; a class that can be derived
+    /// from, abstract included, not an interface, a sealed or a static class, nor a struct; a value object
+    /// through any interface, struct or class; a closed set, a fault set included; an enum marked
+    /// <c>[Flags]</c>, not a plain one; a readonly struct or readonly record struct, not a mutable struct, an
+    /// enum or a class. The primitives are readonly structs. A static class as a type argument is the
+    /// compiler's error (CS0718), never this rule's.
+    /// </summary>
+    [Fact]
+    public Task Interface_Unsealed_ValueObject_ClosedSet_FlagsEnum_and_ReadOnlyStruct_accept_and_refuse_what_they_say() =>
+        Test(
+            """
+            public static class Uses
+            {
+                public static Proxy<IContract> Contract;
+                public static Proxy<{|#0:Logged|}> Implementer;
+                public static Proxy<{|#1:Handler|}> AbstractClass;
+
+                public static Derivable<Handler> Abstract;
+                public static Derivable<Tracked> Open;
+                public static Derivable<Command> OpenRecord;
+                public static Derivable<{|#2:OrderHandler|}> Sealed;
+                public static Derivable<{|#3:IContract|}> Interface;
+                public static Derivable<{|#5:Point|}> Struct;
+
+                public static Keyed<Id> ValueStruct;
+                public static Keyed<IdClass> ValueClass;
+                public static Keyed<{|#6:Point|}> PlainStruct;
+                public static Keyed<{|#7:Colour|}> ClosedSetIsNoValueObject;
+
+                public static Named<Colour> Set;
+                public static Named<Refusal> FaultSet;
+                public static Named<{|#8:Id|}> ValueObjectIsNoClosedSet;
+                public static Named<{|#9:Plain|}> EnumIsNoClosedSet;
+
+                public static Flagged<Rights> Flags;
+                public static Flagged<{|#10:Plain|}> PlainEnum;
+                public static Flagged<{|#11:int|}> NotAnEnum;
+
+                public static Pinned<Frozen> ReadOnly;
+                public static Pinned<FrozenRecord> ReadOnlyRecord;
+                public static Pinned<int> Primitive;
+                public static Pinned<{|#12:Mutable|}> MutableStruct;
+                public static Pinned<{|#13:Plain|}> Enum;
+                public static Pinned<{|#14:OrderHandler|}> Class;
+            }
+            """,
+            Cmtk0010(0, "Logged", "T", "Proxy<T>", "is not an interface"),
+            Cmtk0010(1, "Handler", "T", "Proxy<T>", "is not an interface"),
+            Cmtk0010(2, "OrderHandler", "T", "Derivable<T>", "is not a class that can be derived from"),
+            Cmtk0010(3, "IContract", "T", "Derivable<T>", "is not a class that can be derived from"),
+            Cmtk0010(5, "Point", "T", "Derivable<T>", "is not a class that can be derived from"),
+            Cmtk0010(6, "Point", "T", "Keyed<T>", "is not a value object (IValue<T>)"),
+            Cmtk0010(7, "Colour", "T", "Keyed<T>", "is not a value object (IValue<T>)"),
+            Cmtk0010(8, "Id", "T", "Named<T>", "is not a closed set (IClosedSet<TSelf>)"),
+            Cmtk0010(9, "Plain", "T", "Named<T>", "is not a closed set (IClosedSet<TSelf>)"),
+            Cmtk0010(10, "Plain", "T", "Flagged<T>", "is not an enum marked [Flags]"),
+            Cmtk0010(11, "int", "T", "Flagged<T>", "is not an enum marked [Flags]"),
+            Cmtk0010(12, "Mutable", "T", "Pinned<T>", "is not a readonly struct"),
+            Cmtk0010(13, "Plain", "T", "Pinned<T>", "is not a readonly struct"),
+            Cmtk0010(14, "OrderHandler", "T", "Pinned<T>", "is not a readonly struct"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A bound to the marker interface, to a type implementing it, or to a parameter so bound proves
+    /// <c>[ValueObject]</c> and <c>[ClosedSet]</c>; nothing but the attribute proves the other four: an
+    /// interface bound admits its implementers, <c>class</c> a sealed class, <c>Enum</c> a plain enum,
+    /// <c>struct</c> a mutable one.
+    /// </summary>
+    [Fact]
+    public Task A_marker_bound_proves_ValueObject_and_ClosedSet_and_nothing_proves_the_other_four() =>
+        Test(
+            """
+            public static class Proven
+            {
+                public static Keyed<T> BoundToTheMarker<T>() where T : CodoMetis.TypeKit.ValueObjects.IValue<int> => new();
+                public static Keyed<T> BoundToAnImplementer<T>() where T : IdClass => new();
+                public static Keyed<T> BoundThroughAParameter<T, U>() where T : U where U : CodoMetis.TypeKit.ValueObjects.IValue<int> => new();
+                public static Keyed<T> Carried<[ValueObject] T>() => new();
+                public static Named<T> BoundToTheSetMarker<T>() where T : class, CodoMetis.TypeKit.ClosedSets.IClosedSet<T> => new();
+                public static Named<T> BoundToAFaultSet<T>() where T : class, CodoMetis.TypeKit.ClosedSets.IFaultSet<T> => new();
+                public static Named<T> BoundToASet<T>() where T : Colour => new();
+                public static Proxy<T> CarriedInterface<[Interface] T>() => new();
+                public static Derivable<T> CarriedUnsealed<[Unsealed] T>() => new();
+                public static Flagged<T> CarriedFlags<[FlagsEnum] T>() => new();
+                public static Pinned<T> CarriedReadOnly<[ReadOnlyStruct] T>() => new();
+            }
+
+            public static class Unproven
+            {
+                public static Keyed<{|#0:T|}> AnyStruct<T>() where T : struct => new();
+                public static Named<{|#1:T|}> AnyClass<T>() where T : class => new();
+                public static Proxy<{|#2:T|}> BoundToAnInterface<T>() where T : IContract => new();
+                public static Derivable<{|#3:T|}> ClassAdmitsSealed<T>() where T : class => new();
+                public static Derivable<{|#4:T|}> BoundToAClass<T>() where T : Handler => new();
+                public static Flagged<{|#5:T|}> AnyEnum<T>() where T : struct, Enum => new();
+                public static Pinned<{|#6:T|}> StructAdmitsMutable<T>() where T : struct => new();
+                public static Pinned<{|#7:T|}> UnmanagedAdmitsMutable<T>() where T : unmanaged => new();
+            }
+            """,
+            Cmtk0010(0, "T", "T", "Keyed<T>", "is a type parameter that does not carry [ValueObject]"),
+            Cmtk0010(1, "T", "T", "Named<T>", "is a type parameter that does not carry [ClosedSet]"),
+            Cmtk0010(2, "T", "T", "Proxy<T>", "is a type parameter that does not carry [Interface]"),
+            Cmtk0010(3, "T", "T", "Derivable<T>", "is a type parameter that does not carry [Unsealed]"),
+            Cmtk0010(4, "T", "T", "Derivable<T>", "is a type parameter that does not carry [Unsealed]"),
+            Cmtk0010(5, "T", "T", "Flagged<T>", "is a type parameter that does not carry [FlagsEnum]"),
+            Cmtk0010(6, "T", "T", "Pinned<T>", "is a type parameter that does not carry [ReadOnlyStruct]"),
+            Cmtk0010(7, "T", "T", "Pinned<T>", "is a type parameter that does not carry [ReadOnlyStruct]"))
             .RunAsync(TestContext.Current.CancellationToken);
 
     [Fact]

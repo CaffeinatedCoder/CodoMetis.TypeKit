@@ -31,6 +31,12 @@ internal enum TypeArgumentConstraint
     Sealed,
     Record,
     Concrete,
+    Interface,
+    Unsealed,
+    ValueObject,
+    ClosedSet,
+    FlagsEnum,
+    ReadOnlyStruct,
     /// <summary>Relational: the arguments of the parameters that carry it differ.</summary>
     Distinct,
     /// <summary>Relational: the arguments of the parameters that carry it neither derive from, implement, box to nor are each other.</summary>
@@ -54,6 +60,7 @@ internal sealed class TypeKitSymbols
     private readonly ImmutableArray<INamedTypeSymbol> _requireCustomInitialization;
     private readonly ImmutableArray<INamedTypeSymbol> _requireParameterlessConstructor;
     private readonly ImmutableArray<(TypeArgumentConstraint Kind, INamedTypeSymbol Attribute)> _constraintAttributes;
+    private readonly INamedTypeSymbol? _flags;
     private readonly ImmutableArray<INamedTypeSymbol> _materializers;
     private readonly ImmutableArray<INamedTypeSymbol> _converters;
     private readonly ImmutableArray<INamedTypeSymbol> _outcomes;
@@ -81,9 +88,11 @@ internal sealed class TypeKitSymbols
         ImmutableArray<INamedTypeSymbol> outcomes,
         ImmutableArray<INamedTypeSymbol> resultClasses,
         ImmutableArray<INamedTypeSymbol> optionClasses,
-        bool                             referencesGenerators
+        bool                             referencesGenerators,
+        INamedTypeSymbol?                flags
     )
     {
+        _flags                       = flags;
         _outcomes                    = outcomes;
         _valueMarkers                = valueMarkers;
         _validatedMarkers            = validatedMarkers;
@@ -119,7 +128,7 @@ internal sealed class TypeKitSymbols
         var attributes       = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.RequireCustomInitializationAttribute");
         var constructors     = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.RequireParameterlessConstructorAttribute");
         var constraints      = ImmutableArray.CreateRange(
-            from kind in new[] { TypeArgumentConstraint.Abstract, TypeArgumentConstraint.Sealed, TypeArgumentConstraint.Record, TypeArgumentConstraint.Concrete, TypeArgumentConstraint.Distinct, TypeArgumentConstraint.Unrelated }
+            from kind in (TypeArgumentConstraint[])Enum.GetValues(typeof(TypeArgumentConstraint))
             from attribute in compilation.GetTypesByMetadataName($"CodoMetis.TypeKit.{kind}Attribute")
             select (kind, attribute));
         var materializers    = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.ValueObjects.IValueObjectMaterializer`2");
@@ -129,13 +138,14 @@ internal sealed class TypeKitSymbols
                                           .AddRange(compilation.GetTypesByMetadataName("CodoMetis.TypeKit.Option`1"));
         var resultClasses    = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.Result");
         var optionClasses    = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.Option");
+        var flags            = compilation.GetTypeByMetadataName("System.FlagsAttribute");
 
         if (valueMarkers.IsEmpty && validatedMarkers.IsEmpty && closedSetMarkers.IsEmpty && attributes.IsEmpty && constructors.IsEmpty && constraints.IsEmpty && materializers.IsEmpty) return null;
 
         var referencesGenerators = compilation.ReferencedAssemblyNames.Any(identity =>
             string.Equals(identity.Name, GeneratorsAssembly, StringComparison.OrdinalIgnoreCase));
 
-        return new TypeKitSymbols(valueMarkers, validatedMarkers, closedSetMarkers, attributes, constructors, constraints, materializers, converters, outcomes, resultClasses, optionClasses, referencesGenerators);
+        return new TypeKitSymbols(valueMarkers, validatedMarkers, closedSetMarkers, attributes, constructors, constraints, materializers, converters, outcomes, resultClasses, optionClasses, referencesGenerators, flags);
     }
 
     /// <summary>
@@ -397,8 +407,13 @@ internal sealed class TypeKitSymbols
             .FirstOrDefault(attribute => attribute.AttributeClass is { } attributeClass
                                       && _requireCustomInitialization.Contains(attributeClass, SymbolEqualityComparer.Default));
 
-    /// <summary>Whether the compilation can see any of <c>[Abstract]</c>, <c>[Sealed]</c>, <c>[Record]</c>, <c>[Concrete]</c>, <c>[Distinct]</c> and <c>[Unrelated]</c>.</summary>
+    /// <summary>Whether the compilation can see any of the type-parameter constraint attributes, <c>[Abstract]</c>, <c>[Sealed]</c> and their kind.</summary>
     public bool HasTypeArgumentConstraints => !_constraintAttributes.IsEmpty;
+
+    /// <summary>Whether <paramref name="type"/> is an enum marked <c>[Flags]</c>.</summary>
+    public bool IsFlagsEnum(ITypeSymbol type) =>
+        type.TypeKind is TypeKind.Enum && _flags is not null
+     && type.GetAttributes().Any(attribute => SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, _flags));
 
     /// <summary>The constraints a type parameter declares by attribute, in attribute order.</summary>
     public IEnumerable<TypeArgumentConstraint> ConstraintsOn(ITypeParameterSymbol parameter)

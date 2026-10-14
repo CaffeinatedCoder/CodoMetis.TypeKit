@@ -21,7 +21,7 @@ appears to: an instance that passed no factory, or a value object that was never
 | CMTK0007 | Info | `FromKnownGood` given a value that comes straight from a parameter. |
 | CMTK0008 | Warning | The wrapped values of two different value objects compared, `order.CustomerId.Value == product.Id.Value`, or the two value objects themselves through `Equals(object)`. |
 | CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. |
-| CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute, `[Abstract]`, `[Sealed]`, `[Record]` or `[Concrete]`, or a pair of arguments for two parameters marked `[Distinct]` or `[Unrelated]` that are one type, or related by inheritance, implementation or boxing, reported once at the later argument; at any closed use: a base type, a member, a parameter, a local, a `typeof`, an attribute, a call or a method group, written or inferred, and a member of a generic extension block, whose arguments the receiver gives. A type parameter forwarded without the attribute is a breach too, and a method implementing an interface's method, or overriding one, carries the constraint of what it implements, a static one and one a base class declares included. |
+| CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute, `[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]`, `[Interface]`, `[Unsealed]`, `[ValueObject]`, `[ClosedSet]`, `[FlagsEnum]` or `[ReadOnlyStruct]`, or a pair of arguments for two parameters marked `[Distinct]` or `[Unrelated]` that are one type, or related by inheritance, implementation or boxing, reported once at the later argument; at any closed use: a base type, a member, a parameter, a local, a `typeof`, an attribute, a call or a method group, written or inferred, and a member of a generic extension block, whose arguments the receiver gives. A type parameter forwarded without the attribute is a breach too, and a method implementing an interface's method, or overriding one, carries the constraint of what it implements, a static one and one a base class declares included. |
 | CMTK0011 | Error | A concrete class that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. A struct is never reported: its parameterless constructor is public and can be nothing else. The code fix writes or changes the constructor. |
 | CMTK0012 | Error | A closed set's `Match` given an argument by position, which binds to whichever member is declared at that place, so reordering the members swaps the branches. The code fix names every argument. |
 | CMTK0013 | Error | A closed set's member written outside its declaration: in the static constructor, after the generators named the instance it held, or in another static field's initializer, before. |
@@ -352,8 +352,8 @@ recognised in any project that references EF Core. A warning, since code that ch
 
 C# has `where T : class`, `struct`, `new()` and a base type, but no `where T : abstract`, `sealed`
 or `record`. A generic whose argument must be an abstract record, the command family of an
-aggregate, gets no help from the compiler, and the closed type that breaks it compiles. Four
-attributes on a type parameter say what C# cannot, and this rule reports the use that breaks it,
+aggregate, gets no help from the compiler, and the closed type that breaks it compiles. The
+attributes below, on a type parameter, say what C# cannot, and this rule reports the use that breaks it,
 at the argument where one is written, and where the arguments are inferred at the call, or at the
 method group that takes them from the delegate it converts to (`Action<PlaceOrder> run = Runner.Run;`):
 
@@ -374,6 +374,12 @@ public abstract class Sound<[Abstract] TCommand> : Decider<TCommand, OrderPlaced
 | `[Sealed]` | a sealed class or record, a struct, an enum, a delegate, an array | it carries `[Sealed]`, is constrained to `struct` or `unmanaged`, or is bound (`where T : U`) to a parameter that proves `[Sealed]` |
 | `[Record]` | a record class or record struct | it carries `[Record]`, or is bound to a record or to a parameter that proves `[Record]`: only records derive from records |
 | `[Concrete]` | a class, record or struct that is not abstract, static or an interface, an enum, a delegate, an array; no constructor is demanded, unlike `new()` | it carries `[Concrete]`, is constrained to `new()`, or proves `[Sealed]`: a sealed type is never abstract |
+| `[Interface]` | an interface; not a class implementing one | it carries `[Interface]`; `where T : IContract` admits every implementer |
+| `[Unsealed]` | a class or record class that is neither sealed nor static, abstract included; not an interface, which is implemented rather than derived from, nor a struct | it carries `[Unsealed]`; `class` and a class bound admit a sealed subclass |
+| `[ValueObject]` | a type implementing `IValue<T>` or `IValidatedValue<TSelf, T, TFault>` for any `T`, struct or class, through any interface | it carries `[ValueObject]`, or is bound to a marker, to a type implementing one, or to a parameter so bound |
+| `[ClosedSet]` | a type implementing `IClosedSet<TSelf>`, a fault set (`IFaultSet<TSelf>`) included | it carries `[ClosedSet]`, or is bound to `IClosedSet<TSelf>`, to a closed set, or to a parameter so bound |
+| `[FlagsEnum]` | an enum marked `[Flags]` | it carries `[FlagsEnum]`; `Enum` admits a plain enum, and no bound names an enum |
+| `[ReadOnlyStruct]` | a `readonly struct` or `readonly record struct`, the primitives included; not a mutable struct, an enum or a class | it carries `[ReadOnlyStruct]`; `struct` and `unmanaged` admit a mutable struct |
 
 A type parameter given as the argument must carry the attribute itself, or be constrained so that no
 argument can break it, as the table's last column says; otherwise the requirement would end at the
@@ -390,6 +396,39 @@ inside its own body, an unbound `typeof(Decider<,>)`, a `nameof(Decider<PlaceOrd
 which uses no argument, and a type argument that does not exist, which is the compiler's error, are
 never reported. Reflection,
 `MakeGenericType`, is out of reach, and the attributes carry no run-time check.
+
+```csharp
+public sealed class Proxy<[Interface] TContract> { }                 // DispatchProxy.Create<TContract, TProxy> throws for a class
+public sealed class LazyLoaded<[Unsealed] TEntity> { }               // a proxy derives from the entity
+public sealed class Lookup<[ValueObject] TKey, TValue> { }           // a key that is a value object of any wrapped type
+public sealed class Legend<[ClosedSet] TMember> { }                  // a closed set, whatever its members carry
+public sealed class Permissions<[FlagsEnum] TRights> { }             // values that combine
+public sealed class Slot<[ReadOnlyStruct] TValue> { }                // read through `in` without a defensive copy
+
+public interface IOrders { }
+public sealed class Orders : IOrders { }
+public struct Cursor { public int Position; }
+public readonly partial record struct AccountNumber : IValue<string>;
+public sealed partial class Tier : IClosedSet<Tier> { public static readonly Tier Basic = new(); }
+
+public static class Kinds
+{
+    public static Proxy<IOrders> Contract = new();
+    public static Proxy<Orders> Implementer = new();                 // CMTK0010: Orders is not an interface
+    public static LazyLoaded<Orders> Sealed = new();                 // CMTK0010: Orders is not a class that can be derived from
+    public static Lookup<AccountNumber, string> Keyed = new();
+    public static Lookup<Guid, string> Bare = new();                 // CMTK0010: Guid is not a value object (IValue<T>)
+    public static Legend<Tier> Tiers = new();
+    public static Legend<DayOfWeek> Days = new();                    // CMTK0010: DayOfWeek is not a closed set (IClosedSet<TSelf>)
+    public static Permissions<FileAccess> Combined = new();          // FileAccess is marked [Flags]
+    public static Permissions<DayOfWeek> Plain = new();              // CMTK0010: DayOfWeek is not an enum marked [Flags]
+    public static Slot<DateOnly> Pinned = new();
+    public static Slot<Cursor> Mutable = new();                      // CMTK0010: Cursor is not a readonly struct
+}
+```
+
+`[ValueObject]` and `[ClosedSet]` say what no `where T : IValue<?>` can: the marker interface with any
+type argument. A static class as a type argument is the compiler's error (CS0718), never this rule's.
 
 Two more attributes constrain two parameters against each other. `[Distinct]` on each of two parameters
 of one generic says their arguments are different types; `[Unrelated]` says neither derives from,

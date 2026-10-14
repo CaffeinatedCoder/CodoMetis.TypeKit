@@ -40,6 +40,31 @@ public abstract class Sound<[Abstract] TEvent> : Aggregate<TEvent, AccountId>;  
 public sealed class Sealed<T> : Aggregate<AccountEvent, T> where T : struct;      // struct proves [Sealed], and [Concrete]
 // end sample
 
+// sample: type-constraints/kinds
+public sealed class Proxy<[Interface] TContract>;                     // what DispatchProxy.Create, a mock or a REST client implements
+public sealed class Tracked<[Unsealed] TEntity>;                      // what a lazy-loading proxy derives from
+public sealed class Index<[ValueObject] TKey, TValue>;                // a key that is a value object, whatever it wraps
+public sealed class Rights<[FlagsEnum] TFlags>;                       // values that combine
+public sealed class Cell<[ReadOnlyStruct] TValue>;                    // read through `in` without a defensive copy
+
+public interface IAccounts;
+public sealed class Accounts : IAccounts;
+public struct Position { public int Line; }
+
+public static class Kinds
+{
+    public static Proxy<IAccounts> Contract = new();
+    public static Proxy<Accounts> Implementer = new();                // CMTK0010: Accounts is not an interface
+    public static Tracked<Accounts> Sealed = new();                   // CMTK0010: Accounts is not a class that can be derived from
+    public static Index<AccountId, string> Keyed = new();             // AccountId : IValue<Guid>, from above
+    public static Index<Guid, string> Bare = new();                   // CMTK0010: Guid is not a value object (IValue<T>)
+    public static Rights<FileAccess> Combined = new();                // FileAccess is marked [Flags]
+    public static Rights<DayOfWeek> Plain = new();                    // CMTK0010: DayOfWeek is not an enum marked [Flags]
+    public static Cell<DateOnly> Pinned = new();
+    public static Cell<Position> Mutable = new();                     // CMTK0010: Position is not a readonly struct
+}
+// end sample
+
 // sample: type-constraints/pairs
 public class Converter<[Distinct] TFrom, [Distinct] TTo>;                  // converting a type to itself is a mistake
 
@@ -128,6 +153,8 @@ public sealed class TypeConstraintsTests
         new Account().Pending.Add(new Deposited(1m));
         typeof(Aggregate<,>).GetGenericArguments()[0].GetCustomAttributes(typeof(AbstractAttribute), false).ShouldNotBeEmpty();
         new Identity().ShouldNotBeNull();
+        Kinds.Mutable.ShouldNotBeNull();
+        typeof(FileAccess).IsDefined(typeof(FlagsAttribute), false).ShouldBeTrue("what the page says of FileAccess");
         Picks.Narrowed.ShouldNotBeNull();
         typeof(Fault<,>).GetGenericArguments().ShouldAllBe(parameter => parameter.GetCustomAttributes(typeof(DistinctAttribute), false).Length == 1);
         typeof(Fault<,,>).GetGenericArguments().ShouldAllBe(parameter => parameter.GetCustomAttributes(typeof(DistinctAttribute), false).Length == 1);

@@ -13,8 +13,10 @@ namespace CodoMetis.TypeKit.Analyzers;
 
 /// <summary>
 /// CMTK0010: a type argument that breaks a constraint its parameter declares by attribute,
-/// <c>[Abstract]</c>, <c>[Sealed]</c>, <c>[Record]</c> or <c>[Concrete]</c>, or a pair of arguments that
-/// breaks what two parameters declare together, <c>[Distinct]</c> or <c>[Unrelated]</c>, at any closed use.
+/// <c>[Abstract]</c>, <c>[Sealed]</c>, <c>[Record]</c>, <c>[Concrete]</c>, <c>[Interface]</c>, <c>[Unsealed]</c>,
+/// <c>[ValueObject]</c>, <c>[ClosedSet]</c>, <c>[FlagsEnum]</c> or <c>[ReadOnlyStruct]</c>, or a pair of
+/// arguments that breaks what two parameters declare together, <c>[Distinct]</c> or <c>[Unrelated]</c>, at
+/// any closed use.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -61,7 +63,7 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         category: "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "A type parameter marked [Abstract], [Sealed], [Record] or [Concrete] constrains its arguments where C# cannot, and two marked [Distinct] or [Unrelated] constrain their arguments against each other. A closed use with an argument that breaks the constraint compiles; this rule is its error.",
+        description: "A type parameter marked [Abstract], [Sealed], [Record], [Concrete], [Interface], [Unsealed], [ValueObject], [ClosedSet], [FlagsEnum] or [ReadOnlyStruct] constrains its arguments where C# cannot, and two marked [Distinct] or [Unrelated] constrain their arguments against each other. A closed use with an argument that breaks the constraint compiles; this rule is its error.",
         helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.TypeArgumentConstraint)
     );
 
@@ -329,14 +331,20 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
                 if (!Proves(symbols, forwarded, constraint))
                     yield return $"is a type parameter that does not carry [{constraint}]";
             }
-            else if (!Satisfies(argument, constraint))
+            else if (!Satisfies(symbols, argument, constraint))
             {
                 yield return constraint switch
                 {
-                    TypeArgumentConstraint.Abstract => "is not an abstract class or record",
-                    TypeArgumentConstraint.Sealed   => "is not sealed",
-                    TypeArgumentConstraint.Record   => "is not a record",
-                    _                               => "is not a concrete class, record or struct",
+                    TypeArgumentConstraint.Abstract       => "is not an abstract class or record",
+                    TypeArgumentConstraint.Sealed         => "is not sealed",
+                    TypeArgumentConstraint.Record         => "is not a record",
+                    TypeArgumentConstraint.Interface      => "is not an interface",
+                    TypeArgumentConstraint.Unsealed       => "is not a class that can be derived from",
+                    TypeArgumentConstraint.ValueObject    => "is not a value object (IValue<T>)",
+                    TypeArgumentConstraint.ClosedSet      => "is not a closed set (IClosedSet<TSelf>)",
+                    TypeArgumentConstraint.FlagsEnum      => "is not an enum marked [Flags]",
+                    TypeArgumentConstraint.ReadOnlyStruct => "is not a readonly struct",
+                    _                                     => "is not a concrete class, record or struct",
                 };
             }
         }
@@ -543,15 +551,23 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     /// concrete class. An enum and a delegate are concrete, as they are sealed: an enum is a value type,
     /// which <c>new()</c> and <c>struct</c> accept, and a delegate a sealed class made from a target and
     /// a method; <c>dynamic</c> is <c>object</c>. Their bases, <c>Enum</c>, <c>Delegate</c>,
-    /// <c>MulticastDelegate</c> and <c>ValueType</c>, are abstract classes.
+    /// <c>MulticastDelegate</c> and <c>ValueType</c>, are abstract classes. Unsealed is a class that can
+    /// be derived from, abstract included, an interface not; a value object and a closed set are what the
+    /// marker interfaces say, through any interface; a readonly struct is the declaration, which an enum is not.
     /// </summary>
-    private static bool Satisfies(ITypeSymbol argument, TypeArgumentConstraint constraint) => constraint switch
+    private static bool Satisfies(TypeKitSymbols symbols, ITypeSymbol argument, TypeArgumentConstraint constraint) => constraint switch
     {
-        TypeArgumentConstraint.Abstract => argument is INamedTypeSymbol { TypeKind: TypeKind.Class, IsAbstract: true, IsStatic: false },
-        TypeArgumentConstraint.Sealed   => argument.TypeKind is TypeKind.Struct or TypeKind.Enum or TypeKind.Array || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Delegate, IsSealed: true, IsStatic: false },
-        TypeArgumentConstraint.Record   => argument is INamedTypeSymbol { IsRecord: true },
-        _                               => argument.TypeKind is TypeKind.Array or TypeKind.Enum or TypeKind.Delegate or TypeKind.Dynamic
-                                        || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct, IsAbstract: false, IsStatic: false },
+        TypeArgumentConstraint.Abstract       => argument is INamedTypeSymbol { TypeKind: TypeKind.Class, IsAbstract: true, IsStatic: false },
+        TypeArgumentConstraint.Sealed         => argument.TypeKind is TypeKind.Struct or TypeKind.Enum or TypeKind.Array || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Delegate, IsSealed: true, IsStatic: false },
+        TypeArgumentConstraint.Record         => argument is INamedTypeSymbol { IsRecord: true },
+        TypeArgumentConstraint.Interface      => argument.TypeKind is TypeKind.Interface,
+        TypeArgumentConstraint.Unsealed       => argument is INamedTypeSymbol { TypeKind: TypeKind.Class, IsSealed: false, IsStatic: false },
+        TypeArgumentConstraint.ValueObject    => symbols.FindMarker(argument, out _) is not null,
+        TypeArgumentConstraint.ClosedSet      => symbols.FindClosedSetMarker(argument) is not null,
+        TypeArgumentConstraint.FlagsEnum      => symbols.IsFlagsEnum(argument),
+        TypeArgumentConstraint.ReadOnlyStruct => argument is INamedTypeSymbol { TypeKind: TypeKind.Struct, IsReadOnly: true },
+        _                                     => argument.TypeKind is TypeKind.Array or TypeKind.Enum or TypeKind.Delegate or TypeKind.Dynamic
+                                              || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct, IsAbstract: false, IsStatic: false },
     };
 
     /// <summary>
@@ -564,7 +580,11 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     /// never abstract.</item>
     /// <item><c>[Record]</c>: a bound that is a record, or proves it, since only records derive from
     /// records (CS8865).</item>
-    /// <item><c>[Abstract]</c>: nothing but the attribute; no C# constraint excludes a concrete type.</item>
+    /// <item><c>[ValueObject]</c>, <c>[ClosedSet]</c>: a bound that is or implements the marker interface, or
+    /// a bound parameter that proves it, which <c>FindMarker</c> reads from the constraints.</item>
+    /// <item><c>[Abstract]</c>, <c>[Interface]</c>, <c>[Unsealed]</c>, <c>[FlagsEnum]</c>, <c>[ReadOnlyStruct]</c>:
+    /// nothing but the attribute; no C# constraint excludes a concrete type, a class, a sealed class, a plain
+    /// enum or a mutable struct.</item>
     /// </list>
     /// A cycle of constraints is the compiler's error, cut off by depth.
     /// </summary>
@@ -581,6 +601,8 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
                                             || Proves(symbols, forwarded, TypeArgumentConstraint.Sealed, depth + 1),
             TypeArgumentConstraint.Record   => forwarded.ConstraintTypes.Any(bound => bound is INamedTypeSymbol { IsRecord: true }
                                                                                    || bound is ITypeParameterSymbol parameter && Proves(symbols, parameter, TypeArgumentConstraint.Record, depth + 1)),
+            TypeArgumentConstraint.ValueObject => symbols.FindMarker(forwarded, out _) is not null,
+            TypeArgumentConstraint.ClosedSet   => symbols.FindClosedSetMarker(forwarded) is not null,
             _                               => false,
         };
     }

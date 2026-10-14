@@ -37,12 +37,6 @@ item names the decision that scoped it.
   converters' trimming warnings decide whether it is a package ([decision 71](adr/0071-converters-say-what-they-write.md)).
 - A stable external name for a closed-set member, apart from its C# identifier: parsing, JSON, EF,
   OpenAPI and the fault identifiers at once (proposed in the review of 2026-10-13).
-- More constraints a type parameter cannot declare, each one attribute under CMTK0010, weighed by demand
-  and cost in [decision 79](adr/0079-distinct-and-unrelated-type-parameters.md): `[Interface]` (a proxy's,
-  a mock's or a REST client's contract; csharplang discussion 3579), `[Unsealed]` (a type a proxy can
-  derive from), `[ValueObject]` and `[ClosedSet]` (a TypeKit type of any wrapped type, which no
-  `where T : IValue<?>` can say), `[FlagsEnum]`, `[ReadOnlyStruct]`; `[Static]` is impossible, a static
-  class is no type argument (proposed 2026-10-14).
 - The Metalama 2027.0 upgrade ([decision 4](adr/0004-metalama-2026-1-x-latest-stable.md)): a minor if a consumer's own aspects beside the packed
   generators still build and weave, measured as the fabric spike measured 2026.1 against the 2027.0
   preview, and a major otherwise; `[Durable]` returns to the `_value` placeholder with it.

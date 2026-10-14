@@ -1,7 +1,8 @@
 # Type constraints
 
-C# has `where T : class`, `struct`, `new()` and a base type, but no `where T : abstract`, `sealed`
-or `record`, and no way to demand a parameterless constructor of a given accessibility. The base
+C# has `where T : class`, `struct`, `new()` and a base type, but no `where T : abstract`, `sealed`,
+`record` or `interface`, no marker interface with any type argument, no two parameters held apart, and
+no way to demand a parameterless constructor of a given accessibility. The base
 package has attributes that say what C# cannot, and the analyzers report the type that breaks them,
 at build time, in whichever project declares it. CMTK0010 and CMTK0011 are both errors; the
 [Analyzers README](../src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0010) is their reference. The
@@ -15,6 +16,12 @@ examples import `CodoMetis.TypeKit`.
 | `[Sealed]` | a sealed class or record, a struct, an enum | a type that can be derived from |
 | `[Record]` | a record class or record struct | a class or a struct |
 | `[Concrete]` | a class, record or struct that can be instantiated, an enum, a delegate | an abstract or static type, an interface, and the abstract bases `Enum`, `Delegate` and `ValueType`. No constructor is demanded, unlike `new()` |
+| `[Interface]` | an interface | a class, even one implementing the interface |
+| `[Unsealed]` | a class or record class that can be derived from, abstract included | a sealed or static class, an interface, a struct |
+| `[ValueObject]` | a type implementing `IValue<T>` for any `T`, which no `where` can say | any other type, a closed set included |
+| `[ClosedSet]` | a type implementing `IClosedSet<TSelf>`, a fault set included | any other type, a value object or an enum included |
+| `[FlagsEnum]` | an enum marked `[Flags]` | a plain enum, which `where T : Enum` admits |
+| `[ReadOnlyStruct]` | a `readonly struct` or `readonly record struct`, the primitives included | a mutable struct, which `where T : struct` admits; an enum; a class |
 | `[Distinct]`, on two or more parameters | different types for them, related or not | one type twice, nullable annotations aside |
 | `[Unrelated]`, on two or more parameters | types with no implicit identity, reference or boxing conversion between them | a base and a derived type, an interface and an implementer, `object` and anything, a struct and `ValueType`; it implies `[Distinct]` |
 
@@ -56,6 +63,39 @@ public sealed record Statement(decimal Amount);
 ```csharp
 string shown = Snapshots.Describe(new Statement(10m));   // "Statement { Amount = 10 }"
 string hidden = Snapshots.Describe(new Balance());       // CMTK0010: Balance is not a record, inferred at the call
+```
+
+## The kind of a type argument
+
+The six further constraints each name a kind of type the language cannot ask for. `[Interface]` and
+`[Unsealed]` are what a proxy needs, a contract to implement or a class to derive from, and today fail at
+run time. `[ValueObject]` and `[ClosedSet]` are the marker interfaces with any type argument, which no
+`where T : IValue<?>` can say, so a generic over every value object has had no constraint at all. The
+closed-set example is in the [Analyzers README](../src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0010).
+
+```csharp
+public sealed class Proxy<[Interface] TContract>;                     // what DispatchProxy.Create, a mock or a REST client implements
+public sealed class Tracked<[Unsealed] TEntity>;                      // what a lazy-loading proxy derives from
+public sealed class Index<[ValueObject] TKey, TValue>;                // a key that is a value object, whatever it wraps
+public sealed class Rights<[FlagsEnum] TFlags>;                       // values that combine
+public sealed class Cell<[ReadOnlyStruct] TValue>;                    // read through `in` without a defensive copy
+
+public interface IAccounts;
+public sealed class Accounts : IAccounts;
+public struct Position { public int Line; }
+
+public static class Kinds
+{
+    public static Proxy<IAccounts> Contract = new();
+    public static Proxy<Accounts> Implementer = new();                // CMTK0010: Accounts is not an interface
+    public static Tracked<Accounts> Sealed = new();                   // CMTK0010: Accounts is not a class that can be derived from
+    public static Index<AccountId, string> Keyed = new();             // AccountId : IValue<Guid>, from above
+    public static Index<Guid, string> Bare = new();                   // CMTK0010: Guid is not a value object (IValue<T>)
+    public static Rights<FileAccess> Combined = new();                // FileAccess is marked [Flags]
+    public static Rights<DayOfWeek> Plain = new();                    // CMTK0010: DayOfWeek is not an enum marked [Flags]
+    public static Cell<DateOnly> Pinned = new();
+    public static Cell<Position> Mutable = new();                     // CMTK0010: Position is not a readonly struct
+}
 ```
 
 ## Two parameters apart
@@ -118,6 +158,8 @@ attribute:
 | `[Sealed]` | `struct` or `unmanaged`, or a bound `where T : U` with `U` proving `[Sealed]`, since a sealed type has no other subtype |
 | `[Record]` | a bound that is a record, `where T : AccountEvent`, or a `U` proving `[Record]`, since only records derive from records |
 | `[Concrete]` | `new()`, or anything that proves `[Sealed]`, `[Sealed]` itself included, since a sealed type is never abstract |
+| `[ValueObject]`, `[ClosedSet]` | a bound that is or implements the marker interface, `where T : IValue<Guid>`, or a `U` proving it |
+| `[Interface]`, `[Unsealed]`, `[FlagsEnum]`, `[ReadOnlyStruct]` | nothing but the attribute: an interface bound admits its implementers, `class` a sealed class, `Enum` a plain enum, `struct` a mutable one |
 | `[Distinct]`, for a pair | both parameters carrying `[Distinct]` or `[Unrelated]` in one generic, whose closed uses are checked in turn; `struct` or `unmanaged` against `class` or a class bound; two class bounds neither deriving from the other; against a type, C# constraints the type breaks |
 | `[Unrelated]`, for a pair | both carrying `[Unrelated]` in one generic; `struct` or `unmanaged` against a class bound, or a class, other than `object`, `ValueType` and `Enum`; two class bounds neither deriving from the other. `class` alone proves nothing: `object` satisfies it and is related to everything |
 
