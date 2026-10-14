@@ -60,10 +60,15 @@ The rule checks every closed use of the generic:
 - **Declarations:** a base type, as above, an implemented interface, a field, a property, a
   parameter and a local.
 - **Expressions:** a `typeof`, a call, and a method group converted to a delegate.
+- **Methods the compiler calls for you:** a `foreach`'s `GetEnumerator`, an `await`'s `GetAwaiter`, a
+  `Deconstruct` (in `var (a, b) = x`, a `foreach`, or a pattern like `x is (1, 2)`), and a collection
+  expression's `Add` or builder method. Here `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` aren't
+  checked until 3.0.0; every other attribute is.
 
 It checks them whether you write the type arguments or the compiler infers them. A written argument
 is reported where you wrote it. An inferred one is reported at the call, or at the method group,
-whose arguments come from the delegate:
+whose arguments come from the delegate, or where the compiler calls the method for you: the
+`foreach`'s collection, the `await`, the deconstruction, the pattern or the collection expression:
 
 ```csharp
 public static class Snapshots

@@ -95,3 +95,4 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0086](0086-a-nullable-s-converter-is-seen-through-only-when-it-is-the-serializer-s-adapter.md) | A nullable's converter is seen through only where it is the serializer's adapter, and a hand-built nullable contract is described by its value's | 2026-10-14 | accepted |
 | [0087](0087-a-deeper-base-s-explicit-equatable-is-hidden-by-the-value-object.md) | A deeper base's explicit `IEquatable` is taken over by a `new Equals(TBase)` the value object declares | 2026-10-14 | accepted |
 | [0088](0088-2-1-0-ships-without-its-open-roadmap-items.md) | 2.1.0 ships without its open roadmap items, which move to 2.2 | 2026-10-14 | accepted |
+| [0089](0089-cmtk0010-at-methods-bound-by-pattern.md) | CMTK0010 checks a method bound by pattern, for the kinds 2.1.0 adds; 2.0's four join at 3.0.0 | 2026-10-14 | accepted |

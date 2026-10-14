@@ -91,8 +91,138 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
                 OperationKind.Increment,
                 OperationKind.Decrement,
                 OperationKind.CompoundAssignment);
+            start.RegisterSyntaxNodeAction(
+                node => AnalyzePattern(node, symbols),
+                SyntaxKind.ForEachStatement,
+                SyntaxKind.ForEachVariableStatement,
+                SyntaxKind.AwaitExpression,
+                SyntaxKind.SimpleAssignmentExpression,
+                SyntaxKind.RecursivePattern,
+                SyntaxKind.CollectionExpression);
         });
     }
+
+    /// <summary>
+    /// A method the compiler binds by pattern, which no call or name in source shows: a <c>foreach</c>'s
+    /// <c>GetEnumerator</c>, an <c>await</c>'s <c>GetAwaiter</c>, a deconstruction's <c>Deconstruct</c> (in an
+    /// assignment, a <c>foreach</c> or a positional pattern), and a collection expression's builder or
+    /// <c>Add</c>. Its type arguments are inferred, so it is reported where the pattern is used. Each was
+    /// silent, where the same method called by name was reported (reported 2026-10-14).
+    /// <para>
+    /// Only the kinds 2.1.0 adds, the pair attributes among them: CMTK0010 is an Error, and it shipped in 2.0.0
+    /// with <c>[Abstract]</c>, <c>[Sealed]</c>, <c>[Record]</c> and <c>[Concrete]</c>, which a pattern use left
+    /// alone; an Error that reports more waits for a major version (decision 34), so those four join at 3.0.0
+    /// (decision 89).
+    /// </para>
+    /// </summary>
+    private static void AnalyzePattern(SyntaxNodeAnalysisContext context, TypeKitSymbols symbols)
+    {
+        var compilation = (CSharpCompilation)context.Compilation;
+
+        foreach (var (method, reported) in BoundByPattern(context.Node, context.SemanticModel, context.CancellationToken).Distinct())
+        {
+            foreach (var diagnostic in InferredDiagnostics(symbols, compilation, Unreduced(method), receiver: null, reported.GetLocation(), IsSinceTwoOne))
+                context.Report(diagnostic);
+        }
+    }
+
+    /// <summary>Whether <paramref name="constraint"/> is one CMTK0010 did not check in 2.0.0.</summary>
+    private static bool IsSinceTwoOne(TypeArgumentConstraint constraint) =>
+        constraint is not (TypeArgumentConstraint.Abstract or TypeArgumentConstraint.Sealed or TypeArgumentConstraint.Record or TypeArgumentConstraint.Concrete);
+
+    /// <summary>The methods <paramref name="node"/> binds by pattern, each with where it is reported.</summary>
+    private static IEnumerable<(IMethodSymbol Method, SyntaxNode Reported)> BoundByPattern(SyntaxNode node, SemanticModel model, CancellationToken token)
+    {
+        switch (node)
+        {
+            case CommonForEachStatementSyntax loop:
+                if (model.GetForEachStatementInfo(loop).GetEnumeratorMethod is { } enumerator) yield return (enumerator, loop.Expression);
+                if (loop is ForEachVariableStatementSyntax deconstructing)
+                {
+                    foreach (var deconstructor in Deconstructors(model.GetDeconstructionInfo(deconstructing))) yield return (deconstructor, deconstructing.Variable);
+                }
+
+                break;
+
+            case AwaitExpressionSyntax awaited:
+                if (model.GetAwaitExpressionInfo(awaited).GetAwaiterMethod is { } awaiter) yield return (awaiter, awaited);
+                break;
+
+            case AssignmentExpressionSyntax { Left: TupleExpressionSyntax or DeclarationExpressionSyntax } assignment:
+                foreach (var deconstructor in Deconstructors(model.GetDeconstructionInfo(assignment))) yield return (deconstructor, assignment);
+                break;
+
+            case RecursivePatternSyntax { PositionalPatternClause: not null } pattern:
+                if (model.GetOperation(pattern, token) is IRecursivePatternOperation { DeconstructSymbol: IMethodSymbol deconstruct }) yield return (deconstruct, pattern);
+                break;
+
+            case CollectionExpressionSyntax collection:
+                if (model.GetOperation(collection, token) is not ICollectionExpressionOperation { ConstructMethod: IMethodSymbol construct } operation) break;
+
+                if (construct.MethodKind == MethodKind.Ordinary)
+                {
+                    yield return (construct, collection);
+                    break;
+                }
+
+                foreach (var add in Adds(collection, operation, model, token)) yield return (add, collection);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// The <c>Add</c> a collection expression calls for each element of a type it builds by constructor, where
+    /// one that could carry a constraint is in scope: a generic one, or one of a generic extension block.
+    /// </summary>
+    /// <remarks>
+    /// Roslyn exposes no <c>Add</c> of a collection expression (measured with 5.0.0: its operation has the
+    /// constructor alone, and <c>GetCollectionInitializerSymbolInfo</c> answers nothing for its elements), so
+    /// <c>default(T).Add(element)</c> is bound speculatively where the expression is, as the compiler binds
+    /// the call it makes; a spread's element is a <c>default</c> of its element type.
+    /// </remarks>
+    private static IEnumerable<IMethodSymbol> Adds(CollectionExpressionSyntax collection, ICollectionExpressionOperation operation, SemanticModel model, CancellationToken token)
+    {
+        if (operation.Type is not INamedTypeSymbol target || operation.Elements.Length != collection.Elements.Count) yield break;
+
+        var constrainable = model.LookupSymbols(collection.SpanStart, target, "Add", includeReducedExtensionMethods: true)
+                                 .Any(symbol => symbol is IMethodSymbol { IsGenericMethod: true } or IMethodSymbol { ContainingType: { IsExtension: true, IsGenericType: true } });
+        if (!constrainable) yield break;
+
+        var receiver = SyntaxFactory.ParenthesizedExpression(SyntaxFactory.DefaultExpression(TypeSyntaxOf(target)));
+
+        for (var i = 0; i < operation.Elements.Length; i++)
+        {
+            ExpressionSyntax? argument = (operation.Elements[i], collection.Elements[i]) switch
+            {
+                (ISpreadOperation { ElementType: { } element }, _) => SyntaxFactory.DefaultExpression(TypeSyntaxOf(element)),
+                (_, ExpressionElementSyntax expression)          => expression.Expression.WithoutTrivia(),
+                _                                                => null,
+            };
+            if (argument is null) continue;
+
+            var call = SyntaxFactory.InvocationExpression(
+                SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, receiver, SyntaxFactory.IdentifierName("Add")),
+                SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.Argument(argument))));
+
+            if (model.GetSpeculativeSymbolInfo(collection.SpanStart, call, SpeculativeBindingOption.BindAsExpression).Symbol is IMethodSymbol add) yield return add;
+        }
+    }
+
+    private static TypeSyntax TypeSyntaxOf(ITypeSymbol type) => SyntaxFactory.ParseTypeName(type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+
+    /// <summary>A deconstruction's <c>Deconstruct</c> methods, a nested one's included.</summary>
+    private static IEnumerable<IMethodSymbol> Deconstructors(DeconstructionInfo info)
+    {
+        if (info.Method is { } method) yield return method;
+
+        foreach (var nested in info.Nested)
+        {
+            foreach (var inner in Deconstructors(nested)) yield return inner;
+        }
+    }
+
+    /// <summary>An extension method as declared, with every type argument: one bound to its receiver lists fewer.</summary>
+    private static IMethodSymbol Unreduced(IMethodSymbol method) => method.GetConstructedReducedFrom() ?? method;
 
     /// <summary>
     /// A generic name written in source, a type's, an attribute's or a method's: each argument against
@@ -199,27 +329,34 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         // included; holder?.Inst<T>() is a member binding.
         if (name is GenericNameSyntax or MemberAccessExpressionSyntax { Name: GenericNameSyntax } or MemberBindingExpressionSyntax { Name: GenericNameSyntax }) return;
 
-        var arguments = Pairs(member);
-        if (arguments.Count == 0) return;
+        if (Pairs(member).Count == 0) return;
 
         var receiver = member is IMethodSymbol { IsGenericMethod: true } ? Receiver(name ?? reported, context.Operation.SemanticModel, context.CancellationToken) : null;
 
+        foreach (var diagnostic in InferredDiagnostics(symbols, (CSharpCompilation)context.Compilation, member, receiver, reported.GetLocation()))
+            context.Report(diagnostic);
+    }
+
+    /// <summary>The diagnostics of a member whose type arguments are inferred, all at <paramref name="location"/>.</summary>
+    private static IEnumerable<Diagnostic> InferredDiagnostics(TypeKitSymbols symbols, CSharpCompilation compilation, ISymbol member, ITypeSymbol? receiver, Location location, Func<TypeArgumentConstraint, bool>? checks = null)
+    {
+        var arguments = Pairs(member);
+        if (arguments.Count == 0) yield break;
+
         foreach (var argument in arguments)
         {
-            foreach (var diagnostic in Diagnostics(symbols, argument, receiver, reported.GetLocation()))
-                context.Report(diagnostic);
+            foreach (var diagnostic in Diagnostics(symbols, argument, receiver, location, checks)) yield return diagnostic;
         }
 
-        foreach (var diagnostic in PairDiagnostics(symbols, (CSharpCompilation)context.Compilation, arguments, receiver, _ => reported.GetLocation()))
-            context.Report(diagnostic);
+        foreach (var diagnostic in PairDiagnostics(symbols, compilation, arguments, receiver, _ => location)) yield return diagnostic;
     }
 
     /// <summary>
     /// One diagnostic per constraint <paramref name="argument"/> breaks, for the caller to report
     /// through <see cref="GeneratedCode"/>, which keeps generated code that maps to no markup quiet.
     /// </summary>
-    private static IEnumerable<Diagnostic> Diagnostics(TypeKitSymbols symbols, TypeArgument argument, ITypeSymbol? receiver, Location location) =>
-        Breaches(symbols, argument.Parameter, argument.Argument, receiver)
+    private static IEnumerable<Diagnostic> Diagnostics(TypeKitSymbols symbols, TypeArgument argument, ITypeSymbol? receiver, Location location, Func<TypeArgumentConstraint, bool>? checks = null) =>
+        Breaches(symbols, argument.Parameter, argument.Argument, receiver, checks)
             .Select(breach => Diagnostic.Create(Rule, location, argument.Argument.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat), argument.Parameter.Name, Owner(argument.Owner), breach));
 
     /// <summary>A type parameter, the argument it was given, and the generic that declares it.</summary>
@@ -316,7 +453,7 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     };
 
     /// <summary>What <paramref name="argument"/> breaks of what <paramref name="parameter"/> declares, as the message's last clause.</summary>
-    private static IEnumerable<string> Breaches(TypeKitSymbols symbols, ITypeParameterSymbol parameter, ITypeSymbol argument, ITypeSymbol? receiver)
+    private static IEnumerable<string> Breaches(TypeKitSymbols symbols, ITypeParameterSymbol parameter, ITypeSymbol argument, ITypeSymbol? receiver, Func<TypeArgumentConstraint, bool>? checks = null)
     {
         // Box<Missing> is the compiler's error (CS0246); what Missing would be is unknown.
         if (argument.TypeKind is TypeKind.Error) yield break;
@@ -325,6 +462,7 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         {
             // Relational constraints are checked against the other arguments, in PairDiagnostics.
             if (constraint is TypeArgumentConstraint.Distinct or TypeArgumentConstraint.Unrelated) continue;
+            if (checks is not null && !checks(constraint)) continue;
 
             if (argument is ITypeParameterSymbol forwarded)
             {

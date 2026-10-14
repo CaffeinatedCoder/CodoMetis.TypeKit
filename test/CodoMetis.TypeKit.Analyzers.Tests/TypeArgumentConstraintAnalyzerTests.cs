@@ -165,6 +165,144 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
+    /// A method the compiler binds by pattern has its type arguments inferred, and nothing names it: a
+    /// <c>foreach</c>'s <c>GetEnumerator</c>, an <c>await</c>'s <c>GetAwaiter</c>, a deconstruction's
+    /// <c>Deconstruct</c>, in an assignment, a <c>foreach</c> or a positional pattern, and a collection
+    /// expression's <c>Add</c> or builder. Each was silent, where a call written out was reported
+    /// (reported 2026-10-14); each is reported where the pattern is used.
+    /// </summary>
+    [Fact]
+    public Task A_method_bound_by_a_pattern_is_reported_where_the_pattern_is_used() =>
+        Test(
+            """
+            public sealed class Bag<T> { }
+            public struct Cursor<T> { public T Current => default!; public bool MoveNext() => false; }
+            public readonly struct Waiter<T> : System.Runtime.CompilerServices.INotifyCompletion
+            {
+                public bool IsCompleted => true;
+                public T GetResult() => default!;
+                public void OnCompleted(Action continuation) { }
+            }
+
+            public sealed class Heap<T> : System.Collections.Generic.IEnumerable<T>
+            {
+                public System.Collections.Generic.IEnumerator<T> GetEnumerator() => throw new NotSupportedException();
+                System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+            }
+
+            [System.Runtime.CompilerServices.CollectionBuilder(typeof(Built), nameof(Built.Create))]
+            public sealed class Built<T> : System.Collections.Generic.IEnumerable<T>
+            {
+                public System.Collections.Generic.IEnumerator<T> GetEnumerator() => throw new NotSupportedException();
+                System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+            }
+
+            public static class Built
+            {
+                public static Built<T> Create<[ReadOnlyStruct] T>(ReadOnlySpan<T> items) => new();
+            }
+
+            public static class Patterns
+            {
+                public static Cursor<T> GetEnumerator<[ReadOnlyStruct] T>(this Bag<T> bag) => default;
+                public static Waiter<T> GetAwaiter<[ReadOnlyStruct] T>(this Bag<T> bag) => default;
+                public static void Deconstruct<[ReadOnlyStruct] T>(this Bag<T> bag, out int first, out int second) => (first, second) = (0, 0);
+                public static void Add<[ReadOnlyStruct] T>(this Heap<T> heap, T item) { }
+            }
+
+            public sealed class Crate<T> { }
+
+            public static class BlockPatterns
+            {
+                extension<[ReadOnlyStruct] T>(Crate<T> crate)
+                {
+                    public Cursor<T> GetEnumerator() => default;
+                }
+            }
+
+            public static class Uses
+            {
+                public static async System.Threading.Tasks.Task Go(Bag<Handler> bag, System.Collections.Generic.List<Bag<Handler>> bags, Handler handler, Handler[] more, Crate<Handler> crate)
+                {
+                    foreach (var item in {|#0:bag|}) { }
+                    foreach ({|#1:var (x, y)|} in bags) { }
+                    var awaited = {|#2:await bag|};
+                    {|#3:var (a, b) = bag|};
+                    {|#4:(a, b) = bag|};
+                    if (bag is {|#5:(1, 2)|}) { }
+                    var label = bag switch { {|#6:(0, 0)|} => "zero", _ => "other" };
+                    Heap<Handler> heap = {|#7:[handler]|};
+                    Built<Handler> built = {|#8:[handler]|};
+                    Heap<Handler> spread = {|#9:[..more]|};
+                    Heap<Handler> twice = {|#12:[handler, handler]|};
+                    {|#10:var ((p, q), r) = (bag, 1)|};
+                    foreach (var item in {|#11:crate|}) { }
+                }
+
+                public static async System.Threading.Tasks.Task Fine(Bag<Frozen> bag, System.Collections.Generic.List<Bag<Frozen>> bags, Frozen handler)
+                {
+                    foreach (var item in bag) { }
+                    foreach (var (x, y) in bags) { }
+                    var awaited = await bag;
+                    var (a, b) = bag;
+                    (a, b) = bag;
+                    if (bag is (1, 2)) { }
+                    Heap<Frozen> heap = [handler];
+                    Built<Frozen> built = [handler];
+                }
+            }
+            """,
+            Cmtk0010(0, "Handler", "T", "Patterns.GetEnumerator<T>", "is not a readonly struct"),
+            Cmtk0010(1, "Handler", "T", "Patterns.Deconstruct<T>", "is not a readonly struct"),
+            Cmtk0010(2, "Handler", "T", "Patterns.GetAwaiter<T>", "is not a readonly struct"),
+            Cmtk0010(3, "Handler", "T", "Patterns.Deconstruct<T>", "is not a readonly struct"),
+            Cmtk0010(4, "Handler", "T", "Patterns.Deconstruct<T>", "is not a readonly struct"),
+            Cmtk0010(5, "Handler", "T", "Patterns.Deconstruct<T>", "is not a readonly struct"),
+            Cmtk0010(6, "Handler", "T", "Patterns.Deconstruct<T>", "is not a readonly struct"),
+            Cmtk0010(7, "Handler", "T", "Patterns.Add<T>", "is not a readonly struct"),
+            Cmtk0010(8, "Handler", "T", "Built.Create<T>", "is not a readonly struct"),
+            Cmtk0010(9, "Handler", "T", "Patterns.Add<T>", "is not a readonly struct"),
+            Cmtk0010(10, "Handler", "T", "Patterns.Deconstruct<T>", "is not a readonly struct"),
+            Cmtk0010(11, "Handler", "T", "BlockPatterns.extension<T>(Crate<T>)", "is not a readonly struct"),
+            Cmtk0010(12, "Handler", "T", "Patterns.Add<T>", "is not a readonly struct"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// CMTK0010 shipped at Error in 2.0.0 with <c>[Abstract]</c>, <c>[Sealed]</c>, <c>[Record]</c> and
+    /// <c>[Concrete]</c>, and left a method bound by pattern alone; an Error that reports more waits for a major
+    /// version (decision 34), so at a pattern use those four stay silent until 3.0.0 (decision 89), while the
+    /// same method called by name is reported as it was. A pair attribute, new in 2.1.0, is checked there.
+    /// </summary>
+    [Fact]
+    public Task At_a_pattern_use_the_2_0_kinds_wait_for_3_0_and_a_pair_is_checked() =>
+        Test(
+            """
+            public sealed class Bag<T> { }
+            public struct Cursor<T> { public T Current => default!; public bool MoveNext() => false; }
+            public sealed class Duo<TA, TB> { }
+
+            public static class Patterns
+            {
+                public static Cursor<T> GetEnumerator<[Concrete] T>(this Bag<T> bag) => default;
+                public static void Deconstruct<[Distinct] TA, [Distinct] TB>(this Duo<TA, TB> duo, out int first, out int second) => (first, second) = (0, 0);
+            }
+
+            public static class Uses
+            {
+                public static void Go(Bag<Handler> bag, Duo<Handler, Handler> same, Duo<Handler, OrderHandler> apart)
+                {
+                    foreach (var item in bag) { }
+                    var cursor = {|#0:Patterns.GetEnumerator(bag)|};
+                    {|#1:var (a, b) = same|};
+                    var (c, d) = apart;
+                }
+            }
+            """,
+            Cmtk0010(0, "Handler", "T", "Patterns.GetEnumerator<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(1, "Handler", "TB", "Patterns.Deconstruct<TA, TB>", "is the same type as the argument for 'TA'"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
     /// A method group whose type arguments are inferred from the delegate it converts to has no
     /// generic name and is no call: reported at the group, wherever it converts, a local function's
     /// included. One with its arguments written is the generic name's, reported there once.

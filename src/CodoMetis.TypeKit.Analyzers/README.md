@@ -35,7 +35,7 @@ project. The two packages share a version and move together.
 | CMTK0007 | Info | `FromKnownGood` given a value that comes straight from a parameter. |
 | CMTK0008 | Warning | The values inside two different value objects compared, `order.CustomerId.Value == product.Id.Value`, or the two value objects themselves compared through `Equals(object)`. |
 | CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. |
-| CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute: `[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]`, `[Interface]`, `[Unsealed]`, `[ValueObject]`, `[ClosedSet]`, `[FlagsEnum]` or `[ReadOnlyStruct]`. Also a pair of arguments for two parameters marked `[Distinct]` or `[Unrelated]` that are one type, or related by inheritance, implementation or boxing, reported once at the later argument. Checked at any closed use, written or inferred: a base type, a member, a parameter, a local, a `typeof`, an attribute, a call or a method group, and a member of a generic extension block, whose arguments the receiver gives. A type parameter passed on without the attribute is a breach too. A method that implements an interface's method, or overrides one, carries the constraint of what it implements, a static one and one a base class declares included. |
+| CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute: `[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]`, `[Interface]`, `[Unsealed]`, `[ValueObject]`, `[ClosedSet]`, `[FlagsEnum]` or `[ReadOnlyStruct]`. Also a pair of arguments for two parameters marked `[Distinct]` or `[Unrelated]` that are one type, or related by inheritance, implementation or boxing, reported once at the later argument. Checked at any closed use, written or inferred: a base type, a member, a parameter, a local, a `typeof`, an attribute, a call or a method group, a member of a generic extension block, whose arguments the receiver gives, and a method the compiler calls for a `foreach`, an `await`, a deconstruction, a positional pattern or a collection expression (there, `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` join in 3.0.0). A type parameter passed on without the attribute is a breach too. A method that implements an interface's method, or overrides one, carries the constraint of what it implements, a static one and one a base class declares included. |
 | CMTK0011 | Error | A concrete class that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. A struct is never reported: its parameterless constructor is public and can be nothing else. The code fix writes or changes the constructor. |
 | CMTK0012 | Error | A closed set's `Match` given an argument by position. It binds to whichever member is declared at that place, so reordering the members swaps the branches. The code fix names every argument. |
 | CMTK0013 | Error | A closed set's member written outside its declaration: in the static constructor, after the generators named the instance it held, or in another static field's initializer, before. |
@@ -412,7 +412,9 @@ aggregate, gets no help from the compiler, and a closed type that breaks it comp
 
 The rule reports the use at the argument, where one is written. Where the arguments are inferred, it
 reports the call, or the method group that takes them from the delegate it converts to
-(`Action<PlaceOrder> run = Runner.Run;`):
+(`Action<PlaceOrder> run = Runner.Run;`). A method the compiler calls by pattern is reported where the
+pattern is: the `foreach`'s collection, the `await`, the deconstruction, the positional pattern or the
+collection expression.
 
 ```csharp
 public abstract class Decider<[Abstract] TCommand, [Record] TEvent> { }

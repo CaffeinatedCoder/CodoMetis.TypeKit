@@ -47,6 +47,9 @@ item names the decision that scoped it.
 
 ## 3.0.0
 
+- CMTK0010 checks `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` at a method the compiler binds by
+  pattern too, as it checks the kinds 2.1.0 added ([decision 89](adr/0089-cmtk0010-at-methods-bound-by-pattern.md)).
+
 - CMTK1023, a base record's equality that the generated one does not call, becomes an Error
   ([decision 75](adr/0075-equality-over-base-record-generated.md)).
 - C# 15 unions and the `net10.0` drop, timed to .NET 12 LTS (November 2027) or to the end of .NET
