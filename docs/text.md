@@ -1,34 +1,38 @@
 # Written text
 
-Every application that stores what a person typed trims it and refuses a blank. Few refuse a
-zero-width space, a Hangul filler or NUL, which `IsNullOrWhiteSpace` lets through and `Trim` leaves
-in place. Fewer compose it, so a name written with `ü` and the same name written with `u` and a
-combining diaeresis are two rows of a unique index that render alike. `AsText()` does all of this for
-a line of text a person wrote, and `AsIdentifier()` trims and refuses for a value another system
-issued; both are extensions on `string` in `CodoMetis.TypeKit` and answer with a
-`Result<string, TextFault>`. The [base README](../src/CodoMetis.TypeKit/README.md#written-text) is
-their reference and lists exactly what they refuse; this page is about using them: which one, where,
-and inside a value object. The examples import `CodoMetis.TypeKit`.
+`AsText()` and `AsIdentifier()` check a string before you store it. `AsText()` is for a line of text
+a person wrote, like a name. `AsIdentifier()` is for a value another system issued, like a session id.
 
-## Two guards
+Most applications trim what a person typed and reject a blank. Few reject a zero-width space, a
+Hangul filler or NUL, which `IsNullOrWhiteSpace` lets through and `Trim` leaves in place. Fewer still
+compose the text. Then a name written with `ü`, and the same name written with `u` and a combining
+diaeresis, look alike but are two rows of a unique index. `AsText()` takes care of all of this.
+`AsIdentifier()` trims and rejects, and leaves the rest as issued.
+
+Both are extensions on `string` in the `CodoMetis.TypeKit` namespace, and both return a
+`Result<string, TextFault>`. This page helps you pick one, use it on a field, and build a value object
+on it. The [base README](../src/CodoMetis.TypeKit/README.md#written-text) is their reference and
+lists exactly what they reject. The examples import `CodoMetis.TypeKit`.
+
+## Pick a guard
 
 | | `AsText()` | `AsIdentifier()` |
 |---|---|---|
-| For | one line of text a person wrote: a name, a title, a subject line | a value another system issued: a subject claim, a session id, a key |
+| Use it for | one line of text a person wrote: a name, a title, a subject line | a value another system issued: a subject claim, a session id, a key |
 | Trims | yes | yes |
-| Folds every space separator to an ordinary space | yes | no |
-| Composes to NFC, so one spelling per name | yes, and only that: a ligature, a superscript or a fullwidth letter stays as written, as NFKC would not keep it | no, since an issued value is compared against what its issuer sends next time |
-| Refuses a character that renders as nothing | yes | yes |
-| A line break, a tab or another control character | refused as `Hidden`: a value is one line, so a multi-line field such as a comment does not go through the guard | refused |
-| A format character: a soft hyphen, a byte-order mark, a bidirectional mark or override, a tag character | refused, so an Arabic name ending in a right-to-left mark is refused too | refused |
-| The Arabic number sign, the end of ayah and the other prepended concatenation marks | kept: format characters by category, but drawn, spanning the digits after them | kept |
-| The two zero-width joiners | kept: they spell Persian, Arabic and Indic scripts and hold an emoji sequence together | refused: no issuer needs one |
-| A variation selector | kept after the character it varies (an emoji's presentation, an ideograph's variant); elsewhere it selects nothing and is refused | the same |
-| A value of joiners, variation selectors and combining marks alone | refused: it renders no character of its own | refused |
-| More than 30 combining marks in a row | refused: no script stacks that many, and composing a run takes time that grows with the square of its length | refused |
-| An unpaired surrogate, or `U+FFFE` | refused, where `Normalize` would throw | refused |
-| A null receiver | `Blank` | `Blank` |
-| In globalization-invariant mode | throws `PlatformNotSupportedException`, since it cannot compose there ([below](#globalization-invariant-mode)) | works, for issued values |
+| Turns every space separator, such as an em space, into an ordinary space | yes | no |
+| Composes to NFC, so each name has one spelling | yes, and only that: a ligature, a superscript or a fullwidth letter stays as written, which NFKC would change | no, because an issued value is compared with what its issuer sends next time |
+| Rejects a character that renders as nothing | yes | yes |
+| A line break, a tab or another control character | rejected as `Hidden`. A value is one line, so a multi-line field such as a comment doesn't go through the guard | rejected |
+| A format character: a soft hyphen, a byte-order mark, a bidirectional mark or override, a tag character | rejected, so an Arabic name that ends in a right-to-left mark is rejected too | rejected |
+| The Arabic number sign, the end of ayah and the other prepended concatenation marks | kept. They are format characters by category, but they are drawn, and span the digits after them | kept |
+| The two zero-width joiners | kept. They spell Persian, Arabic and Indic scripts, and hold an emoji sequence together | rejected, since no issuer needs one |
+| A variation selector | kept after the character it varies (an emoji's presentation, an ideograph's variant). Anywhere else it selects nothing and is rejected | the same |
+| A value made only of joiners, variation selectors and combining marks | rejected, since it renders no character of its own | rejected |
+| More than 30 combining marks in a row | rejected. No script stacks that many, and composing a run takes time that grows with the square of its length | rejected |
+| An unpaired surrogate, or `U+FFFE` | rejected, where `Normalize` would throw | rejected |
+| A null string | `Blank` | `Blank` |
+| In globalization-invariant mode | throws `PlatformNotSupportedException`, because it can't compose there ([below](#globalization-invariant-mode)) | works, for issued values |
 
 ```csharp
 Result<string, TextFault> composed = "Zoe\u0308".AsText();            // Success: Zoë, composed to NFC: one code point for ë
@@ -41,19 +45,24 @@ Result<string, TextFault> issued = " a1b2-c3 ".AsIdentifier();          // Succe
 Result<string, TextFault> forged = "sub\u200Dject".AsIdentifier();      // Error: Hidden, a joiner in an identifier
 ```
 
-Both scan by `Rune`, so a character above the Basic Multilingual Plane is seen for what it is, and an
-unpaired surrogate is `Hidden` rather than an exception, which `Normalize` and a database driver would
-both throw on. No string makes either guard throw, and none makes either take more than linear time.
-Not refused on purpose: unassigned code points, since the runtime's Unicode tables lag the standard
-and a name spelled with a newly assigned character would be refused until the SDK caught up; and
-confusable letters across scripts, which is a comparison question and not a rejection.
+**Good to know**
+
+- **No string makes either guard throw.** Both read the text by `Rune`, so a character above the
+  Basic Multilingual Plane is seen for what it is. An unpaired surrogate comes back as `Hidden`, where
+  `Normalize` and a database driver would both throw.
+- **Neither takes more than linear time,** whatever the string.
+- **Unassigned code points are kept on purpose.** The runtime's Unicode tables lag behind the
+  standard. Rejecting them would reject a name spelled with a newly assigned character until the SDK
+  caught up.
+- **Look-alike letters from different scripts are kept on purpose.** Telling them apart is a question
+  for comparison, not a reason to reject the text.
 
 ## Required and optional
 
-`TextFault` has two members because the caller decides what a blank means. A required field makes
-`Blank` an error; an optional one makes it absence, which `AsOptionalText()` and
-`AsOptionalIdentifier()` answer as a `Result<Option<string>, TextFault>`. `Hidden` is a refusal in both:
-a hidden character is not nothing, it is text the person cannot see.
+`TextFault` has two members, `Blank` and `Hidden`, because only you know what a blank means for your
+field. For a required field, `Blank` is an error. For an optional one, a blank means "no value", and
+`AsOptionalText()` and `AsOptionalIdentifier()` return a `Result<Option<string>, TextFault>`.
+`Hidden` is an error in both cases. A hidden character isn't nothing: it is text the person can't see.
 
 ```csharp
 public sealed record ProfileRequest(string? Name, string? Note);   // bound from a request: nothing enforces the non-nullability
@@ -65,14 +74,14 @@ string note = request.Note.AsOptionalText().Match(text => text.Match(t => t, () 
 string tagged = "note\u200B".AsOptionalText().Match(text => text.Match(t => t, () => "none"), fault => fault.ToString()); // "Hidden"
 ```
 
-A null is `Blank` because the extension is the door a bound request property goes through, and
-binding enforces no non-nullability: a `string Name` in a record is null when the body lacked it.
+A null string is `Blank`. A bound request property comes in through the guard, and request binding
+doesn't enforce non-nullability. A `string Name` in a record is null when the body left it out.
 
-## A value object over the guard
+## Build a value object on a guard
 
-No value object ships with the guards. One over either is one line, named for the field rather than
-for the guard, since `DisplayName` says more than `Text` and two fields of one type can be assigned to
-each other. The guard composes with rules of your own:
+TypeKit ships no value object for the guards. Your own takes one line of `Create`, as `SubjectId`
+below shows. Name it for the field, not for the guard: `DisplayName` says more than `Text`, and two fields of one shared type could
+be assigned to each other by mistake. The guard combines with rules of your own:
 
 ```csharp
 public enum NameFault { Blank, Hidden, TooLong }
@@ -98,33 +107,38 @@ string refused = DisplayName.Create(new string('x', 51)).Match(name => name.Valu
 bool equal = DisplayName.FromKnownGood("Mu\u0308ller") == DisplayName.FromKnownGood("M\u00FCller");               // true, one spelling after NFC
 ```
 
-Every generated way into `DisplayName`, JSON, a route parameter, `TryFrom`, applies the guard and the
-length rule, so a document or a request that carries a hidden character is refused with `Hidden`
-before it reaches the domain. Where the guard is the whole rule, the fault type is `TextFault` itself,
-as `SubjectId` shows.
+Every generated way to create a `DisplayName` runs the guard and the length rule: JSON, a route
+parameter, `TryFrom`. A document or a request that carries a hidden character is rejected with
+`Hidden` before it reaches your domain. When the guard is the whole rule, use `TextFault` itself as
+the error type, as `SubjectId` does.
 
 ## Globalization-invariant mode
 
-`AsText()` composes through the runtime's globalization data. A process in globalization-invariant
-mode has none: `<InvariantGlobalization>true</InvariantGlobalization>` in the project, which Native
-AOT and container templates often set, or `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`. There
-`string.Normalize` returns its input unchanged, and a guard that answered anyway would keep one name in
-two spellings, without a word. So `AsText()` throws `PlatformNotSupportedException` there, on its first
-call whatever the string, rather than on the first decomposed name a client happens to send.
+`AsText()` composes text with the runtime's globalization data. A process in globalization-invariant
+mode has none. You turn that mode on with `<InvariantGlobalization>true</InvariantGlobalization>` in
+the project, which Native AOT and container templates often set, or with
+`DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`.
 
-Written text has no guard in that mode. Where the application calls `AsText()`, turn the mode off and
-make ICU available to the process (`libicu` on Debian and Ubuntu, `icu-libs` on Alpine); ICU installed
-while the mode stays on does nothing. `AsIdentifier()` keeps working there, but only for what it is for,
-a value another system issued: it refuses the joiners a Persian name or an emoji sequence needs and
-folds no space, so it is no stand-in for `AsText()`.
+In that mode `string.Normalize` returns its input unchanged. A guard that answered anyway would keep
+one name in two spellings without telling you. So `AsText()` throws `PlatformNotSupportedException`
+there, on its first call, whatever the string. You find out at once, not on the first decomposed name
+a client happens to send.
 
-## Where it does not belong
+To use `AsText()`, turn the mode off and make ICU available to the process: `libicu` on Debian and
+Ubuntu, `icu-libs` on Alpine. Installing ICU while the mode stays on does nothing. In that mode there
+is no guard for written text.
 
-- **A password or a secret.** Composing or folding it changes what the person typed; compare it as
-  given, and never through a guard that would also put it in a fault.
-- **A multi-line field**, such as a comment or a message body: a line break is a control character,
-  refused as `Hidden`. Guard each line, or keep the field as the `string` it is.
-- **Text another system will parse**, such as a path or a URL: it has its own rules, and trimming it
-  is already a change.
-- **A comparison key.** Confusable letters across scripts and case folding are a comparison's
-  concern; the guard decides what is stored, not what is equal.
+`AsIdentifier()` keeps working in that mode, but only for what it is for, a value another system
+issued. It rejects the joiners a Persian name or an emoji sequence needs, and doesn't fold spaces,
+so it can't stand in for `AsText()`.
+
+## When not to use them
+
+- **A password or a secret.** Composing or folding it changes what the person typed. Compare it as
+  given, and keep it away from a guard that would also put it in a fault.
+- **A multi-line field**, such as a comment or a message body. A line break is a control character,
+  rejected as `Hidden`. Check each line on its own, or keep the field as a plain `string`.
+- **Text another system will parse**, such as a path or a URL. It has its own rules, and even
+  trimming it changes it.
+- **A comparison key.** Look-alike letters across scripts and case folding are a question for
+  comparison. The guard decides what is stored, not what counts as equal.
