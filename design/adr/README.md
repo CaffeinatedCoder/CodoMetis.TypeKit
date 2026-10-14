@@ -74,3 +74,5 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0065](0065-2-0-0-ships-without-preview.md) | 2.0.0 ships without a preview | 2026-10-14 | accepted |
 | [0066](0066-precondition-failed-malformed-fault-kinds.md) | Two more fault kinds: `PreconditionFailed` (412) and `Malformed` (400) | 2026-10-14 | accepted |
 | [0067](0067-rule-that-refused-on-fault.md) | A fault names the rule that refused, as a member of a fixed set | 2026-10-14 | accepted |
+| [0068](0068-fault-set-composition-spiked-first.md) | Fault sets that share members are spiked before they are built | 2026-10-14 | accepted |
+| [0069](0069-plain-enum-schemas-left-to-host.md) | A plain enum's schema stays the host's | 2026-10-14 | accepted |

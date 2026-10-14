@@ -32,6 +32,9 @@ item names the decision that scoped it.
 
 ## 2.x, with a spike first
 
+- Fault sets that share members: a set that includes another's, its members copied by the generators
+  with a conversion from the included set, against waiting for C# 15 unions; what `fault`, the
+  document and `AddFaultResponses` then say ([decision 68](adr/0068-fault-set-composition-spiked-first.md)).
 - A stable external name for a closed-set member, apart from its C# identifier: parsing, JSON, EF,
   OpenAPI and the fault identifiers at once (proposed in the review of 2026-10-13).
 - The Metalama 2027.0 upgrade ([decision 4](adr/0004-metalama-2026-1-x-latest-stable.md)): a minor if a consumer's own aspects beside the packed
