@@ -18,6 +18,8 @@
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" />
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing" />
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+        <!-- Past the advisories of the 9.0.6 NuGet.Packaging brings; see Directory.Packages.props. -->
+        <PackageReference Include="System.Security.Cryptography.Pkcs" />
     </ItemGroup>
 
 </Project>

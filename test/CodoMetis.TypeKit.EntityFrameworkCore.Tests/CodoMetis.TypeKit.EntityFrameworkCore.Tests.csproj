@@ -17,6 +17,8 @@
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+        <!-- Past the advisories of the 9.0.11 Microsoft.Data.SqlClient brings; see Directory.Packages.props. -->
+        <PackageReference Include="System.Security.Cryptography.Pkcs" />
         <PackageReference Include="Testcontainers.PostgreSql" />
     </ItemGroup>
 
