@@ -366,6 +366,45 @@ public sealed partial class FaultResponseTests
         (problem["required"]?.AsArray().Select(name => name!.GetValue<string>()) ?? []).ShouldNotContain("rule");
     }
 
+    /// <summary>
+    /// A problem response the endpoint declares itself is kept, but it answers the fault too: with every mapped
+    /// status declared by <c>ProducesProblem</c>, nothing described <c>fault</c> or <c>rule</c>, though the problems
+    /// carried them, and no description named the problem types (reported 2026-10-14). Inline, the declared
+    /// response's own schema gets them.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Problem_responses_the_endpoint_declares_itself_describe_fault_and_rule(bool inline)
+    {
+        await using var app = await StartAsync(
+            orders: false,
+            controls: false,
+            openApi: options =>
+            {
+                if (inline) options.CreateSchemaReferenceId = type => type.Type == typeof(ProblemDetails) ? null : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
+            },
+            services: services => services.AddFaultResponses<OrderFault>(fault =>
+                FaultResponse.Status(fault switch
+                {
+                    OrderFault.NotFound => StatusCodes.Status404NotFound,
+                    OrderFault.AlreadyShipped => StatusCodes.Status409Conflict,
+                    _ => StatusCodes.Status403Forbidden,
+                }).WithType(new Uri($"https://problems.example/{fault}"))),
+            endpoints: app => app.MapGet("/declared/{id:int}", (int id) => Find(id).ToHttpResult())
+                                 .ProducesProblem(StatusCodes.Status403Forbidden).ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict));
+
+        (await ProblemAsync(app, "/declared/9"))["fault"]!.GetValue<string>().ShouldBe(nameof(OrderFault.NotFound), "the control: the problem carries it");
+
+        var document = await DocumentAsync(app);
+        var notFound = Responses(document, "/declared/{id}", "get")["404"]!;
+        var problem  = inline ? ProblemSchema(notFound) : document["components"]!["schemas"]!["ProblemDetails"]!;
+
+        problem["properties"]!["fault"].ShouldNotBeNull(problem.ToJsonString());
+        problem["properties"]!["rule"].ShouldNotBeNull(problem.ToJsonString());
+        notFound["description"]!.GetValue<string>().ShouldBe("Not Found. Problem types: https://problems.example/NotFound");
+    }
+
     /// <summary>A host whose document has no fault response keeps ASP.NET's problem schema, and the whole document, byte for byte.</summary>
     [Theory]
     [InlineData(OpenApiSpecVersion.OpenApi3_1)]

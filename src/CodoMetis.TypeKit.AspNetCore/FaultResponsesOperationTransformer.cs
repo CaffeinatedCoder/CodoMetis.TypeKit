@@ -22,7 +22,9 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// which MVC builds without them (spikes/ResultHttp, finding 4). ASP.NET has already put schemas into
 /// components when operation transformers run, so the problem schema is added as the component the
 /// host's <see cref="OpenApiOptions.CreateSchemaReferenceId"/> names, and referred to (finding 6). A
-/// response the operation already has is kept, which also makes a second <c>AddTypeKit()</c> a no-op.
+/// response the operation already has is kept, which also makes a second <c>AddTypeKit()</c> a no-op;
+/// a problem response among them still gets <c>fault</c> and <c>rule</c>, and the problem types where its
+/// description is the reason phrase alone.
 /// A response's description is the status's reason phrase, followed by the problem types of the
 /// members answered with it where the mapping gives any. The problem schema those responses refer to
 /// gains an optional <c>fault</c> string, the member a client of a fault response matches on, and an
@@ -103,18 +105,41 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
         {
             var key = status.ToString(CultureInfo.InvariantCulture);
             operation.Responses ??= [];
-            if (operation.Responses.ContainsKey(key)) continue;
+
+            if (operation.Responses.TryGetValue(key, out var declared))
+            {
+                // A problem response the endpoint declares itself (ProducesProblem, [ProducesResponseType]) is
+                // kept, but it answers the fault too: its problem schema gets fault and rule, and a description
+                // nobody wrote gets the problem types. Skipped whole, a host declaring every status described
+                // neither, though the problems carried fault (reported 2026-10-14).
+                if (declared is OpenApiResponse { Content: { } content } response
+                 && content.TryGetValue("application/problem+json", out var media))
+                {
+                    problem ??= await ProblemSchemaAsync(context, cancellationToken);
+                    if (media.Schema is OpenApiSchema inline) WithFault(inline, Qualified(context));
+                    if (string.IsNullOrEmpty(response.Description) || response.Description == ReasonPhrases.GetReasonPhrase(status))
+                        response.Description = Description(status, types);
+                }
+
+                continue;
+            }
 
             problem ??= await ProblemSchemaAsync(context, cancellationToken);
             operation.Responses[key] = new OpenApiResponse
             {
-                Description = types.Count == 0
-                    ? ReasonPhrases.GetReasonPhrase(status)
-                    : $"{ReasonPhrases.GetReasonPhrase(status)}. Problem types: {string.Join(", ", types)}",
+                Description = Description(status, types),
                 Content = new Dictionary<string, OpenApiMediaType> { ["application/problem+json"] = new() { Schema = problem } },
             };
         }
     }
+
+    private static string Description(int status, List<string> types) =>
+        types.Count == 0
+            ? ReasonPhrases.GetReasonPhrase(status)
+            : $"{ReasonPhrases.GetReasonPhrase(status)}. Problem types: {string.Join(", ", types)}";
+
+    private static bool Qualified(OpenApiOperationTransformerContext context) =>
+        context.ApplicationServices.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true;
 
     private static async Task<IOpenApiSchema> ProblemSchemaAsync(OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
     {
@@ -124,7 +149,7 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
         var json = services.GetRequiredService<IOptions<HttpJsonOptions>>().Value.SerializerOptions;
         var id = services.GetRequiredService<IOptionsMonitor<OpenApiOptions>>().Get(context.DocumentName)
                          .CreateSchemaReferenceId(json.GetTypeInfo(typeof(ProblemDetails)));
-        var qualified = services.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true;
+        var qualified = Qualified(context);
 
         // A host that inlines it gets it inline, as ASP.NET writes its own problem responses there.
         if (id is null || context.Document is not { } document) return WithFault(schema, qualified);
