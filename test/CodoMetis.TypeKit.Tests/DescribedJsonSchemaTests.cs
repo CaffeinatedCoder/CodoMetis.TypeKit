@@ -311,6 +311,114 @@ public sealed class DescribedJsonSchemaTests
         description.Schema!["type"]!.GetValue<string>().ShouldBe("string");
     }
 
+    /// <summary>A factory in the options, asked for the converter it makes: described where that one says what it writes.</summary>
+    public sealed class StringsFactory : JsonConverterFactory
+    {
+        public override bool CanConvert(Type typeToConvert) => typeToConvert == typeof(decimal);
+
+        public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options) => new DecimalStringJsonConverter();
+    }
+
+    /// <summary>A factory whose converter says nothing, for a type whose own converter describes itself.</summary>
+    public sealed class SilentMoneyFactory : JsonConverterFactory
+    {
+        public override bool CanConvert(Type typeToConvert) => typeToConvert == typeof(Money);
+
+        public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options) => new SilentMoney();
+    }
+
+    public sealed class SilentMoney : JsonConverter<Money>
+    {
+        public override Money Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => new(0);
+
+        public override void Write(Utf8JsonWriter writer, Money value, JsonSerializerOptions options) => writer.WriteStringValue("money");
+    }
+
+    public sealed record Factored([property: JsonConverter(typeof(StringsFactory))] decimal Price, [property: JsonConverter(typeof(StringsFactory))] decimal? Maybe);
+
+    /// <summary>A converter registered for the nullable type alone, which the serializer picks for the nullable positions.</summary>
+    public sealed class NullableMoneyFlag : JsonConverter<Money?>, IDescribedJsonConverter
+    {
+        public override bool HandleNull => true;
+
+        public override Money? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetBoolean() ? new(1) : null;
+
+        public override void Write(Utf8JsonWriter writer, Money? value, JsonSerializerOptions options) => writer.WriteBooleanValue(value is not null);
+
+        public JsonSchemaDescription DescribeJson(Type typeToConvert, JsonSerializerOptions options)
+        {
+            typeToConvert.ShouldBe(typeof(Money?), "asked for the type it converts");
+            return JsonSchemaDescription.Of(new JsonObject { ["type"] = "boolean" });
+        }
+    }
+
+    public sealed record Flags(Money? Maybe, Money Plain);
+
+    public sealed record Holder(decimal? Maybe, decimal Plain);
+
+    private static JsonSerializerOptions Options(params JsonConverter[] converters)
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { TypeInfoResolver = new DefaultJsonTypeInfoResolver() };
+        foreach (var converter in converters) options.Converters.Add(converter);
+        return options;
+    }
+
+    /// <summary>
+    /// The serializer runs the converter a factory makes, so that converter is asked: a described one is
+    /// described, and one that says nothing says nothing, whatever the type's own converter would have said.
+    /// </summary>
+    [Fact]
+    public void A_factory_in_the_options_is_asked_for_the_converter_it_makes()
+    {
+        var strings = Options(new StringsFactory());
+        Export<decimal>(strings).ToJsonString().ShouldBe(DecimalString);
+        JsonSerializer.Serialize(7.80m, strings).ShouldBe("\"7.8\"");
+
+        var silent = Options(new SilentMoneyFactory());
+        Export<Money>(silent).ToJsonString().ShouldBe("true", "the converter the factory makes says nothing, and the type's own, which does not write it, is not asked");
+        JsonSerializer.Serialize(new Money(1), silent).ShouldBe("\"money\"");
+    }
+
+    [Fact]
+    public void A_factory_a_property_names_is_asked_for_the_converter_it_makes()
+    {
+        var options = Options();
+        var properties = Export<Factored>(options)["properties"]!;
+
+        properties["price"]!.ToJsonString().ShouldBe(DecimalString);
+        properties["maybe"]!["type"]!.ToJsonString().ShouldBe("""["string","null"]""");
+        properties["maybe"]!["pattern"].ShouldNotBeNull();
+        JsonSerializer.Serialize(new Factored(7.80m, 7.80m), options).ShouldBe("""{"price":"7.8","maybe":"7.8"}""");
+    }
+
+    /// <summary>The serializer picks a converter for the declared type first, a <c>Nullable&lt;T&gt;</c> included, and so does the description.</summary>
+    [Fact]
+    public void A_converter_registered_for_the_nullable_type_describes_the_nullable_positions()
+    {
+        var options = Options(new DecimalStringJsonConverter(), new NullableMoneyFlag());
+        var properties = Export<Flags>(options)["properties"]!;
+
+        properties["maybe"]!.ToJsonString().ShouldBe("""{"type":["boolean","null"]}""");
+        properties["plain"]!.ToJsonString().ShouldBe(DecimalString, "the non-nullable positions are the type's own converter's");
+        JsonSerializer.Serialize(new Flags(new(1), new(1)), options).ShouldBe("""{"maybe":true,"plain":"1"}""");
+    }
+
+    /// <summary>
+    /// An <c>if</c> and its branches judge the whole value, null included, whatever the type says: a
+    /// conditional description is kept whole in a branch beside null, as a <c>oneOf</c> is.
+    /// </summary>
+    [Fact]
+    public void A_conditional_description_keeps_its_branches_beside_null()
+    {
+        var conditional = JsonNode.Parse("""{"type":"integer","if":{"type":"integer"},"then":{"minimum":0},"else":{"type":"number"}}""")!.AsObject();
+        var options = Options(new JsonSchemaDescriptions().Describe<decimal>(JsonSchemaDescription.Of(conditional)));
+
+        var expected = new JsonObject { ["anyOf"] = new JsonArray(conditional.DeepClone(), new JsonObject { ["type"] = "null" }) };
+        Export<decimal?>(options).ToJsonString().ShouldBe(expected.ToJsonString());
+        Export<Holder>(options)["properties"]!["maybe"]!.ToJsonString().ShouldBe(expected.ToJsonString());
+        Export<Holder>(options)["properties"]!["plain"]!.ToJsonString().ShouldBe(conditional.ToJsonString(), "a position that refuses null is the description as it is");
+    }
+
     private sealed class UpperConverter : JsonConverter<string>
     {
         public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetString()!;

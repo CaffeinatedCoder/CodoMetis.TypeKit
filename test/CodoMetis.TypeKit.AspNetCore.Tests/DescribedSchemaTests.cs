@@ -9,7 +9,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
+using CodoMetis.TypeKit.ValueObjects;
 
 namespace CodoMetis.TypeKit.AspNetCore.Tests;
 
@@ -87,6 +89,7 @@ public sealed class DescribedSchemaTests
         app.MapGet("/amounts/{amount}", int (decimal amount) => 0);
         app.MapPost("/amend", int (Amend amend) => 0);
         app.MapPost("/labels", int (Labels labels) => 0);
+        app.MapPatch("/conditioned", int (Conditioned conditioned) => 0);
     }
 
     /// <summary>A value object and a closed set the options write with converters of their own that say nothing.</summary>
@@ -227,6 +230,7 @@ public sealed class DescribedSchemaTests
             .Describe(type => type == typeof(DayOfWeek) ? JsonSchemaDescription.Of(new JsonObject { ["type"] = "string", ["maxLength"] = 9 }) : null)));
 
         Inline(document, document.Property(nameof(ProbeDocument), "count")).ShouldDescribeTheSameAs(new JsonObject { ["type"] = "integer", ["minimum"] = 0 }, "a value object, before its wrapped type");
+        Inline(document, document.Property(nameof(ProbeDocument), "counts")["additionalProperties"]!)["minimum"]!.GetValue<int>().ShouldBe(0, "a dictionary's value too, which the wrapped type's schema once took first");
         Inline(document, document.Property(nameof(ProbeDocument), "weekday"))["maxLength"]!.GetValue<int>().ShouldBe(9, "a value object over an enum, described by the rule through its wrapped type");
     }
 
@@ -375,6 +379,209 @@ public sealed class DescribedSchemaTests
 
         refusal.Message.ShouldContain("System.Decimal");
     }
+
+    /// <summary>A factory in the options for a value object, asked for the converter it makes: one that says what it writes, and one that says nothing.</summary>
+    public sealed class CentsFactory : JsonConverterFactory
+    {
+        public override bool CanConvert(Type typeToConvert) => typeToConvert == typeof(ProbeAmount);
+
+        public override System.Text.Json.Serialization.JsonConverter CreateConverter(Type typeToConvert, System.Text.Json.JsonSerializerOptions options) => new CentsConverter();
+    }
+
+    public sealed class SilentFactory : JsonConverterFactory
+    {
+        public override bool CanConvert(Type typeToConvert) => typeToConvert == typeof(ProbeAmount);
+
+        public override System.Text.Json.Serialization.JsonConverter CreateConverter(Type typeToConvert, System.Text.Json.JsonSerializerOptions options) => new SilentAmount();
+    }
+
+    public sealed class StringsFactory : JsonConverterFactory
+    {
+        public override bool CanConvert(Type typeToConvert) => typeToConvert == typeof(decimal);
+
+        public override System.Text.Json.Serialization.JsonConverter CreateConverter(Type typeToConvert, System.Text.Json.JsonSerializerOptions options) => new DecimalStringJsonConverter();
+    }
+
+    /// <summary>A converter registered for the nullable value object alone, which writes those positions as a flag.</summary>
+    public sealed class NullableAmountFlag : JsonConverter<ProbeAmount?>, IDescribedJsonConverter
+    {
+        public override bool HandleNull => true;
+
+        public override ProbeAmount? Read(ref System.Text.Json.Utf8JsonReader reader, Type typeToConvert, System.Text.Json.JsonSerializerOptions options) => reader.GetBoolean() ? ProbeAmount.From(1) : null;
+
+        public override void Write(System.Text.Json.Utf8JsonWriter writer, ProbeAmount? value, System.Text.Json.JsonSerializerOptions options) => writer.WriteBooleanValue(value is not null);
+
+        public JsonSchemaDescription DescribeJson(Type typeToConvert, System.Text.Json.JsonSerializerOptions options) => JsonSchemaDescription.Of(new JsonObject { ["type"] = "boolean" });
+    }
+
+    /// <summary>A value object in every JSON position: a property, a nullable one, an element, a value, a patch.</summary>
+    public sealed record Placed(ProbeAmount Amount, ProbeAmount? Maybe, List<ProbeAmount> Many, Dictionary<string, ProbeAmount> Named, Patch<ProbeAmount> Change);
+
+    public sealed record Factored([property: JsonConverter(typeof(StringsFactory))] decimal Price, [property: JsonConverter(typeof(CentsFactory))] ProbeAmount Amount);
+
+    public sealed record Flagged(ProbeAmount? Maybe, ProbeAmount Plain);
+
+    public sealed record Conditioned(decimal? Maybe, Patch<decimal> Change);
+
+    private static readonly JsonObject Conditional = JsonNode.Parse("""{"type":"integer","if":{"type":"integer"},"then":{"minimum":0},"else":{"type":"number"}}""")!.AsObject();
+
+    /// <summary>Each way the options can have a value object written, and a value that writer does not write.</summary>
+    private static readonly Dictionary<string, (Func<System.Text.Json.Serialization.JsonConverter[]> Converters, string Foreign)> Writers = new()
+    {
+        ["the generated converter"] = (() => [], "true"),
+        ["a described converter"] = (() => [new CentsConverter()], "7.8"),
+        ["a described factory"] = (() => [new CentsFactory()], "7.8"),
+        ["a decimal converter"] = (() => [new DecimalStringJsonConverter()], "7.8"),
+        ["a description in the options"] = (() => [new JsonSchemaDescriptions().Describe<ProbeAmount>(JsonSchemaDescription.Of(new JsonObject { ["type"] = "number", ["minimum"] = 0 }))], "\"100\""),
+        ["a stored-JSON factory"] = (() => [new StoredJsonConverterFactory()], "true"),
+    };
+
+    public static TheoryData<string, OpenApiSpecVersion> WritersAndVersions => new(Writers.Keys.SelectMany(writer => new[] { (writer, OpenApiSpecVersion.OpenApi3_1), (writer, OpenApiSpecVersion.OpenApi3_0) }));
+
+    /// <summary>
+    /// The matrix: whatever writes a value object, in whichever position and document version, each
+    /// property's schema accepts the JSON the host's options write for it, and refuses a value the writer
+    /// does not write, judged by a JSON Schema validator as a client would.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(WritersAndVersions))]
+    public async Task Every_position_accepts_what_its_writer_writes_and_refuses_what_it_does_not(string writer, OpenApiSpecVersion version)
+    {
+        var (converters, foreign) = Writers[writer];
+        await using var host = await ProbeHost.StartAsync(openApi => openApi.AddTypeKit(), json => { foreach (var converter in converters()) json.SerializerOptions.Converters.Add(converter); }, version,
+            app => app.MapPost("/placed", int (Placed placed) => 0));
+        var document = await host.DocumentAsync();
+        var options = host.Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions;
+
+        var placed = new Placed(ProbeAmount.From(1), ProbeAmount.From(2), [ProbeAmount.From(3)], new() { ["k"] = ProbeAmount.From(4) }, Patch.Value(ProbeAmount.From(5)));
+        var cleared = new Placed(ProbeAmount.From(1), null, [], [], Patch.Null<ProbeAmount>());
+        foreach (var instance in new[] { placed, cleared })
+        {
+            foreach (var (property, value) in System.Text.Json.JsonSerializer.SerializeToNode(instance, options)!.AsObject())
+            {
+                var schema = document.Property(nameof(Placed), property);
+                PatchSchemaTests.Validator(document, schema, version)(value?.ToJsonString() ?? "null")
+                    .ShouldBeTrue($"{writer}, {version}: '{property}' is written as {value?.ToJsonString() ?? "null"}, which {schema.ToJsonString()} refuses");
+            }
+        }
+
+        PatchSchemaTests.Validator(document, document.Property(nameof(Placed), "amount"), version)(foreign)
+            .ShouldBeFalse($"{writer}, {version}: the schema accepts {foreign}, which the writer does not write, so the check above means nothing");
+    }
+
+    /// <summary>A factory in the options writes with the converter it makes, which is asked: for what it says, and for its silence.</summary>
+    [Fact]
+    public async Task A_factory_in_the_options_is_asked_for_the_converter_it_makes()
+    {
+        var described = await MinimalDocumentAsync(json => json.SerializerOptions.Converters.Add(new CentsFactory()), app => app.MapPost("/placed", int (Placed placed) => 0));
+        Inline(described, described.Property(nameof(Placed), "amount")).ShouldDescribeTheSameAs(Cents, "a property");
+        described.Property(nameof(Placed), "change")["pattern"]!.GetValue<string>().ShouldBe("^-?[0-9]*$", "a patch");
+
+        var silent = await MinimalDocumentAsync(json => json.SerializerOptions.Converters.Add(new SilentFactory()), app => app.MapPost("/placed", int (Placed placed) => 0));
+        var amount = Inline(silent, silent.Property(nameof(Placed), "amount"));
+        amount["type"].ShouldBeNull($"not the wrapped decimal, which the converter does not write: {amount.ToJsonString()}");
+        silent.Property(nameof(Placed), "many")["items"].ShouldBeNull("an element of one is left as ASP.NET writes it");
+        silent.Property(nameof(Placed), "change")["format"].ShouldBeNull("a patch of one too");
+    }
+
+    /// <summary>A factory a property names is asked for the converter it makes; for a value object, that is the component refusal, as for any converter named there.</summary>
+    [Fact]
+    public async Task A_factory_a_property_names_is_asked_for_the_converter_it_makes()
+    {
+        var refusal = await Should.ThrowAsync<InvalidOperationException>(() => MinimalDocumentAsync(json => { }, app => app.MapPost("/factored", int (Factored factored) => 0)));
+        refusal.Message.ShouldContain($"{typeof(Factored)}.Amount");
+
+        var document = await MinimalDocumentAsync(json => { }, app => app.MapPost("/tagged", int (TaggedByFactory tagged) => 0));
+        document.Property(nameof(TaggedByFactory), "price").ShouldDescribeTheSameAs(DecimalString);
+    }
+
+    public sealed record TaggedByFactory([property: JsonConverter(typeof(StringsFactory))] decimal Price);
+
+    /// <summary>
+    /// A converter registered for the nullable value object alone writes its nullable positions, which the
+    /// document writes as references to the one component the non-nullable positions are described by: it
+    /// cannot say both, so it is refused rather than wrong for one.
+    /// </summary>
+    [Fact]
+    public async Task A_converter_registered_for_the_nullable_type_alone_stops_the_document()
+    {
+        var refusal = await Should.ThrowAsync<InvalidOperationException>(() => MinimalDocumentAsync(json => json.SerializerOptions.Converters.Add(new NullableAmountFlag()), app => app.MapPost("/flagged", int (Flagged flagged) => 0)));
+
+        refusal.Message.ShouldContain($"'{typeof(ProbeAmount?)}'");
+        refusal.Message.ShouldContain("component 'ProbeAmount'");
+    }
+
+    /// <summary>
+    /// An <c>if</c> and its branches judge the whole value, so a conditional description admits null only in
+    /// a branch beside it: in a nullable property and in a patch, judged by a validator.
+    /// </summary>
+    [Fact]
+    public async Task A_conditional_description_admits_null_beside_its_branches()
+    {
+        var document = await DocumentAsync(OpenApiSpecVersion.OpenApi3_1, json => json.SerializerOptions.Converters.Add(new JsonSchemaDescriptions().Describe<decimal>(JsonSchemaDescription.Of(Conditional))));
+
+        foreach (var property in new[] { "maybe", "change" })
+        {
+            var valid = PatchSchemaTests.Validator(document, document.Property(nameof(Conditioned), property), OpenApiSpecVersion.OpenApi3_1);
+            valid("null").ShouldBeTrue($"'{property}' admits null: {document.Property(nameof(Conditioned), property).ToJsonString()}");
+            valid("1").ShouldBeTrue($"'{property}' admits what the condition admits");
+            valid("-1").ShouldBeFalse($"'{property}' refuses what the condition refuses");
+            valid("1.5").ShouldBeFalse($"'{property}' refuses what the type refuses");
+        }
+    }
+
+    /// <summary>
+    /// A 3.0 document writes a keyword it does not model as an <c>x-jsonschema-</c> extension, or leaves it
+    /// out, where no validator reads it (measured, Microsoft.OpenApi 2.12): a description that relies on one
+    /// is refused for that version, naming the keyword, and kept for 3.1.
+    /// </summary>
+    [Theory]
+    [InlineData("""{"type":"integer","if":{"type":"integer"},"then":{"minimum":0},"else":{"type":"number"}}""", "/if")]
+    [InlineData("""{"type":"array","contains":{"type":"string"}}""", "/contains")]
+    [InlineData("""{"type":"object","propertyNames":{"pattern":"^a"}}""", "/propertyNames")]
+    [InlineData("""{"type":"object","patternProperties":{"^a":{"type":"string"}}}""", "/patternProperties")]
+    [InlineData("""{"type":"object","dependentRequired":{"a":["b"]}}""", "/dependentRequired")]
+    [InlineData("""{"type":"object","unevaluatedProperties":false}""", "/unevaluatedProperties")]
+    [InlineData("""{"type":"string","$comment":"c"}""", "/$comment")]
+    [InlineData("""{"type":"number","examples":[1,2]}""", "/examples")]
+    [InlineData("""{"type":"object","properties":{"a":{"type":"string","contentEncoding":"base64"}}}""", "/properties/a/contentEncoding")]
+    [InlineData("""{"anyOf":[{"type":"string"},{"type":"array","contains":{"type":"string"},"minContains":1}]}""", "/anyOf/1/contains")]
+    public void A_description_a_3_0_document_writes_aside_or_leaves_out_stops_it_naming_the_keyword(string schema, string keyword)
+    {
+        var described = JsonNode.Parse(schema)!.AsObject();
+
+        Should.NotThrow(() => DescribedSchemaTransformer.Parse(described, typeof(decimal), OpenApiSpecVersion.OpenApi3_1));
+        var refusal = Should.Throw<InvalidOperationException>(() => DescribedSchemaTransformer.Parse(described, typeof(decimal), OpenApiSpecVersion.OpenApi3_0));
+        refusal.Message.ShouldContain("OpenAPI 3.0 document");
+        refusal.Message.ShouldContain($"'{keyword}'");
+    }
+
+    /// <summary>What 3.0 spells its own way is kept: null as <c>nullable</c>, several types as branches, a <c>const</c> as an <c>enum</c>, one example as <c>example</c>.</summary>
+    [Theory]
+    [InlineData("""{"type":["string","null"],"enum":["a",null],"format":"date-time","x-custom":1}""")]
+    [InlineData("""{"type":"null"}""")]
+    [InlineData("""{"type":["string","integer"],"pattern":"^a"}""")]
+    [InlineData("""{"type":"string","const":"a","title":"t","description":"d","default":"a","deprecated":true,"readOnly":true,"writeOnly":false}""")]
+    [InlineData("""{"type":"number","multipleOf":0.5,"exclusiveMinimum":0,"exclusiveMaximum":10,"examples":[1]}""")]
+    [InlineData("""{"anyOf":[{"type":"string"},{"type":"null"}],"not":{"const":"x"}}""")]
+    [InlineData("""{"type":"object","properties":{"a":{"type":["string","null"]}},"required":["a"],"additionalProperties":false,"minProperties":1}""")]
+    [InlineData("""{"type":"array","items":{"type":"string"},"minItems":1,"uniqueItems":true}""")]
+    public void A_description_a_3_0_document_holds_in_its_own_spelling_is_kept(string schema) =>
+        Should.NotThrow(() => DescribedSchemaTransformer.Parse(JsonNode.Parse(schema)!.AsObject(), typeof(decimal), OpenApiSpecVersion.OpenApi3_0));
+
+    /// <summary>The version checked is the document's: the same host, the same description, refused in 3.0 and served in 3.1.</summary>
+    [Fact]
+    public async Task The_version_checked_is_the_document_s()
+    {
+        Action<JsonOptions> json = json => json.SerializerOptions.Converters.Add(new JsonSchemaDescriptions().Describe<decimal>(JsonSchemaDescription.Of(Conditional)));
+
+        var refusal = await Should.ThrowAsync<InvalidOperationException>(() => DocumentAsync(OpenApiSpecVersion.OpenApi3_0, json));
+        refusal.Message.ShouldContain("System.Decimal");
+        refusal.Message.ShouldContain("'/if'");
+        refusal.Message.ShouldContain("3.0");
+
+        await Should.NotThrowAsync(() => DocumentAsync(OpenApiSpecVersion.OpenApi3_1, json));
+    }
 }
 
 /// <summary>
@@ -399,7 +606,42 @@ public sealed class DescribedOptionsAgreementTests
             feature.Controllers.Add(typeof(QuoteController).GetTypeInfo());
     }
 
-    private static async Task<(string Wire, string Document)> HostAsync(Action<IList<JsonConverter>>? http, Action<IList<JsonConverter>>? mvc, bool controllers = true)
+    /// <summary>A decimal the host holds inside a patch alone, where ASP.NET asks no transformer of the decimal itself.</summary>
+    public sealed record PatchedQuote(Patch<decimal> Amount);
+
+    [Microsoft.AspNetCore.Mvc.ApiController]
+    public sealed class PatchedQuoteController : Microsoft.AspNetCore.Mvc.ControllerBase
+    {
+        [Microsoft.AspNetCore.Mvc.HttpGet("/mvc/patched")]
+        public PatchedQuote Get() => new(Patch.Value(7.80m));
+    }
+
+    private sealed class OnlyPatchedQuotes : Microsoft.AspNetCore.Mvc.ApplicationParts.IApplicationFeatureProvider<Microsoft.AspNetCore.Mvc.Controllers.ControllerFeature>
+    {
+        public void PopulateFeature(IEnumerable<Microsoft.AspNetCore.Mvc.ApplicationParts.ApplicationPart> parts, Microsoft.AspNetCore.Mvc.Controllers.ControllerFeature feature) =>
+            feature.Controllers.Add(typeof(PatchedQuoteController).GetTypeInfo());
+    }
+
+    /// <summary>
+    /// A type the document holds only as a patch's argument is compared too: a described converter on each set
+    /// of options, saying different things, wrote <c>{"amount":7.8}</c> under a document of strings.
+    /// </summary>
+    [Fact]
+    public async Task A_type_held_by_a_patch_alone_is_compared()
+    {
+        var refusal = await Should.ThrowAsync<InvalidOperationException>(() => HostAsync(
+            http: converters => converters.Add(new DecimalStringJsonConverter()),
+            mvc: converters => converters.Add(new DecimalNumberJsonConverter()),
+            patchAlone: true));
+        refusal.Message.ShouldContain("'System.Decimal'");
+        refusal.Message.ShouldContain("""MVC's as {"type":"number","format":"decimal"}""");
+
+        var (wire, document) = await HostAsync(Strings, Strings, patchAlone: true);
+        wire.ShouldBe("""{"amount":"7.8"}""");
+        JsonNode.Parse(document)!["components"]!["schemas"]!["PatchedQuote"]!["properties"]!["amount"]!["type"]!.ToJsonString().ShouldContain("string");
+    }
+
+    private static async Task<(string Wire, string Document)> HostAsync(Action<IList<JsonConverter>>? http, Action<IList<JsonConverter>>? mvc, bool controllers = true, bool patchAlone = false)
     {
         var cancellation = TestContext.Current.CancellationToken;
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
@@ -409,7 +651,8 @@ public sealed class DescribedOptionsAgreementTests
         var controllersBuilder = builder.Services.AddControllers().ConfigureApplicationPartManager(parts =>
         {
             parts.ApplicationParts.Clear();
-            if (controllers) parts.FeatureProviders.Add(new OnlyQuotes());
+            if (patchAlone) parts.FeatureProviders.Add(new OnlyPatchedQuotes());
+            else if (controllers) parts.FeatureProviders.Add(new OnlyQuotes());
         });
         if (mvc is not null) controllersBuilder.AddJsonOptions(json => mvc(json.JsonSerializerOptions.Converters));
         builder.Services.AddOpenApi(openApi => openApi.AddTypeKit());
@@ -417,12 +660,16 @@ public sealed class DescribedOptionsAgreementTests
         await using var app = builder.Build();
         app.MapOpenApi();
         app.MapControllers();
-        app.MapGet("/minimal/quote", () => new Quote(7.80m));
-        app.MapGet("/minimal/amount", () => new AmountQuote(ProbeAmount.From(7.80m)));
+        if (!patchAlone)
+        {
+            app.MapGet("/minimal/quote", () => new Quote(7.80m));
+            app.MapGet("/minimal/amount", () => new AmountQuote(ProbeAmount.From(7.80m)));
+        }
+
         await app.StartAsync(cancellation);
 
         var client = app.GetTestClient();
-        var wire = await client.GetStringAsync(controllers ? "/mvc/quote" : "/minimal/quote", cancellation);
+        var wire = await client.GetStringAsync(patchAlone ? "/mvc/patched" : controllers ? "/mvc/quote" : "/minimal/quote", cancellation);
         return (wire, await client.GetStringAsync("/openapi/v1.json", cancellation));
     }
 

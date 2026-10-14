@@ -44,7 +44,8 @@ internal sealed class PatchSchemaTransformer : IOpenApiSchemaTransformer
     /// without it a closed set's <c>"type": ["null", "string"]</c> still refused null, and a string
     /// enum, which has no type, became <c>"type": "null"</c> beside its names and admitted nothing.
     /// A subschema refuses null whatever the type says, so a schema that combines subschemas, such as
-    /// a host's <c>oneOf</c> of a string and a number, is kept whole in a branch beside a null one.
+    /// a host's <c>oneOf</c> of a string and a number or an <c>if</c> whose branches state a type, is kept
+    /// whole in a branch beside a null one.
     /// (ASP.NET's own polymorphic schema does not need it: its branches state no type.) A schema that
     /// restricts nothing, an <see cref="object"/>'s, admits null as it is; it became
     /// <c>"type": "null"</c> and admitted only null. Every other keyword (<c>required</c>,
@@ -53,7 +54,8 @@ internal sealed class PatchSchemaTransformer : IOpenApiSchemaTransformer
     /// </remarks>
     internal static void AdmitNull(OpenApiSchema schema, OpenApiSchema inner)
     {
-        if (inner.AnyOf is { Count: > 0 } || inner.OneOf is { Count: > 0 } || inner.AllOf is { Count: > 0 } || inner.Not is not null || inner.Const is not null)
+        if (inner.AnyOf is { Count: > 0 } || inner.OneOf is { Count: > 0 } || inner.AllOf is { Count: > 0 } || inner.Not is not null
+         || inner.If is not null || inner.Then is not null || inner.Else is not null || inner.Const is not null)
         {
             var value = new OpenApiSchema();
             value.FillFrom(inner);
@@ -89,10 +91,13 @@ internal sealed class PatchSchemaTransformer : IOpenApiSchemaTransformer
         // What the argument is described as comes first, the host's word or a converter's that replaces a
         // value object's generated one, as it does where the argument is a property of its own.
         var argument = info.Type.GetGenericArguments()[0];
+        // The argument is held by the patch alone, where ASP.NET asks no transformer of it: a document and a
+        // controller that describe it differently are told apart here.
+        DescribedOptionsAgreement.ThrowIfDisagreeing(context.ApplicationServices, argument, info.Options);
         // One the options write with a converter that says nothing is what ASP.NET writes for any such: {}.
         var inner = DescribedSchemaTransformer.Description(argument, info.Options, property: null) is { } description
             ? await DescribedSchemaTransformer.SchemaAsync(description, argument, context, cancellationToken)
-            : (ValueObjectTypes.IsValueObject(argument) || ClosedSetSchemaTransformer.Describe(argument) is not null) && DescribedSchemaTransformer.WrittenByTheOptions(argument, info.Options)
+            : DescribedSchemaTransformer.Replaced(argument, info.Options)
                 ? new OpenApiSchema()
                 : await context.GetOrCreateSchemaAsync(ValueObjectTypes.WrappedType(argument) ?? argument, parameterDescription: null, cancellationToken);
 

@@ -29,7 +29,7 @@ namespace CodoMetis.TypeKit;
 public interface IDescribedJsonConverter
 {
     /// <summary>What the converter writes for one non-null value of <paramref name="typeToConvert"/>.</summary>
-    /// <param name="typeToConvert">The type the converter converts, never a <see cref="Nullable{T}"/> of it.</param>
+    /// <param name="typeToConvert">The type the converter converts: a <see cref="Nullable{T}"/> only where the converter is one of that.</param>
     /// <param name="options">The options the converter runs under.</param>
     /// <returns>The description, or <see langword="null"/> where the converter says nothing of this type.</returns>
     JsonSchemaDescription? DescribeJson(Type typeToConvert, JsonSerializerOptions options);
@@ -95,11 +95,14 @@ public sealed class JsonSchemaDescription
     /// </summary>
     /// <remarks>
     /// <para>
-    /// In this order, the first that answers: the options' <see cref="JsonSchemaDescriptions"/>, the
-    /// application's word, in the order they were added; the property's own converter, where
-    /// <paramref name="property"/> has one that describes itself; a value object, as the type it wraps,
-    /// and a closed set, as a string of one of its members' names, each recognised by the attribute the
-    /// generators put on it; and the converter the options put in charge, where it describes itself.
+    /// The options' <see cref="JsonSchemaDescriptions"/>, the application's word, answer first, in the order
+    /// they were added. Then the converter the serializer runs is asked, chosen as the serializer chooses it:
+    /// the property's own, where <paramref name="property"/> names one; the first of the options' converters
+    /// that converts the type, a <see cref="Nullable{T}"/> as itself before the value it holds, and a factory
+    /// for the converter it makes; the type's own, a value object's generated converter, which writes the
+    /// type it wraps, and a closed set's, which writes one of its members' names, each recognised by the
+    /// attribute the generators put on the type; and the resolver's. A converter that describes itself
+    /// answers; one that says nothing answers nothing, whatever the type's own converter would have said.
     /// </para>
     /// <para>
     /// A value object is described as its wrapped type under the same options, so one over a
@@ -120,19 +123,13 @@ public sealed class JsonSchemaDescription
 
         if (JsonSchemaDescriptions.Registered(value, options) is { } registered) return registered;
 
-        if (property?.CustomConverter is { } own && (own.Type == value || own.Type == type))
-            return PropertyConverter(own, property, value, options) is { } described ? described.DescribeJson(value, options) : null;
+        if (property?.CustomConverter is { } own) return Describe(PropertyConverter(own, property, type, value, options), value, options);
 
         // The options' converters before the type's own, as the serializer picks them: a converter registered
         // for a value object writes it instead of the generated one, and a source-generated context need not
         // list a type its value objects wrap, which the converter registered for it still writes.
-        foreach (var converter in options.Converters)
-        {
-            if (converter is JsonSchemaDescriptions || !converter.CanConvert(value)) continue;
-            if (converter is IDescribedJsonConverter registeredConverter) return registeredConverter.DescribeJson(value, options);
-            if (converter is not JsonConverterFactory) return null;
-            break;
-        }
+        if (TryRegistered(type, options, out var declared)) return Describe(declared, value, options);
+        if (type != value && TryRegistered(value, options, out var held)) return Describe(held, value, options);
 
         if (Generated.GetOrAdd(value, Generate) is { } generated) return generated;
 
@@ -140,25 +137,54 @@ public sealed class JsonSchemaDescription
     }
 
     /// <summary>
-    /// The converter a property names, as it says what it writes: the serializer adapts one named on a
-    /// <see cref="Nullable{T}"/> property to the nullable type, and the adapter says nothing, so the attribute
-    /// is asked for the converter it names.
+    /// What <paramref name="converter"/>, in charge of <paramref name="value"/>, says it writes: its own word
+    /// where it describes itself, the generated description where it is the converter the type's own
+    /// <see cref="JsonConverterAttribute"/> names, and nothing otherwise.
     /// </summary>
-    private static IDescribedJsonConverter? PropertyConverter(JsonConverter own, JsonPropertyInfo property, Type value, JsonSerializerOptions options)
+    private static JsonSchemaDescription? Describe(JsonConverter? converter, Type value, JsonSerializerOptions options) => converter switch
     {
-        if (own is IDescribedJsonConverter described) return described;
-        if (own.Type == value) return null;
+        IDescribedJsonConverter described => described.DescribeJson(converter.Type ?? value, options),
+        not null when value.GetCustomAttribute<JsonConverterAttribute>(inherit: false)?.ConverterType == converter.GetType() => Generated.GetOrAdd(value, Generate),
+        _ => null,
+    };
 
-        if (property.AttributeProvider?.GetCustomAttributes(typeof(JsonConverterAttribute), inherit: false) is not [JsonConverterAttribute attribute, ..]) return null;
+    /// <summary>
+    /// The first of the options' converters that converts <paramref name="type"/>, as the serializer picks
+    /// it: a factory for the converter it makes, which is <see langword="null"/> where it makes none.
+    /// </summary>
+    private static bool TryRegistered(Type type, JsonSerializerOptions options, out JsonConverter? converter)
+    {
+        foreach (var candidate in options.Converters)
+        {
+            if (candidate is JsonSchemaDescriptions || !candidate.CanConvert(type)) continue;
+
+            converter = candidate is JsonConverterFactory factory ? factory.CreateConverter(type, options) : candidate;
+            return true;
+        }
+
+        converter = null;
+        return false;
+    }
+
+    /// <summary>
+    /// The converter in charge of a property that names one: the converter named, or the one its factory
+    /// makes for the property's type. The serializer adapts a converter named on a <see cref="Nullable{T}"/>
+    /// property to the nullable type, and the adapter says nothing, so the attribute is asked for the
+    /// converter it names.
+    /// </summary>
+    private static JsonConverter? PropertyConverter(JsonConverter own, JsonPropertyInfo property, Type type, Type value, JsonSerializerOptions options)
+    {
+        if (own is JsonConverterFactory factory) return Made(factory, type, options) ?? Made(factory, value, options);
+        if (own is IDescribedJsonConverter || own.Type != type || type == value) return own;
+
+        if (property.AttributeProvider?.GetCustomAttributes(typeof(JsonConverterAttribute), inherit: false) is not [JsonConverterAttribute attribute, ..]) return own;
 
         var named = attribute.CreateConverter(value) ?? (attribute.ConverterType is { } converterType ? Activator.CreateInstance(converterType) as JsonConverter : null);
-        return named switch
-        {
-            IDescribedJsonConverter self => self,
-            JsonConverterFactory factory when factory.CanConvert(value) => factory.CreateConverter(value, options) as IDescribedJsonConverter,
-            _ => null,
-        };
+        return named is JsonConverterFactory namedFactory ? Made(namedFactory, value, options) : named ?? own;
     }
+
+    private static JsonConverter? Made(JsonConverterFactory factory, Type type, JsonSerializerOptions options) =>
+        factory.CanConvert(type) ? factory.CreateConverter(type, options) : null;
 
     /// <summary>What the generators' attribute says of a type: a value object or a closed set, or neither.</summary>
     private static readonly ConcurrentDictionary<Type, JsonSchemaDescription?> Generated = new();
@@ -441,14 +467,17 @@ public static class DescribedJsonSchema
 /// <summary>Null beside the values a schema admits, as JSON Schema says it for each shape.</summary>
 internal static class JsonSchemaNull
 {
+    /// <summary>The keywords whose subschemas judge the whole value, null included, whatever the type says.</summary>
+    private static readonly string[] Combining = ["anyOf", "oneOf", "allOf", "not", "if", "then", "else", "const"];
+
     /// <summary>
-    /// A type gains <c>"null"</c>; an enum or a const gains null as a value; a schema that combines
-    /// subschemas or restricts nothing is kept whole in a branch beside a null one, since a subschema
-    /// refuses null whatever the type says.
+    /// A type gains <c>"null"</c>; an enum gains null as a value; a schema that combines subschemas
+    /// (<c>anyOf</c>, <c>not</c>, <c>if</c> and its branches), holds a <c>const</c> or restricts nothing is
+    /// kept whole in a branch beside a null one, since a subschema refuses null whatever the type says.
     /// </summary>
     public static JsonObject Admit(JsonObject schema)
     {
-        if (schema.ContainsKey("anyOf") || schema.ContainsKey("oneOf") || schema.ContainsKey("allOf") || schema.ContainsKey("not") || schema.ContainsKey("const") || !schema.ContainsKey("type"))
+        if (Combining.Any(schema.ContainsKey) || !schema.ContainsKey("type"))
             return new JsonObject { ["anyOf"] = new JsonArray(schema, new JsonObject { ["type"] = "null" }) };
 
         schema["type"] = schema["type"] switch

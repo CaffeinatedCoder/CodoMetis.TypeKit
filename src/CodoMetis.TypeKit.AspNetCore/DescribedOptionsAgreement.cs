@@ -58,7 +58,8 @@ internal static class DescribedOptionsAgreement
         return new(services.GetRequiredService<IOptions<MvcJsonOptions>>().Value.JsonSerializerOptions);
     }
 
-    private static bool Same(JsonSchemaDescription? left, JsonSchemaDescription? right) => (left, right) switch
+    /// <summary>Whether two descriptions say the same: the same type's schema, or equal schemas.</summary>
+    internal static bool Same(JsonSchemaDescription? left, JsonSchemaDescription? right) => (left, right) switch
     {
         (null, null) => true,
         ({ SameAsType: { } a }, { SameAsType: { } b }) => a == b,

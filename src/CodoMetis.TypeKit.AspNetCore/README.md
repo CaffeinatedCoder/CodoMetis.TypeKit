@@ -139,16 +139,34 @@ source-generated host can do: the patch's converter hides the value object from 
 (`JsonSchemaDescriptions`), are described as that says, as a property, a body, a nullable one, a list's
 element, a dictionary's value, and inside a value object or a patch. A description of a value object or
 a closed set in the options comes before its own, and so does a described converter registered on the
-options for one, which writes it instead of the generated converter; in a patch of it too. A route, query
+options for one, which writes it instead of the generated converter; in a patch of it too. The converter
+asked is the one the serializer runs: a factory for the converter it makes, a converter registered for a
+`Nullable<T>` for the nullable positions. A route, query
 or header parameter binds through `TryParse`, not JSON, and keeps what ASP.NET writes for the type without
 converters of one's own. ASP.NET builds the document from the minimal-API JSON options
 (`ConfigureHttpJsonOptions`), and controllers write with MVC's (`AddJsonOptions`): a host with controllers
 registers the same converters and descriptions on both, in the same order, or building the document fails,
-naming the type and what each says of it, rather than describe JSON the controllers do not write. Building
-it fails too for a description the document would write otherwise (a keyword OpenAPI 3.1 does not model,
-such as `prefixItems`), and for a described converter one property names for a value object, which the
-document writes once as a component for every position. A type
+naming the type and what each says of it, a type held inside a patch alone included, rather than describe
+JSON the controllers do not write. Building it fails too for a description the document would write
+otherwise (a keyword OpenAPI 3.1 does not model, such as `prefixItems`, or one a 3.0 document writes aside
+as an `x-jsonschema-` extension or leaves out, such as `if`, `contains` or `patternProperties`, named with
+the version), for a described converter one property names for a value object, and for a converter
+registered for a nullable value object alone, whose positions refer to the component the document writes
+once for every position. A type
 nothing describes is left as ASP.NET writes it ([JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/json.md#describing-what-a-converter-writes)).
+
+**Which decimal spelling.** The choice is the application's, made once on its JSON options and never
+on the OpenAPI options, which only follow: `DecimalNumberJsonConverter` where the clients' numbers hold a
+decimal, `DecimalStringJsonConverter` where a client's number is a double. Either reaches every decimal
+and every value object over one, and the document describes each as that converter writes it; with
+neither registered, decimals are the serializer's plain numbers, described as ASP.NET describes them. A
+host with controllers registers the converter on MVC's options too, or the document is refused:
+
+```csharp
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new DecimalStringJsonConverter()));
+builder.Services.AddControllers().AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new DecimalStringJsonConverter()));
+builder.Services.AddOpenApi(options => options.AddTypeKit());
+```
 
 ## A Result as a response
 

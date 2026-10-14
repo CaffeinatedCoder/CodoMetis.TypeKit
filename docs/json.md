@@ -203,11 +203,14 @@ string fare = stop["properties"]!["Fare"]!["format"]!.ToString();             //
 What describes a type, the first that answers: the options' `JsonSchemaDescriptions`, the application's
 word, so a value object can say more than its wrapped type (`Describe<Percentage>(…)` with a `minimum`
 and a `maximum`); then the converter that writes it, as the serializer picks one: the property's own, a
-nullable property's included, then the first of the options' converters that converts the type, then the
-type's own, a value object's as its wrapped type under the same options and a closed set's as a string of
-its members' names. So a converter that replaces a value object's generated one describes it.
+nullable property's included, then the first of the options' converters that converts the type, a
+`Nullable<T>` as itself before `T`, then the type's own, a value object's as its wrapped type under the
+same options and a closed set's as a string of its members' names. A factory is asked for the converter
+it makes, and a converter that says nothing says nothing. So a converter that replaces a value object's
+generated one describes it, or leaves it undescribed.
 A description says what one non-null value looks like, and the null goes in where a plain type would get
-one in the same position. It is a JSON Schema complete in itself: a `$ref`, a `$defs` or an `$id` is
+one in the same position: beside the type, or, where the schema combines subschemas (`oneOf`, `not`, an
+`if` and its branches), in a branch beside the whole. It is a JSON Schema complete in itself: a `$ref`, a `$defs` or an `$id` is
 refused where it is made, wherever a schema is, and a property or a value may still be called `$id`.
 `JsonSchemaDescription.SameAs(type)` describes a converter that writes one type as another; the
 references of a recursive type's schema are made to point from wherever it is put.

@@ -727,6 +727,21 @@ await Check("decimal-string", async () =>
     var schema = Try(() => options.GetTypeInfo(typeof(Amount)).GetJsonSchemaAsNode(DescribedJsonSchema.ExporterOptions())["type"]!.ToString());
     return $"{written} {read} {schema}";
 });
+// A factory in the options and one a property names are each asked for the converter it makes, and the
+// stored-JSON factory, which makes the generated converter, keeps the generated description: all through
+// the attributes the trimmer keeps, none through a name.
+await Check("decimal-factory", async () =>
+{
+    string Try(Func<string> part) { try { return part(); } catch (Exception e) { return $"THREW {e.GetType().Name}"; } }
+    var options = new JsonSerializerOptions(ShopJson.Default.Options) { Converters = { new StringsFactory() } };
+    var written = Try(() => JsonSerializer.Serialize(Amount.From(7.80m), options));
+    var schema = Try(() => options.GetTypeInfo(typeof(Amount)).GetJsonSchemaAsNode(DescribedJsonSchema.ExporterOptions())["type"]!.ToString());
+    var tagged = Try(() => JsonSerializer.Serialize(new Tagged(7.80m), ShopJson.Default.Tagged));
+    var taggedSchema = Try(() => ShopJson.Default.Options.GetJsonSchemaAsNode(typeof(Tagged), DescribedJsonSchema.ExporterOptions())["properties"]!["Price"]!["type"]!.ToString());
+    var stored = new JsonSerializerOptions(ShopJson.Default.Options) { Converters = { new StoredJsonConverterFactory(), new DecimalStringJsonConverter() } };
+    var storedSchema = Try(() => stored.GetTypeInfo(typeof(Amount)).GetJsonSchemaAsNode(DescribedJsonSchema.ExporterOptions())["type"]!.ToString());
+    return $"{written} {schema} {tagged} {taggedSchema} {storedSchema}";
+});
 await Check("stored", async () =>
 {
     var store = new JsonSerializerOptions { TypeInfoResolver = ShopJson.Default, Converters = { new StoredJsonConverterFactory() } };
@@ -847,10 +862,20 @@ public sealed record Holder(Option<int> Value);
 public sealed record Tracking(OrderStatus Status, Dictionary<OrderStatus, int> Counts);
 
 // Lists no wrapped type: the generated converters must not need one.
+public sealed record Tagged([property: JsonConverter(typeof(StringsFactory))] decimal Price);
+
+public sealed class StringsFactory : JsonConverterFactory
+{
+    public override bool CanConvert(Type typeToConvert) => typeToConvert == typeof(decimal);
+
+    public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options) => new DecimalStringJsonConverter();
+}
+
 [JsonSerializable(typeof(Line))]
 [JsonSerializable(typeof(Holder))]
 [JsonSerializable(typeof(Code))]
 [JsonSerializable(typeof(Amount))]
+[JsonSerializable(typeof(Tagged))]
 [JsonSerializable(typeof(Tracking))]
 internal partial class ShopJson : JsonSerializerContext;
 
@@ -1003,6 +1028,7 @@ assert_contains "json-refused=THREW JsonException: Code refused the JSON value (
 assert_contains 'json-number-handling="2.5"'       "$work/aot.out" "the options' number handling applies to a wrapped number"
 assert_contains "stored=abc"                       "$work/aot.out" "StoredJsonConverterFactory reads without the rules"
 assert_contains 'decimal-string="7.8" True string' "$work/aot.out" "a decimal converter reaches a value object through a context that lists no decimal, and describes it"
+assert_contains 'decimal-factory="7.8" string {"Price":"7.8"} string string' "$work/aot.out" "a factory in the options and one a property names are asked for the converter they make, and the stored-JSON factory keeps the generated description"
 assert_contains 'openapi-decimal="string" "decimal"' "$work/aot.out" "the document describes a value object over a decimal as the described converter writes it"
 assert_contains "option-refused=THREW NotSupportedException: Option<Int32> is not a wire type" "$work/aot.out" "Option refuses JSON with its own message"
 assert_contains "parse=42 Monday https://p.test/ 2026-09-27" "$work/aot.out" "the generated Parse, including through a TypeConverter"

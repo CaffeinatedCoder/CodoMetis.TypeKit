@@ -27,6 +27,8 @@ internal sealed class ProbeHost : IAsyncDisposable
 
     public HttpClient Client => _app.GetTestClient();
 
+    public IServiceProvider Services => _app.Services;
+
     /// <summary>The document with <c>AddTypeKit()</c> and nothing else configured, built once per version.</summary>
     public static Task<OpenApiJson> DefaultDocumentAsync(OpenApiSpecVersion version = OpenApiSpecVersion.OpenApi3_1) =>
         Defaults.GetOrAdd(version, static v => DocumentAsync(openApi => openApi.AddTypeKit(), version: v));
@@ -55,12 +57,11 @@ internal sealed class ProbeHost : IAsyncDisposable
         builder.Services.AddControllers().AddApplicationPart(typeof(ProbeController).Assembly);
         if (json is not null) builder.Services.ConfigureHttpJsonOptions(json);
 
-        // A described converter goes on MVC's options too, as a host with controllers must register it
+        // The converters go on MVC's options too, as a host with controllers must register them
         // (DescribedOptionsAgreement refuses the document otherwise; DescribedSchemaTests holds that).
         builder.Services.AddOptions<Microsoft.AspNetCore.Mvc.JsonOptions>().Configure<Microsoft.Extensions.Options.IOptions<JsonOptions>>((mvc, http) =>
         {
-            foreach (var converter in http.Value.SerializerOptions.Converters.Where(converter => converter is IDescribedJsonConverter or JsonSchemaDescriptions))
-                mvc.JsonSerializerOptions.Converters.Add(converter);
+            foreach (var converter in http.Value.SerializerOptions.Converters) mvc.JsonSerializerOptions.Converters.Add(converter);
         });
         builder.Services.AddOpenApi(options =>
         {

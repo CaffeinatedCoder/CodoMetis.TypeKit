@@ -29,6 +29,8 @@ section is the GitHub release's notes.
 
 - OpenAPI: a value object or a closed set the JSON options give a converter of their own is no longer described as its wrapped type or its names, which that converter does not write; it is what the converter says, or left as ASP.NET writes it ([OpenAPI](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says)).
 - OpenAPI: a `Patch<T>` the serializer requires, a constructor parameter under `RespectRequiredConstructorParameters`, stays `required`; declare patches as `init` properties there ([Merge patches](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/merge-patches.md#required-constructor-parameters)).
+- Schema descriptions follow a converter factory to the converter it makes, on the options and on a property, and a converter registered for a `Nullable<T>` to the nullable positions; a conditional (`if`) description admits null in a branch beside it ([JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/json.md#describing-what-a-converter-writes)).
+- OpenAPI: a type held inside a `Patch<T>` alone is compared between the minimal-API and MVC JSON options too; a converter registered for a nullable value object alone, whose positions refer to the shared component, refuses the document; a described keyword a 3.0 document writes aside (`if`, `contains`, `patternProperties`) or leaves out refuses it, naming the keyword ([OpenAPI](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says)).
 
 ## 2.0.0 — 2026-10-14
 

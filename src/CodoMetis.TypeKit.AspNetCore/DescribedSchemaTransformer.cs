@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -5,6 +6,8 @@ using System.Text.Json.Schema;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.OpenApi;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Microsoft.OpenApi.Reader;
 
@@ -51,12 +54,21 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
         // route, the query, a header or a form field is text TryParse reads.
         if (context is { JsonPropertyInfo: null, ParameterDescription: { } parameter } && parameter.Source != BindingSource.Body)
         {
-            if (Description(info.Type, options, property: null) is not null) Parameter(schema, info.Type, options);
+            if (Description(info.Type, options, property: null) is not null) Parameter(schema, info.Type, options, Version(context));
             return;
         }
 
         DescribedOptionsAgreement.ThrowIfDisagreeing(context.ApplicationServices, info.Type, options);
         if (info.ElementType is { } contained) DescribedOptionsAgreement.ThrowIfDisagreeing(context.ApplicationServices, contained, options);
+
+        // A nullable position of a type with a reference id refers to the component the type is written as
+        // once, for every position: a converter registered for the Nullable<T> alone, which writes those
+        // positions otherwise than T's converter writes the rest, cannot be told there.
+        if (Nullable.GetUnderlyingType(info.Type) is { } held && ValueObjectSchemaTransformer.SchemaReferenceId(info, context) is { } shared
+         && !DescribedOptionsAgreement.Same(JsonSchemaDescription.For(info.Type, options), JsonSchemaDescription.For(held, options)))
+            throw new InvalidOperationException(
+                $"The JSON options write '{info.Type}' with a converter of its own, and '{held}' otherwise, and the document describes both once, as the " +
+                $"component '{shared}', for every position. Register the converter for '{held}', or give the nullable positions a type of their own.");
 
         if (Description(info.Type, options, context.JsonPropertyInfo) is { } description)
         {
@@ -96,36 +108,41 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
 
     /// <summary>
     /// The description this transformer applies: the host's for any type, and a converter's; for a value
-    /// object or a closed set, whose own transformers describe what the generated converter writes, only a
-    /// converter that replaces the generated one, named on the property or put in charge by the options.
+    /// object or a closed set, whose own transformers describe what the generated converter writes, only
+    /// what a converter that replaces the generated one says.
     /// </summary>
     internal static JsonSchemaDescription? Description(Type type, JsonSerializerOptions options, JsonPropertyInfo? property)
     {
         if (JsonSchemaDescriptions.Registered(type, options) is { } registered) return registered;
 
-        var value = Nullable.GetUnderlyingType(type) ?? type;
-        if ((ValueObjectTypes.IsValueObject(value) || ClosedSetSchemaTransformer.Describe(value) is not null) && !Replaced(value, options, property)) return null;
-
-        return JsonSchemaDescription.For(type, options, property);
+        var description = JsonSchemaDescription.For(type, options, property);
+        return description is not null && Generated(Nullable.GetUnderlyingType(type) ?? type) is { } generated && DescribedOptionsAgreement.Same(description, generated) ? null : description;
     }
-
-    /// <summary>Whether a converter other than the generated one writes <paramref name="value"/>: the property's own, or the options'.</summary>
-    private static bool Replaced(Type value, JsonSerializerOptions options, JsonPropertyInfo? property) =>
-        property?.CustomConverter is not null || WrittenByTheOptions(value, options);
 
     /// <summary>
-    /// Whether the first of the options' converters that converts <paramref name="type"/>, as the serializer
-    /// picks, writes it instead of the generated converter; a factory that says nothing of itself, such as
-    /// <c>StoredJsonConverterFactory</c>, writes what the generated converter writes. The value-object and
-    /// closed-set transformers then leave the type to this one: what that converter says, or, where it says
-    /// nothing, what ASP.NET writes for a converter of one's own.
+    /// Whether the options have <paramref name="type"/> written by a converter other than the generated one,
+    /// as the serializer picks it (<see cref="JsonSchemaDescription.For"/>): a converter registered for the
+    /// type, for a <see cref="Nullable{T}"/> of it, or made by a factory, or a description the host gives it.
+    /// The value-object and closed-set transformers then leave the type to this one: what that converter
+    /// says, or, where it says nothing, what ASP.NET writes for a converter of one's own. A factory that
+    /// makes the generated converter, <c>StoredJsonConverterFactory</c>, writes what it writes.
     /// </summary>
-    internal static bool WrittenByTheOptions(Type type, JsonSerializerOptions options)
-    {
-        var value = Nullable.GetUnderlyingType(type) ?? type;
-        var first = options.Converters.FirstOrDefault(converter => converter is not JsonSchemaDescriptions && converter.CanConvert(value));
-        return first is IDescribedJsonConverter || first is not null and not System.Text.Json.Serialization.JsonConverterFactory;
-    }
+    internal static bool Replaced(Type type, JsonSerializerOptions options) =>
+        Generated(Nullable.GetUnderlyingType(type) ?? type) is { } generated && !DescribedOptionsAgreement.Same(JsonSchemaDescription.For(type, options), generated);
+
+    private static readonly ConcurrentDictionary<Type, JsonSchemaDescription?> GeneratedDescriptions = new();
+
+    /// <summary>What the generated converter writes: a value object as the type it wraps, a closed set as one of its names; null for any other type.</summary>
+    private static JsonSchemaDescription? Generated(Type type) => GeneratedDescriptions.GetOrAdd(type, static candidate =>
+        ValueObjectTypes.WrappedType(candidate) is { } wrapped
+            ? JsonSchemaDescription.SameAs(wrapped)
+            : ClosedSetSchemaTransformer.Describe(candidate) is { } set
+                ? JsonSchemaDescription.Of(new JsonObject { ["type"] = "string", ["enum"] = new JsonArray([.. set.Names.Select(name => JsonValue.Create(name))]) })
+                : null);
+
+    /// <summary>The version the document is written in, which decides what a described schema survives into.</summary>
+    internal static OpenApiSpecVersion Version(OpenApiSchemaTransformerContext context) =>
+        context.ApplicationServices.GetRequiredService<IOptionsMonitor<OpenApiOptions>>().Get(context.DocumentName).OpenApiVersion;
 
     /// <summary>The shape keywords the description replaces; annotations and the property's own constraints stay.</summary>
     private static void Reshape(OpenApiSchema schema)
@@ -145,7 +162,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
 
     internal static async Task<OpenApiSchema> SchemaAsync(JsonSchemaDescription description, Type type, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
     {
-        if (description.Schema is { } schema) return Parse(schema, type);
+        if (description.Schema is { } schema) return Parse(schema, type, Version(context));
 
         var sameAs = description.SameAsType!;
         var path = SameAsPath.Value ?? [];
@@ -169,11 +186,14 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
     }
 
     /// <summary>
-    /// A described JSON Schema as Microsoft.OpenApi reads one. A schema it cannot read, or reads as something
-    /// else, stops the document, naming the type: a keyword it does not model (<c>prefixItems</c>) is written
-    /// aside as an unrecognised one, where no validator sees it, and the schema then means something else.
+    /// A described JSON Schema as Microsoft.OpenApi reads one, for a document of <paramref name="version"/>.
+    /// A schema it cannot read, or writes as something else, stops the document, naming the type: a keyword
+    /// the model does not hold (<c>prefixItems</c>) is written aside as an unrecognised one, and one a version
+    /// below 3.1 does not hold (<c>if</c>, <c>contains</c>, <c>patternProperties</c>) as an
+    /// <c>x-jsonschema-</c> extension or not at all, where no validator reads it, and the schema then means
+    /// something else.
     /// </summary>
-    internal static OpenApiSchema Parse(JsonObject schema, Type type)
+    internal static OpenApiSchema Parse(JsonObject schema, Type type, OpenApiSpecVersion version = OpenApiSpecVersion.OpenApi3_1)
     {
         var parsed = OpenApiModelFactory.Parse<OpenApiSchema>(schema.ToJsonString(), OpenApiSpecVersion.OpenApi3_1, new OpenApiDocument(), out var diagnostic, "json");
 
@@ -182,20 +202,96 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
                 $"The JSON schema described for '{type}' is not one an OpenAPI document can hold: " +
                 string.Join("; ", diagnostic?.Errors.Select(error => error.Message) ?? ["it did not parse"]) + ".");
 
-        if (FirstChanged(schema, Written(parsed), "") is { } changed)
+        if (FirstChanged(schema, Written(parsed, OpenApiSpecVersion.OpenApi3_1), "") is { } changed)
             throw new InvalidOperationException(
                 $"The JSON schema described for '{type}' does not survive into an OpenAPI document: '{changed}' is written otherwise than described, " +
                 "so validators would read another schema. Describe it with the keywords OpenAPI 3.1 models.");
 
+        if (version < OpenApiSpecVersion.OpenApi3_1 && FirstLost(schema, Written(parsed, version), "") is { } lost)
+            throw new InvalidOperationException(
+                $"The JSON schema described for '{type}' does not survive into an OpenAPI {Name(version)} document: '{lost}' is written aside as an extension or left out, " +
+                $"where no validator reads it. Describe it with the keywords OpenAPI {Name(version)} models, or write the document in 3.1.");
+
         return parsed;
     }
 
-    /// <summary>The schema as the document writes it in OpenAPI 3.1.</summary>
-    private static JsonObject Written(OpenApiSchema schema)
+    private static string Name(OpenApiSpecVersion version) => version switch
+    {
+        OpenApiSpecVersion.OpenApi2_0 => "2.0",
+        OpenApiSpecVersion.OpenApi3_0 => "3.0",
+        _ => "3.1",
+    };
+
+    /// <summary>The schema as the document writes it in <paramref name="version"/>.</summary>
+    private static JsonObject Written(OpenApiSchema schema, OpenApiSpecVersion version)
     {
         using var text = new StringWriter(System.Globalization.CultureInfo.InvariantCulture);
-        schema.SerializeAsV31(new OpenApiJsonWriter(text));
+        var writer = new OpenApiJsonWriter(text);
+        if (version >= OpenApiSpecVersion.OpenApi3_1) schema.SerializeAsV31(writer);
+        else if (version == OpenApiSpecVersion.OpenApi3_0) schema.SerializeAsV3(writer);
+        else schema.SerializeAsV2(writer);
         return JsonNode.Parse(text.ToString())!.AsObject();
+    }
+
+    /// <summary>Where JSON Schema holds schemas inside a schema: one, a list of them, or named ones.</summary>
+    private static readonly string[] One = ["items", "additionalItems", "additionalProperties", "unevaluatedItems", "unevaluatedProperties", "not", "contains", "propertyNames", "if", "then", "else", "contentSchema"];
+    private static readonly string[] Many = ["allOf", "anyOf", "oneOf", "prefixItems", "items"];
+    private static readonly string[] Named = ["properties", "patternProperties", "dependentSchemas"];
+
+    /// <summary>
+    /// The pointer to the first described keyword that does not reach a document of a version below 3.1
+    /// under its own name or that version's spelling of it (null in the type as <c>nullable</c>, several
+    /// types as branches, a <c>const</c> as an <c>enum</c>, an example as <c>example</c>): written aside as an
+    /// <c>x-jsonschema-</c> extension, where no validator reads it, or left out (measured with
+    /// Microsoft.OpenApi 2.12: <c>if</c>, <c>contains</c>, <c>propertyNames</c>, <c>patternProperties</c>,
+    /// <c>dependentSchemas</c> and <c>unevaluatedProperties</c> go aside; <c>dependentRequired</c> and
+    /// <c>$comment</c> are left out).
+    /// </summary>
+    private static string? FirstLost(JsonObject described, JsonObject written, string pointer)
+    {
+        foreach (var (keyword, value) in described)
+        {
+            var kept = keyword switch
+            {
+                "type" => written.ContainsKey("type") || written.ContainsKey("nullable") || written.ContainsKey("anyOf"),
+                "const" => written.ContainsKey("const") || written.ContainsKey("enum"),
+                "examples" => written.ContainsKey("examples") || written.ContainsKey("example"),
+                _ => written.ContainsKey(keyword) || FalseByDefault.Contains(keyword) && value is JsonValue unset && unset.GetValueKind() == JsonValueKind.False,
+            };
+            if (!kept) return pointer + "/" + keyword;
+        }
+
+        foreach (var keyword in written.Select(property => property.Key))
+        {
+            if (keyword.StartsWith("x-jsonschema-", StringComparison.Ordinal)) return pointer + "/" + keyword["x-jsonschema-".Length..];
+        }
+
+        foreach (var (keyword, value) in described)
+        {
+            var at = pointer + "/" + keyword;
+            switch (value, written[keyword])
+            {
+                case (JsonObject inner, JsonObject innerWritten) when One.Contains(keyword):
+                    if (FirstLost(inner, innerWritten, at) is { } lostInside) return lostInside;
+                    break;
+                case (JsonArray list, JsonArray listWritten) when Many.Contains(keyword):
+                    for (var i = 0; i < list.Count && i < listWritten.Count; i++)
+                    {
+                        if (list[i] is JsonObject item && listWritten[i] is JsonObject itemWritten && FirstLost(item, itemWritten, at + "/" + i) is { } lostItem) return lostItem;
+                    }
+
+                    break;
+                case (JsonObject map, JsonObject mapWritten) when Named.Contains(keyword):
+                    foreach (var (name, item) in map)
+                    {
+                        if (item is JsonObject named && mapWritten[name] is JsonObject namedWritten && FirstLost(named, namedWritten, at + "/" + name) is { } lostNamed) return lostNamed;
+                    }
+
+                    break;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -250,7 +346,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
     /// A parameter of <paramref name="type"/> as ASP.NET describes it without converters of one's own: the
     /// schema the options' resolver gives the type with none registered, beside the format ASP.NET kept.
     /// </summary>
-    private static void Parameter(OpenApiSchema schema, Type type, JsonSerializerOptions options)
+    private static void Parameter(OpenApiSchema schema, Type type, JsonSerializerOptions options, OpenApiSpecVersion version)
     {
         var plain = new JsonSerializerOptions(options);
         plain.Converters.Clear();
@@ -261,7 +357,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
         var format = schema.Format;
         var description = schema.Description;
         Reshape(schema);
-        schema.FillFrom(Parse(native, type));
+        schema.FillFrom(Parse(native, type, version));
         schema.Format ??= format;
         schema.Description ??= description;
     }

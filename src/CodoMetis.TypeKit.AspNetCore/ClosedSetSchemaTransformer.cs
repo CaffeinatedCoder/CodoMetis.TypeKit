@@ -35,7 +35,7 @@ internal sealed class ClosedSetSchemaTransformer : IOpenApiSchemaTransformer
         if (Describe(info.Type) is { } set)
         {
             // Written by a converter the options put in charge, not the generated one: not its names.
-            if (DescribedSchemaTransformer.WrittenByTheOptions(info.Type, info.Options)) return;
+            if (DescribedSchemaTransformer.Replaced(info.Type, info.Options)) return;
 
             // Where the set is a component, ASP.NET puts the null of a nullable property around the reference.
             // Inlined, the schema is this property's own, and the null goes in it (decision 36), as ASP.NET
@@ -53,7 +53,7 @@ internal sealed class ClosedSetSchemaTransformer : IOpenApiSchemaTransformer
             return;
         }
 
-        if (info.ElementType is not { } element || Describe(element) is null || DescribedSchemaTransformer.WrittenByTheOptions(element, info.Options)) return;
+        if (info.ElementType is not { } element || Describe(element) is null || DescribedSchemaTransformer.Replaced(element, info.Options)) return;
 
         // Only what ASP.NET left out: a schema it did build is its own description of the elements.
         if (info.Kind == JsonTypeInfoKind.Enumerable && schema.Items is null)
