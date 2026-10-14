@@ -14,6 +14,7 @@ section is the GitHub release's notes.
 
 ### Added
 
+- **`FaultKind.PreconditionFailed`** (412) and **`FaultKind.Malformed`** (400), answered with no mapping ([closed sets as faults](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type)).
 - **`AsOptionalText()`/`AsOptionalIdentifier()`**: a blank is no text, a hidden character still `Hidden` ([Written text](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/text.md#required-and-optional)).
 
 ### Fixed

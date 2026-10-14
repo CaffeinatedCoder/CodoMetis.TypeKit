@@ -150,7 +150,8 @@ name or its own `ToString()`, as it does a value object ([Logging and secrets](l
 ## As a fault type
 
 A closed set whose members are faults declares `IFaultSet<TSelf>` in place of `IClosedSet<TSelf>`:
-each member carries a `FaultKind`, `NotFound`, `Conflict`, `Invalid`, `Forbidden` or `Unavailable`,
+each member carries a `FaultKind`, `NotFound`, `Conflict`, `Invalid`, `Forbidden`, `Unavailable`,
+`PreconditionFailed` or `Malformed`,
 nothing HTTP-specific, and optionally a `Description`, a sentence a person reads, both through its
 private constructor. In CodoMetis.TypeKit.AspNetCore, `AddFaultResponses<TSet>()` answers every
 member by its kind, with its description as the problem's `detail`, so the domain names its faults

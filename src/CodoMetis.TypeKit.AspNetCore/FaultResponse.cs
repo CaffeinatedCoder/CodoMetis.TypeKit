@@ -43,8 +43,8 @@ public sealed class FaultResponse
 
     /// <summary>
     /// The response a <see cref="FaultKind"/> is answered with when no mapping says otherwise:
-    /// <c>NotFound</c> 404, <c>Conflict</c> 409, <c>Invalid</c> 422, <c>Forbidden</c> 403 and
-    /// <c>Unavailable</c> 503.
+    /// <c>NotFound</c> 404, <c>Conflict</c> 409, <c>Invalid</c> 422, <c>Forbidden</c> 403,
+    /// <c>Unavailable</c> 503, <c>PreconditionFailed</c> 412 and <c>Malformed</c> 400.
     /// </summary>
     /// <remarks>
     /// For a mapping that changes some members and keeps the rest:
@@ -55,11 +55,13 @@ public sealed class FaultResponse
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="kind"/> is no member of <see cref="FaultKind"/>, as a <c>default</c> one is not.</exception>
     public static FaultResponse For(FaultKind kind) => Status(kind switch
     {
-        FaultKind.NotFound    => 404,
-        FaultKind.Conflict    => 409,
-        FaultKind.Invalid     => 422,
-        FaultKind.Forbidden   => 403,
-        FaultKind.Unavailable => 503,
+        FaultKind.NotFound           => 404,
+        FaultKind.Conflict           => 409,
+        FaultKind.Invalid            => 422,
+        FaultKind.Forbidden          => 403,
+        FaultKind.Unavailable        => 503,
+        FaultKind.PreconditionFailed => 412,
+        FaultKind.Malformed          => 400,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), $"{(int)kind} is no FaultKind: a fault set's member declares one of its members, and a default kind is none." + FaultRefusals.Mapping),
     });
 

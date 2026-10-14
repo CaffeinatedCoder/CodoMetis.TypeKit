@@ -84,6 +84,28 @@ public sealed class FaultResponsePartsTests
         refusal.Message.ShouldStartWith($"FaultResponsePartsTests.OrderFault.NameTaken is mapped to {status}, which is not an error status (400 to 599).");
     }
 
+    /// <summary>
+    /// Each kind's status, as the README and <c>FaultKind</c>'s own documentation give them; a kind added
+    /// without a status fails here rather than at the first host that maps a member of it.
+    /// </summary>
+    [Fact]
+    public void Every_kind_is_answered_with_its_status()
+    {
+        var statuses = Enum.GetValues<FaultKind>().ToDictionary(kind => kind, kind => FaultResponse.For(kind).StatusCode);
+
+        statuses.ShouldBe(new Dictionary<FaultKind, int>
+        {
+            [FaultKind.NotFound]           = 404,
+            [FaultKind.Conflict]           = 409,
+            [FaultKind.Invalid]            = 422,
+            [FaultKind.Forbidden]          = 403,
+            [FaultKind.Unavailable]        = 503,
+            [FaultKind.PreconditionFailed] = 412,
+            [FaultKind.Malformed]          = 400,
+        });
+        Should.Throw<ArgumentOutOfRangeException>(() => FaultResponse.For(default));
+    }
+
     /// <summary>A kind is required: a member whose kind is <c>default</c> has none, and the set is refused where it is mapped, naming the member.</summary>
     [Fact]
     public void A_fault_set_with_a_member_of_no_kind_is_refused_where_it_is_mapped()

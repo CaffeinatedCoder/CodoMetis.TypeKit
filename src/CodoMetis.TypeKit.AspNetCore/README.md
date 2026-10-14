@@ -229,8 +229,9 @@ public sealed partial class AccountFault : IFaultSet<AccountFault>
 builder.Services.AddFaultResponses<AccountFault>();   // every member by its kind, its description as the detail
 ```
 
-A kind gives the status: `NotFound` 404, `Conflict` 409, `Invalid` 422, `Forbidden` 403 and
-`Unavailable` 503. A member whose kind is `default`, which is no kind, fails this call. The
+A kind gives the status: `NotFound` 404, `Conflict` 409, `Invalid` 422, `Forbidden` 403,
+`Unavailable` 503, `PreconditionFailed` 412 (a condition the request stated, such as the version in
+`If-Match`) and `Malformed` 400 (a token or a filter that does not parse). A member whose kind is `default`, which is no kind, fails this call. The
 description becomes the problem's `detail`, so a client can show it; a member without one has no
 `detail`. To change some members, map them all, with the rest as their kind says:
 `fault => fault == AccountFault.Locked ? 423 : FaultResponse.For(fault.Kind)`. Any closed set can be a

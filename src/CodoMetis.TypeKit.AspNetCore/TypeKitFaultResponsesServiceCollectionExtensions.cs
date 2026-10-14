@@ -72,7 +72,8 @@ public static class TypeKitClosedSetFaultResponsesServiceCollectionExtensions
     /// <summary>
     /// Answers every member of the fault set <typeparamref name="TFault"/> by its <see cref="FaultKind"/>,
     /// with no mapping written: <c>NotFound</c> 404, <c>Conflict</c> 409, <c>Invalid</c> 422,
-    /// <c>Forbidden</c> 403 and <c>Unavailable</c> 503, and its description as the problem's <c>detail</c>.
+    /// <c>Forbidden</c> 403, <c>Unavailable</c> 503, <c>PreconditionFailed</c> 412 and <c>Malformed</c> 400,
+    /// and its description as the problem's <c>detail</c>.
     /// </summary>
     /// <remarks>
     /// A member whose kind is no <see cref="FaultKind"/>, a <c>default</c> one, fails this call. To change

@@ -14,8 +14,9 @@ public enum FaultKind
     NotFound = 1,
 
     /// <summary>
-    /// The request conflicts with the current state: a name taken, a stale version, a step the state
-    /// forbids. A host answers <c>409 Conflict</c>.
+    /// The request conflicts with the current state: a name taken, a change that raced it, a step the
+    /// state forbids. A host answers <c>409 Conflict</c>. A version the request itself stated is
+    /// <see cref="PreconditionFailed"/>.
     /// </summary>
     Conflict,
 
@@ -27,6 +28,20 @@ public enum FaultKind
 
     /// <summary>Something the operation needs is unavailable, and the same request may succeed later. A host answers <c>503 Service Unavailable</c>.</summary>
     Unavailable,
+
+    /// <summary>
+    /// A condition the request stated about the current state does not hold, such as the version it
+    /// read (<c>If-Match</c>): the caller reads again before deciding again. A host answers
+    /// <c>412 Precondition Failed</c>.
+    /// </summary>
+    PreconditionFailed,
+
+    /// <summary>
+    /// The request cannot be read as what it should be: a page token, a cursor or a filter that does not
+    /// parse. A host answers <c>400 Bad Request</c>. A well-formed request a rule refuses is
+    /// <see cref="Invalid"/>.
+    /// </summary>
+    Malformed,
 }
 
 /// <summary>What a member of a fault set says of itself: the kind of refusal, and a sentence a person reads.</summary>
