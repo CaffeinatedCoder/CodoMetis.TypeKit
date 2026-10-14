@@ -198,6 +198,9 @@ Good libraries exist for both halves of TypeKit. TypeKit fits when:
 - You build on .NET 10 with System.Text.Json, EF Core and ASP.NET Core, and want value objects that
   change no contract: the JSON, the column and the OpenAPI schema stay the wrapped type's, with nothing
   registered per type, and `.Value` works inside a LINQ query.
+- You want an OpenAPI document that says what the wire carries: a converter registered once, such as
+  decimals written as strings, is described in every position it reaches, value objects and patches
+  included, and a document that would disagree with what the controllers write is refused, not served.
 - You want one rule set per value object: the `Create` you write is what JSON, parsing, route binding,
   `TryFrom` and `FromKnownGood` apply, and a value object is declared by implementing an interface
   that generic code and the satellites can use, not by an attribute.
