@@ -199,6 +199,33 @@ another value object, since wrapping what it wraps says the same with one type. 
 abstract class is wrapped, and its JSON is the serializer's for that type, polymorphic where the type
 declares it.
 
+### A number no member names
+
+C# lets any number be an enum, and a value object over one reads what its enum reads: `Parse`, a route
+or query value and JSON all take a number, and a number no member names among them, since a plain value
+object's text and JSON are its wrapped type's. Where only a member may enter, say so in `Create`, and
+every generated way in refuses the rest:
+
+```csharp
+public enum DayFault { NoSuchDay }
+
+public readonly partial record struct ScheduleDay : IValidatedValue<ScheduleDay, DayOfWeek, DayFault>
+{
+    public static Result<ScheduleDay, DayFault> Create(DayOfWeek value) =>
+        Enum.IsDefined(value) ? new ScheduleDay(value) : Result.Error(DayFault.NoSuchDay);
+}
+```
+
+```csharp
+var ninth = Weekday.Parse("9", null);                              // 9, a Weekday no member names
+bool scheduled = ScheduleDay.TryParse("9", null, out _);           // false, and JSON's 9 throws JsonException naming ScheduleDay and NoSuchDay
+bool friday = ScheduleDay.TryParse("Friday", null, out _);         // true
+```
+
+`Enum.IsDefined` refuses a combination of a `[Flags]` enum's members too; for one of those, check the
+bits instead. A [closed set](closed-sets.md) has no numbers at all, and is the way to a fixed set of
+values that never admits another.
+
 ## Which factory
 
 | Call | When | On refusal |
