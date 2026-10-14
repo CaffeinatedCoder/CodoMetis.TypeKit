@@ -511,7 +511,8 @@ They arrive with this package, so whoever can see the interfaces gets the guard:
   `ids.FirstOrDefault()` or `ProductCode.TryFrom(s).OrDefault()`. `FirstOrNone()`, `GetValueOrNone()`
   and `Or(fallback)` say what happens then.
 - **CMTK0010**: a type argument that breaks what its parameter declares with `[Abstract]`, `[Sealed]`,
-  `[Record]` or `[Concrete]`, the constraints C# has no `where` for, at any closed use. A method
+  `[Record]` or `[Concrete]`, the constraints C# has no `where` for, at any closed use, and a pair of
+  arguments for two parameters marked `[Distinct]` or `[Unrelated]` that are one type, or related. A method
   implementing an interface's method, or overriding one, carries the constraint of what it implements.
 - **CMTK0011**: a type under an interface or base class marked `[RequireParameterlessConstructor]`
   without the parameterless constructor it asks for, which the host would look for by reflection.

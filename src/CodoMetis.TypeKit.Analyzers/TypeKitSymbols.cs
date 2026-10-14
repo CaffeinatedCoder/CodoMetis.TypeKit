@@ -31,6 +31,10 @@ internal enum TypeArgumentConstraint
     Sealed,
     Record,
     Concrete,
+    /// <summary>Relational: the arguments of the parameters that carry it differ.</summary>
+    Distinct,
+    /// <summary>Relational: the arguments of the parameters that carry it neither derive from, implement, box to nor are each other.</summary>
+    Unrelated,
 }
 
 internal sealed class TypeKitSymbols
@@ -115,7 +119,7 @@ internal sealed class TypeKitSymbols
         var attributes       = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.RequireCustomInitializationAttribute");
         var constructors     = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.RequireParameterlessConstructorAttribute");
         var constraints      = ImmutableArray.CreateRange(
-            from kind in new[] { TypeArgumentConstraint.Abstract, TypeArgumentConstraint.Sealed, TypeArgumentConstraint.Record, TypeArgumentConstraint.Concrete }
+            from kind in new[] { TypeArgumentConstraint.Abstract, TypeArgumentConstraint.Sealed, TypeArgumentConstraint.Record, TypeArgumentConstraint.Concrete, TypeArgumentConstraint.Distinct, TypeArgumentConstraint.Unrelated }
             from attribute in compilation.GetTypesByMetadataName($"CodoMetis.TypeKit.{kind}Attribute")
             select (kind, attribute));
         var materializers    = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.ValueObjects.IValueObjectMaterializer`2");
@@ -393,7 +397,7 @@ internal sealed class TypeKitSymbols
             .FirstOrDefault(attribute => attribute.AttributeClass is { } attributeClass
                                       && _requireCustomInitialization.Contains(attributeClass, SymbolEqualityComparer.Default));
 
-    /// <summary>Whether the compilation can see any of <c>[Abstract]</c>, <c>[Sealed]</c>, <c>[Record]</c> and <c>[Concrete]</c>.</summary>
+    /// <summary>Whether the compilation can see any of <c>[Abstract]</c>, <c>[Sealed]</c>, <c>[Record]</c>, <c>[Concrete]</c>, <c>[Distinct]</c> and <c>[Unrelated]</c>.</summary>
     public bool HasTypeArgumentConstraints => !_constraintAttributes.IsEmpty;
 
     /// <summary>The constraints a type parameter declares by attribute, in attribute order.</summary>

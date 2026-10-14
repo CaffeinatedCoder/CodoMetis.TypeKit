@@ -15,6 +15,8 @@ examples import `CodoMetis.TypeKit`.
 | `[Sealed]` | a sealed class or record, a struct, an enum | a type that can be derived from |
 | `[Record]` | a record class or record struct | a class or a struct |
 | `[Concrete]` | a class, record or struct that can be instantiated, an enum, a delegate | an abstract or static type, an interface, and the abstract bases `Enum`, `Delegate` and `ValueType`. No constructor is demanded, unlike `new()` |
+| `[Distinct]`, on two or more parameters | different types for them, related or not | one type twice, nullable annotations aside |
+| `[Unrelated]`, on two or more parameters | types with no implicit identity, reference or boxing conversion between them | a base and a derived type, an interface and an implementer, `object` and anything, a struct and `ValueType`; it implies `[Distinct]` |
 
 An aggregate whose events are a closed family, and whose identifier is a value object:
 
@@ -56,6 +58,40 @@ string shown = Snapshots.Describe(new Statement(10m));   // "Statement { Amount 
 string hidden = Snapshots.Describe(new Balance());       // CMTK0010: Balance is not a record, inferred at the call
 ```
 
+## Two parameters apart
+
+The first four constrain one parameter. `[Distinct]` and `[Unrelated]` constrain a pair, so they go on
+both parameters, and a breach is reported once, at the later argument. A converter from a type to itself
+is a mistake, and a choice between two types routes a value by its static type, so a derived type beside
+its base takes the base's side whenever the value is held as the base:
+
+```csharp
+public class Converter<[Distinct] TFrom, [Distinct] TTo>;                  // converting a type to itself is a mistake
+
+public sealed class OneOf<[Unrelated] TFirst, [Unrelated] TSecond>          // one implicit conversion per side
+{
+    public static implicit operator OneOf<TFirst, TSecond>(TFirst value) => new();
+    public static implicit operator OneOf<TFirst, TSecond>(TSecond value) => new();
+}
+
+public abstract record Shape;
+public sealed record Circle(double Radius) : Shape;
+
+public sealed class Round : Converter<Shape, Circle>;                 // fine: different types, related or not
+public sealed class Identity : Converter<Circle, Circle>;             // CMTK0010: Circle is the same type as the argument for TFrom
+
+public static class Picks
+{
+    public static OneOf<Shape, Circle> Narrowed = new Circle(1);      // CMTK0010: Circle derives from Shape; a Circle held as a Shape takes the first side
+    public static OneOf<Shape, string> Fine = "none";
+}
+```
+
+Where one parameter of a pair carries `[Unrelated]` and the other `[Distinct]`, the stricter applies;
+a parameter carrying neither is in no pair, and one parameter alone with the attribute constrains
+nothing. `Fault<T1, T2>` and `Fault<T1, T2, T3>` declare theirs `[Distinct]`, since with one type twice
+every conversion and `Of` would be ambiguous.
+
 ## Forwarding
 
 A type parameter given as the argument must carry the attribute itself, or be constrained as the
@@ -82,6 +118,8 @@ attribute:
 | `[Sealed]` | `struct` or `unmanaged`, or a bound `where T : U` with `U` proving `[Sealed]`, since a sealed type has no other subtype |
 | `[Record]` | a bound that is a record, `where T : AccountEvent`, or a `U` proving `[Record]`, since only records derive from records |
 | `[Concrete]` | `new()`, or anything that proves `[Sealed]`, `[Sealed]` itself included, since a sealed type is never abstract |
+| `[Distinct]`, for a pair | both parameters carrying `[Distinct]` or `[Unrelated]` in one generic, whose closed uses are checked in turn; `struct` or `unmanaged` against `class` or a class bound; two class bounds neither deriving from the other; against a type, C# constraints the type breaks |
+| `[Unrelated]`, for a pair | both carrying `[Unrelated]` in one generic; `struct` or `unmanaged` against a class bound, or a class, other than `object`, `ValueType` and `Enum`; two class bounds neither deriving from the other. `class` alone proves nothing: `object` satisfies it and is related to everything |
 
 The open generic inside its own body and an unbound
 `typeof(Aggregate<,>)` are never reported. Reflection, `MakeGenericType`, is out of reach, and the

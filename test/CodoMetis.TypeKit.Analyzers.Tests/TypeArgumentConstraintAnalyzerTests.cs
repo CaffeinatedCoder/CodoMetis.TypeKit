@@ -37,6 +37,20 @@ public sealed class TypeArgumentConstraintAnalyzerTests
                 public static void Run<[Abstract] T>(T command) { }
                 public static void Seal<[Sealed] T>(T value) { }
             }
+
+            public sealed class Logged : Handler, IHandler { }
+            public class Tracked : Handler { }
+
+            public class Pair<[Distinct] TLeft, [Distinct] TRight> { }
+
+            public class Apart<[Unrelated] TLeft, [Unrelated] TRight> { }
+
+            public sealed class Keyed<[Unrelated] TKey, [Distinct] TLeft, [Distinct] TRight> { }
+
+            public static class Pairs
+            {
+                public static void Zip<[Distinct] TA, [Distinct] TB>(TA a, TB b) { }
+            }
         }
 
         """;
@@ -587,6 +601,218 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             Cmtk0010(0, "Handler", "T", "Holder.Inst<T>", "is not sealed"),
             Cmtk0010(1, "Handler", "T", "Holder.Take<T>", "is not sealed"),
             Cmtk0010(2, "Handler", "T", "Box<T>", "is not sealed"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// <c>[Distinct]</c> is relational: the pair is reported once, at the later argument, naming the earlier
+    /// parameter. One symbol is one type whatever its nullable annotation, and <c>dynamic</c> is <c>object</c>;
+    /// a related pair, a base and a derived type, is distinct.
+    /// </summary>
+    [Fact]
+    public Task Distinct_reports_one_type_given_twice_at_the_later_argument() =>
+        Test(
+            """
+            public static class Uses
+            {
+                public static Pair<Handler, {|#0:Handler|}> Same;
+                public static Pair<string, {|#1:string?|}> Annotated;
+                public static Pair<object, {|#2:dynamic|}> Dynamic;
+                public static Pair<(int a, int b), {|#3:(int x, int y)|}> TupleNames;
+                public static Pair<Handler, OrderHandler> Related;
+                public static Pair<int, int?> Nullable;
+                public static Pair<int, long> Numeric;
+            }
+            """,
+            new DiagnosticResult("CMTK0010", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithMessage("'Handler', the type argument for 'TRight' of 'Pair<TLeft, TRight>', is the same type as the argument for 'TLeft'"),
+            Cmtk0010(1, "string?", "TRight", "Pair<TLeft, TRight>", "is the same type as the argument for 'TLeft'"),
+            Cmtk0010(2, "dynamic", "TRight", "Pair<TLeft, TRight>", "is the same type as the argument for 'TLeft'"),
+            Cmtk0010(3, "(int x, int y)", "TRight", "Pair<TLeft, TRight>", "is the same type as the argument for 'TLeft'"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// <c>[Unrelated]</c> refuses an implicit identity, reference or boxing conversion either way: a base
+    /// and a derived type in either order, an interface and an implementer, <c>object</c> and a struct.
+    /// A numeric or a nullable conversion is no relation, nor are two classes of different base chains.
+    /// </summary>
+    [Fact]
+    public Task Unrelated_reports_a_base_a_derived_type_an_interface_and_a_box() =>
+        Test(
+            """
+            public static class Uses
+            {
+                public static Apart<Handler, {|#0:OrderHandler|}> Derived;
+                public static Apart<OrderHandler, {|#1:Handler|}> Base;
+                public static Apart<IHandler, {|#2:Logged|}> Implemented;
+                public static Apart<object, {|#3:Point|}> Boxed;
+                public static Apart<Handler, {|#4:Handler|}> Same;
+                public static Apart<Point, OrderHandler> Fine;
+                public static Apart<Handler, PlaceOrder> OtherChain;
+                public static Apart<int, int?> Nullable;
+                public static Apart<int, long> Numeric;
+                public static Apart<IHandler, IComparable> TwoInterfaces;
+            }
+            """,
+            new DiagnosticResult("CMTK0010", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithMessage("'OrderHandler', the type argument for 'TRight' of 'Apart<TLeft, TRight>', derives from, implements, boxes to or is a base of 'Handler', the type argument for 'TLeft'"),
+            Cmtk0010(1, "Handler", "TRight", "Apart<TLeft, TRight>", "derives from, implements, boxes to or is a base of 'OrderHandler', the type argument for 'TLeft'"),
+            Cmtk0010(2, "Logged", "TRight", "Apart<TLeft, TRight>", "derives from, implements, boxes to or is a base of 'IHandler', the type argument for 'TLeft'"),
+            Cmtk0010(3, "Point", "TRight", "Apart<TLeft, TRight>", "derives from, implements, boxes to or is a base of 'object', the type argument for 'TLeft'"),
+            Cmtk0010(4, "Handler", "TRight", "Apart<TLeft, TRight>", "is the same type as the argument for 'TLeft'"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>A pair is checked at the stricter level either parameter declares; a parameter without either attribute is in no pair.</summary>
+    [Fact]
+    public Task A_pair_is_held_to_the_stricter_of_its_two_attributes() =>
+        Test(
+            """
+            public sealed class Half<[Distinct] TLeft, TRight> { }
+
+            public static class Uses
+            {
+                public static Keyed<Handler, {|#0:OrderHandler|}, Point> KeyRelatedToLeft;
+                public static Keyed<Point, Handler, OrderHandler> LeftAndRightOnlyDistinct;
+                public static Keyed<Point, Handler, {|#1:Handler|}> LeftAndRightSame;
+                public static Half<Handler, Handler> Alone;
+            }
+            """,
+            Cmtk0010(0, "OrderHandler", "TLeft", "Keyed<TKey, TLeft, TRight>", "derives from, implements, boxes to or is a base of 'Handler', the type argument for 'TKey'"),
+            Cmtk0010(1, "Handler", "TRight", "Keyed<TKey, TLeft, TRight>", "is the same type as the argument for 'TLeft'"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// The pair is checked wherever a unary constraint is: an inferred call (at the call), a method group (at
+    /// the group), a generic attribute (at the argument). A generic in its own body names its own parameters,
+    /// which carry the attribute together, and is silent; an extension block's parameter and its method's are
+    /// two generics, so they are no pair.
+    /// </summary>
+    [Fact]
+    public Task An_inferred_pair_is_reported_at_the_call_and_a_written_one_at_the_later_argument() =>
+        Test(
+            """
+            [AttributeUsage(AttributeTargets.All)]
+            public sealed class BothAttribute<[Distinct] TA, [Distinct] TB> : Attribute { }
+
+            public sealed class Self<[Distinct] TA, [Distinct] TB>
+            {
+                public Self<TA, TB>? Next;
+                public Self<TB, TA>? Swapped;
+            }
+
+            public static class Ex
+            {
+                extension<[Distinct] T>(T value)
+                {
+                    public void With<[Distinct] TOther>(TOther other) { }
+                }
+            }
+
+            [Both<Handler, {|#2:Handler|}>]
+            public static class Calls
+            {
+                public static void Go(Handler handler, OrderHandler concrete)
+                {
+                    {|#0:Pairs.Zip(handler, handler)|};
+                    Pairs.Zip<Handler, {|#1:Handler|}>(handler, handler);
+                    Pairs.Zip(handler, concrete);
+                    Action<Handler, Handler> group = {|#3:Pairs.Zip|};
+                    Action<Handler, OrderHandler> fine = Pairs.Zip;
+                    handler.With(handler);
+                }
+            }
+            """,
+            Cmtk0010(0, "Handler", "TB", "Pairs.Zip<TA, TB>", "is the same type as the argument for 'TA'"),
+            Cmtk0010(1, "Handler", "TB", "Pairs.Zip<TA, TB>", "is the same type as the argument for 'TA'"),
+            Cmtk0010(2, "Handler", "TB", "BothAttribute<TA, TB>", "is the same type as the argument for 'TA'"),
+            Cmtk0010(3, "Handler", "TB", "Pairs.Zip<TA, TB>", "is the same type as the argument for 'TA'"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A forwarding parameter is told apart from the other argument when both are parameters of one generic
+    /// carrying the attribute, whose closed uses are then checked, or when their C# constraints admit no
+    /// common type; the same parameter twice is the same type; otherwise the pair is a breach, or the
+    /// requirement would end at the first forwarding generic.
+    /// </summary>
+    [Fact]
+    public Task A_forwarding_pair_must_carry_the_attribute_or_be_proved_apart_by_its_constraints() =>
+        Test(
+            """
+            public sealed class Leaky<TA, TB> : Pair<TA, {|#0:TB|}> { }
+            public class Sound<[Distinct] TA, [Distinct] TB> : Pair<TA, TB> { }
+            public sealed class Closed : Sound<Handler, {|#1:Handler|}> { }
+            public sealed class Twice<T> : Pair<T, {|#2:T|}> { }
+            public sealed class StructAndClass<TS, TC> : Pair<TS, TC> where TS : struct where TC : class { }
+            public sealed class StructAndBound<TS, TC> : Pair<TS, TC> where TS : unmanaged where TC : Handler { }
+            public sealed class TwoChains<TA, TB> : Pair<TA, TB> where TA : Handler where TB : Command { }
+            public sealed class OneChain<TA, TB> : Pair<TA, {|#3:TB|}> where TA : Handler where TB : Tracked { }
+            public sealed class Open<T> : Pair<T, {|#4:Handler|}> { }
+            public sealed class StructAndType<T> : Pair<T, Handler> where T : struct { }
+            public sealed class BoundAndType<T> : Pair<T, OrderHandler> where T : Command { }
+            public sealed class BoundAndDerived<T> : Pair<T, {|#5:OrderHandler|}> where T : Handler { }
+            public sealed class ClassAndStruct<T> : Pair<T, Point> where T : class { }
+            public sealed class UnrelatedProvesDistinct<[Unrelated] TA, [Unrelated] TB> : Pair<TA, TB> { }
+            """,
+            Cmtk0010(0, "TB", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'TA', the type argument for 'TLeft'"),
+            Cmtk0010(1, "Handler", "TB", "Sound<TA, TB>", "is the same type as the argument for 'TA'"),
+            Cmtk0010(2, "T", "TRight", "Pair<TLeft, TRight>", "is the same type as the argument for 'TLeft'"),
+            Cmtk0010(3, "TB", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'TA', the type argument for 'TLeft'"),
+            Cmtk0010(4, "Handler", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'T', the type argument for 'TLeft'"),
+            Cmtk0010(5, "OrderHandler", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'T', the type argument for 'TLeft'"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// For <c>[Unrelated]</c> a forwarding pair is proved by both carrying <c>[Unrelated]</c> in one generic,
+    /// by <c>struct</c> against a class no value type boxes to, or by two class bounds of different chains;
+    /// <c>[Distinct]</c>, <c>class</c> alone (which admits <c>object</c>) and an interface prove nothing.
+    /// </summary>
+    [Fact]
+    public Task A_forwarding_pair_under_Unrelated_needs_a_proof_that_no_relation_is_possible() =>
+        Test(
+            """
+            public sealed class Sound<[Unrelated] TA, [Unrelated] TB> : Apart<TA, TB> { }
+            public sealed class OnlyDistinct<[Distinct] TA, [Distinct] TB> : Apart<TA, {|#0:TB|}> { }
+            public sealed class StructAndClass<T> : Apart<T, Handler> where T : struct { }
+            public sealed class StructAndObject<T> : Apart<T, {|#1:object|}> where T : struct { }
+            public sealed class StructAndValueType<T> : Apart<T, {|#2:ValueType|}> where T : struct { }
+            public sealed class StructAndInterface<T> : Apart<T, {|#3:IHandler|}> where T : struct { }
+            public sealed class StructAndClassConstraint<TS, TC> : Apart<TS, {|#4:TC|}> where TS : struct where TC : class { }
+            public sealed class StructAndBound<TS, TC> : Apart<TS, TC> where TS : struct where TC : Handler { }
+            public sealed class TwoChains<TA, TB> : Apart<TA, TB> where TA : Handler where TB : Command { }
+            public sealed class OneChain<TA, TB> : Apart<TA, {|#5:TB|}> where TA : Handler where TB : Tracked { }
+            public sealed class BoundAndStruct<T> : Apart<T, Point> where T : Handler { }
+            public sealed class BoundAndOtherChain<T> : Apart<T, PlaceOrder> where T : Handler { }
+            public sealed class BoundAndDerived<T> : Apart<T, {|#6:OrderHandler|}> where T : Handler { }
+            public sealed class BoundAndInterface<T> : Apart<T, {|#7:IHandler|}> where T : Handler { }
+            public sealed class ClassAndStruct<T> : Apart<T, {|#8:Point|}> where T : class { }
+            """,
+            Cmtk0010(0, "TB", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'TA', the type argument for 'TLeft'"),
+            Cmtk0010(1, "object", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'T', the type argument for 'TLeft'"),
+            Cmtk0010(2, "ValueType", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'T', the type argument for 'TLeft'"),
+            Cmtk0010(3, "IHandler", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'T', the type argument for 'TLeft'"),
+            Cmtk0010(4, "TC", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'TS', the type argument for 'TLeft'"),
+            Cmtk0010(5, "TB", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'TA', the type argument for 'TLeft'"),
+            Cmtk0010(6, "OrderHandler", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'T', the type argument for 'TLeft'"),
+            Cmtk0010(7, "IHandler", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'T', the type argument for 'TLeft'"),
+            Cmtk0010(8, "Point", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'T', the type argument for 'TLeft'"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>The base package's own use: a fault of several types is of different types, or every conversion and <c>Of</c> would be ambiguous.</summary>
+    [Fact]
+    public Task A_fault_of_several_types_declares_them_distinct() =>
+        Test(
+            """
+            public static class Faults
+            {
+                public static Fault<DayOfWeek, {|#0:DayOfWeek|}> Twice;
+                public static Fault<DayOfWeek, ConsoleColor, {|#1:DayOfWeek|}> Thrice;
+                public static Fault<DayOfWeek, ConsoleColor> Fine;
+                public static Fault<DayOfWeek, ConsoleColor, StringComparison> AlsoFine;
+            }
+            """,
+            Cmtk0010(0, "DayOfWeek", "T2", "Fault<T1, T2>", "is the same type as the argument for 'T1'"),
+            Cmtk0010(1, "DayOfWeek", "T3", "Fault<T1, T2, T3>", "is the same type as the argument for 'T1'"))
             .RunAsync(TestContext.Current.CancellationToken);
 
     [Fact]

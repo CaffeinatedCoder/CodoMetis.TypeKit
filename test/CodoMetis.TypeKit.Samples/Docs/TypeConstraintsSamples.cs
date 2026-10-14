@@ -39,6 +39,28 @@ public abstract class Sound<[Abstract] TEvent> : Aggregate<TEvent, AccountId>;  
 
 public sealed class Sealed<T> : Aggregate<AccountEvent, T> where T : struct;      // struct proves [Sealed], and [Concrete]
 // end sample
+
+// sample: type-constraints/pairs
+public class Converter<[Distinct] TFrom, [Distinct] TTo>;                  // converting a type to itself is a mistake
+
+public sealed class OneOf<[Unrelated] TFirst, [Unrelated] TSecond>          // one implicit conversion per side
+{
+    public static implicit operator OneOf<TFirst, TSecond>(TFirst value) => new();
+    public static implicit operator OneOf<TFirst, TSecond>(TSecond value) => new();
+}
+
+public abstract record Shape;
+public sealed record Circle(double Radius) : Shape;
+
+public sealed class Round : Converter<Shape, Circle>;                 // fine: different types, related or not
+public sealed class Identity : Converter<Circle, Circle>;             // CMTK0010: Circle is the same type as the argument for TFrom
+
+public static class Picks
+{
+    public static OneOf<Shape, Circle> Narrowed = new Circle(1);      // CMTK0010: Circle derives from Shape; a Circle held as a Shape takes the first side
+    public static OneOf<Shape, string> Fine = "none";
+}
+// end sample
 #pragma warning restore CMTK0010
 
 #pragma warning disable CMTK0011 // what the page shows the rule reporting
@@ -105,6 +127,10 @@ public sealed class TypeConstraintsTests
         new Ledger().Pending.ShouldBeEmpty();
         new Account().Pending.Add(new Deposited(1m));
         typeof(Aggregate<,>).GetGenericArguments()[0].GetCustomAttributes(typeof(AbstractAttribute), false).ShouldNotBeEmpty();
+        new Identity().ShouldNotBeNull();
+        Picks.Narrowed.ShouldNotBeNull();
+        typeof(Fault<,>).GetGenericArguments().ShouldAllBe(parameter => parameter.GetCustomAttributes(typeof(DistinctAttribute), false).Length == 1);
+        typeof(Fault<,,>).GetGenericArguments().ShouldAllBe(parameter => parameter.GetCustomAttributes(typeof(DistinctAttribute), false).Length == 1);
         typeof(Report).GetConstructor(Type.EmptyTypes).ShouldBeNull("what CMTK0011 reports");
         typeof(Nightly).GetConstructor(Type.EmptyTypes).ShouldNotBeNull();
     }

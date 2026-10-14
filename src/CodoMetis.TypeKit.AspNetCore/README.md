@@ -355,8 +355,9 @@ public static class Edits   // decides these refusals once, for every boundary
 ```
 
 `Fault<AccountFault, EditFault>` (CodoMetis.TypeKit) holds one fault of either set, its detail and rule
-intact; `Fault<T1, T2, T3>` holds one of three. The sets are different types: with one set twice,
-`Fault<AccountFault, AccountFault>`, every conversion and `Of` is ambiguous, CS0457 and CS0121.
+intact; `Fault<T1, T2, T3>` holds one of three. The sets are different types, `[Distinct]` on the
+parameters: one set twice, `Fault<AccountFault, AccountFault>`, is CMTK0010, and every conversion and
+`Of` of it would be ambiguous anyway, CS0457 and CS0121.
 
 ```csharp
 using Refusal = Fault<AccountFault, EditFault>;   // the boundary's own faults, beside the shared ones

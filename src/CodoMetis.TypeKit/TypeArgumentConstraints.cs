@@ -54,3 +54,44 @@ public sealed class RecordAttribute : Attribute;
 /// </remarks>
 [AttributeUsage(AttributeTargets.GenericParameter)]
 public sealed class ConcreteAttribute : Attribute;
+
+/// <summary>
+/// Requires the type arguments of every parameter of the same generic that carries this attribute to be
+/// different types: <c>Mapping&lt;[Distinct] TFrom, [Distinct] TTo&gt;</c> refuses <c>Mapping&lt;Dog, Dog&gt;</c>
+/// and accepts <c>Mapping&lt;Pet, Dog&gt;</c>. C# cannot say it; the CodoMetis.TypeKit analyzer reports a
+/// closed use that breaks it (CMTK0010), at the later of the two arguments.
+/// </summary>
+/// <remarks>
+/// Two types are the same when they are one symbol, their nullable annotations aside, and <c>dynamic</c>
+/// is <c>object</c>. Two type parameters given as the arguments are told apart when both carry
+/// <c>[Distinct]</c> or <see cref="UnrelatedAttribute"/> in the same generic, or when their C# constraints
+/// admit no common type: <c>struct</c> against <c>class</c> or a class bound, or two class bounds neither
+/// of which derives from the other. A type parameter against a type is told apart when the type breaks the
+/// parameter's C# constraints. One parameter alone with the attribute constrains nothing. Reflection is out
+/// of the analyzer's reach.
+/// </remarks>
+[AttributeUsage(AttributeTargets.GenericParameter)]
+public sealed class DistinctAttribute : Attribute;
+
+/// <summary>
+/// Requires the type arguments of every parameter of the same generic that carries this attribute to be
+/// unrelated types: neither derives from, implements, boxes to or is the other, so
+/// <c>Either&lt;[Unrelated] TLeft, [Unrelated] TRight&gt;</c> refuses <c>Either&lt;Pet, Dog&gt;</c>,
+/// <c>Either&lt;IAnimal, Dog&gt;</c> and <c>Either&lt;object, Point&gt;</c>, where a value of the derived
+/// type held as the base would take the base's side. It implies <see cref="DistinctAttribute"/>. C#
+/// cannot say it; the CodoMetis.TypeKit analyzer reports a closed use that breaks it (CMTK0010), at the
+/// later of the two arguments.
+/// </summary>
+/// <remarks>
+/// Related means an implicit identity, reference or boxing conversion in either direction; a numeric or a
+/// nullable conversion is none, so <c>int</c> beside <c>long</c> or <c>int?</c> is unrelated. Two
+/// interfaces are unrelated even though one type may implement both. Two type parameters given as the
+/// arguments are told apart when both carry <c>[Unrelated]</c> in the same generic, or when their C#
+/// constraints admit no related types: <c>struct</c> against a class bound other than <c>object</c>, or
+/// two class bounds neither of which derives from the other. A type parameter against a type is told
+/// apart on the same grounds; <c>class</c> alone proves nothing, since <c>object</c> is related to
+/// everything. Where a pair carries <c>[Unrelated]</c> on one parameter and <c>[Distinct]</c> on the
+/// other, the stricter applies. Reflection is out of the analyzer's reach.
+/// </remarks>
+[AttributeUsage(AttributeTargets.GenericParameter)]
+public sealed class UnrelatedAttribute : Attribute;

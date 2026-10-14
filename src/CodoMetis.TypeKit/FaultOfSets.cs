@@ -25,10 +25,10 @@ namespace CodoMetis.TypeKit;
 /// </para>
 /// </remarks>
 /// <typeparam name="T1">The first fault type: an enum or a closed set.</typeparam>
-/// <typeparam name="T2">The second fault type.</typeparam>
+/// <typeparam name="T2">The second fault type, another than the first (CMTK0010): with one type twice, every conversion and <c>Of</c> would be ambiguous.</typeparam>
 [JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
 [RequireCustomInitialization("Use Fault.Of(reason), which converts, or Fault<T1, T2>.Of(reason).")]
-public readonly record struct Fault<T1, T2> where T1 : notnull where T2 : notnull
+public readonly record struct Fault<[Distinct] T1, [Distinct] T2> where T1 : notnull where T2 : notnull
 {
     private readonly Fault<T1> _first;
     private readonly Fault<T2> _second;
@@ -126,10 +126,10 @@ public readonly record struct Fault<T1, T2> where T1 : notnull where T2 : notnul
 /// <remarks>As <see cref="Fault{T1, T2}"/>, with a third type.</remarks>
 /// <typeparam name="T1">The first fault type: an enum or a closed set.</typeparam>
 /// <typeparam name="T2">The second fault type.</typeparam>
-/// <typeparam name="T3">The third fault type.</typeparam>
+/// <typeparam name="T3">The third fault type; the three are different types (CMTK0010).</typeparam>
 [JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
 [RequireCustomInitialization("Use Fault.Of(reason), which converts, or Fault<T1, T2, T3>.Of(reason).")]
-public readonly record struct Fault<T1, T2, T3> where T1 : notnull where T2 : notnull where T3 : notnull
+public readonly record struct Fault<[Distinct] T1, [Distinct] T2, [Distinct] T3> where T1 : notnull where T2 : notnull where T3 : notnull
 {
     private readonly Fault<T1> _first;
     private readonly Fault<T2> _second;

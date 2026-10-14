@@ -85,3 +85,4 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0076](0076-preserved-references-refused.md) | A value object refuses preserved references inside its wrapped value | 2026-10-14 | accepted |
 | [0077](0077-third-review-refines-74-to-76.md) | A base's IEquatable is implemented again, the resolver's converter is described, and the reference scan reads what the serializer writes | 2026-10-14 | accepted |
 | [0078](0078-fault-sets-compose-side-by-side.md) | Fault sets compose side by side, and a route leaves out what it cannot answer | 2026-10-14 | accepted |
+| [0079](0079-distinct-and-unrelated-type-parameters.md) | `[Distinct]` and `[Unrelated]` constrain two type parameters against each other, under CMTK0010 | 2026-10-14 | accepted |

@@ -21,7 +21,7 @@ appears to: an instance that passed no factory, or a value object that was never
 | CMTK0007 | Info | `FromKnownGood` given a value that comes straight from a parameter. |
 | CMTK0008 | Warning | The wrapped values of two different value objects compared, `order.CustomerId.Value == product.Id.Value`, or the two value objects themselves through `Equals(object)`. |
 | CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. |
-| CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute, `[Abstract]`, `[Sealed]`, `[Record]` or `[Concrete]`, at any closed use: a base type, a member, a parameter, a local, a `typeof`, an attribute, a call or a method group, written or inferred, and a member of a generic extension block, whose arguments the receiver gives. A type parameter forwarded without the attribute is a breach too, and a method implementing an interface's method, or overriding one, carries the constraint of what it implements, a static one and one a base class declares included. |
+| CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute, `[Abstract]`, `[Sealed]`, `[Record]` or `[Concrete]`, or a pair of arguments for two parameters marked `[Distinct]` or `[Unrelated]` that are one type, or related by inheritance, implementation or boxing, reported once at the later argument; at any closed use: a base type, a member, a parameter, a local, a `typeof`, an attribute, a call or a method group, written or inferred, and a member of a generic extension block, whose arguments the receiver gives. A type parameter forwarded without the attribute is a breach too, and a method implementing an interface's method, or overriding one, carries the constraint of what it implements, a static one and one a base class declares included. |
 | CMTK0011 | Error | A concrete class that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. A struct is never reported: its parameterless constructor is public and can be nothing else. The code fix writes or changes the constructor. |
 | CMTK0012 | Error | A closed set's `Match` given an argument by position, which binds to whichever member is declared at that place, so reordering the members swaps the branches. The code fix names every argument. |
 | CMTK0013 | Error | A closed set's member written outside its declaration: in the static constructor, after the generators named the instance it held, or in another static field's initializer, before. |
@@ -390,6 +390,42 @@ inside its own body, an unbound `typeof(Decider<,>)`, a `nameof(Decider<PlaceOrd
 which uses no argument, and a type argument that does not exist, which is the compiler's error, are
 never reported. Reflection,
 `MakeGenericType`, is out of reach, and the attributes carry no run-time check.
+
+Two more attributes constrain two parameters against each other. `[Distinct]` on each of two parameters
+of one generic says their arguments are different types; `[Unrelated]` says neither derives from,
+implements, boxes to or is the other, which implies `[Distinct]`. A breach is reported once, at the later
+of the two arguments, and a pair carrying one of each is held to the stricter:
+
+```csharp
+public sealed class Mapping<[Distinct] TFrom, [Distinct] TTo> { }
+
+public sealed class Either<[Unrelated] TLeft, [Unrelated] TRight>   // an implicit conversion from each side
+{
+    public static implicit operator Either<TLeft, TRight>(TLeft left) => new();
+    public static implicit operator Either<TLeft, TRight>(TRight right) => new();
+}
+
+public class Pet { }
+public sealed class Dog : Pet { }
+
+public static class Pairs
+{
+    public static Mapping<Pet, Dog> Related = new();   // fine: different types, related or not
+    public static Mapping<Dog, Dog> Same = new();      // CMTK0010: Dog is the same type as the argument for TFrom
+    public static Either<Pet, Dog> Routed = new();     // CMTK0010: Dog derives from Pet; a Dog held as a Pet would take the left side
+    public static Either<Pet, int> Fine = new();
+}
+```
+
+| Attribute | Refuses | Two type parameters, or one and a type, are told apart when |
+|---|---|---|
+| `[Distinct]` | one symbol twice, nullable annotations aside; `dynamic` is `object` | both carry `[Distinct]` or `[Unrelated]` in one generic, whose closed uses are checked in turn; `struct`/`unmanaged` against `class` or a class bound; two class bounds neither deriving from the other; a type that breaks the parameter's C# constraints |
+| `[Unrelated]` | an implicit identity, reference or boxing conversion either way: a base and a derived type, an interface and an implementer, `object` and anything, a struct and `ValueType`. A numeric or a nullable conversion is no relation, nor are two interfaces, though one type may implement both | both carry `[Unrelated]` in one generic; `struct`/`unmanaged` against a class bound other than `object`, `ValueType` or `Enum`, or against such a type; two class bounds neither deriving from the other. `class` alone proves nothing, since `object` satisfies it |
+
+A pair not told apart is a breach, as a forwarding parameter without the attribute is, so the requirement
+does not end at the first forwarding generic. One parameter alone with the attribute constrains nothing.
+`Fault<T1, T2>` and `Fault<T1, T2, T3>` (CodoMetis.TypeKit) declare theirs `[Distinct]`: with one type
+twice, every conversion and `Of` would be ambiguous.
 
 ## CMTK0011
 
