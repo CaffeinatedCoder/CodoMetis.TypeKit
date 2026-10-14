@@ -44,6 +44,8 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
 
     public async Task TransformAsync(OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
     {
+        DescribedOptionsAgreement.ThrowIfDisagreeing(context.ApplicationServices);
+
         var info = context.JsonTypeInfo;
         var options = info.Options;
 

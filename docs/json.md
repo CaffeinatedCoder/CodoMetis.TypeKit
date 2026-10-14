@@ -211,7 +211,10 @@ one. It is a JSON Schema complete in itself: a `$ref`, a `$defs` or an `$id` is 
 In CodoMetis.TypeKit.AspNetCore, `AddTypeKit()` writes the same descriptions into the OpenAPI document,
 in every position, a list's elements and a dictionary's values included. A route, query or header
 parameter binds through `TryParse` and not through JSON, so it keeps the description ASP.NET gives the
-type without converters of one's own ([ASP.NET Core](aspnet-core.md)). A type nothing describes is left as
+type without converters of one's own ([ASP.NET Core](aspnet-core.md)). The document is built from the
+minimal-API JSON options and controllers write with MVC's, so a host with controllers registers a
+described converter on both; building the document fails otherwise, naming what differs. A description
+in the options also outranks the converter's own: it can refine one, and it can contradict one. A type nothing describes is left as
 the host writes it.
 
 ## Option and Result at the wire

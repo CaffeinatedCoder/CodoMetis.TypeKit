@@ -32,6 +32,9 @@ item names the decision that scoped it.
 
 ## 2.x, with a spike first
 
+- A NodaTime satellite that registers NodaTime's converters and their descriptions in one call, read
+  from the patterns the host configures rather than a fixed set; NodaTime's version floors and its
+  converters' trimming warnings decide whether it is a package ([decision 71](adr/0071-converters-say-what-they-write.md)).
 - Fault sets that share members: a set that includes another's, its members copied by the generators
   with a conversion from the included set, against waiting for C# 15 unions; what `fault`, the
   document and `AddFaultResponses` then say ([decision 68](adr/0068-fault-set-composition-spiked-first.md)).

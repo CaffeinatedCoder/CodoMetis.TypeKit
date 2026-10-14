@@ -1,7 +1,12 @@
+using System.Reflection;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using CodoMetis.TypeKit.Generators.Probes;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
@@ -151,5 +156,84 @@ public sealed class DescribedSchemaTests
             json => json.SerializerOptions.Converters.Add(new JsonSchemaDescriptions().Describe<decimal>(JsonSchemaDescription.Of(new JsonObject { ["type"] = 42 })))));
 
         refusal.Message.ShouldContain("System.Decimal");
+    }
+}
+
+/// <summary>
+/// ASP.NET builds the document from the minimal-API JSON options and MVC writes with its own: where a host
+/// has a controller, a described converter on one and not the other is refused when the document is built,
+/// rather than a document of numbers over a controller that writes strings (measured before the check).
+/// </summary>
+public sealed class DescribedOptionsAgreementTests
+{
+    public sealed record Quote(decimal Amount);
+
+    [Microsoft.AspNetCore.Mvc.ApiController]
+    public sealed class QuoteController : Microsoft.AspNetCore.Mvc.ControllerBase
+    {
+        [Microsoft.AspNetCore.Mvc.HttpGet("/mvc/quote")]
+        public Quote Get() => new(7.80m);
+    }
+
+    private sealed class OnlyQuotes : Microsoft.AspNetCore.Mvc.ApplicationParts.IApplicationFeatureProvider<Microsoft.AspNetCore.Mvc.Controllers.ControllerFeature>
+    {
+        public void PopulateFeature(IEnumerable<Microsoft.AspNetCore.Mvc.ApplicationParts.ApplicationPart> parts, Microsoft.AspNetCore.Mvc.Controllers.ControllerFeature feature) =>
+            feature.Controllers.Add(typeof(QuoteController).GetTypeInfo());
+    }
+
+    private static async Task<(string Wire, string Document)> HostAsync(bool onHttp, bool onMvc, bool controllers = true)
+    {
+        var cancellation = TestContext.Current.CancellationToken;
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        if (onHttp) builder.Services.ConfigureHttpJsonOptions(json => json.SerializerOptions.Converters.Add(new DecimalStringJsonConverter()));
+        var mvc = builder.Services.AddControllers().ConfigureApplicationPartManager(parts =>
+        {
+            parts.ApplicationParts.Clear();
+            if (controllers) parts.FeatureProviders.Add(new OnlyQuotes());
+        });
+        if (onMvc) mvc.AddJsonOptions(json => json.JsonSerializerOptions.Converters.Add(new DecimalStringJsonConverter()));
+        builder.Services.AddOpenApi(openApi => openApi.AddTypeKit());
+
+        await using var app = builder.Build();
+        app.MapOpenApi();
+        app.MapControllers();
+        app.MapGet("/minimal/quote", () => new Quote(7.80m));
+        await app.StartAsync(cancellation);
+
+        var client = app.GetTestClient();
+        var wire = await client.GetStringAsync(controllers ? "/mvc/quote" : "/minimal/quote", cancellation);
+        return (wire, await client.GetStringAsync("/openapi/v1.json", cancellation));
+    }
+
+    [Theory]
+    [InlineData(false, true, "on MVC's alone: DecimalStringJsonConverter")]
+    [InlineData(true, false, "on the minimal-API options alone: DecimalStringJsonConverter")]
+    public async Task A_described_converter_on_one_set_of_options_alone_stops_the_document(bool onHttp, bool onMvc, string named)
+    {
+        var refusal = await Should.ThrowAsync<InvalidOperationException>(() => HostAsync(onHttp, onMvc));
+
+        refusal.Message.ShouldStartWith("The OpenAPI document is built from the minimal-API JSON options");
+        refusal.Message.ShouldContain(named);
+    }
+
+    [Fact]
+    public async Task On_both_the_controller_s_wire_and_the_document_agree()
+    {
+        var (wire, document) = await HostAsync(onHttp: true, onMvc: true);
+
+        wire.ShouldBe("""{"amount":"7.8"}""");
+        JsonNode.Parse(document)!["components"]!["schemas"]!["Quote"]!["properties"]!["amount"]!["type"]!.GetValue<string>().ShouldBe("string");
+    }
+
+    /// <summary>A host of minimal APIs alone writes nothing with MVC's options, so they are never compared.</summary>
+    [Fact]
+    public async Task Without_a_controller_the_minimal_API_options_alone_are_enough()
+    {
+        var (wire, document) = await HostAsync(onHttp: true, onMvc: false, controllers: false);
+
+        wire.ShouldBe("""{"amount":"7.8"}""");
+        JsonNode.Parse(document)!["components"]!["schemas"]!["Quote"]!["properties"]!["amount"]!["type"]!.GetValue<string>().ShouldBe("string");
     }
 }

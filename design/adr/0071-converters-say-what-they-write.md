@@ -37,6 +37,16 @@ this: decimals, NodaTime's thirteen types, enums.
 69's line holds: the package writes what a converter or the host says, never a plain type's default),
 and gives a non-body parameter back the schema the type has without converters of one's own.
 
+**Two ways the document and the wire part, and what holds them.** ASP.NET builds the document from the
+minimal-API JSON options, and MVC writes with its own: a converter added through `AddJsonOptions` alone
+wrote `{"amount":"7.8"}` under a document of numbers, without a word (measured in a review the same day).
+Where the host has a controller, building the document fails when the two option sets do not carry the
+same described converters and description sets, by type, naming each that differs; a host of minimal APIs
+alone is never compared. And an entry in `JsonSchemaDescriptions` comes before a converter's own
+description, so a host can refine one, a `minimum` on a value object, and can also contradict one,
+describing as strings what is written as numbers. That is not refused: nothing tells a refinement from a
+contradiction, and the entry is the application's word on its own wire.
+
 **Decimals** are its first use. `DecimalNumberJsonConverter` and `DecimalStringJsonConverter` write the
 smallest scale (division by a scale-28 one; `ToString("G29")` writes `1E-07`), a zero of any scale or sign
 as `0`, as a value and as a dictionary key, which a converter of one's own must write itself or the
@@ -47,4 +57,7 @@ string and normalises nothing; a scale per type, which widens `7.8` to `7.8000`.
 written `0.00` by the serializer on .NET 10, not `-0`; the zero guard is for the scale.
 
 Not in the package: a NodaTime or an enum description of its own. Those stay the application's word, a
-few lines in its options.
+few lines in its options. A fixed NodaTime description set would be wrong for a host that changes
+NodaTime's patterns (an `Interval` as an object or an ISO string; a `Duration` in NodaTime's own pattern),
+and a satellite would set NodaTime's version floors and carry its converters' trimming warnings, so a
+NodaTime satellite that registers converters and descriptions in one call is a spike first (roadmap).

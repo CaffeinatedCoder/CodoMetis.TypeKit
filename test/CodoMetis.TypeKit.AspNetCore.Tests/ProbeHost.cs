@@ -54,6 +54,14 @@ internal sealed class ProbeHost : IAsyncDisposable
         builder.Logging.ClearProviders();
         builder.Services.AddControllers().AddApplicationPart(typeof(ProbeController).Assembly);
         if (json is not null) builder.Services.ConfigureHttpJsonOptions(json);
+
+        // A described converter goes on MVC's options too, as a host with controllers must register it
+        // (DescribedOptionsAgreement refuses the document otherwise; DescribedSchemaTests holds that).
+        builder.Services.AddOptions<Microsoft.AspNetCore.Mvc.JsonOptions>().Configure<Microsoft.Extensions.Options.IOptions<JsonOptions>>((mvc, http) =>
+        {
+            foreach (var converter in http.Value.SerializerOptions.Converters.Where(converter => converter is IDescribedJsonConverter or JsonSchemaDescriptions))
+                mvc.JsonSerializerOptions.Converters.Add(converter);
+        });
         builder.Services.AddOpenApi(options =>
         {
             options.OpenApiVersion = version;

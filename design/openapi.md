@@ -33,7 +33,10 @@ position, and the change lands in the hoisted component.
   a parameter too, and every schema in one; only a non-body parameter binds through `TryParse`, and it
   gets back the schema the type has without converters of one's own, beside ASP.NET's `format`. A
   description is parsed by `OpenApiModelFactory.Parse<OpenApiSchema>` (Microsoft.OpenApi 2.0 on), measured
-  to survive Native AOT trimming in the smoke test's `aot` consumer.
+  to survive Native AOT trimming in the smoke test's `aot` consumer. Where the host has a controller,
+  `DescribedOptionsAgreement` fails the document when MVC's JSON options and the minimal-API ones carry
+  different described converters or description sets, by type: the document is built from the latter,
+  and MVC writes with the former.
 - **A value object that reaches itself** through what it wraps is an `InvalidOperationException`
   naming the chain, not a stack overflow.
 - **Source-generated JSON** ([Native AOT](native-aot.md)): ASP.NET builds the wrapped type's schema from the host's JSON
