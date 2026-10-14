@@ -20,7 +20,8 @@
 #   layered  a domain library references CodoMetis.TypeKit.Generators, and an app reaches everything
 #            only through that library: the app uses the generated members, the transitive fabric
 #            generates a value object the app declares itself, and CMTK0001 fires in the app, in the
-#            domain library, and in a Razor component of a third project.
+#            domain library, and in a Razor component of a third project; CMTK0011 and CMTK0013 in
+#            the domain library, on code Metalama wove.
 #   host     a web host with both satellites: EF Core maps the value objects and translates .Value,
 #            and the OpenAPI document describes them.
 #   aot      the same ground published with Native AOT (design/native-aot.md): no trim or AOT warning
@@ -409,11 +410,33 @@ public static class Guard
         return id;
     }
 }
+
+// Woven, and named before the static constructor's body, which then swaps a member.
+public sealed partial class Swapped : CodoMetis.TypeKit.ClosedSets.IClosedSet<Swapped>
+{
+    public static readonly Swapped Open = new();
+    public static readonly Swapped Closed = new();
+
+    static Swapped() { Open = Closed; }
+}
+
+[RequireParameterlessConstructor]
+public interface IEndpoint;
+
+public abstract class EndpointBase { protected EndpointBase(int port) { } }
+
+// No parameterless constructor, and a base that base() does not reach.
+public sealed class Orders : EndpointBase, IEndpoint
+{
+    public Orders(int port) : base(port) { }
+}
 CSHARP
 
 run_failing dotnet build --no-incremental
 echo "$output" | grep -F "Guard.cs(" > "$work/layered.declaring" || true
 assert_contains "error CMTK0001" "$work/layered.declaring" "CMTK0001 fires in the declaring project for a local typed by a generated member"
+assert_contains "error CMTK0013: 'Swapped.Open' is written outside its declaration" "$work/layered.declaring" "CMTK0013 fires in the declaring project for a member assigned in a woven set's static constructor"
+assert_contains "error CMTK0011" "$work/layered.declaring" "CMTK0011 fires for a type without the constructor its interface requires"
 rm Guard.cs
 
 # By hand: the razorclasslib template takes no --framework.
