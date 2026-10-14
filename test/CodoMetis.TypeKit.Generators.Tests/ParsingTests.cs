@@ -89,6 +89,40 @@ public sealed class ConstructedFromIn(in string text)
 
 public readonly partial record struct OverParsesFromIn : IValue<ParsesFromIn>;
 
+/// <summary>A wrapped type whose static <c>Parse</c> gives back a type that converts to it by a user-defined implicit operator.</summary>
+public sealed class ParsedShape
+{
+    public string Text { get; init; } = "";
+
+    public static ParsedCircle Parse(string text) => new() { Text = text };
+}
+
+/// <summary>Unrelated to <see cref="ParsedShape"/>, and implicitly a shape.</summary>
+public sealed class ParsedCircle
+{
+    public string Text { get; init; } = "";
+
+    public static implicit operator ParsedShape(ParsedCircle circle) => new() { Text = circle.Text };
+}
+
+/// <summary>A wrapped type whose static <c>Parse</c> gives back a string, which converts to it implicitly.</summary>
+public sealed class ParsedFromText
+{
+    private ParsedFromText(string text) => Text = text;
+
+    public string Text { get; }
+
+    public static string Parse(string text) => text.Trim();
+
+    public static implicit operator ParsedFromText(string text) => new(text);
+}
+
+// 2.0.0 generated parsing over both, and the call compiles through the conversion; 2.1.0 took neither
+// for a parser, so ShapeId.Parse(...) failed with CS0117 in a consumer that built against 2.0.0.
+public readonly partial record struct OverParsedShape : IValue<ParsedShape>;
+
+public readonly partial record struct OverParsedFromText : IValue<ParsedFromText>;
+
 public readonly partial record struct OverConstructedFromIn : IValue<ConstructedFromIn>;
 
 /// <summary>
@@ -287,6 +321,22 @@ public sealed class ParsingTests
     {
         OverParsesFromIn.Parse("text", null).Value.Text.ShouldBe("text");
         OverConstructedFromIn.Parse("text", null).Value.Text.ShouldBe("text");
+    }
+
+    /// <summary>
+    /// A <c>Parse</c> that gives back a type converting to the wrapped one by a user-defined implicit operator is
+    /// a parser, as the generated call compiles through the conversion: 2.1.0 counted only the conversions of
+    /// C#'s <c>is</c>, so the value object lost <c>IParsable</c>, <c>Parse</c> and <c>TryParse</c>, and a
+    /// consumer's <c>Parse</c> that built against 2.0.0 failed with CS0117 (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public void A_static_Parse_that_converts_implicitly_to_the_wrapped_type_parses()
+    {
+        OverParsedShape.Parse("round", null).Value.Text.ShouldBe("round");
+        OverParsedFromText.Parse("  text  ", null).Value.Text.ShouldBe("text");
+        OverParsedShape.TryParse("round", null, out var shape).ShouldBeTrue();
+        shape.Value.Text.ShouldBe("round");
+        typeof(OverParsedShape).GetInterfaces().ShouldContain(typeof(IParsable<OverParsedShape>));
     }
 
     [Fact]

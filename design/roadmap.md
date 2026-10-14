@@ -38,10 +38,11 @@ Small and additive, each closable in a minor version. Found by the reviews named
 
 **Generators**
 - A C# keyword in a namespace or a member name fails with LAMA0041, not a CMTK error.
-- A wrapped type's `Parse` that returns another type through an implicit conversion (`Circle` to
-  `Shape`, or `string` to `T`) is taken for no parser, so the value object loses `IParsable` without
-  a word, where 2.0.0 generated it. Accept the conversion, or report the value object as not parsable
-  (audit of 2026-10-14).
+- Package validation compares the packages' own public surface, not what the generators write into a
+  consumer: a `Parse` that 2.1.0's prerelease stopped generating (a wrapped `Parse` returning a type with
+  an implicit conversion) broke a consumer's call with CS0117 and passed ApiCompat. Snapshot the
+  generated public members of the test corpus' value objects, and fail a change that removes one
+  without a decision (review of 2026-10-14).
 
 **JSON**
 - A value object held as its base record type is written as the base, `{}`, as System.Text.Json

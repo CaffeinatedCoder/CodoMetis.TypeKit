@@ -220,12 +220,15 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
 
         // Callable as the generated code calls it, Type.Parse(text), and giving the wrapped type back. Not
         // a generic one, such as Enum.Parse<TEnum>(string), whose type argument the generated call cannot
-        // infer (LAMA0611, CS0411); not one that returns another type (a static int Parse(string) on a
-        // class failed as CS0029); not a static virtual one of an interface, which only a type parameter
-        // can call (CS8926).
+        // infer (LAMA0611, CS0411); not one that returns a type the wrapped one cannot be assigned from (a
+        // static int Parse(string) on a class failed as CS0029); not a static virtual one of an interface,
+        // which only a type parameter can call (CS8926). Assignable as the generated lambda's return is, a
+        // user-defined implicit operator included: the default conversion kind, C#'s `is`, left it out, and a
+        // Parse giving a Circle that converts to Shape lost IParsable where 2.0.0 generated it (CS0117 in a
+        // consumer's Parse call, reported 2026-10-14).
         if (valueType.Methods.Any(method => method is { Name: "Parse", IsStatic: true, IsVirtual: false, Accessibility: Accessibility.Public, TypeParameters.Count: 0, Parameters: [{ } text] }
                                          && TakesText(text)
-                                         && method.ReturnType.IsConvertibleTo(valueType)))
+                                         && method.ReturnType.IsConvertibleTo(valueType, ConversionKind.Implicit)))
             return ValueParseStrategy.StaticParse;
 
         return ValueParseStrategy.Unsupported;
