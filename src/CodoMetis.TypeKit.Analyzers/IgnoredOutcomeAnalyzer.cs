@@ -238,7 +238,8 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
 
     /// <summary>
     /// A call's <c>Task</c> of a result, or of a collection of results it made, converted implicitly to
-    /// a plain <c>Task</c>, which has no result to hand on; or tasks of results the statement made,
+    /// a plain <c>Task</c>, which has no result to hand on, unless it is a tap on a result or task the
+    /// caller still holds; or tasks of results the statement made,
     /// converted to plain tasks, an array, a sequence or a span of them, as <c>Task.WaitAll</c> takes.
     /// </summary>
     private static void AnalyzeConversion(OperationAnalysisContext context, TypeKitSymbols symbols, Tasks tasks)
@@ -256,8 +257,9 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
 
         foreach (var invocation in Producers(conversion.Operand, tasks))
         {
+            // held.TapAsync(log) returns the task of a result the caller still holds.
             var outcome = toPlainTask
-                ? tasks.PendingOutcome(invocation.Type, symbols)
+                ? (ReturnsItsStoredReceiver(invocation, symbols, tasks) ? null : tasks.PendingOutcome(invocation.Type, symbols))
                ?? DroppedHolder(tasks.HolderOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks)
                 : DroppedCollection(tasks.PendingOutcome(tasks.ElementOfSequence(invocation.Type), symbols), invocation, symbols, tasks);
 
@@ -271,8 +273,8 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     /// <summary>
     /// <c>Wait</c> on a task of a result, or of a collection of results, that the expression made:
     /// <c>orders.CancelAsync(id).Wait()</c> blocks until the result exists and hands it to nobody,
-    /// whether the statement drops what <c>Wait</c> returns or an <c>if</c> reads it. A task still held
-    /// keeps its result.
+    /// whether the statement drops what <c>Wait</c> returns or an <c>if</c> reads it. A task still held,
+    /// or a tap on one, keeps its result.
     /// </summary>
     private static void AnalyzeWait(OperationAnalysisContext context, TypeKitSymbols symbols, Tasks tasks)
     {
@@ -280,6 +282,8 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
 
         if (wait.TargetMethod is not { Name: "Wait", IsStatic: false } method || !SymbolEqualityComparer.Default.Equals(method.ContainingType, tasks.Plain)) return;
         if (wait.Instance is null || tasks.PassedOn(wait.Instance) is not IInvocationOperation invocation) return;
+
+        if (ReturnsItsStoredReceiver(invocation, symbols, tasks)) return;
 
         var outcome = tasks.PendingOutcome(invocation.Type, symbols)
                    ?? DroppedHolder(tasks.HolderOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks);

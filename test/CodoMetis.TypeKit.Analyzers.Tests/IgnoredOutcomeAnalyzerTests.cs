@@ -340,6 +340,44 @@ public sealed class IgnoredOutcomeAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
+    /// A tap on a stored result or task, converted to a plain <c>Task</c> or waited for, leaves the
+    /// outcome with the caller, as the same tap as a statement does: both were reported, on a held
+    /// <c>Result</c> and on a held <c>Task</c> of one. A tap on what a call made still drops it.
+    /// </summary>
+    [Fact]
+    public Task A_tap_on_a_stored_result_or_task_converted_to_a_plain_Task_or_waited_for_is_silent() =>
+        Test(
+            """
+            public static class Caller
+            {
+                private static Result<int, Fault> _field = 1;
+
+                public static Task FromResult(Result<int, Fault> held) => held.TapAsync(_ => Task.CompletedTask);
+                public static Task FromTask(Task<Result<int, Fault>> pending) => pending.TapAsync(_ => { });
+                public static Task Chained(Task<Result<int, Fault>> pending) => pending.TapAsync(_ => { }).TapErrorAsync(_ => { });
+                public static Task Field() => _field.TapErrorAsync(_ => Task.CompletedTask);
+                public static Task Bounded(Task<Result<int, Fault>> pending) => pending.WaitAsync(TimeSpan.FromSeconds(1)).TapAsync(_ => { });
+                public static Func<Task> Later(Task<Result<int, Fault>> pending) => () => pending.TapAsync(_ => { });
+                public static Task Either(bool flag, Task<Result<int, Fault>> pending, Service service) =>
+                    flag ? pending.TapAsync(_ => { }) : {|#2:service.LoadAsync().TapAsync(_ => { })|};
+
+                public static Task Made(Service service) => {|#0:service.LoadAsync().TapAsync(_ => { })|};
+                public static Task MadeFromResult(Service service) => {|#1:service.Load().TapAsync(_ => Task.CompletedTask)|};
+
+                public static void Blocked(Task<Result<int, Fault>> pending, Service service)
+                {
+                    pending.TapAsync(_ => { }).Wait();
+                    {|#3:service.LoadAsync().TapAsync(_ => { }).Wait()|};
+                }
+            }
+            """,
+            Cmtk0003(0, "Result", "TapAsync"),
+            Cmtk0003(1, "Result", "TapAsync"),
+            Cmtk0003(2, "Result", "TapAsync"),
+            Cmtk0003(3, "Result", "TapAsync"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
     /// The <c>Task</c> continuations <c>TapAsync</c> and <c>TapErrorAsync</c> return the task's result
     /// unchanged, so awaiting them on a task the caller still holds drops nothing, as the instance
     /// <c>Tap</c> does not.
