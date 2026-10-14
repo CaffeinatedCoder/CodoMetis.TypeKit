@@ -40,8 +40,10 @@ internal sealed partial class ValueObjectFormattableAspect
     // Overrides the record-generated ToString() with the invariant culture. The BCL's own ToString()
     // uses the current culture; this one does not, because a value object's text is an identifier
     // or a wire value more often than a display string, and the generated Parse treats a null
-    // provider as invariant too, so Parse(x.ToString(), null) round-trips. Callers who need a
-    // culture pass it: x.ToString(format, culture), or string.Create(culture, $"{x}").
+    // provider as invariant too, so Parse(x.ToString(), null) reads it back as far as the wrapped
+    // type's default text is lossless (TimeOnly, DateTime and DateTimeOffset drop seconds or a
+    // fraction in theirs). Callers who need a culture pass it: x.ToString(format, culture), or
+    // string.Create(culture, $"{x}").
     [Template]
     public string ToStringOverrideTemplate() => meta.This.ToString(null, CultureInfo.InvariantCulture);
 
@@ -54,9 +56,12 @@ internal sealed partial class ValueObjectFormattableAspect
         IFormatProvider?   provider
     )
     {
+        var tag = (FormattableImplementationArguments)meta.Tags.Source!;
+
         charsWritten = 0;
 
-        return (bool)Formatted($"{GeneratedFormatting}.TryFormat(this.Value, destination, out charsWritten, format, provider {InvariantIfNull})", SpecialType.Boolean).Value!;
+        // A default instance over a reference type holds null, whose text is "" (WrappedText).
+        return (bool)Formatted((tag.ValueType.IsReferenceType == true ? "this.Value is null || " : "") + $"{GeneratedFormatting}.TryFormat(this.Value, destination, out charsWritten, format, provider {InvariantIfNull})", SpecialType.Boolean).Value!;
     }
 
     // Satisfies IUtf8SpanFormattable.TryFormat — only emitted when T : IUtf8SpanFormattable.
@@ -68,8 +73,10 @@ internal sealed partial class ValueObjectFormattableAspect
         IFormatProvider?   provider
     )
     {
+        var tag = (FormattableImplementationArguments)meta.Tags.Source!;
+
         bytesWritten = 0;
 
-        return (bool)Formatted($"{GeneratedFormatting}.TryFormatUtf8(this.Value, utf8Destination, out bytesWritten, format, provider {InvariantIfNull})", SpecialType.Boolean).Value!;
+        return (bool)Formatted((tag.ValueType.IsReferenceType == true ? "this.Value is null || " : "") + $"{GeneratedFormatting}.TryFormatUtf8(this.Value, utf8Destination, out bytesWritten, format, provider {InvariantIfNull})", SpecialType.Boolean).Value!;
     }
 }

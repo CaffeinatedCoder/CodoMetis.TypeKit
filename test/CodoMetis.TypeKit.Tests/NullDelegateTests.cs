@@ -39,6 +39,10 @@ public sealed class NullDelegateTests
     // A pending result that fails: only a delegate checked before the task is awaited reports itself
     // rather than the task's own exception.
     private static Task<Result<int, string>> PendingFault        => Task.FromException<Result<int, string>>(new TimeoutException());
+
+    private static Task<Option<int>> PendingSome        => Task.FromResult(Some);
+    private static Task<Option<int>> PendingNone        => Task.FromResult(None);
+    private static Task<Option<int>> PendingOptionFault => Task.FromException<Option<int>>(new TimeoutException());
     private static Task<Result<string>>      PendingCommandFault => Task.FromException<Result<string>>(new TimeoutException());
 
     private static readonly Dictionary<string, Func<object?>[]> Cases = new()
@@ -49,6 +53,20 @@ public sealed class NullDelegateTests
         ["Option<T>.Map(Func<T, TResult>): selector"]                      = [() => Some.Map(Null<Func<int, int>>()), () => None.Map(Null<Func<int, int>>())],
         ["Option<T>.Tap(Action<T>): action"]                          = [() => Some.Tap(Null<Action<int>>()), () => None.Tap(Null<Action<int>>())],
         ["Option<T>.Filter(Func<T, Boolean>): predicate"]                 = [() => Some.Filter(Null<Func<int, bool>>()), () => None.Filter(Null<Func<int, bool>>())],
+
+        ["Option<T>.MapAsync(Func<T, Task<TResult>>): selector"]               = [() => Some.MapAsync(Null<Func<int, Task<int>>>()), () => None.MapAsync(Null<Func<int, Task<int>>>())],
+        ["Option<T>.BindAsync(Func<T, Task<Option<TResult>>>): selector"]      = [() => Some.BindAsync(Null<Func<int, Task<Option<int>>>>()), () => None.BindAsync(Null<Func<int, Task<Option<int>>>>())],
+        ["Option<T>.TapAsync(Func<T, Task>): action"]                          = [() => Some.TapAsync(Null<Func<int, Task>>()), () => None.TapAsync(Null<Func<int, Task>>())],
+
+        ["Option.MapAsync(Task<Option<T>>, Func<T, TResult>): selector"]       = [() => PendingSome.MapAsync(Null<Func<int, int>>()), () => PendingNone.MapAsync(Null<Func<int, int>>()), () => PendingOptionFault.MapAsync(Null<Func<int, int>>())],
+        ["Option.MapAsync(Task<Option<T>>, Func<T, Task<TResult>>): selector"] = [() => PendingSome.MapAsync(Null<Func<int, Task<int>>>()), () => PendingNone.MapAsync(Null<Func<int, Task<int>>>()), () => PendingOptionFault.MapAsync(Null<Func<int, Task<int>>>())],
+        ["Option.BindAsync(Task<Option<T>>, Func<T, Option<TResult>>): selector"] =
+            [() => PendingSome.BindAsync(Null<Func<int, Option<int>>>()), () => PendingNone.BindAsync(Null<Func<int, Option<int>>>()), () => PendingOptionFault.BindAsync(Null<Func<int, Option<int>>>())],
+        ["Option.BindAsync(Task<Option<T>>, Func<T, Task<Option<TResult>>>): selector"] =
+            [() => PendingSome.BindAsync(Null<Func<int, Task<Option<int>>>>()), () => PendingNone.BindAsync(Null<Func<int, Task<Option<int>>>>()), () => PendingOptionFault.BindAsync(Null<Func<int, Task<Option<int>>>>())],
+        ["Option.FilterAsync(Task<Option<T>>, Func<T, Boolean>): predicate"] = [() => PendingSome.FilterAsync(Null<Func<int, bool>>()), () => PendingNone.FilterAsync(Null<Func<int, bool>>()), () => PendingOptionFault.FilterAsync(Null<Func<int, bool>>())],
+        ["Option.TapAsync(Task<Option<T>>, Action<T>): action"]     = [() => PendingSome.TapAsync(Null<Action<int>>()), () => PendingNone.TapAsync(Null<Action<int>>()), () => PendingOptionFault.TapAsync(Null<Action<int>>())],
+        ["Option.TapAsync(Task<Option<T>>, Func<T, Task>): action"] = [() => PendingSome.TapAsync(Null<Func<int, Task>>()), () => PendingNone.TapAsync(Null<Func<int, Task>>()), () => PendingOptionFault.TapAsync(Null<Func<int, Task>>())],
 
         ["Option.Select(Option<T>, Func<T, TResult>): selector"]               = [() => Some.Select(Null<Func<int, int>>()), () => None.Select(Null<Func<int, int>>())],
         ["Option.SelectMany(Option<T>, Func<T, Option<TResult>>): selector"]   = [() => Some.SelectMany(Null<Func<int, Option<int>>>()), () => None.SelectMany(Null<Func<int, Option<int>>>())],
@@ -68,7 +86,43 @@ public sealed class NullDelegateTests
         ["Option.Zip(Option<T>, Option<T2>, Option<T3>, Option<T4>, Option<T5>, Option<T6>, Func<T, T2, T3, T4, T5, T6, TResult>): selector"] =
             [() => Some.Zip(Some, Some, Some, Some, Some, Null<Func<int, int, int, int, int, int, int>>()), () => None.Zip(Some, Some, Some, Some, Some, Null<Func<int, int, int, int, int, int, int>>())],
         ["Option.FirstOrNone(IEnumerable<T>, Func<T, Boolean>): predicate"] = [() => new[] { 1 }.FirstOrNone(Null<Func<int, bool>>()), () => Array.Empty<int>().FirstOrNone(Null<Func<int, bool>>())],
+        ["Option.SingleOrNone(IEnumerable<T>, Func<T, Boolean>): predicate"] = [() => new[] { 1 }.SingleOrNone(Null<Func<int, bool>>()), () => Array.Empty<int>().SingleOrNone(Null<Func<int, bool>>())],
+        ["Result.Traverse(Option<T>, Func<T, Result<TResult, TError>>): selector"] =
+            [() => Some.Traverse(Null<Func<int, Result<int, string>>>()), () => None.Traverse(Null<Func<int, Result<int, string>>>())],
         ["Option.LastOrNone(IEnumerable<T>, Func<T, Boolean>): predicate"]  = [() => new[] { 1 }.LastOrNone(Null<Func<int, bool>>()), () => Array.Empty<int>().LastOrNone(Null<Func<int, bool>>())],
+
+        ["Patch<T>.Match(Func<T, TResult>, Func<TResult>, Func<TResult>): onValue"] =
+            [() => Patch.Value(1).Match(Null<Func<int, int>>(), () => 0, () => 0), () => Patch.Null<int>().Match(Null<Func<int, int>>(), () => 0, () => 0), () => Patch.Absent<int>().Match(Null<Func<int, int>>(), () => 0, () => 0)],
+        ["Patch<T>.Match(Func<T, TResult>, Func<TResult>, Func<TResult>): onNull"] =
+            [() => Patch.Value(1).Match(x => x, Null<Func<int>>(), () => 0), () => Patch.Null<int>().Match(x => x, Null<Func<int>>(), () => 0), () => Patch.Absent<int>().Match(x => x, Null<Func<int>>(), () => 0)],
+        ["Patch<T>.Match(Func<T, TResult>, Func<TResult>, Func<TResult>): onAbsent"] =
+            [() => Patch.Value(1).Match(x => x, () => 0, Null<Func<int>>()), () => Patch.Null<int>().Match(x => x, () => 0, Null<Func<int>>()), () => Patch.Absent<int>().Match(x => x, () => 0, Null<Func<int>>())],
+        ["Patch<T>.Tap(Action<T>): action"]   = [() => { Patch.Value(1).Tap(Null<Action<int>>()); return null; }, () => { Patch.Null<int>().Tap(Null<Action<int>>()); return null; }, () => { Patch.Absent<int>().Tap(Null<Action<int>>()); return null; }],
+        ["Patch.IfPresent(Patch<T>, Action<T>): action"] = [() => { Patch.Value("a").IfPresent(Null<Action<string?>>()); return null; }, () => { Patch.Null<string>().IfPresent(Null<Action<string?>>()); return null; }, () => { Patch.Absent<string>().IfPresent(Null<Action<string?>>()); return null; }],
+        ["Patch<T>.Map(Func<T, TResult>): selector"]   = [() => Patch.Value(1).Map(Null<Func<int, int>>()), () => Patch.Null<int>().Map(Null<Func<int, int>>()), () => Patch.Absent<int>().Map(Null<Func<int, int>>())],
+        ["Result.Traverse(Patch<T>, Func<T, Result<TResult, TError>>): selector"] =
+            [() => Patch.Value(1).Traverse(Null<Func<int, Result<int, string>>>()), () => Patch.Null<int>().Traverse(Null<Func<int, Result<int, string>>>()), () => Patch.Absent<int>().Traverse(Null<Func<int, Result<int, string>>>())],
+        ["SequenceOptionExtensions.Choose(IEnumerable<T>, Func<T, Option<TResult>>): selector"] = [() => new[] { 1 }.Choose(Null<Func<int, Option<int>>>()), () => Array.Empty<int>().Choose(Null<Func<int, Option<int>>>())],
+        ["Result.TraverseAsync(IEnumerable<T>, Func<T, Task<Result<TResult, TError>>>): selector"] =
+            [() => new[] { 1 }.TraverseAsync(Null<Func<int, Task<Result<int, string>>>>()), () => Array.Empty<int>().TraverseAsync(Null<Func<int, Task<Result<int, string>>>>())],
+        ["Result.TraverseAsync(IEnumerable<T>, Func<T, CancellationToken, Task<Result<TResult, TError>>>, CancellationToken): selector"] =
+            [() => new[] { 1 }.TraverseAsync(Null<Func<int, CancellationToken, Task<Result<int, string>>>>(), CancellationToken.None), () => Array.Empty<int>().TraverseAsync(Null<Func<int, CancellationToken, Task<Result<int, string>>>>(), CancellationToken.None)],
+        ["Result.TraverseAsync(IEnumerable<T>, Func<T, Task<Result<TError>>>): selector"] =
+            [() => new[] { 1 }.TraverseAsync(Null<Func<int, Task<Result<string>>>>()), () => Array.Empty<int>().TraverseAsync(Null<Func<int, Task<Result<string>>>>())],
+        ["Result.TraverseAsync(IEnumerable<T>, Func<T, CancellationToken, Task<Result<TError>>>, CancellationToken): selector"] =
+            [() => new[] { 1 }.TraverseAsync(Null<Func<int, CancellationToken, Task<Result<string>>>>(), CancellationToken.None), () => Array.Empty<int>().TraverseAsync(Null<Func<int, CancellationToken, Task<Result<string>>>>(), CancellationToken.None)],
+        ["Patch.IfPresent(Patch<T>, Action<Nullable<T>>): action"] = [() => { Patch.Value(1).IfPresent(Null<Action<int?>>()); return null; }, () => { Patch.Null<int>().IfPresent(Null<Action<int?>>()); return null; }, () => { Patch.Absent<int>().IfPresent(Null<Action<int?>>()); return null; }],
+
+        // Catch has no branches: the delegate is checked before anything runs. Overloads that differ
+        // only in type parameters are keyed with them.
+        ["Result.Catch<T>(Func<T>): action"]                             = [() => Result.Catch(Null<Func<int>>())],
+        ["Result.Catch(Action): action"]                                 = [() => Result.Catch(Null<Action>())],
+        ["Result.Catch<T, TException>(Func<T>): action"]                 = [() => Result.Catch<int, FormatException>(Null<Func<int>>())],
+        ["Result.Catch<TException>(Action): action"]                     = [() => Result.Catch<FormatException>(Null<Action>())],
+        ["Result.CatchAsync<T>(Func<Task<T>>): action"]                  = [() => Result.CatchAsync(Null<Func<Task<int>>>())],
+        ["Result.CatchAsync(Func<Task>): action"]                        = [() => Result.CatchAsync(Null<Func<Task>>())],
+        ["Result.CatchAsync<T, TException>(Func<Task<T>>): action"]      = [() => Result.CatchAsync<int, FormatException>(Null<Func<Task<int>>>())],
+        ["Result.CatchAsync<TException>(Func<Task>): action"]            = [() => Result.CatchAsync<FormatException>(Null<Func<Task>>())],
 
         ["Result<TError>.Match(Func<TResult>, Func<TError, TResult>): onSuccess"] = [() => Ok.Match(Null<Func<int>>(), _ => 0), () => Failed.Match(Null<Func<int>>(), _ => 0)],
         ["Result<TError>.Match(Func<TResult>, Func<TError, TResult>): onError"]   = [() => Ok.Match(() => 0, Null<Func<string, int>>()), () => Failed.Match(() => 0, Null<Func<string, int>>())],
@@ -216,15 +270,31 @@ public sealed class NullDelegateTests
         Cases.Keys.Except(parameters).ShouldBeEmpty("These cases name no public method of the assembly.");
     }
 
-    private static IEnumerable<string> DelegateParameters() =>
-        from type in typeof(Option<>).Assembly.GetExportedTypes()
-        // The compiler's grouping types for extension blocks carry skeleton members; the callable
-        // methods are the static ones on the enclosing class.
-        where !type.Name.Contains('<') && type.GetCustomAttribute<CompilerGeneratedAttribute>() is null
-        from method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
-        from parameter in method.GetParameters()
-        where typeof(Delegate).IsAssignableFrom(parameter.ParameterType)
-        select $"{Describe(type)}.{method.Name}({string.Join(", ", method.GetParameters().Select(p => Describe(p.ParameterType)))}): {parameter.Name}";
+    private static IEnumerable<string> DelegateParameters()
+    {
+        var methods =
+            from type in typeof(Option<>).Assembly.GetExportedTypes()
+            // The compiler's grouping types for extension blocks carry skeleton members; the callable
+            // methods are the static ones on the enclosing class.
+            where !type.Name.Contains('<') && type.GetCustomAttribute<CompilerGeneratedAttribute>() is null
+            from method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
+            // An overload that exists to be a compile error (Catch over a Task) cannot be called.
+            where method.GetCustomAttribute<ObsoleteAttribute>() is not { IsError: true }
+            select (Type: type, Method: method, Signature: $"({string.Join(", ", method.GetParameters().Select(p => Describe(p.ParameterType)))})");
+
+        // Overloads that differ only in their type parameters (Catch<T> beside Catch<T, TException>)
+        // are keyed with them; every other method keeps its bare name.
+        var byKey = methods.ToLookup(m => $"{Describe(m.Type)}.{m.Method.Name}{m.Signature}");
+
+        return from overloads in byKey
+               from m in overloads
+               let name = overloads.Count() > 1 && m.Method.IsGenericMethod
+                   ? $"{m.Method.Name}<{string.Join(", ", m.Method.GetGenericArguments().Select(a => a.Name))}>"
+                   : m.Method.Name
+               from parameter in m.Method.GetParameters()
+               where typeof(Delegate).IsAssignableFrom(parameter.ParameterType)
+               select $"{Describe(m.Type)}.{name}{m.Signature}: {parameter.Name}";
+    }
 
     private static string Describe(Type type) =>
         type.IsByRef ? Describe(type.GetElementType()!)

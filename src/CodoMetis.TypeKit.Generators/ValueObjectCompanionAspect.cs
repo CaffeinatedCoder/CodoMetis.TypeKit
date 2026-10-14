@@ -59,6 +59,13 @@ internal sealed class ValueObjectCompanionAspect : TypeAspect
                                             type.IsStatic      = true;
                                             type.IsPartial     = true;
                                             type.AddAttribute(CodeAnnotations.CompilerGenerated);
+
+                                            // The class names the value object outside it, where an
+                                            // [Obsolete(error: true)] on it or on a type it is nested in
+                                            // failed inside the generated code (LAMA0611, CS0619). Inside
+                                            // an obsolete declaration C# reports no use of one.
+                                            if (ObsoleteAttribute(builder.Target) is { } obsolete)
+                                                type.AddAttribute(obsolete.ToAttributeConstruction());
                                         });
 
         companionClass.IntroduceMethod(
@@ -93,4 +100,15 @@ internal sealed class ValueObjectCompanionAspect : TypeAspect
         );
     }
 
+    /// <summary>The <c>[Obsolete]</c> of <paramref name="type"/>, or of the nearest type it is nested in that has one.</summary>
+    private static IAttribute? ObsoleteAttribute(INamedType type)
+    {
+        for (INamedType? current = type; current is not null; current = current.DeclaringType)
+        {
+            if (current.Attributes.FirstOrDefault(attribute => attribute.Type.Equals(TypeFactory.GetNamedType(typeof(ObsoleteAttribute)))) is { } obsolete)
+                return obsolete;
+        }
+
+        return null;
+    }
 }

@@ -35,9 +35,9 @@ internal sealed class ValueObjectMemberTranslatorPlugin(
         )
         {
             if (instance is null || member.Name != nameof(IValueObject<,>.Value)) return null;
-            if (member.DeclaringType is not { } declaringType || !ValueObjectTypes.IsValueObject(declaringType)) return null;
+            if (member.DeclaringType is not { } declaringType || ValueObjectTypes.Describe(declaringType) is not { } valueObject) return null;
 
-            return WrappedValue.Of(instance, returnType, sqlExpressionFactory, typeMappingSource);
+            return WrappedValue.Of(instance, valueObject, returnType, sqlExpressionFactory, typeMappingSource);
         }
     }
 }
@@ -82,7 +82,7 @@ internal sealed class ValueObjectMethodCallTranslatorPlugin(
              || valueObject.WrappedType != valueType)
                 return null;
 
-            return WrappedValue.Of(arguments[0], valueType, sqlExpressionFactory, typeMappingSource);
+            return WrappedValue.Of(arguments[0], valueObject, valueType, sqlExpressionFactory, typeMappingSource);
         }
     }
 }
@@ -97,10 +97,28 @@ internal static class WrappedValue
     /// parameter or a function result, is converted, and so is the element column of a primitive
     /// collection (<see cref="IsCollectionElement"/>).
     /// </summary>
-    public static SqlExpression Of(SqlExpression operand, Type valueType, ISqlExpressionFactory sqlExpressionFactory, IRelationalTypeMappingSource typeMappingSource)
+    /// <returns>
+    /// <see langword="null"/>, so EF refuses the query, where the operand's converter is not TypeKit's:
+    /// a column the application converts itself (<c>HasConversion(c => "C:" + c.Value, …)</c>, a converter
+    /// type, a <c>ConfigureConventions</c> conversion) does not hold <c>.Value</c>, and re-typed as if it
+    /// did, <c>t.Code.Value == "abc"</c> compared the column with what it never holds and answered no row.
+    /// An operand that is not mapped yet, such as a parameter whose mapping EF infers later, is a value
+    /// object of the query's own and is converted as before.
+    /// </returns>
+    public static SqlExpression? Of(
+        SqlExpression                 operand,
+        GeneratedValueObjectAttribute valueObject,
+        Type                          valueType,
+        ISqlExpressionFactory         sqlExpressionFactory,
+        IRelationalTypeMappingSource  typeMappingSource
+    )
     {
         var mapping = (operand.TypeMapping?.StoreType is { } storeType ? typeMappingSource.FindMapping(valueType, storeType) : null)
                    ?? typeMappingSource.FindMapping(valueType);
+
+        if (operand.TypeMapping is { } operandMapping
+         && (operandMapping.Converter is not { } converter || !ValueObjectMapping.For(valueObject).StoresTheWrappedValue(converter, mapping?.Converter)))
+            return null;
 
         return operand is ColumnExpression column && !IsCollectionElement(column)
                    ? new ColumnExpression(column.Name, column.TableAlias, valueType, mapping, column.IsNullable)

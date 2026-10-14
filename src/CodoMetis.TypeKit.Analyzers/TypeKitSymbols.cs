@@ -24,6 +24,15 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// go silent and fail.
 /// </para>
 /// </remarks>
+/// <summary>What a type parameter can demand of its argument by attribute; the names are the attributes'.</summary>
+internal enum TypeArgumentConstraint
+{
+    Abstract,
+    Sealed,
+    Record,
+    Concrete,
+}
+
 internal sealed class TypeKitSymbols
 {
     /// <summary>
@@ -37,7 +46,10 @@ internal sealed class TypeKitSymbols
 
     private readonly ImmutableArray<INamedTypeSymbol> _valueMarkers;
     private readonly ImmutableArray<INamedTypeSymbol> _validatedMarkers;
+    private readonly ImmutableArray<INamedTypeSymbol> _closedSetMarkers;
     private readonly ImmutableArray<INamedTypeSymbol> _requireCustomInitialization;
+    private readonly ImmutableArray<INamedTypeSymbol> _requireParameterlessConstructor;
+    private readonly ImmutableArray<(TypeArgumentConstraint Kind, INamedTypeSymbol Attribute)> _constraintAttributes;
     private readonly ImmutableArray<INamedTypeSymbol> _materializers;
     private readonly ImmutableArray<INamedTypeSymbol> _converters;
     private readonly ImmutableArray<INamedTypeSymbol> _outcomes;
@@ -56,7 +68,10 @@ internal sealed class TypeKitSymbols
     private TypeKitSymbols(
         ImmutableArray<INamedTypeSymbol> valueMarkers,
         ImmutableArray<INamedTypeSymbol> validatedMarkers,
+        ImmutableArray<INamedTypeSymbol> closedSetMarkers,
         ImmutableArray<INamedTypeSymbol> requireCustomInitialization,
+        ImmutableArray<INamedTypeSymbol> requireParameterlessConstructor,
+        ImmutableArray<(TypeArgumentConstraint Kind, INamedTypeSymbol Attribute)> constraintAttributes,
         ImmutableArray<INamedTypeSymbol> materializers,
         ImmutableArray<INamedTypeSymbol> converters,
         ImmutableArray<INamedTypeSymbol> outcomes,
@@ -68,7 +83,10 @@ internal sealed class TypeKitSymbols
         _outcomes                    = outcomes;
         _valueMarkers                = valueMarkers;
         _validatedMarkers            = validatedMarkers;
+        _closedSetMarkers            = closedSetMarkers;
         _requireCustomInitialization = requireCustomInitialization;
+        _requireParameterlessConstructor = requireParameterlessConstructor;
+        _constraintAttributes = constraintAttributes;
         _materializers               = materializers;
         _converters                  = converters;
         _resultClasses               = resultClasses;
@@ -93,7 +111,13 @@ internal sealed class TypeKitSymbols
     {
         var valueMarkers     = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.ValueObjects.IValue`1");
         var validatedMarkers = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.ValueObjects.IValidatedValue`3");
+        var closedSetMarkers = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.ClosedSets.IClosedSet`1");
         var attributes       = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.RequireCustomInitializationAttribute");
+        var constructors     = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.RequireParameterlessConstructorAttribute");
+        var constraints      = ImmutableArray.CreateRange(
+            from kind in new[] { TypeArgumentConstraint.Abstract, TypeArgumentConstraint.Sealed, TypeArgumentConstraint.Record, TypeArgumentConstraint.Concrete }
+            from attribute in compilation.GetTypesByMetadataName($"CodoMetis.TypeKit.{kind}Attribute")
+            select (kind, attribute));
         var materializers    = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.ValueObjects.IValueObjectMaterializer`2");
         var converters       = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.EntityFrameworkCore.ValueObjectConverter`2");
         var outcomes         = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.Result`1")
@@ -102,12 +126,12 @@ internal sealed class TypeKitSymbols
         var resultClasses    = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.Result");
         var optionClasses    = compilation.GetTypesByMetadataName("CodoMetis.TypeKit.Option");
 
-        if (valueMarkers.IsEmpty && validatedMarkers.IsEmpty && attributes.IsEmpty && materializers.IsEmpty) return null;
+        if (valueMarkers.IsEmpty && validatedMarkers.IsEmpty && closedSetMarkers.IsEmpty && attributes.IsEmpty && constructors.IsEmpty && constraints.IsEmpty && materializers.IsEmpty) return null;
 
         var referencesGenerators = compilation.ReferencedAssemblyNames.Any(identity =>
             string.Equals(identity.Name, GeneratorsAssembly, StringComparison.OrdinalIgnoreCase));
 
-        return new TypeKitSymbols(valueMarkers, validatedMarkers, attributes, materializers, converters, outcomes, resultClasses, optionClasses, referencesGenerators);
+        return new TypeKitSymbols(valueMarkers, validatedMarkers, closedSetMarkers, attributes, constructors, constraints, materializers, converters, outcomes, resultClasses, optionClasses, referencesGenerators);
     }
 
     /// <summary>
@@ -341,6 +365,14 @@ internal sealed class TypeKitSymbols
     }
 
     /// <summary>
+    /// The <c>IClosedSet&lt;TSelf&gt;</c> <paramref name="type"/> implements, directly or through
+    /// another interface, as the constructed interface. Apart from <see cref="FindMarker"/>: a closed
+    /// set is generated by the same fabric, but no value-object rule applies to it.
+    /// </summary>
+    public INamedTypeSymbol? FindClosedSetMarker(ITypeSymbol type) =>
+        InterfacesOf(type).FirstOrDefault(candidate => _closedSetMarkers.Contains(candidate.OriginalDefinition, SymbolEqualityComparer.Default));
+
+    /// <summary>
     /// The interfaces of <paramref name="type"/>. A type parameter has none of its own: what it is
     /// guaranteed to implement comes from its constraints, which can be interfaces, a base class or
     /// another type parameter.
@@ -360,4 +392,73 @@ internal sealed class TypeKitSymbols
         type.GetAttributes()
             .FirstOrDefault(attribute => attribute.AttributeClass is { } attributeClass
                                       && _requireCustomInitialization.Contains(attributeClass, SymbolEqualityComparer.Default));
+
+    /// <summary>Whether the compilation can see any of <c>[Abstract]</c>, <c>[Sealed]</c>, <c>[Record]</c> and <c>[Concrete]</c>.</summary>
+    public bool HasTypeArgumentConstraints => !_constraintAttributes.IsEmpty;
+
+    /// <summary>The constraints a type parameter declares by attribute, in attribute order.</summary>
+    public IEnumerable<TypeArgumentConstraint> ConstraintsOn(ITypeParameterSymbol parameter)
+    {
+        foreach (var attribute in parameter.GetAttributes())
+        {
+            foreach (var (kind, attributeClass) in _constraintAttributes)
+            {
+                if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, attributeClass)) yield return kind;
+            }
+        }
+    }
+
+    /// <summary>Whether the compilation can see <c>[RequireParameterlessConstructor]</c> at all.</summary>
+    public bool HasRequireParameterlessConstructor => !_requireParameterlessConstructor.IsEmpty;
+
+    /// <summary>
+    /// The parameterless constructors <paramref name="type"/> must have: one per
+    /// <c>[RequireParameterlessConstructor]</c> on the type itself, a base type or an interface it
+    /// implements, directly or through another, each with the accessibility it asks for and the
+    /// type that asks.
+    /// </summary>
+    /// <remarks>
+    /// The attribute is not inherited by the CLR, on purpose: a type that derives from a marked base
+    /// or implements a marked interface is found here by walking, so the requirement reaches it in
+    /// any project, whether or not that project sees the source of the marked type.
+    /// </remarks>
+    public IEnumerable<(INamedTypeSymbol Source, Accessibility Required)> RequiredParameterlessConstructors(INamedTypeSymbol type)
+    {
+        for (var ancestor = type; ancestor is not null; ancestor = ancestor.BaseType)
+        {
+            foreach (var requirement in RequirementsOn(ancestor)) yield return requirement;
+        }
+
+        foreach (var implemented in type.AllInterfaces)
+        {
+            foreach (var requirement in RequirementsOn(implemented)) yield return requirement;
+        }
+    }
+
+    private IEnumerable<(INamedTypeSymbol Source, Accessibility Required)> RequirementsOn(INamedTypeSymbol type)
+    {
+        foreach (var attribute in type.GetAttributes())
+        {
+            if (attribute.AttributeClass is not { } attributeClass
+             || !_requireParameterlessConstructor.Contains(attributeClass, SymbolEqualityComparer.Default))
+                continue;
+
+            // The attribute's enum mirrors the C# accessibilities in declaration order: 0 Public,
+            // 1 Internal, 2 Protected, 3 ProtectedInternal, 4 PrivateProtected, 5 Private. A value
+            // outside it (a newer base package than this analyzer) is read as Public.
+            var required = attribute.ConstructorArguments.Length == 1 && attribute.ConstructorArguments[0].Value is int value
+                ? value switch
+                  {
+                      1 => Accessibility.Internal,
+                      2 => Accessibility.Protected,
+                      3 => Accessibility.ProtectedOrInternal,
+                      4 => Accessibility.ProtectedAndInternal,
+                      5 => Accessibility.Private,
+                      _ => Accessibility.Public,
+                  }
+                : Accessibility.Public;
+
+            yield return (type, required);
+        }
+    }
 }

@@ -39,6 +39,17 @@ internal static class ValueObjectTypes
      && Markers(type).Count > 0;
 
     /// <summary>
+    /// An abstract class with a marker, which the fabric refuses (CMTK1022) rather than skip: it was
+    /// generated nothing and reported nothing, and a value held as it, of a sealed type derived from
+    /// it, had no <c>Value</c> and was written as <c>{}</c>.
+    /// </summary>
+    public static bool IsAbstractValueObject(INamedType type) =>
+        type.TypeKind == TypeKind.Class
+     && type.IsAbstract
+     && !type.IsStatic
+     && Markers(type).Count > 0;
+
+    /// <summary>
     /// Why <paramref name="valueObject"/> cannot be generated over what it wraps, or
     /// <see langword="null"/> when that is not a value object. Called from the fabric only, since it
     /// reads types other than the aspect's target (<see cref="ValueObjectFabric"/>).

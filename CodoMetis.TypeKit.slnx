@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/CodoMetis.TypeKit/CodoMetis.TypeKit.csproj" />
     <Project Path="src/CodoMetis.TypeKit.Analyzers/CodoMetis.TypeKit.Analyzers.csproj" />
+    <Project Path="src/CodoMetis.TypeKit.Analyzers/CodeFixes/CodoMetis.TypeKit.Analyzers.CodeFixes.csproj" />
     <Project Path="src/CodoMetis.TypeKit.Generators/CodoMetis.TypeKit.Generators.csproj" />
     <Project Path="src/CodoMetis.TypeKit.EntityFrameworkCore/CodoMetis.TypeKit.EntityFrameworkCore.csproj" />
     <Project Path="src/CodoMetis.TypeKit.AspNetCore/CodoMetis.TypeKit.AspNetCore.csproj" />
@@ -23,7 +24,14 @@
   <Folder Name="/benchmarks/">
     <Project Path="benchmarks/CodoMetis.TypeKit.Benchmarks/CodoMetis.TypeKit.Benchmarks.csproj" />
   </Folder>
+  <Folder Name="/design/">
+    <File Path="design/plan.md" />
+  </Folder>
   <Folder Name="/Solution Items/">
+    <File Path="AGENTS.md" />
+    <File Path="CHANGELOG.md" />
+    <File Path="CONTRIBUTING.md" />
+    <File Path="README.md" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
     <File Path="global.json" />

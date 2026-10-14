@@ -31,6 +31,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1005", "Outer<T>.Middle.DeeplyNested")]
     [InlineData("CMTK1005", "ArrayBacked")]
     [InlineData("CMTK1005", "NullableBacked")]
+    [InlineData("CMTK1005", "ObjectBacked")]
+    [InlineData("CMTK1005", "EnumBacked")]
     [InlineData("CMTK1005", "DerivesFromAValueObject")]
     [InlineData("CMTK1005", "WrapsItself")]
     [InlineData("CMTK1005", "CycleOne")]
@@ -44,6 +46,11 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1005", "TupleBacked")]
     [InlineData("CMTK1005", "NamedTupleBacked")]
     [InlineData("CMTK1005", "Named.Value")]
+    [InlineData("CMTK1005", "VoNames.Parse")]
+    [InlineData("CMTK1005", "VoNames.From")]
+    [InlineData("CMTK1005", "VoNames.TryFrom")]
+    [InlineData("CMTK1005", "VoNames.CompareTo")]
+    [InlineData("CMTK1005", "VoNames.MinValue")]
     [InlineData("CMTK1005", "FileLocal")]
     [InlineData("CMTK1005", "FileLocalBelowRegion")]
     [InlineData("CMTK1005", "FileLocalBelowPragma")]
@@ -74,10 +81,12 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "HandWrittenFrom")]
     [InlineData("CMTK1011", "HandWrittenValue")]
     [InlineData("CMTK1011", "HandWrittenParse")]
+    [InlineData("CMTK1011", "HandWrittenParseOverASet")]
     [InlineData("CMTK1011", "HandWrittenFormat")]
     [InlineData("CMTK1011", "HandWrittenMinValue")]
     [InlineData("CMTK1011", "HandWrittenJsonConverter")]
     [InlineData("CMTK1011", "HandWrittenTypeConverter")]
+    [InlineData("CMTK1011", "HandWrittenOrdering")]
     [InlineData("CMTK1011", "HandWrittenInterface")]
     [InlineData("CMTK1011", "ExplicitCreate")]
     [InlineData("CMTK1011", "ExplicitCreateBesidePublic")]
@@ -104,8 +113,107 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1012", "WithRequiredMember")]
     [InlineData("CMTK1012", "WithInheritedState")]
     [InlineData("CMTK1012", "WithEvent")]
+    [InlineData("CMTK1013", "SetNotPartial")]
+    [InlineData("CMTK1014", "SetNotSealed")]
+    [InlineData("CMTK1015", "SetWithoutMembers")]
+    [InlineData("CMTK1016", "SetWithPublicConstructor")]
+    [InlineData("CMTK1017", "SetWithProperty")]
+    [InlineData("CMTK1017", "SetWithMutableField")]
+    [InlineData("CMTK1017", "SetWithInternalMember")]
+    [InlineData("CMTK1018", "SetGeneric")]
+    [InlineData("CMTK1016", "SetWithInternalConstructor")]
+    [InlineData("CMTK1019", "SetWithAlias.Legacy")]
+    [InlineData("CMTK1019", "SetWithFactoryMember.B")]
+    [InlineData("CMTK1019", "SetWithUninitializedMember.B")]
+    [InlineData("CMTK1019", "SetWithTrailingCall.B")]
+    [InlineData("CMTK1020", "SetRecord")]
+    [InlineData("CMTK1014", "SetAbstract")]
+    [InlineData("CMTK1022", "AbstractRecord")]
+    [InlineData("CMTK1022", "AbstractClass")]
+    [InlineData("CMTK1022", "AbstractValidated")]
+    [InlineData("CMTK1022", "AbstractThroughInterface")]
+    [InlineData("CMTK1022", "AbstractHolder.AbstractNested")]
+    [InlineData("CMTK1011", "SetWithName")]
+    [InlineData("CMTK1011", "SetWithExplicitAll")]
+    [InlineData("CMTK1011", "SetWithParsable")]
+    [InlineData("CMTK1011", "SetWithTypeConverterAttribute")]
+    [InlineData("CMTK1011", "SetWithJsonConverterAttribute")]
+    [InlineData("CMTK1021", "SetWithMemberNamedParse.Parse")]
+    [InlineData("CMTK1021", "SetWithMemberNamedToString.ToString")]
+    [InlineData("CMTK1021", "SetWithMemberNamedAll.All")]
+    [InlineData("CMTK1021", "SetWithCasedMembers.open")]
+    [InlineData("CMTK1021", "SetWithCaseVariants.EXPRESS")]
+    [InlineData("CMTK1021", "SetNames.Name")]
+    [InlineData("CMTK1021", "SetNames.Match")]
+    [InlineData("CMTK1011", "SetWithIgnoreCaseTryParse")]
+    [InlineData("CMTK1011", "SetWithIgnoreCaseParse")]
     public void A_declaration_that_cannot_be_generated_is_an_error(string id, string type) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.Contains($"'{type}"), $"{id} on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
+
+    /// <summary>
+    /// A member named as a generated member failed the aspect (LAMA0506 beside Match, Parse and
+    /// TryParse, LAMA0611 beside ToString), or was CMTK1011 telling the author to remove it. Two members
+    /// whose names differ only in case are one name to <c>TryParse(name, ignoreCase: true)</c>; where
+    /// the difference is the first letter's, they also gave Match one parameter twice (LAMA0611, CS0100),
+    /// and where it is elsewhere (<c>Express</c>, <c>EXPRESS</c>) the set was generated and the
+    /// ignore-case parse found the first declared.
+    /// </summary>
+    [Theory]
+    [InlineData("SetWithMemberNamedParse.Parse", "has the name of a member the generators introduce")]
+    [InlineData("SetWithMemberNamedAll.All", "has the name of a member the generators introduce")]
+    [InlineData("SetWithCasedMembers.open", "differs from 'SetWithCasedMembers.Open' only in case, which Match's parameters and TryParse(name, ignoreCase: true) cannot tell apart")]
+    [InlineData("SetWithCaseVariants.EXPRESS", "differs from 'SetWithCaseVariants.Express' only in case, which TryParse(name, ignoreCase: true) cannot tell apart")]
+    public void A_member_name_the_generators_take_is_refused_with_the_reason(string member, string reason) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1021" && error.Message.StartsWith($"'{member}' {reason}, so ") && error.Message.Contains("rename the member"), consumer.Output);
+
+    /// <summary>
+    /// What the generators implement and attach, written by hand, failed the aspect or the generated
+    /// code: <c>IParsable</c> twice, an attribute twice (CS0579). The error names each.
+    /// </summary>
+    [Theory]
+    [InlineData("SetWithParsable", "the interface IParsable<SetWithParsable>")]
+    [InlineData("SetWithTypeConverterAttribute", "the attribute TypeConverter")]
+    [InlineData("SetWithJsonConverterAttribute", "the attribute JsonConverter")]
+    public void What_the_generators_implement_or_attach_is_refused_by_name_on_a_set(string type, string declared) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(declared), consumer.Output);
+
+    /// <summary>
+    /// A member whose name starts with the Kelvin sign (U+212A) and one that starts with K are two names
+    /// to <c>TryParse(name, ignoreCase: true)</c>, which ignores case ordinally, and one to <c>Match</c>,
+    /// whose parameters lower-case the first letter: both are <c>kelvin</c>, and the set failed inside
+    /// the generated code (LAMA0611, CS0100). CMTK1021 groups by each transform.
+    /// </summary>
+    [Fact]
+    public void A_member_whose_Match_parameter_another_has_is_refused_with_the_reason()
+    {
+        var kelvinSign = ((char)0x212A).ToString();
+
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1021"
+                                            && error.Message.StartsWith($"'SetWithKelvinSign.{kelvinSign}elvin' gives Match the parameter name 'kelvin' that 'SetWithKelvinSign.Kelvin' gives it too, so ")
+                                            && error.Message.Contains("rename the member"), consumer.Output);
+    }
+
+    [Fact]
+    public void A_member_is_never_told_to_be_removed_as_a_hand_written_generated_member() =>
+        consumer.Errors.ShouldNotContain(error => error.Id == "CMTK1011" && error.Message.Contains("SetWithMemberNamed"), consumer.Output);
+
+    /// <summary>
+    /// Before weaving, where Metalama runs analyzers, the generated Match does not exist in the project
+    /// that declares the set; CMTK0012 still reports a call by position, with the parameter names the
+    /// generators give, which the named call beside it compiles with.
+    /// </summary>
+    [Fact]
+    public void CMTK0012_reports_a_call_by_position_with_the_generators_names_in_the_declaring_project() =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK0012" && error.Message.StartsWith("'SetToMatch.Match' is given an argument by position") && error.Message.Contains("(@new:, open:)"), consumer.Output);
+
+    /// <summary>
+    /// A member assigned in the static constructor compiles, and the generators named it before that
+    /// body ran: <c>Closed.Match</c> took the <c>open</c> branch, and <c>Parse("Open")</c> was written as
+    /// <c>"Closed"</c>. CMTK0013 reports it in the project that declares the set, beside the weaving.
+    /// </summary>
+    [Fact]
+    public void CMTK0013_reports_a_member_assigned_in_the_static_constructor() =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK0013" && error.Message.StartsWith("'SetReassigned.Open' is written outside its declaration"), consumer.Output);
 
     /// <summary>
     /// Every value object over another one is refused, so a cycle would be refused without this
@@ -128,6 +236,60 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("NamedTupleBacked", "the wrapped type '(int X, int Y)' is generic")]
     public void A_generic_wrapped_type_is_refused_with_the_reason(string type, string reason) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1005" && error.Message.StartsWith($"'{type}'") && error.Message.Contains(reason) && error.Message.Contains("compares by reference"), consumer.Output);
+
+    /// <summary>
+    /// A type named as a member the generators introduce into it failed inside the generated code
+    /// (LAMA0611, CS0542: a member cannot have the name of its type), naming nothing the user wrote:
+    /// a closed set named <c>Name</c>, a value object named <c>Parse</c>. Each is refused by name.
+    /// </summary>
+    [Theory]
+    [InlineData("CMTK1021", "SetNames.Name", "'SetNames.Name' has the name of a member the generators introduce into it, and a member cannot have the name of its type, so 'SetNames.Name' is not generated: rename the set.")]
+    [InlineData("CMTK1005", "VoNames.Parse", "'VoNames.Parse' cannot be generated as a value object: a value object cannot be named 'Parse', the name of a member the generators introduce, since a member cannot have the name of its type; rename it.")]
+    public void A_type_named_as_a_generated_member_is_refused_by_name(string id, string type, string message) =>
+        consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith(message), $"{id} on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
+
+    /// <summary>
+    /// <c>System.Enum</c> is no enum: its generic <c>Enum.Parse&lt;TEnum&gt;(string)</c> was taken for a
+    /// <c>Parse</c> of its own, and the generated parsing failed (LAMA0611, CS0411).
+    /// </summary>
+    [Fact]
+    public void A_value_object_over_System_Enum_is_refused_with_the_reason() =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1005" && error.Message.StartsWith("'EnumBacked' cannot be generated as a value object: the wrapped type 'Enum' is the base of every enum and no enum itself; wrap the enum type"), consumer.Output);
+
+    /// <summary>
+    /// The companion class names the value object outside it, and an <c>[Obsolete(error: true)]</c> on
+    /// the value object, or on a type it is nested in, failed there (LAMA0611, CS0619). The companion
+    /// carries the attribute now, and inside an obsolete declaration C# reports no use of one.
+    /// </summary>
+    [Theory]
+    [InlineData("Retired")]
+    [InlineData("RetiredHolder")]
+    public void An_obsolete_value_object_is_generated(string type) =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}"), consumer.Output);
+
+    /// <summary>
+    /// A value object over <c>object</c> compiled, and its converter wrote <c>OverObject.From(5)</c> as
+    /// <c>{}</c> where an <c>object</c> property holding 5 is written as 5: the serializer writes an
+    /// object by its run-time type, which a converter called directly does not.
+    /// </summary>
+    [Fact]
+    public void A_value_object_over_object_is_refused_with_the_reason() =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1005" && error.Message.StartsWith("'ObjectBacked' cannot be generated as a value object: the wrapped type 'object' holds a value of any type")
+                                            && error.Message.Contains("wrap the type the value has"), consumer.Output);
+
+    /// <summary>
+    /// An interface or an abstract class is written and read as the serializer writes and reads it (its
+    /// declared members, polymorphic where the type declares it, refused on reading where the serializer
+    /// refuses it), so it is wrapped. A guard against the refusal of <c>object</c> reaching further. A type
+    /// whose only static <c>Parse(string)</c> is generic is wrapped without parsing: the generic one was
+    /// taken for its own and failed inside the generated code (LAMA0611, CS0411), as for <c>System.Enum</c>.
+    /// </summary>
+    [Theory]
+    [InlineData("InterfaceBacked")]
+    [InlineData("AbstractClassBacked")]
+    [InlineData("GenericParserBacked")]
+    public void An_interface_or_an_abstract_class_is_wrapped(string type) =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'"), consumer.Output);
 
     /// <summary>
     /// Metalama writes its override of the record's <c>ToString()</c> into every part of a declaration,
@@ -154,10 +316,12 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("HandWrittenFrom", "HandWrittenFrom.From(string)")]
     [InlineData("HandWrittenValue", "HandWrittenValue.Value")]
     [InlineData("HandWrittenParse", "HandWrittenParse.Parse(string, IFormatProvider?)")]
+    [InlineData("HandWrittenParseOverASet", "HandWrittenParseOverASet.Parse(string, IFormatProvider?)")]
     [InlineData("HandWrittenFormat", "HandWrittenFormat.ToString(string?, IFormatProvider?)")]
     [InlineData("HandWrittenMinValue", "HandWrittenMinValue.MinValue")]
     [InlineData("HandWrittenJsonConverter", "the attribute JsonConverter")]
     [InlineData("HandWrittenTypeConverter", "the attribute TypeConverter")]
+    [InlineData("HandWrittenOrdering", "the attribute HandWrittenOrdering")]
     [InlineData("HandWrittenInterface", "the interface IValueObject<HandWrittenInterface, int>")]
     [InlineData("ExplicitCreate", "Create only as an explicit implementation of IValidatedValue<ExplicitCreate, string, Fault>")]
     [InlineData("ExplicitCreateBesidePublic", "Create both as a static method and as an explicit implementation of IValidatedValue<ExplicitCreateBesidePublic, string, Fault>, so it is not generated: every generated way in calls ExplicitCreateBesidePublic.Create and generic code calling T.Create reaches the explicit one")]
@@ -276,6 +440,19 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     public void A_hand_written_constructor_is_refused_by_name(string type, string constructor) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1009" && error.Message.StartsWith($"'{type}' declares {constructor},"), $"CMTK1009 on {type}. The build reported:{Environment.NewLine}{consumer.Output}");
 
+    /// <summary>
+    /// An abstract type with a marker was given no aspect and no word: it compiled with no member
+    /// generated, and a value held as it, of a sealed type derived from it, had no <c>Value</c> and was
+    /// written as <c>{}</c>. It is refused where it is declared, once, as a value object it cannot be.
+    /// </summary>
+    [Fact]
+    public void An_abstract_value_object_is_refused_once_with_the_reason() =>
+        consumer.Errors.Where(error => error.Message.Contains("'AbstractRecord'"))
+                .ShouldHaveSingleItem(consumer.Output)
+                .ShouldSatisfyAllConditions(
+                    error => error.Id.ShouldBe("CMTK1022"),
+                    error => error.Message.ShouldStartWith("'AbstractRecord' is abstract, so it is not generated: an abstract type cannot be a value object. A value held as 'AbstractRecord' would have no Value, and its JSON would be '{}'."));
+
     /// <summary>A static constructor makes no instance, so the value object is still generated.</summary>
     [Fact]
     public void A_static_constructor_is_allowed() =>
@@ -284,12 +461,37 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     /// <summary>
     /// The declarations are refused with the errors above, never by an aspect that failed on them:
     /// an exception in an aspect or a compile error in the code it generated surfaces as LAMA0041 or
-    /// LAMA0611, which tells the user nothing about their declaration.
+    /// LAMA0611, which tells the user nothing about their declaration. CS0535 is the one compiler
+    /// error that accompanies a refused closed set: its interface has members the generators would
+    /// have implemented, and the CMTK error beside it says why they did not. A declaration whose error is
+    /// the compiler's own is built apart (<see cref="EqualityOperatorBuildTests"/>).
     /// </summary>
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK0012", "CMTK0013", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CMTK1019", "CMTK1020", "CMTK1021", "CMTK1022", "CS0535"], ignoreOrder: false, customMessage: consumer.Output);
+
+    /// <summary>
+    /// CS0535 is allowed above only for a refused closed set, whose interface members the generators
+    /// did not implement. A value object or a generated set that lost a member the same way is a
+    /// regression the list of ids alone would let through.
+    /// </summary>
+    /// <summary>
+    /// A compiler error in a project hid every LAMA0611 inside a declaration's own file, so the build
+    /// that holds the value objects has none: what an aspect generated that does not compile is seen
+    /// there, by <see cref="Every_error_is_one_of_the_intended_ones"/>.
+    /// </summary>
+    [Fact]
+    public void The_declarations_build_without_a_compiler_error() =>
+        consumer.DeclarationErrors.ShouldNotContain(error => error.Id.StartsWith("CS", StringComparison.Ordinal), consumer.Output);
+
+    [Fact]
+    public void CS0535_names_only_a_refused_closed_set() =>
+        consumer.Errors.Where(error => error.Id == "CS0535")
+                .ShouldAllBe(error => RefusedClosedSet().IsMatch(error.Message), consumer.Output);
+
+    [GeneratedRegex(@"^'(?:Consumer\.)?Set\w+(?:\.\w+)?(?:<T>)?' does not implement interface member ")]
+    private static partial Regex RefusedClosedSet();
 
     /// <summary>
     /// A generator error cannot carry a help link as an analyzer rule does (a Metalama 2026.1
@@ -303,7 +505,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
         var errors = consumer.Errors.Where(error => error.Id.StartsWith("CMTK1", StringComparison.Ordinal)).ToList();
 
-        errors.Select(error => error.Id).Distinct().Count().ShouldBe(13, $"Not every CMTK1000-CMTK1012 error was observed, so the check below is incomplete:{Environment.NewLine}{consumer.Output}");
+        errors.Select(error => error.Id).Distinct().Count().ShouldBe(23, $"Not every CMTK1000-CMTK1022 error was observed, so the check below is incomplete:{Environment.NewLine}{consumer.Output}");
         errors.Where(error => !error.Message.EndsWith($". See {link}", StringComparison.Ordinal))
               .Select(error => $"{error.Id}: {error.Message}")
               .ShouldBeEmpty("These errors do not end with the link to the Build errors table.");
@@ -368,9 +570,29 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
         private const string Declarations =
             """
             using CodoMetis.TypeKit;
+            using CodoMetis.TypeKit.ClosedSets;
             using CodoMetis.TypeKit.ValueObjects;
 
             namespace Consumer;
+
+            // Generated; the calls below are CMTK0012's, in the project that declares the set.
+            public sealed partial class SetToMatch : IClosedSet<SetToMatch> { public static readonly SetToMatch New = new(); public static readonly SetToMatch Open = new(); }
+
+            public static class MatchCalls
+            {
+                public static int ByPosition(SetToMatch set) => set.Match(() => 1, () => 2);
+
+                public static int Named(SetToMatch set) => set.Match(@new: () => 1, open: () => 2);
+            }
+
+            // Generated, and named before the static constructor's body, which then swaps a member: CMTK0013's.
+            public sealed partial class SetReassigned : IClosedSet<SetReassigned>
+            {
+                public static readonly SetReassigned Open = new();
+                public static readonly SetReassigned Closed = new();
+
+                static SetReassigned() { Open = Closed; }
+            }
 
             public readonly record struct NotPartial : IValue<int>;
 
@@ -405,11 +627,42 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             // refusal, the generated JSON converter and parsing fail to compile (LAMA0611/0612).
             public readonly partial record struct NullableBacked : IValue<int?>;
 
+            // Written as {} where an object property holding the same value is written as that value.
+            public readonly partial record struct ObjectBacked : IValue<object>;
+
+            // Written and read as the serializer writes and reads the declared type: wrapped.
+            public readonly partial record struct InterfaceBacked : IValue<System.IDisposable>;
+
+            public readonly partial record struct AbstractClassBacked : IValue<System.IO.Stream>;
+
+            public sealed class GenericParser { public static T Parse<T>(string text) where T : new() => new(); }
+
+            public readonly partial record struct GenericParserBacked : IValue<GenericParser>;
+
             // A record class that can be derived from: equality across a hierarchy is not value
             // equality, and a derived value object failed inside the generated code (LAMA0611).
             public partial record NotSealed : IValue<string>;
 
             public sealed partial record DerivesFromAValueObject : NotSealed;
+
+            // Abstract: given no aspect and no word, while a value held as one, of a sealed type
+            // derived from it, had no Value and was written as {}.
+            public abstract partial record AbstractRecord : IValue<string>;
+
+            public sealed partial record DerivesFromAbstract : AbstractRecord;
+
+            public abstract class AbstractClass : IValue<int> { }
+
+            public abstract partial record AbstractValidated : IValidatedValue<AbstractValidated, int, Fault>
+            {
+                public static Result<AbstractValidated, Fault> Create(int value) => Result.Error(Fault.Refused);
+            }
+
+            public interface IAbstractIdentifier : IValue<System.Guid> { }
+
+            public abstract partial record AbstractThroughInterface : IAbstractIdentifier;
+
+            public static class AbstractHolder { public abstract partial record AbstractNested : IValue<long>; }
 
             // A value object that reaches itself through what it wraps has no finite form: its JSON
             // converter serializes the wrapped value through the options, which is its own converter
@@ -428,6 +681,15 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             // Over another value object, the surface depended on where that one was declared: over one
             // from the same project, parsing, comparison and the type converter were silently missing.
             public readonly partial record struct WrapsAValueObject : IValue<Fine>;
+
+            // Over a closed set of this project the value object parses through the set, which it sees
+            // because ClosedSetAspect runs first; a Parse of its own was kept silently while it did not.
+            public sealed partial class SetToWrap : IClosedSet<SetToWrap> { public static readonly SetToWrap A = new(); }
+
+            public readonly partial record struct HandWrittenParseOverASet : IValue<SetToWrap>
+            {
+                public static HandWrittenParseOverASet Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
 
             // Companion classes are named after the whole nesting chain, so these two coexist.
             public sealed class Order { public readonly partial record struct Id : IValue<System.Guid>; }
@@ -521,6 +783,33 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             // Metalama (LAMA0001).
             public static class Named { public readonly partial record struct Value : IValue<int>; }
 
+            // Named as a member the generators introduce: LAMA0611 (CS0542) inside the generated code.
+            public static class VoNames
+            {
+                public readonly partial record struct Parse : IValue<int>;
+
+                public readonly partial record struct From : IValue<int>;
+
+                public readonly partial record struct TryFrom : IValidatedValue<TryFrom, int, Fault>
+                {
+                    public static Result<TryFrom, Fault> Create(int value) => Result.Error(Fault.Refused);
+                }
+
+                public readonly partial record struct CompareTo : IValue<int>;
+
+                public readonly partial record struct MinValue : IValue<int>;
+            }
+
+            // Enum.Parse<TEnum>(string) was taken for a Parse of its own: LAMA0611 (CS0411).
+            public readonly partial record struct EnumBacked : IValue<System.Enum>;
+
+            // The companion class named the value object outside it: LAMA0611 (CS0619).
+            [System.Obsolete("Retired.", error: true)]
+            public readonly partial record struct Retired : IValue<int>;
+
+            [System.Obsolete("Retired.", error: true)]
+            public static class RetiredHolder { public readonly partial record struct Inner : IValue<int>; }
+
             file readonly partial record struct FileLocal : IValue<int>;
 
             // A directive above the declaration, or a file-local type around it: the modifiers were read
@@ -602,6 +891,10 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             [System.ComponentModel.TypeConverter(typeof(System.ComponentModel.Int32Converter))]
             public readonly partial record struct HandWrittenTypeConverter : IValue<int>;
+
+            // Says the ordering is hand-written where it is not, and EF would refuse to order it.
+            [CodoMetis.TypeKit.CompilerServices.HandWrittenOrdering]
+            public readonly partial record struct HandWrittenOrdering : IValue<int>;
 
             public readonly partial record struct HandWrittenInterface : IValue<int>, IValueObject<HandWrittenInterface, int>
             {
@@ -1040,10 +1333,95 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             """;
 
         /// <summary>
+        /// The closed sets the generators refuse, built apart: a refused set does not implement its
+        /// interface (CS0535), and beside a compiler error Metalama reported no error in the code it
+        /// generated into a declaration's own file, so in one project with the value objects a LAMA0611
+        /// there went unseen (measured 2026-10-13 with a generic static Parse taken for the wrapped type's).
+        /// </summary>
+        private const string RefusedSets =
+            """
+            using CodoMetis.TypeKit.ClosedSets;
+
+            namespace Consumer;
+
+            public sealed class SetNotPartial : IClosedSet<SetNotPartial> { public static readonly SetNotPartial A = new(); }
+
+            public partial class SetNotSealed : IClosedSet<SetNotSealed> { public static readonly SetNotSealed A = new(); }
+
+            public sealed partial class SetWithoutMembers : IClosedSet<SetWithoutMembers> { }
+
+            public sealed partial class SetWithPublicConstructor : IClosedSet<SetWithPublicConstructor> { public static readonly SetWithPublicConstructor A = new(); public SetWithPublicConstructor() { } }
+
+            public sealed partial class SetWithProperty : IClosedSet<SetWithProperty> { public static readonly SetWithProperty A = new(); public static SetWithProperty B => A; }
+
+            public sealed partial class SetWithMutableField : IClosedSet<SetWithMutableField> { public static readonly SetWithMutableField A = new(); public static SetWithMutableField B = A; }
+
+            public sealed partial class SetGeneric<T> : IClosedSet<SetGeneric<T>> { public static readonly SetGeneric<T> A = new(); }
+
+            public sealed partial class SetWithInternalConstructor : IClosedSet<SetWithInternalConstructor> { public static readonly SetWithInternalConstructor A = new(); internal SetWithInternalConstructor() { } }
+
+            public sealed partial class SetWithAlias : IClosedSet<SetWithAlias> { public static readonly SetWithAlias Open = new(); public static readonly SetWithAlias Legacy = Open; }
+
+            public sealed partial class SetWithFactoryMember : IClosedSet<SetWithFactoryMember> { public static readonly SetWithFactoryMember A = new(); public static readonly SetWithFactoryMember B = Make(); private static SetWithFactoryMember Make() => A; }
+
+            public sealed partial class SetWithUninitializedMember : IClosedSet<SetWithUninitializedMember> { public static readonly SetWithUninitializedMember A = new(); public static readonly SetWithUninitializedMember B; static SetWithUninitializedMember() { B = new(); } }
+
+            public sealed partial class SetWithTrailingCall : IClosedSet<SetWithTrailingCall> { public static readonly SetWithTrailingCall A = new(); public static readonly SetWithTrailingCall B = new SetWithTrailingCall().Same(); private SetWithTrailingCall Same() => A; }
+
+            public sealed partial record SetRecord : IClosedSet<SetRecord> { public static readonly SetRecord A = new(); }
+
+            // Abstract, so a closed set it is not: refused as unsealed, never skipped.
+            public abstract partial class SetAbstract : IClosedSet<SetAbstract> { }
+
+            public sealed partial class SetWithName : IClosedSet<SetWithName> { public static readonly SetWithName A = new(); public string Name => "A"; }
+
+            public sealed partial class SetWithExplicitAll : IClosedSet<SetWithExplicitAll> { public static readonly SetWithExplicitAll A = new(); static System.Collections.Generic.IReadOnlyList<SetWithExplicitAll> IClosedSet<SetWithExplicitAll>.All => [A]; }
+
+            public sealed partial class SetWithParsable : IClosedSet<SetWithParsable>, System.IParsable<SetWithParsable> { public static readonly SetWithParsable A = new(); }
+
+            [System.ComponentModel.TypeConverter(typeof(System.ComponentModel.StringConverter))]
+            public sealed partial class SetWithTypeConverterAttribute : IClosedSet<SetWithTypeConverterAttribute> { public static readonly SetWithTypeConverterAttribute A = new(); }
+
+            [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+            public sealed partial class SetWithJsonConverterAttribute : IClosedSet<SetWithJsonConverterAttribute> { public static readonly SetWithJsonConverterAttribute A = new(); }
+
+            public sealed partial class SetWithMemberNamedParse : IClosedSet<SetWithMemberNamedParse> { public static readonly SetWithMemberNamedParse A = new(); public static readonly SetWithMemberNamedParse Parse = new(); }
+
+            public sealed partial class SetWithMemberNamedToString : IClosedSet<SetWithMemberNamedToString> { public static readonly new SetWithMemberNamedToString ToString = new(); }
+
+            public sealed partial class SetWithMemberNamedAll : IClosedSet<SetWithMemberNamedAll> { public static readonly SetWithMemberNamedAll All = new(); }
+
+            public sealed partial class SetWithCasedMembers : IClosedSet<SetWithCasedMembers> { public static readonly SetWithCasedMembers Open = new(); public static readonly SetWithCasedMembers open = new(); }
+
+            // Read as a member, it was none: its name threw and TryParse never found it.
+            public sealed partial class SetWithInternalMember : IClosedSet<SetWithInternalMember> { public static readonly SetWithInternalMember A = new(); internal static readonly SetWithInternalMember Draft = new(); }
+
+            public sealed partial class SetWithCaseVariants : IClosedSet<SetWithCaseVariants> { public static readonly SetWithCaseVariants Express = new(); public static readonly SetWithCaseVariants EXPRESS = new(); }
+
+            // The second member's first letter is the Kelvin sign (U+212A), written as an escape: ignoring
+            // case ordinally tells it from K, and Match's parameters, lower-cased, do not (LAMA0611, CS0100).
+            public sealed partial class SetWithKelvinSign : IClosedSet<SetWithKelvinSign> { public static readonly SetWithKelvinSign Kelvin = new(); public static readonly SetWithKelvinSign \u212Aelvin = new(); }
+
+            public sealed partial class SetWithIgnoreCaseTryParse : IClosedSet<SetWithIgnoreCaseTryParse> { public static readonly SetWithIgnoreCaseTryParse A = new(); public static bool TryParse(string? name, bool ignoreCase, out SetWithIgnoreCaseTryParse? member) { member = A; return true; } }
+
+            public sealed partial class SetWithIgnoreCaseParse : IClosedSet<SetWithIgnoreCaseParse> { public static readonly SetWithIgnoreCaseParse A = new(); public static SetWithIgnoreCaseParse Parse(string name, bool ignoreCase) => A; }
+
+            // Named as a generated member: LAMA0611 (CS0542) inside the generated code.
+            public static class SetNames
+            {
+                public sealed partial class Name : IClosedSet<Name> { public static readonly Name A = new(); }
+
+                public sealed partial class Match : IClosedSet<Match> { public static readonly Match A = new(); }
+            }
+            """;
+
+        /// <summary>
         /// Under the ignored <c>artifacts/</c> rather than the temp folder: on macOS that is behind the
         /// <c>/var</c> symlink, and NuGet's relative project paths then resolve against the wrong side.
         /// </summary>
         private readonly string _directory = Path.Combine(RepositoryRoot(), "artifacts", $"consumer-{Guid.NewGuid():N}");
+
+        private readonly string _setsDirectory = Path.Combine(RepositoryRoot(), "artifacts", $"consumer-{Guid.NewGuid():N}");
 
         /// <summary>A second file, so a declaration can be split across files.</summary>
         private const string OtherFile =
@@ -1061,16 +1439,47 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             }
             """;
 
+        /// <summary>The errors of both builds.</summary>
         public IReadOnlyList<Diagnostic> Errors { get; private set; } = [];
+
+        /// <summary>The errors of the build without the refused closed sets, where no compiler error hides a LAMA0611.</summary>
+        public IReadOnlyList<Diagnostic> DeclarationErrors { get; private set; } = [];
 
         public string Output { get; private set; } = "";
 
         public async ValueTask InitializeAsync()
         {
-            Directory.CreateDirectory(_directory);
+            var declarations = Build(_directory, new Dictionary<string, string> { ["Declarations.cs"] = Declarations, ["OtherFile.cs"] = OtherFile });
+            var sets = Build(_setsDirectory, new Dictionary<string, string> { ["RefusedSets.cs"] = RefusedSets });
+
+            var (declarationOutput, declarationErrors) = await declarations;
+            var (setOutput, setErrors) = await sets;
+
+            DeclarationErrors = declarationErrors;
+            Errors = [.. declarationErrors.Concat(setErrors).Distinct()];
+            Output = declarationOutput + setOutput;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            foreach (var directory in new[] { _directory, _setsDirectory })
+                if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+
+            return ValueTask.CompletedTask;
+        }
+
+        /// <summary>
+        /// Builds a consumer of the generators and the analyzer in <paramref name="directory"/> from
+        /// <paramref name="sources"/>, and reads its errors. A declaration whose build error is the
+        /// compiler's own (CS0111) belongs in a consumer of its own: beside it, Metalama reported no error
+        /// in the code it generated into a declaration's own file, which the other guards rely on.
+        /// </summary>
+        internal static async Task<(string Output, IReadOnlyList<Diagnostic> Errors)> Build(string directory, IReadOnlyDictionary<string, string> sources)
+        {
+            Directory.CreateDirectory(directory);
 
             var src = Path.Combine(RepositoryRoot(), "src");
-            await File.WriteAllTextAsync(Path.Combine(_directory, "Consumer.csproj"),
+            await File.WriteAllTextAsync(Path.Combine(directory, "Consumer.csproj"),
                 $"""
                  <Project Sdk="Microsoft.NET.Sdk">
                    <PropertyGroup>
@@ -1084,16 +1493,16 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                    </ItemGroup>
                  </Project>
                  """);
-            await File.WriteAllTextAsync(Path.Combine(_directory, "Declarations.cs"), Declarations);
-            await File.WriteAllTextAsync(Path.Combine(_directory, "OtherFile.cs"), OtherFile);
+            foreach (var (name, source) in sources)
+                await File.WriteAllTextAsync(Path.Combine(directory, name), source);
 
             // Only errors are read, so the rules that ship as warnings or a suggestion are raised here.
-            await File.WriteAllTextAsync(Path.Combine(_directory, ".editorconfig"),
+            // CMTK0003 ships as an error, and is left to its own severity, so its reports here prove it.
+            await File.WriteAllTextAsync(Path.Combine(directory, ".editorconfig"),
                 """
                 root = true
 
                 [*.cs]
-                dotnet_diagnostic.CMTK0003.severity = error
                 dotnet_diagnostic.CMTK0005.severity = error
                 dotnet_diagnostic.CMTK0006.severity = error
                 dotnet_diagnostic.CMTK0007.severity = error
@@ -1103,9 +1512,9 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             // Stop MSBuild's upward search here, so the repository's own build settings (warnings as
             // errors, documentation, central package management) do not apply to the consumer.
-            await File.WriteAllTextAsync(Path.Combine(_directory, "Directory.Build.props"), "<Project />");
-            await File.WriteAllTextAsync(Path.Combine(_directory, "Directory.Build.targets"), "<Project />");
-            await File.WriteAllTextAsync(Path.Combine(_directory, "Directory.Packages.props"),
+            await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Build.props"), "<Project />");
+            await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Build.targets"), "<Project />");
+            await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Packages.props"),
                 "<Project><PropertyGroup><ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally></PropertyGroup></Project>");
 
             // --no-dependencies and RestoreRecursive=false: the referenced projects are already built
@@ -1114,7 +1523,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             // passed on: without it the consumer builds in Debug and, in a Release run such as CI's,
             // finds no referenced assembly at all.
             using var process = Process.Start(new ProcessStartInfo(
-                "dotnet", ["build", _directory, "-c", Configuration, "--no-dependencies", "-p:RestoreRecursive=false", "-nodeReuse:false", "-clp:NoSummary"])
+                "dotnet", ["build", directory, "-c", Configuration, "--no-dependencies", "-p:RestoreRecursive=false", "-nodeReuse:false", "-clp:NoSummary"])
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError  = true,
@@ -1125,16 +1534,11 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             var errors = process.StandardError.ReadToEndAsync();
             await process.WaitForExitAsync();
 
-            Output = await output + await errors;
-            Errors = [.. DiagnosticLine().Matches(Output).Select(match => new Diagnostic(match.Groups["id"].Value, match.Groups["message"].Value)).Distinct()];
+            var text = await output + await errors;
+            IReadOnlyList<Diagnostic> found = [.. DiagnosticLine().Matches(text).Select(match => new Diagnostic(match.Groups["id"].Value, match.Groups["message"].Value)).Distinct()];
 
-            Errors.ShouldNotBeEmpty($"The consumer build reported no errors at all, so it did not run as intended:{Environment.NewLine}{Output}");
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);
-            return ValueTask.CompletedTask;
+            found.ShouldNotBeEmpty($"The consumer build reported no errors at all, so it did not run as intended:{Environment.NewLine}{text}");
+            return (text, found);
         }
 
         /// <summary>The configuration this test assembly, and so the projects it references, was built in.</summary>

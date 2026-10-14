@@ -42,6 +42,9 @@ internal sealed partial class ValueObjectConvertibleAspect : TypeAspect
 
         var interfaceType = builder.ImplementInterface(typeof(IConvertible), OverrideStrategy.Ignore);
 
+        // A default instance of a struct value object over a reference type holds null.
+        var referenceType = valueType.IsReferenceType == true;
+
         // GetTypeCode — unique shape, dedicated template.
         interfaceType.ExplicitMembers.IntroduceMethod(
             nameof(GetTypeCodeTemplate),
@@ -51,7 +54,8 @@ internal sealed partial class ValueObjectConvertibleAspect : TypeAspect
             {
                 m.Name = nameof(IConvertible.GetTypeCode);
                 m.AddAttribute(CodeAnnotations.CompilerGenerated);
-            }
+            },
+            args: new { referenceType }
         );
 
         // ToType — universal escape hatch, dedicated template.
@@ -64,7 +68,7 @@ internal sealed partial class ValueObjectConvertibleAspect : TypeAspect
                 m.Name = nameof(IConvertible.ToType);
                 m.AddAttribute(CodeAnnotations.CompilerGenerated);
             },
-            args: new { valueObjectType = builder.Target, declaresToString = state.DeclaresToString }
+            args: new { valueObjectType = builder.Target, declaresToString = state.DeclaresToString, referenceType }
         );
 
         // ToString(IFormatProvider): the wrapped value's text, or the value object's own ToString()
@@ -79,7 +83,7 @@ internal sealed partial class ValueObjectConvertibleAspect : TypeAspect
                 m.Name = nameof(IConvertible.ToString);
                 m.AddAttribute(CodeAnnotations.CompilerGenerated);
             },
-            args: new { declaresToString = state.DeclaresToString }
+            args: new { declaresToString = state.DeclaresToString, referenceType }
         );
 
         // One template, introduced once per typed conversion with its name and return type.
@@ -101,7 +105,8 @@ internal sealed partial class ValueObjectConvertibleAspect : TypeAspect
                 args: new
                       {
                           methodName = capturedMethodName,
-                          returnType = capturedReturnType.ToNamedType()
+                          returnType = capturedReturnType.ToNamedType(),
+                          referenceType
                       }
             );
         }

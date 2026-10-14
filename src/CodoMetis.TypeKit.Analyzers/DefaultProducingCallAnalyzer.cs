@@ -142,8 +142,11 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
         const string pastTheEnd   = " for an index past the end";
         const string defaultValue = "Pass a default value";
 
-        // FirstOrNone and friends would run a query on the client; a nullable projection is translated.
+        // A nullable projection is translated by any query provider. FirstOrNone on a query asks the
+        // provider for one element; LastOrNone has no query form, since a query has no last element
+        // until it is ordered.
         const string nullableFirst = "Select a nullable first, as in Select(x => ({0}?)x), so that nothing found is null";
+        const string firstOrNoneInQuery = "Use FirstOrNone, which returns an Option and asks the query for one element, or select a nullable first, as in Select(x => ({0}?)x)";
 
         var enumerable = compilation.GetTypeByMetadataName("System.Linq.Enumerable");
         var queryable  = compilation.GetTypeByMetadataName("System.Linq.Queryable");
@@ -152,20 +155,20 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
         // before Enumerable's. They have no overload that takes a default value; Enumerable's does.
         var immutableArray = compilation.GetTypeByMetadataName("System.Linq.ImmutableArrayExtensions");
 
-        foreach (var (name, advice, circumstance) in new[]
+        foreach (var (name, advice, circumstance, queryAdvice) in new[]
                  {
-                     ("FirstOrDefault", "Use FirstOrNone, which returns an Option, or pass a default value", nothingFound),
-                     ("LastOrDefault", "Use LastOrNone, which returns an Option, or pass a default value", nothingFound),
-                     ("SingleOrDefault", defaultValue, nothingFound),
-                     ("ElementAtOrDefault", "Use Skip(index).FirstOrNone(), which returns an Option", pastTheEnd),
-                     ("DefaultIfEmpty", defaultValue, " for an empty sequence"),
+                     ("FirstOrDefault", "Use FirstOrNone, which returns an Option, or pass a default value", nothingFound, firstOrNoneInQuery),
+                     ("LastOrDefault", "Use LastOrNone, which returns an Option, or pass a default value", nothingFound, nullableFirst),
+                     ("SingleOrDefault", "Use SingleOrNone, which returns an Option, or pass a default value", nothingFound, "Use SingleOrNone, which returns an Option and asks the query for two elements, or select a nullable first, as in Select(x => ({0}?)x)"),
+                     ("ElementAtOrDefault", "Use ElementAtOrNone, which returns an Option", pastTheEnd, "Use ElementAtOrNone, which returns an Option and asks the query for one element"),
+                     ("DefaultIfEmpty", defaultValue, " for an empty sequence", nullableFirst),
                  })
         {
             var produced = name == "DefaultIfEmpty" ? Produced.TypeArgument : Produced.Returned;
 
             AddWithoutDefaultValue(forms, enumerable, name, new Form(Kind.Sequence, produced, circumstance, advice));
             AddWithoutDefaultValue(forms, immutableArray, name, new Form(Kind.Sequence, produced, circumstance, advice));
-            AddWithoutDefaultValue(forms, queryable, name, new Form(Kind.Sequence, produced, circumstance, nullableFirst));
+            AddWithoutDefaultValue(forms, queryable, name, new Form(Kind.Sequence, produced, circumstance, queryAdvice));
         }
 
         // The asynchronous forms, whose default comes back in a ValueTask<T> or Task<T>: T is their type
@@ -174,6 +177,16 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
         // there only where the project references it, and have no overload that takes a default value.
         var asyncEnumerables = compilation.GetTypesByMetadataName("System.Linq.AsyncEnumerable");
         var entityFramework  = compilation.GetTypeByMetadataName("Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions");
+
+        // FirstOrNoneAsync and SingleOrNoneAsync are the EF Core satellite's, so they are named only where
+        // the project can call them.
+        var satellite = compilation.GetTypeByMetadataName("Microsoft.EntityFrameworkCore.TypeKitQueryableExtensions") is not null;
+        var firstOrNoneAsync = satellite
+            ? "Use FirstOrNoneAsync, which returns an Option and asks the query for one element, or select a nullable first, as in Select(x => ({0}?)x)"
+            : nullableFirst;
+        var singleOrNoneAsync = satellite
+            ? "Use SingleOrNoneAsync, which returns an Option and asks the query for two elements, or select a nullable first, as in Select(x => ({0}?)x)"
+            : nullableFirst;
 
         foreach (var (name, advice, circumstance) in new[]
                  {
@@ -189,7 +202,7 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
                 AddWithoutDefaultValue(forms, asyncEnumerable, name, new Form(Kind.Sequence, Produced.TypeArgument, circumstance, advice));
             }
 
-            AddWithoutDefaultValue(forms, entityFramework, name, new Form(Kind.Sequence, Produced.TypeArgument, circumstance, nullableFirst));
+            AddWithoutDefaultValue(forms, entityFramework, name, new Form(Kind.Sequence, Produced.TypeArgument, circumstance, name switch { "FirstOrDefaultAsync" => firstOrNoneAsync, "SingleOrDefaultAsync" => singleOrNoneAsync, _ => nullableFirst }));
         }
 
         // List<T>.Find and its kind return default(T) when nothing matches, as FirstOrDefault does.

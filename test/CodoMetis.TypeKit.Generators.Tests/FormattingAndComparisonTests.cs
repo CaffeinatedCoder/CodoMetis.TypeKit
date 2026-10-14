@@ -62,6 +62,37 @@ public sealed class FormattingTests
         }
     }
 
+    /// <summary>
+    /// What the docs state about <c>Parse(x.ToString(), null)</c>: the text is the wrapped type's
+    /// default text under the invariant culture, so it gives the value back where that text is
+    /// lossless, and not for <c>TimeOnly</c>, <c>DateTime</c> and <c>DateTimeOffset</c>, whose short
+    /// patterns drop seconds or a fraction, as the BCL types' own do. <c>"O"</c> reads back for the
+    /// two that keep their offset or have none. Pinned so the docs cannot say more than holds.
+    /// </summary>
+    [Fact]
+    public void Parse_of_ToString_gives_the_value_back_where_the_wrapped_types_text_is_lossless()
+    {
+        static bool RoundTrips<T>(T value) where T : IParsable<T>, IEquatable<T> => T.Parse(value.ToString()!, null).Equals(value);
+
+        RoundTrips(ProbeAmount.From(1.500m)).ShouldBeTrue();
+        RoundTrips(ProbeRatio.From(0.1 + 0.2)).ShouldBeTrue();
+        RoundTrips(ProbeId.From(Guid.Parse("0199a3f4-1c00-7000-8000-000000000001"))).ShouldBeTrue();
+        RoundTrips(ProbeDate.From(new DateOnly(2026, 10, 13))).ShouldBeTrue();
+        RoundTrips(ProbeDuration.From(new TimeSpan(1, 2, 3, 4, 567))).ShouldBeTrue();
+        RoundTrips(ProbeUri.From(new Uri("https://example.com/a?b=c#d"))).ShouldBeTrue();
+
+        var time = ProbeTime.From(new TimeOnly(3, 4, 5, 123));
+        time.ToString().ShouldBe("03:04");
+        RoundTrips(time).ShouldBeFalse();
+        ProbeTime.Parse(time.ToString("O", null), null).ShouldBe(time);
+
+        RoundTrips(ProbeTimestamp.From(new DateTime(2026, 10, 13, 3, 4, 5, 123, DateTimeKind.Utc))).ShouldBeFalse("the fraction of a second is lost");
+
+        var moment = ProbeMoment.From(new DateTimeOffset(2026, 10, 13, 3, 4, 5, 123, TimeSpan.FromHours(2)));
+        RoundTrips(moment).ShouldBeFalse("the fraction of a second is lost");
+        ProbeMoment.Parse(moment.ToString("O", null), null).ShouldBe(moment);
+    }
+
     [Fact]
     public void A_span_formattable_value_formats_into_a_span_and_into_UTF_8()
     {
@@ -186,6 +217,24 @@ public sealed class ComparisonTests
         typeof(ProbeDescending).GetInterfaces().ShouldContain(typeof(IComparable<ProbeDescending>));
         typeof(ProbeDescending).GetInterfaces().ShouldContain(typeof(IComparable));
         typeof(ProbeDescending).GetInterfaces().ShouldContain(typeof(IComparisonOperators<ProbeDescending, ProbeDescending, bool>));
+    }
+
+    /// <summary>
+    /// The seam taken is said on the type, for code that orders where <c>CompareTo</c> cannot run: the
+    /// EF satellite refuses to compare or order such a value object in SQL, where the column's order is
+    /// the wrapped value's. Only there: a value object ordered by what it wraps carries nothing.
+    /// </summary>
+    [Fact]
+    public void A_hand_written_CompareTo_is_said_on_the_type()
+    {
+        typeof(ProbeDescending).GetCustomAttribute<HandWrittenOrderingAttribute>().ShouldNotBeNull();
+        typeof(ProbeReversedLabel).GetCustomAttribute<HandWrittenOrderingAttribute>().ShouldNotBeNull();
+
+        typeof(ProbeCount).GetCustomAttribute<HandWrittenOrderingAttribute>().ShouldBeNull();
+        typeof(ProbeLabel).GetCustomAttribute<HandWrittenOrderingAttribute>().ShouldBeNull();
+        typeof(ProbePin).GetCustomAttribute<HandWrittenOrderingAttribute>().ShouldBeNull();
+
+        (ProbeReversedLabel.From("a") > ProbeReversedLabel.From("b")).ShouldBeTrue();
     }
 
     [Fact]

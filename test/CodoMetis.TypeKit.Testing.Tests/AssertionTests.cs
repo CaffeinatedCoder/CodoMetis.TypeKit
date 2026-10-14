@@ -41,7 +41,7 @@ public sealed class AssertionTests
     [Fact]
     public void An_error_is_no_success_and_is_named() =>
         Should.Throw<TypeKitAssertionException>(() => Error.ShouldBeSuccess())
-              .Message.ShouldBe("Expected a success, but the Result<String, Fault> is the error NotFound.");
+              .Message.ShouldBe("Expected a success, but the Result<String, AssertionTests.Fault> is the error NotFound.");
 
     [Fact]
     public void An_error_hands_back_its_error() => Error.ShouldBeError().ShouldBe(Fault.NotFound);
@@ -49,7 +49,7 @@ public sealed class AssertionTests
     [Fact]
     public void A_success_is_no_error_and_its_value_is_not_printed() =>
         Should.Throw<TypeKitAssertionException>(() => Success.ShouldBeError())
-              .Message.ShouldBe("Expected an error, but the Result<String, Fault> is a success (its value is not printed).");
+              .Message.ShouldBe("Expected an error, but the Result<String, AssertionTests.Fault> is a success (its value is not printed).");
 
     [Fact]
     public void The_expected_error_passes() => Error.ShouldBeError(Fault.NotFound);
@@ -57,7 +57,7 @@ public sealed class AssertionTests
     [Fact]
     public void Another_error_is_named_beside_the_expected_one() =>
         Should.Throw<TypeKitAssertionException>(() => Error.ShouldBeError(Fault.AlreadyShipped))
-              .Message.ShouldBe("Expected the error AlreadyShipped, but the Result<String, Fault> is the error NotFound.");
+              .Message.ShouldBe("Expected the error AlreadyShipped, but the Result<String, AssertionTests.Fault> is the error NotFound.");
 
     [Fact]
     public void A_success_is_not_the_expected_error() =>
@@ -70,7 +70,7 @@ public sealed class AssertionTests
     [Fact]
     public void A_command_error_is_no_success_and_is_named() =>
         Should.Throw<TypeKitAssertionException>(() => Result<Fault>.Error(Fault.AlreadyShipped).ShouldBeSuccess())
-              .Message.ShouldBe("Expected a success, but the Result<Fault> is the error AlreadyShipped.");
+              .Message.ShouldBe("Expected a success, but the Result<AssertionTests.Fault> is the error AlreadyShipped.");
 
     [Fact]
     public void A_command_error_hands_back_its_error() =>
@@ -79,12 +79,12 @@ public sealed class AssertionTests
     [Fact]
     public void A_command_success_is_no_error() =>
         Should.Throw<TypeKitAssertionException>(() => Result<Fault>.Success().ShouldBeError(Fault.NotFound))
-              .Message.ShouldBe("Expected an error, but the Result<Fault> is a success.");
+              .Message.ShouldBe("Expected an error, but the Result<AssertionTests.Fault> is a success.");
 
     [Fact]
     public void A_command_error_other_than_the_expected_is_named() =>
         Should.Throw<TypeKitAssertionException>(() => Result<Fault>.Error(Fault.AlreadyShipped).ShouldBeError(Fault.NotFound))
-              .Message.ShouldBe("Expected the error NotFound, but the Result<Fault> is the error AlreadyShipped.");
+              .Message.ShouldBe("Expected the error NotFound, but the Result<AssertionTests.Fault> is the error AlreadyShipped.");
 
     public static TheoryData<string> UninitializedAssertions => [.. Uninitialize.Keys];
 
@@ -110,4 +110,26 @@ public sealed class AssertionTests
 
     [Fact]
     public void The_assertions_are_enumerated() => Uninitialize.Count.ShouldBe(6);
+
+    /// <summary>
+    /// A type is named as C# writes it from outside: after its nesting chain, with each containing
+    /// type's own type arguments. A type nested in a generic one has no arity of its own, and cutting
+    /// its name at a backtick threw <see cref="ArgumentOutOfRangeException"/> instead of failing.
+    /// </summary>
+    [Fact]
+    public void A_type_nested_in_a_generic_one_is_named_as_CSharp_writes_it() =>
+        Should.Throw<TypeKitAssertionException>(() => Option.None<Outer<int>.Inner>().ShouldBeSome())
+              .Message.ShouldBe("Expected Some, but the Option<AssertionTests.Outer<Int32>.Inner> is None.");
+
+    [Fact]
+    public void A_generic_type_nested_in_a_generic_one_takes_its_own_arguments() =>
+        Should.Throw<TypeKitAssertionException>(() => Option.None<Outer<string>.Pair<int, Fault>[]>().ShouldBeSome())
+              .Message.ShouldBe("Expected Some, but the Option<AssertionTests.Outer<String>.Pair<Int32, AssertionTests.Fault>[]> is None.");
+
+    public static class Outer<T>
+    {
+        public sealed class Inner;
+
+        public sealed class Pair<TFirst, TSecond>;
+    }
 }

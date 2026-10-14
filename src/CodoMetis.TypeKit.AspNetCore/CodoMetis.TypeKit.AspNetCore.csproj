@@ -2,7 +2,7 @@
 
     <!-- Works at run time against the CodoMetis.TypeKit interfaces; never references .Generators. -->
     <PropertyGroup>
-        <Description>ASP.NET Core integration for CodoMetis.TypeKit: OpenAPI schemas for value objects, and a Result as an HTTP response with problem details.</Description>
+        <Description>ASP.NET Core integration for CodoMetis.TypeKit: OpenAPI schemas for value objects, closed sets and merge patches, and a Result as an HTTP response with problem details and fault responses a client can act on.</Description>
         <PackageTags>aspnetcore;openapi;json-schema;minimal-api;value-object;strongly-typed-id;ddd;native-aot;result;problem-details</PackageTags>
     </PropertyGroup>
 

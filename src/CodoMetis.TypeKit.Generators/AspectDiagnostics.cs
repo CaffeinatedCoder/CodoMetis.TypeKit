@@ -56,4 +56,41 @@ internal static class AspectDiagnostics
 
     public static readonly DiagnosticDefinition<(INamedType Type, string Members)> StateBesideTheWrappedValue =
         new("CMTK1012", Severity.Error, "'{0}' holds {1} besides its wrapped value, so it is not generated: its JSON, parsing, type converter and EF Core column carry the wrapped value alone, so the rest is lost on every round trip, and the record's equality compares it too. Compute it from Value in a property without a backing field, make it static, or wrap a type of your own that holds all of it." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<INamedType> ClosedSetNotPartial =
+        new("CMTK1013", Severity.Error, "'{0}' is a closed set and must be declared partial." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<INamedType> ClosedSetNotSealed =
+        new("CMTK1014", Severity.Error, "'{0}' is a closed set and must be declared sealed, so it is not generated: a set with subtypes is not closed." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<INamedType> ClosedSetNoMembers =
+        new("CMTK1015", Severity.Error, "'{0}' declares no member, so it is not generated: a member is a public static readonly field of the set's own type." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<INamedType> ClosedSetPublicConstructor =
+        new("CMTK1016", Severity.Error, "'{0}' has a constructor that is not private, so it is not generated: an instance beside its members could be made. Make the constructor private." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<(INamedType, string, string)> ClosedSetMemberNotAField =
+        new("CMTK1017", Severity.Error, "'{0}.{1}' is {2} of the set's own type, so '{0}' is not generated: a member is a public static readonly field, and nothing else of that type is public and static." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<INamedType> ClosedSetGeneric =
+        new("CMTK1018", Severity.Error, "'{0}' is generic or nested in a generic type, so it is not generated: a closed set's members are named instances, which a type parameter cannot have." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<(INamedType, string)> ClosedSetMemberNotCreated =
+        new("CMTK1019", Severity.Error, "'{0}.{1}' is not initialized with new, so '{0}' is not generated: each member is its own instance, created where it is declared. A member initialized with another would give that instance two names, and one left null would have none." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<INamedType> ClosedSetRecord =
+        new("CMTK1020", Severity.Error, "'{0}' is a record, so it is not generated: 'with' copies a member into an instance that is none, and a record compares by value where a closed set's members are singletons. Declare it a sealed partial class." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<(INamedType Type, string Member, string Reason)> ClosedSetMemberNameTaken =
+        new("CMTK1021", Severity.Error, "'{0}.{1}' {2}, so '{0}' is not generated: rename the member." + SeeBuildErrors);
+
+    /// <summary>
+    /// CMTK1021's collision the other way round: the set itself, not one of its members, has the name of
+    /// a generated member, which C# refuses inside a type of that name (CS0542).
+    /// </summary>
+    public static readonly DiagnosticDefinition<INamedType> ClosedSetNamedAsGeneratedMember =
+        new("CMTK1021", Severity.Error, "'{0}' has the name of a member the generators introduce into it, and a member cannot have the name of its type, so '{0}' is not generated: rename the set." + SeeBuildErrors);
+
+    public static readonly DiagnosticDefinition<INamedType> AbstractValueObject =
+        new("CMTK1022", Severity.Error, "'{0}' is abstract, so it is not generated: an abstract type cannot be a value object. A value held as '{0}' would have no Value, and its JSON would be '{{}}'. Declare the marker on a sealed type." + SeeBuildErrors);
 }

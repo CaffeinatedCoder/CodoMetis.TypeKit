@@ -12,8 +12,9 @@ that are written as one line and generated at compile time by Metalama.
 - **Satellites** map value objects to EF Core columns, where `.Value` works in LINQ as it does in
   memory, and to OpenAPI schemas.
 
-The packages are being built phase by phase: **read [docs/plan.md](docs/plan.md) before changing
-anything.** It holds the package map, the phase order and the decisions.
+**Read [design/plan.md](design/plan.md) before changing anything.** It is the map of `design/`: the
+[roadmap](design/roadmap.md), the [decision records](design/adr/README.md), one dated file per
+decision with its evidence, and a design note per area.
 
 This file is the canonical agent guide. There is no CLAUDE.md, on purpose.
 
@@ -40,12 +41,15 @@ This file is the canonical agent guide. There is no CLAUDE.md, on purpose.
 - Central package management (`Directory.Packages.props`). The versions of shipping references
   are floors for consumers, so raising one is a release decision. `spikes/` opts out of it and
   pins what each spike measured.
-- `test/CodoMetis.TypeKit.Samples` holds every C# block of the READMEs as compiled code, between
-  `// sample: {README}/{name}` and `// end sample`, beside tests that check the outputs the blocks
-  state in comments. `ReadmeSampleTests` (conventions) holds each block to exactly one region.
+- `test/CodoMetis.TypeKit.Samples` holds every C# block of the READMEs and of the `docs/` pages as
+  compiled code, between `// sample: {page}/{name}` and `// end sample`, beside tests that check the
+  outputs the blocks state in comments. `{page}` is `README`, a package id, or a docs page's file name
+  without `.md`. `ReadmeSampleTests` (conventions) holds each block to exactly one region.
 - `spikes/` holds experiments that decided something. Each one has a README with the question,
   the answer and the evidence. Spikes are not in the main solution and are never packed.
-- `docs/` holds the plan and the design notes.
+- `docs/` holds the topic pages a consumer reads, one per topic, each linked from the root README's
+  "Documentation" table; `design/` holds the roadmap, the decision records and the design notes,
+  which no test compiles but whose links the conventions check.
 
 Never hard-code a positional path (`../../`) to reach the repo root. Walk up to the
 `CodoMetis.TypeKit.slnx` marker instead.
@@ -62,6 +66,45 @@ dotnet build spikes/FabricSpike/FabricSpike.slnx      # the fabric spike, standa
 The SDK is pinned in `global.json` (10.0.4xx band, `latestPatch`). Tests run on Microsoft Testing
 Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TRX output is
 `--report-xunit-trx`. The build treats warnings as errors, including CS1591 on shipping projects.
+
+## Finding code
+
+The codebase-memory MCP server keeps a code graph of this repository, the project
+`CodoMetis.TypeKit`. It is the fastest way into the code, and it misses whole kinds of reference
+here, so it leads and the source decides.
+
+- **The graph first** to locate a symbol, list a type's implementers, trace callers and callees, and
+  size a change's impact (`search_graph`, `trace_path`, `query_graph`, `get_code_snippet`).
+- **Then the source and its tests**, read before concluding or editing. An edge is a lead.
+- **Text search** (`git grep`, `search_code`) for literals, messages, diagnostic ids,
+  configuration, documentation, and what the generators emit.
+- **An empty result proves nothing.** Fall back to text search when the graph is unavailable, stale
+  or silent, and never conclude "unused", "no other caller" or "safe to change" from it alone.
+  Measured on 2026-10-13, the graph:
+  - finds types, interfaces, enums and ordinary methods, a type's implementers through generic
+    interfaces (84 of the Samples' 88 value objects), and the callers of an ordinary method across
+    files;
+  - has no node for a member of a C# 14 `extension(...)` block, which holds most of the `Option` and
+    `Result` extensions (`Choose`, `FirstOrNone`, `Transpose`, `Sequence`, the continuations of a
+    `Task<Result<...>>`) and `AsText`, and puts the calls inside one on the file;
+  - has nothing Metalama generates: none of the tests' 222 `.From(` calls has an edge, nor has a call
+    to `TryFrom`, `FromKnownGood`, `Parse` or a converter, and a template an aspect introduces by
+    `nameof` looks unreferenced. Read woven code as the Generators README's "Reading the generated
+    code" says;
+  - misses a reference that is not a call: a DI registration, a type argument, `typeof`, an attribute;
+  - resolves a call on a generic instance poorly (`Option<T>.Match` has one resolved caller, where
+    the repository writes `.Match(` about 200 times across its types) and guesses wrong callers: a low-confidence `suffix_match` edge, or a same-named method of another API
+    (Metalama's `Diagnostics.Report` listed as calling `GeneratedCode.Report`). Overloads share one
+    node.
+- **Refresh it**, since it does not follow the working tree: `index_repository` with the repository
+  root as `repo_path` and `name: "CodoMetis.TypeKit"`, at the start of a session and after a branch
+  switch, a rebase, a merge or a pull (about 6 s). Without `name` it starts a second project under a
+  derived name. `index_status` reports the checkout's HEAD, not the commit the graph was built from,
+  so refresh rather than check.
+- It indexes `spikes/` and leaves out `.claude/`, `bin` and `obj`, so an agent in a worktree under
+  `.claude/worktrees/` reads the main checkout's graph, not its own: index the worktree under a name
+  of its own and delete that project when done, or search the source. `.codebase-memory/`, the
+  tool's local artifact, is ignored by git.
 
 ## Rules that are easy to break
 
@@ -91,7 +134,7 @@ Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TR
   `JsonSerializer` call that takes only options, in the packages or in woven code: a typed call
   (`GeneratedValueObjectAttribute.Accept`, `GeneratedJson.TypeInfo`) or an interface instead. An
   `[UnconditionalSuppressMessage]` needs a measured reason, and the smoke test's `aot` consumer is
-  the measurement (docs/plan.md §11).
+  the measurement ([design/native-aot.md](design/native-aot.md)).
 - **Aspects stay internal.** Their public surface is what they generate, and nothing else.
 - **A value object's JSON is its wrapped type's, byte for byte**, under whatever options the
   application uses, values and dictionary keys alike (`JsonParityTests`). Never write or read the
@@ -104,18 +147,22 @@ Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TR
   introduce is CMTK1011. A new generated member joins that check, or a hand-written one is kept silently.
 - **Diagnostic ids (`CMTK`) are public contract.** Never renumber a shipped rule, and never ship a
   new rule at Error severity in a minor version.
-- **A README's C# block is compiled code.** Change it and its region in
+- **A README's or a docs page's C# block is compiled code.** Change it and its region in
   `test/CodoMetis.TypeKit.Samples` together, or `ReadmeSampleTests` fails; the region's scaffolding
   (the types and variables it assumes) stays outside the markers. An output a block states in a comment
   (SQL, JSON, a string) is read from the README by the test beside the region, so correct the comment,
   never the test. A block that cannot compile on purpose says `<!-- not compiled: {reason} -->` above
   its fence; an analyzer diagnostic in a comment is no reason, the sample suppresses it around the region.
+  A page in `docs/` is compiled by being there and must be linked from the root README's
+  "Documentation" table; a package README is the reference for its package, a docs page the guide for
+  a topic, and the same code block is never in both.
 - **Silent is worse than broken.** A value object that compiles without being generated, an
   analyzer that stops firing, or a converter that materialises `default` are this repo's
   characteristic failures. Prefer a diagnostic or an exception to a plausible result.
 
 ## Workflow
-1. Read `docs/plan.md` and the relevant spike README before starting.
+1. Read `design/plan.md`, the roadmap, the decision records and the design note for the area you
+   touch, and the relevant spike README, before starting. A decision is changed by a new record.
 2. Run `dotnet test` after each change.
 3. **Prove every fix by reverting it.** See `.claude/skills/verify-the-guard`. The same applies to a
    new analyzer test or a convention test: seed the defect it claims to catch.

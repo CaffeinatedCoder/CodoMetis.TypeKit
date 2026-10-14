@@ -15,7 +15,7 @@ subject.
 Helpful to include, as far as you have it:
 
 - The package and version (`CodoMetis.TypeKit`, `.Analyzers`, `.Generators`,
-  `.EntityFrameworkCore`, `.AspNetCore`)
+  `.EntityFrameworkCore`, `.AspNetCore`, `.Serilog`, `.Testing`)
 - The value object declaration involved, and whether the value came from application code or from
   parsed input (JSON, route, query string, database)
 - A minimal reproduction
@@ -41,8 +41,9 @@ for going public, whatever the fix status. Reporters are credited unless they as
 
 ## Supported versions
 
-Security fixes land on the latest minor version of the latest major version, 1.x at present. The
-packages share one version, so a fix in any of them is a release of all of them.
+Security fixes land on the latest minor version of the latest major version, 2.x at present; 1.x
+gets none once 2.0.0 is released, and [Migrating from 1.5 to 2.0](docs/migrating-to-2.md) lists what
+the move changes. The packages share one version, so a fix in any of them is a release of all of them.
 
 ### If this project stops being maintained
 

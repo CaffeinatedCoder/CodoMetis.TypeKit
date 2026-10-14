@@ -305,6 +305,7 @@ ProbeDescending
   Value : Int32
   attribute CompilerGeneratedAttribute
   attribute GeneratedValueObjectAttribute<ProbeDescending, Int32>
+  attribute HandWrittenOrderingAttribute
   attribute JsonConverterAttribute
   attribute TypeConverterAttribute
   implements IComparable
@@ -604,6 +605,45 @@ ProbeIsbn
   static op_Inequality(ProbeIsbn, ProbeIsbn) : Boolean
   extension static ProbeIsbnExtensions.GetValue(ProbeIsbn) : ProbeIsbnText
   extension static ProbeIsbnExtensions.ValueOrNull(ProbeIsbn?) : ProbeIsbnText
+ProbeKeyword
+  Match(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeKeyword>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeKeyword>
+  implements IParsable<ProbeKeyword>
+  nested ProbeKeywordJsonConverter : JsonConverter<ProbeKeyword>
+  nested ProbeKeywordTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeKeyword>
+  static Parse(String) : ProbeKeyword
+  static Parse(String, Boolean) : ProbeKeyword
+  static TryParse(String, Boolean, out ProbeKeyword) : Boolean
+  static TryParse(String, out ProbeKeyword) : Boolean
+ProbeKindlessFault
+  Kind : FaultKind
+  Match(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeKindlessFault>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeKindlessFault>
+  implements IFault
+  implements IFaultSet<ProbeKindlessFault>
+  implements IParsable<ProbeKindlessFault>
+  nested ProbeKindlessFaultJsonConverter : JsonConverter<ProbeKindlessFault>
+  nested ProbeKindlessFaultTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeKindlessFault>
+  static Parse(String) : ProbeKindlessFault
+  static Parse(String, Boolean) : ProbeKindlessFault
+  static TryParse(String, Boolean, out ProbeKindlessFault) : Boolean
+  static TryParse(String, out ProbeKindlessFault) : Boolean
 ProbeLabel
   <Clone>$() : ProbeLabel
   CompareTo(Object) : Int32
@@ -643,6 +683,43 @@ ProbeLabel
   static op_LessThanOrEqual(ProbeLabel, ProbeLabel) : Boolean
   extension static ProbeLabelExtensions.GetValue(ProbeLabel) : String
   extension static ProbeLabelExtensions.ValueOrNull(ProbeLabel) : String
+ProbeLabelled
+  Match(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeLabelled>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeLabelled>
+  implements IParsable<ProbeLabelled>
+  nested ProbeLabelledJsonConverter : JsonConverter<ProbeLabelled>
+  nested ProbeLabelledTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeLabelled>
+  static Parse(String) : ProbeLabelled
+  static Parse(String, Boolean) : ProbeLabelled
+  static TryParse(String, Boolean, out ProbeLabelled) : Boolean
+  static TryParse(String, out ProbeLabelled) : Boolean
+ProbeLevel
+  Match(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeLevel>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeLevel>
+  implements IParsable<ProbeLevel>
+  nested ProbeLevelJsonConverter : JsonConverter<ProbeLevel>
+  nested ProbeLevelTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeLevel>
+  static Parse(String) : ProbeLevel
+  static Parse(String, Boolean) : ProbeLevel
+  static TryParse(String, Boolean, out ProbeLevel) : Boolean
+  static TryParse(String, out ProbeLevel) : Boolean
+  static Unlisted() : ProbeLevel
 ProbeLocalDate
   CompareTo(Object) : Int32
   CompareTo(ProbeLocalDate) : Int32
@@ -768,6 +845,46 @@ ProbeName
   static op_LessThanOrEqual(ProbeName, ProbeName) : Boolean
   extension static ProbeNameExtensions.GetValue(ProbeName) : String
   extension static ProbeNameExtensions.ValueOrNull(ProbeName?) : String
+ProbeOrder.Status
+  Match(Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeOrder.Status>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeOrder.Status>
+  implements IParsable<ProbeOrder.Status>
+  nested StatusJsonConverter : JsonConverter<ProbeOrder.Status>
+  nested StatusTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeOrder.Status>
+  static Parse(String) : ProbeOrder.Status
+  static Parse(String, Boolean) : ProbeOrder.Status
+  static TryParse(String, Boolean, out ProbeOrder.Status) : Boolean
+  static TryParse(String, out ProbeOrder.Status) : Boolean
+ProbeOrderFault
+  Description : String
+  Kind : FaultKind
+  Match(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeOrderFault>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeOrderFault>
+  implements IFault
+  implements IFaultSet<ProbeOrderFault>
+  implements IParsable<ProbeOrderFault>
+  nested ProbeOrderFaultJsonConverter : JsonConverter<ProbeOrderFault>
+  nested ProbeOrderFaultTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeOrderFault>
+  static Parse(String) : ProbeOrderFault
+  static Parse(String, Boolean) : ProbeOrderFault
+  static TryParse(String, Boolean, out ProbeOrderFault) : Boolean
+  static TryParse(String, out ProbeOrderFault) : Boolean
 ProbeOverride
   CompareTo(Object) : Int32
   CompareTo(ProbeOverride) : Int32
@@ -906,6 +1023,28 @@ ProbePin
   static op_LessThanOrEqual(ProbePin, ProbePin) : Boolean
   extension static ProbePinExtensions.GetValue(ProbePin) : Int32
   extension static ProbePinExtensions.ValueOrNull(ProbePin?) : Int32?
+ProbePriority
+  Label : String
+  Match(Action, Action, Action) : Void
+  Match(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  Rank : Int32
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbePriority>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbePriority>
+  implements IParsable<ProbePriority>
+  nested ProbePriorityJsonConverter : JsonConverter<ProbePriority>
+  nested ProbePriorityTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbePriority>
+  static Parse(Int32) : ProbePriority
+  static Parse(String) : ProbePriority
+  static Parse(String, Boolean) : ProbePriority
+  static TryParse(String, Boolean, out ProbePriority) : Boolean
+  static TryParse(String, out ProbePriority) : Boolean
 ProbeRatio
   CompareTo(Object) : Int32
   CompareTo(ProbeRatio) : Int32
@@ -958,6 +1097,46 @@ ProbeRatio
   static op_LessThanOrEqual(ProbeRatio, ProbeRatio) : Boolean
   extension static ProbeRatioExtensions.GetValue(ProbeRatio) : Double
   extension static ProbeRatioExtensions.ValueOrNull(ProbeRatio?) : Double?
+ProbeReversedLabel
+  <Clone>$() : ProbeReversedLabel
+  CompareTo(Object) : Int32
+  CompareTo(ProbeReversedLabel) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeReversedLabel) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  Value : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeReversedLabel, String>
+  attribute HandWrittenOrderingAttribute
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeReversedLabel>
+  implements IComparisonOperators<ProbeReversedLabel, ProbeReversedLabel, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeReversedLabel, ProbeReversedLabel, Boolean>
+  implements IEquatable<ProbeReversedLabel>
+  implements IFormattable
+  implements IParsable<ProbeReversedLabel>
+  implements IPlainValueObject<ProbeReversedLabel, String>
+  implements IValue<String>
+  implements IValueObject<ProbeReversedLabel, String>
+  implements IValueObjectMaterializer<ProbeReversedLabel, String>
+  nested ProbeReversedLabelJsonConverter : JsonConverter<ProbeReversedLabel>, IStoredJsonConverterSource
+  nested ProbeReversedLabelTypeConverter : TypeConverter
+  static From(String) : ProbeReversedLabel
+  static Parse(String, IFormatProvider) : ProbeReversedLabel
+  static TryParse(String, IFormatProvider, out ProbeReversedLabel) : Boolean
+  static op_Equality(ProbeReversedLabel, ProbeReversedLabel) : Boolean
+  static op_GreaterThan(ProbeReversedLabel, ProbeReversedLabel) : Boolean
+  static op_GreaterThanOrEqual(ProbeReversedLabel, ProbeReversedLabel) : Boolean
+  static op_Inequality(ProbeReversedLabel, ProbeReversedLabel) : Boolean
+  static op_LessThan(ProbeReversedLabel, ProbeReversedLabel) : Boolean
+  static op_LessThanOrEqual(ProbeReversedLabel, ProbeReversedLabel) : Boolean
+  extension static ProbeReversedLabelExtensions.GetValue(ProbeReversedLabel) : String
+  extension static ProbeReversedLabelExtensions.ValueOrNull(ProbeReversedLabel) : String
 ProbeSecret
   <Clone>$() : ProbeSecret
   CompareTo(Object) : Int32
@@ -995,6 +1174,24 @@ ProbeSecret
   static op_LessThanOrEqual(ProbeSecret, ProbeSecret) : Boolean
   extension static ProbeSecretExtensions.GetValue(ProbeSecret) : String
   extension static ProbeSecretExtensions.ValueOrNull(ProbeSecret) : String
+ProbeShipment.Status
+  Match(Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeShipment.Status>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeShipment.Status>
+  implements IParsable<ProbeShipment.Status>
+  nested StatusJsonConverter : JsonConverter<ProbeShipment.Status>
+  nested StatusTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeShipment.Status>
+  static Parse(String) : ProbeShipment.Status
+  static Parse(String, Boolean) : ProbeShipment.Status
+  static TryParse(String, Boolean, out ProbeShipment.Status) : Boolean
+  static TryParse(String, out ProbeShipment.Status) : Boolean
 ProbeSku
   Equals(Object) : Boolean
   Equals(ProbeSku) : Boolean
@@ -1053,6 +1250,62 @@ ProbeSpan
   static op_Inequality(ProbeSpan, ProbeSpan) : Boolean
   extension static ProbeSpanExtensions.GetValue(ProbeSpan) : ProbeSpanText
   extension static ProbeSpanExtensions.ValueOrNull(ProbeSpan?) : ProbeSpanText
+ProbeSplit
+  Match(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeSplit>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeSplit>
+  implements IParsable<ProbeSplit>
+  nested ProbeSplitJsonConverter : JsonConverter<ProbeSplit>
+  nested ProbeSplitTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeSplit>
+  static Parse(String) : ProbeSplit
+  static Parse(String, Boolean) : ProbeSplit
+  static TryParse(String, Boolean, out ProbeSplit) : Boolean
+  static TryParse(String, out ProbeSplit) : Boolean
+ProbeStatus
+  Match(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeStatus>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeStatus>
+  implements IParsable<ProbeStatus>
+  nested ProbeStatusJsonConverter : JsonConverter<ProbeStatus>
+  nested ProbeStatusTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeStatus>
+  static Parse(String) : ProbeStatus
+  static Parse(String, Boolean) : ProbeStatus
+  static TryParse(String, Boolean, out ProbeStatus) : Boolean
+  static TryParse(String, out ProbeStatus) : Boolean
+ProbeTier
+  Match(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  Perk : String
+  QualifiedName : String
+  Rank : Int32
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeTier>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeTier>
+  implements IParsable<ProbeTier>
+  nested ProbeTierJsonConverter : JsonConverter<ProbeTier>
+  nested ProbeTierTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeTier>
+  static Parse(String) : ProbeTier
+  static Parse(String, Boolean) : ProbeTier
+  static TryParse(String, Boolean, out ProbeTier) : Boolean
+  static TryParse(String, out ProbeTier) : Boolean
 ProbeTime
   CompareTo(Object) : Int32
   CompareTo(ProbeTime) : Int32

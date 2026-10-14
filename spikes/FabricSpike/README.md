@@ -2,7 +2,7 @@
 
 **Question.** Can the value-object aspects be applied by a `TransitiveProjectFabric` shipped in the
 aspect package, so the package holding `IValue<T>` / `IValidatedValue<,,>` needs no Metalama at all?
-The answer decides the package boundaries in [docs/plan.md](../../docs/plan.md).
+The answer decides the package boundaries in [the design notes](../../design/plan.md).
 
 **Naming (2026-09-27).** The spike predates the package names. `Spike.Abstractions` stands for
 `CodoMetis.TypeKit` and `Spike.ValueObjects` for `CodoMetis.TypeKit.Generators`. The spike keeps
@@ -47,7 +47,7 @@ dotnet run --project spikes/FabricSpike/Spike.App --no-build
 **A. The analyzer travels with the base package, not with the aspects.** Finding 8 is the
 fabric's price. With `[Inheritable]` on the interface, anyone who could name `IValue<T>` also got
 the aspect. Now they get it only by referencing `.Generators`. So `CodoMetis.TypeKit` brings the
-analyzer package along (plan §10). When a type implements a marker and the compilation does not
+analyzer package along ([Analyzers](../../design/analyzers.md)). When a type implements a marker and the compilation does not
 reference `CodoMetis.TypeKit.Generators`, it reports an error (CMTK0002). For the same reason
 `ForbiddenStructDefaultInitializationAnalyzer` (CMTK0001) travels the same way, since it guards
 the interfaces wherever they are visible.

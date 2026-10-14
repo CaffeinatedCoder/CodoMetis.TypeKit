@@ -16,6 +16,7 @@
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
         <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+        <PackageReference Include="JsonSchema.Net" />
         <PackageReference Include="NodaTime" />
         <PackageReference Include="NodaTime.Serialization.SystemTextJson" />
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.AspNetCore\CodoMetis.TypeKit.AspNetCore.csproj" />

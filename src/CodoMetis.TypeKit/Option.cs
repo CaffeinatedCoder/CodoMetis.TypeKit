@@ -108,6 +108,42 @@ public readonly record struct Option<T> where T : notnull
         return _hasValue && predicate(_value!) ? this : Option.None<T>();
     }
 
+    /// <summary>Transforms the value, if there is one, with an asynchronous function.</summary>
+    /// <param name="selector">Called with the value if there is one. Its task must not produce null.</param>
+    /// <typeparam name="TResult">The type of the transformed value.</typeparam>
+    /// <returns>The transformed value, or <c>None</c> without calling <paramref name="selector"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="selector"/>'s task produced null.</exception>
+    public async Task<Option<TResult>> MapAsync<TResult>(Func<T, Task<TResult>> selector) where TResult : notnull
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return _hasValue ? Option.Some(await ThrowHelper.Awaitable(selector(_value!), nameof(MapAsync), nameof(selector)).ConfigureAwait(false)) : Option.None<TResult>();
+    }
+
+    /// <summary>Chains an asynchronous operation that may itself produce no value.</summary>
+    /// <param name="selector">Called with the value if there is one.</param>
+    /// <typeparam name="TResult">The type of the chained option's value.</typeparam>
+    /// <returns>The option <paramref name="selector"/> produced, or <c>None</c> without calling it.</returns>
+    public async Task<Option<TResult>> BindAsync<TResult>(Func<T, Task<Option<TResult>>> selector) where TResult : notnull
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return _hasValue ? await ThrowHelper.Awaitable(selector(_value!), nameof(BindAsync), nameof(selector)).ConfigureAwait(false) : Option.None<TResult>();
+    }
+
+    /// <summary>Runs an asynchronous side effect on the value, if there is one.</summary>
+    /// <param name="action">Called with the value if there is one.</param>
+    /// <returns>This option, unchanged, once <paramref name="action"/> has completed.</returns>
+    public async Task<Option<T>> TapAsync(Func<T, Task> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        if (_hasValue)
+            await ThrowHelper.Awaitable(action(_value!), nameof(TapAsync), nameof(action)).ConfigureAwait(false);
+
+        return this;
+    }
+
     /// <summary>
     /// Unwraps the value, substituting <paramref name="fallback"/> for <c>None</c>. The siblings for a
     /// fallback of <c>default</c> or <see langword="null"/> are <c>OrDefault()</c> and <c>OrNull()</c>.

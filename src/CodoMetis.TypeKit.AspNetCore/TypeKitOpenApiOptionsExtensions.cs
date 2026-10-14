@@ -27,7 +27,8 @@ public static class TypeKitOpenApiOptionsExtensions
     /// </para>
     /// <para>
     /// An endpoint that returns <c>ToHttpResult()</c> also lists a problem-details response for every
-    /// status its fault type is mapped to with <c>AddFaultResponses</c>.
+    /// status its fault type is mapped to with <c>AddFaultResponses</c>, and the problem schema those
+    /// responses refer to describes the <c>fault</c> member.
     /// </para>
     /// <para>
     /// A nested value object's component is named after its nesting chain (<c>Shop.Id</c> is
@@ -43,8 +44,11 @@ public static class TypeKitOpenApiOptionsExtensions
         ArgumentNullException.ThrowIfNull(options);
 
         ValueObjectSchemaReferenceIds.Apply(options);
+        PatchSchemaTransformer.Apply(options);
 
         return options.AddSchemaTransformer<ValueObjectSchemaTransformer>()
+                      .AddSchemaTransformer<PatchSchemaTransformer>()
+                      .AddSchemaTransformer<ClosedSetSchemaTransformer>()
                       .AddOperationTransformer<FaultResponsesOperationTransformer>();
     }
 }

@@ -10,6 +10,51 @@ A version's heading reads `## <version> — Unreleased` until the release is pre
 the release date. The release workflow refuses a tag whose section still says `Unreleased`, and the
 section is the GitHub release's notes.
 
+## 2.0.0 — 2026-10-14
+
+Still `net10.0` and Metalama 2026.1. What builds or runs differently, and what to write instead:
+[Migrating from 1.5 to 2.0](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/migrating-to-2.md).
+
+### Breaking
+
+- CMTK0003, a dropped `Result` or `Option`, is an Error, and reports more forms (`Wait()`, loops that never read, `??`, tuples).
+- `FirstOrNone`/`FirstOrError` on an `IQueryable` run in the query (a `Func` variable still reads every row); `LastOrNone`/`LastOrError` on a query no longer compile.
+- CMTK1022 refuses an abstract value object; CMTK1005 refuses one over `object` or `System.Enum`, or named as a generated member.
+- A generated `TryParse` lets an exception from `Create` through instead of answering `false`.
+- EF Core refuses `.Value` on a column with the application's own converter, and ordering by a hand-written `CompareTo`, in queries and query filters.
+- EF Core: value-object keys over `sbyte`, `ushort`, `uint` and `ulong` are generated as EF generates the plain type, so a migration may alter the column.
+- OpenAPI: a component name claimed by two types throws.
+- Async combinators throw `ArgumentNullException` for a delegate that returns no task.
+- `FaultProblem<TFault>` takes any `notnull` fault type.
+
+### Added
+
+- **Closed sets** (`IClosedSet<TSelf>`): a fixed set of named instances with `Match`, `Parse`, JSON, EF Core, OpenAPI and Serilog support; CMTK1013 to CMTK1021 refuse what cannot be generated.
+- **Fault responses a client can act on**: `Fault<TFault>`, fault sets with a kind per member, `FaultResponse`, `WithFaultStatus`/`[FaultStatus<T>]` per endpoint, group or controller, `ToHttpResult(success)` and `IFaultFeature`.
+- **`Patch<T>`**: a JSON Merge Patch field (absent, null or a value; `T` is `notnull`, so `Patch<string>` is a clearable string), with `Map`, `Traverse`, OpenAPI and test assertions.
+- **`Result.Catch`/`CatchAsync`**: an exception as a result; a cancellation passes through, a timeout is the error.
+- **Text guards**: `AsText()` and `AsIdentifier()` trim, compose to NFC (`AsText`) and refuse invisible characters.
+- **Type constraints**: `[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]` (CMTK0010) and `[RequireParameterlessConstructor]` (CMTK0011, with a code fix).
+- **CMTK0012**: a closed set's `Match` called by position, with a code fix.
+- **CMTK0013**: a closed set's member written outside its declaration, after it was named.
+- **`Option`**: async steps and `Task<Option<T>>` continuations, `SingleOrNone`, `ElementAtOrNone`, `Choose`, `Transpose`, `Traverse`; EF Core's `FirstOrNoneAsync` and `SingleOrNoneAsync`.
+- **`TraverseAsync`** on a sequence: one at a time, cancellable.
+- **Docs**: topic pages under `docs/`, every code block compiled.
+
+### Changed
+
+- The OpenAPI problem schema describes `fault`: regenerate clients.
+- CMTK0003 no longer reports a chain of taps on a result the caller holds.
+- EF Core: a `char` key stays the application's to assign; a default `ulong` key throws `OverflowException` at `Add` (use `ValueGeneratedNever()`).
+- Testing failures name a nested type with its containing types.
+- `CodoMetis.TypeKit.Generators` depends on `Metalama.Framework` 2026.1.30 or later (was 2026.1.29).
+
+### Fixed
+
+- A value object marked `[Obsolete(error: true)]` builds.
+- A default value object over a reference type formats as `""` instead of throwing.
+- Where the host inlines enums, a nullable value object over one admits null in the OpenAPI document.
+
 ## 1.5.1 — 2026-10-11
 
 ### Fixed

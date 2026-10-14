@@ -124,6 +124,54 @@ public sealed class PostgreSqlRoundTripTests(PostgreSqlRoundTripTests.Database d
         second.Id.ShouldNotBe(first.Id);
     }
 
+    /// <summary>
+    /// A key over each integer type PostgreSQL has an identity column for, added twice: <c>sbyte</c> as
+    /// <c>smallint</c>, <c>ushort</c> as <c>integer</c>, <c>uint</c> as <c>bigint</c>, as their own keys are.
+    /// Not <c>ulong</c>, a <c>numeric(20,0)</c> that cannot be an identity, nor <c>char</c>, a
+    /// <c>character(1)</c> PostgreSQL refuses one on, either of them for a plain key too.
+    /// </summary>
+    [Fact]
+    public async Task A_key_over_each_integer_type_with_an_identity_is_numbered_by_the_database()
+    {
+        var cancellation = TestContext.Current.CancellationToken;
+
+        await using var db = new PostgreSqlIntegerKeysDb(database.Options<PostgreSqlIntegerKeysDb>("typekit_keys"));
+        await db.Database.EnsureCreatedAsync(cancellation);
+
+        KeyedByInt16[]  shorts  = [new(), new()];
+        KeyedBySByte[]  sbytes  = [new(), new()];
+        KeyedByUInt16[] ushorts = [new(), new()];
+        KeyedByUInt32[] uints   = [new(), new()];
+        db.AddRange([.. shorts, .. sbytes, .. ushorts, .. uints]);
+        await db.SaveChangesAsync(cancellation);
+
+        shorts.Select(e => e.Id.Value).ShouldBe([(short)1, (short)2], ignoreOrder: true);
+        sbytes.Select(e => e.Id.Value).ShouldBe([(sbyte)1, (sbyte)2], ignoreOrder: true);
+        ushorts.Select(e => e.Id.Value).ShouldBe([(ushort)1, (ushort)2], ignoreOrder: true);
+        uints.Select(e => e.Id.Value).ShouldBe([1u, 2u], ignoreOrder: true);
+    }
+
+    /// <summary>
+    /// An abstract TPC root's key is numbered from the hierarchy's sequence, across its derived types'
+    /// tables, as a <c>long</c> key is. Without the generation the first car was stored with 0 and the
+    /// second refused as a duplicate.
+    /// </summary>
+    [Fact]
+    public async Task An_abstract_TPC_root_s_key_is_numbered_from_its_sequence()
+    {
+        var cancellation = TestContext.Current.CancellationToken;
+
+        await using var db = new AbstractTpcDb(database.Options<AbstractTpcDb>("typekit_tpc"));
+        await db.Database.EnsureCreatedAsync(cancellation);
+
+        AbstractTpcByValueObject[] vehicles =
+            [new AbstractTpcByValueObjectCar { Name = "a" }, new AbstractTpcByValueObjectBike { Name = "b" }, new AbstractTpcByValueObjectCar { Name = "c" }];
+        db.AddRange(vehicles);
+        await db.SaveChangesAsync(cancellation);
+
+        vehicles.Select(vehicle => vehicle.Id.Value).ShouldBe([1L, 2L, 3L], ignoreOrder: true);
+    }
+
     /// <summary>One PostgreSQL container and one schema for the class.</summary>
     public sealed class Database : IAsyncLifetime
     {
@@ -131,6 +179,13 @@ public sealed class PostgreSqlRoundTripTests(PostgreSqlRoundTripTests.Database d
         private DbContextOptions<TestDb>? _options;
 
         public TestDb Create() => new(_options ?? throw new InvalidOperationException("The database is not started."));
+
+        /// <summary>Another database in the same container, for a model of its own.</summary>
+        public DbContextOptions<TDb> Options<TDb>(string databaseName) where TDb : DbContext =>
+            new DbContextOptionsBuilder<TDb>()
+                .UseNpgsql(new NpgsqlConnectionStringBuilder(_container.GetConnectionString()) { Database = databaseName }.ConnectionString)
+                .UseTypeKit()
+                .Options;
 
         public async Task<(Customer Customer, Order Order)> Seed(Action<Order>? adjust = null)
         {

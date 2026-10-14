@@ -299,8 +299,10 @@ public sealed partial class NotWireTypeTests
     [Fact]
     public void Every_exported_struct_of_the_assembly_carries_the_refusing_converter()
     {
+        // Patch<T> is the one wire type of the package, on purpose (PatchTests): it says what a request
+        // mentioned, which is what a document carries.
         var structs = typeof(Option<>).Assembly.GetExportedTypes()
-                                      .Where(type => type is { IsValueType: true, IsEnum: false })
+                                      .Where(type => type is { IsValueType: true, IsEnum: false } && type != typeof(Patch<>))
                                       .Select(Close)
                                       .ToList();
 

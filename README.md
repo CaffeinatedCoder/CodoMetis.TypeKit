@@ -1,7 +1,11 @@
 # CodoMetis.TypeKit
 
-Strong types for .NET 10: `Option` and `Result` types that cannot be misused, and value objects
-that are written as one line and generated at compile time.
+Strong types for .NET 10, with one set of rules from the request to the database. Value objects and
+closed sets (smart enums) are written as one line and generated at compile time. A value object's one
+`Create` is what JSON, route binding, parsing and `TryFrom` apply, and the fault it returns reaches an
+HTTP problem response as a typed `Result`, with nothing to translate between libraries on the way.
+EF Core and the OpenAPI document see the type it wraps. `Option` and `Result` cannot be misused: no
+`.Value`, no `default` in source, no ignored result.
 
 [![.NET](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/actions/workflows/dotnet.yml/badge.svg)](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/actions/workflows/dotnet.yml)
 [![NuGet](https://img.shields.io/nuget/v/CodoMetis.TypeKit.svg)](https://www.nuget.org/packages/CodoMetis.TypeKit)
@@ -24,22 +28,43 @@ factories, value equality, a JSON converter, `IParsable`, `IFormattable`, `IComp
 A value object can wrap a primitive, a `Guid`, a date, an enum, a `Uri`, a NodaTime type or a type of
 your own, and it can be declared inside another type.
 
+A closed set, the smart enum, is declared the same way, one line per member:
+
+```csharp
+public sealed partial class OrderStatus : IClosedSet<OrderStatus>
+{
+    public static readonly OrderStatus Open = new();
+    public static readonly OrderStatus Shipped = new();
+    public static readonly OrderStatus Cancelled = new();
+}
+```
+
+The generators add `All`, parsing by name, JSON as the name, an OpenAPI string enum and a text
+column in EF Core, with nothing registered per set. `Match` takes one required delegate per member,
+so a member added later fails every call until it is handled.
+
+Beside the generated types, the base package holds:
+
+- `Patch<T>`, a field of a JSON Merge Patch: absent, null or a value.
+- `Result.Catch`, which turns an exception into a result.
+- `AsText()` and `AsIdentifier()`, for text a person wrote and a value another system issued.
+- `[Sealed]`, `[Concrete]` and `[RequireParameterlessConstructor]`, constraints C# has no `where`
+  for, checked by the analyzers.
+
 ## Packages
 
 | Package | Role | Metalama |
 |---|---|---|
-| [CodoMetis.TypeKit](src/CodoMetis.TypeKit/README.md) | `Option<T>`, `Result<T, TError>`, `Result<TError>`, the value-object contracts, and the analyzers that guard them | no |
-| [CodoMetis.TypeKit.Analyzers](src/CodoMetis.TypeKit.Analyzers/README.md) | CMTK0001–CMTK0009: no `default` of a value object, an `Option` or a `Result`, written in source or handed out by `FirstOrDefault` and its kind; no value object nobody generates; no ignored result; no validation bypass; no comparing two value objects' values. In Razor components too. Arrives with the base package | no |
+| [CodoMetis.TypeKit](src/CodoMetis.TypeKit/README.md) | `Option<T>`, `Result<T, TError>`, `Result<TError>`, the value-object contracts, the text guards `AsText()` and `AsIdentifier()`, and the analyzers that guard them | no |
+| [CodoMetis.TypeKit.Analyzers](src/CodoMetis.TypeKit.Analyzers/README.md) | CMTK0001–CMTK0013: no `default` of a value object, an `Option` or a `Result`, written in source or handed out by `FirstOrDefault` and its kind; no value object nobody generates; no ignored result; no validation bypass; no comparing two value objects' values; no type argument that breaks what its parameter declares with `[Abstract]`, `[Sealed]`, `[Record]` or `[Concrete]`; no type without the constructor its host will look for; no closed-set `Match` bound by position; no closed-set member written after it was named. In Razor components too. Arrives with the base package | no |
 | [CodoMetis.TypeKit.Generators](src/CodoMetis.TypeKit.Generators/README.md) | The compile-time generation, in the project that declares value objects | yes |
 | [CodoMetis.TypeKit.EntityFrameworkCore](src/CodoMetis.TypeKit.EntityFrameworkCore/README.md) | Value objects as columns with nothing registered per type, and `.Value` in LINQ | no |
 | [CodoMetis.TypeKit.AspNetCore](src/CodoMetis.TypeKit.AspNetCore/README.md) | Value objects in the OpenAPI document, with the schema of the type they wrap; a `Result` as the response, a fault as problem details | no |
 | [CodoMetis.TypeKit.Serilog](src/CodoMetis.TypeKit.Serilog/README.md) | Value objects logged as what they print, also where Serilog destructures them, so a value masked by its `ToString()` stays masked | no |
-| [CodoMetis.TypeKit.Testing](src/CodoMetis.TypeKit.Testing/README.md) | Test assertions for `Option` and `Result` that hand back the value or the error, and fail saying what the outcome was. No test framework dependency | no |
+| [CodoMetis.TypeKit.Testing](src/CodoMetis.TypeKit.Testing/README.md) | Test assertions for `Option`, `Result` and `Patch<T>` that hand back the value or the error, and fail saying what the outcome was. No test framework dependency | no |
 
 The base package is the cheapest one: someone who only wants `Option` and `Result` never receives a
-code generator by accident. Taking Metalama on is a named choice, made once, in the domain project,
-and it needs no Metalama license key: the generators build on Metalama's Open Source edition, in this
-repository and in yours.
+code generator by accident. Taking Metalama on is a named choice, made once, in the domain project.
 The EF Core and ASP.NET Core packages work at run time against the interfaces, so a host that maps
 value objects from a referenced domain assembly needs no generator itself.
 
@@ -92,6 +117,31 @@ db.Customers.Where(c => c.Email.Value.EndsWith("@example.com"));        // WHERE
 services.AddOpenApi(options => options.AddTypeKit());                    // OrderId: {"type":"string","format":"uuid"}
 ```
 
+## Documentation
+
+The package READMEs above are the reference for each package: what it adds, its setup, and the
+rules it holds to, which is also where every exception message and analyzer help link lands. The
+pages below are the guides, one topic each, written around examples. Every C# block in them is
+compiled and its stated outputs are tested, as the READMEs' are.
+
+| Page | Covers |
+|---|---|
+| [Value objects](docs/value-objects.md) | Declaring one, struct or class, identifiers, validated text and numbers, faults, which factory to call, your own members, generic code over value objects |
+| [Closed sets](docs/closed-sets.md) | Smart enums: declaring one, data on its members, `Match`, JSON and dictionary keys, EF Core columns, configuration, logging, what the generators refuse, when an `enum` is still right |
+| [Option](docs/option.md) | Absence as a type: creating, matching, combining, converting at the boundary, and the complete public surface |
+| [Result](docs/result.md) | Outcomes as a type: faults, pipelines, async chains, collecting results, an exception as an outcome, errors across layers, and the complete public surface |
+| [Written text](docs/text.md) | `AsText()` and `AsIdentifier()`: what each cleans and refuses, a value object over either, a required and an optional field |
+| [Type constraints](docs/type-constraints.md) | `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` on a type parameter, `[RequireParameterlessConstructor]` and its code fix |
+| [Merge patches](docs/merge-patches.md) | `Patch<T>`: absent, null or a value, applying a patch, value objects inside one, writing one, the OpenAPI document, source-generated contexts |
+| [JSON](docs/json.md) | What a value object writes and reads, refusals, stored documents, `Option` and `Result` at the wire, a converter of your own, source-generated contexts |
+| [EF Core](docs/ef-core.md) | Columns, keys, conventions, queries and the SQL they become, seed data, reading back without validation, SQLite in tests |
+| [ASP.NET Core](docs/aspnet-core.md) | Binding in minimal APIs and MVC, what a refused value answers, a `Result` as a response, fault responses a client can act on, the OpenAPI document, problem details |
+| [Native AOT](docs/native-aot.md) | What is measured, the project settings, JSON contexts, OpenAPI, EF Core's compiled model, configuration binding, discovery without reflection |
+| [Logging and secrets](docs/logging-and-secrets.md) | A value that must not be printed, what still carries it, Serilog, Microsoft.Extensions.Logging, refusals that never quote the input |
+| [Testing](docs/testing.md) | Assertions for `Option`, `Result` and `Patch<T>`, table-driven tests of `Create`, EF Core on SQLite, endpoints on the test server |
+| [Migrating from 1.5 to 2.0](docs/migrating-to-2.md) | What builds or runs differently: CMTK0003 as an error, a query's `FirstOrNone` in the database, names that 2.0 adds, fault responses, Native AOT |
+| [How it compares](docs/comparison.md) | What to choose instead for a need TypeKit does not meet, and the detail tables against the value-object, result and smart-enum libraries, versioned and dated |
+
 ## What it holds to
 
 - **No `.Value` on `Option` or `Result`.** The content is reached through `Match`, `TryGetValue`
@@ -106,8 +156,10 @@ services.AddOpenApi(options => options.AddTypeKit());                    // Orde
   the generated `TryFrom`, `FromKnownGood`, JSON converter, parsing and type converter all apply
   it. The fault you return from `Create` is what each of them reports: the `JsonException`, the
   `FormatException` and the `FromKnownGood` exception all name your `EmailFault.NoAt`. The two
-  validation-free paths, reading a database column and reading JSON the application stored itself,
-  are explicit, named, and unreachable from input.
+  validation-free paths are explicit and named: the EF Core satellite reads a database column
+  through the materializer, and `StoredJsonConverterFactory` reads JSON the application stored
+  itself. Register that factory only on the options you read your own JSON with, never on those
+  that read a request.
 - **No factory throws on input by accident.** A validated value object has no `From`. Its ways in
   are `Create`, which returns a `Result`, `TryFrom`, which returns an `Option`, and `FromKnownGood`,
   whose name says the caller vouches for the value and whose exception blames the call site.
@@ -115,30 +167,34 @@ services.AddOpenApi(options => options.AddTypeKit());                    // Orde
   rule, or the wrapped type it could not read, and carries no inner exception that quotes the text;
   `FromKnownGood` names the caller's expression, and `Option` and `Result` print nothing. So a value
   that is a secret does not reach a message or a log through this package, as long as your fault
-  type does not carry it.
-- **Swapping a primitive for a value object changes no contract.** Its JSON is the wrapped type's,
-  byte for byte, under your options; its column is the wrapped type's, a key over an integer still an
-  identity column; its OpenAPI schema is the one ASP.NET publishes for the wrapped type. Only what
-  the value object refuses changes.
+  type does not carry it. The exception is System.Text.Json's own: a refused dictionary key is in
+  the `JsonException`'s `Path`, and so in MVC's 400
+  ([Logging and secrets](docs/logging-and-secrets.md#refusals-never-quote-the-input)).
+- **Swapping a primitive for a value object keeps the contract.** Its JSON is the wrapped type's
+  under your options, apart from a `DateTime`, which is written as UTC, and number handling set by an
+  attribute on the containing type, which no converter sees
+  ([JSON](docs/json.md#the-wrapped-types-json)); its column is the wrapped type's, a key over an
+  integer still an identity column; its OpenAPI schema is the one ASP.NET publishes for the wrapped
+  type. What changes is what the value object refuses, a JSON `null` for a struct value object
+  included, and under a source-generated context an enum-backed value object needs its enum listed
+  ([JSON](src/CodoMetis.TypeKit.Generators/README.md#json)).
 - **Loud failures.** A declaration that cannot be generated is a build error naming the
-  declaration, CMTK1000 to CMTK1012, never a type with nothing in it. The analyzers make `default`
+  declaration, CMTK1000 to CMTK1022, never a type with nothing in it. The analyzers make `default`
   of a value object, an `Option` or a `Result` an error.
 - **Discovery by interface.** The EF Core and OpenAPI satellites recognise a value object by the
-  attribute the generators put beside `IValueObject<,>`, whose type arguments are constrained to it,
-  never by a name, a namespace or an assembly prefix, and never by `GetInterfaces()`, which trimming
-  breaks.
+  attribute the generators put beside `IValueObject<,>`, whose type arguments are constrained to that
+  interface. Renaming a type or a namespace changes nothing, and trimming keeps the attribute.
 - **Native AOT.** The run-time packages build with the trim and AOT analyzers on, and a consumer
   with value objects, source-generated JSON, OpenAPI and EF Core is published with Native AOT and run
   on every CI build. Each package's README says what, if anything, Native AOT asks of you.
 
 ## How it compares
 
-Good libraries exist for both halves of TypeKit, and some needs are better met by one of them. What
-follows was read from each library's source at the release named, on 28 September 2026, including the
-next major where one is in preview. If something here is wrong or has changed, please open an issue.
+Good libraries exist for both halves of TypeKit. TypeKit fits when:
 
-### Choose TypeKit when
-
+- You want the value objects, the outcomes and the HTTP and database adapters to share one model:
+  the fault `Email.Create` returns is the error of a `Result` pipeline and then the problem response,
+  without mapping between a validation library, a result library and an adapter.
 - You build on .NET 10 with System.Text.Json, EF Core and ASP.NET Core, and want value objects that
   change no contract: the JSON, the column and the OpenAPI schema stay the wrapped type's, with nothing
   registered per type, and `.Value` works inside a LINQ query.
@@ -149,44 +205,9 @@ next major where one is in preview. If something here is wrong or has changed, p
   ignored result reported, no silent `{}` on the wire.
 - You publish with Native AOT.
 
-### Choose something else when
-
-| If you need | Consider | Because |
-|---|---|---|
-| .NET Framework, .NET Standard or a .NET before 10 | Vogen for value objects; CSharpFunctionalExtensions, ErrorOr or FluentResults for results | TypeKit targets .NET 10 only; these ship for .NET Standard 2.0 |
-| Newtonsoft.Json, Dapper, LINQ to DB, MongoDB, Orleans, ServiceStack or protobuf-net for value objects | Vogen | It ships an opt-in integration for each. TypeKit covers System.Text.Json, EF Core and ASP.NET Core |
-| A plain Roslyn source generator in the build rather than Metalama | Vogen or Thinktecture.Runtime.Extensions | TypeKit's generators run on Metalama (open source, no license key) in the project that declares value objects |
-| Value objects of several members, smart enums or discriminated unions | Thinktecture.Runtime.Extensions | It has `[ComplexValueObject]`, `[SmartEnum<T>]` and `[Union]`. A TypeKit value object wraps exactly one value |
-| Several errors per failure, of typed kinds | ErrorOr | An `ErrorOr<T>` carries a list of errors. A TypeKit `Result` carries one `TError`, which can be a list of your own |
-| Errors with reasons, success messages and causes | FluentResults | Its results carry reasons, errors and successes, and an error can name what caused it |
-| A functional-programming framework: `Either`, `Fin`, effects, immutable collections | LanguageExt (4.4.9; 5.0 in beta) | TypeKit's `Option` and `Result` are deliberately small, with no effect or validation types |
-| Unions of arbitrary types | OneOf | `OneOf<T0, T1, …>` is general-purpose; TypeKit has only `Option` and `Result` |
-| A `Result` on the wire | CSharpFunctionalExtensions | It ships opt-in System.Text.Json converters for its `Result`. TypeKit refuses to serialize `Option` and `Result`, by design |
-| Only your own closed set of outcomes, on .NET 11 | C#'s union types | They arrive with .NET 11 |
-| Years of production use behind the library | Any of the above | TypeKit 1.0.0 is new |
-
-### Value objects in detail
-
-| | TypeKit 1.0.0 | Vogen 8.0.7 (9.0.0-beta.2 the same) | Thinktecture.Runtime.Extensions 10.5.0 | StronglyTypedId 1.0.0-beta08 |
-|---|---|---|---|---|
-| Declared by | Implementing `IValue<T>` or `IValidatedValue<…>` on a `partial record` | `[ValueObject<T>]` on a partial type | `[ValueObject<T>]`, `[ComplexValueObject]` or `[SmartEnum<T>]` on a partial type | `[StronglyTypedId]` on a partial struct |
-| Validation | `Create` returns a `Result`, and every generated way in applies it | `Validate` returns a `Validation`; `From` throws | A `ValidateFactoryArguments` partial method | None |
-| EF Core | `UseTypeKit()` maps every value object, nothing per type; `.Value` in a query translates to the column | A generated converter per value object, which you register; comparing with a primitive in a query is an error (VOG034) | Packages per EF Core version (8, 9, 10) | Through a template of your own |
-| OpenAPI | The schema ASP.NET publishes for the wrapped type | A generated schema transformer, type and format from a built-in table; Swashbuckle support | Swashbuckle filters | None built in |
-| JSON | System.Text.Json, the wrapped type's JSON byte for byte | System.Text.Json by default; Newtonsoft.Json and more, opt-in | System.Text.Json, Newtonsoft.Json, MessagePack | System.Text.Json (more through templates) |
-| Targets | `net10.0` | `netstandard2.0`, .NET Framework projects included | `net8.0`, `net9.0` | `netstandard2.0` |
-| Generated by | Metalama, in the declaring project | A Roslyn source generator | Roslyn source generators | A Roslyn source generator |
-| License | MIT | Apache-2.0 | BSD-3-Clause | MIT |
-
-### Option and Result in detail
-
-| | TypeKit 1.0.0 | LanguageExt 4.4.9 (5.0.0-beta-77) | CSharpFunctionalExtensions 3.7.0 | ErrorOr 2.1.1 |
-|---|---|---|---|---|
-| Reaching the value | `Match`, `TryGetValue` and the combinators; no `.Value` | `Match`, `IfNone` and the like; no public `.Value` on `Option` | `.Value`, which throws on a failure | `.Value`, which returns `default` on an error |
-| A `default` instance | `Option`: `None`. `Result`: throws when used, and is an error in source (CMTK0001) | `Option`: `None` | `Maybe`: none. `Result<T>`: a success holding `default(T)` | A success holding `default(T)` |
-| An ignored result | Reported (CMTK0003) | No analyzer | No analyzer of its own | No analyzer |
-| System.Text.Json | Refused in both directions, rather than written as `{}` | No converter of its own | Opt-in converters | No converter for the type |
-| Targets | `net10.0` | `netstandard2.0` (5.0 beta: `net10.0`) | `netstandard2.0`, `net6.0`, `net8.0` | `netstandard2.0`, `net8.0`, `net10.0` |
+What to choose instead for the needs TypeKit does not meet, and the detail tables against Vogen,
+Thinktecture.Runtime.Extensions, StronglyTypedId, LanguageExt, CSharpFunctionalExtensions, ErrorOr,
+Ardalis.SmartEnum and Intellenum, versioned and dated, are on [How it compares](docs/comparison.md).
 
 ## Built with Metalama
 
@@ -196,24 +217,26 @@ references `CodoMetis.TypeKit.Generators` and in every project that references t
 object is declared by implementing its interface, with no attribute and nothing registered.
 Templates write the generated members as ordinary C#, which a build can write out for you to read
 ([Reading the generated code](src/CodoMetis.TypeKit.Generators/README.md#reading-the-generated-code)).
-A declaration that cannot be generated fails the build with its name on it, CMTK1000 to CMTK1012,
+A declaration that cannot be generated fails the build with its name on it, CMTK1000 to CMTK1022,
 instead of compiling to less than it appears to. And Metalama runs the analyzers on the code it
 transformed, which is how they reach Razor components.
 
-Metalama is in `CodoMetis.TypeKit.Generators` alone. `CodoMetis.TypeKit`, the analyzers and both
-satellites do not reference it, so a project that only wants `Option` and `Result` never receives
+Metalama is in `CodoMetis.TypeKit.Generators` alone. `CodoMetis.TypeKit`, the analyzers and the
+four satellites do not reference it, so a project that only wants `Option` and `Result` never receives
 it. It is open source under the MIT license, and building with it needs no license key, here or in
 your projects. Thanks to the Metalama team.
 
 ## Status
 
-1.0.0 is the first release. The packages share one version and follow Semantic Versioning:
+2.0.0 is the current version; 1.0.0, of 28 September 2026, was the first release, and
+[Migrating from 1.5 to 2.0](docs/migrating-to-2.md) lists what builds or runs differently since 1.5.
+The packages share one version and follow Semantic Versioning:
 the public API, the generated members of a value object, and the analyzer ids and severities are
 the contract. A new analyzer rule arrives as a warning or a suggestion in a minor version, and
 becomes an error only in a major one.
-[CHANGELOG.md](CHANGELOG.md) lists what each version changed. The plan, the decisions and their
-evidence are in [docs/plan.md](docs/plan.md), and the measurements that decided the design are in
-[spikes/](spikes/).
+[CHANGELOG.md](CHANGELOG.md) lists what each version changed. The design notes, the decision records
+and the roadmap are under [design/](design/plan.md), and the measurements that decided the design are
+in [spikes/](spikes/).
 
 ## Building
 

@@ -20,8 +20,9 @@ value objects references `CodoMetis.TypeKit.Generators`.
 builder.Services.AddOpenApi(options => options.AddTypeKit());
 ```
 
-`AddTypeKit()` adds one schema transformer, and names the component of a nested value object (see
-below). Nothing is registered per type and no assembly is scanned, and its position among the
+`AddTypeKit()` adds a schema transformer each for value objects, closed sets and merge patches, an
+operation transformer for the fault responses, and names the component of a nested value object or
+closed set (see below). Nothing is registered per type and no assembly is scanned, and its position among the
 document's other transformers does not matter. It lives in
 `Microsoft.Extensions.DependencyInjection`, beside `AddOpenApi`, which a web project imports
 implicitly.
@@ -73,11 +74,14 @@ no component at all), and both parameters are a bare `string`.
   `JsonStringEnumConverter` an enum-backed value object is its names.
 - **Each value object keeps its own component**, named after it, so the document still says
   `OrderId` where the API means an order id. A value object nested in another type is named after
-  the whole chain, `Shop.Id` as `ShopId`, so `Shop.Id` and `Stock.Id` do not share one. Two value
+  the whole chain, `Shop.Id` as `ShopId`, so `Shop.Id` and `Stock.Id` do not share one; a nested
+  closed set too, `Order.Status` as `OrderStatus`. Where that name is another type's as well, a
+  top-level `OrderStatus` beside `Order.Status`, from any assembly, generating the document throws an
+  `InvalidOperationException` naming both, rather than describing both as one. Two value
   objects of one name in different namespaces (`Billing.InvoiceNo`, `Shipping.InvoiceNo`) do share
   one, as ASP.NET does for any two types of one name, and it describes both as the first it meets.
   A name your own `CreateSchemaReferenceId` gives, set before `AddTypeKit()`, is kept, so give one of
-  them its own name there. A host that prefers value objects inlined returns `null` for them, the
+  them its own name there, or rename one. A host that prefers value objects inlined returns `null` for them, the
   nullable ones included, after `AddTypeKit()`:
 
   ```csharp
@@ -90,6 +94,9 @@ no component at all), and both parameters are a bare `string`.
           ? null
           : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
   ```
+
+  Inlined, a nullable value object or closed set admits null in its own schema wherever a referenced
+  one admits it around its reference: a closed set's property is then the enum of its names and null.
 
 - **Rules belong in `Create`, not on the property.** A validation attribute on a value-object
   property (`[MaxLength]`, `[Range]`) lands in the value object's shared component, as ASP.NET does
@@ -107,6 +114,17 @@ no component at all), and both parameters are a bare `string`.
   that description too, whichever of the two was added first.
 - **What is already said is kept.** Whatever a value object's schema already says, from ASP.NET or
   another transformer, is not overwritten; only what it leaves open is filled in.
+
+**A merge patch.** A property typed `Patch<T>` (CodoMetis.TypeKit, a JSON Merge Patch field) is
+described as `T`'s schema:
+
+- inlined where the property is, rather than as a `PatchOfstring` component;
+- never required, since absent is a state;
+- admitting null, since null is the clear: beside the type, in an enum's list of values, or as a
+  branch beside the argument's own.
+
+A value object inside a patch is described through the type it wraps, which is also what a
+source-generated host can do: the patch's converter hides the value object from its context.
 
 ## A Result as a response
 
@@ -132,12 +150,13 @@ app.MapDelete("/orders/{id}", (OrderId id) => orders.Cancel(id).ToHttpResult());
 { "type": "https://tools.ietf.org/html/rfc9110#section-15.5.10", "title": "Conflict", "status": 409, "fault": "AlreadyShipped", "traceId": "…" }
 ```
 
-- **The domain declares faults, the host their statuses.** The fault type is an enum the domain owns;
-  only the host references ASP.NET. A problem names the fault, never anything of the request.
+- **The domain declares faults, the host their statuses.** The fault type is an enum or a closed set
+  the domain owns; only the host references ASP.NET. The package adds nothing of the request to a
+  problem: it names the fault, and a `Fault<TFault>`'s detail is your sentence ([below](#a-sentence-per-occurrence)).
 - **The document says it too.** The endpoint's return type is ASP.NET's own
   `Results<Ok<OrderDto>, FaultProblem<OrderFault>>`, so the operation describes the value, and
   `AddTypeKit()` adds a problem response for every status the fault type is mapped to, as
-  `ProducesProblem` would. In minimal APIs and in MVC, an action returning the same type.
+  `ProducesProblem` would. An MVC action returning the same type is described the same way.
 - **Not a wire format.** The `Result` is matched to a response, not serialized: returning the
   `Result` itself from a handler is still refused, and the document would promise a `Result`.
 - **The host's problem details apply.** `AddFaultResponses` calls `AddProblemDetails()`, so a
@@ -151,17 +170,193 @@ app.MapDelete("/orders/{id}", (OrderId id) => orders.Cancel(id).ToHttpResult());
 
 ### Mapping faults to statuses
 
-`AddFaultResponses` maps every member of the enum when it is called, so a mapping that throws for a
+`AddFaultResponses` maps every member of the fault type when it is called, so a mapping that throws for a
 member, or gives one a status that is no error (outside 400 to 599), fails there, at startup. That is
 what the discard arm above relies on: a member the `switch` misses throws while the host starts, not
 when the fault first occurs. Without the arm, C# warns (CS8524) that a cast could produce a value no
 member names. A fault type is mapped once.
 
-A host with an endpoint whose fault type is not mapped does not start: the exception names the fault
-type and each endpoint that answers with it. The check comes with the first `AddFaultResponses` call;
-a host that never calls it refuses the first fault an endpoint reports, and its OpenAPI document,
-with the same message. A value no member names, which only a cast makes, is refused rather than
+A host with an endpoint whose fault type is not mapped does not start: an
+`InvalidOperationException` names the fault type and each endpoint that answers with it. The check
+comes with the first `AddFaultResponses` call. A host that never calls it throws the same exception
+when an endpoint first reports a fault, and when its OpenAPI document is generated. A value no member names, which only a cast makes, is refused rather than
 answered with a status the document does not list.
+
+### A response per fault
+
+A mapping can say more than a status: RFC 9457 makes the problem's `type` its primary identifier,
+which a client matches on, and `title` its summary. Both name the problem type and nothing of the
+request; without them, ASP.NET writes the status's own.
+
+```csharp
+builder.Services.AddFaultResponses<PaymentFault>(fault => fault switch
+{
+    PaymentFault.Declined  => FaultResponse.Status(StatusCodes.Status402PaymentRequired).WithType(new Uri("https://example.com/problems/declined")),
+    PaymentFault.Duplicate => StatusCodes.Status409Conflict,
+    _ => throw new ArgumentOutOfRangeException(nameof(fault)),
+});
+```
+
+A bare status converts to a `FaultResponse`, so the arms that need nothing else stay a number;
+`WithTitle("…")` sets the `title` the same way. Every member is still mapped and checked when this
+is called. The document's problem response for a
+status lists the problem types answered with it in its description:
+`Payment Required. Problem types: https://example.com/problems/declined`.
+Both write the type as the URI it is: an escape stays escaped (`/problems/a%20b`, `%C3%BC`), an
+absolute URI given unescaped is escaped, and a relative one is written as given.
+
+### A closed set as the fault type
+
+A closed set whose members are faults declares `IFaultSet<TSelf>`: each member carries a `FaultKind`,
+nothing HTTP-specific, and optionally a sentence a person reads.
+
+```csharp
+public sealed partial class AccountFault : IFaultSet<AccountFault>
+{
+    public static readonly AccountFault NotFound = new(FaultKind.NotFound, "The account does not exist.");
+    public static readonly AccountFault EmailTaken = new(FaultKind.Conflict, "Another account uses that email address.");
+    public static readonly AccountFault Locked = new(FaultKind.Forbidden, null);   // a refusal that must not explain itself
+
+    private AccountFault(FaultKind kind, string? description) { Kind = kind; Description = description; }
+
+    public FaultKind Kind { get; }
+    public string? Description { get; }
+}
+```
+
+```csharp
+builder.Services.AddFaultResponses<AccountFault>();   // every member by its kind, its description as the detail
+```
+
+A kind gives the status: `NotFound` 404, `Conflict` 409, `Invalid` 422, `Forbidden` 403 and
+`Unavailable` 503. A member whose kind is `default`, which is no kind, fails this call. The
+description becomes the problem's `detail`, so a client can show it; a member without one has no
+`detail`. To change some members, map them all, with the rest as their kind says:
+`fault => fault == AccountFault.Locked ? 423 : FaultResponse.For(fault.Kind)`. Any closed set can be a
+fault type with a mapping of its own, `AddFaultResponses<TSet>(fault => …)`, and `ToHttpResult()`
+takes a result over either.
+
+### A sentence per occurrence
+
+What varies per occurrence travels in a `Fault<TFault>` (CodoMetis.TypeKit): the fault, and a sentence
+about this one. The response, the mapping and the document stay keyed on the fault type.
+
+```csharp
+Result<Account, Fault<AccountFault>> taken = Result.Error(Fault.Of(AccountFault.EmailTaken, "The address has been in use since 3 May."));
+```
+
+```csharp
+app.MapPut("/accounts/{id:int}/email", (int id, NewAccount body) => accounts.Rename(id, body.Email).ToHttpResult());
+```
+
+The detail is the problem's `detail`, in place of the member's description. It is the application's
+sentence, written as it is: a fault's name never quotes the request, and whether a detail does is the
+application's to decide.
+
+### A status per endpoint
+
+The same fault can mean 404 on one route and 409 on another. An endpoint changes the status of one
+fault for itself, in its response and in its document entry:
+
+```csharp
+app.MapPost("/accounts", (NewAccount body) => accounts.Open(body).ToHttpResult())
+   .WithFaultStatus(AccountFault.EmailTaken, StatusCodes.Status422UnprocessableEntity);
+```
+
+An MVC action says it with an attribute, naming the member, since an attribute takes only constants:
+
+```csharp
+[HttpPost("/mvc/accounts")]
+[FaultStatus<AccountFault>(nameof(AccountFault.EmailTaken), StatusCodes.Status422UnprocessableEntity)]
+public Results<Ok<Account>, FaultProblem<AccountFault>> Open(NewAccount body) => accounts.Open(body).ToHttpResult();
+```
+
+A route group says it for its endpoints, and a controller class, with the same attribute, for its
+actions. Such a status applies to the endpoints of that group or controller that answer with the
+fault type and leaves the others alone, so a group can hold a health check beside them:
+
+```csharp
+var v3 = app.MapGroup("/v3").WithFaultStatus(AccountFault.EmailTaken, StatusCodes.Status422UnprocessableEntity);
+v3.MapPost("/accounts", (NewAccount body) => accounts.Open(body).ToHttpResult());   // answers with AccountFault: the 422 applies
+v3.MapGet("/health", () => "ok");                                                  // answers with none: left alone
+```
+
+What stops the host from starting, naming the status and its endpoints:
+
+- a status on one endpoint or action that answers with no fault of that type;
+- a status on a group or a controller none of whose own endpoints answers with that type. An endpoint
+  of another group or controller does not count, and a controller that derives from a base class
+  with the attribute is a controller of its own;
+- an attribute naming no member.
+
+The same holds for any convention builder that covers several endpoints, such as the one
+`MapControllers()` returns. A status outside 400 to 599 is refused where it is set. Where several
+statuses name one member, the last in ASP.NET's metadata order wins: an endpoint's own over its
+group's, an inner group's over an outer group's, an action's over its controller's. ASP.NET puts the
+metadata of `MapControllers()`'s builder after every attribute, so a status set there wins over an
+action's own.
+
+### The success the endpoint chooses
+
+A success is `200 OK` with its value unless the endpoint says otherwise, with any of ASP.NET's typed
+results, so the document still describes it:
+
+```csharp
+app.MapPost("/v2/accounts", (NewAccount body) => accounts.Open(body).ToHttpResult(account => TypedResults.Created($"/accounts/{account.Id}", account)));
+```
+
+The operation lists `201` with the account as its body, beside the problem responses, and the
+response carries the `Location` header. A result of the application's own, one that sets an ETag,
+takes the same place. A `Result<TError>` takes a factory without a value, `ToHttpResult(() =>
+TypedResults.Accepted("/jobs/7"))`.
+
+### What the host adds to a problem
+
+While `ToHttpResult()` writes a problem, the request carries an `IFaultFeature`: the fault type, the
+fault, the name the problem gives it and its detail. A `CustomizeProblemDetails` of the host's reads
+it to add what the package does not name, and finds it on no other problem the request writes.
+
+```csharp
+builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+{
+    if (context.HttpContext.Features.Get<IFaultFeature>() is { } fault)
+        context.ProblemDetails.Extensions["code"] = $"ACC-{fault.Name}";   // the host's own extension, for this fault only
+});
+builder.Services.Configure<FaultResponseOptions>(options => options.QualifiedFaultNames = true);   // "fault": "AccountFault.EmailTaken"
+```
+
+`QualifiedFaultNames` writes `fault` with its type, so two fault types that share a member name stay
+apart in one client; the default is the bare name. A nested type is qualified after its nesting chain,
+an enum as a closed set's `QualifiedName` is, so `Billing.Fault` and `Shipping.Fault` give
+`Billing.Fault.NotFound` and `Shipping.Fault.NotFound`.
+
+The document describes `fault` as an optional string on the problem schema the fault responses refer
+to, so a generated client has the member to match on; its description says which of the two forms
+this host writes. That schema is the shared `ProblemDetails` component, which ASP.NET's own problem
+responses refer to as well, so the description also says that only a problem answering a fault
+carries it. It stays a string, since an enum of every fault type would change every operation when
+one is added. A document without a fault response keeps the schema as ASP.NET writes it.
+
+### Faults a client must not tell apart
+
+Every problem `ToHttpResult()` writes names its fault in `fault`, for every member, whether it has a
+description or not: the name is part of the response's contract, as its status is, and the document
+describes it. A status alone hides nothing. A sign-in that answers 401 for an unknown user and for a
+wrong password still says `UnknownUser` or `WrongPassword`, and so which accounts exist. Where two
+causes must not be told apart, make them one fault before `ToHttpResult()`, mapping the domain's
+faults to a member of the boundary's own:
+
+```csharp
+public enum SignInFault { UnknownUser, WrongPassword }   // the domain's: which check refused
+public enum LoginFault { InvalidCredentials }            // what the client is told
+
+builder.Services.AddFaultResponses<LoginFault>(_ => StatusCodes.Status401Unauthorized);
+
+app.MapPost("/login", (Credentials credentials) => accounts.SignIn(credentials).MapError(_ => LoginFault.InvalidCredentials).ToHttpResult());
+```
+
+Both causes then answer alike, status, `type`, `title`, `fault` and `detail`. The domain keeps its two
+faults for its own use, a log or a lockout count; a `Fault<TFault>`'s detail stays behind with them.
 
 ## NodaTime
 
@@ -234,3 +429,17 @@ The generated members cover the request itself:
 
   Both minimal APIs and MVC then answer a body without it with 400. An optional constructor
   parameter (`Discount? Discount`) then needs a default value (`= null`).
+- **A query, header or form value missing from an MVC request is not refused either.** MVC binds
+  nothing for a non-nullable struct and calls the action with `default`, as it does for a `Guid` or
+  an `int`, and the model state stays valid; for a struct value object that is again an instance
+  that passed no factory. A minimal API answers 400, and MVC already requires a class value object
+  or a closed set, as it does any non-nullable reference type. Mark the parameter `[BindRequired]`,
+  and MVC answers 400 ("A value for the 'id' parameter or property was not provided."), or make it
+  nullable where it is optional, and the action receives `null`:
+
+  ```csharp
+  using Microsoft.AspNetCore.Mvc.ModelBinding;   // BindRequired
+
+  [HttpGet("/mvc/orders")]
+  public OrderDto Find([FromQuery, BindRequired] OrderId id, [FromQuery] Quantity? limit) => orders.Find(id, limit);
+  ```

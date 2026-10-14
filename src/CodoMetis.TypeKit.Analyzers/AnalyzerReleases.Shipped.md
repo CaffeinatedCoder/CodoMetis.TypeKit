@@ -36,3 +36,20 @@ Rule ID | Category | Severity | Notes
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------------------------------------------------------------
+
+## Release 2.0.0
+
+### New Rules
+
+Rule ID | Category | Severity | Notes
+--------|----------|----------|-------------------------------------------------------------
+CMTK0010 | Usage | Error | TypeArgumentConstraintAnalyzer, a type argument that breaks [Abstract], [Sealed], [Record] or [Concrete] on its parameter
+CMTK0011 | Usage | Error | RequiredParameterlessConstructorAnalyzer, a concrete type under [RequireParameterlessConstructor] without the constructor it requires
+CMTK0012 | Usage | Error | PositionalMatchArgumentAnalyzer, a closed set's Match given an argument by position
+CMTK0013 | Usage | Error | ClosedSetMemberAssignedAnalyzer, a closed set's member written outside its declaration
+
+### Changed Rules
+
+Rule ID | New Category | New Severity | Old Category | Old Severity | Notes
+--------|--------------|--------------|--------------|--------------|-------------------------------------------------------------
+CMTK0003 | Usage | Error | Usage | Warning | IgnoredOutcomeAnalyzer, raised in a major version; also a Wait, a WaitAll and a loop that drop results

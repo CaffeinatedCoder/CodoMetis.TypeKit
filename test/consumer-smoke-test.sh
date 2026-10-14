@@ -16,14 +16,15 @@
 #
 # Four consumers:
 #   core     references only CodoMetis.TypeKit: Option and Result work, no Metalama arrives, and
-#            CMTK0001 and CMTK0002 fire (docs/plan.md §10).
+#            CMTK0001 and CMTK0002 fire (design/analyzers.md).
 #   layered  a domain library references CodoMetis.TypeKit.Generators, and an app reaches everything
 #            only through that library: the app uses the generated members, the transitive fabric
 #            generates a value object the app declares itself, and CMTK0001 fires in the app, in the
-#            domain library, and in a Razor component of a third project.
+#            domain library, and in a Razor component of a third project; CMTK0011 and CMTK0013 in
+#            the domain library, on code Metalama wove.
 #   host     a web host with both satellites: EF Core maps the value objects and translates .Value,
 #            and the OpenAPI document describes them.
-#   aot      the same ground published with Native AOT (docs/plan.md §11): no trim or AOT warning
+#   aot      the same ground published with Native AOT (design/native-aot.md): no trim or AOT warning
 #            from a package or from the code woven into the consumer, and the native binary does
 #            what the JIT build does.
 #
@@ -409,11 +410,33 @@ public static class Guard
         return id;
     }
 }
+
+// Woven, and named before the static constructor's body, which then swaps a member.
+public sealed partial class Swapped : CodoMetis.TypeKit.ClosedSets.IClosedSet<Swapped>
+{
+    public static readonly Swapped Open = new();
+    public static readonly Swapped Closed = new();
+
+    static Swapped() { Open = Closed; }
+}
+
+[RequireParameterlessConstructor]
+public interface IEndpoint;
+
+public abstract class EndpointBase { protected EndpointBase(int port) { } }
+
+// No parameterless constructor, and a base that base() does not reach.
+public sealed class Orders : EndpointBase, IEndpoint
+{
+    public Orders(int port) : base(port) { }
+}
 CSHARP
 
 run_failing dotnet build --no-incremental
 echo "$output" | grep -F "Guard.cs(" > "$work/layered.declaring" || true
 assert_contains "error CMTK0001" "$work/layered.declaring" "CMTK0001 fires in the declaring project for a local typed by a generated member"
+assert_contains "error CMTK0013: 'Swapped.Open' is written outside its declaration" "$work/layered.declaring" "CMTK0013 fires in the declaring project for a member assigned in a woven set's static constructor"
+assert_contains "error CMTK0011" "$work/layered.declaring" "CMTK0011 fires for a type without the constructor its interface requires"
 rm Guard.cs
 
 # By hand: the razorclasslib template takes no --framework.
@@ -549,7 +572,7 @@ assert_contains "found=ABC:2"    "$work/host.out" "value objects round-trip thro
 # generators weave into a consumer, and they cannot tell that a run-time path still works. Under
 # Native AOT an interface nothing uses is removed from a type, and reflection over it finds nothing:
 # that is how the OpenAPI satellite once described every value object as {} with no warning at any
-# build (docs/plan.md §11). So this publishes a consumer with PublishAot, reads the publish warnings,
+# build (design/native-aot.md). So this publishes a consumer with PublishAot, reads the publish warnings,
 # and runs the native binary.
 #
 # The value objects live in namespace Shop, so a warning about woven code names Shop.; a warning in
@@ -565,9 +588,30 @@ run dotnet add package NodaTime --version "$(central_version NodaTime)"
 
 cat > Shop.cs <<'CSHARP'
 using CodoMetis.TypeKit;
+using CodoMetis.TypeKit.ClosedSets;
 using CodoMetis.TypeKit.ValueObjects;
 
 namespace Shop;
+
+// A closed set: its name in JSON, as a value and a dictionary key, a string enum in OpenAPI, and a
+// text column in EF Core, a JSON column's included.
+public sealed partial class OrderStatus : IClosedSet<OrderStatus>
+{
+    public static readonly OrderStatus Open = new();
+    public static readonly OrderStatus Shipped = new();
+}
+
+// A fault set: each member's kind gives its status, its description the problem's detail.
+public sealed partial class AccountFault : IFaultSet<AccountFault>
+{
+    public static readonly AccountFault NotFound = new(FaultKind.NotFound, "The account does not exist.");
+    public static readonly AccountFault EmailTaken = new(FaultKind.Conflict, null);
+
+    private AccountFault(FaultKind kind, string? description) { Kind = kind; Description = description; }
+
+    public FaultKind Kind { get; }
+    public string? Description { get; }
+}
 
 // One per JSON strategy: a reader method (Guid), the serializer's contract for a number, the
 // fallback with a built-in converter (Uri, an enum), a string, and parsing through a TypeConverter.
@@ -641,6 +685,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using CodoMetis.TypeKit;
+using CodoMetis.TypeKit.AspNetCore;
 using CodoMetis.TypeKit.ValueObjects;
 using Shop;
 
@@ -670,6 +715,12 @@ await Check("stored", async () =>
     return JsonSerializer.Deserialize<Code>("\"abc\"", store)!.Value;
 });
 await Check("option-refused", async () => JsonSerializer.Serialize(new Holder(Option.Some(1)), ShopJson.Default.Holder));
+await Check("set-json", async () => JsonSerializer.Serialize(new Tracking(OrderStatus.Shipped, new() { [OrderStatus.Open] = 1 }), ShopJson.Default.Tracking));
+await Check("set-json-read", async () =>
+{
+    var tracking = JsonSerializer.Deserialize("""{"Status":"Open","Counts":{"Shipped":2}}""", ShopJson.Default.Tracking)!;
+    return $"{ReferenceEquals(tracking.Status, OrderStatus.Open)} {tracking.Counts[OrderStatus.Shipped]}";
+});
 
 // Parsing, including through a TypeConverter (NodaTime's LocalDate).
 await Check("parse", async () => $"{Quantity.Parse("42", null).Value} {Weekday.Parse("Monday", null).Value} {Link.Parse("https://p.test/", null).Value} {Day.Parse("2026-09-27", null).Value:yyyy-MM-dd}");
@@ -690,12 +741,24 @@ builder.Services.AddFaultResponses<CodeFault>(fault => fault switch
     CodeFault.NotUpperCase => StatusCodes.Status422UnprocessableEntity,
     _ => throw new ArgumentOutOfRangeException(nameof(fault)),
 });
+// A fault set answered by its kinds, and the fault on the request for the host's own extension.
+builder.Services.AddFaultResponses<AccountFault>();
+builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+{
+    if (context.HttpContext.Features.Get<IFaultFeature>() is { } fault) context.ProblemDetails.Extensions["code"] = $"ACC-{fault.Name}";
+});
 
 await using var app = builder.Build();
 app.MapOpenApi();
 app.MapGet("/orders/{id}", (OrderId id, Quantity? limit) => new OrderView(id, [Quantity.From(1)], Amount.From(1.5m)));
 app.MapPost("/orders", (OrderView body) => body.Amount);
+app.MapPost("/tracking", (Tracking body) => body.Status.Name);
+app.MapPatch("/orders/{id}", (OrderId id, OrderPatch patch) => $"{patch.Code.Match(code => $"Value({code.Value})", () => "Null", () => "Absent")} {patch.Note.Match(note => $"Value({note})", () => "Null", () => "Absent")}");
 app.MapGet("/codes/{text}", (string text) => Code.Create(text).ToHttpResult());
+app.MapGet("/accounts/{id}", (string id) => (id == "taken" ? Result<string, AccountFault>.Error(AccountFault.EmailTaken) : Result<string, AccountFault>.Error(AccountFault.NotFound)).ToHttpResult());
+app.MapGet("/strict/accounts/{id}", (string id) => Result<string, AccountFault>.Error(AccountFault.EmailTaken).ToHttpResult()).WithFaultStatus(AccountFault.EmailTaken, StatusCodes.Status422UnprocessableEntity);
+app.MapGet("/detailed/accounts/{id}", (string id) => Result<string, Fault<AccountFault>>.Error(Fault.Of(AccountFault.EmailTaken, "In use since 3 May.")).ToHttpResult());
+app.MapPost("/accounts", () => Result<string, AccountFault>.Success("a1").ToHttpResult(id => TypedResults.Created($"/accounts/{id}", id)));
 await app.StartAsync();
 
 using var http = new HttpClient { BaseAddress = new Uri(app.Urls.First()) };
@@ -710,8 +773,14 @@ var schemas = document?["components"]?["schemas"];
 Console.WriteLine($"openapi-component={schemas?["OrderId"]?.ToJsonString() ?? "missing"}");
 Console.WriteLine($"openapi-parameter={document?["paths"]?["/orders/{id}"]?["get"]?["parameters"]?[0]?["schema"]?.ToJsonString() ?? "missing"}");
 Console.WriteLine($"openapi-items={schemas?["OrderView"]?["properties"]?["quantities"]?["items"]?.ToJsonString() ?? "missing"}");
+Console.WriteLine($"openapi-set={schemas?["OrderStatus"]?.ToJsonString() ?? "missing"}");
 await Check("bound", async () => ((int)(await http.GetAsync($"/orders/{Guid.NewGuid()}?limit=3")).StatusCode).ToString());
 await Check("malformed", async () => ((int)(await http.GetAsync("/orders/nope")).StatusCode).ToString());
+// A merge patch through the context: the patch's converter hides Code and string from the generator,
+// so the value object reads with its own converter and the string with the serializer's built-in one.
+await Check("patch", async () => await (await http.PatchAsync($"/orders/{Guid.NewGuid()}", new StringContent("""{"code":"ABC","note":null}""", System.Text.Encoding.UTF8, "application/json"))).Content.ReadAsStringAsync());
+await Check("patch-refused", async () => ((int)(await http.PatchAsync($"/orders/{Guid.NewGuid()}", new StringContent("""{"code":"abc"}""", System.Text.Encoding.UTF8, "application/json"))).StatusCode).ToString());
+Console.WriteLine($"openapi-patch={schemas?["OrderPatch"]?["properties"]?["code"]?.ToJsonString() ?? "missing"} required={schemas?["OrderPatch"]?["required"]?.ToJsonString() ?? "none"}");
 await Check("result-success", async () => await http.GetStringAsync("/codes/ABC"));
 await Check("result-fault", async () =>
 {
@@ -720,6 +789,21 @@ await Check("result-fault", async () =>
     return $"{(int)response.StatusCode} {response.Content.Headers.ContentType?.MediaType} {problem?["fault"]}";
 });
 Console.WriteLine($"result-responses={string.Join(",", document?["paths"]?["/codes/{text}"]?["get"]?["responses"]?.AsObject().Select(r => r.Key) ?? [])}");
+async Task<string> Problem(string path)
+{
+    var response = await http.GetAsync(path);
+    var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync());
+    return $"{(int)response.StatusCode} {problem?["fault"]} {problem?["detail"]?.ToString() ?? "-"} {problem?["code"]}";
+}
+await Check("fault-kind", () => Problem("/accounts/missing"));
+await Check("fault-strict", () => Problem("/strict/accounts/x"));
+await Check("fault-detail", () => Problem("/detailed/accounts/x"));
+await Check("fault-created", async () =>
+{
+    var response = await http.PostAsync("/accounts", content: null);
+    return $"{(int)response.StatusCode} {response.Headers.Location}";
+});
+Console.WriteLine($"fault-responses={string.Join(",", document?["paths"]?["/strict/accounts/{id}"]?["get"]?["responses"]?.AsObject().Select(r => r.Key) ?? [])}");
 await app.StopAsync();
 
 public sealed record Line(OrderId Id, Code Code, Name Name, Quantity Quantity, Amount Amount, Link Link, Weekday Weekday,
@@ -727,17 +811,24 @@ public sealed record Line(OrderId Id, Code Code, Name Name, Quantity Quantity, A
 
 public sealed record OrderView(OrderId Id, List<Quantity> Quantities, Amount Amount);
 
+public sealed record OrderPatch(Patch<Code> Code, Patch<string> Note);
+
 public sealed record Holder(Option<int> Value);
+
+public sealed record Tracking(OrderStatus Status, Dictionary<OrderStatus, int> Counts);
 
 // Lists no wrapped type: the generated converters must not need one.
 [JsonSerializable(typeof(Line))]
 [JsonSerializable(typeof(Holder))]
 [JsonSerializable(typeof(Code))]
 [JsonSerializable(typeof(Amount))]
+[JsonSerializable(typeof(Tracking))]
 internal partial class ShopJson : JsonSerializerContext;
 
 // The web host's: what the endpoints exchange, and what their value objects wrap, for the schemas.
 [JsonSerializable(typeof(OrderView))]
+[JsonSerializable(typeof(OrderPatch))]
+[JsonSerializable(typeof(Tracking))]
 [JsonSerializable(typeof(Amount))]
 [JsonSerializable(typeof(Code))]
 [JsonSerializable(typeof(string))]
@@ -758,6 +849,7 @@ run dotnet add package Microsoft.EntityFrameworkCore.Sqlite --version "$ef_versi
 run dotnet add package Microsoft.EntityFrameworkCore.Design --version "$ef_version"
 
 cat > Program.cs <<'CSHARP'
+using CodoMetis.TypeKit;
 using Microsoft.EntityFrameworkCore;
 using Shop;
 
@@ -771,11 +863,26 @@ var id = OrderId.From(Guid.Parse("0199aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee"));
 
 await using var db = new StoreDb();
 await db.Database.OpenConnectionAsync();
-await db.Database.ExecuteSqlRawAsync("CREATE TABLE Orders (Id TEXT NOT NULL PRIMARY KEY, Code TEXT NOT NULL, Quantity INTEGER NOT NULL)");
+await db.Database.ExecuteSqlRawAsync("CREATE TABLE Orders (Id TEXT NOT NULL PRIMARY KEY, Code TEXT NOT NULL, Quantity INTEGER NOT NULL, Status TEXT NOT NULL, Delivery TEXT NOT NULL)");
 await Check("ef-insert", async () =>
 {
-    db.Orders.Add(new Order { Id = id, Code = Code.FromKnownGood("ABC"), Quantity = Quantity.From(2) });
+    db.Orders.Add(new Order { Id = id, Code = Code.FromKnownGood("ABC"), Quantity = Quantity.From(2), Status = OrderStatus.Shipped, Delivery = new() { Status = OrderStatus.Open, Quantity = Quantity.From(3) } });
     return (await db.SaveChangesAsync()).ToString();
+});
+db.ChangeTracker.Clear();
+await Check("ef-set-stored", async () =>
+{
+    await using var command = db.Database.GetDbConnection().CreateCommand();
+    command.CommandText = "SELECT Status || ' ' || Delivery FROM Orders";
+    return (string)(await command.ExecuteScalarAsync())!;
+});
+var shipped = OrderStatus.Shipped;
+await Check("ef-set-parameter", async () => (await db.Orders.Where(o => o.Status == shipped).SingleAsync()).Status.Name);
+db.ChangeTracker.Clear();
+await Check("ef-json-column", async () =>
+{
+    var order = await db.Orders.Where(o => o.Delivery.Status == OrderStatus.Open).SingleAsync();
+    return $"{order.Delivery.Status.Name} {order.Delivery.Quantity.Value}";
 });
 db.ChangeTracker.Clear();
 await Check("ef-value", async () => (await db.Orders.Where(o => o.Code.Value.StartsWith("AB")).SingleAsync()).Quantity.Value.ToString());
@@ -787,6 +894,14 @@ await Check("ef-stored", async () =>
     await db.Database.ExecuteSqlRawAsync("UPDATE Orders SET Code = 'lower'");
     return (await db.Orders.Where(o => o.Id == id).SingleAsync()).Code.Value;
 });
+db.ChangeTracker.Clear();
+// The query helpers compose the query inside the package, where EF's precompiler, which works on
+// the application's own call sites, never sees it: measured here, with the workaround the docs give.
+await Check("ef-first-or-none", () => Task.FromResult(db.Orders.FirstOrNone(o => o.Code.Value.StartsWith("lo")).IsSome().ToString()));
+db.ChangeTracker.Clear();
+await Check("ef-first-or-none-async", async () => (await db.Orders.FirstOrNoneAsync(o => o.Code.Value.StartsWith("lo"))).IsSome().ToString());
+db.ChangeTracker.Clear();
+await Check("ef-first-or-none-written", async () => (await db.Orders.Where(o => o.Code.Value.StartsWith("lo")).Take(1).ToListAsync()).FirstOrNone().IsSome().ToString());
 db.ChangeTracker.Clear();
 await db.Database.ExecuteSqlRawAsync("CREATE TABLE Shipments (Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, Carrier TEXT NOT NULL)");
 await Check("ef-identity", async () =>
@@ -805,6 +920,15 @@ public class Order
     public OrderId Id { get; set; }
     public Code Code { get; set; } = null!;
     public Quantity Quantity { get; set; }
+    public OrderStatus Status { get; set; } = OrderStatus.Open;
+    public Delivery Delivery { get; set; } = new();
+}
+
+// Mapped to a JSON column: a closed set and a value object inside it.
+public class Delivery
+{
+    public OrderStatus Status { get; set; } = OrderStatus.Open;
+    public Quantity Quantity { get; set; }
 }
 
 // A key over an integer, which UseTypeKit() makes an identity key as it would be for an int.
@@ -820,6 +944,9 @@ public sealed class StoreDb : DbContext
     public DbSet<Shipment> Shipments => Set<Shipment>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder options) => options.UseSqlite("Data Source=:memory:").UseTypeKit();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<Order>().ComplexProperty(o => o.Delivery, delivery => delivery.ToJson());
 }
 CSHARP
 
@@ -853,16 +980,33 @@ assert_contains "openapi=200"                      "$work/aot.out" "the OpenAPI 
 assert_contains 'openapi-component={"type":"string","format":"uuid"}' "$work/aot.out" "OrderId is a uuid component"
 assert_contains 'openapi-parameter={"type":"string","format":"uuid"}' "$work/aot.out" "the route parameter is a uuid"
 assert_contains 'openapi-items={"$ref":"#/components/schemas/Quantity"}' "$work/aot.out" "a list of value objects keeps its items"
+assert_contains 'openapi-set={"enum":["Open","Shipped"],"type":"string"}' "$work/aot.out" "a closed set is a string enum of its members' names"
 assert_contains "bound=200"                        "$work/aot.out" "a route parameter binds through the generated TryParse"
 assert_contains 'result-success="ABC"'             "$work/aot.out" "ToHttpResult answers a success with its value"
 assert_contains "result-fault=422 application/problem+json NotUpperCase" "$work/aot.out" "and a fault as problem details with its mapped status"
 assert_contains "result-responses=200,400,422"     "$work/aot.out" "the document lists the value and each mapped status"
+assert_contains "fault-kind=404 NotFound The account does not exist. ACC-NotFound" "$work/aot.out" "a fault set is answered by its kind, its description the detail, the host's extension from the fault feature"
+assert_contains "fault-strict=422 EmailTaken - ACC-EmailTaken" "$work/aot.out" "an endpoint's status replaces the kind's"
+assert_contains "fault-detail=409 EmailTaken In use since 3 May. ACC-EmailTaken" "$work/aot.out" "a Fault's detail reaches the problem"
+assert_contains "fault-created=201 /accounts/a1"   "$work/aot.out" "the endpoint's own success, with its Location"
+assert_contains "fault-responses=200,404,422"      "$work/aot.out" "the document lists the endpoint's status in place of the kind's"
 assert_contains "malformed=400"                    "$work/aot.out" "a malformed route parameter is a 400"
+assert_contains 'patch=Value(ABC) Null'            "$work/aot.out" "a Patch<T> reads a value object and a null through the context under Native AOT"
+assert_contains 'set-json={"Status":"Shipped","Counts":{"Open":1}}' "$work/aot.out" "a closed set writes its name through the context, as a value and as a dictionary key"
+assert_contains "set-json-read=True 2"             "$work/aot.out" "and reads the members themselves back"
+assert_contains "patch-refused=400"                "$work/aot.out" "a value object a patch wraps still refuses"
+assert_contains 'openapi-patch={"type":["null","string"],"description":"A JSON Merge Patch field: absent leaves the value as it is, null clears it, a value sets it."} required=none' "$work/aot.out" "a patch property is its wrapped type's schema, inlined and nullable, and not required"
 assert_contains "ef-insert=1"                      "$work/aot.out" "EF Core writes value objects through the compiled model"
 assert_contains "ef-value=2"                       "$work/aot.out" ".Value translates in a precompiled query"
 assert_contains "ef-parameter=ABC"                 "$work/aot.out" "a value-object parameter is mapped at run time"
 assert_contains "ef-stored=lower"                  "$work/aot.out" "a stored value the rules refuse is read without them"
 assert_contains "ef-identity=1,2"                  "$work/aot.out" "a key over an integer is generated by the database"
+assert_contains 'ef-set-stored=Shipped {"Quantity":3,"Status":"Open"}' "$work/aot.out" "a closed set is its name in a column and in a JSON column, through the compiled model"
+assert_contains "ef-set-parameter=Shipped"         "$work/aot.out" "a closed-set parameter is mapped at run time"
+assert_contains "ef-json-column=Open 3"            "$work/aot.out" "a JSON column reads a closed set and a value object back in a precompiled query"
+assert_contains "ef-first-or-none=THREW InvalidOperationException: Query wasn't precompiled" "$work/aot.out" "a query helper is not precompiled, as the docs say: the base package's FirstOrNone on a query"
+assert_contains "ef-first-or-none-async=THREW InvalidOperationException: Query wasn't precompiled" "$work/aot.out" "and the EF satellite's FirstOrNoneAsync"
+assert_contains "ef-first-or-none-written=True"    "$work/aot.out" "the docs' workaround, the operators written at the call site, runs"
 
 [[ $failed -eq 0 ]] || { echo; echo "consumer smoke test FAILED"; exit 1; }
 echo

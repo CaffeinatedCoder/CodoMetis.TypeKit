@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -10,8 +11,9 @@ namespace CodoMetis.TypeKit.Analyzers;
 
 /// <summary>
 /// CMTK0003: a <c>Result</c> or <c>Option</c> that a call returns, or a collection of them that the
-/// statement made, dropped by an expression statement, awaited or not, or by a conversion of its
-/// <c>Task</c> to a plain <c>Task</c>, a method group's included.
+/// statement made, dropped by an expression statement, awaited or not, by a conversion of its
+/// <c>Task</c> to a plain <c>Task</c>, a method group's included, by <c>Wait</c>, or by a loop that
+/// never reads them.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -24,6 +26,10 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// silently: <c>Task Cancel(Guid id) =&gt; orders.CancelAsync(id);</c>, <c>return svc.DoAsync();</c>
 /// in a method returning <c>Task</c>, <c>Func&lt;Task&gt; f = () =&gt; svc.DoAsync();</c>. The implicit
 /// conversion of a call's task is reported; an explicit <c>(Task)</c> cast says the drop is intended.
+/// A call reached through a branch, <c>await (dry ? CancelAsync(id) : ShipAsync(id));</c>, a
+/// <c>switch</c> expression or <c>held ?? CancelAsync(id)</c>, is each branch's call, reported at the branch. <c>ConfigureAwait</c> and
+/// <c>WaitAsync</c> hand on the task they are called on: through them a call's task is still the
+/// call's, and a task the caller holds, <c>await held.ConfigureAwait(false);</c>, drops nothing.
 /// A <c>ValueTask&lt;T&gt;</c> has no conversion to <c>ValueTask</c>. A method group converts the same
 /// way to a delegate that returns <c>Task</c>: <c>Func&lt;Guid, Task&gt; f = orders.CancelAsync;</c>, or
 /// <c>bus.Subscribe&lt;Guid&gt;(orders.CancelAsync)</c> for a <c>Func&lt;T, Task&gt;</c> parameter. A cast
@@ -33,18 +39,30 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// A collection of results is dropped as silently: <c>await Task.WhenAll(ids.Select(orders.CancelAsync));</c>
 /// awaits a <c>Result[]</c> nobody reads, and <c>ids.Select(orders.Cancel).ToList();</c> builds a list
 /// of them and forgets it. A collection is an array, or a type that is or implements
-/// <c>ICollection&lt;T&gt;</c> or <c>IReadOnlyCollection&lt;T&gt;</c>, of results or of tasks of them: its
-/// elements exist. A lazy <c>IEnumerable&lt;T&gt;</c> has run nothing, and CA1806 reports a LINQ query
+/// <c>ICollection&lt;T&gt;</c> or <c>IReadOnlyCollection&lt;T&gt;</c>, of results, of tasks of them or of
+/// key-value pairs whose value is one: its elements exist. A tuple that holds a result is held to the
+/// same rule. A lazy <c>IEnumerable&lt;T&gt;</c> has run nothing, and CA1806 reports a LINQ query
 /// that is dropped. The collection is reported when the statement made the results in it
 /// (<see cref="MadeResults"/>). One that only passes on results the statement was given, as
 /// <c>await Task.WhenAll(first, second)</c> over tasks in variables or <c>pending.ToList()</c> do,
-/// leaves them where they were and is silent.
+/// leaves them where they were and is silent. A lazy sequence a call returns without being given any
+/// result, <c>orders.CancelEach(ids)</c>, makes its results as it is enumerated, so materialising it
+/// in the statement made them too.
+/// </para>
+/// <para>
+/// <c>orders.CancelAsync(id).Wait();</c> blocks until the result exists and hands it to nobody, and
+/// <c>Task.WaitAll(ids.Select(orders.CancelAsync))</c> converts the tasks it made to plain ones, as a
+/// single task's conversion does. A <c>foreach</c> or <c>await foreach</c> over results its header made,
+/// whose body never reads the iteration variable, drains them: an iteration variable named <c>_</c>
+/// says the drop is intended.
 /// </para>
 /// <para>
 /// <c>Tap</c>, <c>TapAsync</c>, <c>TapError</c> and <c>TapErrorAsync</c> return their receiver unchanged,
 /// and so do the <c>Task</c> continuations of those names, so <c>result.Tap(log);</c> or
-/// <c>await pending.TapAsync(log);</c> on a variable drops nothing the caller does not still hold. On
-/// anything else, such as <c>Find(id).Tap(log);</c>, the result is gone and is reported.
+/// <c>await pending.TapAsync(log);</c> on a variable drops nothing the caller does not still hold. Nor
+/// does a chain of them, <c>result.Tap(log).TapError(warn);</c>, or one on what a held task completes
+/// with, <c>(await pending).Tap(log);</c>. On anything else, such as <c>Find(id).Tap(log);</c>, the
+/// result is gone and is reported.
 /// </para>
 /// <para>
 /// In a project that declares value objects, Metalama runs analyzers on the source before weaving,
@@ -63,9 +81,9 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         title: "Result or Option ignored",
         messageFormat: "The {0} that '{1}' returns is ignored, so its outcome is never seen. Handle it, or discard it with '_ =' if nothing depends on it.",
         category: "Usage",
-        DiagnosticSeverity.Warning,
+        DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "A Result carries an error and an Option an absence; dropping either, or a collection of them, as a statement, or converting its Task to a plain Task, means nobody decides what happens then. Assign it to '_' to make an intended drop explicit.",
+        description: "A Result carries an error and an Option an absence; dropping either, or a collection of them, as a statement, by converting its Task to a plain Task, by waiting for it, or by a loop that never reads them, means nobody decides what happens then. Assign it to '_', or name a loop's variable '_', to make an intended drop explicit.",
         helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.IgnoredOutcome)
     );
 
@@ -91,11 +109,17 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
                 start.Compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1"),
                 start.Compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask`1"),
                 start.Compilation.GetSpecialType(SpecialType.System_Collections_Generic_ICollection_T),
-                start.Compilation.GetSpecialType(SpecialType.System_Collections_Generic_IReadOnlyCollection_T));
+                start.Compilation.GetSpecialType(SpecialType.System_Collections_Generic_IReadOnlyCollection_T),
+                start.Compilation.GetSpecialType(SpecialType.System_Collections_Generic_IEnumerable_T),
+                start.Compilation.GetTypeByMetadataName("System.Collections.Generic.IAsyncEnumerable`1"),
+                start.Compilation.GetTypeByMetadataName("System.ReadOnlySpan`1"),
+                start.Compilation.GetTypeByMetadataName("System.Collections.Generic.KeyValuePair`2"));
 
             start.RegisterOperationAction(operation => Analyze(operation, symbols, tasks), OperationKind.ExpressionStatement);
             start.RegisterOperationAction(operation => AnalyzeConversion(operation, symbols, tasks), OperationKind.Conversion);
             start.RegisterOperationAction(operation => AnalyzeMethodGroup(operation, symbols, tasks), OperationKind.DelegateCreation);
+            start.RegisterOperationAction(operation => AnalyzeWait(operation, symbols, tasks), OperationKind.Invocation);
+            start.RegisterOperationAction(operation => AnalyzeLoop(operation, symbols, tasks), OperationKind.Loop);
             start.RegisterSyntaxNodeAction(
                 node => AnalyzeUnbound(node, symbols),
                 SyntaxKind.ExpressionStatement,
@@ -110,38 +134,83 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         var expression = ((IExpressionStatementOperation)context.Operation).Operation;
 
         // Only a value a call produced: an assignment or an increment is a statement for its effect.
-        var call = expression is IAwaitOperation { Operation: var awaited } ? awaited : Unwrap(expression);
-        if (call is not IInvocationOperation invocation) return;
+        var awaited = expression is IAwaitOperation { Operation: var inner } ? inner : null;
+        var dropped = Unwrap(awaited ?? expression);
 
-        // await LoadAsync().ConfigureAwait(false): the result is LoadAsync's, and so is the name.
-        if (invocation is { TargetMethod.Name: "ConfigureAwait", Instance: IInvocationOperation configured }) invocation = configured;
+        // await LoadAsync().ConfigureAwait(false): the result is LoadAsync's, and so is the name; on a
+        // task still held, await held.WaitAsync(t), nothing is dropped.
+        var passedOn = tasks.PassedOn(dropped);
 
-        if (DroppedOutcome(expression.Type, invocation, symbols, tasks) is not { } outcome) return;
+        foreach (var invocation in Producers(dropped, tasks))
+        {
+            // The statement's own call keeps the statement's location, and its type unless a
+            // pass-through stands between them; a branch's call keeps its own.
+            var own  = ReferenceEquals(invocation, passedOn);
+            var type = own && ReferenceEquals(invocation, dropped) ? expression.Type : awaited is null ? invocation.Type : tasks.Awaited(invocation.Type);
+            if (DroppedOutcome(type, invocation, symbols, tasks) is not { } outcome) continue;
 
-        context.Report(Diagnostic.Create(Rule, expression.Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+            context.Report(Diagnostic.Create(Rule, (own ? expression : invocation).Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+        }
+    }
+
+    /// <summary>
+    /// The calls whose values <paramref name="operation"/> drops as one: the call itself, or each
+    /// branch's call of a conditional or a <c>switch</c> expression, through implicit conversions,
+    /// null-conditional accesses and the task's <c>ConfigureAwait</c> and <c>WaitAsync</c>, which hand on
+    /// the task they are called on. A branch that is no call, a variable or a literal, drops nothing of
+    /// its own.
+    /// </summary>
+    private static IEnumerable<IInvocationOperation> Producers(IOperation operation, Tasks tasks)
+    {
+        switch (tasks.PassedOn(operation))
+        {
+            case IInvocationOperation invocation:
+                yield return invocation;
+                break;
+            case IConditionalOperation { Type: not null, WhenTrue: { } whenTrue, WhenFalse: { } whenFalse }:
+                foreach (var producer in Producers(whenTrue, tasks)) yield return producer;
+                foreach (var producer in Producers(whenFalse, tasks)) yield return producer;
+                break;
+            case ICoalesceOperation { Value: { } value, WhenNull: { } whenNull }:
+                foreach (var producer in Producers(value, tasks)) yield return producer;
+                foreach (var producer in Producers(whenNull, tasks)) yield return producer;
+                break;
+            case ISwitchExpressionOperation chosen:
+                foreach (var arm in chosen.Arms)
+                {
+                    foreach (var producer in Producers(arm.Value, tasks)) yield return producer;
+                }
+
+                break;
+        }
     }
 
     /// <summary>
     /// What a value of <paramref name="type"/>, produced by <paramref name="invocation"/>, drops: a
-    /// <c>Result</c> or <c>Option</c> or a task of one, or a collection of them that the statement made,
-    /// awaited or not.
+    /// <c>Result</c> or <c>Option</c> or a task of one, or a collection or a tuple of them that the
+    /// statement made, awaited or not.
     /// </summary>
     private static string? DroppedOutcome(ITypeSymbol? type, IInvocationOperation invocation, TypeKitSymbols symbols, Tasks tasks)
     {
         if ((symbols.OutcomeName(type) ?? tasks.PendingOutcome(type, symbols)) is { } outcome)
-            return ReturnsItsStoredReceiver(invocation, symbols) ? null : outcome;
+            return ReturnsItsStoredReceiver(invocation, symbols, tasks) ? null : outcome;
 
-        return DroppedCollection(tasks.CollectionOutcome(type, symbols) ?? tasks.CollectionOutcome(tasks.Awaited(type), symbols), invocation, symbols, tasks);
+        return DroppedHolder(tasks.HolderOutcome(type, symbols) ?? tasks.HolderOutcome(tasks.Awaited(type), symbols), invocation, symbols, tasks);
     }
 
     private static string? DroppedCollection(string? element, IInvocationOperation invocation, TypeKitSymbols symbols, Tasks tasks) =>
-        element is not null && MadeResults(invocation, symbols, tasks) ? $"collection of {element}s" : null;
+        DroppedHolder(element is null ? null : $"collection of {element}s", invocation, symbols, tasks);
+
+    /// <summary><paramref name="holder"/>, a collection or a tuple of results, when the statement made the results in it.</summary>
+    private static string? DroppedHolder(string? holder, IInvocationOperation invocation, TypeKitSymbols symbols, Tasks tasks) =>
+        holder is not null && MadeResults(invocation, symbols, tasks) ? holder : null;
 
     /// <summary>
     /// Whether the results in the collection <paramref name="invocation"/> returns were made in the
     /// statement, and so exist nowhere else: the call was given no result to pass on and made them
     /// itself, or a call in the statement returns a result or a task of one, or a method group of such
-    /// a method is passed on (<c>ids.Select(orders.CancelAsync)</c>).
+    /// a method is passed on (<c>ids.Select(orders.CancelAsync)</c>), or a call that was given no result
+    /// returns a lazy sequence of them, which makes them as it is enumerated.
     /// </summary>
     /// <remarks>
     /// <c>Task.WhenAll(first, second)</c> over tasks in variables, and <c>pending.ToList()</c>, are given
@@ -149,34 +218,96 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     /// </remarks>
     private static bool MadeResults(IInvocationOperation invocation, TypeKitSymbols symbols, Tasks tasks)
     {
-        var given = Tasks.Mentions(invocation.Instance?.Type, symbols)
-                 || invocation.TargetMethod.Parameters.Any(parameter => Tasks.Mentions(parameter.Type, symbols));
-        if (!given) return true;
+        if (!Given(invocation, symbols)) return true;
 
+        // held.WaitAsync(t) hands on a task that is still held; a call under one is a descendant of its own.
         return invocation.Descendants().Any(operation => operation switch
         {
-            IInvocationOperation call           => (symbols.OutcomeName(call.Type) ?? tasks.PendingOutcome(call.Type, symbols)) is not null && !ReturnsItsStoredReceiver(call, symbols),
+            IInvocationOperation call when tasks.PassesOn(call) => false,
+            IInvocationOperation call           => (symbols.OutcomeName(call.Type) ?? tasks.PendingOutcome(call.Type, symbols)) is not null && !ReturnsItsStoredReceiver(call, symbols, tasks)
+                                                || tasks.SequenceOutcome(call.Type, symbols) is not null && !Given(call, symbols),
             IMethodReferenceOperation reference => (symbols.OutcomeName(reference.Method.ReturnType) ?? tasks.PendingOutcome(reference.Method.ReturnType, symbols)) is not null,
             _                                   => false
         });
     }
 
+    /// <summary>Whether the call was handed something that can carry a result, as its receiver or an argument.</summary>
+    private static bool Given(IInvocationOperation invocation, TypeKitSymbols symbols) =>
+        Tasks.Mentions(invocation.Instance?.Type, symbols)
+     || invocation.TargetMethod.Parameters.Any(parameter => Tasks.Mentions(parameter.Type, symbols));
+
     /// <summary>
     /// A call's <c>Task</c> of a result, or of a collection of results it made, converted implicitly to
-    /// a plain <c>Task</c>, which has no result to hand on.
+    /// a plain <c>Task</c>, which has no result to hand on, unless it is a tap on a result or task the
+    /// caller still holds; or tasks of results the statement made,
+    /// converted to plain tasks, an array, a sequence or a span of them, as <c>Task.WaitAll</c> takes.
     /// </summary>
     private static void AnalyzeConversion(OperationAnalysisContext context, TypeKitSymbols symbols, Tasks tasks)
     {
         var conversion = (IConversionOperation)context.Operation;
 
-        if (!conversion.IsImplicit || !SymbolEqualityComparer.Default.Equals(conversion.Type, tasks.Plain)) return;
-        if (conversion.Operand is not IInvocationOperation invocation) return;
+        if (!conversion.IsImplicit) return;
+
+        var toPlainTask = SymbolEqualityComparer.Default.Equals(conversion.Type, tasks.Plain);
+        if (!toPlainTask && !tasks.HoldsPlainTasks(conversion.Type)) return;
+
+        // The call, or each branch's call where a conditional or a switch expression was converted whole.
+        // A pass-through between the conversion and the call, LoadAsync().WaitAsync(t), is reported whole.
+        var passedOn = tasks.PassedOn(conversion.Operand);
+
+        foreach (var invocation in Producers(conversion.Operand, tasks))
+        {
+            // held.TapAsync(log) returns the task of a result the caller still holds.
+            var outcome = toPlainTask
+                ? (ReturnsItsStoredReceiver(invocation, symbols, tasks) ? null : tasks.PendingOutcome(invocation.Type, symbols))
+               ?? DroppedHolder(tasks.HolderOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks)
+                : DroppedCollection(tasks.PendingOutcome(tasks.ElementOfSequence(invocation.Type), symbols), invocation, symbols, tasks);
+
+            if (outcome is null) continue;
+
+            var reported = ReferenceEquals(invocation, passedOn) ? conversion.Operand : invocation;
+            context.Report(Diagnostic.Create(Rule, reported.Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+        }
+    }
+
+    /// <summary>
+    /// <c>Wait</c> on a task of a result, or of a collection of results, that the expression made:
+    /// <c>orders.CancelAsync(id).Wait()</c> blocks until the result exists and hands it to nobody,
+    /// whether the statement drops what <c>Wait</c> returns or an <c>if</c> reads it. A task still held,
+    /// or a tap on one, keeps its result.
+    /// </summary>
+    private static void AnalyzeWait(OperationAnalysisContext context, TypeKitSymbols symbols, Tasks tasks)
+    {
+        var wait = (IInvocationOperation)context.Operation;
+
+        if (wait.TargetMethod is not { Name: "Wait", IsStatic: false } method || !SymbolEqualityComparer.Default.Equals(method.ContainingType, tasks.Plain)) return;
+        if (wait.Instance is null || tasks.PassedOn(wait.Instance) is not IInvocationOperation invocation) return;
+
+        if (ReturnsItsStoredReceiver(invocation, symbols, tasks)) return;
 
         var outcome = tasks.PendingOutcome(invocation.Type, symbols)
-                   ?? DroppedCollection(tasks.CollectionOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks);
+                   ?? DroppedHolder(tasks.HolderOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks);
         if (outcome is null) return;
 
-        context.Report(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+        context.Report(Diagnostic.Create(Rule, wait.Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+    }
+
+    /// <summary>
+    /// A <c>foreach</c> or <c>await foreach</c> over results, or tasks of them, that its header made,
+    /// whose body never reads the iteration variable: <c>await foreach (var outcome in
+    /// orders.CancelEachAsync(ids)) { }</c> runs every cancellation and drops every result. A variable
+    /// named <c>_</c> says the drop is intended; a collection held in a variable, a parameter or a field
+    /// keeps its results.
+    /// </summary>
+    private static void AnalyzeLoop(OperationAnalysisContext context, TypeKitSymbols symbols, Tasks tasks)
+    {
+        if (context.Operation is not IForEachLoopOperation { LoopControlVariable: IVariableDeclaratorOperation { Symbol: { Name: not "_" } variable } } loop) return;
+        if ((symbols.OutcomeName(variable.Type) ?? tasks.PendingOutcome(variable.Type, symbols)) is not { } outcome) return;
+        if (Unwrap(loop.Collection) is not IInvocationOperation invocation || !MadeResults(invocation, symbols, tasks)) return;
+
+        if (loop.Body.Descendants().OfType<ILocalReferenceOperation>().Any(reference => SymbolEqualityComparer.Default.Equals(reference.Local, variable))) return;
+
+        context.Report(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), $"sequence of {outcome}s", invocation.TargetMethod.Name));
     }
 
     /// <summary>
@@ -190,7 +321,11 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
 
         if (creation.Target is not IMethodReferenceOperation reference || creation.Syntax is CastExpressionSyntax) return;
         if (creation.Type is not INamedTypeSymbol { DelegateInvokeMethod: { } invoke } || !SymbolEqualityComparer.Default.Equals(invoke.ReturnType, tasks.Plain)) return;
-        if (tasks.PendingOutcome(reference.Method.ReturnType, symbols) is not { } outcome) return;
+
+        // A method that answers a collection or a tuple of results makes them on every call through the delegate.
+        var returned = reference.Method.ReturnType;
+        var outcome  = tasks.PendingOutcome(returned, symbols) ?? tasks.HolderOutcome(tasks.Awaited(returned), symbols);
+        if (outcome is null) return;
 
         context.Report(Diagnostic.Create(Rule, reference.Syntax.GetLocation(), outcome, reference.Method.Name));
     }
@@ -235,27 +370,36 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     /// outcome's own <c>Tap</c>, <c>TapAsync</c>, <c>TapError</c> and <c>TapErrorAsync</c>, and the
     /// <c>Task</c> continuations <c>TapAsync</c> and <c>TapErrorAsync</c>, which return the task's result as it was.
     /// </summary>
-    private static bool ReturnsItsStoredReceiver(IInvocationOperation invocation, TypeKitSymbols symbols)
+    private static bool ReturnsItsStoredReceiver(IInvocationOperation invocation, TypeKitSymbols symbols, Tasks tasks)
     {
         var method = invocation.TargetMethod;
 
         if (method is { IsStatic: false, Name: "Tap" or "TapAsync" or "TapError" or "TapErrorAsync" } && symbols.OutcomeName(method.ContainingType) is not null)
-            return IsStored(invocation.Instance);
+            return IsStored(invocation.Instance, symbols, tasks);
 
         // pending.TapAsync(log) binds to the extension block's member, with the task as its instance;
         // Result.TapAsync(pending, log) to its implementation, with the task as the first argument.
         if (method.Name is "TapAsync" or "TapErrorAsync" && symbols.IsDeclaredByResultClass(method))
-            return IsStored(invocation.Instance ?? invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == 0)?.Value);
+            return IsStored(invocation.Instance ?? invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == 0)?.Value, symbols, tasks);
 
         return false;
     }
 
-    private static bool IsStored(IOperation? receiver)
-    {
-        while (receiver is IConversionOperation { IsImplicit: true } conversion) receiver = conversion.Operand;
-
-        return receiver is ILocalReferenceOperation or IParameterReferenceOperation or IFieldReferenceOperation;
-    }
+    /// <summary>
+    /// Whether the caller still holds <paramref name="receiver"/>: a local, a parameter or a field; a
+    /// tap that returned such a receiver, so that <c>r.Tap(log).TapError(warn)</c> holds at every link;
+    /// or what a task so held completes with, awaited in the chain, <c>(await pending).Tap(log)</c>.
+    /// <c>ConfigureAwait</c> and <c>WaitAsync</c> hand on the task they are called on, so
+    /// <c>pending.WaitAsync(t).TapAsync(log)</c> is a tap on <c>pending</c>.
+    /// </summary>
+    private static bool IsStored(IOperation? receiver, TypeKitSymbols symbols, Tasks tasks) =>
+        receiver is not null && tasks.PassedOn(receiver) switch
+        {
+            ILocalReferenceOperation or IParameterReferenceOperation or IFieldReferenceOperation => true,
+            IInvocationOperation tap                                                             => ReturnsItsStoredReceiver(tap, symbols, tasks),
+            IAwaitOperation { Operation: var awaited }                                           => IsStored(awaited, symbols, tasks),
+            _                                                                                    => false,
+        };
 
     /// <summary>The task and collection types, resolved once per compilation.</summary>
     private sealed class Tasks(
@@ -263,9 +407,35 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         INamedTypeSymbol? generic,
         INamedTypeSymbol? genericValueTask,
         INamedTypeSymbol? collection,
-        INamedTypeSymbol? readOnlyCollection)
+        INamedTypeSymbol? readOnlyCollection,
+        INamedTypeSymbol? sequence,
+        INamedTypeSymbol? asyncSequence,
+        INamedTypeSymbol? readOnlySpan,
+        INamedTypeSymbol? keyValuePair)
     {
         public INamedTypeSymbol? Plain { get; } = plain;
+
+        /// <summary>
+        /// What <paramref name="operation"/> hands on, through implicit conversions, null-conditional
+        /// accesses and any number of <see cref="PassesOn"/> calls: <c>held.ConfigureAwait(false)</c> is
+        /// <c>held</c>, <c>LoadAsync().WaitAsync(t)</c> the <c>LoadAsync()</c> call.
+        /// </summary>
+        public IOperation PassedOn(IOperation operation)
+        {
+            var current = Unwrap(operation);
+            while (current is IInvocationOperation { Instance: { } instance } call && PassesOn(call)) current = Unwrap(instance);
+
+            return current;
+        }
+
+        /// <summary>
+        /// <c>ConfigureAwait</c> and <c>WaitAsync</c> of <c>Task&lt;T&gt;</c> or <c>ValueTask&lt;T&gt;</c>,
+        /// every overload: each completes with the task's own result and makes none.
+        /// </summary>
+        public bool PassesOn(IInvocationOperation call) =>
+            call.TargetMethod is { IsStatic: false, Name: "ConfigureAwait" or "WaitAsync" } method
+         && (SymbolEqualityComparer.Default.Equals(method.ContainingType.OriginalDefinition, generic)
+          || SymbolEqualityComparer.Default.Equals(method.ContainingType.OriginalDefinition, genericValueTask));
 
         /// <summary>A <c>Task</c> or <c>ValueTask</c> of a result, not awaited: the result is dropped with it.</summary>
         public string? PendingOutcome(ITypeSymbol? type, TypeKitSymbols symbols) => symbols.OutcomeName(Awaited(type));
@@ -278,11 +448,22 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
                 : null;
 
         /// <summary>
-        /// <c>Result</c> or <c>Option</c> when <paramref name="type"/> is a collection whose elements
-        /// exist, of results or of tasks of them: an array, or a type that is or implements
-        /// <c>ICollection&lt;T&gt;</c> or <c>IReadOnlyCollection&lt;T&gt;</c>. A lazy sequence is none.
+        /// What a value of <paramref name="type"/> holds results in, as the message names it: a
+        /// <see cref="CollectionOutcome">collection</see> (<c>collection of Results</c>) or a
+        /// <see cref="TupleOutcome">tuple</see> (<c>tuple holding a Result</c>) of them.
         /// </summary>
-        public string? CollectionOutcome(ITypeSymbol? type, TypeKitSymbols symbols)
+        public string? HolderOutcome(ITypeSymbol? type, TypeKitSymbols symbols) =>
+            CollectionOutcome(type, symbols) is { } element ? $"collection of {element}s"
+          : TupleOutcome(type, symbols) is { } held       ? $"tuple holding {(held is "Option" ? "an" : "a")} {held}"
+          : null;
+
+        /// <summary>
+        /// <c>Result</c> or <c>Option</c> when <paramref name="type"/> is a collection whose elements
+        /// exist, of results, of tasks of them or of key-value pairs whose value is one: an array, or a
+        /// type that is or implements <c>ICollection&lt;T&gt;</c> or <c>IReadOnlyCollection&lt;T&gt;</c>, a
+        /// dictionary included. A lazy sequence is none.
+        /// </summary>
+        private string? CollectionOutcome(ITypeSymbol? type, TypeKitSymbols symbols)
         {
             var element = type switch
             {
@@ -291,15 +472,69 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
                 _                      => null
             };
 
+            return ElementOutcome(element, symbols);
+        }
+
+        /// <summary>
+        /// <c>Result</c> or <c>Option</c> when <paramref name="type"/> is a tuple, nullable or not, with
+        /// an element that is one, a task of one, or a tuple holding one.
+        /// </summary>
+        private string? TupleOutcome(ITypeSymbol? type, TypeKitSymbols symbols)
+        {
+            if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable) type = nullable.TypeArguments[0];
+            if (type is not INamedTypeSymbol { IsTupleType: true } tuple) return null;
+
+            return tuple.TupleElements
+                        .Select(element => symbols.OutcomeName(element.Type) ?? PendingOutcome(element.Type, symbols) ?? TupleOutcome(element.Type, symbols))
+                        .FirstOrDefault(outcome => outcome is not null);
+        }
+
+        /// <summary>
+        /// <c>Result</c> or <c>Option</c> when <paramref name="type"/> is a sequence, lazy or not, of
+        /// results, of tasks of them or of key-value pairs whose value is one: an array, or a type that
+        /// is or implements <c>IEnumerable&lt;T&gt;</c> or <c>IAsyncEnumerable&lt;T&gt;</c>.
+        /// </summary>
+        public string? SequenceOutcome(ITypeSymbol? type, TypeKitSymbols symbols) => ElementOutcome(ElementOfSequence(type), symbols);
+
+        /// <summary>A collection's element that is a result, a task of one, or a <c>KeyValuePair</c> whose value is either.</summary>
+        private string? ElementOutcome(ITypeSymbol? element, TypeKitSymbols symbols)
+        {
+            if (element is INamedTypeSymbol { TypeArguments.Length: 2 } pair && SymbolEqualityComparer.Default.Equals(pair.OriginalDefinition, keyValuePair))
+                element = pair.TypeArguments[1];
+
             return symbols.OutcomeName(element) ?? PendingOutcome(element, symbols);
         }
 
-        private ITypeSymbol? ElementOf(INamedTypeSymbol type)
+        /// <summary>The element of an array, or of a type that is or implements <c>IEnumerable&lt;T&gt;</c> or <c>IAsyncEnumerable&lt;T&gt;</c>.</summary>
+        public ITypeSymbol? ElementOfSequence(ITypeSymbol? type) =>
+            type switch
+            {
+                IArrayTypeSymbol array => array.ElementType,
+                INamedTypeSymbol named => ElementOf(named, sequence, asyncSequence),
+                _                      => null
+            };
+
+        /// <summary>
+        /// Whether <paramref name="type"/> holds plain tasks, which have no result to hand on: an array
+        /// of <c>Task</c>, a sequence of them, or a <c>ReadOnlySpan&lt;Task&gt;</c>.
+        /// </summary>
+        public bool HoldsPlainTasks(ITypeSymbol? type) =>
+            type switch
+            {
+                IArrayTypeSymbol array => SymbolEqualityComparer.Default.Equals(array.ElementType, Plain),
+                INamedTypeSymbol { TypeArguments.Length: 1 } named => SymbolEqualityComparer.Default.Equals(named.TypeArguments[0], Plain)
+                                                                   && (SymbolEqualityComparer.Default.Equals(named.OriginalDefinition, readOnlySpan) || ElementOfSequence(named) is not null),
+                _ => false
+            };
+
+        private ITypeSymbol? ElementOf(INamedTypeSymbol type) => ElementOf(type, collection, readOnlyCollection);
+
+        private static ITypeSymbol? ElementOf(INamedTypeSymbol type, INamedTypeSymbol? first, INamedTypeSymbol? second)
         {
             foreach (var candidate in type.AllInterfaces.Insert(0, type))
             {
-                if (SymbolEqualityComparer.Default.Equals(candidate.OriginalDefinition, collection)
-                 || SymbolEqualityComparer.Default.Equals(candidate.OriginalDefinition, readOnlyCollection))
+                if (SymbolEqualityComparer.Default.Equals(candidate.OriginalDefinition, first)
+                 || SymbolEqualityComparer.Default.Equals(candidate.OriginalDefinition, second))
                     return candidate.TypeArguments[0];
             }
 

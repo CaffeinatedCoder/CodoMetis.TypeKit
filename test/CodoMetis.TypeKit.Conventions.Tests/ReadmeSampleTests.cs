@@ -1,9 +1,9 @@
 namespace CodoMetis.TypeKit.Conventions.Tests;
 
 /// <summary>
-/// Every C# block in the READMEs is compiled code: it equals, after indentation, exactly one sample
-/// region in <c>test/CodoMetis.TypeKit.Samples</c>, and every region there is shown in the README its
-/// name starts with. A README edit that is not mirrored in the samples fails here, and a sample that
+/// Every C# block in the READMEs and the topic pages under <c>docs/</c> is compiled code: it equals,
+/// after indentation, exactly one sample region in <c>test/CodoMetis.TypeKit.Samples</c>, and every
+/// region there is shown in the page its name starts with. A README edit that is not mirrored in the samples fails here, and a sample that
 /// stops compiling fails the build.
 /// </summary>
 /// <remarks>
@@ -11,7 +11,7 @@ namespace CodoMetis.TypeKit.Conventions.Tests;
 /// A pre-release audit compiled the READMEs' blocks and found a bare fault returned from a method typed
 /// <c>Result&lt;T, TError&gt;</c>, statements that are not statements (<c>quantity.Value;</c>), and SQL in a
 /// comment that the query does not produce. The consumer smoke test had found the first once before
-/// (docs/plan.md §9). Each was fixed by hand, and nothing kept the next one out.
+/// (design/option-result.md). Each was fixed by hand, and nothing kept the next one out.
 /// </para>
 /// <para>
 /// A block that cannot compile on purpose, showing a compile error, says so above its fence:
@@ -34,6 +34,56 @@ public sealed class ReadmeSampleTests
     [Fact]
     public void The_READMEs_are_discovered() =>
         ReadmeSamples.Readmes().Count.ShouldBeGreaterThanOrEqualTo(6, string.Join(", ", ReadmeSamples.Readmes()));
+
+    /// <summary>The topic pages are found: a <c>docs/</c> that yielded nothing would compile no page and fail nothing.</summary>
+    [Fact]
+    public void The_docs_pages_are_discovered() =>
+        ReadmeSamples.DocsPages().Count.ShouldBeGreaterThanOrEqualTo(8, string.Join(", ", ReadmeSamples.DocsPages()));
+
+    [Theory]
+    [InlineData("README.md", "README")]
+    [InlineData("src/CodoMetis.TypeKit.EntityFrameworkCore/README.md", "CodoMetis.TypeKit.EntityFrameworkCore")]
+    [InlineData("docs/ef-core.md", "ef-core")]
+    public void A_page_s_samples_are_named_after_it(string page, string prefix) => ReadmeSamples.Prefix(page).ShouldBe(prefix);
+
+    /// <summary>
+    /// The root README's "Documentation" section is the table of contents: every topic page is linked
+    /// from it, and every page it links exists. A page written and never listed cannot be reached from
+    /// where a reader starts, and a link to a page since renamed opens nothing, silently.
+    /// </summary>
+    [Fact]
+    public void The_root_README_lists_every_docs_page_and_links_only_pages_that_exist()
+    {
+        var listed = ReadmeSamples.DocumentationLinks(File.ReadAllText(Path.Combine(Repository.Root, ReadmeSamples.RootReadme)));
+
+        listed.Count.ShouldBeGreaterThanOrEqualTo(8, string.Join(", ", listed));
+        ReadmeSamples.DocsPages().Except(listed).ShouldBeEmpty("Every page in docs/ is linked from the Documentation section of README.md.");
+        listed.Where(page => !File.Exists(Path.Combine(Repository.Root, page))).ShouldBeEmpty("The Documentation section of README.md links a page that does not exist.");
+    }
+
+    /// <summary>The positive control for the table of contents: links with and without anchors are found, in order, and other sections are not read.</summary>
+    [Fact]
+    public void Documentation_links_are_found_in_the_section_alone()
+    {
+        const string markdown =
+            """
+            # Title
+
+            ## Documentation
+
+            | Page | Covers |
+            |---|---|
+            | [EF Core](docs/ef-core.md) | columns |
+            | [JSON](docs/json.md#stored-documents) | stored |
+
+            ## Status
+
+            See [the plan](design/plan.md) and [JSON](docs/json.md).
+            """;
+
+        ReadmeSamples.DocumentationLinks(markdown).ShouldBe(["docs/ef-core.md", "docs/json.md"]);
+        Should.Throw<InvalidOperationException>(() => ReadmeSamples.DocumentationLinks("# Title\n\nno section")).Message.ShouldBe("README.md has no '## Documentation' section.");
+    }
 
     [Fact]
     public void The_csharp_blocks_and_the_samples_are_discovered()
@@ -71,7 +121,7 @@ public sealed class ReadmeSampleTests
 
         readme.ShouldNotBeNull(
             $"'{name}' ({sample.Location}) starts with '{sample.ReadmePrefix}', which is no README. " +
-            $"A sample's name starts with README or a package id: {string.Join(", ", ReadmeSamples.Readmes().Select(ReadmeSamples.Prefix))}.");
+            $"A sample's name starts with README, a package id or a topic page's name: {string.Join(", ", ReadmeSamples.Readmes().Select(ReadmeSamples.Prefix))}.");
 
         var shown = Blocks.Value.Where(block => block.Readme == readme && block.IsCSharp).ToArray();
 

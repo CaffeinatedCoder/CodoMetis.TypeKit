@@ -275,7 +275,7 @@ public readonly record struct Result<T, TError>
         ArgumentNullException.ThrowIfNull(action);
 
         if (Succeeded)
-            await action(_value!).ConfigureAwait(false);
+            await ThrowHelper.Awaitable(action(_value!), nameof(TapAsync), nameof(action)).ConfigureAwait(false);
 
         return this;
     }
@@ -289,7 +289,7 @@ public readonly record struct Result<T, TError>
         ArgumentNullException.ThrowIfNull(action);
 
         if (!Succeeded)
-            await action(_error!).ConfigureAwait(false);
+            await ThrowHelper.Awaitable(action(_error!), nameof(TapErrorAsync), nameof(action)).ConfigureAwait(false);
 
         return this;
     }
@@ -304,7 +304,7 @@ public readonly record struct Result<T, TError>
         ArgumentNullException.ThrowIfNull(selector);
 
         return Succeeded
-            ? Result<TResult, TError>.Success(await selector(_value!).ConfigureAwait(false))
+            ? Result<TResult, TError>.Success(await ThrowHelper.Awaitable(selector(_value!), nameof(MapAsync), nameof(selector)).ConfigureAwait(false))
             : Result<TResult, TError>.Error(_error!);
     }
 
@@ -317,7 +317,7 @@ public readonly record struct Result<T, TError>
     {
         ArgumentNullException.ThrowIfNull(selector);
 
-        return Succeeded ? await selector(_value!).ConfigureAwait(false) : Result<TResult, TError>.Error(_error!);
+        return Succeeded ? await ThrowHelper.Awaitable(selector(_value!), nameof(BindAsync), nameof(selector)).ConfigureAwait(false) : Result<TResult, TError>.Error(_error!);
     }
 
     /// <summary>
@@ -331,7 +331,7 @@ public readonly record struct Result<T, TError>
     {
         ArgumentNullException.ThrowIfNull(selector);
 
-        return Succeeded ? await selector(_value!).ConfigureAwait(false) : Result<TError>.Error(_error!);
+        return Succeeded ? await ThrowHelper.Awaitable(selector(_value!), nameof(BindAsync), nameof(selector)).ConfigureAwait(false) : Result<TError>.Error(_error!);
     }
 
     /// <summary>Gives an error a second chance with an asynchronous function. A success is kept unchanged.</summary>
@@ -342,7 +342,7 @@ public readonly record struct Result<T, TError>
     {
         ArgumentNullException.ThrowIfNull(selector);
 
-        return Succeeded ? this : await selector(_error!).ConfigureAwait(false);
+        return Succeeded ? this : await ThrowHelper.Awaitable(selector(_error!), nameof(RecoverAsync), nameof(selector)).ConfigureAwait(false);
     }
 
     /// <summary>Unwraps the value or the error.</summary>

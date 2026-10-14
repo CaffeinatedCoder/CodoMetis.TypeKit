@@ -14,7 +14,7 @@ namespace CodoMetis.TypeKit.Generators;
 /// introduced: the seams it keeps, and what it declares that would collide with a generated member.
 /// </summary>
 /// <remarks>
-/// Every lookup enumerates a collection and compares names, never <c>OfName</c> (plan §5).
+/// Every lookup enumerates a collection and compares names, never <c>OfName</c> (design/aspects.md).
 /// </remarks>
 [CompileTime]
 internal static class ValueObjectDeclaration
@@ -169,6 +169,19 @@ internal static class ValueObjectDeclaration
     }
 
     /// <summary>
+    /// The names of the members the generators introduce into a value object, besides <c>Value</c>, for
+    /// some marker or wrapped type: a value object of one of these names failed inside the generated
+    /// code (LAMA0611, CS0542: a member cannot have the name of its type), naming nothing the user wrote
+    /// (measured 2026-10-13 for <c>From</c>, <c>TryFrom</c>, <c>Parse</c>, <c>TryParse</c>,
+    /// <c>TryFormat</c>, <c>MinValue</c> and <c>CompareTo</c>). Refused whatever it wraps, so the rule is
+    /// one list rather than one per wrapped type. What a record synthesizes (<c>ToString</c>,
+    /// <c>Equals</c>) is C#'s own error, and an explicit implementation (<c>IConvertible</c>'s) does not
+    /// collide.
+    /// </summary>
+    public static IReadOnlyList<string> GeneratedMemberNames { get; } =
+        ["From", "TryFrom", "FromKnownGood", "Revalidate", "Parse", "TryParse", "TryFormat", "MinValue", "MaxValue", "CompareTo", "_value", "__FromJson", "__FromText", "__TryFromText"];
+
+    /// <summary>
     /// What the declaration writes by hand that a generator introduces itself, which would fail inside
     /// the generated code (LAMA0500, LAMA0503, LAMA0512, LAMA0521, LAMA0531, LAMA0611) naming nothing
     /// the user wrote, or, for a member the generators skip when it exists, would be kept silently as
@@ -288,6 +301,7 @@ internal static class ValueObjectDeclaration
             if (type.Equals(TypeFactory.GetNamedType(typeof(JsonConverterAttribute)))
              || type.Equals(TypeFactory.GetNamedType(typeof(CompilerGeneratedAttribute)))
              || type.Definition.Equals(TypeFactory.GetNamedType(typeof(GeneratedValueObjectAttribute<,>)))
+             || type.Equals(TypeFactory.GetNamedType(typeof(HandWrittenOrderingAttribute)))
              || (parse != ValueParseStrategy.Unsupported && type.Equals(TypeFactory.GetNamedType(typeof(TypeConverterAttribute)))))
                 found.Add($"the attribute {(type.Name.EndsWith(nameof(Attribute), StringComparison.Ordinal) ? type.Name.Substring(0, type.Name.Length - nameof(Attribute).Length) : type.Name)}");
         }
@@ -382,7 +396,8 @@ internal static class ValueObjectDeclaration
     /// <c>IEquatable&lt;TSelf&gt;.Equals</c>. The record kept it, while the generated ordering, the JSON
     /// dictionary keys and the EF Core column went on comparing the wrapped value: a case-insensitive
     /// <c>Equals</c> made "abc" and "ABC" equal with <c>CompareTo</c> 32, so a <c>HashSet</c> held one and
-    /// a <c>SortedSet</c> two.
+    /// a <c>SortedSet</c> two. An <c>operator ==</c> or <c>!=</c> between two of the type collides with
+    /// the record's own, which C# reports as CS0111 naming only <c>op_Equality</c>; the error says why.
     /// </summary>
     public static IReadOnlyList<string> EqualityDeclaredByHand(INamedType target)
     {
@@ -396,6 +411,10 @@ internal static class ValueObjectDeclaration
                                            ? method.ExplicitInterfaceImplementations.Any(implemented => implemented.DeclaringType.Definition.Equals(equatable))
                                            : (method is { Name: nameof(Equals), Parameters: [{ } other] } && other.Type.Equals(target))
                                           || method is { Name: nameof(GetHashCode), Parameters.Count: 0 }))
+                     .Select(Describe),
+            .. target.Methods
+                     .Where(method => method is { IsStatic: true, IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false, OperatorKind: OperatorKind.Equality or OperatorKind.Inequality, Parameters: [{ } left, { } right] }
+                                   && left.Type.ToNonNullable().Equals(target) && right.Type.ToNonNullable().Equals(target))
                      .Select(Describe)
         ];
     }
@@ -475,7 +494,7 @@ internal static class ValueObjectDeclaration
     /// <summary>Non-implicit members of <paramref name="target"/> with one of <paramref name="names"/>, of any kind.</summary>
     private static IEnumerable<string> MembersNamed(INamedType target, params string[] names) => MembersNamed(target, methods: true, names);
 
-    private static IEnumerable<string> MembersNamed(INamedType target, bool methods, params string[] names)
+    internal static IEnumerable<string> MembersNamed(INamedType target, bool methods, params string[] names)
     {
         foreach (var field in target.Fields)
             if (!field.IsImplicitlyDeclared && Enumerable.Contains(names, field.Name)) yield return field.ToDisplayString();

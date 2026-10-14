@@ -8,7 +8,7 @@
     "The test key selects Microsoft.Testing.Platform, which xunit.v3 4.x requires on SDK 10."
   ],
   "sdk": {
-    "version": "10.0.401",
+    "version": "10.0.402",
     "rollForward": "latestPatch",
     "allowPrerelease": false
   },

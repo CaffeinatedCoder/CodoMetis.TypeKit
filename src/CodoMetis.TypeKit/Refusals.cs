@@ -35,4 +35,19 @@ internal static class Refusals
 
     /// <summary>The wrapped type could not read JSON or text at all.</summary>
     public const string UnreadableInput = " See " + Readme + "a-value-object-could-not-read-the-input";
+
+    /// <summary>A closed set asked for a member it does not have, by name, in text or JSON.</summary>
+    public const string ClosedSetMember = " See " + Readme + "a-closed-set-has-no-member-of-that-name";
+
+    /// <summary>A task given to <c>Catch</c> as its value, or to <c>CatchAsync</c> as the value of its task.</summary>
+    public const string TaskGivenToCatch = " See " + Readme + "a-task-given-to-catch";
+
+    /// <summary>A closed set's instance that is not one of its members, asked for its name.</summary>
+    public const string ClosedSetNotAMember = " See " + Readme + "an-instance-that-is-not-a-member-of-its-set";
+
+    /// <summary>A closed set's <c>All</c>, or a member by name, read by the set's own static initializers.</summary>
+    public const string ClosedSetInitializing = " See " + Readme + "a-closed-set-read-before-it-is-initialized";
+
+    /// <summary><c>AsText()</c> in a process that cannot compose text: globalization-invariant mode.</summary>
+    public const string TextWithoutComposition = " See " + Readme + "astext-in-globalization-invariant-mode";
 }

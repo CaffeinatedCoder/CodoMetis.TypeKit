@@ -1,15 +1,11 @@
 using System.Reflection;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Design;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CodoMetis.TypeKit.EntityFrameworkCore.Tests;
@@ -122,36 +118,14 @@ internal static class Snapshots
     /// <summary>The first migration, as <c>dotnet ef migrations add</c> writes it, with the provider's design-time services.</summary>
     private static ScaffoldedMigration Scaffold(DbContext db)
     {
-        // The order and the lookup of EF's DesignTimeServicesBuilder: the context, the provider's services
-        // (named by the provider assembly's attribute), then EF's own, which are only added where missing.
-        var services = new ServiceCollection().AddDbContextDesignTimeServices(db);
-        var provider = Assembly.Load(new AssemblyName(db.GetService<IDatabaseProvider>().Name));
-        var providerServices = provider.GetCustomAttribute<DesignTimeProviderServicesAttribute>().ShouldNotBeNull($"{provider} names no design-time services.");
-        ((IDesignTimeServices)Activator.CreateInstance(provider.GetType(providerServices.TypeName, throwOnError: true)!)!).ConfigureDesignTimeServices(services);
-        services.AddEntityFrameworkDesignTimeServices();
-
-        using var designTime = services.BuildServiceProvider();
+        using var designTime = DesignTime.Services(db);
 
         return designTime.GetRequiredService<IMigrationsScaffolder>().ScaffoldMigration("Initial", "SnapshotProbe");
     }
 
     private static ModelSnapshot Compile(string code, Assembly context)
     {
-        var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
-                                                                                     .Append(context.Location)
-                                                                                     .Distinct(StringComparer.Ordinal)
-                                                                                     .Select(path => MetadataReference.CreateFromFile(path));
-        var compilation = CSharpCompilation.Create(
-            $"Snapshot{Guid.NewGuid():N}",
-            [CSharpSyntaxTree.ParseText(code)],
-            references,
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
-
-        using var image = new MemoryStream();
-        var emitted = compilation.Emit(image);
-        emitted.Success.ShouldBeTrue($"The scaffolded snapshot does not compile:{Environment.NewLine}{string.Join(Environment.NewLine, emitted.Diagnostics)}{Environment.NewLine}{code}");
-
-        var snapshot = Assembly.Load(image.ToArray()).GetTypes().Single(type => type.IsSubclassOf(typeof(ModelSnapshot)));
+        var snapshot = DesignTime.Compile([code], context).GetTypes().Single(type => type.IsSubclassOf(typeof(ModelSnapshot)));
 
         return (ModelSnapshot)Activator.CreateInstance(snapshot)!;
     }

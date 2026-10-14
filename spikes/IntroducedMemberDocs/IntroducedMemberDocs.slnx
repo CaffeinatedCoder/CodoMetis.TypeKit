@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Spike.Aspects/Spike.Aspects.csproj" />
+  <Project Path="Spike.App/Spike.App.csproj" />
+</Solution>

@@ -65,6 +65,14 @@ public sealed class DefaultProducingCallAnalyzerTests
 
     private const string NullableFirst = "Select a nullable first, as in Select(x => (Plain?)x), so that nothing found is null";
 
+    private const string SingleOrNone = "Use SingleOrNone, which returns an Option, or pass a default value";
+
+    private const string ElementAtOrNone = "Use ElementAtOrNone, which returns an Option";
+
+    private const string SingleOrNoneAsync = "Use SingleOrNoneAsync, which returns an Option and asks the query for two elements, or select a nullable first, as in Select(x => (Plain?)x)";
+
+    private const string FirstOrNoneAsync = "Use FirstOrNoneAsync, which returns an Option and asks the query for one element, or select a nullable first, as in Select(x => (Plain?)x)";
+
     private const string MissingKey = " for a missing key";
 
     private const string GetValueOrNone = "Use GetValueOrNone, which returns an Option, or pass a default value";
@@ -117,15 +125,19 @@ public sealed class DefaultProducingCallAnalyzerTests
             Cmtk0009(1, "FirstOrDefault", "Plain", NothingFound, FirstOrNone),
             Cmtk0009(2, "LastOrDefault", "Plain", NothingFound, LastOrNone),
             Cmtk0009(3, "LastOrDefault", "Plain", NothingFound, LastOrNone),
-            Cmtk0009(4, "SingleOrDefault", "Plain", NothingFound, DefaultValue),
-            Cmtk0009(5, "SingleOrDefault", "Plain", NothingFound, DefaultValue),
-            Cmtk0009(6, "ElementAtOrDefault", "Plain", " for an index past the end", "Use Skip(index).FirstOrNone(), which returns an Option"),
-            Cmtk0009(7, "ElementAtOrDefault", "Plain", " for an index past the end", "Use Skip(index).FirstOrNone(), which returns an Option"),
+            Cmtk0009(4, "SingleOrDefault", "Plain", NothingFound, SingleOrNone),
+            Cmtk0009(5, "SingleOrDefault", "Plain", NothingFound, SingleOrNone),
+            Cmtk0009(6, "ElementAtOrDefault", "Plain", " for an index past the end", ElementAtOrNone),
+            Cmtk0009(7, "ElementAtOrDefault", "Plain", " for an index past the end", ElementAtOrNone),
             Cmtk0009(8, "DefaultIfEmpty", "Plain", " for an empty sequence", DefaultValue),
             Cmtk0009(9, "FirstOrDefault", "Plain", NothingFound, FirstOrNone))
             .RunAsync(TestContext.Current.CancellationToken);
 
-    /// <summary>In a query, <c>FirstOrNone</c> would run it on the client; a nullable projection is translated.</summary>
+    /// <summary>
+    /// In a query, <c>FirstOrNone</c> and <c>ElementAtOrNone</c> ask the provider for one element and
+    /// <c>SingleOrNone</c> for two; the rest have no query form beside the nullable projection, which
+    /// every provider translates.
+    /// </summary>
     [Fact]
     public Task Every_query_form_without_a_default_value_reports() =>
         Test(
@@ -142,10 +154,10 @@ public sealed class DefaultProducingCallAnalyzerTests
                 }
             }
             """,
-            Cmtk0009(0, "FirstOrDefault", "Plain", NothingFound, "Select a nullable first, as in Select(x => (Plain?)x), so that nothing found is null"),
+            Cmtk0009(0, "FirstOrDefault", "Plain", NothingFound, "Use FirstOrNone, which returns an Option and asks the query for one element, or select a nullable first, as in Select(x => (Plain?)x)"),
             Cmtk0009(1, "LastOrDefault", "Plain", NothingFound, "Select a nullable first, as in Select(x => (Plain?)x), so that nothing found is null"),
-            Cmtk0009(2, "SingleOrDefault", "Plain", NothingFound, "Select a nullable first, as in Select(x => (Plain?)x), so that nothing found is null"),
-            Cmtk0009(3, "ElementAtOrDefault", "Plain", " for an index past the end", "Select a nullable first, as in Select(x => (Plain?)x), so that nothing found is null"),
+            Cmtk0009(2, "SingleOrDefault", "Plain", NothingFound, "Use SingleOrNone, which returns an Option and asks the query for two elements, or select a nullable first, as in Select(x => (Plain?)x)"),
+            Cmtk0009(3, "ElementAtOrDefault", "Plain", " for an index past the end", "Use ElementAtOrNone, which returns an Option and asks the query for one element"),
             Cmtk0009(4, "DefaultIfEmpty", "Plain", " for an empty sequence", "Select a nullable first, as in Select(x => (Plain?)x), so that nothing found is null"))
             .RunAsync(TestContext.Current.CancellationToken);
 
@@ -250,9 +262,9 @@ public sealed class DefaultProducingCallAnalyzerTests
             Cmtk0009(1, "FirstOrDefault", "Plain", NothingFound, FirstOrNone),
             Cmtk0009(2, "LastOrDefault", "Plain", NothingFound, LastOrNone),
             Cmtk0009(3, "LastOrDefault", "Plain", NothingFound, LastOrNone),
-            Cmtk0009(4, "SingleOrDefault", "Plain", NothingFound, DefaultValue),
-            Cmtk0009(5, "SingleOrDefault", "Plain", NothingFound, DefaultValue),
-            Cmtk0009(6, "ElementAtOrDefault", "Plain", PastTheEnd, "Use Skip(index).FirstOrNone(), which returns an Option"),
+            Cmtk0009(4, "SingleOrDefault", "Plain", NothingFound, SingleOrNone),
+            Cmtk0009(5, "SingleOrDefault", "Plain", NothingFound, SingleOrNone),
+            Cmtk0009(6, "ElementAtOrDefault", "Plain", PastTheEnd, ElementAtOrNone),
             Cmtk0009(7, "FirstOrDefault", "Plain", NothingFound, FirstOrNone),
             Cmtk0009(8, "LastOrDefault", "Plain", NothingFound, LastOrNone),
             Cmtk0009(9, "GetValueOrDefault", "Plain", MissingKey, GetValueOrNone),
@@ -328,15 +340,31 @@ public sealed class DefaultProducingCallAnalyzerTests
                 }
             }
             """,
-            Cmtk0009(0, "FirstOrDefaultAsync", "Plain", NothingFound, NullableFirst),
-            Cmtk0009(1, "FirstOrDefaultAsync", "Plain", NothingFound, NullableFirst),
+            Cmtk0009(0, "FirstOrDefaultAsync", "Plain", NothingFound, FirstOrNoneAsync),
+            Cmtk0009(1, "FirstOrDefaultAsync", "Plain", NothingFound, FirstOrNoneAsync),
             Cmtk0009(2, "LastOrDefaultAsync", "Plain", NothingFound, NullableFirst),
             Cmtk0009(3, "LastOrDefaultAsync", "Plain", NothingFound, NullableFirst),
-            Cmtk0009(4, "SingleOrDefaultAsync", "Plain", NothingFound, NullableFirst),
-            Cmtk0009(5, "SingleOrDefaultAsync", "Plain", NothingFound, NullableFirst),
+            Cmtk0009(4, "SingleOrDefaultAsync", "Plain", NothingFound, SingleOrNoneAsync),
+            Cmtk0009(5, "SingleOrDefaultAsync", "Plain", NothingFound, SingleOrNoneAsync),
             Cmtk0009(6, "ElementAtOrDefaultAsync", "Plain", PastTheEnd, NullableFirst),
-            Cmtk0009(7, "FirstOrDefaultAsync", "Plain", NothingFound, NullableFirst))
+            Cmtk0009(7, "FirstOrDefaultAsync", "Plain", NothingFound, FirstOrNoneAsync))
             .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary><c>FirstOrNoneAsync</c> is the EF Core satellite's: a project that references EF Core without it is told the nullable projection.</summary>
+    [Fact]
+    public Task Without_the_satellite_FirstOrDefaultAsync_is_told_the_nullable_projection()
+    {
+        var test = new AnalyzerTest<DefaultProducingCallAnalyzer>("using Microsoft.EntityFrameworkCore;" + Environment.NewLine + Subjects +
+            """
+            public static class C
+            {
+                public static async Task Run(IQueryable<Plain> ids) { var first = await {|#0:ids.FirstOrDefaultAsync()|}; }
+            }
+            """);
+        test.TestState.AdditionalReferences.Add(MetadataReference.CreateFromFile(typeof(Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions).Assembly.Location));
+        test.ExpectedDiagnostics.Add(Cmtk0009(0, "FirstOrDefaultAsync", "Plain", NothingFound, NullableFirst));
+        return test.RunAsync(TestContext.Current.CancellationToken);
+    }
 
     /// <summary>
     /// The new forms keep the rule's line: an overload given a default value, and an element type whose
@@ -395,7 +423,7 @@ public sealed class DefaultProducingCallAnalyzerTests
             """,
             Cmtk0009(0, "FirstOrDefault", "Option<int>", NothingFound, FirstOrNone),
             Cmtk0009(1, "LastOrDefault", "Result<int, Fault>", NothingFound, LastOrNone),
-            Cmtk0009(2, "SingleOrDefault", "Guarded", NothingFound, DefaultValue),
+            Cmtk0009(2, "SingleOrDefault", "Guarded", NothingFound, SingleOrNone),
             Cmtk0009(3, "FirstOrDefault", "Validated", NothingFound, FirstOrNone),
             Cmtk0009(4, "FirstOrDefault", "T", NothingFound, FirstOrNone),
             Cmtk0009(5, "FirstOrDefault", "T", NothingFound, FirstOrNone))

@@ -7,6 +7,10 @@ using CodoMetis.TypeKit.CompilerServices;   // GeneratedValueObjectAttribute, on
 using Microsoft.AspNetCore.OpenApi;   // OpenApiOptions
 
 // end sample
+// sample: CodoMetis.TypeKit.AspNetCore/bind-required
+using Microsoft.AspNetCore.Mvc.ModelBinding;   // BindRequired
+
+// end sample
 using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -18,6 +22,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -194,6 +200,75 @@ public sealed class RequiredPropertyTests
             var response = await client.PostAsync(path, new StringContent("""{"quantity":3}""", Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
             response.StatusCode.ShouldBe(expected, path);
         }
+    }
+}
+
+// Internal, so no host of this assembly discovers it unasked; the test below adds it.
+[ApiController]
+internal sealed class FindOrderController(IOrders orders) : ControllerBase
+{
+    // sample: CodoMetis.TypeKit.AspNetCore/bind-required
+    [HttpGet("/mvc/orders")]
+    public OrderDto Find([FromQuery, BindRequired] OrderId id, [FromQuery] Quantity? limit) => orders.Find(id, limit);
+    // end sample
+}
+
+/// <summary>
+/// What the README's binding section says about a value missing from an MVC query: with <c>[BindRequired]</c>
+/// a 400 naming the parameter, and a nullable parameter <c>null</c>. MvcBindingTests in the AspNetCore tests
+/// pins the <c>default</c> MVC binds without either.
+/// </summary>
+public sealed class BindRequiredTests
+{
+    [Fact]
+    public async Task A_required_value_object_missing_from_the_query_is_a_400_and_an_optional_one_is_null()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        var orders = new RecordingOrders();
+        builder.Services.AddSingleton<IOrders>(orders);
+        builder.Services.AddControllers().ConfigureApplicationPartManager(parts =>
+        {
+            parts.ApplicationParts.Clear();
+            parts.FeatureProviders.Add(new OnlyFindOrder());
+        });
+
+        await using var app = builder.Build();
+        app.MapControllers();
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        var client = app.GetTestClient();
+
+        using var missing = await client.GetAsync("/mvc/orders", TestContext.Current.CancellationToken);
+        missing.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await missing.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldContain("A value for the 'id' parameter or property was not provided.");
+        orders.Calls.ShouldBe(0, "the action never ran");
+
+        var id = Guid.NewGuid();
+        using var found = await client.GetAsync($"/mvc/orders?id={id}", TestContext.Current.CancellationToken);
+        found.StatusCode.ShouldBe(HttpStatusCode.OK);
+        orders.Calls.ShouldBe(1);
+        orders.Limit.ShouldBeNull();
+    }
+
+    private sealed class RecordingOrders : IOrders
+    {
+        public int Calls { get; private set; }
+
+        public Quantity? Limit { get; private set; }
+
+        public OrderDto Find(OrderId id, Quantity? limit = null)
+        {
+            Calls++;
+            Limit = limit;
+            return new OrderDto(id, [], []);
+        }
+    }
+
+    private sealed class OnlyFindOrder : IApplicationFeatureProvider<ControllerFeature>
+    {
+        public void PopulateFeature(IEnumerable<ApplicationPart> parts, ControllerFeature feature) =>
+            feature.Controllers.Add(typeof(FindOrderController).GetTypeInfo());
     }
 }
 

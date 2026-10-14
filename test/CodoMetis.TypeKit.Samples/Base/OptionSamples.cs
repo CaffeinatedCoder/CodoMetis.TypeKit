@@ -7,7 +7,16 @@ namespace ReadmeSamples.Base.Options;
 public interface ICustomerRepository
 {
     Option<Customer> FindByEmail(string email);
+
+    Task<Option<Customer>> FindByEmailAsync(string email);
 }
+
+public interface IAudit
+{
+    Task SeenAsync(Customer customer);
+}
+
+public enum SignInFault { Unknown }
 
 public sealed class Customer
 {
@@ -52,5 +61,17 @@ public static class OptionSample
             from rate in discounts.GetValueOrNone(c.Tier)                // TryGetValue as an option
             select rate;
         // end sample
+    }
+
+    public static async Task<Result<Customer, SignInFault>> UseAsync(ICustomerRepository repository, IAudit audit, string email)
+    {
+        // sample: CodoMetis.TypeKit/option-async
+        Result<Customer, SignInFault> active = await repository.FindByEmailAsync(email)   // Task<Option<Customer>>
+            .FilterAsync(c => c.IsActive)
+            .TapAsync(c => audit.SeenAsync(c))                                             // waited for
+            .ToResultAsync(SignInFault.Unknown);                                           // into a Result pipeline
+        // end sample
+
+        return active;
     }
 }

@@ -1,9 +1,10 @@
 # CodoMetis.TypeKit.Generators
 
-Compile-time generation of strongly-typed value objects for
+Compile-time generation of value objects and closed sets (smart enums) for
 [CodoMetis.TypeKit](https://www.nuget.org/packages/CodoMetis.TypeKit), built on
 [Metalama](https://www.postsharp.net/metalama). One line becomes a complete value object, with
-its JSON converter, parsing, formatting, comparison, type converter and query companions.
+its JSON converter, parsing, formatting, comparison, type converter and query companions, each
+applying the one `Create` you wrote.
 
 ```bash
 dotnet add package CodoMetis.TypeKit.Generators
@@ -16,7 +17,7 @@ those projects. No Metalama license key is needed, there or here: the generators
 Open Source edition.
 
 How this compares with Vogen, Thinktecture.Runtime.Extensions and StronglyTypedId, and when one of
-them is the better choice: [How it compares](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit#how-it-compares).
+them is the better choice: [How it compares](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/comparison.md).
 
 ## Built with Metalama
 
@@ -88,8 +89,8 @@ Any non-generic class, struct or enum, with the exceptions CMTK1005 lists. The g
 follow what the wrapped type offers: parsing where it can be parsed, formatting where it formats, and
 comparison where it is comparable. Numbers, `bool`, `char`, `string`, `Guid`, `DateTime`,
 `DateTimeOffset`, `DateOnly`, `TimeOnly` and enums have all of it; a `Uri` has no ordering, and neither
-do NodaTime's `OffsetDateTime`, `ZonedDateTime`, `Period` and `Interval`, whose `Interval` has no type
-converter to parse through either. An enum parses as `Enum.TryParse` does, case-sensitively: a name, a
+do NodaTime's `OffsetDateTime`, `ZonedDateTime`, `Period` and `Interval`, and `Interval` also has no
+type converter to parse through. An enum parses as `Enum.TryParse` does, case-sensitively: a name, a
 comma-separated list of names, or a number, which need not name a member.
 
 A generic wrapped type, a tuple included, is refused (CMTK1005): a `List<T>` or an `ImmutableArray<T>`
@@ -115,10 +116,12 @@ does.
 | `{TSelf}Extensions.GetValue()` and `ValueOrNull()` | every value object an extension class can reach (not a `private` or `protected` nested one) | For EF Core queries, where they translate to the column. |
 | `IValueObjectMaterializer<TSelf, T>` | every value object | Explicit, invisible on the type. Rebuilds an instance without validation, for the EF Core satellite. |
 
-Every generated way into a validated value object goes through `Create`. The only exception is the
-explicit materializer, for values the application wrote itself. Inside the type, your own members can
-reach the private constructor, which applies no rules, because `Create` needs it: call it from
-`Create` only. Another way in is a static method that calls `From` or `Create`.
+Every generated way into a validated value object goes through `Create`. Two paths skip it, both for
+values the application wrote itself: the explicit materializer, which the EF Core satellite reads a
+column through, and `StoredJsonConverterFactory`, registered only on the options that read the
+application's own JSON. Inside the type, your own members can reach the private constructor, which
+applies no rules, because `Create` needs it: call it from `Create` only. For another way in, write a
+static method that calls `From` or `Create`.
 
 `default(Email)` is not one of those ways, and the analyzer refuses it (CMTK0001), but an array slot or
 a JSON document without the property can still produce it (CMTK0005, and "A missing property" below).
@@ -135,9 +138,9 @@ interfaces the generators implement, and `IConvertible` where they generate it. 
 implementation of a member of an interface they implement, such as `IParsable<TSelf>.Parse` or
 `IFormattable.ToString`: every caller through the interface would reach it rather than the generated
 member, and a generic `T.Parse` would skip `Create`. `Create` is declared once, `public static`, and
-never as an explicit interface implementation: alone, the generated code cannot call it, and beside a
-public one, generic code calling `T.Create` would reach its rules instead of the ones every generated
-way in applies.
+never as an explicit interface implementation. The generated code cannot call an explicit one; and
+beside a public one, generic code calling `T.Create` would reach the explicit one's rules, not those
+every generated way in applies.
 
 To change what a value object prints, declare `ToString()`: a record's `PrintMembers(StringBuilder)` is
 CMTK1011 without it, since the generated `ToString()` prints the wrapped value and never calls it.
@@ -149,10 +152,13 @@ since C# keeps it in every derived record; one that is not sealed is CMTK1011, b
 `IConvertible` on it are refused as they are on the value object.
 
 Equality is the wrapped value's, as the ordering, the JSON and the column are, so a hand-written
-`Equals(TSelf)`, `GetHashCode()` or `IEquatable<TSelf>.Equals` is CMTK1011: it would make values equal
-that sort apart. To make values that differ only in form equal, such as "abc" and "ABC", normalise them
+`Equals(TSelf)`, `GetHashCode()`, `IEquatable<TSelf>.Equals`, or `operator ==` or `!=` between two of
+the type, is CMTK1011: it would make values equal that sort apart. To make values that differ only in form equal, such as "abc" and "ABC", normalise them
 in `Create` (a plain value object becomes an `IValidatedValue` for that), so that equal values hold
 the same wrapped value.
+
+An `[Obsolete]` on a value object, or on a type it is nested in, is copied to its `{TSelf}Extensions`
+class, which names the value object outside it: with `error: true` that use failed the build.
 
 A value object holds its wrapped value and nothing else. Its JSON, parsing, type converter and column
 carry that value alone, while a record's equality compares every field, so any other instance state
@@ -173,14 +179,86 @@ public sealed partial record ApiKey : IValue<string>
 }
 ```
 
-- **What still carries the value is what must**: its JSON, the type converter and the database column,
-  which are conversions, not display; and the debugger, which shows `ToString()` but expands `Value`.
+- **Still carrying the value**, since they are conversions and not display: its JSON, the type
+  converter and the database column; and the debugger, which shows `ToString()` but expands `Value`.
 - **Serilog** reads the public `Value` where it destructures (`{@Key}`, or a record holding one), past
   `ToString()`. [CodoMetis.TypeKit.Serilog](https://www.nuget.org/packages/CodoMetis.TypeKit.Serilog)
   logs every value object as what it prints instead.
 - **Microsoft.Extensions.Compliance**: classify the logging method's parameter. A
   `DataClassificationAttribute` on the value object's type makes the logging generator report
   LOGGEN035 and generate nothing for the method.
+
+## Closed sets
+
+An `enum` names its members and nothing else: a `switch` over one is never proven complete (C#
+only warns about a missing discard), a member carries no data, and the names are integers on the
+wire unless a converter says otherwise. A closed set is a sealed class whose every instance is a
+named member, declared as a `public static readonly` field, with constant data through a private
+constructor where the members carry some:
+
+```csharp
+public sealed partial class OrderStatus : IClosedSet<OrderStatus>
+{
+    public static readonly OrderStatus Open = new();
+    public static readonly OrderStatus Shipped = new();
+    public static readonly OrderStatus Cancelled = new();
+}
+
+public sealed partial class Tier : IClosedSet<Tier>
+{
+    public static readonly Tier Basic = new(1, null);
+    public static readonly Tier Premium = new(2, "Priority support.");
+
+    private Tier(int rank, string? perk) { Rank = rank; Perk = perk; }
+
+    public int Rank { get; }
+    public string? Perk { get; }
+}
+```
+
+The generators add `Name` from the field's name, `QualifiedName` (`OrderStatus.Open`), `All` in
+declaration order and read-only, `Match` with one required delegate per member named after it, `TryParse` and
+`Parse` by name, each ordinal or ignoring case when asked, `ToString()`, a JSON converter that
+writes the name and reads the member itself back, and a private parameterless constructor where the
+type declares none:
+
+```csharp
+var label = status.Match(open: () => "Open", shipped: () => "On its way", cancelled: () => "Cancelled");   // every member, or it does not compile
+var names = OrderStatus.All.Select(s => s.Name);                  // Open Shipped Cancelled
+var same = OrderStatus.Parse("Shipped") == OrderStatus.Shipped;   // True, members are singletons
+var json = JsonSerializer.Serialize(Tier.Premium);                // "Premium"
+```
+
+Members are singletons, so equality is reference equality, and a member added later fails every
+`Match` until it is handled. Every parameter of `Match` has the same type, so an argument by
+position would follow the declaration order and swap branches when two members are reordered: the
+analyzer requires every argument named (CMTK0012), and its code fix names them. `Match` checks every
+delegate for null before it picks one. `Parse` and the JSON converter refuse an unknown name with an
+exception naming the set, never the input, and a set is a dictionary key in JSON by its name too.
+`Parse(name, ignoreCase: true)` and `TryParse(name, ignoreCase: true, out member)` accept any casing.
+JSON, the type converter, `IParsable` and a bound route or query parameter stay ordinal, since what
+is stored or sent is the name as it is: a header or a query string a client typed in any casing is
+bound as a `string` and parsed with `ignoreCase: true`.
+`IParsable<TSelf>` is implemented explicitly, for generic code that parses through `T.Parse`, and a
+type converter reads and writes the name, so the configuration binder, MVC and anything else that
+reads a string through `TypeDescriptor` bind a set. The binder's source generator reads no type
+converter ([dotnet/runtime#83599](https://github.com/dotnet/runtime/issues/83599)): under it, as under
+Native AOT, bind the name as a `string` and `Parse` it.
+The EF Core satellite maps a closed set to a text column of the member's name, and the ASP.NET Core
+satellite describes it as a string enum of the names, with nothing registered per set. A set whose
+members are faults declares `IFaultSet<TSelf>`, a `FaultKind` and an optional description per member,
+and the ASP.NET Core satellite answers it by kind.
+
+Each member is initialized with `new` where it is declared (CMTK1019), and never written again
+(CMTK0013, the analyzer's: a member assigned in the static constructor would hold an instance named
+and listed as another), and the constructors are private (CMTK1016); a record is refused (CMTK1020). A member may not take the name of a generated
+member, nor differ from another's only in case (`Open` and `open`), since
+`TryParse(name, ignoreCase: true)` could not tell them apart (CMTK1021). A `ToString()` written by
+hand is kept, and the name is still what JSON, parsing and the column use. An overload of a generated
+method with another signature, such as `Parse(int rank)`, is kept too. Any other generated member
+written by hand is CMTK1011. An instance the set's own code creates beside its members has no name,
+so reading its name throws rather than writing a null. A JSON `null` reads as `null`, as for any class, unless the serializer's
+`RespectNullableAnnotations` refuses it.
 
 ## JSON
 
@@ -200,6 +278,15 @@ converter and `DictionaryKeyPolicy` all apply as they do to the wrapped type. Re
 property by an `OrderId` therefore changes no JSON, and a test compares the two for every wrapped-type
 family under several sets of options. One addition: a `DateTime` is written as UTC, a `Local` one
 converted and an `Unspecified` one taken as UTC with its digits kept.
+
+One exception: number handling given by an attribute rather than by the options. A
+`[JsonNumberHandling]` on the containing type reaches the number properties the serializer writes
+itself, and a value object's converter never sees it: under
+`[JsonNumberHandling(WriteAsString | AllowReadingFromString)]`, `record Dto(int Count)` writes
+`{"Count":"5"}` and reads `"5"`, while `record Dto(Quantity Count)` writes `{"Count":5}` and refuses
+`"5"` with a `JsonException`. On the property itself the serializer refuses the attribute for any type
+but a number (`InvalidOperationException`). Set the number handling on the options, or on a
+source-generated context's `[JsonSourceGenerationOptions]`, which do reach the value object.
 
 Numbers and dates are read as strictly as the serializer reads the wrapped type. What it cannot read
 is a `JsonException` naming the value object and the wrapped type ("Quantity could not read the JSON
@@ -240,13 +327,29 @@ var shown  = $"{Amount.From(1.5m)}";                       // "1.5"
 ```
 
 A null `IFormatProvider` means the invariant culture in every generated `Parse`, `TryParse`,
-`ToString` and `TryFormat`, so `Parse(x.ToString(), null)` round-trips wherever the process runs. A
-provider that is given is used as given where the wrapped type's parsing and formatting take one; a
-`Uri`, a NodaTime type and a type parsed through a constructor or a provider-less `Parse` ignore it.
+`ToString` and `TryFormat`, so the text does not depend on the culture the process runs in:
+`ToString()` is the wrapped type's own default text under the invariant culture, and the type
+converter and `$"{x}"` write the same. It reads back as the same value wherever the wrapped type's
+own does: numbers (`float`, `double` and `Half` included), `BigInteger`, `Guid`, `DateOnly`,
+`TimeSpan`, `Version`, `Uri`, enums and strings. It does not for `TimeOnly`, `DateTime` and
+`DateTimeOffset`, whose default text drops what the invariant culture's short patterns drop:
+`TimeOnly(3, 4, 5, 123)` prints `03:04`, a `DateTime` loses its fraction of a second and its `Kind`,
+a `DateTimeOffset` its fraction. Format those with `"O"` (`x.ToString("O", null)`), which a `TimeOnly`
+and a `DateTimeOffset` read back exactly, or keep them in their JSON form, which a `DateTime` reads
+back as the UTC instant it wrote. A provider that is given is used as given where the wrapped type's
+parsing and formatting take one; a `Uri`, a NodaTime type and a type parsed through a constructor or a
+provider-less `Parse` ignore it.
 
 Text the wrapped type cannot read is a `FormatException` naming the value object and the wrapped
 type ("Quantity could not read the input as Int32."), an overflow included, with no inner exception:
-the wrapped type's own message quotes the input. A refusal by `Create` names the fault instead.
+the wrapped type's own message quotes the input. A refusal by `Create` names the fault instead. The
+one place the input still appears is System.Text.Json's own: a refused dictionary key ends the
+`JsonException`'s `Path`.
+`TryParse` answers `false` for both, and lets anything else through as `Parse` does: an exception
+`Create` throws is a bug to see, not text to refuse.
+
+A default instance, which CMTK0001 keeps out of your own code but EF Core, MVC and serializers can
+make, formats as `""` over a reference type, as it always did over a string.
 
 ## Comparison
 
@@ -254,7 +357,13 @@ the wrapped type's own message quotes the input. A refusal by `Create` names the
 differently, declare `CompareTo(TSelf)` yourself: it is kept, and the object overload, the operators
 and the interfaces are derived from it. Any other hand-written comparison member, an explicit
 implementation of `IComparable<TSelf>`, `IComparable` or `IComparisonOperators` included, is an error
-(CMTK1008), so the ordering can never disagree with itself.
+(CMTK1008), so in memory every comparison agrees with your `CompareTo`.
+
+A database cannot run it: it orders the column by the wrapped value. The type then carries
+`[HandWrittenOrdering]`, and an EF Core query that compares, orders, or takes the `Min` or `Max` of
+it is refused, naming the value object, rather than answered in the column's order
+([CodoMetis.TypeKit.EntityFrameworkCore](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries)).
+Compare or order by `.Value` where the wrapped value's order is meant.
 
 ## Build errors
 
@@ -267,16 +376,26 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1002 | A struct not declared `readonly`. |
 | CMTK1003 | More than one marker, such as `IValue<int>, IValue<string>`. |
 | CMTK1004 | An `IValidatedValue<TSelf, …>` whose `TSelf` is another type. |
-| CMTK1005 | Generic or nested in a generic type (nesting in a non-generic type is fine), `file`-local or nested in a `file`-local type, named `Value`, derived from another value object, or wrapping an array, a pointer, a nullable type, a generic type (a tuple included) or a value object (itself included). Wrap what the other value object wraps instead. |
+| CMTK1005 | Generic or nested in a generic type (nesting in a non-generic type is fine), `file`-local or nested in a `file`-local type, named `Value` or as another member the generators introduce (`From`, `TryFrom`, `FromKnownGood`, `Revalidate`, `Parse`, `TryParse`, `TryFormat`, `MinValue`, `MaxValue`, `CompareTo`), derived from another value object, or wrapping `object`, `System.Enum`, an array, a pointer, a nullable type, a generic type (a tuple included) or a value object (itself included). Wrap what the other value object wraps instead. |
 | CMTK1006 | A record class not declared `sealed`. |
 | CMTK1007 | The `{TSelf}Extensions` companion's name is taken by a declared type or by another value object's companion. |
 | CMTK1008 | A hand-written comparison operator, object `CompareTo` or explicit implementation of a comparison interface beside the generated ones. |
 | CMTK1009 | A hand-written instance constructor, including a positional record's parameter list such as `OrderId(Guid Value)`. The constructor and `Value` are generated; a static constructor is fine. |
 | CMTK1010 | Declared in more than one `partial` part: Metalama 2026.1 writes the generated `ToString()` into every part, which does not compile. A part a source generator adds, such as a `[GeneratedRegex]` method's, does not count. |
-| CMTK1011 | A hand-written member or attribute the generators introduce (see "Your own members"), an explicit implementation of an interface they implement, a hand-written equality, a `PrintMembers` without `ToString()`, or `Create` implemented explicitly. |
+| CMTK1011 | A hand-written member or attribute the generators introduce (see "Your own members", and for a closed set every generated member but `ToString()`, by signature, `IParsable<TSelf>`, `[JsonConverter]` and `[TypeConverter]`), an explicit implementation of an interface they implement, a hand-written equality (an `operator ==` or `!=` between two of the type included, which C# also reports as CS0111), a `PrintMembers` without `ToString()`, or `Create` implemented explicitly. |
 | CMTK1012 | Instance state besides the wrapped value: a field, an auto-property, a `required` member or a field-like event, declared or inherited. Compute it from `Value`, make it static, or wrap a type that holds all of it. |
+| CMTK1013 | A closed set not declared `partial`. |
+| CMTK1014 | A closed set not declared `sealed`: a set with subtypes is not closed. |
+| CMTK1015 | A closed set with no member: a member is a `public static readonly` field of the set's own type. |
+| CMTK1016 | A closed set with a constructor that is not private, so an instance beside its members could be made. |
+| CMTK1017 | A closed set with a static member of its own type that is not a public readonly field: a property, a field that is not `readonly`, or a field that is not public, which is an instance that is no member. |
+| CMTK1018 | A closed set that is generic or nested in a generic type. |
+| CMTK1019 | A closed set's member not initialized with `new` where it is declared, and with nothing else: `= Open` would give one instance two names, and a member set later, by a call, or by an expression that only starts with `new`, may be another member or null. |
+| CMTK1020 | A closed set declared as a record: `with` copies a member into an instance that is none, and a record compares by value where members are singletons. |
+| CMTK1021 | A closed set's member named as a member the generators introduce (`Name`, `QualifiedName`, `All`, `Match`, `Parse`, `TryParse`, `ToString`, the JSON or type converter), a set itself named as one of them (a member cannot have the name of its type), or a member whose name differs from another member's only in case: they collide in `TryParse(name, ignoreCase: true)`, and in `Match`'s parameters where the first letter is the difference; or two members whose `Match` parameters would have one name, which lower-casing the first letter gives a member starting with the Kelvin sign (U+212A) and one starting with `K`. |
+| CMTK1022 | An abstract type with a value-object marker: it would get no member, and a value held as it, of a type derived from it, would have no `Value` and be written as `{}`. Declare the marker on the sealed type. An abstract closed set is CMTK1014. |
 
-The analyzers that come with the base package add CMTK0001 to CMTK0009; see
+The analyzers that come with the base package add CMTK0001 to CMTK0013; see
 [CodoMetis.TypeKit.Analyzers](https://www.nuget.org/packages/CodoMetis.TypeKit.Analyzers).
 
 ## Reading the generated code

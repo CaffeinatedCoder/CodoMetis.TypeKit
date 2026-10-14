@@ -2,7 +2,7 @@
 
     <!-- Works at run time against the CodoMetis.TypeKit attribute; never references .Generators. -->
     <PropertyGroup>
-        <Description>Serilog integration for CodoMetis.TypeKit: value objects are logged as what they print, so a destructured value object or a record holding one never exposes a value its ToString() masks.</Description>
+        <Description>Serilog integration for CodoMetis.TypeKit: value objects and closed sets are logged as what they print, so a destructured value object or a record holding one never exposes a value its ToString() masks.</Description>
         <PackageTags>serilog;logging;structured-logging;value-object;strongly-typed-id;ddd;redaction</PackageTags>
     </PropertyGroup>
 

@@ -2,7 +2,7 @@
 
     <!-- For test projects: no test framework of its own, so it works under xUnit, NUnit and MSTest alike. -->
     <PropertyGroup>
-        <Description>Test assertions for CodoMetis.TypeKit's Option and Result: hand a test the value or the error it expects, or fail with what the outcome was instead. No test framework dependency.</Description>
+        <Description>Test assertions for CodoMetis.TypeKit's Option, Result and Patch: hand a test the value or the error it expects, or fail with what the outcome was instead. No test framework dependency.</Description>
         <PackageTags>testing;assertions;option;result;xunit;nunit;mstest</PackageTags>
     </PropertyGroup>
 

@@ -3,7 +3,7 @@
 The Roslyn analyzers for [CodoMetis.TypeKit](https://www.nuget.org/packages/CodoMetis.TypeKit).
 You do not reference this package yourself: `CodoMetis.TypeKit` depends on it, so every project
 that can see `Option`, `Result` or the value-object contracts gets the rules, directly or through
-another project. Reference it directly only to take a newer analyzer than the base package you are on.
+another project. The two share a version and move together.
 
 The characteristic failure these rules prevent is code that compiles and does less than it
 appears to: an instance that passed no factory, or a value object that was never generated.
@@ -13,17 +13,21 @@ appears to: an instance that passed no factory, or a value object that was never
 | Id | Severity | Reports |
 |---|---|---|
 | CMTK0001 | Error | `default`, `default(T)`, `new T()`, `new()` and `new T { }` of a value object, an `Option`, a `Result`, or a struct marked `[RequireCustomInitialization]`. Also through a type parameter whose constraints make it one of those. A default that is only compared (`id == default`, `id.Equals(default)`, `ThrowIfEqual(id, default)`, `Assert.NotEqual(default, id)`) is a guard and is not reported, nor is one assigned to an `out` parameter of a Try method that returns `bool`. |
-| CMTK0002 | Error | A type implements `IValue<T>` or `IValidatedValue<,,>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so nothing is generated for it: no field, no `Value`, no factory. |
-| CMTK0003 | Warning | A `Result` or `Option` that a call returns, or a collection of them that the statement made, dropped by a statement, awaited or not, or by converting its `Task` to a plain `Task`, a method group's included. |
+| CMTK0002 | Error | A type implements `IValue<T>`, `IValidatedValue<,,>` or `IClosedSet<TSelf>`, but the compilation does not reference `CodoMetis.TypeKit.Generators`, so nothing is generated for it: no field, no `Value`, no factory, or for a closed set no name and no `Match`. |
+| CMTK0003 | Error | A `Result` or `Option` that a call returns, or a collection or a tuple of them that the statement made, dropped. The drops: a statement, awaited or not; its `Task` converted to a plain `Task`, also where a method group is the conversion; `Wait`; a loop that never reads it; a branch of a conditional, a `switch` expression or a `??` that picked the call. `_` says the drop is meant. |
 | CMTK0004 | Error | `Materialize`, which rebuilds a value object without its rules, called or referenced anywhere but the EF Core satellite. |
 | CMTK0005 | Warning | An array or span of a value object, `Option`, `Result` or `[RequireCustomInitialization]` struct created with a length, so every slot starts as `default`. A constant length of zero is not reported. |
 | CMTK0006 | Warning | A field or auto-property of such a type in a class that no initializer, `required` or constructor sets, or a `required` one that a `[SetsRequiredMembers]` constructor does not set. |
 | CMTK0007 | Info | `FromKnownGood` given a value that comes straight from a parameter. |
 | CMTK0008 | Warning | The wrapped values of two different value objects compared, `order.CustomerId.Value == product.Id.Value`, or the two value objects themselves through `Equals(object)`. |
 | CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. |
+| CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute, `[Abstract]`, `[Sealed]`, `[Record]` or `[Concrete]`, at any closed use: a base type, a member, a parameter, a local, a `typeof`, an attribute, a call or a method group, written or inferred, and a member of a generic extension block, whose arguments the receiver gives. A type parameter forwarded without the attribute is a breach too, and a method implementing an interface's method, or overriding one, carries the constraint of what it implements, a static one and one a base class declares included. |
+| CMTK0011 | Error | A concrete class that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. A struct is never reported: its parameterless constructor is public and can be nothing else. The code fix writes or changes the constructor. |
+| CMTK0012 | Error | A closed set's `Match` given an argument by position, which binds to whichever member is declared at that place, so reordering the members swaps the branches. The code fix names every argument. |
+| CMTK0013 | Error | A closed set's member written outside its declaration: in the static constructor, after the generators named the instance it held, or in another static field's initializer, before. |
 
 The ids are public contract and never change meaning. The generators' own build errors,
-CMTK1000 to CMTK1011, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
+CMTK1000 to CMTK1022, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
 
 Every rule also runs in `.razor` and `.cshtml` files (see [Generated code](#generated-code-and-razor)).
 
@@ -47,9 +51,9 @@ Result<Order, OrderFault> pending = Result.Error(OrderFault.Empty);
 ```
 
 Code inside the type itself is exempt, since its factories have to construct it. A `Nullable<T>`
-of a value object is a null, not an instance, and is not reported. What the rule cannot see, such
-as an array created with a length or an unassigned field of a class, is why an uninitialized
-`Result` throws instead of reporting an error it never had.
+of a value object is a null, not an instance, and is not reported. An array created with a length
+or an unassigned field of a class can still hold a `default` the rule cannot see, so an
+uninitialized `Result` throws rather than report an error it never had.
 
 A default that is only compared is a guard against exactly those, or an assertion that one is not
 there, and is not reported:
@@ -110,6 +114,8 @@ CMTK0006 and CMTK0009 then treat it as they treat a value object.
 The generators apply through a transitive project fabric rather than an attribute on the interfaces,
 which keeps the base package free of Metalama. The price is that a project that sees the interfaces
 but not the generators compiles a value object with nothing in it, silently. This rule is that error.
+A closed set fails to compile there anyway, on the interface members nobody implemented; the rule
+says why.
 
 ```csharp
 public readonly partial record struct OrderId : IValue<Guid>;   // CMTK0002 without CodoMetis.TypeKit.Generators
@@ -146,8 +152,10 @@ Func<Guid, Task> cancel = orders.CancelAsync;             // CMTK0003
 bus.Subscribe<Guid>(orders.CancelAsync);                  // CMTK0003: the parameter is a Func<T, Task>
 ```
 
-A task you still hold is not dropped, and an explicit cast, to `Task` or to the delegate type, says
-the drop is intended. A `ValueTask<T>` has no conversion to `ValueTask`.
+A task you still hold is not dropped, awaited as it is or through `ConfigureAwait` or `WaitAsync`,
+which hand on the task they are called on; through them, a call's task is still that call's
+(`await orders.CancelAsync(id).ConfigureAwait(false);` is reported, naming `CancelAsync`). An
+explicit cast, to `Task` or to the delegate type, says the drop is intended. A `ValueTask<T>` has no conversion to `ValueTask`.
 
 A collection of results is dropped as silently as one result:
 
@@ -162,17 +170,45 @@ await Task.WhenAll(cancelFirst, cancelSecond);                      // silent: b
 ```
 
 A collection is an array, or a type that is or implements `ICollection<T>` or `IReadOnlyCollection<T>`
-(`List<T>`, `ImmutableArray<T>`, `IReadOnlyList<T>`), of results or of tasks of them. It is reported
+(`List<T>`, `ImmutableArray<T>`, `IReadOnlyList<T>`), of results, of tasks of them, or of key-value
+pairs whose value is one (`Dictionary<Guid, Result<…>>`, `ids.ToDictionary(id => id, orders.Cancel)`);
+a tuple that holds one, `(Result<…>, int)`, is held to the same rule. It is reported
 when the statement made the results in it: a call in the statement returns a result or a task of one,
 a method group of such a method is passed on, or the call that returns the collection was given no
 result and made them itself, as `orders.CancelAll(ids);` does. A call given results that something
 still holds only passes them on and is silent: `Task.WhenAll` over tasks in variables, fields or
 parameters, or `pending.ToList()`. A lazy `IEnumerable<T>`, such as a `Select` nobody enumerates, has
-made nothing yet; CA1806 reports a LINQ result that is dropped.
+made nothing yet; CA1806 reports a LINQ result that is dropped. A lazy sequence of results that a call
+returns without being given any, `orders.CancelEach(ids)`, makes them as it is enumerated, so
+`orders.CancelEach(ids).ToList();` is reported, and so is `await orders.CancelEachAsync(ids).ToListAsync();`.
+
+Waiting for a task drops its result as surely, and so does a loop that never reads what it walks:
+
+```csharp
+orders.CancelAsync(id).Wait();                                   // CMTK0003: blocks until the Result exists, then forgets it
+Task.WaitAll(ids.Select(orders.CancelAsync));                    // CMTK0003: the tasks become plain ones
+await foreach (var outcome in orders.CancelEachAsync(ids)) { }   // CMTK0003: every Result, read by nobody
+await foreach (var _ in orders.CancelEachAsync(ids)) { }         // a variable named _ says the drop is meant
+```
+
+`Wait` is reported on a task the expression made, whether the statement drops the `bool` a timeout
+overload returns or an `if` reads it. `Task.WaitAll` and `Task.WaitAny` take plain tasks, so tasks of
+results the statement made are converted and their results dropped, as one task's conversion is; an
+explicit cast to the plain tasks' type says that drop is intended. A
+`foreach` or `await foreach` is reported when its header made the results, by the rule above, and
+its body never reads the iteration variable. Tasks and collections that something still holds keep
+their results and are silent.
+
+Out of reach: a lazy sequence of results drained by a call that reads none of them,
+`orders.CancelEach(ids).Count();`. The call is given the sequence, and nothing in its signature tells
+a count from a read; enumerate it with a loop that reads each result, or discard the count with `_ =`.
 
 `Tap`, `TapAsync`, `TapError` and `TapErrorAsync` return their receiver unchanged, and so do the
 `Task` continuations `TapAsync` and `TapErrorAsync`, so `result.Tap(log);` and `await pending.TapAsync(log);`
-on a variable, parameter or field are silent. `Find(id).Tap(log);` drops the result and is reported.
+on a variable, parameter or field are silent, and so is a chain of them, `result.Tap(log).TapError(warn);`,
+or one on what a held task completes with, `(await pending).Tap(log);`. So is such a tap returned as a
+plain `Task`, `Task Log() => pending.TapAsync(log);`, or waited for. `Find(id).Tap(log);` drops
+the result and is reported, and so does `Find(id).Tap(log).TapError(warn);`.
 
 ## CMTK0004
 
@@ -192,7 +228,8 @@ OrderId[] kept = [.. rows.Select(r => OrderId.From(r.Id))];   // built from valu
 `stackalloc`, `GC.AllocateUninitializedArray`, `GC.AllocateArray` and `Array.Resize` are reported
 too; `Array.Resize` adds default slots whenever the new size is larger, which the rule cannot tell.
 A constant length or size of zero creates no slot, as `new OrderId[0]` does not, and is not reported.
-A warning, since filling such an array in a loop straight after is correct and indistinguishable.
+A warning, since an array filled in a loop straight after it is created is correct, and the rule
+cannot tell it from one that is not.
 
 ## CMTK0006
 
@@ -289,10 +326,13 @@ var first = ids.FirstOrDefault();                    // CMTK0009: an OrderId nob
 | Call | Instead |
 |---|---|
 | `Enumerable.FirstOrDefault`, `LastOrDefault`, and `ImmutableArray`'s own | `FirstOrNone`, `LastOrNone`, which return an `Option`, or the overload that takes a default value |
-| `Enumerable.SingleOrDefault`, `DefaultIfEmpty`, and `ImmutableArray`'s own | the overload that takes a default value |
-| `Enumerable.ElementAtOrDefault`, and `ImmutableArray`'s own | `Skip(index).FirstOrNone()` |
-| The same on `Queryable` | select a nullable first, `Select(x => (OrderId?)x).FirstOrDefault()`, which a query provider translates |
-| EF Core's `FirstOrDefaultAsync`, `LastOrDefaultAsync`, `SingleOrDefaultAsync`, `ElementAtOrDefaultAsync` | the same nullable projection, `Select(x => (OrderId?)x).FirstOrDefaultAsync()`; EF Core has no overload that takes a default value |
+| `Enumerable.SingleOrDefault`, and `ImmutableArray`'s own | `SingleOrNone`, which returns an `Option` and still throws for more than one, or the overload that takes a default value |
+| `Enumerable.DefaultIfEmpty`, and `ImmutableArray`'s own | the overload that takes a default value |
+| `Enumerable.ElementAtOrDefault`, and `ImmutableArray`'s own | `ElementAtOrNone(index)` |
+| `Queryable.FirstOrDefault`, `SingleOrDefault`, `ElementAtOrDefault` | `FirstOrNone`, `SingleOrNone`, `ElementAtOrNone`, which ask the query for one element (two for `SingleOrNone`), or the nullable projection below |
+| `Queryable.LastOrDefault`, `DefaultIfEmpty` | select a nullable first, `Select(x => (OrderId?)x).LastOrDefault()`, which a query provider translates |
+| EF Core's `FirstOrDefaultAsync`, `SingleOrDefaultAsync` | `FirstOrNoneAsync`, `SingleOrNoneAsync` of `CodoMetis.TypeKit.EntityFrameworkCore`, named where the project references it, or the nullable projection |
+| EF Core's `LastOrDefaultAsync`, `ElementAtOrDefaultAsync` | the same nullable projection, `Select(x => (OrderId?)x).LastOrDefaultAsync()`; EF Core has no overload that takes a default value |
 | `FirstOrDefaultAsync`, `LastOrDefaultAsync`, `SingleOrDefaultAsync`, `DefaultIfEmpty` on an `IAsyncEnumerable<T>` | the overload that takes a default value |
 | `ElementAtOrDefaultAsync` on an `IAsyncEnumerable<T>` | the nullable projection |
 | `Find`, `FindLast` of a `List<T>`, an array (`Array.Find`) or an `ImmutableList<T>` | `FirstOrNone(predicate)`, `LastOrNone(predicate)` |
@@ -307,6 +347,129 @@ asynchronous forms, it is the type the task returns. An overload given a default
 element type whose default is null or an ordinary value, are not reported. EF Core's forms are
 recognised in any project that references EF Core. A warning, since code that checks the sequence is not empty first is correct and the rule cannot tell.
 
+## CMTK0010
+
+C# has `where T : class`, `struct`, `new()` and a base type, but no `where T : abstract`, `sealed`
+or `record`. A generic whose argument must be an abstract record, the command family of an
+aggregate, gets no help from the compiler, and the closed type that breaks it compiles. Four
+attributes on a type parameter say what C# cannot, and this rule reports the use that breaks it,
+at the argument where one is written, and where the arguments are inferred at the call, or at the
+method group that takes them from the delegate it converts to (`Action<PlaceOrder> run = Runner.Run;`):
+
+```csharp
+public abstract class Decider<[Abstract] TCommand, [Record] TEvent> { }
+
+public sealed record PlaceOrder : Command;
+
+public sealed class OrderDecider : Decider<PlaceOrder, OrderPlaced> { }   // CMTK0010: PlaceOrder is not abstract
+
+public abstract class Leaky<TCommand> : Decider<TCommand, OrderPlaced> { }           // CMTK0010: TCommand does not carry [Abstract]
+public abstract class Sound<[Abstract] TCommand> : Decider<TCommand, OrderPlaced> { }
+```
+
+| Attribute | Accepts | A forwarding type parameter satisfies it when |
+|---|---|---|
+| `[Abstract]` | an abstract class or record; not an interface | it carries `[Abstract]`; no C# constraint proves it |
+| `[Sealed]` | a sealed class or record, a struct, an enum, a delegate, an array | it carries `[Sealed]`, is constrained to `struct` or `unmanaged`, or is bound (`where T : U`) to a parameter that proves `[Sealed]` |
+| `[Record]` | a record class or record struct | it carries `[Record]`, or is bound to a record or to a parameter that proves `[Record]`: only records derive from records |
+| `[Concrete]` | a class, record or struct that is not abstract, static or an interface, an enum, a delegate, an array; no constructor is demanded, unlike `new()` | it carries `[Concrete]`, is constrained to `new()`, or proves `[Sealed]`: a sealed type is never abstract |
+
+A type parameter given as the argument must carry the attribute itself, or be constrained so that no
+argument can break it, as the table's last column says; otherwise the requirement would end at the
+first forwarding parameter and `Sound<PlaceOrder>` would never be reported. A generic
+attribute, `[Handles<PlaceOrder>]`, is a use like any other. So is a member of a C# 14 extension
+block with a constrained type parameter, `extension<[Concrete] T>(T value)`: its argument comes from
+the receiver, so `handler.Go()`, `handler.Count`, `Handler.Make()`, a method group and an operator are
+reported at the use, and where the arguments are written, the block's come first
+(`handler.Take<Handler, PlaceOrder>(order)`). A method that implements an interface's method carries
+its constraint, a static method implementing a `static abstract` one included, and so does a base
+class's method that implements the interface for a derived class, when it is reached through the
+derived class, a type parameter constrained to it, or `base.` inside it. The open generic
+inside its own body, an unbound `typeof(Decider<,>)`, a `nameof(Decider<PlaceOrder, OrderPlaced>)`,
+which uses no argument, and a type argument that does not exist, which is the compiler's error, are
+never reported. Reflection,
+`MakeGenericType`, is out of reach, and the attributes carry no run-time check.
+
+## CMTK0011
+
+A type the host creates by reflection, an endpoint, a module, an entity configuration, needs a
+parameterless constructor, and C# demands one only through `new()`, which demands a public one and
+only where a type parameter says so. `[RequireParameterlessConstructor]` on the interface or base
+class says it once, and the error appears on the type that lacks the constructor, in whichever
+project declares it, where the host would otherwise have failed at run time.
+
+```csharp
+[RequireParameterlessConstructor]
+public interface IEndpoint { void Map(IEndpointRouteBuilder app); }
+
+[RequireParameterlessConstructor(ConstructorAccessibility.Internal)]
+public abstract class Module { }
+
+public sealed class OrderEndpoint(ILogger log) : IEndpoint   // CMTK0011: a primary constructor, so no parameterless one
+{
+    public void Map(IEndpointRouteBuilder app) { }
+}
+
+public sealed class Identity : Module;                       // CMTK0011: the implicit constructor is public, Module requires internal
+```
+
+A class that declares no constructor has a public parameterless one and satisfies `Public` as it
+is. A wrong accessibility is reported at the constructor, and the fix changes it there; a missing
+one is reported at the type, and the fix adds it. A record or class with a primary constructor, in
+any of its parts, gets no fix: every other constructor of such a type chains to the primary one,
+with arguments only its author knows. The fix touches nothing but the constructor: doc comments,
+attributes, comments and the members' layout stay as written, the lines it adds are indented as the
+members are and end as the file's lines do, and a type written on one line gets the constructor on
+that line. The requirement reaches a type through any chain of base classes and interfaces, and
+the attribute is read from metadata, so the marked type can live in another package.
+
+Nor does a type whose base `base()` cannot reach, which the added constructor calls implicitly: a
+base with only constructors that take arguments, one the type cannot access, or two that `base()`
+could each be. Which constructor to chain to is the author's choice.
+
+A struct or record struct is never reported. It always has a public parameterless constructor, the
+implicit one or one it declares, and C# allows it no other (CS8958): it satisfies `Public` as it is,
+and no other accessibility can be asked of it.
+
+## CMTK0012
+
+A closed set's `Match` takes one delegate per member, in the order the members are declared, so
+every parameter has the same type. An argument by position binds to whichever member is declared
+at that place: reorder two members, and every such call swaps their branches and compiles as
+before. A named argument follows its member, and a member renamed or removed fails the call.
+
+```csharp
+var label = status.Match(() => "Open", () => "On its way", () => "Cancelled");   // CMTK0012: by position
+var named = status.Match(open: () => "Open", shipped: () => "On its way", cancelled: () => "Cancelled");
+```
+
+The code fix names each argument after the parameter it binds to now, so the call keeps its
+meaning. A parameter is the member's name with its first letter lower-cased, and a keyword is
+escaped: a member `New` is `@new:`. An overload the set declares itself, such as
+`Match(Func<OrderStatus, string>)`, is its own and is not reported.
+
+## CMTK0013
+
+The generators give each member of a closed set its name, and fill `All`, after the static field
+initializers and before the static constructor's body. A member written in that body keeps the
+field pointing at an instance already named as another member; one written in another field's
+initializer gives one instance two names. Both compile, and C# allows the write nowhere else.
+
+```csharp
+public sealed partial class OrderStatus : IClosedSet<OrderStatus>
+{
+    public static readonly OrderStatus Open = new();
+    public static readonly OrderStatus Closed = new();
+
+    static OrderStatus() { Open = Closed; }   // CMTK0013: Open now holds the instance named "Closed"
+}
+```
+
+There, `OrderStatus.Closed.Match(open: …, closed: …)` takes the `open` branch, `Parse("Open")` is
+written back as `"Closed"`, and `All[0]` is not `Parse("Open")`. An assignment, `??=`, a
+deconstruction, a `ref` or `out` argument and a `ref` taken to the member are each reported. A
+static constructor that only reads the members, to build a lookup, is silent.
+
 ## Configuration
 
 Severity follows the usual `.editorconfig` mechanism, for instance
@@ -315,12 +478,16 @@ for `.razor` and `.cshtml` files, not `[*.cs]`, not `[*.razor]`, not even `[*]`.
 there too, put the line in a `.globalconfig` file, which applies to every file of the project.
 
 The errors are the rules where the code is wrong whatever surrounds it: a `default` written out
-(CMTK0001), a value object nothing generates (CMTK0002), and validation bypassed (CMTK0004). A
-warning is what gets ignored, so these fail the build. The others are warnings, or for CMTK0007 Info,
-because correct code can look the same: an array filled in a loop straight after it is created
-(CMTK0005), a member a framework sets (CMTK0006), a sequence known not to be empty (CMTK0009), a
-drop that nothing depends on (CMTK0003), or a comparison of two identities that really are shared
-(CMTK0008).
+(CMTK0001), a value object nothing generates (CMTK0002), validation bypassed (CMTK0004), a type
+argument that breaks what its parameter declares (CMTK0010), a constructor a host will look for
+and not find (CMTK0011), branches bound to members by their order (CMTK0012), and a member that
+answers to another's name (CMTK0013). So is a result dropped without saying so (CMTK0003): a drop that nothing depends on is correct, and `_` says it in
+the code, where every reader sees it. These fail the build because a warning on correct code is
+rare for them and a missed one is a defect at run time. The
+others are warnings, or for CMTK0007 Info, because correct code can look the same and has nothing
+but a suppression to say so: an array filled in a loop straight after it is created (CMTK0005), a
+member set in a second step, such as a component's `OnInitialized` (CMTK0006), a sequence known not
+to be empty (CMTK0009), or a comparison of two identities that really are shared (CMTK0008).
 
 Within a major version, an Error never reports more than it did: a new Error rule, or an Error that
 reports more, waits for the next major version. A Warning or an Info may learn more forms in a minor

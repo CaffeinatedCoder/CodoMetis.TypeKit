@@ -34,6 +34,16 @@ internal sealed class ValueObjectTypeMappingSourcePlugin(IServiceProvider servic
     {
         if (mappingInfo.ClrType is not { } clrType) return null;
 
+        // A closed set is a text column holding the member's name.
+        if (ClosedSetMapping.Describe(clrType) is { } set)
+        {
+            _typeMappingSource ??= services.GetRequiredService<IRelationalTypeMappingSource>();
+            var text = _typeMappingSource.FindMapping(
+                typeof(string), mappingInfo.StoreTypeName, mappingInfo.IsKeyOrIndex, mappingInfo.IsUnicode, mappingInfo.Size,
+                mappingInfo.IsRowVersion, mappingInfo.IsFixedLength, mappingInfo.Precision, mappingInfo.Scale);
+            return text is null ? null : ClosedSetMapping.For(set).ComposeOnto(text);
+        }
+
         if (ValueObjectTypes.Describe(Nullable.GetUnderlyingType(clrType) ?? clrType) is not { } valueObject) return null;
 
         _typeMappingSource ??= services.GetRequiredService<IRelationalTypeMappingSource>();

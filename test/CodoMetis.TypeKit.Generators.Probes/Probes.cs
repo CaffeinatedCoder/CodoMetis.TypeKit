@@ -1,3 +1,4 @@
+using CodoMetis.TypeKit.ClosedSets;
 using CodoMetis.TypeKit.ValueObjects;
 
 namespace CodoMetis.TypeKit.Generators.Probes;
@@ -74,6 +75,15 @@ internal readonly partial record struct ProbeInternalId : IValue<int>;
 public readonly partial record struct ProbeDescending : IValue<int>
 {
     public int CompareTo(ProbeDescending other) => other.Value.CompareTo(Value);
+}
+
+/// <summary>
+/// The comparison seam on a record class, whose operand is nullable: the declared ordering must be
+/// recognised there too.
+/// </summary>
+public sealed partial record ProbeReversedLabel : IValue<string>
+{
+    public int CompareTo(ProbeReversedLabel? other) => other is null ? 1 : string.CompareOrdinal(other.Value, Value);
 }
 
 /// <summary>
@@ -184,4 +194,148 @@ public abstract record ProbeMaskingRecord
 {
     /// <summary>What every derived record prints.</summary>
     public sealed override string ToString() => "***";
+}
+
+/// <summary>A closed set with no data and no constructor: the generators add a private one.</summary>
+public sealed partial class ProbeStatus : IClosedSet<ProbeStatus>
+{
+    public static readonly ProbeStatus Open = new();
+    public static readonly ProbeStatus Shipped = new();
+    public static readonly ProbeStatus Cancelled = new();
+}
+
+/// <summary>A closed set declared in two parts, this one and <c>SplitProbes.cs</c>: <c>All</c> lists the member of either.</summary>
+public sealed partial class ProbeSplit : IClosedSet<ProbeSplit>
+{
+    public static readonly ProbeSplit First = new();
+}
+
+/// <summary>Two nested sets of one simple name, told apart by their containers.</summary>
+public static class ProbeOrder
+{
+    public sealed partial class Status : IClosedSet<Status>
+    {
+        public static readonly Status Open = new();
+    }
+}
+
+/// <summary>See <see cref="ProbeOrder"/>.</summary>
+public static class ProbeShipment
+{
+    public sealed partial class Status : IClosedSet<Status>
+    {
+        public static readonly Status Sent = new();
+    }
+}
+
+/// <summary>A closed set with constant data per member, through a private constructor.</summary>
+public sealed partial class ProbeTier : IClosedSet<ProbeTier>
+{
+    public static readonly ProbeTier Basic = new(1, null);
+    public static readonly ProbeTier Premium = new(2, "Priority support.");
+
+    private ProbeTier(int rank, string? perk)
+    {
+        Rank = rank;
+        Perk = perk;
+    }
+
+    public int Rank { get; }
+
+    public string? Perk { get; }
+}
+
+/// <summary>A closed set with a hand-written <c>ToString()</c>, the one seam: kept, while the name stays what JSON and parsing use.</summary>
+public sealed partial class ProbeLabelled : IClosedSet<ProbeLabelled>
+{
+    public static readonly ProbeLabelled Low = new("low priority");
+    public static readonly ProbeLabelled High = new("high priority");
+
+    private readonly string _label;
+
+    private ProbeLabelled(string label) => _label = label;
+
+    /// <summary>The label, not the name.</summary>
+    public override string ToString() => _label;
+}
+
+/// <summary>A closed set whose own code makes an instance beside its members, which therefore has no name.</summary>
+public sealed partial class ProbeLevel : IClosedSet<ProbeLevel>
+{
+    public static readonly ProbeLevel Low = new();
+    public static readonly ProbeLevel High = new();
+
+    /// <summary>Not a member: the private constructor is still the set's own to call.</summary>
+    public static ProbeLevel Unlisted() => new();
+}
+
+/// <summary>
+/// A closed set whose members are created in every form CMTK1019 accepts, with a comment, a qualified
+/// name, an object initializer and a literal holding brackets, and which declares overloads of the
+/// generated <c>Parse</c> and <c>Match</c> with other signatures: its own, kept.
+/// </summary>
+public sealed partial class ProbePriority : IClosedSet<ProbePriority>
+{
+    public static readonly ProbePriority Low = new(/* the lowest (1) */ 1);
+    public static readonly ProbePriority Normal = new global::CodoMetis.TypeKit.Generators.Probes.ProbePriority(2) { Label = "normal (the default)" };
+    public static readonly ProbePriority High = new(3) { Label = "high" };
+
+    private ProbePriority(int rank) => Rank = rank;
+
+    public int Rank { get; }
+
+    public string? Label { get; private init; }
+
+    /// <summary>The member of that rank: another signature than the generated <c>Parse(string)</c>.</summary>
+    public static ProbePriority Parse(int rank) => rank switch { 1 => Low, 2 => Normal, _ => High };
+
+    /// <summary>A switch that answers nothing: another signature than the generated <c>Match&lt;TResult&gt;</c>.</summary>
+    public void Match(Action low, Action normal, Action high)
+    {
+        if (ReferenceEquals(this, Low)) low();
+        else if (ReferenceEquals(this, Normal)) normal();
+        else high();
+    }
+}
+
+/// <summary>
+/// A closed set whose members are named as C# keywords once lower-cased: <c>Match</c>'s parameters
+/// are <c>new</c> and <c>default</c>, written <c>@new:</c> and <c>@default:</c> at a call.
+/// </summary>
+public sealed partial class ProbeKeyword : IClosedSet<ProbeKeyword>
+{
+    public static readonly ProbeKeyword New = new();
+    public static readonly ProbeKeyword Default = new();
+}
+
+/// <summary>
+/// A fault set: each member's kind, from which a host derives its status, and a description where the
+/// member has one. <c>Locked</c> must not explain itself, so it has none.
+/// </summary>
+public sealed partial class ProbeOrderFault : IFaultSet<ProbeOrderFault>
+{
+    public static readonly ProbeOrderFault NotFound = new(FaultKind.NotFound, "The order does not exist.");
+    public static readonly ProbeOrderFault NameTaken = new(FaultKind.Conflict, "Another order has that name.");
+    public static readonly ProbeOrderFault Locked = new(FaultKind.Forbidden, null);
+
+    private ProbeOrderFault(FaultKind kind, string? description)
+    {
+        Kind = kind;
+        Description = description;
+    }
+
+    public FaultKind Kind { get; }
+
+    public string? Description { get; }
+}
+
+/// <summary>A fault set with a member whose kind is <c>default</c>, which is no kind: refused where the faults are mapped.</summary>
+public sealed partial class ProbeKindlessFault : IFaultSet<ProbeKindlessFault>
+{
+    public static readonly ProbeKindlessFault Known = new(FaultKind.Invalid);
+    public static readonly ProbeKindlessFault Unset = new(default);
+
+    private ProbeKindlessFault(FaultKind kind) => Kind = kind;
+
+    public FaultKind Kind { get; }
 }

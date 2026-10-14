@@ -6,8 +6,22 @@ namespace CodoMetis.TypeKit;
 /// continuations of a result that is still being produced (<c>Task&lt;Result&lt;…&gt;&gt;</c>).
 /// </summary>
 /// <remarks>
+/// <para>
 /// Everything here stops at the first error, in argument or sequence order. Nothing collects
 /// errors: that is a validation applicative, which this package leaves out on purpose.
+/// </para>
+/// <para>
+/// The asynchronous members never resume on the caller's <see cref="SynchronizationContext"/>: every
+/// <c>await</c> in them is <c>ConfigureAwait(false)</c>, so they cannot deadlock a caller that blocks
+/// on a chain. A callback therefore runs where the task it waits for completed: at once, on the
+/// caller's thread and context, when that task had already completed, and otherwise wherever it
+/// completed, usually a thread-pool thread without the caller's context. That covers a continuation of
+/// a pending result (<c>MapAsync</c>, <c>BindAsync</c>, <c>TapAsync</c> and the rest), every operation
+/// of <c>TraverseAsync</c> after the first, and every step after one that waited. The caller's own
+/// <c>await</c> of the chain returns to its context as usual. In a UI or a Blazor component, where a
+/// callback touches state bound to the dispatcher or the renderer, await the task and call the
+/// synchronous combinator on what it answers, or marshal inside the callback.
+/// </para>
 /// </remarks>
 public static class Result
 {
@@ -30,6 +44,429 @@ public static class Result
     /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
     public static Error<T> Error<T>(T error) where T : notnull =>
         error is null ? throw ThrowHelper.NullContent(nameof(error)) : new(error);
+
+    /// <summary>
+    /// Runs <paramref name="action"/> and returns its value as a success, or the exception it threw
+    /// as the error. The one place an exception becomes data.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// An <see cref="OperationCanceledException"/> passes through: a cancellation is not an outcome,
+    /// and caught it would read as a failure and <c>Recover</c> would run on it. So does an
+    /// <see cref="AggregateException"/> that holds cancellations and nothing else, as <c>Task.Wait()</c>
+    /// and <c>.Result</c> throw for a cancelled task; one that holds anything beside them is the error.
+    /// A cancellation whose <see cref="Exception.InnerException"/> is a <see cref="TimeoutException"/> is
+    /// the error, wrapped or not: that is how <see cref="System.Net.Http.HttpClient"/> reports its
+    /// <c>Timeout</c> elapsing, a failure of the call and not the caller's cancellation, and <c>.Result</c>
+    /// on that call is the error too, although what it throws no longer holds the
+    /// <see cref="TimeoutException"/>: the cancelled task still does. A delegate that returns a <see cref="Task"/> is
+    /// refused at compile time, since the task's exception is thrown after this call returns;
+    /// <see cref="CatchAsync{T}(Func{Task{T}})"/> waits for it.
+    /// </para>
+    /// <para>
+    /// A delegate that returns null throws <see cref="ArgumentNullException"/>, as <see cref="Success{T}(T)"/>
+    /// does: a success over null is a defect of the delegate, not an outcome, and is not caught here.
+    /// </para>
+    /// </remarks>
+    /// <param name="action">The call whose outcome is wanted.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <returns>A success holding the value, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or returned null.</exception>
+    /// <exception cref="ArgumentException"><typeparamref name="T"/> is a task, a <c>Task</c> or a <c>ValueTask</c>; use <c>CatchAsync</c>.</exception>
+    public static Result<T, Exception> Catch<T>(Func<T> action) where T : notnull
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        RefuseTask<T>(nameof(Catch));
+
+        T value;
+        try
+        {
+            value = action();
+        }
+        catch (Exception exception) when (!IsCancellation(exception))
+        {
+            return Result<T, Exception>.Error(exception);
+        }
+
+        return Result<T, Exception>.Success(value);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> and returns a success, or the exception it threw as the error.
+    /// </summary>
+    /// <remarks>
+    /// An <see cref="OperationCanceledException"/> passes through, and a delegate that returns a
+    /// <see cref="Task"/> is refused at compile time: see <see cref="Catch{T}(Func{T})"/>.
+    /// </remarks>
+    /// <param name="action">The call whose outcome is wanted.</param>
+    /// <returns>A success, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+    public static Result<Exception> Catch(Action action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        try
+        {
+            action();
+        }
+        catch (Exception exception) when (!IsCancellation(exception))
+        {
+            return Result<Exception>.Error(exception);
+        }
+
+        return Result<Exception>.Success();
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> and returns its value as a success, or the
+    /// <typeparamref name="TException"/> it threw as the error. Any other exception propagates.
+    /// </summary>
+    /// <remarks>
+    /// Both type arguments are spelled, <c>Result.Catch&lt;int, FormatException&gt;(() =&gt; int.Parse(s))</c>,
+    /// since C# infers all of a method's type arguments or none. The error type then says what was
+    /// expected to fail. See <see cref="Catch{T}(Func{T})"/> for cancellation, tasks and null.
+    /// </remarks>
+    /// <param name="action">The call whose outcome is wanted.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <typeparam name="TException">The exception that is an outcome; any other propagates.</typeparam>
+    /// <returns>A success holding the value, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or returned null.</exception>
+    /// <exception cref="ArgumentException"><typeparamref name="T"/> is a task, a <c>Task</c> or a <c>ValueTask</c>; use <c>CatchAsync</c>.</exception>
+    public static Result<T, TException> Catch<T, TException>(Func<T> action)
+        where T : notnull
+        where TException : Exception
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        RefuseTask<T>(nameof(Catch));
+
+        T value;
+        try
+        {
+            value = action();
+        }
+        catch (TException exception) when (!IsCancellation(exception))
+        {
+            return Result<T, TException>.Error(exception);
+        }
+
+        return Result<T, TException>.Success(value);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> and returns a success, or the <typeparamref name="TException"/>
+    /// it threw as the error. Any other exception propagates.
+    /// </summary>
+    /// <remarks>
+    /// A delegate that returns a value is refused at compile time, a task's included, since this
+    /// overload would discard it: <c>Result.Catch&lt;int, FormatException&gt;(() =&gt; int.Parse(s))</c>
+    /// spells both type arguments, and <c>CatchAsync</c> waits for a task. A statement lambda that
+    /// drops a value says so, <c>() =&gt; { _ = list.Remove(item); }</c>. See
+    /// <see cref="Catch{T}(Func{T})"/> for cancellation.
+    /// </remarks>
+    /// <param name="action">The call whose outcome is wanted.</param>
+    /// <typeparam name="TException">The exception that is an outcome; any other propagates.</typeparam>
+    /// <returns>A success, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+    public static Result<TException> Catch<TException>(Action action)
+        where TException : Exception
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        try
+        {
+            action();
+        }
+        catch (TException exception) when (!IsCancellation(exception))
+        {
+            return Result<TException>.Error(exception);
+        }
+
+        return Result<TException>.Success();
+    }
+
+    /// <summary>
+    /// Whether <paramref name="exception"/> is a cancellation, which every <c>Catch</c> lets through: an
+    /// <see cref="OperationCanceledException"/> that is no timeout, or an <see cref="AggregateException"/>
+    /// that holds such cancellations and nothing else, as <c>Task.Wait()</c> and <c>.Result</c> throw for
+    /// a cancelled task. An aggregate that holds anything else beside them, a timeout included, is the error.
+    /// </summary>
+    private static bool IsCancellation(Exception exception)
+    {
+        if (exception is not AggregateException aggregate) return IsUnwrappedCancellation(exception);
+
+        var inner = aggregate.Flatten().InnerExceptions;
+
+        return inner.Count > 0 && inner.All(IsUnwrappedCancellation);
+    }
+
+    private static bool IsUnwrappedCancellation(Exception exception) =>
+        exception is OperationCanceledException cancellation && !IsTimeout(cancellation);
+
+    /// <summary>
+    /// Whether <paramref name="cancellation"/> is a timeout, the call failing rather than the caller
+    /// cancelling: <see cref="System.Net.Http.HttpClient"/> throws a <see cref="TaskCanceledException"/> over a
+    /// <see cref="TimeoutException"/> when its <c>Timeout</c> elapses. <c>Task.Wait()</c> and <c>.Result</c>
+    /// on that cancelled task throw a new one instead, naming the task and holding no inner exception
+    /// (measured on .NET 10), so the task's own cancellation is read: the task has completed, and
+    /// <c>GetResult</c> rethrows it without waiting.
+    /// </summary>
+    private static bool IsTimeout(OperationCanceledException cancellation)
+    {
+        if (cancellation.InnerException is TimeoutException) return true;
+        if (cancellation is not TaskCanceledException { InnerException: null, Task: { IsCanceled: true } task }) return false;
+
+        try
+        {
+            task.GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException own)
+        {
+            return own.InnerException is TimeoutException;
+        }
+
+        return false;
+    }
+
+    /// <summary>Refused: the task's exception is thrown after <c>Catch</c> has returned. Use <see cref="CatchAsync{T}(Func{Task{T}})"/>.</summary>
+    /// <remarks>
+    /// More specific than <see cref="Catch{T}(Func{T})"/> for a delegate returning a task, so the
+    /// compiler picks it and reports the error. A lambda that only throws has no return type and
+    /// lands here, or is ambiguous with a type argument; <c>int () =&gt; throw …</c> states it.
+    /// </remarks>
+    /// <param name="action">A delegate returning a task.</param>
+    /// <typeparam name="T">The type of the task's value.</typeparam>
+    /// <returns>Never: the overload does not compile.</returns>
+    [Obsolete("The delegate returns a Task, whose exception is thrown after Catch has returned. Use CatchAsync.", error: true)]
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public static Result<Task<T>, Exception> Catch<T>(Func<Task<T>> action) => throw new NotSupportedException();
+
+    /// <summary>Refused: the task's exception is thrown after <c>Catch</c> has returned. Use <see cref="CatchAsync(Func{Task})"/>.</summary>
+    /// <param name="action">A delegate returning a task.</param>
+    /// <returns>Never: the overload does not compile.</returns>
+    [Obsolete("The delegate returns a Task, whose exception is thrown after Catch has returned. Use CatchAsync.", error: true)]
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public static Result<Exception> Catch(Func<Task> action) => throw new NotSupportedException();
+
+    /// <summary>Refused: the task's exception is thrown after <c>Catch</c> has returned. Use <see cref="CatchAsync{TException}(Func{Task})"/>.</summary>
+    /// <remarks>
+    /// Without it, a delegate returning a task, an <c>async</c> lambda among them, converts to the
+    /// command form's <see cref="Action"/>: the task is discarded, and an <c>async</c> lambda becomes
+    /// <c>async void</c>, whose exception reaches no caller at all.
+    /// </remarks>
+    /// <param name="action">A delegate returning a task.</param>
+    /// <typeparam name="TException">The exception that would be an outcome.</typeparam>
+    /// <returns>Never: the overload does not compile.</returns>
+    [Obsolete("The delegate returns a Task, whose exception is thrown after Catch has returned. Use CatchAsync.", error: true)]
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public static Result<TException> Catch<TException>(Func<Task> action) where TException : Exception => throw new NotSupportedException();
+
+    /// <summary>
+    /// Refused: the command form would discard the value, and with a <c>ValueTask</c> its exception.
+    /// Use <see cref="Catch{T, TException}(Func{T})"/>, or <see cref="CatchAsync{T, TException}(Func{Task{T}})"/> for a task.
+    /// </summary>
+    /// <remarks>
+    /// A lambda with an expression body converts to <see cref="Action"/> and its value is dropped, so
+    /// <c>Catch&lt;FormatException&gt;(() =&gt; int.Parse(s))</c> answered without the number, and
+    /// <c>Catch&lt;IOException&gt;(() =&gt; stream.ReadAsync(buffer))</c> without the read's exception: a
+    /// <c>ValueTask&lt;T&gt;</c> converts to no task type an overload could name. Every value converts to
+    /// <see cref="object"/>, so this overload is the better match for any of them; a task is
+    /// <see cref="Catch{TException}(Func{Task})"/>'s, the more specific one.
+    /// </remarks>
+    /// <param name="action">A delegate returning a value.</param>
+    /// <typeparam name="TException">The exception that would be an outcome.</typeparam>
+    /// <returns>Never: the overload does not compile.</returns>
+    [Obsolete("The delegate returns a value, which Catch<TException> would discard, a ValueTask's exception with it. Spell the value's type, Catch<T, TException>, or use CatchAsync for a task.", error: true)]
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+    public static Result<TException> Catch<TException>(Func<object?> action) where TException : Exception => throw new NotSupportedException();
+
+    /// <summary>
+    /// Refuses a value that is itself a task, before the delegate runs: its exception would be thrown
+    /// after <c>Catch</c> had returned a success. The overloads over a task-returning delegate refuse
+    /// it at compile time; this is the type argument spelled as a task, <c>Catch&lt;Task&lt;int&gt;, …&gt;</c>,
+    /// and a <c>ValueTask</c>, which no overload can name beside <c>Task</c> without making every
+    /// <c>async</c> lambda ambiguous.
+    /// </summary>
+    private static void RefuseTask<T>(string method)
+    {
+        var type = typeof(T);
+        if (typeof(Task).IsAssignableFrom(type) || type == typeof(ValueTask) || type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ValueTask<>))
+            throw new ArgumentException(
+                $"{method} was given a delegate whose value is a task, whose exception would be thrown after {method} had returned a success. "
+              + (method == nameof(Catch) ? "Use CatchAsync." : "Await the inner task in the delegate.") + Refusals.TaskGivenToCatch,
+                "action");
+    }
+
+    /// <summary>
+    /// Awaits <paramref name="action"/> and returns its value as a success, or the exception the
+    /// task threw as the error, whether before or after its first <c>await</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// An <see cref="OperationCanceledException"/> passes through, so a cancelled token surfaces as
+    /// cancellation, and so does an <see cref="AggregateException"/> of cancellations alone; a timeout,
+    /// which <see cref="System.Net.Http.HttpClient"/> throws as a cancellation over a
+    /// <see cref="TimeoutException"/>, is the error. A delegate returning a <c>ValueTask</c>
+    /// needs <c>.AsTask()</c> or an <c>async</c> lambda: a <c>ValueTask</c> overload beside this one is
+    /// ambiguous for every <c>async</c> lambda.
+    /// See <see cref="Catch{T}(Func{T})"/> for cancellations, timeouts and null.
+    /// </para>
+    /// <para>
+    /// The error is what <c>await</c> throws, the exception <c>try { await task; } catch (Exception e)</c>
+    /// catches, in every overload: for a task that faulted with several exceptions, as
+    /// <c>Task.WhenAll</c>'s does when more than one operation fails, the first of them, and a narrowed
+    /// overload looks at that one alone. The task's <see cref="Task.Exception"/> holds them all: where
+    /// every failure matters, hold the task, and read it once the result is an error.
+    /// </para>
+    /// </remarks>
+    /// <param name="action">The asynchronous call whose outcome is wanted.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <returns>A success holding the value, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, returned no task, or its task produced null.</exception>
+    /// <exception cref="ArgumentException"><typeparamref name="T"/> is itself a task; await it in the delegate.</exception>
+    public static async Task<Result<T, Exception>> CatchAsync<T>(Func<Task<T>> action) where T : notnull
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        RefuseTask<T>(nameof(CatchAsync));
+
+        Task<T> task;
+        try
+        {
+            task = action();
+        }
+        catch (Exception exception) when (!IsCancellation(exception))
+        {
+            return Result<T, Exception>.Error(exception);
+        }
+
+        if (task is null) throw ThrowHelper.NullTask(nameof(action));
+
+        T value;
+        try
+        {
+            value = await task.ConfigureAwait(false);
+        }
+        catch (Exception exception) when (!IsCancellation(exception))
+        {
+            return Result<T, Exception>.Error(exception);
+        }
+
+        return Result<T, Exception>.Success(value);
+    }
+
+    /// <summary>
+    /// Awaits <paramref name="action"/> and returns a success, or the exception the task threw as
+    /// the error. See <see cref="CatchAsync{T}(Func{Task{T}})"/>.
+    /// </summary>
+    /// <param name="action">The asynchronous call whose outcome is wanted.</param>
+    /// <returns>A success, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or returned no task.</exception>
+    public static async Task<Result<Exception>> CatchAsync(Func<Task> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        Task task;
+        try
+        {
+            task = action();
+        }
+        catch (Exception exception) when (!IsCancellation(exception))
+        {
+            return Result<Exception>.Error(exception);
+        }
+
+        if (task is null) throw ThrowHelper.NullTask(nameof(action));
+
+        try
+        {
+            await task.ConfigureAwait(false);
+        }
+        catch (Exception exception) when (!IsCancellation(exception))
+        {
+            return Result<Exception>.Error(exception);
+        }
+
+        return Result<Exception>.Success();
+    }
+
+    /// <summary>
+    /// Awaits <paramref name="action"/> and returns its value as a success, or the
+    /// <typeparamref name="TException"/> the task threw as the error. Any other exception propagates.
+    /// See <see cref="CatchAsync{T}(Func{Task{T}})"/> and <see cref="Catch{T, TException}(Func{T})"/>.
+    /// </summary>
+    /// <param name="action">The asynchronous call whose outcome is wanted.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <typeparam name="TException">The exception that is an outcome; any other propagates.</typeparam>
+    /// <returns>A success holding the value, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, returned no task, or its task produced null.</exception>
+    /// <exception cref="ArgumentException"><typeparamref name="T"/> is itself a task; await it in the delegate.</exception>
+    public static async Task<Result<T, TException>> CatchAsync<T, TException>(Func<Task<T>> action)
+        where T : notnull
+        where TException : Exception
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        RefuseTask<T>(nameof(CatchAsync));
+
+        Task<T> task;
+        try
+        {
+            task = action();
+        }
+        catch (TException exception) when (!IsCancellation(exception))
+        {
+            return Result<T, TException>.Error(exception);
+        }
+
+        if (task is null) throw ThrowHelper.NullTask(nameof(action));
+
+        T value;
+        try
+        {
+            value = await task.ConfigureAwait(false);
+        }
+        catch (TException exception) when (!IsCancellation(exception))
+        {
+            return Result<T, TException>.Error(exception);
+        }
+
+        return Result<T, TException>.Success(value);
+    }
+
+    /// <summary>
+    /// Awaits <paramref name="action"/> and returns a success, or the <typeparamref name="TException"/>
+    /// the task threw as the error. Any other exception propagates. See <see cref="CatchAsync(Func{Task})"/>.
+    /// </summary>
+    /// <param name="action">The asynchronous call whose outcome is wanted.</param>
+    /// <typeparam name="TException">The exception that is an outcome; any other propagates.</typeparam>
+    /// <returns>A success, or an error holding the exception thrown.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null, or returned no task.</exception>
+    public static async Task<Result<TException>> CatchAsync<TException>(Func<Task> action)
+        where TException : Exception
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        Task task;
+        try
+        {
+            task = action();
+        }
+        catch (TException exception) when (!IsCancellation(exception))
+        {
+            return Result<TException>.Error(exception);
+        }
+
+        if (task is null) throw ThrowHelper.NullTask(nameof(action));
+
+        try
+        {
+            await task.ConfigureAwait(false);
+        }
+        catch (TException exception) when (!IsCancellation(exception))
+        {
+            return Result<TException>.Error(exception);
+        }
+
+        return Result<TException>.Success();
+    }
 
     /// <param name="instance">The result.</param>
     /// <typeparam name="T">The type of the value.</typeparam>
@@ -572,6 +1009,10 @@ public static class Result
     extension<T, TError>(IEnumerable<T> source) where T : notnull where TError : notnull
     {
         /// <summary>The first element that matches, or the given error.</summary>
+        /// <remarks>
+        /// On an <see cref="IQueryable{T}"/>, a <c>Func</c> held in a variable or a method group binds here
+        /// and reads every row; a lambda written at the call binds to the query's overload.
+        /// </remarks>
         /// <param name="predicate">The condition to match.</param>
         /// <param name="error">The error if nothing matches. Never null.</param>
         /// <returns>The first matching element, or <paramref name="error"/>.</returns>
@@ -592,6 +1033,31 @@ public static class Result
             error is null
                 ? throw ThrowHelper.NullContent(nameof(error))
                 : source.LastOrNone(predicate).ToResult(error);
+    }
+
+    /// <param name="source">The query.</param>
+    /// <typeparam name="T">The type of the elements.</typeparam>
+    /// <typeparam name="TError">The type of the error.</typeparam>
+    /// <remarks>The provider runs the condition and is asked for one element, as <c>Option.FirstOrNone</c> on a query is, and like it, the query is not precompiled under Native AOT and throws there.</remarks>
+    extension<T, TError>(IQueryable<T> source) where T : notnull where TError : notnull
+    {
+        /// <summary>The first element that matches, or the given error: the provider runs the condition, and is asked for one.</summary>
+        /// <param name="predicate">The condition to match, translated by the query provider.</param>
+        /// <param name="error">The error if nothing matches. Never null.</param>
+        /// <returns>The first matching element, or <paramref name="error"/>.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
+        public Result<T, TError> FirstOrError(System.Linq.Expressions.Expression<Func<T, bool>> predicate, TError error) =>
+            error is null
+                ? throw ThrowHelper.NullContent(nameof(error))
+                : source.FirstOrNone(predicate).ToResult(error);
+
+        /// <summary>Refused: a query has no last element until it is ordered, and this would read every row to find one.</summary>
+        /// <param name="predicate">The condition to match.</param>
+        /// <param name="error">The error if nothing matches.</param>
+        /// <returns>Never: the overload does not compile.</returns>
+        [Obsolete("A query has no last element until it is ordered, and LastOrError would read every row to find one. Order it the other way and use FirstOrError, or call AsEnumerable() to read it all on purpose.", error: true)]
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public Result<T, TError> LastOrError(System.Linq.Expressions.Expression<Func<T, bool>> predicate, TError error) => throw new NotSupportedException();
     }
 
     /// <param name="source">The sequence.</param>
@@ -636,6 +1102,127 @@ public static class Result
             ArgumentNullException.ThrowIfNull(selector);
 
             return source.Select(selector).Sequence();
+        }
+
+        /// <summary>
+        /// Applies an asynchronous operation that may fail to every element, one at a time and in
+        /// order, stopping at the first error: the next element's operation is not started after one
+        /// failed. Operations that may all run at once are <c>Task.WhenAll</c> over their tasks and
+        /// <c>Sequence()</c> over what it answers.
+        /// </summary>
+        /// <param name="selector">Called with each element and awaited, until one fails.</param>
+        /// <typeparam name="TResult">The type of each produced value.</typeparam>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success with every produced value, in order, or the first error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="selector"/> returned no task.</exception>
+        public async Task<Result<IReadOnlyList<TResult>, TError>> TraverseAsync<TResult, TError>(Func<T, Task<Result<TResult, TError>>> selector)
+            where TResult : notnull
+            where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            var values = source.TryGetNonEnumeratedCount(out var count) ? new List<TResult>(count) : [];
+
+            foreach (var element in source)
+            {
+                var result = await ThrowHelper.Awaitable(selector(element), nameof(TraverseAsync), nameof(selector)).ConfigureAwait(false);
+                if (!result.TryGetValue(out var value, out var error)) return Result<IReadOnlyList<TResult>, TError>.Error(error);
+
+                values.Add(value);
+            }
+
+            return Result<IReadOnlyList<TResult>, TError>.Success(values);
+        }
+
+        /// <summary>
+        /// Applies an asynchronous operation that may fail to every element, one at a time and in
+        /// order, stopping at the first error, with a cancellation token handed to each operation and
+        /// checked before each: once cancelled, the next operation is not started and the
+        /// <see cref="OperationCanceledException"/> propagates, since a cancellation is not an error.
+        /// </summary>
+        /// <param name="selector">Called with each element and the token, and awaited, until one fails.</param>
+        /// <param name="cancellationToken">Checked before each operation, and handed to it.</param>
+        /// <typeparam name="TResult">The type of each produced value.</typeparam>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success with every produced value, in order, or the first error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="selector"/> returned no task.</exception>
+        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled before an operation started.</exception>
+        public async Task<Result<IReadOnlyList<TResult>, TError>> TraverseAsync<TResult, TError>(Func<T, CancellationToken, Task<Result<TResult, TError>>> selector, CancellationToken cancellationToken)
+            where TResult : notnull
+            where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            var values = source.TryGetNonEnumeratedCount(out var count) ? new List<TResult>(count) : [];
+
+            foreach (var element in source)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var result = await ThrowHelper.Awaitable(selector(element, cancellationToken), nameof(TraverseAsync), nameof(selector)).ConfigureAwait(false);
+                if (!result.TryGetValue(out var value, out var error)) return Result<IReadOnlyList<TResult>, TError>.Error(error);
+
+                values.Add(value);
+            }
+
+            return Result<IReadOnlyList<TResult>, TError>.Success(values);
+        }
+
+        /// <summary>
+        /// Applies an asynchronous command that may fail to every element, one at a time and in
+        /// order, stopping at the first error: the next element's command is not started after one
+        /// failed.
+        /// </summary>
+        /// <param name="selector">Called with each element and awaited, until one fails.</param>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success if every command succeeded, or the first error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="selector"/> returned no task.</exception>
+        public async Task<Result<TError>> TraverseAsync<TError>(Func<T, Task<Result<TError>>> selector) where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            foreach (var element in source)
+            {
+                var result = await ThrowHelper.Awaitable(selector(element), nameof(TraverseAsync), nameof(selector)).ConfigureAwait(false);
+                if (result.TryGetError(out var error)) return Result<TError>.Error(error);
+            }
+
+            return Result<TError>.Success();
+        }
+
+        /// <summary>
+        /// Applies an asynchronous command that may fail to every element, one at a time and in
+        /// order, stopping at the first error, with a cancellation token handed to each command and
+        /// checked before each: once cancelled, the next command is not started and the
+        /// <see cref="OperationCanceledException"/> propagates, since a cancellation is not an error.
+        /// </summary>
+        /// <param name="selector">Called with each element and the token, and awaited, until one fails.</param>
+        /// <param name="cancellationToken">Checked before each command, and handed to it.</param>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success if every command succeeded, or the first error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="selector"/> returned no task.</exception>
+        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled before a command started.</exception>
+        public async Task<Result<TError>> TraverseAsync<TError>(Func<T, CancellationToken, Task<Result<TError>>> selector, CancellationToken cancellationToken) where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            foreach (var element in source)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var result = await ThrowHelper.Awaitable(selector(element, cancellationToken), nameof(TraverseAsync), nameof(selector)).ConfigureAwait(false);
+                if (result.TryGetError(out var error)) return Result<TError>.Error(error);
+            }
+
+            return Result<TError>.Success();
         }
     }
 
@@ -686,6 +1273,97 @@ public static class Result
             }
 
             return Result<TError>.Success();
+        }
+    }
+
+    /// <param name="option">An optional input that is validated when present.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <typeparam name="TError">The type of the error.</typeparam>
+    extension<T, TError>(Option<Result<T, TError>> option) where T : notnull where TError : notnull
+    {
+        /// <summary>
+        /// Turns an optional result inside out: <c>None</c> is a success with no value, a success is a
+        /// success with the value, and an error stays the error.
+        /// </summary>
+        /// <returns>A success holding an option, or the error.</returns>
+        /// <exception cref="InvalidOperationException">The option holds an uninitialized result.</exception>
+        public Result<Option<T>, TError> Transpose()
+        {
+            if (!option.TryGetValue(out var result)) return Result<Option<T>, TError>.Success(Option.None<T>());
+
+            return result.TryGetValue(out var value, out var error)
+                ? Result<Option<T>, TError>.Success(Option.Some(value))
+                : Result<Option<T>, TError>.Error(error);
+        }
+    }
+
+    /// <param name="result">A result whose value may be absent.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <typeparam name="TError">The type of the error.</typeparam>
+    extension<T, TError>(Result<Option<T>, TError> result) where T : notnull where TError : notnull
+    {
+        /// <summary>
+        /// Turns a result of an option inside out: a success with no value is <c>None</c>, a success
+        /// with a value is that success, and an error is an option holding the error.
+        /// </summary>
+        /// <returns>An option holding a result, or <c>None</c>.</returns>
+        /// <exception cref="InvalidOperationException">The result is uninitialized.</exception>
+        public Option<Result<T, TError>> Transpose()
+        {
+            if (!result.TryGetValue(out var option, out var error)) return Option.Some(Result<T, TError>.Error(error));
+
+            return option.TryGetValue(out var value) ? Option.Some(Result<T, TError>.Success(value)) : Option.None<Result<T, TError>>();
+        }
+    }
+
+    /// <param name="option">An optional input.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    extension<T>(Option<T> option) where T : notnull
+    {
+        /// <summary>
+        /// Applies an operation that may fail to the value, if there is one: an optional input is
+        /// validated when present, <c>dto.Phone.ToOption().Traverse(Phone.Create)</c>.
+        /// </summary>
+        /// <param name="selector">Called with the value if there is one.</param>
+        /// <typeparam name="TResult">The type of the produced value.</typeparam>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success with no value for <c>None</c>, a success with the produced value, or its error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        public Result<Option<TResult>, TError> Traverse<TResult, TError>(Func<T, Result<TResult, TError>> selector)
+            where TResult : notnull
+            where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return option.Map(selector).Transpose();
+        }
+    }
+
+    /// <param name="patch">A field of a merge patch, validated when it carries a value.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    extension<T>(Patch<T> patch) where T : notnull
+    {
+        /// <summary>
+        /// Applies an operation that may fail to the value, if the field carried one: a patch over
+        /// what the request sent is validated into a patch over the domain's type,
+        /// <c>request.Email.Traverse(Email.Create)</c>, and a clear or an absent field passes through
+        /// as it is, since there is nothing to validate.
+        /// </summary>
+        /// <param name="selector">Called with the value when the field carried one.</param>
+        /// <typeparam name="TResult">The type of the produced value.</typeparam>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success holding a patch in the same state, with the produced value when the field carried one, or the error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        public Result<Patch<TResult>, TError> Traverse<TResult, TError>(Func<T, Result<TResult, TError>> selector)
+            where TResult : notnull
+            where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(selector);
+
+            if (!patch.TryGetValue(out var value))
+                return Result<Patch<TResult>, TError>.Success(patch.State == PatchState.Null ? Patch.Null<TResult>() : Patch.Absent<TResult>());
+
+            return selector(value).Map(static produced => Patch.Value(produced));
         }
     }
 

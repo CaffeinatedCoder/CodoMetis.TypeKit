@@ -127,7 +127,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
     /// The component a type gets in this document, or <see langword="null"/> where the host inlines it: the
     /// document's own <see cref="OpenApiOptions.CreateSchemaReferenceId"/>, which ASP.NET asks too.
     /// </summary>
-    private static string? SchemaReferenceId(JsonTypeInfo type, OpenApiSchemaTransformerContext context) =>
+    internal static string? SchemaReferenceId(JsonTypeInfo type, OpenApiSchemaTransformerContext context) =>
         context.ApplicationServices.GetRequiredService<IOptionsMonitor<OpenApiOptions>>().Get(context.DocumentName).CreateSchemaReferenceId(type);
 
     /// <summary>
@@ -202,9 +202,12 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
             else
             {
                 // An inlined wrapped type (a number, a string, a Guid) admits null in its type, as ASP.NET's
-                // exporter writes a nullable property of it.
+                // exporter writes a nullable property of it; an inlined enum or closed set among its values
+                // too, since an enum lists every value a validator accepts. A new list: the wrapped one is
+                // the wrapped type's.
                 schema.FillFrom(wrappedSchema);
                 if (schema.Type is { } type) schema.Type = type | JsonSchemaType.Null;
+                if (schema.Enum is { Count: > 0 } values && !values.Contains(null!)) schema.Enum = [.. values, null!];
             }
         }
         catch (NotSupportedException unsupported)

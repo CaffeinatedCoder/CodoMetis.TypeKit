@@ -5,18 +5,44 @@ instead. Please don't open a public issue for those.
 
 ## Getting set up
 
+A machine needs:
+
+- **The .NET SDK that `global.json` names**, or a later patch of its feature band. Other bands and
+  previews are not used, so `dotnet --version` in the repository root must print a version of that
+  band. The pin moves with .NET's servicing releases; when it does, install the new patch. Install
+  Microsoft's build, from [dot.net](https://dotnet.microsoft.com/download) or, on macOS, the
+  `dotnet-sdk` Homebrew cask. Homebrew's `dotnet` formula trails the releases, and its Native AOT
+  publish failed to link (`ld: library 'ssl' not found`); `brew shellenv` puts it first on `PATH`, so
+  put `/usr/local/share/dotnet` before it, or `brew unlink dotnet`.
+- **Docker, running** (Docker Desktop, OrbStack, Colima). The PostgreSQL round-trip tests start a
+  container through Testcontainers; without Docker those fail with `DockerUnavailableException`,
+  and every other test passes.
+- **The platform's native toolchain** for the smoke test, which publishes two consumers with Native
+  AOT, a web host and a console application with EF Core: Xcode's command-line tools on macOS
+  (`xcode-select --install`), `clang` and `zlib1g-dev` on Debian and Ubuntu.
+
+An IDE started from the Dock or a launcher does not read the shell's profile: point its .NET CLI path
+at the same SDK (Rider: Settings, Build, Execution, Deployment, Toolset and Build).
+
+After an SDK upgrade, a build that fails with MSB4242 ("workload set … missing manifests") still has
+the old SDK's workload set. Run `sudo dotnet workload update` in the repository root, where
+`global.json` selects the SDK it updates; elsewhere it updates whichever SDK is newest there.
+
 ```bash
 dotnet build CodoMetis.TypeKit.slnx
 dotnet test --solution CodoMetis.TypeKit.slnx
 ./test/consumer-smoke-test.sh      # packs the packages and builds throwaway consumers against them
 ```
 
-The EF Core tests start a PostgreSQL container, so the suite needs Docker. The smoke test publishes
-one consumer with Native AOT, which needs the platform's native toolchain: clang (Xcode's command-line
-tools on macOS; `clang` and `zlib1g-dev` on Debian and Ubuntu). Shipping projects live
-under `src/` and test projects under `test/`.
-[AGENTS.md](AGENTS.md) is the architecture guide and [docs/plan.md](docs/plan.md) the current
-roadmap. Read both before changing `Option`/`Result`, an aspect, the fabric, the analyzer or a
+Dependabot raises the GitHub Actions weekly and the test projects' packages monthly, except
+Metalama, EF Core, ASP.NET Core and Roslyn. Those and the SDK pin are raised by hand: the shipping
+references among them are floors every consumer restores against (`Directory.Packages.props`), so
+raising one is a release decision.
+
+Shipping projects live under `src/` and test projects under `test/`; the topic pages a consumer reads are in `docs/`, each
+compiled like the READMEs, and the plan is in `design/`.
+[AGENTS.md](AGENTS.md) is the architecture guide and [design/plan.md](design/plan.md) the map of the
+design notes, the decision records and the roadmap. Read both before changing `Option`/`Result`, an aspect, the fabric, the analyzer or a
 satellite.
 
 ## The quality bar

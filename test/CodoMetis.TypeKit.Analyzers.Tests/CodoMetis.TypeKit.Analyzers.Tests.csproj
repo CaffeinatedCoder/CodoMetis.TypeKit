@@ -9,13 +9,17 @@
     -->
     <ItemGroup>
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Analyzers\CodoMetis.TypeKit.Analyzers.csproj" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Analyzers\CodeFixes\CodoMetis.TypeKit.Analyzers.CodeFixes.csproj" />
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit\CodoMetis.TypeKit.csproj" />
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.EntityFrameworkCore\CodoMetis.TypeKit.EntityFrameworkCore.csproj" />
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing" />
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+        <!-- Past the advisories of the 9.0.6 NuGet.Packaging brings; see Directory.Packages.props. -->
+        <PackageReference Include="System.Security.Cryptography.Pkcs" />
     </ItemGroup>
 
 </Project>

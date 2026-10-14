@@ -1,6 +1,6 @@
 ---
 name: weaving-review
-description: Review a change to CodoMetis.TypeKit for code that compiles and silently does less than it appears to — a type that is not generated, an analyzer that stops firing, a generated entry point that bypasses Create, an Option/Result that leaks its content or reads as success, a satellite that falls back to default behaviour. Use when changing Option/Result, an aspect, the transitive fabric, AspectOrder, the analyzer, the EF converter/convention/translators, the OpenAPI transformers, or package references — and before cutting a release.
+description: Review a change to CodoMetis.TypeKit for code that compiles and silently does less than it appears to — a type that is not generated, an analyzer that stops firing, a generated entry point that bypasses Create, an Option/Result that leaks its content or reads as success, a satellite that falls back to default behaviour. Use when changing Option/Result, an aspect, the transitive fabric, AspectOrder, the analyzer, the EF converter/convention/translators, the OpenAPI transformers, closed sets, `Patch<T>`, the fault responses, the Serilog or Testing package, or package references — and before cutting a release.
 ---
 
 # Weaving review
@@ -23,6 +23,8 @@ does, and what they expected.
   nested type, a generic type, and a type in a project that reaches the package only
   transitively.
 - A type the fabric skips compiles cleanly. Is there a test or a diagnostic that would notice?
+  An **abstract** type with a marker, and a name that is a C# keyword (`namespace Shop.@event`, a
+  member `@class`), were both measured once as silent or as a Metalama crash rather than a CMTK error.
 - A project that references only `CodoMetis.TypeKit` gets no aspects at all. Does CMTK0002
   ("marker without `.Generators`") still fire there?
 - Is `AspectOrder` still complete? A new aspect class missing from it runs in an unspecified
@@ -69,15 +71,26 @@ likely.
   match the snapshot? A translator that stops matching makes EF throw at best, or evaluate on the
   client at worst.
 - Is the comparer consistent with the type's equality?
+- Does a translator check that the column's converter is **TypeKit's**? A user's own
+  `HasConversion` stores through their converter; a `.Value` translated as if TypeKit's were there
+  queries the wrong representation and answers wrong rows.
+- Does a hand-written **`CompareTo`** reach the query? EF translates a comparison or an ordering to
+  the column's order, not the seam's.
+- Is an integer key generated on add **wherever EF generates the wrapped type's**: every integer
+  type EF generates, the root of a hierarchy (TPH, TPT), on every provider the tests run?
 
 ## 5. OpenAPI
 
 - For a value object used only as a property, as a list element, as a dictionary value and as a
   route/query parameter: what schema does the document actually contain? Look at the emitted
   JSON, not at whether the transformer ran. A schema transformer that registered, compiled and
-  never ran for a property-only type has been measured before (plan §7).
+  never ran for a property-only type has been measured before ([OpenAPI](../../../design/openapi.md)).
 - Is the schema the **underlying type's** schema (format included: `uuid`, `date`, `int64`), and
   does it match what the JSON converter writes?
+- Can two types get **one component name**? A name built from a nesting chain (`Order.Status` →
+  `OrderStatus`) meets a top-level type of that name, and one component then describes both.
+- Is every name a client matches on (a fault's qualified name, a component) unique for nested types
+  of one simple name?
 
 ## 6. Option and Result
 
@@ -88,7 +101,7 @@ likely.
   a branch?
 - Does every new combinator (`Map`, `Bind`, `Tap`, async variants) preserve the error or None
   unchanged, and avoid invoking the callback on it?
-- Is the change inside the non-goals in plan §9 (no Either, no effects, no LanguageExt drift)?
+- Is the change inside the non-goals in [Option and Result](../../../design/option-result.md) (no Either, no effects, no LanguageExt drift)?
 
 ## 7. Packaging
 
@@ -99,3 +112,26 @@ likely.
 - Do the EF and ASP.NET satellites depend on `CodoMetis.TypeKit` only, never on `.Generators`?
 - Does the consumer smoke test build a project that references the packages **transitively**,
   the case the fabric spike proved and a refactor could lose?
+
+## 8. Closed sets, `Patch<T>`, faults, and the run-time satellites
+
+- **Closed sets:** does anything generated that the set's own static field initializers can read
+  (`All`, `Parse`, `Name`) answer from a half-built set? Is every member found across partial files,
+  in declaration order? Does every entry point (JSON, EF, binding, the type converter, `IParsable`)
+  read ordinally, with ignoring case an overload the caller asks for?
+- **`Patch<T>`:** does `default` still read as Absent, null as Null, and does a value object inside a
+  patch still go through its own converter? Is anything new registered so that Native AOT finds it
+  without `MakeGenericType`?
+- **Faults:** can a `Fault<TFault>` be compared with a bare reason by any path (an operator, a
+  conversion, `Equals`, a collection's `Contains`, a test assertion), where a fault with a detail
+  then never equals it?
+- **Serilog:** does a value object or a closed set log as what it prints, and does the policy honour
+  the logger's own limits (`ToMaximumStringLength`)?
+- **Testing:** does an assertion's message print content, and does it survive every type name
+  (nested, generic, nested in a generic)?
+- **Analyzer Errors freeze** ([decision 34](../../../design/adr/0034-errors-fixed-within-major-version-warnings.md)):
+  an Error that misses a form misses it for the whole major version, and one that reports correct
+  code breaks every consumer's build on upgrade. Check the neighbours of each form a rule reaches:
+  `??` beside `?:`, `ConfigureAwait`/`WaitAsync` on a held task beside `await held`, a tuple or a
+  dictionary beside a collection, an extension block, a generic attribute, a static abstract or
+  inherited interface implementation.

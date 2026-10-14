@@ -1,0 +1,292 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
+
+namespace CodoMetis.TypeKit.Tests;
+
+/// <summary>
+/// <see cref="Patch{T}"/>, a JSON Merge Patch field: absent, null or a value. Measured first in
+/// <c>spikes/MergePatch</c>, under the reflection resolver and a source-generated context, and under
+/// Native AOT; each claim there is a test here, Native AOT in the consumer smoke test.
+/// </summary>
+public sealed class PatchTests
+{
+    private static readonly JsonSerializerOptions Reflection = new(JsonSerializerDefaults.Web) { TypeInfoResolver = new DefaultJsonTypeInfoResolver() };
+    private static readonly JsonSerializerOptions Generated  = new(JsonSerializerDefaults.Web) { TypeInfoResolver = PatchJson.Default };
+
+    public static TheoryData<string> Resolvers => ["reflection", "source-generated"];
+
+    private static JsonSerializerOptions Options(string resolver) => resolver == "reflection" ? Reflection : Generated;
+
+    private static string Show<T>(Patch<T> patch) where T : notnull => patch.Match(value => $"Value({value})", () => "Null", () => "Absent");
+
+    [Fact]
+    public void Default_is_absent_and_the_states_are_told_apart()
+    {
+        Patch<int> absent = default;
+
+        absent.State.ShouldBe(PatchState.Absent);
+        Patch.Absent<int>().ShouldBe(absent);
+        Patch.Null<int>().State.ShouldBe(PatchState.Null);
+        Patch.Value(3).State.ShouldBe(PatchState.Value);
+        Patch.Value<string>(null).State.ShouldBe(PatchState.Null, "a null value is the Null state");
+    }
+
+    [Fact]
+    public void Match_TryGetValue_Tap_and_IfPresent_follow_the_state()
+    {
+        var seen = new List<string>();
+
+        Show(Patch.Value("Ada")).ShouldBe("Value(Ada)");
+        Show(Patch.Null<string>()).ShouldBe("Null");
+        Show(Patch.Absent<string>()).ShouldBe("Absent");
+
+        Patch.Value("Ada").TryGetValue(out var value).ShouldBeTrue();
+        value.ShouldBe("Ada");
+        Patch.Null<string>().TryGetValue(out _).ShouldBeFalse();
+
+        Patch.Value("Ada").Tap(seen.Add);
+        Patch.Null<string>().Tap(seen.Add);
+        Patch.Absent<string>().Tap(seen.Add);
+        seen.ShouldBe(["Ada"]);
+
+        seen.Clear();
+        Patch.Value("Ada").IfPresent(v => seen.Add(v ?? "<null>"));
+        Patch.Null<string>().IfPresent(v => seen.Add(v ?? "<null>"));
+        Patch.Absent<string>().IfPresent(v => seen.Add(v ?? "<null>"));
+        seen.ShouldBe(["Ada", "<null>"]);
+    }
+
+    /// <summary>
+    /// One name per concept (decision 18): a side effect on the value is <c>Tap</c>, as on <c>Option</c>
+    /// and <c>Result</c>, and returns the patch as theirs return the receiver. It was <c>IfValue</c>,
+    /// returning nothing, and <c>IfPresent</c>, the form a clear reaches, returned nothing beside it.
+    /// </summary>
+    [Fact]
+    public void The_side_effects_are_named_and_shaped_as_Option_s_Tap()
+    {
+        typeof(Patch<int>).GetMethods().Select(method => method.Name).ShouldNotContain("IfValue");
+        typeof(Patch<int>).GetMethod(nameof(Patch<int>.Tap))!.ReturnType.ShouldBe(typeof(Patch<int>));
+        typeof(Option<int>).GetMethod(nameof(Option<int>.Tap))!.ReturnType.ShouldBe(typeof(Option<int>));
+        typeof(Patch).GetMethods()
+                     .Where(method => method.Name == "IfPresent")
+                     .ShouldAllBe(method => method.ReturnType.IsGenericType && method.ReturnType.GetGenericTypeDefinition() == typeof(Patch<>));
+        typeof(Patch).GetMethods().Count(method => method.Name == "IfPresent").ShouldBe(2);
+    }
+
+    [Fact]
+    public void Tap_and_IfPresent_return_the_patch_unchanged()
+    {
+        foreach (var patch in new[] { Patch.Value("Ada"), Patch.Null<string>(), Patch.Absent<string>() })
+        {
+            patch.Tap(_ => { }).ShouldBe(patch);
+            patch.IfPresent(_ => { }).ShouldBe(patch);
+        }
+
+        Patch.Value(3).IfPresent(_ => { }).ShouldBe(Patch.Value(3));
+        Patch.Null<int>().IfPresent(_ => { }).ShouldBe(Patch.Null<int>());
+    }
+
+    /// <summary>
+    /// A clear over a struct reaches the action as null. It reached it as <c>default(T)</c>: a quantity
+    /// cleared to zero, or a struct value object handed over uninitialized.
+    /// </summary>
+    [Fact]
+    public void IfPresent_over_a_struct_clears_with_null_never_with_default()
+    {
+        int? quantity = 5;
+
+        Patch.Null<int>().IfPresent(q => quantity = q);
+        quantity.ShouldBeNull();
+
+        Patch.Value(3).IfPresent(q => quantity = q);
+        quantity.ShouldBe(3);
+
+        Patch.Absent<int>().IfPresent(q => quantity = q);
+        quantity.ShouldBe(3);
+    }
+
+    [Fact]
+    public void ToOption_is_Some_for_a_value_and_None_for_a_clear_or_an_absence()
+    {
+        Patch.Value(3).ToOption().ShouldBe(Option.Some(3));
+        Patch.Null<int>().ToOption().IsNone().ShouldBeTrue();
+        Patch.Absent<int>().ToOption().IsNone().ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Equality_is_by_state_and_value_and_ToString_prints_the_state_only()
+    {
+        Patch.Value("secret").ShouldBe(Patch.Value("secret"));
+        Patch.Value("secret").ShouldNotBe(Patch.Value("other"));
+        Patch.Null<string>().ShouldNotBe(Patch.Absent<string>());
+
+        Patch.Value("secret").ToString().ShouldBe("Patch { State = Value }");
+        Patch.Absent<string>().ToString().ShouldBe("Patch { State = Absent }");
+    }
+
+    [Theory]
+    [MemberData(nameof(Resolvers))]
+    public void An_absent_property_reads_as_Absent_a_null_as_Null_and_a_value_as_Value(string resolver)
+    {
+        var options = Options(resolver);
+
+        var absent = JsonSerializer.Deserialize<Update>("{}", options)!;
+        Show(absent.Name).ShouldBe("Absent");
+        Show(absent.Quantity).ShouldBe("Absent");
+        Show(absent.Code).ShouldBe("Absent");
+        Show(absent.Address).ShouldBe("Absent");
+
+        var nulls = JsonSerializer.Deserialize<Update>("""{"name":null,"quantity":null,"code":null,"address":null}""", options)!;
+        Show(nulls.Name).ShouldBe("Null");
+        Show(nulls.Quantity).ShouldBe("Null");
+        Show(nulls.Code).ShouldBe("Null");
+        Show(nulls.Address).ShouldBe("Null");
+
+        var values = JsonSerializer.Deserialize<Update>("""{"name":"Ada","quantity":3,"code":"ABC","address":{"city":"Oslo"}}""", options)!;
+        Show(values.Name).ShouldBe("Value(Ada)");
+        Show(values.Quantity).ShouldBe("Value(3)");
+        Show(values.Code).ShouldBe("Value(ABC)");
+        Show(values.Address).ShouldBe("Value(Address { City = Oslo })");
+    }
+
+    /// <summary>A type with a converter of its own, a value object's shape, is read with it, whatever the resolver; what it refuses is refused as anywhere else, the input not quoted.</summary>
+    [Theory]
+    [MemberData(nameof(Resolvers))]
+    public void A_type_with_its_own_converter_inside_a_patch_is_read_with_it_and_its_refusal_stands(string resolver)
+    {
+        var refusal = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<Update>("""{"code":"abc"}""", Options(resolver)));
+
+        refusal.Message.ShouldContain("Code refused");
+        refusal.Message.ShouldNotContain("abc");
+    }
+
+    /// <summary>
+    /// The converter reads the value with a nested call, which reports the path within the value it
+    /// reads, <c>$</c>, and the serializer kept it: an HTTP 400 for a bad field of a PATCH could not name
+    /// the field. The path is the patched property's now, as for a property of the wrapped type, and the
+    /// message names no other.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Resolvers))]
+    public void A_value_the_wrapped_type_cannot_read_is_refused_at_the_property_s_path(string resolver)
+    {
+        var options = Options(resolver);
+
+        var plain = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<Plain>("""{"quantity":"SECRET-7f3a"}""", options));
+        var patch = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<Update>("""{"quantity":"SECRET-7f3a"}""", options));
+
+        plain.Path.ShouldBe("$.quantity");
+        patch.Path.ShouldBe(plain.Path);
+        patch.LineNumber.ShouldBe(plain.LineNumber);
+        patch.BytePositionInLine.ShouldBe(plain.BytePositionInLine);
+        patch.Message.ShouldStartWith("The JSON value could not be converted to System.Int32.");
+        patch.Message.ShouldNotContain("Path:");
+        patch.Message.ShouldNotContain("SECRET");
+    }
+
+    /// <summary>A value object's own refusal is the message the caller sees, at the property's path.</summary>
+    [Theory]
+    [MemberData(nameof(Resolvers))]
+    public void A_value_object_s_refusal_inside_a_patch_keeps_its_message_at_the_property_s_path(string resolver)
+    {
+        var refusal = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<Update>("""{"name":"Ada","code":"abc"}""", Options(resolver)));
+
+        refusal.Path.ShouldBe("$.code");
+        refusal.Message.ShouldBe("Code refused the JSON value (NotUpperCase).");
+    }
+
+    /// <summary>In a list of patches the path names the element and its property.</summary>
+    [Theory]
+    [MemberData(nameof(Resolvers))]
+    public void A_refusal_in_an_array_of_patches_names_the_element(string resolver)
+    {
+        var options = Options(resolver);
+
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<List<Update>>("""[{}, {"quantity":"x"}]""", options)).Path.ShouldBe("$[1].quantity");
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<List<Update>>("""[{}, {"code":"abc"}]""", options)).Path.ShouldBe("$[1].code");
+    }
+
+    /// <summary>
+    /// A converter cannot extend the serializer's path, so inside a patched object the path ends at the
+    /// patched property: coarser than the property within, and never the nested call's `$.city`, which
+    /// names a property the document does not have at its root.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Resolvers))]
+    public void Inside_a_patched_object_the_path_ends_at_the_patched_property(string resolver)
+    {
+        var refusal = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<Update>("""{"address":{"city":5}}""", Options(resolver)));
+
+        refusal.Path.ShouldBe("$.address");
+        refusal.Message.ShouldNotContain("Path:");
+    }
+
+    [Theory]
+    [MemberData(nameof(Resolvers))]
+    public void Writing_leaves_an_absent_patch_out_under_WhenWritingDefault_and_refuses_it_otherwise(string resolver)
+    {
+        var options = Options(resolver);
+
+        JsonSerializer.Serialize(new Outgoing(Patch.Null<string>(), Patch.Absent<int>()), options).ShouldBe("""{"name":null}""");
+        JsonSerializer.Serialize(new Outgoing(Patch.Value<string>("Ada"), Patch.Value(2)), options).ShouldBe("""{"name":"Ada","quantity":2}""");
+
+        var refusal = Should.Throw<NotSupportedException>(() => JsonSerializer.Serialize(new BareOutgoing(Patch.Absent<string>()), options));
+        refusal.Message.ShouldContain("WhenWritingDefault");
+    }
+
+    /// <summary>The patch's converter hides its argument from the source generator, so a class not listed in the context is the serializer's own refusal, naming the context.</summary>
+    [Fact]
+    public void A_class_the_source_generated_context_never_saw_is_refused_by_the_serializer_naming_the_context()
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { TypeInfoResolver = WithoutAddressJson.Default };
+
+        var refusal = Should.Throw<NotSupportedException>(() => JsonSerializer.Deserialize<UpdateWithoutAddress>("""{"address":{"city":"Oslo"}}""", options));
+
+        refusal.Message.ShouldContain(nameof(Address));
+        refusal.Message.ShouldContain(nameof(WithoutAddressJson));
+    }
+
+    public sealed record Address(string City);
+
+    /// <summary>A value object's shape: a struct with a converter of its own that refuses, naming the type and never the input.</summary>
+    [JsonConverter(typeof(CodeConverter))]
+    public readonly record struct Code
+    {
+        public string Value { get; }
+        public Code(string value) => Value = value == value.ToUpperInvariant() ? value : throw new JsonException("Code refused the JSON value (NotUpperCase).");
+        public override string ToString() => Value;
+    }
+
+    public sealed class CodeConverter : JsonConverter<Code>
+    {
+        public override Code Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => new(reader.GetString()!);
+        public override void Write(Utf8JsonWriter writer, Code value, JsonSerializerOptions options) => writer.WriteStringValue(value.Value);
+    }
+
+    public sealed record Update(Patch<string> Name, Patch<int> Quantity, Patch<Code> Code, Patch<Address> Address);
+
+    /// <summary>The same field without a patch, whose refusal is the one a patch's should match.</summary>
+    public sealed record Plain(int Quantity);
+
+    public sealed record UpdateWithoutAddress(Patch<Address> Address);
+
+    public sealed record Outgoing(
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] Patch<string> Name,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] Patch<int> Quantity);
+
+    public sealed record BareOutgoing(Patch<string> Name);
+}
+
+// A class a patch wraps is listed, since the patch's converter hides it from the generator; a primitive
+// and a type with its own converter need not be.
+[JsonSerializable(typeof(PatchTests.Update))]
+[JsonSerializable(typeof(List<PatchTests.Update>))]
+[JsonSerializable(typeof(PatchTests.Plain))]
+[JsonSerializable(typeof(PatchTests.Address))]
+[JsonSerializable(typeof(PatchTests.Outgoing))]
+[JsonSerializable(typeof(PatchTests.BareOutgoing))]
+internal partial class PatchJson : JsonSerializerContext;
+
+[JsonSerializable(typeof(PatchTests.UpdateWithoutAddress))]
+internal partial class WithoutAddressJson : JsonSerializerContext;

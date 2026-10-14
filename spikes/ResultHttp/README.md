@@ -2,7 +2,7 @@
 
 **Question.** Phase 12 puts "a `Result` as an HTTP response" into `CodoMetis.TypeKit.AspNetCore`: a
 success as its value, a fault as RFC 9457 problem details with a status the host maps, and the
-endpoint's responses in the OpenAPI document. The domain must not reference ASP.NET, and §9's refusal
+endpoint's responses in the OpenAPI document. The domain must not reference ASP.NET, and [Option and Result](../../design/option-result.md)'s refusal
 to serialize a `Result` must stand. Which shape does ASP.NET Core 10 support for that, in minimal APIs
 and MVC, under Native AOT, and what happens when a host forgets to map a fault type?
 
@@ -67,18 +67,18 @@ arguments from the result through a visitor, as `GeneratedValueObjectAttribute.A
 | 6 | Candidate 2 (metadata records only the fault type; the transformer reads the mapping): MVC and minimal APIs both documented (findings 2, 3). An operation transformer runs after ASP.NET hoisted schemas into components, so a schema from `GetOrCreateSchemaAsync` stays inline; `Document.AddComponent` plus an `OpenApiSchemaReference` gives the `$ref` ASP.NET's own metadata gives | ✅ |
 | 7 | Candidate 2 without the startup check, unmapped: only a fault response fails (`500`, the exception naming the fault type and `AddFaultResponses`), and the document fails; successes are served. Loud only once a fault occurs | ✅ |
 | 8 | A hosted service cannot do the startup check: hosted services start before the pipeline is built, and `EndpointDataSource` then lists 0 endpoints. An `IStartupFilter` sees all of them after `next(app)` (7 here, MVC included) and its exception fails `StartAsync` before the server listens, naming each endpoint and fault type | ✅ |
-| 9 | Shape B under JIT: the filter turns the result into the same response, but the document describes the `200` as `ResultOfOrderAndOrderFault`, whose schema is the type's XML doc description, and lists no problem response; the startup check cannot see it, since nothing records its fault type. Without the filter, §9's refusal answers `500` with its message, and the document still promises a `Result` | ✅ |
-| 10 | Shape B under Native AOT: the host does not start. The Request Delegate Generator asks for `JsonTypeInfo` of `Result<Order, OrderFault>` when the endpoint is built. With the result added to the host's context it starts and the filter answers correctly; the unfiltered endpoint is §9's refusal again | ✅ |
+| 9 | Shape B under JIT: the filter turns the result into the same response, but the document describes the `200` as `ResultOfOrderAndOrderFault`, whose schema is the type's XML doc description, and lists no problem response; the startup check cannot see it, since nothing records its fault type. Without the filter, [Option and Result](../../design/option-result.md)'s refusal answers `500` with its message, and the document still promises a `Result` | ✅ |
+| 10 | Shape B under Native AOT: the host does not start. The Request Delegate Generator asks for `JsonTypeInfo` of `Result<Order, OrderFault>` when the endpoint is built. With the result added to the host's context it starts and the filter answers correctly; the unfiltered endpoint is [Option and Result](../../design/option-result.md)'s refusal again | ✅ |
 | 11 | Shape A under Native AOT: no trim or AOT warning in the publish. Every fault answers `500` (`JsonTypeInfo` for `ProblemDetails` missing, the document too) until `AddProblemDetails()` is called, which puts ASP.NET's problem-details context into the host's resolver chain. The candidate calls it in `AddFaultResponses` | ✅ |
 | 12 | With it, Native AOT answers and documents exactly as JIT does (findings 1, 2), and the startup check refuses an unmapped fault type. `AddProblemDetails()` also adds a `traceId` to every problem, as ASP.NET does for its own | ✅ |
 
 ## Consequences for the design
 
-- **Shape A, explicit.** `ToHttpResult()` at the endpoint, as decision 19 prefers concise to implicit:
+- **Shape A, explicit.** `ToHttpResult()` at the endpoint, as [decision 19](../../design/adr/0019-concise-implicit.md) prefers concise to implicit:
   the handler's return type is ASP.NET's own `Results<…>`, so the success's schema, MVC and the
   Request Delegate Generator all work without anything of ours (findings 1–3, 11). Shape B is not
   offered: it documents a `Result` (finding 9) and makes a Native AOT host put one in its context
-  (finding 10), the opposite of §9.
+  (finding 10), the opposite of [decision 15](../../design/adr/0015-option-result-wire-types.md).
 - **The mapping lives in the host**, registered per fault type, so the domain declares faults and
   never statuses. Metadata records only the fault type; the transformer and the startup filter read
   the mapping from the application's services (findings 4, 6, 8).

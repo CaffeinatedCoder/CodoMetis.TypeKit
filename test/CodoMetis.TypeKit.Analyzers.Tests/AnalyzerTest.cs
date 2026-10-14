@@ -1,6 +1,7 @@
 using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
@@ -27,6 +28,22 @@ internal sealed class AnalyzerTest<TAnalyzer> : CSharpAnalyzerTest<TAnalyzer, De
 
         if (referenceTypeKit)
             TestState.AdditionalReferences.Add(RealTypeKit.Reference);
+    }
+}
+
+/// <summary>A verifier run of one analyzer and its code fix: the source, then the source as the fix leaves it.</summary>
+internal sealed class CodeFixTest<TAnalyzer, TCodeFix> : CSharpCodeFixTest<TAnalyzer, TCodeFix, DefaultVerifier>
+    where TAnalyzer : DiagnosticAnalyzer, new()
+    where TCodeFix : CodeFixProvider, new()
+{
+    public CodeFixTest(string source, string fixedSource)
+    {
+        TestCode            = source;
+        FixedCode           = fixedSource;
+        ReferenceAssemblies = ReferenceAssemblies.Net.Net100;
+
+        TestState.AdditionalReferences.Add(RealTypeKit.Reference);
+        FixedState.AdditionalReferences.Add(RealTypeKit.Reference);
     }
 }
 

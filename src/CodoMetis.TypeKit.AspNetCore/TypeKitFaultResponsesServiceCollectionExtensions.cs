@@ -1,11 +1,11 @@
 using CodoMetis.TypeKit.AspNetCore;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+using CodoMetis.TypeKit.ClosedSets;
 
 // Beside AddProblemDetails, in a namespace every web project imports implicitly.
 namespace Microsoft.Extensions.DependencyInjection;
 
-/// <summary>Maps the faults of a <c>Result</c> to the HTTP statuses a host answers them with.</summary>
+/// <summary>Maps the faults of a <c>Result</c>, an enum's members, to the HTTP responses a host answers them with.</summary>
+/// <remarks>A closed set's members take the same calls from <see cref="TypeKitClosedSetFaultResponsesServiceCollectionExtensions"/>.</remarks>
 public static class TypeKitFaultResponsesServiceCollectionExtensions
 {
     /// <summary>
@@ -36,15 +36,82 @@ public static class TypeKitFaultResponsesServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(statusOf);
 
-        // Two mappings for one fault type: whichever was registered last would answer, silently.
-        if (services.Any(descriptor => descriptor.ServiceType == typeof(FaultResponses<TFault>)))
-            throw new InvalidOperationException(
-                $"The fault type {typeof(TFault).Name} is mapped already. Map it once, with a status for each member.");
+        return FaultRegistration.Add(services, FaultTypes.Enum<TFault>(), fault => FaultResponse.Status(statusOf(fault)), nameof(statusOf));
+    }
 
-        services.AddSingleton(FaultResponses<TFault>.Map(statusOf));
-        services.TryAddEnumerable(ServiceDescriptor.Transient<IStartupFilter, FaultResponsesStartupCheck>());
-        services.AddProblemDetails();
+    /// <summary>
+    /// Answers every fault of <typeparamref name="TFault"/> with the response <paramref name="responseOf"/>
+    /// gives it: a status, and optionally the problem's <c>type</c> and <c>title</c>.
+    /// </summary>
+    /// <remarks>
+    /// As the overload that takes a status: every member is mapped here, the document lists each
+    /// status, and the host does not start with an endpoint whose fault type is not mapped. A bare
+    /// status converts to a <see cref="FaultResponse"/>, so a mapping returns <c>404</c> for one member
+    /// and <c>FaultResponse.Status(409).WithType(uri)</c> for another.
+    /// </remarks>
+    /// <typeparam name="TFault">The fault type, an enum.</typeparam>
+    /// <param name="services">The host's services.</param>
+    /// <param name="responseOf">The response of each fault, typically a <c>switch</c> expression.</param>
+    /// <returns>The same services.</returns>
+    /// <exception cref="InvalidOperationException"><typeparamref name="TFault"/> is mapped already.</exception>
+    /// <exception cref="ArgumentException">A member is mapped to a status that is not an error.</exception>
+    public static IServiceCollection AddFaultResponses<TFault>(this IServiceCollection services, Func<TFault, FaultResponse> responseOf)
+        where TFault : struct, Enum
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(responseOf);
 
-        return services;
+        return FaultRegistration.Add(services, FaultTypes.Enum<TFault>(), responseOf, nameof(responseOf));
+    }
+}
+
+/// <summary>Maps the faults of a <c>Result</c>, a closed set's members, to the HTTP responses a host answers them with.</summary>
+/// <remarks>Separate from the enum's overloads, which take the same parameters, since C# tells the two apart by their constraints alone.</remarks>
+public static class TypeKitClosedSetFaultResponsesServiceCollectionExtensions
+{
+    /// <summary>
+    /// Answers every member of the fault set <typeparamref name="TFault"/> by its <see cref="FaultKind"/>,
+    /// with no mapping written: <c>NotFound</c> 404, <c>Conflict</c> 409, <c>Invalid</c> 422,
+    /// <c>Forbidden</c> 403 and <c>Unavailable</c> 503, and its description as the problem's <c>detail</c>.
+    /// </summary>
+    /// <remarks>
+    /// A member whose kind is no <see cref="FaultKind"/>, a <c>default</c> one, fails this call. To change
+    /// some members, map them all: <c>fault =&gt; fault == OrderFault.Gone ? 410 : FaultResponse.For(fault.Kind)</c>.
+    /// </remarks>
+    /// <typeparam name="TFault">The fault set.</typeparam>
+    /// <param name="services">The host's services.</param>
+    /// <returns>The same services.</returns>
+    /// <exception cref="InvalidOperationException"><typeparamref name="TFault"/> is mapped already.</exception>
+    /// <exception cref="ArgumentException">A member's kind is no <see cref="FaultKind"/>.</exception>
+    public static IServiceCollection AddFaultResponses<TFault>(this IServiceCollection services)
+        where TFault : class, IFaultSet<TFault>
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        return FaultRegistration.Add(services, FaultTypes.Set<TFault>(), static fault =>
+        {
+            try { return FaultResponse.For(fault.Kind); }
+            catch (ArgumentOutOfRangeException refused) { throw new ArgumentException($"{fault.QualifiedName}: {refused.Message}", nameof(TFault), refused); }
+        }, nameof(TFault));
+    }
+
+    /// <summary>
+    /// Answers every member of the closed set <typeparamref name="TFault"/> with the response
+    /// <paramref name="responseOf"/> gives it, as the enum's overload does.
+    /// </summary>
+    /// <remarks>Every member is mapped here; a bare status converts to a <see cref="FaultResponse"/>.</remarks>
+    /// <typeparam name="TFault">The fault type, a closed set.</typeparam>
+    /// <param name="services">The host's services.</param>
+    /// <param name="responseOf">The response of each member.</param>
+    /// <returns>The same services.</returns>
+    /// <exception cref="InvalidOperationException"><typeparamref name="TFault"/> is mapped already.</exception>
+    /// <exception cref="ArgumentException">A member is mapped to a status that is not an error.</exception>
+    public static IServiceCollection AddFaultResponses<TFault>(this IServiceCollection services, Func<TFault, FaultResponse> responseOf)
+        where TFault : class, IClosedSet<TFault>
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(responseOf);
+
+        return FaultRegistration.Add(services, FaultTypes.Set<TFault>(), responseOf, nameof(responseOf));
     }
 }

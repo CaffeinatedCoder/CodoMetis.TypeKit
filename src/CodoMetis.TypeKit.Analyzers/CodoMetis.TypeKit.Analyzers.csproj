@@ -2,7 +2,7 @@
 
     <!--
       Roslyn loads analyzers into the compiler's own process, so this targets netstandard2.0 whatever
-      the analysed code targets. It reaches consumers through CodoMetis.TypeKit (docs/plan.md §10).
+      the analysed code targets. It reaches consumers through CodoMetis.TypeKit (design/analyzers.md).
     -->
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
@@ -28,6 +28,18 @@
 
     <ItemGroup>
         <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    </ItemGroup>
+
+    <!--
+      The code fixes live in CodeFixes/, a project of their own (RS1038: an analyzer assembly must not
+      reference Workspaces), built before this one and packed beside it. Its sources are not this
+      project's, and it is not a package of its own.
+    -->
+    <ItemGroup>
+        <Compile Remove="CodeFixes/**" />
+        <None Remove="CodeFixes/**" />
+        <ProjectReference Include="CodeFixes/CodoMetis.TypeKit.Analyzers.CodeFixes.csproj" ReferenceOutputAssembly="false" Private="false" />
+        <None Include="CodeFixes/bin/$(Configuration)/netstandard2.0/CodoMetis.TypeKit.Analyzers.CodeFixes.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     </ItemGroup>
 
     <!--

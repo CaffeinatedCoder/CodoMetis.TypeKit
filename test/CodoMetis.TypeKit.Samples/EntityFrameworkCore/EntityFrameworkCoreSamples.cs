@@ -13,6 +13,8 @@ public readonly partial record struct CustomerId : IValue<Guid>;
 
 public enum CodeFault { Blank }
 
+public enum OrderFault { NotFound }
+
 public readonly partial record struct ProductCode : IValidatedValue<ProductCode, string, CodeFault>
 {
     public static Result<ProductCode, CodeFault> Create(string value) =>
@@ -135,6 +137,17 @@ public static class EntityFrameworkCoreSamples
         db.Orders.Where(o => o.Tags.Any(t => t.Value == "x"));       // WHERE EXISTS (SELECT 1 FROM unnest(o."Tags") AS t(value) WHERE t.value::text = 'x')
         db.Orders.OrderBy(o => o.PlacedAt);
         // end sample
+    }
+
+    public static async Task<(Option<Order> Order, Option<Order> Earliest, Result<Order, OrderFault> Found)> FindOne(ShopDb db, OrderId id)
+    {
+        // sample: CodoMetis.TypeKit.EntityFrameworkCore/first-or-none
+        Option<Order> order = await db.Orders.FirstOrNoneAsync(o => o.Id == id);   // the database runs the condition and returns one row
+        Option<Order> earliest = db.Orders.OrderBy(o => o.PlacedAt).FirstOrNone(); // the same, synchronous
+        Result<Order, OrderFault> found = db.Orders.FirstOrError(o => o.Id == id, OrderFault.NotFound);
+        // end sample
+
+        return (order, earliest, found);
     }
 
     public static async Task FindRefused(ShopDb db, IRefusalLog log)

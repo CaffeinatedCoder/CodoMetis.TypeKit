@@ -67,13 +67,35 @@ would be a `default` instance.) A property can still name the converter explicit
 modelBuilder.Entity<Order>().Property(o => o.Code).HasConversion<ValueObjectConverter<ProductCode, string>>();
 ```
 
-**Keys.** A single-column key over an integer (`int`, `long`, `short`) is generated on add, as a key
-of that integer type is. On PostgreSQL and SQL Server it is an identity column, so switching an `int`
-key to a value object there changes no schema. A key over a `Guid` is the application's to assign,
+**Keys.** A single-column key over an integer is declared generated on add, as a key of that integer
+type is: `int`, `long`, `short`, `sbyte`, `uint`, `ulong` and `ushort`, EF's own list, and not `byte`.
+Whether a value is then generated is the provider's to decide, as for a plain key. On PostgreSQL and
+SQL Server it is an identity column, so switching an `int` key to a value object there changes no
+schema; where the provider has none for the type, the key is no more generated than a plain one (on
+PostgreSQL a `ulong` is a `numeric(20,0)`, which cannot be an identity). Two exceptions, because EF
+picks the generator that fills a value object's key at `Add` by the column's type, not by the type it
+wraps:
+
+- **A key over `char` is the application's to assign.** It is never declared generated, on any
+  provider: none generates a `char` key (PostgreSQL refuses an identity on `character(1)`, SQLite an
+  `AUTOINCREMENT` on `TEXT`, and SQL Server has no identity for `nvarchar(1)`), and on SQL Server
+  `Add` gave the value object a character of a GUID string, which was stored. This stops the invented
+  value; it does not check that the application set a meaningful one. A default key, `'\0'`, is
+  stored as it is, and a second such row fails on the primary key. `ValueGeneratedOnAdd()` or a value
+  generator of your own on the property still applies.
+- **A default key over `ulong` throws at `Add` where the column is a `decimal`** (SQL Server,
+  PostgreSQL): EF's temporary value for the column is a negative `decimal`, and converting it back
+  throws `OverflowException`, where a plain `ulong` key gets a temporary `ulong`. Configure
+  `ValueGeneratedNever()` on such a key and assign it.
+
+A key over a `Guid` is the application's to assign,
 `Id = OrderId.New()` (a version 7 Guid, which sorts by creation time), and EF inserts it as given. For
 EF to generate it instead, configure `ValueGeneratedOnAdd()` on the property; EF then also takes an
-entity whose key is already set, reached through a navigation, for an existing one. An explicit
-configuration always wins over these defaults.
+entity whose key is already set, reached through a navigation, for an existing one. The root of an
+inheritance hierarchy follows the same rule under TPH and TPT. Under TPC, as for an `int` key, the key
+is generated only where the provider numbers the whole hierarchy from a sequence (PostgreSQL, SQL
+Server), an abstract root's included; SQLite has none, so there the application assigns it. An explicit configuration always wins
+over these defaults.
 
 **SQLite: configure integer keys with `UseAutoincrement()`.** SQLite fills such a key in, but EF's
 SQLite provider makes a key `AUTOINCREMENT` only when the property's CLR type is an integer, and a
@@ -92,6 +114,12 @@ A model that also runs on another provider does this under `if (Database.IsSqlit
 type, so `configurationBuilder.Properties<decimal>().HavePrecision(18, 2)` reaches `decimal`
 properties and not an `Amount` that wraps one. Configure the value object instead:
 `configurationBuilder.Properties<Amount>().HavePrecision(18, 2)`.
+
+**Closed sets.** A closed set (`IClosedSet<TSelf>`) is a text column of the member's name, read back
+as the member itself, in a table, a primitive collection of names (`text[]` on PostgreSQL, a JSON
+array elsewhere) and a JSON column alike, with nothing registered per set. A name the set no longer has throws when it is read, rather
+than reading as null, and an instance that is no member throws when it is written.
+`ClosedSetConverter<TSet>` names the converter for an explicit configuration.
 
 **`Option` and `Result` are not columns.** EF cannot map them, and the model says so. An optional
 value is `T?` on the entity, and `ToOption()` converts it where the domain wants an `Option`.
@@ -116,11 +144,54 @@ re-typed, not cast, so an index on it still serves the query. The element of a p
 converted, which works everywhere and may add a cast. `ValueOrNull()` is for an optional value
 object, where `.Value` would first unwrap the `Nullable`.
 
+They translate only where the column holds the wrapped value, which is where TypeKit's converter
+stores it: the one `UseTypeKit()` applies, or `ValueObjectConverter<,>` named in `HasConversion`. A
+property the application converts itself (`HasConversion(c => "C:" + c.Value, …)`, a converter type,
+a conversion in `ConfigureConventions`) does not hold `.Value`, so a query that reads it there is
+refused with EF's "could not be translated", rather than compared with what the column holds.
+Comparing the value object itself (`o.Code == code`) goes through that converter and still works.
+
 Ordering in SQL follows the database's collation for the column, while the generated comparison in
 memory is ordinal for a string, as it is for any string column.
 
+A value object that declares its own `CompareTo(TSelf)` orders in memory by that method, which the
+database cannot run: the column orders by the wrapped value, the opposite of a descending
+`CompareTo`. A query that compares it (`<`, `>`, `<=`, `>=`, `CompareTo`), orders by it (`OrderBy`,
+`ThenBy`, their descending forms, `Order`) or takes its `Min` or `Max` is therefore refused with an
+`InvalidOperationException` naming the value object. Compare or order by `.Value` where the wrapped
+value's order is meant (`OrderBy(o => o.Priority.Value)`), or order in memory after the query.
+Equality is not ordering, and stays allowed. A query filter (`HasQueryFilter`, named or not) that
+does the same is refused when the model is built, naming the entity type, since it applies to every
+query of that type.
+
 The mapping is tested on SQLite and PostgreSQL, the SQL of each translation is pinned on PostgreSQL,
-and every wrapped-type family makes a round trip through a real PostgreSQL.
+every wrapped-type family makes a round trip through a real PostgreSQL, and key generation is also
+checked in SQL Server's model.
+
+## An Option for nothing found
+
+```csharp
+Option<Order> order = await db.Orders.FirstOrNoneAsync(o => o.Id == id);   // the database runs the condition and returns one row
+Option<Order> earliest = db.Orders.OrderBy(o => o.PlacedAt).FirstOrNone(); // the same, synchronous
+Result<Order, OrderFault> found = db.Orders.FirstOrError(o => o.Id == id, OrderFault.NotFound);
+```
+
+`FirstOrNoneAsync`, and the base package's `FirstOrNone` and `FirstOrError` on a query, ask the
+database for one row and let it run the condition, `WHERE … LIMIT @p`, where `FirstOrDefaultAsync`
+hands back a `default` value object for nothing found (CMTK0009). `SingleOrNoneAsync` and
+`SingleOrNone` ask for two rows and throw for more than one, and `ElementAtOrNone` skips to its row,
+`OFFSET @p`. That holds for a condition EF can read, an expression, which a lambda written at the
+call is. A `Func<Order, bool>` held in a variable, or a method group, binds `FirstOrNone`,
+`SingleOrNone` and `FirstOrError` to their overloads on a sequence: every row is read and the
+condition runs in memory, without a warning. Hold an `Expression<Func<Order, bool>>` instead;
+`FirstOrNoneAsync` takes only an expression, so a `Func` there does not compile. On a query, `LastOrNone` and
+`LastOrError` are compile errors: a query has no last row until it is ordered, so order it the
+other way and take the first, or call `AsEnumerable()` to read every row on purpose.
+
+Under Native AOT, EF runs only the queries it precompiled, and it precompiles a query where the
+application calls one of EF's own operators, which these are not: they throw "Query wasn't
+precompiled" there (measured with EF Core 10.0.12). Write `Where(…).Take(1).ToListAsync()` at the
+call site instead, and take the first element of the list.
 
 ## Reading back skips validation
 
@@ -146,14 +217,14 @@ that experimentally:
 dotnet ef dbcontext optimize --precompile-queries --nativeaot
 ```
 
-`UseTypeKit()` works there: value objects map through the compiled model, `.Value` translates in
-precompiled queries, a value-object parameter binds, a stored value reads back without the rules, and
-a key over an integer is generated by the database, in the native binary (the consumer smoke test
-runs exactly that). A compiled model without Native AOT
+`UseTypeKit()` works there: value objects and closed sets map through the compiled model, a JSON
+column included, `.Value` translates in precompiled queries, a value-object or closed-set parameter
+binds, a stored value reads back without the rules, and a key over an integer is generated by the
+database, in the native binary (the consumer smoke test runs exactly that). A compiled model without Native AOT
 works the same way. This package adds no trim or AOT warning of its own; EF's `DbContext`
 constructors report theirs, which EF's documentation covers.
 
-Three EF limitations to know:
+Five EF limitations to know, measured with EF Core 10.0.12:
 
 - **A struct value object that wraps a reference type** (`string`, `Uri`) cannot be a property in a
   compiled model: EF cannot write its sentinel, since `default(ProductCode)` converts to `null`, and
@@ -163,4 +234,14 @@ Three EF limitations to know:
   interceptors).
 - **Precompiled queries need the converter `UseTypeKit()` composes.** They cast a property's
   converter to the type it had at design time, which the compiled model does not recreate for a
-  `ValueObjectConverter<,>` named in `HasConversion`.
+  `ValueObjectConverter<,>` or a `ClosedSetConverter<>` named in `HasConversion`.
+- **Precompiled queries compile the project they are in without the generators' bodies.**
+  `--precompile-queries` reads the generated members as declarations only, so a value object or a
+  closed set declared in that project fails it (CS0534, CS0177 in the generated code). Declare them
+  in another project, as a domain library usually is.
+- **A collection of converted elements cannot be read by a precompiled query**, a `List<OrderId>` or
+  a `List<OrderStatus>` as much as a `List<DayOfWeek>` stored as text by EF's own converter:
+  precompilation fails with "Encountered a constant of unsupported type 'ValueConverter`2'". An
+  entity with any primitive collection, a `List<string>` too, fails to materialize in a precompiled
+  query (a `BadImageFormatException` from an accessor EF generates). A query compiled at run time,
+  without Native AOT, handles both.

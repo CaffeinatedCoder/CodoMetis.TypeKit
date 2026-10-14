@@ -41,6 +41,16 @@ public sealed partial class RefusalLinkTests
     private const string KnownGood = "FromKnownGood refused a value";
     private const string Unreadable = "A value object could not read the input";
     private const string NullToValueObject = "A null given to a value object";
+    private const string ClosedSetMember = "A closed set has no member of that name";
+    private const string ClosedSetNotAMember = "An instance that is not a member of its set";
+    private const string ClosedSetInitializing = "A closed set read before it is initialized";
+    private const string TaskGivenToCatch = "A task given to Catch";
+
+    /// <summary>
+    /// The one refusal no call in this process can make: <c>AsText()</c> refuses only in globalization-invariant
+    /// mode, so <see cref="InvariantGlobalizationTests"/> checks its link in a process started in that mode.
+    /// </summary>
+    internal const string TextWithoutComposition = "AsText in globalization-invariant mode";
 
     private enum Fault { TooLong }
 
@@ -48,6 +58,10 @@ public sealed partial class RefusalLinkTests
 
     private static readonly Dictionary<string, (string Heading, Func<object?> Refusal)> Refusals = new()
     {
+        ["Closed set Parse of an unknown name"] = (ClosedSetMember, () => throw CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMember("OrderStatus")),
+        ["Closed set JSON of an unknown name"]  = (ClosedSetMember, () => throw CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NoMemberInJson("OrderStatus")),
+        ["Closed set instance with no name"]    = (ClosedSetNotAMember, () => throw CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.NotAMember("OrderStatus")),
+        ["Closed set read while initializing"]  = (ClosedSetInitializing, () => throw CodoMetis.TypeKit.CompilerServices.GeneratedClosedSets.StillInitializing("OrderStatus")),
         ["Option written as JSON"]          = (InJson, () => JsonSerializer.Serialize(Option.Some(1))),
         ["Option read from JSON"]           = (InJson, () => JsonSerializer.Deserialize<Option<int>>("1")),
         ["Option? written as a JSON null"]  = (InJson, () => JsonSerializer.Serialize<Option<int>?>(null)),
@@ -61,6 +75,8 @@ public sealed partial class RefusalLinkTests
 
         ["Option.Some(null)"]               = (NullContent, () => Option.Some<string>(null!)),
         ["Map to null"]                     = (NullContent, () => Option.Some("x").Map(_ => (string)null!)),
+        ["Patch Map to null"]               = (NullContent, () => Patch.Value("x").Map(_ => (string)null!)),
+        ["CatchAsync over no task"]         = (NullContent, () => Result.CatchAsync<int>(() => null!).GetAwaiter().GetResult()),
         ["FirstOrNone over a null"]         = (NullContent, () => new string[] { null! }.FirstOrNone()),
         ["ToResult(null)"]                  = (NullContent, () => Option.Some(1).ToResult((string)null!)),
         ["Result.Success(null)"]            = (NullContent, () => Result.Success<string>(null!)),
@@ -89,6 +105,10 @@ public sealed partial class RefusalLinkTests
         ["unreadable text, static Parse"]   = (Unreadable, () => GeneratedParsing.Guarded<Code, int>("x", static text => int.Parse(text, CultureInfo.InvariantCulture))),
         ["unreadable text, type converter"] = (Unreadable, () => GeneratedParsing.ConvertFromString<Code, int>("x", null)),
 
+        ["Catch over a spelled task"]       = (TaskGivenToCatch, () => Result.Catch<Task<int>, InvalidOperationException>(() => Task.FromResult(1))),
+        ["Catch over a ValueTask"]          = (TaskGivenToCatch, () => Result.Catch(() => ValueTask.CompletedTask)),
+        ["CatchAsync over a task of a task"] = (TaskGivenToCatch, () => Result.CatchAsync(() => Task.FromResult(Task.FromResult(1))).GetAwaiter().GetResult()),
+
         ["From(null)"]                      = (NullToValueObject, () => throw GeneratedFactories.NullRefused<Code>("value")),
         ["a JSON null"]                     = (NullToValueObject, () => throw GeneratedJson.NullToken<Code>()),
     };
@@ -108,14 +128,23 @@ public sealed partial class RefusalLinkTests
 
         var thrown = Record.Exception(attempt).ShouldNotBeNull($"{refusal} threw nothing.");
         var own = thrown.GetBaseException();
-        var message = OwnMessage(own);
+        var link = ShouldEndWithLinkTo(OwnMessage(own), heading, refusal);
+
+        thrown.Message.ShouldContain(link, Case.Sensitive, $"{refusal}: the message the caller sees lost the link.");
+    }
+
+    /// <summary>That <paramref name="message"/> ends with a link to <paramref name="heading"/>'s subsection, and that the README has it.</summary>
+    /// <returns>The link.</returns>
+    internal static string ShouldEndWithLinkTo(string message, string heading, string? refusal = null)
+    {
+        refusal ??= heading;
 
         var link = LinkAtTheEnd().Match(message);
         link.Success.ShouldBeTrue($"{refusal}: the message does not end with a link to the package README: {message}");
         link.Groups["anchor"].Value.ShouldBe(Slug(heading), $"{refusal} links to another subsection than '{heading}'.");
         Anchors().ShouldContain(link.Groups["anchor"].Value, $"{refusal} links to #{link.Groups["anchor"].Value}, which no heading of the README produces, so the link opens the top of the page.");
 
-        thrown.Message.ShouldContain(link.Value, Case.Sensitive, $"{refusal}: the message the caller sees lost the link.");
+        return link.Value;
     }
 
     /// <summary>A subsection nothing links to is either stale or a refusal that lost its link.</summary>
@@ -126,7 +155,7 @@ public sealed partial class RefusalLinkTests
         subsections.Count.ShouldBeGreaterThanOrEqualTo(7, $"The README has no '## {WhyDoesThisThrow}' with its subsections.");
 
         subsections.Select(Slug).Except([Slug(BuildErrorOnly)]).Order()
-                   .ShouldBe(Refusals.Values.Select(entry => Slug(entry.Heading)).Distinct().Order(),
+                   .ShouldBe(Refusals.Values.Select(entry => Slug(entry.Heading)).Append(Slug(TextWithoutComposition)).Distinct().Order(),
                              "The subsections of the README and the headings the refusals link to differ.");
     }
 

@@ -6,6 +6,13 @@ namespace CodoMetis.TypeKit;
 /// Creates <see cref="Option{T}"/> instances, and adds the LINQ vocabulary, the zips and the
 /// conversions to and from nullables, sequences and results.
 /// </summary>
+/// <remarks>
+/// The continuations of a pending option (<c>MapAsync</c>, <c>BindAsync</c>, <c>FilterAsync</c>,
+/// <c>TapAsync</c>) never resume on the caller's <see cref="SynchronizationContext"/>, as
+/// <see cref="Result"/>'s do not: a callback runs at once, on the caller's context, when the option was
+/// already known, and otherwise wherever its task completed, without that context. In a UI or a Blazor
+/// component, await the option and call the synchronous combinator on it, or marshal inside the callback.
+/// </remarks>
 public static class Option
 {
     /// <summary>Creates an option that holds <paramref name="value"/>.</summary>
@@ -272,6 +279,111 @@ public static class Option
         public T? OrNull() => option.TryGetValue(out var value) ? value : null;
     }
 
+    /// <param name="task">An option that is still being produced, such as a repository's lookup.</param>
+    /// <typeparam name="T">The type of the value.</typeparam>
+    /// <remarks>
+    /// The continuations of <c>Task&lt;Result&lt;…&gt;&gt;</c> for an option: every delegate, and an
+    /// error for <c>ToResultAsync</c>, is checked before the option is known, as before a branch is
+    /// picked. A callback that returns a <c>Task</c> is waited for; one that returns a
+    /// <c>ValueTask</c> needs <c>.AsTask()</c> or an <c>async</c> lambda, as for a result.
+    /// </remarks>
+    extension<T>(Task<Option<T>> task) where T : notnull
+    {
+        /// <summary>Transforms the value once the option is known, if there is one.</summary>
+        /// <param name="selector">Called with the value if there is one. It must not return null.</param>
+        /// <typeparam name="TResult">The type of the transformed value.</typeparam>
+        /// <returns>The transformed value, or <c>None</c> without calling <paramref name="selector"/>.</returns>
+        public async Task<Option<TResult>> MapAsync<TResult>(Func<T, TResult> selector) where TResult : notnull
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return (await task.ConfigureAwait(false)).Map(selector);
+        }
+
+        /// <summary>Transforms the value once the option is known, with an asynchronous function.</summary>
+        /// <param name="selector">Called with the value if there is one. Its task must not produce null.</param>
+        /// <typeparam name="TResult">The type of the transformed value.</typeparam>
+        /// <returns>The transformed value, or <c>None</c> without calling <paramref name="selector"/>.</returns>
+        public async Task<Option<TResult>> MapAsync<TResult>(Func<T, Task<TResult>> selector) where TResult : notnull
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return await (await task.ConfigureAwait(false)).MapAsync(selector).ConfigureAwait(false);
+        }
+
+        /// <summary>Chains an operation that may itself produce no value, once the option is known.</summary>
+        /// <param name="selector">Called with the value if there is one.</param>
+        /// <typeparam name="TResult">The type of the chained option's value.</typeparam>
+        /// <returns>The option <paramref name="selector"/> returned, or <c>None</c> without calling it.</returns>
+        public async Task<Option<TResult>> BindAsync<TResult>(Func<T, Option<TResult>> selector) where TResult : notnull
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return (await task.ConfigureAwait(false)).Bind(selector);
+        }
+
+        /// <summary>Chains an asynchronous operation that may itself produce no value, once the option is known.</summary>
+        /// <param name="selector">Called with the value if there is one.</param>
+        /// <typeparam name="TResult">The type of the chained option's value.</typeparam>
+        /// <returns>The option <paramref name="selector"/> produced, or <c>None</c> without calling it.</returns>
+        public async Task<Option<TResult>> BindAsync<TResult>(Func<T, Task<Option<TResult>>> selector) where TResult : notnull
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return await (await task.ConfigureAwait(false)).BindAsync(selector).ConfigureAwait(false);
+        }
+
+        /// <summary>Keeps the value once the option is known, only if it satisfies <paramref name="predicate"/>.</summary>
+        /// <param name="predicate">Called with the value if there is one.</param>
+        /// <returns>The option if it holds a value that passes, otherwise <c>None</c>.</returns>
+        public async Task<Option<T>> FilterAsync(Func<T, bool> predicate)
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(predicate);
+
+            return (await task.ConfigureAwait(false)).Filter(predicate);
+        }
+
+        /// <summary>Runs a side effect on the value once the option is known, if there is one.</summary>
+        /// <param name="action">Called with the value if there is one.</param>
+        /// <returns>The option, unchanged.</returns>
+        public async Task<Option<T>> TapAsync(Action<T> action)
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(action);
+
+            return (await task.ConfigureAwait(false)).Tap(action);
+        }
+
+        /// <summary>Runs an asynchronous side effect on the value once the option is known, if there is one.</summary>
+        /// <param name="action">Called with the value if there is one.</param>
+        /// <returns>The option, unchanged, once <paramref name="action"/> has completed.</returns>
+        public async Task<Option<T>> TapAsync(Func<T, Task> action)
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            ArgumentNullException.ThrowIfNull(action);
+
+            return await (await task.ConfigureAwait(false)).TapAsync(action).ConfigureAwait(false);
+        }
+
+        /// <summary>Turns absence into <paramref name="error"/> once the option is known: the step from a lookup into a <c>Result</c> pipeline.</summary>
+        /// <param name="error">The error for <c>None</c>. Never null.</param>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success with the value, or <paramref name="error"/>.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="error"/> is null, whether or not the option has a value.</exception>
+        public async Task<Result<T, TError>> ToResultAsync<TError>(TError error) where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(task);
+            if (error is null) throw ThrowHelper.NullContent(nameof(error));
+
+            return (await task.ConfigureAwait(false)).ToResult(error);
+        }
+    }
+
     /// <param name="source">The sequence.</param>
     /// <typeparam name="T">The type of the elements.</typeparam>
     extension<T>(IEnumerable<T> source) where T : notnull
@@ -307,6 +419,11 @@ public static class Option
         }
 
         /// <summary>The first element that matches, or <c>None</c>.</summary>
+        /// <remarks>
+        /// On an <see cref="IQueryable{T}"/>, this overload is the one a <c>Func</c> held in a variable or a
+        /// method group binds to: it reads every row and runs the condition in memory. A lambda written at
+        /// the call, or an <c>Expression&lt;Func&lt;T, bool&gt;&gt;</c>, binds to the query's, which the provider runs.
+        /// </remarks>
         /// <param name="predicate">The condition to match.</param>
         /// <returns>The first matching element, or <c>None</c> if nothing matches.</returns>
         public Option<T> FirstOrNone(Func<T, bool> predicate) =>
@@ -323,6 +440,184 @@ public static class Option
                   .Select(Some)
                   .DefaultIfEmpty(None<T>())
                   .LastOrDefault();
+
+        /// <summary>
+        /// The only element, or <c>None</c> for an empty sequence. More than one is not absence: it
+        /// throws, as <c>SingleOrDefault</c> does, since reading it as <c>None</c> would hide the defect.
+        /// </summary>
+        /// <returns>The only element, or <c>None</c> if there is none.</returns>
+        /// <exception cref="InvalidOperationException">The sequence holds more than one element.</exception>
+        /// <exception cref="ArgumentNullException">The only element is null.</exception>
+        public Option<T> SingleOrNone()
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            return SingleOf(source);
+        }
+
+        /// <summary>The only element that matches, or <c>None</c>; more than one throws, as <c>SingleOrDefault</c> does.</summary>
+        /// <remarks>
+        /// On an <see cref="IQueryable{T}"/>, a <c>Func</c> held in a variable or a method group binds here
+        /// and reads every row; a lambda written at the call binds to the query's overload.
+        /// </remarks>
+        /// <param name="predicate">The condition to match.</param>
+        /// <returns>The only matching element, or <c>None</c> if nothing matches.</returns>
+        /// <exception cref="InvalidOperationException">More than one element matches.</exception>
+        /// <exception cref="ArgumentNullException">The only matching element is null.</exception>
+        public Option<T> SingleOrNone(Func<T, bool> predicate)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(predicate);
+
+            return SingleOf(source.Where(predicate));
+        }
+
+        /// <summary>The element at <paramref name="index"/>, or <c>None</c> past either end.</summary>
+        /// <param name="index">The zero-based index; a negative one is <c>None</c>.</param>
+        /// <returns>The element, or <c>None</c> if there is none at that index.</returns>
+        /// <exception cref="ArgumentNullException">The element is null.</exception>
+        public Option<T> ElementAtOrNone(int index)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            if (index < 0) return None<T>();
+            if (source is IReadOnlyList<T> list) return index < list.Count ? Some(list[index]) : None<T>();
+
+            return FirstOf(source.Skip(index));
+        }
+
+        /// <summary>The element at <paramref name="index"/>, from the start or from the end (<c>^1</c> is the last), or <c>None</c> past either end.</summary>
+        /// <param name="index">The index.</param>
+        /// <returns>The element, or <c>None</c> if there is none at that index.</returns>
+        /// <exception cref="ArgumentNullException">The element is null.</exception>
+        public Option<T> ElementAtOrNone(Index index)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            if (!index.IsFromEnd) return source.ElementAtOrNone(index.Value);
+            if (index.Value == 0) return None<T>();
+            if (source is IReadOnlyList<T> list) return index.Value <= list.Count ? Some(list[^index.Value]) : None<T>();
+
+            // The last n elements, of which the first is the one asked for, if there are n.
+            var last = source.TakeLast(index.Value).ToList();
+            return last.Count == index.Value ? Some(last[0]) : None<T>();
+        }
+    }
+
+    /// <param name="source">The query.</param>
+    /// <typeparam name="T">The type of the elements.</typeparam>
+    /// <remarks>
+    /// <para>
+    /// A query is asked for one element, so the provider runs the condition and the limit where the
+    /// query runs: a <c>WHERE</c> and a <c>LIMIT</c> in SQL. Through the <see cref="IEnumerable{T}"/> overloads, an
+    /// <see cref="IQueryable{T}"/> was read in full and its condition compiled and run in memory, on
+    /// every row of the table.
+    /// </para>
+    /// <para>
+    /// Under Native AOT, EF Core runs only the queries it precompiled where the application calls its
+    /// operators, and these compose the query here: they throw "Query wasn't precompiled" (measured
+    /// with EF Core 10.0.12 in the smoke test). Write <c>Where(…).Take(1).ToList()</c> at the call site
+    /// and take <c>FirstOrNone()</c> of the list.
+    /// </para>
+    /// </remarks>
+    extension<T>(IQueryable<T> source) where T : notnull
+    {
+        /// <summary>The first element of the query, or <c>None</c>: the provider is asked for one.</summary>
+        /// <returns>The first element, or <c>None</c> if the query has none.</returns>
+        /// <exception cref="ArgumentNullException">The first element is null.</exception>
+        public Option<T> FirstOrNone()
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            return FirstOf(source.Take(1));
+        }
+
+        /// <summary>The first element that matches, or <c>None</c>: the provider runs the condition, and is asked for one.</summary>
+        /// <param name="predicate">The condition to match, translated by the query provider.</param>
+        /// <returns>The first matching element, or <c>None</c> if nothing matches.</returns>
+        /// <exception cref="ArgumentNullException">The first matching element is null.</exception>
+        public Option<T> FirstOrNone(System.Linq.Expressions.Expression<Func<T, bool>> predicate)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(predicate);
+
+            return FirstOf(source.Where(predicate).Take(1));
+        }
+
+        /// <summary>The only element of the query, or <c>None</c>: the provider is asked for two, and more than one throws.</summary>
+        /// <returns>The only element, or <c>None</c> if the query has none.</returns>
+        /// <exception cref="InvalidOperationException">The query has more than one element.</exception>
+        /// <exception cref="ArgumentNullException">The only element is null.</exception>
+        public Option<T> SingleOrNone()
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            return SingleOf(source.Take(2));
+        }
+
+        /// <summary>The only element that matches, or <c>None</c>: the provider runs the condition and is asked for two.</summary>
+        /// <param name="predicate">The condition to match, translated by the query provider.</param>
+        /// <returns>The only matching element, or <c>None</c> if nothing matches.</returns>
+        /// <exception cref="InvalidOperationException">More than one element matches.</exception>
+        /// <exception cref="ArgumentNullException">The only matching element is null.</exception>
+        public Option<T> SingleOrNone(System.Linq.Expressions.Expression<Func<T, bool>> predicate)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(predicate);
+
+            return SingleOf(source.Where(predicate).Take(2));
+        }
+
+        /// <summary>The element at <paramref name="index"/>, or <c>None</c>: the provider skips to it and is asked for one.</summary>
+        /// <param name="index">The zero-based index; a negative one is <c>None</c>, without a query, since a query skips nothing for it.</param>
+        /// <returns>The element, or <c>None</c> if there is none at that index.</returns>
+        /// <exception cref="ArgumentNullException">The element is null.</exception>
+        public Option<T> ElementAtOrNone(int index)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            return index < 0 ? None<T>() : FirstOf(source.Skip(index).Take(1));
+        }
+
+        /// <summary>Refused: a query skips to an index from the start, and one from the end would read every row to find it.</summary>
+        /// <param name="index">The index.</param>
+        /// <returns>Never: the overload does not compile.</returns>
+        [Obsolete("A query has no end until it is ordered, and ElementAtOrNone(^n) would read every row to find it. Order the query the other way and use ElementAtOrNone(int), or call AsEnumerable() to read it all on purpose.", error: true)]
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public Option<T> ElementAtOrNone(Index index) => throw new NotSupportedException();
+
+        /// <summary>Refused: a query has no last element until it is ordered, and this would read every row to find one.</summary>
+        /// <returns>Never: the overload does not compile.</returns>
+        [Obsolete("A query has no last element until it is ordered, and LastOrNone would read every row to find one. Order it the other way and use FirstOrNone, or call AsEnumerable() to read it all on purpose.", error: true)]
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public Option<T> LastOrNone() => throw new NotSupportedException();
+
+        /// <summary>Refused: a query has no last element until it is ordered, and this would read every row to find one.</summary>
+        /// <param name="predicate">The condition to match.</param>
+        /// <returns>Never: the overload does not compile.</returns>
+        [Obsolete("A query has no last element until it is ordered, and LastOrNone would read every row to find one. Order it the other way and use FirstOrNone, or call AsEnumerable() to read it all on purpose.", error: true)]
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public Option<T> LastOrNone(System.Linq.Expressions.Expression<Func<T, bool>> predicate) => throw new NotSupportedException();
+    }
+
+    /// <summary>The first element, or <c>None</c>; on a query, one limited to one, so it reads one row.</summary>
+    private static Option<T> FirstOf<T>(IEnumerable<T> limited) where T : notnull
+    {
+        using var enumerator = limited.GetEnumerator();
+
+        return enumerator.MoveNext() ? Some(enumerator.Current) : None<T>();
+    }
+
+    /// <summary>The only element, <c>None</c> for none, and a refusal for more; on a query, one limited to two.</summary>
+    private static Option<T> SingleOf<T>(IEnumerable<T> elements) where T : notnull
+    {
+        using var enumerator = elements.GetEnumerator();
+        if (!enumerator.MoveNext()) return None<T>();
+
+        var single = enumerator.Current;
+        if (enumerator.MoveNext()) throw new InvalidOperationException("The sequence holds more than one element, so SingleOrNone has no single one to answer. Use FirstOrNone where any one will do.");
+
+        return Some(single);
     }
 
     /// <param name="dictionary">The dictionary.</param>
@@ -339,6 +634,20 @@ public static class Option
             ArgumentNullException.ThrowIfNull(dictionary);
 
             return dictionary.TryGetValue(key, out var value) ? Some(value) : None<TValue>();
+        }
+    }
+
+    /// <param name="options">The options.</param>
+    /// <typeparam name="T">The type of the values.</typeparam>
+    extension<T>(IEnumerable<Option<T>> options) where T : notnull
+    {
+        /// <summary>The values of the options that hold one, in order: a sequence of lookups to what was found. Lazy, as a LINQ operator is.</summary>
+        /// <returns>The values, in order.</returns>
+        public IEnumerable<T> Choose()
+        {
+            ArgumentNullException.ThrowIfNull(options);
+
+            return Chosen(options, static option => option);
         }
     }
 
@@ -360,5 +669,14 @@ public static class Option
         /// <returns>The reference, or <c>None</c> for <see langword="null"/>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Option<T> ToOption() => instance is not null ? Some(instance) : None<T>();
+    }
+
+    /// <summary>The iterator behind both <c>Choose</c>, apart so the arguments are checked when the call is made, not when the sequence is read.</summary>
+    internal static IEnumerable<TResult> Chosen<T, TResult>(IEnumerable<T> source, Func<T, Option<TResult>> selector) where TResult : notnull
+    {
+        foreach (var element in source)
+        {
+            if (selector(element).TryGetValue(out var value)) yield return value;
+        }
     }
 }

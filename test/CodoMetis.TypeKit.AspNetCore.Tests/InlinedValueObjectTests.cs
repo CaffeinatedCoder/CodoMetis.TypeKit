@@ -64,6 +64,40 @@ public sealed class InlinedValueObjectTests
             .ShouldDescribeTheSameAs(Inline(document, document.Property("ControlDocument", property))!, property);
     }
 
+    public static TheoryData<string, OpenApiSpecVersion, bool> EnumProperties()
+    {
+        var data = new TheoryData<string, OpenApiSpecVersion, bool>();
+        foreach (var version in new[] { OpenApiSpecVersion.OpenApi3_1, OpenApiSpecVersion.OpenApi3_0 })
+        foreach (var property in new[] { "maybeWeekday", "weekday" })
+        foreach (var enumsByName in new[] { false, true })
+            data.Add(property, version, enumsByName);
+
+        return data;
+    }
+
+    /// <summary>
+    /// Where the host inlines the wrapped enum too, a nullable value object over it admits null among the
+    /// enum's values, as ASP.NET writes a nullable enum: it got null in its type at most, and an enum by
+    /// name, which has no type, refused the null outright.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(EnumProperties))]
+    public async Task A_value_object_over_an_inlined_enum_is_described_as_the_enum_in_the_same_position(string property, OpenApiSpecVersion version, bool enumsByName)
+    {
+        var document = await ProbeHost.DocumentAsync(
+            openApi =>
+            {
+                openApi.AddTypeKit();
+                openApi.CreateSchemaReferenceId = type => type.Type == typeof(ProbeDocument) || type.Type == typeof(ControlDocument) ? type.Type.Name : null;
+            },
+            enumsByName ? json => json.SerializerOptions.Converters.Add(new JsonStringEnumConverter()) : null,
+            version);
+
+        var inlined = document.Property("ProbeDocument", property);
+        inlined.ToJsonString().ShouldNotContain("$ref", customMessage: $"'{property}' is not inlined");
+        inlined.ShouldDescribeTheSameAs(document.Property("ControlDocument", property), property);
+    }
+
     /// <summary>A second <c>AddTypeKit()</c> visits what the first made, the null-or-content schemas included.</summary>
     [Fact]
     public async Task Adding_it_twice_to_an_inlining_host_publishes_the_same_document()

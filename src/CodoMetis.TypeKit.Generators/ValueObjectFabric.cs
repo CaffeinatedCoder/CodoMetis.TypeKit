@@ -1,5 +1,6 @@
 using Metalama.Framework.Aspects;
 using Metalama.Framework.Code;
+using Metalama.Framework.Diagnostics;
 using Metalama.Framework.Fabrics;
 
 namespace CodoMetis.TypeKit.Generators;
@@ -31,10 +32,21 @@ namespace CodoMetis.TypeKit.Generators;
 /// </remarks>
 internal sealed class ValueObjectFabric : TransitiveProjectFabric
 {
-    public override void AmendProject(IProjectAmender amender) =>
+    public override void AmendProject(IProjectAmender amender)
+    {
         amender.SelectTypes(includeNestedTypes: true)
                .Where(ValueObjectTypes.IsValueObject)
                .AddAspect(type => new ValueObjectAspect(
                               CompanionClass.NameOwner(type),
                               ValueObjectTypes.WrappedValueObjectRefusal(type)));
+
+        // An abstract type gets no aspect, so it is refused here, where it is selected.
+        amender.SelectTypes(includeNestedTypes: true)
+               .Where(ValueObjectTypes.IsAbstractValueObject)
+               .ReportDiagnostic(type => AspectDiagnostics.AbstractValueObject.WithArguments(type));
+
+        amender.SelectTypes(includeNestedTypes: true)
+               .Where(ClosedSetTypes.IsClosedSet)
+               .AddAspect(_ => new ClosedSetAspect());
+    }
 }
