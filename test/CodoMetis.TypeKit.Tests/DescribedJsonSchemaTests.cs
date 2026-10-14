@@ -501,6 +501,44 @@ public sealed class DescribedJsonSchemaTests
         JsonSchemaDescription.For(typeof(Money), silent).ShouldNotBeNull();
     }
 
+    /// <summary>A factory that converts a decimal and a nullable one, each with a converter of its own that says what it writes.</summary>
+    public sealed class BothDecimalsFactory : JsonConverterFactory
+    {
+        public override bool CanConvert(Type typeToConvert) => typeToConvert == typeof(decimal) || typeToConvert == typeof(decimal?);
+
+        public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options) =>
+            typeToConvert == typeof(decimal?) ? new NullableDecimalFlag() : new DecimalStringJsonConverter();
+    }
+
+    public sealed class NullableDecimalFlag : JsonConverter<decimal?>, IDescribedJsonConverter
+    {
+        public override bool HandleNull => true;
+
+        public override decimal? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetBoolean() ? 1m : null;
+
+        public override void Write(Utf8JsonWriter writer, decimal? value, JsonSerializerOptions options) => writer.WriteBooleanValue(value is not null);
+
+        public JsonSchemaDescription DescribeJson(Type typeToConvert, JsonSerializerOptions options) => JsonSchemaDescription.Of(new JsonObject { ["type"] = "boolean" });
+    }
+
+    public sealed record BothFactored([property: JsonConverter(typeof(BothDecimalsFactory))] decimal? Maybe, [property: JsonConverter(typeof(BothDecimalsFactory))] decimal Plain);
+
+    /// <summary>
+    /// A factory a nullable property names is asked for the nullable type before the value it holds, as the
+    /// serializer asks it: a factory that makes a converter of <c>decimal?</c> has that one write the property.
+    /// </summary>
+    [Fact]
+    public void A_factory_a_nullable_property_names_is_asked_for_the_nullable_type_first()
+    {
+        var options = Options();
+
+        JsonSerializer.Serialize(new BothFactored(7.80m, 7.80m), options).ShouldBe("""{"maybe":true,"plain":"7.8"}""", "the wire: the factory's converter of decimal? writes the nullable property");
+
+        var properties = Export<BothFactored>(options)["properties"]!;
+        properties["maybe"]!.ToJsonString().ShouldBe("""{"type":["boolean","null"]}""");
+        properties["plain"]!.ToJsonString().ShouldBe(DecimalString);
+    }
+
     /// <summary>A resolver that builds the nullable contract by hand, over a converter of the value other than the one the value's contract has.</summary>
     public sealed class HandBuiltNullable(JsonConverter<decimal> inner) : IJsonTypeInfoResolver
     {

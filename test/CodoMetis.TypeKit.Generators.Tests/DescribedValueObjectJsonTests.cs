@@ -115,4 +115,41 @@ public sealed class DescribedValueObjectJsonTests
                .ShouldBe("""{"type":"integer","minimum":0,"maximum":100}""");
         JsonSchemaDescription.For(typeof(ProbePercentage?), options)!.Schema!["maximum"]!.GetValue<int>().ShouldBe(100);
     }
+
+    /// <summary>A factory in the options that makes the decimal string converter, as an application may register one.</summary>
+    private sealed class DecimalStrings : System.Text.Json.Serialization.JsonConverterFactory
+    {
+        public override bool CanConvert(Type typeToConvert) => typeToConvert == typeof(decimal);
+
+        public override System.Text.Json.Serialization.JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options) => new DecimalStringJsonConverter();
+    }
+
+    public static TheoryData<string> DecimalConverters => ["converter", "factory"];
+
+    /// <summary>
+    /// A source-generated context need not list the type a value object wraps, nor the value object, and the
+    /// wire is still the options' converter's: where the resolver does not know a type, the description asks
+    /// the options' converters, a factory for the converter it makes, and then the generated one, so a value
+    /// object is described as its wrapped type and that type as the options' converter says. Reached before
+    /// only by the Native AOT smoke test.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(DecimalConverters))]
+    public void A_type_the_context_does_not_list_is_described_by_the_options_converter_and_a_value_object_as_its_wrapped_type(string registered)
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { TypeInfoResolver = NothingListed.Default };
+        options.Converters.Add(registered == "converter" ? new DecimalStringJsonConverter() : new DecimalStrings());
+
+        NothingListed.Default.GetTypeInfo(typeof(decimal)).ShouldBeNull("the control: the context has no contract for the wrapped type");
+        NothingListed.Default.GetTypeInfo(typeof(ProbeAmount)).ShouldBeNull("the control: nor for the value object");
+
+        JsonSchemaDescription.For(typeof(decimal), options)!.Schema!.ToJsonString().ShouldBe(DecimalString);
+        JsonSchemaDescription.For(typeof(decimal?), options)!.Schema!.ToJsonString().ShouldBe(DecimalString, "a nullable one as the value it holds");
+        JsonSchemaDescription.For(typeof(ProbeAmount), options)!.SameAsType.ShouldBe(typeof(decimal), "the value object as the type it wraps");
+        JsonSchemaDescription.For(typeof(ProbeAmount?), options)!.SameAsType.ShouldBe(typeof(decimal));
+    }
 }
+
+/// <summary>A source-generated context that lists neither a decimal nor a value object over one.</summary>
+[System.Text.Json.Serialization.JsonSerializable(typeof(string))]
+internal sealed partial class NothingListed : System.Text.Json.Serialization.JsonSerializerContext;
