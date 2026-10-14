@@ -73,9 +73,9 @@ public sealed class GeneratedJsonPlan<T>
     /// <summary>
     /// Whether the serializer may write <c>$id</c> and <c>$ref</c> inside a <typeparamref name="T"/> under
     /// a preserving reference handler: an object or a collection of a reference type, an <c>object</c>,
-    /// which holds anything, or a struct with one among the properties it writes or reads, a nullable
-    /// struct as the struct it holds. A struct has no <c>$id</c> of its own, and a value converter writes
-    /// none.
+    /// which holds anything, or a struct with one among the properties it writes or reads, or among the
+    /// elements it holds as a collection, a nullable struct as the struct it holds. A struct has no
+    /// <c>$id</c> of its own, and a value converter writes none.
     /// </summary>
     /// <remarks>
     /// The serializer keeps the references of one call, and a nested call starts again: under
@@ -106,8 +106,12 @@ public sealed class GeneratedJsonPlan<T>
 
         if (typeInfo.Type == typeof(object)) return true;
         if (typeInfo.Kind == JsonTypeInfoKind.None) return false;
-        if (!typeInfo.Type.IsValueType || typeInfo.Kind != JsonTypeInfoKind.Object) return true;
+        if (!typeInfo.Type.IsValueType) return true;
         if (!visited.Add(typeInfo.Type)) return false;
+
+        // A struct collection has no $id of its own either; its elements may (dictionary keys are names).
+        if (typeInfo.Kind != JsonTypeInfoKind.Object)
+            return typeInfo.ElementType is not { } element || MayHoldReferences(options, options.GetTypeInfo(element), visited);
 
         foreach (var property in typeInfo.Properties)
         {

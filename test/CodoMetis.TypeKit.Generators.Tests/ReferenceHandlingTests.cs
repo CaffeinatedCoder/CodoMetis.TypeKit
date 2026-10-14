@@ -40,6 +40,46 @@ public struct HoldingIgnored
     public Tracked? Ignored { get; set; }
 }
 
+/// <summary>
+/// A non-generic struct the serializer walks as a collection of strings: a generic wrapped type is refused
+/// (CMTK1005), so a collection is wrapped this way. The serializer writes it and cannot read it (it is
+/// read-only), so the tests write.
+/// </summary>
+public readonly struct Labels : IReadOnlyList<string>
+{
+    private readonly string[]? _items;
+
+    public Labels(IEnumerable<string> items) => _items = [.. items];
+
+    public int Count => _items?.Length ?? 0;
+
+    public string this[int index] => (_items ?? [])[index];
+
+    public IEnumerator<string> GetEnumerator() => ((IEnumerable<string>)(_items ?? [])).GetEnumerator();
+
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
+/// <summary>A non-generic struct the serializer walks as a collection of classes, which have an <c>$id</c>.</summary>
+public readonly struct TrackedList : IReadOnlyList<Tracked>
+{
+    private readonly Tracked[]? _items;
+
+    public TrackedList(IEnumerable<Tracked> items) => _items = [.. items];
+
+    public int Count => _items?.Length ?? 0;
+
+    public Tracked this[int index] => (_items ?? [])[index];
+
+    public IEnumerator<Tracked> GetEnumerator() => ((IEnumerable<Tracked>)(_items ?? [])).GetEnumerator();
+
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
+public readonly partial record struct OverLabels : IValue<Labels>;
+
+public readonly partial record struct OverTrackedList : IValue<TrackedList>;
+
 public readonly partial record struct OverTracked : IValue<Tracked>;
 
 public readonly partial record struct OverHoldingNullableHolder : IValue<HoldingNullableHolder>;
@@ -135,6 +175,36 @@ public sealed class ReferenceHandlingTests
 
         json.ShouldBe(JsonSerializer.Serialize(new Pair<Untracked> { First = value }, Preserving));
         JsonSerializer.Deserialize<Pair<OverUntracked>>(json, Preserving)!.First.Value.ShouldBe(value);
+    }
+
+    /// <summary>
+    /// A struct collection has no <c>$id</c> of its own, and strings have none: the value object was refused
+    /// under <see cref="ReferenceHandler.Preserve"/> for any struct that is not an object, where 2.0 wrote the
+    /// wrapped type's bytes.
+    /// </summary>
+    [Fact]
+    public void A_struct_collection_of_strings_is_written_under_Preserve()
+    {
+        var value = new Labels(["a", "b"]);
+        var json  = JsonSerializer.Serialize(new Pair<OverLabels> { First = OverLabels.From(value) }, Preserving);
+
+        json.ShouldBe(JsonSerializer.Serialize(new Pair<Labels> { First = value }, Preserving));
+        json.ShouldContain("\"First\":[\"a\",\"b\"]", customMessage: "the control: the struct collection is a plain array, with no $id or $values wrapper");
+    }
+
+    /// <summary>
+    /// A guard against over-correcting the case above, which passes either way: the elements of a struct
+    /// collection are classes, which have an <c>$id</c>, so the value object is still refused.
+    /// </summary>
+    [Fact]
+    public void A_struct_collection_of_classes_is_still_refused_under_Preserve()
+    {
+        var shared = new Tracked { Name = "x" };
+
+        JsonSerializer.Serialize(new Pair<TrackedList> { First = new TrackedList([shared, shared]) }, Preserving)
+                      .ShouldContain("\"$ref\"", customMessage: "the control: the serializer numbers the elements");
+        Should.Throw<NotSupportedException>(() => JsonSerializer.Serialize(new Pair<OverTrackedList> { First = OverTrackedList.From(new TrackedList([shared, shared])) }, Preserving))
+              .Message.ShouldContain("ReferenceHandler.Preserve");
     }
 
     /// <summary>A cycle through the value object fails at the depth limit there, which is loud; anything else is the wrapped type's bytes.</summary>
