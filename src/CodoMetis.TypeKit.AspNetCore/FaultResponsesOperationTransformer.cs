@@ -53,6 +53,9 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
         IOpenApiSchema? problem = null;
         IReadOnlyList<object> endpointMetadata = [.. context.Description.ActionDescriptor.EndpointMetadata];
 
+        // Every fault type the endpoint answers with, a Fault<T1, T2>'s each: a status two of them share is one
+        // response, which lists the problem types of both, and the statuses come in ascending order.
+        var answered = new SortedDictionary<int, List<string>>();
         foreach (var metadata in endpointMetadata.OfType<FaultResponsesMetadata>().Distinct())
         {
             var statuses = metadata.Statuses(context.ApplicationServices, endpointMetadata)
@@ -62,20 +65,25 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
 
             foreach (var status in statuses)
             {
-                var key = status.ToString(CultureInfo.InvariantCulture);
-                operation.Responses ??= [];
-                if (operation.Responses.ContainsKey(key)) continue;
-
-                problem ??= await ProblemSchemaAsync(context, cancellationToken);
-                var types = metadata.Types(context.ApplicationServices, status, endpointMetadata);
-                operation.Responses[key] = new OpenApiResponse
-                {
-                    Description = types.Count == 0
-                        ? ReasonPhrases.GetReasonPhrase(status)
-                        : $"{ReasonPhrases.GetReasonPhrase(status)}. Problem types: {string.Join(", ", types)}",
-                    Content = new Dictionary<string, OpenApiMediaType> { ["application/problem+json"] = new() { Schema = problem } },
-                };
+                if (!answered.TryGetValue(status, out var types)) answered[status] = types = [];
+                types.AddRange(metadata.Types(context.ApplicationServices, status, endpointMetadata).Except(types, StringComparer.Ordinal).ToList());
             }
+        }
+
+        foreach (var (status, types) in answered)
+        {
+            var key = status.ToString(CultureInfo.InvariantCulture);
+            operation.Responses ??= [];
+            if (operation.Responses.ContainsKey(key)) continue;
+
+            problem ??= await ProblemSchemaAsync(context, cancellationToken);
+            operation.Responses[key] = new OpenApiResponse
+            {
+                Description = types.Count == 0
+                    ? ReasonPhrases.GetReasonPhrase(status)
+                    : $"{ReasonPhrases.GetReasonPhrase(status)}. Problem types: {string.Join(", ", types)}",
+                Content = new Dictionary<string, OpenApiMediaType> { ["application/problem+json"] = new() { Schema = problem } },
+            };
         }
     }
 
