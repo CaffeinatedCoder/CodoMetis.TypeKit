@@ -5,8 +5,6 @@ item names the decision that scoped it.
 
 ## 2.0.0, before the tag
 
-- `2.0.0-preview.1` to nuget.org, on hold since 2026-10-13 until the user says so, then the consumer
-  smoke test against it ([decision 42](adr/0042-2-0-0-next-release-bundles.md)).
 - The release: merge so the help links' headings exist on `main`, and tag `v2.0.0`. The changelog's
   section is dated and the analyzer rows are shipped; the release workflow and `ChangelogTests` check
   both.
