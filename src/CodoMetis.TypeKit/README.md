@@ -397,7 +397,8 @@ runtime's globalization data to compose, and in globalization-invariant mode it 
 `AsIdentifier()` composes nothing and works there, for the values it is for.
 
 `TextFault` has two members because the caller decides what a blank means: a required field makes
-`Blank` an error, an optional one makes it absence. `Hidden` is a refusal in both. A null is
+`Blank` an error, an optional one makes it absence, which `AsOptionalText()` and `AsOptionalIdentifier()`
+answer as a `Result<Option<string>, TextFault>`. `Hidden` is a refusal in both. A null is
 `Blank`, since the extension is the door a bound request property goes through and binding
 enforces no non-nullability.
 

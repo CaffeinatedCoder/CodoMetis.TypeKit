@@ -237,6 +237,32 @@ public sealed class StringTextExtensionsTests
         Refusal(missing.AsIdentifier()).ShouldBe(TextFault.Blank);
     }
 
+    /// <summary>
+    /// An optional field makes a blank absence and nothing else: a hidden character is not nothing,
+    /// so it stays a refusal, and what is kept is kept in the spelling the required guard keeps.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t\n")]
+    public void A_blank_optional_field_is_absent(string? value)
+    {
+        value.AsOptionalText().Match(text => text.IsNone(), fault => throw new ShouldAssertException($"Refused as {fault}.")).ShouldBeTrue();
+        value.AsOptionalIdentifier().Match(id => id.IsNone(), fault => throw new ShouldAssertException($"Refused as {fault}.")).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void An_optional_field_refuses_a_hidden_character_and_keeps_what_the_required_guard_keeps()
+    {
+        "\u200B".AsOptionalText().Match(_ => "kept", fault => fault.ToString()).ShouldBe(nameof(TextFault.Hidden));
+        "Zoe\u200B".AsOptionalText().Match(_ => "kept", fault => fault.ToString()).ShouldBe(nameof(TextFault.Hidden));
+        "sub\u200Dject".AsOptionalIdentifier().Match(_ => "kept", fault => fault.ToString()).ShouldBe(nameof(TextFault.Hidden), "a joiner in an identifier");
+
+        " Zoe\u0308\u2003Q ".AsOptionalText().Match(text => text.Match(t => t, () => "none"), fault => fault.ToString()).ShouldBe("Zo\u00EB Q", "trimmed, folded and composed as AsText does");
+        " Zoe\u0308 ".AsOptionalIdentifier().Match(id => id.Match(t => t, () => "none"), fault => fault.ToString()).ShouldBe("Zoe\u0308", "trimmed and otherwise as issued");
+    }
+
     [Fact]
     public void Text_that_is_nothing_but_a_hidden_character_is_hidden_rather_than_blank() =>
         Refusal("\u200B".AsText()).ShouldBe(TextFault.Hidden);

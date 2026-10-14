@@ -43,21 +43,12 @@ public static class Usage
         return (composed, folded, joined, hidden, filler, bare, issued, forged);
     }
 
-    // sample: text/required-optional
-    static Result<string, TextFault> Required(string? text) => text.AsText();   // Blank is the error for a required field
-
-    static Result<Option<string>, TextFault> Optional(string? text) =>
-        text.AsText()
-            .Map(clean => Option.Some(clean))
-            .Recover(fault => fault == TextFault.Blank ? Option.None<string>() : Result.Error(fault));   // Blank is absence, Hidden still a refusal
-    // end sample
-
     public static (string Name, string Note, string Tagged) Fields(ProfileRequest request)
     {
         // sample: text/required-optional-use
-        string name = Required(request.Name).Match(text => text, fault => fault.ToString());                                  // "Blank"
-        string note = Optional(request.Note).Match(text => text.Match(t => t, () => "none"), fault => fault.ToString());      // "none"
-        string tagged = Optional("note\u200B").Match(text => text.Match(t => t, () => "none"), fault => fault.ToString());    // "Hidden"
+        string name = request.Name.AsText().Match(text => text, fault => fault.ToString());                                       // "Blank"
+        string note = request.Note.AsOptionalText().Match(text => text.Match(t => t, () => "none"), fault => fault.ToString());   // "none"
+        string tagged = "note\u200B".AsOptionalText().Match(text => text.Match(t => t, () => "none"), fault => fault.ToString()); // "Hidden"
         // end sample
 
         return (name, note, tagged);
@@ -107,9 +98,9 @@ public sealed class TextTests
     {
         var (name, note, tagged) = Usage.Fields(new ProfileRequest(null, " "));
 
-        name.ShouldBeShownIn(Readme, Quoted, "Required(request.Name).Match(text => text, fault => fault.ToString())");
-        note.ShouldBeShownIn(Readme, Quoted, "Optional(request.Note).Match(text => text.Match(t => t, () => \"none\"), fault => fault.ToString())");
-        tagged.ShouldBeShownIn(Readme, Quoted, "Optional(\"note\\u200B\").Match(text => text.Match(t => t, () => \"none\"), fault => fault.ToString())");
+        name.ShouldBeShownIn(Readme, Quoted, "request.Name.AsText().Match(text => text, fault => fault.ToString())");
+        note.ShouldBeShownIn(Readme, Quoted, "request.Note.AsOptionalText().Match(text => text.Match(t => t, () => \"none\"), fault => fault.ToString())");
+        tagged.ShouldBeShownIn(Readme, Quoted, "\"note\\u200B\".AsOptionalText().Match(text => text.Match(t => t, () => \"none\"), fault => fault.ToString())");
 
         Usage.Fields(new ProfileRequest(" Ann ", " a note ")).ShouldBe(("Ann", "a note", "Hidden"));
     }

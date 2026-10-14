@@ -41,6 +41,7 @@ public sealed class InvariantGlobalizationTests
 
         Should.Throw<PlatformNotSupportedException>(() => "Zoe".AsText(), "whatever the string, so that the first call finds out");
         Should.Throw<PlatformNotSupportedException>(() => ((string?)null).AsText(), "whatever the string, so that the first call finds out");
+        Should.Throw<PlatformNotSupportedException>(() => ((string?)null).AsOptionalText(), "an optional field finds out on its first call too, blank or not");
 
         " Zoe\u0308 ".AsIdentifier().Match(id => id, fault => fault.ToString()).ShouldBe("Zoe\u0308", "AsIdentifier composes nothing and needs no globalization data");
         "Zoe\u200B".AsIdentifier().Match(id => id, fault => fault.ToString()).ShouldBe(nameof(TextFault.Hidden));

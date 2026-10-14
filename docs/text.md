@@ -51,23 +51,18 @@ confusable letters across scripts, which is a comparison question and not a reje
 ## Required and optional
 
 `TextFault` has two members because the caller decides what a blank means. A required field makes
-`Blank` an error; an optional one makes it absence. `Hidden` is a refusal in both.
+`Blank` an error; an optional one makes it absence, which `AsOptionalText()` and
+`AsOptionalIdentifier()` answer as a `Result<Option<string>, TextFault>`. `Hidden` is a refusal in both:
+a hidden character is not nothing, it is text the person cannot see.
 
 ```csharp
 public sealed record ProfileRequest(string? Name, string? Note);   // bound from a request: nothing enforces the non-nullability
-
-static Result<string, TextFault> Required(string? text) => text.AsText();   // Blank is the error for a required field
-
-static Result<Option<string>, TextFault> Optional(string? text) =>
-    text.AsText()
-        .Map(clean => Option.Some(clean))
-        .Recover(fault => fault == TextFault.Blank ? Option.None<string>() : Result.Error(fault));   // Blank is absence, Hidden still a refusal
 ```
 
 ```csharp
-string name = Required(request.Name).Match(text => text, fault => fault.ToString());                                  // "Blank"
-string note = Optional(request.Note).Match(text => text.Match(t => t, () => "none"), fault => fault.ToString());      // "none"
-string tagged = Optional("note\u200B").Match(text => text.Match(t => t, () => "none"), fault => fault.ToString());    // "Hidden"
+string name = request.Name.AsText().Match(text => text, fault => fault.ToString());                                       // "Blank"
+string note = request.Note.AsOptionalText().Match(text => text.Match(t => t, () => "none"), fault => fault.ToString());   // "none"
+string tagged = "note\u200B".AsOptionalText().Match(text => text.Match(t => t, () => "none"), fault => fault.ToString()); // "Hidden"
 ```
 
 A null is `Blank` because the extension is the door a bound request property goes through, and

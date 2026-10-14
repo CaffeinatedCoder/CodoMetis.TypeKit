@@ -12,6 +12,10 @@ section is the GitHub release's notes.
 
 ## 2.1.0 — Unreleased
 
+### Added
+
+- **`AsOptionalText()`/`AsOptionalIdentifier()`**: a blank is no text, a hidden character still `Hidden` ([Written text](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/text.md#required-and-optional)).
+
 ## 2.0.0 — 2026-10-14
 
 Still `net10.0` and Metalama 2026.1. What builds or runs differently, and what to write instead:
