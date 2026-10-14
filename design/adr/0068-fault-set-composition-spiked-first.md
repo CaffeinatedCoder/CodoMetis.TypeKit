@@ -1,7 +1,7 @@
 # 0068. Fault sets that share members are spiked before they are built
 
 Date: 2026-10-14
-Status: accepted
+Status: superseded by 0078
 
 Context: 2026-10-14, a review of an application moving its own fault responses onto the package;
 [decision 49](0049-fault-responses-client-can-act.md), [decision 64](0064-fault-name-reaches-client-causes-not-told-apart-one-fault.md).
