@@ -421,6 +421,10 @@ members are and end as the file's lines do, and a type written on one line gets 
 that line. The requirement reaches a type through any chain of base classes and interfaces, and
 the attribute is read from metadata, so the marked type can live in another package.
 
+Nor does a type whose base `base()` cannot reach, which the added constructor calls implicitly: a
+base with only constructors that take arguments, one the type cannot access, or two that `base()`
+could each be. Which constructor to chain to is the author's choice.
+
 A struct or record struct is never reported. It always has a public parameterless constructor, the
 implicit one or one it declares, and C# allows it no other (CS8958): it satisfies `Public` as it is,
 and no other accessibility can be asked of it.

@@ -21,8 +21,10 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// <para>
 /// A type with a primary constructor, in any of its parts, gets no fix: every other constructor of
 /// such a type chains to the primary one (CS8862), and the arguments to chain with are the author's to
-/// choose. Nor does a struct, which the rule never reports: its parameterless constructor can only be
-/// public.
+/// choose. Nor does a type whose base <c>base()</c> does not reach, which the added constructor calls
+/// implicitly: a base with only constructors that take arguments (CS7036), one the type cannot access
+/// (CS0122), or two that <c>base()</c> could each be (CS0121). Nor does a struct, which the rule never
+/// reports: its parameterless constructor can only be public.
 /// </para>
 /// <para>
 /// The fix writes its own trivia and asks no formatter, which would lay out the whole type again: the
@@ -76,7 +78,7 @@ public sealed class RequiredParameterlessConstructorCodeFixProvider : CodeFixPro
                     diagnostic);
             }
             else if (node.FirstAncestorOrSelf<TypeDeclarationSyntax>() is { } type
-                  && !await HasPrimaryConstructorAsync(context.Document, type, context.CancellationToken).ConfigureAwait(false))
+                  && await CanAddConstructorAsync(context.Document, type, context.CancellationToken).ConfigureAwait(false))
             {
                 context.RegisterCodeFix(
                     CodeAction.Create(
@@ -89,18 +91,34 @@ public sealed class RequiredParameterlessConstructorCodeFixProvider : CodeFixPro
     }
 
     /// <summary>
-    /// Whether any part of the type declares a primary constructor, or whether that cannot be told: a
-    /// fix withheld is better than one that does not compile.
+    /// Whether a parameterless constructor added to the type compiles, or whether that cannot be told: a
+    /// fix withheld is better than one that does not compile. It does not where any part of the type
+    /// declares a primary constructor, nor where its implicit <c>base()</c> binds to nothing.
     /// </summary>
-    private static async Task<bool> HasPrimaryConstructorAsync(Document document, TypeDeclarationSyntax type, CancellationToken cancellationToken)
+    private static async Task<bool> CanAddConstructorAsync(Document document, TypeDeclarationSyntax type, CancellationToken cancellationToken)
     {
-        if (type.ParameterList is not null) return true;
-        if (!type.Modifiers.Any(SyntaxKind.PartialKeyword)) return false;
+        if (type.ParameterList is not null) return false;
 
         var model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-        if (model?.GetDeclaredSymbol(type, cancellationToken) is not INamedTypeSymbol symbol) return true;
+        if (model?.GetDeclaredSymbol(type, cancellationToken) is not INamedTypeSymbol symbol) return false;
 
-        return symbol.DeclaringSyntaxReferences.Any(reference => reference.GetSyntax(cancellationToken) is TypeDeclarationSyntax { ParameterList: not null });
+        return !symbol.DeclaringSyntaxReferences.Any(reference => reference.GetSyntax(cancellationToken) is TypeDeclarationSyntax { ParameterList: not null })
+            && BaseCallBinds(symbol, model.Compilation);
+    }
+
+    /// <summary>
+    /// Whether <c>base()</c> in a constructor of <paramref name="type"/> binds: to the base's one
+    /// accessible parameterless constructor, or, without one, to its one accessible constructor whose
+    /// parameters are all optional or a <c>params</c> array. Two of the second kind are ambiguous.
+    /// </summary>
+    private static bool BaseCallBinds(INamedTypeSymbol type, Compilation compilation)
+    {
+        if (type.BaseType is not { SpecialType: not SpecialType.System_Object } baseType) return true;
+
+        var reachable = baseType.InstanceConstructors.Where(constructor => compilation.IsSymbolAccessibleWithin(constructor, type)).ToList();
+        if (reachable.Any(constructor => constructor.Parameters.IsEmpty)) return true;
+
+        return reachable.Count(constructor => constructor.Parameters.All(parameter => parameter.IsOptional || parameter.IsParams)) == 1;
     }
 
     /// <summary>

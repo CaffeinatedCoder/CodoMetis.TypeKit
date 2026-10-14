@@ -494,6 +494,110 @@ public sealed class RequiredParameterlessConstructorAnalyzerTests
     }
 
     /// <summary>
+    /// The constructor the fix adds calls <c>base()</c> implicitly, so it is withheld where that call
+    /// does not bind: a base with only a constructor that takes arguments (CS7036), one whose
+    /// parameterless constructor the type cannot reach (CS0122), and one where <c>base()</c> could be
+    /// either of two constructors (CS0121).
+    /// </summary>
+    [Theory]
+    [InlineData("protected Base(int id) { }")]
+    [InlineData("private Base() { } protected Base(int id) { }")]
+    [InlineData("protected Base(int id = 0) { } protected Base(string name = \"\") { }")]
+    public Task A_type_whose_base_has_no_constructor_base_reaches_gets_no_fix(string constructors)
+    {
+        var source = Subjects + $$"""
+            public abstract class Base { {{constructors}} }
+
+            public sealed class {|#0:Orders|} : Base, Subjects.IEndpoint
+            {
+                public Orders(int port) : base(port) { }
+            }
+            """;
+
+        return new CodeFixTest<RequiredParameterlessConstructorAnalyzer, RequiredParameterlessConstructorCodeFixProvider>(source, source)
+        {
+            ExpectedDiagnostics = { Cmtk0011("Orders", "declares no parameterless constructor", "IEndpoint", "public") },
+            FixedState          = { ExpectedDiagnostics = { Cmtk0011("Orders", "declares no parameterless constructor", "IEndpoint", "public") } },
+        }
+        .RunAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// Where <c>base()</c> binds, the fix is offered: to a parameterless constructor beside others, to one
+    /// whose parameters are all optional or a <c>params</c> array.
+    /// The fixed code compiles, or the test fails.
+    /// </summary>
+    [Theory]
+    [InlineData("protected Base() { } protected Base(int id) { }")]
+    [InlineData("protected Base(int id = 0) { }")]
+    [InlineData("protected Base(params int[] ids) { }")]
+    public Task A_type_whose_base_has_a_constructor_base_reaches_gets_the_fix(string constructors) =>
+        new CodeFixTest<RequiredParameterlessConstructorAnalyzer, RequiredParameterlessConstructorCodeFixProvider>(
+            Subjects + $$"""
+            public abstract class Base { {{constructors}} }
+
+            public sealed class {|#0:Orders|} : Base, Subjects.IEndpoint
+            {
+                public Orders(int port) { }
+            }
+            """,
+            Subjects + $$"""
+            public abstract class Base { {{constructors}} }
+
+            public sealed class Orders : Base, Subjects.IEndpoint
+            {
+                public Orders()
+                {
+                }
+
+                public Orders(int port) { }
+            }
+            """)
+            {
+                ExpectedDiagnostics = { Cmtk0011("Orders", "declares no parameterless constructor", "IEndpoint", "public") },
+            }
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>A private parameterless constructor is reached by a type nested in its own.</summary>
+    [Fact]
+    public Task A_nested_type_reaching_its_container_s_private_constructor_gets_the_fix() =>
+        new CodeFixTest<RequiredParameterlessConstructorAnalyzer, RequiredParameterlessConstructorCodeFixProvider>(
+            Subjects + """
+            public class Base
+            {
+                private Base() { }
+
+                public Base(int id) { }
+
+                public sealed class {|#0:Orders|} : Base, Subjects.IEndpoint
+                {
+                    public Orders(int port) : base(port) { }
+                }
+            }
+            """,
+            Subjects + """
+            public class Base
+            {
+                private Base() { }
+
+                public Base(int id) { }
+
+                public sealed class Orders : Base, Subjects.IEndpoint
+                {
+                    public Orders()
+                    {
+                    }
+
+                    public Orders(int port) : base(port) { }
+                }
+            }
+            """)
+            {
+                ExpectedDiagnostics = { Cmtk0011("Orders", "declares no parameterless constructor", "IEndpoint", "public") },
+            }
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
     /// The fix adds a constructor and touches nothing else: the type's doc comment, its attributes and a
     /// comment beside one stay where they are, and the members keep their layout.
     /// </summary>
