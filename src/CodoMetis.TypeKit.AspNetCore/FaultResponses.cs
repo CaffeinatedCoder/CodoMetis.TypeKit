@@ -199,9 +199,16 @@ internal abstract class FaultResponsesMetadata
 
     /// <summary>
     /// What is wrong with the endpoint's declarations for this fault type: a status or a member left out that
-    /// names no member, and a member given a status and left out at once.
+    /// names no member.
     /// </summary>
     public abstract IEnumerable<string> Problems(IServiceProvider services, IReadOnlyList<object> endpointMetadata);
+
+    /// <summary>
+    /// Each status the endpoint carries for a member it leaves out, with the member and how the pair reads in a
+    /// message. Not a problem of the endpoint alone: a scope's status is narrowed by an endpoint that leaves the
+    /// member out, and is a contradiction only where every endpoint of its scope does (the startup check).
+    /// </summary>
+    public abstract IEnumerable<(IFaultDeclaration Status, string Member, string Message)> StatusesLeftOut(IServiceProvider services, IReadOnlyList<object> endpointMetadata);
 
     /// <summary>
     /// The name and the qualified name of each member the endpoint answers with, those it leaves out aside, or
@@ -239,14 +246,19 @@ internal sealed class FaultResponsesMetadata<TFault> : FaultResponsesMetadata wh
         {
             if (exclusion.Problem(responses.Type) is { } problem) yield return problem;
         }
+    }
 
-        // A status for a member left out says the endpoint answers it, and the exclusion that it never does.
+    public override IEnumerable<(IFaultDeclaration Status, string Member, string Message)> StatusesLeftOut(IServiceProvider services, IReadOnlyList<object> endpointMetadata)
+    {
+        if (Responses(services) is not { } responses) yield break;
+
         foreach (var fault in responses.Type.Members)
         {
             if (FaultExclusions.Excluding(endpointMetadata, fault, responses.Type) is not { } exclusion) continue;
 
+            var member = responses.Type.QualifiedNameOf(fault);
             foreach (var status in endpointMetadata.OfType<IFaultStatus<TFault>>().Where(status => status.Matches(fault, responses.Type)))
-                yield return $"{status.Describe()} gives a status to {responses.Type.QualifiedNameOf(fault)}, which {exclusion.Describe()} leaves out";
+                yield return (status, member, $"{status.Describe()} gives a status to {member}, which {exclusion.Describe()} leaves out");
         }
     }
 

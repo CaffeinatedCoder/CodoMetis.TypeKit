@@ -482,12 +482,12 @@ app.MapDelete("/accounts/{id:int}", (int id, int version) => edits.Close(id, ver
   there, and an error needs two to become a `Result<Refusal>`: `return Fault.Of(AccountFault.NotFound)`
   is CS0029. Write `Refusal.Of(reason)`, `Refusal.Of(fault)` or `Result.Error<Refusal>(fault)`
   instead. Anywhere else, an error of either set converts as it is.
-- **Names must stay distinct.** The sets a route answers with must not write one name for two errors.
+- **Keep names distinct.** The sets a route answers with shouldn't write one name for two errors.
   With bare names, the default, that's `AccountFault.NotFound` beside an `EditFault.NotFound`. With
   qualified names, it's two sets with one nesting chain in two namespaces, since the name carries no
-  namespace. A client would read the two errors as one, so the host doesn't start, and names both.
-  Fix it with `QualifiedFaultNames`, a rename, or by leaving one out of the route
-  ([below](#leaving-out-what-a-route-cannot-answer)).
+  namespace. A client reads the two errors as one, so the host logs a warning at startup naming both.
+  From 3.0.0 the host won't start. Fix it with `QualifiedFaultNames`, a rename, or by leaving one out
+  of the route ([below](#leaving-out-what-a-route-cannot-answer)).
 
 ### A status per endpoint
 
@@ -563,9 +563,13 @@ for a status that no remaining member is mapped to.
   the document doesn't list. It's the one rejection here that waits for a request. It's thrown as the
   response is written, so the client gets the host's 500. Every other mistake in the mapping stops
   the host at startup.
-- **These stop the host from starting**, as for a status: a value or a name no member has, a member
-  the endpoint also gives a status, and a group or a controller none of whose endpoints answers with
-  the type.
+- **Leaving a member out narrows a wider status.** If a group gives `NotFound` a status and one
+  endpoint inside leaves `NotFound` out, that endpoint drops it, and the group's other endpoints keep
+  the status.
+- **These stop the host from starting**, as for a status: a value or a name no member has, a status
+  that every endpoint it's set on leaves out (on the endpoint itself, or on a group whose endpoints
+  all leave the member out), and a group or a controller none of whose endpoints answers with the
+  type.
 
 ### The success the endpoint chooses
 

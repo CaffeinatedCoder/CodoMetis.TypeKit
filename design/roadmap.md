@@ -31,10 +31,6 @@ Small and additive, each closable in a minor version. Found by the reviews named
 - CMTK0010's cost: `GetSymbolInfo` on every generic name, about 0.5 s on a 6.7k-line file, and since
   2.1.0 a semantic-model query per `foreach`, `await`, deconstruction, positional pattern and
   collection expression. Measure on the same file before and after.
-- CMTK0010 refuses what it could prove, each a relaxation a minor may make (audit of 2026-10-14):
-  `dynamic` under `[Unsealed]`, which `[Concrete]` takes as `object`; and a `[ReadOnlyStruct]` or
-  `[FlagsEnum]` parameter forwarded to `[Sealed]` or `[Concrete]`, though every type either admits
-  is sealed and concrete.
 
 **Generators**
 - A C# keyword in a namespace or a member name fails with LAMA0041, not a CMTK error.
@@ -43,17 +39,6 @@ Small and additive, each closable in a minor version. Found by the reviews named
   an implicit conversion) broke a consumer's call with CS0117 and passed ApiCompat. Snapshot the
   generated public members of the test corpus' value objects, and fail a change that removes one
   without a decision (review of 2026-10-14).
-
-**JSON**
-- A value object held as its base record type is written as the base, `{}`, as System.Text.Json
-  writes any declared type. CMTK1022 refuses the abstract marker, not an abstract base record. Say so
-  in the JSON guide, or refuse it (audit of 2026-10-14).
-
-**ASP.NET Core**
-- A group's `WithFaultStatus` for a member that an endpoint inside it leaves out with `WithoutFaults`
-  stops the host ([decision 78](adr/0078-fault-sets-compose-side-by-side.md) refuses a member also given a status), where
-  [decision 61](adr/0061-scope-s-fault-status-applies-where-fault-type-answered.md) has a scope's status apply only where it means something. Decide which reading holds;
-  relaxing the refusal is allowed in a minor (audit of 2026-10-14).
 
 **Run time**
 - The Serilog policy ignores `ToMaximumStringLength`.
@@ -88,6 +73,8 @@ Small and additive, each closable in a minor version. Found by the reviews named
 
 - CMTK0010 checks `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` at a method the compiler binds by
   pattern too, as it checks the kinds 2.1.0 added ([decision 89](adr/0089-cmtk0010-at-methods-bound-by-pattern.md)).
+- An endpoint whose fault types write one name for two members stops the host, where 2.x logs a
+  warning ([decision 90](adr/0090-faults-alike-are-a-warning-until-3-0.md)).
 - CMTK1023, a base record's equality that the generated one does not call, becomes an Error
   ([decision 75](adr/0075-equality-over-base-record-generated.md)).
 - C# 15 unions and the `net10.0` drop, timed to .NET 12 LTS (November 2027) or to the end of .NET

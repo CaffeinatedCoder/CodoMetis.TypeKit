@@ -64,6 +64,13 @@ of options.
 
 **Good to know**
 
+- **A value object held as its base record is written as `{}`.** The serializer writes the type it's
+  given, not the one the value really is. If `OrderId` derives from `abstract record Identifier`, then
+  `JsonSerializer.Serialize<Identifier>(id)`, or a property typed `Identifier`, writes `{}` with no error,
+  and reading it back throws. `[JsonDerivedType]` on the base doesn't help: the serializer refuses a
+  derived type that has a converter of its own, which every value object has. Declare the property as the
+  value object's own type, or as `object`, which writes the value. Or give the base a `JsonConverter` of
+  your own.
 - **A `DateTime` is written as UTC.** This is the converter's one addition to the underlying type's
   JSON. A `Local` value is converted to UTC. An `Unspecified` one is taken as UTC with its digits
   kept. So a stored instant reads back as the instant it was.

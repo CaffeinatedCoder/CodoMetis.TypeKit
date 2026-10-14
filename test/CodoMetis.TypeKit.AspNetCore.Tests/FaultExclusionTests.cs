@@ -139,6 +139,10 @@ public sealed class FaultExclusionTests
         refusal.Message.ShouldContain("[WithoutFaults<FaultExclusionTests.OrderFault>(\"NotFound\", \"Gone\")] names no member \"Gone\" of FaultExclusionTests.OrderFault, on ");
     }
 
+    /// <summary>
+    /// A status that every endpoint of its scope leaves out serves nothing: a group of one endpoint, or the
+    /// endpoint itself declaring both, is a contradiction, and the host does not start.
+    /// </summary>
     [Fact]
     public async Task A_member_given_a_status_and_left_out_stops_the_host()
     {
@@ -147,6 +151,35 @@ public sealed class FaultExclusionTests
                .MapGet("/{id:int}", (int id) => Find(id).ToHttpResult()).WithoutFaults(OrderFault.NotFound)));
 
         refusal.Message.ShouldContain("WithFaultStatus(FaultExclusionTests.OrderFault.NotFound, 410) gives a status to FaultExclusionTests.OrderFault.NotFound, which WithoutFaults(FaultExclusionTests.OrderFault.NotFound) leaves out, on HTTP: GET /orders/{id:int}.");
+
+        var own = await Should.ThrowAsync<InvalidOperationException>(() => StartAsync(endpoints: app =>
+            app.MapGet("/orders/{id:int}", (int id) => Find(id).ToHttpResult())
+               .WithFaultStatus(OrderFault.NotFound, StatusCodes.Status410Gone).WithoutFaults(OrderFault.NotFound)));
+
+        own.Message.ShouldContain("WithFaultStatus(FaultExclusionTests.OrderFault.NotFound, 410) gives a status to FaultExclusionTests.OrderFault.NotFound, which WithoutFaults(FaultExclusionTests.OrderFault.NotFound) leaves out, on HTTP: GET /orders/{id:int}.");
+    }
+
+    /// <summary>
+    /// An endpoint that leaves a member out narrows the status its group gives that member, as it narrows the host's
+    /// mapping: the group's other endpoints answer with the group's status. Judged per endpoint, the group's status
+    /// stopped the host as soon as one endpoint inside left the member out (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public async Task Leaving_a_member_out_narrows_its_group_s_status()
+    {
+        await using var app = await StartAsync(endpoints: app =>
+        {
+            var orders = app.MapGroup("/orders").WithFaultStatus(OrderFault.NotFound, StatusCodes.Status410Gone);
+            orders.MapGet("/{id:int}", (int id) => Find(id).ToHttpResult());
+            orders.MapPost("/{id:int}", (int id) => Find(id).ToHttpResult()).WithoutFaults(OrderFault.NotFound);
+        });
+
+        await ProblemAsync(app, HttpMethod.Get, "/orders/9", HttpStatusCode.Gone);
+        await Should.ThrowAsync<InvalidOperationException>(() => app.GetTestClient().PostAsync("/orders/9", null, TestContext.Current.CancellationToken));
+
+        var document = await DocumentAsync(app);
+        Statuses(document, "/orders/{id}", "get").ShouldBe(["200", "409", "410", "412"]);
+        Statuses(document, "/orders/{id}", "post").ShouldBe(["200", "409", "412"]);
     }
 
     [Fact]

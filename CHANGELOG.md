@@ -32,6 +32,7 @@ section is the GitHub release's notes.
 ### Changed
 
 - The OpenAPI problem schema describes `rule` beside `fault`: regenerate clients.
+- A host whose endpoint answers two fault types that write one fault name logs a warning at startup naming both; 3.0.0 refuses it ([Faults of several types](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types)).
 - The new attributes in the `CodoMetis.TypeKit` namespace (`[ValueObject]`, `[Interface]`, …) can be ambiguous beside another library's of the same name (CS0104): qualify or alias one.
 - OpenAPI: in a host with controllers, a document whose MVC and minimal-API JSON options write a type differently is refused, naming what differs ([OpenAPI](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says)).
 

@@ -139,14 +139,23 @@ public sealed class ComposedFaultResponseTests
         refusal.Message.ShouldContain("No HTTP status is mapped for the fault type ComposedFaultResponseTests.RemovalFault, which these endpoints answer with: HTTP: DELETE /orders/{id:int}");
     }
 
+    /// <summary>
+    /// Two fault types an endpoint answers with that write one name are logged as a warning, and the host
+    /// starts: an endpoint written with 2.0's types alone, <c>Results&lt;…, FaultProblem&lt;A&gt;, FaultProblem&lt;B&gt;&gt;</c>,
+    /// started and answered under 2.0.0, and 2.1.0's refusal stopped a host that only upgraded (reported
+    /// 2026-10-14). 3.0.0 refuses it (decision 90).
+    /// </summary>
     [Fact]
-    public async Task Two_types_sharing_a_member_s_bare_name_stop_the_host()
+    public async Task Two_types_sharing_a_member_s_bare_name_are_a_warning_and_the_host_starts()
     {
-        var refusal = await Should.ThrowAsync<InvalidOperationException>(() => StartAsync(
+        var logs = new ListedLogs();
+        await using var app = await StartAsync(
+            logs: logs,
             endpoints: app => app.MapPut("/orders/{id:int}", Results<NoContent, FaultProblem<OrderFault>, FaultProblem<ClashingFault>> (int id) =>
-                Result<Fault<OrderFault, ClashingFault>>.Success().ToHttpResult())));
+                id == 1 ? TypedResults.NoContent() : NameTakenAsIn20()));
 
-        refusal.Message.ShouldContain("HTTP: PUT /orders/{id:int} answers ComposedFaultResponseTests.OrderFault.NameTaken and ComposedFaultResponseTests.ClashingFault.NameTaken alike, as the fault \"NameTaken\"");
+        (await ProblemAsync(app, "PUT", "/orders/2", HttpStatusCode.Conflict))["fault"]!.GetValue<string>().ShouldBe("NameTaken", "the 2.0 endpoint answers as it did");
+        logs.Warnings.ShouldHaveSingleItem().ShouldContain("HTTP: PUT /orders/{id:int} answers ComposedFaultResponseTests.OrderFault.NameTaken and ComposedFaultResponseTests.ClashingFault.NameTaken alike, as the fault \"NameTaken\"");
     }
 
     [Fact]
@@ -166,18 +175,20 @@ public sealed class ComposedFaultResponseTests
     /// no namespace, so both write <c>ShopFault.NotFound</c>.
     /// </summary>
     [Fact]
-    public async Task Two_types_writing_one_qualified_name_stop_the_host()
+    public async Task Two_types_writing_one_qualified_name_are_a_warning()
     {
-        var refusal = await Should.ThrowAsync<InvalidOperationException>(() => StartAsync(
+        var logs = new ListedLogs();
+        await using var app = await StartAsync(
+            logs: logs,
             qualified: true,
             services: services =>
             {
                 services.AddFaultResponses<Billing.ShopFault>(_ => StatusCodes.Status404NotFound);
                 services.AddFaultResponses<Shipping.ShopFault>(_ => StatusCodes.Status404NotFound);
             },
-            endpoints: app => app.MapGet("/shops/{id:int}", (int id) => Result<Fault<Billing.ShopFault, Shipping.ShopFault>>.Success().ToHttpResult())));
+            endpoints: app => app.MapGet("/shops/{id:int}", (int id) => Result<Fault<Billing.ShopFault, Shipping.ShopFault>>.Success().ToHttpResult()));
 
-        refusal.Message.ShouldContain("HTTP: GET /shops/{id:int} answers CodoMetis.TypeKit.AspNetCore.Tests.Billing.ShopFault.NotFound and " +
+        logs.Warnings.ShouldHaveSingleItem().ShouldContain("HTTP: GET /shops/{id:int} answers CodoMetis.TypeKit.AspNetCore.Tests.Billing.ShopFault.NotFound and " +
                                       "CodoMetis.TypeKit.AspNetCore.Tests.Shipping.ShopFault.NotFound alike, as the fault \"ShopFault.NotFound\": rename one type");
     }
 
@@ -233,11 +244,13 @@ public sealed class ComposedFaultResponseTests
         bool removal = true,
         bool qualified = false,
         bool typed = false,
-        Action<IServiceCollection>? services = null)
+        Action<IServiceCollection>? services = null,
+        ILoggerProvider? logs = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
         builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
+        if (logs is not null) builder.Logging.AddProvider(logs);
         builder.Services.AddOpenApi(options =>
         {
             options.OpenApiVersion = version;
@@ -310,6 +323,10 @@ public sealed class ComposedFaultResponseTests
         return response.StatusCode;
     }
 
+    /// <summary>A problem as a 2.0 handler made one, from a single fault type's <c>ToHttpResult()</c>.</summary>
+    private static FaultProblem<OrderFault> NameTakenAsIn20() =>
+        (FaultProblem<OrderFault>)((Result<OrderFault>)Result.Error(OrderFault.NameTaken)).ToHttpResult().Result;
+
     private static async Task<JsonNode> ProblemAsync(WebApplication app, string method, string path, HttpStatusCode status)
     {
         using var response = await app.GetTestClient().SendAsync(new HttpRequestMessage(new HttpMethod(method), path), TestContext.Current.CancellationToken);
@@ -345,4 +362,25 @@ public sealed class ComposedFaultResponseTests
 file static class ComposedResults
 {
     public static Result<Fault<T1, T2>> ToResult<T1, T2>(this Fault<T1, T2> fault) where T1 : notnull where T2 : notnull => fault;
+}
+
+/// <summary>The warnings a host logs, kept in memory.</summary>
+internal sealed class ListedLogs : ILoggerProvider, ILogger
+{
+    private readonly System.Collections.Concurrent.ConcurrentQueue<string> _warnings = new();
+
+    public IReadOnlyList<string> Warnings => [.. _warnings];
+
+    public ILogger CreateLogger(string categoryName) => this;
+
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+    public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Warning;
+
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+    {
+        if (logLevel == LogLevel.Warning) _warnings.Enqueue(formatter(state, exception));
+    }
+
+    public void Dispose() { }
 }

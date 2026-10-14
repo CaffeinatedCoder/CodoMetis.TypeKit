@@ -3,15 +3,16 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace CodoMetis.TypeKit.AspNetCore;
 
 /// <summary>
 /// Refuses to start a host with an endpoint whose fault type has no mapping, a fault status or a member
-/// left out whose scope has no endpoint that answers with its fault type, one naming a member its type does
-/// not have, or an endpoint two of whose fault types write one name for two members, naming each
-/// endpoint.
+/// left out whose scope has no endpoint that answers with its fault type, or one naming a member its type does
+/// not have, naming each endpoint. An endpoint two of whose fault types write one name for two members is
+/// a warning in the log until 3.0.0 (decision 90).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -34,6 +35,11 @@ internal sealed class FaultResponsesStartupCheck : IStartupFilter
     /// controllers' equal attributes would read as one scope, and it reads them by reflection.
     /// </summary>
     private static readonly IEqualityComparer<IFaultDeclaration> DeclarationComparer = ReferenceEqualityComparer.Instance;
+
+    private static readonly Action<ILogger, string, Exception?> FaultsAlike = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(1, "FaultsAlike"),
+        "{Clash} The host starts, but a client cannot tell these faults apart; 3.0.0 refuses it.");
 
     public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
     {
@@ -66,13 +72,38 @@ internal sealed class FaultResponsesStartupCheck : IStartupFilter
                 .SelectMany(metadata => metadata.Problems(services, endpoint.Metadata))
                 .Select(problem => $"{problem}, on {Name(endpoint)}."));
 
-        // Two fault types an endpoint answers with must not write one name: the client would read two
-        // faults as one. Bare names meet wherever two types share a member's name; qualified ones where
-        // two types of one nesting chain live in two namespaces.
-        var qualified = services.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true;
-        var alike = endpoints.Endpoints.SelectMany(endpoint => Alike(services, endpoint, qualified));
+        // A status for a member left out is a contradiction only where it is left out on every endpoint of the
+        // status's scope that answers the fault type: there the status serves nothing. Where some endpoint still
+        // answers the member, the ones that leave it out narrow a group's or a controller's status, as they narrow
+        // the host's mapping. Judged per endpoint, a group's 410 for NotFound stopped the host as soon as one
+        // endpoint inside left NotFound out (reported 2026-10-14; decision 91).
+        var scopes = endpoints.Endpoints
+            .SelectMany(endpoint => endpoint.Metadata.OfType<IFaultDeclaration>().Select(status => (Status: status, Endpoint: endpoint)))
+            .Where(pair => Answers(pair.Endpoint, pair.Status.FaultType))
+            .GroupBy(pair => pair.Status, pair => pair.Endpoint, DeclarationComparer)
+            .ToDictionary(scope => scope.Key, scope => scope.Distinct().ToList(), DeclarationComparer);
+        var contradicted = endpoints.Endpoints
+            .SelectMany(endpoint => endpoint.Metadata.OfType<FaultResponsesMetadata>().Distinct()
+                .SelectMany(metadata => metadata.StatusesLeftOut(services, endpoint.Metadata))
+                .Select(left => (left.Status, left.Member, left.Message, Endpoint: endpoint)))
+            .GroupBy(left => left.Status, DeclarationComparer)
+            .SelectMany(status => status.GroupBy(left => left.Member, StringComparer.Ordinal)
+                .Where(member => scopes[status.Key].All(endpoint => member.Any(left => left.Endpoint == endpoint)))
+                .Select(member => $"{member.First().Message}, on {string.Join(", ", member.Select(left => Name(left.Endpoint)).Distinct())}."));
 
-        var refusals = unmapped.Concat(stray).Concat(nameless).Concat(alike).ToList();
+        // Two fault types an endpoint answers with should not write one name: the client reads two faults
+        // as one. Bare names meet wherever two types share a member's name; qualified ones where two types of
+        // one nesting chain live in two namespaces. A warning, not a refusal: an endpoint answering
+        // Results<…, FaultProblem<A>, FaultProblem<B>> started under 2.0.0 and answered, and refusing it
+        // stopped a host that only upgraded (reported 2026-10-14); 3.0.0 refuses it (decision 90).
+        var qualified = services.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true;
+        var alike = endpoints.Endpoints.SelectMany(endpoint => Alike(services, endpoint, qualified)).ToList();
+        if (alike.Count > 0 && services.GetService<ILoggerFactory>()?.CreateLogger("CodoMetis.TypeKit.AspNetCore.FaultResponses") is { } logger)
+        {
+            foreach (var clash in alike) FaultsAlike(logger, clash, null);
+        }
+
+        var refusals = unmapped.Concat(stray).Concat(nameless).Concat(contradicted).ToList();
         if (refusals.Count == 0) return;
 
         throw new InvalidOperationException(string.Join(" ", refusals) + FaultRefusals.Mapping);
