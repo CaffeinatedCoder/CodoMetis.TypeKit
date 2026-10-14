@@ -364,6 +364,23 @@ public sealed class ForbiddenDefaultInitializationAnalyzerTests
             "Invalid initialization of 'Success': Use Result.Success(value).",
             "Invalid initialization of 'Error': Use Result.Error(error).");
 
+    /// <summary>A fault of several types holds none when it is <c>default</c>, and its Match throws for it.</summary>
+    [Fact]
+    public Task A_default_fault_of_several_types_reports() =>
+        ShouldFlagEach(
+            """
+            public static class Consumer
+            {
+                public static void A()
+                {
+                    CodoMetis.TypeKit.Fault<string, int> two = {|#0:default|};
+                    var three = {|#1:new CodoMetis.TypeKit.Fault<string, int, bool>()|};
+                }
+            }
+            """,
+            "Invalid initialization of 'Fault': Use Fault.Of(reason), which converts, or Fault<T1, T2>.Of(reason).",
+            "Invalid initialization of 'Fault': Use Fault.Of(reason), which converts, or Fault<T1, T2, T3>.Of(reason).");
+
     /// <summary>
     /// A default compared with <c>==</c> or <c>!=</c>, or passed to <c>Equals</c>, is a guard against
     /// the defaults the rule cannot see, not an instance anyone keeps.

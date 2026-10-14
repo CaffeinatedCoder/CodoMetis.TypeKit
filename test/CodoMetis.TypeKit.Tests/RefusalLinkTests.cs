@@ -93,6 +93,9 @@ public sealed partial class RefusalLinkTests
         ["Match on a default Result<T, TError>"] = (Uninitialized, () => default(Result<int, string>).Match(x => x, _ => 0)),
         ["bool of a default Result<TError>"]     = (Uninitialized, () => (bool)default(Result<string>)),
         ["Zip with a default Result"]            = (Uninitialized, () => Result<int, string>.Success(1).Zip(default(Result<int, string>), (a, b) => a + b)),
+        ["Match on a default Fault<T1, T2>"]     = (Uninitialized, () => default(Fault<string, int>).Match(_ => 0, _ => 1)),
+        ["Match on a default Fault<T1, T2, T3>"] = (Uninitialized, () => default(Fault<string, int, bool>).Match(_ => 0, _ => 1, _ => 2)),
+        ["a default Fault<T> converted"]         = (Uninitialized, () => (Fault<string, int>)default(Fault<string>)),
 
         ["refused JSON value"]              = (Refused, () => GeneratedFactories.OrJsonException(Result<Code, Fault>.Error(Fault.TooLong))),
         ["refused text"]                    = (Refused, () => GeneratedFactories.OrFormatException(Result<Code, Fault>.Error(Fault.TooLong))),

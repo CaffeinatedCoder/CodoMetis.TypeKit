@@ -44,9 +44,10 @@ A bare value converts to a valued success; an error goes through `Result.Error(.
 `Result<long, int>` a bare `5` could be either. `Result<TError>` has no value, so there a bare error
 converts, and so does the `Result.Success()` marker. The fault type is yours: an enum for most
 operations, a closed set when each fault carries constant data, a `Fault<TFault>` when one occurrence
-carries a sentence, a record where a fault carries the rule's data
+carries a sentence, a `Fault<T1, T2>` when a boundary answers with its own faults and with those shared
+code decides, a record where a fault carries the rule's data
 ([Value objects](value-objects.md#faults)). Keep the input out of it: a fault reaches messages and
-logs. `ToHttpResult()` takes the first three.
+logs. `ToHttpResult()` takes the first four.
 
 ## Reaching the outcome
 

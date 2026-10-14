@@ -330,6 +330,65 @@ faults stay unequal in the application, which compares the rule's type. Like a f
 is the application's vocabulary: name rule types apart, for instance by nesting a rule in its value
 object, `Email.Rule.Blank`.
 
+### Faults of several types
+
+Some refusals mean the same on every route: a change that raced the request, a version that went
+stale. Code every boundary shares decides them once, as a fault set of its own, and a boundary answers
+with its own set and the shared one side by side, rather than copying the shared members into its own:
+
+```csharp
+public sealed partial class EditFault : IFaultSet<EditFault>
+{
+    public static readonly EditFault Changed = new(FaultKind.Conflict, "Someone changed it meanwhile; read it again.");
+    public static readonly EditFault Stale = new(FaultKind.PreconditionFailed, null);
+
+    private EditFault(FaultKind kind, string? description) { Kind = kind; Description = description; }
+
+    public FaultKind Kind { get; }
+    public string? Description { get; }
+}
+
+public static class Edits   // decides these refusals once, for every boundary
+{
+    public static Fault<EditFault> Stale(int current, int sent) => Fault.Of(EditFault.Stale, $"It is at version {current}, not {sent}.");
+}
+```
+
+`Fault<AccountFault, EditFault>` (CodoMetis.TypeKit) holds one fault of either set, its detail and rule
+intact; `Fault<T1, T2, T3>` holds one of three. The sets are different types: with one set twice,
+`Fault<AccountFault, AccountFault>`, every conversion and `Of` is ambiguous, CS0457 and CS0121.
+
+```csharp
+using Refusal = Fault<AccountFault, EditFault>;   // the boundary's own faults, beside the shared ones
+
+public Result<Refusal> Close(int id, int version) =>
+    Find(id) is not { } account  ? Refusal.Of(AccountFault.NotFound)
+    : account.Version != version ? Refusal.Of(Edits.Stale(account.Version, version))   // the shared fault, as it is
+    : Result<Refusal>.Success();
+```
+
+```csharp
+builder.Services.AddFaultResponses<EditFault>();   // once for the host, beside AccountFault
+
+app.MapDelete("/accounts/{id:int}", (int id, int version) => edits.Close(id, version).ToHttpResult());
+```
+
+- **Each fault is answered as its own set maps it.** The endpoint returns
+  `Results<NoContent, FaultProblem<AccountFault>, FaultProblem<EditFault>>`, so its operation lists the
+  statuses of both sets, ascending, with the problem types of both where they share a status, and the host
+  does not start while either is unmapped.
+- **A shared refusal reads alike everywhere.** `EditFault.Stale` is the same fault from every boundary
+  that answers with it, where a copy in each boundary's set would be a fault of each.
+- **Name the type where a fault becomes a result.** C# applies one user-defined conversion there, and a
+  fault needs two to become a `Result<Refusal>`: `return Fault.Of(AccountFault.NotFound)` is CS0029.
+  `Refusal.Of(reason)`, `Refusal.Of(fault)` and `Result.Error<Refusal>(fault)` say it; anywhere else a
+  fault of either set converts as it is.
+- **Names stay apart.** The sets a route answers with must not write one name for two faults: with bare
+  names, the default, `AccountFault.NotFound` beside an `EditFault.NotFound`; qualified, two sets of one
+  nesting chain in two namespaces, since the name carries no namespace. A client would read two faults
+  as one, so the host does not start, naming both. `QualifiedFaultNames`, a rename, or leaving one out of
+  the route ([below](#leaving-out-what-a-route-cannot-answer)) answers it.
+
 ### A status per endpoint
 
 The same fault can mean 404 on one route and 409 on another. An endpoint changes the status of one
@@ -385,8 +444,9 @@ app.MapPost("/v4/accounts", (NewAccount body) => accounts.Open(body).ToHttpResul
 
 The operation lists no status and no problem type for a member left out, and no response for a status
 no member is left at. An MVC action or controller says it with `[WithoutFaults<AccountFault>(nameof(AccountFault.NotFound))]`,
-and a route group or a controller for its endpoints that answer with the type, as for a status, once per fault
-type.
+and a route group or a controller for its endpoints that answer with the type, as for a status. Call it
+once per fault type of a [composed fault](#faults-of-several-types):
+`.WithoutFaults(AccountFault.NotFound).WithoutFaults(EditFault.Stale)`.
 
 Reporting a member left out anyway throws an `InvalidOperationException` naming the endpoint and the
 member, rather than answering with a status the document does not list: leave out only what the route

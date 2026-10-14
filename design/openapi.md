@@ -69,7 +69,11 @@ position, and the change lands in the hoisted component.
   a problem answering a fault carries it; what a schema already says of `fault` is kept. ASP.NET's own
   problem responses refer to the same component (measured, 10.0.12: whichever endpoint comes first,
   and a second document without a fault response keeps it bare); an inline schema of theirs is another
-  instance and stays bare. A document without a fault response is ASP.NET's, byte for byte.
+  instance and stays bare. A document without a fault response is ASP.NET's, byte for byte. An
+  endpoint answering several fault types, a `Fault<T1, T2>`'s each, gets one response per status,
+  ascending, listing the problem types of every type at a status they share; a member the endpoint
+  leaves out (`WithoutFaults`) gives it no status and no problem type
+  ([decision 78](adr/0078-fault-sets-compose-side-by-side.md)).
 - **Known gaps, documented rather than fixed:** a validation attribute on a value-object property
   lands in the shared component, as ASP.NET does for any referenced schema (rules belong in `Create`);
   a property absent from a request body stays `default`, since System.Text.Json calls no converter

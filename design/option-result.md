@@ -57,6 +57,14 @@ is the value-less shape. Anything that turns this into a second LanguageExt is o
   `Rule`, the qualified name of the enum or closed-set member that refused, which the problem carries
   as `rule` ([decision 67](adr/0067-rule-that-refused-on-fault.md)); equality compares the rule's type,
   since two types' rules can read alike ([decision 72](adr/0072-rule-identity-is-its-type.md)).
+- **`Fault<T1, T2>` and `Fault<T1, T2, T3>` (2.1.0)** hold one fault of one of several types, so a
+  boundary answers with its own faults beside those shared code decides, without copying them
+  ([decision 78](adr/0078-fault-sets-compose-side-by-side.md)). A fault of each type converts; a bare reason
+  does not, and `Equals` with one is a compile error, as for `Fault<TFault>`. Where a fault becomes a
+  `Result` of one, C# would need two user-defined conversions, so `Of(reason)` and `Of(fault)` name the
+  type. A `default` one holds no fault, `Match` throws for it, and CMTK0001 refuses writing it; a
+  `default` `Fault<TFault>` of a class reason holds no reason and does not convert, while one over an
+  enum holds the member valued 0, which nothing tells from a real one.
 - **Pipelines (decided 2026-09-28).** `MapAsync`/`BindAsync` take an asynchronous selector on a
   result, and every combinator of both shapes continues a `Task<Result<…>>` (`MapAsync`, `BindAsync`,
   `MapErrorAsync`, `TapAsync`), so a chain is awaited once, at its end; a completeness test holds

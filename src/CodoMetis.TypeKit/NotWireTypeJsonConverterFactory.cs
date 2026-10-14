@@ -55,7 +55,7 @@ namespace CodoMetis.TypeKit;
 public sealed class NotWireTypeJsonConverterFactory : JsonConverterFactory
 {
     private static readonly Type[] RefusedDefinitions =
-        [typeof(Option<>), typeof(Result<>), typeof(Result<,>), typeof(Success<>), typeof(Error<>), typeof(Fault<>)];
+        [typeof(Option<>), typeof(Result<>), typeof(Result<,>), typeof(Success<>), typeof(Error<>), typeof(Fault<>), typeof(Fault<,>), typeof(Fault<,,>)];
 
     /// <inheritdoc/>
     public override bool CanConvert(Type typeToConvert) => IsRefused(typeToConvert);
@@ -88,7 +88,7 @@ public sealed class NotWireTypeJsonConverterFactory : JsonConverterFactory
     }
 
     /// <summary><c>Option&lt;Customer&gt;</c> rather than <c>Option`1</c>.</summary>
-    private static string Name(Type type) =>
+    internal static string Name(Type type) =>
         type.IsGenericType
             ? $"{type.Name[..type.Name.IndexOf('`', StringComparison.Ordinal)]}<{string.Join(", ", type.GetGenericArguments().Select(Name))}>"
             : type.Name;

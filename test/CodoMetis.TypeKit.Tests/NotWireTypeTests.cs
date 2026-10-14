@@ -38,6 +38,8 @@ public sealed partial class NotWireTypeTests
         ["Success() marker"]    = (Result.Success(), "Success", "Match it"),
         ["Success(value) marker"] = (Result.Success(Secret), "Success<String>", "Match it"),
         ["Error(error) marker"] = (Result.Error(Secret), "Error<String>", "Match it"),
+        ["fault of two types"]  = ((Fault<string, int>)Fault.Of(Secret), "Fault<String, Int32>", "Match it"),
+        ["fault of three types"] = ((Fault<string, int, bool>)Fault.Of(Secret), "Fault<String, Int32, Boolean>", "Match it"),
     };
 
     public static TheoryData<string> CaseNames => [.. Cases.Keys];

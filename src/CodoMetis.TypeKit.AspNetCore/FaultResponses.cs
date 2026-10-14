@@ -132,6 +132,11 @@ internal abstract class FaultResponsesMetadata
     /// </summary>
     public abstract IEnumerable<string> Problems(IServiceProvider services, IReadOnlyList<object> endpointMetadata);
 
+    /// <summary>
+    /// The name and the qualified name of each member the endpoint answers with, those it leaves out aside, or
+    /// none where the host mapped no status.
+    /// </summary>
+    public abstract IEnumerable<(string Name, string QualifiedName)> Names(IServiceProvider services, IReadOnlyList<object> endpointMetadata);
 }
 
 internal sealed class FaultResponsesMetadata<TFault> : FaultResponsesMetadata where TFault : notnull
@@ -173,6 +178,11 @@ internal sealed class FaultResponsesMetadata<TFault> : FaultResponsesMetadata wh
                 yield return $"{status.Describe()} gives a status to {responses.Type.QualifiedNameOf(fault)}, which {exclusion.Describe()} leaves out";
         }
     }
+
+    public override IEnumerable<(string Name, string QualifiedName)> Names(IServiceProvider services, IReadOnlyList<object> endpointMetadata) =>
+        Responses(services) is { } responses
+            ? responses.AnsweredBy(endpointMetadata).Select(fault => (responses.Type.NameOf(fault), responses.Type.QualifiedNameOf(fault)))
+            : [];
 
     private static FaultResponses<TFault>? Responses(IServiceProvider services) =>
         services.GetService(typeof(FaultResponses<TFault>)) as FaultResponses<TFault>;

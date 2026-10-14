@@ -354,6 +354,27 @@ public sealed partial class ProbeOrderFault : IFaultSet<ProbeOrderFault>
     public string? Description { get; }
 }
 
+/// <summary>
+/// A fault set shared code decides for every boundary, beside a boundary's own (<c>Fault&lt;ProbeOrderFault,
+/// ProbeConcurrencyFault&gt;</c>): <c>NotFound</c> shares its name with <see cref="ProbeOrderFault.NotFound"/>.
+/// </summary>
+public sealed partial class ProbeConcurrencyFault : IFaultSet<ProbeConcurrencyFault>
+{
+    public static readonly ProbeConcurrencyFault Conflict = new(FaultKind.Conflict, "The order changed meanwhile; read it again.");
+    public static readonly ProbeConcurrencyFault PreconditionFailed = new(FaultKind.PreconditionFailed, null);
+    public static readonly ProbeConcurrencyFault NotFound = new(FaultKind.NotFound, null);
+
+    private ProbeConcurrencyFault(FaultKind kind, string? description)
+    {
+        Kind = kind;
+        Description = description;
+    }
+
+    public FaultKind Kind { get; }
+
+    public string? Description { get; }
+}
+
 /// <summary>A fault set with a member whose kind is <c>default</c>, which is no kind: refused where the faults are mapped.</summary>
 public sealed partial class ProbeKindlessFault : IFaultSet<ProbeKindlessFault>
 {

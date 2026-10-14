@@ -8,11 +8,6 @@ item names the decision that scoped it.
 - An optional `Cause` on `Fault<TFault>`, an exception kept beside the reason and the detail for the
   log and the fault feature, never written to the problem; `Fault.Of(reason, detail, cause)`, and a
   `MapError` from a `Result<T, Exception>` that keeps the exception ([decision 52](adr/0052-cause-on-fault-joins-2-1.md)).
-- Fault sets side by side: `Fault<T1, T2>` and `Fault<T1, T2, T3>`, answered by `ToHttpResult()` as one
-  `FaultProblem` per set; the startup check refuses an endpoint whose sets write one fault name for two
-  faults; the document lists every set's problem types at a shared status, statuses ascending; and
-  `WithoutFaults`/`[WithoutFaults<T>]` leave out of a route what it cannot answer, refused at run time if
-  it does ([decision 78](adr/0078-fault-sets-compose-side-by-side.md)).
 - An opt-in that withholds the `fault` name from the response for chosen members or a whole fault
   type, so two causes can share a status without a mapping at the boundary; additive
   ([decision 64](adr/0064-fault-name-reaches-client-causes-not-told-apart-one-fault.md)).

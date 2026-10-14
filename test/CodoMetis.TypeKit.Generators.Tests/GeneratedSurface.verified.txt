@@ -154,6 +154,28 @@ ProbeCode
   static op_LessThanOrEqual(ProbeCode, ProbeCode) : Boolean
   extension static ProbeCodeExtensions.GetValue(ProbeCode) : String
   extension static ProbeCodeExtensions.ValueOrNull(ProbeCode?) : String
+ProbeConcurrencyFault
+  Description : String
+  Kind : FaultKind
+  Match(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeConcurrencyFault>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeConcurrencyFault>
+  implements IFault
+  implements IFaultSet<ProbeConcurrencyFault>
+  implements IParsable<ProbeConcurrencyFault>
+  nested ProbeConcurrencyFaultJsonConverter : JsonConverter<ProbeConcurrencyFault>
+  nested ProbeConcurrencyFaultTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeConcurrencyFault>
+  static Parse(String) : ProbeConcurrencyFault
+  static Parse(String, Boolean) : ProbeConcurrencyFault
+  static TryParse(String, Boolean, out ProbeConcurrencyFault) : Boolean
+  static TryParse(String, out ProbeConcurrencyFault) : Boolean
 ProbeContainer.NestedId
   CompareTo(Object) : Int32
   CompareTo(ProbeContainer.NestedId) : Int32

@@ -230,6 +230,10 @@ set's member, as a qualified key: `Fault.Of(AccountFault.EmailTaken).WithRule(Em
 the `Rule` `EmailRule.Reserved`. CodoMetis.TypeKit.AspNetCore answers a `Result<T, Fault<TFault>>` as it
 answers the fault, with the detail as the problem's `detail` and the rule as its `rule`. A closed set whose members are faults declares `IFaultSet<TSelf>`,
 a `FaultKind` and an optional description per member, from which the host derives each status.
+Where shared code decides some refusals for every boundary, `Fault<OrderFault, EditFault>` holds a
+fault of either type, and `Fault<T1, T2, T3>` of any of three: a fault of each converts, `Match` takes a
+delegate per type, and `Fault<OrderFault, EditFault>.Of(reason)` names the type where a fault becomes a
+result, which C# needs since that is a second conversion.
 
 ## JSON converters that say what they write
 
@@ -246,7 +250,7 @@ page shows both.
 
 The one wire type here is `Patch<T>`, a merge patch's field (below).
 
-Neither `Option` nor `Result` serializes, nor does `Fault<TFault>`, which is matched to a response as
+Neither `Option` nor `Result` serializes, nor does a `Fault<TFault>` or a fault of several types, which is matched to a response as
 the result holding it is. System.Text.Json refuses them, in both directions, with a
 `NotSupportedException` that names the type and the alternative:
 
@@ -548,7 +552,7 @@ call instead.
 
 **Thrown:** `NotSupportedException: Option<Customer> is not a wire type…`, or `Result<Order, OrderFault>
 is an outcome, not a wire type…`, when System.Text.Json reads or writes an `Option`, a `Result`, a
-`Fault<TFault>`, a marker such as `Option.None()`, or a nullable of any of them. The same link ends
+`Fault<TFault>` or a `Fault<T1, T2>`, a marker such as `Option.None()`, or a nullable of any of them. The same link ends
 the refusal of writing an absent `Patch<T>`, which no document can carry: mark the property
 `[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]`.
 
@@ -580,15 +584,17 @@ null. `notnull` is not checked at run time, so the factories check it.
 ### An uninitialized Result
 
 **Thrown:** `InvalidOperationException: This Result was never initialized…` from `Match`, `Map`,
-`TryGetValue` and every other member that picks a branch.
+`TryGetValue` and every other member that picks a branch; `This Fault<OrderFault, ConcurrencyFault> holds
+no fault…` from a fault of several types' `Match`, and `This Fault<OrderFault> holds no fault…` where a
+`default` fault of a closed set converts to one.
 
 **Why:** a `default` result is neither a success nor an error, and taking the error branch would
-invent a `default(TError)`. It comes from an array slot, a field nothing set, or a property missing
-from a JSON document.
+invent a `default(TError)`; a `default` fault of several types holds a fault of none of them. It comes
+from an array slot, a field nothing set, or a property missing from a JSON document.
 
-**Instead:** create results through `Result.Success`/`Result.Error` or a conversion. CMTK0005 and
-CMTK0006 point at the arrays and fields, and `required` closes a property; `State` tells an
-uninitialized result apart without throwing.
+**Instead:** create results through `Result.Success`/`Result.Error` or a conversion, and faults through
+`Fault.Of`. CMTK0005 and CMTK0006 point at the arrays and fields, and `required` closes a property;
+`State` tells an uninitialized result apart without throwing.
 
 ### A value object refused a value
 

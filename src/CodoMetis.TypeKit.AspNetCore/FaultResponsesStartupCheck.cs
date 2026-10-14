@@ -3,13 +3,15 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace CodoMetis.TypeKit.AspNetCore;
 
 /// <summary>
 /// Refuses to start a host with an endpoint whose fault type has no mapping, a fault status or a member
-/// left out whose scope has no endpoint that answers with its fault type, or one naming a member its type
-/// does not have, naming each endpoint.
+/// left out whose scope has no endpoint that answers with its fault type, one naming a member its type does
+/// not have, or an endpoint two of whose fault types write one name for two members, naming each
+/// endpoint.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -64,11 +66,34 @@ internal sealed class FaultResponsesStartupCheck : IStartupFilter
                 .SelectMany(metadata => metadata.Problems(services, endpoint.Metadata))
                 .Select(problem => $"{problem}, on {Name(endpoint)}."));
 
-        var refusals = unmapped.Concat(stray).Concat(nameless).ToList();
+        // Two fault types an endpoint answers with must not write one name: the client would read two
+        // faults as one. Bare names meet wherever two types share a member's name; qualified ones where
+        // two types of one nesting chain live in two namespaces.
+        var qualified = services.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true;
+        var alike = endpoints.Endpoints.SelectMany(endpoint => Alike(services, endpoint, qualified));
+
+        var refusals = unmapped.Concat(stray).Concat(nameless).Concat(alike).ToList();
         if (refusals.Count == 0) return;
 
         throw new InvalidOperationException(string.Join(" ", refusals) + FaultRefusals.Mapping);
     };
+
+    private static IEnumerable<string> Alike(IServiceProvider services, Endpoint endpoint, bool qualified)
+    {
+        var answered = endpoint.Metadata.OfType<FaultResponsesMetadata>().Distinct().ToList();
+        if (answered.Count < 2) return [];
+
+        return answered.SelectMany(metadata => metadata.Names(services, endpoint.Metadata)
+                                                       .Select(name => (metadata.FaultType, Written: qualified ? name.QualifiedName : name.Name,
+                                                                        Described: qualified ? $"{metadata.FaultType.Namespace}.{name.QualifiedName}" : name.QualifiedName)))
+                       .GroupBy(name => name.Written, StringComparer.Ordinal)
+                       .Where(name => name.Select(member => member.FaultType).Distinct().Count() > 1)
+                       .Select(name =>
+                           $"{Name(endpoint)} answers {string.Join(" and ", name.Select(member => member.Described))} alike, as the fault \"{name.Key}\": " +
+                           (qualified
+                               ? "rename one type, or leave out the one the endpoint never answers with."
+                               : "set FaultResponseOptions.QualifiedFaultNames, rename one, or leave out the one the endpoint never answers with."));
+    }
 
     private static bool Answers(Endpoint endpoint, Type faultType) =>
         endpoint.Metadata.OfType<FaultResponsesMetadata>().Any(answered => answered.FaultType == faultType);

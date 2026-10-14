@@ -795,6 +795,9 @@ app.MapGet("/strict/accounts/{id}", (string id) => Result<string, AccountFault>.
 app.MapGet("/detailed/accounts/{id}", (string id) => Result<string, Fault<AccountFault>>.Error(Fault.Of(AccountFault.EmailTaken, "In use since 3 May.")).ToHttpResult());
 app.MapPost("/accounts", () => Result<string, AccountFault>.Success("a1").ToHttpResult(id => TypedResults.Created($"/accounts/{id}", id)));
 app.MapGet("/ruled/accounts/{id}", (string id) => Result<string, Fault<AccountFault>>.Error(id == "set" ? Fault.Of(AccountFault.EmailTaken).WithRule(OrderStatus.Shipped) : Fault.Of(AccountFault.EmailTaken).WithRule(Billing.Rule.Reserved)).ToHttpResult());
+// Faults of two types side by side, each answered as it is mapped, and a member the route leaves out.
+app.MapGet("/composed/accounts/{id}", (string id) => Result<Fault<AccountFault, CodeFault>>.Error(id == "code" ? Fault<AccountFault, CodeFault>.Of(CodeFault.NotUpperCase) : Fault<AccountFault, CodeFault>.Of(AccountFault.EmailTaken, "In use since 3 May.")).ToHttpResult())
+   .WithoutFaults(AccountFault.NotFound);
 await app.StartAsync();
 
 using var http = new HttpClient { BaseAddress = new Uri(app.Urls.First()) };
@@ -848,6 +851,9 @@ await Check("fault-created", async () =>
     return $"{(int)response.StatusCode} {response.Headers.Location}";
 });
 Console.WriteLine($"fault-responses={string.Join(",", document?["paths"]?["/strict/accounts/{id}"]?["get"]?["responses"]?.AsObject().Select(r => r.Key) ?? [])}");
+await Check("composed-shared", () => Problem("/composed/accounts/code"));
+await Check("composed-own", () => Problem("/composed/accounts/x"));
+Console.WriteLine($"composed-responses={string.Join(",", document?["paths"]?["/composed/accounts/{id}"]?["get"]?["responses"]?.AsObject().Select(r => r.Key) ?? [])}");
 await app.StopAsync();
 
 public sealed record Line(OrderId Id, Code Code, Name Name, Quantity Quantity, Amount Amount, Link Link, Weekday Weekday,
@@ -1049,6 +1055,9 @@ assert_contains "fault-rule=409 Billing.Rule.Reserved" "$work/aot.out" "a nested
 assert_contains "fault-rule-set=409 OrderStatus.Shipped" "$work/aot.out" "a closed set's rule is its qualified name"
 assert_contains "fault-created=201 /accounts/a1"   "$work/aot.out" "the endpoint's own success, with its Location"
 assert_contains "fault-responses=200,404,422"      "$work/aot.out" "the document lists the endpoint's status in place of the kind's"
+assert_contains "composed-shared=422 NotUpperCase - ACC-NotUpperCase" "$work/aot.out" "a fault of the second type is answered as its type is mapped"
+assert_contains "composed-own=409 EmailTaken In use since 3 May. ACC-EmailTaken" "$work/aot.out" "and one of the first, with its detail"
+assert_contains "composed-responses=204,400,409,422" "$work/aot.out" "the document lists both types' statuses, ascending, without the member the route leaves out"
 assert_contains "malformed=400"                    "$work/aot.out" "a malformed route parameter is a 400"
 assert_contains 'patch=Value(ABC) Null'            "$work/aot.out" "a Patch<T> reads a value object and a null through the context under Native AOT"
 assert_contains 'set-json={"Status":"Shipped","Counts":{"Open":1}}' "$work/aot.out" "a closed set writes its name through the context, as a value and as a dictionary key"
