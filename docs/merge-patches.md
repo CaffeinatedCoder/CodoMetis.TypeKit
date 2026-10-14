@@ -159,12 +159,45 @@ app.MapPatch("/contacts/{id}", (int id, ContactPatch patch) => TypedResults.NoCo
 
 The body binds as any other: each property of `ContactPatch` is read by its patch, and one the
 request leaves out is `Absent`. With `AddTypeKit()`, the document describes a patch property as its
-argument's schema, inlined rather than as a component of its own, admitting `null`, and never
+argument's schema, inlined rather than as a component of its own, admitting `null`, and not
 required, in OpenAPI 3.1 and 3.0. Null joins whatever restricts the values: the type, an enum's list
 (a closed set's names, an enum written as strings), or a branch beside the argument's own branches.
 A validator therefore accepts null and judges every other value as it judges the argument's. A value
-object inside a patch is described through the type it wraps, so `email` is a `string`. This is not ASP.NET Core's JSON Patch (RFC 6902,
+object inside a patch is described through the type it wraps, so `email` is a `string`. Under
+`RespectRequiredConstructorParameters` a patch is an `init` property ([below](#required-constructor-parameters)). This is not ASP.NET Core's JSON Patch (RFC 6902,
 `application/json-patch+json`), which is a list of operations.
+
+## Required constructor parameters
+
+`RespectRequiredConstructorParameters`, the option that refuses a body without a value object
+([JSON](json.md)), makes every constructor parameter without a default required, a patch's too: a
+request that leaves a field out, the state a patch exists for, is refused. Declare the patch fields as
+`init` properties instead. The option requires constructor parameters only, and a property the
+request leaves out keeps its default, which is `Absent`.
+
+```csharp
+public sealed record StrictContactPatch
+{
+    public Patch<Email> Email { get; init; }
+    public Patch<string> Phone { get; init; }
+    public Patch<int> Floor { get; init; }
+}
+```
+
+```csharp
+var strict = new JsonSerializerOptions(JsonSerializerDefaults.Web) { RespectRequiredConstructorParameters = true };
+StrictContactPatch moved = JsonSerializer.Deserialize<StrictContactPatch>("""{"floor":3}""", strict)!;
+PatchState untouched = moved.Phone.State;                             // Absent
+JsonSerializer.Deserialize<ContactPatch>("""{"floor":3}""", strict);   // JsonException naming ContactPatch and phone
+```
+
+`= default` on a patch parameter satisfies the serializer too, but System.Text.Json's schema exporter,
+which ASP.NET Core builds the document with, throws on a parameter of a struct type whose default is
+`default`, so the endpoint's document fails.
+
+The document follows the serializer: `AddTypeKit()` leaves a patch out of `required` where the
+serializer lets it be absent, and keeps it there where the options refuse a body without it, so the
+document never calls optional a field the endpoint refuses to miss.
 
 ## Source-generated contexts and Native AOT
 

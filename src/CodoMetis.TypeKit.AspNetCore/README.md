@@ -119,7 +119,8 @@ no component at all), and both parameters are a bare `string`.
 described as `T`'s schema:
 
 - inlined where the property is, rather than as a `PatchOfstring` component;
-- never required, since absent is a state;
+- not required, since absent is a state, unless the serializer requires it: under
+  `RespectRequiredConstructorParameters` a patch that is a constructor parameter is, and stays so;
 - admitting null, since null is the clear: beside the type, in an enum's list of values, or as a
   branch beside the argument's own.
 
@@ -428,7 +429,9 @@ The generated members cover the request itself:
   ```
 
   Both minimal APIs and MVC then answer a body without it with 400. An optional constructor
-  parameter (`Discount? Discount`) then needs a default value (`= null`).
+  parameter (`Discount? Discount`) then needs a default value (`= null`), and a `Patch<T>` is an
+  `init` property rather than a constructor parameter, or a request that leaves the field out is
+  refused ([Merge patches](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/merge-patches.md#required-constructor-parameters)).
 - **A query, header or form value missing from an MVC request is not refused either.** MVC binds
   nothing for a non-nullable struct and calls the action with `default`, as it does for a `Guid` or
   an `int`, and the model state stays valid; for a struct value object that is again an instance

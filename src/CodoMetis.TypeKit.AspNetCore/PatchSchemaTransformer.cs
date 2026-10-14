@@ -5,8 +5,8 @@ using Microsoft.OpenApi;
 namespace CodoMetis.TypeKit.AspNetCore;
 
 /// <summary>
-/// A <see cref="Patch{T}"/> property in the document: its argument's schema, inlined, never
-/// required, and admitting null, since the Null state is part of the wire format whatever the
+/// A <see cref="Patch{T}"/> property in the document: its argument's schema, inlined, required only
+/// where the serializer requires it, and admitting null, since the Null state is part of the wire format whatever the
 /// argument is.
 /// </summary>
 /// <remarks>
@@ -72,12 +72,14 @@ internal sealed class PatchSchemaTransformer : IOpenApiSchemaTransformer
     {
         var info = context.JsonTypeInfo;
 
-        // The object holding patch properties: none of them is required, since absent is a state.
+        // The object holding patch properties: none of them is required, since absent is a state, unless
+        // the serializer requires it, as RespectRequiredConstructorParameters does a constructor
+        // parameter without a default: then a body without it is refused, and the document says so.
         if (info.Kind == JsonTypeInfoKind.Object && schema.Required is { Count: > 0 } required)
         {
             foreach (var property in info.Properties)
             {
-                if (IsPatch(property.PropertyType)) required.Remove(property.Name);
+                if (IsPatch(property.PropertyType) && !property.IsRequired) required.Remove(property.Name);
             }
         }
 
