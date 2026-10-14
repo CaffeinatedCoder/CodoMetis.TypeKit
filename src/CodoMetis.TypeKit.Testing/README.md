@@ -30,6 +30,16 @@ patch.Nickname.ShouldBeNull();                   // a clear
 patch.Name.ShouldBeAbsent();                     // not in the document
 ```
 
+A fault of several types, `Fault<OrderFault, EditFault>`, has no public content either. `ShouldHold(reason)`
+fails unless it holds that fault, of whichever type, and hands back the `Fault<TFault>`, its detail and
+rule intact; a reason of a type the fault does not compose does not compile:
+
+```csharp
+Fault<OrderFault, EditFault> refusal = orders.Rename(7, version: 3).ShouldBeError();
+Fault<EditFault> stale = refusal.ShouldHold(EditFault.Stale);   // this fault, or the test fails
+string? detail = stale.Detail;                                  // for the test's own assertions
+```
+
 - **The content comes back.** `ShouldBeSome()`, `ShouldBeSuccess()`, `ShouldBeError()` and
   `ShouldBeValue()` return the value or the error, so it is compared with whatever assertions the test
   already uses: xUnit's `Assert`, Shouldly, or another.

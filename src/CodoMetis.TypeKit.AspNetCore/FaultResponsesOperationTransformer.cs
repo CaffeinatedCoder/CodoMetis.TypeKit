@@ -48,6 +48,10 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
             : "The fault this problem reports: the name of its member.")
       + " Present only on a problem that answers a fault of the endpoint's Result.";
 
+    /// <summary>What the second member holds, where the host names one (<see cref="FaultResponseOptions.BareFaultNameMember"/>).</summary>
+    internal const string BareFaultNameDescription =
+        "The fault this problem reports: the name of its member, without its type. Present only on a problem that answers a fault of the endpoint's Result.";
+
     public async Task TransformAsync(OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
     {
         IOpenApiSchema? problem = null;
@@ -95,10 +99,10 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
         var json = services.GetRequiredService<IOptions<HttpJsonOptions>>().Value.SerializerOptions;
         var id = services.GetRequiredService<IOptionsMonitor<OpenApiOptions>>().Get(context.DocumentName)
                          .CreateSchemaReferenceId(json.GetTypeInfo(typeof(ProblemDetails)));
-        var qualified = services.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true;
+        var options = services.GetService<IOptions<FaultResponseOptions>>()?.Value;
 
         // A host that inlines it gets it inline, as ASP.NET writes its own problem responses there.
-        if (id is null || context.Document is not { } document) return WithFault(schema, qualified);
+        if (id is null || context.Document is not { } document) return WithFault(schema, options);
 
         if (document.Components?.Schemas?.TryGetValue(id, out var component) != true || component is null)
         {
@@ -106,22 +110,24 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
             component = schema;
         }
 
-        WithFault(component, qualified);
+        WithFault(component, options);
         return new OpenApiSchemaReference(id, document);
     }
 
     /// <summary>
-    /// Describes <c>fault</c> and <c>rule</c> on the problem schema, beside what ASP.NET describes of
-    /// <see cref="ProblemDetails"/>, where nothing describes them yet: one another transformer already
-    /// gave the schema is kept, and a second fault response finds them there.
+    /// Describes <c>fault</c>, <c>rule</c> and the host's member for the bare name on the problem schema,
+    /// beside what ASP.NET describes of <see cref="ProblemDetails"/>, where nothing describes them yet: one
+    /// another transformer already gave the schema is kept, and a second fault response finds them there.
     /// </summary>
-    private static IOpenApiSchema WithFault(IOpenApiSchema schema, bool qualified)
+    private static IOpenApiSchema WithFault(IOpenApiSchema schema, FaultResponseOptions? options)
     {
         if (schema is OpenApiSchema problem)
         {
             problem.Properties ??= new Dictionary<string, IOpenApiSchema>(StringComparer.Ordinal);
-            problem.Properties.TryAdd(FaultMember, new OpenApiSchema { Type = JsonSchemaType.String, Description = FaultDescription(qualified) });
+            problem.Properties.TryAdd(FaultMember, new OpenApiSchema { Type = JsonSchemaType.String, Description = FaultDescription(options?.QualifiedFaultNames == true) });
             problem.Properties.TryAdd(RuleMember, new OpenApiSchema { Type = JsonSchemaType.String, Description = RuleDescription });
+            if (options?.BareFaultNameMember is { } bare)
+                problem.Properties.TryAdd(bare, new OpenApiSchema { Type = JsonSchemaType.String, Description = BareFaultNameDescription });
         }
 
         return schema;

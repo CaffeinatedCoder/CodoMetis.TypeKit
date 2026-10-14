@@ -285,6 +285,29 @@ description becomes the problem's `detail`, so a client can show it; a member wi
 fault type with a mapping of its own, `AddFaultResponses<TSet>(fault => …)`, and `ToHttpResult()`
 takes a result over either.
 
+### Every fault set at once
+
+A host with many fault sets that answers them all alike maps them in one call, rather than one
+`AddFaultResponses<TSet>()` per set:
+
+```csharp
+builder.Services.AddFaultResponses();   // every fault set an endpoint answers with, by its kind
+```
+
+The mapping can be the host's own, reading each member through `IFault`, its kind and description:
+
+```csharp
+builder.Services.AddFaultResponses(fault => FaultResponse.For(fault.Kind).WithType(new Uri($"https://example.com/problems/{fault.Kind}")));
+```
+
+- **A set mapped on its own keeps its mapping**, so the call covers the sets that answer as every
+  other does, and `AddFaultResponses<TSet>(…)` the one that does not.
+- **An enum still needs a mapping of its own**, as does a closed set that is no fault set: neither has a
+  kind, and the host does not start while one an endpoint answers with is unmapped.
+- **Each set is mapped as the host starts**, every member at once, for the endpoints that answer with
+  it: a member of no kind, or one the mapping throws for or gives a status that is no error, stops the
+  start, as it fails `AddFaultResponses<TSet>()`. The call is made once for the host.
+
 ### A sentence per occurrence
 
 What varies per occurrence travels in a `Fault<TFault>` (CodoMetis.TypeKit): the fault, and a sentence
@@ -490,6 +513,21 @@ builder.Services.Configure<FaultResponseOptions>(options => options.QualifiedFau
 apart in one client; the default is the bare name. A nested type is qualified after its nesting chain,
 an enum as a closed set's `QualifiedName` is, so `Billing.Fault` and `Shipping.Fault` give
 `Billing.Fault.NotFound` and `Shipping.Fault.NotFound`.
+
+A client that predates the qualified name keeps reading the bare one from a member of its own:
+
+```csharp
+builder.Services.Configure<FaultResponseOptions>(options =>
+{
+    options.QualifiedFaultNames = true;     // "fault": "AccountFault.EmailTaken"
+    options.BareFaultNameMember = "code";   // "code": "EmailTaken", beside it
+});
+```
+
+`BareFaultNameMember` writes the bare name under that member on every problem that answers a fault,
+whatever `QualifiedFaultNames` says, and the document describes it beside `fault`. A member a problem
+has already, `type`, `title`, `status`, `detail`, `instance`, `fault`, `rule`, `traceId` or `errors`
+in any case, or a blank one, stops the host from starting.
 
 The document describes `fault` as an optional string on the problem schema the fault responses refer
 to, so a generated client has the member to match on; its description says which of the two forms

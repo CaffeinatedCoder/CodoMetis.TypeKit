@@ -1,3 +1,6 @@
+using System.Collections.Concurrent;
+using CodoMetis.TypeKit.ClosedSets;
+using CodoMetis.TypeKit.CompilerServices;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -16,10 +19,70 @@ internal static class FaultRegistration
                 $"The fault type {type.TypeName} is mapped already. Map it once, with a status for each member.");
 
         services.AddSingleton(FaultResponses<TFault>.Map(type, responseOf, parameter));
+
+        return Checked(services);
+    }
+
+    /// <summary>The mapping of every fault set that has none of its own; <paramref name="responseOf"/> null maps each member by its kind.</summary>
+    public static IServiceCollection AddDefault(IServiceCollection services, Func<IFault, FaultResponse>? responseOf, string parameter)
+    {
+        // Two defaults: whichever was registered last would answer, silently.
+        if (services.Any(descriptor => descriptor.ServiceType == typeof(DefaultFaultResponses)))
+            throw new InvalidOperationException("A mapping for every fault set is given already. Give it once, and map a set that answers otherwise on its own.");
+
+        services.AddSingleton(new DefaultFaultResponses(responseOf, parameter));
+
+        return Checked(services);
+    }
+
+    /// <summary>A member by its kind, the refusal of a member of no kind naming it.</summary>
+    public static FaultResponse ByKind(IFault fault, string qualifiedName, string parameter)
+    {
+        try { return FaultResponse.For(fault.Kind); }
+        catch (ArgumentOutOfRangeException refused) { throw new ArgumentException($"{qualifiedName}: {refused.Message}", parameter, refused); }
+    }
+
+    private static IServiceCollection Checked(IServiceCollection services)
+    {
         services.TryAddEnumerable(ServiceDescriptor.Transient<IStartupFilter, FaultResponsesStartupCheck>());
         services.AddProblemDetails();
 
         return services;
+    }
+}
+
+/// <summary>
+/// How a host answers a fault set it mapped no response for: each member through <see cref="IFault"/>, the
+/// set mapped once, the first time it is asked for.
+/// </summary>
+/// <remarks>
+/// A fault type is known here only as a type argument without the closed set's constraint, so the set's
+/// members are reached through the attribute the generators put on it
+/// (<see cref="GeneratedClosedSetAttribute.Accept{TResult}"/>), never by <c>MakeGenericType</c>. A type that
+/// is no generated closed set, or no fault set, has no default, and is unmapped as before.
+/// </remarks>
+internal sealed class DefaultFaultResponses(Func<IFault, FaultResponse>? responseOf, string parameter)
+{
+    private readonly ConcurrentDictionary<Type, object?> _mapped = new();
+
+    public FaultResponses<TFault>? For<TFault>() where TFault : notnull =>
+        // A mapping that throws is not cached: every reader that asks again is refused again.
+        (FaultResponses<TFault>?)_mapped.GetOrAdd(typeof(TFault), static (type, defaults) =>
+            typeof(IFault).IsAssignableFrom(type) && ClosedSetSchemaTransformer.Describe(type) is { } set ? set.Accept(new Mapper(defaults)) : null, this);
+
+    /// <summary>The caller's parameter, which a refusal names.</summary>
+    private string Parameter => parameter;
+
+    private FaultResponse ResponseOf(IFault fault, string qualifiedName) =>
+        responseOf is not null ? responseOf(fault) : FaultRegistration.ByKind(fault, qualifiedName, parameter);
+
+    private sealed class Mapper(DefaultFaultResponses defaults) : IClosedSetVisitor<object>
+    {
+        public object Visit<TSet>() where TSet : class, IClosedSet<TSet>
+        {
+            var type = FaultTypes.Set<TSet>();
+            return FaultResponses<TSet>.Map(type, fault => defaults.ResponseOf((IFault)fault, type.QualifiedNameOf(fault)), defaults.Parameter);
+        }
     }
 }
 
@@ -98,6 +161,14 @@ internal sealed class FaultResponses<TFault> where TFault : notnull
 
     private int StatusOf(TFault fault, IReadOnlyList<object> endpointMetadata) =>
         FaultStatuses.Override(endpointMetadata, fault, Type) ?? _answers[fault].Status;
+
+    /// <summary>
+    /// How the host answers <typeparamref name="TFault"/>: its own mapping, or else the default for every
+    /// fault set, or <see langword="null"/> where neither answers it.
+    /// </summary>
+    public static FaultResponses<TFault>? Of(IServiceProvider services) =>
+        services.GetService(typeof(FaultResponses<TFault>)) as FaultResponses<TFault>
+     ?? (services.GetService(typeof(DefaultFaultResponses)) as DefaultFaultResponses)?.For<TFault>();
 
     public static InvalidOperationException Unmapped() =>
         new($"No HTTP status is mapped for the fault type {FaultTypes.NameOf(typeof(TFault))}. " +
@@ -184,6 +255,5 @@ internal sealed class FaultResponsesMetadata<TFault> : FaultResponsesMetadata wh
             ? responses.AnsweredBy(endpointMetadata).Select(fault => (responses.Type.NameOf(fault), responses.Type.QualifiedNameOf(fault)))
             : [];
 
-    private static FaultResponses<TFault>? Responses(IServiceProvider services) =>
-        services.GetService(typeof(FaultResponses<TFault>)) as FaultResponses<TFault>;
+    private static FaultResponses<TFault>? Responses(IServiceProvider services) => FaultResponses<TFault>.Of(services);
 }

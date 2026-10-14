@@ -52,7 +52,7 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
     {
         ArgumentNullException.ThrowIfNull(httpContext);
 
-        var responses = httpContext.RequestServices.GetService<FaultResponses<TFault>>() ?? throw FaultResponses<TFault>.Unmapped();
+        var responses = FaultResponses<TFault>.Of(httpContext.RequestServices) ?? throw FaultResponses<TFault>.Unmapped();
         var answer = responses.Of(Fault);
         var endpoint = httpContext.GetEndpoint();
 
@@ -63,7 +63,8 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
                 "so no status the document lists answers it. Remove the member from what the endpoint leaves out, or report another." + FaultRefusals.LeftOut);
 
         var status = endpoint is not null ? FaultStatuses.Override(endpoint.Metadata, Fault, responses.Type) ?? answer.Status : answer.Status;
-        var name = httpContext.RequestServices.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true ? answer.QualifiedName : answer.Name;
+        var options = httpContext.RequestServices.GetService<IOptions<FaultResponseOptions>>()?.Value;
+        var name = options?.QualifiedFaultNames == true ? answer.QualifiedName : answer.Name;
         var detail = Detail ?? answer.Description;
 
         // Present only while this problem is written, so a CustomizeProblemDetails that reads it sees it
@@ -73,6 +74,7 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
         features.Set<IFaultFeature>(new FaultFeature(typeof(TFault), Fault, name, detail, Rule));
         var extensions = new Dictionary<string, object?> { [FaultResponsesOperationTransformer.FaultMember] = name };
         if (Rule is not null) extensions[FaultResponsesOperationTransformer.RuleMember] = Rule;
+        if (options?.BareFaultNameMember is { } bare) extensions[bare] = answer.Name;
         try
         {
             await TypedResults.Problem(
@@ -141,4 +143,18 @@ public sealed class FaultResponseOptions
     /// <c>QualifiedName</c> is. Off by default: the bare member name, <c>NotFound</c>.
     /// </summary>
     public bool QualifiedFaultNames { get; set; }
+
+    /// <summary>
+    /// A second extension member the problem writes the fault's bare member name under, <c>NotFound</c>, beside
+    /// <c>fault</c>, for a client that reads the name from a member of its own; <see langword="null"/>, the
+    /// default, writes none.
+    /// </summary>
+    /// <remarks>
+    /// Typically set with <see cref="QualifiedFaultNames"/>, so a client that predates it keeps reading the bare
+    /// name: <c>"fault": "OrderFault.NotFound", "code": "NotFound"</c>. The document describes it beside
+    /// <c>fault</c>. A host with a member named as a problem's own, <c>type</c>, <c>title</c>, <c>status</c>,
+    /// <c>detail</c> or <c>instance</c>, or as <c>fault</c>, <c>rule</c>, <c>traceId</c> or <c>errors</c>,
+    /// ignoring case, or a blank one, does not start.
+    /// </remarks>
+    public string? BareFaultNameMember { get; set; }
 }

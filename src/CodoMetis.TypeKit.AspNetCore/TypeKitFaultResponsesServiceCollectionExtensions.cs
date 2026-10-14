@@ -91,11 +91,63 @@ public static class TypeKitClosedSetFaultResponsesServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        return FaultRegistration.Add(services, FaultTypes.Set<TFault>(), static fault =>
-        {
-            try { return FaultResponse.For(fault.Kind); }
-            catch (ArgumentOutOfRangeException refused) { throw new ArgumentException($"{fault.QualifiedName}: {refused.Message}", nameof(TFault), refused); }
-        }, nameof(TFault));
+        return FaultRegistration.Add(services, FaultTypes.Set<TFault>(), static fault => FaultRegistration.ByKind(fault, fault.QualifiedName, nameof(TFault)), nameof(TFault));
+    }
+
+    /// <summary>
+    /// Answers every fault set an endpoint answers with, and that has no mapping of its own, by its
+    /// <see cref="FaultKind"/>, as <c>AddFaultResponses&lt;TFault&gt;()</c> answers one: one call for the
+    /// host, in place of one per set.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A set mapped with <c>AddFaultResponses&lt;TFault&gt;(…)</c> keeps its own mapping. An enum, or a closed
+    /// set that is no fault set, has no kind, so it still needs a mapping of its own, and the host does not
+    /// start without one.
+    /// </para>
+    /// <para>
+    /// Each set is mapped when the host starts, every member at once, for the endpoints that answer with it,
+    /// so a member whose kind is no <see cref="FaultKind"/> stops the start, as it fails
+    /// <c>AddFaultResponses&lt;TFault&gt;()</c>.
+    /// </para>
+    /// </remarks>
+    /// <param name="services">The host's services.</param>
+    /// <returns>The same services.</returns>
+    /// <exception cref="InvalidOperationException">A default for every fault set is given already.</exception>
+    public static IServiceCollection AddFaultResponses(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        return FaultRegistration.AddDefault(services, responseOf: null, nameof(services));
+    }
+
+    /// <summary>
+    /// Answers every fault set an endpoint answers with, and that has no mapping of its own, with the
+    /// response <paramref name="responseOf"/> gives each member: one call for the host, in place of one
+    /// <c>AddFaultResponses&lt;TFault&gt;(…)</c> per set with the same mapping.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The mapping reads a member through <see cref="IFault"/>, its kind and description:
+    /// <c>fault =&gt; FaultResponse.For(fault.Kind).WithType(…)</c>. A set mapped with
+    /// <c>AddFaultResponses&lt;TFault&gt;(…)</c> keeps its own mapping. An enum, or a closed set that is no
+    /// fault set, has no kind, so it still needs a mapping of its own, and the host does not start without one.
+    /// </para>
+    /// <para>
+    /// Each set is mapped when the host starts, every member at once, for the endpoints that answer with it,
+    /// so a member the mapping throws for, or gives a status that is no error, stops the start.
+    /// </para>
+    /// </remarks>
+    /// <param name="services">The host's services.</param>
+    /// <param name="responseOf">The response of each member of every fault set.</param>
+    /// <returns>The same services.</returns>
+    /// <exception cref="InvalidOperationException">A default for every fault set is given already.</exception>
+    public static IServiceCollection AddFaultResponses(this IServiceCollection services, Func<IFault, FaultResponse> responseOf)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(responseOf);
+
+        return FaultRegistration.AddDefault(services, responseOf, nameof(responseOf));
     }
 
     /// <summary>

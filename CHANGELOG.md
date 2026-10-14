@@ -24,6 +24,9 @@ section is the GitHub release's notes.
 - **`WithoutFaults`** and `[WithoutFaults<T>]`: a route leaves out of its document the members it never answers with, and reporting one throws ([Leaving out what a route cannot answer](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer)).
 - **CMTK1023** (Warning): a base record's `Equals`, `GetHashCode` or `IEquatable`, which the value object's equality no longer calls ([Build errors](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#build-errors)).
 - **`[Distinct]` and `[Unrelated]`** (CMTK0010): two type parameters whose arguments must be different types, or must not derive from, implement or box to each other; `Fault<T1, T2>` and `Fault<T1, T2, T3>` declare theirs `[Distinct]` ([Type constraints](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/type-constraints.md#two-parameters-apart)).
+- **One mapping for every fault set**: `AddFaultResponses()` by kind, or `AddFaultResponses(fault => …)` over `IFault`, for each set with no mapping of its own ([Every fault set at once](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once)).
+- **`FaultResponseOptions.BareFaultNameMember`**: the bare fault name under a member of the host's, beside a qualified `fault`, and in the document ([What the host adds to a problem](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-host-adds-to-a-problem)).
+- **Testing: `ShouldHold(reason)`** on `Fault<T1, T2>` and `Fault<T1, T2, T3>` hands back the fault it holds ([CodoMetis.TypeKit.Testing](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Testing/README.md)).
 
 ### Changed
 

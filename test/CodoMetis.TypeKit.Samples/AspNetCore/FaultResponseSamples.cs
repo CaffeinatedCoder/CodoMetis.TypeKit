@@ -153,6 +153,31 @@ public static class Faults
         builder.Services.Configure<FaultResponseOptions>(options => options.QualifiedFaultNames = true);   // "fault": "AccountFault.EmailTaken"
         // end sample
     }
+
+    public static void EveryFaultSet(WebApplicationBuilder builder)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-sets-default
+        builder.Services.AddFaultResponses();   // every fault set an endpoint answers with, by its kind
+        // end sample
+    }
+
+    public static void EveryFaultSetTyped(WebApplicationBuilder builder)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-sets-default-mapping
+        builder.Services.AddFaultResponses(fault => FaultResponse.For(fault.Kind).WithType(new Uri($"https://example.com/problems/{fault.Kind}")));
+        // end sample
+    }
+
+    public static void BareName(WebApplicationBuilder builder)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-bare-name
+        builder.Services.Configure<FaultResponseOptions>(options =>
+        {
+            options.QualifiedFaultNames = true;     // "fault": "AccountFault.EmailTaken"
+            options.BareFaultNameMember = "code";   // "code": "EmailTaken", beside it
+        });
+        // end sample
+    }
 }
 
 // Internal, so no host of this assembly discovers it: the sample is the action's declaration.
@@ -190,6 +215,62 @@ public sealed class FaultResponseSampleTests
         Faults.Endpoints(app, new FixedAccounts(open));
         await app.StartAsync(TestContext.Current.CancellationToken);
         return app;
+    }
+
+    /// <summary>A host with the endpoints above and only the services <paramref name="services"/> adds.</summary>
+    private static async Task<WebApplication> StartWithAsync(Action<WebApplicationBuilder> services)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        builder.Services.AddOpenApi(options => options.AddTypeKit());
+        services(builder);
+
+        var app = builder.Build();
+        app.MapOpenApi();
+        Faults.Endpoints(app, new FixedAccounts(Result.Error(AccountFault.EmailTaken)));
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        return app;
+    }
+
+    /// <summary>The README's one call for every fault set: AccountFault answered by its kind with no mapping of its own.</summary>
+    [Fact]
+    public async Task Every_fault_set_is_answered_by_its_kind_with_one_call()
+    {
+        await using var app = await StartWithAsync(Faults.EveryFaultSet);
+
+        using var response = await app.GetTestClient().PostAsync("/v2/accounts", Body(), TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!["detail"]!.GetValue<string>()
+                .ShouldBe("Another account uses that email address.");
+    }
+
+    [Fact]
+    public async Task The_host_s_own_mapping_for_every_fault_set_gives_each_kind_its_type()
+    {
+        await using var app = await StartWithAsync(Faults.EveryFaultSetTyped);
+
+        using var response = await app.GetTestClient().PostAsync("/v2/accounts", Body(), TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!["type"]!.GetValue<string>()
+                .ShouldBe("https://example.com/problems/Conflict");
+    }
+
+    /// <summary>What the README's comments say the problem reads: the qualified fault, and the bare name beside it.</summary>
+    [Fact]
+    public async Task The_bare_name_is_written_beside_the_qualified_fault()
+    {
+        await using var app = await StartWithAsync(builder =>
+        {
+            Faults.Responses(builder);
+            Faults.BareName(builder);
+        });
+
+        using var response = await app.GetTestClient().PostAsync("/v2/accounts", Body(), TestContext.Current.CancellationToken);
+        var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!;
+
+        problem["fault"]!.GetValue<string>().ShouldBe("AccountFault.EmailTaken");
+        problem["code"]!.GetValue<string>().ShouldBe("EmailTaken");
     }
 
     private static StringContent Body() => new("""{"email":"ann@example.com"}""", System.Text.Encoding.UTF8, "application/json");
