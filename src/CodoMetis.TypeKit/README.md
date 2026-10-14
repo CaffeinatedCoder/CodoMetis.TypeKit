@@ -225,8 +225,10 @@ optional `Detail`. `Fault.Of(OrderFault.NotAmendable, "The order shipped on 3 Ma
 and `Fault.Of(OrderFault.NotFound)` is one without a detail; a blank detail throws
 `ArgumentException`, since none is `null`. A bare fault does not convert to one, so a
 comparison with it does not compile: `fault.Reason == OrderFault.NotFound` is the one meant.
-CodoMetis.TypeKit.AspNetCore answers a `Result<T, Fault<TFault>>` as it answers the fault, with the
-detail as the problem's `detail`. A closed set whose members are faults declares `IFaultSet<TSelf>`,
+Where the reason answers for several rules, `WithRule` names the one that refused, an enum's or a closed
+set's member, as a qualified key: `Fault.Of(AccountFault.EmailTaken).WithRule(EmailRule.Reserved)` has
+the `Rule` `EmailRule.Reserved`. CodoMetis.TypeKit.AspNetCore answers a `Result<T, Fault<TFault>>` as it
+answers the fault, with the detail as the problem's `detail` and the rule as its `rule`. A closed set whose members are faults declares `IFaultSet<TSelf>`,
 a `FaultKind` and an optional description per member, from which the host derives each status.
 
 ## Not wire types

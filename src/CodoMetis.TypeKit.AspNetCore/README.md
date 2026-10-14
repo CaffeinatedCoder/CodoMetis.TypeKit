@@ -255,6 +255,28 @@ The detail is the problem's `detail`, in place of the member's description. It i
 sentence, written as it is: a fault's name never quotes the request, and whether a detail does is the
 application's to decide.
 
+### The rule that refused
+
+Where one fault answers for several rules, a client may still need to know which: the address is in
+use by another account, or reserved. `WithRule` names it with a member of an enum or a closed set, and
+the problem carries it as `rule`, qualified with its type so that two types' `Blank` stay apart:
+
+```csharp
+public enum EmailRule { InUse, Reserved }   // which check refused the address
+```
+
+```csharp
+Result<Account, Fault<AccountFault>> reserved = Result.Error(Fault.Of(AccountFault.EmailTaken).WithRule(EmailRule.Reserved));
+```
+
+The problem reads `"fault": "EmailTaken", "rule": "EmailRule.Reserved"`, a nested type's rule after its
+nesting chain, whatever `QualifiedFaultNames` says; the status, the mapping and the document stay the
+fault's. A rule is a key, not a sentence: a client renders its own text from it, and a detail beside
+it says the same for whoever reads the raw response. It is always a member's name and never the
+request's text, and a value no member names, a combination of flags or a cast number, throws where it
+is given. A value object's own fault is often the rule: `MapError(fault =>
+Fault.Of(SignUpFault.InvalidEmail).WithRule(fault))` says which of its rules refused.
+
 ### A status per endpoint
 
 The same fault can mean 404 on one route and 409 on another. An endpoint changes the status of one
@@ -315,7 +337,7 @@ TypedResults.Accepted("/jobs/7"))`.
 ### What the host adds to a problem
 
 While `ToHttpResult()` writes a problem, the request carries an `IFaultFeature`: the fault type, the
-fault, the name the problem gives it and its detail. A `CustomizeProblemDetails` of the host's reads
+fault, the name the problem gives it, its detail and its rule. A `CustomizeProblemDetails` of the host's reads
 it to add what the package does not name, and finds it on no other problem the request writes.
 
 ```csharp
@@ -337,7 +359,8 @@ to, so a generated client has the member to match on; its description says which
 this host writes. That schema is the shared `ProblemDetails` component, which ASP.NET's own problem
 responses refer to as well, so the description also says that only a problem answering a fault
 carries it. It stays a string, since an enum of every fault type would change every operation when
-one is added. A document without a fault response keeps the schema as ASP.NET writes it.
+one is added. `rule` is described beside it, an optional string as well. A document without a fault
+response keeps the schema as ASP.NET writes it.
 
 ### Faults a client must not tell apart
 

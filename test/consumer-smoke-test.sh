@@ -613,6 +613,12 @@ public sealed partial class AccountFault : IFaultSet<AccountFault>
     public string? Description { get; }
 }
 
+// A rule behind a fault, nested, so its name is read after its nesting chain at run time.
+public static class Billing
+{
+    public enum Rule { Reserved }
+}
+
 // One per JSON strategy: a reader method (Guid), the serializer's contract for a number, the
 // fallback with a built-in converter (Uri, an enum), a string, and parsing through a TypeConverter.
 public readonly partial record struct OrderId : IValue<Guid>;
@@ -759,6 +765,7 @@ app.MapGet("/accounts/{id}", (string id) => (id == "taken" ? Result<string, Acco
 app.MapGet("/strict/accounts/{id}", (string id) => Result<string, AccountFault>.Error(AccountFault.EmailTaken).ToHttpResult()).WithFaultStatus(AccountFault.EmailTaken, StatusCodes.Status422UnprocessableEntity);
 app.MapGet("/detailed/accounts/{id}", (string id) => Result<string, Fault<AccountFault>>.Error(Fault.Of(AccountFault.EmailTaken, "In use since 3 May.")).ToHttpResult());
 app.MapPost("/accounts", () => Result<string, AccountFault>.Success("a1").ToHttpResult(id => TypedResults.Created($"/accounts/{id}", id)));
+app.MapGet("/ruled/accounts/{id}", (string id) => Result<string, Fault<AccountFault>>.Error(id == "set" ? Fault.Of(AccountFault.EmailTaken).WithRule(OrderStatus.Shipped) : Fault.Of(AccountFault.EmailTaken).WithRule(Billing.Rule.Reserved)).ToHttpResult());
 await app.StartAsync();
 
 using var http = new HttpClient { BaseAddress = new Uri(app.Urls.First()) };
@@ -798,6 +805,13 @@ async Task<string> Problem(string path)
 await Check("fault-kind", () => Problem("/accounts/missing"));
 await Check("fault-strict", () => Problem("/strict/accounts/x"));
 await Check("fault-detail", () => Problem("/detailed/accounts/x"));
+async Task<string> Rule(string path)
+{
+    var response = await http.GetAsync(path);
+    return $"{(int)response.StatusCode} {JsonNode.Parse(await response.Content.ReadAsStringAsync())?["rule"]}";
+}
+await Check("fault-rule", () => Rule("/ruled/accounts/x"));
+await Check("fault-rule-set", () => Rule("/ruled/accounts/set"));
 await Check("fault-created", async () =>
 {
     var response = await http.PostAsync("/accounts", content: null);
@@ -988,6 +1002,8 @@ assert_contains "result-responses=200,400,422"     "$work/aot.out" "the document
 assert_contains "fault-kind=404 NotFound The account does not exist. ACC-NotFound" "$work/aot.out" "a fault set is answered by its kind, its description the detail, the host's extension from the fault feature"
 assert_contains "fault-strict=422 EmailTaken - ACC-EmailTaken" "$work/aot.out" "an endpoint's status replaces the kind's"
 assert_contains "fault-detail=409 EmailTaken In use since 3 May. ACC-EmailTaken" "$work/aot.out" "a Fault's detail reaches the problem"
+assert_contains "fault-rule=409 Billing.Rule.Reserved" "$work/aot.out" "a nested enum's rule is named after its nesting chain under Native AOT"
+assert_contains "fault-rule-set=409 OrderStatus.Shipped" "$work/aot.out" "a closed set's rule is its qualified name"
 assert_contains "fault-created=201 /accounts/a1"   "$work/aot.out" "the endpoint's own success, with its Location"
 assert_contains "fault-responses=200,404,422"      "$work/aot.out" "the document lists the endpoint's status in place of the kind's"
 assert_contains "malformed=400"                    "$work/aot.out" "a malformed route parameter is a 400"

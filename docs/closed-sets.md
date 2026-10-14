@@ -158,8 +158,9 @@ member by its kind, with its description as the problem's `detail`, so the domai
 and the host maps nothing by hand
 ([the satellite's README](../src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type)).
 Any other closed set is a fault type too, with a mapping of its own. A sentence about one occurrence
-travels beside the member, as a `Fault<TSet>` with a detail; structured data per occurrence is the
-next section's case.
+travels beside the member, as a `Fault<TSet>` with a detail, and so does the rule that refused, a
+member of another enum or closed set (`WithRule`); other data per occurrence is a union's
+([below](#when-an-enum-is-still-right)).
 
 ## What the generators refuse
 

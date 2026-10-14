@@ -23,17 +23,19 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// answered with (<c>AddTypeKit()</c>), whose schema describes <c>fault</c> as an optional string,
 /// and a host with an endpoint whose fault type is not mapped does not start. The problem names the fault, and a <c>type</c> and <c>title</c> where the mapping gives
 /// them; its <c>detail</c> is the occurrence's (<see cref="Fault{TFault}.Detail"/>), or else a fault set
-/// member's description, and nothing else of the request reaches it.
+/// member's description, and its <c>rule</c>, where the occurrence names one, the rule that refused
+/// (<see cref="Fault{TFault}.Rule"/>). Nothing else of the request reaches it.
 /// </para>
 /// </remarks>
 /// <typeparam name="TFault">The fault type, an enum or a closed set.</typeparam>
 public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
     where TFault : notnull
 {
-    internal FaultProblem(TFault fault, string? detail = null)
+    internal FaultProblem(TFault fault, string? detail = null, string? rule = null)
     {
         Fault = fault;
         Detail = detail;
+        Rule = rule;
     }
 
     /// <summary>The fault this response reports.</summary>
@@ -41,6 +43,9 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
 
     /// <summary>The sentence about this occurrence, where the result carried a <see cref="Fault{TFault}"/> with one.</summary>
     public string? Detail { get; }
+
+    /// <summary>The rule that refused, <c>EmailFault.NoAt</c>, where the result carried a <see cref="Fault{TFault}"/> naming one.</summary>
+    public string? Rule { get; }
 
     /// <inheritdoc />
     public async Task ExecuteAsync(HttpContext httpContext)
@@ -57,7 +62,9 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
         // for this problem and for no other the request writes.
         var features = httpContext.Features;
         var previous = features.Get<IFaultFeature>();
-        features.Set<IFaultFeature>(new FaultFeature(typeof(TFault), Fault, name, detail));
+        features.Set<IFaultFeature>(new FaultFeature(typeof(TFault), Fault, name, detail, Rule));
+        var extensions = new Dictionary<string, object?> { [FaultResponsesOperationTransformer.FaultMember] = name };
+        if (Rule is not null) extensions[FaultResponsesOperationTransformer.RuleMember] = Rule;
         try
         {
             await TypedResults.Problem(
@@ -65,7 +72,7 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
                     type: answer.Type,
                     title: answer.Title,
                     detail: detail,
-                    extensions: new Dictionary<string, object?> { [FaultResponsesOperationTransformer.FaultMember] = name })
+                    extensions: extensions)
                 .ExecuteAsync(httpContext);
         }
         finally
@@ -88,7 +95,7 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
         builder.Metadata.Add(FaultResponsesMetadata<TFault>.Instance);
     }
 
-    private sealed record FaultFeature(Type FaultType, object Fault, string Name, string? Detail) : IFaultFeature;
+    private sealed record FaultFeature(Type FaultType, object Fault, string Name, string? Detail, string? Rule) : IFaultFeature;
 }
 
 /// <summary>
@@ -110,6 +117,10 @@ public interface IFaultFeature
 
     /// <summary>The problem's <c>detail</c>, or <see langword="null"/>.</summary>
     string? Detail { get; }
+
+    /// <summary>The problem's <c>rule</c>, the rule that refused (<see cref="Fault{TFault}.Rule"/>), or <see langword="null"/>.</summary>
+    /// <remarks>Implemented by default as <see langword="null"/>, so an implementation of the host's own, a test's, still builds.</remarks>
+    string? Rule => null;
 }
 
 /// <summary>How <c>ToHttpResult()</c> writes a problem: <c>services.Configure&lt;FaultResponseOptions&gt;(options =&gt; …)</c>.</summary>

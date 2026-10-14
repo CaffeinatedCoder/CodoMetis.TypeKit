@@ -157,7 +157,7 @@ builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = 
 
 A response can carry more, each part opt-in, so the default above stays as it is: a `type` and a
 `title` per fault, a closed set as the fault type, answered by its members' kinds and descriptions,
-a sentence per occurrence in a `Fault<TFault>`, a status per endpoint, route group or controller
+a sentence per occurrence in a `Fault<TFault>` and the rule that refused, a status per endpoint, route group or controller
 (applied to those of their endpoints that answer with the fault type), the endpoint's own success
 such as a `201 Created`, and the fault on the request for a `CustomizeProblemDetails`. The README's
 [Mapping faults to statuses](../src/CodoMetis.TypeKit.AspNetCore/README.md#mapping-faults-to-statuses)

@@ -22,7 +22,8 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// response the operation already has is kept, which also makes a second <c>AddTypeKit()</c> a no-op.
 /// A response's description is the status's reason phrase, followed by the problem types of the
 /// members answered with it where the mapping gives any. The problem schema those responses refer to
-/// gains an optional <c>fault</c> string, the member a client of a fault response matches on: on the
+/// gains an optional <c>fault</c> string, the member a client of a fault response matches on, and an
+/// optional <c>rule</c> string, the rule that refused where the fault names one: on the
 /// shared component, which ASP.NET's own problem responses refer to as well, so its description says
 /// which problems carry it. A string, since an enum of every fault type would change every operation
 /// when one is added. A document without a fault response is left as ASP.NET writes it.
@@ -31,6 +32,14 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
 {
     /// <summary>The problem's extension member <see cref="FaultProblem{TFault}"/> writes.</summary>
     internal const string FaultMember = "fault";
+
+    /// <summary>The problem's extension member naming the rule that refused, where the fault names one.</summary>
+    internal const string RuleMember = "rule";
+
+    /// <summary>What <c>rule</c> holds.</summary>
+    internal const string RuleDescription =
+        "The rule that refused, where the fault answers for several: its type's name and its member's (Type.Member, a nested type after its nesting chain)."
+      + " Present only on a problem whose fault names one.";
 
     /// <summary>What <c>fault</c> holds, as the host writes it: the member's name, or its qualified name.</summary>
     internal static string FaultDescription(bool qualified) =>
@@ -94,16 +103,17 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
     }
 
     /// <summary>
-    /// Describes <c>fault</c> on the problem schema, beside what ASP.NET describes of
-    /// <see cref="ProblemDetails"/>, where nothing describes it yet: a <c>fault</c> another transformer
-    /// already gave the schema is kept, and a second fault response finds it there.
+    /// Describes <c>fault</c> and <c>rule</c> on the problem schema, beside what ASP.NET describes of
+    /// <see cref="ProblemDetails"/>, where nothing describes them yet: one another transformer already
+    /// gave the schema is kept, and a second fault response finds them there.
     /// </summary>
     private static IOpenApiSchema WithFault(IOpenApiSchema schema, bool qualified)
     {
-        if (schema is OpenApiSchema problem && problem.Properties?.ContainsKey(FaultMember) != true)
+        if (schema is OpenApiSchema problem)
         {
             problem.Properties ??= new Dictionary<string, IOpenApiSchema>(StringComparer.Ordinal);
-            problem.Properties[FaultMember] = new OpenApiSchema { Type = JsonSchemaType.String, Description = FaultDescription(qualified) };
+            problem.Properties.TryAdd(FaultMember, new OpenApiSchema { Type = JsonSchemaType.String, Description = FaultDescription(qualified) });
+            problem.Properties.TryAdd(RuleMember, new OpenApiSchema { Type = JsonSchemaType.String, Description = RuleDescription });
         }
 
         return schema;

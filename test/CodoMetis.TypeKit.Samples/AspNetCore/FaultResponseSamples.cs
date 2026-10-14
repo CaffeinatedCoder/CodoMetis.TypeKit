@@ -31,6 +31,10 @@ public sealed partial class AccountFault : IFaultSet<AccountFault>
 }
 // end sample
 
+// sample: CodoMetis.TypeKit.AspNetCore/fault-rule
+public enum EmailRule { InUse, Reserved }   // which check refused the address
+// end sample
+
 public sealed record Account(int Id, string Email);
 
 public sealed record NewAccount(string Email);
@@ -122,6 +126,15 @@ public static class Faults
         // end sample
 
         return taken;
+    }
+
+    public static Result<Account, Fault<AccountFault>> Reserved()
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-rule-domain
+        Result<Account, Fault<AccountFault>> reserved = Result.Error(Fault.Of(AccountFault.EmailTaken).WithRule(EmailRule.Reserved));
+        // end sample
+
+        return reserved;
     }
 
     public static void Shaped(WebApplicationBuilder builder)
@@ -226,6 +239,27 @@ public sealed class FaultResponseSampleTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         problem["detail"]!.GetValue<string>().ShouldBe("The address has been in use since 3 May.");
+    }
+
+    /// <summary>What the README says the problem reads: the fault's name and the rule's, qualified, at the fault's status.</summary>
+    [Fact]
+    public async Task An_occurrence_s_rule_reaches_the_problem_beside_the_fault()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        Faults.Responses(builder);
+        await using var app = builder.Build();
+        app.MapPut("/reserved", () => Faults.Reserved().ToHttpResult());
+        await app.StartAsync(TestContext.Current.CancellationToken);
+
+        using var response = await app.GetTestClient().PutAsync("/reserved", content: null, TestContext.Current.CancellationToken);
+        var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!;
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict, "the fault's status");
+        $"\"fault\": \"{problem["fault"]!.GetValue<string>()}\", \"rule\": \"{problem["rule"]!.GetValue<string>()}\""
+            .ShouldBe("\"fault\": \"EmailTaken\", \"rule\": \"EmailRule.Reserved\"");
+        problem["detail"]!.GetValue<string>().ShouldBe("Another account uses that email address.", "the member's description, as without a rule");
     }
 
     [Fact]

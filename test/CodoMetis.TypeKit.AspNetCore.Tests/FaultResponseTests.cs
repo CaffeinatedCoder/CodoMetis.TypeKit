@@ -298,7 +298,7 @@ public sealed partial class FaultResponseTests
     }
 
     /// <summary>
-    /// Inline, as ProducesProblem writes it, with <c>fault</c> beside ASP.NET's members; ProducesProblem's
+    /// Inline, as ProducesProblem writes it, with <c>fault</c> and <c>rule</c> beside ASP.NET's members; ProducesProblem's
     /// own inline schema is another instance and stays without it.
     /// </summary>
     [Fact]
@@ -318,6 +318,11 @@ public sealed partial class FaultResponseTests
             ["type"] = "string",
             ["description"] = FaultResponsesOperationTransformer.FaultDescription(qualified: false),
         };
+        ProblemSchema(expected)["properties"]!["rule"] = new JsonObject
+        {
+            ["type"] = "string",
+            ["description"] = FaultResponsesOperationTransformer.RuleDescription,
+        };
 
         ProblemSchema(responses["404"]!)["$ref"].ShouldBeNull();
         JsonNode.DeepEquals(responses["404"], expected).ShouldBeTrue(responses["404"]!.ToJsonString());
@@ -333,7 +338,7 @@ public sealed partial class FaultResponseTests
     [InlineData(OpenApiSpecVersion.OpenApi3_0, false)]
     [InlineData(OpenApiSpecVersion.OpenApi3_1, true)]
     [InlineData(OpenApiSpecVersion.OpenApi3_0, true)]
-    public async Task The_problem_schema_describes_fault_as_an_optional_string(OpenApiSpecVersion version, bool qualified)
+    public async Task The_problem_schema_describes_fault_and_rule_as_optional_strings(OpenApiSpecVersion version, bool qualified)
     {
         await using var app = await StartAsync(version: version, services: services =>
         {
@@ -353,6 +358,12 @@ public sealed partial class FaultResponseTests
             : "The fault this problem reports: the name of its member. ");
         (problem["required"]?.AsArray().Select(name => name!.GetValue<string>()) ?? []).ShouldNotContain("fault");
         problem["properties"]!["status"].ShouldNotBeNull("ASP.NET's members stay");
+
+        var rule = problem["properties"]!["rule"].ShouldNotBeNull($"ProblemDetails has no rule: {problem.ToJsonString()}");
+        rule.AsObject().Select(keyword => keyword.Key).Order().ShouldBe(["description", "type"]);
+        rule["type"]!.ToJsonString().ShouldBe("\"string\"");
+        rule["description"]!.GetValue<string>().ShouldBe(FaultResponsesOperationTransformer.RuleDescription, "always qualified, whatever QualifiedFaultNames says");
+        (problem["required"]?.AsArray().Select(name => name!.GetValue<string>()) ?? []).ShouldNotContain("rule");
     }
 
     /// <summary>A host whose document has no fault response keeps ASP.NET's problem schema, and the whole document, byte for byte.</summary>

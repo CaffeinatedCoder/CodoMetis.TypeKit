@@ -73,3 +73,4 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0064](0064-fault-name-reaches-client-causes-not-told-apart-one-fault.md) | A fault's name reaches the client; causes it must not tell apart are one fault | 2026-10-13 | accepted |
 | [0065](0065-2-0-0-ships-without-preview.md) | 2.0.0 ships without a preview | 2026-10-14 | accepted |
 | [0066](0066-precondition-failed-malformed-fault-kinds.md) | Two more fault kinds: `PreconditionFailed` (412) and `Malformed` (400) | 2026-10-14 | accepted |
+| [0067](0067-rule-that-refused-on-fault.md) | A fault names the rule that refused, as a member of a fixed set | 2026-10-14 | accepted |

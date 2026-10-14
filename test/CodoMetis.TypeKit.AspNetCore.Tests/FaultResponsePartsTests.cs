@@ -28,6 +28,9 @@ public sealed class FaultResponsePartsTests
 {
     public enum OrderFault { NotFound, NameTaken }
 
+    /// <summary>The rules behind <see cref="OrderFault.NameTaken"/>, named on the problem as its <c>rule</c>.</summary>
+    public enum NameRule { Reserved }
+
     public sealed record Order(int Id, string Name);
 
     private static readonly Uri NameTakenType = new("https://example.com/problems/name-taken");
@@ -37,6 +40,12 @@ public sealed class FaultResponsePartsTests
 
     private static Result<Order, Fault<OrderFault>> RenameWithDetail(int id) =>
         id == 1 ? new Order(1, "renamed") : Result.Error(Fault.Of(OrderFault.NameTaken, "Order 7 is called that."));
+
+    private static Result<Order, Fault<OrderFault>> RenameWithRule(int id) =>
+        id == 1 ? new Order(1, "renamed") : Result.Error(Fault.Of(OrderFault.NameTaken, "Order 7 is called that.").WithRule(NameRule.Reserved));
+
+    private static Result<Fault<OrderFault>> ArchiveWithRule(int id) =>
+        id == 1 ? Result.Success() : Result.Error(Fault.Of(OrderFault.NameTaken).WithRule(ProbeStatus.Shipped));
 
     private static Result<Fault<OrderFault>> ArchiveWithDetail(int id) =>
         id == 1 ? Result.Success() : Result.Error(Fault.Of(OrderFault.NameTaken, "Order 7 is called that."));
@@ -217,6 +226,37 @@ public sealed class FaultResponsePartsTests
     }
 
     /// <summary>
+    /// The rule that refused reaches the problem as <c>rule</c> through every overload over a
+    /// <see cref="Fault{TFault}"/>, an enum's qualified after its nesting chain and a closed set's as its
+    /// <c>QualifiedName</c>, whatever <c>QualifiedFaultNames</c> says, beside the fault the mapping and
+    /// the status stay keyed on. A fault without one writes none
+    /// (<see cref="A_detail_reaches_the_problem_only_when_there_is_one"/>).
+    /// </summary>
+    [Theory]
+    [InlineData("PUT", "/ruled/orders/2", "FaultResponsePartsTests.NameRule.Reserved")]              // Result<T, Fault<TFault>>
+    [InlineData("DELETE", "/ruled/orders/2", "ProbeStatus.Shipped")]                                 // Result<Fault<TFault>>, a closed set's member
+    [InlineData("POST", "/ruled/orders/2/copies", "FaultResponsePartsTests.NameRule.Reserved")]      // with the endpoint's success
+    [InlineData("POST", "/ruled/orders/2/archive", "ProbeStatus.Shipped")]                           // with the endpoint's success
+    public async Task An_occurrence_s_rule_reaches_the_problem_through_every_overload(string method, string path, string rule)
+    {
+        await using var app = await StartAsync(endpoints: app =>
+        {
+            app.MapPut("/ruled/orders/{id:int}", (int id) => RenameWithRule(id).ToHttpResult());
+            app.MapDelete("/ruled/orders/{id:int}", (int id) => ArchiveWithRule(id).ToHttpResult());
+            app.MapPost("/ruled/orders/{id:int}/copies", (int id) => RenameWithRule(id).ToHttpResult(order => TypedResults.Created($"/orders/{order.Id}", order)));
+            app.MapPost("/ruled/orders/{id:int}/archive", (int id) => ArchiveWithRule(id).ToHttpResult(() => TypedResults.Accepted("/jobs/7")));
+        });
+
+        using var request = new HttpRequestMessage(new HttpMethod(method), path);
+        using var response = await app.GetTestClient().SendAsync(request, TestContext.Current.CancellationToken);
+        var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!;
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict, $"{method} {path}");
+        problem["fault"]!.GetValue<string>().ShouldBe("NameTaken");
+        problem["rule"].ShouldNotBeNull($"{method} {path} lost the occurrence's rule: {problem.ToJsonString()}").GetValue<string>().ShouldBe(rule);
+    }
+
+    /// <summary>
     /// A closed set answered by its kinds: 404, 409 and 403 with nothing mapped by hand, and a member's
     /// description as the problem's detail, where the member has one.
     /// </summary>
@@ -353,6 +393,36 @@ public sealed class FaultResponsePartsTests
         (await ProblemAsync(app, "/detailed/orders/2", HttpStatusCode.Conflict))["code"]!.GetValue<string>().ShouldBe("OrderFault:NameTaken:Order 7 is called that.");
         (await ProblemAsync(app, "/catalog/9", HttpStatusCode.NotFound))["code"]!.GetValue<string>().ShouldBe("ProbeOrderFault:NotFound:The order does not exist.");
         (await ProblemAsync(app, "/elsewhere", (HttpStatusCode)418))["code"]!.GetValue<string>().ShouldBe("none");
+    }
+
+    /// <summary>The feature carries the rule for a host that writes it its own way, and none where the fault names none.</summary>
+    [Fact]
+    public async Task CustomizeProblemDetails_sees_the_rule()
+    {
+        await using var app = await StartAsync(
+            services: services =>
+            {
+                Responses(services);
+                services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+                    context.ProblemDetails.Extensions["code"] = context.HttpContext.Features.Get<IFaultFeature>() is { } fault ? fault.Rule ?? "-" : "none");
+            },
+            endpoints: app => app.MapPut("/ruled/orders/{id:int}", (int id) => RenameWithRule(id).ToHttpResult()));
+
+        (await ProblemAsync(app, "/ruled/orders/2", HttpStatusCode.Conflict))["code"]!.GetValue<string>().ShouldBe("FaultResponsePartsTests.NameRule.Reserved");
+        (await ProblemAsync(app, "/detailed/orders/2", HttpStatusCode.Conflict))["code"]!.GetValue<string>().ShouldBe("-");
+    }
+
+    /// <summary>The rule joined the feature with a default, so a host's or a test's own implementation still builds, and names none.</summary>
+    [Fact]
+    public void A_fault_feature_of_the_host_s_own_names_no_rule() =>
+        ((IFaultFeature)new HostFeature()).Rule.ShouldBeNull();
+
+    private sealed class HostFeature : IFaultFeature
+    {
+        public Type FaultType => typeof(OrderFault);
+        public object Fault => OrderFault.NotFound;
+        public string Name => nameof(OrderFault.NotFound);
+        public string? Detail => null;
     }
 
     /// <summary>The feature is on the request only while its problem is written: whatever the request writes afterwards does not see it.</summary>

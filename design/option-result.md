@@ -53,7 +53,9 @@ is the value-less shape. Anything that turns this into a second LanguageExt is o
   occurrence. It is made by `Fault.Of` alone, and comparing it with a bare reason is refused, since a
   fault with a detail never equals one
   ([decision 53](adr/0053-fault-made-by-fault-of-alone.md)); `Reason` is what a caller compares.
-  A `Cause` beside them joins 2.1 ([decision 52](adr/0052-cause-on-fault-joins-2-1.md)).
+  A `Cause` beside them joins 2.1 ([decision 52](adr/0052-cause-on-fault-joins-2-1.md)), and so does
+  `Rule`, the qualified name of the enum or closed-set member that refused, which the problem carries
+  as `rule` ([decision 67](adr/0067-rule-that-refused-on-fault.md)).
 - **Pipelines (decided 2026-09-28).** `MapAsync`/`BindAsync` take an asynchronous selector on a
   result, and every combinator of both shapes continues a `Task<Result<…>>` (`MapAsync`, `BindAsync`,
   `MapErrorAsync`, `TapAsync`), so a chain is awaited once, at its end; a completeness test holds

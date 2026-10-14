@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using CodoMetis.TypeKit.ClosedSets;
 
 namespace CodoMetis.TypeKit;
 
@@ -15,7 +16,9 @@ namespace CodoMetis.TypeKit;
 /// </para>
 /// <para>
 /// <see cref="Fault.Of{TFault}"/> makes one and infers the type, with a detail or without:
-/// <c>Result.Error(Fault.Of(OrderFault.NotAmendable, "The order shipped on 3 May."))</c>. A bare reason
+/// <c>Result.Error(Fault.Of(OrderFault.NotAmendable, "The order shipped on 3 May."))</c>. Where the reason
+/// answers for several rules, <c>WithRule</c> names the one that refused, an enum's or a closed set's
+/// member, as a key a client branches on: <c>Fault.Of(AccountFault.InvalidEmail).WithRule(EmailFault.NoAt)</c>. A bare reason
 /// does not convert to a fault, since a fault compared with it would then be false whenever it carries
 /// a detail; compare <see cref="Reason"/> instead. Not a wire type:
 /// it is matched to a response, as the <see cref="Result{T, TError}"/> holding it is.
@@ -44,6 +47,28 @@ public readonly record struct Fault<TFault> where TFault : notnull
 
     /// <summary>A sentence about this occurrence, or <see langword="null"/>.</summary>
     public string? Detail { get; }
+
+    /// <summary>
+    /// Which rule refused, where the reason answers for several: the rule's type and member,
+    /// <c>EmailFault.NoAt</c>, a nested type after its nesting chain; or <see langword="null"/>.
+    /// </summary>
+    /// <remarks>
+    /// Set by <c>WithRule</c> from an enum's member or a closed set's member, so it is always a name
+    /// from a fixed set, qualified so that two types' <c>Blank</c> stay apart, and never quotes the
+    /// request. It takes part in equality, as the detail does.
+    /// </remarks>
+    public string? Rule { get; private init; }
+
+    /// <summary>The same fault with <paramref name="rule"/> as its <see cref="Rule"/>.</summary>
+    internal Fault<TFault> Naming(string rule) => this with { Rule = rule };
+
+    /// <summary>The reason and the detail, as 2.0 printed them, and the rule where there is one.</summary>
+    private bool PrintMembers(System.Text.StringBuilder builder)
+    {
+        builder.Append("Reason = ").Append(Reason).Append(", Detail = ").Append(Detail);
+        if (Rule is not null) builder.Append(", Rule = ").Append(Rule);
+        return true;
+    }
 
     // A bare reason does not convert to a fault: with the conversion, `fault == OrderFault.NotFound`,
     // `faults.Contains(OrderFault.NotFound)` and `ShouldBeError(OrderFault.NotFound)` compiled and were
@@ -91,6 +116,69 @@ public readonly record struct Fault<TFault> where TFault : notnull
     [Obsolete(MixedComparison, error: true)]
     [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
     public bool Equals(TFault reason) => throw new NotSupportedException();
+}
+
+/// <summary>Names the rule that refused on a <see cref="Fault{TFault}"/>, an enum's member.</summary>
+/// <remarks>A closed set's member takes the same call from <see cref="FaultClosedSetRuleExtensions"/>.</remarks>
+public static class FaultRuleExtensions
+{
+    /// <param name="fault">The fault.</param>
+    /// <typeparam name="TFault">The reason's type.</typeparam>
+    extension<TFault>(Fault<TFault> fault) where TFault : notnull
+    {
+        /// <summary>
+        /// The same fault, naming <paramref name="rule"/> as the rule that refused: its <see cref="Fault{TFault}.Rule"/>
+        /// is the enum's name and the member's, <c>EmailFault.NoAt</c>, a nested enum after its nesting chain.
+        /// </summary>
+        /// <remarks>
+        /// A value no member names, such as a combination of flags or a cast number, throws, since a
+        /// client branches on the name and a number is none. A second call replaces the first rule.
+        /// </remarks>
+        /// <param name="rule">The rule, one of the enum's members.</param>
+        /// <typeparam name="TRule">The rule's type, an enum.</typeparam>
+        /// <returns>A new fault.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="rule"/> is no member of <typeparamref name="TRule"/>.</exception>
+        public Fault<TFault> WithRule<TRule>(TRule rule) where TRule : struct, Enum =>
+            Enum.IsDefined(rule)
+                ? fault.Naming($"{FaultRuleNames.NestingChain(typeof(TRule))}.{rule}")
+                : throw new ArgumentOutOfRangeException(nameof(rule), $"A rule is one of {FaultRuleNames.NestingChain(typeof(TRule))}'s members, and no member is this value.");
+    }
+}
+
+/// <summary>Names the rule that refused on a <see cref="Fault{TFault}"/>, a closed set's member.</summary>
+/// <remarks>Separate from the enum's, which takes the same parameters, since C# tells the two apart by their constraints alone.</remarks>
+public static class FaultClosedSetRuleExtensions
+{
+    /// <param name="fault">The fault.</param>
+    /// <typeparam name="TFault">The reason's type.</typeparam>
+    extension<TFault>(Fault<TFault> fault) where TFault : notnull
+    {
+        /// <summary>
+        /// The same fault, naming <paramref name="rule"/> as the rule that refused: its <see cref="Fault{TFault}.Rule"/>
+        /// is the member's <c>QualifiedName</c>, <c>EmailRule.NoAt</c>.
+        /// </summary>
+        /// <remarks>A second call replaces the first rule.</remarks>
+        /// <param name="rule">The rule, one of the closed set's members. Never null.</param>
+        /// <typeparam name="TRule">The rule's type, a closed set.</typeparam>
+        /// <returns>A new fault.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="rule"/> is null.</exception>
+        public Fault<TFault> WithRule<TRule>(TRule rule) where TRule : class, IClosedSet<TRule>
+        {
+            ArgumentNullException.ThrowIfNull(rule);
+            return fault.Naming(rule.QualifiedName);
+        }
+    }
+}
+
+/// <summary>How a rule's type is named: after its nesting chain, as a closed set's <c>QualifiedName</c> is.</summary>
+internal static class FaultRuleNames
+{
+    /// <summary><c>Billing.Fault</c> for an enum nested in <c>Billing</c>, without a generic arity.</summary>
+    public static string NestingChain(Type type) =>
+        type.DeclaringType is { } declaring ? $"{NestingChain(declaring)}.{Simple(type)}" : Simple(type);
+
+    private static string Simple(Type type) =>
+        type.Name.IndexOf('`') is var tick and >= 0 ? type.Name[..tick] : type.Name;
 }
 
 /// <summary>Creates a <see cref="Fault{TFault}"/>, inferring its type.</summary>
