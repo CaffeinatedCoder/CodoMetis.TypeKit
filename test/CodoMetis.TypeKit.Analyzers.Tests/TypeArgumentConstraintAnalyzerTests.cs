@@ -765,7 +765,8 @@ public sealed class TypeArgumentConstraintAnalyzerTests
     /// A forwarding parameter is told apart from the other argument when both are parameters of one generic
     /// carrying the attribute, whose closed uses are then checked, or when their C# constraints admit no
     /// common type; the same parameter twice is the same type; otherwise the pair is a breach, or the
-    /// requirement would end at the first forwarding generic. An <c>Enum</c> bound admits every enum,
+    /// requirement would end at the first forwarding generic. <c>struct</c> admits no <c>Nullable&lt;T&gt;</c>,
+    /// and <c>unmanaged</c> no tuple holding a reference. An <c>Enum</c> bound admits every enum,
     /// a value type, so against <c>struct</c> or <c>unmanaged</c> it proves nothing:
     /// <c>DayOfWeek</c> met both, and two of it passed through (reported 2026-10-14).
     /// </summary>
@@ -790,6 +791,8 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             public sealed class StructAndEnum<TS, TE> : Pair<TS, {|#6:TE|}> where TS : struct where TE : Enum { }
             public sealed class UnmanagedAndEnum<TS, TE> : Pair<TS, {|#7:TE|}> where TS : unmanaged where TE : Enum { }
             public sealed class EnumAndClass<TE, TC> : Pair<TE, TC> where TE : Enum where TC : Handler { }
+            public sealed class StructAndNullable<T> : Pair<T, int?> where T : struct { }
+            public sealed class UnmanagedAndManagedTuple<T> : Pair<T, (int, string)> where T : unmanaged { }
             """,
             Cmtk0010(0, "TB", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'TA', the type argument for 'TLeft'"),
             Cmtk0010(1, "Handler", "TB", "Sound<TA, TB>", "is the same type as the argument for 'TA'"),
@@ -803,7 +806,7 @@ public sealed class TypeArgumentConstraintAnalyzerTests
 
     /// <summary>
     /// For <c>[Unrelated]</c> a forwarding pair is proved by both carrying <c>[Unrelated]</c> in one generic,
-    /// by <c>struct</c> against a class no value type boxes to, or by two class bounds of different chains;
+    /// by <c>struct</c> against a class or a delegate no value type boxes to, or by two class bounds of different chains;
     /// <c>[Distinct]</c>, <c>class</c> alone (which admits <c>object</c>) and an interface prove nothing.
     /// </summary>
     [Fact]
@@ -825,6 +828,7 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             public sealed class BoundAndDerived<T> : Apart<T, {|#6:OrderHandler|}> where T : Handler { }
             public sealed class BoundAndInterface<T> : Apart<T, {|#7:IHandler|}> where T : Handler { }
             public sealed class ClassAndStruct<T> : Apart<T, {|#8:Point|}> where T : class { }
+            public sealed class StructAndDelegate<T> : Apart<T, Action> where T : struct { }
             """,
             Cmtk0010(0, "TB", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'TA', the type argument for 'TLeft'"),
             Cmtk0010(1, "object", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'T', the type argument for 'TLeft'"),
