@@ -87,15 +87,18 @@ public sealed class GeneratedJsonPlan<T>
     /// loud, so that handler is left alone.
     /// <para>
     /// A nullable struct's contract lists none of the properties of the struct it holds, which the
-    /// serializer's converter for it writes, so a class there wrote its <c>$id</c> twice unseen; one the
-    /// options convert as itself writes none. An ignored property, which has neither getter nor setter
+    /// serializer's converter for it writes, so a class there wrote its <c>$id</c> twice unseen; a converter
+    /// of its own, which the contract has from a resolver or the options, writes none. Which one writes it is
+    /// the contract's word, not the options': a resolver's own was refused, and the serializer's put in
+    /// charge over one in the options let an <c>$id</c> through twice (both reported 2026-10-14). An ignored
+    /// property, which has neither getter nor setter
     /// in the contract, is neither written nor read, so a class there refused a struct the serializer
     /// writes without one (both reported 2026-10-14).
     /// </para>
     /// </remarks>
     private static bool MayHoldReferences(JsonSerializerOptions options, JsonTypeInfo typeInfo, HashSet<Type> visited)
     {
-        if (Nullable.GetUnderlyingType(typeInfo.Type) is { } held && !options.Converters.Any(converter => converter.CanConvert(typeInfo.Type)))
+        if (Nullable.GetUnderlyingType(typeInfo.Type) is { } held && GeneratedJson.IsNullableAdapter(typeInfo.Converter, typeInfo.Type))
             return MayHoldReferences(options, options.GetTypeInfo(held), visited);
 
         if (typeInfo.Type == typeof(object)) return true;

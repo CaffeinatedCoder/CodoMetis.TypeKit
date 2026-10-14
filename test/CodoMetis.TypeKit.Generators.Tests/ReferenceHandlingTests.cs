@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using CodoMetis.TypeKit.ValueObjects;
 
 namespace CodoMetis.TypeKit.Generators.Tests;
@@ -152,6 +153,64 @@ public sealed class ReferenceHandlingTests
         public override Tracked Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => new() { Name = reader.GetString()! };
 
         public override void Write(Utf8JsonWriter writer, Tracked value, JsonSerializerOptions options) => writer.WriteStringValue(value.Name);
+    }
+
+    /// <summary>A nullable holder written as its inner name, which has no <c>$id</c>.</summary>
+    private sealed class HolderNameConverter : JsonConverter<HoldingTracked?>
+    {
+        public override HoldingTracked? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => new HoldingTracked { Inner = new Tracked { Name = reader.GetString()! } };
+
+        public override void Write(Utf8JsonWriter writer, HoldingTracked? value, JsonSerializerOptions options) => writer.WriteStringValue(value!.Value.Inner?.Name);
+    }
+
+    /// <summary>A resolver that puts one contract in charge of one type, before the reflection resolver and the options' converters.</summary>
+    private sealed class ResolverOf<T>(Func<JsonSerializerOptions, JsonTypeInfo<T>> contract) : IJsonTypeInfoResolver
+    {
+        public JsonTypeInfo? GetTypeInfo(Type type, JsonSerializerOptions options) => type == typeof(T) ? contract(options) : null;
+    }
+
+    private static JsonSerializerOptions PreservingWith(IJsonTypeInfoResolver first, params JsonConverter[] converters)
+    {
+        var options = new JsonSerializerOptions { ReferenceHandler = ReferenceHandler.Preserve, TypeInfoResolver = JsonTypeInfoResolver.Combine(first, new DefaultJsonTypeInfoResolver()) };
+        foreach (var converter in converters) options.Converters.Add(converter);
+        return options;
+    }
+
+    private static HoldingNullableHolder SharedHolder() => new() { Holder = new HoldingTracked { Inner = new Tracked { Name = "x" } } };
+
+    /// <summary>
+    /// A resolver's converter of the nullable struct writes it, not the serializer's walk of the struct it
+    /// holds: one that writes no <c>$id</c> lifts the refusal, as one in the options does. The check asked
+    /// the options alone, and refused it (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public void A_resolver_s_converter_of_a_nullable_struct_lifts_the_refusal()
+    {
+        var options = PreservingWith(new ResolverOf<HoldingTracked?>(o => JsonMetadataServices.CreateValueInfo<HoldingTracked?>(o, new HolderNameConverter())));
+        var shared  = SharedHolder();
+        var json    = JsonSerializer.Serialize(new Pair<OverHoldingNullableHolder> { First = OverHoldingNullableHolder.From(shared), Second = OverHoldingNullableHolder.From(shared) }, options);
+
+        json.ShouldBe(JsonSerializer.Serialize(new Pair<HoldingNullableHolder> { First = shared, Second = shared }, options));
+        JsonSerializer.Deserialize<Pair<OverHoldingNullableHolder>>(json, options)!.Second.Value.Holder!.Value.Inner!.Name.ShouldBe("x");
+    }
+
+    /// <summary>
+    /// A resolver that puts the serializer's own converter in charge of the nullable struct, over one in the
+    /// options, has it walked: the class inside has an <c>$id</c>, so the value object is refused. The check
+    /// saw the options' converter, and two value objects around one instance wrote the <c>$id</c> twice
+    /// (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public void A_resolver_that_walks_a_nullable_struct_over_the_options_converter_is_refused()
+    {
+        var options = PreservingWith(
+            new ResolverOf<HoldingTracked?>(o => JsonMetadataServices.CreateValueInfo<HoldingTracked?>(o, JsonMetadataServices.GetNullableConverter((JsonTypeInfo<HoldingTracked>)o.GetTypeInfo(typeof(HoldingTracked))))),
+            new HolderNameConverter());
+        var shared = SharedHolder();
+
+        JsonSerializer.Serialize(new Pair<HoldingNullableHolder> { First = shared, Second = shared }, options).ShouldContain("\"$ref\"", customMessage: "the control: the resolver's contract walks the struct");
+        Should.Throw<NotSupportedException>(() => JsonSerializer.Serialize(new Pair<OverHoldingNullableHolder> { First = OverHoldingNullableHolder.From(shared), Second = OverHoldingNullableHolder.From(shared) }, options))
+              .Message.ShouldContain("ReferenceHandler.Preserve");
     }
 
     /// <summary>What the refusal advises: a converter of its own writes no <c>$id</c>, for the wrapped type and the value object alike.</summary>

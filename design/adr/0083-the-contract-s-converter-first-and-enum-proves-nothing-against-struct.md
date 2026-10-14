@@ -29,6 +29,13 @@ lists. The adapter is recognised as a converter of the nullable type from System
 which has no other; a named type would be internal. Rejected: reading the adapter's element converter, a private field, which
 trimming and Native AOT do not keep.
 
+**The reference check asks the contract too.** Under `ReferenceHandler.Preserve` a value object is refused
+where its wrapped type may write an `$id` (`GeneratedJsonPlan`), and a nullable struct was walked as the
+struct it holds unless the options listed a converter for it, the same early lookup. A resolver's converter
+for `HoldingTracked?` that wrote a string was refused, and a resolver that put the serializer's own converter
+in charge over one in the options let the class inside write its `$id` twice, unrefused. Both now ask the
+contract's converter, through the one adapter check the description uses (`GeneratedJson.IsNullableAdapter`).
+
 **An `Enum` bound proves nothing against `struct`.** For `[Distinct]`, `struct` or `unmanaged` against any
 class bound was taken as proof that no type meets both, but every enum meets `where T : Enum`: a wrapper
 `Forward<TS, TE> where TS : struct where TE : Enum` held `Fault<TS, TE>` without CMTK0010, and

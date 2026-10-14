@@ -40,7 +40,7 @@ section is the GitHub release's notes.
 - OpenAPI: a type held inside a `Patch<T>` alone is compared between the minimal-API and MVC JSON options too; a converter registered for a nullable value object alone, whose positions refer to the shared component, refuses the document; a described keyword a 3.0 document writes aside (`if`, `contains`, `patternProperties`) or leaves out refuses it, naming the keyword, and an empty `properties` or `required`, which it leaves out, does not ([OpenAPI](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says)).
 - OpenAPI: an endpoint answering two fault types lists the problem types of both at a status they share, and its fault statuses in ascending order.
 - Over a base record, a value object's equality is its wrapped value's, in a collection of the base too: a base's own equality, explicit `IEquatable` included, or a private field in another assembly made equal values unequal.
-- Under `ReferenceHandler.Preserve`, a value object over a class, or a struct holding one, nullable or not, throws `NotSupportedException` instead of writing a duplicate `$id`; an ignored property is passed over.
+- Under `ReferenceHandler.Preserve`, a value object over a class, or a struct holding one, nullable or not, throws `NotSupportedException` instead of writing a duplicate `$id`; an ignored property is passed over, and a nullable struct is judged by the converter its contract has, a resolver's included.
 - A wrapped type's `Parse` that returns another type, or takes the text by `ref`, and an abstract class's string constructor are no parsers: the value object builds without parsing.
 
 ## 2.0.0 — 2026-10-14

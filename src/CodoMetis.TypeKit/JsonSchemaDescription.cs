@@ -145,22 +145,13 @@ public sealed class JsonSchemaDescription
     private static JsonSchemaDescription? Contract(Type type, Type value, JsonSerializerOptions options)
     {
         if (options.TryGetTypeInfo(type, out var info))
-            return type != value && IsNullableAdapter(info.Converter, type) ? Contract(value, value, options) : Describe(info.Converter, value, options);
+            return type != value && GeneratedJson.IsNullableAdapter(info.Converter, type) ? Contract(value, value, options) : Describe(info.Converter, value, options);
 
         // A source-generated context need not list a type its value objects wrap, which the converter
         // registered for it still writes; a value object it does not know is the generated one's.
         if (TryRegistered(type, options, out var declared)) return Describe(declared, value, options);
         return type != value ? Contract(value, value, options) : Generated.GetOrAdd(value, Generate);
     }
-
-    /// <summary>
-    /// Whether <paramref name="converter"/> is the serializer's own converter for the <see cref="Nullable{T}"/>
-    /// <paramref name="type"/>, which writes null or what the contract's converter for the value writes, and
-    /// says nothing itself; a converter for the nullable type that a resolver or the options put in charge
-    /// writes it otherwise. System.Text.Json has no other converter of a nullable type.
-    /// </summary>
-    private static bool IsNullableAdapter(JsonConverter converter, Type type) =>
-        converter.Type == type && converter.GetType().Assembly == typeof(JsonConverter).Assembly;
 
     /// <summary>
     /// What <paramref name="converter"/>, in charge of <paramref name="value"/>, says it writes: its own word
