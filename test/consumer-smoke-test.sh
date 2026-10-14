@@ -249,8 +249,9 @@ assert_contains "cancelled=Ok/Error gone" "$work/core.out" "Result<TError> conve
 assert_contains "asserted=3/nope"      "$work/core.out" "the assertions hand back the value and the error"
 assert_contains "assertion-failed=Expected an error, but the Result<Int32, String> is a success (its value is not printed)." "$work/core.out" "a failed assertion says what the outcome was"
 
-# The analyzers run in the consumer's compiler. Both rules at once: a default Option, and a value
-# object declared in a project that has no generator to implement it.
+# The analyzers run in the consumer's compiler. Three rules at once: a default Option, a value
+# object declared in a project that has no generator to implement it, and a fault of one type twice,
+# whose [Distinct] parameters the analyzer reads from the package's metadata.
 cat > Guard.cs <<'CSHARP'
 using CodoMetis.TypeKit;
 using CodoMetis.TypeKit.ValueObjects;
@@ -258,6 +259,7 @@ using CodoMetis.TypeKit.ValueObjects;
 public static class Guard
 {
     public static Option<int> Nothing() => default(Option<int>);
+    public static Fault<DayOfWeek, DayOfWeek> Twice() => throw new NotSupportedException();
 }
 
 public readonly partial record struct Ungenerated : IValue<Guid>;
@@ -267,6 +269,7 @@ run_failing dotnet build --no-incremental
 echo "$output" > "$work/core.guard"
 assert_contains "CMTK0001" "$work/core.guard" "CMTK0001 fires for default(Option<int>) in a base-only consumer"
 assert_contains "CMTK0002" "$work/core.guard" "CMTK0002 fires for a value object with no generator"
+assert_contains "error CMTK0010: 'DayOfWeek', the type argument for 'T2' of 'Fault<T1, T2>', is the same type as the argument for 'T1'" "$work/core.guard" "CMTK0010 fires for a fault of one type twice, from the attribute in the package's metadata"
 rm Guard.cs
 
 # ── layered: the generators in a domain library, an app that reaches them through it ─────────────
