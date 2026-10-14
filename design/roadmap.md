@@ -3,12 +3,6 @@
 What is open, and nothing else. Done work is in the [changelog](../CHANGELOG.md) and in git. Each
 item names the decision that scoped it.
 
-## 2.0.0, before the tag
-
-- The release: merge so the help links' headings exist on `main`, and tag `v2.0.0`. The changelog's
-  section is dated and the analyzer rows are shipped; the release workflow and `ChangelogTests` check
-  both.
-
 ## 2.1, additive
 
 - An optional `Cause` on `Fault<TFault>`, an exception kept beside the reason and the detail for the
