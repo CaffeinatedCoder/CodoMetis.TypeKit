@@ -39,6 +39,10 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// Minimal APIs name the value object in the parameter's <c>Type</c>, MVC in its model metadata.
 /// The parameter's descriptor is not used: for an MVC <c>[FromQuery]</c> object it names the
 /// container, not the property.</item>
+/// <item>A value object the options give a converter of their own, which writes it instead of the
+/// generated one, is not the wrapped type's in a JSON position: it is what that converter says it writes
+/// (<see cref="DescribedSchemaTransformer"/>), or, where it says nothing, what ASP.NET writes for a
+/// converter of one's own. A parameter binds through <c>TryParse</c> and is unchanged.</item>
 /// </list>
 /// </remarks>
 internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
@@ -62,6 +66,9 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
 
         if (ValueObjectTypes.WrappedType(info.Type) is { } wrapped)
         {
+            // Written by a converter the options put in charge, not the generated one: not the wrapped type's.
+            if (DescribedSchemaTransformer.WrittenByTheOptions(info.Type, info.Options)) return;
+
             // Where ASP.NET makes the value object a component, it adds the null around the reference itself.
             // Inlined, the schema is this position's own, and the null goes in it, as ASP.NET's exporter puts
             // it into the wrapped type's schema for a nullable property of that type.
@@ -88,7 +95,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
             return;
         }
 
-        if (info.ElementType is not { } element || !ValueObjectTypes.IsValueObject(element)) return;
+        if (info.ElementType is not { } element || !ValueObjectTypes.IsValueObject(element) || DescribedSchemaTransformer.WrittenByTheOptions(element, info.Options)) return;
 
         // Only what ASP.NET left out: a schema it did build is its own description of the elements.
         if (info.Kind == JsonTypeInfoKind.Enumerable && schema.Items is null)

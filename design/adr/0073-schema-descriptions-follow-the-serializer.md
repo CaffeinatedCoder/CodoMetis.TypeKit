@@ -47,6 +47,14 @@ some readers:
   `For` answers under each set of options, by `SameAs` type or by schema: order, configuration and
   entries count, two equal sets in separate instances agree.
 
+**A converter that says nothing is not the generated one either.** A value object or a closed set the
+options give a converter that does not describe itself was still described as its wrapped type or its
+names, which that converter does not write, as in 2.0. It is now left as ASP.NET writes any converter of
+one's own, in every JSON position and inside a patch: ASP.NET's `{}`, and no `items` for an element.
+Rejected: refusing the document, which would stop a host on upgrade that 2.0 served, if wrongly. A
+converter that one property names and that says nothing is left as it was: the type is a component, written
+once for every position.
+
 **Not refused**: a description in `JsonSchemaDescriptions` that contradicts the converter, as decision 71
 says; and a `$ref`, `$id` or `$defs` is looked for only where JSON Schema holds a schema, so a property
 or a `const` may be called `$id`.

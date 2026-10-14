@@ -89,9 +89,12 @@ internal sealed class PatchSchemaTransformer : IOpenApiSchemaTransformer
         // What the argument is described as comes first, the host's word or a converter's that replaces a
         // value object's generated one, as it does where the argument is a property of its own.
         var argument = info.Type.GetGenericArguments()[0];
+        // One the options write with a converter that says nothing is what ASP.NET writes for any such: {}.
         var inner = DescribedSchemaTransformer.Description(argument, info.Options, property: null) is { } description
             ? await DescribedSchemaTransformer.SchemaAsync(description, argument, context, cancellationToken)
-            : await context.GetOrCreateSchemaAsync(ValueObjectTypes.WrappedType(argument) ?? argument, parameterDescription: null, cancellationToken);
+            : (ValueObjectTypes.IsValueObject(argument) || ClosedSetSchemaTransformer.Describe(argument) is not null) && DescribedSchemaTransformer.WrittenByTheOptions(argument, info.Options)
+                ? new OpenApiSchema()
+                : await context.GetOrCreateSchemaAsync(ValueObjectTypes.WrappedType(argument) ?? argument, parameterDescription: null, cancellationToken);
 
         schema.Properties?.Clear();
         AdmitNull(schema, inner);

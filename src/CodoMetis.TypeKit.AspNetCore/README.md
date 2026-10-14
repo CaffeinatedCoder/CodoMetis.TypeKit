@@ -114,6 +114,11 @@ no component at all), and both parameters are a bare `string`.
   that description too, whichever of the two was added first.
 - **What is already said is kept.** Whatever a value object's schema already says, from ASP.NET or
   another transformer, is not overwritten; only what it leaves open is filled in.
+- **A converter of the host's own wins.** A value object, or a closed set, that the JSON options give a
+  converter of their own is written by that converter, not the generated one, so it is described as that
+  converter says (a described type, below) or, where it says nothing, left as ASP.NET writes
+  any converter of one's own, rather than as a wrapped type it does not write. A parameter binds through
+  `TryParse` and is described as before.
 
 **A merge patch.** A property typed `Patch<T>` (CodoMetis.TypeKit, a JSON Merge Patch field) is
 described as `T`'s schema:

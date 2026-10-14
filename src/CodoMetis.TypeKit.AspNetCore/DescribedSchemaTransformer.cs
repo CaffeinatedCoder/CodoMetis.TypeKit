@@ -109,15 +109,20 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
         return JsonSchemaDescription.For(type, options, property);
     }
 
-    /// <summary>
-    /// Whether a converter other than the generated one writes <paramref name="value"/>: the property's own,
-    /// or the first of the options' that converts it, as the serializer picks; a factory that says nothing of
-    /// itself, such as <c>StoredJsonConverterFactory</c>, writes what the generated converter writes.
-    /// </summary>
-    private static bool Replaced(Type value, JsonSerializerOptions options, JsonPropertyInfo? property)
-    {
-        if (property?.CustomConverter is not null) return true;
+    /// <summary>Whether a converter other than the generated one writes <paramref name="value"/>: the property's own, or the options'.</summary>
+    private static bool Replaced(Type value, JsonSerializerOptions options, JsonPropertyInfo? property) =>
+        property?.CustomConverter is not null || WrittenByTheOptions(value, options);
 
+    /// <summary>
+    /// Whether the first of the options' converters that converts <paramref name="type"/>, as the serializer
+    /// picks, writes it instead of the generated converter; a factory that says nothing of itself, such as
+    /// <c>StoredJsonConverterFactory</c>, writes what the generated converter writes. The value-object and
+    /// closed-set transformers then leave the type to this one: what that converter says, or, where it says
+    /// nothing, what ASP.NET writes for a converter of one's own.
+    /// </summary>
+    internal static bool WrittenByTheOptions(Type type, JsonSerializerOptions options)
+    {
+        var value = Nullable.GetUnderlyingType(type) ?? type;
         var first = options.Converters.FirstOrDefault(converter => converter is not JsonSchemaDescriptions && converter.CanConvert(value));
         return first is IDescribedJsonConverter || first is not null and not System.Text.Json.Serialization.JsonConverterFactory;
     }

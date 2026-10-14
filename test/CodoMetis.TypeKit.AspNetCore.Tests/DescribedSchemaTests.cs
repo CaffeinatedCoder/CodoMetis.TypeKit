@@ -89,6 +89,40 @@ public sealed class DescribedSchemaTests
         app.MapPost("/labels", int (Labels labels) => 0);
     }
 
+    /// <summary>A value object and a closed set the options write with converters of their own that say nothing.</summary>
+    public sealed record Undescribed(ProbeAmount Amount, List<ProbeAmount> Amounts, Patch<ProbeAmount> Change, ProbeStatus Status, List<ProbeStatus> Statuses);
+
+    public sealed class SilentAmount : JsonConverter<ProbeAmount>
+    {
+        public override ProbeAmount Read(ref System.Text.Json.Utf8JsonReader reader, Type typeToConvert, System.Text.Json.JsonSerializerOptions options) => ProbeAmount.From(reader.GetInt32());
+
+        public override void Write(System.Text.Json.Utf8JsonWriter writer, ProbeAmount value, System.Text.Json.JsonSerializerOptions options) => writer.WriteStringValue("amount");
+    }
+
+    public sealed class SilentStatus : JsonConverter<ProbeStatus>
+    {
+        public override ProbeStatus Read(ref System.Text.Json.Utf8JsonReader reader, Type typeToConvert, System.Text.Json.JsonSerializerOptions options) => ProbeStatus.Open;
+
+        public override void Write(System.Text.Json.Utf8JsonWriter writer, ProbeStatus value, System.Text.Json.JsonSerializerOptions options) => writer.WriteNumberValue(1);
+    }
+
+    /// <summary>A host of minimal APIs alone, so the options' converters need not be on MVC's too.</summary>
+    private static async Task<OpenApiJson> MinimalDocumentAsync(Action<JsonOptions> json, Action<WebApplication> endpoints)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        builder.Services.ConfigureHttpJsonOptions(json);
+        builder.Services.AddOpenApi(openApi => openApi.AddTypeKit());
+
+        await using var app = builder.Build();
+        app.MapOpenApi();
+        endpoints(app);
+        await app.StartAsync(TestContext.Current.CancellationToken);
+
+        return new(JsonNode.Parse(await app.GetTestClient().GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken))!);
+    }
+
     private static void PricedEndpoints(WebApplication app) => app.MapPost("/priced", int (Priced priced) => 0);
 
     /// <summary>Whether a schema admits null, as 3.1 says it (a type, a branch) or 3.0 (<c>nullable</c>).</summary>
@@ -254,6 +288,28 @@ public sealed class DescribedSchemaTests
     }
 
     /// <summary>
+    /// A converter the options put in charge of a value object or a closed set, which says nothing of what it
+    /// writes: the document no longer claims the wrapped type or the names, which that converter does not
+    /// write, and leaves the type as ASP.NET writes any converter of one's own.
+    /// </summary>
+    [Fact]
+    public async Task An_undescribed_converter_that_replaces_the_generated_one_is_left_as_ASP_NET_writes_it()
+    {
+        var document = await MinimalDocumentAsync(
+            json => { json.SerializerOptions.Converters.Add(new SilentAmount()); json.SerializerOptions.Converters.Add(new SilentStatus()); },
+            app => app.MapPost("/undescribed", int (Undescribed undescribed) => 0));
+
+        var amount = Inline(document, document.Property(nameof(Undescribed), "amount"));
+        amount["type"].ShouldBeNull($"not the wrapped decimal: {amount.ToJsonString()}");
+        amount["format"].ShouldBeNull(amount.ToJsonString());
+        document.Property(nameof(Undescribed), "amounts")["items"].ShouldBeNull("ASP.NET drops the element of a converter of one's own, and it is not put back as the wrapped type");
+        document.Property(nameof(Undescribed), "change")["format"].ShouldBeNull("nor in a patch of it");
+        var status = Inline(document, document.Property(nameof(Undescribed), "status"));
+        status["enum"].ShouldBeNull($"not the set's names: {status.ToJsonString()}");
+        document.Property(nameof(Undescribed), "statuses")["items"].ShouldBeNull();
+    }
+
+    /// <summary>
     /// A converter one property names, for a value object the document writes once as a component: the
     /// component cannot say it for one position alone, so the document is refused rather than wrong for one.
     /// </summary>
@@ -362,6 +418,7 @@ public sealed class DescribedOptionsAgreementTests
         app.MapOpenApi();
         app.MapControllers();
         app.MapGet("/minimal/quote", () => new Quote(7.80m));
+        app.MapGet("/minimal/amount", () => new AmountQuote(ProbeAmount.From(7.80m)));
         await app.StartAsync(cancellation);
 
         var client = app.GetTestClient();
@@ -412,6 +469,19 @@ public sealed class DescribedOptionsAgreementTests
         AmountType(document).ShouldBe("number", "two sets, each its own instance, that say the same");
     }
 
+    /// <summary>
+    /// A converter that says nothing, for a value object, on one set of options alone: the other writes the
+    /// generated JSON, the wrapped type, so the two describe it differently.
+    /// </summary>
+    [Fact]
+    public async Task An_undescribed_converter_for_a_value_object_on_one_set_alone_stops_the_document()
+    {
+        var refusal = await Should.ThrowAsync<InvalidOperationException>(() => HostAsync(http: c => c.Add(new DescribedSchemaTests.SilentAmount()), mvc: null));
+
+        refusal.Message.ShouldContain($"'{typeof(ProbeAmount)}'");
+        refusal.Message.ShouldContain("MVC's as the schema of 'System.Decimal'");
+    }
+
     [Fact]
     public async Task On_both_the_controller_s_wire_and_the_document_agree()
     {
@@ -431,6 +501,8 @@ public sealed class DescribedOptionsAgreementTests
         AmountType(document).ShouldBe("string");
     }
 }
+
+public sealed record AmountQuote(ProbeAmount Amount);
 
 /// <summary>A value object inside a patch alone, which a source-generated context has no metadata for.</summary>
 public sealed record AmendChange(Patch<ProbeAmount> Change);

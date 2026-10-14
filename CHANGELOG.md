@@ -27,6 +27,7 @@ section is the GitHub release's notes.
 
 ### Fixed
 
+- OpenAPI: a value object or a closed set the JSON options give a converter of their own is no longer described as its wrapped type or its names, which that converter does not write; it is what the converter says, or left as ASP.NET writes it ([OpenAPI](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says)).
 - OpenAPI: a `Patch<T>` the serializer requires, a constructor parameter under `RespectRequiredConstructorParameters`, stays `required`; declare patches as `init` properties there ([Merge patches](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/merge-patches.md#required-constructor-parameters)).
 
 ## 2.0.0 — 2026-10-14
