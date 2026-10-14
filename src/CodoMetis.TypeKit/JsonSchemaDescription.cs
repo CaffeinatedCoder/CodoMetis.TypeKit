@@ -120,14 +120,12 @@ public sealed class JsonSchemaDescription
 
         if (JsonSchemaDescriptions.Registered(value, options) is { } registered) return registered;
 
-        if (property?.CustomConverter is { } own && own.Type == value)
-            return own is IDescribedJsonConverter described ? described.DescribeJson(value, options) : null;
+        if (property?.CustomConverter is { } own && (own.Type == value || own.Type == type))
+            return PropertyConverter(own, property, value, options) is { } described ? described.DescribeJson(value, options) : null;
 
-        if (Generated.GetOrAdd(value, Generate) is { } generated) return generated;
-
-        // The options' converters before the resolver, as the serializer picks them: a source-generated
-        // context need not list a type its value objects wrap, and the converter registered for it still
-        // writes it.
+        // The options' converters before the type's own, as the serializer picks them: a converter registered
+        // for a value object writes it instead of the generated one, and a source-generated context need not
+        // list a type its value objects wrap, which the converter registered for it still writes.
         foreach (var converter in options.Converters)
         {
             if (converter is JsonSchemaDescriptions || !converter.CanConvert(value)) continue;
@@ -136,7 +134,30 @@ public sealed class JsonSchemaDescription
             break;
         }
 
+        if (Generated.GetOrAdd(value, Generate) is { } generated) return generated;
+
         return options.TryGetTypeInfo(value, out var info) && info.Converter is IDescribedJsonConverter self ? self.DescribeJson(value, options) : null;
+    }
+
+    /// <summary>
+    /// The converter a property names, as it says what it writes: the serializer adapts one named on a
+    /// <see cref="Nullable{T}"/> property to the nullable type, and the adapter says nothing, so the attribute
+    /// is asked for the converter it names.
+    /// </summary>
+    private static IDescribedJsonConverter? PropertyConverter(JsonConverter own, JsonPropertyInfo property, Type value, JsonSerializerOptions options)
+    {
+        if (own is IDescribedJsonConverter described) return described;
+        if (own.Type == value) return null;
+
+        if (property.AttributeProvider?.GetCustomAttributes(typeof(JsonConverterAttribute), inherit: false) is not [JsonConverterAttribute attribute, ..]) return null;
+
+        var named = attribute.CreateConverter(value) ?? (attribute.ConverterType is { } converterType ? Activator.CreateInstance(converterType) as JsonConverter : null);
+        return named switch
+        {
+            IDescribedJsonConverter self => self,
+            JsonConverterFactory factory when factory.CanConvert(value) => factory.CreateConverter(value, options) as IDescribedJsonConverter,
+            _ => null,
+        };
     }
 
     /// <summary>What the generators' attribute says of a type: a value object or a closed set, or neither.</summary>
@@ -149,12 +170,41 @@ public sealed class JsonSchemaDescription
                 ? Of(new JsonObject { ["type"] = "string", ["enum"] = new JsonArray([.. set.Names.Select(name => JsonValue.Create(name))]) })
                 : null;
 
-    private static string? FirstUnanchored(JsonNode? node) => node switch
+    /// <summary>
+    /// The first keyword that refers elsewhere or names a schema, in the schema or any schema inside it; a
+    /// property's name or a value in <c>const</c>, <c>enum</c> or <c>examples</c> is data, not a keyword.
+    /// </summary>
+    private static string? FirstUnanchored(JsonObject schema) =>
+        schema.Select(keyword => keyword.Key).FirstOrDefault(Unanchored.Contains)
+     ?? JsonSchemaKeywords.Subschemas(schema).Select(FirstUnanchored).FirstOrDefault(found => found is not null);
+}
+
+/// <summary>Where JSON Schema 2020-12 holds schemas inside a schema, and nothing else.</summary>
+internal static class JsonSchemaKeywords
+{
+    private static readonly string[] One = ["items", "additionalItems", "additionalProperties", "unevaluatedItems", "unevaluatedProperties", "not", "contains", "propertyNames", "if", "then", "else", "contentSchema"];
+    private static readonly string[] Many = ["allOf", "anyOf", "oneOf", "prefixItems", "items"];
+    private static readonly string[] Named = ["properties", "patternProperties", "dependentSchemas", "$defs", "definitions"];
+
+    /// <summary>The schema objects directly inside <paramref name="schema"/>; a boolean schema has none.</summary>
+    public static IEnumerable<JsonObject> Subschemas(JsonObject schema)
     {
-        JsonObject properties => properties.Select(property => Unanchored.Contains(property.Key) ? property.Key : FirstUnanchored(property.Value)).FirstOrDefault(found => found is not null),
-        JsonArray items => items.Select(FirstUnanchored).FirstOrDefault(found => found is not null),
-        _ => null,
-    };
+        foreach (var (keyword, value) in schema)
+        {
+            if (One.Contains(keyword) && value is JsonObject single) yield return single;
+            else if (Many.Contains(keyword) && value is JsonArray list)
+            {
+                foreach (var item in list.OfType<JsonObject>()) yield return item;
+            }
+            else if (Named.Contains(keyword) && value is JsonObject map)
+            {
+                foreach (var (_, item) in map)
+                {
+                    if (item is JsonObject named) yield return named;
+                }
+            }
+        }
+    }
 }
 
 /// <summary>
@@ -299,8 +349,11 @@ public static class DescribedJsonSchema
         var info = context.TypeInfo;
         if (JsonSchemaDescription.For(info.Type, info.Options, context.PropertyInfo) is { } description)
         {
-            var schema = Schema(description, info.Options, options);
-            return AdmitsNull(info.Type, node) ? JsonSchemaNull.Admit(schema) : schema;
+            var admitsNull = Nullable.GetUnderlyingType(info.Type) is not null
+                          || node is JsonObject { } exported && exported["type"] is JsonArray types && types.Any(t => t?.GetValue<string>() == "null")
+                          || !info.Type.IsValueType && (context.PropertyInfo is { } property ? property.IsGetNullable || property.IsSetNullable : !options.TreatNullObliviousAsNonNullable);
+
+            return Place(Schema(description, info.Options, options), admitsNull, context.Path);
         }
 
         // The exporter writes no items and no additionalProperties for an element of the empty schema,
@@ -313,12 +366,37 @@ public static class DescribedJsonSchema
             var keyword = info.Kind == JsonTypeInfoKind.Enumerable ? "items" : "additionalProperties";
             if (!container.ContainsKey(keyword))
             {
-                var schema = Schema(elementDescription, info.Options, options);
-                container[keyword] = Nullable.GetUnderlyingType(element) is not null ? JsonSchemaNull.Admit(schema) : schema;
+                // An element admits null as the exporter has it for one of a plain type: a nullable value
+                // type always, a reference type unless null-oblivious types are taken as non-nullable.
+                var admitsNull = Nullable.GetUnderlyingType(element) is not null || !element.IsValueType && !options.TreatNullObliviousAsNonNullable;
+                container[keyword] = Place(Schema(elementDescription, info.Options, options), admitsNull, [.. context.Path, keyword]);
             }
         }
 
         return node;
+    }
+
+    /// <summary>
+    /// The described schema where it is put: with null beside it where the position admits null, and its
+    /// references, which point from its own root, pointing from the document's.
+    /// </summary>
+    private static JsonObject Place(JsonObject schema, bool admitsNull, ReadOnlySpan<string> path)
+    {
+        var placed = admitsNull ? JsonSchemaNull.Admit(schema) : schema;
+        var pointer = string.Concat(path.ToArray().Select(segment => "/" + segment.Replace("~", "~0").Replace("/", "~1")));
+        Relocate(schema, ReferenceEquals(placed, schema) ? pointer : pointer + "/anyOf/0");
+        return placed;
+    }
+
+    /// <summary>Every local reference in <paramref name="schema"/>, made to point from <paramref name="pointer"/>.</summary>
+    private static void Relocate(JsonObject schema, string pointer)
+    {
+        if (pointer.Length == 0) return;
+
+        if (schema["$ref"] is JsonValue reference && reference.TryGetValue<string>(out var target) && target.StartsWith('#'))
+            schema["$ref"] = "#" + pointer + target[1..];
+
+        foreach (var inner in JsonSchemaKeywords.Subschemas(schema)) Relocate(inner, pointer);
     }
 
     private static JsonObject Schema(JsonSchemaDescription description, JsonSerializerOptions serializer, JsonSchemaExporterOptions options) =>
@@ -336,7 +414,7 @@ public static class DescribedJsonSchema
             // Described itself, the type needs no metadata: a source-generated context need not list a type
             // a value object wraps. Only a type nothing describes is asked of the resolver.
             if (JsonSchemaDescription.For(type, serializer) is { } described) return Schema(described, serializer, options);
-            return serializer.GetJsonSchemaAsNode(type, options) as JsonObject ?? [];
+            return NonNull(serializer.GetJsonSchemaAsNode(type, options) as JsonObject ?? []);
         }
         finally
         {
@@ -344,10 +422,20 @@ public static class DescribedJsonSchema
         }
     }
 
-    /// <summary>A nullable value type, or a position the exporter already let null into.</summary>
-    private static bool AdmitsNull(Type type, JsonNode exported) =>
-        Nullable.GetUnderlyingType(type) is not null
-     || exported is JsonObject { } schema && schema["type"] is JsonArray types && types.Any(t => t?.GetValue<string>() == "null");
+    /// <summary>
+    /// A type's schema as one non-null value of it, which a description is: the exporter lets null into the
+    /// root of a reference type's, and the position it is put in decides that.
+    /// </summary>
+    private static JsonObject NonNull(JsonObject schema)
+    {
+        if (schema["type"] is JsonArray types && types.Any(t => t?.GetValue<string>() == "null"))
+        {
+            var rest = types.Where(t => t?.GetValue<string>() != "null").Select(t => t!.GetValue<string>()).ToArray();
+            schema["type"] = rest is [var single] ? JsonValue.Create(single) : new JsonArray([.. rest.Select(t => JsonValue.Create(t))]);
+        }
+
+        return schema;
+    }
 }
 
 /// <summary>Null beside the values a schema admits, as JSON Schema says it for each shape.</summary>

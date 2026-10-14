@@ -44,7 +44,77 @@ public sealed class DescribedJsonSchemaTests
         public JsonSchemaDescription DescribeJson(Type typeToConvert, JsonSerializerOptions options) => JsonSchemaDescription.SameAs(typeof(Loop));
     }
 
+    /// <summary>A recursive object, written by a converter described as that object: the exporter refers back into it.</summary>
+    public sealed class Node
+    {
+        public string? Name { get; set; }
+
+        public Node? Child { get; set; }
+    }
+
+    [JsonConverter(typeof(TreeConverter))]
+    public sealed class Tree
+    {
+        public Node? Root { get; set; }
+    }
+
+    public sealed class TreeConverter : JsonConverter<Tree>, IDescribedJsonConverter
+    {
+        public override Tree Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => new() { Root = JsonSerializer.Deserialize<Node>(ref reader, options) };
+
+        public override void Write(Utf8JsonWriter writer, Tree value, JsonSerializerOptions options) => JsonSerializer.Serialize(writer, value.Root, options);
+
+        public JsonSchemaDescription DescribeJson(Type typeToConvert, JsonSerializerOptions options) => JsonSchemaDescription.SameAs(typeof(Node));
+    }
+
+    public sealed record Forest(Tree Item, Tree? Maybe, List<Tree> Trees, Dictionary<string, Tree?> Named);
+
+    /// <summary>A property that names its converter, on a nullable decimal, which the serializer adapts.</summary>
+    public sealed record Priced([property: JsonConverter(typeof(DecimalStringJsonConverter))] decimal? Amount, [property: JsonConverter(typeof(DecimalStringJsonConverter))] decimal Price);
+
+    /// <summary>A reference type written as a string by a converter that says so.</summary>
+    [JsonConverter(typeof(TextConverter))]
+    public sealed class Text(string value)
+    {
+        public string Value { get; } = value;
+    }
+
+    public sealed class TextConverter : JsonConverter<Text>, IDescribedJsonConverter
+    {
+        public override Text Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => new(reader.GetString()!);
+
+        public override void Write(Utf8JsonWriter writer, Text value, JsonSerializerOptions options) => writer.WriteStringValue(value.Value);
+
+        public JsonSchemaDescription DescribeJson(Type typeToConvert, JsonSerializerOptions options) => JsonSchemaDescription.Of(new JsonObject { ["type"] = "string", ["minLength"] = 1 });
+    }
+
+    public sealed record Texts(Text Required, Text? Optional, List<Text?> Items, Dictionary<string, Text?> Named);
+
     private static JsonNode Export<T>(JsonSerializerOptions options) => options.GetJsonSchemaAsNode(typeof(T), DescribedJsonSchema.ExporterOptions());
+
+    private static JsonNode Export<T>(JsonSerializerOptions options, JsonSchemaExporterOptions exporter) => options.GetJsonSchemaAsNode(typeof(T), DescribedJsonSchema.ExporterOptions(exporter));
+
+    /// <summary>Every <c>$ref</c> in <paramref name="document"/>, each with the node its pointer reaches from the root, or null.</summary>
+    private static IEnumerable<(string Pointer, JsonNode? Target)> References(JsonNode document)
+    {
+        IEnumerable<string> All(JsonNode? node) => node switch
+        {
+            JsonObject o => o.SelectMany(p => p.Key == "$ref" && p.Value is JsonValue v ? [v.GetValue<string>()] : All(p.Value)),
+            JsonArray a => a.SelectMany(All),
+            _ => [],
+        };
+
+        JsonNode? Resolve(string pointer) => pointer.TrimStart('#').Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Select(segment => segment.Replace("~1", "/").Replace("~0", "~"))
+            .Aggregate<string, JsonNode?>(document, (node, segment) => node switch
+            {
+                JsonObject o => o[segment],
+                JsonArray a when int.TryParse(segment, out var index) && index < a.Count => a[index],
+                _ => null,
+            });
+
+        return All(document).Select(pointer => (pointer, Resolve(pointer)));
+    }
 
     [Fact]
     public void Without_a_description_a_converter_of_one_s_own_is_the_empty_schema()
@@ -93,7 +163,7 @@ public sealed class DescribedJsonSchemaTests
             },
         };
 
-        Export<string>(options).ToJsonString().ShouldBe("""{"type":"string","pattern":"^[A-Z]*$"}""");
+        Export<string>(options).ToJsonString().ShouldBe("""{"type":["string","null"],"pattern":"^[A-Z]*$"}""", "a string at the root admits null, as the exporter has a plain one");
         JsonSerializer.Serialize("abc", options).ShouldBe("\"ABC\"");
         JsonSerializer.Deserialize<string>("\"abc\"", options).ShouldBe("abc");
     }
@@ -144,11 +214,88 @@ public sealed class DescribedJsonSchemaTests
         Should.Throw<NotSupportedException>(() => descriptions.CreateConverter(typeof(int), JsonSerializerOptions.Default));
     }
 
+    /// <summary>
+    /// A converter described as a recursive object, anywhere but the root: the exporter writes the object's
+    /// references from its own root, and they must point from the document's.
+    /// </summary>
+    [Fact]
+    public void A_recursive_schema_described_inside_another_keeps_every_reference_resolving()
+    {
+        var document = Export<Forest>(Strings);
+
+        var references = References(document).ToList();
+        references.Count.ShouldBe(4, "one per place a tree is put: a property, a nullable property, an element, a value");
+        foreach (var (pointer, target) in references)
+        {
+            target.ShouldNotBeNull($"'{pointer}' resolves to nothing in {document.ToJsonString()}");
+            target!["properties"]!["child"].ShouldNotBeNull($"'{pointer}' points at a node, not where a node is");
+        }
+
+        Export<Tree>(Strings)["properties"]!["child"]!["properties"]!["child"]!["$ref"]!.GetValue<string>().ShouldBe("#/properties/child", "the root keeps its own");
+    }
+
+    /// <summary>A described object put where null is not allowed is not nullable for being a reference type's schema.</summary>
+    [Fact]
+    public void A_schema_described_as_a_reference_type_s_admits_null_only_where_the_position_does()
+    {
+        var properties = Export<Forest>(Strings)["properties"]!;
+
+        properties["item"]!["type"]!.ToJsonString().ShouldBe("\"object\"");
+        properties["maybe"]!["type"]!.ToJsonString().ShouldBe("""["object","null"]""");
+    }
+
+    /// <summary>The serializer adapts a nullable property's converter to the nullable type; the converter it names still says what it writes.</summary>
+    [Fact]
+    public void A_property_s_own_converter_on_a_nullable_value_type_is_described()
+    {
+        var priced = new JsonSerializerOptions(JsonSerializerDefaults.Web) { TypeInfoResolver = new DefaultJsonTypeInfoResolver() };
+        var properties = Export<Priced>(priced)["properties"]!;
+
+        properties["amount"]!["type"]!.ToJsonString().ShouldBe("""["string","null"]""");
+        properties["amount"]!["pattern"].ShouldNotBeNull();
+        properties["price"]!.ToJsonString().ShouldBe(DecimalString);
+        JsonSerializer.Serialize(new Priced(7.80m, 1m), priced).ShouldBe("""{"amount":"7.8","price":"1"}""", "the wire the schema describes");
+
+        var generated = new JsonSerializerOptions(JsonSerializerDefaults.Web) { TypeInfoResolver = PricedJson.Default };
+        Export<Priced>(generated)["properties"]!["amount"]!["type"]!.ToJsonString().ShouldBe("""["string","null"]""", "under a source-generated context too");
+        JsonSerializer.Serialize(new Priced(7.80m, 1m), generated).ShouldBe("""{"amount":"7.8","price":"1"}""");
+    }
+
+    /// <summary>A reference type admits null where a plain one would: a nullable property, and an element unless the exporter says otherwise.</summary>
+    [Fact]
+    public void A_described_reference_type_admits_null_where_a_plain_one_would()
+    {
+        var plain = new JsonSerializerOptions(JsonSerializerDefaults.Web) { TypeInfoResolver = new DefaultJsonTypeInfoResolver() };
+        var properties = Export<Texts>(plain)["properties"]!;
+
+        properties["required"]!.ToJsonString().ShouldBe("""{"type":"string","minLength":1}""");
+        properties["optional"]!["type"]!.ToJsonString().ShouldBe("""["string","null"]""");
+        properties["items"]!["items"]!["type"]!.ToJsonString().ShouldBe("""["string","null"]""");
+        properties["named"]!["additionalProperties"]!["type"]!.ToJsonString().ShouldBe("""["string","null"]""");
+        JsonSerializer.Serialize(new Texts(new("a"), null, [null], new() { ["k"] = null }), plain).ShouldBe("""{"required":"a","optional":null,"items":[null],"named":{"k":null}}""");
+
+        var oblivious = Export<Texts>(plain, new JsonSchemaExporterOptions { TreatNullObliviousAsNonNullable = true })["properties"]!;
+        oblivious["items"]!["items"]!["type"]!.ToJsonString().ShouldBe("\"string\"", "as the exporter has a plain string element then");
+        oblivious["optional"]!["type"]!.ToJsonString().ShouldBe("""["string","null"]""", "an annotated property stays nullable");
+    }
+
+    /// <summary>A keyword's name is a keyword only where a schema is: a property may be called <c>$id</c>, and a value may hold one.</summary>
+    [Theory]
+    [InlineData("""{"type":"object","properties":{"$id":{"type":"string"},"$ref":{"type":"string"}},"required":["$id"]}""")]
+    [InlineData("""{"const":{"$ref":"#/x"}}""")]
+    [InlineData("""{"enum":[{"$id":"a"}],"examples":[{"$defs":1}],"default":{"$anchor":"a"}}""")]
+    [InlineData("""{"type":"object","patternProperties":{"^\\$":{"type":"string"}},"propertyNames":{"enum":["$schema"]}}""")]
+    public void A_keyword_s_name_as_data_is_allowed(string schema) =>
+        JsonSchemaDescription.Of(JsonNode.Parse(schema)!.AsObject()).Schema!.ToJsonString().ShouldBe(JsonNode.Parse(schema)!.ToJsonString());
+
     [Theory]
     [InlineData("""{"$ref":"#/$defs/x"}""", "$ref")]
     [InlineData("""{"type":"object","properties":{"a":{"$ref":"#"}}}""", "$ref")]
     [InlineData("""{"$defs":{"x":{}}}""", "$defs")]
     [InlineData("""{"anyOf":[{"$id":"x"}]}""", "$id")]
+    [InlineData("""{"type":"object","properties":{"$id":{"$ref":"#"}}}""", "$ref")]
+    [InlineData("""{"prefixItems":[{"$anchor":"a"}]}""", "$anchor")]
+    [InlineData("""{"items":{"items":{"$dynamicRef":"#a"}}}""", "$dynamicRef")]
     public void A_description_that_refers_elsewhere_is_refused(string schema, string keyword) =>
         Should.Throw<ArgumentException>(() => JsonSchemaDescription.Of(JsonNode.Parse(schema)!.AsObject())).Message.ShouldContain($"'{keyword}'");
 
@@ -171,3 +318,6 @@ public sealed class DescribedJsonSchemaTests
         public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) => writer.WriteStringValue(value.ToUpperInvariant());
     }
 }
+
+[JsonSerializable(typeof(DescribedJsonSchemaTests.Priced))]
+internal sealed partial class PricedJson : JsonSerializerContext;

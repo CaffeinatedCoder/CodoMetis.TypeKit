@@ -19,7 +19,8 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// A value object that appears only inside a patch has no metadata in a source-generated context,
 /// since the patch's converter hides it, and ASP.NET cannot make its schema there (measured under
 /// Native AOT in spikes/MergePatch). Its wrapped type's schema is asked for instead, which is what
-/// the value-object transformer would have put in.
+/// the value-object transformer would have put in. A description of the argument, the host's or a
+/// converter's that replaces the generated one, comes before both, as it does for a property of its own.
 /// </para>
 /// </remarks>
 internal sealed class PatchSchemaTransformer : IOpenApiSchemaTransformer
@@ -85,9 +86,12 @@ internal sealed class PatchSchemaTransformer : IOpenApiSchemaTransformer
 
         if (!IsPatch(info.Type)) return;
 
+        // What the argument is described as comes first, the host's word or a converter's that replaces a
+        // value object's generated one, as it does where the argument is a property of its own.
         var argument = info.Type.GetGenericArguments()[0];
-        var described = ValueObjectTypes.WrappedType(argument) ?? argument;
-        var inner = await context.GetOrCreateSchemaAsync(described, parameterDescription: null, cancellationToken);
+        var inner = DescribedSchemaTransformer.Description(argument, info.Options, property: null) is { } description
+            ? await DescribedSchemaTransformer.SchemaAsync(description, argument, context, cancellationToken)
+            : await context.GetOrCreateSchemaAsync(ValueObjectTypes.WrappedType(argument) ?? argument, parameterDescription: null, cancellationToken);
 
         schema.Properties?.Clear();
         AdmitNull(schema, inner);

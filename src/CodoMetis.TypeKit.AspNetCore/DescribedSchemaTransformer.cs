@@ -44,8 +44,6 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
 
     public async Task TransformAsync(OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
     {
-        DescribedOptionsAgreement.ThrowIfDisagreeing(context.ApplicationServices);
-
         var info = context.JsonTypeInfo;
         var options = info.Options;
 
@@ -57,8 +55,19 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
             return;
         }
 
+        DescribedOptionsAgreement.ThrowIfDisagreeing(context.ApplicationServices, info.Type, options);
+        if (info.ElementType is { } contained) DescribedOptionsAgreement.ThrowIfDisagreeing(context.ApplicationServices, contained, options);
+
         if (Description(info.Type, options, context.JsonPropertyInfo) is { } description)
         {
+            // ASP.NET writes a type with a reference id once, as a component every position refers to, so a
+            // converter one property names cannot be told there: the component would say it for every
+            // position, or for none, by whichever came first.
+            if (context.JsonPropertyInfo is { CustomConverter: not null } own && ValueObjectSchemaTransformer.SchemaReferenceId(info, context) is { } component)
+                throw new InvalidOperationException(
+                    $"The property '{own.DeclaringType}.{own.Name}' names a converter of its own for '{info.Type}', which the document describes once, as the " +
+                    $"component '{component}', for every position. Register the converter on the JSON options, or give the property a type of its own.");
+
             var admitsNull = (Nullable.GetUnderlyingType(info.Type) is not null || context.JsonPropertyInfo is { IsGetNullable: true } or { IsSetNullable: true })
                           && ValueObjectSchemaTransformer.SchemaReferenceId(info, context) is null;
 
@@ -86,14 +95,31 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
     }
 
     /// <summary>
-    /// The description this transformer applies: the host's for any type, a converter's for a type that is
-    /// neither a value object nor a closed set, whose own transformers describe them otherwise.
+    /// The description this transformer applies: the host's for any type, and a converter's; for a value
+    /// object or a closed set, whose own transformers describe what the generated converter writes, only a
+    /// converter that replaces the generated one, named on the property or put in charge by the options.
     /// </summary>
-    private static JsonSchemaDescription? Description(Type type, JsonSerializerOptions options, JsonPropertyInfo? property)
+    internal static JsonSchemaDescription? Description(Type type, JsonSerializerOptions options, JsonPropertyInfo? property)
     {
         if (JsonSchemaDescriptions.Registered(type, options) is { } registered) return registered;
-        if (ValueObjectTypes.IsValueObject(type) || ClosedSetSchemaTransformer.Describe(type) is not null) return null;
+
+        var value = Nullable.GetUnderlyingType(type) ?? type;
+        if ((ValueObjectTypes.IsValueObject(value) || ClosedSetSchemaTransformer.Describe(value) is not null) && !Replaced(value, options, property)) return null;
+
         return JsonSchemaDescription.For(type, options, property);
+    }
+
+    /// <summary>
+    /// Whether a converter other than the generated one writes <paramref name="value"/>: the property's own,
+    /// or the first of the options' that converts it, as the serializer picks; a factory that says nothing of
+    /// itself, such as <c>StoredJsonConverterFactory</c>, writes what the generated converter writes.
+    /// </summary>
+    private static bool Replaced(Type value, JsonSerializerOptions options, JsonPropertyInfo? property)
+    {
+        if (property?.CustomConverter is not null) return true;
+
+        var first = options.Converters.FirstOrDefault(converter => converter is not JsonSchemaDescriptions && converter.CanConvert(value));
+        return first is IDescribedJsonConverter || first is not null and not System.Text.Json.Serialization.JsonConverterFactory;
     }
 
     /// <summary>The shape keywords the description replaces; annotations and the property's own constraints stay.</summary>
@@ -112,7 +138,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
         schema.Not = null;
     }
 
-    private static async Task<OpenApiSchema> SchemaAsync(JsonSchemaDescription description, Type type, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
+    internal static async Task<OpenApiSchema> SchemaAsync(JsonSchemaDescription description, Type type, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
     {
         if (description.Schema is { } schema) return Parse(schema, type);
 
@@ -137,7 +163,11 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
         }
     }
 
-    /// <summary>A described JSON Schema as Microsoft.OpenApi reads one; a schema it cannot read stops the document, naming the type.</summary>
+    /// <summary>
+    /// A described JSON Schema as Microsoft.OpenApi reads one. A schema it cannot read, or reads as something
+    /// else, stops the document, naming the type: a keyword it does not model (<c>prefixItems</c>) is written
+    /// aside as an unrecognised one, where no validator sees it, and the schema then means something else.
+    /// </summary>
     internal static OpenApiSchema Parse(JsonObject schema, Type type)
     {
         var parsed = OpenApiModelFactory.Parse<OpenApiSchema>(schema.ToJsonString(), OpenApiSpecVersion.OpenApi3_1, new OpenApiDocument(), out var diagnostic, "json");
@@ -147,8 +177,69 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
                 $"The JSON schema described for '{type}' is not one an OpenAPI document can hold: " +
                 string.Join("; ", diagnostic?.Errors.Select(error => error.Message) ?? ["it did not parse"]) + ".");
 
+        if (FirstChanged(schema, Written(parsed), "") is { } changed)
+            throw new InvalidOperationException(
+                $"The JSON schema described for '{type}' does not survive into an OpenAPI document: '{changed}' is written otherwise than described, " +
+                "so validators would read another schema. Describe it with the keywords OpenAPI 3.1 models.");
+
         return parsed;
     }
+
+    /// <summary>The schema as the document writes it in OpenAPI 3.1.</summary>
+    private static JsonObject Written(OpenApiSchema schema)
+    {
+        using var text = new StringWriter(System.Globalization.CultureInfo.InvariantCulture);
+        schema.SerializeAsV31(new OpenApiJsonWriter(text));
+        return JsonNode.Parse(text.ToString())!.AsObject();
+    }
+
+    /// <summary>
+    /// The pointer to the first keyword the written schema drops, adds or changes; a type list is a set, which
+    /// the writer orders its own way.
+    /// </summary>
+    private static string? FirstChanged(JsonNode? described, JsonNode? written, string pointer)
+    {
+        switch (described, written)
+        {
+            case (JsonObject left, JsonObject right):
+                foreach (var key in left.Select(p => p.Key).Union(right.Select(p => p.Key)))
+                {
+                    var at = pointer + "/" + key;
+                    if (!right.ContainsKey(key) && FalseByDefault.Contains(key) && left[key] is JsonValue unset && unset.GetValueKind() == JsonValueKind.False) continue;
+                    if (!left.ContainsKey(key) || !right.ContainsKey(key)) return at;
+                    if (key == "type" && Types(left[key]).SetEquals(Types(right[key]))) continue;
+                    if (FirstChanged(left[key], right[key], at) is { } inner) return inner;
+                }
+
+                return null;
+            case (JsonArray left, JsonArray right):
+                if (left.Count != right.Count) return pointer;
+                for (var i = 0; i < left.Count; i++)
+                {
+                    if (FirstChanged(left[i], right[i], pointer + "/" + i) is { } inner) return inner;
+                }
+
+                return null;
+            case (JsonValue left, JsonValue right) when left.GetValueKind() is JsonValueKind.Number && right.GetValueKind() is JsonValueKind.Number:
+                return JsonNode.DeepEquals(left, right) || Number(left) is { } leftNumber && Number(right) is { } rightNumber && leftNumber == rightNumber ? null : pointer;
+            default:
+                return JsonNode.DeepEquals(described, written) ? null : pointer.Length == 0 ? "/" : pointer;
+        }
+    }
+
+    /// <summary>Annotations whose <c>false</c> is their default, which the writer leaves out.</summary>
+    private static readonly string[] FalseByDefault = ["readOnly", "writeOnly", "deprecated", "uniqueItems"];
+
+    /// <summary>A number as written, <c>1</c> and <c>1.0</c> alike, or null where a decimal cannot hold it.</summary>
+    private static decimal? Number(JsonValue value) =>
+        decimal.TryParse(value.ToJsonString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var number) ? number : null;
+
+    private static HashSet<string> Types(JsonNode? type) => type switch
+    {
+        JsonArray list => [.. list.Select(t => t?.ToString() ?? "")],
+        JsonValue single => [single.ToString()],
+        _ => [],
+    };
 
     /// <summary>
     /// A parameter of <paramref name="type"/> as ASP.NET describes it without converters of one's own: the

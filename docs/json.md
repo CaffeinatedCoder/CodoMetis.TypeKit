@@ -202,20 +202,27 @@ string fare = stop["properties"]!["Fare"]!["format"]!.ToString();             //
 
 What describes a type, the first that answers: the options' `JsonSchemaDescriptions`, the application's
 word, so a value object can say more than its wrapped type (`Describe<Percentage>(…)` with a `minimum`
-and a `maximum`); a converter on the property itself; a value object, as its wrapped type under the same
-options; a closed set, as a string of its members' names; and the converter the options put in charge.
-A description says what one non-null value looks like, and the null goes in where the position admits
-one. It is a JSON Schema complete in itself: a `$ref`, a `$defs` or an `$id` is refused where it is made.
-`JsonSchemaDescription.SameAs(type)` describes a converter that writes one type as another.
+and a `maximum`); then the converter that writes it, as the serializer picks one: the property's own, a
+nullable property's included, then the first of the options' converters that converts the type, then the
+type's own, a value object's as its wrapped type under the same options and a closed set's as a string of
+its members' names. So a converter that replaces a value object's generated one describes it.
+A description says what one non-null value looks like, and the null goes in where a plain type would get
+one in the same position. It is a JSON Schema complete in itself: a `$ref`, a `$defs` or an `$id` is
+refused where it is made, wherever a schema is, and a property or a value may still be called `$id`.
+`JsonSchemaDescription.SameAs(type)` describes a converter that writes one type as another; the
+references of a recursive type's schema are made to point from wherever it is put.
 
 In CodoMetis.TypeKit.AspNetCore, `AddTypeKit()` writes the same descriptions into the OpenAPI document,
 in every position, a list's elements and a dictionary's values included. A route, query or header
 parameter binds through `TryParse` and not through JSON, so it keeps the description ASP.NET gives the
 type without converters of one's own ([ASP.NET Core](aspnet-core.md)). The document is built from the
-minimal-API JSON options and controllers write with MVC's, so a host with controllers registers a
-described converter on both; building the document fails otherwise, naming what differs. A description
-in the options also outranks the converter's own: it can refine one, and it can contradict one. A type nothing describes is left as
-the host writes it.
+minimal-API JSON options and controllers write with MVC's, so a host with controllers registers the same
+converters and descriptions on both, in the same order; building the document fails otherwise, naming the
+type and what each set of options says of it. A schema the document would write otherwise than described,
+a keyword OpenAPI 3.1 does not model such as `prefixItems`, fails it too, as does a described converter one
+property names for a type the document writes once as a component, such as a value object. A description
+in the options also outranks the converter's own: it can refine one, and it can contradict one. A type
+nothing describes is left as the host writes it.
 
 ## Option and Result at the wire
 

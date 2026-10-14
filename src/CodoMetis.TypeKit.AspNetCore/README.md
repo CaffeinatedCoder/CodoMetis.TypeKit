@@ -133,11 +133,16 @@ source-generated host can do: the patch's converter hides the value object from 
 `DecimalStringJsonConverter` does), and a type the host's JSON options describe
 (`JsonSchemaDescriptions`), are described as that says, as a property, a body, a nullable one, a list's
 element, a dictionary's value, and inside a value object or a patch. A description of a value object or
-a closed set in the options comes before its own. A route, query or header parameter binds through
-`TryParse`, not JSON, and keeps what ASP.NET writes for the type without converters of one's own. ASP.NET
-builds the document from the minimal-API JSON options (`ConfigureHttpJsonOptions`), and controllers write
-with MVC's (`AddJsonOptions`): a host with controllers registers a described converter on both, or building
-the document fails, naming it, rather than describe JSON the controllers do not write. A type
+a closed set in the options comes before its own, and so does a described converter registered on the
+options for one, which writes it instead of the generated converter; in a patch of it too. A route, query
+or header parameter binds through `TryParse`, not JSON, and keeps what ASP.NET writes for the type without
+converters of one's own. ASP.NET builds the document from the minimal-API JSON options
+(`ConfigureHttpJsonOptions`), and controllers write with MVC's (`AddJsonOptions`): a host with controllers
+registers the same converters and descriptions on both, in the same order, or building the document fails,
+naming the type and what each says of it, rather than describe JSON the controllers do not write. Building
+it fails too for a description the document would write otherwise (a keyword OpenAPI 3.1 does not model,
+such as `prefixItems`), and for a described converter one property names for a value object, which the
+document writes once as a component for every position. A type
 nothing describes is left as ASP.NET writes it ([JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/json.md#describing-what-a-converter-writes)).
 
 ## A Result as a response

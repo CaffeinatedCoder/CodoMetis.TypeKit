@@ -79,3 +79,4 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0070](0070-undefined-enum-value-warning.md) | A value of the package's input enums that names no member is a warning (CMTK0014) | 2026-10-14 | accepted |
 | [0071](0071-converters-say-what-they-write.md) | JSON converters say what they write; decimals get one spelling | 2026-10-14 | accepted |
 | [0072](0072-rule-identity-is-its-type.md) | A rule's identity is its type; its wire name stays without a namespace | 2026-10-14 | accepted |
+| [0073](0073-schema-descriptions-follow-the-serializer.md) | Schema descriptions follow the converter the serializer picks, and refuse what they cannot say | 2026-10-14 | accepted |

@@ -50,6 +50,36 @@ public sealed class DescribedValueObjectJsonTests
         properties["status"]!.ToJsonString().ShouldBe("""{"type":"string","enum":["Open","Shipped","Cancelled"]}""");
     }
 
+    /// <summary>A value object written as a quoted cent count, by a converter that replaces the generated one and says so.</summary>
+    public sealed class CentsConverter : System.Text.Json.Serialization.JsonConverter<ProbeAmount>, IDescribedJsonConverter
+    {
+        public override ProbeAmount Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => ProbeAmount.From(decimal.Parse(reader.GetString()!, System.Globalization.CultureInfo.InvariantCulture) / 100);
+
+        public override void Write(Utf8JsonWriter writer, ProbeAmount value, JsonSerializerOptions options) => writer.WriteStringValue(((long)(value.Value * 100)).ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        public JsonSchemaDescription DescribeJson(Type typeToConvert, JsonSerializerOptions options) => JsonSchemaDescription.Of(new JsonObject { ["type"] = "string", ["pattern"] = "^-?[0-9]*$" });
+    }
+
+    public sealed record Cents([property: System.Text.Json.Serialization.JsonConverter(typeof(CentsConverter))] ProbeAmount Price, ProbeAmount Plain);
+
+    /// <summary>
+    /// A converter that replaces a value object's generated one, on the options or on a property, writes it,
+    /// so the schema is what that converter says, not the wrapped type's.
+    /// </summary>
+    [Fact]
+    public void A_described_converter_that_replaces_the_generated_one_is_described()
+    {
+        var registered = Options(new CentsConverter());
+        JsonSerializer.Serialize(ProbeAmount.From(7.80m), registered).ShouldBe("\"780\"", "the converter the options put in charge writes it");
+        registered.GetJsonSchemaAsNode(typeof(ProbeAmount), DescribedJsonSchema.ExporterOptions()).ToJsonString().ShouldBe("""{"type":"string","pattern":"^-?[0-9]*$"}""");
+
+        var plain = Options();
+        JsonSerializer.Serialize(new Cents(ProbeAmount.From(7.80m), ProbeAmount.From(1m)), plain).ShouldBe("""{"price":"780","plain":1}""");
+        var properties = plain.GetJsonSchemaAsNode(typeof(Cents), DescribedJsonSchema.ExporterOptions())["properties"]!;
+        properties["price"]!.ToJsonString().ShouldBe("""{"type":"string","pattern":"^-?[0-9]*$"}""", "the property's converter");
+        properties["plain"]!["type"]!.ToJsonString().ShouldContain("number", Case.Sensitive, "its neighbour keeps the generated one");
+    }
+
     /// <summary>A value object's own description, its rule as a schema, comes before the wrapped type's.</summary>
     [Fact]
     public void The_application_s_description_of_a_value_object_comes_first()
