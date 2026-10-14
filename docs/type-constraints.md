@@ -1,31 +1,22 @@
 # Type constraints
 
-C# has `where T : class`, `struct`, `new()` and a base type, but no `where T : abstract`, `sealed`,
-`record` or `interface`, no marker interface with any type argument, no two parameters held apart, and
-no way to demand a parameterless constructor of a given accessibility. The base
-package has attributes that say what C# cannot, and the analyzers report the type that breaks them,
-at build time, in whichever project declares it. CMTK0010 and CMTK0011 are both errors; the
+Tell a generic which types it accepts, beyond what a `where` clause can say. You put an attribute
+such as `[Abstract]` or `[Sealed]` on the type parameter, and the build fails wherever someone passes
+a type that doesn't fit.
+
+C# has `where T : class`, `struct`, `new()` and a base type. It has no `where T : abstract`,
+`sealed`, `record` or `interface`. It can't ask for a marker interface with any type argument, keep
+two parameters apart, or demand a parameterless constructor of a given accessibility. The base
+package has attributes for all of these. The analyzers report the type that breaks one at build
+time, in whichever project declares it.
+
+Both rules, CMTK0010 for type arguments and CMTK0011 for constructors, are errors. The
 [Analyzers README](../src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0010) is their reference. The
 examples import `CodoMetis.TypeKit`.
 
-## Constraints on a type parameter
+## Constrain a type parameter
 
-| Attribute | Accepts | Refuses |
-|---|---|---|
-| `[Abstract]` | an abstract class or record | a concrete type, and an interface |
-| `[Sealed]` | a sealed class or record, a struct, an enum | a type that can be derived from |
-| `[Record]` | a record class or record struct | a class or a struct |
-| `[Concrete]` | a class, record or struct that can be instantiated, an enum, a delegate | an abstract or static type, an interface, and the abstract bases `Enum`, `Delegate` and `ValueType`. No constructor is demanded, unlike `new()` |
-| `[Interface]` | an interface | a class, even one implementing the interface |
-| `[Unsealed]` | a class or record class that can be derived from, abstract included | a sealed or static class, an interface, a struct |
-| `[ValueObject]` | a struct or class implementing `IValue<T>` for any `T`, which no `where` can say | any other type, a closed set included, and an interface, even one deriving from `IValue<T>` |
-| `[ClosedSet]` | a type implementing `IClosedSet<TSelf>`, a fault set included | any other type, a value object or an enum included |
-| `[FlagsEnum]` | an enum marked `[Flags]` | a plain enum, which `where T : Enum` admits |
-| `[ReadOnlyStruct]` | a `readonly struct` or `readonly record struct`, the primitives included | a mutable struct, which `where T : struct` admits; an enum; a class |
-| `[Distinct]`, on two or more parameters | different types for them, related or not | one type twice, nullable annotations aside |
-| `[Unrelated]`, on two or more parameters | types with no implicit identity, reference or boxing conversion between them | a base and a derived type, an interface and an implementer, `object` and anything, a struct and `ValueType`; it implies `[Distinct]` |
-
-An aggregate whose events are a closed family, and whose identifier is a value object:
+Here is an aggregate whose events are a closed family, and whose identifier is a value object:
 
 ```csharp
 public abstract record AccountEvent;
@@ -44,10 +35,35 @@ public sealed class Account : Aggregate<AccountEvent, AccountId>;   // fine: an 
 public sealed class Ledger : Aggregate<Deposited, AccountId>;       // CMTK0010: Deposited is not abstract
 ```
 
-The rule reports at every closed use of the generic: a base type as above, an implemented interface,
-a field, a property, a parameter, a local, a `typeof`, a call, and a method group converted to a
-delegate, whether its type arguments are written or inferred. A written argument is reported where it
-is written; an inferred one at the call, or at the method group, whose arguments come from the delegate.
+`Account` builds, because `AccountEvent` is an abstract record and `AccountId` is a struct. `Ledger`
+fails the build (CMTK0010), because `Deposited` isn't abstract.
+
+Each attribute accepts some kinds of type and rejects the rest:
+
+| Attribute | Accepts | Rejects |
+|---|---|---|
+| `[Abstract]` | an abstract class or record | a concrete type, and an interface |
+| `[Sealed]` | a sealed class or record, a struct, an enum | a type that can be derived from |
+| `[Record]` | a record class or record struct | a class or a struct |
+| `[Concrete]` | a class, record or struct that can be instantiated, an enum, a delegate | an abstract or static type, an interface, and the abstract bases `Enum`, `Delegate` and `ValueType`. Unlike `new()`, it demands no constructor |
+| `[Interface]` | an interface | a class, even one that implements the interface |
+| `[Unsealed]` | a class or record class that can be derived from, abstract included | a sealed or static class, an interface, a struct |
+| `[ValueObject]` | a struct or class that implements `IValue<T>` for any `T`, which no `where` can say | any other type, a closed set included, and an interface, even one that derives from `IValue<T>` |
+| `[ClosedSet]` | a type that implements `IClosedSet<TSelf>`, a fault set included | any other type, a value object or an enum included |
+| `[FlagsEnum]` | an enum marked `[Flags]` | a plain enum, which `where T : Enum` admits |
+| `[ReadOnlyStruct]` | a `readonly struct` or `readonly record struct`, the primitives included | a mutable struct, which `where T : struct` admits; an enum; a class |
+| `[Distinct]`, on two or more parameters | different types for them, related or not | one type twice, nullable annotations aside |
+| `[Unrelated]`, on two or more parameters | types with no implicit identity, reference or boxing conversion between them | a base and a derived type, an interface and an implementer, `object` and anything, a struct and `ValueType`. It implies `[Distinct]` |
+
+The rule checks every closed use of the generic:
+
+- **Declarations:** a base type, as above, an implemented interface, a field, a property, a
+  parameter and a local.
+- **Expressions:** a `typeof`, a call, and a method group converted to a delegate.
+
+It checks them whether you write the type arguments or the compiler infers them. A written argument
+is reported where you wrote it. An inferred one is reported at the call, or at the method group,
+whose arguments come from the delegate:
 
 ```csharp
 public static class Snapshots
@@ -67,11 +83,13 @@ string hidden = Snapshots.Describe(new Balance());       // CMTK0010: Balance is
 
 ## The kind of a type argument
 
-The six further constraints each name a kind of type the language cannot ask for. `[Interface]` and
-`[Unsealed]` are what a proxy needs, a contract to implement or a class to derive from, and today fail at
-run time. `[ValueObject]` and `[ClosedSet]` are the marker interfaces with any type argument, which no
-`where T : IValue<?>` can say, so a generic over every value object has had no constraint at all. The
-closed-set example is in the [Analyzers README](../src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0010).
+Six of the attributes ask for a kind of type that C# has no constraint for:
+
+- **`[Interface]` and `[Unsealed]`** are what a proxy needs: a contract to implement, or a class to
+  derive from. Without them, a wrong type argument fails at run time.
+- **`[ValueObject]` and `[ClosedSet]`** accept their marker interface with any type argument. C# has
+  no `where T : IValue<?>`, so a generic over every value object has had no constraint at all.
+- **`[FlagsEnum]` and `[ReadOnlyStruct]`** narrow what `where T : Enum` and `where T : struct` admit.
 
 ```csharp
 public sealed class Proxy<[Interface] TContract>;                     // what DispatchProxy.Create, a mock or a REST client implements
@@ -98,12 +116,18 @@ public static class Kinds
 }
 ```
 
+The closed-set example is in the
+[Analyzers README](../src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0010).
+
 ## Two parameters apart
 
-The first four constrain one parameter. `[Distinct]` and `[Unrelated]` constrain a pair, so they go on
-both parameters, and a breach is reported once, at the later argument. A converter from a type to itself
-is a mistake, and a choice between two types routes a value by its static type, so a derived type beside
-its base takes the base's side whenever the value is held as the base:
+The attributes above each constrain one parameter. `[Distinct]` and `[Unrelated]` constrain a pair,
+so you put them on both parameters. A breach is reported once, at the later argument.
+
+- **`[Distinct]`** keeps one type out of both places. A converter from a type to itself is a mistake.
+- **`[Unrelated]`** also keeps a type and its base apart. A choice between two types routes a value
+  by its static type. So a derived type beside its base takes the base's side whenever the value is
+  held as the base.
 
 ```csharp
 public class Converter<[Distinct] TFrom, [Distinct] TTo>;                  // converting a type to itself is a mistake
@@ -127,15 +151,20 @@ public static class Picks
 }
 ```
 
-Where one parameter of a pair carries `[Unrelated]` and the other `[Distinct]`, the stricter applies;
-a parameter carrying neither is in no pair, and one parameter alone with the attribute constrains
-nothing. `Fault<T1, T2>` and `Fault<T1, T2, T3>` declare theirs `[Distinct]`, since with one type twice
-every conversion and `Of` would be ambiguous.
+**Good to know**
 
-## Forwarding
+- **A mixed pair gets the stricter rule.** Where one parameter carries `[Unrelated]` and the other
+  `[Distinct]`, `[Unrelated]` applies.
+- **Only marked parameters form a pair.** A parameter that carries neither attribute is in no pair.
+  One parameter alone with the attribute constrains nothing.
+- **`Fault<T1, T2>` and `Fault<T1, T2, T3>` declare theirs `[Distinct]`.** With one type twice, every
+  conversion and `Of` would be ambiguous.
 
-A type parameter given as the argument must carry the attribute itself, or be constrained as the
-table below says, or the requirement would end at the first forwarding parameter:
+## Pass a constrained parameter on
+
+When you pass a type parameter of your own as the argument, it must carry the attribute too, or have
+C# constraints that prove it (see the table below). Otherwise the requirement would end at the first
+parameter that forwards it:
 
 ```csharp
 public abstract class Leaky<TEvent> : Aggregate<TEvent, AccountId>;               // CMTK0010: TEvent does not carry [Abstract]
@@ -146,11 +175,14 @@ public sealed class Sealed<T> : Aggregate<AccountEvent, T> where T : struct;    
 ```
 
 A method that implements an interface's method, or overrides a base class's, carries the constraint
-of the method it implements whether or not it repeats the attribute, so a call through the class is
-held to what the interface declared. Repeat the attribute anyway, so the declaration says so.
+of the method it implements. That holds whether or not it repeats the attribute, so a call through
+the class is held to what the interface declared. Repeat the attribute anyway, so the declaration
+says so.
 
-A parameter whose C# constraints already leave it no argument that breaks the attribute needs no
-attribute:
+### When C# constraints are enough
+
+A parameter needs no attribute when its C# constraints already rule out every argument that would
+break it:
 
 | Attribute | Proved by |
 |---|---|
@@ -158,23 +190,59 @@ attribute:
 | `[Sealed]` | `struct` or `unmanaged`, or a bound `where T : U` with `U` proving `[Sealed]`, since a sealed type has no other subtype |
 | `[Record]` | a bound that is a record, `where T : AccountEvent`, or a `U` proving `[Record]`, since only records derive from records |
 | `[Concrete]` | `new()`, or anything that proves `[Sealed]`, `[Sealed]` itself included, since a sealed type is never abstract |
-| `[ValueObject]`, `[ClosedSet]` | a bound that is or implements the marker interface, `where T : struct, IValue<Guid>`, or a `U` proving it; for `[ValueObject]` beside `struct`, `unmanaged`, `new()` or a class bound, since an interface meets `IValue<Guid>` and `class` alike |
+| `[ValueObject]`, `[ClosedSet]` | a bound that is or implements the marker interface, `where T : struct, IValue<Guid>`, or a `U` proving it. For `[ValueObject]`, the bound counts only beside `struct`, `unmanaged`, `new()` or a class bound, since an interface meets `IValue<Guid>` and `class` alike |
 | `[Interface]`, `[Unsealed]`, `[FlagsEnum]`, `[ReadOnlyStruct]` | nothing but the attribute: an interface bound admits its implementers, `class` a sealed class, `Enum` a plain enum, `struct` a mutable one |
-| `[Distinct]`, for a pair | both parameters carrying `[Distinct]` or `[Unrelated]` in one generic, whose closed uses are checked in turn; `struct` or `unmanaged` against `class` or a class bound other than `Enum`, which every enum meets; two class bounds neither deriving from the other; against a type, C# constraints the type breaks. A bound built from a type parameter is met by what the parameter is at each use: `where T : IEquatable<T>` admits `int`, and two classes built from one, `Node<TA>`, are compared by their definitions. A type built from a parameter, `List<T>` or `T[]`, is held as the parameter is: proved by another definition, `List<T>` against `HashSet<int>`, or by an argument no use can make the other's, `List<T>` against `List<int>` where `T : class` |
-| `[Unrelated]`, for a pair | both carrying `[Unrelated]` in one generic, so a pair of one `[Unrelated]` and one `[Distinct]`, held to `[Unrelated]` at its closed uses, forwards only `[Distinct]`; `struct` or `unmanaged` against a class bound, or a class, other than `object`, `ValueType` and `Enum`; two class bounds neither deriving from the other, `Node<TA>` and `Node<TB>` being one chain; for types built from a parameter, a struct against a class no value type boxes to, two structs never one, two classes of different chains, but never two arrays, two delegates or an interface, related by variance or an implementer. `class` alone proves nothing: `object` satisfies it and is related to everything |
 
-The open generic inside its own body and an unbound
-`typeof(Aggregate<,>)` are never reported. Reflection, `MakeGenericType`, is out of reach, and the
-attributes carry no run-time check: the guarantee is the build.
+A pair of parameters is proved apart by `[Distinct]` when:
 
-## A parameterless constructor
+- **Both parameters carry `[Distinct]` or `[Unrelated]`** in one generic, whose closed uses are
+  checked in turn.
+- **One is `struct` or `unmanaged` and the other `class`**, or a class bound other than `Enum`, which
+  every enum meets.
+- **Both have class bounds**, and neither derives from the other.
+- **Against a type,** the type breaks the parameter's C# constraints.
 
-A type the host creates by reflection, an endpoint, a module, an entity configuration, a job, needs
-a parameterless constructor of a given accessibility, and C# checks that only through `new()`, which
-demands a public one and only where a type parameter says so. `[RequireParameterlessConstructor]` on
-the interface or base class says it once; CMTK0011 appears on the concrete type that lacks the
-constructor, directly or through any chain of base classes and interfaces, and the code fix writes
-it.
+Two kinds of bound need care:
+
+- **A bound built from a type parameter** is met by what the parameter is at each use.
+  `where T : IEquatable<T>` admits `int`. Two classes built from one, `Node<TA>`, are compared by
+  their definitions.
+- **A type built from a parameter**, `List<T>` or `T[]`, is held as the parameter is. It is proved
+  apart by another definition, `List<T>` against `HashSet<int>`. Or it is proved apart by an argument
+  that no use can make the other's, `List<T>` against `List<int>` where `T : class`.
+
+A pair is proved apart by `[Unrelated]` when:
+
+- **Both parameters carry `[Unrelated]`** in one generic. So a pair of one `[Unrelated]` and one
+  `[Distinct]`, held to `[Unrelated]` at its closed uses, forwards only `[Distinct]`.
+- **One is `struct` or `unmanaged` and the other a class bound, or a class,** other than `object`,
+  `ValueType` and `Enum`.
+- **Both have class bounds**, and neither derives from the other. `Node<TA>` and `Node<TB>` are one
+  chain.
+- **For types built from a parameter:** a struct against a class that no value type boxes to, two
+  structs that are never one, or two classes of different chains. Two arrays, two delegates or an
+  interface never prove it, since variance or an implementer relates them.
+
+`class` alone proves nothing for `[Unrelated]`: `object` satisfies it, and `object` is related to
+everything.
+
+**Good to know**
+
+- **The open generic is never reported.** Inside its own body, and as an unbound
+  `typeof(Aggregate<,>)`, it is left alone.
+- **The guarantee is the build.** Reflection, `MakeGenericType`, is out of reach, and the attributes
+  carry no run-time check.
+
+## Require a parameterless constructor
+
+Some types are created by a host through reflection: an endpoint, a module, an entity
+configuration, a job. Such a type needs a parameterless constructor of a given accessibility. C#
+checks that only through `new()`, which demands a public one, and only where a type parameter asks
+for it.
+
+Put `[RequireParameterlessConstructor]` on the interface or base class once. A concrete type that
+lacks the constructor, directly or through any chain of base classes and interfaces, then fails the
+build (CMTK0011). The code fix writes the constructor for you.
 
 ```csharp
 [RequireParameterlessConstructor]
@@ -211,15 +279,20 @@ public sealed class Importer : Plugin;                     // CMTK0011: the impl
 | is abstract, or an interface | no: only concrete descendants are checked | |
 | is a struct or a record struct | no: its parameterless constructor is public and can be nothing else (CS8958), so it satisfies `Public` as it is and no other accessibility can be asked of it | |
 
-A record's copy constructor does not count. The attribute is read from metadata, so the marked
-interface can live in another package, and a host's contract reaches every implementation in every
-project. It is a check and not an aspect that adds the constructor, since an aspect runs only in a
-project that compiles with Metalama, and the error has to appear in one that does not.
+**Good to know**
 
-## Severity
+- **A record's copy constructor doesn't count.**
+- **The marked interface can live in another package.** The attribute is read from metadata, so a
+  host's rule reaches every implementation in every project.
+- **It's a check, not a generator.** An aspect that adds the constructor would run only in a project
+  that compiles with Metalama, and the error has to appear in one that doesn't.
 
-Both rules are errors, since the code is wrong whatever surrounds it: a type argument that breaks
-what its parameter declares is what the host's reflection-driven construction then fails on, at run
-time, where the build could have said so. Both arrived in 2.0.0, a major version, which is the
-only kind that adds a rule at Error. The ids are public contract; the severity follows
-`.editorconfig` as every rule's does (`dotnet_diagnostic.CMTK0010.severity = warning`).
+## Why both rules are errors
+
+The code is wrong whatever surrounds it. A type argument that breaks what its parameter declares is
+the type the host's reflection-based construction then fails on, at run time, where the build could
+have told you.
+
+Both rules arrived in 2.0.0, a major version. Only a major version adds a rule at Error. The ids are
+public contract and never change. The severity follows `.editorconfig`, as every rule's does
+(`dotnet_diagnostic.CMTK0010.severity = warning`).
