@@ -14,7 +14,7 @@ public static class FaultAssertions
     /// <param name="reason">The reason the held fault must have.</param>
     /// <returns>The held fault, its detail and rule intact.</returns>
     /// <exception cref="TypeKitAssertionException">The fault is another, of either type, or uninitialized.</exception>
-    public static Fault<T1> ShouldHold<T1, T2>(this Fault<T1, T2> fault, T1 reason) where T1 : notnull where T2 : notnull =>
+    public static Fault<T1> ShouldHold<[Distinct] T1, [Distinct] T2>(this Fault<T1, T2> fault, T1 reason) where T1 : notnull where T2 : notnull =>
         HeldFaults.Expect<Fault<T1, T2>, T1>(reason, Uninitialized(fault), () => fault.Match<object>(held => held, held => held));
 
     /// <summary>The fault a composed fault must hold, of its second type.</summary>
@@ -22,7 +22,7 @@ public static class FaultAssertions
     /// <param name="reason">The reason the held fault must have.</param>
     /// <returns>The held fault, its detail and rule intact.</returns>
     /// <exception cref="TypeKitAssertionException">The fault is another, of either type, or uninitialized.</exception>
-    public static Fault<T2> ShouldHold<T1, T2>(this Fault<T1, T2> fault, T2 reason) where T1 : notnull where T2 : notnull =>
+    public static Fault<T2> ShouldHold<[Distinct] T1, [Distinct] T2>(this Fault<T1, T2> fault, T2 reason) where T1 : notnull where T2 : notnull =>
         HeldFaults.Expect<Fault<T1, T2>, T2>(reason, Uninitialized(fault), () => fault.Match<object>(held => held, held => held));
 
     /// <summary>The fault a composed fault must hold, of its first type.</summary>
@@ -30,7 +30,7 @@ public static class FaultAssertions
     /// <param name="reason">The reason the held fault must have.</param>
     /// <returns>The held fault, its detail and rule intact.</returns>
     /// <exception cref="TypeKitAssertionException">The fault is another, of any of the types, or uninitialized.</exception>
-    public static Fault<T1> ShouldHold<T1, T2, T3>(this Fault<T1, T2, T3> fault, T1 reason) where T1 : notnull where T2 : notnull where T3 : notnull =>
+    public static Fault<T1> ShouldHold<[Distinct] T1, [Distinct] T2, [Distinct] T3>(this Fault<T1, T2, T3> fault, T1 reason) where T1 : notnull where T2 : notnull where T3 : notnull =>
         HeldFaults.Expect<Fault<T1, T2, T3>, T1>(reason, Uninitialized(fault), () => fault.Match<object>(held => held, held => held, held => held));
 
     /// <summary>The fault a composed fault must hold, of its second type.</summary>
@@ -38,7 +38,7 @@ public static class FaultAssertions
     /// <param name="reason">The reason the held fault must have.</param>
     /// <returns>The held fault, its detail and rule intact.</returns>
     /// <exception cref="TypeKitAssertionException">The fault is another, of any of the types, or uninitialized.</exception>
-    public static Fault<T2> ShouldHold<T1, T2, T3>(this Fault<T1, T2, T3> fault, T2 reason) where T1 : notnull where T2 : notnull where T3 : notnull =>
+    public static Fault<T2> ShouldHold<[Distinct] T1, [Distinct] T2, [Distinct] T3>(this Fault<T1, T2, T3> fault, T2 reason) where T1 : notnull where T2 : notnull where T3 : notnull =>
         HeldFaults.Expect<Fault<T1, T2, T3>, T2>(reason, Uninitialized(fault), () => fault.Match<object>(held => held, held => held, held => held));
 
     /// <summary>The fault a composed fault must hold, of its third type.</summary>
@@ -46,7 +46,7 @@ public static class FaultAssertions
     /// <param name="reason">The reason the held fault must have.</param>
     /// <returns>The held fault, its detail and rule intact.</returns>
     /// <exception cref="TypeKitAssertionException">The fault is another, of any of the types, or uninitialized.</exception>
-    public static Fault<T3> ShouldHold<T1, T2, T3>(this Fault<T1, T2, T3> fault, T3 reason) where T1 : notnull where T2 : notnull where T3 : notnull =>
+    public static Fault<T3> ShouldHold<[Distinct] T1, [Distinct] T2, [Distinct] T3>(this Fault<T1, T2, T3> fault, T3 reason) where T1 : notnull where T2 : notnull where T3 : notnull =>
         HeldFaults.Expect<Fault<T1, T2, T3>, T3>(reason, Uninitialized(fault), () => fault.Match<object>(held => held, held => held, held => held));
 
     private static bool Uninitialized<TComposed>(TComposed fault) where TComposed : struct =>

@@ -140,7 +140,7 @@ public static class TypeKitHttpResultExtensions
     /// </remarks>
     /// <param name="result">The outcome of the operation the endpoint ran.</param>
     /// <returns>The response.</returns>
-    public static Results<Ok<T>, FaultProblem<T1>, FaultProblem<T2>> ToHttpResult<T, T1, T2>(this Result<T, Fault<T1, T2>> result)
+    public static Results<Ok<T>, FaultProblem<T1>, FaultProblem<T2>> ToHttpResult<T, [Distinct] T1, [Distinct] T2>(this Result<T, Fault<T1, T2>> result)
         where T : notnull
         where T1 : notnull
         where T2 : notnull =>
@@ -151,7 +151,7 @@ public static class TypeKitHttpResultExtensions
     /// <summary>A success as <c>204 No Content</c>; a fault of either type as problem details for its reason, with its detail.</summary>
     /// <param name="result">The outcome of the operation the endpoint ran.</param>
     /// <returns>The response.</returns>
-    public static Results<NoContent, FaultProblem<T1>, FaultProblem<T2>> ToHttpResult<T1, T2>(this Result<Fault<T1, T2>> result)
+    public static Results<NoContent, FaultProblem<T1>, FaultProblem<T2>> ToHttpResult<[Distinct] T1, [Distinct] T2>(this Result<Fault<T1, T2>> result)
         where T1 : notnull
         where T2 : notnull =>
         result.Match<Results<NoContent, FaultProblem<T1>, FaultProblem<T2>>>(
@@ -162,7 +162,7 @@ public static class TypeKitHttpResultExtensions
     /// <param name="result">The outcome of the operation the endpoint ran.</param>
     /// <param name="success">Makes the response for the value.</param>
     /// <returns>The response.</returns>
-    public static Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>> ToHttpResult<T, T1, T2, [DynamicallyAccessedMembers(SuccessMembers)] TSuccess>(this Result<T, Fault<T1, T2>> result, Func<T, TSuccess> success)
+    public static Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>> ToHttpResult<T, [Distinct] T1, [Distinct] T2, [DynamicallyAccessedMembers(SuccessMembers)] TSuccess>(this Result<T, Fault<T1, T2>> result, Func<T, TSuccess> success)
         where T : notnull
         where T1 : notnull
         where T2 : notnull
@@ -178,7 +178,7 @@ public static class TypeKitHttpResultExtensions
     /// <param name="result">The outcome of the operation the endpoint ran.</param>
     /// <param name="success">Makes the response for a success.</param>
     /// <returns>The response.</returns>
-    public static Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>> ToHttpResult<T1, T2, [DynamicallyAccessedMembers(SuccessMembers)] TSuccess>(this Result<Fault<T1, T2>> result, Func<TSuccess> success)
+    public static Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>> ToHttpResult<[Distinct] T1, [Distinct] T2, [DynamicallyAccessedMembers(SuccessMembers)] TSuccess>(this Result<Fault<T1, T2>> result, Func<TSuccess> success)
         where T1 : notnull
         where T2 : notnull
         where TSuccess : IResult
@@ -196,7 +196,7 @@ public static class TypeKitHttpResultExtensions
     /// </remarks>
     /// <param name="result">The outcome of the operation the endpoint ran.</param>
     /// <returns>The response.</returns>
-    public static Results<Ok<T>, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>> ToHttpResult<T, T1, T2, T3>(this Result<T, Fault<T1, T2, T3>> result)
+    public static Results<Ok<T>, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>> ToHttpResult<T, [Distinct] T1, [Distinct] T2, [Distinct] T3>(this Result<T, Fault<T1, T2, T3>> result)
         where T : notnull
         where T1 : notnull
         where T2 : notnull
@@ -208,7 +208,7 @@ public static class TypeKitHttpResultExtensions
     /// <summary>A success as <c>204 No Content</c>; a fault of any of the three types as problem details for its reason, with its detail.</summary>
     /// <param name="result">The outcome of the operation the endpoint ran.</param>
     /// <returns>The response.</returns>
-    public static Results<NoContent, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>> ToHttpResult<T1, T2, T3>(this Result<Fault<T1, T2, T3>> result)
+    public static Results<NoContent, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>> ToHttpResult<[Distinct] T1, [Distinct] T2, [Distinct] T3>(this Result<Fault<T1, T2, T3>> result)
         where T1 : notnull
         where T2 : notnull
         where T3 : notnull =>
@@ -220,7 +220,7 @@ public static class TypeKitHttpResultExtensions
     /// <param name="result">The outcome of the operation the endpoint ran.</param>
     /// <param name="success">Makes the response for the value.</param>
     /// <returns>The response.</returns>
-    public static Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>> ToHttpResult<T, T1, T2, T3, [DynamicallyAccessedMembers(SuccessMembers)] TSuccess>(this Result<T, Fault<T1, T2, T3>> result, Func<T, TSuccess> success)
+    public static Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>> ToHttpResult<T, [Distinct] T1, [Distinct] T2, [Distinct] T3, [DynamicallyAccessedMembers(SuccessMembers)] TSuccess>(this Result<T, Fault<T1, T2, T3>> result, Func<T, TSuccess> success)
         where T : notnull
         where T1 : notnull
         where T2 : notnull
@@ -237,7 +237,7 @@ public static class TypeKitHttpResultExtensions
     /// <param name="result">The outcome of the operation the endpoint ran.</param>
     /// <param name="success">Makes the response for a success.</param>
     /// <returns>The response.</returns>
-    public static Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>> ToHttpResult<T1, T2, T3, [DynamicallyAccessedMembers(SuccessMembers)] TSuccess>(this Result<Fault<T1, T2, T3>> result, Func<TSuccess> success)
+    public static Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>> ToHttpResult<[Distinct] T1, [Distinct] T2, [Distinct] T3, [DynamicallyAccessedMembers(SuccessMembers)] TSuccess>(this Result<Fault<T1, T2, T3>> result, Func<TSuccess> success)
         where T1 : notnull
         where T2 : notnull
         where T3 : notnull

@@ -40,3 +40,11 @@ compared by their definitions. Two arrays and two delegates are related by varia
 `T[]` to `object[]`, and an interface by whatever implements it, so neither proves anything. Against a type
 built from a parameter, a forwarding parameter's bounds and `unmanaged` are taken as met, since the type's
 arguments decide them.
+
+**The package's own generics over a composed fault declare `[Distinct]`.** `ShouldHold<T1, T2>` and
+`ShouldHold<T1, T2, T3>` (CodoMetis.TypeKit.Testing) and the eight `ToHttpResult` overloads over
+`Fault<T1, T2>` and `Fault<T1, T2, T3>` (CodoMetis.TypeKit.AspNetCore) forward their parameters into
+`Fault`'s `[Distinct]` ones without carrying it, which a consumer's code written the same way is refused
+for. The shipping projects build without the CMTK analyzers, so nothing said so: with the analyzer added to
+both projects for the measurement, they reported 38 CMTK0010 errors, and none once the parameters carry
+`[Distinct]`. A call with one type twice could not compile before either, as `Fault<A, A>` is refused.
