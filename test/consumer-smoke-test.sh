@@ -251,7 +251,8 @@ assert_contains "assertion-failed=Expected an error, but the Result<Int32, Strin
 
 # The analyzers run in the consumer's compiler. Three rules at once: a default Option, a value
 # object declared in a project that has no generator to implement it, and a fault of one type twice,
-# whose [Distinct] parameters the analyzer reads from the package's metadata.
+# whose [Distinct] parameters the analyzer reads from the package's metadata; and one breach of each
+# kind a type parameter can demand of its argument, declared in the consumer itself.
 cat > Guard.cs <<'CSHARP'
 using CodoMetis.TypeKit;
 using CodoMetis.TypeKit.ValueObjects;
@@ -263,6 +264,26 @@ public static class Guard
 }
 
 public readonly partial record struct Ungenerated : IValue<Guid>;
+
+public sealed class Proxy<[Interface] T> { }
+public sealed class Derivable<[Unsealed] T> { }
+public sealed class Keyed<[ValueObject] T> { }
+public sealed class Named<[ClosedSet] T> { }
+public sealed class Flagged<[FlagsEnum] T> { }
+public sealed class Pinned<[ReadOnlyStruct] T> { }
+public sealed class Apart<[Unrelated] TLeft, [Unrelated] TRight> { }
+public struct Cursor { public int Position; }
+
+public static class Kinds
+{
+    public static Proxy<string> Implementer = new();
+    public static Derivable<string> Sealed = new();
+    public static Keyed<Guid> Bare = new();
+    public static Named<DayOfWeek> Enum = new();
+    public static Flagged<DayOfWeek> Plain = new();
+    public static Pinned<Cursor> Mutable = new();
+    public static Apart<object, Cursor> Boxed = new();
+}
 CSHARP
 
 run_failing dotnet build --no-incremental
@@ -270,6 +291,13 @@ echo "$output" > "$work/core.guard"
 assert_contains "CMTK0001" "$work/core.guard" "CMTK0001 fires for default(Option<int>) in a base-only consumer"
 assert_contains "CMTK0002" "$work/core.guard" "CMTK0002 fires for a value object with no generator"
 assert_contains "error CMTK0010: 'DayOfWeek', the type argument for 'T2' of 'Fault<T1, T2>', is the same type as the argument for 'T1'" "$work/core.guard" "CMTK0010 fires for a fault of one type twice, from the attribute in the package's metadata"
+assert_contains "error CMTK0010: 'string', the type argument for 'T' of 'Proxy<T>', is not an interface" "$work/core.guard" "CMTK0010 fires for [Interface]"
+assert_contains "error CMTK0010: 'string', the type argument for 'T' of 'Derivable<T>', is not a class that can be derived from" "$work/core.guard" "CMTK0010 fires for [Unsealed]"
+assert_contains "error CMTK0010: 'Guid', the type argument for 'T' of 'Keyed<T>', is not a value object (IValue<T>)" "$work/core.guard" "CMTK0010 fires for [ValueObject]"
+assert_contains "error CMTK0010: 'DayOfWeek', the type argument for 'T' of 'Named<T>', is not a closed set (IClosedSet<TSelf>)" "$work/core.guard" "CMTK0010 fires for [ClosedSet]"
+assert_contains "error CMTK0010: 'DayOfWeek', the type argument for 'T' of 'Flagged<T>', is not an enum marked [Flags]" "$work/core.guard" "CMTK0010 fires for [FlagsEnum]"
+assert_contains "error CMTK0010: 'Cursor', the type argument for 'T' of 'Pinned<T>', is not a readonly struct" "$work/core.guard" "CMTK0010 fires for [ReadOnlyStruct]"
+assert_contains "error CMTK0010: 'Cursor', the type argument for 'TRight' of 'Apart<TLeft, TRight>', derives from, implements, boxes to or is a base of 'object', the type argument for 'TLeft'" "$work/core.guard" "CMTK0010 fires for [Unrelated]"
 rm Guard.cs
 
 # ── layered: the generators in a domain library, an app that reaches them through it ─────────────
