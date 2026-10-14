@@ -838,6 +838,53 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
+    /// A bound built from a type parameter is met by what the parameter is at each closed use, not by the
+    /// bound as written: <c>int</c> meets <c>where T : IEquatable&lt;T&gt;</c>, <c>Refusal</c> meets
+    /// <c>IFaultSet&lt;TSet&gt;</c>, <c>Leaf</c> meets <c>Node&lt;T&gt;</c>, so none of them proves the pair
+    /// apart; two classes built from parameters are compared by their definitions, so <c>Node&lt;TA&gt;</c> and
+    /// <c>Node&lt;TB&gt;</c> are one chain and <c>Node&lt;TA&gt;</c> and <c>Command</c> two (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public Task A_bound_built_from_a_type_parameter_is_met_by_what_the_parameter_is_at_each_use() =>
+        Test(
+            """
+            public abstract class Node<T> where T : Node<T> { }
+            public sealed class Leaf : Node<Leaf> { }
+
+            public sealed class Respond<TSet> where TSet : class, CodoMetis.TypeKit.ClosedSets.IFaultSet<TSet>
+            {
+                public Fault<TSet, {|#0:Refusal|}>? Held;
+                public Apart<TSet, {|#1:Refusal|}>? Kept;
+            }
+            public sealed class Equatable<T> : Pair<T, {|#2:int|}> where T : IEquatable<T> { }
+            public sealed class Comparable<T> : Pair<T, {|#3:int|}> where T : IComparable<T> { }
+            public sealed class EquatableApart<T> : Apart<T, {|#4:int|}> where T : IEquatable<T> { }
+            public sealed class SelfBound<T> : Pair<T, {|#5:Leaf|}> where T : Node<T> { }
+            public sealed class SelfBoundApart<T> : Apart<T, {|#6:Leaf|}> where T : Node<T> { }
+            public sealed class TwoSelfBounds<TA, TB> : Pair<TA, {|#7:TB|}> where TA : Node<TA> where TB : Node<TB> { }
+            public sealed class TwoSelfBoundsApart<TA, TB> : Apart<TA, {|#8:TB|}> where TA : Node<TA> where TB : Node<TB> { }
+            public sealed class Sequence<TA, TB> : Pair<TB, {|#9:System.Collections.Generic.List<int>|}> where TB : System.Collections.Generic.IEnumerable<TA> { }
+            public sealed class SequenceApart<TA, TB> : Apart<TB, {|#10:System.Collections.Generic.List<int>|}> where TB : System.Collections.Generic.IEnumerable<TA> { }
+
+            public sealed class SelfBoundAndOtherChain<T> : Pair<T, PlaceOrder> where T : Node<T> { }
+            public sealed class SelfBoundAndOtherChainApart<T> : Apart<T, PlaceOrder> where T : Node<T> { }
+            public sealed class SelfBoundAndCommand<TA, TB> : Pair<TA, TB> where TA : Node<TA> where TB : Command { }
+            public sealed class SelfBoundAndCommandApart<TA, TB> : Apart<TA, TB> where TA : Node<TA> where TB : Command { }
+            """,
+            Cmtk0010(0, "Refusal", "T2", "Fault<T1, T2>", "is not proved a different type from 'TSet', the type argument for 'T1'"),
+            Cmtk0010(1, "Refusal", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'TSet', the type argument for 'TLeft'"),
+            Cmtk0010(2, "int", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'T', the type argument for 'TLeft'"),
+            Cmtk0010(3, "int", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'T', the type argument for 'TLeft'"),
+            Cmtk0010(4, "int", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'T', the type argument for 'TLeft'"),
+            Cmtk0010(5, "Leaf", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'T', the type argument for 'TLeft'"),
+            Cmtk0010(6, "Leaf", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'T', the type argument for 'TLeft'"),
+            Cmtk0010(7, "TB", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'TA', the type argument for 'TLeft'"),
+            Cmtk0010(8, "TB", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'TA', the type argument for 'TLeft'"),
+            Cmtk0010(9, "List<int>", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'TB', the type argument for 'TLeft'"),
+            Cmtk0010(10, "List<int>", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'TB', the type argument for 'TLeft'"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
     /// A pair of one <c>[Unrelated]</c> and one <c>[Distinct]</c> is held to the stricter at its closed uses,
     /// but forwards only what both declare: into a <c>[Distinct]</c> pair it is proved, into an
     /// <c>[Unrelated]</c> one it is not, since the generic's own closed uses would not check the relation

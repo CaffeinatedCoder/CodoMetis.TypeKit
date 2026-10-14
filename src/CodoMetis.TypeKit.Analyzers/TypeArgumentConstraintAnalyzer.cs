@@ -473,7 +473,7 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
 
             return (IsValueTypes(one) && (two.HasReferenceTypeConstraint || ClassBound(two) is { } bound && NoBox(bound)))
                 || (IsValueTypes(two) && (one.HasReferenceTypeConstraint || ClassBound(one) is { } bound_ && NoBox(bound_)))
-                || (ClassBound(one) is { } first_ && ClassBound(two) is { } second_ && !Related(compilation, first_, second_));
+                || (ClassBound(one) is { } first_ && ClassBound(two) is { } second_ && DifferentChains(compilation, first_, second_));
         }
 
         var (parameter, type) = first is ITypeParameterSymbol p ? (p, second) : ((ITypeParameterSymbol)second, first);
@@ -495,7 +495,7 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
 
             return (IsValueTypes(one) && ClassBound(two) is { } bound && NoBox(bound))
                 || (IsValueTypes(two) && ClassBound(one) is { } bound_ && NoBox(bound_))
-                || (ClassBound(one) is { } first_ && ClassBound(two) is { } second_ && !Related(compilation, first_, second_));
+                || (ClassBound(one) is { } first_ && ClassBound(two) is { } second_ && DifferentChains(compilation, first_, second_));
         }
 
         var (parameter, type) = first is ITypeParameterSymbol p ? (p, second) : ((ITypeParameterSymbol)second, first);
@@ -505,8 +505,45 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         return ClassBound(parameter) is { } classBound
             && type.TypeKind is not TypeKind.Interface and not TypeKind.Dynamic and not TypeKind.TypeParameter
             && type.SpecialType is not SpecialType.System_Object
-            && !Related(compilation, classBound, type);
+            && DifferentChains(compilation, classBound, type);
     }
+
+    /// <summary>
+    /// Whether no type derives from both classes, nor one from the other: a class has one base chain, so two
+    /// classes meet only where one derives from the other. A class built from a type parameter,
+    /// <c>Node&lt;T&gt;</c>, is compared by its definition, since its arguments are decided at each closed use:
+    /// compared as written, <c>where T : Node&lt;T&gt;</c> was proved apart from <c>Leaf : Node&lt;Leaf&gt;</c>,
+    /// and so were two parameters bound to <c>Node&lt;TA&gt;</c> and <c>Node&lt;TB&gt;</c> (reported 2026-10-14).
+    /// </summary>
+    private static bool DifferentChains(CSharpCompilation compilation, ITypeSymbol first, ITypeSymbol second) =>
+        Open(first) || Open(second)
+            ? !Derives(first, second) && !Derives(second, first)
+            : !Related(compilation, first, second);
+
+    /// <summary>Whether <paramref name="from"/>'s definition is <paramref name="type"/>'s or one of its bases'.</summary>
+    private static bool Derives(ITypeSymbol type, ITypeSymbol from)
+    {
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            if (SymbolEqualityComparer.Default.Equals(current.OriginalDefinition, from.OriginalDefinition)) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="type"/> is or is built from a type parameter, <c>T</c>, <c>List&lt;T&gt;</c>,
+    /// <c>T[]</c>, <c>Outer&lt;T&gt;.Inner</c>: what it stands for is decided at each closed use.
+    /// </summary>
+    private static bool Open(ITypeSymbol type) => type switch
+    {
+        ITypeParameterSymbol               => true,
+        IArrayTypeSymbol array             => Open(array.ElementType),
+        IPointerTypeSymbol pointer         => Open(pointer.PointedAtType),
+        IFunctionPointerTypeSymbol pointer => Open(pointer.Signature.ReturnType) || pointer.Signature.Parameters.Any(parameter => Open(parameter.Type)),
+        INamedTypeSymbol named             => named.TypeArguments.Any(Open) || named.ContainingType is { } outer && Open(outer),
+        _                                  => false,
+    };
 
     /// <summary>Whether both parameters carry <paramref name="constraint"/> (or a stricter one) in one generic, so its closed uses are checked for the pair.</summary>
     private static bool Together(TypeKitSymbols symbols, ITypeParameterSymbol one, ITypeParameterSymbol two, TypeArgumentConstraint constraint)
@@ -536,8 +573,11 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     /// <summary>
     /// Whether <paramref name="type"/> could be the argument for <paramref name="parameter"/>: it meets the
     /// parameter's C# constraints as far as they can be read, <c>struct</c>, <c>unmanaged</c>, <c>class</c>
-    /// and each bound that is a type. A <c>new()</c> constraint and a bound that is itself a parameter are
-    /// taken as met.
+    /// and each bound that is a closed type. A <c>new()</c> constraint and a bound that is itself a parameter
+    /// are taken as met, and so is an interface bound built from one: <c>where T : IEquatable&lt;T&gt;</c> is met
+    /// by <c>int</c>, which implements <c>IEquatable&lt;int&gt;</c> and not the bound as written, and was taken
+    /// as proof that <c>T</c> is never <c>int</c> (reported 2026-10-14). A class bound built from one,
+    /// <c>Node&lt;T&gt;</c>, is met by a type whose chain holds its definition.
     /// </summary>
     private static bool CouldBe(CSharpCompilation compilation, ITypeParameterSymbol parameter, ITypeSymbol type)
     {
@@ -545,7 +585,9 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         if (parameter.HasUnmanagedTypeConstraint && !type.IsUnmanagedType) return false;
         if (parameter.HasReferenceTypeConstraint && !type.IsReferenceType) return false;
 
-        return parameter.ConstraintTypes.OfType<INamedTypeSymbol>().All(bound => Converts(compilation, type, bound));
+        return parameter.ConstraintTypes.OfType<INamedTypeSymbol>().All(bound => Open(bound)
+                                                                                   ? bound.TypeKind is not TypeKind.Class || Derives(type, bound)
+                                                                                   : Converts(compilation, type, bound));
     }
 
     /// <summary>
