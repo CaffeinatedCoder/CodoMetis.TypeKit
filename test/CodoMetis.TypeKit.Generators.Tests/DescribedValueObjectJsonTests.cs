@@ -105,6 +105,37 @@ public sealed class DescribedValueObjectJsonTests
         properties["lines"]!["items"]!.ToJsonString().ShouldBe("""{"type":"string","pattern":"^-?[0-9]*$"}""");
     }
 
+    public sealed record Holding(OverUntracked Inner);
+
+    /// <summary>
+    /// The application's own transform runs once on every node of the document: a value object described as its
+    /// wrapped type's schema was exported on its own, and the transform ran on that export's root too, as if it
+    /// were the document's, then again where it was put. A root-marking transform wrote <c>$schema</c> into the
+    /// property (reported 2026-10-14). The wrapped type's own properties still get it, once.
+    /// </summary>
+    [Fact]
+    public void The_application_s_transform_runs_once_on_every_node()
+    {
+        var exporter = DescribedJsonSchema.ExporterOptions(new JsonSchemaExporterOptions
+        {
+            TransformSchemaNode = (context, node) =>
+            {
+                if (node is not JsonObject schema) return node;
+                schema["x-runs"] = (schema["x-runs"]?.GetValue<int>() ?? 0) + 1;
+                if (context.Path.IsEmpty) schema["$schema"] = "https://json-schema.org/draft/2020-12/schema";
+                return schema;
+            },
+        });
+
+        var invoice = Options().GetJsonSchemaAsNode(typeof(Invoice), exporter);
+        invoice.ToJsonString().Split("$schema").Length.ShouldBe(2, "the document's root alone is marked");
+        invoice["properties"]!["total"]!["x-runs"]!.GetValue<int>().ShouldBe(1);
+
+        var holding = Options().GetJsonSchemaAsNode(typeof(Holding), exporter)["properties"]!["inner"]!;
+        holding["x-runs"]!.GetValue<int>().ShouldBe(1);
+        holding["properties"]!["x"]!["x-runs"]!.GetValue<int>().ShouldBe(1, "a property of the wrapped type is a node of the document too");
+    }
+
     /// <summary>A value object's own description, its rule as a schema, comes before the wrapped type's.</summary>
     [Fact]
     public void The_application_s_description_of_a_value_object_comes_first()

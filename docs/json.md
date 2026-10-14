@@ -265,6 +265,11 @@ that replaces a value object's generated one either describes it, or leaves it u
   a resolver builds a nullable contract by hand, with `JsonMetadataServices.GetNullableConverter` over
   another converter of `T`, it's described as `T`'s. Under `ReferenceHandler.Preserve`, a value object
   over it is judged by `T`'s. Give the nullable type a converter of its own instead.
+- **Your own transform runs once on each node.** Pass your exporter options to
+  `DescribedJsonSchema.ExporterOptions(yours)`, and your `TransformSchemaNode` runs after the
+  description. Where a type is described as another's schema, such as a value object as its
+  underlying type's, the nodes inside that schema get it too, but their `context.Path` starts at
+  that schema, not at the document's root.
 - **A description covers one non-null value.** The null is added where a plain type would get one in
   the same position: beside the type, or, where the schema combines subschemas (`oneOf`, `not`, an
   `if` and its branches), in a branch beside the whole.

@@ -383,13 +383,27 @@ public static class DescribedJsonSchema
     {
         var then = options?.TransformSchemaNode;
 
-        JsonSchemaExporterOptions described = null!;
-        described = new JsonSchemaExporterOptions
+        // A type described as another's is exported on its own, and that export's root is the node the
+        // document's transform gets where it is put: the transform there ran on it twice, once as a root, so
+        // a root-marking transform wrote $schema into a property, and Microsoft's [Description] sample threw
+        // on the key it had already added (reported 2026-10-14). The nested root is left to the document's.
+        JsonSchemaExporterOptions nested = null!;
+        nested = new JsonSchemaExporterOptions
         {
             TreatNullObliviousAsNonNullable = options?.TreatNullObliviousAsNonNullable ?? false,
             TransformSchemaNode = (context, node) =>
             {
-                var result = Describe(context, node, described);
+                var result = Describe(context, node, nested);
+                return then is null || context.Path.IsEmpty ? result : then(context, result);
+            },
+        };
+
+        var described = new JsonSchemaExporterOptions
+        {
+            TreatNullObliviousAsNonNullable = nested.TreatNullObliviousAsNonNullable,
+            TransformSchemaNode = (context, node) =>
+            {
+                var result = Describe(context, node, nested);
                 return then is null ? result : then(context, result);
             },
         };
