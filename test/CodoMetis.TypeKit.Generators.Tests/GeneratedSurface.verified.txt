@@ -50,6 +50,69 @@ ProbeAmount
   static op_LessThanOrEqual(ProbeAmount, ProbeAmount) : Boolean
   extension static ProbeAmountExtensions.GetValue(ProbeAmount) : Decimal
   extension static ProbeAmountExtensions.ValueOrNull(ProbeAmount?) : Decimal?
+ProbeArticle
+  CompareTo(Object) : Int32
+  CompareTo(ProbeArticle) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeArticle) : Boolean
+  GetHashCode() : Int32
+  Revalidate() : Result<ProbeArticle, ProbeArticleFault>
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  Value : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeArticle, String>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ProbeArticle>
+  implements IComparisonOperators<ProbeArticle, ProbeArticle, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ProbeArticle, ProbeArticle, Boolean>
+  implements IEquatable<ProbeArticle>
+  implements IFormattable
+  implements IParsable<ProbeArticle>
+  implements IValidatedValue<ProbeArticle, String, ProbeArticleFault>
+  implements IValueObject<ProbeArticle, String>
+  implements IValueObjectMaterializer<ProbeArticle, String>
+  nested ProbeArticleJsonConverter : JsonConverter<ProbeArticle>, IStoredJsonConverterSource
+  nested ProbeArticleTypeConverter : TypeConverter
+  new()
+  static Create(String) : Result<ProbeArticle, ProbeArticleFault>
+  static FromKnownGood(String, String) : ProbeArticle
+  static Parse(String, IFormatProvider) : ProbeArticle
+  static TryFrom(String) : Option<ProbeArticle>
+  static TryParse(String, IFormatProvider, out ProbeArticle) : Boolean
+  static op_Equality(ProbeArticle, ProbeArticle) : Boolean
+  static op_GreaterThan(ProbeArticle, ProbeArticle) : Boolean
+  static op_GreaterThanOrEqual(ProbeArticle, ProbeArticle) : Boolean
+  static op_Inequality(ProbeArticle, ProbeArticle) : Boolean
+  static op_LessThan(ProbeArticle, ProbeArticle) : Boolean
+  static op_LessThanOrEqual(ProbeArticle, ProbeArticle) : Boolean
+  extension static ProbeArticleExtensions.GetValue(ProbeArticle) : String
+  extension static ProbeArticleExtensions.ValueOrNull(ProbeArticle?) : String
+ProbeArticleFault
+  Description : String
+  Kind : FaultKind
+  Match(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<ProbeArticleFault>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<ProbeArticleFault>
+  implements IFault
+  implements IFaultSet<ProbeArticleFault>
+  implements IParsable<ProbeArticleFault>
+  nested ProbeArticleFaultJsonConverter : JsonConverter<ProbeArticleFault>
+  nested ProbeArticleFaultTypeConverter : TypeConverter
+  static All : IReadOnlyList<ProbeArticleFault>
+  static Parse(String) : ProbeArticleFault
+  static Parse(String, Boolean) : ProbeArticleFault
+  static TryParse(String, Boolean, out ProbeArticleFault) : Boolean
+  static TryParse(String, out ProbeArticleFault) : Boolean
 ProbeCode
   CompareTo(Object) : Int32
   CompareTo(ProbeCode) : Int32
