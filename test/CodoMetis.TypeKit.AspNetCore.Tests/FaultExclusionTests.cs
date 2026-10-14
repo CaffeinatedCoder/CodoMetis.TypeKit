@@ -105,6 +105,23 @@ public sealed class FaultExclusionTests
         Statuses(document, "/mvc/orders/{id}", "post").ShouldBe(["200", "409"]);
     }
 
+    /// <summary>
+    /// What the builder <c>MapControllers()</c> returns adds is on the endpoint, not on the action's descriptor:
+    /// the document read the descriptor, so it listed the 404 the endpoint refuses to answer with, and a client
+    /// of the document got a 500 for it (reported 2026-10-14).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Versions))]
+    public async Task WithoutFaults_on_MapControllers_leaves_members_out_of_every_action_s_document(OpenApiSpecVersion version)
+    {
+        await using var app = await StartAsync(version, mvc: [typeof(OrdersController)], controllers: actions => actions.WithoutFaults(OrderFault.NotFound));
+
+        await ProblemAsync(app, HttpMethod.Get, "/mvc/orders/2", HttpStatusCode.Conflict);
+        await Should.ThrowAsync<InvalidOperationException>(() => app.GetTestClient().GetAsync("/mvc/orders/9", TestContext.Current.CancellationToken));
+
+        Statuses(await DocumentAsync(app), "/mvc/orders/{id}", "get").ShouldBe(["200", "409"]);
+    }
+
     [Fact]
     public async Task A_value_no_member_has_stops_the_host()
     {
@@ -172,7 +189,8 @@ public sealed class FaultExclusionTests
         OpenApiSpecVersion version = OpenApiSpecVersion.OpenApi3_1,
         Action<WebApplication>? endpoints = null,
         Type[]? mvc = null,
-        bool typed = false)
+        bool typed = false,
+        Action<ControllerActionEndpointConventionBuilder>? controllers = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
         builder.WebHost.UseTestServer();
@@ -205,7 +223,11 @@ public sealed class FaultExclusionTests
         var app = builder.Build();
         app.MapOpenApi();
         endpoints?.Invoke(app);
-        if (mvc is not null) app.MapControllers();
+        if (mvc is not null)
+        {
+            var actions = app.MapControllers();
+            controllers?.Invoke(actions);
+        }
 
         try
         {

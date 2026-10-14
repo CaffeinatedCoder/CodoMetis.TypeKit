@@ -1,5 +1,8 @@
 using System.Globalization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,10 +51,36 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
             : "The fault this problem reports: the name of its member.")
       + " Present only on a problem that answers a fault of the endpoint's Result.";
 
+    /// <summary>
+    /// The metadata of the endpoint the operation describes, as the response and the startup check read it.
+    /// </summary>
+    /// <remarks>
+    /// An MVC action's descriptor holds its attributes alone; what a convention builder adds, such as the
+    /// one <c>MapControllers()</c> returns, is on the endpoint only. Read from the descriptor, a
+    /// <c>WithFaultStatus</c> there answered 451 where the document said 404, and a <c>WithoutFaults</c>
+    /// left in the document a member the endpoint refuses to answer with (reported 2026-10-14). The
+    /// endpoint is the one whose metadata holds the operation's action; a minimal API's descriptor is built
+    /// from its endpoint's metadata already, and holds no action.
+    /// </remarks>
+    private static IReadOnlyList<object> EndpointMetadata(OpenApiOperationTransformerContext context)
+    {
+        var action = context.Description.ActionDescriptor;
+
+        if (context.ApplicationServices.GetService<EndpointDataSource>() is { } endpoints)
+        {
+            foreach (var endpoint in endpoints.Endpoints)
+            {
+                if (ReferenceEquals(endpoint.Metadata.GetMetadata<ActionDescriptor>(), action)) return [.. endpoint.Metadata];
+            }
+        }
+
+        return [.. action.EndpointMetadata];
+    }
+
     public async Task TransformAsync(OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
     {
         IOpenApiSchema? problem = null;
-        IReadOnlyList<object> endpointMetadata = [.. context.Description.ActionDescriptor.EndpointMetadata];
+        var endpointMetadata = EndpointMetadata(context);
 
         // Every fault type the endpoint answers with, a Fault<T1, T2>'s each: a status two of them share is one
         // response, which lists the problem types of both, and the statuses come in ascending order.
