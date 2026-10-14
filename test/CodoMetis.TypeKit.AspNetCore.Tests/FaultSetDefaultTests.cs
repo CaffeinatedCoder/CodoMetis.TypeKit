@@ -28,6 +28,8 @@ public sealed class FaultSetDefaultTests
 
     private static Result<PlainFault> Gone() => PlainFault.Gone;
 
+    private static Result<ProbeStatus> Opened() => ProbeStatus.Open;
+
     private static Result<Fault<ProbeKindlessFault>> Kindless() => Fault.Of(ProbeKindlessFault.Known);
 
     /// <summary>What a host writes once for every set: the kind's status, and a problem type per kind.</summary>
@@ -80,6 +82,21 @@ public sealed class FaultSetDefaultTests
             app => app.MapDelete("/plain", () => Gone().ToHttpResult())));
 
         refusal.Message.ShouldStartWith("No HTTP status is mapped for the fault type FaultSetDefaultTests.PlainFault, which these endpoints answer with: HTTP: DELETE /plain.");
+    }
+
+    /// <summary>
+    /// A closed set whose members are no <see cref="IFault"/> is no fault set: it has no default, as an enum
+    /// has none, and the host is refused with the unmapped message. The default reached for the members' kind
+    /// and failed on the cast instead.
+    /// </summary>
+    [Fact]
+    public async Task A_closed_set_that_is_no_fault_set_still_needs_a_mapping_of_its_own()
+    {
+        var refusal = await Should.ThrowAsync<InvalidOperationException>(() => StartAsync(
+            services => services.AddFaultResponses(),
+            app => app.MapDelete("/status", () => Opened().ToHttpResult())));
+
+        refusal.Message.ShouldStartWith("No HTTP status is mapped for the fault type ProbeStatus, which these endpoints answer with: HTTP: DELETE /status.");
     }
 
     [Fact]

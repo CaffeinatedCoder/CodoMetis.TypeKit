@@ -339,6 +339,32 @@ public sealed class DescribedSchemaTests
         AdmitsNull(document.Property(nameof(Labels), "describedNamed")["additionalProperties"]!).ShouldBe(AdmitsNull(document.Property(nameof(Labels), "plainNamed")["additionalProperties"]!), "a value, as ASP.NET has a string?'s");
     }
 
+    /// <summary>A reference type the host describes, once as a nullable property and once as a plain one.</summary>
+    public sealed record Linked(Uri? Href, Uri Self);
+
+    /// <summary>
+    /// A description the host registers is applied as it stands, with no word of the position it is in, so
+    /// the nullable property admits null in this branch alone, and its neighbour of the same type does not.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Versions))]
+    public async Task A_host_described_reference_type_admits_null_on_a_nullable_property_alone(OpenApiSpecVersion version)
+    {
+        var document = await ProbeHost.DocumentAsync(
+            openApi => openApi.AddTypeKit(),
+            json => json.SerializerOptions.Converters.Add(new JsonSchemaDescriptions().Describe<Uri>(JsonSchemaDescription.Of(new JsonObject { ["type"] = "string", ["format"] = "uri-reference" }))),
+            version,
+            app => app.MapPost("/linked", int (Linked linked) => 0));
+
+        var plain = document.Property(nameof(Linked), "self");
+        plain["format"]!.GetValue<string>().ShouldBe("uri-reference", "the control: the description reached the property");
+        AdmitsNull(plain).ShouldBeFalse("a property that is not nullable");
+
+        var nullable = document.Property(nameof(Linked), "href");
+        nullable["format"]!.GetValue<string>().ShouldBe("uri-reference", "the description reached the property");
+        AdmitsNull(nullable).ShouldBeTrue("a nullable property");
+    }
+
     /// <summary>
     /// A keyword the OpenAPI model does not hold is written aside, where validators do not see it: a tuple's
     /// <c>prefixItems</c> beside <c>items: false</c> would then refuse every non-empty array. Refused instead.
