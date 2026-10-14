@@ -411,7 +411,7 @@ the one warning:
 | CMTK1022 | An abstract type with a value-object marker: it would get no member, and a value held as it, of a type derived from it, would have no `Value` and be written as `{}`. Declare the marker on the sealed type. An abstract closed set is CMTK1014. |
 | CMTK1023 | A warning, and the value object is generated: a base record declares `Equals(TBase)`, `GetHashCode()` or `IEquatable<TBase>.Equals`, which the generated equality, the wrapped value's, does not call. Remove them from the base, or derive from a record without them. |
 
-The analyzers that come with the base package add CMTK0001 to CMTK0013; see
+The analyzers that come with the base package add CMTK0001 to CMTK0014; see
 [CodoMetis.TypeKit.Analyzers](https://www.nuget.org/packages/CodoMetis.TypeKit.Analyzers).
 
 ## Reading the generated code
