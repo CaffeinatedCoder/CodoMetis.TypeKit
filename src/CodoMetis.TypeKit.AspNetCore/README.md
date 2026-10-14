@@ -373,6 +373,29 @@ group's, an inner group's over an outer group's, an action's over its controller
 metadata of `MapControllers()`'s builder after every attribute, so a status set there wins over an
 action's own.
 
+### Leaving out what a route cannot answer
+
+The document lists every status a fault type is mapped to, on every route that answers with it. A route
+that never reports some members leaves them out:
+
+```csharp
+app.MapPost("/v4/accounts", (NewAccount body) => accounts.Open(body).ToHttpResult())
+   .WithoutFaults(AccountFault.NotFound);   // opening an account never reports a missing one: no 404 here
+```
+
+The operation lists no status and no problem type for a member left out, and no response for a status
+no member is left at. An MVC action or controller says it with `[WithoutFaults<AccountFault>(nameof(AccountFault.NotFound))]`,
+and a route group or a controller for its endpoints that answer with the type, as for a status, once per fault
+type.
+
+Reporting a member left out anyway throws an `InvalidOperationException` naming the endpoint and the
+member, rather than answering with a status the document does not list: leave out only what the route
+cannot report. It is the one refusal here that waits for a request: it is thrown as the response is
+written, so the client gets the host's 500, where every other mistake in the mapping stops the host at
+start. What stops the host from starting, as for a status: a value or a name no member has, a
+member the endpoint also gives a status, and a group or a controller none of whose endpoints answers with
+the type.
+
 ### The success the endpoint chooses
 
 A success is `200 OK` with its value unless the endpoint says otherwise, with any of ASP.NET's typed

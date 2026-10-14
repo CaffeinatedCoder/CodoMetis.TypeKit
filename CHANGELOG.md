@@ -20,6 +20,7 @@ section is the GitHub release's notes.
 - **`FaultKind.PreconditionFailed`** (412) and **`FaultKind.Malformed`** (400), answered with no mapping ([closed sets as faults](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type)).
 - **CMTK0014** (Warning): a `FaultKind` or `ConstructorAccessibility` that names no member, such as `(FaultKind)9` or `default` ([CMTK0014](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014)).
 - **`AsOptionalText()`/`AsOptionalIdentifier()`**: a blank is no text, a hidden character still `Hidden` ([Written text](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/text.md#required-and-optional)).
+- **`WithoutFaults`** and `[WithoutFaults<T>]`: a route leaves out of its document the members it never answers with, and reporting one throws ([Leaving out what a route cannot answer](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer)).
 - **CMTK1023** (Warning): a base record's `Equals`, `GetHashCode` or `IEquatable`, which the value object's equality no longer calls ([Build errors](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#build-errors)).
 
 ### Changed

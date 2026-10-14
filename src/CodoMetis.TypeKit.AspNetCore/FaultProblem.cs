@@ -54,7 +54,15 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
 
         var responses = httpContext.RequestServices.GetService<FaultResponses<TFault>>() ?? throw FaultResponses<TFault>.Unmapped();
         var answer = responses.Of(Fault);
-        var status = httpContext.GetEndpoint()?.Metadata is { } metadata ? FaultStatuses.Override(metadata, Fault, responses.Type) ?? answer.Status : answer.Status;
+        var endpoint = httpContext.GetEndpoint();
+
+        // The document lists no status for a member the endpoint leaves out: answering it would contradict it.
+        if (endpoint is not null && FaultExclusions.Excluding(endpoint.Metadata, Fault, responses.Type) is { } exclusion)
+            throw new InvalidOperationException(
+                $"{endpoint.DisplayName ?? "The endpoint"} reported {answer.QualifiedName}, which {exclusion.Describe()} leaves out of its document, " +
+                "so no status the document lists answers it. Remove the member from what the endpoint leaves out, or report another." + FaultRefusals.LeftOut);
+
+        var status = endpoint is not null ? FaultStatuses.Override(endpoint.Metadata, Fault, responses.Type) ?? answer.Status : answer.Status;
         var name = httpContext.RequestServices.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true ? answer.QualifiedName : answer.Name;
         var detail = Detail ?? answer.Description;
 

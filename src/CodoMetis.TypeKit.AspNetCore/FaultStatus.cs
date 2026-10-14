@@ -3,14 +3,21 @@ using Microsoft.AspNetCore.Http;
 
 namespace CodoMetis.TypeKit.AspNetCore
 {
-    /// <summary>A status an endpoint answers some fault with in place of the host's: what the startup check reads without knowing the type.</summary>
-    internal interface IFaultStatus
+    /// <summary>
+    /// What an endpoint, a group or a controller declares about one fault type, a status or members left
+    /// out: what the startup check reads without knowing the type, to find a declaration whose scope answers
+    /// with no such fault.
+    /// </summary>
+    internal interface IFaultDeclaration
     {
         Type FaultType { get; }
 
         /// <summary>How the metadata reads in a message: <c>WithFaultStatus(OrderFault.NameTaken, 422)</c>.</summary>
         string Describe();
     }
+
+    /// <summary>A status an endpoint answers some fault with in place of the host's.</summary>
+    internal interface IFaultStatus : IFaultDeclaration;
 
     /// <summary>The typed form, which the response, the document and the startup check read.</summary>
     internal interface IFaultStatus<TFault> : IFaultStatus where TFault : notnull
@@ -101,14 +108,14 @@ namespace CodoMetis.TypeKit.AspNetCore
         /// <summary>The HTTP status.</summary>
         public int Status { get; }
 
-        Type IFaultStatus.FaultType => typeof(TFault);
+        Type IFaultDeclaration.FaultType => typeof(TFault);
 
         bool IFaultStatus<TFault>.Matches(TFault fault, FaultType<TFault> type) => string.Equals(type.NameOf(fault), Fault, StringComparison.Ordinal);
 
         string? IFaultStatus<TFault>.Problem(FaultType<TFault> type) =>
-            type.TryFind(Fault, out _) ? null : $"{((IFaultStatus)this).Describe()} names no member of {type.TypeName}";
+            type.TryFind(Fault, out _) ? null : $"{((IFaultDeclaration)this).Describe()} names no member of {type.TypeName}";
 
-        string IFaultStatus.Describe() => $"[FaultStatus<{FaultTypes.NameOf(typeof(TFault))}>(\"{Fault}\", {Status})]";
+        string IFaultDeclaration.Describe() => $"[FaultStatus<{FaultTypes.NameOf(typeof(TFault))}>(\"{Fault}\", {Status})]";
     }
 }
 

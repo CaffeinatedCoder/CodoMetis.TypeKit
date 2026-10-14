@@ -78,16 +78,26 @@ internal sealed class FaultResponses<TFault> where TFault : notnull
                 $"{Type.TypeName} has no member {(fault is Enum ? $"with the value {fault:D}" : "that is this instance")}, " +
                 "so no status is mapped for it." + FaultRefusals.Mapping);
 
-    /// <summary>Every status an endpoint gives, with the statuses its metadata sets for some members in place of the mapped ones.</summary>
+    /// <summary>
+    /// Every status an endpoint gives, with the statuses its metadata sets for some members in place of the
+    /// mapped ones, and none for the members it leaves out.
+    /// </summary>
     public IReadOnlyList<int> StatusesOf(IReadOnlyList<object> endpointMetadata) =>
-        [.. Type.Members.Select(fault => FaultStatuses.Override(endpointMetadata, fault, Type) ?? _answers[fault].Status).Distinct().Order()];
+        [.. AnsweredBy(endpointMetadata).Select(fault => StatusOf(fault, endpointMetadata)).Distinct().Order()];
 
     /// <summary>The problem types of the members an endpoint answers with <paramref name="status"/>, for that response's description.</summary>
     public IReadOnlyList<string> TypesOf(int status, IReadOnlyList<object> endpointMetadata) =>
-        [.. Type.Members.Where(fault => (FaultStatuses.Override(endpointMetadata, fault, Type) ?? _answers[fault].Status) == status)
-                        .Select(fault => _answers[fault].Type)
-                        .OfType<string>()
-                        .Distinct()];
+        [.. AnsweredBy(endpointMetadata).Where(fault => StatusOf(fault, endpointMetadata) == status)
+                                        .Select(fault => _answers[fault].Type)
+                                        .OfType<string>()
+                                        .Distinct()];
+
+    /// <summary>The members an endpoint answers with: every member, but those its metadata leaves out.</summary>
+    public IEnumerable<TFault> AnsweredBy(IReadOnlyList<object> endpointMetadata) =>
+        Type.Members.Where(fault => FaultExclusions.Excluding(endpointMetadata, fault, Type) is null);
+
+    private int StatusOf(TFault fault, IReadOnlyList<object> endpointMetadata) =>
+        FaultStatuses.Override(endpointMetadata, fault, Type) ?? _answers[fault].Status;
 
     public static InvalidOperationException Unmapped() =>
         new($"No HTTP status is mapped for the fault type {FaultTypes.NameOf(typeof(TFault))}. " +
@@ -116,8 +126,12 @@ internal abstract class FaultResponsesMetadata
     /// <summary>The problem types listed for <paramref name="status"/>.</summary>
     public abstract IReadOnlyList<string> Types(IServiceProvider services, int status, IReadOnlyList<object> endpointMetadata);
 
-    /// <summary>What is wrong with the endpoint's status overrides for this fault type: a name no member has.</summary>
+    /// <summary>
+    /// What is wrong with the endpoint's declarations for this fault type: a status or a member left out that
+    /// names no member, and a member given a status and left out at once.
+    /// </summary>
     public abstract IEnumerable<string> Problems(IServiceProvider services, IReadOnlyList<object> endpointMetadata);
+
 }
 
 internal sealed class FaultResponsesMetadata<TFault> : FaultResponsesMetadata where TFault : notnull
@@ -143,6 +157,20 @@ internal sealed class FaultResponsesMetadata<TFault> : FaultResponsesMetadata wh
         foreach (var status in endpointMetadata.OfType<IFaultStatus<TFault>>())
         {
             if (status.Problem(responses.Type) is { } problem) yield return problem;
+        }
+
+        foreach (var exclusion in endpointMetadata.OfType<IFaultExclusion<TFault>>())
+        {
+            if (exclusion.Problem(responses.Type) is { } problem) yield return problem;
+        }
+
+        // A status for a member left out says the endpoint answers it, and the exclusion that it never does.
+        foreach (var fault in responses.Type.Members)
+        {
+            if (FaultExclusions.Excluding(endpointMetadata, fault, responses.Type) is not { } exclusion) continue;
+
+            foreach (var status in endpointMetadata.OfType<IFaultStatus<TFault>>().Where(status => status.Matches(fault, responses.Type)))
+                yield return $"{status.Describe()} gives a status to {responses.Type.QualifiedNameOf(fault)}, which {exclusion.Describe()} leaves out";
         }
     }
 

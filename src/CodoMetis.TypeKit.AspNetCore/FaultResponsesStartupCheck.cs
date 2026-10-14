@@ -7,8 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace CodoMetis.TypeKit.AspNetCore;
 
 /// <summary>
-/// Refuses to start a host with an endpoint whose fault type has no mapping, a fault status whose
-/// scope has no endpoint that answers with its fault type, or a fault status naming a member its type
+/// Refuses to start a host with an endpoint whose fault type has no mapping, a fault status or a member
+/// left out whose scope has no endpoint that answers with its fault type, or one naming a member its type
 /// does not have, naming each endpoint.
 /// </summary>
 /// <remarks>
@@ -31,7 +31,7 @@ internal sealed class FaultResponsesStartupCheck : IStartupFilter
     /// One declaration is one instance: an attribute's own <c>Equals</c> compares its values, so two
     /// controllers' equal attributes would read as one scope, and it reads them by reflection.
     /// </summary>
-    private static readonly IEqualityComparer<IFaultStatus> DeclarationComparer = ReferenceEqualityComparer.Instance;
+    private static readonly IEqualityComparer<IFaultDeclaration> DeclarationComparer = ReferenceEqualityComparer.Instance;
 
     public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
     {
@@ -54,7 +54,7 @@ internal sealed class FaultResponsesStartupCheck : IStartupFilter
         // concerns the endpoints of its scope that answer with its fault type, and is stale, or set on the
         // wrong scope, where none does. An endpoint of another scope does not count: it answers to its own.
         var stray = endpoints.Endpoints
-            .SelectMany(endpoint => endpoint.Metadata.OfType<IFaultStatus>().Select(status => (Status: status, Endpoint: endpoint)))
+            .SelectMany(endpoint => endpoint.Metadata.OfType<IFaultDeclaration>().Select(status => (Status: status, Endpoint: endpoint)))
             .GroupBy(pair => pair.Status, pair => pair.Endpoint, DeclarationComparer)
             .Where(scope => !scope.Any(endpoint => Answers(endpoint, scope.Key.FaultType)))
             .Select(scope => Stray(scope.Key, [.. scope.Distinct()]));
@@ -73,7 +73,7 @@ internal sealed class FaultResponsesStartupCheck : IStartupFilter
     private static bool Answers(Endpoint endpoint, Type faultType) =>
         endpoint.Metadata.OfType<FaultResponsesMetadata>().Any(answered => answered.FaultType == faultType);
 
-    private static string Stray(IFaultStatus status, IReadOnlyList<Endpoint> scope) =>
+    private static string Stray(IFaultDeclaration status, IReadOnlyList<Endpoint> scope) =>
         scope.Count == 1
             ? $"{status.Describe()} is set on {Name(scope[0])}, which answers with no {FaultTypes.NameOf(status.FaultType)}."
             : $"{status.Describe()} is set on {scope.Count} endpoints, none of which answers with {FaultTypes.NameOf(status.FaultType)}: " +

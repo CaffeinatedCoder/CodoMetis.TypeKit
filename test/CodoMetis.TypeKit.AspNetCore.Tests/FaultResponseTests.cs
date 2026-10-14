@@ -410,7 +410,7 @@ public sealed partial class FaultResponseTests
             FaultResponses<OrderFault>.Unmapped().Message,
             // ArgumentException puts the parameter after the message; the link ends the message itself.
             invalid.Message.Replace($" (Parameter '{invalid.ParamName}')", "", StringComparison.Ordinal),
-        };
+        }.Concat(typeof(FaultRefusals).GetFields(BindingFlags.Public | BindingFlags.Static).Select(link => (string)link.GetRawConstantValue()!));
 
         var anchors = File.ReadLines(ReadmePath()).Select(line => Heading().Match(line)).Where(match => match.Success)
                           .Select(match => Slug(match.Groups["text"].Value)).ToHashSet();

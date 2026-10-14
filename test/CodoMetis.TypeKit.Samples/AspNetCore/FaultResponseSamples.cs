@@ -117,6 +117,11 @@ public static class Faults
         // sample: CodoMetis.TypeKit.AspNetCore/fault-detail
         app.MapPut("/accounts/{id:int}/email", (int id, NewAccount body) => accounts.Rename(id, body.Email).ToHttpResult());
         // end sample
+
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-left-out
+        app.MapPost("/v4/accounts", (NewAccount body) => accounts.Open(body).ToHttpResult())
+           .WithoutFaults(AccountFault.NotFound);   // opening an account never reports a missing one: no 404 here
+        // end sample
     }
 
     public static Result<Account, Fault<AccountFault>> Taken()
@@ -217,6 +222,19 @@ public sealed class FaultResponseSampleTests
         var paths = JsonNode.Parse(await client.GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken))!["paths"]!;
         paths["/v3/accounts"]!["post"]!["responses"]!.AsObject().Select(response => response.Key).Order().ShouldBe(["200", "403", "404", "422"]);
         paths["/v3/health"]!["get"]!["responses"]!.AsObject().Select(response => response.Key).ShouldBe(["200"]);
+    }
+
+    /// <summary>The README's route that leaves a member out: no 404 in its operation, the other statuses kept.</summary>
+    [Fact]
+    public async Task A_route_leaves_out_of_its_document_what_it_cannot_answer()
+    {
+        await using var app = await StartAsync(Result.Error(AccountFault.EmailTaken));
+
+        using var refused = await app.GetTestClient().PostAsync("/v4/accounts", Body(), TestContext.Current.CancellationToken);
+        refused.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+
+        var paths = JsonNode.Parse(await app.GetTestClient().GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken))!["paths"]!;
+        paths["/v4/accounts"]!["post"]!["responses"]!.AsObject().Select(response => response.Key).ShouldBe(["200", "403", "409"]);
     }
 
     [Fact]
