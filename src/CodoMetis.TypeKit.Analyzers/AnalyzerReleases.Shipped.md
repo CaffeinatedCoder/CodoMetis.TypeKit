@@ -53,3 +53,11 @@ CMTK0013 | Usage | Error | ClosedSetMemberAssignedAnalyzer, a closed set's membe
 Rule ID | New Category | New Severity | Old Category | Old Severity | Notes
 --------|--------------|--------------|--------------|--------------|-------------------------------------------------------------
 CMTK0003 | Usage | Error | Usage | Warning | IgnoredOutcomeAnalyzer, raised in a major version; also a Wait, a WaitAll and a loop that drop results
+
+## Release 2.1.0
+
+### New Rules
+
+Rule ID | Category | Severity | Notes
+--------|----------|----------|-------------------------------------------------------------
+CMTK0014 | Usage | Warning | UndefinedEnumValueAnalyzer, a FaultKind or ConstructorAccessibility that names no member

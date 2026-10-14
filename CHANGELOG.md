@@ -10,7 +10,7 @@ A version's heading reads `## <version> — Unreleased` until the release is pre
 the release date. The release workflow refuses a tag whose section still says `Unreleased`, and the
 section is the GitHub release's notes.
 
-## 2.1.0 — Unreleased
+## 2.1.0 — 2026-10-14
 
 ### Added
 
