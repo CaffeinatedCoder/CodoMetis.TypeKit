@@ -21,7 +21,9 @@ public static class TypeKitFaultResponsesServiceCollectionExtensions
     /// <para>
     /// It also adds a startup check: a host with an endpoint whose fault type is not mapped does not
     /// start, and the exception names each such endpoint. And it calls <c>AddProblemDetails()</c>,
-    /// without which a host on source-generated JSON, as under Native AOT, cannot write a problem.
+    /// without which a host on source-generated JSON, as under Native AOT, cannot write a problem, and
+    /// which changes every other problem the host writes too: <c>Results.Problem</c> gains a
+    /// <c>traceId</c>, and <c>UseStatusCodePages()</c> and <c>UseExceptionHandler()</c> answer as problem details.
     /// </para>
     /// </remarks>
     /// <typeparam name="TFault">The fault type, an enum.</typeparam>

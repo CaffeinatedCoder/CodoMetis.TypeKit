@@ -201,9 +201,15 @@ app.MapDelete("/orders/{id}", (OrderId id) => orders.Cancel(id).ToHttpResult());
   `ProducesProblem` would. An MVC action returning the same type is described the same way.
 - **Not a wire format.** The `Result` is matched to a response, not serialized: returning the
   `Result` itself from a handler is still refused, and the document would promise a `Result`.
-- **The host's problem details apply.** `AddFaultResponses` calls `AddProblemDetails()`, so a
-  `CustomizeProblemDetails` of your own reaches these problems, and a host on source-generated JSON
-  can write them.
+- **It changes every error response of the host, not only these.** `AddFaultResponses` calls
+  `AddProblemDetails()`, without which a host on source-generated JSON cannot write a problem, and
+  ASP.NET applies that service to every problem the host writes: `Results.Problem` and
+  `Results.ValidationProblem` gain a `traceId`, `UseStatusCodePages()` answers a bare 400 or 404 as
+  problem details where it wrote plain text, and `UseExceptionHandler()` without options, which
+  refused to start before, answers a 500 as problem details. A `CustomizeProblemDetails` of your own
+  reaches all of them. Adding the package to a host whose clients read those responses changes its
+  wire; `CustomizeProblemDetails` can take back what you do not want, and `IFaultFeature` tells
+  this package's problems from the rest ([below](#what-the-host-adds-to-a-problem)).
 - **Declare the return type.** ASP.NET reads an endpoint's responses from its declared return type,
   as for its own typed results: a handler typed `IResult` answers the same, but its operation lists no
   problem response, and the startup check cannot see which fault type it reports.
