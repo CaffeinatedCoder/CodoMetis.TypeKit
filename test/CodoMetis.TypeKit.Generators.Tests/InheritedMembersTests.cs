@@ -38,6 +38,24 @@ public abstract record LocalExplicitEqualityRecord : IEquatable<LocalExplicitEqu
 #pragma warning disable CMTK1023
 /// <summary>Over a base record whose explicit <c>IEquatable</c> compares by reference, which a <c>HashSet</c> of the base calls.</summary>
 public sealed partial record OverAnExplicitEqualityRecord : LocalExplicitEqualityRecord, IValue<int>;
+
+/// <summary>A base record between the value object and one whose explicit <c>IEquatable</c> compares by reference.</summary>
+public abstract record LocalBetweenRecord : LocalExplicitEqualityRecord;
+
+/// <summary>Two levels above the explicit <c>IEquatable</c>, which a <c>HashSet</c> of the deeper base calls.</summary>
+public sealed partial record OverADeeperExplicitEqualityRecord : LocalBetweenRecord, IValue<int>;
+
+/// <summary>A base record that implements its own base's <c>IEquatable</c> explicitly, by reference.</summary>
+public abstract record LocalReimplementingBetweenRecord : LocalEqualityFreeRecord, IEquatable<LocalEqualityFreeRecord>
+{
+    bool IEquatable<LocalEqualityFreeRecord>.Equals(LocalEqualityFreeRecord? other) => ReferenceEquals(this, other);
+}
+
+/// <summary>A base record with no equality of its own.</summary>
+public abstract record LocalEqualityFreeRecord;
+
+/// <summary>Over a base between that implements the deeper base's <c>IEquatable</c> explicitly.</summary>
+public sealed partial record OverABetweenExplicitEqualityRecord : LocalReimplementingBetweenRecord, IValue<int>;
 #pragma warning restore CMTK1023
 
 /// <summary>A base record in this assembly whose <c>ToString()</c> is sealed.</summary>
@@ -130,6 +148,21 @@ public sealed class InheritedMembersTests
         new HashSet<LocalExplicitEqualityRecord> { value, same }.Count.ShouldBe(1);
         ((IEquatable<LocalExplicitEqualityRecord>)value).Equals(same).ShouldBeTrue();
         ((IEquatable<LocalExplicitEqualityRecord>)value).Equals(OverAnExplicitEqualityRecord.From(43)).ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// The runtime maps a listed interface to a method the class declares, or keeps the base's mapping: the
+    /// synthesized <c>Equals(TBase)</c> is the value object's own only for its direct base, so an explicit
+    /// <c>IEquatable</c> two levels up, or one a base between implements, was kept, and a <c>HashSet</c> of
+    /// that base held two value objects holding 42 (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public void A_deeper_base_records_explicit_equality_is_not_the_value_objects()
+    {
+        new HashSet<LocalExplicitEqualityRecord> { OverADeeperExplicitEqualityRecord.From(42), OverADeeperExplicitEqualityRecord.From(42) }.Count.ShouldBe(1);
+        ((IEquatable<LocalExplicitEqualityRecord>)OverADeeperExplicitEqualityRecord.From(42)).Equals(OverADeeperExplicitEqualityRecord.From(43)).ShouldBeFalse();
+        new HashSet<LocalEqualityFreeRecord> { OverABetweenExplicitEqualityRecord.From(42), OverABetweenExplicitEqualityRecord.From(42) }.Count.ShouldBe(1);
+        new HashSet<LocalReimplementingBetweenRecord> { OverABetweenExplicitEqualityRecord.From(42), OverABetweenExplicitEqualityRecord.From(42) }.Count.ShouldBe(1);
     }
 
     public static TheoryData<object> OverASealedToString => [MaskedOverALocalRecord.From("SECRET"), MaskedOverALibraryRecord.From("SECRET")];

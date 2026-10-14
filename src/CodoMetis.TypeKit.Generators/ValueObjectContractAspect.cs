@@ -80,11 +80,43 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
     /// skipped (LAMA0516), so the interface listed is one derived from it, which C# takes for
     /// implementing it again. Every base's, whatever it declares.
     /// </para>
+    /// <para>
+    /// The runtime maps a listed interface to a method the class declares, or else keeps the base's mapping,
+    /// so the synthesized <c>Equals(TBase)</c> takes over only where it is the value object's own: the direct
+    /// base's. A deeper base's explicit <c>IEquatable&lt;TBase&gt;</c>, or one a base between implements, kept
+    /// its implementation, and a <c>HashSet</c> of that base held both (reported 2026-10-14). There the value
+    /// object declares <c>new Equals(TBase)</c>, which calls <c>Equals(object)</c> as the one it hides does,
+    /// and only there: where CMTK1023 names that explicit implementation (decision 87).
+    /// </para>
     /// </remarks>
     private static void IntroduceEquality(IAspectBuilder<INamedType> builder, INamedType valueType)
     {
-        for (var type = builder.Target.BaseType; type is { SpecialType: not SpecialType.Object }; type = type.BaseType)
+        var direct    = builder.Target.BaseType!;
+        var equatable = TypeFactory.GetNamedType(typeof(IEquatable<>));
+
+        for (var type = direct; type is { SpecialType: not SpecialType.Object }; type = type.BaseType)
+        {
             builder.ImplementInterface(TypeFactory.GetNamedType(typeof(IReimplementedEquatable<>)).MakeGenericInstance(type), OverrideStrategy.Ignore);
+
+            if (type.Equals(direct) || !ExplicitlyImplementsEquatableBetween(direct, type, equatable.MakeGenericInstance(type))) continue;
+
+            // One the value object declares itself implements the interface already, as C# maps it.
+            if (builder.Target.Methods.Any(method => method is { Name: nameof(Equals), Parameters: [{ } other] } && other.Type.ToNonNullable().Equals(type))) continue;
+
+            var hidden = type;
+            builder.IntroduceMethod(
+                nameof(ReimplementedEqualsTemplate),
+                IntroductionScope.Instance,
+                OverrideStrategy.New,
+                buildMethod: method =>
+                {
+                    method.Name               = nameof(Equals);
+                    method.Accessibility      = Accessibility.Public;
+                    method.Parameters[0].Type = hidden.ToNullable();
+                    method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                }
+            );
+        }
 
         builder.IntroduceMethod(
             nameof(EqualsTemplate),
@@ -111,6 +143,20 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
             },
             args: new { valueType }
         );
+    }
+
+    /// <summary>Whether a type from <paramref name="direct"/> down to <paramref name="deeper"/> implements <paramref name="interfaceType"/> explicitly.</summary>
+    private static bool ExplicitlyImplementsEquatableBetween(INamedType direct, INamedType deeper, INamedType interfaceType)
+    {
+        for (var type = direct; type is not null; type = type.BaseType)
+        {
+            if (type.Methods.Any(method => method.IsExplicitInterfaceImplementation && method.ExplicitInterfaceImplementations.Any(implemented => implemented.DeclaringType.Equals(interfaceType))))
+                return true;
+
+            if (type.Equals(deeper)) return false;
+        }
+
+        return false;
     }
 
     private static void ImplementValueWrapper(IAspectBuilder<INamedType> builder, IType valueType, IConstructor privateConstructor)

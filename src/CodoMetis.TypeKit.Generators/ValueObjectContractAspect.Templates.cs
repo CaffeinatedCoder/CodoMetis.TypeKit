@@ -39,6 +39,14 @@ internal sealed partial class ValueObjectContractAspect
     public dynamic RevalidateTemplate([CompileTime] INamedType target) =>
         ExpressionFactory.Parse($"{ValueObjectTypes.SourceName(target)}.Create(this.Value)").Value!;
 
+    /// <summary>
+    /// A deeper base's <c>Equals(TBase)</c>, declared by the value object so that its listed
+    /// <c>IReimplementedEquatable&lt;TBase&gt;</c> maps to it: <c>Equals(object)</c>, as the one it hides does.
+    /// </summary>
+    [Template]
+    public bool ReimplementedEqualsTemplate(dynamic? other) =>
+        (bool)ExpressionFactory.Parse("this.Equals((object?)other)").Value!;
+
     /// <summary>The wrapped values compared, as the record's synthesized equality compares a field.</summary>
     [Template]
     public bool EqualsTemplate(dynamic? other, [CompileTime] INamedType valueType) =>
