@@ -97,12 +97,12 @@ public sealed class JsonSchemaDescription
     /// <para>
     /// The options' <see cref="JsonSchemaDescriptions"/>, the application's word, answer first, in the order
     /// they were added. Then the converter the serializer runs is asked, chosen as the serializer chooses it:
-    /// the property's own, where <paramref name="property"/> names one; the first of the options' converters
-    /// that converts the type, a <see cref="Nullable{T}"/> as itself before the value it holds, and a factory
-    /// for the converter it makes; and the resolver's, which is the type's own unless the resolver puts
-    /// another in charge: a value object's generated converter, which writes the type it wraps, and a
-    /// closed set's, which writes one of its members' names, each recognised by the attribute the
-    /// generators put on the type, and the generated one where the resolver does not know the type. A
+    /// the property's own, where <paramref name="property"/> names one; otherwise the contract's, which the
+    /// resolver chose, a <see cref="Nullable{T}"/>'s own before the value it holds, so a resolver's
+    /// converter comes before a conflicting one in the options. Where the resolver does not know the type,
+    /// the first of the options' converters that converts it, a factory for the converter it makes, and
+    /// then the generated one. A value object's generated converter writes the type it wraps, and a closed
+    /// set's one of its members' names, each recognised by the attribute the generators put on the type. A
     /// converter that describes itself answers; one that says nothing answers nothing, whatever the type's
     /// own converter would have said.
     /// </para>
@@ -127,17 +127,40 @@ public sealed class JsonSchemaDescription
 
         if (property?.CustomConverter is { } own) return Describe(PropertyConverter(own, property, type, value, options), value, options);
 
-        // The options' converters before the type's own, as the serializer picks them: a converter registered
-        // for a value object writes it instead of the generated one, and a source-generated context need not
-        // list a type its value objects wrap, which the converter registered for it still writes.
-        if (TryRegistered(type, options, out var declared)) return Describe(declared, value, options);
-        if (type != value && TryRegistered(value, options, out var held)) return Describe(held, value, options);
-
-        // The resolver's converter, which is the type's own unless a resolver puts another in charge, as the
-        // options' converters do: a value object written as "780" by one was described as its wrapped decimal.
-        // A value object the resolver does not know, in a source-generated context, is the generated one's.
-        return options.TryGetTypeInfo(value, out var info) ? Describe(info.Converter, value, options) : Generated.GetOrAdd(value, Generate);
+        return Contract(type, value, options);
     }
+
+    /// <summary>
+    /// What the converter the serializer runs for <paramref name="type"/> says: the contract's, which the
+    /// resolver chose, the options' converters among the candidates it weighed; and only where the resolver
+    /// does not know the type, the options' converters and then the generated one, as a value object's
+    /// converter writes its wrapped type (<see cref="GeneratedJson.TypeInfo{T}"/>).
+    /// </summary>
+    /// <remarks>
+    /// The options' converters were asked first, and a resolver that put another converter in charge was
+    /// passed over: a decimal its resolver wrote as <c>1.2</c> was described as the options' string, and a
+    /// nullable value object a resolver wrote as <c>"cents:780"</c> as the wrapped decimal (both reported
+    /// 2026-10-14).
+    /// </remarks>
+    private static JsonSchemaDescription? Contract(Type type, Type value, JsonSerializerOptions options)
+    {
+        if (options.TryGetTypeInfo(type, out var info))
+            return type != value && IsNullableAdapter(info.Converter, type) ? Contract(value, value, options) : Describe(info.Converter, value, options);
+
+        // A source-generated context need not list a type its value objects wrap, which the converter
+        // registered for it still writes; a value object it does not know is the generated one's.
+        if (TryRegistered(type, options, out var declared)) return Describe(declared, value, options);
+        return type != value ? Contract(value, value, options) : Generated.GetOrAdd(value, Generate);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="converter"/> is the serializer's own converter for the <see cref="Nullable{T}"/>
+    /// <paramref name="type"/>, which writes null or what the contract's converter for the value writes, and
+    /// says nothing itself; a converter for the nullable type that a resolver or the options put in charge
+    /// writes it otherwise. System.Text.Json has no other converter of a nullable type.
+    /// </summary>
+    private static bool IsNullableAdapter(JsonConverter converter, Type type) =>
+        converter.Type == type && converter.GetType().Assembly == typeof(JsonConverter).Assembly;
 
     /// <summary>
     /// What <paramref name="converter"/>, in charge of <paramref name="value"/>, says it writes: its own word

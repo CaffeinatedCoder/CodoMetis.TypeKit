@@ -765,7 +765,9 @@ public sealed class TypeArgumentConstraintAnalyzerTests
     /// A forwarding parameter is told apart from the other argument when both are parameters of one generic
     /// carrying the attribute, whose closed uses are then checked, or when their C# constraints admit no
     /// common type; the same parameter twice is the same type; otherwise the pair is a breach, or the
-    /// requirement would end at the first forwarding generic.
+    /// requirement would end at the first forwarding generic. An <c>Enum</c> bound admits every enum,
+    /// a value type, so against <c>struct</c> or <c>unmanaged</c> it proves nothing:
+    /// <c>DayOfWeek</c> met both, and two of it passed through (reported 2026-10-14).
     /// </summary>
     [Fact]
     public Task A_forwarding_pair_must_carry_the_attribute_or_be_proved_apart_by_its_constraints() =>
@@ -785,13 +787,18 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             public sealed class BoundAndDerived<T> : Pair<T, {|#5:OrderHandler|}> where T : Handler { }
             public sealed class ClassAndStruct<T> : Pair<T, Point> where T : class { }
             public sealed class UnrelatedProvesDistinct<[Unrelated] TA, [Unrelated] TB> : Pair<TA, TB> { }
+            public sealed class StructAndEnum<TS, TE> : Pair<TS, {|#6:TE|}> where TS : struct where TE : Enum { }
+            public sealed class UnmanagedAndEnum<TS, TE> : Pair<TS, {|#7:TE|}> where TS : unmanaged where TE : Enum { }
+            public sealed class EnumAndClass<TE, TC> : Pair<TE, TC> where TE : Enum where TC : Handler { }
             """,
             Cmtk0010(0, "TB", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'TA', the type argument for 'TLeft'"),
             Cmtk0010(1, "Handler", "TB", "Sound<TA, TB>", "is the same type as the argument for 'TA'"),
             Cmtk0010(2, "T", "TRight", "Pair<TLeft, TRight>", "is the same type as the argument for 'TLeft'"),
             Cmtk0010(3, "TB", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'TA', the type argument for 'TLeft'"),
             Cmtk0010(4, "Handler", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'T', the type argument for 'TLeft'"),
-            Cmtk0010(5, "OrderHandler", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'T', the type argument for 'TLeft'"))
+            Cmtk0010(5, "OrderHandler", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'T', the type argument for 'TLeft'"),
+            Cmtk0010(6, "TE", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'TS', the type argument for 'TLeft'"),
+            Cmtk0010(7, "TE", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'TS', the type argument for 'TLeft'"))
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
@@ -830,7 +837,36 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             Cmtk0010(8, "Point", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'T', the type argument for 'TLeft'"))
             .RunAsync(TestContext.Current.CancellationToken);
 
-    /// <summary>The base package's own use: a fault of several types is of different types, or every conversion and <c>Of</c> would be ambiguous.</summary>
+    /// <summary>
+    /// A pair of one <c>[Unrelated]</c> and one <c>[Distinct]</c> is held to the stricter at its closed uses,
+    /// but forwards only what both declare: into a <c>[Distinct]</c> pair it is proved, into an
+    /// <c>[Unrelated]</c> one it is not, since the generic's own closed uses would not check the relation
+    /// there if the stricter level were not on both. Conservative on purpose, and documented.
+    /// </summary>
+    [Fact]
+    public Task A_mixed_pair_is_held_to_the_stricter_at_closed_uses_and_forwards_only_what_both_declare() =>
+        Test(
+            """
+            public sealed class IntoDistinct<[Unrelated] TA, [Distinct] TB> : Pair<TA, TB> { }
+            public sealed class IntoUnrelated<[Unrelated] TA, [Distinct] TB> : Apart<TA, {|#0:TB|}> { }
+
+            public static class Uses
+            {
+                public static IntoDistinct<Handler, {|#1:OrderHandler|}> Related;
+                public static IntoDistinct<Handler, {|#2:Handler|}> Same;
+                public static IntoDistinct<Handler, Command> Fine;
+            }
+            """,
+            Cmtk0010(0, "TB", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'TA', the type argument for 'TLeft'"),
+            Cmtk0010(1, "OrderHandler", "TB", "IntoDistinct<TA, TB>", "derives from, implements, boxes to or is a base of 'Handler', the type argument for 'TA'"),
+            Cmtk0010(2, "Handler", "TB", "IntoDistinct<TA, TB>", "is the same type as the argument for 'TA'"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// The base package's own use: a fault of several types is of different types, or every conversion and
+    /// <c>Of</c> would be ambiguous. A generic that forwards its parameters into one is held to the same, and
+    /// <c>struct</c> against <c>Enum</c> is no proof: <c>Forward&lt;DayOfWeek, DayOfWeek&gt;</c> passed (reported 2026-10-14).
+    /// </summary>
     [Fact]
     public Task A_fault_of_several_types_declares_them_distinct() =>
         Test(
@@ -842,9 +878,15 @@ public sealed class TypeArgumentConstraintAnalyzerTests
                 public static Fault<DayOfWeek, ConsoleColor> Fine;
                 public static Fault<DayOfWeek, ConsoleColor, StringComparison> AlsoFine;
             }
+
+            public sealed class Forward<TS, TE> where TS : struct where TE : Enum
+            {
+                public Fault<TS, {|#2:TE|}> Held;
+            }
             """,
             Cmtk0010(0, "DayOfWeek", "T2", "Fault<T1, T2>", "is the same type as the argument for 'T1'"),
-            Cmtk0010(1, "DayOfWeek", "T3", "Fault<T1, T2, T3>", "is the same type as the argument for 'T1'"))
+            Cmtk0010(1, "DayOfWeek", "T3", "Fault<T1, T2, T3>", "is the same type as the argument for 'T1'"),
+            Cmtk0010(2, "TE", "T2", "Fault<T1, T2>", "is not proved a different type from 'TS', the type argument for 'T1'"))
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>

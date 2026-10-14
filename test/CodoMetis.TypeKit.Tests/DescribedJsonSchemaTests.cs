@@ -12,6 +12,8 @@ namespace CodoMetis.TypeKit.Tests;
 /// </summary>
 public sealed class DescribedJsonSchemaTests
 {
+    private const string DecimalNumber = """{"type":"number","format":"decimal"}""";
+
     private const string DecimalString = """{"type":"string","format":"decimal","pattern":"^-?(?:0|[1-9]\\d*)(?:\\.\\d*[1-9])?$"}""";
 
     private static readonly JsonSerializerOptions Strings = new(JsonSerializerDefaults.Web) { TypeInfoResolver = new DefaultJsonTypeInfoResolver(), Converters = { new DecimalStringJsonConverter() } };
@@ -417,6 +419,86 @@ public sealed class DescribedJsonSchemaTests
         Export<decimal?>(options).ToJsonString().ShouldBe(expected.ToJsonString());
         Export<Holder>(options)["properties"]!["maybe"]!.ToJsonString().ShouldBe(expected.ToJsonString());
         Export<Holder>(options)["properties"]!["plain"]!.ToJsonString().ShouldBe(conditional.ToJsonString(), "a position that refuses null is the description as it is");
+    }
+
+    /// <summary>A resolver that puts one converter in charge of one type, before the rest of the chain and the options' converters.</summary>
+    public sealed class ResolverOf<T>(JsonConverter<T> converter) : IJsonTypeInfoResolver
+    {
+        public JsonTypeInfo? GetTypeInfo(Type type, JsonSerializerOptions options) =>
+            type == typeof(T) ? JsonMetadataServices.CreateValueInfo<T>(options, converter) : null;
+    }
+
+    /// <summary>A nullable amount written as its cents, by a converter of the nullable type that says so.</summary>
+    public sealed class NullableMoneyCents : JsonConverter<Money?>, IDescribedJsonConverter
+    {
+        public override Money? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+            new(decimal.Parse(reader.GetString()!["cents:".Length..], System.Globalization.CultureInfo.InvariantCulture) / 100);
+
+        public override void Write(Utf8JsonWriter writer, Money? value, JsonSerializerOptions options) =>
+            writer.WriteStringValue("cents:" + ((long)(value!.Value.Amount * 100)).ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        public JsonSchemaDescription DescribeJson(Type typeToConvert, JsonSerializerOptions options) => JsonSchemaDescription.Of(new JsonObject { ["type"] = "string", ["pattern"] = "^cents:-?[0-9]*$" });
+    }
+
+    /// <summary>The same writer, saying nothing of what it writes.</summary>
+    public sealed class SilentNullableMoney : JsonConverter<Money?>
+    {
+        public override Money? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => new(0);
+
+        public override void Write(Utf8JsonWriter writer, Money? value, JsonSerializerOptions options) => writer.WriteStringValue("money");
+    }
+
+    public sealed record Wallet(Money? Maybe, Money Plain, List<Money?> Many, Dictionary<string, Money?> Named);
+
+    private static JsonSerializerOptions Resolved(IJsonTypeInfoResolver first, params JsonConverter[] converters)
+    {
+        var options = Options(converters);
+        options.TypeInfoResolverChain.Insert(0, first);
+        return options;
+    }
+
+    /// <summary>
+    /// A resolver's converter is what the serializer runs, whatever the options' converters would have been:
+    /// the description is the contract's, so the exported schema accepts what is written. The options' string
+    /// converter was described while the resolver's number converter wrote <c>1.2</c> (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public void A_resolver_s_converter_is_described_over_a_conflicting_one_in_the_options()
+    {
+        var options = Resolved(new ResolverOf<decimal>(new DecimalNumberJsonConverter()), new DecimalStringJsonConverter());
+
+        JsonSerializer.Serialize(new Holder(1.2m, 1.2m), options).ShouldBe("""{"maybe":1.2,"plain":1.2}""", "the wire: the resolver's numbers, in the nullable position too");
+        Export<decimal>(options).ToJsonString().ShouldBe(DecimalNumber);
+
+        var properties = Export<Holder>(options)["properties"]!;
+        properties["plain"]!.ToJsonString().ShouldBe(DecimalNumber);
+        properties["maybe"]!.ToJsonString().ShouldBe("""{"type":["number","null"],"format":"decimal"}""");
+        Export<Money>(options).ToJsonString().ShouldBe(DecimalNumber, "a type described as a decimal is the resolver's decimal");
+    }
+
+    /// <summary>
+    /// A resolver's converter of a nullable type writes the nullable positions, as one in the options does:
+    /// it is asked, not the value's converter, in a property, an element and a value. The wrapped decimal's
+    /// schema was described while the resolver's converter wrote <c>"cents:780"</c> (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public void A_resolver_s_converter_of_the_nullable_type_describes_the_nullable_positions()
+    {
+        var options = Resolved(new ResolverOf<Money?>(new NullableMoneyCents()), new DecimalStringJsonConverter());
+        const string cents = """{"type":["string","null"],"pattern":"^cents:-?[0-9]*$"}""";
+
+        JsonSerializer.Serialize(new Wallet(new(7.80m), new(7.80m), [new(7.80m), null], new() { ["k"] = new(7.80m) }), options)
+                      .ShouldBe("""{"maybe":"cents:780","plain":"7.8","many":["cents:780",null],"named":{"k":"cents:780"}}""", "the wire");
+
+        var properties = Export<Wallet>(options)["properties"]!;
+        properties["maybe"]!.ToJsonString().ShouldBe(cents);
+        properties["plain"]!.ToJsonString().ShouldBe(DecimalString, "the non-nullable positions are the type's own converter's");
+        properties["many"]!["items"]!.ToJsonString().ShouldBe(cents);
+        properties["named"]!["additionalProperties"]!.ToJsonString().ShouldBe(cents);
+
+        var silent = Resolved(new ResolverOf<Money?>(new SilentNullableMoney()), new DecimalStringJsonConverter());
+        JsonSchemaDescription.For(typeof(Money?), silent).ShouldBeNull("a resolver's converter that says nothing says nothing, whatever the value's converter would say");
+        JsonSchemaDescription.For(typeof(Money), silent).ShouldNotBeNull();
     }
 
     private sealed class UpperConverter : JsonConverter<string>

@@ -203,12 +203,13 @@ string fare = stop["properties"]!["Fare"]!["format"]!.ToString();             //
 What describes a type, the first that answers: the options' `JsonSchemaDescriptions`, the application's
 word, so a value object can say more than its wrapped type (`Describe<Percentage>(…)` with a `minimum`
 and a `maximum`); then the converter that writes it, as the serializer picks one: the property's own, a
-nullable property's included, then the first of the options' converters that converts the type, a
-`Nullable<T>` as itself before `T`, then the one the options' resolver gives, which is the type's own
-unless a resolver of one's own puts another in charge: a value object's as its wrapped type under the
-same options and a closed set's as a string of its members' names. A factory is asked for the converter
-it makes, and a converter that says nothing says nothing. So a converter that replaces a value object's
-generated one describes it, or leaves it undescribed.
+nullable property's included, then the one the options' resolver puts in charge, which weighs the options'
+converters and the type's own, a `Nullable<T>`'s before `T`'s, so a resolver of one's own wins over a
+conflicting converter in the options as it does on the wire; and only for a type the resolver does not
+know, the first of the options' converters that converts it. A value object's generated converter is
+described as its wrapped type under the same options and a closed set's as a string of its members'
+names. A factory is asked for the converter it makes, and a converter that says nothing says nothing.
+So a converter that replaces a value object's generated one describes it, or leaves it undescribed.
 A description says what one non-null value looks like, and the null goes in where a plain type would get
 one in the same position: beside the type, or, where the schema combines subschemas (`oneOf`, `not`, an
 `if` and its branches), in a branch beside the whole. It is a JSON Schema complete in itself: a `$ref`, a `$defs` or an `$id` is

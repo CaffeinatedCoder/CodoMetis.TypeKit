@@ -256,7 +256,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
                 "type" => written.ContainsKey("type") || written.ContainsKey("nullable") || written.ContainsKey("anyOf"),
                 "const" => written.ContainsKey("const") || written.ContainsKey("enum"),
                 "examples" => written.ContainsKey("examples") || written.ContainsKey("example"),
-                _ => written.ContainsKey(keyword) || FalseByDefault.Contains(keyword) && value is JsonValue unset && unset.GetValueKind() == JsonValueKind.False,
+                _ => written.ContainsKey(keyword) || Unwritten(keyword, value),
             };
             if (!kept) return pointer + "/" + keyword;
         }
@@ -306,7 +306,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
                 foreach (var key in left.Select(p => p.Key).Union(right.Select(p => p.Key)))
                 {
                     var at = pointer + "/" + key;
-                    if (!right.ContainsKey(key) && FalseByDefault.Contains(key) && left[key] is JsonValue unset && unset.GetValueKind() == JsonValueKind.False) continue;
+                    if (!right.ContainsKey(key) && Unwritten(key, left[key])) continue;
                     if (!left.ContainsKey(key) || !right.ContainsKey(key)) return at;
                     if (key == "type" && Types(left[key]).SetEquals(Types(right[key]))) continue;
                     if (FirstChanged(left[key], right[key], at) is { } inner) return inner;
@@ -330,6 +330,18 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
 
     /// <summary>Annotations whose <c>false</c> is their default, which the writer leaves out.</summary>
     private static readonly string[] FalseByDefault = ["readOnly", "writeOnly", "deprecated", "uniqueItems"];
+
+    /// <summary>
+    /// Keywords that restrict nothing when empty, which the writer leaves out: no named subschemas, no
+    /// required property (measured with Microsoft.OpenApi 2.12; <c>"properties": {}</c> was refused, reported
+    /// 2026-10-14). An empty <c>enum</c> admits nothing, and is no default.
+    /// </summary>
+    private static readonly string[] EmptyByDefault = ["properties", "patternProperties", "dependentSchemas", "dependentRequired", "required"];
+
+    /// <summary>Whether <paramref name="value"/> is the default of <paramref name="keyword"/>, which the writer leaves out and which means nothing there.</summary>
+    private static bool Unwritten(string keyword, JsonNode? value) =>
+        FalseByDefault.Contains(keyword) && value is JsonValue unset && unset.GetValueKind() == JsonValueKind.False
+     || EmptyByDefault.Contains(keyword) && value is JsonObject { Count: 0 } or JsonArray { Count: 0 };
 
     /// <summary>A number as written, <c>1</c> and <c>1.0</c> alike, or null where a decimal cannot hold it.</summary>
     private static decimal? Number(JsonValue value) =>

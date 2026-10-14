@@ -461,7 +461,9 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     /// Whether two arguments, at least one a type parameter, are proved different types: two parameters of
     /// one generic both carrying <c>[Distinct]</c> or <c>[Unrelated]</c>, whose closed uses are checked in
     /// turn; or C# constraints that admit no common type, <c>struct</c> against <c>class</c> or a class
-    /// bound, two class bounds neither deriving from the other, or a type that breaks the parameter's constraints.
+    /// bound no value type boxes to, two class bounds neither deriving from the other, or a type that breaks
+    /// the parameter's constraints. An <c>Enum</c> bound admits every enum, which <c>struct</c> admits too:
+    /// taken as proof, two <c>DayOfWeek</c> passed through a forwarding generic (reported 2026-10-14).
     /// </summary>
     private static bool ProvedDistinct(TypeKitSymbols symbols, CSharpCompilation compilation, ITypeSymbol first, ITypeSymbol second)
     {
@@ -469,8 +471,8 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         {
             if (Together(symbols, one, two, TypeArgumentConstraint.Distinct)) return true;
 
-            return (IsValueTypes(one) && (two.HasReferenceTypeConstraint || ClassBound(two) is not null))
-                || (IsValueTypes(two) && (one.HasReferenceTypeConstraint || ClassBound(one) is not null))
+            return (IsValueTypes(one) && (two.HasReferenceTypeConstraint || ClassBound(two) is { } bound && NoBox(bound)))
+                || (IsValueTypes(two) && (one.HasReferenceTypeConstraint || ClassBound(one) is { } bound_ && NoBox(bound_)))
                 || (ClassBound(one) is { } first_ && ClassBound(two) is { } second_ && !Related(compilation, first_, second_));
         }
 

@@ -80,12 +80,13 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0071](0071-converters-say-what-they-write.md) | JSON converters say what they write; decimals get one spelling | 2026-10-14 | accepted |
 | [0072](0072-rule-identity-is-its-type.md) | A rule's identity is its type; its wire name stays without a namespace | 2026-10-14 | accepted |
 | [0073](0073-schema-descriptions-follow-the-serializer.md) | Schema descriptions follow the converter the serializer picks, and refuse what they cannot say | 2026-10-14 | accepted |
-| [0074](0074-descriptions-resolve-the-converter-as-the-serializer-does.md) | Descriptions resolve the converter as the serializer does, and survive the document's version | 2026-10-14 | accepted |
+| [0074](0074-descriptions-resolve-the-converter-as-the-serializer-does.md) | Descriptions resolve the converter as the serializer does, and survive the document's version | 2026-10-14 | accepted; the lookup order refined by [0083](0083-the-contract-s-converter-first-and-enum-proves-nothing-against-struct.md) |
 | [0075](0075-equality-over-base-record-generated.md) | Over a base record a value object's equality is generated; the base's is CMTK1023, a Warning | 2026-10-14 | accepted |
 | [0076](0076-preserved-references-refused.md) | A value object refuses preserved references inside its wrapped value | 2026-10-14 | accepted |
 | [0077](0077-third-review-refines-74-to-76.md) | A base's IEquatable is implemented again, the resolver's converter is described, and the reference scan reads what the serializer writes | 2026-10-14 | accepted |
 | [0078](0078-fault-sets-compose-side-by-side.md) | Fault sets compose side by side, and a route leaves out what it cannot answer | 2026-10-14 | accepted |
-| [0079](0079-distinct-and-unrelated-type-parameters.md) | `[Distinct]` and `[Unrelated]` constrain two type parameters against each other, under CMTK0010 | 2026-10-14 | accepted |
+| [0079](0079-distinct-and-unrelated-type-parameters.md) | `[Distinct]` and `[Unrelated]` constrain two type parameters against each other, under CMTK0010 | 2026-10-14 | accepted; an `Enum` bound no proof against `struct` by [0083](0083-the-contract-s-converter-first-and-enum-proves-nothing-against-struct.md) |
 | [0080](0080-second-pilot-one-mapping-held-fault-bare-name.md) | One mapping for every fault set, a reader for a composed fault, and the bare name under a key of the host's | 2026-10-14 | accepted; the bare name withdrawn by [0082](0082-bare-fault-name-member-withdrawn.md) |
 | [0081](0081-six-more-kinds-of-type-argument.md) | Six more kinds a type parameter demands of its argument: `[Interface]`, `[Unsealed]`, `[ValueObject]`, `[ClosedSet]`, `[FlagsEnum]`, `[ReadOnlyStruct]` | 2026-10-14 | accepted |
 | [0082](0082-bare-fault-name-member-withdrawn.md) | The bare fault name under a member of the host's is withdrawn before it ships | 2026-10-14 | accepted |
+| [0083](0083-the-contract-s-converter-first-and-enum-proves-nothing-against-struct.md) | A description asks the contract's converter first, and an `Enum` bound proves nothing against `struct` | 2026-10-14 | accepted |

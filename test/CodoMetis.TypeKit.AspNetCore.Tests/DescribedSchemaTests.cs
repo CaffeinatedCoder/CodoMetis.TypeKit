@@ -368,6 +368,11 @@ public sealed class DescribedSchemaTests
     [InlineData("""{"type":"object","minProperties":1,"propertyNames":{"pattern":"^a"},"dependentRequired":{"a":["b"]},"unevaluatedProperties":false}""")]
     [InlineData("""{"if":{"type":"string"},"then":{"minLength":1},"else":{"not":{"type":"null"}}}""")]
     [InlineData("""{"type":["string","null"],"enum":["a",null],"format":"date-time","x-custom":1}""")]
+    [InlineData("""{"type":"object","properties":{}}""")]
+    [InlineData("""{"type":"object","patternProperties":{}}""")]
+    [InlineData("""{"type":"object","dependentSchemas":{}}""")]
+    [InlineData("""{"type":"object","required":[]}""")]
+    [InlineData("""{"type":"object","properties":{"a":{"type":"object","properties":{}}}}""")]
     public void A_description_the_document_holds_as_described_is_kept(string schema) =>
         Should.NotThrow(() => DescribedSchemaTransformer.Parse(JsonNode.Parse(schema)!.AsObject(), typeof(decimal)));
 
@@ -435,7 +440,19 @@ public sealed class DescribedSchemaTests
         ["a description in the options"] = (options => options.Converters.Add(new JsonSchemaDescriptions().Describe<ProbeAmount>(JsonSchemaDescription.Of(new JsonObject { ["type"] = "number", ["minimum"] = 0 }))), "\"100\""),
         ["a stored-JSON factory"] = (options => options.Converters.Add(new StoredJsonConverterFactory()), "true"),
         ["a resolver's described converter"] = (options => options.TypeInfoResolverChain.Insert(0, new CentsResolver()), "7.8"),
+        ["a resolver's decimal converter over the options'"] = (options =>
+        {
+            options.Converters.Add(new DecimalStringJsonConverter());
+            options.TypeInfoResolverChain.Insert(0, new ResolverOf<decimal>(new DecimalNumberJsonConverter()));
+        }, "\"7.8\""),
     };
+
+    /// <summary>A resolver that puts one converter in charge of one type, before the rest of the chain and the options' converters.</summary>
+    public sealed class ResolverOf<T>(System.Text.Json.Serialization.JsonConverter<T> converter) : System.Text.Json.Serialization.Metadata.IJsonTypeInfoResolver
+    {
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo? GetTypeInfo(Type type, System.Text.Json.JsonSerializerOptions options) =>
+            type == typeof(T) ? System.Text.Json.Serialization.Metadata.JsonMetadataServices.CreateValueInfo<T>(options, converter) : null;
+    }
 
     /// <summary>A resolver that puts <see cref="CentsConverter"/> in charge of a value object, as the options' converters would.</summary>
     public sealed class CentsResolver : System.Text.Json.Serialization.Metadata.IJsonTypeInfoResolver
@@ -520,6 +537,70 @@ public sealed class DescribedSchemaTests
     }
 
     /// <summary>
+    /// A resolver's converter for the nullable value object writes the nullable positions, which the document
+    /// refers to the one component, as one registered in the options does: refused, where the wrapped
+    /// decimal's schema was written for them (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public async Task A_resolver_s_converter_for_the_nullable_type_alone_stops_the_document()
+    {
+        var refusal = await Should.ThrowAsync<InvalidOperationException>(() => MinimalDocumentAsync(
+            json => json.SerializerOptions.TypeInfoResolverChain.Insert(0, new ResolverOf<ProbeAmount?>(new NullableAmountFlag())),
+            app => app.MapPost("/flagged", int (Flagged flagged) => 0)));
+
+        refusal.Message.ShouldContain($"'{typeof(ProbeAmount?)}'");
+        refusal.Message.ShouldContain("component 'ProbeAmount'");
+    }
+
+    /// <summary>A nullable decimal written as its cents, by a converter of the nullable type that says so.</summary>
+    public sealed class NullableDecimalCents : System.Text.Json.Serialization.JsonConverter<decimal?>, IDescribedJsonConverter
+    {
+        public override decimal? Read(ref System.Text.Json.Utf8JsonReader reader, Type typeToConvert, System.Text.Json.JsonSerializerOptions options) =>
+            decimal.Parse(reader.GetString()!["cents:".Length..], System.Globalization.CultureInfo.InvariantCulture) / 100;
+
+        public override void Write(System.Text.Json.Utf8JsonWriter writer, decimal? value, System.Text.Json.JsonSerializerOptions options) =>
+            writer.WriteStringValue("cents:" + ((long)(value!.Value * 100)).ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        public JsonSchemaDescription DescribeJson(Type typeToConvert, System.Text.Json.JsonSerializerOptions options) =>
+            JsonSchemaDescription.Of(new JsonObject { ["type"] = "string", ["pattern"] = "^cents:-?[0-9]*$" });
+    }
+
+    /// <summary>A nullable decimal, which has no component, inline in every position.</summary>
+    public sealed record Gapped(decimal? Maybe, List<decimal?> Many, Dictionary<string, decimal?> Named, decimal Plain);
+
+    /// <summary>
+    /// A resolver's converter for a nullable type with no component writes its positions inline: a property,
+    /// an element and a value accept what it writes and refuse the wrapped decimal, judged by a validator.
+    /// The wrapped decimal's schema was written there, which refused <c>"cents:780"</c> (reported 2026-10-14).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Versions))]
+    public async Task A_resolver_s_converter_for_a_nullable_type_describes_it_inline_and_as_an_element(OpenApiSpecVersion version)
+    {
+        await using var host = await ProbeHost.StartAsync(openApi => openApi.AddTypeKit(),
+            json => json.SerializerOptions.TypeInfoResolverChain.Insert(0, new ResolverOf<decimal?>(new NullableDecimalCents())), version,
+            app => app.MapPost("/gapped", int (Gapped gapped) => 0));
+        var document = await host.DocumentAsync();
+        var options = host.Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions;
+
+        var written = System.Text.Json.JsonSerializer.SerializeToNode(new Gapped(7.80m, [7.80m, null], new() { ["k"] = 7.80m, ["n"] = null }, 7.80m), options)!.AsObject();
+        written.ToJsonString().ShouldBe("""{"maybe":"cents:780","many":["cents:780",null],"named":{"k":"cents:780","n":null},"plain":7.80}""", "the wire");
+
+        foreach (var (property, value) in written)
+        {
+            var schema = document.Property(nameof(Gapped), property);
+            PatchSchemaTests.Validator(document, schema, version)(value!.ToJsonString())
+                .ShouldBeTrue($"{version}: '{property}' is written as {value.ToJsonString()}, which {schema.ToJsonString()} refuses");
+        }
+
+        foreach (var (property, foreign) in new[] { ("maybe", "7.8"), ("many", "[7.8]"), ("named", """{"k":7.8}""") })
+        {
+            PatchSchemaTests.Validator(document, document.Property(nameof(Gapped), property), version)(foreign)
+                .ShouldBeFalse($"{version}: '{property}' accepts {foreign}, the wrapped decimal, which the resolver's converter does not write");
+        }
+    }
+
+    /// <summary>
     /// An <c>if</c> and its branches judge the whole value, so a conditional description admits null only in
     /// a branch beside it: in a nullable property and in a patch, judged by a validator.
     /// </summary>
@@ -574,6 +655,7 @@ public sealed class DescribedSchemaTests
     [InlineData("""{"anyOf":[{"type":"string"},{"type":"null"}],"not":{"const":"x"}}""")]
     [InlineData("""{"type":"object","properties":{"a":{"type":["string","null"]}},"required":["a"],"additionalProperties":false,"minProperties":1}""")]
     [InlineData("""{"type":"array","items":{"type":"string"},"minItems":1,"uniqueItems":true}""")]
+    [InlineData("""{"type":"object","properties":{},"required":[]}""")]
     public void A_description_a_3_0_document_holds_in_its_own_spelling_is_kept(string schema) =>
         Should.NotThrow(() => DescribedSchemaTransformer.Parse(JsonNode.Parse(schema)!.AsObject(), typeof(decimal), OpenApiSpecVersion.OpenApi3_0));
 

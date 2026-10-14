@@ -160,8 +160,8 @@ attribute:
 | `[Concrete]` | `new()`, or anything that proves `[Sealed]`, `[Sealed]` itself included, since a sealed type is never abstract |
 | `[ValueObject]`, `[ClosedSet]` | a bound that is or implements the marker interface, `where T : IValue<Guid>`, or a `U` proving it |
 | `[Interface]`, `[Unsealed]`, `[FlagsEnum]`, `[ReadOnlyStruct]` | nothing but the attribute: an interface bound admits its implementers, `class` a sealed class, `Enum` a plain enum, `struct` a mutable one |
-| `[Distinct]`, for a pair | both parameters carrying `[Distinct]` or `[Unrelated]` in one generic, whose closed uses are checked in turn; `struct` or `unmanaged` against `class` or a class bound; two class bounds neither deriving from the other; against a type, C# constraints the type breaks |
-| `[Unrelated]`, for a pair | both carrying `[Unrelated]` in one generic; `struct` or `unmanaged` against a class bound, or a class, other than `object`, `ValueType` and `Enum`; two class bounds neither deriving from the other. `class` alone proves nothing: `object` satisfies it and is related to everything |
+| `[Distinct]`, for a pair | both parameters carrying `[Distinct]` or `[Unrelated]` in one generic, whose closed uses are checked in turn; `struct` or `unmanaged` against `class` or a class bound other than `Enum`, which every enum meets; two class bounds neither deriving from the other; against a type, C# constraints the type breaks |
+| `[Unrelated]`, for a pair | both carrying `[Unrelated]` in one generic, so a pair of one `[Unrelated]` and one `[Distinct]`, held to `[Unrelated]` at its closed uses, forwards only `[Distinct]`; `struct` or `unmanaged` against a class bound, or a class, other than `object`, `ValueType` and `Enum`; two class bounds neither deriving from the other. `class` alone proves nothing: `object` satisfies it and is related to everything |
 
 The open generic inside its own body and an unbound
 `typeof(Aggregate<,>)` are never reported. Reflection, `MakeGenericType`, is out of reach, and the
