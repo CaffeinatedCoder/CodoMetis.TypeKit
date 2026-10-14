@@ -210,6 +210,11 @@ know, the first of the options' converters that converts it. A value object's ge
 described as its wrapped type under the same options and a closed set's as a string of its members'
 names. A factory is asked for the converter it makes, and a converter that says nothing says nothing.
 So a converter that replaces a value object's generated one describes it, or leaves it undescribed.
+System.Text.Json's own converter of a `Nullable<T>` is described as `T`'s contract, since no public API
+names the converter it was built over: a resolver that builds a nullable contract by hand with
+`JsonMetadataServices.GetNullableConverter` over another converter of `T` is described as `T`'s, and under
+`ReferenceHandler.Preserve` a value object over it is judged by `T`'s. Give the nullable type a converter of
+its own instead.
 A description says what one non-null value looks like, and the null goes in where a plain type would get
 one in the same position: beside the type, or, where the schema combines subschemas (`oneOf`, `not`, an
 `if` and its branches), in a branch beside the whole. It is a JSON Schema complete in itself: a `$ref`, a `$defs` or an `$id` is

@@ -501,6 +501,30 @@ public sealed class DescribedJsonSchemaTests
         JsonSchemaDescription.For(typeof(Money), silent).ShouldNotBeNull();
     }
 
+    /// <summary>A resolver that builds the nullable contract by hand, over a converter of the value other than the one the value's contract has.</summary>
+    public sealed class HandBuiltNullable(JsonConverter<decimal> inner) : IJsonTypeInfoResolver
+    {
+        public JsonTypeInfo? GetTypeInfo(Type type, JsonSerializerOptions options) =>
+            type == typeof(decimal?)
+                ? JsonMetadataServices.CreateValueInfo<decimal?>(options, JsonMetadataServices.GetNullableConverter(JsonMetadataServices.CreateValueInfo<decimal>(options, inner)))
+                : null;
+    }
+
+    /// <summary>
+    /// A known limit: System.Text.Json's adapter of a nullable type writes what the converter it was built over
+    /// writes, and no public API names that converter, so the adapter is described by the value's contract. A
+    /// resolver that builds the nullable contract by hand over another converter has its nullable positions
+    /// described as the value's: here a number written, a string described. Pinned so that a change is seen.
+    /// </summary>
+    [Fact]
+    public void A_nullable_contract_built_by_hand_over_another_converter_is_described_by_the_value_s_contract()
+    {
+        var options = Resolved(new HandBuiltNullable(new DecimalNumberJsonConverter()), new DecimalStringJsonConverter());
+
+        JsonSerializer.Serialize(new Holder(1.2m, 1.2m), options).ShouldBe("""{"maybe":1.2,"plain":"1.2"}""", "the wire: the hand-built adapter's number");
+        JsonSchemaDescription.For(typeof(decimal?), options)!.Schema!.ToJsonString().ShouldBe(DecimalString, "described as the value's contract, the options' string");
+    }
+
     public sealed record Attributed([property: JsonConverter(typeof(DecimalStringJsonConverter))] decimal? Value);
 
     /// <summary>A converter of the nullable type that writes whether there is a value, saying nothing of it.</summary>

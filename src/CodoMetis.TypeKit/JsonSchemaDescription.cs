@@ -111,6 +111,14 @@ public sealed class JsonSchemaDescription
     /// <see cref="decimal"/> is what the options' decimal converter says, as its JSON is what that
     /// converter writes.
     /// </para>
+    /// <para>
+    /// System.Text.Json's own converter of a <see cref="Nullable{T}"/> writes null or what the converter it
+    /// was built over writes, and no public API names that converter, so it is described as the value's
+    /// contract. A resolver that builds a nullable contract by hand,
+    /// <c>JsonMetadataServices.GetNullableConverter</c> over a converter other than the one the value's
+    /// contract has, is described as the value's: a known limit. A converter of the nullable type itself is
+    /// described as its own.
+    /// </para>
     /// </remarks>
     /// <param name="type">The type; a <see cref="Nullable{T}"/> is described as the value it holds.</param>
     /// <param name="options">The options.</param>

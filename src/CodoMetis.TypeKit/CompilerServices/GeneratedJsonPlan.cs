@@ -93,7 +93,10 @@ public sealed class GeneratedJsonPlan<T>
     /// charge over one in the options let an <c>$id</c> through twice (both reported 2026-10-14). An ignored
     /// property, which has neither getter nor setter
     /// in the contract, is neither written nor read, so a class there refused a struct the serializer
-    /// writes without one (both reported 2026-10-14).
+    /// writes without one (both reported 2026-10-14). The serializer's converter of a nullable struct is
+    /// judged by the struct's contract, since no public API names the converter it was built over: a resolver
+    /// that builds the nullable contract by hand over a converter that writes no <c>$id</c> is refused, a
+    /// known limit that is loud, and a converter of the nullable type itself lifts it.
     /// </para>
     /// </remarks>
     private static bool MayHoldReferences(JsonSerializerOptions options, JsonTypeInfo typeInfo, HashSet<Type> visited)

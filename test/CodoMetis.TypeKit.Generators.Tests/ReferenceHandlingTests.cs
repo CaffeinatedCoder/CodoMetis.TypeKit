@@ -213,6 +213,34 @@ public sealed class ReferenceHandlingTests
               .Message.ShouldContain("ReferenceHandler.Preserve");
     }
 
+    /// <summary>Writes a <see cref="HoldingTracked"/> as its name, so nothing of it can have an <c>$id</c>.</summary>
+    private sealed class HoldingNameConverter : JsonConverter<HoldingTracked>
+    {
+        public override HoldingTracked Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => new() { Inner = new Tracked { Name = reader.GetString()! } };
+
+        public override void Write(Utf8JsonWriter writer, HoldingTracked value, JsonSerializerOptions options) => writer.WriteStringValue(value.Inner?.Name);
+    }
+
+    /// <summary>
+    /// A known limit: System.Text.Json's adapter of a nullable struct writes what the converter it was built
+    /// over writes, and no public API names that converter, so the check walks the struct's own contract. A
+    /// resolver that builds the nullable contract by hand over a converter that writes no <c>$id</c> is
+    /// refused, though it could be written: loud, never a duplicate <c>$id</c>. The way out is the refusal's
+    /// advice, a converter of the nullable type itself (<see cref="A_resolver_s_converter_of_a_nullable_struct_lifts_the_refusal"/>).
+    /// </summary>
+    [Fact]
+    public void A_nullable_contract_built_by_hand_over_a_converter_of_its_own_is_refused_as_the_struct_s_walk()
+    {
+        var options = PreservingWith(new ResolverOf<HoldingTracked?>(o => JsonMetadataServices.CreateValueInfo<HoldingTracked?>(
+            o, JsonMetadataServices.GetNullableConverter(JsonMetadataServices.CreateValueInfo<HoldingTracked>(o, new HoldingNameConverter())))));
+        var shared = SharedHolder();
+
+        JsonSerializer.Serialize(new Pair<HoldingNullableHolder> { First = shared, Second = shared }, options)
+                      .ShouldNotContain("\"$ref\"", customMessage: "the control: the hand-built adapter writes the name, nothing that is shared");
+        Should.Throw<NotSupportedException>(() => JsonSerializer.Serialize(new Pair<OverHoldingNullableHolder> { First = OverHoldingNullableHolder.From(shared), Second = OverHoldingNullableHolder.From(shared) }, options))
+              .Message.ShouldContain("ReferenceHandler.Preserve");
+    }
+
     /// <summary>What the refusal advises: a converter of its own writes no <c>$id</c>, for the wrapped type and the value object alike.</summary>
     [Fact]
     public void A_converter_for_the_wrapped_type_lifts_the_refusal()

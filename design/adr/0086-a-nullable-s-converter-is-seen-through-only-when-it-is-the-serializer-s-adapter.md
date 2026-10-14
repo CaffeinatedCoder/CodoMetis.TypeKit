@@ -16,3 +16,17 @@ with `[JsonConverter(typeof(DecimalStringJsonConverter))] decimal? Value` and a 
 decimal string. The attribute is now asked only where the property's converter is the adapter
 (`GeneratedJson.IsNullableAdapter`, the check the contract's converter already goes through), and a converter of
 one's own that says nothing is described as nothing, the empty schema.
+
+**A nullable contract built by hand is described and judged by its value's, a known limit.** The adapter is
+System.Text.Json's converter of a nullable type, recognised by its assembly; it writes null or what the
+converter it was built over writes. The reflection resolver and a source-generated context build it from the
+contract they give `T`, so asking `T`'s contract is asking the converter it holds. A resolver of one's own
+can build one by hand, `JsonMetadataServices.GetNullableConverter(JsonTypeInfo<T>)` over a contract whose
+converter is not the one `T` resolves to. Then the description is `T`'s contract's (measured: a number
+written, the options' decimal string described), and under `ReferenceHandler.Preserve` a value object over a
+nullable struct is judged by the struct's walk, refused though the converter inside writes no `$id`. No
+public API exposes the adapter's element converter; it is a private field, which trimming and Native AOT do
+not keep, and reflection over it was rejected in decision 83. The description's error is the kind decision
+73 refuses to make silently, but there is nothing to read, and the reference check errs loud. Both are pinned
+by tests (`DescribedJsonSchemaTests`, `ReferenceHandlingTests`) and said in `For`'s remarks and in the JSON
+guide; the way out is a converter of the nullable type itself, which is described and judged as its own.
