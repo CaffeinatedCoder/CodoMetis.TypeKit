@@ -124,14 +124,17 @@ public sealed class InterfaceAttribute : Attribute;
 public sealed class UnsealedAttribute : Attribute;
 
 /// <summary>
-/// Requires the type argument for this type parameter to be a value object, a type implementing
-/// <c>IValue&lt;T&gt;</c> for any <c>T</c>, which no <c>where T : IValue&lt;?&gt;</c> can say. The
-/// CodoMetis.TypeKit analyzer reports a closed use that breaks it (CMTK0010).
+/// Requires the type argument for this type parameter to be a value object, a struct or class implementing
+/// <c>IValue&lt;T&gt;</c> for any <c>T</c>, which no <c>where T : IValue&lt;?&gt;</c> can say. An interface is
+/// none, even one deriving from the marker. The CodoMetis.TypeKit analyzer reports a closed use that breaks
+/// it (CMTK0010).
 /// </summary>
 /// <remarks>
 /// A type parameter given as the argument satisfies it when it carries <c>[ValueObject]</c> itself, or is
 /// bound to <c>IValue&lt;T&gt;</c>, <c>IValidatedValue&lt;TSelf, T, TFault&gt;</c>, a type implementing
-/// one, or a type parameter that satisfies it. Reflection is out of the analyzer's reach.
+/// one, or a type parameter that satisfies it, beside a constraint no interface meets: <c>struct</c>,
+/// <c>unmanaged</c>, <c>new()</c> or a class bound. <c>class</c> admits an interface. Reflection is out of
+/// the analyzer's reach.
 /// </remarks>
 [AttributeUsage(AttributeTargets.GenericParameter)]
 public sealed class ValueObjectAttribute : Attribute;

@@ -658,6 +658,9 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     /// <c>MulticastDelegate</c> and <c>ValueType</c>, are abstract classes. Unsealed is a class that can
     /// be derived from, abstract included, an interface not; a value object and a closed set are what the
     /// marker interfaces say, through any interface; a readonly struct is the declaration, which an enum is not.
+    /// An interface is no value object, even one deriving from the marker: <c>Keyed&lt;IDerivedValue&gt;</c> was
+    /// accepted while <c>Keyed&lt;IValue&lt;int&gt;&gt;</c> was refused (reported 2026-10-14). An interface with
+    /// the closed-set marker is no type argument at all, since its static members have no implementation (CS8920).
     /// </summary>
     private static bool Satisfies(TypeKitSymbols symbols, ITypeSymbol argument, TypeArgumentConstraint constraint) => constraint switch
     {
@@ -666,7 +669,7 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         TypeArgumentConstraint.Record         => argument is INamedTypeSymbol { IsRecord: true },
         TypeArgumentConstraint.Interface      => argument.TypeKind is TypeKind.Interface,
         TypeArgumentConstraint.Unsealed       => argument is INamedTypeSymbol { TypeKind: TypeKind.Class, IsSealed: false, IsStatic: false },
-        TypeArgumentConstraint.ValueObject    => symbols.FindMarker(argument, out _) is not null,
+        TypeArgumentConstraint.ValueObject    => argument.TypeKind is not TypeKind.Interface && symbols.FindMarker(argument, out _) is not null,
         TypeArgumentConstraint.ClosedSet      => symbols.FindClosedSetMarker(argument) is not null,
         TypeArgumentConstraint.FlagsEnum      => symbols.IsFlagsEnum(argument),
         TypeArgumentConstraint.ReadOnlyStruct => argument is INamedTypeSymbol { TypeKind: TypeKind.Struct, IsReadOnly: true },
@@ -685,7 +688,9 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     /// <item><c>[Record]</c>: a bound that is a record, or proves it, since only records derive from
     /// records (CS8865).</item>
     /// <item><c>[ValueObject]</c>, <c>[ClosedSet]</c>: a bound that is or implements the marker interface, or
-    /// a bound parameter that proves it, which <c>FindMarker</c> reads from the constraints.</item>
+    /// a bound parameter that proves it, which <c>FindMarker</c> reads from the constraints. For
+    /// <c>[ValueObject]</c> the parameter must also admit no interface (<see cref="NeverInterface"/>):
+    /// <c>where T : IValue&lt;int&gt;</c> admits <c>IValue&lt;int&gt;</c> itself.</item>
     /// <item><c>[Abstract]</c>, <c>[Interface]</c>, <c>[Unsealed]</c>, <c>[FlagsEnum]</c>, <c>[ReadOnlyStruct]</c>:
     /// nothing but the attribute; no C# constraint excludes a concrete type, a class, a sealed class, a plain
     /// enum or a mutable struct.</item>
@@ -705,11 +710,21 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
                                             || Proves(symbols, forwarded, TypeArgumentConstraint.Sealed, depth + 1),
             TypeArgumentConstraint.Record   => forwarded.ConstraintTypes.Any(bound => bound is INamedTypeSymbol { IsRecord: true }
                                                                                    || bound is ITypeParameterSymbol parameter && Proves(symbols, parameter, TypeArgumentConstraint.Record, depth + 1)),
-            TypeArgumentConstraint.ValueObject => symbols.FindMarker(forwarded, out _) is not null,
+            TypeArgumentConstraint.ValueObject => symbols.FindMarker(forwarded, out _) is not null && NeverInterface(forwarded, depth),
             TypeArgumentConstraint.ClosedSet   => symbols.FindClosedSetMarker(forwarded) is not null,
             _                               => false,
         };
     }
+
+    /// <summary>
+    /// Whether no interface meets the parameter's C# constraints: <c>struct</c>, which <c>unmanaged</c> sets
+    /// too, <c>new()</c>, a class bound, or a bound parameter that admits none. <c>class</c> admits an interface,
+    /// which is a reference type (measured: <c>where T : class, IValue&lt;int&gt;</c> takes <c>IValue&lt;int&gt;</c>).
+    /// </summary>
+    private static bool NeverInterface(ITypeParameterSymbol parameter, int depth) =>
+        parameter.HasValueTypeConstraint || parameter.HasConstructorConstraint
+     || parameter.ConstraintTypes.Any(bound => bound.TypeKind is TypeKind.Class
+                                            || bound is ITypeParameterSymbol bounding && depth < 8 && NeverInterface(bounding, depth + 1));
 
     /// <summary>
     /// The constraints a type parameter declares, with those of the parameter it implements or

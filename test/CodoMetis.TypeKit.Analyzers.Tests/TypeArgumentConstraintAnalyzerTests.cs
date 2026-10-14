@@ -1000,7 +1000,8 @@ public sealed class TypeArgumentConstraintAnalyzerTests
     /// <summary>
     /// Six more unary constraints. An interface, not a class implementing one; a class that can be derived
     /// from, abstract included, not an interface, a sealed or a static class, nor a struct; a value object
-    /// through any interface, struct or class; a closed set, a fault set included; an enum marked
+    /// through any interface, struct or class, never an interface, even the marker or one deriving from it
+    /// (one was accepted and the other refused, reported 2026-10-14); a closed set, a fault set included; an enum marked
     /// <c>[Flags]</c>, not a plain one; a readonly struct or readonly record struct, not a mutable struct, an
     /// enum or a class. The primitives are readonly structs. A static class as a type argument is the
     /// compiler's error (CS0718), never this rule's.
@@ -1026,6 +1027,8 @@ public sealed class TypeArgumentConstraintAnalyzerTests
                 public static Keyed<IdClass> ValueClass;
                 public static Keyed<{|#6:Point|}> PlainStruct;
                 public static Keyed<{|#7:Colour|}> ClosedSetIsNoValueObject;
+                public static Keyed<{|#15:CodoMetis.TypeKit.ValueObjects.IValue<int>|}> TheMarker;
+                public static Keyed<{|#16:IDerivedValue|}> ADerivedInterface;
 
                 public static Named<Colour> Set;
                 public static Named<Refusal> FaultSet;
@@ -1043,6 +1046,8 @@ public sealed class TypeArgumentConstraintAnalyzerTests
                 public static Pinned<{|#13:Plain|}> Enum;
                 public static Pinned<{|#14:OrderHandler|}> Class;
             }
+
+            public interface IDerivedValue : CodoMetis.TypeKit.ValueObjects.IValue<int> { }
             """,
             Cmtk0010(0, "Logged", "T", "Proxy<T>", "is not an interface"),
             Cmtk0010(1, "Handler", "T", "Proxy<T>", "is not an interface"),
@@ -1051,6 +1056,8 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             Cmtk0010(5, "Point", "T", "Derivable<T>", "is not a class that can be derived from"),
             Cmtk0010(6, "Point", "T", "Keyed<T>", "is not a value object (IValue<T>)"),
             Cmtk0010(7, "Colour", "T", "Keyed<T>", "is not a value object (IValue<T>)"),
+            Cmtk0010(15, "IValue<int>", "T", "Keyed<T>", "is not a value object (IValue<T>)"),
+            Cmtk0010(16, "IDerivedValue", "T", "Keyed<T>", "is not a value object (IValue<T>)"),
             Cmtk0010(8, "Id", "T", "Named<T>", "is not a closed set (IClosedSet<TSelf>)"),
             Cmtk0010(9, "Plain", "T", "Named<T>", "is not a closed set (IClosedSet<TSelf>)"),
             Cmtk0010(10, "Plain", "T", "Flagged<T>", "is not an enum marked [Flags]"),
@@ -1062,7 +1069,9 @@ public sealed class TypeArgumentConstraintAnalyzerTests
 
     /// <summary>
     /// A bound to the marker interface, to a type implementing it, or to a parameter so bound proves
-    /// <c>[ValueObject]</c> and <c>[ClosedSet]</c>; nothing but the attribute proves the other four: an
+    /// <c>[ValueObject]</c> and <c>[ClosedSet]</c>, for <c>[ValueObject]</c> only beside a constraint no interface
+    /// meets, <c>struct</c>, <c>unmanaged</c>, <c>new()</c> or a class: <c>where T : IValue&lt;int&gt;</c>, and
+    /// <c>class</c> beside it, admit <c>IValue&lt;int&gt;</c> itself (reported 2026-10-14). Nothing but the attribute proves the other four: an
     /// interface bound admits its implementers, <c>class</c> a sealed class, <c>Enum</c> a plain enum,
     /// <c>struct</c> a mutable one.
     /// </summary>
@@ -1072,9 +1081,13 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             """
             public static class Proven
             {
-                public static Keyed<T> BoundToTheMarker<T>() where T : CodoMetis.TypeKit.ValueObjects.IValue<int> => new();
+                public static Keyed<T> BoundToTheMarkerAsAStruct<T>() where T : struct, CodoMetis.TypeKit.ValueObjects.IValue<int> => new();
+                public static Keyed<T> BoundToTheMarkerAsUnmanaged<T>() where T : unmanaged, CodoMetis.TypeKit.ValueObjects.IValue<int> => new();
+                public static Keyed<T> BoundToTheMarkerWithAConstructor<T>() where T : CodoMetis.TypeKit.ValueObjects.IValue<int>, new() => new();
+                public static Keyed<T> BoundToTheMarkerAndAClass<T>() where T : Handler, CodoMetis.TypeKit.ValueObjects.IValue<int> => new();
                 public static Keyed<T> BoundToAnImplementer<T>() where T : IdClass => new();
-                public static Keyed<T> BoundThroughAParameter<T, U>() where T : U where U : CodoMetis.TypeKit.ValueObjects.IValue<int> => new();
+                public static Keyed<T> BoundThroughAParameter<T, U>() where T : U where U : IdClass => new();
+                public static Keyed<T> BoundThroughAClassBoundParameter<T, U>() where T : U where U : Handler, CodoMetis.TypeKit.ValueObjects.IValue<int> => new();
                 public static Keyed<T> Carried<[ValueObject] T>() => new();
                 public static Named<T> BoundToTheSetMarker<T>() where T : class, CodoMetis.TypeKit.ClosedSets.IClosedSet<T> => new();
                 public static Named<T> BoundToAFaultSet<T>() where T : class, CodoMetis.TypeKit.ClosedSets.IFaultSet<T> => new();
@@ -1095,7 +1108,13 @@ public sealed class TypeArgumentConstraintAnalyzerTests
                 public static Flagged<{|#5:T|}> AnyEnum<T>() where T : struct, Enum => new();
                 public static Pinned<{|#6:T|}> StructAdmitsMutable<T>() where T : struct => new();
                 public static Pinned<{|#7:T|}> UnmanagedAdmitsMutable<T>() where T : unmanaged => new();
+                public static Keyed<{|#8:T|}> BoundToTheMarker<T>() where T : CodoMetis.TypeKit.ValueObjects.IValue<int> => new();
+                public static Keyed<{|#9:T|}> ClassAdmitsTheMarker<T>() where T : class, CodoMetis.TypeKit.ValueObjects.IValue<int> => new();
+                public static Keyed<{|#10:T|}> BoundToADerivedInterface<T>() where T : IDerivedValue => new();
+                public static Keyed<{|#11:T|}> BoundThroughAnInterfaceParameter<T, U>() where T : U where U : CodoMetis.TypeKit.ValueObjects.IValue<int> => new();
             }
+
+            public interface IDerivedValue : CodoMetis.TypeKit.ValueObjects.IValue<int> { }
             """,
             Cmtk0010(0, "T", "T", "Keyed<T>", "is a type parameter that does not carry [ValueObject]"),
             Cmtk0010(1, "T", "T", "Named<T>", "is a type parameter that does not carry [ClosedSet]"),
@@ -1104,7 +1123,11 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             Cmtk0010(4, "T", "T", "Derivable<T>", "is a type parameter that does not carry [Unsealed]"),
             Cmtk0010(5, "T", "T", "Flagged<T>", "is a type parameter that does not carry [FlagsEnum]"),
             Cmtk0010(6, "T", "T", "Pinned<T>", "is a type parameter that does not carry [ReadOnlyStruct]"),
-            Cmtk0010(7, "T", "T", "Pinned<T>", "is a type parameter that does not carry [ReadOnlyStruct]"))
+            Cmtk0010(7, "T", "T", "Pinned<T>", "is a type parameter that does not carry [ReadOnlyStruct]"),
+            Cmtk0010(8, "T", "T", "Keyed<T>", "is a type parameter that does not carry [ValueObject]"),
+            Cmtk0010(9, "T", "T", "Keyed<T>", "is a type parameter that does not carry [ValueObject]"),
+            Cmtk0010(10, "T", "T", "Keyed<T>", "is a type parameter that does not carry [ValueObject]"),
+            Cmtk0010(11, "T", "T", "Keyed<T>", "is a type parameter that does not carry [ValueObject]"))
             .RunAsync(TestContext.Current.CancellationToken);
 
     [Fact]
