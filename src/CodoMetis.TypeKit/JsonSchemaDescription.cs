@@ -199,7 +199,7 @@ public sealed class JsonSchemaDescription
     /// its own in charge, which the attribute does not name (one writing <c>true</c> was described as the
     /// attribute's decimal string, reported 2026-10-14).
     /// </summary>
-    private static JsonConverter? PropertyConverter(JsonConverter own, JsonPropertyInfo property, Type type, Type value, JsonSerializerOptions options)
+    internal static JsonConverter? PropertyConverter(JsonConverter own, JsonPropertyInfo property, Type type, Type value, JsonSerializerOptions options)
     {
         if (own is JsonConverterFactory factory) return Made(factory, type, options) ?? Made(factory, value, options);
         if (own is IDescribedJsonConverter || type == value || !GeneratedJson.IsNullableAdapter(own, type)) return own;

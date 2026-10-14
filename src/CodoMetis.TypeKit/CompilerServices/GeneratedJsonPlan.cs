@@ -127,13 +127,16 @@ public sealed class GeneratedJsonPlan<T>
     /// contract's, or a converter of the property's own. One of one's own writes none. One of the serializer's,
     /// a factory among them, writes as the serializer's contract of the type it converts, so that contract
     /// judges it; where that contract has a converter of one's own instead, which says nothing of how the
-    /// serializer's would write, it is refused.
+    /// serializer's would write, it is refused. A converter named on a nullable property is the serializer's
+    /// adapter of the one named, so the named one is judged, as a schema description reads it.
     /// </summary>
     private static bool MayHoldReferences(JsonSerializerOptions options, JsonPropertyInfo property, HashSet<Type> visited)
     {
         var contract = options.GetTypeInfo(property.PropertyType);
 
         if (property.CustomConverter is not { } own || own == contract.Converter) return MayHoldReferences(options, contract, visited);
+
+        own = JsonSchemaDescription.PropertyConverter(own, property, property.PropertyType, Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType, options) ?? own;
         if (!GeneratedJson.IsTheSerializers(own)) return false;
 
         var converted = own.Type is { } type ? options.GetTypeInfo(type) : contract;

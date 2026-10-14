@@ -97,6 +97,23 @@ public readonly struct TrackedList : IReadOnlyList<Tracked>
 
 public readonly partial record struct OverLabels : IValue<Labels>;
 
+/// <summary>A struct the serializer walks, whose nullable holder of a class is written by a converter of one's own, named on the property.</summary>
+public struct HoldingNamedHolder
+{
+    [JsonConverter(typeof(HoldingNameJsonConverter))]
+    public HoldingTracked? Holder { get; set; }
+}
+
+/// <summary>Writes a <see cref="HoldingTracked"/> as its name, so nothing of it can have an <c>$id</c>.</summary>
+public sealed class HoldingNameJsonConverter : JsonConverter<HoldingTracked>
+{
+    public override HoldingTracked Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => new() { Inner = new Tracked { Name = reader.GetString()! } };
+
+    public override void Write(Utf8JsonWriter writer, HoldingTracked value, JsonSerializerOptions options) => writer.WriteStringValue(value.Inner?.Name);
+}
+
+public readonly partial record struct OverHoldingNamedHolder : IValue<HoldingNamedHolder>;
+
 public readonly partial record struct OverHoldingAnything : IValue<HoldingAnything>;
 
 public readonly partial record struct OverHoldingNamedShade : IValue<HoldingNamedShade>;
@@ -418,5 +435,21 @@ public sealed class ReferenceHandlingTests
         json.ShouldBe(JsonSerializer.Serialize(new Pair<HoldingNamedShade> { First = value }, Preserving));
         json.ShouldContain("\"Dark\"", customMessage: "the control: the property's converter writes the name");
         JsonSerializer.Deserialize<Pair<OverHoldingNamedShade>>(json, Preserving)!.First.Value.ShouldBe(value);
+    }
+
+    /// <summary>
+    /// A converter named on a nullable property is the serializer's adapter of the one named, which writes
+    /// what that one writes: here a name, with no <c>$id</c>. The adapter was judged as the serializer's walk
+    /// of the struct, and the value object refused (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public void A_converter_of_one_s_own_named_on_a_nullable_property_is_written_and_read_under_Preserve()
+    {
+        var value = new HoldingNamedHolder { Holder = new HoldingTracked { Inner = new Tracked { Name = "a" } } };
+        var json  = JsonSerializer.Serialize(new Pair<OverHoldingNamedHolder> { First = OverHoldingNamedHolder.From(value), Second = OverHoldingNamedHolder.From(value) }, Preserving);
+
+        json.ShouldBe(JsonSerializer.Serialize(new Pair<HoldingNamedHolder> { First = value, Second = value }, Preserving));
+        json.ShouldContain("\"Holder\":\"a\"", customMessage: "the control: the named converter writes the name");
+        JsonSerializer.Deserialize<Pair<OverHoldingNamedHolder>>(json, Preserving)!.Second.Value.Holder!.Value.Inner!.Name.ShouldBe("a");
     }
 }
