@@ -1,22 +1,55 @@
 # CodoMetis.TypeKit
 
-Strong types for .NET 10, with one set of rules from the request to the database. Value objects and
-closed sets (smart enums) are written as one line and generated at compile time. A value object's one
-`Create` is what JSON, route binding, parsing and `TryFrom` apply, and the fault it returns reaches an
-HTTP problem response as a typed `Result`, with nothing to translate between libraries on the way.
-EF Core and the OpenAPI document see the type it wraps. `Option` and `Result` cannot be misused: no
-`.Value`, no `default` in source, no ignored result.
+Strong types for .NET 10, with one set of rules from the request to the database.
 
 [![.NET](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/actions/workflows/dotnet.yml/badge.svg)](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/actions/workflows/dotnet.yml)
 [![NuGet](https://img.shields.io/nuget/v/CodoMetis.TypeKit.svg)](https://www.nuget.org/packages/CodoMetis.TypeKit)
 [![Built with Metalama](https://img.shields.io/badge/built_with-Metalama-informational)](#built-with-metalama)
 [![Native AOT: every run-time package](https://img.shields.io/badge/Native%20AOT-every%20run--time%20package-3B82F6)](docs/native-aot.md)
 
-Every run-time package is **Native AOT and trimming compatible**: no trim or AOT warnings, and two
-consumers in CI, a web host with JSON and OpenAPI and a console application with EF Core's compiled
-model, are published with Native AOT against the packed packages and run as native binaries
-([what it asks of you](docs/native-aot.md): a source-generated JSON context, and the one exception,
-the query helpers on an EF Core query).
+## What you get
+
+**Value objects in one line**
+- **Declare it, the rest is generated.** `OrderId : IValue<Guid>` gets its constructor, equality,
+  comparison, parsing, formatting, JSON converter and type converter at compile time.
+- **Validation in one place.** Write `Create` once, and JSON, route binding, parsing and `TryFrom`
+  all run it. Nothing skips it by accident.
+- **A drop-in for primitives.** The JSON, the database column and the OpenAPI schema are the same as
+  the underlying type's. It works for strings, numbers, `Guid`, dates, enums, `Uri`, NodaTime types
+  and your own types.
+- **Smart enums.** One line per member gives you parsing by name, JSON as the name, an OpenAPI string
+  enum and a text column. `Match` breaks the build when a member is added and not handled.
+
+**Option and Result you can't misuse**
+- No `.Value` to forget a check on. A `default` value is a compile error, and an ignored `Result`
+  is flagged.
+- Pipelines, async chains, collecting many results, and `Result.Catch` for code that throws.
+- Neither type serializes silently to `{}`. The serializer refuses them, so a missing value can't
+  reach the wire unnoticed.
+
+**ASP.NET Core and EF Core, with nothing to register per type**
+- **EF Core:** value objects map to plain columns and keys, identity keys included, and `.Value` in
+  a LINQ query becomes plain SQL.
+- **ASP.NET Core:** return a `Result` from an endpoint and its errors become problem-details
+  responses. The OpenAPI document shows each value object as its underlying type, plus the error
+  responses an endpoint can return.
+- **JSON Merge Patch:** `Patch<T>` tells "absent", "null" and "a value" apart.
+
+**Mistakes caught at build time**
+- Analyzers flag default values, ignored results, bypassed validation, and generic type arguments
+  that break declared constraints (`[Sealed]`, `[Distinct]` and more). They also run in Razor files.
+- A declaration that can't be generated fails the build with its name on it, instead of compiling
+  into an empty type.
+
+**Ready for production**
+- **Native AOT and trimming** in every run-time package, checked in CI by publishing real apps as
+  native binaries ([what it asks of you](docs/native-aot.md)).
+- **Secrets stay out of logs.** Error messages never quote the input, and Serilog logs a value
+  object as it prints itself.
+- **Test assertions** for `Option`, `Result` and `Patch<T>`, with no dependency on a test framework.
+- **Take only what you need.** The `Option`/`Result` package brings no code generator with it.
+
+Two value objects, the second one validated:
 
 ```csharp
 public readonly partial record struct OrderId : IValue<Guid>;
