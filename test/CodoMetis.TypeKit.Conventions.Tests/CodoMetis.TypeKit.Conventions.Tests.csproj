@@ -10,4 +10,22 @@
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     </ItemGroup>
 
+    <!--
+      So the build restores the shipping projects itself. Referencing none of them, this project
+      restores nothing they need, and a `dotnet test` of this project alone on a fresh checkout ran against no
+      src/*/obj/project.assets.json: measured 2026-10-14, 92 of 1144 tests failed in a second (every
+      test of the Packs collection, whose pack runs with no restore, and MetalamaBoundaryTests), then
+      passed once anything else, the Samples project or a solution build, had restored src/. That read
+      as a flaky run. A restore that finds nothing changed writes nothing, so after the solution's own
+      restore this one is a no-op and races no build of src/.
+    -->
+    <Target Name="RestoreShippingProjects" BeforeTargets="Build">
+        <ItemGroup>
+            <ShippingProject Include="$([MSBuild]::GetDirectoryNameOfFileAbove('$(MSBuildProjectDirectory)', 'CodoMetis.TypeKit.slnx'))/src/*/*.csproj" />
+        </ItemGroup>
+
+        <!-- A fresh session id forces a new evaluation, the documented way to restore from inside a build. -->
+        <MSBuild Projects="@(ShippingProject)" Targets="Restore" Properties="MSBuildRestoreSessionId=$([System.Guid]::NewGuid())" BuildInParallel="true" />
+    </Target>
+
 </Project>
