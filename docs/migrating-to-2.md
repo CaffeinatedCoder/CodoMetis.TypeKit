@@ -191,7 +191,7 @@ gains an optional `fault` member on its problem type; ASP.NET's own problem resp
 Regenerate clients, and update a checked-in snapshot of the document. `FaultProblem<TFault>` takes any non-null fault type where it took `struct, Enum`,
 so that a closed set can be one, and every type argument it accepted still is. To answer each fault
 by its kind instead of by a switch, make the fault type a closed set:
-[Closed sets](closed-sets.md#as-a-fault-type).
+[Closed sets](closed-sets.md#use-one-as-an-error-type).
 
 ## What is new
 
