@@ -54,13 +54,18 @@ public readonly record struct Fault<TFault> where TFault : notnull
     /// </summary>
     /// <remarks>
     /// Set by <c>WithRule</c> from an enum's member or a closed set's member, so it is always a name
-    /// from a fixed set, qualified so that two types' <c>Blank</c> stay apart, and never quotes the
-    /// request. It takes part in equality, as the detail does.
+    /// from a fixed set, and never quotes the request. The name has no namespace and no type arguments,
+    /// so two rule types can read alike, <c>Rule.Blank</c> from two namespaces; the application names
+    /// its rule types apart for a client. Equality compares the rule's type and member, so two such
+    /// faults are unequal although their rules read alike; it takes part as the detail does.
     /// </remarks>
     public string? Rule { get; private init; }
 
-    /// <summary>The same fault with <paramref name="rule"/> as its <see cref="Rule"/>.</summary>
-    internal Fault<TFault> Naming(string rule) => this with { Rule = rule };
+    /// <summary>The rule's type, which equality compares beside <see cref="Rule"/>: two types' rules can read alike.</summary>
+    private Type? RuleType { get; init; }
+
+    /// <summary>The same fault with <paramref name="rule"/>, a member of <paramref name="type"/>, as its <see cref="Rule"/>.</summary>
+    internal Fault<TFault> Naming(string rule, Type type) => this with { Rule = rule, RuleType = type };
 
     /// <summary>The reason and the detail, as 2.0 printed them, and the rule where there is one.</summary>
     private bool PrintMembers(System.Text.StringBuilder builder)
@@ -140,7 +145,7 @@ public static class FaultRuleExtensions
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="rule"/> is no member of <typeparamref name="TRule"/>.</exception>
         public Fault<TFault> WithRule<TRule>(TRule rule) where TRule : struct, Enum =>
             Enum.IsDefined(rule)
-                ? fault.Naming($"{FaultRuleNames.NestingChain(typeof(TRule))}.{rule}")
+                ? fault.Naming($"{FaultRuleNames.NestingChain(typeof(TRule))}.{rule}", typeof(TRule))
                 : throw new ArgumentOutOfRangeException(nameof(rule), $"A rule is one of {FaultRuleNames.NestingChain(typeof(TRule))}'s members, and no member is this value.");
     }
 }
@@ -165,7 +170,7 @@ public static class FaultClosedSetRuleExtensions
         public Fault<TFault> WithRule<TRule>(TRule rule) where TRule : class, IClosedSet<TRule>
         {
             ArgumentNullException.ThrowIfNull(rule);
-            return fault.Naming(rule.QualifiedName);
+            return fault.Naming(rule.QualifiedName, typeof(TRule));
         }
     }
 }

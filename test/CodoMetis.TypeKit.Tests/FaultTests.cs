@@ -180,6 +180,41 @@ public sealed class FaultTests
         Fault.Of(OrderFault.NotFound).WithRule(Access.Read).ShouldNotBe(Fault.Of(OrderFault.NotFound));
     }
 
+    private static class Box<T>
+    {
+        public enum Rule { Blank }
+    }
+
+    /// <summary>
+    /// A rule's name has no namespace and no type arguments, so two types' rules can read alike; the
+    /// faults stay apart by the rule's type, as the rules themselves are apart.
+    /// </summary>
+    [Fact]
+    public void Two_rules_that_read_alike_from_different_types_are_unequal_faults()
+    {
+        AssertApart(Fault.Of(OrderFault.NotFound).WithRule(Shipping.Rule.Blank), Fault.Of(OrderFault.NotFound).WithRule(Invoicing.Rule.Blank));
+        AssertApart(Fault.Of(OrderFault.NotFound).WithRule(Shipping.RuleSet.Blank), Fault.Of(OrderFault.NotFound).WithRule(Invoicing.RuleSet.Blank));
+        AssertApart(Fault.Of(OrderFault.NotFound).WithRule(Box<int>.Rule.Blank), Fault.Of(OrderFault.NotFound).WithRule(Box<string>.Rule.Blank));
+
+        static void AssertApart(Fault<OrderFault> one, Fault<OrderFault> other)
+        {
+            one.Rule.ShouldBe(other.Rule);
+            one.ShouldNotBe(other);
+            (one == other).ShouldBeFalse();
+            one.ShouldBe(one with { });
+        }
+    }
+
+    [Fact]
+    public void A_second_rule_replaces_the_first_rules_type_too()
+    {
+        var replaced = Fault.Of(OrderFault.NotFound).WithRule(Shipping.Rule.Blank).WithRule(Invoicing.Rule.Blank);
+
+        replaced.ShouldBe(Fault.Of(OrderFault.NotFound).WithRule(Invoicing.Rule.Blank));
+        replaced.GetHashCode().ShouldBe(Fault.Of(OrderFault.NotFound).WithRule(Invoicing.Rule.Blank).GetHashCode());
+        replaced.ShouldNotBe(Fault.Of(OrderFault.NotFound).WithRule(Shipping.Rule.Blank));
+    }
+
     /// <summary>A rule is a member of a fixed set: a string or any other type is no rule, and does not compile, through <c>with</c> either.</summary>
     [Theory]
     [InlineData("Fault<OrderFault> Make() => Fault.Of(OrderFault.NotFound).WithRule(\"blank\");")]

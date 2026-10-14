@@ -272,7 +272,7 @@ application's to decide.
 
 Where one fault answers for several rules, a client may still need to know which: the address is in
 use by another account, or reserved. `WithRule` names it with a member of an enum or a closed set, and
-the problem carries it as `rule`, qualified with its type so that two types' `Blank` stay apart:
+the problem carries it as `rule`, qualified with its type's name so that two types' `Blank` read apart:
 
 ```csharp
 public enum EmailRule { InUse, Reserved }   // which check refused the address
@@ -289,6 +289,12 @@ it says the same for whoever reads the raw response. It is always a member's nam
 request's text, and a value no member names, a combination of flags or a cast number, throws where it
 is given. A value object's own fault is often the rule: `MapError(fault =>
 Fault.Of(SignUpFault.InvalidEmail).WithRule(fault))` says which of its rules refused.
+
+The name carries no namespace, which would publish the application's structure to every client, so
+two rule types with the same nesting chain, `Rule` in two namespaces, read alike on the wire; their
+faults stay unequal in the application, which compares the rule's type. Like a fault's name, the rule
+is the application's vocabulary: name rule types apart, for instance by nesting a rule in its value
+object, `Email.Rule.Blank`.
 
 ### A status per endpoint
 
