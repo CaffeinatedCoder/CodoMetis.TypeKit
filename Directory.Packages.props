@@ -8,7 +8,7 @@
     -->
   <ItemGroup>
     <!-- Latest stable YYYY.N: MIT maintenance covers only the latest line (design/adr/0004-metalama-2026-1-x-latest-stable.md). -->
-    <PackageVersion Include="Metalama.Framework" Version="2026.1.29" />
+    <PackageVersion Include="Metalama.Framework" Version="2026.1.30" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <!--
@@ -61,9 +61,9 @@
     <!-- The Serilog README's sample writes to the console, as a reader's setup would. -->
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
     <!-- The ASP.NET Core satellite's tests: a probe host whose OpenAPI document they read. -->
-    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.13" />
     <!-- The same tests validate values against the document's schemas, as a client's validator would. -->
-    <PackageVersion Include="JsonSchema.Net" Version="9.4.0" />
+    <PackageVersion Include="JsonSchema.Net" Version="9.4.1" />
     <!--
             Raised past GHSA-846f-f764-76mx (High) and GHSA-2fmv-rv2c-59x7 (Moderate), both fixed in
             9.0.21: the analyzer-testing packages bring 9.0.6 through NuGet.Packaging, and the SQL Server

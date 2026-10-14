@@ -47,6 +47,7 @@ Still `net10.0` and Metalama 2026.1. What builds or runs differently, and what t
 - CMTK0003 no longer reports a chain of taps on a result the caller holds.
 - EF Core: a `char` key stays the application's to assign; a default `ulong` key throws `OverflowException` at `Add` (use `ValueGeneratedNever()`).
 - Testing failures name a nested type with its containing types.
+- `CodoMetis.TypeKit.Generators` depends on `Metalama.Framework` 2026.1.30 or later (was 2026.1.29).
 
 ### Fixed
 
