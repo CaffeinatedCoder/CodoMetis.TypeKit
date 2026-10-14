@@ -1,10 +1,13 @@
 # Testing
 
-`Option` and `Result` have no `.Value`, so a test reaches the content through
-`CodoMetis.TypeKit.Testing`, which hands it back and fails saying what the outcome was. The rest of
-this page is the shape of the tests a codebase on value objects ends up writing: `Create` as a table,
-the generated ways in against `Create`, EF Core on SQLite, and an endpoint on the test server. The
-[Testing README](../src/CodoMetis.TypeKit.Testing/README.md) is the package's reference.
+This page shows the tests you typically write for value objects, `Option` and `Result`: assertions
+that hand you the content, `Create` as a table, the generated members checked against `Create`, EF
+Core on SQLite, and an endpoint on the test server.
+
+`Option` and `Result` have no `.Value`, so your tests reach the content through
+`CodoMetis.TypeKit.Testing`. Its assertions hand the content back, and when they fail, they say what
+the outcome was. The [Testing README](../src/CodoMetis.TypeKit.Testing/README.md) is the package's
+reference.
 
 ```csharp
 using CodoMetis.TypeKit;
@@ -27,7 +30,7 @@ public readonly partial record struct ProductCode : IValidatedValue<ProductCode,
 }
 ```
 
-## The assertions
+## Assert on an Option or a Result
 
 ```csharp
 [Fact]
@@ -49,15 +52,20 @@ public void A_code_is_created_or_refused()
 string failure = Result.Catch(() => ProductCode.Create("abc").ShouldBeSuccess()).Match(_ => "", error => error.Message);   // Expected a success, but the Result<ProductCode, CodeFault> is the error NotUpperCase.
 ```
 
-A failure is a `TypeKitAssertionException`, which every framework reports as the test's failure, so
-the package depends on nothing but `CodoMetis.TypeKit`; the assertions sit beside xUnit's `Assert`,
-Shouldly or whatever the test already uses. A failure prints the error through its `ToString()`,
-which is what a test needs to see, and never prints a value, as `Option` and `Result` never do. An uninitialized result fails
-every assertion, saying it is a default instance.
+The assertions work beside whatever your tests already use: xUnit's `Assert`, Shouldly, or anything
+else. A failure throws a `TypeKitAssertionException`, and every test framework reports that as the
+test's failure. That is why the package depends on nothing but `CodoMetis.TypeKit`.
 
-A request's `Patch<T>` fields say which of them the request mentioned, and the assertions say the
-same: `ShouldBeValue()` hands the value back, `ShouldBeNull()` is a clear, and `ShouldBeAbsent()` a
-field the document left out.
+A failure prints the error through its `ToString()`, which is what you need to see in a test. It
+never prints a value, just as `Option` and `Result` never do. An uninitialized result fails every
+assertion, and the message says it is a default instance.
+
+A request's `Patch<T>` fields tell you which of them the request mentioned, and the assertions check
+the same three cases:
+
+- **`ShouldBeValue()`** hands the value back.
+- **`ShouldBeNull()`** checks for a clear.
+- **`ShouldBeAbsent()`** checks for a field the document left out.
 
 ```csharp
 public sealed record CodePatch(Patch<ProductCode> Code, Patch<string> Note, Patch<int> Quantity);
@@ -75,9 +83,9 @@ public void A_patch_says_what_the_request_mentioned()
 }
 ```
 
-## Create as a table
+## Test Create as a table
 
-The rules are the value object's contract, and a table says all of them in one place:
+A value object's rules are its contract. A table puts all of them in one place:
 
 ```csharp
 [Theory]
@@ -95,10 +103,10 @@ public void Create_applies_each_rule(string input, CodeFault? refused)
 }
 ```
 
-## The generated ways in agree with Create
+## Check the generated members against Create
 
-What the generators derive from `Create` is tested through behaviour, not presence: a build proves
-`TryParse` exists, and only a test proves it refuses what `Create` refuses.
+Test what the generators derive from `Create` by how it behaves, not by whether it exists. The build
+already proves that `TryParse` exists. Only a test proves that it rejects what `Create` rejects.
 
 ```csharp
 [Fact]
@@ -112,13 +120,13 @@ public void Every_way_in_applies_the_rules()
 }
 ```
 
-## EF Core on SQLite
+## Test EF Core on SQLite
 
-One open `SqliteConnection` to `:memory:`, `UseTypeKit()` on the options and `EnsureCreated` for
-the schema; [EF Core](ef-core.md#keys) has the whole block, and [SQLite in tests](ef-core.md#sqlite-in-tests)
-says why EF's in-memory provider cannot stand in.
+Open one `SqliteConnection` to `:memory:`, call `UseTypeKit()` on the options, and create the schema
+with `EnsureCreated`. [EF Core](ef-core.md#keys) has the whole block, and
+[SQLite in tests](ef-core.md#sqlite-in-tests) explains why EF's in-memory provider can't stand in.
 
-## An endpoint on the test server
+## Test an endpoint on the test server
 
 ```csharp
 public sealed record CodeRequest(ProductCode Code);
@@ -144,13 +152,18 @@ public async Task A_refused_body_is_a_400()
 }
 ```
 
-The body went through the generated JSON converter, so the 400 is `Create`'s refusal; what the
-response says, in a minimal API and in MVC, is in [ASP.NET Core](aspnet-core.md#what-a-refused-value-answers).
+The body went through the generated JSON converter, so the 400 is `Create` rejecting the code. What
+the response says, in a minimal API and in MVC, is in
+[ASP.NET Core](aspnet-core.md#what-a-refused-value-answers).
 
-## The analyzers in a test project
+## Analyzers in your tests
 
-The analyzers run in test projects as everywhere, so `default(ProductCode)` in a test is CMTK0001,
-as it should be: a test that needs a default instance says so with a pragma around the line, which
-is also what this repository's tests do. A comparison with `default` is a guard and is not reported
-(`id.ShouldNotBe(default)`), nor is a `default` assigned to the `out` parameter of a `Try` method. A
-dropped `Result` in a test is CMTK0003, so `_ = ProductCode.Create(input);` says the drop is meant.
+The analyzers run in test projects as they do everywhere else.
+
+- **`default(ProductCode)` fails the build (CMTK0001)**, in a test too, as it should. When a test
+  needs a default instance, say so with a pragma around the line. This repository's own tests do the
+  same.
+- **Comparing with `default` is fine.** It is a guard, so `id.ShouldNotBe(default)` isn't reported.
+  Neither is a `default` assigned to the `out` parameter of a `Try` method.
+- **A dropped `Result` is reported (CMTK0003)**, in a test too. Write `_ = ProductCode.Create(input);`
+  to show the drop is meant.
