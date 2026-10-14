@@ -24,3 +24,19 @@ parameter: `Node<TA>` and `Node<TB>` are one chain, and were proved apart for bo
 `[Unrelated]`; `Node<TA>` and `Command` are two. Rejected: substituting the parameter into its own bound
 before comparing, which covers `IEquatable<T>` and not a bound that names another parameter,
 `IEnumerable<TA>`, and adds a type rewriter for no case the rule above misses.
+
+**A type built from a type parameter is held as the parameter is.** The pair check asked for a proof only
+where an argument was a type parameter; `List<T>`, `T[]` and `IEnumerable<T>` were compared as written,
+as two closed types, so `Listed<T> : Pair<List<T>, List<int>>`, `Pair<T[], int[]>`,
+`Pair<List<TA>, List<TB>>` and `Apart<IEnumerable<T>, List<int>>` passed, and `Listed<int>` held one type
+twice. An argument built from a parameter is now a breach unless proved apart. For `[Distinct]` the proof
+is that no closed use makes the two one: two generic types of different definitions, two arrays of different
+ranks, an array and a generic type, a parameter and a type built from itself, or a pair of arguments in one
+position proved apart, as `List<T>` against `List<int>` where `T : class`, or `List<TA>` against `List<TB>`
+where both carry `[Distinct]`. Each position is asked on its own, so a parameter used twice errs toward a
+report. For `[Unrelated]`: a value type against a class, array or delegate no value type boxes to; two value
+types never one, since a value type converts to another by identity alone; two classes of different chains,
+compared by their definitions. Two arrays and two delegates are related by variance beyond their definitions,
+`T[]` to `object[]`, and an interface by whatever implements it, so neither proves anything. Against a type
+built from a parameter, a forwarding parameter's bounds and `unmanaged` are taken as met, since the type's
+arguments decide them.

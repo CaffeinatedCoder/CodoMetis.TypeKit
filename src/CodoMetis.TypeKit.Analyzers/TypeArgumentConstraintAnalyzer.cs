@@ -406,9 +406,11 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
 
     /// <summary>
     /// What the pair breaks at <paramref name="level"/>, as the message's last clause on the later
-    /// argument, or <see langword="null"/>. Two closed types are compared as they are; a type parameter is a
-    /// breach unless it is proved apart (<see cref="ProvedDistinct"/>, <see cref="ProvedUnrelated"/>), since
-    /// otherwise the requirement would end at the first forwarding parameter.
+    /// argument, or <see langword="null"/>. Two closed types are compared as they are; a type parameter, or a
+    /// type built from one, <c>List&lt;T&gt;</c> or <c>T[]</c>, is a breach unless it is proved apart
+    /// (<see cref="ProvedDistinct"/>, <see cref="ProvedUnrelated"/>), since otherwise the requirement would end
+    /// at the first forwarding parameter. Compared as written, <c>List&lt;T&gt;</c> and <c>List&lt;int&gt;</c>
+    /// were two types, and <c>Listed&lt;int&gt;</c> held one twice (reported 2026-10-14).
     /// </summary>
     private static string? PairBreach(TypeKitSymbols symbols, CSharpCompilation compilation, TypeArgument earlier, TypeArgument later, TypeArgumentConstraint level)
     {
@@ -417,9 +419,9 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
 
         var other = $"'{first.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)}', the type argument for '{earlier.Parameter.Name}'";
 
-        if (first is ITypeParameterSymbol || second is ITypeParameterSymbol)
+        if (Open(first) || Open(second))
         {
-            if (SymbolEqualityComparer.Default.Equals(first, second)) return $"is the same type as the argument for '{earlier.Parameter.Name}'";
+            if (Same(compilation, first, second)) return $"is the same type as the argument for '{earlier.Parameter.Name}'";
 
             return level switch
             {
@@ -458,34 +460,67 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    /// Whether two arguments, at least one a type parameter, are proved different types: two parameters of
-    /// one generic both carrying <c>[Distinct]</c> or <c>[Unrelated]</c>, whose closed uses are checked in
-    /// turn; or C# constraints that admit no common type, <c>struct</c> against <c>class</c> or a class
-    /// bound no value type boxes to, two class bounds neither deriving from the other, or a type that breaks
-    /// the parameter's constraints. An <c>Enum</c> bound admits every enum, which <c>struct</c> admits too:
-    /// taken as proof, two <c>DayOfWeek</c> passed through a forwarding generic (reported 2026-10-14).
+    /// Whether two arguments, at least one a type parameter or built from one, are proved different types:
+    /// no closed use can make them one (<see cref="CouldBeSame"/>).
     /// </summary>
-    private static bool ProvedDistinct(TypeKitSymbols symbols, CSharpCompilation compilation, ITypeSymbol first, ITypeSymbol second)
-    {
-        if (first is ITypeParameterSymbol one && second is ITypeParameterSymbol two)
-        {
-            if (Together(symbols, one, two, TypeArgumentConstraint.Distinct)) return true;
-
-            return (IsValueTypes(one) && (two.HasReferenceTypeConstraint || ClassBound(two) is { } bound && NoBox(bound)))
-                || (IsValueTypes(two) && (one.HasReferenceTypeConstraint || ClassBound(one) is { } bound_ && NoBox(bound_)))
-                || (ClassBound(one) is { } first_ && ClassBound(two) is { } second_ && DifferentChains(compilation, first_, second_));
-        }
-
-        var (parameter, type) = first is ITypeParameterSymbol p ? (p, second) : ((ITypeParameterSymbol)second, first);
-        return !CouldBe(compilation, parameter, type);
-    }
+    private static bool ProvedDistinct(TypeKitSymbols symbols, CSharpCompilation compilation, ITypeSymbol first, ITypeSymbol second) =>
+        !CouldBeSame(symbols, compilation, first, second);
 
     /// <summary>
-    /// Whether two arguments, at least one a type parameter, are proved unrelated: two parameters of one
-    /// generic both carrying <c>[Unrelated]</c>; a <c>struct</c> parameter against a class other than
-    /// <c>object</c>, <c>ValueType</c> or <c>Enum</c>, which a value type boxes to, or against a parameter
-    /// bound to such a class; or two class bounds neither deriving from the other, since a class has one
-    /// base chain. <c>class</c> alone proves nothing: <c>object</c> satisfies it and is related to everything.
+    /// Whether some closed use could make the two types one. Two type parameters could, unless they are
+    /// proved apart (<see cref="ParametersApart"/>); a type parameter could be a type that meets its C#
+    /// constraints (<see cref="CouldBe"/>), but never one built from itself, <c>T</c> and <c>List&lt;T&gt;</c>;
+    /// two arrays could if their ranks match and their elements could; two generic types could if they have
+    /// one definition and each pair of arguments could; anything else built from a parameter is taken as
+    /// possible. Each position is asked apart, so <c>KeyValuePair&lt;T, T&gt;</c> and
+    /// <c>KeyValuePair&lt;int, string&gt;</c> could be one, which errs toward a report.
+    /// </summary>
+    private static bool CouldBeSame(TypeKitSymbols symbols, CSharpCompilation compilation, ITypeSymbol first, ITypeSymbol second) => (first, second) switch
+    {
+        (ITypeParameterSymbol one, ITypeParameterSymbol two) => SymbolEqualityComparer.Default.Equals(one, two) || !ParametersApart(symbols, compilation, one, two),
+        (ITypeParameterSymbol parameter, var type)           => !Mentions(type, parameter) && CouldBe(compilation, parameter, type),
+        (var type, ITypeParameterSymbol parameter)           => !Mentions(type, parameter) && CouldBe(compilation, parameter, type),
+        (IArrayTypeSymbol one, IArrayTypeSymbol two)         => one.Rank == two.Rank && CouldBeSame(symbols, compilation, one.ElementType, two.ElementType),
+        (IArrayTypeSymbol, INamedTypeSymbol) or (INamedTypeSymbol, IArrayTypeSymbol) => false,
+        (INamedTypeSymbol one, INamedTypeSymbol two) when Open(one) || Open(two) =>
+            SymbolEqualityComparer.Default.Equals(one.OriginalDefinition, two.OriginalDefinition)
+         && AllArguments(one).Zip(AllArguments(two), (x, y) => CouldBeSame(symbols, compilation, x, y)).All(could => could),
+        _ => Open(first) || Open(second) || Same(compilation, first, second),
+    };
+
+    /// <summary>The type arguments of a generic type and of the types it is nested in, outermost first.</summary>
+    private static IEnumerable<ITypeSymbol> AllArguments(INamedTypeSymbol type) =>
+        (type.ContainingType is { } outer ? AllArguments(outer) : []).Concat(type.TypeArguments);
+
+    /// <summary>Whether <paramref name="type"/> is built from <paramref name="parameter"/>: no finite type is both, so they are never one.</summary>
+    private static bool Mentions(ITypeSymbol type, ITypeParameterSymbol parameter) => type switch
+    {
+        ITypeParameterSymbol other => SymbolEqualityComparer.Default.Equals(other, parameter),
+        IArrayTypeSymbol array     => Mentions(array.ElementType, parameter),
+        INamedTypeSymbol named     => named.TypeArguments.Any(argument => Mentions(argument, parameter)) || named.ContainingType is { } outer && Mentions(outer, parameter),
+        _                          => false,
+    };
+
+    /// <summary>
+    /// Whether two type parameters are proved different types: both carry <c>[Distinct]</c> or
+    /// <c>[Unrelated]</c> in one generic, whose closed uses are checked in turn; or their C# constraints admit
+    /// no common type, <c>struct</c> against <c>class</c> or a class bound no value type boxes to, or two class
+    /// bounds neither deriving from the other. An <c>Enum</c> bound admits every enum, which <c>struct</c>
+    /// admits too: taken as proof, two <c>DayOfWeek</c> passed through a forwarding generic (reported 2026-10-14).
+    /// </summary>
+    private static bool ParametersApart(TypeKitSymbols symbols, CSharpCompilation compilation, ITypeParameterSymbol one, ITypeParameterSymbol two) =>
+        Together(symbols, one, two, TypeArgumentConstraint.Distinct)
+     || (IsValueTypes(one) && (two.HasReferenceTypeConstraint || ClassBound(two) is { } bound && NoBox(bound)))
+     || (IsValueTypes(two) && (one.HasReferenceTypeConstraint || ClassBound(one) is { } bound_ && NoBox(bound_)))
+     || (ClassBound(one) is { } first_ && ClassBound(two) is { } second_ && DifferentChains(compilation, first_, second_));
+
+    /// <summary>
+    /// Whether two arguments, at least one a type parameter or built from one, are proved unrelated: two
+    /// parameters of one generic both carrying <c>[Unrelated]</c>; a <c>struct</c> parameter against a class
+    /// other than <c>object</c>, <c>ValueType</c> or <c>Enum</c>, which a value type boxes to, or against a
+    /// parameter bound to such a class; or two class bounds neither deriving from the other, since a class
+    /// has one base chain. <c>class</c> alone proves nothing: <c>object</c> satisfies it and is related to
+    /// everything. Two types built from parameters, neither one, are proved by <see cref="BuiltApart"/>.
     /// </summary>
     private static bool ProvedUnrelated(TypeKitSymbols symbols, CSharpCompilation compilation, ITypeSymbol first, ITypeSymbol second)
     {
@@ -497,6 +532,8 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
                 || (IsValueTypes(two) && ClassBound(one) is { } bound_ && NoBox(bound_))
                 || (ClassBound(one) is { } first_ && ClassBound(two) is { } second_ && DifferentChains(compilation, first_, second_));
         }
+
+        if (first is not ITypeParameterSymbol && second is not ITypeParameterSymbol) return BuiltApart(symbols, compilation, first, second);
 
         var (parameter, type) = first is ITypeParameterSymbol p ? (p, second) : ((ITypeParameterSymbol)second, first);
 
@@ -545,6 +582,27 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         _                                  => false,
     };
 
+    /// <summary>
+    /// Whether two types, neither a type parameter and one built from one, are unrelated at every closed use:
+    /// two value types that are never one, since a value type converts to another by identity alone; a value
+    /// type and a class, an array or a delegate no value type boxes to; or two of a class, an array and a
+    /// delegate of different chains, compared by their definitions. Two arrays and two delegates are related
+    /// by variance beyond their definitions, and an interface by whatever implements it: they prove nothing.
+    /// </summary>
+    private static bool BuiltApart(TypeKitSymbols symbols, CSharpCompilation compilation, ITypeSymbol first, ITypeSymbol second)
+    {
+        static bool Value(ITypeSymbol type)   => type.TypeKind is TypeKind.Struct or TypeKind.Enum;
+        static bool Chained(ITypeSymbol type) => type.TypeKind is TypeKind.Class or TypeKind.Array or TypeKind.Delegate;
+
+        if (Value(first) && Value(second)) return !CouldBeSame(symbols, compilation, first, second);
+        if (Value(first)) return Chained(second) && NoBox(second);
+        if (Value(second)) return Chained(first) && NoBox(first);
+
+        return Chained(first) && Chained(second)
+            && !(first.TypeKind == second.TypeKind && first.TypeKind is TypeKind.Array or TypeKind.Delegate)
+            && DifferentChains(compilation, first, second);
+    }
+
     /// <summary>Whether both parameters carry <paramref name="constraint"/> (or a stricter one) in one generic, so its closed uses are checked for the pair.</summary>
     private static bool Together(TypeKitSymbols symbols, ITypeParameterSymbol one, ITypeParameterSymbol two, TypeArgumentConstraint constraint)
     {
@@ -577,15 +635,17 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     /// are taken as met, and so is an interface bound built from one: <c>where T : IEquatable&lt;T&gt;</c> is met
     /// by <c>int</c>, which implements <c>IEquatable&lt;int&gt;</c> and not the bound as written, and was taken
     /// as proof that <c>T</c> is never <c>int</c> (reported 2026-10-14). A class bound built from one,
-    /// <c>Node&lt;T&gt;</c>, is met by a type whose chain holds its definition.
+    /// <c>Node&lt;T&gt;</c>, is met by a type whose chain holds its definition. A type built from a parameter,
+    /// <c>List&lt;U&gt;</c>, is read the same way against every bound, and as unmanaged, since its arguments
+    /// decide both.
     /// </summary>
     private static bool CouldBe(CSharpCompilation compilation, ITypeParameterSymbol parameter, ITypeSymbol type)
     {
         if (parameter.HasValueTypeConstraint && !(type.IsValueType && type.OriginalDefinition.SpecialType is not SpecialType.System_Nullable_T)) return false;
-        if (parameter.HasUnmanagedTypeConstraint && !type.IsUnmanagedType) return false;
+        if (parameter.HasUnmanagedTypeConstraint && !Open(type) && !type.IsUnmanagedType) return false;
         if (parameter.HasReferenceTypeConstraint && !type.IsReferenceType) return false;
 
-        return parameter.ConstraintTypes.OfType<INamedTypeSymbol>().All(bound => Open(bound)
+        return parameter.ConstraintTypes.OfType<INamedTypeSymbol>().All(bound => Open(bound) || Open(type)
                                                                                    ? bound.TypeKind is not TypeKind.Class || Derives(type, bound)
                                                                                    : Converts(compilation, type, bound));
     }

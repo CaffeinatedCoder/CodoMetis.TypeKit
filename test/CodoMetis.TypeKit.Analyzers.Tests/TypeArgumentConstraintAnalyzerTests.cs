@@ -885,6 +885,67 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
+    /// A type built from a type parameter, <c>List&lt;T&gt;</c> or <c>T[]</c>, is what the parameter makes it
+    /// at each closed use, so it is a breach unless proved apart, as the parameter is: compared as written,
+    /// <c>List&lt;T&gt;</c> and <c>List&lt;int&gt;</c> were two types, and <c>Listed&lt;int&gt;</c> held one
+    /// twice (reported 2026-10-14). Two generic types are proved different by their definitions, or by an
+    /// argument no use can make one; two arrays by their ranks or elements; a parameter is never a type built
+    /// from itself. For <c>[Unrelated]</c>, a value type against a class no value type boxes to, two value
+    /// types never one, and two classes of different chains are proofs; two arrays, two delegates and an
+    /// interface are not, being related by variance or by an implementer.
+    /// </summary>
+    [Fact]
+    public Task A_type_built_from_a_type_parameter_is_held_as_the_parameter_is() =>
+        Test(
+            """
+            namespace Built
+            {
+                using System.Collections.Generic;
+
+                public sealed class Listed<T> : Pair<List<T>, {|#0:List<int>|}> { }
+                public sealed class Arrays<T> : Pair<T[], {|#1:int[]|}> { }
+                public sealed class BothOpen<TA, TB> : Pair<List<TA>, {|#2:List<TB>|}> { }
+                public sealed class Sequenced<T> : Apart<IEnumerable<T>, {|#3:List<int>|}> { }
+                public sealed class SameOpen<T> : Pair<List<T>, {|#4:List<T>|}> { }
+                public sealed class Nested<T> : Pair<Dictionary<string, List<T>>, {|#5:Dictionary<string, List<int>>|}> { }
+                public sealed class ParameterAndBuilt<T, U> : Pair<T, {|#11:List<U>|}> where T : IEnumerable<int> { }
+                public sealed class UnmanagedAndBuilt<T, U> : Pair<T, {|#12:KeyValuePair<U, int>|}> where T : unmanaged { }
+
+                public sealed class BothCarried<[Distinct] TA, [Distinct] TB> : Pair<List<TA>, List<TB>> { }
+                public sealed class ClassElement<T> : Pair<List<T>, List<int>> where T : class { }
+                public sealed class OtherDefinition<T> : Pair<List<T>, HashSet<int>> { }
+                public sealed class ArrayAndList<T> : Pair<T[], List<int>> { }
+                public sealed class Ranks<T> : Pair<T[], int[,]> { }
+                public sealed class ItselfInside<T> : Pair<T, List<T>> { }
+
+                public sealed class StructAndClass<T> : Apart<KeyValuePair<T, int>, List<int>> { }
+                public sealed class TwoStructs<T> : Apart<KeyValuePair<T, int>, KeyValuePair<string, string>> { }
+                public sealed class ClassChains<T> : Apart<List<T>, Handler> { }
+                public sealed class ArrayAndClass<T> : Apart<T[], Handler> { }
+
+                public sealed class TwoArrays<T> : Apart<T[], {|#6:object[]|}> { }
+                public sealed class TwoDelegates<T> : Apart<Func<T>, {|#7:Func<object>|}> { }
+                public sealed class StructAndObject<T> : Apart<KeyValuePair<T, int>, {|#8:object|}> { }
+                public sealed class OneDefinition<T> : Apart<List<T>, {|#9:List<string>|}> { }
+                public sealed class TwoStructsOneUse<T> : Apart<KeyValuePair<T, int>, {|#10:KeyValuePair<string, int>|}> { }
+            }
+            """,
+            Cmtk0010(0, "List<int>", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'List<T>', the type argument for 'TLeft'"),
+            Cmtk0010(1, "int[]", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'T[]', the type argument for 'TLeft'"),
+            Cmtk0010(2, "List<TB>", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'List<TA>', the type argument for 'TLeft'"),
+            Cmtk0010(3, "List<int>", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'IEnumerable<T>', the type argument for 'TLeft'"),
+            Cmtk0010(4, "List<T>", "TRight", "Pair<TLeft, TRight>", "is the same type as the argument for 'TLeft'"),
+            Cmtk0010(5, "Dictionary<string, List<int>>", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'Dictionary<string, List<T>>', the type argument for 'TLeft'"),
+            Cmtk0010(6, "object[]", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'T[]', the type argument for 'TLeft'"),
+            Cmtk0010(7, "Func<object>", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'Func<T>', the type argument for 'TLeft'"),
+            Cmtk0010(8, "object", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'KeyValuePair<T, int>', the type argument for 'TLeft'"),
+            Cmtk0010(9, "List<string>", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'List<T>', the type argument for 'TLeft'"),
+            Cmtk0010(10, "KeyValuePair<string, int>", "TRight", "Apart<TLeft, TRight>", "is not proved unrelated to 'KeyValuePair<T, int>', the type argument for 'TLeft'"),
+            Cmtk0010(11, "List<U>", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'T', the type argument for 'TLeft'"),
+            Cmtk0010(12, "KeyValuePair<U, int>", "TRight", "Pair<TLeft, TRight>", "is not proved a different type from 'T', the type argument for 'TLeft'"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
     /// A pair of one <c>[Unrelated]</c> and one <c>[Distinct]</c> is held to the stricter at its closed uses,
     /// but forwards only what both declare: into a <c>[Distinct]</c> pair it is proved, into an
     /// <c>[Unrelated]</c> one it is not, since the generic's own closed uses would not check the relation
