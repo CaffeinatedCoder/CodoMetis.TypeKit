@@ -46,7 +46,7 @@ converts, and so does the `Result.Success()` marker. The fault type is yours: an
 operations, a closed set when each fault carries constant data, a `Fault<TFault>` when one occurrence
 carries a sentence, a `Fault<T1, T2>` when a boundary answers with its own faults and with those shared
 code decides, a record where a fault carries the rule's data
-([Value objects](value-objects.md#faults)). Keep the input out of it: a fault reaches messages and
+([Value objects](value-objects.md#errors)). Keep the input out of it: a fault reaches messages and
 logs. `ToHttpResult()` takes the first four.
 
 ## Reaching the outcome

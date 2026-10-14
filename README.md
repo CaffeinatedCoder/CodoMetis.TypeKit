@@ -166,7 +166,7 @@ compiled and its stated outputs are tested, as the READMEs' are.
 
 | Page | Covers |
 |---|---|
-| [Value objects](docs/value-objects.md) | Declaring one, struct or class, identifiers, validated text and numbers, faults, which factory to call, your own members, generic code over value objects |
+| [Value objects](docs/value-objects.md) | Declare one, pick a struct or a class, validate input, design its errors, pick the right factory, write your own members, generic code |
 | [Closed sets](docs/closed-sets.md) | Smart enums: declaring one, data on its members, `Match`, JSON and dictionary keys, EF Core columns, configuration, logging, what the generators refuse, when an `enum` is still right |
 | [Option](docs/option.md) | Absence as a type: creating, matching, combining, converting at the boundary, and the complete public surface |
 | [Result](docs/result.md) | Outcomes as a type: faults, pipelines, async chains, collecting results, an exception as an outcome, errors across layers, and the complete public surface |

@@ -156,6 +156,9 @@ here, so it leads and the source decides.
   A page in `docs/` is compiled by being there and must be linked from the root README's
   "Documentation" table; a package README is the reference for its package, a docs page the guide for
   a topic, and the same code block is never in both.
+- **Consumer docs are written in a plain, friendly voice.** The root README, the package READMEs and
+  `docs/` follow `.claude/skills/plain-docs`: written to "you", example first, plain words, edge
+  cases last. Design records and this file keep their own register.
 - **Silent is worse than broken.** A value object that compiles without being generated, an
   analyzer that stops firing, or a converter that materialises `default` are this repo's
   characteristic failures. Prefer a diagnostic or an exception to a plausible result.
