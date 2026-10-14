@@ -1,12 +1,17 @@
 # Option
 
-`Option<T>` is a value that may be absent. It has no `.Value`: the content is reached where
-absence is handled, through `Match`, `TryGetValue` and the combinators, so a caller cannot read a
-value that is not there. `T` is `notnull`, `Some(null)` throws, and a `default(Option<T>)` is `None`,
-so an option that reports a value always has one. `ToString()` never prints the content. It lives in
-`CodoMetis.TypeKit`; the [base README](../src/CodoMetis.TypeKit/README.md#optiont) is its reference.
+`Option<T>` holds a value or nothing. Use it where a value may be missing, like a customer's
+nickname or the result of a lookup. The compiler then makes sure you handle the missing case before
+you use the value.
 
-The examples import `CodoMetis.TypeKit` and share a customer with an optional nickname and an optional address:
+There is no `.Value` to read. You reach the content through `Match`, `TryGetValue` and the other
+members on this page, and each of them asks what should happen when there is nothing. An option that
+says it has a value always has one: `T` is `notnull`, `Option.Some(null)` throws, and a
+`default(Option<T>)` is `None`. `ToString()` never prints the content.
+
+`Option<T>` lives in the `CodoMetis.TypeKit` namespace, and the
+[base README](../src/CodoMetis.TypeKit/README.md#optiont) is its reference. The examples import that
+namespace and share a customer with an optional nickname and an optional address:
 
 ```csharp
 public readonly partial record struct CustomerId : IValue<Guid>;
@@ -16,7 +21,7 @@ public sealed record Address(string Town, string Country);
 public sealed record Customer(CustomerId Id, string Name, string Tier, Option<string> Nickname, Option<Address> Address);
 ```
 
-## Creating one
+## Create one
 
 ```csharp
 Option<Customer> found = customers.GetValueOrNone(ann.Id);                      // Some
@@ -27,21 +32,36 @@ Option<int> parsed = int.TryParse(text, out var number) ? Option.Some(number) : 
 Option<int> none = Option.None<int>();                                          // where nothing supplies the type
 ```
 
-`Option.Some(value)` and `Option.None()` build one by hand. `None()` takes its type from where it goes:
-a `return`, a conditional beside a `Some`, a parameter. Where nothing supplies one, as with `var`,
-write `Option.None<T>()`. The lookups do the rest: `GetValueOrNone(key)` on a dictionary,
-`FirstOrNone()` and `LastOrNone()` on a sequence, with or without a predicate, `SingleOrNone()`, which
-throws for more than one, `ElementAtOrNone(index)`, and `ToOption()` on a nullable, `int?` or
-`string?`, which turns a null into `None`. On a query, `FirstOrNone`, `SingleOrNone` and
-`ElementAtOrNone` let the provider run the predicate and ask it for the rows they need, and
-`LastOrNone` is a compile error, since a query has no last row until it is ordered. The predicate
-runs in the query when it is an expression, as a lambda written at the call is; a `Func<T, bool>` held
-in a variable, or a method group, binds to the sequence's overload instead, which reads every row and
-runs the condition in memory, without a warning. Pass an `Expression<Func<T, bool>>` there. CMTK0009
-points at `FirstOrDefault()` and its kind, whose `default` for a value object or a `Result` is an
-instance that passed no factory.
+Most options come from a lookup:
 
-## Reaching the value
+- **`GetValueOrNone(key)`** on a dictionary.
+- **`FirstOrNone()` and `LastOrNone()`** on a sequence, with or without a predicate.
+- **`SingleOrNone()`**, which throws when there is more than one element.
+- **`ElementAtOrNone(index)`**, for the element at a position.
+- **`ToOption()`** on a nullable, such as an `int?` or a `string?`. A null becomes `None`.
+
+To build one yourself, use `Option.Some(value)` and `Option.None()`. `None()` takes its type from
+where it goes: a `return`, a conditional beside a `Some`, or a parameter. When nothing tells it the
+type, as with `var`, write `Option.None<T>()`.
+
+### In a database query
+
+`FirstOrNone`, `SingleOrNone` and `ElementAtOrNone` also work on an `IQueryable<T>`. The database
+provider runs the predicate and fetches only the rows they need. `LastOrNone` on a query fails to
+compile, because a query has no last row until you order it.
+
+The predicate runs in the database only when it is an expression, which a lambda written at the call
+is. A `Func<T, bool>` held in a variable, or a method group, binds to the sequence overload instead.
+That reads every row and checks the condition in memory, with no warning. Pass an
+`Expression<Func<T, bool>>` there.
+
+**Good to know**
+
+- **Prefer these to `FirstOrDefault()`.** For a value object or a `Result`, `FirstOrDefault()` and its
+  kind hand you a `default` instance that went through no factory. The analyzer points them out
+  (CMTK0009).
+
+## Get the value out
 
 ```csharp
 string greeting = found.Match(customer => $"Hello again {customer.Name}", () => "Hello");   // "Hello again Ann"
@@ -55,12 +75,18 @@ if (found.TryGetValue(out var customer)) visits.Add(customer.Id);   // customer 
 foreach (var each in unknown.AsEnumerable()) visits.Add(each.Id);   // runs once for Some, never for None
 ```
 
-`Match` takes both branches and returns what they return, so it is the one call that cannot forget
-absence. `Or(fallback)` and `OrDefault()` unwrap with a fallback, `OrNull()` into a nullable, `int?`
-for an `Option<int>` and `string?` for an `Option<string>`. `IsSome()` and `IsNone()` answer the
-question alone, for a guard or an assertion, never for a branch that then reads the value.
+`Match` takes one branch for a value and one for nothing, and returns what they return. It is the one
+call that can't forget the missing case.
 
-## Combining
+- **`Or(fallback)` and `OrDefault()`** give you the value, or a fallback when there is none.
+- **`OrNull()`** gives you a nullable: an `int?` for an `Option<int>`, a `string?` for an
+  `Option<string>`.
+- **`TryGetValue(out value)`** fits an `if`, and the value is non-null inside the branch.
+- **`AsEnumerable()`** gives you zero or one element, for a `foreach` or LINQ.
+- **`IsSome()` and `IsNone()`** answer the question on its own. Use them for a guard or an assertion.
+  To branch and then read the value, use `Match` or `TryGetValue`.
+
+## Combine options
 
 ```csharp
 Option<decimal> discount = found.Filter(customer => customer.Tier == "gold").Map(_ => 0.1m);   // Some, Ann is gold
@@ -77,22 +103,32 @@ Option<string> greeting =
     select $"{customer.Name} in {address.Town}";   // Some
 ```
 
-`Map` changes the value and keeps absence; `Bind` takes a selector that is itself optional, so an
-`Option<Option<T>>` never appears; `Filter` turns a value that fails the predicate into `None`;
-`Zip` combines two to six options into one value when every one of them is `Some`; `Tap` runs an
-action on a value and returns the option unchanged. `Choose` keeps, in order, the values a selector
-answers `Some` for and drops the `None`s, a filter and a map in one, lazily as a LINQ operator is; over
-a sequence of options, `Choose()` alone keeps the values they hold. `Select`, `SelectMany` and `Where` make query
-syntax work, and each `from` after the first sees the earlier ranges, as above.
+- **`Map`** changes the value, and a missing value stays missing.
+- **`Bind`** takes a selector that returns an option itself, so you never end up with an
+  `Option<Option<T>>`.
+- **`Filter`** turns a value that fails the predicate into `None`.
+- **`Zip`** combines two to six options into one value, when every one of them has a value.
+- **`Tap`** runs an action on the value and hands the option on unchanged.
+- **`Choose`** works on a sequence. It keeps, in order, the values the selector returns `Some` for, and
+  drops the rest: a filter and a map in one. It runs lazily, like any LINQ operator. On a sequence of
+  options, `Choose()` without a selector keeps the values they hold.
 
-## A pending option
+`Select`, `SelectMany` and `Where` make query syntax work, as in the last example. Each `from` after
+the first can use the ones before it.
 
-A lookup that is still running is a `Task<Option<T>>`, and `MapAsync`, `BindAsync`, `FilterAsync`,
-`TapAsync` and `ToResultAsync` continue it as [Result's async chains](result.md#async-chains) continue
-a pending result, awaited once at the end. A callback there runs where the task it waits for completed:
-at once on the caller's synchronization context when the lookup had already finished, and without it,
-usually on a thread-pool thread, when it had not ([Where a callback runs](result.md#where-a-callback-runs)).
-In a Blazor component or a WPF window, await the lookup and continue with the synchronous members:
+## Continue a pending lookup
+
+A lookup that is still running is a `Task<Option<T>>`. `MapAsync`, `BindAsync`, `FilterAsync`,
+`TapAsync` and `ToResultAsync` continue it the way [Result's async chains](result.md#async-chains)
+continue a pending result. You await the whole chain once, at the end.
+
+A callback in such a chain runs where the task it waits for finished. If the lookup had already
+finished, the callback runs at once, on your synchronization context. If it had not, the callback runs
+without that context, usually on a thread-pool thread
+([Where a callback runs](result.md#where-a-callback-runs)).
+
+In a Blazor component or a WPF window, await the lookup first, then continue with the synchronous
+members:
 
 ```csharp
 Option<Customer> loaded = await shop.FindAsync(ann.Id);              // the await returns to the caller's context
@@ -101,10 +137,10 @@ string shown = loaded.Map(customer => customer.Name).Or("unknown");   // "Ann", 
 
 ## At the boundary
 
-An option is not a wire type, not a column and not a route parameter: System.Text.Json refuses it in
-both directions ([JSON](json.md#option-and-result-at-the-wire)), and EF Core cannot map it
-([EF Core](ef-core.md#option-and-result)). A shape that crosses a boundary says absent with `T?`, and
-the option lives between the shapes.
+Keep options inside your code, and use a nullable `T?` wherever data crosses a boundary. An option
+is not a wire type, a column or a route parameter. System.Text.Json rejects it in both directions
+([JSON](json.md#option-and-result-at-the-wire)), and EF Core can't map it
+([EF Core](ef-core.md#option-and-result)).
 
 ```csharp
 public sealed record CustomerDto(string Name, string? Nickname);   // the wire says absent with null
@@ -114,27 +150,31 @@ static Customer FromDto(CustomerDto dto) => new(CustomerId.New(), dto.Name, "sta
 static CustomerDto ToDto(Customer customer) => new(customer.Name, customer.Nickname.OrNull());
 ```
 
+Use `ToOption()` on the way in and `OrNull()` on the way out. The option lives between the two
+shapes.
+
 ```csharp
 Result<Customer, LookupFault> required = customers.GetValueOrNone(CustomerId.New()).ToResult(LookupFault.Unknown);   // Error: Unknown
 ```
 
-`ToOption()` on the way in and `OrNull()` on the way out; `ToResult(error)` where absence is an error
-the caller has to act on, which hands the rest to [Result](result.md).
+When a missing value is an error the caller has to act on, `ToResult(error)` turns the option into a
+[Result](result.md), and the Result page takes it from there.
 
-## When it is the wrong type
+## When to use something else
 
-- The caller has to know why: a [Result](result.md) carries the fault. `Email.TryFrom(text)` answers
-  valid or not; `Email.Create(text)` says which rule refused it.
-- Zero to many: a collection, possibly empty, says it without a type.
-- A value that is always there once set: a `required` property. An `Option` property on an entity
-  or a DTO is refused by EF Core and by the serializer; a `T?` there is the shape, and `ToOption()`
-  lifts it where the domain wants an option.
+- **The caller needs to know why.** Use a [Result](result.md), which carries the error.
+  `Email.TryFrom(text)` tells you whether the text is valid. `Email.Create(text)` tells you which
+  rule it broke.
+- **Zero to many values.** Use a collection. An empty one says "none" without a special type.
+- **A value that is always there once it is set.** Use a `required` property.
+- **A property of an entity or a DTO.** Use `T?`. EF Core and the serializer both reject an `Option`
+  property there. Call `ToOption()` where your domain code wants an option.
 
 ## The surface
 
-Every public member, on `Option<T>`, on the static class `Option`, and as extensions in the
-`CodoMetis.TypeKit` namespace. `T` is `notnull` throughout, but for the elements `Choose(selector)`
-reads, which may be null: only what the selector finds is a value.
+This table lists every public member: on `Option<T>`, on the static class `Option`, and the
+extensions in the `CodoMetis.TypeKit` namespace. `T` is `notnull` throughout, with one exception: the
+elements `Choose(selector)` reads may be null, and only what the selector finds counts as a value.
 
 | Member | On | Returns |
 |---|---|---|
@@ -160,7 +200,7 @@ reads, which may be null: only what the selector finds is a value.
 | `Bind(selector)` | `Option<T>` | the `Option<TResult>` the selector returns, or `None` |
 | `Filter(predicate)` | `Option<T>` | the same option, or `None` when the predicate fails |
 | `Tap(action)` | `Option<T>` | the same option, after running the action on a value |
-| `Zip(b, …, selector)` | `Option<T>` with two to six options | `Option<TResult>`, `Some` only when every one is |
+| `Zip(b, ..., selector)` | `Option<T>` with two to six options | `Option<TResult>`, `Some` only when every one is |
 | `ToResult(error)` | `Option<T>` | `Result<T, TError>`: the error for `None` |
 | `MapAsync(selector)`, `BindAsync(selector)`, `TapAsync(action)` | `Option<T>`, `Task<Option<T>>` | the same over a callback that returns a `Task`, or continuing a pending option; the chain is awaited once |
 | `FilterAsync(predicate)` | `Task<Option<T>>` | `Filter`, once the option is known |
@@ -168,6 +208,6 @@ reads, which may be null: only what the selector finds is a value.
 | `Select`, `SelectMany`, `Where` | `Option<T>` | query syntax over `Map`, `Bind` and `Filter` |
 | implicit from `None` | `Option<T>` | `None` |
 
-Equality is a record struct's: two options are equal when both are `None` or hold equal values.
-A `default(Option<T>)` is `None`, and the analyzer still refuses writing it (CMTK0001): say
-`Option.None()`.
+Two options are equal when both are `None`, or when both hold equal values, as with any record
+struct. A `default(Option<T>)` is `None`, but the analyzer still rejects writing it (CMTK0001). Write
+`Option.None()` instead.

@@ -1,13 +1,16 @@
 # Result
 
-`Result<T, TError>` is the outcome of an operation: a value or an error of your own type.
-`Result<TError>` is the outcome of a command that produces no value: a success or an error. Neither
-has a `.Value` or an `.Error`: the outcome is reached through `Match`, `TryGetValue` and the
-combinators, so a failure is handled where the value is used. Both live in `CodoMetis.TypeKit`; the
-[base README](../src/CodoMetis.TypeKit/README.md#resultt-terror-and-resultterror) is their reference,
-and [Option](option.md) is the type for absence without a reason.
+A `Result` tells you how an operation went. `Result<T, TError>` holds a value, or an error of a type
+you choose. `Result<TError>` is for a command that produces no value: it holds a success or an error.
 
-The examples import `CodoMetis.TypeKit` and are a checkout: a cart is found, reserved against stock, and charged.
+Neither has a `.Value` or an `.Error`. You reach the outcome through `Match`, `TryGetValue` and the
+other members on this page, so you handle a failure where you use the value. Both types live in the
+`CodoMetis.TypeKit` namespace, and the
+[base README](../src/CodoMetis.TypeKit/README.md#resultt-terror-and-resultterror) is their reference.
+When a value can be missing for no particular reason, use an [Option](option.md) instead.
+
+The examples import `CodoMetis.TypeKit` and follow a checkout: find a cart, reserve its lines
+against stock, and charge for them.
 
 ```csharp
 public readonly partial record struct CartId : IValue<Guid>;
@@ -25,7 +28,7 @@ public sealed record Reservation(OrderId Id, decimal Total);
 public sealed record Receipt(OrderId Id, decimal Total);
 ```
 
-## Two shapes
+## Pick a shape
 
 ```csharp
 public Result<Reservation, CheckoutFault> Reserve(Cart cart)   // a value, or a fault
@@ -40,16 +43,23 @@ public Result<CheckoutFault> Charge(decimal total) =>              // a success 
     total <= limit ? Result.Success() : CheckoutFault.PaymentRefused;   // a bare error converts here, where nothing can be confused with it
 ```
 
-A bare value converts to a valued success; an error goes through `Result.Error(...)`, because in a
-`Result<long, int>` a bare `5` could be either. `Result<TError>` has no value, so there a bare error
-converts, and so does the `Result.Success()` marker. The fault type is yours: an enum for most
-operations, a closed set when each fault carries constant data, a `Fault<TFault>` when one occurrence
-carries a sentence, a `Fault<T1, T2>` when a boundary answers with its own faults and with those shared
-code decides, a record where a fault carries the rule's data
-([Value objects](value-objects.md#errors)). Keep the input out of it: a fault reaches messages and
-logs. `ToHttpResult()` takes the first four.
+Return a bare value for a success. Wrap an error in `Result.Error(...)`, because in a
+`Result<long, int>` a bare `5` could be either. A `Result<TError>` has no value to confuse it with,
+so there a bare error converts on its own, and so does the `Result.Success()` marker.
 
-## Reaching the outcome
+You choose the error type, which TypeKit calls a fault. Pick the simplest one that fits:
+
+- **An enum** for most operations.
+- **A closed set** when each fault carries constant data.
+- **A `Fault<TFault>`** when one occurrence carries a sentence of its own.
+- **A `Fault<T1, T2>`** when a boundary answers with its own faults and with the ones shared code
+  decides.
+- **A record** when a fault carries the rule's data ([Value objects](value-objects.md#errors)).
+
+`ToHttpResult()` accepts the first four. Keep the input out of a fault, because a fault ends up in
+messages and logs.
+
+## Get the outcome out
 
 ```csharp
 var reserved = checkout.Reserve(cart);
@@ -62,16 +72,24 @@ if (reserved.TryGetValue(out var reservation, out _) && checkout.Charge(reservat
 Option<Reservation> maybe = reserved.ToOption();   // the fault dropped, where only presence matters
 ```
 
-`Match` takes both branches and returns what they return. `TryGetValue(out value, out error)` gives
-the branch and the content in one call: `value` is non-null when it returns true, `error` when it
-returns false. Only `Result<TError>` converts to `bool`, so `if (checkout.Charge(total))` reads as it
-should. A valued result does not: `if (await users.IsEmailTakenAsync(email))` over a
-`Result<bool, DbFault>` would take the branch for a success holding `false`. `State` tells the three states apart without throwing:
-`Success`, `Error`, and `Uninitialized` for a `default`, which an array slot or an unassigned field
-still produces and on which every branching member throws rather than inventing a `default(TError)`.
-CMTK0005 reports an array of results created with a length, CMTK0001 a `default` in source.
+`Match` takes one branch for a success and one for an error, and returns what they return.
+`TryGetValue(out value, out error)` gives you the branch and the content in one call. `value` is
+non-null when it returns true, and `error` is non-null when it returns false.
 
-## A pipeline
+Only `Result<TError>` converts to `bool`, so `if (checkout.Charge(total))` reads as it should. A
+result with a value doesn't convert. Otherwise `if (await users.IsEmailTakenAsync(email))` over a
+`Result<bool, DbFault>` would take the branch for a success that holds `false`.
+
+`State` tells the three states apart without throwing: `Success`, `Error`, and `Uninitialized`.
+
+**Good to know**
+
+- **A `default` result is uninitialized.** An array slot or an unassigned field still produces one.
+  Every branching member throws on it, rather than inventing a `default(TError)`.
+- **The analyzer points out where they come from.** It reports an array of results created with a
+  length (CMTK0005), and a `default` written in your code (CMTK0001).
+
+## Chain steps
 
 ```csharp
 Result<Receipt, CheckoutFault> receipt = checkout.FindCart(cartId)              // Result<Cart, CheckoutFault>
@@ -88,24 +106,33 @@ string ledger = charged.Match(() => "charged", fault => $"not charged: {fault}")
 string empty = checkout.FindCart(emptyCartId).Ensure(cart => cart.Lines.Count > 0, CheckoutFault.CartEmpty).Bind(checkout.Reserve).Match(r => "reserved", fault => $"refused: {fault}");   // "refused: CartEmpty"
 ```
 
-`Map`, `Bind`, `Tap` and `Ensure` run on a success and carry an error through unchanged; `MapError`,
-`TapError` and `Recover` run on an error and carry a success through. The first error stops the chain,
-and every step after it is skipped, which the `empty` line shows: `Reserve` never ran. `Recover` is
-the error branch's `Bind`: its selector answers a success or another error, as a second chance:
+Each step runs on one branch and passes the other one through unchanged:
+
+- **On a success:** `Map`, `Bind`, `Tap` and `Ensure`. An error passes through them.
+- **On an error:** `MapError`, `TapError` and `Recover`. A success passes through them.
+
+The first error stops the chain, and every step after it is skipped. The `empty` line shows this:
+`Reserve` never ran.
+
+`Recover` is the error branch's `Bind`. Its selector returns a success or another error, which gives
+the operation a second chance:
 
 ```csharp
 Result<CheckoutFault> settled = charged.Recover(fault => fault == CheckoutFault.PaymentRefused ? checkout.Invoice(cartId) : fault);   // Success
 ```
 
-A lambda that returns a bare value on one branch and `Result.Error(...)` on the other needs its type
-argument, `.Bind<Receipt>(r => r.Total > 0 ? r : Result.Error(CheckoutFault.CartEmpty))`, because C#
-infers a lambda's return type from its body alone; `.Ensure(r => r.Total > 0, CheckoutFault.CartEmpty)`
-says the same without one.
+**Good to know**
 
-## Across layers
+- **A lambda that mixes a bare value and an error needs its type argument.** C# infers a lambda's
+  return type from its body alone. So a lambda that returns a bare value on one branch and
+  `Result.Error(...)` on the other needs one:
+  `.Bind<Receipt>(r => r.Total > 0 ? r : Result.Error(CheckoutFault.CartEmpty))`.
+  `.Ensure(r => r.Total > 0, CheckoutFault.CartEmpty)` says the same without one.
 
-A fault names what the operation found. What a client is told is the host's decision, and the two
-meet in `MapError`:
+## Translate errors between layers
+
+A fault names what the operation found. What a client is told is up to the host. `MapError` is where
+you translate one into the other:
 
 ```csharp
 public enum ApiFault { NotFound, Invalid, Unavailable }
@@ -126,13 +153,13 @@ static class Faults
 Result<Receipt, ApiFault> forApi = receipt.MapError(Faults.ToApi);   // Success, untouched; an error would be the ApiFault
 ```
 
-In ASP.NET Core, `ToHttpResult()` turns the result into a response, the fault into problem details
-with the status the host maps it to ([ASP.NET Core](aspnet-core.md#a-result-as-a-response)).
+In ASP.NET Core, `ToHttpResult()` turns the result into a response. The fault becomes problem
+details, with the status the host maps it to ([ASP.NET Core](aspnet-core.md#a-result-as-a-response)).
 
 ## Async chains
 
-The asynchronous members continue a `Task<Result<…>>` without an `await` each, so a chain is awaited
-once, at its end:
+The asynchronous members continue a `Task<Result<...>>` without an `await` at each step. You await
+the chain once, at its end:
 
 ```csharp
 Result<CheckoutFault> chargedAsync = await checkout.FindCartAsync(cartId)        // Task<Result<Cart, CheckoutFault>>
@@ -145,32 +172,41 @@ Result<CheckoutFault> chargedAsync = await checkout.FindCartAsync(cartId)       
 string asyncLedger = chargedAsync.Match(() => "charged", fault => $"not charged: {fault}");   // "charged"
 ```
 
-The asynchronous steps take callbacks that return a `Task` and wait for them, so what a callback
-throws reaches the chain's `await`. A callback that returns a `ValueTask` needs `.AsTask()` or an
-`async` lambda: `TapAsync` and `TapErrorAsync` would otherwise bind to their synchronous overload and
-not wait, and `MapAsync` would hold the `ValueTask` as the value.
+The asynchronous steps take callbacks that return a `Task`, and wait for them. So whatever a callback
+throws comes out of the chain's `await`.
+
+**Good to know**
+
+- **A callback that returns a `ValueTask` needs `.AsTask()` or an `async` lambda.** Otherwise
+  `TapAsync` and `TapErrorAsync` bind to their synchronous overload and don't wait, and `MapAsync`
+  keeps the `ValueTask` itself as the value.
 
 ## Where a callback runs
 
-Every `await` inside the package is `ConfigureAwait(false)`, so nothing resumes on the caller's
-`SynchronizationContext`, and a caller that blocks on a chain with `.Result` or `.Wait()` is not
-deadlocked by the package's own awaits. A callback therefore runs where the task it waits for completed. When that task has
-already completed, the callback runs at once, on the caller's thread and context; when it is still
-pending, the callback runs wherever the task completes, usually a thread-pool thread, without the
-caller's context. That holds for every continuation of a pending result, for `TraverseAsync` after its
-first operation, and for every step after one that waited. The caller's own `await` of the chain
-returns to its context as always.
+Every `await` inside the package uses `ConfigureAwait(false)`. Nothing resumes on your
+`SynchronizationContext`. If you block on a chain with `.Result` or `.Wait()`, the package's own
+awaits don't deadlock you.
+
+As a result, a callback runs where the task it waits for finished:
+
+- **The task had already finished.** The callback runs at once, on your thread and context.
+- **The task was still running.** The callback runs wherever the task finishes, usually on a
+  thread-pool thread, without your context.
+
+That holds for every continuation of a pending result, for `TraverseAsync` after its first
+operation, and for every step after one that waited. Your own `await` of the chain returns to your
+context as always.
 
 In a Blazor component or a WPF window, a callback that touches state bound to the renderer or the
-dispatcher would work or fail by timing. There, await the task and continue with the synchronous
-combinators, or marshal inside the callback (`InvokeAsync`, `Dispatcher.Invoke`):
+dispatcher would then work or fail depending on timing. There, await the task and continue with the
+synchronous members, or marshal inside the callback (`InvokeAsync`, `Dispatcher.Invoke`):
 
 ```csharp
 Result<Cart, CheckoutFault> found = await checkout.FindCartAsync(cartId);   // the await returns to the caller's context
 string lineCount = found.Map(cart => $"{cart.Lines.Count} lines").Match(text => text, fault => $"refused: {fault}");   // "2 lines", the selector on that context too
 ```
 
-## Collecting results
+## Collect many results
 
 ```csharp
 Result<IReadOnlyList<Line>, CheckoutFault> lines = requested.Traverse(checkout.ToLine);   // every request to a line, or the first fault
@@ -182,15 +218,17 @@ string summary = requested.Traverse(checkout.ToLine).Match(list => $"{list.Count
 string stopped = refused.Traverse(checkout.ToLine).Match(list => $"{list.Count} lines", fault => $"refused: {fault}");    // "refused: OutOfStock"
 ```
 
-`Traverse`, `Sequence` and `Zip` (two to six results) stop at the first error, in sequence or
-argument order, and `Traverse` calls its selector for nothing after it. None of them collects errors:
-a fault type that is a list of your own is how several faults travel together.
+`Traverse`, `Sequence` and `Zip` (two to six results) stop at the first error, in the order of the
+sequence or the arguments. `Traverse` doesn't call its selector for anything after that error.
 
-An asynchronous operation runs one element at a time with `TraverseAsync`, each awaited before the
-next starts, so nothing starts after a fault. With a cancellation token, the token is checked before
-each operation and handed to it, and a cancellation propagates rather than becoming an error.
-Operations that may all run at once are `Task.WhenAll` over their tasks and `Sequence()` over what
-it answers.
+None of them collects errors. To return several faults together, make the fault type a list of your
+own.
+
+`TraverseAsync` runs an asynchronous operation one element at a time. It awaits each operation before
+it starts the next, so nothing starts after a fault. Give it a cancellation token, and it checks the
+token before each operation and hands it on. A cancellation propagates as an exception and doesn't
+become an error. When the operations may all run at once, use `Task.WhenAll` over their tasks and
+`Sequence()` over what it returns.
 
 ```csharp
 Result<IReadOnlyList<Reservation>, CheckoutFault> reserved = await carts.TraverseAsync(checkout.ReserveAsync);     // one at a time, in order; nothing starts after a fault
@@ -200,8 +238,8 @@ Result<IReadOnlyList<Cart>, CheckoutFault> found = await ids.TraverseAsync(check
 
 ## An exception as an outcome
 
-A call that throws has no way into a `Result` except a `try`/`catch` written by hand. `Result.Catch`
-runs the call and answers its value or the exception as the error:
+Without help, the only way from a call that throws into a `Result` is a `try`/`catch` you write
+yourself. `Result.Catch` runs the call and gives you its value, or the exception as the error:
 
 ```csharp
 Result<Uri, Exception> url = Result.Catch(() => new Uri(text));                                        // Error: UriFormatException
@@ -211,23 +249,31 @@ Result<Exception> written = Result.Catch(() => File.WriteAllText(path, "receipt"
 Result<string, Exception> read = await Result.CatchAsync(() => File.ReadAllTextAsync(path));           // Success: receipt
 ```
 
-An exception is for the code that called, not for a client: `ToHttpResult()` does not accept a
-`Result<T, Exception>`, and `MapError` turns it into a fault that it does, as `asFault` shows.
-`Catch<T, TException>` spells both type arguments, since C# infers all or none. `CatchAsync` awaits
-the task, so an exception thrown after its first `await` is the error too; a delegate that returns a
-`Task` given to `Catch` is a compile error naming `CatchAsync`, since the task's exception would be
-thrown after `Catch` had returned. An `OperationCanceledException` passes through every overload,
-since a cancellation is not an outcome, and so does an `AggregateException` that holds cancellations
-alone, as `Wait()` and `.Result` throw for a cancelled task; one that holds anything beside them is the
-error, as it was thrown. A cancellation over a `TimeoutException` is the error, wrapped or not: that is
-how `HttpClient` reports its `Timeout` elapsing, the call failing, and `.Result` on such a call is the
-error too.
-`Map`, `Bind` and the rest are unchanged: a selector that throws propagates.
+An exception is for the code that called, not for a client. `ToHttpResult()` doesn't accept a
+`Result<T, Exception>`, so turn the exception into a fault with `MapError` first, as `asFault` does.
 
-`CatchAsync`'s error is what `await` throws, the exception `try { await task; } catch (Exception e)`
-would catch. A task that faulted with several exceptions, as `Task.WhenAll`'s does when more than one
-operation fails, throws the first of them, and a narrowed `CatchAsync` looks at that one alone. The
-task's `Exception` holds them all, so where every failure matters, hold the task:
+**Good to know**
+
+- **Name both type arguments to narrow.** `Catch<T, TException>` spells both, since C# infers all
+  type arguments or none.
+- **Use `CatchAsync` for a task.** It awaits the task, so an exception thrown after the task's first
+  `await` is the error too. Passing a delegate that returns a `Task` to `Catch` fails to compile, and
+  the error names `CatchAsync`. The task's exception would otherwise be thrown after `Catch` had
+  returned.
+- **A cancellation is not an outcome.** An `OperationCanceledException` passes through every
+  overload. So does an `AggregateException` that holds only cancellations, as `Wait()` and `.Result`
+  throw for a cancelled task. An `AggregateException` that holds anything else is the error, as it was
+  thrown.
+- **A timeout is an error.** A cancellation over a `TimeoutException` is the error, wrapped or not.
+  That is how `HttpClient` reports that its `Timeout` elapsed and the call failed. `.Result` on such
+  a call gives the error too.
+- **The other members don't catch.** `Map`, `Bind` and the rest are unchanged: a selector that throws
+  propagates.
+
+`CatchAsync`'s error is what `await` throws: the exception `try { await task; } catch (Exception e)`
+would catch. A task that faulted with several exceptions throws only the first of them. `Task.WhenAll`
+does this when more than one operation fails, and a narrowed `CatchAsync` looks at that first one
+alone. The task's `Exception` holds them all, so when every failure matters, keep hold of the task:
 
 ```csharp
 Task both = Task.WhenAll(File.WriteAllTextAsync(draft, "a"), File.WriteAllTextAsync(copy, "b"));
@@ -235,7 +281,7 @@ Result<Exception> saved = await Result.CatchAsync(() => both);   // Error: Direc
 int failures = both.Exception?.InnerExceptions.Count ?? 0;        // 2, every failure is on the task
 ```
 
-## Query syntax
+## Use query syntax
 
 ```csharp
 Result<Receipt, CheckoutFault> receipt =
@@ -244,13 +290,14 @@ Result<Receipt, CheckoutFault> receipt =
     select new Receipt(reservation.Id, reservation.Total);
 ```
 
-`Select` and `SelectMany` make it work; there is no `where`, since a result has no error to give a
-filtered-out value, which is what `Ensure(predicate, error)` is for.
+`Select` and `SelectMany` make query syntax work. There is no `where`: a result has no error to give
+a value that is filtered out. Use `Ensure(predicate, error)` for that.
 
 ## The surface
 
-Every public member of `Result<T, TError>`, `Result<TError>`, the static class `Result`, and the
-extensions in the `CodoMetis.TypeKit` namespace. `T` and `TError` are `notnull` throughout.
+These tables list every public member of `Result<T, TError>`, `Result<TError>`, the static class
+`Result`, and the extensions in the `CodoMetis.TypeKit` namespace. `T` and `TError` are `notnull`
+throughout.
 
 **Creating**
 
@@ -296,10 +343,10 @@ extensions in the `CodoMetis.TypeKit` namespace. `T` and `TError` are `notnull` 
 | `MapError(selector)` | both | a new error type |
 | `Recover(selector)` | both | the selector's result on an error, a success or another error |
 | `Tap(action)`, `TapError(action)` | both | runs the action on that branch, hands the result on |
-| `Zip(b, …, selector)` | `Result<T, TError>` with two to six results | one value from all, or the first error |
+| `Zip(b, ..., selector)` | `Result<T, TError>` with two to six results | one value from all, or the first error |
 | `Select`, `SelectMany` | `Result<T, TError>` | query syntax over `Map` and `Bind` |
-| `MapAsync`, `BindAsync`, `RecoverAsync`, `TapAsync`, `TapErrorAsync` | both, and `Task<Result<…>>` | the same, taking or continuing a task; the chain is awaited once |
-| `MapErrorAsync`, `EnsureAsync` | `Task<Result<…>>`; `EnsureAsync` on `Task<Result<T, TError>>` | `MapError` and `Ensure`, once the result is known |
+| `MapAsync`, `BindAsync`, `RecoverAsync`, `TapAsync`, `TapErrorAsync` | both, and `Task<Result<...>>` | the same, taking or continuing a task; the chain is awaited once |
+| `MapErrorAsync`, `EnsureAsync` | `Task<Result<...>>`; `EnsureAsync` on `Task<Result<T, TError>>` | `MapError` and `Ensure`, once the result is known |
 
-Equality is a record struct's. `ToString()` prints the state and never the value or the error, so a
-result is safe to log; the debugger shows both.
+Equality works as for any record struct. `ToString()` prints the state and never the value or the
+error, so a result is safe to log. The debugger shows both.
