@@ -99,10 +99,12 @@ public sealed class JsonSchemaDescription
     /// they were added. Then the converter the serializer runs is asked, chosen as the serializer chooses it:
     /// the property's own, where <paramref name="property"/> names one; the first of the options' converters
     /// that converts the type, a <see cref="Nullable{T}"/> as itself before the value it holds, and a factory
-    /// for the converter it makes; the type's own, a value object's generated converter, which writes the
-    /// type it wraps, and a closed set's, which writes one of its members' names, each recognised by the
-    /// attribute the generators put on the type; and the resolver's. A converter that describes itself
-    /// answers; one that says nothing answers nothing, whatever the type's own converter would have said.
+    /// for the converter it makes; and the resolver's, which is the type's own unless the resolver puts
+    /// another in charge: a value object's generated converter, which writes the type it wraps, and a
+    /// closed set's, which writes one of its members' names, each recognised by the attribute the
+    /// generators put on the type, and the generated one where the resolver does not know the type. A
+    /// converter that describes itself answers; one that says nothing answers nothing, whatever the type's
+    /// own converter would have said.
     /// </para>
     /// <para>
     /// A value object is described as its wrapped type under the same options, so one over a
@@ -131,9 +133,10 @@ public sealed class JsonSchemaDescription
         if (TryRegistered(type, options, out var declared)) return Describe(declared, value, options);
         if (type != value && TryRegistered(value, options, out var held)) return Describe(held, value, options);
 
-        if (Generated.GetOrAdd(value, Generate) is { } generated) return generated;
-
-        return options.TryGetTypeInfo(value, out var info) && info.Converter is IDescribedJsonConverter self ? self.DescribeJson(value, options) : null;
+        // The resolver's converter, which is the type's own unless a resolver puts another in charge, as the
+        // options' converters do: a value object written as "780" by one was described as its wrapped decimal.
+        // A value object the resolver does not know, in a source-generated context, is the generated one's.
+        return options.TryGetTypeInfo(value, out var info) ? Describe(info.Converter, value, options) : Generated.GetOrAdd(value, Generate);
     }
 
     /// <summary>

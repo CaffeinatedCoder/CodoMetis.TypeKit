@@ -28,6 +28,18 @@ public abstract record LocalReferenceEqualityRecord
 public sealed partial record OverAReferenceEqualityRecord : LocalReferenceEqualityRecord, IValue<int>;
 #pragma warning restore CMTK1023
 
+/// <summary>A base record in this assembly whose <c>IEquatable</c> of itself is implemented explicitly, by reference.</summary>
+public abstract record LocalExplicitEqualityRecord : IEquatable<LocalExplicitEqualityRecord>
+{
+    bool IEquatable<LocalExplicitEqualityRecord>.Equals(LocalExplicitEqualityRecord? other) => ReferenceEquals(this, other);
+}
+
+// CMTK1023 names the base's equality, which the generated one does not call.
+#pragma warning disable CMTK1023
+/// <summary>Over a base record whose explicit <c>IEquatable</c> compares by reference, which a <c>HashSet</c> of the base calls.</summary>
+public sealed partial record OverAnExplicitEqualityRecord : LocalExplicitEqualityRecord, IValue<int>;
+#pragma warning restore CMTK1023
+
 /// <summary>A base record in this assembly whose <c>ToString()</c> is sealed.</summary>
 public abstract record LocalMaskingRecord
 {
@@ -100,6 +112,24 @@ public sealed class InheritedMembersTests
         (value == same).ShouldBeTrue();
         value.GetHashCode().ShouldBe(same.GetHashCode());
         new HashSet<OverAReferenceEqualityRecord> { value, same }.Count.ShouldBe(new SortedSet<OverAReferenceEqualityRecord> { value, same }.Count);
+    }
+
+    /// <summary>
+    /// A base record's explicit <c>IEquatable&lt;TBase&gt;</c> is what a collection of the base calls, and the
+    /// generated equality did not reach it: a <c>HashSet</c> of the value object held one of two holding 42,
+    /// and a <c>HashSet</c> of the base both (reported 2026-10-14). The value object implements the base's
+    /// interface again, as its own equality.
+    /// </summary>
+    [Fact]
+    public void A_base_records_explicit_equality_is_not_the_value_objects()
+    {
+        var value = OverAnExplicitEqualityRecord.From(42);
+        var same  = OverAnExplicitEqualityRecord.From(42);
+
+        new HashSet<OverAnExplicitEqualityRecord> { value, same }.Count.ShouldBe(1);
+        new HashSet<LocalExplicitEqualityRecord> { value, same }.Count.ShouldBe(1);
+        ((IEquatable<LocalExplicitEqualityRecord>)value).Equals(same).ShouldBeTrue();
+        ((IEquatable<LocalExplicitEqualityRecord>)value).Equals(OverAnExplicitEqualityRecord.From(43)).ShouldBeFalse();
     }
 
     public static TheoryData<object> OverASealedToString => [MaskedOverALocalRecord.From("SECRET"), MaskedOverALibraryRecord.From("SECRET")];

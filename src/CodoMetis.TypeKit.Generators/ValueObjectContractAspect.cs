@@ -70,9 +70,22 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
     /// both, and a JSON round trip give back a value unequal to the one written, while a
     /// <c>SortedSet</c> held one. The record's synthesized <c>Equals(object)</c>, <c>Equals(TBase)</c>
     /// and <c>==</c> call this one. The record is sealed, so <c>other</c> is of this very type.
+    /// <para>
+    /// A base's <c>IEquatable&lt;TBase&gt;</c>, which a collection of the base calls, is implemented
+    /// again (<c>IReimplementedEquatable&lt;TBase&gt;</c>), by the public <c>Equals(TBase)</c> the
+    /// compiler synthesizes in the record derived from that base, which calls <c>Equals(object)</c> and so
+    /// this one: a base implementing it explicitly kept that implementation, so a <c>HashSet</c> of the
+    /// value object held one of two holding 42 and a <c>HashSet</c> of the base both (reported
+    /// 2026-10-14). Metalama implements no interface a base already does, nor explicit members of one it
+    /// skipped (LAMA0516), so the interface listed is one derived from it, which C# takes for
+    /// implementing it again. Every base's, whatever it declares.
+    /// </para>
     /// </remarks>
     private static void IntroduceEquality(IAspectBuilder<INamedType> builder, INamedType valueType)
     {
+        for (var type = builder.Target.BaseType; type is { SpecialType: not SpecialType.Object }; type = type.BaseType)
+            builder.ImplementInterface(TypeFactory.GetNamedType(typeof(IReimplementedEquatable<>)).MakeGenericInstance(type), OverrideStrategy.Ignore);
+
         builder.IntroduceMethod(
             nameof(EqualsTemplate),
             IntroductionScope.Instance,

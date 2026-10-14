@@ -112,7 +112,8 @@
   wrapped type writes a `$ref`, which the converter could not read (since 1.0.0). A converter cannot
   reach the caller's references, so `GeneratedJsonPlan` throws `NotSupportedException` under any
   handler but `IgnoreCycles` where the contract may hold references: an object or collection of a
-  reference type, `object`, or a struct with such a property, walked through the options' contracts. A
+  reference type, `object`, or a struct with such a property it writes or reads, a nullable struct as
+  the struct it holds, walked through the options' contracts ([decision 77](adr/0077-third-review-refines-74-to-76.md)). A
   value converter writes no `$id`, so a struct of numbers and strings still writes the wrapped type's
   bytes. `IgnoreCycles` is left alone: a cycle through the value object fails at the depth limit, which
   is loud.
@@ -172,7 +173,10 @@
     `GetHashCode()` over `_value` for a record class with a base; the record's own `Equals(object)`,
     `Equals(TBase)` and `==` call them. A base's hand-written `Equals(TBase)`, `GetHashCode()` or
     `IEquatable<TBase>.Equals` is then not called, which CMTK1023 says, a Warning since an Error that
-    reports more waits for a major version (decision 34).
+    reports more waits for a major version (decision 34). A collection of the base calls the base's
+    `IEquatable<TBase>`, which the value object implements again by listing `IReimplementedEquatable<TBase>`
+    for every base: Metalama implements no interface a base already does, and C# implements one again
+    for a class that lists an interface derived from it ([decision 77](adr/0077-third-review-refines-74-to-76.md)).
   - CMTK1012: state besides the wrapped value, an instance field, auto-property, `required` member or
     field-like event, declared or inherited. JSON, parsing and the materializer carried the wrapped
     value alone while equality compared the rest. Computed and static members stay allowed. In a
@@ -195,7 +199,8 @@
     that takes the text by `ref` or `out`, and an interface's `static virtual Parse` were taken for
     parsers, and the generated parsing failed (LAMA0611: CS0029, CS1620, CS8926; reported 2026-10-14,
     since 1.0.0). A parser is now what the generated call can call as it does and what gives the wrapped
-    type back; anything else leaves the value object without parsing, as over a type with none.
+    type back; anything else leaves the value object without parsing, as over a type with none. An
+    abstract class's public string constructor is no parser either (CS0144, decision 77).
   - An `[Obsolete(error: true)]` on a value object, or on a type it is nested in, made the companion
     class's use of it CS0619. It is made to work, not refused: the companion class carries the nearest
     `[Obsolete]`, and C# reports no use of an obsolete type inside an obsolete declaration. Nothing else

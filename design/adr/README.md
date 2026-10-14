@@ -83,3 +83,4 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0074](0074-descriptions-resolve-the-converter-as-the-serializer-does.md) | Descriptions resolve the converter as the serializer does, and survive the document's version | 2026-10-14 | accepted |
 | [0075](0075-equality-over-base-record-generated.md) | Over a base record a value object's equality is generated; the base's is CMTK1023, a Warning | 2026-10-14 | accepted |
 | [0076](0076-preserved-references-refused.md) | A value object refuses preserved references inside its wrapped value | 2026-10-14 | accepted |
+| [0077](0077-third-review-refines-74-to-76.md) | A base's IEquatable is implemented again, the resolver's converter is described, and the reference scan reads what the serializer writes | 2026-10-14 | accepted |

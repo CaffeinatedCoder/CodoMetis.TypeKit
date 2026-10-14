@@ -80,6 +80,31 @@ public sealed class DescribedValueObjectJsonTests
         properties["plain"]!["type"]!.ToJsonString().ShouldContain("number", Case.Sensitive, "its neighbour keeps the generated one");
     }
 
+    /// <summary>A resolver that writes a value object as a quoted cent count, through a converter of its own.</summary>
+    public sealed class CentsResolver : IJsonTypeInfoResolver
+    {
+        public JsonTypeInfo? GetTypeInfo(Type type, JsonSerializerOptions options) =>
+            type == typeof(ProbeAmount) ? JsonMetadataServices.CreateValueInfo<ProbeAmount>(options, new CentsConverter()) : null;
+    }
+
+    /// <summary>
+    /// A resolver puts its own converter in charge as the options' converters do, so the schema is what
+    /// that converter says: the generated description, the wrapped decimal's, came first, and a value
+    /// written as "780" was described as a number (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public void A_described_converter_a_resolver_puts_in_charge_is_described()
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { TypeInfoResolver = JsonTypeInfoResolver.Combine(new CentsResolver(), new DefaultJsonTypeInfoResolver()) };
+
+        JsonSerializer.Serialize(new Invoice(ProbeAmount.From(7.80m), ProbeAmount.From(1m), [], [], ProbeStatus.Open), options).ShouldStartWith("""{"total":"780","discount":"100",""", Case.Sensitive, "the resolver's converter writes it");
+
+        var properties = options.GetJsonSchemaAsNode(typeof(Invoice), DescribedJsonSchema.ExporterOptions())["properties"]!;
+        properties["total"]!.ToJsonString().ShouldBe("""{"type":"string","pattern":"^-?[0-9]*$"}""");
+        properties["discount"]!["type"]!.ToJsonString().ShouldBe("""["string","null"]""");
+        properties["lines"]!["items"]!.ToJsonString().ShouldBe("""{"type":"string","pattern":"^-?[0-9]*$"}""");
+    }
+
     /// <summary>A value object's own description, its rule as a schema, comes before the wrapped type's.</summary>
     [Fact]
     public void The_application_s_description_of_a_value_object_comes_first()

@@ -57,11 +57,15 @@ internal sealed class ProbeHost : IAsyncDisposable
         builder.Services.AddControllers().AddApplicationPart(typeof(ProbeController).Assembly);
         if (json is not null) builder.Services.ConfigureHttpJsonOptions(json);
 
-        // The converters go on MVC's options too, as a host with controllers must register them
-        // (DescribedOptionsAgreement refuses the document otherwise; DescribedSchemaTests holds that).
+        // The converters and the resolvers of one's own go on MVC's options too, as a host with controllers
+        // must register them (DescribedOptionsAgreement refuses the document otherwise; DescribedSchemaTests
+        // holds that).
         builder.Services.AddOptions<Microsoft.AspNetCore.Mvc.JsonOptions>().Configure<Microsoft.Extensions.Options.IOptions<JsonOptions>>((mvc, http) =>
         {
             foreach (var converter in http.Value.SerializerOptions.Converters) mvc.JsonSerializerOptions.Converters.Add(converter);
+
+            var resolvers = http.Value.SerializerOptions.TypeInfoResolverChain.Where(resolver => resolver is not System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver).ToArray();
+            for (var i = 0; i < resolvers.Length; i++) mvc.JsonSerializerOptions.TypeInfoResolverChain.Insert(i, resolvers[i]);
         });
         builder.Services.AddOpenApi(options =>
         {

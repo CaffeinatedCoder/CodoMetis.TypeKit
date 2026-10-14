@@ -426,15 +426,23 @@ public sealed class DescribedSchemaTests
     private static readonly JsonObject Conditional = JsonNode.Parse("""{"type":"integer","if":{"type":"integer"},"then":{"minimum":0},"else":{"type":"number"}}""")!.AsObject();
 
     /// <summary>Each way the options can have a value object written, and a value that writer does not write.</summary>
-    private static readonly Dictionary<string, (Func<System.Text.Json.Serialization.JsonConverter[]> Converters, string Foreign)> Writers = new()
+    private static readonly Dictionary<string, (Action<System.Text.Json.JsonSerializerOptions> Apply, string Foreign)> Writers = new()
     {
-        ["the generated converter"] = (() => [], "true"),
-        ["a described converter"] = (() => [new CentsConverter()], "7.8"),
-        ["a described factory"] = (() => [new CentsFactory()], "7.8"),
-        ["a decimal converter"] = (() => [new DecimalStringJsonConverter()], "7.8"),
-        ["a description in the options"] = (() => [new JsonSchemaDescriptions().Describe<ProbeAmount>(JsonSchemaDescription.Of(new JsonObject { ["type"] = "number", ["minimum"] = 0 }))], "\"100\""),
-        ["a stored-JSON factory"] = (() => [new StoredJsonConverterFactory()], "true"),
+        ["the generated converter"] = (_ => { }, "true"),
+        ["a described converter"] = (options => options.Converters.Add(new CentsConverter()), "7.8"),
+        ["a described factory"] = (options => options.Converters.Add(new CentsFactory()), "7.8"),
+        ["a decimal converter"] = (options => options.Converters.Add(new DecimalStringJsonConverter()), "7.8"),
+        ["a description in the options"] = (options => options.Converters.Add(new JsonSchemaDescriptions().Describe<ProbeAmount>(JsonSchemaDescription.Of(new JsonObject { ["type"] = "number", ["minimum"] = 0 }))), "\"100\""),
+        ["a stored-JSON factory"] = (options => options.Converters.Add(new StoredJsonConverterFactory()), "true"),
+        ["a resolver's described converter"] = (options => options.TypeInfoResolverChain.Insert(0, new CentsResolver()), "7.8"),
     };
+
+    /// <summary>A resolver that puts <see cref="CentsConverter"/> in charge of a value object, as the options' converters would.</summary>
+    public sealed class CentsResolver : System.Text.Json.Serialization.Metadata.IJsonTypeInfoResolver
+    {
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo? GetTypeInfo(Type type, System.Text.Json.JsonSerializerOptions options) =>
+            type == typeof(ProbeAmount) ? System.Text.Json.Serialization.Metadata.JsonMetadataServices.CreateValueInfo<ProbeAmount>(options, new CentsConverter()) : null;
+    }
 
     public static TheoryData<string, OpenApiSpecVersion> WritersAndVersions => new(Writers.Keys.SelectMany(writer => new[] { (writer, OpenApiSpecVersion.OpenApi3_1), (writer, OpenApiSpecVersion.OpenApi3_0) }));
 
@@ -447,8 +455,8 @@ public sealed class DescribedSchemaTests
     [MemberData(nameof(WritersAndVersions))]
     public async Task Every_position_accepts_what_its_writer_writes_and_refuses_what_it_does_not(string writer, OpenApiSpecVersion version)
     {
-        var (converters, foreign) = Writers[writer];
-        await using var host = await ProbeHost.StartAsync(openApi => openApi.AddTypeKit(), json => { foreach (var converter in converters()) json.SerializerOptions.Converters.Add(converter); }, version,
+        var (apply, foreign) = Writers[writer];
+        await using var host = await ProbeHost.StartAsync(openApi => openApi.AddTypeKit(), json => apply(json.SerializerOptions), version,
             app => app.MapPost("/placed", int (Placed placed) => 0));
         var document = await host.DocumentAsync();
         var options = host.Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions;

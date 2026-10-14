@@ -204,7 +204,8 @@ What describes a type, the first that answers: the options' `JsonSchemaDescripti
 word, so a value object can say more than its wrapped type (`Describe<Percentage>(…)` with a `minimum`
 and a `maximum`); then the converter that writes it, as the serializer picks one: the property's own, a
 nullable property's included, then the first of the options' converters that converts the type, a
-`Nullable<T>` as itself before `T`, then the type's own, a value object's as its wrapped type under the
+`Nullable<T>` as itself before `T`, then the one the options' resolver gives, which is the type's own
+unless a resolver of one's own puts another in charge: a value object's as its wrapped type under the
 same options and a closed set's as a string of its members' names. A factory is asked for the converter
 it makes, and a converter that says nothing says nothing. So a converter that replaces a value object's
 generated one describes it, or leaves it undescribed.

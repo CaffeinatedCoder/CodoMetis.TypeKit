@@ -213,7 +213,9 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
         if (valueType.Attributes.Any(attribute => attribute.Type.IsConvertibleTo(typeof(TypeConverterAttribute))))
             return ValueParseStrategy.TypeConverter;
 
-        if (valueType.Constructors.Any(constructor => constructor is { Accessibility: Accessibility.Public, Parameters: [{ } text] } && TakesText(text)))
+        // Only a type the generated call can make: an abstract class's public constructor is for the
+        // classes derived from it (LAMA0611, CS0144).
+        if (!valueType.IsAbstract && valueType.Constructors.Any(constructor => constructor is { Accessibility: Accessibility.Public, Parameters: [{ } text] } && TakesText(text)))
             return ValueParseStrategy.StringConstructor;
 
         // Callable as the generated code calls it, Type.Parse(text), and giving the wrapped type back. Not

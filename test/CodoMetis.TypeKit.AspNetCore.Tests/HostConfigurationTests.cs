@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using CodoMetis.TypeKit.CompilerServices;
@@ -293,11 +294,20 @@ public sealed class HostConfigurationTests
 /// <summary>
 /// A value object, by its contract, that wraps itself. It has no finite schema, and the satellite
 /// works against the contract, so it has to refuse such a type rather than recurse. Declared by
-/// hand as the generators declare one: the interfaces, and the attribute run-time code reads.
+/// hand as the generators declare one: the interfaces, the attribute run-time code reads, and the
+/// converter its <c>[JsonConverter]</c> names, by which the satellite knows the generated one writes it.
 /// </summary>
 [GeneratedValueObject<Ouroboros, Ouroboros>]
+[JsonConverter(typeof(OuroborosJsonConverter))]
 public sealed class Ouroboros : IValueObject<Ouroboros, Ouroboros>, IValueObjectMaterializer<Ouroboros, Ouroboros>
 {
+    public sealed class OuroborosJsonConverter : JsonConverter<Ouroboros>
+    {
+        public override Ouroboros Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => throw new NotSupportedException();
+
+        public override void Write(Utf8JsonWriter writer, Ouroboros value, JsonSerializerOptions options) => throw new NotSupportedException();
+    }
+
     public Ouroboros Value => this;
 
     public static Ouroboros Materialize(Ouroboros value) => value;

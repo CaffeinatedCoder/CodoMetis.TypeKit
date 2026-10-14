@@ -24,7 +24,26 @@ public struct HoldingTracked
     public Tracked? Inner { get; set; }
 }
 
+/// <summary>A struct the serializer walks, with a nullable struct holding a class among its properties.</summary>
+public struct HoldingNullableHolder
+{
+    public HoldingTracked? Holder { get; set; }
+}
+
+/// <summary>A struct the serializer walks, whose only class is ignored, so it writes nothing that could have an <c>$id</c>.</summary>
+public struct HoldingIgnored
+{
+    public int Number { get; set; }
+
+    [JsonIgnore]
+    public Tracked? Ignored { get; set; }
+}
+
 public readonly partial record struct OverTracked : IValue<Tracked>;
+
+public readonly partial record struct OverHoldingNullableHolder : IValue<HoldingNullableHolder>;
+
+public readonly partial record struct OverHoldingIgnored : IValue<HoldingIgnored>;
 
 public readonly partial record struct OverUntracked : IValue<Untracked>;
 
@@ -62,6 +81,38 @@ public sealed class ReferenceHandlingTests
     public void Preserving_references_inside_a_value_object_over_a_struct_holding_a_class_is_refused_on_writing() =>
         Should.Throw<NotSupportedException>(() => JsonSerializer.Serialize(new Pair<OverHoldingTracked> { First = OverHoldingTracked.From(new HoldingTracked { Inner = new Tracked() }) }, Preserving))
               .Message.ShouldContain("ReferenceHandler.Preserve");
+
+    /// <summary>
+    /// A nullable struct is written as the struct it holds, so a class inside that has an <c>$id</c>: two
+    /// value objects around one instance wrote it twice, and the wrapped type's document, with a <c>$ref</c>,
+    /// failed to read (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public void Preserving_references_inside_a_nullable_struct_holding_a_class_is_refused()
+    {
+        var shared = new HoldingNullableHolder { Holder = new HoldingTracked { Inner = new Tracked { Name = "x" } } };
+        var json   = JsonSerializer.Serialize(new Pair<HoldingNullableHolder> { First = shared, Second = shared }, Preserving);
+
+        json.ShouldContain("\"$ref\"");
+        Should.Throw<NotSupportedException>(() => JsonSerializer.Serialize(new Pair<OverHoldingNullableHolder> { First = OverHoldingNullableHolder.From(shared), Second = OverHoldingNullableHolder.From(shared) }, Preserving))
+              .Message.ShouldContain("ReferenceHandler.Preserve");
+        Should.Throw<NotSupportedException>(() => JsonSerializer.Deserialize<Pair<OverHoldingNullableHolder>>(json, Preserving)).Message.ShouldContain("ReferenceHandler.Preserve");
+    }
+
+    /// <summary>
+    /// An ignored property is neither written nor read, so a class there has no <c>$id</c>: the struct was
+    /// refused under <see cref="ReferenceHandler.Preserve"/>, where it had been written as the wrapped type
+    /// before the refusal (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public void A_struct_whose_only_class_is_ignored_is_written_and_read_under_Preserve()
+    {
+        var value = new HoldingIgnored { Number = 42, Ignored = new Tracked() };
+        var json  = JsonSerializer.Serialize(new Pair<OverHoldingIgnored> { First = OverHoldingIgnored.From(value) }, Preserving);
+
+        json.ShouldBe(JsonSerializer.Serialize(new Pair<HoldingIgnored> { First = value }, Preserving));
+        JsonSerializer.Deserialize<Pair<OverHoldingIgnored>>(json, Preserving)!.First.Value.Number.ShouldBe(42);
+    }
 
     /// <summary>The wrapped type's document, which a value object read as an unreadable value.</summary>
     [Fact]

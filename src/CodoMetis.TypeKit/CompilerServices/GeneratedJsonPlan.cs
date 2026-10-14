@@ -73,8 +73,9 @@ public sealed class GeneratedJsonPlan<T>
     /// <summary>
     /// Whether the serializer may write <c>$id</c> and <c>$ref</c> inside a <typeparamref name="T"/> under
     /// a preserving reference handler: an object or a collection of a reference type, an <c>object</c>,
-    /// which holds anything, or a struct with one among its properties. A struct has no <c>$id</c> of its
-    /// own, and a value converter writes none.
+    /// which holds anything, or a struct with one among the properties it writes or reads, a nullable
+    /// struct as the struct it holds. A struct has no <c>$id</c> of its own, and a value converter writes
+    /// none.
     /// </summary>
     /// <remarks>
     /// The serializer keeps the references of one call, and a nested call starts again: under
@@ -84,9 +85,19 @@ public sealed class GeneratedJsonPlan<T>
     /// (measured 2026-10-14). There is no way to reach the caller's references from a converter. A
     /// cycle under <see cref="ReferenceHandler.IgnoreCycles"/> fails at the depth limit instead, which is
     /// loud, so that handler is left alone.
+    /// <para>
+    /// A nullable struct's contract lists none of the properties of the struct it holds, which the
+    /// serializer's converter for it writes, so a class there wrote its <c>$id</c> twice unseen; one the
+    /// options convert as itself writes none. An ignored property, which has neither getter nor setter
+    /// in the contract, is neither written nor read, so a class there refused a struct the serializer
+    /// writes without one (both reported 2026-10-14).
+    /// </para>
     /// </remarks>
     private static bool MayHoldReferences(JsonSerializerOptions options, JsonTypeInfo typeInfo, HashSet<Type> visited)
     {
+        if (Nullable.GetUnderlyingType(typeInfo.Type) is { } held && !options.Converters.Any(converter => converter.CanConvert(typeInfo.Type)))
+            return MayHoldReferences(options, options.GetTypeInfo(held), visited);
+
         if (typeInfo.Type == typeof(object)) return true;
         if (typeInfo.Kind == JsonTypeInfoKind.None) return false;
         if (!typeInfo.Type.IsValueType || typeInfo.Kind != JsonTypeInfoKind.Object) return true;
@@ -94,7 +105,8 @@ public sealed class GeneratedJsonPlan<T>
 
         foreach (var property in typeInfo.Properties)
         {
-            if (property.CustomConverter is null && MayHoldReferences(options, options.GetTypeInfo(property.PropertyType), visited)) return true;
+            if (property is { CustomConverter: null } and ({ Get: not null } or { Set: not null })
+             && MayHoldReferences(options, options.GetTypeInfo(property.PropertyType), visited)) return true;
         }
 
         return false;

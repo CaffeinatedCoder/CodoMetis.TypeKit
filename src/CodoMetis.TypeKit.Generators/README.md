@@ -157,7 +157,9 @@ the type, is CMTK1011: it would make values equal that sort apart. To make value
 in `Create` (a plain value object becomes an `IValidatedValue` for that), so that equal values hold
 the same wrapped value. Over a base record the generated `Equals(TSelf)` and `GetHashCode()` compare
 the wrapped value alone, and never call the base's: a hand-written `Equals(TBase)`, `GetHashCode()` or
-`IEquatable<TBase>.Equals` on a base record is not used, and CMTK1023, a warning, names it.
+`IEquatable<TBase>.Equals` on a base record is not used, and CMTK1023, a warning, names it. The value
+object implements each base's `IEquatable<TBase>` again (`IReimplementedEquatable<TBase>`), so a
+collection of the base compares it as the value object does.
 
 An `[Obsolete]` on a value object, or on a type it is nested in, is copied to its `{TSelf}Extensions`
 class, which names the value object outside it: with `error: true` that use failed the build.
@@ -306,7 +308,7 @@ on the options makes it refuse `null` for a property that is not declared nullab
 
 **Preserved references** (`ReferenceHandler.Preserve`) are refused with a `NotSupportedException`
 where the serializer could write `$id` or `$ref` inside the wrapped value: a class it walks as an
-object, or a struct holding one. The serializer numbers references per call, and the converter reaches
+object, or a struct, nullable or not, holding one in a property that is not ignored. The serializer numbers references per call, and the converter reaches
 the wrapped value through a call of its own, so its numbers would not be the document's. Register a
 `JsonConverter` for the wrapped type, which writes no `$id` for it or for the value object, or
 serialize without preserving references. A value the serializer writes by a value converter (a

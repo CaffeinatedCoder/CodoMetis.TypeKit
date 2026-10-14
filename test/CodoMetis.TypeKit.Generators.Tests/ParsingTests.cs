@@ -19,6 +19,22 @@ public sealed class GenericParser
 /// </summary>
 public readonly partial record struct OverGenericParser : IValue<GenericParser>;
 
+/// <summary>An abstract class with a public string constructor, which only a derived class can call.</summary>
+public abstract class ConstructedAbstract
+{
+    public ConstructedAbstract(string text) => Text = text;
+
+    public string Text { get; }
+}
+
+public sealed class ConstructedConcrete(string text) : ConstructedAbstract(text);
+
+/// <summary>
+/// Declared here, so that an abstract class's constructor taken for its parser fails this project's build
+/// (LAMA0611, CS0144).
+/// </summary>
+public readonly partial record struct OverConstructedAbstract : IValue<ConstructedAbstract>;
+
 /// <summary>A wrapped type whose static <c>Parse(string)</c> gives another type back.</summary>
 public sealed class ParsesToAnotherType
 {
@@ -215,6 +231,19 @@ public sealed class ParsingTests
     {
         typeof(OverGenericParser).GetInterfaces().ShouldNotContain(implemented => implemented.IsGenericType && implemented.GetGenericTypeDefinition() == typeof(IParsable<>));
         OverGenericParser.From(new GenericParser()).Value.ShouldNotBeNull();
+    }
+
+    /// <summary>
+    /// An abstract class cannot be made by its constructor, so one with a public string constructor is
+    /// wrapped without parsing: the constructor was taken for its parser and failed inside the generated
+    /// code (LAMA0611, CS0144, reported 2026-10-14). That regression fails this project's build; this is
+    /// the run-time half.
+    /// </summary>
+    [Fact]
+    public void An_abstract_class_s_constructor_is_not_its_parser()
+    {
+        typeof(OverConstructedAbstract).GetInterfaces().ShouldNotContain(implemented => implemented.IsGenericType && implemented.GetGenericTypeDefinition() == typeof(IParsable<>));
+        OverConstructedAbstract.From(new ConstructedConcrete("x")).Value.Text.ShouldBe("x");
     }
 
     /// <summary>The counterpart, so the fix is not "always invariant": a provider that is given is used.</summary>
