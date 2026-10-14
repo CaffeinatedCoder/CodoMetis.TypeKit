@@ -501,6 +501,47 @@ public sealed class DescribedJsonSchemaTests
         JsonSchemaDescription.For(typeof(Money), silent).ShouldNotBeNull();
     }
 
+    public sealed record Attributed([property: JsonConverter(typeof(DecimalStringJsonConverter))] decimal? Value);
+
+    /// <summary>A converter of the nullable type that writes whether there is a value, saying nothing of it.</summary>
+    public sealed class Presence : JsonConverter<decimal?>
+    {
+        public override bool HandleNull => true;
+
+        public override decimal? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetBoolean() ? 0m : null;
+
+        public override void Write(Utf8JsonWriter writer, decimal? value, JsonSerializerOptions options) => writer.WriteBooleanValue(value is not null);
+    }
+
+    /// <summary>
+    /// A resolver's modifier that replaces a nullable property's converter puts its own in charge, whatever the
+    /// property's attribute names: the attribute is asked only where the property's converter is the
+    /// serializer's adapter of the converter it names. A replacement <c>JsonConverter&lt;decimal?&gt;</c> writing
+    /// <c>true</c> was described as the attribute's decimal string (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public void A_modifier_s_converter_of_a_nullable_property_is_described_over_the_property_s_attribute()
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            TypeInfoResolver = new DefaultJsonTypeInfoResolver().WithAddedModifier(info =>
+            {
+                if (info.Type != typeof(Attributed)) return;
+                foreach (var property in info.Properties) property.CustomConverter = new Presence();
+            }),
+        };
+
+        JsonSerializer.Serialize(new Attributed(7.80m), options).ShouldBe("""{"value":true}""", "the wire: the modifier's converter");
+
+        var property = options.GetTypeInfo(typeof(Attributed)).Properties.Single();
+        JsonSchemaDescription.For(typeof(decimal?), options, property).ShouldBeNull("the converter in charge says nothing of what it writes");
+        Export<Attributed>(options)["properties"]!["value"]!.ToJsonString().ShouldBe("true", "the empty schema, as for any converter that says nothing, not the attribute's decimal string");
+
+        var attributed = new JsonSerializerOptions(JsonSerializerDefaults.Web) { TypeInfoResolver = new DefaultJsonTypeInfoResolver() };
+        var adapted = attributed.GetTypeInfo(typeof(Attributed)).Properties.Single();
+        JsonSchemaDescription.For(typeof(decimal?), attributed, adapted)!.Schema!["pattern"].ShouldNotBeNull("the control: the attribute's converter, adapted to the nullable type, is described");
+    }
+
     private sealed class UpperConverter : JsonConverter<string>
     {
         public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetString()!;

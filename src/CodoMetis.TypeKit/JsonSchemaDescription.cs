@@ -187,12 +187,14 @@ public sealed class JsonSchemaDescription
     /// The converter in charge of a property that names one: the converter named, or the one its factory
     /// makes for the property's type. The serializer adapts a converter named on a <see cref="Nullable{T}"/>
     /// property to the nullable type, and the adapter says nothing, so the attribute is asked for the
-    /// converter it names.
+    /// converter it names; only then, since a resolver's modifier can put a converter of the nullable type of
+    /// its own in charge, which the attribute does not name (one writing <c>true</c> was described as the
+    /// attribute's decimal string, reported 2026-10-14).
     /// </summary>
     private static JsonConverter? PropertyConverter(JsonConverter own, JsonPropertyInfo property, Type type, Type value, JsonSerializerOptions options)
     {
         if (own is JsonConverterFactory factory) return Made(factory, type, options) ?? Made(factory, value, options);
-        if (own is IDescribedJsonConverter || own.Type != type || type == value) return own;
+        if (own is IDescribedJsonConverter || type == value || !GeneratedJson.IsNullableAdapter(own, type)) return own;
 
         if (property.AttributeProvider?.GetCustomAttributes(typeof(JsonConverterAttribute), inherit: false) is not [JsonConverterAttribute attribute, ..]) return own;
 
