@@ -179,20 +179,20 @@ READMEs is compiled, and the outputs it states are tested.
 | Page | Covers |
 |---|---|
 | [Value objects](docs/value-objects.md) | Declare one, pick a struct or a class, validate input, design its errors, pick the right factory, write your own members, generic code |
-| [Closed sets](docs/closed-sets.md) | Smart enums: declaring one, data on its members, `Match`, JSON and dictionary keys, EF Core columns, configuration, logging, what the generators refuse, when an `enum` is still right |
+| [Closed sets](docs/closed-sets.md) | Smart enums that carry data: declare one, handle every member with `Match`, send it as JSON, store it as a text column, read it from configuration, use one as an error type, and when an enum is still the right choice |
 | [Option](docs/option.md) | A value or nothing: create one, get the value out, combine options, convert at the boundary, and every public member |
 | [Result](docs/result.md) | A value or an error: pick a shape, chain steps, async chains, collect many results, an exception as an outcome, translate errors between layers, and every public member |
 | [Written text](docs/text.md) | `AsText()` and `AsIdentifier()`: pick a guard, what each cleans and rejects, required and optional fields, a value object on a guard |
 | [Type constraints](docs/type-constraints.md) | `[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]`, `[Interface]`, `[Unsealed]`, `[ValueObject]`, `[ClosedSet]`, `[FlagsEnum]` and `[ReadOnlyStruct]` on a type parameter, `[Distinct]` and `[Unrelated]` on two, `[RequireParameterlessConstructor]` and its code fix |
-| [Merge patches](docs/merge-patches.md) | `Patch<T>`: absent, null or a value, applying a patch, value objects inside one, writing one, the OpenAPI document, source-generated contexts |
-| [JSON](docs/json.md) | What a value object writes and reads, refusals, stored documents, `Option` and `Result` at the wire, a converter of your own, source-generated contexts |
-| [EF Core](docs/ef-core.md) | Columns, keys, conventions, queries and the SQL they become, seed data, reading back without validation, SQLite in tests |
-| [ASP.NET Core](docs/aspnet-core.md) | Binding in minimal APIs and MVC, what a refused value answers, a `Result` as a response, fault responses a client can act on, the OpenAPI document, problem details |
-| [Native AOT](docs/native-aot.md) | What is measured, the project settings, JSON contexts, OpenAPI, EF Core's compiled model, configuration binding, discovery without reflection |
+| [Merge patches](docs/merge-patches.md) | `Patch<T>` for PATCH endpoints: tell absent, null and a value apart, apply and validate a patch, write one, the OpenAPI document, source-generated contexts |
+| [JSON](docs/json.md) | A value object's JSON is the underlying type's: options, rejected input, null and missing properties, stored documents, decimals, describing your own converters, `Option` and `Result` at the wire, source-generated contexts |
+| [EF Core](docs/ef-core.md) | Value objects as plain columns: the model, keys, queries and the SQL they become, seed data, reading back without validation, compiled models, SQLite in tests |
+| [ASP.NET Core](docs/aspnet-core.md) | Take value objects as endpoint parameters and return a `Result`: binding in minimal APIs and MVC, what a rejected value gets back, errors as problem details, and the OpenAPI document |
+| [Native AOT](docs/native-aot.md) | What Native AOT asks of your app: project settings, JSON contexts, OpenAPI, EF Core's compiled model and query helpers, configuration binding, written text, Serilog, discovery without reflection, what the smoke test measures |
 | [Logging and secrets](docs/logging-and-secrets.md) | Keep a secret out of logs: mask a value, what still carries it, Serilog, Microsoft.Extensions.Logging, rejections that never quote the input |
 | [Testing](docs/testing.md) | Assertions for `Option`, `Result` and `Patch<T>`, `Create` as a table, the generated members checked against `Create`, EF Core on SQLite, endpoints on the test server |
-| [Migrating from 1.5 to 2.0](docs/migrating-to-2.md) | What builds or runs differently: CMTK0003 as an error, a query's `FirstOrNone` in the database, names that 2.0 adds, fault responses, Native AOT |
-| [How it compares](docs/comparison.md) | What to choose instead for a need TypeKit does not meet, and the detail tables against the value-object, result and smart-enum libraries, versioned and dated |
+| [Migrating from 1.5 to 2.0](docs/migrating-to-2.md) | Move a project from 1.5 to 2.0: dropped results as build errors, queries that now run in the database or throw, names 2.0 adds, fault responses, Native AOT |
+| [How it compares](docs/comparison.md) | When another library fits better, and feature tables against the value-object, result and smart-enum libraries, versioned and dated |
 
 ## What TypeKit guarantees
 
