@@ -73,8 +73,7 @@ position, and the change lands in the hoisted component.
   endpoint answering several fault types, a `Fault<T1, T2>`'s each, gets one response per status,
   ascending, listing the problem types of every type at a status they share; a member the endpoint
   leaves out (`WithoutFaults`) gives it no status and no problem type
-  ([decision 78](adr/0078-fault-sets-compose-side-by-side.md)). A host's member for the bare name
-  (`BareFaultNameMember`) is described beside `fault` ([decision 80](adr/0080-second-pilot-one-mapping-held-fault-bare-name.md)).
+  ([decision 78](adr/0078-fault-sets-compose-side-by-side.md)).
 - **Known gaps, documented rather than fixed:** a validation attribute on a value-object property
   lands in the shared component, as ASP.NET does for any referenced schema (rules belong in `Create`);
   a property absent from a request body stays `default`, since System.Text.Json calls no converter

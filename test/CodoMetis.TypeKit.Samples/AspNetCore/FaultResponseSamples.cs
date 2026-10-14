@@ -167,17 +167,6 @@ public static class Faults
         builder.Services.AddFaultResponses(fault => FaultResponse.For(fault.Kind).WithType(new Uri($"https://example.com/problems/{fault.Kind}")));
         // end sample
     }
-
-    public static void BareName(WebApplicationBuilder builder)
-    {
-        // sample: CodoMetis.TypeKit.AspNetCore/fault-bare-name
-        builder.Services.Configure<FaultResponseOptions>(options =>
-        {
-            options.QualifiedFaultNames = true;     // "fault": "AccountFault.EmailTaken"
-            options.BareFaultNameMember = "code";   // "code": "EmailTaken", beside it
-        });
-        // end sample
-    }
 }
 
 // Internal, so no host of this assembly discovers it: the sample is the action's declaration.
@@ -254,23 +243,6 @@ public sealed class FaultResponseSampleTests
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!["type"]!.GetValue<string>()
                 .ShouldBe("https://example.com/problems/Conflict");
-    }
-
-    /// <summary>What the README's comments say the problem reads: the qualified fault, and the bare name beside it.</summary>
-    [Fact]
-    public async Task The_bare_name_is_written_beside_the_qualified_fault()
-    {
-        await using var app = await StartWithAsync(builder =>
-        {
-            Faults.Responses(builder);
-            Faults.BareName(builder);
-        });
-
-        using var response = await app.GetTestClient().PostAsync("/v2/accounts", Body(), TestContext.Current.CancellationToken);
-        var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!;
-
-        problem["fault"]!.GetValue<string>().ShouldBe("AccountFault.EmailTaken");
-        problem["code"]!.GetValue<string>().ShouldBe("EmailTaken");
     }
 
     private static StringContent Body() => new("""{"email":"ann@example.com"}""", System.Text.Encoding.UTF8, "application/json");

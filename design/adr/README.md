@@ -86,5 +86,6 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0077](0077-third-review-refines-74-to-76.md) | A base's IEquatable is implemented again, the resolver's converter is described, and the reference scan reads what the serializer writes | 2026-10-14 | accepted |
 | [0078](0078-fault-sets-compose-side-by-side.md) | Fault sets compose side by side, and a route leaves out what it cannot answer | 2026-10-14 | accepted |
 | [0079](0079-distinct-and-unrelated-type-parameters.md) | `[Distinct]` and `[Unrelated]` constrain two type parameters against each other, under CMTK0010 | 2026-10-14 | accepted |
-| [0080](0080-second-pilot-one-mapping-held-fault-bare-name.md) | One mapping for every fault set, a reader for a composed fault, and the bare name under a key of the host's | 2026-10-14 | accepted |
+| [0080](0080-second-pilot-one-mapping-held-fault-bare-name.md) | One mapping for every fault set, a reader for a composed fault, and the bare name under a key of the host's | 2026-10-14 | accepted; the bare name withdrawn by [0082](0082-bare-fault-name-member-withdrawn.md) |
 | [0081](0081-six-more-kinds-of-type-argument.md) | Six more kinds a type parameter demands of its argument: `[Interface]`, `[Unsealed]`, `[ValueObject]`, `[ClosedSet]`, `[FlagsEnum]`, `[ReadOnlyStruct]` | 2026-10-14 | accepted |
+| [0082](0082-bare-fault-name-member-withdrawn.md) | The bare fault name under a member of the host's is withdrawn before it ships | 2026-10-14 | accepted |

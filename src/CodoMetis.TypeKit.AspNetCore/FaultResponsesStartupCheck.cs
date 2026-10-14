@@ -11,7 +11,7 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// Refuses to start a host with an endpoint whose fault type has no mapping, a fault status or a member
 /// left out whose scope has no endpoint that answers with its fault type, one naming a member its type does
 /// not have, or an endpoint two of whose fault types write one name for two members, naming each
-/// endpoint; and a second member for the bare name that a problem has already.
+/// endpoint.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -72,7 +72,7 @@ internal sealed class FaultResponsesStartupCheck : IStartupFilter
         var qualified = services.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true;
         var alike = endpoints.Endpoints.SelectMany(endpoint => Alike(services, endpoint, qualified));
 
-        var refusals = unmapped.Concat(stray).Concat(nameless).Concat(alike).Concat(BareNameMember(services)).ToList();
+        var refusals = unmapped.Concat(stray).Concat(nameless).Concat(alike).ToList();
         if (refusals.Count == 0) return;
 
         throw new InvalidOperationException(string.Join(" ", refusals) + FaultRefusals.Mapping);
@@ -93,20 +93,6 @@ internal sealed class FaultResponsesStartupCheck : IStartupFilter
                            (qualified
                                ? "rename one type, or leave out the one the endpoint never answers with."
                                : "set FaultResponseOptions.QualifiedFaultNames, rename one, or leave out the one the endpoint never answers with."));
-    }
-
-    /// <summary>The members a problem already has, ASP.NET's and this package's, which a second name would overwrite or be overwritten by.</summary>
-    private static readonly string[] ProblemMembers =
-        ["type", "title", "status", "detail", "instance", FaultResponsesOperationTransformer.FaultMember, FaultResponsesOperationTransformer.RuleMember, "traceId", "errors"];
-
-    private static IEnumerable<string> BareNameMember(IServiceProvider services)
-    {
-        if (services.GetService<IOptions<FaultResponseOptions>>()?.Value.BareFaultNameMember is not { } member) yield break;
-
-        if (string.IsNullOrWhiteSpace(member))
-            yield return "FaultResponseOptions.BareFaultNameMember is blank: name the member a problem writes the bare fault name under, or leave it null.";
-        else if (ProblemMembers.FirstOrDefault(taken => string.Equals(taken, member, StringComparison.OrdinalIgnoreCase)) is { } taken)
-            yield return $"FaultResponseOptions.BareFaultNameMember is \"{member}\", which a problem writes as \"{taken}\" already: name another member.";
     }
 
     private static bool Answers(Endpoint endpoint, Type faultType) =>

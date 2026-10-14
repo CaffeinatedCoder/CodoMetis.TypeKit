@@ -514,21 +514,6 @@ apart in one client; the default is the bare name. A nested type is qualified af
 an enum as a closed set's `QualifiedName` is, so `Billing.Fault` and `Shipping.Fault` give
 `Billing.Fault.NotFound` and `Shipping.Fault.NotFound`.
 
-A client that predates the qualified name keeps reading the bare one from a member of its own:
-
-```csharp
-builder.Services.Configure<FaultResponseOptions>(options =>
-{
-    options.QualifiedFaultNames = true;     // "fault": "AccountFault.EmailTaken"
-    options.BareFaultNameMember = "code";   // "code": "EmailTaken", beside it
-});
-```
-
-`BareFaultNameMember` writes the bare name under that member on every problem that answers a fault,
-whatever `QualifiedFaultNames` says, and the document describes it beside `fault`. A member a problem
-has already, `type`, `title`, `status`, `detail`, `instance`, `fault`, `rule`, `traceId` or `errors`
-in any case, or a blank one, stops the host from starting.
-
 The document describes `fault` as an optional string on the problem schema the fault responses refer
 to, so a generated client has the member to match on; its description says which of the two forms
 this host writes. That schema is the shared `ProblemDetails` component, which ASP.NET's own problem
