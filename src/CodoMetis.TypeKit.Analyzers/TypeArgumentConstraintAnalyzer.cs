@@ -806,7 +806,8 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         TypeArgumentConstraint.Sealed         => argument.TypeKind is TypeKind.Struct or TypeKind.Enum or TypeKind.Array || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Delegate, IsSealed: true, IsStatic: false },
         TypeArgumentConstraint.Record         => argument is INamedTypeSymbol { IsRecord: true },
         TypeArgumentConstraint.Interface      => argument.TypeKind is TypeKind.Interface,
-        TypeArgumentConstraint.Unsealed       => argument is INamedTypeSymbol { TypeKind: TypeKind.Class, IsSealed: false, IsStatic: false },
+        // dynamic is object, a class that can be derived from, as [Concrete] takes it.
+        TypeArgumentConstraint.Unsealed       => argument.TypeKind is TypeKind.Dynamic || argument is INamedTypeSymbol { TypeKind: TypeKind.Class, IsSealed: false, IsStatic: false },
         TypeArgumentConstraint.ValueObject    => argument.TypeKind is not TypeKind.Interface && symbols.FindMarker(argument, out _) is not null,
         TypeArgumentConstraint.ClosedSet      => symbols.FindClosedSetMarker(argument) is not null,
         TypeArgumentConstraint.FlagsEnum      => symbols.IsFlagsEnum(argument),
@@ -819,8 +820,9 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     /// A forwarding type parameter proves a constraint by carrying the attribute, or by C# constraints
     /// that leave it no argument that breaks it:
     /// <list type="bullet">
-    /// <item><c>[Sealed]</c>: <c>struct</c> or <c>unmanaged</c>, which admit structs and enums alone; or a
-    /// bound, <c>where T : U</c>, that proves it, since a sealed type has no other subtype.</item>
+    /// <item><c>[Sealed]</c>: <c>struct</c> or <c>unmanaged</c>, which admit structs and enums alone; <c>[ReadOnlyStruct]</c>
+    /// or <c>[FlagsEnum]</c>, which admit only those; or a bound, <c>where T : U</c>, that proves it, since a sealed
+    /// type has no other subtype.</item>
     /// <item><c>[Concrete]</c>: <c>new()</c>, or whatever proves <c>[Sealed]</c>, since a sealed type is
     /// never abstract.</item>
     /// <item><c>[Record]</c>: a bound that is a record, or proves it, since only records derive from
@@ -842,7 +844,10 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
 
         return constraint switch
         {
+            // A readonly struct and a [Flags] enum are sealed, and so concrete.
             TypeArgumentConstraint.Sealed   => forwarded.HasValueTypeConstraint
+                                            || Proves(symbols, forwarded, TypeArgumentConstraint.ReadOnlyStruct, depth + 1)
+                                            || Proves(symbols, forwarded, TypeArgumentConstraint.FlagsEnum, depth + 1)
                                             || forwarded.ConstraintTypes.OfType<ITypeParameterSymbol>().Any(bound => Proves(symbols, bound, TypeArgumentConstraint.Sealed, depth + 1)),
             TypeArgumentConstraint.Concrete => forwarded.HasConstructorConstraint
                                             || Proves(symbols, forwarded, TypeArgumentConstraint.Sealed, depth + 1),

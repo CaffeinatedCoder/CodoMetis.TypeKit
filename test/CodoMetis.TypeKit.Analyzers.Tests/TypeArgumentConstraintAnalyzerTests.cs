@@ -1274,6 +1274,34 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             Cmtk0010(11, "T", "T", "Keyed<T>", "is a type parameter that does not carry [ValueObject]"))
             .RunAsync(TestContext.Current.CancellationToken);
 
+    /// <summary>
+    /// <c>dynamic</c> is <c>object</c>, a class that can be derived from, as <c>[Concrete]</c> takes it; and a parameter
+    /// carrying <c>[ReadOnlyStruct]</c> or <c>[FlagsEnum]</c> admits only structs or enums, every one sealed and
+    /// concrete. Each was refused, a false error under an Error rule (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public Task Dynamic_is_unsealed_and_a_readonly_struct_or_flags_enum_parameter_is_sealed_and_concrete() =>
+        Test(
+            """
+            public static class Admitted
+            {
+                public static Derivable<dynamic> Dynamic;
+                public static Box<T> ReadOnlyIsSealed<[ReadOnlyStruct] T>() => new();
+                public static Factory<T> ReadOnlyIsConcrete<[ReadOnlyStruct] T>() => new();
+                public static Box<T> FlagsIsSealed<[FlagsEnum] T>() => new();
+                public static Factory<T> FlagsIsConcrete<[FlagsEnum] T>() => new();
+            }
+
+            public static class StillRefused
+            {
+                public static Box<{|#0:dynamic|}> DynamicIsNotSealed;
+                public static Box<{|#1:T|}> UnsealedIsNotSealed<[Unsealed] T>() => new();
+            }
+            """,
+            Cmtk0010(0, "dynamic", "T", "Box<T>", "is not sealed"),
+            Cmtk0010(1, "T", "T", "Box<T>", "is a type parameter that does not carry [Sealed]"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
     [Fact]
     public Task A_compilation_without_TypeKit_is_left_alone() =>
         new AnalyzerTest<TypeArgumentConstraintAnalyzer>("public sealed class Box<T> { } public static class U { public static Box<int> B; }", referenceTypeKit: false)

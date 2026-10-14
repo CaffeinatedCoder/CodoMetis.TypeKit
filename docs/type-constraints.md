@@ -47,7 +47,7 @@ Each attribute accepts some kinds of type and rejects the rest:
 | `[Record]` | a record class or record struct | a class or a struct |
 | `[Concrete]` | a class, record or struct that can be instantiated, an enum, a delegate | an abstract or static type, an interface, and the abstract bases `Enum`, `Delegate` and `ValueType`. Unlike `new()`, it demands no constructor |
 | `[Interface]` | an interface | a class, even one that implements the interface |
-| `[Unsealed]` | a class or record class that can be derived from, abstract included | a sealed or static class, an interface, a struct |
+| `[Unsealed]` | a class or record class that can be derived from, abstract included, and `dynamic`, which is `object` | a sealed or static class, an interface, a struct |
 | `[ValueObject]` | a struct or class that implements `IValue<T>` for any `T`, which no `where` can say | any other type, a closed set included, and an interface, even one that derives from `IValue<T>` |
 | `[ClosedSet]` | a type that implements `IClosedSet<TSelf>`, a fault set included | any other type, a value object or an enum included |
 | `[FlagsEnum]` | an enum marked `[Flags]` | a plain enum, which `where T : Enum` admits |
@@ -192,7 +192,7 @@ break it:
 | Attribute | Proved by |
 |---|---|
 | `[Abstract]` | nothing but `[Abstract]`: no C# constraint excludes a concrete type |
-| `[Sealed]` | `struct` or `unmanaged`, or a bound `where T : U` with `U` proving `[Sealed]`, since a sealed type has no other subtype |
+| `[Sealed]` | `struct` or `unmanaged`, `[ReadOnlyStruct]` or `[FlagsEnum]`, or a bound `where T : U` with `U` proving `[Sealed]`, since a sealed type has no other subtype |
 | `[Record]` | a bound that is a record, `where T : AccountEvent`, or a `U` proving `[Record]`, since only records derive from records |
 | `[Concrete]` | `new()`, or anything that proves `[Sealed]`, `[Sealed]` itself included, since a sealed type is never abstract |
 | `[ValueObject]`, `[ClosedSet]` | a bound that is or implements the marker interface, `where T : struct, IValue<Guid>`, or a `U` proving it. For `[ValueObject]`, the bound counts only beside `struct`, `unmanaged`, `new()` or a class bound, since an interface meets `IValue<Guid>` and `class` alike |
