@@ -73,6 +73,24 @@ public readonly partial record struct OverParsesVirtually : IValue<IParsesVirtua
 
 public readonly partial record struct OverParsesToADerivedType : IValue<ParsesToADerivedType>;
 
+/// <summary>A wrapped type whose static <c>Parse</c> takes the text by <c>in</c>, which a call passes as it is.</summary>
+public sealed class ParsesFromIn
+{
+    public string Text { get; private init; } = "";
+
+    public static ParsesFromIn Parse(in string text) => new() { Text = text };
+}
+
+/// <summary>A wrapped type whose string constructor takes the text by <c>in</c>.</summary>
+public sealed class ConstructedFromIn(in string text)
+{
+    public string Text { get; } = text;
+}
+
+public readonly partial record struct OverParsesFromIn : IValue<ParsesFromIn>;
+
+public readonly partial record struct OverConstructedFromIn : IValue<ConstructedFromIn>;
+
 /// <summary>
 /// The generated <c>IParsable</c>/<c>ISpanParsable</c>/<c>IUtf8SpanParsable</c>, one probe per
 /// strategy. The validated side is in <see cref="EntryPointValidationTests"/>.
@@ -262,6 +280,14 @@ public sealed class ParsingTests
     [InlineData(typeof(OverParsesVirtually))]
     public void A_method_that_cannot_be_called_as_a_parser_is_none(Type valueObject) =>
         valueObject.GetInterfaces().ShouldNotContain(type => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IParsable<>));
+
+    /// <summary>The counterpart of <c>ref</c>: a parameter taken by <c>in</c> is passed the text as it is, so it parses.</summary>
+    [Fact]
+    public void A_parser_that_takes_the_text_by_in_parses()
+    {
+        OverParsesFromIn.Parse("text", null).Value.Text.ShouldBe("text");
+        OverConstructedFromIn.Parse("text", null).Value.Text.ShouldBe("text");
+    }
 
     [Fact]
     public void A_static_Parse_that_gives_a_derived_type_back_parses() =>

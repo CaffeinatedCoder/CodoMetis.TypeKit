@@ -128,6 +128,16 @@ public readonly partial record struct OverHoldingIgnored : IValue<HoldingIgnored
 
 public readonly partial record struct OverUntracked : IValue<Untracked>;
 
+/// <summary>A struct the serializer walks, holding one struct type twice, with nothing that could have an <c>$id</c>.</summary>
+public struct UntrackedTwice
+{
+    public Untracked First { get; set; }
+
+    public Untracked Second { get; set; }
+}
+
+public readonly partial record struct OverUntrackedTwice : IValue<UntrackedTwice>;
+
 public readonly partial record struct OverHoldingTracked : IValue<HoldingTracked>;
 
 /// <summary>
@@ -215,6 +225,18 @@ public sealed class ReferenceHandlingTests
 
         json.ShouldBe(JsonSerializer.Serialize(new Pair<Untracked> { First = value }, Preserving));
         JsonSerializer.Deserialize<Pair<OverUntracked>>(json, Preserving)!.First.Value.ShouldBe(value);
+    }
+
+    /// <summary>
+    /// A struct type met twice is judged once: the second visit adds nothing, so it may not refuse what the first
+    /// let through.
+    /// </summary>
+    [Fact]
+    public void A_struct_holding_one_struct_type_twice_is_written_under_Preserve()
+    {
+        var value = new UntrackedTwice { First = new Untracked { X = 1, Label = "a" }, Second = new Untracked { X = 2, Label = "b" } };
+
+        JsonSerializer.Serialize(OverUntrackedTwice.From(value), Preserving).ShouldBe(JsonSerializer.Serialize(value, Preserving));
     }
 
     /// <summary>

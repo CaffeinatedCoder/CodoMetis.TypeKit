@@ -71,6 +71,33 @@ public sealed class DescribedJsonSchemaTests
 
     public sealed record Forest(Tree Item, Tree? Maybe, List<Tree> Trees, Dictionary<string, Tree?> Named);
 
+    /// <summary>A polymorphic, recursive shape, whose schema is an <c>anyOf</c> with references to its root.</summary>
+    [JsonDerivedType(typeof(Leaf), "leaf")]
+    [JsonDerivedType(typeof(Branch), "branch")]
+    public abstract class Shape;
+
+    public sealed class Leaf : Shape;
+
+    public sealed class Branch : Shape
+    {
+        public Shape? Child { get; set; }
+    }
+
+    /// <summary>A struct written as a shape, so a nullable one wraps the shape's schema with the null.</summary>
+    [JsonConverter(typeof(GardenConverter))]
+    public readonly struct Garden;
+
+    public sealed class GardenConverter : JsonConverter<Garden>, IDescribedJsonConverter
+    {
+        public override Garden Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => throw new NotSupportedException();
+
+        public override void Write(Utf8JsonWriter writer, Garden value, JsonSerializerOptions options) => throw new NotSupportedException();
+
+        public JsonSchemaDescription DescribeJson(Type typeToConvert, JsonSerializerOptions options) => JsonSchemaDescription.SameAs(typeof(Shape));
+    }
+
+    public sealed record Yard(Garden? Maybe);
+
     /// <summary>A property that names its converter, on a nullable decimal, which the serializer adapts.</summary>
     public sealed record Priced([property: JsonConverter(typeof(DecimalStringJsonConverter))] decimal? Amount, [property: JsonConverter(typeof(DecimalStringJsonConverter))] decimal Price);
 
@@ -236,6 +263,24 @@ public sealed class DescribedJsonSchemaTests
         Export<Tree>(Strings)["properties"]!["child"]!["properties"]!["child"]!["$ref"]!.GetValue<string>().ShouldBe("#/properties/child", "the root keeps its own");
     }
 
+    /// <summary>
+    /// A schema with no single type of its own admits null as a branch beside it, so its references, which point
+    /// from its own root, point into that branch.
+    /// </summary>
+    [Fact]
+    public void A_recursive_schema_wrapped_with_the_null_keeps_every_reference_resolving()
+    {
+        var document = Export<Yard>(Strings);
+
+        var references = References(document).ToList();
+        references.ShouldNotBeEmpty(document.ToJsonString());
+        foreach (var (pointer, target) in references)
+        {
+            pointer.ShouldStartWith("#/properties/maybe/anyOf/0/", Case.Sensitive, "the control: the shape is the first branch beside the null");
+            target.ShouldBeOfType<JsonObject>($"'{pointer}' resolves to nothing in {document.ToJsonString()}");
+        }
+    }
+
     /// <summary>A described object put where null is not allowed is not nullable for being a reference type's schema.</summary>
     [Fact]
     public void A_schema_described_as_a_reference_type_s_admits_null_only_where_the_position_does()
@@ -298,6 +343,8 @@ public sealed class DescribedJsonSchemaTests
     [InlineData("""{"type":"object","properties":{"$id":{"$ref":"#"}}}""", "$ref")]
     [InlineData("""{"prefixItems":[{"$anchor":"a"}]}""", "$anchor")]
     [InlineData("""{"items":{"items":{"$dynamicRef":"#a"}}}""", "$dynamicRef")]
+    [InlineData("""{"type":"object","patternProperties":{"^a":{"$ref":"#"}}}""", "$ref")]
+    [InlineData("""{"type":"object","dependentSchemas":{"a":{"$id":"x"}}}""", "$id")]
     public void A_description_that_refers_elsewhere_is_refused(string schema, string keyword) =>
         Should.Throw<ArgumentException>(() => JsonSchemaDescription.Of(JsonNode.Parse(schema)!.AsObject())).Message.ShouldContain($"'{keyword}'");
 

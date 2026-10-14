@@ -921,6 +921,8 @@ public sealed class TypeArgumentConstraintAnalyzerTests
                 public sealed class ArrayAndList<T> : Pair<T[], List<int>> { }
                 public sealed class Ranks<T> : Pair<T[], int[,]> { }
                 public sealed class ItselfInside<T> : Pair<T, List<T>> { }
+                public sealed class Outer<T> { public sealed class Inner { } }
+                public sealed class OuterArguments<T> : Pair<Outer<T>.Inner, Outer<int>.Inner> where T : class { }
 
                 public sealed class StructAndClass<T> : Apart<KeyValuePair<T, int>, List<int>> { }
                 public sealed class TwoStructs<T> : Apart<KeyValuePair<T, int>, KeyValuePair<string, string>> { }

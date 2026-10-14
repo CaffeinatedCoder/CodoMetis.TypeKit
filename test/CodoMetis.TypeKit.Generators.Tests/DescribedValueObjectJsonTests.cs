@@ -108,6 +108,19 @@ public sealed class DescribedValueObjectJsonTests
     public sealed record Holding(OverUntracked Inner);
 
     /// <summary>
+    /// A wrapped type that is described itself needs no contract: a source-generated context never sees what a
+    /// value object wraps, and asking it for the decimal's schema would throw.
+    /// </summary>
+    [Fact]
+    public void A_value_object_over_a_described_type_the_context_never_saw_is_exported()
+    {
+        var options = new JsonSerializerOptions { TypeInfoResolver = AmountHolderOnly.Default, Converters = { new DecimalStringJsonConverter() } };
+
+        AmountHolderOnly.Default.GetTypeInfo(typeof(decimal)).ShouldBeNull("the control: the context never saw the decimal");
+        options.GetJsonSchemaAsNode(typeof(AmountHolder), DescribedJsonSchema.ExporterOptions())["properties"]!["Total"]!.ToJsonString().ShouldBe(DecimalString);
+    }
+
+    /// <summary>
     /// The application's own transform runs once on every node of the document: a value object described as its
     /// wrapped type's schema was exported on its own, and the transform ran on that export's root too, as if it
     /// were the document's, then again where it was put. A root-marking transform wrote <c>$schema</c> into the
@@ -180,6 +193,13 @@ public sealed class DescribedValueObjectJsonTests
         JsonSchemaDescription.For(typeof(ProbeAmount?), options)!.SameAsType.ShouldBe(typeof(decimal));
     }
 }
+
+/// <summary>A holder of a value object over a decimal, the context's only root.</summary>
+public sealed record AmountHolder(ProbeAmount Total);
+
+/// <summary>A source-generated context that lists a holder of a value object over a decimal, and never the decimal.</summary>
+[System.Text.Json.Serialization.JsonSerializable(typeof(AmountHolder))]
+internal sealed partial class AmountHolderOnly : System.Text.Json.Serialization.JsonSerializerContext;
 
 /// <summary>A source-generated context that lists neither a decimal nor a value object over one.</summary>
 [System.Text.Json.Serialization.JsonSerializable(typeof(string))]
