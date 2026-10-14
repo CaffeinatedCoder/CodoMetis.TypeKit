@@ -14,7 +14,9 @@ base package newer than the analyzer, which cannot happen, since the base packag
 analyzer at its own version or later.
 
 CMTK0014 reports a constant of either enum that names no member: a conversion, a `default`, a zero
-converted implicitly, and a binary expression folded to one, at the outermost expression once. A value
+converted implicitly, and a binary or unary expression or a constant conditional folded to one. Only
+the outermost constant is judged, the value that reaches its use: an operand no member names, folded
+into a member (`(FaultKind)0 + 1`), is silent. A value
 only compared is a guard and stays silent: equality and relational operators, patterns and `case`.
 The members are read from the enum's fields, so one a newer base package adds counts. A Warning, as a
 new rule in a minor version is ([decision 34](0034-errors-fixed-within-major-version-warnings.md)).

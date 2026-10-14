@@ -25,7 +25,7 @@ appears to: an instance that passed no factory, or a value object that was never
 | CMTK0011 | Error | A concrete class that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. A struct is never reported: its parameterless constructor is public and can be nothing else. The code fix writes or changes the constructor. |
 | CMTK0012 | Error | A closed set's `Match` given an argument by position, which binds to whichever member is declared at that place, so reordering the members swaps the branches. The code fix names every argument. |
 | CMTK0013 | Error | A closed set's member written outside its declaration: in the static constructor, after the generators named the instance it held, or in another static field's initializer, before. |
-| CMTK0014 | Warning | A `FaultKind` or a `ConstructorAccessibility` that names no member: a cast, `default(FaultKind)`, a zero, or a constant folded from members. A value only compared (`kind == default`, a pattern, a `case`) is a guard and is not reported. |
+| CMTK0014 | Warning | A `FaultKind` or a `ConstructorAccessibility` that names no member: a cast, `default(FaultKind)`, a zero, or a folded constant such as `~FaultKind.NotFound`. A value only compared (`kind == default`, a pattern, a `case`) is a guard and is not reported. |
 
 The ids are public contract and never change meaning. The generators' own build errors,
 CMTK1000 to CMTK1022, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
@@ -493,7 +493,9 @@ public sealed partial class ImportFault : IFaultSet<ImportFault>
 }
 ```
 
-A value only compared, `kind == default`, a pattern or a `case`, is a guard and is not reported. The
+A folded constant is judged by the value it folds to, the one that reaches its use: `(FaultKind)0 + 1`
+is `NotFound` and silent, and `~FaultKind.NotFound` is reported. A value only compared,
+`kind == default`, a pattern or a `case`, is a guard and is not reported. The
 members are read from the enum itself, so one a newer base package adds is a member here too. An
 enum of the application's own is not this rule's: a fault no member names is refused where
 `ToHttpResult()` answers it, and `WithRule` throws for one.

@@ -91,6 +91,58 @@ public sealed class UndefinedEnumValueAnalyzerTests
             }
             """);
 
+    /// <summary>
+    /// The value that reaches its use is the folded one: an operand no member names, folded into a
+    /// member, is silent, by a binary or a unary operator, a constant conditional, in both enums.
+    /// </summary>
+    [Fact]
+    public Task An_undefined_operand_folded_into_a_member_is_silent() =>
+        ShouldFlag(
+            """
+            using CodoMetis.TypeKit;
+            using CodoMetis.TypeKit.ClosedSets;
+
+            [RequireParameterlessConstructor((ConstructorAccessibility)9 - 4)]
+            public interface IEndpoint { }
+
+            public static class Kinds
+            {
+                public const FaultKind Constant = (FaultKind)0 + 1;
+                public static FaultKind Added() => (FaultKind)0 + 1;
+                public static FaultKind Nested() => ((FaultKind)0 + 9) - 8;
+                public static FaultKind Complement() => ~(FaultKind)~1;
+                public static FaultKind Chosen() => false ? (FaultKind)9 : FaultKind.NotFound;
+            }
+            """);
+
+    /// <summary>
+    /// A unary operator and a constant conditional fold to a value of their own, reported once, at
+    /// the expression that reaches its use.
+    /// </summary>
+    [Fact]
+    public Task A_unary_or_conditional_constant_that_names_no_member_reports() =>
+        ShouldFlag(
+            """
+            using CodoMetis.TypeKit;
+            using CodoMetis.TypeKit.ClosedSets;
+
+            [RequireParameterlessConstructor({|#0:~ConstructorAccessibility.Public|})]
+            public interface IEndpoint { }
+
+            public static class Kinds
+            {
+                public static FaultKind Complement() => {|#1:~FaultKind.NotFound|};
+                public static FaultKind Folded() => {|#2:~(FaultKind.NotFound + 1)|};
+                public static FaultKind Chosen() => {|#3:true ? (FaultKind)9 : FaultKind.NotFound|};
+                public static FaultKind Outer() => {|#4:(FaultKind)0 + 9|};
+            }
+            """,
+            Cmtk0014(0, "~ConstructorAccessibility.Public", "ConstructorAccessibility", AccessibilityConsequence),
+            Cmtk0014(1, "~FaultKind.NotFound", "FaultKind", FaultKindConsequence),
+            Cmtk0014(2, "~(FaultKind.NotFound + 1)", "FaultKind", FaultKindConsequence),
+            Cmtk0014(3, "true ? (FaultKind)9 : FaultKind.NotFound", "FaultKind", FaultKindConsequence),
+            Cmtk0014(4, "(FaultKind)0 + 9", "FaultKind", FaultKindConsequence));
+
     /// <summary>A value only compared is a guard, written to find the very value the rule reports.</summary>
     [Fact]
     public Task A_value_only_compared_is_silent() =>
