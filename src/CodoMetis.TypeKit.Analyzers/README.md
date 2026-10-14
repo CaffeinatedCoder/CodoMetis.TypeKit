@@ -28,7 +28,7 @@ appears to: an instance that passed no factory, or a value object that was never
 | CMTK0014 | Warning | A `FaultKind` or a `ConstructorAccessibility` that names no member: a cast, `default(FaultKind)`, a zero, or a folded constant such as `~FaultKind.NotFound`. A value only compared (`kind == default`, a pattern, a `case`) is a guard and is not reported. |
 
 The ids are public contract and never change meaning. The generators' own build errors,
-CMTK1000 to CMTK1022, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
+CMTK1000 to CMTK1022, and the warning CMTK1023, come from `CodoMetis.TypeKit.Generators` and are listed in its README.
 
 Every rule also runs in `.razor` and `.cshtml` files (see [Generated code](#generated-code-and-razor)).
 

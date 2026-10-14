@@ -38,6 +38,9 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
             }
         );
 
+        if (builder.Target.TypeKind == TypeKind.Class && builder.Target.BaseType is { SpecialType: not SpecialType.Object })
+            IntroduceEquality(builder, valueType);
+
         if (state.Kind == ValueObjectKind.Plain)
         {
             ImplementValueWrapper(builder, valueType, state.PrivateConstructor.GetTarget());
@@ -52,6 +55,48 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
         builder.ImplementInterface(
             typeof(IEqualityOperators<,,>).ToNamedType().MakeGenericInstance(builder.Target, builder.Target, typeof(bool).ToNamedType()),
             OverrideStrategy.Ignore
+        );
+    }
+
+    /// <summary>
+    /// <c>Equals(TSelf)</c> and <c>GetHashCode()</c> over the wrapped value alone, for a record class
+    /// derived from another record, whose synthesized equality calls the base's and so compares the
+    /// base's fields too.
+    /// </summary>
+    /// <remarks>
+    /// A base record's state is refused (CMTK1012) and its hand-written equality too (CMTK1011), but in
+    /// a referenced assembly its private fields are out of sight, and a reference assembly has none: a
+    /// base holding a private identity made two value objects holding 42 unequal, a <c>HashSet</c> hold
+    /// both, and a JSON round trip give back a value unequal to the one written, while a
+    /// <c>SortedSet</c> held one. The record's synthesized <c>Equals(object)</c>, <c>Equals(TBase)</c>
+    /// and <c>==</c> call this one. The record is sealed, so <c>other</c> is of this very type.
+    /// </remarks>
+    private static void IntroduceEquality(IAspectBuilder<INamedType> builder, INamedType valueType)
+    {
+        builder.IntroduceMethod(
+            nameof(EqualsTemplate),
+            IntroductionScope.Instance,
+            OverrideStrategy.Override,
+            buildMethod: method =>
+            {
+                method.Name               = nameof(Equals);
+                method.Accessibility      = Accessibility.Public;
+                method.Parameters[0].Type = builder.Target.ToNullable();
+                method.AddAttribute(CodeAnnotations.CompilerGenerated);
+            },
+            args: new { valueType }
+        );
+
+        builder.IntroduceMethod(
+            nameof(GetHashCodeTemplate),
+            IntroductionScope.Instance,
+            OverrideStrategy.Override,
+            buildMethod: method =>
+            {
+                method.Name = nameof(GetHashCode);
+                method.AddAttribute(CodeAnnotations.CompilerGenerated);
+            },
+            args: new { valueType }
         );
     }
 

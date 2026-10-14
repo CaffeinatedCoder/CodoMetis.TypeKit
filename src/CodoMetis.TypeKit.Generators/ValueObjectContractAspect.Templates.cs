@@ -39,6 +39,20 @@ internal sealed partial class ValueObjectContractAspect
     public dynamic RevalidateTemplate([CompileTime] INamedType target) =>
         ExpressionFactory.Parse($"{ValueObjectTypes.SourceName(target)}.Create(this.Value)").Value!;
 
+    /// <summary>The wrapped values compared, as the record's synthesized equality compares a field.</summary>
+    [Template]
+    public bool EqualsTemplate(dynamic? other, [CompileTime] INamedType valueType) =>
+        (bool)ExpressionFactory.Parse(
+            $"global::System.Object.ReferenceEquals(this, other) || (other is not null && global::System.Collections.Generic.EqualityComparer<{ValueObjectTypes.SourceName(valueType)}>.Default.Equals(this._value, other._value))"
+        ).Value!;
+
+    /// <summary>The wrapped value's hash code, which a default instance over a reference type has as 0.</summary>
+    [Template]
+    public int GetHashCodeTemplate([CompileTime] INamedType valueType) =>
+        (int)ExpressionFactory.Parse(
+            $"global::System.Collections.Generic.EqualityComparer<{ValueObjectTypes.SourceName(valueType)}>.Default.GetHashCode(this._value!)"
+        ).Value!;
+
     /// <summary><c>Create</c> with the fault carried into the throw.</summary>
     [Template]
     public static dynamic FromKnownGoodTemplate(dynamic? value, [CompileTime] INamedType target, string? source = null) =>

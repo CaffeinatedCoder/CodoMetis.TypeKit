@@ -81,3 +81,5 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0072](0072-rule-identity-is-its-type.md) | A rule's identity is its type; its wire name stays without a namespace | 2026-10-14 | accepted |
 | [0073](0073-schema-descriptions-follow-the-serializer.md) | Schema descriptions follow the converter the serializer picks, and refuse what they cannot say | 2026-10-14 | accepted |
 | [0074](0074-descriptions-resolve-the-converter-as-the-serializer-does.md) | Descriptions resolve the converter as the serializer does, and survive the document's version | 2026-10-14 | accepted |
+| [0075](0075-equality-over-base-record-generated.md) | Over a base record a value object's equality is generated; the base's is CMTK1023, a Warning | 2026-10-14 | accepted |
+| [0076](0076-preserved-references-refused.md) | A value object refuses preserved references inside its wrapped value | 2026-10-14 | accepted |

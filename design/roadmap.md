@@ -48,6 +48,8 @@ item names the decision that scoped it.
 
 ## 3.0.0
 
+- CMTK1023, a base record's equality that the generated one does not call, becomes an Error
+  ([decision 75](adr/0075-equality-over-base-record-generated.md)).
 - C# 15 unions and the `net10.0` drop, timed to .NET 12 LTS (November 2027) or to the end of .NET
   10's life, whichever its consumers need ([decision 44](adr/0044-2-0-0-net10-0-metalama.md)). The compiler-made union types have a public
   `object? Value` and are serialized by System.Text.Json, so `Option` and `Result` take part in their

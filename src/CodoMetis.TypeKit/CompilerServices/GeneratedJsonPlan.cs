@@ -62,6 +62,42 @@ public sealed class GeneratedJsonPlan<T>
         _keyConverter = typeInfo.Converter as JsonConverter<T>;
         _writesAsIs   = !IsNumber || (handling & (JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowNamedFloatingPointLiterals)) == 0;
         _readsAsIs    = !IsNumber || handling == JsonNumberHandling.Strict;
+
+        if (_direct is null && options.ReferenceHandler is { } handler && handler != ReferenceHandler.IgnoreCycles && MayHoldReferences(options, typeInfo, []))
+            throw new NotSupportedException(
+                $"A value object over {typeof(T)} cannot be written or read under {nameof(JsonSerializerOptions.ReferenceHandler)}.{nameof(ReferenceHandler.Preserve)}: "
+              + $"the serializer numbers references per call, and the value object's converter reaches the {typeof(T)} through a call of its own, so its \"$id\" and \"$ref\" "
+              + $"would not be the document's. Register a JsonConverter<{typeof(T)}> on the options, or serialize without preserving references.");
+    }
+
+    /// <summary>
+    /// Whether the serializer may write <c>$id</c> and <c>$ref</c> inside a <typeparamref name="T"/> under
+    /// a preserving reference handler: an object or a collection of a reference type, an <c>object</c>,
+    /// which holds anything, or a struct with one among its properties. A struct has no <c>$id</c> of its
+    /// own, and a value converter writes none.
+    /// </summary>
+    /// <remarks>
+    /// The serializer keeps the references of one call, and a nested call starts again: under
+    /// <see cref="ReferenceHandler.Preserve"/> a value object over a class wrote <c>"$id":"1"</c> inside a
+    /// document that already had one, and two of them around one instance wrote it twice where the
+    /// wrapped type writes a <c>$ref</c>, which the value object's converter could not read back
+    /// (measured 2026-10-14). There is no way to reach the caller's references from a converter. A
+    /// cycle under <see cref="ReferenceHandler.IgnoreCycles"/> fails at the depth limit instead, which is
+    /// loud, so that handler is left alone.
+    /// </remarks>
+    private static bool MayHoldReferences(JsonSerializerOptions options, JsonTypeInfo typeInfo, HashSet<Type> visited)
+    {
+        if (typeInfo.Type == typeof(object)) return true;
+        if (typeInfo.Kind == JsonTypeInfoKind.None) return false;
+        if (!typeInfo.Type.IsValueType || typeInfo.Kind != JsonTypeInfoKind.Object) return true;
+        if (!visited.Add(typeInfo.Type)) return false;
+
+        foreach (var property in typeInfo.Properties)
+        {
+            if (property.CustomConverter is null && MayHoldReferences(options, options.GetTypeInfo(property.PropertyType), visited)) return true;
+        }
+
+        return false;
     }
 
     /// <summary>The options this plan was made for.</summary>
@@ -74,6 +110,7 @@ public sealed class GeneratedJsonPlan<T>
     /// <param name="options">The caller's options.</param>
     /// <param name="builtIn">The converter for <typeparamref name="T"/> where the options have none: the serializer's built-in one, or NodaTime's.</param>
     /// <returns>The plan.</returns>
+    /// <exception cref="NotSupportedException">The options preserve references, and <typeparamref name="T"/> may hold some.</exception>
     public static GeneratedJsonPlan<T> For(JsonSerializerOptions options, JsonConverter<T>? builtIn)
     {
         ArgumentNullException.ThrowIfNull(options);

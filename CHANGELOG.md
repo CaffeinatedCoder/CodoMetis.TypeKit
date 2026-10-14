@@ -20,6 +20,7 @@ section is the GitHub release's notes.
 - **`FaultKind.PreconditionFailed`** (412) and **`FaultKind.Malformed`** (400), answered with no mapping ([closed sets as faults](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type)).
 - **CMTK0014** (Warning): a `FaultKind` or `ConstructorAccessibility` that names no member, such as `(FaultKind)9` or `default` ([CMTK0014](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014)).
 - **`AsOptionalText()`/`AsOptionalIdentifier()`**: a blank is no text, a hidden character still `Hidden` ([Written text](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/text.md#required-and-optional)).
+- **CMTK1023** (Warning): a base record's `Equals`, `GetHashCode` or `IEquatable`, which the value object's equality no longer calls ([Build errors](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#build-errors)).
 
 ### Changed
 
@@ -31,6 +32,9 @@ section is the GitHub release's notes.
 - OpenAPI: a `Patch<T>` the serializer requires, a constructor parameter under `RespectRequiredConstructorParameters`, stays `required`; declare patches as `init` properties there ([Merge patches](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/merge-patches.md#required-constructor-parameters)).
 - Schema descriptions follow a converter factory to the converter it makes, on the options and on a property, and a converter registered for a `Nullable<T>` to the nullable positions; a conditional (`if`) description admits null in a branch beside it ([JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/json.md#describing-what-a-converter-writes)).
 - OpenAPI: a type held inside a `Patch<T>` alone is compared between the minimal-API and MVC JSON options too; a converter registered for a nullable value object alone, whose positions refer to the shared component, refuses the document; a described keyword a 3.0 document writes aside (`if`, `contains`, `patternProperties`) or leaves out refuses it, naming the keyword ([OpenAPI](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says)).
+- Over a base record, a value object's equality is its wrapped value's: a base's own equality or a private field in another assembly made equal values unequal.
+- Under `ReferenceHandler.Preserve`, a value object over a class throws `NotSupportedException` instead of writing a duplicate `$id`.
+- A wrapped type's `Parse` that returns another type, or takes the text by `ref`, is no parser: the value object builds without parsing.
 
 ## 2.0.0 — 2026-10-14
 

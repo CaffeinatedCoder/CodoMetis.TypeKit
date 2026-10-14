@@ -213,14 +213,26 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
         if (valueType.Attributes.Any(attribute => attribute.Type.IsConvertibleTo(typeof(TypeConverterAttribute))))
             return ValueParseStrategy.TypeConverter;
 
-        if (valueType.Constructors.Any(constructor => constructor is { Accessibility: Accessibility.Public, Parameters: [{ Type.SpecialType: SpecialType.String }] }))
+        if (valueType.Constructors.Any(constructor => constructor is { Accessibility: Accessibility.Public, Parameters: [{ } text] } && TakesText(text)))
             return ValueParseStrategy.StringConstructor;
 
-        // Not a generic one, such as Enum.Parse<TEnum>(string), whose type argument the generated call
-        // cannot infer (LAMA0611, CS0411).
-        if (valueType.Methods.Any(method => method is { Name: "Parse", IsStatic: true, Accessibility: Accessibility.Public, TypeParameters.Count: 0, Parameters: [{ Type.SpecialType: SpecialType.String }] }))
+        // Callable as the generated code calls it, Type.Parse(text), and giving the wrapped type back. Not
+        // a generic one, such as Enum.Parse<TEnum>(string), whose type argument the generated call cannot
+        // infer (LAMA0611, CS0411); not one that returns another type (a static int Parse(string) on a
+        // class failed as CS0029); not a static virtual one of an interface, which only a type parameter
+        // can call (CS8926).
+        if (valueType.Methods.Any(method => method is { Name: "Parse", IsStatic: true, IsVirtual: false, Accessibility: Accessibility.Public, TypeParameters.Count: 0, Parameters: [{ } text] }
+                                         && TakesText(text)
+                                         && method.ReturnType.IsConvertibleTo(valueType)))
             return ValueParseStrategy.StaticParse;
 
         return ValueParseStrategy.Unsupported;
     }
+
+    /// <summary>
+    /// A string parameter the generated call can pass the text to as it is: not <c>ref</c> or
+    /// <c>out</c>, which failed inside the generated code (LAMA0611, CS1620).
+    /// </summary>
+    private static bool TakesText(IParameter parameter) =>
+        parameter is { Type.SpecialType: SpecialType.String, RefKind: RefKind.None or RefKind.In };
 }

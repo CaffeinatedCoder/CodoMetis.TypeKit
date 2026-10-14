@@ -343,6 +343,23 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                                             && error.Message.Contains("a value object's equality is its wrapped value's") && error.Message.Contains(remedy), consumer.Output);
 
     /// <summary>
+    /// A base record's equality, in this assembly or another, was called by the derived record's
+    /// synthesized one and was not checked: a base comparing by reference made two value objects
+    /// holding 42 unequal while <c>CompareTo</c> answered 0 (reported 2026-10-14, there since 1.0.0).
+    /// Over a base record the equality is generated now, and CMTK1023, a Warning raised to an error here,
+    /// names what it no longer calls.
+    /// </summary>
+    [Theory]
+    [InlineData("InheritsReferenceEquality", "ReferenceEqualityBase.Equals(ReferenceEqualityBase?) in its base type ReferenceEqualityBase, ReferenceEqualityBase.GetHashCode() in its base type ReferenceEqualityBase, which")]
+    [InlineData("InheritsHashCode", "HashCodeBase.GetHashCode() in its base type HashCodeBase, which")]
+    [InlineData("InheritsExplicitEquatable", "the explicit implementation of IEquatable<EquatableBase>.Equals(EquatableBase?) in its base type EquatableBase, which")]
+    [InlineData("InheritsGenericEquality", "GenericEqualityBase<int>.Equals(GenericEqualityBase<int>?) in its base type GenericEqualityBase<int>, GenericEqualityBase<int>.GetHashCode() in its base type GenericEqualityBase<int>, which")]
+    [InlineData("InheritsLibraryReferenceEquality", "ProbeReferenceEqualityRecord.Equals(ProbeReferenceEqualityRecord?) in its base type ProbeReferenceEqualityRecord, ProbeReferenceEqualityRecord.GetHashCode() in its base type ProbeReferenceEqualityRecord, which")]
+    public void A_base_records_equality_is_named(string type, string members) =>
+        consumer.Errors.ShouldContain(error => error.Id == "CMTK1023" && error.Message.StartsWith($"'{type}' inherits {members} its generated equality does not call")
+                                            && error.Message.Contains("a value object's equality is its wrapped value's"), consumer.Output);
+
+    /// <summary>
     /// An explicit implementation of an interface the generators implement was kept beside the generated
     /// public member, and every caller through the interface reached it: a generic <c>T.Parse</c> bypassed
     /// <c>Create</c>, <c>Comparer&lt;T&gt;.Default</c> disagreed with <c>&lt;</c>, and interpolation printed
@@ -469,7 +486,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK0012", "CMTK0013", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CMTK1019", "CMTK1020", "CMTK1021", "CMTK1022", "CS0535"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK0012", "CMTK0013", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CMTK1019", "CMTK1020", "CMTK1021", "CMTK1022", "CMTK1023", "CS0535"], ignoreOrder: false, customMessage: consumer.Output);
 
     /// <summary>
     /// CS0535 is allowed above only for a refused closed set, whose interface members the generators
@@ -505,7 +522,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
         var errors = consumer.Errors.Where(error => error.Id.StartsWith("CMTK1", StringComparison.Ordinal)).ToList();
 
-        errors.Select(error => error.Id).Distinct().Count().ShouldBe(23, $"Not every CMTK1000-CMTK1022 error was observed, so the check below is incomplete:{Environment.NewLine}{consumer.Output}");
+        errors.Select(error => error.Id).Distinct().Count().ShouldBe(24, $"Not every CMTK1000-CMTK1023 diagnostic was observed, so the check below is incomplete:{Environment.NewLine}{consumer.Output}");
         errors.Where(error => !error.Message.EndsWith($". See {link}", StringComparison.Ordinal))
               .Select(error => $"{error.Id}: {error.Message}")
               .ShouldBeEmpty("These errors do not end with the link to the Build errors table.");
@@ -1106,6 +1123,41 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             public sealed partial record InheritsExplicitObjectComparable : ObjectComparableBase, IValue<int>;
 
+            // A base record's equality, which the derived record's synthesized one calls.
+            public abstract record ReferenceEqualityBase
+            {
+                public virtual bool Equals(ReferenceEqualityBase? other) => ReferenceEquals(this, other);
+
+                public override int GetHashCode() => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this);
+            }
+
+            public sealed partial record InheritsReferenceEquality : ReferenceEqualityBase, IValue<int>;
+
+            public abstract record HashCodeBase
+            {
+                public override int GetHashCode() => 1;
+            }
+
+            public sealed partial record InheritsHashCode : HashCodeBase, IValue<int>;
+
+            public abstract record EquatableBase : System.IEquatable<EquatableBase>
+            {
+                bool System.IEquatable<EquatableBase>.Equals(EquatableBase? other) => true;
+            }
+
+            public sealed partial record InheritsExplicitEquatable : EquatableBase, IValue<int>;
+
+            public abstract record GenericEqualityBase<T>
+            {
+                public virtual bool Equals(GenericEqualityBase<T>? other) => ReferenceEquals(this, other);
+
+                public override int GetHashCode() => 1;
+            }
+
+            public sealed partial record InheritsGenericEquality : GenericEqualityBase<int>, IValue<int>;
+
+            public sealed partial record InheritsLibraryReferenceEquality : CodoMetis.TypeKit.Generators.Probes.ProbeReferenceEqualityRecord, IValue<int>;
+
             // A base record's sealed ToString() is the seam, as C# keeps it in every derived record: it failed
             // the aspect (LAMA0502). Beside it no formatting interface is generated, so an explicit one on the
             // base is the only one. Generated as usual.
@@ -1479,6 +1531,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             Directory.CreateDirectory(directory);
 
             var src = Path.Combine(RepositoryRoot(), "src");
+            var probes = Path.Combine(RepositoryRoot(), "test", "CodoMetis.TypeKit.Generators.Probes", "CodoMetis.TypeKit.Generators.Probes.csproj");
             await File.WriteAllTextAsync(Path.Combine(directory, "Consumer.csproj"),
                 $"""
                  <Project Sdk="Microsoft.NET.Sdk">
@@ -1490,6 +1543,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                    <ItemGroup>
                      <ProjectReference Include="{src}/CodoMetis.TypeKit.Generators/CodoMetis.TypeKit.Generators.csproj" />
                      <ProjectReference Include="{src}/CodoMetis.TypeKit.Analyzers/CodoMetis.TypeKit.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+                     <ProjectReference Include="{probes}" />
                    </ItemGroup>
                  </Project>
                  """);
@@ -1508,6 +1562,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                 dotnet_diagnostic.CMTK0007.severity = error
                 dotnet_diagnostic.CMTK0008.severity = error
                 dotnet_diagnostic.CMTK0009.severity = error
+                dotnet_diagnostic.CMTK1023.severity = error
                 """);
 
             // Stop MSBuild's upward search here, so the repository's own build settings (warnings as

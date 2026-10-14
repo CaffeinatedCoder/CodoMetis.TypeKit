@@ -196,6 +196,31 @@ public abstract record ProbeMaskingRecord
     public sealed override string ToString() => "***";
 }
 
+/// <summary>
+/// A base record in another assembly whose equality is hand-written, which a value object derived from
+/// it in the build-outcome consumer must refuse (CMTK1011): its synthesized members are marked
+/// <c>[CompilerGenerated]</c> there, and these are not.
+/// </summary>
+public abstract record ProbeReferenceEqualityRecord
+{
+    public virtual bool Equals(ProbeReferenceEqualityRecord? other) => ReferenceEquals(this, other);
+
+    public override int GetHashCode() => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this);
+}
+
+/// <summary>
+/// A base record in another assembly with a private identity, which a reference assembly does not
+/// carry, so no check on the test assembly's value objects sees it: the record's synthesized equality
+/// compared it.
+/// </summary>
+public abstract record ProbeIdentityRecord
+{
+    private readonly Guid _identity = Guid.NewGuid();
+
+    /// <summary>The identity, computed, so it holds nothing of its own.</summary>
+    public Guid Identity => _identity;
+}
+
 /// <summary>A closed set with no data and no constructor: the generators add a private one.</summary>
 public sealed partial class ProbeStatus : IClosedSet<ProbeStatus>
 {

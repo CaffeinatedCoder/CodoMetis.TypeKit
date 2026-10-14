@@ -155,7 +155,9 @@ Equality is the wrapped value's, as the ordering, the JSON and the column are, s
 `Equals(TSelf)`, `GetHashCode()`, `IEquatable<TSelf>.Equals`, or `operator ==` or `!=` between two of
 the type, is CMTK1011: it would make values equal that sort apart. To make values that differ only in form equal, such as "abc" and "ABC", normalise them
 in `Create` (a plain value object becomes an `IValidatedValue` for that), so that equal values hold
-the same wrapped value.
+the same wrapped value. Over a base record the generated `Equals(TSelf)` and `GetHashCode()` compare
+the wrapped value alone, and never call the base's: a hand-written `Equals(TBase)`, `GetHashCode()` or
+`IEquatable<TBase>.Equals` on a base record is not used, and CMTK1023, a warning, names it.
 
 An `[Obsolete]` on a value object, or on a type it is nested in, is copied to its `{TSelf}Extensions`
 class, which names the value object outside it: with `error: true` that use failed the build.
@@ -164,7 +166,10 @@ A value object holds its wrapped value and nothing else. Its JSON, parsing, type
 carry that value alone, while a record's equality compares every field, so any other instance state
 would be lost on a round trip or make equal values unequal. An instance field, an auto-property, a
 `required` member or a field-like event, declared or inherited from a base record, is CMTK1012. A
-property computed from `Value` without a backing field, and anything `static` or `const`, is fine.
+property computed from `Value` without a backing field, and anything `static` or `const`, is fine. A
+base record from another assembly is seen without its private fields, and a writable property of it
+counts as state; what a private field of it holds takes no part in the value object's equality, and
+is lost on a round trip like anything else beside the value.
 
 ### A value that must not be printed
 
@@ -299,6 +304,15 @@ the options have none of their own. For JSON the application stored itself, see
 as any class does, since the serializer calls no converter for it; `RespectNullableAnnotations = true`
 on the options makes it refuse `null` for a property that is not declared nullable.
 
+**Preserved references** (`ReferenceHandler.Preserve`) are refused with a `NotSupportedException`
+where the serializer could write `$id` or `$ref` inside the wrapped value: a class it walks as an
+object, or a struct holding one. The serializer numbers references per call, and the converter reaches
+the wrapped value through a call of its own, so its numbers would not be the document's. Register a
+`JsonConverter` for the wrapped type, which writes no `$id` for it or for the value object, or
+serialize without preserving references. A value the serializer writes by a value converter (a
+number, a string, a `Guid`, a `Uri`), a struct of such values, and `ReferenceHandler.IgnoreCycles` are
+unaffected.
+
 **A missing property** is not refused either: the serializer calls no converter for a property the
 document lacks, and leaves it `default`. Mark the property `required`, or set
 `RespectRequiredConstructorParameters = true` for a record's constructor parameters.
@@ -367,7 +381,8 @@ Compare or order by `.Value` where the wrapped value's order is meant.
 
 ## Build errors
 
-A declaration that cannot be generated is an error, so no type is left half-generated:
+A declaration that cannot be generated is an error, so no type is left half-generated. CMTK1023 is
+the one warning:
 
 | Id | Meaning |
 |---|---|
@@ -394,6 +409,7 @@ A declaration that cannot be generated is an error, so no type is left half-gene
 | CMTK1020 | A closed set declared as a record: `with` copies a member into an instance that is none, and a record compares by value where members are singletons. |
 | CMTK1021 | A closed set's member named as a member the generators introduce (`Name`, `QualifiedName`, `All`, `Match`, `Parse`, `TryParse`, `ToString`, the JSON or type converter), a set itself named as one of them (a member cannot have the name of its type), or a member whose name differs from another member's only in case: they collide in `TryParse(name, ignoreCase: true)`, and in `Match`'s parameters where the first letter is the difference; or two members whose `Match` parameters would have one name, which lower-casing the first letter gives a member starting with the Kelvin sign (U+212A) and one starting with `K`. |
 | CMTK1022 | An abstract type with a value-object marker: it would get no member, and a value held as it, of a type derived from it, would have no `Value` and be written as `{}`. Declare the marker on the sealed type. An abstract closed set is CMTK1014. |
+| CMTK1023 | A warning, and the value object is generated: a base record declares `Equals(TBase)`, `GetHashCode()` or `IEquatable<TBase>.Equals`, which the generated equality, the wrapped value's, does not call. Remove them from the base, or derive from a record without them. |
 
 The analyzers that come with the base package add CMTK0001 to CMTK0013; see
 [CodoMetis.TypeKit.Analyzers](https://www.nuget.org/packages/CodoMetis.TypeKit.Analyzers).

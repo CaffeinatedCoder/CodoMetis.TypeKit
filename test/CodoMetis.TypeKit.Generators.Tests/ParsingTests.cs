@@ -1,8 +1,47 @@
 using System.Globalization;
 using CodoMetis.TypeKit.Generators.Probes;
+using CodoMetis.TypeKit.ValueObjects;
 using NodaTime;
 
 namespace CodoMetis.TypeKit.Generators.Tests;
+
+/// <summary>A wrapped type whose static <c>Parse(string)</c> gives another type back.</summary>
+public sealed class ParsesToAnotherType
+{
+    public static int Parse(string text) => text.Length;
+}
+
+/// <summary>A wrapped type whose string constructor takes the text by <c>ref</c>.</summary>
+public sealed class ConstructedByRef
+{
+    public ConstructedByRef(ref string text) => text = "";
+}
+
+/// <summary>A wrapped interface whose static <c>Parse(string)</c> is virtual: only a type parameter can call it.</summary>
+public interface IParsesVirtually
+{
+    static virtual IParsesVirtually Parse(string text) => throw new NotSupportedException();
+}
+
+/// <summary>A wrapped type whose static <c>Parse(string)</c> gives a derived type back, which it is.</summary>
+public class ParsesToADerivedType
+{
+    public string Text { get; init; } = "";
+
+    public static Derived Parse(string text) => new() { Text = text };
+
+    public sealed class Derived : ParsesToADerivedType;
+}
+
+// Each of the first three was taken for a parser, and the generated parsing failed inside the
+// generated code (LAMA0611: CS0029, CS1620, CS8926), so this project would not build.
+public readonly partial record struct OverParsesToAnotherType : IValue<ParsesToAnotherType>;
+
+public readonly partial record struct OverConstructedByRef : IValue<ConstructedByRef>;
+
+public readonly partial record struct OverParsesVirtually : IValue<IParsesVirtually>;
+
+public readonly partial record struct OverParsesToADerivedType : IValue<ParsesToADerivedType>;
 
 /// <summary>
 /// The generated <c>IParsable</c>/<c>ISpanParsable</c>/<c>IUtf8SpanParsable</c>, one probe per
@@ -156,4 +195,20 @@ public sealed class ParsingTests
     [Fact]
     public void A_given_provider_is_still_honoured() =>
         ProbeAmount.Parse("1,5", CultureInfo.GetCultureInfo("de-DE")).ShouldBe(ProbeAmount.From(1.5m));
+
+    /// <summary>
+    /// A parser is what the generated code can call as it calls it, <c>Type.Parse(text)</c> or
+    /// <c>new Type(text)</c>, and what gives the wrapped type back. Anything else is no parser, and the
+    /// value object is generated without parsing, as over a type with none.
+    /// </summary>
+    [Theory]
+    [InlineData(typeof(OverParsesToAnotherType))]
+    [InlineData(typeof(OverConstructedByRef))]
+    [InlineData(typeof(OverParsesVirtually))]
+    public void A_method_that_cannot_be_called_as_a_parser_is_none(Type valueObject) =>
+        valueObject.GetInterfaces().ShouldNotContain(type => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IParsable<>));
+
+    [Fact]
+    public void A_static_Parse_that_gives_a_derived_type_back_parses() =>
+        OverParsesToADerivedType.Parse("text", null).Value.Text.ShouldBe("text");
 }
