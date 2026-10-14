@@ -376,22 +376,30 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     /// <c>[Concrete]</c> whether or not it repeats the attribute, so a call through the class is held
     /// to it. Without this, the requirement ended at the interface. A method a base class declares
     /// implements an interface for a derived class that lists it, so the type the method is reached
-    /// through, <paramref name="receiver"/>, is asked too.
+    /// through, <paramref name="receiver"/>, is asked too. Each parameter is asked once: a default
+    /// interface method reached through a derived interface is its own implementation there, and the
+    /// walk recursed until the compiler's stack overflowed.
     /// </summary>
-    private static IEnumerable<TypeArgumentConstraint> Effective(TypeKitSymbols symbols, ITypeParameterSymbol parameter, ITypeSymbol? receiver)
+    private static IEnumerable<TypeArgumentConstraint> Effective(TypeKitSymbols symbols, ITypeParameterSymbol parameter, ITypeSymbol? receiver) =>
+        Effective(symbols, parameter, receiver, new HashSet<ITypeParameterSymbol>(SymbolEqualityComparer.Default)).Distinct();
+
+    private static IEnumerable<TypeArgumentConstraint> Effective(TypeKitSymbols symbols, ITypeParameterSymbol parameter, ITypeSymbol? receiver, HashSet<ITypeParameterSymbol> visited)
     {
+        if (!visited.Add(parameter.OriginalDefinition)) return [];
+
         var own = symbols.ConstraintsOn(parameter);
         if (parameter.DeclaringMethod is not { } method) return own;
 
         return own.Concat(Implemented(method.OriginalDefinition, receiver)
                               .Where(implemented => parameter.Ordinal < implemented.OriginalDefinition.TypeParameters.Length)
-                              .SelectMany(implemented => Effective(symbols, implemented.OriginalDefinition.TypeParameters[parameter.Ordinal], receiver)))
-                  .Distinct();
+                              .SelectMany(implemented => Effective(symbols, implemented.OriginalDefinition.TypeParameters[parameter.Ordinal], receiver, visited)))
+                  .ToList();
     }
 
     /// <summary>
     /// The methods <paramref name="method"/> overrides or implements, explicitly or implicitly, by its
     /// declaration or for <paramref name="receiver"/>; a static method implements a static abstract one.
+    /// Never the method itself, which a default interface method is for an interface that inherits it.
     /// </summary>
     private static IEnumerable<IMethodSymbol> Implemented(IMethodSymbol method, ITypeSymbol? receiver)
     {
@@ -407,7 +415,9 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
             {
                 foreach (var member in contract.GetMembers(method.Name).OfType<IMethodSymbol>())
                 {
-                    if (member.IsGenericMethod && member.IsStatic == method.IsStatic && SymbolEqualityComparer.Default.Equals(type.FindImplementationForInterfaceMember(member)?.OriginalDefinition, method))
+                    if (member.IsGenericMethod && member.IsStatic == method.IsStatic
+                     && !SymbolEqualityComparer.Default.Equals(member.OriginalDefinition, method)
+                     && SymbolEqualityComparer.Default.Equals(type.FindImplementationForInterfaceMember(member)?.OriginalDefinition, method))
                         yield return member;
                 }
             }

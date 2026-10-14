@@ -468,6 +468,38 @@ public sealed class TypeArgumentConstraintAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
+    /// A default interface method called through a derived interface is its own implementation there:
+    /// the analyzer took it for a method it implements, and recursed until the compiler's stack
+    /// overflowed. It carries its own constraint, once.
+    /// </summary>
+    [Fact]
+    public Task A_default_interface_method_reached_through_a_derived_interface_carries_its_own_constraint() =>
+        Test(
+            """
+            public interface IRunner { void Run<[Concrete] T>() { } }
+            public interface IFastRunner : IRunner { }
+            public sealed class FastRunner : IFastRunner { }
+            public interface IMaker { static virtual void Make<[Concrete] T>() { } }
+            public interface IFastMaker : IMaker { }
+
+            public static class Calls
+            {
+                public static void Go(IFastRunner runner, IRunner plain)
+                {
+                    runner.Run<{|#0:Handler|}>();
+                    runner.Run<OrderHandler>();
+                    plain.Run<{|#1:Handler|}>();
+                }
+
+                public static void Generic<TMaker>() where TMaker : IFastMaker => TMaker.Make<{|#2:Handler|}>();
+            }
+            """,
+            Cmtk0010(0, "Handler", "T", "IRunner.Run<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(1, "Handler", "T", "IRunner.Run<T>", "is not a concrete class, record or struct"),
+            Cmtk0010(2, "Handler", "T", "IMaker.Make<T>", "is not a concrete class, record or struct"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
     /// A static method implementing a static abstract interface method, and a base class's method that
     /// implements an interface for a derived class, carry the interface's constraint; both were
     /// silent. Through the base class itself, which implements nothing, there is no constraint.
