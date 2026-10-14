@@ -77,3 +77,4 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0068](0068-fault-set-composition-spiked-first.md) | Fault sets that share members are spiked before they are built | 2026-10-14 | accepted |
 | [0069](0069-plain-enum-schemas-left-to-host.md) | A plain enum's schema stays the host's | 2026-10-14 | accepted |
 | [0070](0070-undefined-enum-value-warning.md) | A value of the package's input enums that names no member is a warning (CMTK0014) | 2026-10-14 | accepted |
+| [0071](0071-converters-say-what-they-write.md) | JSON converters say what they write; decimals get one spelling | 2026-10-14 | accepted |

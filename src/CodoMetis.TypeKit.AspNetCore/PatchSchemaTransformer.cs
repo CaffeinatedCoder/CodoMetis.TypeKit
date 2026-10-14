@@ -50,7 +50,7 @@ internal sealed class PatchSchemaTransformer : IOpenApiSchemaTransformer
     /// <c>pattern</c>, <c>items</c>) applies to its own type only and lets null through.
     /// </para>
     /// </remarks>
-    private static void AdmitNull(OpenApiSchema schema, OpenApiSchema inner)
+    internal static void AdmitNull(OpenApiSchema schema, OpenApiSchema inner)
     {
         if (inner.AnyOf is { Count: > 0 } || inner.OneOf is { Count: > 0 } || inner.AllOf is { Count: > 0 } || inner.Not is not null || inner.Const is not null)
         {

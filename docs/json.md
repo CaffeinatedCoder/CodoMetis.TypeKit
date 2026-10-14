@@ -11,6 +11,8 @@ set of situations.
 
 ```csharp
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Schema;
 using System.Text.Json.Serialization;
 using CodoMetis.TypeKit;
 using CodoMetis.TypeKit.ValueObjects;
@@ -124,6 +126,93 @@ ProductCode stored = JsonSerializer.Deserialize<ProductCode>("\"abc\"", store); 
 string state = stored.Revalidate().Match(_ => "still valid", fault => $"now refused: {fault}");                  // "now refused: NotUpperCase"
 JsonSerializer.Deserialize<ProductCode>("\"abc\"");                                                               // JsonException naming ProductCode and NotUpperCase, the same document as input
 ```
+
+## Decimals in one spelling
+
+A decimal carries its scale: `7.8m` and `7.80m` are equal, and the serializer writes `7.8` and `7.80`,
+so one value reaches a document in as many spellings as it arrived with, and a digest, a diff or a
+replay sees differences that are not there. `DecimalNumberJsonConverter` writes the smallest scale as a
+number, and `DecimalStringJsonConverter` as a string, for a client whose number is a double, which
+rounds what a decimal holds past 15 digits. Both read a number or a string holding one, and keep the
+scale they read. Registered once, either reaches every decimal, a nullable one and a dictionary key, and
+every value object over a decimal, whose JSON is the wrapped type's:
+
+```csharp
+public readonly partial record struct Price : IValue<decimal>;
+```
+
+```csharp
+var wire = new JsonSerializerOptions { Converters = { new DecimalStringJsonConverter() } };
+string price = JsonSerializer.Serialize(Price.From(7.80m), wire);                                // "7.8"
+string keyed = JsonSerializer.Serialize(new Dictionary<decimal, int> { [7.80m] = 1 }, wire);     // {"7.8":1}
+Price read = JsonSerializer.Deserialize<Price>("7.80", wire);                                    // 7.80, a number read too, its scale kept
+```
+
+A store whose documents already hold numbers keeps them numbers with `DecimalNumberJsonConverter`, and
+a document written as strings reads there too. `JsonNumberHandling.WriteAsString` is no alternative: it
+writes every number as a string, an integer's included, and keeps every decimal's scale. A scale per
+type, four places for a price, would widen `7.8` to `7.8000` where this narrows `7.8000` to `7.8`.
+
+## Describing what a converter writes
+
+A converter of one's own hides its type from a schema: System.Text.Json's exporter writes it as `true`,
+ASP.NET Core as `{}` or a bare `format`, and both drop the `items` of a list of it and the
+`additionalProperties` of a dictionary. System.Text.Json has no way for a converter to say what it writes
+(dotnet/runtime#105769), so CodoMetis.TypeKit has one. A converter that implements
+`IDescribedJsonConverter` says it, as both decimal converters do; a converter someone else wrote, or the
+serializer's own enum converter, is described in the options by `JsonSchemaDescriptions`, which converts
+nothing and carries the descriptions wherever the options go:
+
+```csharp
+public readonly record struct Coordinates(double Latitude, double Longitude);
+
+public sealed class CoordinatesConverter : JsonConverter<Coordinates>, IDescribedJsonConverter
+{
+    public override Coordinates Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+        reader.GetString()!.Split(',') is [var latitude, var longitude]
+            ? new(double.Parse(latitude, CultureInfo.InvariantCulture), double.Parse(longitude, CultureInfo.InvariantCulture))
+            : throw new JsonException();
+
+    public override void Write(Utf8JsonWriter writer, Coordinates value, JsonSerializerOptions options) =>
+        writer.WriteStringValue(string.Create(CultureInfo.InvariantCulture, $"{value.Latitude},{value.Longitude}"));
+
+    public JsonSchemaDescription? DescribeJson(Type typeToConvert, JsonSerializerOptions options) =>
+        JsonSchemaDescription.Of(new JsonObject { ["type"] = "string", ["pattern"] = @"^-?\d+(\.\d+)?,-?\d+(\.\d+)?$" });
+}
+
+public sealed record Stop(Coordinates At, List<Coordinates> Route, DayOfWeek Day, Price Fare);
+```
+
+```csharp
+var options = new JsonSerializerOptions(JsonSerializerOptions.Default)
+{
+    Converters =
+    {
+        new CoordinatesConverter(),
+        new DecimalStringJsonConverter(),
+        new JsonStringEnumConverter(),
+        new JsonSchemaDescriptions().Describe(type => type.IsEnum ? JsonSchemaDescription.Of(new JsonObject { ["type"] = "string" }) : null),
+    },
+};
+JsonNode stop = options.GetJsonSchemaAsNode(typeof(Stop), DescribedJsonSchema.ExporterOptions());
+string route = stop["properties"]!["Route"]!["items"]!["type"]!.ToString();   // string, where the exporter alone wrote no items
+string day = stop["properties"]!["Day"]!["type"]!.ToString();                 // string
+string fare = stop["properties"]!["Fare"]!["format"]!.ToString();             // decimal, a value object as its wrapped type
+```
+
+What describes a type, the first that answers: the options' `JsonSchemaDescriptions`, the application's
+word, so a value object can say more than its wrapped type (`Describe<Percentage>(…)` with a `minimum`
+and a `maximum`); a converter on the property itself; a value object, as its wrapped type under the same
+options; a closed set, as a string of its members' names; and the converter the options put in charge.
+A description says what one non-null value looks like, and the null goes in where the position admits
+one. It is a JSON Schema complete in itself: a `$ref`, a `$defs` or an `$id` is refused where it is made.
+`JsonSchemaDescription.SameAs(type)` describes a converter that writes one type as another.
+
+In CodoMetis.TypeKit.AspNetCore, `AddTypeKit()` writes the same descriptions into the OpenAPI document,
+in every position, a list's elements and a dictionary's values included. A route, query or header
+parameter binds through `TryParse` and not through JSON, so it keeps the description ASP.NET gives the
+type without converters of one's own ([ASP.NET Core](aspnet-core.md)). A type nothing describes is left as
+the host writes it.
 
 ## Option and Result at the wire
 

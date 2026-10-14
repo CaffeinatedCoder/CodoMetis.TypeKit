@@ -14,6 +14,8 @@ section is the GitHub release's notes.
 
 ### Added
 
+- **Decimals in one spelling**: `DecimalNumberJsonConverter` and `DecimalStringJsonConverter` write the smallest scale, keys included, and read either token ([JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/json.md#decimals-in-one-spelling)).
+- **Converters that say what they write**: `IDescribedJsonConverter`, `JsonSchemaDescriptions` in the options and `DescribedJsonSchema` for the schema exporter; `AddTypeKit()` describes them in every position of the document ([JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/json.md#describing-what-a-converter-writes)).
 - **The rule that refused**: `Fault.Of(reason).WithRule(member)` names an enum's or a closed set's member, written as the problem's `rule` and on `IFaultFeature` ([The rule that refused](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#the-rule-that-refused)).
 - **`FaultKind.PreconditionFailed`** (412) and **`FaultKind.Malformed`** (400), answered with no mapping ([closed sets as faults](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type)).
 - **CMTK0014** (Warning): a `FaultKind` or `ConstructorAccessibility` that names no member, such as `(FaultKind)9` or `default` ([CMTK0014](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014)).

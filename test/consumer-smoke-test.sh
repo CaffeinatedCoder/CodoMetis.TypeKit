@@ -689,6 +689,7 @@ run dotnet add package Microsoft.AspNetCore.OpenApi --version "$(central_version
 cat > Program.cs <<'CSHARP'
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Schema;
 using System.Text.Json.Serialization;
 using CodoMetis.TypeKit;
 using CodoMetis.TypeKit.AspNetCore;
@@ -715,6 +716,17 @@ await Check("json-number-handling", async () =>
     var options = new JsonSerializerOptions(ShopJson.Default.Options) { NumberHandling = JsonNumberHandling.WriteAsString };
     return JsonSerializer.Serialize(Amount.From(2.5m), options);
 });
+// A context that lists no decimal: the converter registered at run time writes what the value object wraps,
+// and the schema exporter describes it through the value object's attribute and the converter's description.
+await Check("decimal-string", async () =>
+{
+    var options = new JsonSerializerOptions(ShopJson.Default.Options) { Converters = { new DecimalStringJsonConverter() } };
+    string Try(Func<string> part) { try { return part(); } catch (Exception e) { return $"THREW {e.GetType().Name}"; } }
+    var written = Try(() => JsonSerializer.Serialize(Amount.From(7.80m), options));
+    var read = Try(() => JsonSerializer.Deserialize<Amount>("7.80", options) is var amount && amount.Value == 7.80m && amount.Value.Scale == 2 ? "True" : "False");
+    var schema = Try(() => options.GetTypeInfo(typeof(Amount)).GetJsonSchemaAsNode(DescribedJsonSchema.ExporterOptions())["type"]!.ToString());
+    return $"{written} {read} {schema}";
+});
 await Check("stored", async () =>
 {
     var store = new JsonSerializerOptions { TypeInfoResolver = ShopJson.Default, Converters = { new StoredJsonConverterFactory() } };
@@ -738,6 +750,8 @@ var builder = WebApplication.CreateSlimBuilder(args);
 builder.WebHost.UseUrls("http://127.0.0.1:0");
 builder.Logging.ClearProviders();
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.TypeInfoResolverChain.Insert(0, HostJson.Default));
+// Decimals as strings in their minimal spelling, which the document describes with nothing more registered.
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new DecimalStringJsonConverter()));
 builder.Services.AddOpenApi(options => options.AddTypeKit());
 // The domain's fault, answered as problem details: the problem-details context AddFaultResponses
 // brings is the only way a source-generated host can write one.
@@ -781,6 +795,7 @@ Console.WriteLine($"openapi-component={schemas?["OrderId"]?.ToJsonString() ?? "m
 Console.WriteLine($"openapi-parameter={document?["paths"]?["/orders/{id}"]?["get"]?["parameters"]?[0]?["schema"]?.ToJsonString() ?? "missing"}");
 Console.WriteLine($"openapi-items={schemas?["OrderView"]?["properties"]?["quantities"]?["items"]?.ToJsonString() ?? "missing"}");
 Console.WriteLine($"openapi-set={schemas?["OrderStatus"]?.ToJsonString() ?? "missing"}");
+Console.WriteLine($"openapi-decimal={schemas?["Amount"]?["type"]?.ToJsonString() ?? "missing"} {schemas?["Amount"]?["format"]?.ToJsonString() ?? "missing"}");
 await Check("bound", async () => ((int)(await http.GetAsync($"/orders/{Guid.NewGuid()}?limit=3")).StatusCode).ToString());
 await Check("malformed", async () => ((int)(await http.GetAsync("/orders/nope")).StatusCode).ToString());
 // A merge patch through the context: the patch's converter hides Code and string from the generator,
@@ -987,6 +1002,8 @@ assert_contains "json-roundtrip=True"              "$work/aot.out" "and reads ba
 assert_contains "json-refused=THREW JsonException: Code refused the JSON value (NotUpperCase)" "$work/aot.out" "the generated JSON converter applies Create"
 assert_contains 'json-number-handling="2.5"'       "$work/aot.out" "the options' number handling applies to a wrapped number"
 assert_contains "stored=abc"                       "$work/aot.out" "StoredJsonConverterFactory reads without the rules"
+assert_contains 'decimal-string="7.8" True string' "$work/aot.out" "a decimal converter reaches a value object through a context that lists no decimal, and describes it"
+assert_contains 'openapi-decimal="string" "decimal"' "$work/aot.out" "the document describes a value object over a decimal as the described converter writes it"
 assert_contains "option-refused=THREW NotSupportedException: Option<Int32> is not a wire type" "$work/aot.out" "Option refuses JSON with its own message"
 assert_contains "parse=42 Monday https://p.test/ 2026-09-27" "$work/aot.out" "the generated Parse, including through a TypeConverter"
 assert_contains "tryparse-refused=False"           "$work/aot.out" "the generated TryParse applies Create"

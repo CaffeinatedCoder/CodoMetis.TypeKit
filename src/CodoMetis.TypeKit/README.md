@@ -231,6 +231,17 @@ the `Rule` `EmailRule.Reserved`. CodoMetis.TypeKit.AspNetCore answers a `Result<
 answers the fault, with the detail as the problem's `detail` and the rule as its `rule`. A closed set whose members are faults declares `IFaultSet<TSelf>`,
 a `FaultKind` and an optional description per member, from which the host derives each status.
 
+## JSON converters that say what they write
+
+`DecimalNumberJsonConverter` and `DecimalStringJsonConverter` write a decimal in one spelling per value,
+its smallest scale, as a number or as a string, as a value and as a dictionary key, and read either; a
+value object over a decimal is written by whichever the options hold. A converter that implements
+`IDescribedJsonConverter` says what it writes, and `JsonSchemaDescriptions` in the options describes a
+converter someone else wrote, so `DescribedJsonSchema.ExporterOptions()` gives System.Text.Json's schema
+exporter, and CodoMetis.TypeKit.AspNetCore's `AddTypeKit()` the OpenAPI document, what is really written.
+The [JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/json.md#decimals-in-one-spelling)
+page shows both.
+
 ## Not wire types
 
 The one wire type here is `Patch<T>`, a merge patch's field (below).

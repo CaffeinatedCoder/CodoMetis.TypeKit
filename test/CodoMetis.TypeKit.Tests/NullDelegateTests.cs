@@ -238,6 +238,8 @@ public sealed class NullDelegateTests
         // What generated parsing calls for a wrapped type without TryParse; either input, readable or not.
         ["GeneratedParsing.Guarded(String, Func<String, T>): parse"] =
             [() => CodoMetis.TypeKit.CompilerServices.GeneratedParsing.Guarded<string, int>("1", Null<Func<string, int>>()), () => CodoMetis.TypeKit.CompilerServices.GeneratedParsing.Guarded<string, int>("x", Null<Func<string, int>>())],
+
+        ["JsonSchemaDescriptions.Describe(Func<Type, JsonSchemaDescription>): describe"] = [() => new JsonSchemaDescriptions().Describe(Null<Func<Type, JsonSchemaDescription?>>())],
     };
 
     public static TheoryData<string> CaseNames => [.. Cases.Keys];

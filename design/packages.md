@@ -21,6 +21,7 @@ objects from a referenced domain assembly never needs Metalama itself.
 | Namespace | Holds |
 |---|---|
 | `CodoMetis.TypeKit` | `Option`, `Result`, `ResultState`, the markers, `NotWireTypeJsonConverterFactory`, `RequireCustomInitializationAttribute`, `GuidValueExtensions` (`New()` is call-site vocabulary, like `Option`) |
+| `CodoMetis.TypeKit` (2.1) | `DecimalNumberJsonConverter`, `DecimalStringJsonConverter`, `IDescribedJsonConverter`, `JsonSchemaDescription`, `JsonSchemaDescriptions`, `DescribedJsonSchema`: JSON a converter writes, and what it says it writes |
 | `CodoMetis.TypeKit` (2.0.0) | `Fault`, `FaultRuleExtensions` and `FaultClosedSetRuleExtensions` (2.1), `Patch`, `PatchState`, `PatchJsonConverterFactory`, `StringTextExtensions`, `TextFault`, the constraint attributes, `RequireParameterlessConstructorAttribute`, `ConstructorAccessibility` |
 | `CodoMetis.TypeKit.ClosedSets` | `IClosedSet<>`, `IFault`, `IFaultSet<>`, `FaultKind`: what a user declares a closed set or a fault set with |
 | `CodoMetis.TypeKit.ValueObjects` | Every contract a user declares or constrains on: `IValue`, `IValidatedValue`, `IValueObject`, `IPlainValueObject`, `IValueObjectMaterializer`, and `StoredJsonConverterFactory` |

@@ -28,6 +28,8 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using NodaTime;
+using NodaTime.Serialization.SystemTextJson;
 
 namespace ReadmeSamples.Web;
 
@@ -375,5 +377,53 @@ public sealed partial class AspNetCoreTests
     private sealed class NoOrders : IOrders
     {
         public OrderDto Find(OrderId id, Quantity? limit = null) => new(id, [], []);
+    }
+}
+
+/// <summary>The README's NodaTime host: the types described beside their converters, and the document following them.</summary>
+public static class NodaTimeHost
+{
+    public readonly partial record struct Deadline : CodoMetis.TypeKit.ValueObjects.IValue<Instant>;
+
+    public sealed record Assignment(string Title, Instant Created, Deadline Due, LocalDate Day);
+
+    public static void Configure(WebApplicationBuilder builder)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/nodatime
+        builder.Services.ConfigureHttpJsonOptions(options =>
+        {
+            options.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
+            options.SerializerOptions.Converters.Add(new JsonSchemaDescriptions()
+                .Describe<Instant>(JsonSchemaDescription.Of(new JsonObject { ["type"] = "string", ["format"] = "date-time" }))
+                .Describe<LocalDate>(JsonSchemaDescription.Of(new JsonObject { ["type"] = "string", ["format"] = "date" })));
+        });
+        // end sample
+    }
+}
+
+public sealed class NodaTimeHostTests
+{
+    [Fact]
+    public async Task The_document_describes_NodaTime_types_and_the_value_objects_wrapping_them()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        builder.Services.AddOpenApi(options => options.AddTypeKit());
+        NodaTimeHost.Configure(builder);
+        await using var app = builder.Build();
+        app.MapOpenApi();
+        app.MapPost("/assignments", (NodaTimeHost.Assignment assignment) => assignment);
+        await app.StartAsync(TestContext.Current.CancellationToken);
+
+        var document = JsonNode.Parse(await app.GetTestClient().GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken))!;
+        var schemas = document["components"]!["schemas"]!;
+        var properties = schemas["Assignment"]!["properties"]!;
+
+        JsonNode Resolve(JsonNode schema) => schema["$ref"] is { } reference ? schemas[reference.GetValue<string>().Split('/')[^1]]! : schema;
+
+        Resolve(properties["created"]!).ToJsonString().ShouldBe("""{"type":"string","format":"date-time"}""");
+        Resolve(properties["day"]!).ToJsonString().ShouldBe("""{"type":"string","format":"date"}""");
+        Resolve(properties["due"]!).ToJsonString().ShouldBe("""{"type":"string","format":"date-time"}""", "a value object over an Instant, through its wrapped type");
     }
 }

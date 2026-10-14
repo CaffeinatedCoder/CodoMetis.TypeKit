@@ -23,6 +23,17 @@ position, and the change lands in the hoisted component.
   value object in the parameter's `Type`, MVC in `ModelMetadata.ModelType`; the parameter descriptor
   names the container for an MVC `[FromQuery]` object and is not used. Each parameter then publishes
   exactly what a parameter of the wrapped type publishes.
+- **Described types** ([decision 71](adr/0071-converters-say-what-they-write.md)): a converter that
+  implements `IDescribedJsonConverter`, or a type the host's JSON options describe with
+  `JsonSchemaDescriptions`, is described as that says by `DescribedSchemaTransformer`, registered after
+  the value-object and closed-set transformers so a host's description of a value object replaces their
+  shape (a reordering is a failing test). ASP.NET writes a converter of one's own as `{}` or a bare
+  `format` and drops `items`/`additionalProperties` for an element of one (measured, 10.0); the
+  description goes in every JSON position and the containers are repaired where they lack one. A body is
+  a parameter too, and every schema in one; only a non-body parameter binds through `TryParse`, and it
+  gets back the schema the type has without converters of one's own, beside ASP.NET's `format`. A
+  description is parsed by `OpenApiModelFactory.Parse<OpenApiSchema>` (Microsoft.OpenApi 2.0 on), measured
+  to survive Native AOT trimming in the smoke test's `aot` consumer.
 - **A value object that reaches itself** through what it wraps is an `InvalidOperationException`
   naming the chain, not a stack overflow.
 - **Source-generated JSON** ([Native AOT](native-aot.md)): ASP.NET builds the wrapped type's schema from the host's JSON

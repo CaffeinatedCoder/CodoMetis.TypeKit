@@ -1,9 +1,12 @@
 // sample: json/usings
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Schema;
 using System.Text.Json.Serialization;
 using CodoMetis.TypeKit;
 using CodoMetis.TypeKit.ValueObjects;
 // end sample
+using System.Globalization;
 using System.Text.Json.Serialization.Metadata;
 
 namespace ReadmeSamples.Docs.Json;
@@ -40,6 +43,30 @@ public readonly partial record struct ProductCode : IValidatedValue<ProductCode,
 }
 // end sample
 
+// sample: json/price
+public readonly partial record struct Price : IValue<decimal>;
+// end sample
+
+// sample: json/described
+public readonly record struct Coordinates(double Latitude, double Longitude);
+
+public sealed class CoordinatesConverter : JsonConverter<Coordinates>, IDescribedJsonConverter
+{
+    public override Coordinates Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+        reader.GetString()!.Split(',') is [var latitude, var longitude]
+            ? new(double.Parse(latitude, CultureInfo.InvariantCulture), double.Parse(longitude, CultureInfo.InvariantCulture))
+            : throw new JsonException();
+
+    public override void Write(Utf8JsonWriter writer, Coordinates value, JsonSerializerOptions options) =>
+        writer.WriteStringValue(string.Create(CultureInfo.InvariantCulture, $"{value.Latitude},{value.Longitude}"));
+
+    public JsonSchemaDescription? DescribeJson(Type typeToConvert, JsonSerializerOptions options) =>
+        JsonSchemaDescription.Of(new JsonObject { ["type"] = "string", ["pattern"] = @"^-?\d+(\.\d+)?,-?\d+(\.\d+)?$" });
+}
+
+public sealed record Stop(Coordinates At, List<Coordinates> Route, DayOfWeek Day, Price Fare);
+// end sample
+
 // sample: json/profile
 public sealed record Profile(Option<string> Nickname);
 // end sample
@@ -72,6 +99,40 @@ internal partial class NamedShipmentJson : JsonSerializerContext;
 
 public static class Usage
 {
+    public static (string Price, string Keyed, Price Read) Decimals()
+    {
+        // sample: json/decimals
+        var wire = new JsonSerializerOptions { Converters = { new DecimalStringJsonConverter() } };
+        string price = JsonSerializer.Serialize(Price.From(7.80m), wire);                                // "7.8"
+        string keyed = JsonSerializer.Serialize(new Dictionary<decimal, int> { [7.80m] = 1 }, wire);     // {"7.8":1}
+        Price read = JsonSerializer.Deserialize<Price>("7.80", wire);                                    // 7.80, a number read too, its scale kept
+        // end sample
+
+        return (price, keyed, read);
+    }
+
+    public static (string Route, string Day, string Fare) Described()
+    {
+        // sample: json/described-use
+        var options = new JsonSerializerOptions(JsonSerializerOptions.Default)
+        {
+            Converters =
+            {
+                new CoordinatesConverter(),
+                new DecimalStringJsonConverter(),
+                new JsonStringEnumConverter(),
+                new JsonSchemaDescriptions().Describe(type => type.IsEnum ? JsonSchemaDescription.Of(new JsonObject { ["type"] = "string" }) : null),
+            },
+        };
+        JsonNode stop = options.GetJsonSchemaAsNode(typeof(Stop), DescribedJsonSchema.ExporterOptions());
+        string route = stop["properties"]!["Route"]!["items"]!["type"]!.ToString();   // string, where the exporter alone wrote no items
+        string day = stop["properties"]!["Day"]!["type"]!.ToString();                 // string
+        string fare = stop["properties"]!["Fare"]!["format"]!.ToString();             // decimal, a value object as its wrapped type
+        // end sample
+
+        return (route, day, fare);
+    }
+
     public static (string Json, bool Parity, Shipment Quoted) Parity()
     {
         // sample: json/parity
@@ -168,6 +229,28 @@ public sealed class JsonTests
         parity.ShouldBeShownIn(Readme, p => p ? "true" : "false", "json == JsonSerializer.Serialize(primitives, options)");
         quoted.Boxes.ShouldBe(Quantity.From(3));
         quoted.Day.ShouldBe(Weekday.From(DayOfWeek.Friday));
+    }
+
+    [Fact]
+    public void Decimals_are_written_in_one_spelling_as_the_comments_say()
+    {
+        var (price, keyed, read) = Usage.Decimals();
+
+        price.ShouldBeShownIn(Readme, Json, "JsonSerializer.Serialize(Price.From(7.80m), wire)");
+        keyed.ShouldBeShownIn(Readme, Json, "JsonSerializer.Serialize(new Dictionary<decimal, int> { [7.80m] = 1 }, wire)");
+        read.ShouldBeShownIn(Readme, p => p.Value.ToString(CultureInfo.InvariantCulture), "JsonSerializer.Deserialize<Price>(\"7.80\", wire)");
+    }
+
+    [Fact]
+    public void A_described_converter_is_its_schema_as_the_comments_say()
+    {
+        var (route, day, fare) = Usage.Described();
+
+        route.ShouldBeShownIn(Readme, Json, "stop[\"properties\"]![\"Route\"]![\"items\"]![\"type\"]!.ToString()");
+        day.ShouldBeShownIn(Readme, Json, "stop[\"properties\"]![\"Day\"]![\"type\"]!.ToString()");
+        fare.ShouldBeShownIn(Readme, Json, "stop[\"properties\"]![\"Fare\"]![\"format\"]!.ToString()");
+        new JsonSerializerOptions(JsonSerializerOptions.Default) { Converters = { new CoordinatesConverter() } }
+            .GetJsonSchemaAsNode(typeof(List<Coordinates>)).ToJsonString().ShouldBe("""{"type":["array","null"]}""", "the control: the exporter alone writes no items for a converter of one's own");
     }
 
     [Fact]

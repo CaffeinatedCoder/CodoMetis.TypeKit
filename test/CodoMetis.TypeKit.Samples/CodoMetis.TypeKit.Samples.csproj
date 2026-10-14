@@ -23,6 +23,7 @@
         <PackageReference Include="Serilog.Sinks.Console" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+        <PackageReference Include="NodaTime.Serialization.SystemTextJson" />
     </ItemGroup>
 
     <ItemGroup>

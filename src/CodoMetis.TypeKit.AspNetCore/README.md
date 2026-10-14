@@ -127,6 +127,16 @@ described as `T`'s schema:
 A value object inside a patch is described through the type it wraps, which is also what a
 source-generated host can do: the patch's converter hides the value object from its context.
 
+**A described type.** ASP.NET cannot see through a JSON converter of one's own: it writes the type as
+`{}`, or with only the `format` its CLR type maps to, and drops a list's `items` and a dictionary's
+`additionalProperties` of it. A converter that says what it writes (`IDescribedJsonConverter`, as
+`DecimalStringJsonConverter` does), and a type the host's JSON options describe
+(`JsonSchemaDescriptions`), are described as that says, as a property, a body, a nullable one, a list's
+element, a dictionary's value, and inside a value object or a patch. A description of a value object or
+a closed set in the options comes before its own. A route, query or header parameter binds through
+`TryParse`, not JSON, and keeps what ASP.NET writes for the type without converters of one's own. A type
+nothing describes is left as ASP.NET writes it ([JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/json.md#describing-what-a-converter-writes)).
+
 ## A Result as a response
 
 `ToHttpResult()` turns a `Result` into what an endpoint returns: a success as `200 OK` with its value
@@ -386,9 +396,19 @@ faults for its own use, a log or a lockout count; a `Fault<TFault>`'s detail sta
 ## NodaTime
 
 ASP.NET cannot see through NodaTime's JSON converters, so once they are on the host's JSON options
-it describes a NodaTime type as `{}`, and so, through this package, a value object wrapping one. A host that serves NodaTime values
-configures NodaTime's converters on its JSON options and adds a schema transformer for the NodaTime
-types it uses; that transformer then describes the value objects as well.
+it describes a NodaTime type as `{}`, and so, through this package, a value object wrapping one. The
+host describes the NodaTime types it uses beside the converters, in the same options, and the document
+follows, for the value objects wrapping them too:
+
+```csharp
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
+    options.SerializerOptions.Converters.Add(new JsonSchemaDescriptions()
+        .Describe<Instant>(JsonSchemaDescription.Of(new JsonObject { ["type"] = "string", ["format"] = "date-time" }))
+        .Describe<LocalDate>(JsonSchemaDescription.Of(new JsonObject { ["type"] = "string", ["format"] = "date" })));
+});
+```
 
 ## A route parameter declared in the same project
 
