@@ -333,7 +333,9 @@ public sealed partial class ProbeOrderFault : IFaultSet<ProbeOrderFault>
 public sealed partial class ProbeKindlessFault : IFaultSet<ProbeKindlessFault>
 {
     public static readonly ProbeKindlessFault Known = new(FaultKind.Invalid);
+#pragma warning disable CMTK0014 // a member of no kind on purpose: the host's refusal of it is the subject
     public static readonly ProbeKindlessFault Unset = new(default);
+#pragma warning restore CMTK0014
 
     private ProbeKindlessFault(FaultKind kind) => Kind = kind;
 

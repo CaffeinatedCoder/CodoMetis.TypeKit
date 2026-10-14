@@ -445,7 +445,8 @@ internal sealed class TypeKitSymbols
 
             // The attribute's enum mirrors the C# accessibilities in declaration order: 0 Public,
             // 1 Internal, 2 Protected, 3 ProtectedInternal, 4 PrivateProtected, 5 Private. A value
-            // outside it (a newer base package than this analyzer) is read as Public.
+            // outside it is read as Public, the strictest requirement, and CMTK0014 reports it where
+            // it is written.
             var required = attribute.ConstructorArguments.Length == 1 && attribute.ConstructorArguments[0].Value is int value
                 ? value switch
                   {
