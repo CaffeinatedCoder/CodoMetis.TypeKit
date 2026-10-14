@@ -127,7 +127,14 @@ public static class GeneratedJson
     /// which a resolver of one's own passes over ([decision 83](design/adr/0083-the-contract-s-converter-first-and-enum-proves-nothing-against-struct.md)).
     /// </summary>
     internal static bool IsNullableAdapter(JsonConverter converter, Type type) =>
-        converter.Type == type && converter.GetType().Assembly == typeof(JsonConverter).Assembly;
+        converter.Type == type && IsTheSerializers(converter);
+
+    /// <summary>
+    /// Whether <paramref name="converter"/> is one of System.Text.Json's own, whose converters are internal and
+    /// so told by their assembly: the only converters that may walk a value and write <c>$id</c> and <c>$ref</c>.
+    /// </summary>
+    internal static bool IsTheSerializers(JsonConverter converter) =>
+        converter.GetType().Assembly == typeof(JsonConverter).Assembly;
 
     /// <summary>
     /// The converter a type's own <see cref="JsonConverterAttribute"/> names, created through the

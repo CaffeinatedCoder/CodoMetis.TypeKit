@@ -112,10 +112,13 @@
   wrapped type writes a `$ref`, which the converter could not read (since 1.0.0). A converter cannot
   reach the caller's references, so `GeneratedJsonPlan` throws `NotSupportedException` under any
   handler but `IgnoreCycles` where the contract may hold references: an object or collection of a
-  reference type, `object`, or a struct with such a property it writes or reads, a nullable struct as
-  the struct it holds, walked through the options' contracts ([decision 77](adr/0077-third-review-refines-74-to-76.md)). A
-  value converter writes no `$id`, so a struct of numbers and strings still writes the wrapped type's
-  bytes. `IgnoreCycles` is left alone: a cycle through the value object fails at the depth limit, which
+  reference type, `object` under the serializer's own converter, or a struct with such a property it
+  writes or reads, a nullable struct as the struct it holds, walked through the options' contracts
+  ([decision 77](adr/0077-third-review-refines-74-to-76.md)). A property is judged by the converter in charge of
+  it: one of one's own writes no `$id`, and one of the serializer's, a property's `CustomConverter`
+  included, is judged by the serializer's contract of the type it converts, and refused where that
+  contract has a converter of one's own (2026-10-14). A value converter writes no `$id`, so a struct of
+  numbers and strings still writes the wrapped type's bytes. `IgnoreCycles` is left alone: a cycle through the value object fails at the depth limit, which
   is loud.
 - **JSON reads never parse by rules of their own.** A value and a key are read by the plan's
   converter, which accepts exactly what the serializer accepts for the wrapped type. A `Parse` in

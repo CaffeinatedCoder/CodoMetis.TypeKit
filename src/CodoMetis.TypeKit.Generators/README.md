@@ -382,12 +382,13 @@ on the options makes it reject `null` for a property that isn't declared nullabl
 
 **Preserved references** (`ReferenceHandler.Preserve`) throw a `NotSupportedException` where the
 serializer could write `$id` or `$ref` inside the underlying value. That's a class it walks as an
-object, or a struct, nullable or not, holding one in a property that isn't ignored. The serializer
-numbers references per call, and the converter reaches the underlying value through a call of its
-own, so its numbers wouldn't match the document's. Register a `JsonConverter` for the underlying
-type, which writes no `$id` for it or for the value object, or serialize without preserving
-references. These are unaffected: a value the serializer writes with a value converter (a number, a
-string, a `Guid`, a `Uri`), a struct of such values, and `ReferenceHandler.IgnoreCycles`.
+object, an `object` the serializer writes itself, or a struct, nullable or not, holding one in a
+property that isn't ignored. The serializer numbers references per call, and the converter reaches
+the underlying value through a call of its own, so its numbers wouldn't match the document's.
+Register a `JsonConverter` for the underlying type, which writes no `$id` for it or for the value
+object, or serialize without preserving references. These are unaffected: a value the serializer writes with a value converter (a number, a
+string, a `Guid`, a `Uri`), anything a converter of your own writes, on the options or on one
+property, a struct of such values, and `ReferenceHandler.IgnoreCycles`.
 
 **A missing property** isn't rejected either. The serializer calls no converter for a property the
 document lacks, and leaves it `default`. Mark the property `required`, or set

@@ -72,10 +72,11 @@ public sealed class GeneratedJsonPlan<T>
 
     /// <summary>
     /// Whether the serializer may write <c>$id</c> and <c>$ref</c> inside a <typeparamref name="T"/> under
-    /// a preserving reference handler: an object or a collection of a reference type, an <c>object</c>,
-    /// which holds anything, or a struct with one among the properties it writes or reads, or among the
-    /// elements it holds as a collection, a nullable struct as the struct it holds. A struct has no
-    /// <c>$id</c> of its own, and a value converter writes none.
+    /// a preserving reference handler: an object or a collection of a reference type, an <c>object</c> the
+    /// serializer's own converter writes, which holds anything, or a struct with one among the properties it
+    /// writes or reads, through the converter in charge of each, or among the elements it holds as a
+    /// collection, a nullable struct as the struct it holds. A struct has no <c>$id</c> of its own, and a
+    /// value converter writes none, nor does a converter of one's own.
     /// </summary>
     /// <remarks>
     /// The serializer keeps the references of one call, and a nested call starts again: under
@@ -104,7 +105,7 @@ public sealed class GeneratedJsonPlan<T>
         if (Nullable.GetUnderlyingType(typeInfo.Type) is { } held && GeneratedJson.IsNullableAdapter(typeInfo.Converter, typeInfo.Type))
             return MayHoldReferences(options, options.GetTypeInfo(held), visited);
 
-        if (typeInfo.Type == typeof(object)) return true;
+        if (typeInfo.Type == typeof(object)) return GeneratedJson.IsTheSerializers(typeInfo.Converter);
         if (typeInfo.Kind == JsonTypeInfoKind.None) return false;
         if (!typeInfo.Type.IsValueType) return true;
         if (!visited.Add(typeInfo.Type)) return false;
@@ -115,11 +116,29 @@ public sealed class GeneratedJsonPlan<T>
 
         foreach (var property in typeInfo.Properties)
         {
-            if (property is { CustomConverter: null } and ({ Get: not null } or { Set: not null })
-             && MayHoldReferences(options, options.GetTypeInfo(property.PropertyType), visited)) return true;
+            if (property is { Get: not null } or { Set: not null } && MayHoldReferences(options, property, visited)) return true;
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Whether the converter in charge of <paramref name="property"/> may write <c>$id</c> and <c>$ref</c>: the
+    /// contract's, or a converter of the property's own. One of one's own writes none. One of the serializer's,
+    /// a factory among them, writes as the serializer's contract of the type it converts, so that contract
+    /// judges it; where that contract has a converter of one's own instead, which says nothing of how the
+    /// serializer's would write, it is refused.
+    /// </summary>
+    private static bool MayHoldReferences(JsonSerializerOptions options, JsonPropertyInfo property, HashSet<Type> visited)
+    {
+        var contract = options.GetTypeInfo(property.PropertyType);
+
+        if (property.CustomConverter is not { } own || own == contract.Converter) return MayHoldReferences(options, contract, visited);
+        if (!GeneratedJson.IsTheSerializers(own)) return false;
+
+        var converted = own.Type is { } type ? options.GetTypeInfo(type) : contract;
+
+        return !GeneratedJson.IsTheSerializers(converted.Converter) || MayHoldReferences(options, converted, visited);
     }
 
     /// <summary>The options this plan was made for.</summary>

@@ -40,6 +40,25 @@ public struct HoldingIgnored
     public Tracked? Ignored { get; set; }
 }
 
+/// <summary>A struct the serializer walks, with a property that holds anything.</summary>
+public struct HoldingAnything
+{
+    public object? Inner { get; set; }
+}
+
+public enum Shade
+{
+    Light,
+    Dark,
+}
+
+/// <summary>A struct the serializer walks, with an enum the serializer's own converter writes by name.</summary>
+public struct HoldingNamedShade
+{
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public Shade Shade { get; set; }
+}
+
 /// <summary>
 /// A non-generic struct the serializer walks as a collection of strings: a generic wrapped type is refused
 /// (CMTK1005), so a collection is wrapped this way. The serializer writes it and cannot read it (it is
@@ -77,6 +96,10 @@ public readonly struct TrackedList : IReadOnlyList<Tracked>
 }
 
 public readonly partial record struct OverLabels : IValue<Labels>;
+
+public readonly partial record struct OverHoldingAnything : IValue<HoldingAnything>;
+
+public readonly partial record struct OverHoldingNamedShade : IValue<HoldingNamedShade>;
 
 public readonly partial record struct OverTrackedList : IValue<TrackedList>;
 
@@ -321,5 +344,79 @@ public sealed class ReferenceHandlingTests
 
         json.ShouldBe(JsonSerializer.Serialize(new Pair<Tracked> { First = shared, Second = shared }, options));
         JsonSerializer.Deserialize<Pair<OverTracked>>(json, options)!.Second.Value.Name.ShouldBe("x");
+    }
+
+    /// <summary>Writes any value as its text, so nothing it writes can have an <c>$id</c>.</summary>
+    private sealed class AnythingAsTextConverter : JsonConverter<object>
+    {
+        public override object Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetString()!;
+
+        public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options) => writer.WriteStringValue(value.ToString());
+    }
+
+    /// <summary>
+    /// A property's converter is judged, not skipped: the serializer's own converter of <c>object</c>, put in
+    /// charge of a property by a modifier, writes what it holds with an <c>$id</c>. Two value objects around
+    /// one instance wrote <c>"$id":"1"</c> twice, unseen, where the wrapped type writes a <c>$ref</c>
+    /// (reported 2026-10-14). With a converter of one's own for <c>object</c> on the options, the property's
+    /// converter is not the contract's, and the contract's says nothing of how the serializer's writes.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void The_serializer_s_object_converter_on_a_property_is_refused(bool anythingAsTextOnTheOptions)
+    {
+        var options = new JsonSerializerOptions
+        {
+            ReferenceHandler = ReferenceHandler.Preserve,
+            TypeInfoResolver = new DefaultJsonTypeInfoResolver
+            {
+                Modifiers =
+                {
+                    contract =>
+                    {
+                        if (contract.Type != typeof(HoldingAnything)) return;
+                        foreach (var property in contract.Properties) property.CustomConverter = JsonMetadataServices.ObjectConverter;
+                    },
+                },
+            },
+        };
+        if (anythingAsTextOnTheOptions) options.Converters.Add(new AnythingAsTextConverter());
+        var shared = new HoldingAnything { Inner = new Tracked { Name = "x" } };
+
+        JsonSerializer.Serialize(new Pair<HoldingAnything> { First = shared, Second = shared }, options)
+                      .ShouldContain("\"$ref\"", customMessage: "the control: the serializer's object converter numbers what it holds");
+        Should.Throw<NotSupportedException>(() => JsonSerializer.Serialize(new Pair<OverHoldingAnything> { First = OverHoldingAnything.From(shared), Second = OverHoldingAnything.From(shared) }, options))
+              .Message.ShouldContain("ReferenceHandler.Preserve");
+    }
+
+    /// <summary>
+    /// An <c>object</c> written by a converter of one's own has no <c>$id</c>: a struct holding one was refused
+    /// under <see cref="ReferenceHandler.Preserve"/> before its converter was looked at (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public void An_object_property_written_by_a_converter_of_one_s_own_is_written_and_read_under_Preserve()
+    {
+        var options = new JsonSerializerOptions { ReferenceHandler = ReferenceHandler.Preserve, Converters = { new AnythingAsTextConverter() } };
+        var shared  = new HoldingAnything { Inner = new Tracked { Name = "x" } };
+        var json    = JsonSerializer.Serialize(new Pair<OverHoldingAnything> { First = OverHoldingAnything.From(shared), Second = OverHoldingAnything.From(shared) }, options);
+
+        json.ShouldBe(JsonSerializer.Serialize(new Pair<HoldingAnything> { First = shared, Second = shared }, options));
+        JsonSerializer.Deserialize<Pair<OverHoldingAnything>>(json, options)!.Second.Value.Inner.ShouldBe(shared.Inner.ToString());
+    }
+
+    /// <summary>
+    /// A guard against over-correcting the case above, which passes either way: the serializer's own enum
+    /// converter, named on a property, writes a name and no <c>$id</c>.
+    /// </summary>
+    [Fact]
+    public void The_serializer_s_enum_converter_on_a_property_is_written_and_read_under_Preserve()
+    {
+        var value = new HoldingNamedShade { Shade = Shade.Dark };
+        var json  = JsonSerializer.Serialize(new Pair<OverHoldingNamedShade> { First = OverHoldingNamedShade.From(value) }, Preserving);
+
+        json.ShouldBe(JsonSerializer.Serialize(new Pair<HoldingNamedShade> { First = value }, Preserving));
+        json.ShouldContain("\"Dark\"", customMessage: "the control: the property's converter writes the name");
+        JsonSerializer.Deserialize<Pair<OverHoldingNamedShade>>(json, Preserving)!.First.Value.ShouldBe(value);
     }
 }
