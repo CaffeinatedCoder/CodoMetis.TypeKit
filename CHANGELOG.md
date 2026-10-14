@@ -10,6 +10,8 @@ A version's heading reads `## <version> — Unreleased` until the release is pre
 the release date. The release workflow refuses a tag whose section still says `Unreleased`, and the
 section is the GitHub release's notes.
 
+## 2.1.0 — Unreleased
+
 ## 2.0.0 — 2026-10-14
 
 Still `net10.0` and Metalama 2026.1. What builds or runs differently, and what to write instead:

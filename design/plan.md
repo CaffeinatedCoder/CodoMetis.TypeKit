@@ -6,7 +6,7 @@ you touch; the rest is reference.
 
 | Page | Holds | Changes |
 |---|---|---|
-| [Roadmap](roadmap.md) | What is open: before the tag, 2.1, 2.x with a spike first, 3.0.0 | as work is taken or done |
+| [Roadmap](roadmap.md) | What is open: 2.1, 2.x with a spike first, 3.0.0 | as work is taken or done |
 | [Decisions](adr/README.md) | One record per decision, dated, with the evidence that settled it; a decision is changed by a new one that names it | append only |
 | [Packages](packages.md) | The package map, what each depends on, and the namespaces | rarely |
 | [Discovery is by interface](discovery.md) | Why nothing is found by name, and how the analyzer and the satellites find a value object | with the area |
