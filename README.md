@@ -10,6 +10,13 @@ EF Core and the OpenAPI document see the type it wraps. `Option` and `Result` ca
 [![.NET](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/actions/workflows/dotnet.yml/badge.svg)](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/actions/workflows/dotnet.yml)
 [![NuGet](https://img.shields.io/nuget/v/CodoMetis.TypeKit.svg)](https://www.nuget.org/packages/CodoMetis.TypeKit)
 [![Built with Metalama](https://img.shields.io/badge/built_with-Metalama-informational)](#built-with-metalama)
+[![Native AOT: every run-time package](https://img.shields.io/badge/Native%20AOT-every%20run--time%20package-3B82F6)](docs/native-aot.md)
+
+Every run-time package is **Native AOT and trimming compatible**: no trim or AOT warnings, and two
+consumers in CI, a web host with JSON and OpenAPI and a console application with EF Core's compiled
+model, are published with Native AOT against the packed packages and run as native binaries
+([what it asks of you](docs/native-aot.md): a source-generated JSON context, and the one exception,
+the query helpers on an EF Core query).
 
 ```csharp
 public readonly partial record struct OrderId : IValue<Guid>;
