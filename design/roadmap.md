@@ -3,7 +3,9 @@
 What is open, and nothing else. Done work is in the [changelog](../CHANGELOG.md) and in git. Each
 item names the decision that scoped it.
 
-## 2.1, additive
+## 2.2, additive
+
+2.1.0 shipped without these ([decision 88](adr/0088-2-1-0-ships-without-its-open-roadmap-items.md)).
 
 - An optional `Cause` on `Fault<TFault>`, an exception kept beside the reason and the detail for the
   log and the fault feature, never written to the problem; `Fault.Of(reason, detail, cause)`, and a

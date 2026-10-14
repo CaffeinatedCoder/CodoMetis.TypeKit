@@ -58,7 +58,7 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0049](0049-fault-responses-client-can-act.md) | Fault responses a client can act on | 2026-10-13 | accepted |
 | [0050](0050-warnings-cmtk0003-alone-becomes-error-2.md) | Of the Warnings, CMTK0003 alone becomes an Error in 2.0.0 | 2026-10-13 | accepted |
 | [0051](0051-closed-set-parses-ignoring-case-only.md) | A closed set parses ignoring case only when asked, and refuses members that differ only in case | 2026-10-13 | accepted |
-| [0052](0052-cause-on-fault-joins-2-1.md) | A `Cause` on `Fault<TFault>` joins 2.1 | 2026-10-13 | accepted |
+| [0052](0052-cause-on-fault-joins-2-1.md) | A `Cause` on `Fault<TFault>` joins 2.1 | 2026-10-13 | accepted; moved to 2.2 by [0088](0088-2-1-0-ships-without-its-open-roadmap-items.md) |
 | [0053](0053-fault-made-by-fault-of-alone.md) | A `Fault<TFault>` is made by `Fault.Of` alone | 2026-10-13 | accepted |
 | [0054](0054-abstract-value-object-refused.md) | An abstract type with a value-object marker is refused (CMTK1022) | 2026-10-13 | accepted |
 | [0055](0055-component-name-claimed-twice-refused.md) | A component name two types claim is refused; a qualified fault name follows the nesting chain | 2026-10-13 | accepted |
@@ -70,7 +70,7 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0061](0061-scope-s-fault-status-applies-where-fault-type-answered.md) | A scope's fault status applies where its fault type is answered | 2026-10-13 | accepted |
 | [0062](0062-asynchronous-callbacks-run-where-awaited-task-completed.md) | An asynchronous callback runs where the task it waited for completed | 2026-10-13 | accepted |
 | [0063](0063-char-keys-application-assigned-ulong-documented.md) | A key over `char` is the application's to assign; a default key over `ulong` throws at `Add` | 2026-10-13 | accepted |
-| [0064](0064-fault-name-reaches-client-causes-not-told-apart-one-fault.md) | A fault's name reaches the client; causes it must not tell apart are one fault | 2026-10-13 | accepted |
+| [0064](0064-fault-name-reaches-client-causes-not-told-apart-one-fault.md) | A fault's name reaches the client; causes it must not tell apart are one fault | 2026-10-13 | accepted; its opt-in moved to 2.2 by [0088](0088-2-1-0-ships-without-its-open-roadmap-items.md) |
 | [0065](0065-2-0-0-ships-without-preview.md) | 2.0.0 ships without a preview | 2026-10-14 | accepted |
 | [0066](0066-precondition-failed-malformed-fault-kinds.md) | Two more fault kinds: `PreconditionFailed` (412) and `Malformed` (400) | 2026-10-14 | accepted |
 | [0067](0067-rule-that-refused-on-fault.md) | A fault names the rule that refused, as a member of a fixed set | 2026-10-14 | accepted |
@@ -94,3 +94,4 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0085](0085-an-interface-is-no-value-object.md) | An interface is no value object to `[ValueObject]` | 2026-10-14 | accepted |
 | [0086](0086-a-nullable-s-converter-is-seen-through-only-when-it-is-the-serializer-s-adapter.md) | A nullable's converter is seen through only where it is the serializer's adapter, and a hand-built nullable contract is described by its value's | 2026-10-14 | accepted |
 | [0087](0087-a-deeper-base-s-explicit-equatable-is-hidden-by-the-value-object.md) | A deeper base's explicit `IEquatable` is taken over by a `new Equals(TBase)` the value object declares | 2026-10-14 | accepted |
+| [0088](0088-2-1-0-ships-without-its-open-roadmap-items.md) | 2.1.0 ships without its open roadmap items, which move to 2.2 | 2026-10-14 | accepted |
