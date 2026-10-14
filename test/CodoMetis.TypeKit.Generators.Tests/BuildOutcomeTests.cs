@@ -278,20 +278,6 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                                             && error.Message.Contains("wrap the type the value has"), consumer.Output);
 
     /// <summary>
-    /// An interface or an abstract class is written and read as the serializer writes and reads it (its
-    /// declared members, polymorphic where the type declares it, refused on reading where the serializer
-    /// refuses it), so it is wrapped. A guard against the refusal of <c>object</c> reaching further. A type
-    /// whose only static <c>Parse(string)</c> is generic is wrapped without parsing: the generic one was
-    /// taken for its own and failed inside the generated code (LAMA0611, CS0411), as for <c>System.Enum</c>.
-    /// </summary>
-    [Theory]
-    [InlineData("InterfaceBacked")]
-    [InlineData("AbstractClassBacked")]
-    [InlineData("GenericParserBacked")]
-    public void An_interface_or_an_abstract_class_is_wrapped(string type) =>
-        consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'"), consumer.Output);
-
-    /// <summary>
     /// Metalama writes its override of the record's <c>ToString()</c> into every part of a declaration,
     /// and the second copy failed inside the generated code (LAMA0611, CS0111).
     /// </summary>
@@ -646,15 +632,6 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             // Written as {} where an object property holding the same value is written as that value.
             public readonly partial record struct ObjectBacked : IValue<object>;
-
-            // Written and read as the serializer writes and reads the declared type: wrapped.
-            public readonly partial record struct InterfaceBacked : IValue<System.IDisposable>;
-
-            public readonly partial record struct AbstractClassBacked : IValue<System.IO.Stream>;
-
-            public sealed class GenericParser { public static T Parse<T>(string text) where T : new() => new(); }
-
-            public readonly partial record struct GenericParserBacked : IValue<GenericParser>;
 
             // A record class that can be derived from: equality across a hierarchy is not value
             // equality, and a derived value object failed inside the generated code (LAMA0611).

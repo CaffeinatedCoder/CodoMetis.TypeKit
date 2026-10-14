@@ -5,6 +5,20 @@ using NodaTime;
 
 namespace CodoMetis.TypeKit.Generators.Tests;
 
+/// <summary>A type whose only static <c>Parse(string)</c> is generic, so it has no parsing of its own.</summary>
+public sealed class GenericParser
+{
+    /// <summary>Not a <c>Parse</c> of <see cref="GenericParser"/>: its type argument cannot be inferred.</summary>
+    public static T Parse<T>(string text) where T : new() => new();
+}
+
+/// <summary>
+/// Declared here, so that a generic <c>Parse</c> taken for the wrapped type's own fails this project's
+/// build (LAMA0611, CS0411). A consumer build cannot be asked for that error by name: the message names
+/// <see cref="GenericParser"/>, never the value object.
+/// </summary>
+public readonly partial record struct OverGenericParser : IValue<GenericParser>;
+
 /// <summary>A wrapped type whose static <c>Parse(string)</c> gives another type back.</summary>
 public sealed class ParsesToAnotherType
 {
@@ -189,6 +203,18 @@ public sealed class ParsingTests
         {
             CultureInfo.CurrentCulture = previous;
         }
+    }
+
+    /// <summary>
+    /// A type whose only static <c>Parse(string)</c> is generic, such as <c>Enum.Parse&lt;TEnum&gt;(string)</c>,
+    /// is wrapped without parsing: the generic one was taken for its own and failed inside the generated
+    /// code (LAMA0611, CS0411). That regression fails this project's build; this is the run-time half.
+    /// </summary>
+    [Fact]
+    public void A_generic_Parse_is_not_the_wrapped_type_s_own()
+    {
+        typeof(OverGenericParser).GetInterfaces().ShouldNotContain(implemented => implemented.IsGenericType && implemented.GetGenericTypeDefinition() == typeof(IParsable<>));
+        OverGenericParser.From(new GenericParser()).Value.ShouldNotBeNull();
     }
 
     /// <summary>The counterpart, so the fix is not "always invariant": a provider that is given is used.</summary>
