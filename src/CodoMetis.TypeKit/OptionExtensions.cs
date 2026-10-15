@@ -430,7 +430,7 @@ public static class Option
             source.Where(predicate)
                   .Select(Some)
                   .DefaultIfEmpty(None<T>())
-                  .FirstOrDefault();
+                  .First();
 
         /// <summary>The last element that matches, or <c>None</c>.</summary>
         /// <param name="predicate">The condition to match.</param>
@@ -439,7 +439,7 @@ public static class Option
             source.Where(predicate)
                   .Select(Some)
                   .DefaultIfEmpty(None<T>())
-                  .LastOrDefault();
+                  .Last();
 
         /// <summary>
         /// The only element, or <c>None</c> for an empty sequence. More than one is not absence: it

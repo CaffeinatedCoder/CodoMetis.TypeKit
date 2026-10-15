@@ -1,0 +1,20 @@
+<Project>
+    <!--
+      The CMTK analyzers run on the shipping code, as on a consumer's. A library generic that forwarded
+      its parameters into a constrained one without the attribute broke CMTK0010 in two packages and
+      reached a compiler that said so only when the analyzer was added by hand (1a9d7f2, 38 errors). A
+      project reference does not bring a project's analyzers along (dotnet/roslyn#79272), so each
+      project names the analyzer itself.
+
+      Targets, not props: IsRoslynComponent and the project's own references are known only once the
+      project file is read. The analyzer projects are left out, and so is a project that references the
+      analyzer already: the base package, whose reference is the consumers' dependency and loads the
+      analyzer here through OutputItemType. ReferenceOutputAssembly="false" emits no package dependency,
+      and nothing compiles against the analyzer. ShippingProjectAnalyzerTests reads each project's
+      evaluation to hold this in place.
+    -->
+    <ItemGroup Condition="'$(IsRoslynComponent)' != 'true' and '@(ProjectReference->WithMetadataValue('Filename', 'CodoMetis.TypeKit.Analyzers'))' == ''">
+        <ProjectReference Include="$(MSBuildThisFileDirectory)CodoMetis.TypeKit.Analyzers/CodoMetis.TypeKit.Analyzers.csproj"
+                          OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    </ItemGroup>
+</Project>
