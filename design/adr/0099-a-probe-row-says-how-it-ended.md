@@ -1,4 +1,4 @@
-# 0098. A probe row says how it ended: notes are a closed catalogue, a row that earned nothing is a skipped test, and a skip for a finding binds the gate
+# 0099. A probe row says how it ended: notes are a closed catalogue, a row that earned nothing is a skipped test, and a skip for a finding binds the gate
 
 Date: 2026-10-15
 Status: accepted
