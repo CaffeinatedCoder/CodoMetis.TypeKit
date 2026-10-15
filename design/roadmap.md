@@ -8,20 +8,19 @@ refusal may relax in any minor version; an Error that reports more waits for a m
 ## 2.2.0, consolidation
 
 2.2.0 adds no public API. The probe gate binds from this release
-([decision 95](adr/0095-2-2-0-is-a-consolidation-release-and-the-gate-binds.md)). Any gap below that is a
+([decision 97](adr/0097-2-2-0-is-a-consolidation-release-and-the-gate-binds.md)). Any gap below that is a
 defect, a cost or a missing guard may land here; one that adds surface waits for 2.3.0.
 
 - Grow the probe corpus until `prober gate` passes on probes and reviewed waivers alone. Every claim
   touched since v2.1.0 is covered pairwise, and no finding is open.
-- The release workflow runs `prober replay --all` and `prober gate` before the approval gate, with
-  `PROBE_STATE_DIR` in its workspace, and `ReleaseWiringTests` pins the step. `AGENTS.md` already says
-  CI runs it; today no workflow does.
+- The release workflow runs `prober replay --all` and `prober gate` before it packs, and a refusal
+  fails the job; `ReleaseWiringTests` pins both.
 - The generated-surface snapshot under "Generators" below.
 
 ## 2.3.0, additive
 
 Decided, moved to 2.2 when 2.1.0 shipped without them ([decision 88](adr/0088-2-1-0-ships-without-its-open-roadmap-items.md)),
-and then to 2.3 when 2.2.0 became a consolidation release ([decision 95](adr/0095-2-2-0-is-a-consolidation-release-and-the-gate-binds.md)).
+and then to 2.3 when 2.2.0 became a consolidation release ([decision 97](adr/0097-2-2-0-is-a-consolidation-release-and-the-gate-binds.md)).
 
 - An optional `Cause` on `Fault<TFault>`, an exception kept beside the reason and the detail for the
   log and the fault feature, never written to the problem; `Fault.Of(reason, detail, cause)`, and a

@@ -1,4 +1,4 @@
-# 0095. 2.2.0 is a consolidation release, and the probe gate binds from it
+# 0097. 2.2.0 is a consolidation release, and the probe gate binds from it
 
 Date: 2026-10-15
 Status: accepted
@@ -12,7 +12,7 @@ The review's numbers, measured again here: 399 commits since 2026-09-27, 135 of 
 from users. The machinery meant to replace that exposure has not run yet: the corpus holds 42 claims and 11
 registered probes, `prober status` on `release/2.2.0` found no universe, the gate is advisory, and no `fix:`
 commit since v2.1.0 carries the trailers of [decision 94](0094-topic-branches-into-a-release-branch-and-fix-trailers.md).
-Also, `AGENTS.md` says CI runs the gate, but no workflow does.
+Also, `AGENTS.md` said CI runs the gate, but no workflow did.
 
 **Decision.**
 
@@ -27,10 +27,10 @@ Also, `AGENTS.md` says CI runs the gate, but no workflow does.
   their release. So do the gaps that add surface: async test assertions, `CatchAsync` over a `ValueTask`,
   and `TraverseAsync` on `Option` and `Patch`.
 - **2.2.0's own work** is the probe corpus, grown until the gate passes on probes and reviewed waivers;
-  the gaps that are defects; the generated-surface snapshot; and the release workflow running the gate.
+  the gaps that are defects; the generated-surface snapshot; and a release workflow that runs the gate and fails on a refusal.
 - **The gate binds from 2.2.0.** No tag of 2.2.0 or later goes over a refusal without the user's word. A
   refusal is answered by a probe in the corpus, a fix, or a waiver in `tools/probe/corpus/waivers.json`
-  that names its reviewer. Until the release workflow runs the gate, the binding rests on `AGENTS.md`.
+  that names its reviewer. Until a refusal fails the release workflow, the binding rests on `AGENTS.md`.
 
 Not decided here: a cadence for later releases, which the 2.2.0 cycle should inform, not a rule written
 before it.

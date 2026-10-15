@@ -68,6 +68,12 @@ it fail, apply the fix, watch it pass. Then *revert the fix and confirm the test
 test that passes both with and without the fix is not a regression test. See
 [`.claude/skills/verify-the-guard`](.claude/skills/verify-the-guard/SKILL.md).
 
+**A bug fix covers its siblings.** Name the class of input the defect lives in, and run the fix's test
+across that class's variant catalogue: every shape through which a type argument reaches a parameter
+(`test/CodoMetis.TypeKit.Analyzers.Tests/Variants/`), every declaration shape of `.claude/probe-axes.md`,
+every setting of the framework option the fix touches. Fix what fails there too, rather than leave it
+for the next review ([decision 95](design/adr/0095-a-fix-is-tested-across-its-input-class.md)).
+
 **Every analyzer rule has a positive control per syntax form it registers.** An analyzer that
 silently stops firing is the worst outcome this repository can ship, because nothing turns red.
 The rule id and severity are asserted as literals: both are public contract.
