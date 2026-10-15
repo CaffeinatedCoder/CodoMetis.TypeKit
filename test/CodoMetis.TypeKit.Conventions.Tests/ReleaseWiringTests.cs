@@ -25,6 +25,9 @@ public sealed partial class ReleaseWiringTests
     private const string SmokeTestProject = "tools/ConsumerSmokeTest/ConsumerSmokeTest.csproj";
     private const string SmokeTest = "dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll";
 
+    /// <summary>The prober, a tool project run as its built dll (design/adr/0092), which the workflows run with no model (design/adr/0095).</summary>
+    private const string Prober = "dotnet tools/Prober/bin/Release/net10.0/prober.dll";
+
     private static string ReleaseWorkflow => Workflow(ReleaseWorkflowFileName);
 
     private static string BuildWorkflow => Workflow("dotnet.yml");
@@ -157,6 +160,79 @@ public sealed partial class ReleaseWiringTests
     }
 
     /// <summary>
+    /// CI replays the whole probe corpus on every push and pull request, with no model (design/adr/0095). The
+    /// replay had been documented as running in CI while no workflow called it, and a dropped step fails nothing:
+    /// a regression the corpus would catch merges instead.
+    /// </summary>
+    [Fact]
+    public void The_build_workflow_replays_every_probe_and_reports_the_status()
+    {
+        var (name, steps) = ProberJob("dotnet.yml", BuildWorkflow);
+
+        var replay = StrictReplay(name, steps);
+        var status = steps.FindIndex(step => ProberStep("status").IsMatch(step));
+
+        status.ShouldBeGreaterThan(replay, $"{name} does not run `prober status` after the replay, so the run reports no coverage.");
+    }
+
+    /// <summary>
+    /// The release replays the corpus and runs the gate before it packs (design/adr/0095). The gate is advisory
+    /// until a binding release is named (AGENTS.md, "Releasing"), so only its presence and its place are held
+    /// here, and the comparison with the previous release: on a tag push, <c>git describe</c> alone names the tag
+    /// being released, and the gate would compare the commit with itself and find nothing touched.
+    /// </summary>
+    [Fact]
+    public void The_release_replays_every_probe_and_runs_the_gate_before_packing()
+    {
+        var job = Job(ReleaseWorkflow, "verify");
+        var steps = Steps(job).ToList();
+
+        var replay = StrictReplay("release.yml:verify", steps);
+        var gate = steps.FindIndex(step => ProberStep("gate").IsMatch(step));
+        var pack = steps.FindIndex(step => step.Contains("dotnet pack", StringComparison.Ordinal));
+
+        gate.ShouldBeGreaterThan(replay, "release.yml:verify does not run `prober gate` after `prober replay --all`; the gate reads the replay's evidence.");
+        pack.ShouldBeGreaterThan(gate, "release.yml:verify packs before the probe gate has run.");
+        steps[gate].ShouldMatch(@"\bgate --since ""?\$", "The gate runs without --since, so on a tag push it compares the release with itself.");
+        job.ShouldMatch(StateDirectory, "release.yml:verify does not set PROBE_STATE_DIR, so the prober writes into a developer's state directory.");
+    }
+
+    /// <summary>The one job of a workflow whose steps run the prober.</summary>
+    private static (string Name, List<string> Steps) ProberJob(string workflow, string text)
+    {
+        var jobs = Jobs(text).Where(job => Steps(job.Value).Any(step => ProberStep("replay").IsMatch(step))).ToList();
+
+        jobs.Count.ShouldBe(1, $"{workflow} has no job that runs `prober replay`, or more than one.");
+        jobs[0].Value.ShouldMatch(StateDirectory, $"{workflow}:{jobs[0].Key} does not set PROBE_STATE_DIR, so the prober writes into a developer's state directory.");
+
+        return ($"{workflow}:{jobs[0].Key}", Steps(jobs[0].Value).ToList());
+    }
+
+    /// <summary>
+    /// The replay of every probe, built first, and able to fail the job: its exit code is the step's own, with no
+    /// <c>|| true</c> and no <c>continue-on-error</c>.
+    /// </summary>
+    private static int StrictReplay(string name, List<string> steps)
+    {
+        var replay = steps.FindIndex(step => ProberStep("replay").IsMatch(step));
+        var build = steps.FindIndex(step => ProberBuild().IsMatch(step));
+
+        replay.ShouldBeGreaterThanOrEqualTo(0, $"{name} does not run `prober replay`.");
+        steps[replay].ShouldMatch($@"(?m)^\s+run:\s*{Regex.Escape(Prober)} replay --all\s*$",
+            $"{name} replays the probes some other way than `{Prober} replay --all` alone on its run line, so a failing probe may not fail the job.");
+        steps[replay].ShouldNotMatch(@"(?m)^\s+continue-on-error:", $"{name} lets the replay fail without failing the job.");
+        build.ShouldBeInRange(0, replay - 1, $"{name} runs the prober without building it in Release first: build the solution or tools/Prober with -c Release.");
+
+        return replay;
+    }
+
+    /// <summary>PROBE_STATE_DIR set for the job: as an env key, or written to <c>$GITHUB_ENV</c> (the runner context is not available to a job's env).</summary>
+    private const string StateDirectory = @"(?m)^\s+(PROBE_STATE_DIR:\s*\S|echo ""PROBE_STATE_DIR=\S+"" >> ""\$GITHUB_ENV"")";
+
+    /// <summary>A step that runs a prober command; <see cref="Steps"/> has already dropped the comment lines.</summary>
+    private static Regex ProberStep(string command) => new($@"{Regex.Escape(Prober)} {command}\b");
+
+    /// <summary>
     /// Measured 2026-09-27: without the filter, the analyzer package's SBOM lists 13 Roslyn
     /// components while its nuspec declares no dependency at all. Measured 2026-09-28: the SDK adds
     /// <c>Microsoft.NET.ILLink.Tasks</c> to every <c>IsAotCompatible</c> project, build-only, and it
@@ -264,6 +340,9 @@ public sealed partial class ReleaseWiringTests
 
     [GeneratedRegex(@"(?m)^\s+run:\s*dotnet build (CodoMetis\.TypeKit\.slnx|tools/ConsumerSmokeTest)\s+-c Release\s*$")]
     private static partial Regex SmokeTestBuild();
+
+    [GeneratedRegex(@"(?m)^\s+run:\s*dotnet build (CodoMetis\.TypeKit\.slnx|tools/Prober)\s+-c Release\s*$")]
+    private static partial Regex ProberBuild();
 
     [GeneratedRegex(@"(?m)^\s+run:.*\bapt-get install\b.*\bclang\b.*\bzlib1g-dev\b")]
     private static partial Regex AotPrerequisites();
