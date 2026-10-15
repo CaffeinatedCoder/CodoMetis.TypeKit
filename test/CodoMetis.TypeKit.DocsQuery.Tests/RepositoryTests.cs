@@ -21,6 +21,7 @@ public sealed class RepositoryTests
     [InlineData(Kind.Guide, 10)]
     [InlineData(Kind.Package, 7)]
     [InlineData(Kind.Spike, 10)]
+    [InlineData(Kind.Fact, 9)]
     [InlineData(Kind.Note, 8)]
     [InlineData(Kind.Index, 4)]
     public void The_corpus_is_discovered(string kind, int floor) => Index.Value.Docs.Count(doc => doc.Kind == kind).ShouldBeGreaterThanOrEqualTo(floor);

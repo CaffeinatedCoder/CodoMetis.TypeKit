@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      The executable half of the verified facts in design/knowledge/ (design/adr/0093): one test class per
+      fact a test can observe, named by its KB id, asserting what a framework does on its own. It references
+      no TypeKit project (NoTypeKitTests), so a test here fails only when a framework changes, and that
+      failure is the trigger to re-verify the entry.
+    -->
+    <!--
+      ASP.NET's OpenAPI XML-comment generator intercepts AddOpenApi, as it does in any documented
+      host. The Web SDK enables its interceptors namespace; this project uses the plain SDK.
+    -->
+    <PropertyGroup>
+        <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.OpenApi.Generated</InterceptorsNamespaces>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+        <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="System.Text.Json" />
+        <Using Include="System.Text.Json.Nodes" />
+    </ItemGroup>
+
+</Project>

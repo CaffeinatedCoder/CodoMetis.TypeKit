@@ -8,6 +8,7 @@ you touch; the rest is reference.
 |---|---|---|
 | [Roadmap](roadmap.md) | What is open: 2.2.0, gaps for any 2.x, 2.x with a spike first, blocked upstream, 3.0.0 | as work is taken or done |
 | [Decisions](adr/README.md) | One record per decision, dated, with the evidence that settled it; a decision is changed by a new one that names it | append only |
+| [Verified facts](knowledge/README.md) | What the frameworks TypeKit builds on do, one fact per file, pinned, dated and sourced, most with a characterization test; a stale one settles nothing | as research settles a question |
 | [Packages](packages.md) | The package map, what each depends on, and the namespaces | rarely |
 | [Discovery is by interface](discovery.md) | Why nothing is found by name, and how the analyzer and the satellites find a value object | with the area |
 | [EF Core](ef-core.md) | The mapping plugin, the convention, the translators, keys and collections | with the area |

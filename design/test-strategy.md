@@ -38,3 +38,12 @@
    CS0535), so the refused closed sets, which do not implement their interface, are built apart from
    the value objects, whose build must have no compiler error, and a declaration whose error is C#'s own
    (CS0111) has a consumer of its own (`EqualityOperatorBuildTests`).
+8. **Verified facts** (2026-10-15, [decision 93](adr/0093-verified-facts-are-pinned-dated-and-executable-where-they-can-be.md)).
+   What a framework does on its own, where something here turned on it, is a
+   [verified fact](knowledge/README.md), and each one a test can observe has a characterization test in
+   `test/CodoMetis.TypeKit.Facts`, named by its id, in a project that references no TypeKit code
+   (`NoTypeKitTests`). A bump that changes the behaviour fails there, not in a TypeKit test that would only
+   look broken. `docs-query check`, which `RepositoryTests` requires clean, fails a bump that leaves a fact's
+   pin behind. Seeded: a pin behind read as current, `Microsoft.AspNetCore.OpenApi` raised to 10.0.13 alone
+   (KB-001 and KB-002 reported), a TypeKit project referenced from the facts, and KB-003's calls in the
+   other order each fail their test.

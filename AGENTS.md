@@ -109,6 +109,10 @@ here, so it leads and the source decides.
 - **Then the source and its tests**, read before concluding or editing. An edge is a lead.
 - **Text search** (`git grep`, `search_code`) for literals, messages, diagnostic ids,
   configuration, documentation, and what the generators emit.
+- **A framework question goes to the verified facts first**: `docs-query entry KB-NNN` or `docs-query find`
+  before researching what ASP.NET, System.Text.Json, EF Core, the runtime or the platform do, and a new
+  `design/knowledge/` entry when research settles one that something here turned on
+  ([decision 93](design/adr/0093-verified-facts-are-pinned-dated-and-executable-where-they-can-be.md)).
 - **An empty result proves nothing.** Fall back to text search when the graph is unavailable, stale
   or silent, and never conclude "unused", "no other caller" or "safe to change" from it alone.
   Measured on 2026-10-13, the graph:
@@ -232,7 +236,7 @@ the whole page. A ranked miss proves nothing.
      derived again, then exploration up to the cap. A report, not a gate.
    - A probe that found a bug becomes a test in the suite (step 3); a dismissed finding is recorded with
      `prober dismiss` and the reason. An intended difference a probe accepts cites the sentence of the
-     docs or the record that makes it intended.
+     docs, the record, or the verified fact (`KB-NNN`, `design/knowledge/`) that makes it intended.
 
 ## Releasing
 
