@@ -191,6 +191,7 @@ READMEs is compiled, and the outputs it states are tested.
 | [Native AOT](docs/native-aot.md) | What Native AOT asks of your app: project settings, JSON contexts, OpenAPI, EF Core's compiled model and query helpers, configuration binding, written text, Serilog, discovery without reflection, what the smoke test measures |
 | [Logging and secrets](docs/logging-and-secrets.md) | Keep a secret out of logs: mask a value, what still carries it, Serilog, Microsoft.Extensions.Logging, rejections that never quote the input |
 | [Testing](docs/testing.md) | Assertions for `Option`, `Result` and `Patch<T>`, `Create` as a table, the generated members checked against `Create`, EF Core on SQLite, endpoints on the test server |
+| [Migrating from 2.0 to 2.1](docs/migrating-to-2-1.md) | Move a project from 2.0 to 2.1: two new warnings, value equality over a base record, preserved references, the same converters for controllers and minimal APIs, a changed OpenAPI document, names 2.1 adds |
 | [Migrating from 1.5 to 2.0](docs/migrating-to-2.md) | Move a project from 1.5 to 2.0: dropped results as build errors, queries that now run in the database or throw, names 2.0 adds, fault responses, Native AOT |
 | [How it compares](docs/comparison.md) | When another library fits better, and feature tables against the value-object, result and smart-enum libraries, versioned and dated |
 
@@ -292,8 +293,9 @@ your projects. Thanks to the Metalama team.
 
 ## Status
 
-2.0.0 is the current version. 1.0.0, released on 28 September 2026, was the first.
-[Migrating from 1.5 to 2.0](docs/migrating-to-2.md) lists what builds or runs differently since 1.5.
+2.1.0 is the current version. 1.0.0, released on 28 September 2026, was the first.
+[Migrating from 2.0 to 2.1](docs/migrating-to-2-1.md) lists what builds or runs differently since 2.0,
+and [Migrating from 1.5 to 2.0](docs/migrating-to-2.md) what changed since 1.5.
 
 All packages share one version and follow Semantic Versioning. The versioned surface is the public
 API, the generated members of a value object, and the analyzer ids and severities. A new analyzer

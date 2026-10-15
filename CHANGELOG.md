@@ -12,6 +12,9 @@ section is the GitHub release's notes.
 
 ## 2.1.0 — 2026-10-15
 
+Still `net10.0` and Metalama 2026.1. What builds or runs differently, and what to write instead:
+[Migrating from 2.0 to 2.1](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/migrating-to-2-1.md).
+
 ### Added
 
 - **Decimals in one spelling**: `DecimalNumberJsonConverter` and `DecimalStringJsonConverter` write the smallest scale, keys included, and read either token ([JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/json.md#decimals-in-one-spelling)).
