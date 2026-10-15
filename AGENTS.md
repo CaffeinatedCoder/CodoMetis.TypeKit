@@ -61,7 +61,14 @@ dotnet test --solution CodoMetis.TypeKit.slnx
 dotnet test --project test/CodoMetis.TypeKit.Conventions.Tests --filter-method "*Metalama*"
 dotnet build spikes/FabricSpike/FabricSpike.slnx      # the fabric spike, standalone
 ./test/consumer-smoke-test.sh                          # the packages, installed into throwaway consumers, one published with Native AOT (needs clang)
+tools/build-verdict.sh test [--project P] [--filter-class C] [--filter-method M] [-- flags]   # an agent's build and test: a verdict, not the transcript
 ```
+
+An agent runs builds and tests through `tools/build-verdict.sh` (`build [<project|slnx>]` or
+`test`), which prints the exit code named, each diagnostic code once with its remedy from
+`tools/build-verdict-remedies.tsv`, and the failing tests with their assertion; the full log is
+`$GIT_DIR/build-verdict-last.log`. A code it prints as UNMAPPED gets a row once its fix is known.
+`tools/build-verdict.test.sh` checks the parsers against fixtures.
 
 The SDK is pinned in `global.json` (10.0.4xx band, `latestPatch`). Tests run on Microsoft Testing
 Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TRX output is
