@@ -44,7 +44,10 @@
     `.Value` re-typed as the wrapped type queried the wrong one: `StartsWith("a")` against `"C:abc"`
     answered no row. The translators act only where the operand's to-provider expression is
     `ValueObjectConverter<,>.ProviderValue`, composed with an enum's converter where there is one,
-    which holds in a compiled model too; anywhere else EF refuses the query.
+    which holds in a compiled model too; anywhere else EF refuses a query that filters, orders, groups
+    or aggregates by `.Value`. A final `Select` or `Distinct` of it EF evaluates in memory, after the
+    application's converter has read the value object, and answers correctly (measured 2026-10-15, the
+    EF variant catalogue).
   - **A hand-written ordering is refused in a query (decided 2026-10-13, [decision 57](adr/0057-hand-written-ordering-refused-in-query.md)).**
     EF translates a comparison, an ordering and `Min`/`Max` to the column's order, not to a
     hand-written `CompareTo`. The comparable aspect marks such a type `[HandWrittenOrdering]`, and an
@@ -56,6 +59,12 @@
     model is built (and so at `dbcontext optimize` and `migrations add`). A comparison in a filter that
     reads neither the entity nor a query is left alone: EF evaluates it in memory, by `CompareTo`
     (measured: `Floor > From(2)` on the context kept the rows memory keeps).
+  - **A null passes no comparison in a query (decided 2026-10-15, [decision 98](adr/0098-a-null-passes-no-comparison-in-a-query.md)).**
+    A record class's generated operators sort null first, so `null < x` is true in memory, and SQL's
+    `"N" < @x` leaves the null row out, as for the underlying type's nullable column. Not refused: a
+    guard cannot tell a nullable record-class property from a required one by its type, and the answer
+    is the underlying type's. The EF README and `docs/ef-core.md` say so, with
+    `r.N == null || r.N < x` to keep the null rows.
   - **The element of a primitive collection is converted, not re-typed (decided 2026-09-28).** EF
     infers a collection's element mapping from the columns that read its table expression (`unnest`,
     `json_each`, `OPENJSON`, `VALUES`), and a re-typed element column handed it the wrapped type's
