@@ -33,6 +33,11 @@ namespace CodoMetis.TypeKit.EntityFrameworkCore.Tests;
 /// stores is EF's, and claimed nowhere.
 /// </description></item>
 /// <item><description>
+/// "A null passes no <c>&lt;</c>, <c>&lt;=</c>, <c>&gt;</c> or <c>&gt;=</c> in the database": a nullable
+/// record-class value object compared with <c>&lt;</c> or <c>&lt;=</c> answers as the same query over the
+/// wrapped type, which leaves out the null rows the generated operators keep in memory.
+/// </description></item>
+/// <item><description>
 /// "Your own <c>CompareTo(TSelf)</c> can't run in the database": a comparison, an ordering, a <c>Min</c> or a
 /// <c>Max</c> of such a value object is refused, naming it, in a query and in a query filter alike, and the
 /// same by <c>.Value</c> is the column's order.
@@ -74,6 +79,16 @@ public sealed class QueryTranslationVariantTests
             case RefusedForeign:
                 Refusal(valueObject, "could not be translated");
                 return;
+            case NullsLeftOut:
+                valueObject.Refusal.ShouldBeNull();
+                var nulls = NullRows(@case);
+                nulls.ShouldNotBeEmpty("the seed holds a row whose value object is null");
+                Memory(@case).Rows.ShouldBe([.. valueObject.Rows!.Concat(nulls).Order(StringComparer.Ordinal)],
+                    "the rows memory keeps are the query's and the null rows, which the generated operators sort first");
+
+                // A string has no < to write the wrapped type's query with; memory is no oracle here.
+                if (!new QueryBuilder(@case, valueObject: false).CanBuild) return;
+                break;
         }
 
         var plain = new QueryBuilder(@case, valueObject: false).CanBuild ? Run(@case, valueObject: false) : null;
@@ -118,6 +133,7 @@ public sealed class QueryTranslationVariantTests
         all.Select(@case => @case.Conversion).Distinct().Count().ShouldBe(Enum.GetValues<Conversion>().Length);
         all.Count(@case => Expect(@case) is RefusedOrdering).ShouldBeGreaterThan(100);
         all.Count(@case => Expect(@case) is RefusedForeign).ShouldBeGreaterThan(50);
+        all.Count(@case => Expect(@case) is NullsLeftOut).ShouldBeGreaterThan(5);
     }
 
     private abstract record Expectation;
@@ -134,6 +150,12 @@ public sealed class QueryTranslationVariantTests
     /// answers as memory does, which is no wrong answer.
     /// </summary>
     private sealed record RefusedForeign : Expectation;
+
+    /// <summary>
+    /// Answers as the same query over the wrapped type, where a null passes no comparison, which is fewer rows
+    /// than memory's: a record class's generated operators sort null first (decision 98).
+    /// </summary>
+    private sealed record NullsLeftOut : Expectation;
 
     /// <summary>A divergence the catalogue found and no decision settles yet: named here, never dropped from the catalogue.</summary>
     private sealed record OpenFinding(string Reason) : Expectation;
@@ -153,9 +175,9 @@ public sealed class QueryTranslationVariantTests
         if (@case.Kind.Ordering == Ordering.HandWritten && @case is { ReadsWrapped: false, Orders: true }) return new RefusedOrdering();
 
         // The generated operators of a record class sort null first, so in memory null < x is true; SQL's
-        // "N" < @x is unknown for a null N, and the row is dropped, without a word.
-        if (!@case.Kind.ValueObject.IsValueType && @case is { Site: Site.Nullable, Accessor: Accessor.Itself, Op: Op.LessThan })
-            return new OpenFinding("a nullable record-class value object compared with < keeps its null rows in memory and drops them in SQL");
+        // "N" < @x is unknown for a null N, as it is for the wrapped type's lifted operator.
+        if (!@case.Kind.ValueObject.IsValueType && @case is { Site: Site.Nullable, Accessor: Accessor.Itself, Op: Op.LessThan or Op.LessOrEqual })
+            return new NullsLeftOut();
 
         return new Same();
     }
@@ -164,6 +186,15 @@ public sealed class QueryTranslationVariantTests
     private static bool ClaimsTheColumn(QueryCase @case) =>
         @case.ReadsWrapped && @case.Conversion is Conversion.TypeKit or Conversion.ExplicitTypeKit
      && @case.Site is Site.Column or Site.Nullable or Site.Navigation or Site.QueryFilter or Site.NamedQueryFilter;
+
+    /// <summary>The rows of the case's seed whose nullable value object is null, as a query over the table answers them.</summary>
+    private static string[] NullRows(QueryCase @case) =>
+    [
+        .. Seed.Entities(new QueryBuilder(@case, valueObject: true), @case.Kind, valueObject: true)
+               .Cast<object>()
+               .Where(row => row.GetType().GetProperty("N")!.GetValue(row) is null)
+               .Select(row => Text(row.GetType().GetProperty("Id")!.GetValue(row))),
+    ];
 
     private static string Refusal(Answer answer, string expected)
     {

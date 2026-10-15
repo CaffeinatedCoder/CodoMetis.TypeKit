@@ -69,7 +69,8 @@ public sealed record WrappedKind(string Name, Type ValueObject, Type Wrapped, Or
 /// <remarks>
 /// Every integer type EF generates a key of, and <c>byte</c>, which it does not; <c>char</c> and <c>Guid</c>,
 /// the two documented exceptions to key parity; the types a key can be and is never generated; and the
-/// families a query reads: text, numbers, a flag, dates and times, an enum. A value object ordered by a
+/// families a query reads: text, numbers, a flag, dates and times, an enum, and a record class over text and
+/// over a number, whose generated operators sort null first. A value object ordered by a
 /// <c>CompareTo</c> of its own is a kind too, as a struct over a number and a date and as a record class.
 /// </remarks>
 public static class WrappedKinds
@@ -87,6 +88,7 @@ public static class WrappedKinds
                                                      [System.Guid.Parse("00000000-0000-0000-0000-000000000002"), System.Guid.Parse("00000000-0000-0000-0000-000000000007"), System.Guid.Parse("00000000-0000-0000-0000-000000000010")]);
     public static readonly WrappedKind String  = new("string", typeof(WrapsString), typeof(string), Ordering.Wrapped, ["alpha", "bravo", "charlie"]);
     public static readonly WrappedKind StringRecordClass = new("string, record class", typeof(WrapsStringRecord), typeof(string), Ordering.Wrapped, ["alpha", "bravo", "charlie"]);
+    public static readonly WrappedKind Int32RecordClass = new("int, record class", typeof(WrapsInt32Record), typeof(int), Ordering.Wrapped, [2, 7, 10]);
     public static readonly WrappedKind Decimal = new("decimal", typeof(WrapsDecimal), typeof(decimal), Ordering.Wrapped, [1.5m, 2.25m, 10m]);
     public static readonly WrappedKind Double  = new("double", typeof(WrapsDouble), typeof(double), Ordering.Wrapped, [1.5, 2.25, 10.0]);
     public static readonly WrappedKind Boolean = new("bool", typeof(WrapsBoolean), typeof(bool), Ordering.Wrapped, [false, true]);
@@ -114,7 +116,7 @@ public static class WrappedKinds
     /// <summary>What a query reads: one kind per family, the unsigned and the text-stored ones included, and the three own orderings.</summary>
     public static readonly WrappedKind[] Queries =
     [
-        Int32, Int64, Int16, Byte, UInt32, UInt64, Char, Guid, String, StringRecordClass, Decimal, Double, Boolean,
+        Int32, Int64, Int16, Byte, UInt32, UInt64, Char, Guid, String, StringRecordClass, Int32RecordClass, Decimal, Double, Boolean,
         DateTime, DateOnly, TimeOnly, DateTimeOffset, TimeSpan, Enum,
         DescendingInt32, DescendingDateOnly, DescendingStringRecordClass,
     ];
@@ -145,6 +147,8 @@ public readonly partial record struct WrapsGuid : IValue<Guid>;
 public readonly partial record struct WrapsString : IValue<string>;
 
 public sealed partial record WrapsStringRecord : IValue<string>;
+
+public sealed partial record WrapsInt32Record : IValue<int>;
 
 public readonly partial record struct WrapsDecimal : IValue<decimal>;
 

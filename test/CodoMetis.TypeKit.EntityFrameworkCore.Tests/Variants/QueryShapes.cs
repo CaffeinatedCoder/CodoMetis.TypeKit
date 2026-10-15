@@ -73,6 +73,11 @@ public enum Op
     NotEquals,
     GreaterOrEqual,
     LessThan,
+    LessOrEqual,
+
+    /// <summary><c>r.N == null || r.N &lt; x</c>: the null rows kept in SQL, as the generated operators of a record class keep them in memory.</summary>
+    LessThanOrNull,
+
     CompareTo,
     OrderBy,
     OrderByDescending,
@@ -112,7 +117,7 @@ public sealed record QueryCase(WrappedKind Kind, Conversion Conversion, Site Sit
     public bool ReadsWrapped => Accessor != Accessor.Itself;
 
     /// <summary>A comparison, an ordering, or a minimum or maximum: what a value object's own <c>CompareTo</c> decides in memory.</summary>
-    public bool Orders => Op is Op.GreaterOrEqual or Op.LessThan or Op.CompareTo or Op.OrderBy or Op.OrderByDescending or Op.ThenBy or Op.ThenByDescending
+    public bool Orders => Op is Op.GreaterOrEqual or Op.LessThan or Op.LessOrEqual or Op.LessThanOrNull or Op.CompareTo or Op.OrderBy or Op.OrderByDescending or Op.ThenBy or Op.ThenByDescending
                              or Op.OrderByBoxed or Op.ThenByBoxed or Op.Order or Op.OrderDescending or Op.Min or Op.Max or Op.MinBy or Op.MaxBy
                              or Op.AnyGreaterOrEqual or Op.CountGreaterOrEqual or Op.ElementMax or Op.ElementOrderFirst
                              or Op.NavigationMin or Op.NavigationMax or Op.NavigationOrderFirst or Op.NavigationOrderDescendingFirst;
@@ -131,7 +136,7 @@ public static class QueryShapes
 {
     private static readonly Op[] ColumnOps =
     [
-        Op.EqualsLiteral, Op.EqualsCaptured, Op.NotEquals, Op.GreaterOrEqual, Op.LessThan, Op.CompareTo,
+        Op.EqualsLiteral, Op.EqualsCaptured, Op.NotEquals, Op.GreaterOrEqual, Op.LessThan, Op.LessOrEqual, Op.CompareTo,
         Op.OrderBy, Op.OrderByDescending, Op.ThenBy, Op.ThenByDescending, Op.OrderByBoxed, Op.ThenByBoxed, Op.Order, Op.OrderDescending,
         Op.Min, Op.Max, Op.MinBy, Op.MaxBy, Op.Contains, Op.GroupBy, Op.Select, Op.Distinct,
     ];
@@ -139,7 +144,7 @@ public static class QueryShapes
     private static readonly Dictionary<Site, Op[]> Ops = new()
     {
         [Site.Column]            = ColumnOps,
-        [Site.Nullable]          = [.. ColumnOps.Where(op => op != Op.CompareTo)],
+        [Site.Nullable]          = [.. ColumnOps.Where(op => op != Op.CompareTo), Op.LessThanOrNull],
         [Site.CollectionElement] = [Op.AnyEquals, Op.AnyGreaterOrEqual, Op.ElementContains, Op.ElementMax, Op.ElementOrderFirst],
         [Site.ParameterElement]  = [Op.AnyEquals, Op.AnyGreaterOrEqual],
         [Site.Navigation]        = [Op.AnyEquals, Op.CountGreaterOrEqual, Op.NavigationMin, Op.NavigationMax, Op.NavigationOrderFirst, Op.NavigationOrderDescendingFirst],
@@ -375,6 +380,8 @@ public sealed class QueryBuilder(QueryCase @case, bool valueObject)
             Op.NotEquals         => (Where(Expression.NotEqual(read, Captured(type))), false),
             Op.GreaterOrEqual    => (Where(Expression.GreaterThanOrEqual(read, Captured(type))), false),
             Op.LessThan          => (Where(Expression.LessThan(read, Captured(type))), false),
+            Op.LessOrEqual       => (Where(Expression.LessThanOrEqual(read, Captured(type))), false),
+            Op.LessThanOrNull    => (Where(Expression.OrElse(Expression.Equal(read, Expression.Constant(null, type)), Expression.LessThan(read, Captured(type)))), false),
             Op.CompareTo         => (Where(Expression.GreaterThan(CompareTo(read, Captured(type)), Expression.Constant(0))), false),
             Op.OrderBy           => (Values(Q("OrderBy", [Source, type], source, key)), true),
             Op.OrderByDescending => (Values(Q("OrderByDescending", [Source, type], source, key)), true),

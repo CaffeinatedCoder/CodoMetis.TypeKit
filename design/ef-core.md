@@ -56,6 +56,12 @@
     model is built (and so at `dbcontext optimize` and `migrations add`). A comparison in a filter that
     reads neither the entity nor a query is left alone: EF evaluates it in memory, by `CompareTo`
     (measured: `Floor > From(2)` on the context kept the rows memory keeps).
+  - **A null passes no comparison in a query (decided 2026-10-15, [decision 98](adr/0098-a-null-passes-no-comparison-in-a-query.md)).**
+    A record class's generated operators sort null first, so `null < x` is true in memory, and SQL's
+    `"N" < @x` leaves the null row out, as for the underlying type's nullable column. Not refused: a
+    guard cannot tell a nullable record-class property from a required one by its type, and the answer
+    is the underlying type's. The EF README and `docs/ef-core.md` say so, with
+    `r.N == null || r.N < x` to keep the null rows.
   - **The element of a primitive collection is converted, not re-typed (decided 2026-09-28).** EF
     infers a collection's element mapping from the columns that read its table expression (`unnest`,
     `json_each`, `OPENJSON`, `VALUES`), and a re-typed element column handed it the wrapped type's

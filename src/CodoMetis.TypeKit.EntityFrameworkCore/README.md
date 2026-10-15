@@ -188,6 +188,12 @@ instead, which works everywhere and may add a cast:
   the value object itself (`o.Code == code`) goes through that converter and still works.
 - **Ordering in SQL follows the database's collation** for the column. The generated comparison in
   memory is ordinal for a string, as it is for any string column.
+- **A null passes no `<`, `<=`, `>` or `>=` in the database.** SQL leaves out a row whose column is
+  NULL, as it does for an `int?` column. A value object that's a record class puts null first in
+  memory, so there `null < rank` is true. For a nullable `Rank` record class, `o.Rank < rank` keeps
+  an order without a rank in a list, and leaves it out of the query. Write
+  `o.Rank == null || o.Rank < rank` to keep it in the query too. A struct value object answers the
+  same both ways.
 - **Your own `CompareTo(TSelf)` can't run in the database.** A value object that declares one orders
   in memory by that method. The column orders by the underlying value, which could be the opposite of
   a descending `CompareTo`. So these queries throw an `InvalidOperationException` naming the value
