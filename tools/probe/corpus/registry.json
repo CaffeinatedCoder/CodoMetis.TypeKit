@@ -44,6 +44,14 @@
       "claim": "E02-value-translates-to-column",
       "filter": "*E02ValueTranslatesProbe"
     },
+    "E04IntegerKeyProbe": {
+      "claim": "E04-integer-key-generated",
+      "filter": "*E04IntegerKeyProbe"
+    },
+    "E05OwnCompareToProbe": {
+      "claim": "E05-own-compareto-rejected",
+      "filter": "*E05OwnCompareToProbe"
+    },
     "L01JsonBytesProbe": {
       "claim": "L01-json-bytes",
       "filter": "*L01JsonBytesProbe"
