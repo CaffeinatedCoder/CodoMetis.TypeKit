@@ -96,7 +96,9 @@ Release`, which the guard lets through.
 
 The SDK is pinned in `global.json` (10.0.4xx band, `latestPatch`). Tests run on Microsoft Testing
 Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TRX output is
-`--report-xunit-trx`. The build treats warnings as errors, including CS1591 on shipping projects.
+`--report-xunit-trx`. The build treats warnings as errors, including CS1591 on shipping projects, and
+runs the CMTK analyzers on the shipping projects' own code (`src/Directory.Build.targets`), so a library
+generic that breaks its own constraint attributes fails here, not in a consumer.
 
 ## Finding code
 

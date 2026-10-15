@@ -25,10 +25,12 @@
       ReferenceOutputAssembly="false", NuGet emits no dependency at all (measured 2026-09-27).
       Private="false" keeps the analyzer assembly out of this project's output, and nothing here
       compiles against it. PrivateAssets="none" keeps exclude="Build,Analyzers" off the dependency.
+      OutputItemType="Analyzer" also runs the analyzers on this project's own code, as
+      src/Directory.Build.targets does for the other packages.
       AnalyzerPackagingTests packs the packages and reads the nuspec to hold all of it in place.
     -->
     <ItemGroup>
-        <ProjectReference Include="..\CodoMetis.TypeKit.Analyzers\CodoMetis.TypeKit.Analyzers.csproj" PrivateAssets="none" Private="false" />
+        <ProjectReference Include="..\CodoMetis.TypeKit.Analyzers\CodoMetis.TypeKit.Analyzers.csproj" PrivateAssets="none" Private="false" OutputItemType="Analyzer" />
     </ItemGroup>
 
 </Project>

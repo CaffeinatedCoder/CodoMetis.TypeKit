@@ -29,8 +29,12 @@ public sealed class ValueObjectConverter<TValueObject, T> : ValueConverter<TValu
     // (dotnet ef dbcontext optimize, which Native AOT requires) writes these expressions out as C# in
     // the application's own assembly, where an internal helper does not compile; and an expression
     // tree cannot call the static abstract Materialize itself (CS8927).
+    // CMTK0004 refuses Materialize everywhere but here: this converter's read path is the one caller
+    // the materializer exists for (AGENTS.md, "The materializer skips validation").
     internal static readonly Expression<Func<TValueObject, T>> ToProvider   = instance => ProviderValue(instance);
+#pragma warning disable CMTK0004
     internal static readonly Expression<Func<T, TValueObject>> FromProvider = value => Materialize(value);
+#pragma warning restore CMTK0004
 
     /// <summary>Creates the converter.</summary>
     public ValueObjectConverter()
@@ -65,5 +69,7 @@ public sealed class ValueObjectConverter<TValueObject, T> : ValueConverter<TValu
     /// <param name="value">A value the application itself stored.</param>
     /// <returns>The value object.</returns>
     [EditorBrowsable(EditorBrowsableState.Never)]
+#pragma warning disable CMTK0004 // the read path, as above
     public static TValueObject Materialize(T value) => TValueObject.Materialize(value);
+#pragma warning restore CMTK0004
 }
