@@ -98,3 +98,4 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0089](0089-cmtk0010-at-methods-bound-by-pattern.md) | CMTK0010 checks a method bound by pattern, for the kinds 2.1.0 adds; 2.0's four join at 3.0.0 | 2026-10-14 | accepted |
 | [0090](0090-faults-alike-are-a-warning-until-3-0.md) | Two fault types writing one name are a startup warning until 3.0.0 | 2026-10-14 | accepted |
 | [0091](0091-an-exclusion-narrows-a-wider-status.md) | An endpoint's exclusion narrows a wider scope's status; a status every endpoint leaves out is refused | 2026-10-14 | accepted |
+| [0092](0092-repository-tooling-is-dotnet-and-ci-needs-no-ai.md) | Repository tooling is .NET, a file-based app or a tool project by how it is used; git and the pinned SDK are the only prerequisites; the tests run on Linux, Windows and macOS; CI never depends on an AI | 2026-10-15 | accepted |
