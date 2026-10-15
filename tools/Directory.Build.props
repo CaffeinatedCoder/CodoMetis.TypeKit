@@ -1,0 +1,19 @@
+<Project>
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+    <!--
+      Repository tooling (design/adr/0092). A project here is a tool that is tested, long, or run often:
+      BCL only, no package references, in the solution with its tests in test/CodoMetis.TypeKit.<Name>.Tests,
+      and run as its built dll, `dotnet tools/<Name>/bin/Release/net10.0/<name>.dll`. Nothing here ships.
+    -->
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+        <EnablePackageValidation>false</EnablePackageValidation>
+        <!-- The sources a tool's fingerprint covers, relative to its project; a tool adds its own (Prober: Schemas/*.json). -->
+        <ToolSourcePatterns>**/*.cs</ToolSourcePatterns>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="$(MSBuildThisFileDirectory)Shared/*.cs" LinkBase="Shared" />
+    </ItemGroup>
+</Project>

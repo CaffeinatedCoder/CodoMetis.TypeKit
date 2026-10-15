@@ -1,0 +1,34 @@
+<Project>
+    <!--
+      A tool knows the sources it was built from, so it can refuse to run stale: a dll built from other
+      sources than the checkout holds would answer for code nobody can read. The build hashes each source
+      (the project's ToolSourcePatterns and project file, tools/Shared, and these two files) into
+      ToolStamp.Sources, one "path|SHA-256" per line, the path relative to the repository root. Content,
+      never mtimes: a checkout rewrites those. tools/Shared/SourceFingerprint.cs hashes the checkout the
+      same way at startup and names what differs.
+    -->
+    <Target Name="StampToolSources" BeforeTargets="CoreCompile">
+        <PropertyGroup>
+            <_ToolRoot>$([MSBuild]::GetDirectoryNameOfFileAbove('$(MSBuildProjectDirectory)', 'CodoMetis.TypeKit.slnx'))</_ToolRoot>
+            <_ToolProject>$([MSBuild]::MakeRelative('$(_ToolRoot)/', '$(MSBuildProjectDirectory)').Replace('\', '/'))</_ToolProject>
+            <_ToolStampFile>$(IntermediateOutputPath)ToolStamp.g.cs</_ToolStampFile>
+        </PropertyGroup>
+        <ItemGroup>
+            <_ToolSource Include="$(ToolSourcePatterns);$(MSBuildProjectFile)" Exclude="bin/**;obj/**" />
+            <_ToolSource Include="$(MSBuildThisFileDirectory)Shared/*.cs;$(MSBuildThisFileFullPath);$(MSBuildThisFileDirectory)Directory.Build.props" />
+        </ItemGroup>
+        <GetFileHash Files="@(_ToolSource)" Algorithm="SHA256">
+            <Output TaskParameter="Items" ItemName="_ToolHashed" />
+        </GetFileHash>
+        <ItemGroup>
+            <_ToolHashed Update="@(_ToolHashed)" RootRelative="$([MSBuild]::MakeRelative('$(_ToolRoot)/', '%(FullPath)').Replace('\', '/'))" />
+        </ItemGroup>
+        <!-- %3B is a semicolon and %2A an asterisk, which MSBuild would otherwise split on or expand. -->
+        <WriteLinesToFile File="$(_ToolStampFile)" Overwrite="true" WriteOnlyWhenDifferent="true"
+                          Lines="// Written by StampToolSources in tools/Directory.Build.targets.;internal static class ToolStamp;{;    public const string Configuration = &quot;$(Configuration)&quot;%3B;    public const string Project = &quot;$(_ToolProject)&quot;%3B;    public const string Patterns = &quot;$(ToolSourcePatterns.Replace('*', '%2A').Replace(';', '|'))&quot;%3B;    public const string Sources = @&quot;;@(_ToolHashed->'%(RootRelative)|%(FileHash)');&quot;%3B;}" />
+        <ItemGroup>
+            <Compile Include="$(_ToolStampFile)" />
+            <FileWrites Include="$(_ToolStampFile)" />
+        </ItemGroup>
+    </Target>
+</Project>
