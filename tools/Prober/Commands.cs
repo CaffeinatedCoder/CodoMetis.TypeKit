@@ -269,7 +269,7 @@ internal static class Commands
             else if (rel.EndsWith(".jsonl", StringComparison.Ordinal))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(dst)!);
-                Files.WriteAtomically(dst, (File.Exists(dst) ? File.ReadAllText(dst) : "") + File.ReadAllText(src));
+                Files.WriteAtomically(dst, (File.Exists(dst) ? SharedFile.ReadAllText(dst) : "") + SharedFile.ReadAllText(src));
             }
             else
             {

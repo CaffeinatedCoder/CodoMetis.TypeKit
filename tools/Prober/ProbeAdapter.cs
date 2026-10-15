@@ -53,7 +53,7 @@ internal sealed class DotNetAdapter(JsonObject config) : IProbeAdapter
         if (Files.Str(config["coverageTargets"]) is { Length: > 0 } targets)
         {
             var path = Path.Combine(cacheDirectory, "coverage.targets");
-            if (!File.Exists(path) || File.ReadAllText(path) != targets) Files.WriteAtomically(path, targets);
+            if (!File.Exists(path) || SharedFile.ReadAllText(path) != targets) Files.WriteAtomically(path, targets);
             result["CustomAfterMicrosoftCommonTargets"] = path;
         }
         return result;

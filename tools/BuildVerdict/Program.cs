@@ -209,7 +209,7 @@ static class Verdict
     static List<string> LogLines()
     {
         if (!File.Exists(log)) return [];
-        var text = File.ReadAllText(log);
+        var text = SharedFile.ReadAllText(log);
         var lines = text.Split('\n').Select(l => l.TrimEnd('\r')).ToList();
         if (lines.Count > 0 && lines[^1].Length == 0) lines.RemoveAt(lines.Count - 1);
         return lines;
@@ -333,7 +333,7 @@ static class Verdict
         var temporary = TemporaryBeside(log);
         if (append && File.Exists(log)) File.Copy(log, temporary, overwrite: true);
         var code = RunInto(temporary, args, append);
-        File.Move(temporary, log, overwrite: true);
+        SharedFile.Replace(temporary, log);
         return code;
     }
 
@@ -343,7 +343,7 @@ static class Verdict
     {
         var temporary = TemporaryBeside(path);
         File.WriteAllText(temporary, text);
-        File.Move(temporary, path, overwrite: true);
+        SharedFile.Replace(temporary, path);
     }
 
     static int RunInto(string file, string[] args, bool append)

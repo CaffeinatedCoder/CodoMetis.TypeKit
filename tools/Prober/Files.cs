@@ -7,7 +7,8 @@ namespace Prober;
 
 /// <summary>
 /// Reading and writing the ledger's files. Every write goes to a temp file renamed over the target, so a
-/// reader sees the file before or after a change, never half of it, on every OS. A partial or unreadable
+/// reader sees the file before or after a change, never half of it, on every OS; reads and the rename go
+/// through SharedFile, which Windows needs while another process reads the target. A partial or unreadable
 /// line in a JSON-lines file is skipped, never fatal (a writer killed mid-write in an older version).
 /// </summary>
 internal static class Files
@@ -20,9 +21,10 @@ internal static class Files
     public static JsonNode? ReadJson(string path)
     {
         if (!File.Exists(path)) return null;
-        try { return JsonNode.Parse(File.ReadAllText(path)); }
+        try { return JsonNode.Parse(SharedFile.ReadAllText(path)); }
         catch (JsonException) { return null; }   // a file another process is creating this instant: not there yet
         catch (IOException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }   // Windows: a file being replaced this instant
     }
 
     public static void WriteJson(string path, JsonNode value) => WriteAtomically(path, value.ToJsonString(Indented) + "\n");
@@ -31,7 +33,7 @@ internal static class Files
     {
         var result = new List<JsonObject>();
         if (!File.Exists(path)) return result;
-        foreach (var line in File.ReadAllLines(path))
+        foreach (var line in SharedFile.ReadAllLines(path))
         {
             if (line.Trim().Length == 0) continue;
             try { if (JsonNode.Parse(line) is JsonObject o) result.Add(o); }
@@ -43,7 +45,7 @@ internal static class Files
     /// <summary>Appends one line by writing the whole file anew and renaming it over the old one.</summary>
     public static void AppendLine(string path, JsonObject value)
     {
-        var old = File.Exists(path) ? File.ReadAllText(path) : "";
+        var old = File.Exists(path) ? SharedFile.ReadAllText(path) : "";
         if (old.Length > 0 && !old.EndsWith('\n')) old = old[..(old.LastIndexOf('\n') + 1)];
         WriteAtomically(path, old + value.ToJsonString() + "\n");
     }
@@ -53,7 +55,7 @@ internal static class Files
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var tmp = $"{path}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
         File.WriteAllText(tmp, text, new UTF8Encoding(false));
-        File.Move(tmp, path, overwrite: true);
+        SharedFile.Replace(tmp, path);
     }
 
     /// <summary>A rows file, plain (staging) or gzipped (the corpus).</summary>
@@ -62,7 +64,7 @@ internal static class Files
         if (File.Exists(path)) return ReadJson(path)?["rows"] as JsonArray ?? [];
         if (File.Exists(path + ".gz"))
         {
-            using var gz = new GZipStream(File.OpenRead(path + ".gz"), CompressionMode.Decompress);
+            using var gz = new GZipStream(SharedFile.OpenRead(path + ".gz"), CompressionMode.Decompress);
             using var reader = new StreamReader(gz, Encoding.UTF8);
             return JsonNode.Parse(reader.ReadToEnd())?["rows"] as JsonArray ?? [];
         }
@@ -71,7 +73,7 @@ internal static class Files
 
     public static byte[] Gunzip(string path)
     {
-        using var gz = new GZipStream(File.OpenRead(path), CompressionMode.Decompress);
+        using var gz = new GZipStream(SharedFile.OpenRead(path), CompressionMode.Decompress);
         using var memory = new MemoryStream();
         gz.CopyTo(memory);
         return memory.ToArray();
@@ -89,7 +91,7 @@ internal static class Files
         using (var file = File.Create(tmp))
         using (var gz = new GZipStream(file, CompressionLevel.SmallestSize))
             gz.Write(Encoding.UTF8.GetBytes(body.ToString()));
-        File.Move(tmp, path, overwrite: true);
+        SharedFile.Replace(tmp, path);
     }
 
     /// <summary>A JSON object with its keys in ordinal order, recursively: the form hashed for an identity.</summary>

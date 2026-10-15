@@ -44,7 +44,11 @@ of the agent tooling were bash and Python, and the prober's Python core uses `fc
      the next call of the same tool, which for a hook is the next Bash call, and nobody asked for it.
      The guard lets `dotnet build` of a tool through, so the named command always runs. No shell
      wrapper checks staleness, since that is what breaks Windows;
-   - writes every file to a temporary file beside it and renames it into place;
+   - writes every file to a temporary file beside it and renames it into place, and reads a file another
+     process may replace with `FileShare.Delete`, both through `tools/Shared/SharedFile.cs`. Windows
+     refuses a rename that replaces a file someone holds open, even with that share; it allows moving
+     the held file aside, which `SharedFile.Replace` does when the plain replace is refused. A tool
+     whose write is refused anyway answers from what it built and says so;
    - compares strings ordinally, and does not set `InvariantGlobalization` unless its test host does
      too, or its tests pass against behaviour the tool does not have.
 

@@ -40,20 +40,21 @@ internal static class RoundLock
                 using (new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { }
                 break;
             }
-            catch (IOException)
+            catch (Exception busy) when (busy is IOException or UnauthorizedAccessException)
             {
                 // It exists (or vanished an instant ago, when its holder released it): either way, look again.
+                // Windows says UnauthorizedAccess, not IOException, for a name whose file is being deleted.
                 try
                 {
                     if (File.Exists(path) && (DateTime.UtcNow - File.GetLastWriteTimeUtc(path)).TotalSeconds > MutexStaleSeconds) File.Delete(path);
                 }
-                catch (IOException) { }
+                catch (Exception gone) when (gone is IOException or UnauthorizedAccessException) { }
                 if (DateTime.UtcNow > deadline) throw new Refusal("the lock's mutex is held for over 10 s; another command is stuck");
                 Thread.Sleep(Random.Shared.Next(5, 25));
             }
         }
         try { return body(); }
-        finally { try { File.Delete(path); } catch (IOException) { } }
+        finally { try { File.Delete(path); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } }
     }
 
     public static void WithMutex(Ledger l, Action body) => WithMutex(l, () => { body(); return 0; });

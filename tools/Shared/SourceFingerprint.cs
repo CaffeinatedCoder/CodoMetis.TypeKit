@@ -94,7 +94,7 @@ internal static class SourceFingerprint
 
     private static string Hash(string path)
     {
-        using var stream = File.OpenRead(path);
+        using var stream = SharedFile.OpenRead(path);
         return Convert.ToHexString(SHA256.HashData(stream));
     }
 }

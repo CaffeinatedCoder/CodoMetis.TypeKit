@@ -4,8 +4,9 @@ namespace DocsQuery;
 
 /// <summary>
 /// The one cache file: the index, written after its fingerprint, rebuilt whenever the fingerprint
-/// changes, into a temporary file renamed over the old one. A reader sees the old index or the new,
-/// never half of one. The file is disposable; deleting it costs one rebuild.
+/// changes, into a temporary file renamed over the old one (SharedFile, which Windows needs while a reader
+/// holds the old one). A reader sees the old index or the new, never half of one. When the write is refused
+/// anyway, the rebuilt index still answers and stderr says so. The file is disposable; deleting it costs one rebuild.
 /// </summary>
 internal static class Store
 {
@@ -33,7 +34,7 @@ internal static class Store
         {
             var temporary = $"{cachePath}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
             using (var stream = File.Create(temporary)) Write(index, stream);
-            File.Move(temporary, cachePath, overwrite: true);
+            SharedFile.Replace(temporary, cachePath);
             return (index, Outcome.Rebuilt);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -52,11 +53,11 @@ internal static class Store
 
         try
         {
-            using var reader = new BinaryReader(File.OpenRead(path), Encoding.UTF8);
+            using var reader = new BinaryReader(SharedFile.OpenRead(path), Encoding.UTF8);
             if (reader.ReadString() != Magic || reader.ReadString() != fingerprint) return null;
             return Read(reader, fingerprint);
         }
-        catch (Exception exception) when (exception is IOException or EndOfStreamException or FormatException or ArgumentException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or EndOfStreamException or FormatException or ArgumentException)
         {
             return null;
         }

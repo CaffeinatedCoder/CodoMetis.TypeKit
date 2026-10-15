@@ -156,6 +156,34 @@ public sealed class LockTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// What crashed the test host on windows-latest (run 38732628888): a taker creating round.lock.mutex while
+    /// its last holder's delete was still pending got UnauthorizedAccessException, which Windows throws there
+    /// instead of IOException, and the mutex loop let it through. Here the OS refuses the create every time,
+    /// the same exception on every platform: a directory in the mutex's place on Windows, a state directory
+    /// without write permission elsewhere. A taker waits, then refuses; it never throws.
+    /// </summary>
+    [Fact]
+    public void A_mutex_the_OS_refuses_to_create_is_waited_for_and_refused_not_thrown()
+    {
+        Directory.CreateDirectory(fx.Memory);
+        var mutex = Path.Combine(fx.Memory, "round.lock.mutex");
+        if (OperatingSystem.IsWindows()) Directory.CreateDirectory(mutex);
+        else File.SetUnixFileMode(fx.Memory, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        try
+        {
+            var (exit, _, error) = fx.Ledger("lock", "--holder", "a", "--mode", "explore");
+
+            exit.ShouldNotBe(0);
+            error.ShouldContain("mutex");
+        }
+        finally
+        {
+            if (OperatingSystem.IsWindows()) Directory.Delete(mutex);
+            else File.SetUnixFileMode(fx.Memory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+    }
+
     private int RaceOf(int takers)
     {
         var processes = Enumerable.Range(0, takers).Select(i => fx.Spawn("lock", "--holder", $"h{i}", "--mode", "replay")).ToList();
