@@ -11,6 +11,8 @@
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/CodoMetis.TypeKit.Analyzers.Tests/CodoMetis.TypeKit.Analyzers.Tests.csproj" />
+    <Project Path="test/CodoMetis.TypeKit.BashGuard.Tests/CodoMetis.TypeKit.BashGuard.Tests.csproj" />
+    <Project Path="test/CodoMetis.TypeKit.BuildVerdict.Tests/CodoMetis.TypeKit.BuildVerdict.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.AspNetCore.Tests/CodoMetis.TypeKit.AspNetCore.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Conventions.Tests/CodoMetis.TypeKit.Conventions.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.DocsQuery.Tests/CodoMetis.TypeKit.DocsQuery.Tests.csproj" />
@@ -22,6 +24,10 @@
     <Project Path="test/CodoMetis.TypeKit.Serilog.Tests/CodoMetis.TypeKit.Serilog.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Testing.Tests/CodoMetis.TypeKit.Testing.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Tests/CodoMetis.TypeKit.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/BashGuard/BashGuard.csproj" />
+    <Project Path="tools/BuildVerdict/BuildVerdict.csproj" />
   </Folder>
   <Folder Name="/benchmarks/">
     <Project Path="benchmarks/CodoMetis.TypeKit.Benchmarks/CodoMetis.TypeKit.Benchmarks.csproj" />

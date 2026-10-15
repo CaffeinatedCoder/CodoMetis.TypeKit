@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      The PreToolUse hook that refuses the raw dotnet toolchain in an agent's Bash tool (Program.cs).
+      .claude/settings.json builds it at session start and runs it as its built dll on every Bash call.
+    -->
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <AssemblyName>bash-guard</AssemblyName>
+        <RootNamespace>BashGuard</RootNamespace>
+    </PropertyGroup>
+
+</Project>

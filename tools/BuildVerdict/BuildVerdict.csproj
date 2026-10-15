@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Runs the dotnet toolchain and prints a verdict instead of the transcript (Program.cs). Run as its
+      built dll: `dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll build|test ...`.
+      Its command line and its output are a contract: tools/Prober's replay reads both.
+    -->
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <AssemblyName>build-verdict</AssemblyName>
+        <RootNamespace>BuildVerdict</RootNamespace>
+    </PropertyGroup>
+
+</Project>

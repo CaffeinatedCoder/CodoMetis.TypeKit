@@ -61,6 +61,7 @@ dotnet test --solution CodoMetis.TypeKit.slnx
 dotnet test --project test/CodoMetis.TypeKit.Conventions.Tests --filter-method "*Metalama*"
 dotnet build spikes/FabricSpike/FabricSpike.slnx      # the fabric spike, standalone
 ./test/consumer-smoke-test.sh                          # the packages, installed into throwaway consumers, one published with Native AOT (needs clang)
+dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--project P] [--filter-class C] [--filter-method M] [-- flags]   # an agent's build and test: a verdict, not the transcript
 ```
 
 The probing tool, prober (`tools/Prober`, started as its built dll like docs-query). These need no
@@ -77,6 +78,31 @@ Exploration needs a model and runs locally only, never in CI:
 ```bash
 dotnet tools/Prober/bin/Release/net10.0/prober.dll round explore --minutes 10 --claims 2
 ```
+
+An agent runs builds and tests through `tools/build-verdict.sh` (`build [<project|slnx>]` or
+`test`), which prints the exit code named, each diagnostic code once with its remedy from
+`tools/build-verdict-remedies.tsv`, and the failing tests with their assertion; the full log is
+`$GIT_DIR/build-verdict-last.log`. A code it prints as UNMAPPED gets a row once its fix is known.
+`tools/build-verdict.test.sh` checks the parsers against fixtures. The raw commands above are for a
+terminal: in an agent's Bash tool, `.claude/hooks/bash-guard.py` (registered in
+`.claude/settings.json`) refuses `dotnet build`, `dotnet test` and `dotnet msbuild`, and the script
+piped into `head` or `tail`, and prints the script's form of the command;
+`.claude/hooks/bash-guard.test.sh` checks it.
+
+An agent runs builds and tests through `tools/BuildVerdict`, run as its built dll (`build
+[<project|slnx>]` or `test`). It prints the exit code named, each diagnostic code once with its remedy
+from `tools/BuildVerdict/build-verdict-remedies.tsv`, and the failing tests with their assertion; the
+full log is `$GIT_DIR/build-verdict-last.log`. A code it prints as UNMAPPED gets a row once its fix is
+known. In an agent's Bash tool, `tools/BashGuard` (registered in `.claude/settings.json`) refuses
+`dotnet build` of anything but a tool, `dotnet test` and `dotnet msbuild`, and the verdict piped into
+`head` or `tail`, and prints the verdict's form of the command. The raw commands above are for a
+terminal.
+
+Both are tool projects under `tools/` (design/adr/0092): BCL only, in the solution, each with its
+tests (`tools/BuildVerdict.Tests`, `tools/BashGuard.Tests`), and run from `bin/Release`, which
+`.claude/settings.json` builds at session start. Each records the sources it was built from and
+refuses to run from others, naming the command that rebuilds it: `dotnet build tools/<Name> -c
+Release`, which the guard lets through.
 
 The SDK is pinned in `global.json` (10.0.4xx band, `latestPatch`). Tests run on Microsoft Testing
 Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TRX output is
