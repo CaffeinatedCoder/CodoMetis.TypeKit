@@ -79,16 +79,6 @@ Exploration needs a model and runs locally only, never in CI:
 dotnet tools/Prober/bin/Release/net10.0/prober.dll round explore --minutes 10 --claims 2
 ```
 
-An agent runs builds and tests through `tools/build-verdict.sh` (`build [<project|slnx>]` or
-`test`), which prints the exit code named, each diagnostic code once with its remedy from
-`tools/build-verdict-remedies.tsv`, and the failing tests with their assertion; the full log is
-`$GIT_DIR/build-verdict-last.log`. A code it prints as UNMAPPED gets a row once its fix is known.
-`tools/build-verdict.test.sh` checks the parsers against fixtures. The raw commands above are for a
-terminal: in an agent's Bash tool, `.claude/hooks/bash-guard.py` (registered in
-`.claude/settings.json`) refuses `dotnet build`, `dotnet test` and `dotnet msbuild`, and the script
-piped into `head` or `tail`, and prints the script's form of the command;
-`.claude/hooks/bash-guard.test.sh` checks it.
-
 An agent runs builds and tests through `tools/BuildVerdict`, run as its built dll (`build
 [<project|slnx>]` or `test`). It prints the exit code named, each diagnostic code once with its remedy
 from `tools/BuildVerdict/build-verdict-remedies.tsv`, and the failing tests with their assertion; the

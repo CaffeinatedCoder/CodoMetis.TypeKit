@@ -9,7 +9,7 @@ public sealed class RepositoryTests
     private static readonly Lazy<DocIndex> Index = new(() =>
     {
         var cache = Path.Combine(Path.GetTempPath(), $"docs-query-repository-{Guid.NewGuid():N}.cache");
-        try { return Store.Load(RepositoryRoot.Path, Freshness.ToolVersion, cache).Index; }
+        try { return Store.Load(RepositoryRoot.Path, SourceFingerprint.ToolVersion, cache).Index; }
         finally { File.Delete(cache); }
     });
 

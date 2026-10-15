@@ -37,7 +37,11 @@ internal static class Program
         Console.OutputEncoding = new System.Text.UTF8Encoding(false);
         if (args.Length == 0 || args[0] is "help" or "-h" or "--help") { Console.Write(Usage); return args.Length == 0 ? 2 : 0; }
         var home = FindRoot(AppContext.BaseDirectory);
-        if (home is not null && Freshness.Ensure(home, args) is { } handedOver) return handedOver;
+        if (home is not null && SourceFingerprint.Difference(home) is { } stale)
+        {
+            Console.Error.WriteLine($"prober: this dll was built from other sources than the checkout holds ({stale}). Run `{SourceFingerprint.RebuildCommand}`.");
+            return SourceFingerprint.StaleExitCode;
+        }
         return Run(Context.FromProcess(), args);
     }
 

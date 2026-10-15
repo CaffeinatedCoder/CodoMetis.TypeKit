@@ -20,20 +20,29 @@ of the agent tooling were bash and Python, and the prober's Python core uses `fc
 1. **A standalone file-based app**, `dotnet run tools/x.cs`, for a small tool run rarely: one file, no
    tests of its own. `tools/probe/enumerate.cs` is the example.
 2. **A tool project** for a tool that is tested, longer than a few hundred lines, or run many times a
-   round or on every tool call: a hook on every Bash call, the verdict tool on every build and test,
-   the probe ledger. Such a tool
+   round or on every tool call. Four are: `tools/DocsQuery`, `tools/Prober`, `tools/BuildVerdict`, run
+   on every build and test, and `tools/BashGuard`, a hook on every Bash call. Such a tool
    - is a project under `tools/<Name>/` that references the BCL only, no package, with its tests in
-     `tools/<Name>.Tests/`;
+     `test/CodoMetis.TypeKit.<Name>.Tests/`, where `test/Directory.Build.props` makes them tests and
+     never packages (`PackabilityTests`);
    - is in the solution, so `dotnet build` builds it and CI runs its tests;
-   - is run as its built dll, `dotnet tools/<Name>/bin/Release/net10.0/<Name>.dll`, never
+   - is run as its built dll, `dotnet tools/<Name>/bin/Release/net10.0/<name>.dll`, its assembly named
+     in kebab case (`docs-query`, `prober`, `build-verdict`, `bash-guard`), never with
      `dotnet run --project`;
-   - never runs stale, and never silently: `tools/Directory.Build.targets` embeds the path, relative to
-     the repository root, and the SHA-256 of each of its sources, with a schema version and the
-     tool's `ToolVersion`. Content, never mtimes, which a checkout rewrites. At startup the tool hashes
-     the checkout's sources (`tools/Shared/SourceFingerprint.cs`); on a difference, a changed, removed
-     or new source, it refuses and names `dotnet build tools/<Name> -c Release`. It never rebuilds
-     itself in place: Windows refuses to overwrite a dll that is running. No shell wrapper checks
-     staleness, since that is what breaks Windows;
+   - never runs stale, and never silently. One mechanism serves every tool:
+     `tools/Directory.Build.targets` hashes its sources at build time into `ToolStamp.Sources`, one
+     path from the root and SHA-256 per source: the project's `ToolSourcePatterns` (`**/*.cs` and the
+     project file; Prober adds `Schemas/*.json`), `tools/Shared/`, and the two `tools/Directory.Build.*`
+     files. Content, never mtimes, which a checkout rewrites. At startup
+     `tools/Shared/SourceFingerprint.cs` hashes the checkout the same way; on a changed, added or
+     removed source the tool refuses with exit 3 and names the command that rebuilds it,
+     `dotnet build tools/<Name> -c Release`. The hash of the stamp is the tool's `ToolVersion`, which a
+     cache or a recorded result carries beside its own schema version;
+   - refuses rather than rebuilds itself. DocsQuery and Prober had rebuilt themselves by renaming the
+     running dll aside and handing over to the new build; a build started from inside a call races
+     the next call of the same tool, which for a hook is the next Bash call, and nobody asked for it.
+     The guard lets `dotnet build` of a tool through, so the named command always runs. No shell
+     wrapper checks staleness, since that is what breaks Windows;
    - writes every file to a temporary file beside it and renames it into place;
    - compares strings ordinally, and does not set `InvariantGlobalization` unless its test host does
      too, or its tests pass against behaviour the tool does not have.
@@ -43,12 +52,12 @@ of the agent tooling were bash and Python, and the prober's Python core uses `fc
 
 **Scripts only in `spikes/`.** `ShellScriptTests` in the conventions tests refuses a tracked `.sh`,
 `.bash`, `.py` or `.ps1`, or a file whose `#!` line names no `dotnet`, anywhere else. Its allow-list
-holds the two ports still to come, `test/consumer-smoke-test.sh` and the Python of `tools/probe/`, and
-shrinks as each lands.
+holds the one port still to come, `test/consumer-smoke-test.sh`; the prober's Python is already C#
+(`tools/Prober`).
 
 **Hooks are one-line shims.** A git hook or a Claude Code hook execs `dotnet` and holds no logic; Git
 for Windows runs a git hook through its bundled `sh`, so a one-line shim works on every platform.
-Claude Code's hooks build the tool projects they run in a SessionStart hook.
+Claude Code's hooks build the tool projects they run in a SessionStart hook, before any tool call.
 
 **Prerequisites.** A contributor needs git and the SDK that `global.json` pins. A task that needs more
 names it as its own prerequisite, and no other task needs it: the platform linker for the smoke

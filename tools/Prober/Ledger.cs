@@ -102,7 +102,7 @@ internal sealed class Ledger
         foreach (var path in new[] { "Directory.Packages.props", "Directory.Build.props", "global.json" })
             Add(path + (Git.ObjectId(Top, path) ?? "-"));
         Add(Files.Canonical(Toolchain()));
-        Add("tool:" + Freshness.ToolVersion);
+        Add("tool:" + SourceFingerprint.ToolVersion[..16]);
         Add("schema:" + Files.SchemaVersion);
         return Convert.ToHexStringLower(sha.GetHashAndReset())[..16];
     }

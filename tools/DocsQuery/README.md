@@ -44,9 +44,9 @@ line moves. Its `hash` changes with its content.
   a timestamp. When it differs the index is rebuilt into a temporary file and renamed over the old
   one, so a reader sees the old index or the new one, whole. Deleting the file costs one rebuild
   (about 0.25 s).
-- **The dll** embeds the SHA-256 of each of its sources at build time (`StampDocsQuerySources` in
-  the project file). At startup it hashes them again; on a difference it renames itself aside,
-  rebuilds, and hands the command to the new build. `DOCS_QUERY_NO_REBUILD=1` makes it refuse with
-  exit code 3 instead.
+- **The dll** embeds the SHA-256 of each of its sources at build time, as every tool does
+  (`tools/Directory.Build.targets`). At startup it hashes them again; on a difference it refuses
+  with exit code 3 and names the command that rebuilds it, `dotnet build tools/DocsQuery -c Release`
+  (design/adr/0092).
 
 BCL only, no package references, never packed (`PackabilityTests`). Ordinal comparisons throughout.

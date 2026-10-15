@@ -53,12 +53,16 @@ internal static class Program
         if (positional.Count == 0 || positional[0] is "help" or "-h") { Console.Write(Usage); return positional.Count == 0 ? 2 : 0; }
 
         var home = Corpus.FindRoot(AppContext.BaseDirectory);
-        if (home is not null && Freshness.Ensure(home, args) is { } handedOver) return handedOver;
+        if (home is not null && SourceFingerprint.Difference(home) is { } stale)
+        {
+            Console.Error.WriteLine($"docs-query: this dll was built from other sources than the checkout holds ({stale}). Run `{SourceFingerprint.RebuildCommand}`.");
+            return SourceFingerprint.StaleExitCode;
+        }
 
         root = root is null ? home ?? Corpus.FindRoot(Directory.GetCurrentDirectory()) : Path.GetFullPath(root);
         if (root is null || !File.Exists(Path.Combine(root, Corpus.SolutionMarker))) return Fail($"no {Corpus.SolutionMarker} found; pass --root.");
 
-        var (index, _) = Store.Load(root, Freshness.ToolVersion);
+        var (index, _) = Store.Load(root, SourceFingerprint.ToolVersion);
         var queries    = new Queries(index, root);
         var query      = string.Join(' ', positional.Skip(1));
 

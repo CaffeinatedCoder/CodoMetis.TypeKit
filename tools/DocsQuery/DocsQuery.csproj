@@ -22,32 +22,8 @@
     </ItemGroup>
 
     <!--
-      The dll's own freshness. Every source file of this project is hashed at build time into
-      BuildStamp.Sources; at startup the dll hashes the files again and, when they differ, rebuilds itself
-      before answering (Freshness.cs). Content hashes, never timestamps: a checkout, a stash or a copy
-      that keeps an old mtime cannot hide a change. The set is the same glob the runtime check walks.
+      The dll's own freshness is every tool's: tools/Directory.Build.targets stamps its sources, and at
+      startup tools/Shared/SourceFingerprint.cs refuses to answer from other sources (exit 3).
     -->
-    <Target Name="StampDocsQuerySources" BeforeTargets="CoreCompile">
-        <ItemGroup>
-            <_DocsQuerySource Include="**/*.cs;$(MSBuildProjectFile)" Exclude="bin/**;obj/**" />
-        </ItemGroup>
-
-        <GetFileHash Files="@(_DocsQuerySource)" Algorithm="SHA256">
-            <Output TaskParameter="Items" ItemName="_DocsQueryHashed" />
-        </GetFileHash>
-
-        <PropertyGroup>
-            <_DocsQueryStampFile>$(IntermediateOutputPath)BuildStamp.g.cs</_DocsQueryStampFile>
-        </PropertyGroup>
-
-        <!-- One line per source, "path|SHA256", in a verbatim string; %3B is a semicolon MSBuild would split on. -->
-        <WriteLinesToFile File="$(_DocsQueryStampFile)" Overwrite="true" WriteOnlyWhenDifferent="true"
-                          Lines="// Written by StampDocsQuerySources in DocsQuery.csproj.;namespace DocsQuery%3B;internal static class BuildStamp;{;    public const string Configuration = &quot;$(Configuration)&quot;%3B;    public const string Sources = @&quot;;@(_DocsQueryHashed->'%(Identity)|%(FileHash)');&quot;%3B;}" />
-
-        <ItemGroup>
-            <Compile Include="$(_DocsQueryStampFile)" />
-            <FileWrites Include="$(_DocsQueryStampFile)" />
-        </ItemGroup>
-    </Target>
 
 </Project>

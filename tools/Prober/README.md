@@ -41,5 +41,6 @@ adapter is the only one; the core holds nothing of .NET's, so another stack can 
 
 ## Freshness
 
-The dll hashes its own sources at build time and checks them at startup: a changed source makes it rebuild
-itself before answering, or, under `PROBER_NO_REBUILD=1`, refuse with exit 3. Content hashes, never times.
+The dll hashes its own sources, the schemas among them, at build time and checks them at startup, as every
+tool does (`tools/Directory.Build.targets`): a changed, added or removed source makes it refuse with exit 3
+and name the command that rebuilds it, `dotnet build tools/Prober -c Release`. Content hashes, never times.

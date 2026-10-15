@@ -9,20 +9,16 @@ namespace CodoMetis.TypeKit.Conventions.Tests;
 /// </summary>
 /// <remarks>
 /// A script is a tracked file with a <c>.sh</c>, <c>.bash</c>, <c>.py</c> or <c>.ps1</c> extension,
-/// or one whose first line is a <c>#!</c> that names no <c>dotnet</c>: the prober's scripts are Python
-/// without an extension, and a rule by extension alone would pass them silently. The files are what
+/// or one whose first line is a <c>#!</c> that names no <c>dotnet</c>: a script without an extension (the
+/// prober's Python was one) would pass a rule by extension alone silently. The files are what
 /// git tracks, so a build output or a scratch file in the working tree is not judged.
 /// </remarks>
 public sealed class ShellScriptTests
 {
     private static readonly string[] ScriptExtensions = [".sh", ".bash", ".py", ".ps1"];
 
-    /// <summary>
-    /// The ports still to come, each removed when it lands: the consumer smoke test, and the prober's
-    /// Python, which its own work ports.
-    /// </summary>
+    /// <summary>The port still to come, removed when it lands.</summary>
     private const string SmokeTest = "test/consumer-smoke-test.sh";
-    private const string ProbeTools = "tools/probe/";
 
     private static readonly Lazy<IReadOnlyList<string>> Tracked = new(TrackedFiles);
 
@@ -52,7 +48,7 @@ public sealed class ShellScriptTests
     }
 
     private static bool Allowed(string path) =>
-        path.StartsWith("spikes/", StringComparison.Ordinal) || path == SmokeTest || path.StartsWith(ProbeTools, StringComparison.Ordinal);
+        path.StartsWith("spikes/", StringComparison.Ordinal) || path == SmokeTest;
 
     private static bool IsScript(string path)
     {

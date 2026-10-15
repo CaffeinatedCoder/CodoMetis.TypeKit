@@ -28,13 +28,11 @@
   <Folder Name="/tools/">
     <Project Path="tools/BashGuard/BashGuard.csproj" />
     <Project Path="tools/BuildVerdict/BuildVerdict.csproj" />
+    <Project Path="tools/DocsQuery/DocsQuery.csproj" />
+    <Project Path="tools/Prober/Prober.csproj" />
   </Folder>
   <Folder Name="/benchmarks/">
     <Project Path="benchmarks/CodoMetis.TypeKit.Benchmarks/CodoMetis.TypeKit.Benchmarks.csproj" />
-  </Folder>
-  <Folder Name="/tools/">
-    <Project Path="tools/DocsQuery/DocsQuery.csproj" />
-    <Project Path="tools/Prober/Prober.csproj" />
   </Folder>
   <Folder Name="/design/">
     <File Path="design/plan.md" />
