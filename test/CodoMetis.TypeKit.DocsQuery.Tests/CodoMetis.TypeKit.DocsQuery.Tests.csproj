@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- docs-query's tests: synthetic corpora in temporary checkouts, and the repository's own docs. -->
+    <ItemGroup>
+        <ProjectReference Include="..\..\tools\DocsQuery\DocsQuery.csproj" />
+    </ItemGroup>
+
+</Project>

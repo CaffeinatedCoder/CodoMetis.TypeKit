@@ -106,6 +106,11 @@ here, so it leads and the source decides.
   of its own and delete that project when done, or search the source. `.codebase-memory/`, the
   tool's local artifact, is ignored by git.
 
+The way into the docs is docs-query (`dotnet tools/DocsQuery/bin/Release/net10.0/docs-query.dll`,
+[its README](tools/DocsQuery/README.md)): `entry`, `cites`, `cited-by`, `list`, `claims` and `check`
+answer exactly, and `find` ranks. It answers with file, heading and line, so read that section, not
+the whole page. A ranked miss proves nothing.
+
 ## Rules that are easy to break
 
 - **`CodoMetis.TypeKit` stays Metalama-free.** Nothing in the base package may reference

@@ -13,6 +13,7 @@
     <Project Path="test/CodoMetis.TypeKit.Analyzers.Tests/CodoMetis.TypeKit.Analyzers.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.AspNetCore.Tests/CodoMetis.TypeKit.AspNetCore.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Conventions.Tests/CodoMetis.TypeKit.Conventions.Tests.csproj" />
+    <Project Path="test/CodoMetis.TypeKit.DocsQuery.Tests/CodoMetis.TypeKit.DocsQuery.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.EntityFrameworkCore.Tests/CodoMetis.TypeKit.EntityFrameworkCore.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Generators.Probes/CodoMetis.TypeKit.Generators.Probes.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Generators.Tests/CodoMetis.TypeKit.Generators.Tests.csproj" />
@@ -23,6 +24,9 @@
   </Folder>
   <Folder Name="/benchmarks/">
     <Project Path="benchmarks/CodoMetis.TypeKit.Benchmarks/CodoMetis.TypeKit.Benchmarks.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/DocsQuery/DocsQuery.csproj" />
   </Folder>
   <Folder Name="/design/">
     <File Path="design/plan.md" />

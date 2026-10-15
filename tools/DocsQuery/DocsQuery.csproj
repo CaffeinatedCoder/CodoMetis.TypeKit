@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      docs-query: a disposable index over the repository's Markdown that answers with pointers (file,
+      heading path, line), never with prose. Repository tooling, not a package: BCL only, never packed.
+      It is in the solution so `dotnet build` builds it, and it is started as its built dll:
+
+          dotnet tools/DocsQuery/bin/Release/net10.0/docs-query.dll help
+
+      The README beside this file has the commands and the contracts.
+    -->
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <AssemblyName>docs-query</AssemblyName>
+        <RootNamespace>DocsQuery</RootNamespace>
+        <!-- Never packed: release.yml publishes whatever `dotnet pack` of the solution writes (PackabilityTests). -->
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="CodoMetis.TypeKit.DocsQuery.Tests" />
+    </ItemGroup>
+
+    <!--
+      The dll's own freshness. Every source file of this project is hashed at build time into
+      BuildStamp.Sources; at startup the dll hashes the files again and, when they differ, rebuilds itself
+      before answering (Freshness.cs). Content hashes, never timestamps: a checkout, a stash or a copy
+      that keeps an old mtime cannot hide a change. The set is the same glob the runtime check walks.
+    -->
+    <Target Name="StampDocsQuerySources" BeforeTargets="CoreCompile">
+        <ItemGroup>
+            <_DocsQuerySource Include="**/*.cs;$(MSBuildProjectFile)" Exclude="bin/**;obj/**" />
+        </ItemGroup>
+
+        <GetFileHash Files="@(_DocsQuerySource)" Algorithm="SHA256">
+            <Output TaskParameter="Items" ItemName="_DocsQueryHashed" />
+        </GetFileHash>
+
+        <PropertyGroup>
+            <_DocsQueryStampFile>$(IntermediateOutputPath)BuildStamp.g.cs</_DocsQueryStampFile>
+        </PropertyGroup>
+
+        <!-- One line per source, "path|SHA256", in a verbatim string; %3B is a semicolon MSBuild would split on. -->
+        <WriteLinesToFile File="$(_DocsQueryStampFile)" Overwrite="true" WriteOnlyWhenDifferent="true"
+                          Lines="// Written by StampDocsQuerySources in DocsQuery.csproj.;namespace DocsQuery%3B;internal static class BuildStamp;{;    public const string Configuration = &quot;$(Configuration)&quot;%3B;    public const string Sources = @&quot;;@(_DocsQueryHashed->'%(Identity)|%(FileHash)');&quot;%3B;}" />
+
+        <ItemGroup>
+            <Compile Include="$(_DocsQueryStampFile)" />
+            <FileWrites Include="$(_DocsQueryStampFile)" />
+        </ItemGroup>
+    </Target>
+
+</Project>
