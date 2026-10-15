@@ -1,4 +1,4 @@
-# 0095. CI replays every probe on every push and pull request, and the release runs the gate, advisory
+# 0096. CI replays every probe on every push and pull request, and the release runs the gate, advisory
 
 Date: 2026-10-15
 Status: accepted

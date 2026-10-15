@@ -89,7 +89,7 @@ jobs:
           if-no-files-found: ignore
 
   # The probe corpus (tools/probe/corpus), replayed with no model: every probe, from an empty state
-  # directory, so a probe that fails fails the job (design/adr/0095). Linux only: the probes test
+  # directory, so a probe that fails fails the job (design/adr/0096). Linux only: the probes test
   # documented claims, not the platform, and the test job's three legs already test the prober itself.
   probes:
     name: Probe replay

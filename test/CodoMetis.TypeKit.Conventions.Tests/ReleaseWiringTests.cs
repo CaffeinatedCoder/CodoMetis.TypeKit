@@ -25,7 +25,7 @@ public sealed partial class ReleaseWiringTests
     private const string SmokeTestProject = "tools/ConsumerSmokeTest/ConsumerSmokeTest.csproj";
     private const string SmokeTest = "dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll";
 
-    /// <summary>The prober, a tool project run as its built dll (design/adr/0092), which the workflows run with no model (design/adr/0095).</summary>
+    /// <summary>The prober, a tool project run as its built dll (design/adr/0092), which the workflows run with no model (design/adr/0096).</summary>
     private const string Prober = "dotnet tools/Prober/bin/Release/net10.0/prober.dll";
 
     private static string ReleaseWorkflow => Workflow(ReleaseWorkflowFileName);
@@ -160,7 +160,7 @@ public sealed partial class ReleaseWiringTests
     }
 
     /// <summary>
-    /// CI replays the whole probe corpus on every push and pull request, with no model (design/adr/0095). The
+    /// CI replays the whole probe corpus on every push and pull request, with no model (design/adr/0096). The
     /// replay had been documented as running in CI while no workflow called it, and a dropped step fails nothing:
     /// a regression the corpus would catch merges instead.
     /// </summary>
@@ -176,7 +176,7 @@ public sealed partial class ReleaseWiringTests
     }
 
     /// <summary>
-    /// The release replays the corpus and runs the gate before it packs (design/adr/0095). The gate is advisory
+    /// The release replays the corpus and runs the gate before it packs (design/adr/0096). The gate is advisory
     /// until a binding release is named (AGENTS.md, "Releasing"), so only its presence and its place are held
     /// here, and the comparison with the previous release: on a tag push, <c>git describe</c> alone names the tag
     /// being released, and the gate would compare the commit with itself and find nothing touched.

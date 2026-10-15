@@ -142,7 +142,7 @@ jobs:
           echo "PROBE_STATE_DIR=$RUNNER_TEMP/probe-state" >> "$GITHUB_ENV"
           echo "PROBE_CACHE_DIR=$RUNNER_TEMP/probe-cache" >> "$GITHUB_ENV"
 
-      # Every probe of the corpus, with no model, as CI replays it on every push (design/adr/0095). A probe
+      # Every probe of the corpus, with no model, as CI replays it on every push (design/adr/0096). A probe
       # that fails fails the release, like a test. The Build above built the prober.
       - name: Replay every probe
         run: dotnet tools/Prober/bin/Release/net10.0/prober.dll replay --all
