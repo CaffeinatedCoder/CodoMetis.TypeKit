@@ -84,11 +84,26 @@ should fail the build or throw with an actionable message.
 
 ## Pull requests
 
+Work for the next version goes into its release branch, `release/<version>` (`release/2.2.0`), not
+into `main` ([decision 94](design/adr/0094-topic-branches-into-a-release-branch-and-fix-trailers.md)).
+Branch from it as `<type>/<slug>`, where the type is your main commit's (`feat/…`, `fix/…`, `docs/…`,
+`build/…`), and open the PR against it. PRs are merged with a merge commit, never squashed or rebased:
+the design records cite commits by hash.
+
 - One concern per PR, with the reasoning in the description rather than only in the diff.
 - Full suite green.
 - User-visible changes get a changelog entry.
 - Match the surrounding style. Comments explain *why*, especially where behaviour is load-bearing
   and non-obvious.
+- A `fix:` commit ends with two trailers, from the tables in decision 94: the defect's class and who
+  found it. `CommitTrailerTests` fails without them.
+
+  ```
+  fix: a wrapped Parse returning a convertible type is generated again
+
+  Defect-Class: GTS
+  Found-By: CA
+  ```
 
 ## Releasing
 
@@ -100,13 +115,15 @@ The packages share one version and are released together, only through
 2. Move the rules in `src/CodoMetis.TypeKit.Analyzers/AnalyzerReleases.Unshipped.md` to
    `AnalyzerReleases.Shipped.md`, under `## Release <version>`. Their ids and severities are public
    contract from then on. `ChangelogTests` fails until steps 1 and 2 agree.
-3. Commit, then tag and push: `git tag v1.0.0 && git push origin v1.0.0`. The workflow checks the tag
+3. Commit on the release branch, open its PR into `main`, and merge it with a merge commit. Tag that
+   merge commit and push the tag: `git tag v1.0.0 && git push origin v1.0.0`. The workflow checks the tag
    against `Version` and the dated heading, runs the suite and the smoke test, and waits for approval
-   in the `nuget` environment before pushing.
+   in the `nuget` environment before pushing. Delete the release branch once the tag is pushed.
 4. Afterwards: raise `Version` in `Directory.Build.props`, set `PackageValidationBaselineVersion` to
    the version just released, so ApiCompat guards the public surface from then on, and open a new
    `## <version> — Unreleased` section. `ChangelogTests` fails while the baseline trails the last
-   version the changelog dates.
+   version the changelog dates. Once that is on `main`, cut the next `release/<version>` from it and
+   push it.
 
 `workflow_dispatch` with `dry_run` (the default) rehearses everything but the push.
 
