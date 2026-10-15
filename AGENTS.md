@@ -201,6 +201,14 @@ the whole page. A ranked miss proves nothing.
      model: `prober replay` re-runs only the probes whose identity or coverage footprint the commit
      changed, and blocks nothing. Read `prober status` before your next change. A probe that passed with
      the same identity and fails now is an open finding `R-<probe>-<sha>`, fixed like any failing test.
+     The hook is opt-in, per clone and untracked: put this in `$(git rev-parse --git-common-dir)/hooks/post-commit`
+     and make it executable (Git for Windows runs it through its own `sh`):
+
+     ```sh
+     #!/bin/sh
+     [ -f tools/Prober/Prober.csproj ] && nohup dotnet tools/Prober/bin/Release/net10.0/prober.dll replay > "$(git rev-parse --git-dir)/prober-replay-last.log" 2>&1 < /dev/null &
+     exit 0
+     ```
    - **Explore** when a feature lands or `status` shows a claim without probes: `/probe explore`, the
      `prober` agent under `prober round`, whose time and claim cap the tool enforces. Never in CI. Its
      probes land in its staging; `prober publish` moves them into the corpus, committed as `test:`.
@@ -212,7 +220,7 @@ the whole page. A ranked miss proves nothing.
 
 ## Releasing
 
-Before `git tag`, replay the whole probe corpus and pass the gate:
+Before `git tag`, replay the whole probe corpus and run the gate:
 
 ```bash
 dotnet tools/Prober/bin/Release/net10.0/prober.dll replay --all
@@ -224,4 +232,9 @@ with `PROBE_STATE_DIR` in its own workspace. It refuses while a finding is open,
 passed at its current identity, or a claim touched since the last tag has pairwise combinations no
 probe covers; it lists what is missing. Every obligation is met by a probe in the corpus, written by
 hand or by a round, or by a reviewed waiver in `tools/probe/corpus/waivers.json` (claim, reason,
-reviewer). Never tag over a refusal without the user's word.
+reviewer).
+
+**The gate is advisory until the user names the first release it binds.** Until then, run it, report
+its result with the release, and tag regardless; a refusal is a list of work, not a stop. The binding
+release, once named, is written here. From that release on, never tag over a refusal without the
+user's word.
