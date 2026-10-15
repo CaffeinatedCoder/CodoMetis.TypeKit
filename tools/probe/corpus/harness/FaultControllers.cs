@@ -1,4 +1,5 @@
-// Controllers answering with faults; the Plain* copies have no [ApiController] (http.host=controller-without-ApiController).
+// Controllers answering with faults; the Plain* copies have no [ApiController] (http.host=controller-without-ApiController, and
+// controller-without-ApiController-visible, where a convention puts them into the document).
 using CodoMetis.TypeKit;
 using CodoMetis.TypeKit.AspNetCore;
 using Microsoft.AspNetCore.Http.HttpResults;

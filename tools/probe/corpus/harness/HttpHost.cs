@@ -46,6 +46,18 @@ public sealed class PrefixConvention(string prefix) : IApplicationModelConventio
     }
 }
 
+/// <summary>
+/// http.host=controller-without-ApiController-visible: what ASP.NET documents as the switch beside [ApiController] and
+/// [ApiExplorerSettings], a convention that sets ApiExplorer.IsVisible, so the document checks reach those controllers.
+/// </summary>
+public sealed class VisibleToApiExplorer : IApplicationModelConvention
+{
+    public void Apply(ApplicationModel application)
+    {
+        foreach (var c in application.Controllers) c.ApiExplorer.IsVisible = true;
+    }
+}
+
 /// <summary>Closed generic controllers: one over the value object, one over the wrapped type; routes are set by BindConvention.</summary>
 [ApiController]
 public sealed class MvcBind<T> : ControllerBase
@@ -122,14 +134,18 @@ public sealed class HostCfg
 public static class Hx
 {
     public static bool HasMinimal(Row r) => r["http.host"] is "minimal" or "both" or "route-group";
-    public static bool HasMvc(Row r) => r["http.host"] is "mvc" or "both" or "controller-without-ApiController";
+    public static bool HasMvc(Row r) => r["http.host"] is "mvc" or "both" or "controller-without-ApiController" or "controller-without-ApiController-visible";
+    /// <summary>The fault controllers have no [ApiController]: MVC infers no [FromBody] and answers no automatic 400.</summary>
+    public static bool Plain(Row r) => r["http.host"] is "controller-without-ApiController" or "controller-without-ApiController-visible";
+    /// <summary>A controller without [ApiController] is in the document only when something makes it visible to the API explorer.</summary>
+    public static bool InDocument(Row r) => r["http.host"] != "controller-without-ApiController";
     /// <summary>Path of a minimal endpoint (route-group hosts map everything under /rg).</summary>
     public static string M(Row r, string path) => (r["http.host"] == "route-group" ? "/rg" : "") + path;
     /// <summary>Path of a controller endpoint (own-route-prefix convention puts /px before relative routes).</summary>
     public static string C(Row r, string path) => (r.Is("mvc.Conventions", "own-route-prefix") ? "/px" : "") + path;
 
     public static Type[] FaultControllers(Row r) =>
-        r["http.host"] == "controller-without-ApiController" ? [typeof(PlainAController), typeof(PlainBController)] : [typeof(MvcAController), typeof(MvcBController)];
+        Plain(r) ? [typeof(PlainAController), typeof(PlainBController)] : [typeof(MvcAController), typeof(MvcBController)];
 
     static void ApplyMvc(MvcOptions o, Row r)
     {
@@ -205,6 +221,7 @@ public static class Hx
             builder.Services.AddControllers(o =>
             {
                 o.Conventions.Add(new BindConvention(e.Vo, pfx));   // before the prefix convention, so that it prefixes these routes too
+                if (r["http.host"] == "controller-without-ApiController-visible") o.Conventions.Add(new VisibleToApiExplorer());
                 ApplyMvc(o, r);
             })
             .AddJsonOptions(o => JsonRow.Apply(r, e, o.JsonSerializerOptions))

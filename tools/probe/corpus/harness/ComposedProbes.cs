@@ -23,7 +23,7 @@ public static class ComposedClaims
     };
     static HostCfg Cfg(Row r) => new()
     {
-        FaultControllers = true, Controllers = r["http.host"] == "controller-without-ApiController" ? [typeof(RulePlainController)] : [typeof(RuleApiController)],
+        FaultControllers = true, Controllers = Hx.Plain(r) ? [typeof(RulePlainController)] : [typeof(RuleApiController)],
         Minimal = Cmp.MapMinimal, Qualified = r.Is("qualified", "QualifiedFaultNames"),
     };
 
@@ -65,12 +65,12 @@ public static class ComposedClaims
                 if (docFail.Contains("ClosedSetSchemaTransformer.Describe") && en.Wrapped == "own-record-class") { r.Note("doc:F2"); continue; }   // open finding F2
                 return docFail;
             }
-            if (r["http.host"] == "controller-without-ApiController" && path.Contains("/c/")) { r.Note("doc:plain-controller-not-in-api-explorer"); continue; }
+            if (!Hx.InDocument(r) && path.Contains("/c/")) { r.Note("doc:plain-controller-not-in-api-explorer"); continue; }
             var ops = doc?["paths"]?[path]?["get"]; if (ops is null) return $"document has no GET {path}";
             var keys = ops["responses"]!.AsObject().Select(kv => kv.Key).Where(k => int.TryParse(k, out var n) && n >= 400).Select(int.Parse).ToList();
             var want = Cmp.DocStatuses(arity, variant);
-            if (variant == "declared") { if (!keys.OrderBy(x => x).SequenceEqual(want)) return $"{path}: document lists {string.Join(",", keys)}, expected {string.Join(",", want)}"; if (!keys.Where(x => x != 429).SequenceEqual(want.Where(x => x != 429))) return $"{path}: sets' statuses not ascending: {string.Join(",", keys)}"; r.Note("declared-429-listed-first"); }
-            else if (!keys.SequenceEqual(want)) return $"{path}: document lists {string.Join(",", keys)}, expected {string.Join(",", want)} (ascending)";
+            // A status the endpoint declares itself (the 429) takes its place among the sets' statuses (fixed in 8d1ebd8).
+            if (!keys.SequenceEqual(want)) return $"{path}: document lists {string.Join(",", keys)}, expected {string.Join(",", want)} (ascending)";
             foreach (var k in keys)
             {
                 if (variant == "declared" && k == 429) continue;   // a declared problem is ASP.NET's, not an answered fault

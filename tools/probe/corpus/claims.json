@@ -226,6 +226,13 @@
     "IDescribedJsonConverter",
     "JsonSchemaDescriptions",
     "decimal-converter"
+   ],
+   "http.host": [
+    "minimal",
+    "mvc",
+    "both",
+    "route-group",
+    "controller-without-ApiController-visible"
    ]
   }
  },
@@ -239,6 +246,13 @@
    "declared": [
     "init",
     "ctor-parameter"
+   ],
+   "http.host": [
+    "minimal",
+    "mvc",
+    "both",
+    "route-group",
+    "controller-without-ApiController-visible"
    ]
   }
  },
@@ -253,6 +267,13 @@
     "ProducesProblem",
     "ProducesResponseType",
     "none"
+   ],
+   "http.host": [
+    "minimal",
+    "mvc",
+    "both",
+    "route-group",
+    "controller-without-ApiController-visible"
    ]
   }
  },
@@ -271,6 +292,13 @@
    "kind": [
     "status-only",
     "WithoutFaults"
+   ],
+   "http.host": [
+    "minimal",
+    "mvc",
+    "both",
+    "route-group",
+    "controller-without-ApiController-visible"
    ]
   }
  },
@@ -285,6 +313,13 @@
     "converter-only-http",
     "naming-policy",
     "number-handling"
+   ],
+   "http.host": [
+    "minimal",
+    "mvc",
+    "both",
+    "route-group",
+    "controller-without-ApiController-visible"
    ]
   }
  },

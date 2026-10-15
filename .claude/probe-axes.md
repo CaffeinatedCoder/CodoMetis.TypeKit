@@ -68,6 +68,13 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
 - `refused` drops a value the framework itself refuses on its own, so no row wastes its pairs on it.
   `shape.refused-kind` holds the declarations the generators refuse; only the generation surface takes
   it, where the refusal is the claim.
+- `http.host` has two values without `[ApiController]`, where MVC infers no `[FromBody]` and answers no
+  automatic 400. `controller-without-ApiController` is for **runtime claims only**: ASP.NET's API explorer
+  leaves such a controller out of the document (docs/aspnet-core.md, "Bind value objects in MVC"), so a
+  document check has nothing there to read. A document (OpenAPI) claim lists `http.host` in its own
+  `axes` in `claims.json` without it. `controller-without-ApiController-visible` hosts the same
+  controllers made visible by an `IApplicationModelConvention` that sets `ApiExplorer.IsVisible = true`
+  (`VisibleToApiExplorer` in the harness), so document checks reach them; every http claim takes it.
 - `process.*` holds what other code in the same process may have done first (2026-10-15: a wrapped
   type's `TypeConverter` looked up before the value object's parsing broke that parsing).
 
@@ -263,7 +270,8 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
       "mvc",
       "both",
       "route-group",
-      "controller-without-ApiController"
+      "controller-without-ApiController",
+      "controller-without-ApiController-visible"
     ],
     "http.binding": [
       "route",

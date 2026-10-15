@@ -139,6 +139,9 @@ and the message in it is the `JsonException`'s. So the client reads
 
 **Good to know**
 
+- **The OpenAPI document lists what ASP.NET's API explorer lists.** A controller is in it only with
+  `[ApiController]`, with `[ApiExplorerSettings(IgnoreApi = false)]`, or through a convention that sets
+  `ApiExplorer.IsVisible`, and TypeKit describes what is there.
 - **Keep secrets out of dictionary keys.** When a value object is a dictionary key, System.Text.Json
   puts the key in the `JsonException`'s `Path`. MVC names the error after that path (`"$.items.SE"`),
   so the key ends up in the response
