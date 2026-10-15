@@ -148,10 +148,10 @@ jobs:
         run: dotnet tools/Prober/bin/Release/net10.0/prober.dll replay --all
 
       # The release gate, against the previous release: on a tag push `git describe` alone would name the
-      # tag being released and compare the commit with itself. Advisory until AGENTS.md ("Releasing")
-      # names the first release it binds: a refusal is reported in the summary and the release goes on.
-      # Any other exit (a usage error, a stale dll) means the gate did not run, and fails the job.
-      - name: Probe gate (advisory)
+      # tag being released and compare the commit with itself. It binds from 2.2.0 (design/adr/0097): a
+      # refusal fails the release, as any other exit does. A refusal is answered by a probe, a fix or a
+      # reviewed waiver in tools/probe/corpus/waivers.json, never by editing this step.
+      - name: Probe gate
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -161,11 +161,13 @@ jobs:
           cat gate.txt
           case "$code" in
             0) verdict="passes" ;;
-            1) verdict="refused (advisory: the release goes on)"
-               echo "::warning::The probe gate refused $VERSION since $since. Advisory until a binding release is named; see the job summary." ;;
-            *) echo "::error::The probe gate did not run (exit $code)."; exit "$code" ;;
+            1) verdict="refused"
+               echo "::error::The probe gate refused $VERSION since $since; see the job summary." ;;
+            *) verdict="did not run (exit $code)"
+               echo "::error::The probe gate did not run (exit $code)." ;;
           esac
           { echo "### Probe gate since $since: $verdict"; echo; echo '```text'; cat gate.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit "$code"
 
       - name: Pack
         run: dotnet pack CodoMetis.TypeKit.slnx -c Release --no-build -o dist

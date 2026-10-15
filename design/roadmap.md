@@ -13,8 +13,6 @@ defect, a cost or a missing guard may land here; one that adds surface waits for
 
 - Grow the probe corpus until `prober gate` passes on probes and reviewed waivers alone. Every claim
   touched since v2.1.0 is covered pairwise, and no finding is open.
-- The release workflow runs `prober replay --all` and `prober gate` before it packs, and a refusal
-  fails the job; `ReleaseWiringTests` pins both.
 - The generated-surface snapshot under "Generators" below.
 
 ## 2.3.0, additive
