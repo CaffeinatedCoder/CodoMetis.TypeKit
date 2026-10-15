@@ -54,6 +54,34 @@ internal sealed partial class Page
     public string Prose(int number) => CodeSpanSplit().Replace(Line(number), span => new string(' ', span.Length));
 
     /// <summary>
+    /// The YAML frontmatter between a first line <c>---</c> and the next: <c>key: value</c> lines, and a
+    /// <c>key:</c> followed by <c>  - item</c> lines, which gives one field per item under that key. Keys
+    /// lowercased, each with its line. Only this flat subset is read; anything else in it is skipped.
+    /// </summary>
+    public IReadOnlyList<(string Key, string Value, int Line)> Frontmatter()
+    {
+        var found = new List<(string Key, string Value, int Line)>();
+        if (Lines.Length == 0 || Lines[0].TrimEnd() != "---") return found;
+
+        string? list = null;
+        for (var line = 2; line <= Lines.Length && Line(line).TrimEnd() != "---"; line++)
+        {
+            var text = Line(line);
+            if (list is not null && FrontmatterItem().Match(text) is { Success: true } item) found.Add((list, item.Groups["value"].Value.Trim(), line));
+            else if (FrontmatterField().Match(text) is { Success: true } field)
+            {
+                var key   = field.Groups["key"].Value.ToLowerInvariant();
+                var value = field.Groups["value"].Value.Trim();
+                list = value.Length == 0 ? key : null;
+                if (value.Length > 0) found.Add((key, value, line));
+            }
+            else list = null;
+        }
+
+        return found;
+    }
+
+    /// <summary>
     /// The page's own <c>Key: value</c> lines right below its title (a record's <c>Date</c> and
     /// <c>Status</c>), and a spike's bold <c>**Status: …**</c> or <c>**Answer: …**</c> near the top;
     /// keys lowercased, with the line each is on.
@@ -187,6 +215,12 @@ internal sealed partial class Page
 
     [GeneratedRegex(@"^ {0,3}(?<hashes>#{1,6})(?:[ \t]+(?<text>.*?))?(?:[ \t]+#+)?[ \t]*$")]
     private static partial Regex HeadingLine();
+
+    [GeneratedRegex(@"^(?<key>[A-Za-z][\w-]*):(?:\s+(?<value>.*))?$")]
+    private static partial Regex FrontmatterField();
+
+    [GeneratedRegex(@"^\s+-\s+(?<value>.+)$")]
+    private static partial Regex FrontmatterItem();
 
     [GeneratedRegex(@"^(?<key>Date|Status|Superseded by|Supersedes|Context)\s*:\s*(?<value>.+)$")]
     private static partial Regex PlainField();

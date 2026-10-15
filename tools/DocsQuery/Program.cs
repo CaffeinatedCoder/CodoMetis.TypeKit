@@ -9,7 +9,7 @@ internal static class Program
         docs-query: pointers into the repository's Markdown (file, heading path, line), never prose.
 
           entry <id>             what an id names: a record (61, 0061, decision 61), a diagnostic
-                                 (CMTK0004), a path (docs/json.md#preserve), an anchor (#preserve),
+                                 (CMTK0004), a fact (KB-007), a path (docs/json.md#preserve), an anchor (#preserve),
                                  a spike, package or guide name, a heading's text
           outline <doc>          a document's headings, with lines and anchors
           cites <id>             the edges out of an entry: link, superseded-by, mention, code
@@ -18,13 +18,15 @@ internal static class Program
           find <words>           ranked (BM25); --top N, --kind K. A miss proves nothing
           claims [page]          every C# block, stated output and shown block of the README and
                                  docs pages; --kind csharp|stated|block
-          check                  broken links, missing anchors, ids defined nowhere
+          check                  broken links, missing anchors, ids defined nowhere, and the verified
+                                 facts' rules: a pin behind, ahead or naming nothing installed, a
+                                 fact without its test, a test without its fact
 
           --json                 one JSON object per line, the summary first
           --root <dir>           another checkout; default: the one this dll was built in
 
         Exit codes: 0 found, 1 nothing found (or problems, for check), 2 usage, 3 the dll is stale.
-        Kinds: readme, package, guide, note, roadmap, adr, spike, index (resolves lookups, never ranked).
+        Kinds: readme, package, guide, note, roadmap, adr, fact, spike, index (resolves lookups, never ranked).
         """;
 
     private static int Main(string[] args)

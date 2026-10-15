@@ -24,7 +24,7 @@ internal sealed class Queries(DocIndex index, string root)
             foreach (var definition in index.DefinitionsOf(key))
             {
                 var doc = index.Docs[definition.Doc];
-                rows.Add(doc.Kind == Kind.Record ? DocRow(definition.Doc)
+                rows.Add(Kind.IsEntry(doc.Kind) ? DocRow(definition.Doc)
                        : definition.IsHeading ? SectionRow(index.SectionAt(definition.Doc, definition.Line), "definition")
                        : Row.Of(("at", At(definition.Doc, definition.Line)), ("kind", "definition"), ("id", Ids.Display(key)), ("detail", index.Sections[index.SectionAt(definition.Doc, definition.Line)].Path)));
             }
@@ -111,7 +111,7 @@ internal sealed class Queries(DocIndex index, string root)
 
         var rows = index.Docs.Select((doc, d) => (doc, d))
                         .Where(pair => parsed.All(filter => Matches(Value(pair.doc, filter.Key), filter.Op, filter.Value)))
-                        .Select(pair => Row.Of(("at", At(pair.d, 1)), ("kind", pair.doc.Kind), ("id", pair.doc.Id), ("status", pair.doc.Get("status")), ("date", pair.doc.Get("date")), ("title", pair.doc.Title)))
+                        .Select(pair => Row.Of(("at", At(pair.d, 1)), ("kind", pair.doc.Kind), ("id", pair.doc.Id), ("status", pair.doc.Get("status")), ("date", pair.doc.Date), ("title", pair.doc.Title)))
                         .ToList();
 
         return new Answer(Answer.Exact, "list", string.Join(' ', filters), Count(rows.Count, "document"), rows, rows.Count == 0 ? 1 : 0);
@@ -203,7 +203,11 @@ internal sealed class Queries(DocIndex index, string root)
         return new Answer(Answer.Exact, "claims", page ?? "", Count(rows.Count, "claim"), rows, rows.Count == 0 ? 1 : 0);
     }
 
-    /// <summary>Links whose file or anchor does not exist, and ids that name no record or diagnostic.</summary>
+    /// <summary>
+    /// Links whose file or anchor does not exist, ids that name no record, diagnostic or fact, and the facts'
+    /// rules (<see cref="FactRules"/>): a pin behind or ahead of what is installed, or naming nothing installed,
+    /// a fact without its test, a test without its fact.
+    /// </summary>
     public Answer Check()
     {
         var rows    = new List<Row>();
@@ -234,7 +238,9 @@ internal sealed class Queries(DocIndex index, string root)
             }
         }
 
-        return new Answer(Answer.Exact, "check", "", $"{Count(rows.Count, "problem")} in {links} links and {ids} ids", rows, rows.Count == 0 ? 0 : 1);
+        rows.AddRange(FactRules.Check(index, root, out var facts).Select(problem => Row.Of(("at", problem.At), ("kind", problem.Kind), ("target", problem.Target), ("detail", problem.Detail))));
+
+        return new Answer(Answer.Exact, "check", "", $"{Count(rows.Count, "problem")} in {links} links, {ids} ids and {Count(facts, "fact")}", rows, rows.Count == 0 ? 0 : 1);
 
         Row Problem(Edge edge, string kind, string detail) => Row.Of(("at", At(edge.Doc, edge.Line)), ("kind", kind), ("target", edge.Written), ("detail", detail));
 
@@ -265,7 +271,7 @@ internal sealed class Queries(DocIndex index, string root)
         if (Ids.Parse(query) is { } key)
         {
             var defined = index.DefinitionsOf(key).Select(definition =>
-                index.Docs[definition.Doc].Kind == Kind.Record ? WholeDoc(definition.Doc)
+                Kind.IsEntry(index.Docs[definition.Doc].Kind) ? WholeDoc(definition.Doc)
               : definition.IsHeading ? OfSection(index.SectionAt(definition.Doc, definition.Line), key) with { ByPath = false }
               : new Scope(key, definition.Doc, -1, definition.Line, definition.Line, ByPath: false)).ToList();
 
@@ -294,7 +300,7 @@ internal sealed class Queries(DocIndex index, string root)
     private Scope WholeDoc(int doc) => new(KeyOfDoc(doc), doc, -1, 1, index.Docs[doc].LineCount, ByPath: true);
 
     private Scope OfSection(int section, string? key) =>
-        index.Docs[index.Sections[section].Doc].Kind == Kind.Record && index.Sections[section].Level <= 1
+        Kind.IsEntry(index.Docs[index.Sections[section].Doc].Kind) && index.Sections[section].Level <= 1
             ? WholeDoc(index.Sections[section].Doc)
             : new Scope(key, index.Sections[section].Doc, section, index.Sections[section].Line, index.SubtreeEnd(section), ByPath: true);
 
@@ -313,15 +319,15 @@ internal sealed class Queries(DocIndex index, string root)
 
     private int TargetDoc(Edge edge) =>
         edge.TargetPath is not null ? index.DocIndexOf(edge.TargetPath)
-      : edge.TargetKey is not null && Ids.IsRecordKey(edge.TargetKey) ? index.Docs.Select((doc, i) => (doc, i)).FirstOrDefault(pair => pair.doc.Kind == Kind.Record && pair.doc.Id == Ids.Display(edge.TargetKey), (null!, -1)).Item2
+      : edge.TargetKey is not null && (Ids.IsRecordKey(edge.TargetKey) || Ids.IsFactKey(edge.TargetKey)) ? index.Docs.Select((doc, i) => (doc, i)).FirstOrDefault(pair => Kind.IsEntry(pair.doc.Kind) && pair.doc.Id == Ids.Display(edge.TargetKey), (null!, -1)).Item2
       : -1;
 
-    private string? KeyOfDoc(int doc) => index.Docs[doc] is { Kind: Kind.Record, Id: { } id } ? Ids.RecordKey(int.Parse(id, CultureInfo.InvariantCulture)) : null;
+    private string? KeyOfDoc(int doc) => index.Docs[doc] is { Kind: var kind, Id: { } id } && Kind.IsEntry(kind) ? Ids.Parse(id) : null;
 
     private Row DocRow(int d)
     {
         var doc = index.Docs[d];
-        return Row.Of(("at", At(d, 1)), ("kind", doc.Kind), ("id", doc.Id), ("status", doc.Get("status")), ("date", doc.Get("date")), ("detail", doc.Title));
+        return Row.Of(("at", At(d, 1)), ("kind", doc.Kind), ("id", doc.Id), ("status", doc.Get("status")), ("date", doc.Date), ("detail", doc.Title));
     }
 
     private Row SectionRow(int s, string kind)

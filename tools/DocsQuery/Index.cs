@@ -3,10 +3,17 @@ using System.Text.RegularExpressions;
 
 namespace DocsQuery;
 
-/// <summary>A document: its path, kind, title, the id it answers to (a record's number, a spike's or a package's name), and its metadata lines.</summary>
+/// <summary>
+/// A document: its path, kind, title, the id it answers to (a record's number, a fact's <c>KB-NNN</c>, a spike's
+/// or a package's name), and its metadata: a record's lines below its title, a fact's frontmatter, where a list
+/// gives one field per item under its key.
+/// </summary>
 internal sealed record Doc(string Path, string Kind, string Title, string? Id, IReadOnlyList<Field> Meta, int LineCount)
 {
     public string? Get(string key) => Meta.FirstOrDefault(field => field.Key == key)?.Value;
+
+    /// <summary>A record's date, or the date a fact was last verified.</summary>
+    public string? Date => Get("date") ?? Get("verified");
 }
 
 internal sealed record Field(string Key, string Value, int Line);
@@ -51,7 +58,7 @@ internal sealed record Definition(string Key, int Doc, int Line, bool IsHeading)
 /// <summary>The index: every document, section, edge and claim, and the postings for ranking.</summary>
 internal sealed class DocIndex
 {
-    public const int Schema = 1;
+    public const int Schema = 2;
 
     public required string Fingerprint { get; init; }
     public required IReadOnlyList<Doc> Docs { get; init; }
@@ -123,10 +130,11 @@ internal static partial class IndexBuilder
         {
             var page = new Page(path, text);
             var kind = Kind.Of(path);
-            var meta = page.Metadata().Select(field => new Field(field.Key, field.Value, field.Line)).ToList();
+            var meta = page.Frontmatter().Concat(page.Metadata()).Select(field => new Field(field.Key, field.Value, field.Line)).ToList();
             var id   = kind switch
             {
                 Kind.Record  => Ids.Display(Ids.RecordKey(Ids.RecordFile(System.IO.Path.GetFileName(path))!.Value)),
+                Kind.Fact    => Ids.Display(Ids.FactKey(Ids.FactFile(System.IO.Path.GetFileName(path))!.Value)),
                 Kind.Spike   => path.Split('/')[1],
                 Kind.Package => path.Split('/')[1],
                 Kind.Guide   => System.IO.Path.GetFileNameWithoutExtension(path),
@@ -182,9 +190,9 @@ internal static partial class IndexBuilder
     {
         var own = new List<(string Key, int From, int To)>();
 
-        if (document.Kind == Kind.Record)
+        if (Kind.IsEntry(document.Kind))
         {
-            var key = Ids.RecordKey(int.Parse(document.Id!, System.Globalization.CultureInfo.InvariantCulture));
+            var key = Ids.Parse(document.Id!)!;
             all.Add(new Definition(key, doc, page.Headings.FirstOrDefault()?.Line ?? 1, true));
             own.Add((key, 1, page.Lines.Length));
             return own;
@@ -262,11 +270,14 @@ internal static partial class IndexBuilder
         return found;
     }
 
-    /// <summary>The id a link's target stands for: a record's file, or a heading anchor that is a diagnostic id.</summary>
+    /// <summary>The id a link's target stands for: a record's file, a fact's, or a heading anchor that is a diagnostic id.</summary>
     public static string? KeyOf(string? path, string? anchor)
     {
         if (path is not null && path.StartsWith("design/adr/", StringComparison.Ordinal) && Ids.RecordFile(System.IO.Path.GetFileName(path)) is { } number)
             return Ids.RecordKey(number);
+
+        if (path is not null && path.StartsWith("design/knowledge/", StringComparison.Ordinal) && Ids.FactFile(System.IO.Path.GetFileName(path)) is { } fact)
+            return Ids.FactKey(fact);
 
         return anchor is not null && Ids.DiagnosticPattern().Match(anchor) is { Success: true } match && match.Length == anchor.Length ? Ids.DiagnosticKey(anchor) : null;
     }

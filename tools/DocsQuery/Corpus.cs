@@ -13,13 +13,17 @@ internal static class Kind
     public const string Roadmap  = "roadmap";  // design/roadmap.md
     public const string Record   = "adr";      // design/adr/NNNN-*.md
     public const string Spike    = "spike";    // spikes/*/README.md
-    public const string Index    = "index";    // design/plan.md, design/adr/README.md, src/*/AnalyzerReleases.*.md
+    public const string Fact     = "fact";     // design/knowledge/KB-NNN-*.md, a verified fact
+    public const string Index    = "index";    // design/plan.md, design/adr/README.md, design/knowledge/README.md, src/*/AnalyzerReleases.*.md
 
     /// <summary>
     /// A curated or generated index resolves lookups but is left out of ranking, so a record and the
     /// index row describing it never compete for the same query.
     /// </summary>
     public static bool IsRanked(string kind) => kind != Index;
+
+    /// <summary>A document that is one entry, defined by its id as a whole: a record, a fact.</summary>
+    public static bool IsEntry(string kind) => kind is Record or Fact;
 
     /// <summary>The pages whose code is compiled and whose stated outputs are tested: the claims' pages.</summary>
     public static bool HasClaims(string kind) => kind is Readme or Package or Guide;
@@ -38,6 +42,8 @@ internal static class Kind
             ["design", "roadmap.md"]                                       => Roadmap,
             ["design", "adr", "README.md"]                                 => Index,
             ["design", "adr", var name] when Ids.RecordFile(name) is not null => Record,
+            ["design", "knowledge", "README.md"]                           => Index,
+            ["design", "knowledge", var name] when Ids.FactFile(name) is not null => Fact,
             ["design", ..]                                                 => Note,
             ["spikes", _, "README.md"]                                     => Spike,
             _ => throw new InvalidOperationException($"{path} is in no kind of the corpus."),
