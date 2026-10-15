@@ -7,7 +7,8 @@ namespace CodoMetis.TypeKit.Conventions.Tests;
 /// <summary>
 /// Every <c>fix:</c> commit since v2.1.0 names its defect class and its finder in two trailers,
 /// <c>Defect-Class:</c> and <c>Found-By:</c>, from the vocabulary the fix history counted with
-/// (<c>design/adr/0094-topic-branches-into-a-release-branch-and-fix-trailers.md</c>).
+/// (<c>design/adr/0094-topic-branches-into-a-release-branch-and-fix-trailers.md</c>; <c>VA</c>, the variant step of
+/// another fix, from <c>design/adr/0095-a-fix-is-tested-across-its-input-class.md</c>).
 /// </summary>
 /// <remarks>
 /// The trailers are read by git's own trailer parser, so a line git does not take for a trailer (one
@@ -23,7 +24,7 @@ public sealed partial class CommitTrailerTests
         new(["FCI", "GTS", "AIS", "EFT", "API", "POS", "DOC", "TXT", "AOT", "SDL", "CRP", "TOOL"], StringComparer.Ordinal);
 
     private static readonly HashSet<string> Finders =
-        new(["RS", "CA", "PR", "ST", "OR", "US", "MS", "FR", "SF", "UN"], StringComparer.Ordinal);
+        new(["RS", "CA", "PR", "ST", "OR", "US", "MS", "FR", "SF", "VA", "UN"], StringComparer.Ordinal);
 
     /// <summary>
     /// Fix commits that reached a pushed branch without their trailers, which is never rewritten: the full
@@ -46,7 +47,7 @@ public sealed partial class CommitTrailerTests
 
         problems.ShouldBeEmpty(
             "A fix: commit carries `Defect-Class:` and `Found-By:` in its trailer block, one of each, from the tables of " +
-            "design/adr/0094. Amend it before the branch is pushed; once pushed, add its hash to Exempt with the " +
+            "design/adr/0094 and 0095. Amend it before the branch is pushed; once pushed, add its hash to Exempt with the " +
             "trailers it should have carried.");
     }
 
