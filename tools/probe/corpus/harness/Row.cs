@@ -1,4 +1,4 @@
-// Row plumbing shared by every probe: rows come from `probe-ledger rows --claim X` (JSON, copied to Probes/rows/X.json);
+// Row plumbing shared by every probe: rows come from `prober rows --claim X` (JSON, copied to Probes/rows/X.json);
 // each probe records one line per row to $PROBE_OUT/<claim>.jsonl (idx, status pass|fail, note) so the ledger is written by script.
 using System.Text.Json;
 using System.Text.Json.Nodes;

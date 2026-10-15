@@ -9,7 +9,7 @@ the agent itself is generic.
 
 Write probes as xunit theories in **`test/CodoMetis.TypeKit.Samples`**, in a folder `Probes/` of the
 scratch copy, one file per claim, class name ending in `Probe`, rows fed through `[MemberData]` from
-the covering array (`probe-ledger rows`), read from a JSON file beside the probe. That project is the
+the covering array (`prober rows`), read from a JSON file beside the probe. That project is the
 closest thing to a consumer: it references every package, weaves value objects through the real
 fabric, and loads the analyzer as an analyzer. A probe file may declare its own value objects
 (`readonly partial record struct ProbeId : IValue<Guid>;`); generate the declarations of the
@@ -50,12 +50,12 @@ are promises to consumers; a design record explains, and decides what is intende
 
 ## Axes
 
-The axes are data, read by `tools/probe/probe-ledger universe`, which builds each claim's
+The axes are data, read by `prober universe` (tools/Prober), which builds each claim's
 axes from its surfaces. The prober assigns surfaces to a claim; it does not choose axes.
 
 - **Generated axes** come from `tools/probe/enumerate.cs`, which enumerates by reflection every
   public settable property of `JsonSerializerOptions` (`json.*`), `OpenApiOptions` (`openapi.*`) and
-  `MvcOptions` (`mvc.*`) at the versions this repository pins. `tools/probe/probe-replay` runs it
+  `MvcOptions` (`mvc.*`) at the versions this repository pins. `prober replay` runs it
   outside the repository (so neither `global.json` nor central package management applies to it), with
   its package versions taken from `Directory.Packages.props`, whenever a dependency input changes, and
   `--all` always does. A setting whose type is not a bool or an enum takes its values from `hand` below.

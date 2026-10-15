@@ -2,7 +2,7 @@
 // TypeKit feature reads, by reflection, never from memory. It runs outside the repository, so neither
 // global.json nor central package management applies to it:
 //
-//   tools/probe/probe-replay runs it (copied outside the repository, its #:package versions taken from
+//   `prober replay` (tools/Prober) runs it (copied outside the repository, its #:package versions taken from
 //   Directory.Packages.props) whenever a dependency input changes, into the prober's axes-generated.json.
 //
 // Each property is an axis "<prefix>.<Name>" whose values are "default" and every other value a bool
