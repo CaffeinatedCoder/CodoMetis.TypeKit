@@ -88,6 +88,57 @@ jobs:
           path: TestResults/**/*.trx
           if-no-files-found: ignore
 
+  # The probe corpus (tools/probe/corpus), replayed with no model: every probe, from an empty state
+  # directory, so a probe that fails fails the job (design/adr/0096). Linux only: the probes test
+  # documented claims, not the platform, and the test job's three legs already test the prober itself.
+  probes:
+    name: Probe replay
+    runs-on: ubuntu-latest
+
+    steps:
+      # The whole history: the replay adds a git worktree at HEAD, and `universe` reads the claims
+      # against origin/main.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          global-json-file: global.json
+
+      # The prober's state and its replay worktree, in this job's own temporary directory, never a
+      # developer's (the default without PROBE_STATE_DIR).
+      - name: Prober state directory
+        run: |
+          echo "PROBE_STATE_DIR=$RUNNER_TEMP/probe-state" >> "$GITHUB_ENV"
+          echo "PROBE_CACHE_DIR=$RUNNER_TEMP/probe-cache" >> "$GITHUB_ENV"
+
+      # The prober is a tool project, run as its built dll (design/adr/0092).
+      - name: Build the prober
+        run: dotnet build tools/Prober -c Release
+
+      - name: Replay every probe
+        run: dotnet tools/Prober/bin/Release/net10.0/prober.dll replay --all
+
+      # A report: the documented claims' pair coverage and the open findings, in the job summary. It
+      # fails only when the prober cannot read the claims. `universe` builds what `status` reads.
+      - name: Probe status
+        if: always()
+        run: |
+          dotnet tools/Prober/bin/Release/net10.0/prober.dll universe > /dev/null
+          dotnet tools/Prober/bin/Release/net10.0/prober.dll status | tee status.txt
+          { echo '### Probe status'; echo; echo '```text'; cat status.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      # The evidence of each probe, for triage of a failure.
+      - name: Upload the probe state
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: probe-state
+          path: ${{ runner.temp }}/probe-state
+          if-no-files-found: ignore
+
   pack:
     name: Pack
     runs-on: ubuntu-latest

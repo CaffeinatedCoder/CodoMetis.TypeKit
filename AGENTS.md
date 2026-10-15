@@ -65,7 +65,9 @@ dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--project 
 ```
 
 The probing tool, prober (`tools/Prober`, started as its built dll like docs-query). These need no
-model, no login and no API key, and run in CI as anywhere:
+model, no login and no API key, and run in CI as anywhere: the `probes` job of `dotnet.yml` runs
+`replay --all` and `status` on every push and pull request, and `release.yml` runs `replay --all` and
+`gate` before it packs ([decision 96](design/adr/0096-ci-replays-every-probe-and-the-release-runs-the-gate.md)):
 
 ```bash
 dotnet tools/Prober/bin/Release/net10.0/prober.dll status    # coverage of the branch's documented claims, open findings
@@ -226,9 +228,10 @@ the whole page. A ranked miss proves nothing.
    claims in `docs/` and the READMEs, pairwise over the axes in
    [.claude/probe-axes.md](.claude/probe-axes.md); they, their rows, the claims and the waivers are the
    corpus in `tools/probe/corpus/`, tracked like tests.
-   - **Replay** runs after every commit from a git `post-commit` hook, in the background and with no
-     model: `prober replay` re-runs only the probes whose identity or coverage footprint the commit
-     changed, and blocks nothing. Read `prober status` before your next change. A probe that passed with
+   - **Replay** runs in CI on every push and pull request, every probe from an empty state, and a probe
+     that fails fails the job. Locally it runs after every commit from a git `post-commit` hook, in the
+     background and with no model: `prober replay` re-runs only the probes whose identity or coverage
+     footprint the commit changed, and blocks nothing. Read `prober status` before your next change. A probe that passed with
      the same identity and fails now is an open finding `R-<probe>-<sha>`, fixed like any failing test.
      The hook is opt-in, per clone and untracked: put this in `$(git rev-parse --git-common-dir)/hooks/post-commit`
      and make it executable (Git for Windows runs it through its own `sh`):
@@ -256,8 +259,9 @@ dotnet tools/Prober/bin/Release/net10.0/prober.dll replay --all
 dotnet tools/Prober/bin/Release/net10.0/prober.dll gate
 ```
 
-The gate never starts a model and needs nothing but the tracked corpus and a replay, so CI runs it
-with `PROBE_STATE_DIR` in its own workspace. It refuses while a finding is open, a probe has not
+The gate never starts a model and needs nothing but the tracked corpus and a replay, so the release
+workflow runs it after `replay --all`, with `PROBE_STATE_DIR` in the job's temporary directory and
+`--since` the previous release's tag, and reports its verdict in the job summary. It refuses while a finding is open, a probe has not
 passed at its current identity, or a claim touched since the last tag has pairwise combinations no
 probe covers; it lists what is missing. Every obligation is met by a probe in the corpus, written by
 hand or by a round, or by a reviewed waiver in `tools/probe/corpus/waivers.json` (claim, reason,

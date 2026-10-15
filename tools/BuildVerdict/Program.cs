@@ -27,6 +27,10 @@
 //   - A filter on the whole solution exits 8 even when it matched tests and they passed, because
 //     each assembly it matched nothing in reports 8. With a total above zero and no failure that is a
 //     pass, said with the count of such assemblies; with a failure among them the run exits 1.
+//   - Under GitHub Actions the test platform colours its output although it is redirected, and an
+//     escape sequence opens the summary's lines ("ESC[m  total: 177"), so a passing run read as DID
+//     NOT REPORT (2026-10-15, the first CI replay of the probes). The log keeps the colours; the
+//     parsers read the lines without them.
 //   - An empty parse is never a pass: an exit 0 without the summary block the parsers read is a
 //     DID NOT REPORT verdict, exit 1.
 //   - MSBuild prints a diagnostic once inline and once in its summary, and a project's errors again
@@ -210,10 +214,13 @@ static class Verdict
     {
         if (!File.Exists(log)) return [];
         var text = SharedFile.ReadAllText(log);
-        var lines = text.Split('\n').Select(l => l.TrimEnd('\r')).ToList();
+        var lines = Ansi.Replace(text, "").Split('\n').Select(l => l.TrimEnd('\r')).ToList();
         if (lines.Count > 0 && lines[^1].Length == 0) lines.RemoveAt(lines.Count - 1);
         return lines;
     }
+
+    // A terminal control sequence (CSI): ESC [, parameters, intermediates, a final byte.
+    static readonly Regex Ansi = new(@"\e\[[0-?]*[ -/]*[@-~]");
 
     // The test step's part of the log: after the marker Run writes, or the whole fixture.
     static List<string> TestSection()
