@@ -46,6 +46,7 @@ section is the GitHub release's notes.
 - Under `ReferenceHandler.Preserve`, a value object over a type that could hold an `$id` throws `NotSupportedException` instead of writing a duplicate `$id` ([JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#json)).
 - A wrapped type's `Parse` whose result can't be assigned to it, or that takes its text by `ref`, or an abstract class's string constructor, no longer breaks the build; the value object has no parsing.
 - A value object over a NodaTime type parses after MVC bound a plain one first; it threw `TypeInitializationException` for the rest of the process.
+- OpenAPI: an MVC action binding a complex type from the route under a name of its own (`[FromRoute(Name = "id")]`) no longer fails the whole document with `AddTypeKit()`.
 
 ## 2.0.0 — 2026-10-14
 

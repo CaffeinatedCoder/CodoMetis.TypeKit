@@ -74,7 +74,11 @@ internal sealed class ClosedSetSchemaTransformer : IOpenApiSchemaTransformer
     }
 
     /// <summary>The set a parameter binds to: minimal APIs name it in the parameter's type, MVC in its model metadata.</summary>
+    /// <remarks>
+    /// MVC leaves the parameter's type <see langword="null"/> where it cannot name one, for a complex type bound
+    /// from the route under a name of its own (<c>[FromRoute(Name = "id")]</c>): such a parameter is no set.
+    /// </remarks>
     private static GeneratedClosedSetAttribute? ParameterSet(ApiParameterDescription parameter) =>
-        Describe(parameter.Type)
+        (parameter.Type is { } type ? Describe(type) : null)
      ?? (parameter.ModelMetadata?.ModelType is { } model ? Describe(model) : null);
 }

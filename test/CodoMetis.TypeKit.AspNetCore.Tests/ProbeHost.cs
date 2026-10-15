@@ -1,8 +1,11 @@
 using System.Collections.Concurrent;
+using System.Reflection;
 using CodoMetis.TypeKit.Generators.Probes;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,9 +40,10 @@ internal sealed class ProbeHost : IAsyncDisposable
         Action<OpenApiOptions>? openApi = null,
         Action<JsonOptions>? json = null,
         OpenApiSpecVersion version = OpenApiSpecVersion.OpenApi3_1,
-        Action<WebApplication>? endpoints = null)
+        Action<WebApplication>? endpoints = null,
+        Type[]? controllers = null)
     {
-        await using var host = await StartAsync(openApi, json, version, endpoints);
+        await using var host = await StartAsync(openApi, json, version, endpoints, controllers);
         return await host.DocumentAsync();
     }
 
@@ -47,14 +51,25 @@ internal sealed class ProbeHost : IAsyncDisposable
         Action<OpenApiOptions>? openApi = null,
         Action<JsonOptions>? json = null,
         OpenApiSpecVersion version = OpenApiSpecVersion.OpenApi3_1,
-        Action<WebApplication>? endpoints = null)
+        Action<WebApplication>? endpoints = null,
+        Type[]? controllers = null)
     {
         // Pinned, not read from ASPNETCORE_ENVIRONMENT: in Development the host adds the developer exception
         // page on its own, and a refusal then reaches the test as a 500 instead of the exception it asserts.
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
         builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
-        builder.Services.AddControllers().AddApplicationPart(typeof(ProbeController).Assembly);
+        var mvc = builder.Services.AddControllers().AddApplicationPart(typeof(ProbeController).Assembly);
+
+        // MVC discovers only top-level controllers; a test's own nested ones are named here, and then alone.
+        if (controllers is not null)
+        {
+            mvc.ConfigureApplicationPartManager(parts =>
+            {
+                parts.ApplicationParts.Clear();
+                parts.FeatureProviders.Add(new OnlyControllers(controllers));
+            });
+        }
         if (json is not null) builder.Services.ConfigureHttpJsonOptions(json);
 
         // The converters and the resolvers of one's own go on MVC's options too, as a host with controllers
@@ -111,6 +126,14 @@ internal sealed class ProbeHost : IAsyncDisposable
         app.MapGet("/controls/spans", int (ProbeSpanText span) => 0);
         app.MapGet("/controls/kinds", int (bool flag, double ratio, DayOfWeek weekday, DateTime timestamp, DateOnly date,
             TimeOnly time, TimeSpan duration, decimal amount, Uri uri) => 0);
+    }
+}
+
+internal sealed class OnlyControllers(Type[] controllers) : IApplicationFeatureProvider<ControllerFeature>
+{
+    public void PopulateFeature(IEnumerable<ApplicationPart> parts, ControllerFeature feature)
+    {
+        foreach (var controller in controllers) feature.Controllers.Add(controller.GetTypeInfo());
     }
 }
 
