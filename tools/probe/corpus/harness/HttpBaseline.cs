@@ -17,7 +17,7 @@ public static class HttpBaseline
     {
         var refused = e.RefusedFn();   // the plain value the shape's Create refuses
         if (refused is null) return false;
-        var t = e.Plain;
+        var t = Make.Held(e.Plain);
         return new[] { "MaxValue", "MinValue" }.Any(f => t.GetField(f)?.GetValue(null) is { } limit && limit.Equals(refused));
     }
 
@@ -111,6 +111,10 @@ public static class HttpBaseline
                 }
                 if (bind == "body" && r.Is("json.Converters", "own-for-value-object")) { r.Note("own-vo:body-binding-skipped"); continue; }
                 var bp = await B("plain"); var bv = await B("vo");
+                // Both sides are mapped for every binding they reach here: a 404 is the harness's routing, never a binding
+                // result. Counted as "plain unbindable", a plain route mapped under another name went unnoticed.
+                if (bp.Status == HttpStatusCode.NotFound || bv.Status == HttpStatusCode.NotFound)
+                    return $"harness: {name} bind {bind} has no endpoint (plain {(int)bp.Status}, value object {(int)bv.Status})";
                 var plainOk = (int)bp.Status is >= 200 and < 300;
                 r.Log.AppendLine($"{name} bind {bind} {which} text={txt}: plain {(int)bp.Status} {Cut(bp.Body)} {bp.Thrown} | vo {(int)bv.Status} {Cut(bv.Body)} {bv.Thrown}");
                 if (which == "valid")
@@ -228,7 +232,12 @@ public static class HttpBaseline
             // Like with like from the start: a class value object against the wrapped type at its nullability.
             var pp = e.Vo.IsValueType != e.Plain.IsValueType && Hx.PlainNull(r, e) is not null && pp0.Contains("/bind/") ? pp0.Replace("/plain", "/plainnull") : pp0;
             if (pp != pp0) r.Note("schema:compared-with-nullable-wrapped");
-            if (Op(pp, method, out var po) is { } m1) { r.Note("schema:" + m1); continue; }
+            if (Op(pp, method, out var po) is { } m1)
+            {
+                // Mapped for bodies only (a record class, Instant in a minimal API): neither side is there.
+                if (Op(vp, method, out _) is null) return $"harness: the value object's {method} {vp} is documented, its plain twin is not ({m1})";
+                r.Note("schema:" + m1); continue;
+            }
             if (Op(vp, method, out var vo) is { } m2) return m2;
             if (Inputs(po!) is var ip && Inputs(vo!) is var iv && ip != iv)
             {

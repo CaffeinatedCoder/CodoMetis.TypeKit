@@ -76,13 +76,14 @@ public sealed class MvcBind<T> : ControllerBase
     [ProducesResponseType(200), Route("_")]
     public IActionResult ParamsA([FromQuery] Q q) => new ObjectResult(q.V) { DeclaredType = typeof(T) };
 }
-public sealed class BindConvention(Type vo, string prefix) : IControllerModelConvention
+public sealed class BindConvention(Type vo, Type plain, string prefix) : IControllerModelConvention
 {
     public void Apply(ControllerModel c)
     {
         if (!c.ControllerType.IsGenericType || c.ControllerType.GetGenericTypeDefinition() != typeof(MvcBind<>)) return;
         var arg = c.ControllerType.GenericTypeArguments[0];
-        var which = arg == vo ? "vo" : Nullable.GetUnderlyingType(arg) is not null ? "plainnull" : "plain";
+        // By the entry's own types: under http.nullability=nullable the plain side is already T?, and is "plain".
+        var which = arg == vo ? "vo" : arg == plain ? "plain" : "plainnull";
         foreach (var a in c.Actions)
         {
             var (kind, post) = a.ActionName switch { "RouteA" => ("route", false), "QueryA" => ("query", false), "HeaderA" => ("header", false), "BodyA" => ("body", true), "FormA" => ("form", true), _ => ("params", false) };
@@ -220,7 +221,7 @@ public static class Hx
             var pfx = "";
             builder.Services.AddControllers(o =>
             {
-                o.Conventions.Add(new BindConvention(e.Vo, pfx));   // before the prefix convention, so that it prefixes these routes too
+                o.Conventions.Add(new BindConvention(e.Vo, e.Plain, pfx));   // before the prefix convention, so that it prefixes these routes too
                 if (r["http.host"] == "controller-without-ApiController-visible") o.Conventions.Add(new VisibleToApiExplorer());
                 ApplyMvc(o, r);
             })

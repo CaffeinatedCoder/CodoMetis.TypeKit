@@ -30,7 +30,7 @@ public static class Pos
                 m = t; member = sample;
                 style = position switch { "field" => "F", "record-ctor-parameter" => "C", "required-init" => "R", _ => "P" };
                 break;
-            case "nullable-property": m = t.IsValueType ? typeof(Nullable<>).MakeGenericType(t) : t; member = sample; break;
+            case "nullable-property": m = t.IsValueType && Nullable.GetUnderlyingType(t) is null ? typeof(Nullable<>).MakeGenericType(t) : t; member = sample; break;
             case "list-element": case "read-only-list-element":
             {
                 var l = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(t))!; l.Add(sample);

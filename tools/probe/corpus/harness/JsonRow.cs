@@ -13,16 +13,22 @@ public sealed class UpperPolicy : JsonNamingPolicy { public override string Conv
 
 public static class Make
 {
+    /// <summary>
+    /// The type a nullable one holds: under http.nullability=nullable an entry's Vo and Plain are <c>T?</c>, the types the
+    /// endpoints declare, while the value object is still made by <c>From(T)</c> and read through its <c>Value</c>.
+    /// </summary>
+    public static Type Held(Type t) => Nullable.GetUnderlyingType(t) ?? t;
+
     /// <summary>Creates the value object over a plain sample (From / FromKnownGood), with optional parameters filled.</summary>
     public static object Vo(Entry e, object plain)
     {
         if (e.Kind == "closed-set") return PSet.All.First(x => x.Name == (string)plain);
-        var m = e.Vo.GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .First(x => (x.Name is "FromKnownGood" or "From") && x.GetParameters().Length > 0 && x.GetParameters()[0].ParameterType == e.Plain);
+        var m = Held(e.Vo).GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .First(x => (x.Name is "FromKnownGood" or "From") && x.GetParameters().Length > 0 && x.GetParameters()[0].ParameterType == Held(e.Plain));
         var args = m.GetParameters().Select((p, i) => i == 0 ? plain : Type.Missing).ToArray();
         return m.Invoke(null, BindingFlags.OptionalParamBinding | BindingFlags.Default, null, args, null)!;
     }
-    public static object Unwrap(Entry e, object vo) => e.Kind == "closed-set" ? ((PSet)vo).Name : e.Vo.GetProperty("Value")!.GetValue(vo)!;
+    public static object Unwrap(Entry e, object vo) => e.Kind == "closed-set" ? ((PSet)vo).Name : Held(e.Vo).GetProperty("Value")!.GetValue(vo)!;
 }
 
 /// <summary>A converter an application registers for the wrapped type: writes "own:" + the default JSON.</summary>
@@ -42,7 +48,7 @@ public sealed class OwnWrappedConverter<T>(JsonSerializerOptions inner) : JsonCo
 /// <summary>A converter an application registers for the value object itself: writes "vo:" + the wrapped value's default JSON.</summary>
 public sealed class OwnVoFactory(Entry e, JsonSerializerOptions inner) : JsonConverterFactory
 {
-    public override bool CanConvert(Type t) => t == e.Vo;
+    public override bool CanConvert(Type t) => t == Make.Held(e.Vo);   // System.Text.Json asks for T, never for T?
     public override JsonConverter? CreateConverter(Type t, JsonSerializerOptions options) =>
         (JsonConverter)Activator.CreateInstance(typeof(OwnVo<>).MakeGenericType(t), e, inner)!;
 }
@@ -52,13 +58,13 @@ public sealed class OwnVo<V>(Entry e, JsonSerializerOptions inner) : JsonConvert
     {
         var s = reader.GetString() ?? throw new JsonException("null");
         if (!s.StartsWith("vo:")) throw new JsonException("not vo");
-        return (V)Make.Vo(e, JsonSerializer.Deserialize(s[3..], e.Plain, inner)!);
+        return (V)Make.Vo(e, JsonSerializer.Deserialize(s[3..], Make.Held(e.Plain), inner)!);
     }
     public override void Write(Utf8JsonWriter writer, V value, JsonSerializerOptions options) =>
-        writer.WriteStringValue("vo:" + JsonSerializer.Serialize(Make.Unwrap(e, value!), e.Plain, inner));
+        writer.WriteStringValue("vo:" + JsonSerializer.Serialize(Make.Unwrap(e, value!), Make.Held(e.Plain), inner));
     public override V ReadAsPropertyName(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => Read(ref reader, typeToConvert, options)!;
     public override void WriteAsPropertyName(Utf8JsonWriter writer, V value, JsonSerializerOptions options) =>
-        writer.WritePropertyName("vo:" + JsonSerializer.Serialize(Make.Unwrap(e, value!), e.Plain, inner));
+        writer.WritePropertyName("vo:" + JsonSerializer.Serialize(Make.Unwrap(e, value!), Make.Held(e.Plain), inner));
 }
 
 public sealed record Applied(JsonSerializerOptions? Options, string? Refused);
@@ -133,7 +139,7 @@ public static class JsonRow
             case "Converters":
                 switch (v)
                 {
-                    case "own-for-wrapped": o.Converters.Insert(0, (JsonConverter)Activator.CreateInstance(typeof(OwnWrappedConverter<>).MakeGenericType(e.Plain), Inner(e))!); break;
+                    case "own-for-wrapped": o.Converters.Insert(0, (JsonConverter)Activator.CreateInstance(typeof(OwnWrappedConverter<>).MakeGenericType(Make.Held(e.Plain)), Inner(e))!); break;
                     case "own-for-value-object": o.Converters.Insert(0, new OwnVoFactory(e, Inner(e))); break;
                     case "JsonStringEnumConverter": o.Converters.Add(new JsonStringEnumConverter()); break;
                     case "StoredJsonConverterFactory": o.Converters.Add(new StoredJsonConverterFactory()); break;

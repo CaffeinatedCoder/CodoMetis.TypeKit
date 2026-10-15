@@ -109,7 +109,7 @@ public static class ComposedClaims
 
 public static class ComposedChecks
 {
-    static void Process(Row r, Entry en) { if (r.Is("process.converter-lookup", "wrapped-type-converter-looked-up-first")) _ = System.ComponentModel.TypeDescriptor.GetConverter(en.Plain); }
+    static void Process(Row r, Entry en) { if (r.Is("process.converter-lookup", "wrapped-type-converter-looked-up-first")) _ = System.ComponentModel.TypeDescriptor.GetConverter(Make.Held(en.Plain)); }
     public static async Task<string?> C03(Row r)
     {
         var en = Registry.Of(r); Process(r, en);
