@@ -25,8 +25,8 @@ thing more each:
   `DockerUnavailableException`, and every other test passes.
 - **The platform's native toolchain** for the smoke test, which publishes two consumers with Native
   AOT, a web host and a console application with EF Core: Xcode's command-line tools on macOS
-  (`xcode-select --install`), `clang` and `zlib1g-dev` on Debian and Ubuntu. The smoke test is still
-  a bash script until its port lands, so it runs on macOS and Linux only.
+  (`xcode-select --install`), `clang` and `zlib1g-dev` on Debian and Ubuntu, MSVC's C++ build tools
+  (Visual Studio's "Desktop development with C++") on Windows.
 
 An IDE started from the Dock or a launcher does not read the shell's profile: point its .NET CLI path
 at the same SDK (Rider: Settings, Build, Execution, Deployment, Toolset and Build).
@@ -38,7 +38,8 @@ the old SDK's workload set. Run `sudo dotnet workload update` in the repository 
 ```bash
 dotnet build CodoMetis.TypeKit.slnx
 dotnet test --solution CodoMetis.TypeKit.slnx
-./test/consumer-smoke-test.sh      # packs the packages and builds throwaway consumers against them
+dotnet build tools/ConsumerSmokeTest -c Release
+dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll   # packs the packages and builds throwaway consumers against them
 ```
 
 Dependabot raises the GitHub Actions weekly and the test projects' packages monthly, except

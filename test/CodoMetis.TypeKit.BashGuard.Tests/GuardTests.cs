@@ -94,7 +94,7 @@ public sealed class GuardTests(GuardTests.Sandbox sandbox) : IClassFixture<Guard
     [InlineData("the verdict tool", "dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test --project test/CodoMetis.TypeKit.Tests --filter-class \"*OptionTests\"")]
     [InlineData("the verdict tool redirected to a file", "dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll build > /tmp/v.txt 2>&1")]
     [InlineData("the verdict tool into grep", "dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test | grep FAIL")]
-    [InlineData("the smoke test", "./test/consumer-smoke-test.sh")]
+    [InlineData("the smoke test", "dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll dist")]
     [InlineData("dotnet as an argument", "echo dotnet build")]
     [InlineData("inside double quotes", "git commit -m \"dotnet build is refused\"")]
     [InlineData("inside double quotes with operators", "echo \"x && dotnet build && y\"")]

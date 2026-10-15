@@ -60,7 +60,7 @@ dotnet build CodoMetis.TypeKit.slnx
 dotnet test --solution CodoMetis.TypeKit.slnx
 dotnet test --project test/CodoMetis.TypeKit.Conventions.Tests --filter-method "*Metalama*"
 dotnet build spikes/FabricSpike/FabricSpike.slnx      # the fabric spike, standalone
-./test/consumer-smoke-test.sh                          # the packages, installed into throwaway consumers, one published with Native AOT (needs clang)
+dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll   # the packages, installed into throwaway consumers, one published with Native AOT (needs the platform linker); build it with -c Release first
 dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--project P] [--filter-class C] [--filter-method M] [-- flags]   # an agent's build and test: a verdict, not the transcript
 ```
 

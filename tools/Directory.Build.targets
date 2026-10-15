@@ -17,7 +17,7 @@
             <_ToolSource Include="$(ToolSourcePatterns);$(MSBuildProjectFile)" Exclude="bin/**;obj/**" />
             <_ToolSource Include="$(MSBuildThisFileDirectory)Shared/*.cs;$(MSBuildThisFileFullPath);$(MSBuildThisFileDirectory)Directory.Build.props" />
         </ItemGroup>
-        <GetFileHash Files="@(_ToolSource)" Algorithm="SHA256">
+        <GetFileHash Files="@(_ToolSource->Distinct())" Algorithm="SHA256">
             <Output TaskParameter="Items" ItemName="_ToolHashed" />
         </GetFileHash>
         <ItemGroup>

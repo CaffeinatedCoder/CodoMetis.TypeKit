@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      The consumer smoke test: packs the packages, installs them into throwaway consumers outside the
+      repository, builds and runs them, one published with Native AOT, and asserts on what they print
+      (Program.cs). Run as its built dll, with the directory of a packed feed or nothing:
+
+          dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll [feed-directory]
+
+      The consumers' sources are under Consumers/, embedded in the dll, never compiled here.
+    -->
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <AssemblyName>consumer-smoke-test</AssemblyName>
+        <RootNamespace>ConsumerSmokeTest</RootNamespace>
+        <ToolSourcePatterns>$(ToolSourcePatterns);Consumers/**/*</ToolSourcePatterns>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Remove="Consumers/**" />
+        <None Remove="Consumers/**" />
+        <EmbeddedResource Include="Consumers/**/*" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+    </ItemGroup>
+
+</Project>

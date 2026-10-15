@@ -20,14 +20,15 @@ of the agent tooling were bash and Python, and the prober's Python core uses `fc
 1. **A standalone file-based app**, `dotnet run tools/x.cs`, for a small tool run rarely: one file, no
    tests of its own. `tools/probe/enumerate.cs` is the example.
 2. **A tool project** for a tool that is tested, longer than a few hundred lines, or run many times a
-   round or on every tool call. Four are: `tools/DocsQuery`, `tools/Prober`, `tools/BuildVerdict`, run
-   on every build and test, and `tools/BashGuard`, a hook on every Bash call. Such a tool
+   round or on every tool call. Five are: `tools/DocsQuery`, `tools/Prober`, `tools/BuildVerdict`, run
+   on every build and test, `tools/BashGuard`, a hook on every Bash call, and `tools/ConsumerSmokeTest`,
+   the consumer smoke test, over a thousand lines, whose consumers' sources it embeds. Such a tool
    - is a project under `tools/<Name>/` that references the BCL only, no package, with its tests in
      `test/CodoMetis.TypeKit.<Name>.Tests/`, where `test/Directory.Build.props` makes them tests and
      never packages (`PackabilityTests`);
    - is in the solution, so `dotnet build` builds it and CI runs its tests;
    - is run as its built dll, `dotnet tools/<Name>/bin/Release/net10.0/<name>.dll`, its assembly named
-     in kebab case (`docs-query`, `prober`, `build-verdict`, `bash-guard`), never with
+     in kebab case (`docs-query`, `prober`, `build-verdict`, `bash-guard`, `consumer-smoke-test`), never with
      `dotnet run --project`;
    - never runs stale, and never silently. One mechanism serves every tool:
      `tools/Directory.Build.targets` hashes its sources at build time into `ToolStamp.Sources`, one
@@ -52,8 +53,8 @@ of the agent tooling were bash and Python, and the prober's Python core uses `fc
 
 **Scripts only in `spikes/`.** `ShellScriptTests` in the conventions tests refuses a tracked `.sh`,
 `.bash`, `.py` or `.ps1`, or a file whose `#!` line names no `dotnet`, anywhere else. Its allow-list
-holds the one port still to come, `test/consumer-smoke-test.sh`; the prober's Python is already C#
-(`tools/Prober`).
+holds nothing: the prober's Python and the smoke test's bash are C# (`tools/Prober`,
+`tools/ConsumerSmokeTest`). A spike's script is its positive control.
 
 **Hooks are one-line shims.** A git hook or a Claude Code hook execs `dotnet` and holds no logic; Git
 for Windows runs a git hook through its bundled `sh`, so a one-line shim works on every platform.

@@ -112,7 +112,7 @@ jobs:
       # package cache with the solution's dependencies, and a restore that only works because of that
       # passes one way and fails the other, which broke a release in a sibling repository.
       - name: Consumer smoke test against the packed feed
-        run: ./test/consumer-smoke-test.sh dist
+        run: dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll dist
 
       # Here as well as in the release, so a broken SBOM step surfaces on a PR rather than on release
       # day. The flags are the release workflow's; ReleaseWiringTests keeps the exclusions in step.
@@ -156,5 +156,9 @@ jobs:
       - name: Native AOT prerequisites
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang zlib1g-dev
 
+      # The smoke test is a tool project, run as its built dll (design/adr/0092).
+      - name: Build the consumer smoke test
+        run: dotnet build tools/ConsumerSmokeTest -c Release
+
       - name: Consumer smoke test, packing its own feed
-        run: ./test/consumer-smoke-test.sh
+        run: dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll

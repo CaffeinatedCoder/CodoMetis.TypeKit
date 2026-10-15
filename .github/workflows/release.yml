@@ -142,9 +142,9 @@ jobs:
 
       # Installs the packages just packed into throwaway projects outside this repository and runs
       # real code against them. Passing dist means the artifacts published are the artifacts tested,
-      # rather than a fresh pack that happens to be built from the same commit.
+      # rather than a fresh pack that happens to be built from the same commit. The Build above built it.
       - name: Consumer smoke test
-        run: ./test/consumer-smoke-test.sh dist
+        run: dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll dist
 
       # One CycloneDX SBOM per package, describing what a consumer actually takes on.
       #

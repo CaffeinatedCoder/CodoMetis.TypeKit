@@ -21,7 +21,9 @@ public sealed partial class ReleaseWiringTests
     /// <summary>The environment the policy expects, and the approval gate.</summary>
     private const string PublishEnvironment = "nuget";
 
-    private const string SmokeTest = "./test/consumer-smoke-test.sh";
+    /// <summary>The smoke test, a tool project (design/adr/0092), and the dll the workflows run.</summary>
+    private const string SmokeTestProject = "tools/ConsumerSmokeTest/ConsumerSmokeTest.csproj";
+    private const string SmokeTest = "dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll";
 
     private static string ReleaseWorkflow => Workflow(ReleaseWorkflowFileName);
 
@@ -98,7 +100,7 @@ public sealed partial class ReleaseWiringTests
     [Fact]
     public void Both_workflows_run_the_consumer_smoke_test_against_the_packed_feed()
     {
-        File.Exists(Path.Combine(Repository.Root, SmokeTest)).ShouldBeTrue($"{SmokeTest} does not exist.");
+        File.Exists(Path.Combine(Repository.Root, SmokeTestProject)).ShouldBeTrue($"{SmokeTestProject} does not exist.");
 
         foreach (var (workflow, text) in new[] { ("release.yml", ReleaseWorkflow), ("dotnet.yml", BuildWorkflow) })
             text.ShouldMatch($@"(?m)^\s+run:\s*{Regex.Escape(SmokeTest)} dist\s*$", $"{workflow} does not run the smoke test against its packed feed.");
@@ -130,13 +132,28 @@ public sealed partial class ReleaseWiringTests
         }
     }
 
+    /// <summary>
+    /// The workflows run the smoke test's built dll from bin/Release, so every job that runs it builds it in
+    /// Release first: the solution's build, or the tool's own. Without one, the step fails on a dll that is
+    /// not there, or runs one a cache left behind.
+    /// </summary>
     [Fact]
-    public void The_smoke_test_is_executable()
+    public void Every_job_that_runs_the_smoke_test_builds_it_first()
     {
-        if (OperatingSystem.IsWindows()) return;
+        var jobs = new[] { ("release.yml", ReleaseWorkflow), ("dotnet.yml", BuildWorkflow) }
+                   .SelectMany(workflow => Jobs(workflow.Item2).Select(job => (Name: $"{workflow.Item1}:{job.Key}", Text: job.Value)))
+                   .Where(job => SmokeTestStep().IsMatch(job.Text))
+                   .ToList();
 
-        File.GetUnixFileMode(Path.Combine(Repository.Root, SmokeTest)).HasFlag(UnixFileMode.UserExecute)
-            .ShouldBeTrue($"{SmokeTest} is not executable, and the workflows run it directly.");
+        jobs.Count.ShouldBeGreaterThanOrEqualTo(3, "the release's verify job and the build workflow's pack and consumer jobs");
+
+        foreach (var (name, text) in jobs)
+        {
+            var build = SmokeTestBuild().Match(text);
+
+            build.Success.ShouldBeTrue($"{name} runs the smoke test without building it in Release: build the solution or {SmokeTestProject} with -c Release first.");
+            build.Index.ShouldBeLessThan(SmokeTestStep().Match(text).Index, $"{name} builds the smoke test after running it.");
+        }
     }
 
     /// <summary>
@@ -242,8 +259,11 @@ public sealed partial class ReleaseWiringTests
     [GeneratedRegex(@"\*\.\S*\.snupkg\b")]
     private static partial Regex SymbolPackageGlob();
 
-    [GeneratedRegex(@"(?m)^\s+run:\s*\./test/consumer-smoke-test\.sh")]
+    [GeneratedRegex(@"(?m)^\s+run:\s*dotnet tools/ConsumerSmokeTest/bin/Release/net10\.0/consumer-smoke-test\.dll")]
     private static partial Regex SmokeTestStep();
+
+    [GeneratedRegex(@"(?m)^\s+run:\s*dotnet build (CodoMetis\.TypeKit\.slnx|tools/ConsumerSmokeTest)\s+-c Release\s*$")]
+    private static partial Regex SmokeTestBuild();
 
     [GeneratedRegex(@"(?m)^\s+run:.*\bapt-get install\b.*\bclang\b.*\bzlib1g-dev\b")]
     private static partial Regex AotPrerequisites();

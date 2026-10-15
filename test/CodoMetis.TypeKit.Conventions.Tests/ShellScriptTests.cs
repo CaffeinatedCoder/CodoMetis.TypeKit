@@ -17,9 +17,6 @@ public sealed class ShellScriptTests
 {
     private static readonly string[] ScriptExtensions = [".sh", ".bash", ".py", ".ps1"];
 
-    /// <summary>The port still to come, removed when it lands.</summary>
-    private const string SmokeTest = "test/consumer-smoke-test.sh";
-
     private static readonly Lazy<IReadOnlyList<string>> Tracked = new(TrackedFiles);
 
     [Fact]
@@ -39,16 +36,18 @@ public sealed class ShellScriptTests
             "script belongs in spikes/ only, and a hook is a one-line shim that execs `dotnet` (design/adr/0092).");
     }
 
-    /// <summary>The allow-list holds what is still there: a landed port takes its entry with it.</summary>
+    /// <summary>The positive control: a spike's script is tracked and is seen as one, so an empty finding means none, not a blind check.</summary>
     [Fact]
-    public void The_allow_listed_smoke_test_is_still_a_script()
+    public void A_spike_script_is_seen_as_one()
     {
-        Tracked.Value.ShouldContain(SmokeTest, $"{SmokeTest} was ported: remove it from ShellScriptTests' allow-list.");
-        IsScript(SmokeTest).ShouldBeTrue();
+        var spike = Tracked.Value.FirstOrDefault(path => path.StartsWith("spikes/", StringComparison.Ordinal) && path.EndsWith(".sh", StringComparison.Ordinal));
+
+        spike.ShouldNotBeNull("No tracked .sh under spikes/ to hold the check to.");
+        IsScript(spike).ShouldBeTrue();
     }
 
     private static bool Allowed(string path) =>
-        path.StartsWith("spikes/", StringComparison.Ordinal) || path == SmokeTest;
+        path.StartsWith("spikes/", StringComparison.Ordinal);
 
     private static bool IsScript(string path)
     {

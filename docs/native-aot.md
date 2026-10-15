@@ -205,7 +205,7 @@ needs it.
 
 ## What the smoke test measures
 
-`test/consumer-smoke-test.sh` does this:
+The consumer smoke test, `tools/ConsumerSmokeTest`, does this:
 
 1. **Packs the packages** and installs them into throwaway consumers outside the repository.
 2. **Publishes the web consumer and the data consumer** with Native AOT.

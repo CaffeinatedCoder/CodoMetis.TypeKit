@@ -76,11 +76,15 @@ internal static class SourceFingerprint
         return string.Join(", ", changed.Take(5)) + (changed.Count > 5 ? $" and {changed.Count - 5} more" : "") + (changed.Count == 1 ? " differs" : " differ");
     }
 
-    // "**/*.cs" under the project, "Schemas/*.json" in one directory, or one file.
+    // "**/*.cs" or "Consumers/**/*" below a directory, "Schemas/*.json" in one directory, or one file.
     private static IEnumerable<string> Matching(string project, string pattern)
     {
-        if (pattern.StartsWith("**/", StringComparison.Ordinal))
-            return Directory.EnumerateFiles(project, pattern[3..], SearchOption.AllDirectories);
+        var deep = pattern.IndexOf("**/", StringComparison.Ordinal);
+        if (deep >= 0)
+        {
+            var below = Path.Combine(project, pattern[..deep]);
+            return Directory.Exists(below) ? Directory.EnumerateFiles(below, pattern[(deep + 3)..], SearchOption.AllDirectories) : [];
+        }
         var directory = Path.Combine(project, Path.GetDirectoryName(pattern) ?? "");
         return Directory.Exists(directory) ? Directory.EnumerateFiles(directory, Path.GetFileName(pattern), SearchOption.TopDirectoryOnly) : [];
     }
