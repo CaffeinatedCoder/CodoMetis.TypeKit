@@ -44,7 +44,10 @@
     `.Value` re-typed as the wrapped type queried the wrong one: `StartsWith("a")` against `"C:abc"`
     answered no row. The translators act only where the operand's to-provider expression is
     `ValueObjectConverter<,>.ProviderValue`, composed with an enum's converter where there is one,
-    which holds in a compiled model too; anywhere else EF refuses the query.
+    which holds in a compiled model too; anywhere else EF refuses a query that filters, orders, groups
+    or aggregates by `.Value`. A final `Select` or `Distinct` of it EF evaluates in memory, after the
+    application's converter has read the value object, and answers correctly (measured 2026-10-15, the
+    EF variant catalogue).
   - **A hand-written ordering is refused in a query (decided 2026-10-13, [decision 57](adr/0057-hand-written-ordering-refused-in-query.md)).**
     EF translates a comparison, an ordering and `Min`/`Max` to the column's order, not to a
     hand-written `CompareTo`. The comparable aspect marks such a type `[HandWrittenOrdering]`, and an

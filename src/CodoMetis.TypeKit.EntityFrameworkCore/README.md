@@ -183,8 +183,10 @@ instead, which works everywhere and may add a cast:
   converter stores it: the one `UseTypeKit()` applies, or `ValueObjectConverter<,>` named in
   `HasConversion`. A property your application converts itself
   (`HasConversion(c => "C:" + c.Value, ...)`, a converter type, a conversion in
-  `ConfigureConventions`) doesn't hold `.Value`. So a query that reads `.Value` there fails with EF's
-  "could not be translated", rather than comparing against what the column really holds. Comparing
+  `ConfigureConventions`) doesn't hold `.Value`. So a filter, a sort, a grouping or an aggregate that
+  reads `.Value` there fails with EF's "could not be translated", rather than comparing against what
+  the column really holds. Selecting `.Value` as the query's last step still works, `Distinct`
+  included: EF reads the value object through your converter and takes `.Value` in memory. Comparing
   the value object itself (`o.Code == code`) goes through that converter and still works.
 - **Ordering in SQL follows the database's collation** for the column. The generated comparison in
   memory is ordinal for a string, as it is for any string column.

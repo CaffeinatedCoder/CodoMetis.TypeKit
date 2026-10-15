@@ -28,9 +28,10 @@ namespace CodoMetis.TypeKit.EntityFrameworkCore.Tests;
 /// </description></item>
 /// <item><description>
 /// "<c>.Value</c> translates only where the column holds the underlying value": on a column a converter of the
-/// application's own stores, a query that reads it fails with "could not be translated", and "comparing the
-/// value object itself goes through that converter and still works". How EF orders what such a converter
-/// stores is EF's, and claimed nowhere.
+/// application's own stores, "a filter, a sort, a grouping or an aggregate" that reads it fails with "could not
+/// be translated", "selecting <c>.Value</c> as the query's last step still works", and "comparing the value
+/// object itself goes through that converter and still works". How EF orders what such a converter stores is
+/// EF's, and claimed nowhere.
 /// </description></item>
 /// <item><description>
 /// "A null passes no <c>&lt;</c>, <c>&lt;=</c>, <c>&gt;</c> or <c>&gt;=</c> in the database": a nullable
@@ -73,8 +74,9 @@ public sealed class QueryTranslationVariantTests
             case RefusedOrdering:
                 Refusal(valueObject, "its ordering is its own CompareTo").ShouldContain(@case.Kind.ValueObject.Name);
                 return;
-            case RefusedForeign when valueObject.Refusal is null:
-                valueObject.Rows.ShouldBe(Memory(@case).Rows, "refused, or evaluated in memory where EF evaluates a projection after the query");
+            case RefusedForeign when @case.Op is Op.Select or Op.Distinct:
+                valueObject.Refusal.ShouldBeNull("the query's last step, which EF evaluates in memory after reading the value object through its converter");
+                valueObject.Rows.ShouldBe(Memory(@case).Rows, "the query's last step, evaluated in memory");
                 return;
             case RefusedForeign:
                 Refusal(valueObject, "could not be translated");
@@ -146,8 +148,8 @@ public sealed class QueryTranslationVariantTests
 
     /// <summary>
     /// Refused by EF, "could not be translated": the column holds what a converter of the application's own
-    /// stores. A final projection EF evaluates in memory, after reading the value object through that converter,
-    /// answers as memory does, which is no wrong answer.
+    /// stores. A final <c>Select</c> or <c>Distinct</c>, which EF evaluates in memory after reading the value
+    /// object through that converter, answers as memory does.
     /// </summary>
     private sealed record RefusedForeign : Expectation;
 
