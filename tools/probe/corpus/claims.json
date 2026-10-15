@@ -1,0 +1,418 @@
+[
+ {
+  "id": "C01-decimal-spelling",
+  "source": "docs/json.md#decimals-in-one-spelling",
+  "surfaces": [
+   "json"
+  ],
+  "axes": {
+   "converter": [
+    "number",
+    "string"
+   ],
+   "input": [
+    "7.80",
+    "7.8000",
+    "0.00",
+    "100",
+    "1E+2",
+    "max28digits",
+    "1e-28"
+   ]
+  }
+ },
+ {
+  "id": "C02-optional-text",
+  "source": "docs/text.md#required-and-optional",
+  "surfaces": [
+   "text"
+  ],
+  "axes": {
+   "entry": [
+    "AsOptionalText",
+    "AsOptionalIdentifier",
+    "AsText",
+    "AsIdentifier"
+   ],
+   "input": [
+    "null",
+    "empty",
+    "spaces",
+    "tab-newline",
+    "word",
+    "word+ZWSP",
+    "nbsp-only",
+    "ZWSP-only"
+   ]
+  },
+  "narrow": {
+   "shape.kind": "`AsOptionalText()` and `AsOptionalIdentifier()` return a `Result<Option<string>, TextFault>`",
+   "shape.wrapped": "`AsOptionalText()` and `AsOptionalIdentifier()` return a `Result<Option<string>, TextFault>`",
+   "text.entry": "`AsOptionalText()` and `AsOptionalIdentifier()` return a `Result<Option<string>, TextFault>`"
+  }
+ },
+ {
+  "id": "C03-composed-faults",
+  "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+  "surfaces": [
+   "http"
+  ],
+  "axes": {
+   "arity": [
+    "2",
+    "3"
+   ],
+   "error": [
+    "first-set",
+    "last-set",
+    "with-detail",
+    "with-rule"
+   ]
+  }
+ },
+ {
+  "id": "C04-without-faults",
+  "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer",
+  "surfaces": [
+   "http"
+  ],
+  "axes": {
+   "scope": [
+    "endpoint",
+    "group",
+    "controller"
+   ],
+   "combined": [
+    "alone",
+    "with-WithFaultStatus-on-group"
+   ]
+  }
+ },
+ {
+  "id": "C05-with-rule",
+  "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#the-rule-that-refused",
+  "surfaces": [
+   "http"
+  ],
+  "axes": {
+   "ruletype": [
+    "enum",
+    "closed-set",
+    "nested-enum",
+    "flags-combination",
+    "undefined-cast"
+   ],
+   "qualified": [
+    "bare",
+    "QualifiedFaultNames"
+   ]
+  }
+ },
+ {
+  "id": "C06-fault-kinds",
+  "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type",
+  "surfaces": [
+   "http"
+  ],
+  "axes": {
+   "kind": [
+    "PreconditionFailed",
+    "Malformed",
+    "Invalid",
+    "Unavailable"
+   ]
+  }
+ },
+ {
+  "id": "C07-fault-responses-blanket",
+  "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once",
+  "surfaces": [
+   "http"
+  ],
+  "axes": {
+   "mapping": [
+    "by-kind",
+    "own-IFault-mapping"
+   ],
+   "set": [
+    "fault-set",
+    "own-mapped-set",
+    "enum-unmapped",
+    "member-without-kind",
+    "mapping-throws",
+    "status-not-error"
+   ]
+  }
+ },
+ {
+  "id": "C08-same-name-warning",
+  "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+  "surfaces": [
+   "http"
+  ],
+  "axes": {
+   "naming": [
+    "bare",
+    "qualified"
+   ],
+   "arity": [
+    "2",
+    "3"
+   ],
+   "leave-out": [
+    "none",
+    "WithoutFaults-one"
+   ]
+  }
+ },
+ {
+  "id": "C09-base-record-equality",
+  "source": "CHANGELOG.md#2.1.0-fixed",
+  "surfaces": [
+   "generation"
+  ],
+  "axes": {
+   "base-equality": [
+    "none",
+    "override-Equals",
+    "override-GetHashCode",
+    "explicit-IEquatable"
+   ],
+   "collection": [
+    "HashSet",
+    "Dictionary-key",
+    "Distinct"
+   ]
+  }
+ },
+ {
+  "id": "C10-preserve-guard",
+  "source": "src/CodoMetis.TypeKit.Generators/README.md#json",
+  "surfaces": [
+   "json"
+  ],
+  "axes": {
+   "handler": [
+    "Preserve",
+    "IgnoreCycles",
+    "none"
+   ]
+  }
+ },
+ {
+  "id": "C11-parse-shapes-build",
+  "source": "CHANGELOG.md#2.1.0-fixed",
+  "surfaces": [
+   "text",
+   "generation"
+  ],
+  "axes": {
+   "parse-shape": [
+    "implicit-result",
+    "ref-text",
+    "abstract-string-ctor",
+    "ordinary"
+   ]
+  }
+ },
+ {
+  "id": "C12-described-converter",
+  "source": "docs/json.md#describing-what-a-converter-writes",
+  "surfaces": [
+   "http"
+  ],
+  "axes": {
+   "source": [
+    "IDescribedJsonConverter",
+    "JsonSchemaDescriptions",
+    "decimal-converter"
+   ]
+  }
+ },
+ {
+  "id": "C13-patch-required",
+  "source": "docs/merge-patches.md#required-constructor-parameters",
+  "surfaces": [
+   "http"
+  ],
+  "axes": {
+   "declared": [
+    "init",
+    "ctor-parameter"
+   ]
+  }
+ },
+ {
+  "id": "C14-declared-problem",
+  "source": "CHANGELOG.md#2.1.0-fixed",
+  "surfaces": [
+   "http"
+  ],
+  "axes": {
+   "declared": [
+    "ProducesProblem",
+    "ProducesResponseType",
+    "none"
+   ]
+  }
+ },
+ {
+  "id": "C15-mvc-fault-status-doc",
+  "source": "CHANGELOG.md#2.1.0-fixed",
+  "surfaces": [
+   "http"
+  ],
+  "axes": {
+   "setter": [
+    "MapControllers().WithFaultStatus",
+    "action-attribute",
+    "controller-attribute"
+   ],
+   "kind": [
+    "status-only",
+    "WithoutFaults"
+   ]
+  }
+ },
+ {
+  "id": "C16-options-agreement",
+  "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+  "surfaces": [
+   "http"
+  ],
+  "axes": {
+   "difference": [
+    "converter-only-http",
+    "naming-policy",
+    "number-handling"
+   ]
+  }
+ },
+ {
+  "id": "C17-cmtk0014",
+  "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014",
+  "surfaces": [
+   "analyzers"
+  ],
+  "axes": {
+   "value": [
+    "(FaultKind)9",
+    "default",
+    "valid"
+   ],
+   "site": [
+    "attribute-argument",
+    "cast",
+    "default-literal"
+   ]
+  }
+ },
+ {
+  "id": "C18-cmtk1023",
+  "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+  "surfaces": [
+   "generation"
+  ],
+  "axes": {
+   "base-member": [
+    "Equals",
+    "GetHashCode",
+    "IEquatable"
+   ]
+  }
+ },
+ {
+  "id": "C19-cmtk0010-kinds",
+  "source": "docs/type-constraints.md#the-kind-of-a-type-argument",
+  "surfaces": [
+   "analyzers"
+  ],
+  "axes": {
+   "attribute": [
+    "Interface",
+    "Unsealed",
+    "ValueObject",
+    "ClosedSet",
+    "FlagsEnum",
+    "ReadOnlyStruct",
+    "Distinct",
+    "Unrelated"
+   ],
+   "site": [
+    "call",
+    "foreach",
+    "await",
+    "Deconstruct",
+    "collection-expression"
+   ]
+  }
+ },
+ {
+  "id": "C20-testing-shouldhold",
+  "source": "src/CodoMetis.TypeKit.Testing/README.md",
+  "surfaces": [
+   "option-result"
+  ],
+  "axes": {
+   "arity": [
+    "2",
+    "3"
+   ],
+   "set": [
+    "first",
+    "last"
+   ],
+   "wrong-reason": [
+    "no",
+    "yes"
+   ]
+  }
+ },
+ {
+  "id": "L01-json-bytes",
+  "source": "README.md#what-typekit-guarantees",
+  "surfaces": [
+   "json"
+  ]
+ },
+ {
+  "id": "L02-no-quote",
+  "source": "README.md#what-typekit-guarantees",
+  "surfaces": [
+   "json",
+   "text",
+   "logging"
+  ]
+ },
+ {
+  "id": "L03-one-rule",
+  "source": "README.md#what-typekit-guarantees",
+  "surfaces": [
+   "text",
+   "json"
+  ]
+ },
+ {
+  "id": "L04-round-trip",
+  "source": "README.md#what-typekit-guarantees",
+  "surfaces": [
+   "text",
+   "json"
+  ]
+ },
+ {
+  "id": "L05-equality",
+  "source": "README.md#what-typekit-guarantees",
+  "surfaces": [
+   "generation"
+  ]
+ },
+ {
+  "id": "L06-off-the-wire",
+  "source": "README.md#what-typekit-guarantees",
+  "surfaces": [
+   "json",
+   "option-result"
+  ]
+ }
+]

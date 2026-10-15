@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+"""Runs one prober round (explore or full) under caps the model cannot overrun.
+
+The caps are enforced here, outside the model:
+  - wall clock: the headless `claude` process group is stopped at --minutes plus a short grace;
+  - claims: `probe-ledger rows` refuses a claim beyond --claims, and any new work after the deadline,
+    so the agent learns the budget is spent from a tool, not from its own estimate;
+  - spend: --usd is passed to `claude --max-budget-usd`.
+
+The round always ends cleanly: a partial last line a killed writer left in a .jsonl file is removed
+(`probe-ledger repair`), the caps and the lock are released, and an owed replay runs. What the agent
+recorded before the stop stays recorded; rows it ran but did not record are simply not counted.
+The summary goes to the branch's round-last.json and to stdout.
+
+Usage: tools/probe/probe-round explore|full [--minutes M] [--claims N] [--usd X] [--branch B] [--base REF]
+Defaults: explore 10 minutes and 2 claims; full 30 minutes and no claim cap.
+The `claude` executable comes from $CLAUDE_BIN, else PATH, else the desktop app's bundled copy.
+"""
+import argparse, glob, json, os, signal, subprocess, sys, time
+
+HERE = os.path.dirname(os.path.realpath(__file__))
+LEDGER = os.path.join(HERE, "probe-ledger")
+REPLAY = os.path.join(HERE, "probe-replay")
+GRACE = float(os.environ.get("PROBE_GRACE", "60"))
+
+
+def run(argv, **kw):
+    return subprocess.run(argv, capture_output=True, text=True, **kw)
+
+
+def find_claude():
+    if os.environ.get("CLAUDE_BIN"):
+        return os.environ["CLAUDE_BIN"]
+    for d in os.environ.get("PATH", "").split(os.pathsep):
+        if os.access(os.path.join(d, "claude"), os.X_OK):
+            return os.path.join(d, "claude")
+    bundled = sorted(glob.glob(os.path.expanduser(
+        "~/Library/Application Support/Claude/claude-code/*/*/claude.app/Contents/MacOS/claude")))
+    if bundled:
+        return bundled[-1]
+    sys.exit("probe-round: no claude executable; set CLAUDE_BIN")
+
+
+class Heartbeat:
+    """Keeps a lock alive while a long step runs: a thread beats every 30 s (liveness is the heartbeat)."""
+
+    def __init__(self, ledger, holder, cwd):
+        import threading
+        self.stop = threading.Event()
+        def loop():
+            while not self.stop.wait(30):
+                subprocess.run([ledger, "heartbeat", "--holder", holder], cwd=cwd, capture_output=True)
+        self.thread = threading.Thread(target=loop, daemon=True)
+
+    def __enter__(self):
+        self.thread.start()
+        return self
+
+    def __exit__(self, *exc):
+        self.stop.set()
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("mode", choices=["explore", "full"])
+    ap.add_argument("--minutes", type=float)
+    ap.add_argument("--claims", type=int)
+    ap.add_argument("--usd", type=float)
+    ap.add_argument("--branch")
+    ap.add_argument("--base", default="main")
+    args = ap.parse_args()
+    minutes = args.minutes or (10 if args.mode == "explore" else 30)
+    claims = args.claims if args.claims is not None else (2 if args.mode == "explore" else None)
+
+    top = run(["git", "rev-parse", "--show-toplevel"]).stdout.strip()
+    branch = args.branch or run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=top).stdout.strip()
+    common = run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=top).stdout.strip()
+    bdir = os.path.join(os.path.dirname(common), ".claude", "agent-memory-local", "prober", "branches", branch.replace("/", "-"))
+    holder = f"round-{args.mode}-{os.getpid()}"
+
+    lock = run([LEDGER, "lock", "--branch", branch, "--holder", holder, "--mode", args.mode, "--pid", str(os.getpid())], cwd=top)
+    if lock.returncode:
+        print(f"probe-round: {lock.stderr.strip()}")
+        return 1
+    started = time.time()
+    outcome, usage, rc = "completed", {}, None
+    try:
+        cap = [LEDGER, "round-start", "--branch", branch, "--holder", holder, "--minutes", str(minutes)]
+        if claims:
+            cap += ["--claims", str(claims)]
+        run(cap, cwd=top, check=True)
+        caps = f"{minutes:g} minutes" + (f" and {claims} claim(s)" if claims else "")
+        prompt = (
+            f"Mode: {args.mode}. Repository {top}, branch {branch}, base {args.base}.\n"
+            f"This round runs under caps enforced outside you ({caps}). The round runner holds the lock as "
+            f"`{holder}`: do not lock, unlock or start a round yourself, and pass `--holder {holder}` to "
+            f"tools/probe/probe-replay. `tools/probe/probe-ledger rows` refuses new work once the time is "
+            f"spent or the claim cap is reached; when it refuses, start nothing new: record what ran, hand "
+            f"the corpus off to staging, and report. The process is stopped at the deadline whatever you are "
+            f"doing, so record each claim's results as soon as its rows have run."
+        )
+        argv = [find_claude(), "-p", prompt, "--agent", "prober", "--permission-mode", "auto", "--output-format", "json"]
+        if args.usd:
+            argv += ["--max-budget-usd", str(args.usd)]
+        env = {**os.environ, "PROBE_HOLDER": holder}
+        proc = subprocess.Popen(argv, cwd=top, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True, start_new_session=True)
+        try:
+            with Heartbeat(LEDGER, holder, top):
+                out, err = proc.communicate(timeout=minutes * 60 + GRACE)
+            rc = proc.returncode
+            try:
+                result = json.loads(out)
+                usage = {k: result.get(k) for k in ("total_cost_usd", "num_turns", "duration_ms", "usage", "subtype")}
+                report = result.get("result", "")
+            except ValueError:
+                report = out[-4000:]
+            if rc:
+                outcome = "failed"
+            if "Not logged in" in (out or "") + (err or ""):
+                outcome = "not logged in"
+                report = ("The headless claude CLI is not authenticated. Log it in once (`claude` then /login, or "
+                          "ANTHROPIC_API_KEY), or start the round from a Claude session with the /probe skill, "
+                          "which caps it with probe-ledger round-start and stops it at the deadline.")
+        except subprocess.TimeoutExpired:
+            outcome = "stopped at the cap"
+            os.killpg(proc.pid, signal.SIGTERM)
+            try:
+                proc.communicate(timeout=15)
+            except subprocess.TimeoutExpired:
+                os.killpg(proc.pid, signal.SIGKILL)
+                proc.communicate()
+            report = ""
+    finally:
+        repair = run([LEDGER, "repair", "--branch", branch], cwd=top).stdout.strip()
+        rnd = run([LEDGER, "round-end", "--branch", branch, "--holder", holder], cwd=top).stdout.strip()
+        unlock = run([LEDGER, "unlock", "--branch", branch, "--holder", holder], cwd=top).stdout.strip()
+        owed = "replay was skipped" in unlock
+    if owed:
+        run([REPLAY, "--branch", branch], cwd=top)
+    status = run([LEDGER, "status", "--branch", branch], cwd=top).stdout.splitlines()
+    summary = {"mode": args.mode, "branch": branch, "caps": {"minutes": minutes, "claims": claims, "usd": args.usd},
+               "outcome": outcome, "exit": rc, "seconds": round(time.time() - started, 1), "usage": usage,
+               "round": rnd, "repair": repair, "status": status[0] if status else ""}
+    os.makedirs(bdir, exist_ok=True)
+    with open(os.path.join(bdir, "round-last.json"), "w") as f:
+        json.dump({**summary, "report": report}, f, indent=1)
+    print(json.dumps(summary, indent=1))
+    if report:
+        print("\n" + report)
+    return 0 if outcome == "completed" else 1
+
+
+sys.exit(main())
