@@ -78,6 +78,38 @@
       "claim": "E05-own-compareto-rejected",
       "filter": "*E05OwnCompareToProbe"
     },
+    "E06OwnConverterNoValueProbe": {
+      "claim": "E06-own-converter-no-value",
+      "filter": "*E06OwnConverterNoValueProbe"
+    },
+    "E07ClosedSetNameProbe": {
+      "claim": "E07-closed-set-stored-as-name",
+      "filter": "*E07ClosedSetNameProbe"
+    },
+    "E11UseTypeKitOrderProbe": {
+      "claim": "E11-usetypekit-order",
+      "filter": "*E11UseTypeKitOrderProbe"
+    },
+    "E12ConventionByTypeProbe": {
+      "claim": "E12-convention-by-vo-type",
+      "filter": "*E12ConventionByTypeProbe"
+    },
+    "E13PrimitiveCollectionProbe": {
+      "claim": "E13-primitive-collections",
+      "filter": "*E13PrimitiveCollectionProbe"
+    },
+    "E14InheritanceKeyProbe": {
+      "claim": "E14-inheritance-key-generation",
+      "filter": "*E14InheritanceKeyProbe"
+    },
+    "E15CompositeKeyProbe": {
+      "claim": "E15-composite-key",
+      "filter": "*E15CompositeKeyProbe"
+    },
+    "E16OwnConfigurationWinsProbe": {
+      "claim": "E16-own-configuration-wins",
+      "filter": "*E16OwnConfigurationWinsProbe"
+    },
     "L01JsonBytesProbe": {
       "claim": "L01-json-bytes",
       "filter": "*L01JsonBytesProbe"
