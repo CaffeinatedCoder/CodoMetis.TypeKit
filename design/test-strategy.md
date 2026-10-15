@@ -47,3 +47,15 @@
    pin behind. Seeded: a pin behind read as current, `Microsoft.AspNetCore.OpenApi` raised to 10.0.13 alone
    (KB-001 and KB-002 reported), a TypeKit project referenced from the facts, and KB-003's calls in the
    other order each fail their test.
+9. **Variant catalogues** (2026-10-15, [decision 95](adr/0095-a-fix-is-tested-across-its-input-class.md)).
+   A fix is tested across the class of input its defect lives in, not only on the input a review named.
+   For a rule over type arguments the class is `TypeArgumentSites`
+   (`test/CodoMetis.TypeKit.Analyzers.Tests/Variants/`): 62 shapes through which an argument reaches a
+   parameter, written and inferred, method groups, null-conditional calls, extension blocks, generic
+   attributes, implementations reached through another declaration, methods bound by pattern, crefs and
+   `nameof`, and generated code, each run with an argument that breaks the rule's constraint and one that
+   meets it. CMTK0010 runs it under three constraints (`TypeArgumentConstraintVariantTests`). For a
+   generated type the class is the `shape.*` axes of `.claude/probe-axes.md`, for a framework option the
+   settings axes. Measured: at the origin of CMTK0010's chain of fourteen fixes the catalogue fails on 20
+   sites, each fixed by a later member of the chain; seeded, without the rule's method-group and property
+   registrations, 15 cases fail.
