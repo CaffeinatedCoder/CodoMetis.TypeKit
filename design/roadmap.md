@@ -73,6 +73,9 @@ Small and additive, each closable in a minor version. Found by the reviews named
 
 - CMTK0010 checks `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` at a method the compiler binds by
   pattern too, as it checks the kinds 2.1.0 added ([decision 89](adr/0089-cmtk0010-at-methods-bound-by-pattern.md)).
+- CMTK0010 refuses `Enum`, `Delegate`, `MulticastDelegate`, `ValueType` and `Array` under `[Unsealed]`: abstract
+  classes nothing can derive from, which 2.x accepts since refusing them reports more under an Error
+  ([decision 34](adr/0034-errors-fixed-within-major-version-warnings.md); found by `TypeArgumentKinds`, 2026-10-15).
 - An endpoint whose fault types write one name for two members stops the host, where 2.x logs a
   warning ([decision 90](adr/0090-faults-alike-are-a-warning-until-3-0.md)).
 - CMTK1023, a base record's equality that the generated one does not call, becomes an Error

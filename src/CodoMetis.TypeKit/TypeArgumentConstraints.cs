@@ -118,7 +118,9 @@ public sealed class InterfaceAttribute : Attribute;
 /// </summary>
 /// <remarks>
 /// A type parameter given as the argument satisfies it only when it carries <c>[Unsealed]</c> itself: no
-/// C# constraint excludes a sealed class. Reflection is out of the analyzer's reach.
+/// C# constraint excludes a sealed class. Reflection is out of the analyzer's reach. Until 3.0.0 the analyzer
+/// also accepts <c>Enum</c>, <c>Delegate</c>, <c>MulticastDelegate</c>, <c>ValueType</c> and <c>Array</c>,
+/// abstract classes nothing can derive from, since refusing them reports more under an Error.
 /// </remarks>
 [AttributeUsage(AttributeTargets.GenericParameter)]
 public sealed class UnsealedAttribute : Attribute;
