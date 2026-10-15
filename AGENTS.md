@@ -63,6 +63,21 @@ dotnet build spikes/FabricSpike/FabricSpike.slnx      # the fabric spike, standa
 ./test/consumer-smoke-test.sh                          # the packages, installed into throwaway consumers, one published with Native AOT (needs clang)
 ```
 
+The probing tool, prober (`tools/Prober`, started as its built dll like docs-query). These need no
+model, no login and no API key, and run in CI as anywhere:
+
+```bash
+dotnet tools/Prober/bin/Release/net10.0/prober.dll status    # coverage of the branch's documented claims, open findings
+dotnet tools/Prober/bin/Release/net10.0/prober.dll replay    # re-run the probes whose identity or footprint changed
+dotnet tools/Prober/bin/Release/net10.0/prober.dll gate      # the release gate, from the tracked corpus and a replay
+```
+
+Exploration needs a model and runs locally only, never in CI:
+
+```bash
+dotnet tools/Prober/bin/Release/net10.0/prober.dll round explore --minutes 10 --claims 2
+```
+
 The SDK is pinned in `global.json` (10.0.4xx band, `latestPatch`). Tests run on Microsoft Testing
 Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TRX output is
 `--report-xunit-trx`. The build treats warnings as errors, including CS1591 on shipping projects.
@@ -178,3 +193,35 @@ the whole page. A ranked miss proves nothing.
    (`.claude/skills/weaving-review`).
 5. Commit with conventional format: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `build:`,
    `spike:`.
+6. **Probes replay themselves; exploring is a separate, capped, local job.** Consumer probes check the
+   claims in `docs/` and the READMEs, pairwise over the axes in
+   [.claude/probe-axes.md](.claude/probe-axes.md); they, their rows, the claims and the waivers are the
+   corpus in `tools/probe/corpus/`, tracked like tests.
+   - **Replay** runs after every commit from a git `post-commit` hook, in the background and with no
+     model: `prober replay` re-runs only the probes whose identity or coverage footprint the commit
+     changed, and blocks nothing. Read `prober status` before your next change. A probe that passed with
+     the same identity and fails now is an open finding `R-<probe>-<sha>`, fixed like any failing test.
+   - **Explore** when a feature lands or `status` shows a claim without probes: `/probe explore`, the
+     `prober` agent under `prober round`, whose time and claim cap the tool enforces. Never in CI. Its
+     probes land in its staging; `prober publish` moves them into the corpus, committed as `test:`.
+   - **Full sweep** on request (`/probe full`) or nightly, locally: the whole corpus replayed, the axes
+     derived again, then exploration up to the cap. A report, not a gate.
+   - A probe that found a bug becomes a test in the suite (step 3); a dismissed finding is recorded with
+     `prober dismiss` and the reason. An intended difference a probe accepts cites the sentence of the
+     docs or the record that makes it intended.
+
+## Releasing
+
+Before `git tag`, replay the whole probe corpus and pass the gate:
+
+```bash
+dotnet tools/Prober/bin/Release/net10.0/prober.dll replay --all
+dotnet tools/Prober/bin/Release/net10.0/prober.dll gate
+```
+
+The gate never starts a model and needs nothing but the tracked corpus and a replay, so CI runs it
+with `PROBE_STATE_DIR` in its own workspace. It refuses while a finding is open, a probe has not
+passed at its current identity, or a claim touched since the last tag has pairwise combinations no
+probe covers; it lists what is missing. Every obligation is met by a probe in the corpus, written by
+hand or by a round, or by a reviewed waiver in `tools/probe/corpus/waivers.json` (claim, reason,
+reviewer). Never tag over a refusal without the user's word.
