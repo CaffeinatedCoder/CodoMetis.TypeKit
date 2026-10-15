@@ -357,16 +357,21 @@ public sealed class VerdictTests(VerdictTests.Sandbox sandbox) : IClassFixture<V
               Actual:   15
                 at CodoMetis.TypeKit.Tests.ParsingTests.Rounds_trip(String text, String culture) in {R}/test/A.Tests/ParsingTests.cs:40
               Standard output: noise from the test
-            {R}/test/A.Tests/bin/Debug/net10.0/A.Tests.dll (net10.0|arm64) failed with 3 error(s) (1s 147ms)
+            failed Probes.L01JsonBytesProbe.Row [#6 shape.kind=record-struct shape.wrapped=int] (5ms)
+              from {R}/test/A.Tests/bin/Debug/net10.0/A.Tests.dll (net10.0|arm64)
+              Assert.Fail() Failure: [L01 #6] bytes differ
+                at Probes.Rec.Run(String claim, Int32 idx) in {R}/test/A.Tests/Probes/Row.cs:12
+            {R}/test/A.Tests/bin/Debug/net10.0/A.Tests.dll (net10.0|arm64) failed with 4 error(s) (1s 147ms)
             Exit code: 2
 
-            """ + Summary(850, 3, 846, 1);
+            """ + Summary(850, 4, 845, 1);
         Exited("a failing run exits 1", 1, Verdict(2, f, "test"));
-        First("the failed count leads", "TESTS FAILED: 3 failed of 850 (846 passed, 1 skipped), solution, 1s 261ms");
+        First("the failed count leads", "TESTS FAILED: 4 failed of 850 (845 passed, 1 skipped), solution, 1s 261ms");
         Has("a block is headed Class.Method and file:line", "## ZzzVerdictProbeTests.Fails_on_a_value  test/A.Tests/ZzzVerdictProbeTests.cs:6");
         Has("a multi-line assertion is one line", "   ShouldAssertException: public void Fails_on_a_valueOption.Some(2).Match(x => x, 0) should be 1 but was 2");
         Has("an exception loses xUnit's wrapper and namespaces", "   InvalidOperationException: probe threw");
         Has("a theory keeps its arguments, dots and all", "## ParsingTests.Rounds_trip(text: \"1.5\", culture: \"de-DE\")  test/A.Tests/ParsingTests.cs:40");
+        Has("a data row keeps its label, dots and all", "## L01JsonBytesProbe.Row [#6 shape.kind=record-struct shape.wrapped=int]  test/A.Tests/Probes/Row.cs:12");
         Has("an Assert.Equal keeps expected and actual", "Assert.Equal() Failure: Values differ Expected: 1.5 Actual:   15");
         Hasnt("from lines are dropped", "  from ");
         Hasnt("frames outside the tree are dropped", "MethodBaseInvoker");

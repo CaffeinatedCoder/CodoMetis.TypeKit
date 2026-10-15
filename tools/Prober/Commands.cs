@@ -99,11 +99,26 @@ internal static class Commands
         var universe = Universe.Load(l.P("universe.json"));
         if (universe is null) return new JsonObject { ["branch"] = l.Branch, ["done"] = false, ["reason"] = "no universe.json: run `universe` (no round has run here)" };
         var done = l.Covered(universe);
+        // How the rows of each claim's probes ended at their last replay: only a pass earns pairs, so the rest is
+        // what the claim's coverage loses, and a skip for a finding is an open finding the corpus records.
+        var outcomes = new Dictionary<string, SortedDictionary<string, int>>(StringComparer.Ordinal);
+        var skips = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        foreach (var (probe, entry) in l.Registry())
+        {
+            var evidence = Files.ReadJson(l.EvidencePath(probe)) as JsonObject;
+            var sum = outcomes.TryGetValue(Files.Str(entry["claim"]), out var o) ? o : outcomes[Files.Str(entry["claim"])] = new(StringComparer.Ordinal);
+            foreach (var (category, n) in Ledger.Outcomes(evidence)) sum[category] = sum.GetValueOrDefault(category) + n;
+            foreach (var (finding, n) in Ledger.FindingSkips(evidence)) skips[finding] = skips.GetValueOrDefault(finding) + n;
+        }
         var claims = new JsonObject(); var total = 0; var current = 0;
         foreach (var c in universe.Claims)
         {
             var pairs = c.Pairs(); var hit = pairs.Count(p => done.Contains((c.Id, p)));
-            claims[c.Id] = new JsonObject { ["pairs"] = pairs.Count, ["current"] = hit };
+            claims[c.Id] = new JsonObject
+            {
+                ["pairs"] = pairs.Count, ["current"] = hit,
+                ["outcomes"] = new JsonObject((outcomes.GetValueOrDefault(c.Id) ?? []).Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))),
+            };
             total += pairs.Count; current += hit;
         }
         var open = l.OpenFindings();
@@ -111,7 +126,8 @@ internal static class Commands
         {
             ["branch"] = l.Branch, ["head"] = l.Head, ["universe_commit"] = universe.Commit, ["pairs"] = total, ["current"] = current,
             ["share"] = total > 0 ? Math.Round((double)current / total, 4) : 1.0,
-            ["open_findings"] = new JsonArray([.. open.Select(f => (JsonNode)f)]), ["claims"] = claims,
+            ["open_findings"] = new JsonArray([.. open.Select(f => (JsonNode)f)]),
+            ["skipped_for_findings"] = new JsonObject(skips.Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))), ["claims"] = claims,
             ["done"] = total > 0 && current == total && open.Count == 0,
         };
     }
@@ -125,8 +141,13 @@ internal static class Commands
         l.Ctx.Out.WriteLine($"{l.Branch} at {Files.Str(s["head"])[..7]}: {Files.Num(s["current"])} of {Files.Num(s["pairs"])} pairs current " +
                             $"({(Files.Num(s["share"]) * 100).ToString("F1", CultureInfo.InvariantCulture)}%), {open.Count} open finding(s)" +
                             (open.Count > 0 ? ": " + string.Join(", ", open) : "") + $" -> {(s["done"]!.GetValue<bool>() ? "DONE" : "not done")}");
+        foreach (var (finding, rows) in (s["skipped_for_findings"] as JsonObject)!)
+            l.Ctx.Out.WriteLine($"  {rows} row(s) skip for finding {finding}");
         foreach (var (id, c) in (s["claims"] as JsonObject)!.OrderBy(kv => kv.Key, StringComparer.Ordinal))
-            l.Ctx.Out.WriteLine($"  {id}: {Files.Num(c!["current"])}/{Files.Num(c["pairs"])}");
+        {
+            var rows = (c!["outcomes"] as JsonObject)!.Select(kv => $"{kv.Key} {Files.Num(kv.Value)}").ToList();
+            l.Ctx.Out.WriteLine($"  {id}: {Files.Num(c["current"])}/{Files.Num(c["pairs"])}" + (rows.Count > 0 ? $"  (rows: {string.Join(", ", rows)})" : ""));
+        }
         return 0;
     }
 

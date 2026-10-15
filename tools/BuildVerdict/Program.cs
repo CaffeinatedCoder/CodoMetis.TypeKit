@@ -571,7 +571,9 @@ static class Verdict
 
     static string Short(string full)
     {
-        var i = full.IndexOf('(');
+        // A theory's arguments, or a data row's label ("Row [#6 shape.wrapped=int]"), end the name: their dots are not namespaces.
+        var paren = full.IndexOf('('); var label = full.IndexOf(" [", StringComparison.Ordinal);
+        var i = paren < 0 ? label : label < 0 ? paren : Math.Min(paren, label);
         var head = i >= 0 ? full[..i] : full;
         var tail = i >= 0 ? full[i..] : "";
         var p = head.Split('.');

@@ -41,7 +41,11 @@ public static class ComposedClaims
         if (Hx.HasMvc(r)) sides.Add(Hx.C(r, $"/c/{arity}/{variant}"));
         JsonNode? doc = null; string? docFail = null;
         try { doc = await Hx.Doc(app); }
-        catch (Exception ex) { docFail = "DOC " + ex.GetType().Name + ": " + Cut(ex.Message) + " @ " + string.Join(" < ", (ex.StackTrace ?? "").Split('\n').Take(4).Select(x => x.Trim().Split('(')[0])); }
+        catch (Exception ex)
+        {
+            var alone = await Hx.DocRefusedByAspNetAlone(r, en, Cfg(r), ex);
+            if (alone is not null) docFail = alone + " @ " + string.Join(" < ", (ex.StackTrace ?? "").Split('\n').Take(4).Select(x => x.Trim().Split('(')[0]));
+        }
         foreach (var path in sides)
         {
             var w = await Hx.Get(app, $"{path}?e={e}");
@@ -57,16 +61,11 @@ public static class ComposedClaims
             if (gotRule != (rule == "" ? null : rule)) return $"{path} e={e}: rule {gotRule ?? "(none)"}, expected {(rule == "" ? "(none)" : rule)}";
             if (int.Parse(body?["status"]?.ToString() is { } st ? Un(r, st)!.Trim('"') : "0") != status) return $"{path} e={e}: problem status field {body?["status"]}";
             // the document
-            if (docFail is not null)
-            {
-                if (r.Is("json.ReferenceHandler", "Preserve") && docFail.Contains("ReferenceHandler.Preserve")) { r.Note("doc:preserve-refused-by-stj"); continue; }
-                if (r.Is("json.MaxDepth", "3") && docFail.Contains("maximum allowed depth")) { r.Note("doc:stj-maxdepth-also-for-plain-ProducesProblem"); continue; }   // plain ASP.NET fails alike (verified)
-                if (docFail.Contains("converted to OpenApiJsonSchema") && en.Wrapped == "char" && r.Is("json.NumberHandling", "WriteAsString")) { r.Note("doc:aspnet-refuses-char-WriteAsString-for-the-plain-type-too"); continue; }   // verified with the baseline (doc-refused-for-wrapped-too)
-                if (docFail.Contains("ClosedSetSchemaTransformer.Describe") && en.Wrapped == "own-record-class") { r.Note("doc:F2"); continue; }   // open finding F2
-                return docFail;
-            }
-            if (!Hx.InDocument(r) && path.Contains("/c/")) { r.Note("doc:plain-controller-not-in-api-explorer"); continue; }
-            var ops = doc?["paths"]?[path]?["get"]; if (ops is null) return $"document has no GET {path}";
+            if (docFail is not null) return docFail;
+            if (doc is null) continue;   // ASP.NET alone refuses this document too (noted)
+            var ops = doc["paths"]?[path]?["get"];
+            if (ops is null && !Hx.InDocument(r) && path.Contains("/c/")) { r.Note("doc:controller-not-in-api-explorer"); continue; }
+            if (ops is null) return $"document has no GET {path}";
             var keys = ops["responses"]!.AsObject().Select(kv => kv.Key).Where(k => int.TryParse(k, out var n) && n >= 400).Select(int.Parse).ToList();
             var want = Cmp.DocStatuses(arity, variant);
             // A status the endpoint declares itself (the 429) takes its place among the sets' statuses (fixed in 8d1ebd8).

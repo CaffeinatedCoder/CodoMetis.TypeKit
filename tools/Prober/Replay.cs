@@ -187,6 +187,7 @@ internal static class Replay
                             {
                                 ["category"] = Files.Str(line["category"], "violation"), ["applied"] = line["applied"]?.DeepClone() ?? new JsonObject(),
                                 ["reasons"] = new JsonArray([.. Files.Strings(line["reasons"]).Take(6).Select(x => (JsonNode)x)]),
+                                ["findings"] = new JsonArray([.. Files.Strings(line["findings"]).Select(x => (JsonNode)x)]),
                             };
                         }
                 (evidence["variants"] as JsonArray)!.Add(new JsonObject
@@ -197,6 +198,7 @@ internal static class Replay
                 if (missing.Count > 0) ctx.Out.WriteLine($"    {missing.Count} expected row(s) did not run: [{string.Join(", ", missing.Take(10))}]");
                 index++;
             }
+            foreach (var stale in ledger.StaleSkips(evidence)) { result = "fail"; ctx.Out.WriteLine($"    {stale}"); }
             if (result == "fail") failed.Add(s.Probe);
             var evidencePath = Path.Combine(results, $"{s.Probe}-evidence.json");
             Files.WriteJson(evidencePath, evidence);

@@ -223,6 +223,46 @@ internal sealed class Ledger
         return last;
     }
 
+    /// <summary>The findings one probe's evidence steps around, with the number of rows that skip for each.</summary>
+    public static SortedDictionary<string, int> FindingSkips(JsonObject? evidence)
+    {
+        var skips = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        foreach (var (_, row) in evidence?["rows"] as JsonObject ?? [])
+            foreach (var f in Files.Strings(row?["findings"])) skips[f] = skips.GetValueOrDefault(f) + 1;
+        return skips;
+    }
+
+    /// <summary>
+    /// The skips of one probe's evidence that no longer stand: a finding this ledger has fixed (in HEAD's history)
+    /// or the corpus has dismissed. Such a skip would hide the defect coming back, so the replay fails the probe.
+    /// A finding this ledger has never seen (a fresh state, as in CI) is left to the gate, which refuses any skip.
+    /// </summary>
+    public List<string> StaleSkips(JsonObject? evidence)
+    {
+        var findings = Findings();
+        var stale = new List<string>();
+        foreach (var (id, rows) in FindingSkips(evidence))
+        {
+            if (!findings.TryGetValue(id, out var f)) continue;
+            var status = Files.Str(f["status"]);
+            if (status == "fixed" && Files.Str(f["commit"]) is { Length: >= 7 } commit) status += " at " + commit[..7];
+            if (status != "open") stale.Add($"{rows} row(s) skip for {id}, which is {status}: remove the skip");
+        }
+        return stale;
+    }
+
+    /// <summary>How the rows of one probe's evidence ended, by category.</summary>
+    public static SortedDictionary<string, int> Outcomes(JsonObject? evidence)
+    {
+        var outcomes = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        foreach (var (_, row) in evidence?["rows"] as JsonObject ?? [])
+        {
+            var category = Files.Str(row?["category"], "violation");
+            outcomes[category] = outcomes.GetValueOrDefault(category) + 1;
+        }
+        return outcomes;
+    }
+
     public List<string> OpenFindings() => [.. Findings().Where(kv => Files.Str(kv.Value["status"]) == "open").Select(kv => kv.Key).Order(StringComparer.Ordinal)];
 
     public sealed record ProbeState(string Probe, string Claim, string Filter, JsonArray Variants, bool Stale, bool Retired, int Passes, bool Replay);

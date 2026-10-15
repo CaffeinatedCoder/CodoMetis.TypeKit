@@ -1,23 +1,25 @@
 // Row plumbing shared by every probe: rows come from `prober rows --claim X` (JSON, copied to Probes/rows/X.json);
-// each probe records one line per row to $PROBE_OUT/<claim>.jsonl (idx, status pass|fail, note) so the ledger is written by script.
+// each probe records one line per row to $PROBE_OUT/<claim>.jsonl (idx, category, applied settings, reasons, findings, note), which the replay reads.
 using System.Text.Json;
 using System.Text.Json.Nodes;
 namespace Probes.Shapes;
 
 /// <summary>
 /// What a row actually did, shared by the row and every copy made of it (With, Fresh): the axes the harness
-/// read, the settings it substituted, and how the row ended. The ledger credits only the axes read, at the
-/// value that applied, and only for a row that ended as a pass.
+/// read, the settings it substituted, how the row ended, and the open findings it stepped around. The ledger
+/// credits only the axes read, at the value that applied, and only for a row that ended as a pass.
 /// </summary>
 public sealed class Evidence
 {
     public readonly HashSet<string> Read = new();
     public readonly Dictionary<string, string> Applied = new();
+    public readonly SortedSet<string> Findings = new(StringComparer.Ordinal);
     public string Category = "pass";
     public readonly List<string> Reasons = new();
-    static readonly string[] Order = ["pass", "inapplicable", "expected-refusal", "inconclusive", "harness-error", "violation"];
+    static readonly string[] Order = ["pass", "inapplicable", "expected-refusal", "inconclusive", "known-finding", "harness-error", "violation"];
     public void Raise(string category, string reason)
     {
+        if (Array.IndexOf(Order, category) < 0) throw new ArgumentException("no outcome category " + category, nameof(category));
         if (Array.IndexOf(Order, category) > Array.IndexOf(Order, Category)) Category = category;
         Reasons.Add(category + ":" + reason);
     }
@@ -37,7 +39,7 @@ public sealed class Row
     public IEnumerable<KeyValuePair<string, string>> All { get { foreach (var kv in d) { Mark(kv.Key, kv.Value); yield return kv; } } }
     string Mark(string axis, string v) { lock (Ev) Ev.Read.Add(axis); return v; }
     /// <summary>The setting ran as <paramref name="actual"/>, not as the row asked: only the actual value earns credit.</summary>
-    public void Substituted(string axis, string actual, string reason) { lock (Ev) Ev.Applied[axis] = actual; Note($"substituted:{axis}={actual}({reason})"); }
+    public void Substituted(string axis, string actual, string reason) { lock (Ev) Ev.Applied[axis] = actual; Note("substituted", $"{axis}={actual}, {reason}"); }
     public void Outcome(string category, string reason) { lock (Ev) Ev.Raise(category, reason); }
     /// <summary>The settings that ran: the axes the harness read, at the value that applied.</summary>
     public Dictionary<string, string> AppliedSettings()
@@ -45,10 +47,25 @@ public sealed class Row
         lock (Ev) return Ev.Read.Where(d.ContainsKey).ToDictionary(a => a, a => Ev.Applied.TryGetValue(a, out var v) ? v : d[a]);
     }
     public string Notes { get; private set; } = "";
-    public void Note(string n)
+    /// <summary>
+    /// Records what a check saw, by a key of <see cref="NoteKeys"/>; the key alone decides the outcome, the
+    /// detail only explains it. A key the catalogue does not list is a harness error, never a pass.
+    /// </summary>
+    public void Note(string key, string? detail = null)
     {
+        var n = detail is null ? key : $"{key}({detail})";
         if (!Notes.Split(';').Contains(n)) Notes += (Notes.Length == 0 ? "" : ";") + n;
-        if (NoteCategories.Of(n) is { } c) Outcome(c, n);
+        if (!NoteKeys.Category.TryGetValue(key, out var c)) Outcome("harness-error", $"note key {key} is not in NoteKeys: add it with its outcome");
+        else if (c != "pass") Outcome(c, n);
+    }
+    /// <summary>
+    /// Steps around an open finding: the row ends as known-finding and earns nothing. The replay fails a probe
+    /// that skips for a finding the ledger has fixed or dismissed, and the release gate refuses while any skips.
+    /// </summary>
+    public void Skip(string finding, string why)
+    {
+        lock (Ev) Ev.Findings.Add(finding);
+        Outcome("known-finding", $"{finding}: {why}");
     }
     public System.Text.StringBuilder Log { get; } = new();
     public Row Fresh() => new Row(Index, new Dictionary<string, string>(d), Ev);
@@ -57,34 +74,42 @@ public sealed class Row
 }
 
 /// <summary>
-/// The outcome a harness note stands for. A row whose checks returned no failure is a pass only if none of
-/// its notes says a check was skipped (inapplicable) or ended in a refusal (expected refusal): a refusal is
-/// evidence about refusing, not about serializing or binding successfully.
+/// Every note a check may make, by exact key, and the outcome it stands for. A row whose checks returned no
+/// failure is a pass only if none of its notes says a check was skipped (inapplicable), ended in a refusal
+/// (expected refusal) or could not tell (inconclusive): a refusal is evidence about refusing, not about
+/// serializing or binding successfully. "pass" keys only explain how a check that ran was compared.
 /// </summary>
-public static class NoteCategories
+public static class NoteKeys
 {
-    static readonly string[] Refusal =
-    [
-        "both-threw", "read-both-threw", "ser-both-threw", "ser-refused", "read-back-refused", "refused-for-wrapped-too",
-        "preserve-refused-by-stj", "aspnet-refuses", "preserve-documented", "stj-maxdepth", "mvc-400-unwritable",
-        "validated-refuses-type-limit", "plain-read-back-fails-too", "own-vo-converter-threw", "plain-unbindable",
-        "documented-diff", "class-vo-takes-null", "own-vo:read-back-refused",
-    ];
-    static readonly string[] Inapplicable =
-    [
-        "-NA", "no-text:", "cannot-bind", "not-bindable-from-text", "not-in-api-explorer", "body-binding-skipped",
-        "converter-not-described", "closed-set-differs", "closed-set-vs-own-wrapped-converter", "stored-factory-skips-validation",
-        "maxvalidationdepth1", "route-text-unsafe", "doc:F2", "wrapped-round-trip-lossy-too", "base64", "own-spelling",
-        "reads-its-own-spelling", "closed-set-key-unpoliced", "nullability-not-comparable",
-    ];
-    public static string? Of(string note)
+    public static readonly IReadOnlyDictionary<string, string> Category = new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        if (note.StartsWith("substituted:")) return null;
-        if (note.StartsWith("both-threw-differently")) return "inconclusive";
-        if (Refusal.Any(note.Contains)) return "expected-refusal";
-        if (Inapplicable.Any(note.Contains) || note == "own-vo-converter") return "inapplicable";
-        return null;
-    }
+        // how a check that ran was compared
+        ["compared"] = "pass", ["substituted"] = "pass", ["dropped"] = "pass", ["ctx-strict"] = "pass", ["ctx-fallback"] = "pass",
+        ["binding:nullable"] = "pass", ["own-vo"] = "pass", ["converter-wraps-inner"] = "pass",
+        ["documented-char-guid-key-never-generated-checked"] = "pass", ["documented-char-guid-not-generated-checked"] = "pass",
+        ["schema:compared-with-nullable-wrapped"] = "pass", ["schema:nullable-spellings-normalised"] = "pass",
+        ["schema:class-vo-nullability-normalised"] = "pass", ["schema:neither-side-documented"] = "pass",
+        // the document part has nothing to check: ASP.NET alone refuses the same document in the same row, or
+        // leaves the controller out of it (docs/aspnet-core.md, "Bind value objects in MVC"), checked absent
+        ["doc:refused-by-aspnet-alone"] = "pass", ["doc:controller-not-in-api-explorer"] = "pass",
+        // a check that did not apply
+        ["own-vo-converter"] = "inapplicable", ["closed-set-vs-own-wrapped-converter"] = "inapplicable", ["closed-set-differs"] = "inapplicable",
+        ["byte-array-is-base64"] = "inapplicable", ["own-spelling"] = "inapplicable", ["not-bindable-from-text"] = "inapplicable",
+        ["route-text-unsafe"] = "inapplicable", ["own-vo:body-binding-skipped"] = "inapplicable",
+        ["mvc-maxvalidationdepth1-ignores-binding-errors"] = "inapplicable", ["stored-factory-skips-validation"] = "inapplicable",
+        ["schema:converter-not-described"] = "inapplicable", ["schema:nullability-not-comparable"] = "inapplicable",
+        ["closed-set-key-unpoliced"] = "inapplicable", ["plain-refused"] = "inapplicable", ["entry-not-applicable"] = "inapplicable",
+        ["no-text"] = "inapplicable", ["text:wrapped-round-trip-lossy-too"] = "inapplicable", ["no-operator"] = "inapplicable",
+        // a refusal, intended or the framework's own
+        ["documented-diff"] = "expected-refusal", ["stj-maxdepth"] = "expected-refusal", ["validated-refuses-type-limit"] = "expected-refusal",
+        ["class-vo-takes-null"] = "expected-refusal", ["bind:plain-unbindable"] = "expected-refusal", ["preserve-documented"] = "expected-refusal",
+        ["mvc-400-unwritable-under-source-gen"] = "expected-refusal", ["own-vo:read-back-refused"] = "expected-refusal",
+        ["both-threw"] = "expected-refusal", ["read-both-threw"] = "expected-refusal", ["ser-both-threw"] = "expected-refusal",
+        ["ser-refused"] = "expected-refusal", ["read-back-refused"] = "expected-refusal", ["plain-read-back-fails-too"] = "expected-refusal",
+        ["own-vo-converter-threw"] = "expected-refusal",
+        // both sides refused, but not alike
+        ["both-threw-differently"] = "inconclusive",
+    };
 }
 
 public static class Rows
@@ -102,14 +127,19 @@ public static class Rows
         foreach (var r in doc["rows"]!.AsArray())
             yield return new Row(i++, r!["row"]!.AsObject().ToDictionary(kv => kv.Key, kv => kv.Value!.GetValue<string>()));
     }
-    /// <summary>xunit MemberData: (claim, index). Optional filter by env PROBE_ROWS="0-20" for quick runs.</summary>
+    /// <summary>
+    /// xunit MemberData: (claim, index), labelled with the row's settings so a test list or a failure names
+    /// them. Optional filter by env PROBE_ROWS="0-20" for quick runs.
+    /// </summary>
     public static TheoryData<string, int> Data(string claim)
     {
         var d = new TheoryData<string, int>();
         var range = Environment.GetEnvironmentVariable("PROBE_ROWS");
         (int lo, int hi) = range is null ? (0, int.MaxValue) : (int.Parse(range.Split('-')[0]), int.Parse(range.Split('-')[1]));
         var only = Environment.GetEnvironmentVariable("PROBE_ONLY"); // "axis=value" keeps rows with that value
-        foreach (var r in Load(claim)) if (r.Index >= lo && r.Index <= hi && (only is null || only.Split(',').All(c => c.Contains("!=") ? !r.Is(c.Split("!=")[0], c.Split("!=")[1]) : r.Is(c.Split('=')[0], c.Split('=')[1])))) d.Add(claim, r.Index);
+        foreach (var r in Load(claim))
+            if (r.Index >= lo && r.Index <= hi && (only is null || only.Split(',').All(c => c.Contains("!=") ? !r.Is(c.Split("!=")[0], c.Split("!=")[1]) : r.Is(c.Split('=')[0], c.Split('=')[1]))))
+                d.Add(new TheoryDataRow<string, int>(claim, r.Index) { Label = $"#{r.Index} {r}" });
         return d;
     }
     static readonly Dictionary<string, List<Row>> Cache = new();
@@ -129,13 +159,16 @@ public static class Rec
         Directory.CreateDirectory(dir);
         var applied = row?.AppliedSettings() ?? new Dictionary<string, string>();
         var reasons = row is null ? [] : row.Ev.Reasons.ToArray();
+        var findings = row is null ? [] : row.Ev.Findings.ToArray();
         lock (Gate) File.AppendAllText(Path.Combine(dir, claim + ".jsonl"),
             JsonSerializer.Serialize(new { idx, status = category == "pass" ? "pass" : "fail", category, completed = row is not null,
-                                           applied, reasons, note = note.Length > 600 ? note[..600] : note }) + "\n");
+                                           applied, reasons, findings, note = note.Length > 600 ? note[..600] : note }) + "\n");
     }
     /// <summary>
     /// Runs the check on a fresh copy of the row (its own evidence); null = no failure, otherwise the failure text.
-    /// An exception the check did not expect is a harness error until triaged, never a pass.
+    /// An exception the check did not expect is a harness error until triaged, never a pass. A violation or a
+    /// harness error fails the test; any other outcome but a pass skips it with its reasons, so a test run
+    /// counts what earned nothing.
     /// </summary>
     public static async Task Run(string claim, int idx, Func<Row, Task<string?>> check, string? rowsOf = null)
     {
@@ -146,7 +179,9 @@ public static class Rec
         catch (Exception ex) { fail = "UNEXPECTED " + ex.GetType().Name + ": " + ex.Message; row.Outcome("harness-error", fail); }
         if (fail is not null) row.Outcome("violation", fail);
         Write(claim, idx, row.Ev.Category, fail ?? row.Notes, row);
-        Assert.True(fail is null, $"[{claim} #{idx}] {row}\n{fail}");
+        if (fail is not null) Assert.Fail($"[{claim} #{idx}] {row}\n{fail}");
+        if (row.Ev.Category == "harness-error") Assert.Fail($"[{claim} #{idx}] {row}\nharness error: {string.Join("; ", row.Ev.Reasons)}");
+        if (row.Ev.Category != "pass") Assert.Skip($"{row.Ev.Category}: {string.Join("; ", row.Ev.Reasons.Where(x => !x.StartsWith("pass:")))}");
     }
 }
 

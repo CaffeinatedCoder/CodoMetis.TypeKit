@@ -80,7 +80,8 @@
               "expected-refusal",
               "inapplicable",
               "harness-error",
-              "inconclusive"
+              "inconclusive",
+              "known-finding"
             ]
           },
           "applied": {
@@ -95,6 +96,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The open findings the row stepped around (Row.Skip in the harness); the row ends as known-finding."
           }
         }
       }
