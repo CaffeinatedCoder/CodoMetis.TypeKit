@@ -113,13 +113,6 @@ internal static class Replay
             warmth = "warm";
         }
 
-        // A verdict script the commit does not carry yet comes from PROBE_VERDICT_DIR.
-        if (ctx.Env("PROBE_VERDICT_DIR") is { } verdictDir && !File.Exists(Path.Combine(worktree, "tools", "build-verdict.sh")))
-        {
-            Directory.CreateDirectory(Path.Combine(worktree, "tools"));
-            foreach (var f in Directory.EnumerateFiles(verdictDir, "build-verdict*")) File.Copy(f, Path.Combine(worktree, "tools", Path.GetFileName(f)), overwrite: true);
-        }
-
         // The corpus: tracked, overlaid by the branch's unpublished staging; rows unpacked.
         var probeDir = Path.Combine(worktree, Files.Str(config["probeDir"]));
         Directory.CreateDirectory(Path.Combine(probeDir, "rows"));

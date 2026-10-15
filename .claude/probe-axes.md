@@ -15,10 +15,12 @@ fabric, and loads the analyzer as an analyzer. A probe file may declare its own 
 (`readonly partial record struct ProbeId : IValue<Guid>;`); generate the declarations of the
 type-shape catalogue with a script into a `Probes/Shapes.g.cs`, not by hand.
 
-- Build and run only through the verdict script, which pins English output, builds before it tests,
+- Build and run only through the verdict tool, which pins English output, builds before it tests,
   names the exit codes and prints failing tests by name with their assertion:
-  `tools/build-verdict.sh build test/CodoMetis.TypeKit.Samples` (cold, about 1 to 2 minutes), then
-  `tools/build-verdict.sh test --project test/CodoMetis.TypeKit.Samples --filter-class "*Probe"`.
+  `dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll build test/CodoMetis.TypeKit.Samples`
+  (cold, about 1 to 2 minutes), then `dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test
+  --project test/CodoMetis.TypeKit.Samples --filter-class "*Probe"`. Build the tool first, `dotnet build
+  tools/BuildVerdict -c Release`: a fresh worktree has no dll and a stale one refuses (exit 3).
   The full log is at `$(git rev-parse --absolute-git-dir)/build-verdict-last.log`.
 - Warnings are errors. Add `#pragma warning disable xUnit1051` at the top of a probe that awaits
   without a cancellation token; an obsolete setting (`IgnoreNullValues`) needs its `SYSLIB` id
@@ -477,13 +479,26 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
   "replay": {
     "project": "test/CodoMetis.TypeKit.Samples",
     "probeDir": "test/CodoMetis.TypeKit.Samples/Probes",
+    "prepare": [
+      [
+        "dotnet",
+        "build",
+        "tools/BuildVerdict",
+        "-c",
+        "Release",
+        "-nologo",
+        "-v:q"
+      ]
+    ],
     "build": [
-      "tools/build-verdict.sh",
+      "dotnet",
+      "tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll",
       "build",
       "{project}"
     ],
     "test": [
-      "tools/build-verdict.sh",
+      "dotnet",
+      "tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll",
       "test",
       "--project",
       "{project}",

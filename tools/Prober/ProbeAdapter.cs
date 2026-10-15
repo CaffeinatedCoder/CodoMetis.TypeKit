@@ -25,8 +25,9 @@ internal interface IProbeAdapter
 
 /// <summary>
 /// The .NET adapter, configured by the "replay" object of the axes file: argv templates for the build and
-/// the test run (through the repository's verdict script), the coverage extension referenced from a targets
-/// file outside the worktree, and the reflection enumerator run with the repository's package versions.
+/// the test run (through the repository's verdict tool), the commands that prepare the worktree first (building
+/// that tool), the coverage extension referenced from a targets file outside the worktree, and the reflection
+/// enumerator run with the repository's package versions.
 /// </summary>
 internal sealed class DotNetAdapter(JsonObject config) : IProbeAdapter
 {
@@ -35,17 +36,35 @@ internal sealed class DotNetAdapter(JsonObject config) : IProbeAdapter
     private static string[] Expand(JsonNode? template, Dictionary<string, string> values) =>
         [.. Files.Strings(template).Select(arg => Regex.Replace(arg, @"\{(\w+)\}", m => values.TryGetValue(m.Groups[1].Value, out var v) ? v : m.Value))];
 
-    public Ran Build(string worktree, IReadOnlyDictionary<string, string?> environment)
+    /// <summary>
+    /// The program a template starts: a bare name (no path separator, <c>dotnet</c>) is found on PATH; a path is
+    /// relative to the replay worktree and must exist there, so a template naming a file the repository no longer
+    /// has fails by name, never as a puzzling exit code.
+    /// </summary>
+    internal static string Executable(string worktree, string program)
     {
-        var argv = Expand(config["build"], new() { ["project"] = Project });
-        return Proc.Run(Path.Combine(worktree, argv[0]), argv[1..], worktree, environment);
+        if (program.IndexOfAny(['/', '\\']) < 0) return program;
+        var path = Path.Combine(worktree, program);
+        return File.Exists(path) ? path : throw new Refusal($"the replay template names {program}, which the worktree does not have");
     }
 
-    public Ran RunProbe(string worktree, string filter, string results, string coverageFile, IReadOnlyDictionary<string, string?> environment)
+    private static Ran Start(string worktree, string[] argv, IReadOnlyDictionary<string, string?> environment) =>
+        Proc.Run(Executable(worktree, argv[0]), argv[1..], worktree, environment);
+
+    /// <summary>Prepares the worktree (the "prepare" commands: building the verdict tool, which a fresh or moved worktree lacks or holds stale), then builds the probes.</summary>
+    public Ran Build(string worktree, IReadOnlyDictionary<string, string?> environment)
     {
-        var argv = Expand(config["test"], new() { ["project"] = Project, ["filter"] = filter, ["results"] = results, ["cobertura"] = coverageFile });
-        return Proc.Run(Path.Combine(worktree, argv[0]), argv[1..], worktree, environment);
+        foreach (var command in (config["prepare"] as JsonArray ?? []).OfType<JsonArray>())
+        {
+            var prepared = Start(worktree, Expand(command, new() { ["project"] = Project }), environment);
+            if (prepared.ExitCode != 0)
+                return prepared with { Stdout = $"PREPARE FAILED: {string.Join(' ', Files.Strings(command))}\n" + prepared.Stdout + prepared.Stderr };
+        }
+        return Start(worktree, Expand(config["build"], new() { ["project"] = Project }), environment);
     }
+
+    public Ran RunProbe(string worktree, string filter, string results, string coverageFile, IReadOnlyDictionary<string, string?> environment) =>
+        Start(worktree, Expand(config["test"], new() { ["project"] = Project, ["filter"] = filter, ["results"] = results, ["cobertura"] = coverageFile }), environment);
 
     public IReadOnlyDictionary<string, string?> Environment(string cacheDirectory)
     {
