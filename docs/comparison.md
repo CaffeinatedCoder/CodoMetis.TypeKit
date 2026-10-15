@@ -65,7 +65,7 @@ converter you register means describing it in the document by hand, type by type
 
 ## Option and Result in detail
 
-| | TypeKit 2.0.0 | LanguageExt 4.4.9 (5.0.0-beta-77) | CSharpFunctionalExtensions 3.7.0 | ErrorOr 2.1.1 |
+| | TypeKit 2.1.0 | LanguageExt 4.4.9 (5.0.0-beta-77) | CSharpFunctionalExtensions 3.7.0 | ErrorOr 2.1.1 |
 |---|---|---|---|---|
 | Reaching the value | `Match`, `TryGetValue` and the combinators. No `.Value` | `Match`, `IfNone` and the like. No public `.Value` on `Option` | `.Value`, which throws on a failure | `.Value`, which returns `default` on an error |
 | A `default` instance | `Option`: `None`. `Result`: throws when used, and fails the build when written in code (CMTK0001) | `Option`: `None` | `Maybe`: none. `Result<T>`: a success holding `default(T)` | A success holding `default(T)` |
@@ -77,7 +77,7 @@ Sources: LanguageExt [KB-015](../design/knowledge/KB-015-languageext-option.md),
 
 ## Closed sets in detail
 
-| | TypeKit 2.0.0 | Ardalis.SmartEnum 8.2.0 | Intellenum 2.0.1 | Thinktecture.Runtime.Extensions 10.5.1 |
+| | TypeKit 2.1.0 | Ardalis.SmartEnum 8.2.0 | Intellenum 2.0.1 | Thinktecture.Runtime.Extensions 10.5.1 |
 |---|---|---|---|---|
 | Declared by | Implementing `IClosedSet<TSelf>` on a `sealed partial class`, one `public static readonly` field per member | Deriving from `SmartEnum<TEnum>`, each member `new("Name", value)` | `[Intellenum]` on a partial class. Members as fields, `[Member]` attributes or a static constructor | `[SmartEnum<TKey>]` on a partial class, each member `new("KEY")` |
 | Data on a member | Properties, set through the private constructor | The subclass's own fields | One underlying value. Richer data through a custom underlying type | Declared properties, which become constructor parameters |
