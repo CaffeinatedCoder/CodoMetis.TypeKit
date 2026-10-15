@@ -45,7 +45,9 @@
   NodaTime.Serialization.SystemTextJson is referenced too, and only where the options have no
   converter of their own for the type, which wins as it does for the wrapped type. Parsing reaches
   NodaTime types through their `[TypeConverter]` (`TypeDescriptor.RegisterType` and
-  `GetConverterFromRegisteredType`, the trim-safe lookup).
+  `GetConverterFromRegisteredType`, the trim-safe lookup). A type that `TypeDescriptor.GetConverter`
+  described first, as MVC does binding a plain `LocalDate`, can no longer be registered, and then
+  the converter that call cached is taken: the same one, measured under Native AOT by the smoke test.
 - **Explicit `IParsable`.** `bool` and `char` implement their parsing interfaces explicitly, so the
   generated code calls the wrapped type's `TryParse` through `GeneratedParsing`, whose constrained
   type parameters reach an explicit implementation. `Parse` is `TryParse` and a throw (below).

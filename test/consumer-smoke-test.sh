@@ -659,6 +659,7 @@ public readonly partial record struct Link : IValue<Uri>;
 public readonly partial record struct Weekday : IValue<DayOfWeek>;
 public readonly partial record struct Name : IValue<string>;
 public readonly partial record struct Day : IValue<NodaTime.LocalDate>;
+public readonly partial record struct Due : IValue<NodaTime.Instant>;
 public readonly partial record struct ShipmentNo : IValue<int>;
 
 public enum CodeFault { Blank, NotUpperCase }
@@ -789,6 +790,14 @@ await Check("set-json-read", async () =>
 // Parsing, including through a TypeConverter (NodaTime's LocalDate).
 await Check("parse", async () => $"{Quantity.Parse("42", null).Value} {Weekday.Parse("Monday", null).Value} {Link.Parse("https://p.test/", null).Value} {Day.Parse("2026-09-27", null).Value:yyyy-MM-dd}");
 await Check("tryparse-refused", async () => Code.TryParse("abc", null, out _).ToString());
+
+// The same after something asked TypeDescriptor for the wrapped type's converter first, as MVC does
+// binding a plain Instant: the type is then described but cannot be registered.
+await Check("parse-after-lookup", async () => $"{LookUpConverter(typeof(NodaTime.Instant)).CanConvertFrom(typeof(string))} {Due.Parse("2026-09-27T12:00:00Z", null).Value}");
+
+[System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Stands for MVC's lookup, which is the application's.")]
+static System.ComponentModel.TypeConverter LookUpConverter([System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)] Type type) =>
+    System.ComponentModel.TypeDescriptor.GetConverter(type);
 
 // OpenAPI. Under source-generated JSON the host's context lists what the value objects wrap, since
 // the wrapped type's schema is ASP.NET's own, built from the host's JSON contract for it.
@@ -1069,6 +1078,7 @@ assert_contains 'decimal-factory="7.8" string {"Price":"7.8"} string string' "$w
 assert_contains 'openapi-decimal="string" "decimal"' "$work/aot.out" "the document describes a value object over a decimal as the described converter writes it"
 assert_contains "option-refused=THREW NotSupportedException: Option<Int32> is not a wire type" "$work/aot.out" "Option refuses JSON with its own message"
 assert_contains "parse=42 Monday https://p.test/ 2026-09-27" "$work/aot.out" "the generated Parse, including through a TypeConverter"
+assert_contains "parse-after-lookup=True 2026-09-27T12:00:00Z" "$work/aot.out" "and after TypeDescriptor described the wrapped type unregistered"
 assert_contains "tryparse-refused=False"           "$work/aot.out" "the generated TryParse applies Create"
 assert_contains "openapi=200"                      "$work/aot.out" "the OpenAPI document is generated"
 assert_contains 'openapi-component={"type":"string","format":"uuid"}' "$work/aot.out" "OrderId is a uuid component"

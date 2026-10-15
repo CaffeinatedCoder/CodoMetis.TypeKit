@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using CodoMetis.TypeKit.Generators.Probes;
 using CodoMetis.TypeKit.ValueObjects;
@@ -125,6 +126,9 @@ public readonly partial record struct OverParsedFromText : IValue<ParsedFromText
 
 public readonly partial record struct OverConstructedFromIn : IValue<ConstructedFromIn>;
 
+// No other test in this process may use a LocalTime: TypeDescriptor's state is the process's.
+public readonly partial record struct OverLocalTime : IValue<LocalTime>;
+
 /// <summary>
 /// The generated <c>IParsable</c>/<c>ISpanParsable</c>/<c>IUtf8SpanParsable</c>, one probe per
 /// strategy. The validated side is in <see cref="EntryPointValidationTests"/>.
@@ -213,6 +217,22 @@ public sealed class ParsingTests
     {
         ProbeInstant.Parse("2026-09-27T12:00:00Z", CultureInfo.InvariantCulture).Value.ShouldBe(Instant.FromUtc(2026, 9, 27, 12, 0));
         ProbeInstant.TryParse("not an instant", CultureInfo.InvariantCulture, out _).ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// MVC asks <see cref="TypeDescriptor.GetConverter(Type)"/> for a plain <c>LocalDate</c> parameter's
+    /// converter. When that came first, registering the type did nothing, the registered lookup threw,
+    /// and every value object over the type failed to parse for the rest of the process.
+    /// </summary>
+    [Fact]
+    public void A_type_whose_converter_was_looked_up_first_still_parses_through_it()
+    {
+        TypeDescriptor.GetProvider(typeof(LocalTime)).IsRegisteredType(typeof(LocalTime)).ShouldBeFalse("another test used a LocalTime first");
+        TypeDescriptor.GetConverter(typeof(LocalTime)).CanConvertFrom(typeof(string)).ShouldBeTrue();
+
+        OverLocalTime.Parse("12:30:00", CultureInfo.InvariantCulture).Value.ShouldBe(new LocalTime(12, 30));
+        OverLocalTime.TryParse("not a time", CultureInfo.InvariantCulture, out _).ShouldBeFalse();
+        TypeDescriptor.GetConverter(typeof(OverLocalTime)).ConvertFromInvariantString("08:15:00").ShouldBe(OverLocalTime.From(new LocalTime(8, 15)));
     }
 
     /// <summary>

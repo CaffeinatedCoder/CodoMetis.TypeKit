@@ -132,10 +132,18 @@ public static class GeneratedParsing
     /// through its <see cref="TypeConverterAttribute"/> (NodaTime's types do).
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Resolved through <see cref="TypeDescriptor.RegisterType{T}"/> and
     /// <see cref="TypeDescriptor.GetConverterFromRegisteredType(Type)"/>, the trim-safe path, once per
     /// type. <see cref="TypeDescriptor.GetConverter(Type)"/> requires unreferenced code, so trimming
     /// and Native AOT warned about the generated parsing that called it.
+    /// </para>
+    /// <para>
+    /// Except where something in the process asked <see cref="TypeDescriptor.GetConverter(Type)"/>
+    /// first, as MVC does binding a plain <c>LocalDate</c>: that leaves the type described but not
+    /// registered, <see cref="TypeDescriptor.RegisterType{T}"/> then does nothing, and the registered
+    /// path refuses it for good. The converter that call made is the one taken then.
+    /// </para>
     /// </remarks>
     /// <typeparam name="T">The wrapped type.</typeparam>
     /// <returns>The converter.</returns>
@@ -148,7 +156,24 @@ public static class GeneratedParsing
         private static TypeConverter Register()
         {
             TypeDescriptor.RegisterType<T>();
-            return TypeDescriptor.GetConverterFromRegisteredType(typeof(T));
+
+            return TypeDescriptor.GetProvider(typeof(T)).IsRegisteredType(typeof(T))
+                ? TypeDescriptor.GetConverterFromRegisteredType(typeof(T))
+                : DescribedBeforeRegistration();
         }
+
+        /// <summary>
+        /// The converter of a type that <see cref="TypeDescriptor.GetConverter(Type)"/> described before
+        /// it could be registered.
+        /// </summary>
+        /// <remarks>
+        /// The same converter the registered path returns: both read <typeparamref name="T"/>'s
+        /// <see cref="TypeConverterAttribute"/> through the same type data, which the earlier call
+        /// created and cached, and <typeparamref name="T"/> keeps all its members here. Only the
+        /// registration flag differs, which no public member sets once the type is described.
+        /// </remarks>
+        [UnconditionalSuppressMessage("Trimming", "IL2026",
+            Justification = "Reached only after something else called TypeDescriptor.GetConverter(Type) for T, and returns the converter that call cached, the one the registered path builds; T keeps all its members. Measured under Native AOT in the consumer smoke test.")]
+        private static TypeConverter DescribedBeforeRegistration() => TypeDescriptor.GetConverter(typeof(T));
     }
 }
