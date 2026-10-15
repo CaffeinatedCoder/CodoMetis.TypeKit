@@ -176,10 +176,11 @@ public sealed partial class ReleaseWiringTests
     }
 
     /// <summary>
-    /// The release replays the corpus and runs the gate before it packs (design/adr/0096). The gate is advisory
-    /// until a binding release is named (AGENTS.md, "Releasing"), so only its presence and its place are held
-    /// here, and the comparison with the previous release: on a tag push, <c>git describe</c> alone names the tag
-    /// being released, and the gate would compare the commit with itself and find nothing touched.
+    /// The release replays the corpus and runs the gate before it packs (design/adr/0096), against the previous
+    /// release: on a tag push, <c>git describe</c> alone names the tag being released, and the gate would compare
+    /// the commit with itself and find nothing touched. The gate binds from 2.2.0 (design/adr/0097), so a refusal
+    /// fails the job: the step's exit code is the gate's own, either because nothing follows the gate's
+    /// <c>||</c> or because the step ends with <c>exit "$code"</c>, and it has no <c>continue-on-error</c>.
     /// </summary>
     [Fact]
     public void The_release_replays_every_probe_and_runs_the_gate_before_packing()
@@ -194,6 +195,9 @@ public sealed partial class ReleaseWiringTests
         gate.ShouldBeGreaterThan(replay, "release.yml:verify does not run `prober gate` after `prober replay --all`; the gate reads the replay's evidence.");
         pack.ShouldBeGreaterThan(gate, "release.yml:verify packs before the probe gate has run.");
         steps[gate].ShouldMatch(@"\bgate --since ""?\$", "The gate runs without --since, so on a tag push it compares the release with itself.");
+        steps[gate].ShouldNotMatch(@"(?m)^\s+continue-on-error:", "release.yml:verify lets the probe gate fail without failing the job; it binds from 2.2.0.");
+        (!Regex.IsMatch(steps[gate], $@"{Regex.Escape(Prober)} gate\b[^\n]*\|\|") || Regex.IsMatch(steps[gate], @"\n\s*exit ""?\$code""?\s*$"))
+            .ShouldBeTrue("release.yml:verify catches the probe gate's exit code and does not end the step with it, so a refusal does not fail the release; it binds from 2.2.0.");
         job.ShouldMatch(StateDirectory, "release.yml:verify does not set PROBE_STATE_DIR, so the prober writes into a developer's state directory.");
     }
 

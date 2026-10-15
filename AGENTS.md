@@ -264,13 +264,14 @@ dotnet tools/Prober/bin/Release/net10.0/prober.dll gate
 
 The gate never starts a model and needs nothing but the tracked corpus and a replay, so the release
 workflow runs it after `replay --all`, with `PROBE_STATE_DIR` in the job's temporary directory and
-`--since` the previous release's tag, and reports its verdict in the job summary. It refuses while a finding is open, a probe has not
+`--since` the previous release's tag, reports its verdict in the job summary, and fails the release on a
+refusal. It refuses while a finding is open, a probe has not
 passed at its current identity, or a claim touched since the last tag has pairwise combinations no
 probe covers; it lists what is missing. Every obligation is met by a probe in the corpus, written by
 hand or by a round, or by a reviewed waiver in `tools/probe/corpus/waivers.json` (claim, reason,
 reviewer).
 
-**The gate is advisory until the user names the first release it binds.** Until then, run it, report
-its result with the release, and tag regardless; a refusal is a list of work, not a stop. The binding
-release, once named, is written here. From that release on, never tag over a refusal without the
-user's word.
+**The gate binds from 2.2.0**
+([decision 97](design/adr/0097-2-2-0-is-a-consolidation-release-and-the-gate-binds.md)). Never tag
+2.2.0 or a later version over a refusal without the user's word, which is a waiver naming them as its
+reviewer. Answer a refusal with a probe, a fix or such a waiver, never by editing the workflow's step.
