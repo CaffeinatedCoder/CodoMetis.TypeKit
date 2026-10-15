@@ -70,6 +70,10 @@
       "claim": "E02-value-translates-to-column",
       "filter": "*E02ValueTranslatesProbe"
     },
+    "E03ColumnRoundTripProbe": {
+      "claim": "E03-column-round-trip",
+      "filter": "*E03ColumnRoundTripProbe"
+    },
     "E04IntegerKeyProbe": {
       "claim": "E04-integer-key-generated",
       "filter": "*E04IntegerKeyProbe"
@@ -85,6 +89,18 @@
     "E07ClosedSetNameProbe": {
       "claim": "E07-closed-set-stored-as-name",
       "filter": "*E07ClosedSetNameProbe"
+    },
+    "E08OptionResultNotColumnsProbe": {
+      "claim": "E08-option-result-not-columns",
+      "filter": "*E08OptionResultNotColumnsProbe"
+    },
+    "E09OrNoneInDbProbe": {
+      "claim": "E09-or-none-in-database",
+      "filter": "*E09OrNoneInDbProbe"
+    },
+    "E10ReadBackSkipsValidationProbe": {
+      "claim": "E10-read-back-skips-validation",
+      "filter": "*E10ReadBackSkipsValidationProbe"
     },
     "E11UseTypeKitOrderProbe": {
       "claim": "E11-usetypekit-order",
