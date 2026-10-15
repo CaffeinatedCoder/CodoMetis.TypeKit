@@ -16,7 +16,7 @@ internal static class Program
           identity --probe P                what a result of P is bound to
           record-run --probe P --result pass|fail [--evidence F] [--seconds S]
           footprint --probe P --cobertura F... --root WT [--include src] [--compile-time PATH...]
-          register --probe P --claim C --filter F [--variants JSON]
+          register --probe P --claim C --filter F [--variants JSON] [--seed PATCH --defect TEXT]
           publish | dismiss --id F --reason TEXT | mark retired --probe P
           lock --holder H --mode replay|explore|full [--pid N] | unlock --holder H | heartbeat --holder H
           round-start --holder H --minutes M [--claims N] | round-end --holder H | repair | abandon
@@ -24,6 +24,8 @@ internal static class Program
         Running probes:
           replay [--all] [--holder H] [--dry-run] [--where]   replays the corpus with no model
           round explore|full [--minutes M] [--claims N] [--usd X]   a capped exploration round (local only)
+          seeds [--probe P] [--dry-run]       applies each probe's seeded defect in a scratch worktree, replays the probe
+                                            there and requires a violation it causes (local only, a build per seed)
 
         State goes under PROBE_STATE_DIR when set (CI), else the main checkout's prober memory.
         Exit codes: 0 done, 1 refused or failed, 2 usage, 3 this dll is stale.
@@ -54,6 +56,7 @@ internal static class Program
             var a = new Args(args[1..], Flags);
             if (command == "replay") return Replay.Run(ctx, a);
             if (command == "round") return Round.Run(ctx, a);
+            if (command == "seeds") return Seeds.Run(ctx, a);
             var ledger = new Ledger(ctx, a.Get("branch"));
             // Commands run under a round keep its lock alive.
             if (command is not ("lock" or "unlock" or "abandon" or "heartbeat") && ctx.Env("PROBE_HOLDER") is { } holder)

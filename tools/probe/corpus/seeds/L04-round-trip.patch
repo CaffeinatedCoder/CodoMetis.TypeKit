@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit/CompilerServices/GeneratedFormatting.cs b/src/CodoMetis.TypeKit/CompilerServices/GeneratedFormatting.cs
+index 8f93241..fe989ca 100644
+--- a/src/CodoMetis.TypeKit/CompilerServices/GeneratedFormatting.cs
++++ b/src/CodoMetis.TypeKit/CompilerServices/GeneratedFormatting.cs
+@@ -27,7 +27,7 @@ public static class GeneratedFormatting
+     /// <typeparam name="T">The type to format.</typeparam>
+     /// <returns>The formatted text.</returns>
+     public static string ToString<T>(T value, string? format, IFormatProvider? provider) where T : IFormattable =>
+-        value.ToString(format, provider);
++        value.ToString(format, System.Globalization.CultureInfo.CurrentCulture);
+ 
+     /// <summary><see cref="ISpanFormattable.TryFormat"/> of <typeparamref name="T"/>.</summary>
+     /// <param name="value">The value.</param>

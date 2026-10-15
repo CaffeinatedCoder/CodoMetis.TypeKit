@@ -10,7 +10,11 @@
         {
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
-      ]
+      ],
+      "seed": {
+        "patch": "seeds/C07-fault-responses-blanket.patch",
+        "defect": "A value object's OpenAPI schema drops the wrapped type's format (int32, uuid, date-time)."
+      }
     },
     "C03ComposedProbe": {
       "claim": "C03-composed-faults",
@@ -22,7 +26,11 @@
         {
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
-      ]
+      ],
+      "seed": {
+        "patch": "seeds/C03-composed-faults.patch",
+        "defect": "A composed fault's operation lists its statuses in descending order."
+      }
     },
     "C05RuleProbe": {
       "claim": "C05-with-rule",
@@ -34,27 +42,51 @@
         {
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
-      ]
+      ],
+      "seed": {
+        "patch": "seeds/C05-with-rule.patch",
+        "defect": "WithRule names an enum rule without its nesting chain: Rules.Fault.NoAt is written Fault.NoAt."
+      }
     },
     "E01ColumnParityProbe": {
       "claim": "E01-column-parity",
-      "filter": "*E01ColumnParityProbe"
+      "filter": "*E01ColumnParityProbe",
+      "seed": {
+        "patch": "seeds/E01-column-parity.patch",
+        "defect": "A value object over an enum is mapped as a text column, as a closed set is, not as the enum's integer column."
+      }
     },
     "E02ValueTranslatesProbe": {
       "claim": "E02-value-translates-to-column",
-      "filter": "*E02ValueTranslatesProbe"
+      "filter": "*E02ValueTranslatesProbe",
+      "seed": {
+        "patch": "seeds/E02-value-translates-to-column.patch",
+        "defect": ".Value on a column is translated as a cast of the column, not the column itself."
+      }
     },
     "E04IntegerKeyProbe": {
       "claim": "E04-integer-key-generated",
-      "filter": "*E04IntegerKeyProbe"
+      "filter": "*E04IntegerKeyProbe",
+      "seed": {
+        "patch": "seeds/E04-integer-key-generated.patch",
+        "defect": "A key over an integer is declared never generated, so entities added without a key are stored with 0."
+      }
     },
     "E05OwnCompareToProbe": {
       "claim": "E05-own-compareto-rejected",
-      "filter": "*E05OwnCompareToProbe"
+      "filter": "*E05OwnCompareToProbe",
+      "seed": {
+        "patch": "seeds/E05-own-compareto-rejected.patch",
+        "defect": "A query that compares or orders by a hand-written CompareTo runs in the database instead of throwing."
+      }
     },
     "L01JsonBytesProbe": {
       "claim": "L01-json-bytes",
-      "filter": "*L01JsonBytesProbe"
+      "filter": "*L01JsonBytesProbe",
+      "seed": {
+        "patch": "seeds/L01-json-bytes.patch",
+        "defect": "A dictionary key is written with ToString(), not the wrapped type's key converter and DictionaryKeyPolicy."
+      }
     },
     "L02NoQuoteProbe": {
       "claim": "L02-no-quote",
@@ -70,7 +102,11 @@
           "PROBE_ONLY": "text.culture=globalization-invariant",
           "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
         }
-      ]
+      ],
+      "seed": {
+        "patch": "seeds/L02-no-quote.patch",
+        "defect": "Generated parsing calls the wrapped type's Parse instead of its TryParse, whose FormatException quotes the input."
+      }
     },
     "L03OneRuleProbe": {
       "claim": "L03-one-rule",
@@ -86,7 +122,11 @@
           "PROBE_ONLY": "text.culture=globalization-invariant",
           "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
         }
-      ]
+      ],
+      "seed": {
+        "patch": "seeds/L03-one-rule.patch",
+        "defect": "Parse and the type converter build a validated value object without Create."
+      }
     },
     "L04RoundTripProbe": {
       "claim": "L04-round-trip",
@@ -102,7 +142,11 @@
           "PROBE_ONLY": "text.culture=globalization-invariant",
           "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
         }
-      ]
+      ],
+      "seed": {
+        "patch": "seeds/L04-round-trip.patch",
+        "defect": "Generated formatting uses the current culture instead of the provider (invariant by default)."
+      }
     }
   }
 }
