@@ -103,4 +103,123 @@ public sealed class FaultTests
         Fault.Of(OrderFault.NotFound, "Order 7 is gone.").ShouldNotBe(Fault.Of(OrderFault.NotFound));
         Fault.Of(OrderFault.NotFound, "Order 7 is gone.").Reason.ShouldBe(OrderFault.NotFound);
     }
+
+    [Flags]
+    private enum Access { Read = 1, Write = 2 }
+
+    private static class Billing
+    {
+        public enum Rule { Overdrawn }
+    }
+
+    /// <summary>A closed set written by hand, the contract alone, since this assembly runs no generator.</summary>
+    private sealed class EmailRule : CodoMetis.TypeKit.ClosedSets.IClosedSet<EmailRule>
+    {
+        public static readonly EmailRule NoAt = new("NoAt");
+
+        private EmailRule(string name) => Name = name;
+
+        public string Name { get; }
+        public string QualifiedName => $"{nameof(EmailRule)}.{Name}";
+        public static IReadOnlyList<EmailRule> All => [NoAt];
+
+        public static bool TryParse(string? name, out EmailRule member)
+        {
+            member = NoAt;
+            return name == NoAt.Name;
+        }
+    }
+
+    [Fact]
+    public void A_fault_names_no_rule_unless_one_is_given() =>
+        Fault.Of(OrderFault.NotFound, "Order 7 is gone.").Rule.ShouldBeNull();
+
+    /// <summary>
+    /// The rule is a key a client branches on, so it is qualified with its type, a nested one after its
+    /// nesting chain: three types' <c>Blank</c> are three rules.
+    /// </summary>
+    [Fact]
+    public void A_rule_is_named_by_its_type_and_member()
+    {
+        var fault = Fault.Of(OrderFault.NameTaken, "Order 7 is called that.").WithRule(Billing.Rule.Overdrawn);
+
+        fault.Rule.ShouldBe("FaultTests.Billing.Rule.Overdrawn");
+        fault.Reason.ShouldBe(OrderFault.NameTaken);
+        fault.Detail.ShouldBe("Order 7 is called that.");
+        Fault.Of(OrderFault.NameTaken).WithRule(EmailRule.NoAt).Rule.ShouldBe("EmailRule.NoAt");
+        Fault.Of(OrderFault.NameTaken).WithRule(Access.Write).Rule.ShouldBe("FaultTests.Access.Write");
+    }
+
+    /// <summary>A fault prints as 2.0 printed it, which assertion messages quote, and its rule only where it names one.</summary>
+    [Fact]
+    public void A_fault_prints_its_rule_only_where_it_names_one()
+    {
+        Fault.Of(OrderFault.NotFound, "Order 7 is gone.").ToString().ShouldBe("Fault { Reason = NotFound, Detail = Order 7 is gone. }");
+        Fault.Of(OrderFault.NotFound).WithRule(Access.Read).ToString().ShouldBe("Fault { Reason = NotFound, Detail = , Rule = FaultTests.Access.Read }");
+    }
+
+    [Fact]
+    public void A_second_rule_replaces_the_first() =>
+        Fault.Of(OrderFault.NameTaken).WithRule(Access.Read).WithRule(EmailRule.NoAt).Rule.ShouldBe("EmailRule.NoAt");
+
+    /// <summary>A number no member names is no key: a combination of flags and a cast are refused where the rule is given.</summary>
+    [Fact]
+    public void A_value_no_member_names_is_no_rule()
+    {
+        Should.Throw<ArgumentOutOfRangeException>(() => Fault.Of(OrderFault.NotFound).WithRule(Access.Read | Access.Write)).ParamName.ShouldBe("rule");
+        var refusal = Should.Throw<ArgumentOutOfRangeException>(() => Fault.Of(OrderFault.NotFound).WithRule((Billing.Rule)7));
+        refusal.Message.ShouldStartWith("A rule is one of FaultTests.Billing.Rule's members");
+        Should.Throw<ArgumentNullException>(() => Fault.Of(OrderFault.NotFound).WithRule((EmailRule)null!)).ParamName.ShouldBe("rule");
+    }
+
+    [Fact]
+    public void Two_faults_are_equal_by_rule_too()
+    {
+        Fault.Of(OrderFault.NotFound).WithRule(Access.Read).ShouldBe(Fault.Of(OrderFault.NotFound).WithRule(Access.Read));
+        Fault.Of(OrderFault.NotFound).WithRule(Access.Read).ShouldNotBe(Fault.Of(OrderFault.NotFound).WithRule(Access.Write));
+        Fault.Of(OrderFault.NotFound).WithRule(Access.Read).ShouldNotBe(Fault.Of(OrderFault.NotFound));
+    }
+
+    private static class Box<T>
+    {
+        public enum Rule { Blank }
+    }
+
+    /// <summary>
+    /// A rule's name has no namespace and no type arguments, so two types' rules can read alike; the
+    /// faults stay apart by the rule's type, as the rules themselves are apart.
+    /// </summary>
+    [Fact]
+    public void Two_rules_that_read_alike_from_different_types_are_unequal_faults()
+    {
+        AssertApart(Fault.Of(OrderFault.NotFound).WithRule(Shipping.Rule.Blank), Fault.Of(OrderFault.NotFound).WithRule(Invoicing.Rule.Blank));
+        AssertApart(Fault.Of(OrderFault.NotFound).WithRule(Shipping.RuleSet.Blank), Fault.Of(OrderFault.NotFound).WithRule(Invoicing.RuleSet.Blank));
+        AssertApart(Fault.Of(OrderFault.NotFound).WithRule(Box<int>.Rule.Blank), Fault.Of(OrderFault.NotFound).WithRule(Box<string>.Rule.Blank));
+
+        static void AssertApart(Fault<OrderFault> one, Fault<OrderFault> other)
+        {
+            one.Rule.ShouldBe(other.Rule);
+            one.ShouldNotBe(other);
+            (one == other).ShouldBeFalse();
+            one.ShouldBe(one with { });
+        }
+    }
+
+    [Fact]
+    public void A_second_rule_replaces_the_first_rules_type_too()
+    {
+        var replaced = Fault.Of(OrderFault.NotFound).WithRule(Shipping.Rule.Blank).WithRule(Invoicing.Rule.Blank);
+
+        replaced.ShouldBe(Fault.Of(OrderFault.NotFound).WithRule(Invoicing.Rule.Blank));
+        replaced.GetHashCode().ShouldBe(Fault.Of(OrderFault.NotFound).WithRule(Invoicing.Rule.Blank).GetHashCode());
+        replaced.ShouldNotBe(Fault.Of(OrderFault.NotFound).WithRule(Shipping.Rule.Blank));
+    }
+
+    /// <summary>A rule is a member of a fixed set: a string or any other type is no rule, and does not compile, through <c>with</c> either.</summary>
+    [Theory]
+    [InlineData("Fault<OrderFault> Make() => Fault.Of(OrderFault.NotFound).WithRule(\"blank\");")]
+    [InlineData("Fault<OrderFault> Make() => Fault.Of(OrderFault.NotFound).WithRule(42);")]
+    [InlineData("Fault<OrderFault> Make(Fault<OrderFault> fault) => fault with { Rule = \"blank\" };")]
+    public void A_rule_that_is_no_member_of_a_fixed_set_does_not_compile(string member) =>
+        ConsumerCompilation.Of(Consumer(member)).ErrorIds().ShouldNotBeEmpty();
 }

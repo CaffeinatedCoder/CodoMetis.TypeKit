@@ -49,6 +49,15 @@ public static class ContactPatching
 }
 // end sample
 
+// sample: merge-patches/required
+public sealed record StrictContactPatch
+{
+    public Patch<Email> Email { get; init; }
+    public Patch<string> Phone { get; init; }
+    public Patch<int> Floor { get; init; }
+}
+// end sample
+
 // sample: merge-patches/writing
 public sealed record ContactChange(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] Patch<string> Phone,
@@ -103,6 +112,25 @@ public static class Usage
     {
         // sample: merge-patches/value-object
         JsonSerializer.Deserialize<ContactPatch>("""{"email":"nobody"}""", JsonSerializerOptions.Web);   // JsonException naming Email and NoAt, never the text
+        // end sample
+    }
+
+    public static PatchState Required()
+    {
+        // sample: merge-patches/required-use
+        var strict = new JsonSerializerOptions(JsonSerializerDefaults.Web) { RespectRequiredConstructorParameters = true };
+        StrictContactPatch moved = JsonSerializer.Deserialize<StrictContactPatch>("""{"floor":3}""", strict)!;
+        PatchState untouched = moved.Phone.State;                             // Absent
+        // end sample
+
+        return untouched;
+    }
+
+    public static void RequiredRefused()
+    {
+        var strict = new JsonSerializerOptions(JsonSerializerDefaults.Web) { RespectRequiredConstructorParameters = true };
+        // sample: merge-patches/required-use
+        JsonSerializer.Deserialize<ContactPatch>("""{"floor":3}""", strict);   // JsonException naming ContactPatch and phone
         // end sample
     }
 
@@ -218,6 +246,25 @@ public sealed class MergePatchesTests
         clear.ShouldBeShownIn(Page, Validated, "cleared.Email.Traverse(Email.Create)");
         untouched.ShouldBeShownIn(Page, Validated, "moved.Email.Traverse(Email.Create)");
         tenfold.ShouldBeShownIn(Page, patch => patch.Match(value => $"Value: {value}", () => "Null", () => "Absent"), "moved.Floor.Map(floor => floor * 10)");
+    }
+
+    /// <summary>
+    /// Under the option, a patch parameter is required like any other, and a patch declared as an
+    /// <c>init</c> property is not, its <c>Absent</c> kept where the request leaves it out.
+    /// </summary>
+    [Fact]
+    public void Under_required_constructor_parameters_a_patch_is_an_init_property()
+    {
+        var strict = new JsonSerializerOptions(JsonSerializerDefaults.Web) { RespectRequiredConstructorParameters = true };
+
+        Should.Throw<JsonException>(Usage.RequiredRefused);
+        SampleOutputs.ShouldRefuseAsShownIn(() => JsonSerializer.Deserialize<ContactPatch>("""{"floor":3}""", strict), Page, input: "floor");
+        Usage.Required().ShouldBeShownIn(Page, state => state.ToString(), "moved.Phone.State");
+
+        var moved = JsonSerializer.Deserialize<StrictContactPatch>("""{"floor":3,"phone":null}""", strict)!;
+        moved.Email.State.ShouldBe(PatchState.Absent);
+        moved.Phone.State.ShouldBe(PatchState.Null);
+        moved.Floor.State.ShouldBe(PatchState.Value);
     }
 
     [Fact]

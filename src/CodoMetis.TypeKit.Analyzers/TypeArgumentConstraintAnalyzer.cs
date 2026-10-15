@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -12,7 +13,10 @@ namespace CodoMetis.TypeKit.Analyzers;
 
 /// <summary>
 /// CMTK0010: a type argument that breaks a constraint its parameter declares by attribute,
-/// <c>[Abstract]</c>, <c>[Sealed]</c>, <c>[Record]</c> or <c>[Concrete]</c>, at any closed use.
+/// <c>[Abstract]</c>, <c>[Sealed]</c>, <c>[Record]</c>, <c>[Concrete]</c>, <c>[Interface]</c>, <c>[Unsealed]</c>,
+/// <c>[ValueObject]</c>, <c>[ClosedSet]</c>, <c>[FlagsEnum]</c> or <c>[ReadOnlyStruct]</c>, or a pair of
+/// arguments that breaks what two parameters declare together, <c>[Distinct]</c> or <c>[Unrelated]</c>, at
+/// any closed use.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -40,6 +44,14 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// through, included. A <c>cref</c> in a documentation comment names
 /// the generic's own parameters and is not a use; an array is sealed and concrete.
 /// </para>
+/// <para>
+/// <c>[Distinct]</c> and <c>[Unrelated]</c> are relational: every pair of parameters of one generic that
+/// both carry one is checked at the stricter level either declares, and a breach is reported once, at the
+/// later argument. Two types are the same when they are one symbol, nullable annotations aside, and
+/// related when an implicit identity, reference or boxing conversion runs either way. A type parameter
+/// given as an argument is told apart from the other argument when both are parameters of one generic
+/// carrying the attribute, or when their C# constraints admit no common (or no related) type.
+/// </para>
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
@@ -51,7 +63,7 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         category: "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "A type parameter marked [Abstract], [Sealed], [Record] or [Concrete] constrains its arguments where C# cannot. A closed use with an argument that breaks the constraint compiles; this rule is its error.",
+        description: "A type parameter marked [Abstract], [Sealed], [Record], [Concrete], [Interface], [Unsealed], [ValueObject], [ClosedSet], [FlagsEnum] or [ReadOnlyStruct] constrains its arguments where C# cannot, and two marked [Distinct] or [Unrelated] constrain their arguments against each other. A closed use with an argument that breaks the constraint compiles; this rule is its error.",
         helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.TypeArgumentConstraint)
     );
 
@@ -79,8 +91,138 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
                 OperationKind.Increment,
                 OperationKind.Decrement,
                 OperationKind.CompoundAssignment);
+            start.RegisterSyntaxNodeAction(
+                node => AnalyzePattern(node, symbols),
+                SyntaxKind.ForEachStatement,
+                SyntaxKind.ForEachVariableStatement,
+                SyntaxKind.AwaitExpression,
+                SyntaxKind.SimpleAssignmentExpression,
+                SyntaxKind.RecursivePattern,
+                SyntaxKind.CollectionExpression);
         });
     }
+
+    /// <summary>
+    /// A method the compiler binds by pattern, which no call or name in source shows: a <c>foreach</c>'s
+    /// <c>GetEnumerator</c>, an <c>await</c>'s <c>GetAwaiter</c>, a deconstruction's <c>Deconstruct</c> (in an
+    /// assignment, a <c>foreach</c> or a positional pattern), and a collection expression's builder or
+    /// <c>Add</c>. Its type arguments are inferred, so it is reported where the pattern is used. Each was
+    /// silent, where the same method called by name was reported (reported 2026-10-14).
+    /// <para>
+    /// Only the kinds 2.1.0 adds, the pair attributes among them: CMTK0010 is an Error, and it shipped in 2.0.0
+    /// with <c>[Abstract]</c>, <c>[Sealed]</c>, <c>[Record]</c> and <c>[Concrete]</c>, which a pattern use left
+    /// alone; an Error that reports more waits for a major version (decision 34), so those four join at 3.0.0
+    /// (decision 89).
+    /// </para>
+    /// </summary>
+    private static void AnalyzePattern(SyntaxNodeAnalysisContext context, TypeKitSymbols symbols)
+    {
+        var compilation = (CSharpCompilation)context.Compilation;
+
+        foreach (var (method, reported) in BoundByPattern(context.Node, context.SemanticModel, context.CancellationToken).Distinct())
+        {
+            foreach (var diagnostic in InferredDiagnostics(symbols, compilation, Unreduced(method), receiver: null, reported.GetLocation(), IsSinceTwoOne))
+                context.Report(diagnostic);
+        }
+    }
+
+    /// <summary>Whether <paramref name="constraint"/> is one CMTK0010 did not check in 2.0.0.</summary>
+    private static bool IsSinceTwoOne(TypeArgumentConstraint constraint) =>
+        constraint is not (TypeArgumentConstraint.Abstract or TypeArgumentConstraint.Sealed or TypeArgumentConstraint.Record or TypeArgumentConstraint.Concrete);
+
+    /// <summary>The methods <paramref name="node"/> binds by pattern, each with where it is reported.</summary>
+    private static IEnumerable<(IMethodSymbol Method, SyntaxNode Reported)> BoundByPattern(SyntaxNode node, SemanticModel model, CancellationToken token)
+    {
+        switch (node)
+        {
+            case CommonForEachStatementSyntax loop:
+                if (model.GetForEachStatementInfo(loop).GetEnumeratorMethod is { } enumerator) yield return (enumerator, loop.Expression);
+                if (loop is ForEachVariableStatementSyntax deconstructing)
+                {
+                    foreach (var deconstructor in Deconstructors(model.GetDeconstructionInfo(deconstructing))) yield return (deconstructor, deconstructing.Variable);
+                }
+
+                break;
+
+            case AwaitExpressionSyntax awaited:
+                if (model.GetAwaitExpressionInfo(awaited).GetAwaiterMethod is { } awaiter) yield return (awaiter, awaited);
+                break;
+
+            case AssignmentExpressionSyntax { Left: TupleExpressionSyntax or DeclarationExpressionSyntax } assignment:
+                foreach (var deconstructor in Deconstructors(model.GetDeconstructionInfo(assignment))) yield return (deconstructor, assignment);
+                break;
+
+            case RecursivePatternSyntax { PositionalPatternClause: not null } pattern:
+                if (model.GetOperation(pattern, token) is IRecursivePatternOperation { DeconstructSymbol: IMethodSymbol deconstruct }) yield return (deconstruct, pattern);
+                break;
+
+            case CollectionExpressionSyntax collection:
+                if (model.GetOperation(collection, token) is not ICollectionExpressionOperation { ConstructMethod: IMethodSymbol construct } operation) break;
+
+                if (construct.MethodKind == MethodKind.Ordinary)
+                {
+                    yield return (construct, collection);
+                    break;
+                }
+
+                foreach (var add in Adds(collection, operation, model, token)) yield return (add, collection);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// The <c>Add</c> a collection expression calls for each element of a type it builds by constructor, where
+    /// one that could carry a constraint is in scope: a generic one, or one of a generic extension block.
+    /// </summary>
+    /// <remarks>
+    /// Roslyn exposes no <c>Add</c> of a collection expression (measured with 5.0.0: its operation has the
+    /// constructor alone, and <c>GetCollectionInitializerSymbolInfo</c> answers nothing for its elements), so
+    /// <c>default(T).Add(element)</c> is bound speculatively where the expression is, as the compiler binds
+    /// the call it makes; a spread's element is a <c>default</c> of its element type.
+    /// </remarks>
+    private static IEnumerable<IMethodSymbol> Adds(CollectionExpressionSyntax collection, ICollectionExpressionOperation operation, SemanticModel model, CancellationToken token)
+    {
+        if (operation.Type is not INamedTypeSymbol target || operation.Elements.Length != collection.Elements.Count) yield break;
+
+        var constrainable = model.LookupSymbols(collection.SpanStart, target, "Add", includeReducedExtensionMethods: true)
+                                 .Any(symbol => symbol is IMethodSymbol { IsGenericMethod: true } or IMethodSymbol { ContainingType: { IsExtension: true, IsGenericType: true } });
+        if (!constrainable) yield break;
+
+        var receiver = SyntaxFactory.ParenthesizedExpression(SyntaxFactory.DefaultExpression(TypeSyntaxOf(target)));
+
+        for (var i = 0; i < operation.Elements.Length; i++)
+        {
+            ExpressionSyntax? argument = (operation.Elements[i], collection.Elements[i]) switch
+            {
+                (ISpreadOperation { ElementType: { } element }, _) => SyntaxFactory.DefaultExpression(TypeSyntaxOf(element)),
+                (_, ExpressionElementSyntax expression)          => expression.Expression.WithoutTrivia(),
+                _                                                => null,
+            };
+            if (argument is null) continue;
+
+            var call = SyntaxFactory.InvocationExpression(
+                SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, receiver, SyntaxFactory.IdentifierName("Add")),
+                SyntaxFactory.ArgumentList(SyntaxFactory.SingletonSeparatedList(SyntaxFactory.Argument(argument))));
+
+            if (model.GetSpeculativeSymbolInfo(collection.SpanStart, call, SpeculativeBindingOption.BindAsExpression).Symbol is IMethodSymbol add) yield return add;
+        }
+    }
+
+    private static TypeSyntax TypeSyntaxOf(ITypeSymbol type) => SyntaxFactory.ParseTypeName(type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+
+    /// <summary>A deconstruction's <c>Deconstruct</c> methods, a nested one's included.</summary>
+    private static IEnumerable<IMethodSymbol> Deconstructors(DeconstructionInfo info)
+    {
+        if (info.Method is { } method) yield return method;
+
+        foreach (var nested in info.Nested)
+        {
+            foreach (var inner in Deconstructors(nested)) yield return inner;
+        }
+    }
+
+    /// <summary>An extension method as declared, with every type argument: one bound to its receiver lists fewer.</summary>
+    private static IMethodSymbol Unreduced(IMethodSymbol method) => method.GetConstructedReducedFrom() ?? method;
 
     /// <summary>
     /// A generic name written in source, a type's, an attribute's or a method's: each argument against
@@ -116,6 +258,9 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
             foreach (var diagnostic in Diagnostics(symbols, arguments[i], receiver, name.TypeArgumentList.Arguments[i].GetLocation()))
                 context.Report(diagnostic);
         }
+
+        foreach (var diagnostic in PairDiagnostics(symbols, (CSharpCompilation)context.Compilation, arguments, receiver, later => name.TypeArgumentList.Arguments[later].GetLocation()))
+            context.Report(diagnostic);
     }
 
     /// <summary>Whether <paramref name="name"/> is inside the argument of a <c>nameof</c>, the operator and not a method of that name.</summary>
@@ -184,24 +329,34 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         // included; holder?.Inst<T>() is a member binding.
         if (name is GenericNameSyntax or MemberAccessExpressionSyntax { Name: GenericNameSyntax } or MemberBindingExpressionSyntax { Name: GenericNameSyntax }) return;
 
-        var arguments = Pairs(member);
-        if (arguments.Count == 0) return;
+        if (Pairs(member).Count == 0) return;
 
         var receiver = member is IMethodSymbol { IsGenericMethod: true } ? Receiver(name ?? reported, context.Operation.SemanticModel, context.CancellationToken) : null;
 
+        foreach (var diagnostic in InferredDiagnostics(symbols, (CSharpCompilation)context.Compilation, member, receiver, reported.GetLocation()))
+            context.Report(diagnostic);
+    }
+
+    /// <summary>The diagnostics of a member whose type arguments are inferred, all at <paramref name="location"/>.</summary>
+    private static IEnumerable<Diagnostic> InferredDiagnostics(TypeKitSymbols symbols, CSharpCompilation compilation, ISymbol member, ITypeSymbol? receiver, Location location, Func<TypeArgumentConstraint, bool>? checks = null)
+    {
+        var arguments = Pairs(member);
+        if (arguments.Count == 0) yield break;
+
         foreach (var argument in arguments)
         {
-            foreach (var diagnostic in Diagnostics(symbols, argument, receiver, reported.GetLocation()))
-                context.Report(diagnostic);
+            foreach (var diagnostic in Diagnostics(symbols, argument, receiver, location, checks)) yield return diagnostic;
         }
+
+        foreach (var diagnostic in PairDiagnostics(symbols, compilation, arguments, receiver, _ => location)) yield return diagnostic;
     }
 
     /// <summary>
     /// One diagnostic per constraint <paramref name="argument"/> breaks, for the caller to report
     /// through <see cref="GeneratedCode"/>, which keeps generated code that maps to no markup quiet.
     /// </summary>
-    private static IEnumerable<Diagnostic> Diagnostics(TypeKitSymbols symbols, TypeArgument argument, ITypeSymbol? receiver, Location location) =>
-        Breaches(symbols, argument.Parameter, argument.Argument, receiver)
+    private static IEnumerable<Diagnostic> Diagnostics(TypeKitSymbols symbols, TypeArgument argument, ITypeSymbol? receiver, Location location, Func<TypeArgumentConstraint, bool>? checks = null) =>
+        Breaches(symbols, argument.Parameter, argument.Argument, receiver, checks)
             .Select(breach => Diagnostic.Create(Rule, location, argument.Argument.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat), argument.Parameter.Name, Owner(argument.Owner), breach));
 
     /// <summary>A type parameter, the argument it was given, and the generic that declares it.</summary>
@@ -298,29 +453,339 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     };
 
     /// <summary>What <paramref name="argument"/> breaks of what <paramref name="parameter"/> declares, as the message's last clause.</summary>
-    private static IEnumerable<string> Breaches(TypeKitSymbols symbols, ITypeParameterSymbol parameter, ITypeSymbol argument, ITypeSymbol? receiver)
+    private static IEnumerable<string> Breaches(TypeKitSymbols symbols, ITypeParameterSymbol parameter, ITypeSymbol argument, ITypeSymbol? receiver, Func<TypeArgumentConstraint, bool>? checks = null)
     {
         // Box<Missing> is the compiler's error (CS0246); what Missing would be is unknown.
         if (argument.TypeKind is TypeKind.Error) yield break;
 
         foreach (var constraint in Effective(symbols, parameter, receiver))
         {
+            // Relational constraints are checked against the other arguments, in PairDiagnostics.
+            if (constraint is TypeArgumentConstraint.Distinct or TypeArgumentConstraint.Unrelated) continue;
+            if (checks is not null && !checks(constraint)) continue;
+
             if (argument is ITypeParameterSymbol forwarded)
             {
                 if (!Proves(symbols, forwarded, constraint))
                     yield return $"is a type parameter that does not carry [{constraint}]";
             }
-            else if (!Satisfies(argument, constraint))
+            else if (!Satisfies(symbols, argument, constraint))
             {
                 yield return constraint switch
                 {
-                    TypeArgumentConstraint.Abstract => "is not an abstract class or record",
-                    TypeArgumentConstraint.Sealed   => "is not sealed",
-                    TypeArgumentConstraint.Record   => "is not a record",
-                    _                               => "is not a concrete class, record or struct",
+                    TypeArgumentConstraint.Abstract       => "is not an abstract class or record",
+                    TypeArgumentConstraint.Sealed         => "is not sealed",
+                    TypeArgumentConstraint.Record         => "is not a record",
+                    TypeArgumentConstraint.Interface      => "is not an interface",
+                    TypeArgumentConstraint.Unsealed       => "is not a class that can be derived from",
+                    TypeArgumentConstraint.ValueObject    => "is not a value object (IValue<T>)",
+                    TypeArgumentConstraint.ClosedSet      => "is not a closed set (IClosedSet<TSelf>)",
+                    TypeArgumentConstraint.FlagsEnum      => "is not an enum marked [Flags]",
+                    TypeArgumentConstraint.ReadOnlyStruct => "is not a readonly struct",
+                    _                                     => "is not a concrete class, record or struct",
                 };
             }
         }
+    }
+
+    /// <summary>
+    /// One diagnostic per pair of arguments of one generic that breaks <c>[Distinct]</c> or <c>[Unrelated]</c>,
+    /// at the stricter level either parameter declares, reported at the later argument of the pair
+    /// (<paramref name="locationOf"/> its index), so a breach is one report and not two. A member's list
+    /// holds its extension block's arguments and its own, two generics: only arguments of one generic are a pair.
+    /// </summary>
+    private static IEnumerable<Diagnostic> PairDiagnostics(TypeKitSymbols symbols, CSharpCompilation compilation, List<TypeArgument> arguments, ITypeSymbol? receiver, Func<int, Location> locationOf)
+    {
+        if (arguments.Count < 2) yield break;
+
+        var levels = arguments.Select(argument => Level(Effective(symbols, argument.Parameter, receiver))).ToList();
+        if (levels.All(level => level is TypeArgumentConstraint.Abstract)) yield break;
+
+        for (var later = 1; later < arguments.Count; later++)
+        {
+            if (levels[later] is TypeArgumentConstraint.Abstract) continue;
+
+            for (var earlier = 0; earlier < later; earlier++)
+            {
+                if (levels[earlier] is TypeArgumentConstraint.Abstract) continue;
+                if (!SymbolEqualityComparer.Default.Equals(arguments[earlier].Owner, arguments[later].Owner)) continue;
+
+                var level = levels[earlier] is TypeArgumentConstraint.Unrelated || levels[later] is TypeArgumentConstraint.Unrelated
+                    ? TypeArgumentConstraint.Unrelated
+                    : TypeArgumentConstraint.Distinct;
+
+                if (PairBreach(symbols, compilation, arguments[earlier], arguments[later], level) is { } breach)
+                {
+                    yield return Diagnostic.Create(
+                        Rule,
+                        locationOf(later),
+                        arguments[later].Argument.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+                        arguments[later].Parameter.Name,
+                        Owner(arguments[later].Owner),
+                        breach);
+                }
+            }
+        }
+    }
+
+    /// <summary>The relational level a parameter's constraints declare: <c>Unrelated</c>, <c>Distinct</c>, or <c>Abstract</c> standing for none.</summary>
+    private static TypeArgumentConstraint Level(IEnumerable<TypeArgumentConstraint> constraints)
+    {
+        var level = TypeArgumentConstraint.Abstract;
+
+        foreach (var constraint in constraints)
+        {
+            if (constraint is TypeArgumentConstraint.Unrelated) return constraint;
+            if (constraint is TypeArgumentConstraint.Distinct) level = constraint;
+        }
+
+        return level;
+    }
+
+    /// <summary>
+    /// What the pair breaks at <paramref name="level"/>, as the message's last clause on the later
+    /// argument, or <see langword="null"/>. Two closed types are compared as they are; a type parameter, or a
+    /// type built from one, <c>List&lt;T&gt;</c> or <c>T[]</c>, is a breach unless it is proved apart
+    /// (<see cref="ProvedDistinct"/>, <see cref="ProvedUnrelated"/>), since otherwise the requirement would end
+    /// at the first forwarding parameter. Compared as written, <c>List&lt;T&gt;</c> and <c>List&lt;int&gt;</c>
+    /// were two types, and <c>Listed&lt;int&gt;</c> held one twice (reported 2026-10-14).
+    /// </summary>
+    private static string? PairBreach(TypeKitSymbols symbols, CSharpCompilation compilation, TypeArgument earlier, TypeArgument later, TypeArgumentConstraint level)
+    {
+        var (first, second) = (earlier.Argument, later.Argument);
+        if (first.TypeKind is TypeKind.Error || second.TypeKind is TypeKind.Error) return null;
+
+        var other = $"'{first.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)}', the type argument for '{earlier.Parameter.Name}'";
+
+        if (Open(first) || Open(second))
+        {
+            if (Same(compilation, first, second)) return $"is the same type as the argument for '{earlier.Parameter.Name}'";
+
+            return level switch
+            {
+                TypeArgumentConstraint.Unrelated when !ProvedUnrelated(symbols, compilation, first, second) => $"is not proved unrelated to {other}",
+                TypeArgumentConstraint.Distinct when !ProvedDistinct(symbols, compilation, first, second)   => $"is not proved a different type from {other}",
+                _                                                                                            => null,
+            };
+        }
+
+        if (Same(compilation, first, second)) return $"is the same type as the argument for '{earlier.Parameter.Name}'";
+
+        return level is TypeArgumentConstraint.Unrelated && Related(compilation, first, second)
+            ? $"derives from, implements, boxes to or is a base of {other}"
+            : null;
+    }
+
+    /// <summary>
+    /// One symbol, nullable annotations aside, or an identity conversion between the two: <c>dynamic</c> is
+    /// <c>object</c>, and a tuple is the tuple whatever its element names.
+    /// </summary>
+    private static bool Same(CSharpCompilation compilation, ITypeSymbol first, ITypeSymbol second) =>
+        SymbolEqualityComparer.Default.Equals(first, second) || compilation.ClassifyConversion(first, second).IsIdentity;
+
+    /// <summary>
+    /// Whether an implicit identity, reference or boxing conversion runs either way: a base and a derived
+    /// type, an interface and an implementer, <c>object</c> and anything, a struct and an interface it
+    /// implements. A numeric, nullable or user-defined conversion is no relation.
+    /// </summary>
+    private static bool Related(CSharpCompilation compilation, ITypeSymbol first, ITypeSymbol second) =>
+        Converts(compilation, first, second) || Converts(compilation, second, first);
+
+    private static bool Converts(CSharpCompilation compilation, ITypeSymbol from, ITypeSymbol to)
+    {
+        var conversion = compilation.ClassifyConversion(from, to);
+        return conversion.IsImplicit && (conversion.IsIdentity || conversion.IsReference || conversion.IsBoxing);
+    }
+
+    /// <summary>
+    /// Whether two arguments, at least one a type parameter or built from one, are proved different types:
+    /// no closed use can make them one (<see cref="CouldBeSame"/>).
+    /// </summary>
+    private static bool ProvedDistinct(TypeKitSymbols symbols, CSharpCompilation compilation, ITypeSymbol first, ITypeSymbol second) =>
+        !CouldBeSame(symbols, compilation, first, second);
+
+    /// <summary>
+    /// Whether some closed use could make the two types one. Two type parameters could, unless they are
+    /// proved apart (<see cref="ParametersApart"/>); a type parameter could be a type that meets its C#
+    /// constraints (<see cref="CouldBe"/>), but never one built from itself, <c>T</c> and <c>List&lt;T&gt;</c>;
+    /// two arrays could if their ranks match and their elements could; two generic types could if they have
+    /// one definition and each pair of arguments could; anything else built from a parameter is taken as
+    /// possible. Each position is asked apart, so <c>KeyValuePair&lt;T, T&gt;</c> and
+    /// <c>KeyValuePair&lt;int, string&gt;</c> could be one, which errs toward a report.
+    /// </summary>
+    private static bool CouldBeSame(TypeKitSymbols symbols, CSharpCompilation compilation, ITypeSymbol first, ITypeSymbol second) => (first, second) switch
+    {
+        (ITypeParameterSymbol one, ITypeParameterSymbol two) => SymbolEqualityComparer.Default.Equals(one, two) || !ParametersApart(symbols, compilation, one, two),
+        (ITypeParameterSymbol parameter, var type)           => !Mentions(type, parameter) && CouldBe(compilation, parameter, type),
+        (var type, ITypeParameterSymbol parameter)           => !Mentions(type, parameter) && CouldBe(compilation, parameter, type),
+        (IArrayTypeSymbol one, IArrayTypeSymbol two)         => one.Rank == two.Rank && CouldBeSame(symbols, compilation, one.ElementType, two.ElementType),
+        (IArrayTypeSymbol, INamedTypeSymbol) or (INamedTypeSymbol, IArrayTypeSymbol) => false,
+        (INamedTypeSymbol one, INamedTypeSymbol two) when Open(one) || Open(two) =>
+            SymbolEqualityComparer.Default.Equals(one.OriginalDefinition, two.OriginalDefinition)
+         && AllArguments(one).Zip(AllArguments(two), (x, y) => CouldBeSame(symbols, compilation, x, y)).All(could => could),
+        _ => Open(first) || Open(second) || Same(compilation, first, second),
+    };
+
+    /// <summary>The type arguments of a generic type and of the types it is nested in, outermost first.</summary>
+    private static IEnumerable<ITypeSymbol> AllArguments(INamedTypeSymbol type) =>
+        (type.ContainingType is { } outer ? AllArguments(outer) : []).Concat(type.TypeArguments);
+
+    /// <summary>Whether <paramref name="type"/> is built from <paramref name="parameter"/>: no finite type is both, so they are never one.</summary>
+    private static bool Mentions(ITypeSymbol type, ITypeParameterSymbol parameter) => type switch
+    {
+        ITypeParameterSymbol other => SymbolEqualityComparer.Default.Equals(other, parameter),
+        IArrayTypeSymbol array     => Mentions(array.ElementType, parameter),
+        INamedTypeSymbol named     => named.TypeArguments.Any(argument => Mentions(argument, parameter)) || named.ContainingType is { } outer && Mentions(outer, parameter),
+        _                          => false,
+    };
+
+    /// <summary>
+    /// Whether two type parameters are proved different types: both carry <c>[Distinct]</c> or
+    /// <c>[Unrelated]</c> in one generic, whose closed uses are checked in turn; or their C# constraints admit
+    /// no common type, <c>struct</c> against <c>class</c> or a class bound no value type boxes to, or two class
+    /// bounds neither deriving from the other. An <c>Enum</c> bound admits every enum, which <c>struct</c>
+    /// admits too: taken as proof, two <c>DayOfWeek</c> passed through a forwarding generic (reported 2026-10-14).
+    /// </summary>
+    private static bool ParametersApart(TypeKitSymbols symbols, CSharpCompilation compilation, ITypeParameterSymbol one, ITypeParameterSymbol two) =>
+        Together(symbols, one, two, TypeArgumentConstraint.Distinct)
+     || (IsValueTypes(one) && (two.HasReferenceTypeConstraint || ClassBound(two) is { } bound && NoBox(bound)))
+     || (IsValueTypes(two) && (one.HasReferenceTypeConstraint || ClassBound(one) is { } bound_ && NoBox(bound_)))
+     || (ClassBound(one) is { } first_ && ClassBound(two) is { } second_ && DifferentChains(compilation, first_, second_));
+
+    /// <summary>
+    /// Whether two arguments, at least one a type parameter or built from one, are proved unrelated: two
+    /// parameters of one generic both carrying <c>[Unrelated]</c>; a <c>struct</c> parameter against a class
+    /// other than <c>object</c>, <c>ValueType</c> or <c>Enum</c>, which a value type boxes to, or against a
+    /// parameter bound to such a class; or two class bounds neither deriving from the other, since a class
+    /// has one base chain. <c>class</c> alone proves nothing: <c>object</c> satisfies it and is related to
+    /// everything. Two types built from parameters, neither one, are proved by <see cref="BuiltApart"/>.
+    /// </summary>
+    private static bool ProvedUnrelated(TypeKitSymbols symbols, CSharpCompilation compilation, ITypeSymbol first, ITypeSymbol second)
+    {
+        if (first is ITypeParameterSymbol one && second is ITypeParameterSymbol two)
+        {
+            if (Together(symbols, one, two, TypeArgumentConstraint.Unrelated)) return true;
+
+            return (IsValueTypes(one) && ClassBound(two) is { } bound && NoBox(bound))
+                || (IsValueTypes(two) && ClassBound(one) is { } bound_ && NoBox(bound_))
+                || (ClassBound(one) is { } first_ && ClassBound(two) is { } second_ && DifferentChains(compilation, first_, second_));
+        }
+
+        if (first is not ITypeParameterSymbol && second is not ITypeParameterSymbol) return BuiltApart(symbols, compilation, first, second);
+
+        var (parameter, type) = first is ITypeParameterSymbol p ? (p, second) : ((ITypeParameterSymbol)second, first);
+
+        if (IsValueTypes(parameter)) return type.TypeKind is TypeKind.Class or TypeKind.Delegate && NoBox(type);
+
+        return ClassBound(parameter) is { } classBound
+            && type.TypeKind is not TypeKind.Interface and not TypeKind.Dynamic and not TypeKind.TypeParameter
+            && type.SpecialType is not SpecialType.System_Object
+            && DifferentChains(compilation, classBound, type);
+    }
+
+    /// <summary>
+    /// Whether no type derives from both classes, nor one from the other: a class has one base chain, so two
+    /// classes meet only where one derives from the other. A class built from a type parameter,
+    /// <c>Node&lt;T&gt;</c>, is compared by its definition, since its arguments are decided at each closed use:
+    /// compared as written, <c>where T : Node&lt;T&gt;</c> was proved apart from <c>Leaf : Node&lt;Leaf&gt;</c>,
+    /// and so were two parameters bound to <c>Node&lt;TA&gt;</c> and <c>Node&lt;TB&gt;</c> (reported 2026-10-14).
+    /// </summary>
+    private static bool DifferentChains(CSharpCompilation compilation, ITypeSymbol first, ITypeSymbol second) =>
+        Open(first) || Open(second)
+            ? !Derives(first, second) && !Derives(second, first)
+            : !Related(compilation, first, second);
+
+    /// <summary>Whether <paramref name="from"/>'s definition is <paramref name="type"/>'s or one of its bases'.</summary>
+    private static bool Derives(ITypeSymbol type, ITypeSymbol from)
+    {
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            if (SymbolEqualityComparer.Default.Equals(current.OriginalDefinition, from.OriginalDefinition)) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="type"/> is or is built from a type parameter, <c>T</c>, <c>List&lt;T&gt;</c>,
+    /// <c>T[]</c>, <c>Outer&lt;T&gt;.Inner</c>: what it stands for is decided at each closed use.
+    /// </summary>
+    private static bool Open(ITypeSymbol type) => type switch
+    {
+        ITypeParameterSymbol               => true,
+        IArrayTypeSymbol array             => Open(array.ElementType),
+        IPointerTypeSymbol pointer         => Open(pointer.PointedAtType),
+        IFunctionPointerTypeSymbol pointer => Open(pointer.Signature.ReturnType) || pointer.Signature.Parameters.Any(parameter => Open(parameter.Type)),
+        INamedTypeSymbol named             => named.TypeArguments.Any(Open) || named.ContainingType is { } outer && Open(outer),
+        _                                  => false,
+    };
+
+    /// <summary>
+    /// Whether two types, neither a type parameter and one built from one, are unrelated at every closed use:
+    /// two value types that are never one, since a value type converts to another by identity alone; a value
+    /// type and a class, an array or a delegate no value type boxes to; or two of a class, an array and a
+    /// delegate of different chains, compared by their definitions. Two arrays and two delegates are related
+    /// by variance beyond their definitions, and an interface by whatever implements it: they prove nothing.
+    /// </summary>
+    private static bool BuiltApart(TypeKitSymbols symbols, CSharpCompilation compilation, ITypeSymbol first, ITypeSymbol second)
+    {
+        static bool Value(ITypeSymbol type)   => type.TypeKind is TypeKind.Struct or TypeKind.Enum;
+        static bool Chained(ITypeSymbol type) => type.TypeKind is TypeKind.Class or TypeKind.Array or TypeKind.Delegate;
+
+        if (Value(first) && Value(second)) return !CouldBeSame(symbols, compilation, first, second);
+        if (Value(first)) return Chained(second) && NoBox(second);
+        if (Value(second)) return Chained(first) && NoBox(first);
+
+        return Chained(first) && Chained(second)
+            && !(first.TypeKind == second.TypeKind && first.TypeKind is TypeKind.Array or TypeKind.Delegate)
+            && DifferentChains(compilation, first, second);
+    }
+
+    /// <summary>Whether both parameters carry <paramref name="constraint"/> (or a stricter one) in one generic, so its closed uses are checked for the pair.</summary>
+    private static bool Together(TypeKitSymbols symbols, ITypeParameterSymbol one, ITypeParameterSymbol two, TypeArgumentConstraint constraint)
+    {
+        if (!SymbolEqualityComparer.Default.Equals(Declarer(one), Declarer(two))) return false;
+
+        var first  = Level(Effective(symbols, one, receiver: null));
+        var second = Level(Effective(symbols, two, receiver: null));
+
+        return constraint is TypeArgumentConstraint.Unrelated
+            ? first is TypeArgumentConstraint.Unrelated && second is TypeArgumentConstraint.Unrelated
+            : first is not TypeArgumentConstraint.Abstract && second is not TypeArgumentConstraint.Abstract;
+    }
+
+    private static ISymbol? Declarer(ITypeParameterSymbol parameter) => (ISymbol?)parameter.DeclaringMethod?.OriginalDefinition ?? parameter.DeclaringType?.OriginalDefinition;
+
+    /// <summary><c>struct</c> or <c>unmanaged</c>: value types alone, which never derive from a class.</summary>
+    private static bool IsValueTypes(ITypeParameterSymbol parameter) => parameter.HasValueTypeConstraint || parameter.HasUnmanagedTypeConstraint;
+
+    /// <summary>The class a parameter is bound to, <c>where T : Handler</c>, other than <c>object</c>; an interface bound is none.</summary>
+    private static INamedTypeSymbol? ClassBound(ITypeParameterSymbol parameter) =>
+        parameter.ConstraintTypes.OfType<INamedTypeSymbol>().FirstOrDefault(bound => bound.TypeKind is TypeKind.Class && bound.SpecialType is not SpecialType.System_Object);
+
+    /// <summary>A class no value type boxes to: not <c>object</c>, <c>ValueType</c> or <c>Enum</c>.</summary>
+    private static bool NoBox(ITypeSymbol type) => type.SpecialType is not (SpecialType.System_Object or SpecialType.System_ValueType or SpecialType.System_Enum);
+
+    /// <summary>
+    /// Whether <paramref name="type"/> could be the argument for <paramref name="parameter"/>: it meets the
+    /// parameter's C# constraints as far as they can be read, <c>struct</c>, <c>unmanaged</c>, <c>class</c>
+    /// and each bound that is a closed type. A <c>new()</c> constraint and a bound that is itself a parameter
+    /// are taken as met, and so is an interface bound built from one: <c>where T : IEquatable&lt;T&gt;</c> is met
+    /// by <c>int</c>, which implements <c>IEquatable&lt;int&gt;</c> and not the bound as written, and was taken
+    /// as proof that <c>T</c> is never <c>int</c> (reported 2026-10-14). A class bound built from one,
+    /// <c>Node&lt;T&gt;</c>, is met by a type whose chain holds its definition. A type built from a parameter,
+    /// <c>List&lt;U&gt;</c>, is read the same way against every bound, and as unmanaged, since its arguments
+    /// decide both.
+    /// </summary>
+    private static bool CouldBe(CSharpCompilation compilation, ITypeParameterSymbol parameter, ITypeSymbol type)
+    {
+        if (parameter.HasValueTypeConstraint && !(type.IsValueType && type.OriginalDefinition.SpecialType is not SpecialType.System_Nullable_T)) return false;
+        if (parameter.HasUnmanagedTypeConstraint && !Open(type) && !type.IsUnmanagedType) return false;
+        if (parameter.HasReferenceTypeConstraint && !type.IsReferenceType) return false;
+
+        return parameter.ConstraintTypes.OfType<INamedTypeSymbol>().All(bound => Open(bound) || Open(type)
+                                                                                   ? bound.TypeKind is not TypeKind.Class || Derives(type, bound)
+                                                                                   : Converts(compilation, type, bound));
     }
 
     /// <summary>
@@ -328,28 +793,47 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
     /// concrete class. An enum and a delegate are concrete, as they are sealed: an enum is a value type,
     /// which <c>new()</c> and <c>struct</c> accept, and a delegate a sealed class made from a target and
     /// a method; <c>dynamic</c> is <c>object</c>. Their bases, <c>Enum</c>, <c>Delegate</c>,
-    /// <c>MulticastDelegate</c> and <c>ValueType</c>, are abstract classes.
+    /// <c>MulticastDelegate</c> and <c>ValueType</c>, are abstract classes. Unsealed is a class that can
+    /// be derived from, abstract included, an interface not; a value object and a closed set are what the
+    /// marker interfaces say, through any interface; a readonly struct is the declaration, which an enum is not.
+    /// An interface is no value object, even one deriving from the marker: <c>Keyed&lt;IDerivedValue&gt;</c> was
+    /// accepted while <c>Keyed&lt;IValue&lt;int&gt;&gt;</c> was refused (reported 2026-10-14). An interface with
+    /// the closed-set marker is no type argument at all, since its static members have no implementation (CS8920).
     /// </summary>
-    private static bool Satisfies(ITypeSymbol argument, TypeArgumentConstraint constraint) => constraint switch
+    private static bool Satisfies(TypeKitSymbols symbols, ITypeSymbol argument, TypeArgumentConstraint constraint) => constraint switch
     {
-        TypeArgumentConstraint.Abstract => argument is INamedTypeSymbol { TypeKind: TypeKind.Class, IsAbstract: true, IsStatic: false },
-        TypeArgumentConstraint.Sealed   => argument.TypeKind is TypeKind.Struct or TypeKind.Enum or TypeKind.Array || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Delegate, IsSealed: true, IsStatic: false },
-        TypeArgumentConstraint.Record   => argument is INamedTypeSymbol { IsRecord: true },
-        _                               => argument.TypeKind is TypeKind.Array or TypeKind.Enum or TypeKind.Delegate or TypeKind.Dynamic
-                                        || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct, IsAbstract: false, IsStatic: false },
+        TypeArgumentConstraint.Abstract       => argument is INamedTypeSymbol { TypeKind: TypeKind.Class, IsAbstract: true, IsStatic: false },
+        TypeArgumentConstraint.Sealed         => argument.TypeKind is TypeKind.Struct or TypeKind.Enum or TypeKind.Array || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Delegate, IsSealed: true, IsStatic: false },
+        TypeArgumentConstraint.Record         => argument is INamedTypeSymbol { IsRecord: true },
+        TypeArgumentConstraint.Interface      => argument.TypeKind is TypeKind.Interface,
+        // dynamic is object, a class that can be derived from, as [Concrete] takes it.
+        TypeArgumentConstraint.Unsealed       => argument.TypeKind is TypeKind.Dynamic || argument is INamedTypeSymbol { TypeKind: TypeKind.Class, IsSealed: false, IsStatic: false },
+        TypeArgumentConstraint.ValueObject    => argument.TypeKind is not TypeKind.Interface && symbols.FindMarker(argument, out _) is not null,
+        TypeArgumentConstraint.ClosedSet      => symbols.FindClosedSetMarker(argument) is not null,
+        TypeArgumentConstraint.FlagsEnum      => symbols.IsFlagsEnum(argument),
+        TypeArgumentConstraint.ReadOnlyStruct => argument is INamedTypeSymbol { TypeKind: TypeKind.Struct, IsReadOnly: true },
+        _                                     => argument.TypeKind is TypeKind.Array or TypeKind.Enum or TypeKind.Delegate or TypeKind.Dynamic
+                                              || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct, IsAbstract: false, IsStatic: false },
     };
 
     /// <summary>
     /// A forwarding type parameter proves a constraint by carrying the attribute, or by C# constraints
     /// that leave it no argument that breaks it:
     /// <list type="bullet">
-    /// <item><c>[Sealed]</c>: <c>struct</c> or <c>unmanaged</c>, which admit structs and enums alone; or a
-    /// bound, <c>where T : U</c>, that proves it, since a sealed type has no other subtype.</item>
+    /// <item><c>[Sealed]</c>: <c>struct</c> or <c>unmanaged</c>, which admit structs and enums alone; <c>[ReadOnlyStruct]</c>
+    /// or <c>[FlagsEnum]</c>, which admit only those; or a bound, <c>where T : U</c>, that proves it, since a sealed
+    /// type has no other subtype.</item>
     /// <item><c>[Concrete]</c>: <c>new()</c>, or whatever proves <c>[Sealed]</c>, since a sealed type is
     /// never abstract.</item>
     /// <item><c>[Record]</c>: a bound that is a record, or proves it, since only records derive from
     /// records (CS8865).</item>
-    /// <item><c>[Abstract]</c>: nothing but the attribute; no C# constraint excludes a concrete type.</item>
+    /// <item><c>[ValueObject]</c>, <c>[ClosedSet]</c>: a bound that is or implements the marker interface, or
+    /// a bound parameter that proves it, which <c>FindMarker</c> reads from the constraints. For
+    /// <c>[ValueObject]</c> the parameter must also admit no interface (<see cref="NeverInterface"/>):
+    /// <c>where T : IValue&lt;int&gt;</c> admits <c>IValue&lt;int&gt;</c> itself.</item>
+    /// <item><c>[Abstract]</c>, <c>[Interface]</c>, <c>[Unsealed]</c>, <c>[FlagsEnum]</c>, <c>[ReadOnlyStruct]</c>:
+    /// nothing but the attribute; no C# constraint excludes a concrete type, a class, a sealed class, a plain
+    /// enum or a mutable struct.</item>
     /// </list>
     /// A cycle of constraints is the compiler's error, cut off by depth.
     /// </summary>
@@ -360,15 +844,30 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
 
         return constraint switch
         {
+            // A readonly struct and a [Flags] enum are sealed, and so concrete.
             TypeArgumentConstraint.Sealed   => forwarded.HasValueTypeConstraint
+                                            || Proves(symbols, forwarded, TypeArgumentConstraint.ReadOnlyStruct, depth + 1)
+                                            || Proves(symbols, forwarded, TypeArgumentConstraint.FlagsEnum, depth + 1)
                                             || forwarded.ConstraintTypes.OfType<ITypeParameterSymbol>().Any(bound => Proves(symbols, bound, TypeArgumentConstraint.Sealed, depth + 1)),
             TypeArgumentConstraint.Concrete => forwarded.HasConstructorConstraint
                                             || Proves(symbols, forwarded, TypeArgumentConstraint.Sealed, depth + 1),
             TypeArgumentConstraint.Record   => forwarded.ConstraintTypes.Any(bound => bound is INamedTypeSymbol { IsRecord: true }
                                                                                    || bound is ITypeParameterSymbol parameter && Proves(symbols, parameter, TypeArgumentConstraint.Record, depth + 1)),
+            TypeArgumentConstraint.ValueObject => symbols.FindMarker(forwarded, out _) is not null && NeverInterface(forwarded, depth),
+            TypeArgumentConstraint.ClosedSet   => symbols.FindClosedSetMarker(forwarded) is not null,
             _                               => false,
         };
     }
+
+    /// <summary>
+    /// Whether no interface meets the parameter's C# constraints: <c>struct</c>, which <c>unmanaged</c> sets
+    /// too, <c>new()</c>, a class bound, or a bound parameter that admits none. <c>class</c> admits an interface,
+    /// which is a reference type (measured: <c>where T : class, IValue&lt;int&gt;</c> takes <c>IValue&lt;int&gt;</c>).
+    /// </summary>
+    private static bool NeverInterface(ITypeParameterSymbol parameter, int depth) =>
+        parameter.HasValueTypeConstraint || parameter.HasConstructorConstraint
+     || parameter.ConstraintTypes.Any(bound => bound.TypeKind is TypeKind.Class
+                                            || bound is ITypeParameterSymbol bounding && depth < 8 && NeverInterface(bounding, depth + 1));
 
     /// <summary>
     /// The constraints a type parameter declares, with those of the parameter it implements or

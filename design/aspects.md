@@ -45,7 +45,9 @@
   NodaTime.Serialization.SystemTextJson is referenced too, and only where the options have no
   converter of their own for the type, which wins as it does for the wrapped type. Parsing reaches
   NodaTime types through their `[TypeConverter]` (`TypeDescriptor.RegisterType` and
-  `GetConverterFromRegisteredType`, the trim-safe lookup).
+  `GetConverterFromRegisteredType`, the trim-safe lookup). A type that `TypeDescriptor.GetConverter`
+  described first, as MVC does binding a plain `LocalDate`, can no longer be registered, and then
+  the converter that call cached is taken: the same one, measured under Native AOT by the smoke test.
 - **Explicit `IParsable`.** `bool` and `char` implement their parsing interfaces explicitly, so the
   generated code calls the wrapped type's `TryParse` through `GeneratedParsing`, whose constrained
   type parameters reach an explicit implementation. `Parse` is `TryParse` and a throw (below).
@@ -105,6 +107,21 @@
   which the JIT specialises per type and, for an enum, compares the underlying values. Casting the
   value to the interface boxed it; an optimising JIT hid that for some types and not for others
   (enums), so the allocation tests run on a Debug build, where it never does.
+- **Preserved references are refused (decided 2026-10-14, [decision 76](adr/0076-preserved-references-refused.md)).** The serializer
+  keeps the references of one call, and the plan reaches a wrapped type the serializer walks through a
+  nested call, which starts again: under `ReferenceHandler.Preserve` a value object over a class wrote
+  `"$id":"1"` inside a document that had one, and two around one instance wrote it twice where the
+  wrapped type writes a `$ref`, which the converter could not read (since 1.0.0). A converter cannot
+  reach the caller's references, so `GeneratedJsonPlan` throws `NotSupportedException` under any
+  handler but `IgnoreCycles` where the contract may hold references: an object or collection of a
+  reference type, `object` under the serializer's own converter, or a struct with such a property it
+  writes or reads, a nullable struct as the struct it holds, walked through the options' contracts
+  ([decision 77](adr/0077-third-review-refines-74-to-76.md)). A property is judged by the converter in charge of
+  it: one of one's own writes no `$id`, and one of the serializer's, a property's `CustomConverter`
+  included, is judged by the serializer's contract of the type it converts, and refused where that
+  contract has a converter of one's own (2026-10-14). A value converter writes no `$id`, so a struct of
+  numbers and strings still writes the wrapped type's bytes. `IgnoreCycles` is left alone: a cycle through the value object fails at the depth limit, which
+  is loud.
 - **JSON reads never parse by rules of their own.** A value and a key are read by the plan's
   converter, which accepts exactly what the serializer accepts for the wrapped type. A `Parse` in
   the generated code once let `FormatException` escape, which a minimal API answers with 500 rather
@@ -152,10 +169,24 @@
     own: its `sealed` `ToString()` is the seam; an unsealed one, its `PrintMembers`, its explicit
     implementations of the generated interfaces and an `IConvertible` on it are CMTK1011, or CMTK1008
     for comparison. Members the compiler generated on a record from another assembly do not count.
+  - **Equality over a base record is generated (decided 2026-10-14, [decision 75](adr/0075-equality-over-base-record-generated.md)).**
+    A derived record's synthesized equality calls the base's, which compares the base's fields and
+    whatever the base declares. A base comparing by reference made two value objects holding 42 unequal
+    while `CompareTo` answered 0, and a base in another assembly holding a private identity, which a
+    reference assembly does not carry and no check can see, put two of them in a `HashSet` and one in a
+    `SortedSet`; both since 1.0.0. `ValueObjectContractAspect` introduces `Equals(TSelf)` and
+    `GetHashCode()` over `_value` for a record class with a base; the record's own `Equals(object)`,
+    `Equals(TBase)` and `==` call them. A base's hand-written `Equals(TBase)`, `GetHashCode()` or
+    `IEquatable<TBase>.Equals` is then not called, which CMTK1023 says, a Warning since an Error that
+    reports more waits for a major version (decision 34). A collection of the base calls the base's
+    `IEquatable<TBase>`, which the value object implements again by listing `IReimplementedEquatable<TBase>`
+    for every base: Metalama implements no interface a base already does, and C# implements one again
+    for a class that lists an interface derived from it ([decision 77](adr/0077-third-review-refines-74-to-76.md)).
   - CMTK1012: state besides the wrapped value, an instance field, auto-property, `required` member or
     field-like event, declared or inherited. JSON, parsing and the materializer carried the wrapped
     value alone while equality compared the rest. Computed and static members stay allowed. In a
-    referenced assembly a base's private fields are invisible, so a writable property counts there.
+    referenced assembly a base's private fields are invisible, so a writable property counts there,
+    and the generated equality over a base record keeps a private field out of it (decision 75).
   - CMTK1005 adds a generic wrapped type, tuples included (its equality is not value equality: a
     `List<T>` compares by reference), a value object named `Value` (CS0542), and a `file`-local one
     (LAMA0001, which failed the whole project).
@@ -169,6 +200,12 @@
     Both were CS0542 inside the generated code.
   - `IValue<System.Enum>` is CMTK1005: `Enum.Parse<TEnum>(string)` was taken for a static `Parse` of its
     own (CS0411). The static-`Parse` strategy now takes only a non-generic one.
+  - A wrapped type's static `Parse(string)` that returns another type, a string constructor or `Parse`
+    that takes the text by `ref` or `out`, and an interface's `static virtual Parse` were taken for
+    parsers, and the generated parsing failed (LAMA0611: CS0029, CS1620, CS8926; reported 2026-10-14,
+    since 1.0.0). A parser is now what the generated call can call as it does and what gives the wrapped
+    type back; anything else leaves the value object without parsing, as over a type with none. An
+    abstract class's public string constructor is no parser either (CS0144, decision 77).
   - An `[Obsolete(error: true)]` on a value object, or on a type it is nested in, made the companion
     class's use of it CS0619. It is made to work, not refused: the companion class carries the nearest
     `[Obsolete]`, and C# reports no use of an obsolete type inside an obsolete declaration. Nothing else

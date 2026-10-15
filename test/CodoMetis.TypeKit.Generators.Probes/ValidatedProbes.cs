@@ -1,3 +1,4 @@
+using CodoMetis.TypeKit.ClosedSets;
 using CodoMetis.TypeKit.ValueObjects;
 
 namespace CodoMetis.TypeKit.Generators.Probes;
@@ -20,6 +21,35 @@ public readonly partial record struct ProbeCode : IValidatedValue<ProbeCode, str
         if (trimmed != trimmed.ToUpperInvariant()) return Result.Error(ProbeCodeFault.NotUpperCase);
 
         return new ProbeCode(trimmed);
+    }
+}
+
+/// <summary>A fault set as a validated value's fault type, where the other probes use an enum.</summary>
+public sealed partial class ProbeArticleFault : IFaultSet<ProbeArticleFault>
+{
+    public static readonly ProbeArticleFault Blank = new("An article number is never blank.");
+    public static readonly ProbeArticleFault NotUpperCase = new("An article number is written in upper case.");
+
+    private ProbeArticleFault(string description) => Description = description;
+
+    public FaultKind Kind => FaultKind.Invalid;
+
+    public string? Description { get; }
+}
+
+/// <summary>
+/// <see cref="ProbeCode"/>'s rules, trimming included, over a fault set: every generated entry point
+/// refuses through the set's member as it does through an enum's, and names it the same way.
+/// </summary>
+public readonly partial record struct ProbeArticle : IValidatedValue<ProbeArticle, string, ProbeArticleFault>
+{
+    public static Result<ProbeArticle, ProbeArticleFault> Create(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return Result.Error(ProbeArticleFault.Blank);
+
+        var trimmed = value.Trim();
+
+        return trimmed == trimmed.ToUpperInvariant() ? new ProbeArticle(trimmed) : Result.Error(ProbeArticleFault.NotUpperCase);
     }
 }
 

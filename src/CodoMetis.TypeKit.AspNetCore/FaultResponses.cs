@@ -1,3 +1,6 @@
+using System.Collections.Concurrent;
+using CodoMetis.TypeKit.ClosedSets;
+using CodoMetis.TypeKit.CompilerServices;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -16,10 +19,70 @@ internal static class FaultRegistration
                 $"The fault type {type.TypeName} is mapped already. Map it once, with a status for each member.");
 
         services.AddSingleton(FaultResponses<TFault>.Map(type, responseOf, parameter));
+
+        return Checked(services);
+    }
+
+    /// <summary>The mapping of every fault set that has none of its own; <paramref name="responseOf"/> null maps each member by its kind.</summary>
+    public static IServiceCollection AddDefault(IServiceCollection services, Func<IFault, FaultResponse>? responseOf, string parameter)
+    {
+        // Two defaults: whichever was registered last would answer, silently.
+        if (services.Any(descriptor => descriptor.ServiceType == typeof(DefaultFaultResponses)))
+            throw new InvalidOperationException("A mapping for every fault set is given already. Give it once, and map a set that answers otherwise on its own.");
+
+        services.AddSingleton(new DefaultFaultResponses(responseOf, parameter));
+
+        return Checked(services);
+    }
+
+    /// <summary>A member by its kind, the refusal of a member of no kind naming it.</summary>
+    public static FaultResponse ByKind(IFault fault, string qualifiedName, string parameter)
+    {
+        try { return FaultResponse.For(fault.Kind); }
+        catch (ArgumentOutOfRangeException refused) { throw new ArgumentException($"{qualifiedName}: {refused.Message}", parameter, refused); }
+    }
+
+    private static IServiceCollection Checked(IServiceCollection services)
+    {
         services.TryAddEnumerable(ServiceDescriptor.Transient<IStartupFilter, FaultResponsesStartupCheck>());
         services.AddProblemDetails();
 
         return services;
+    }
+}
+
+/// <summary>
+/// How a host answers a fault set it mapped no response for: each member through <see cref="IFault"/>, the
+/// set mapped once, the first time it is asked for.
+/// </summary>
+/// <remarks>
+/// A fault type is known here only as a type argument without the closed set's constraint, so the set's
+/// members are reached through the attribute the generators put on it
+/// (<see cref="GeneratedClosedSetAttribute.Accept{TResult}"/>), never by <c>MakeGenericType</c>. A type that
+/// is no generated closed set, or no fault set, has no default, and is unmapped as before.
+/// </remarks>
+internal sealed class DefaultFaultResponses(Func<IFault, FaultResponse>? responseOf, string parameter)
+{
+    private readonly ConcurrentDictionary<Type, object?> _mapped = new();
+
+    public FaultResponses<TFault>? For<TFault>() where TFault : notnull =>
+        // A mapping that throws is not cached: every reader that asks again is refused again.
+        (FaultResponses<TFault>?)_mapped.GetOrAdd(typeof(TFault), static (type, defaults) =>
+            typeof(IFault).IsAssignableFrom(type) && ClosedSetSchemaTransformer.Describe(type) is { } set ? set.Accept(new Mapper(defaults)) : null, this);
+
+    /// <summary>The caller's parameter, which a refusal names.</summary>
+    private string Parameter => parameter;
+
+    private FaultResponse ResponseOf(IFault fault, string qualifiedName) =>
+        responseOf is not null ? responseOf(fault) : FaultRegistration.ByKind(fault, qualifiedName, parameter);
+
+    private sealed class Mapper(DefaultFaultResponses defaults) : IClosedSetVisitor<object>
+    {
+        public object Visit<TSet>() where TSet : class, IClosedSet<TSet>
+        {
+            var type = FaultTypes.Set<TSet>();
+            return FaultResponses<TSet>.Map(type, fault => defaults.ResponseOf((IFault)fault, type.QualifiedNameOf(fault)), defaults.Parameter);
+        }
     }
 }
 
@@ -78,16 +141,34 @@ internal sealed class FaultResponses<TFault> where TFault : notnull
                 $"{Type.TypeName} has no member {(fault is Enum ? $"with the value {fault:D}" : "that is this instance")}, " +
                 "so no status is mapped for it." + FaultRefusals.Mapping);
 
-    /// <summary>Every status an endpoint gives, with the statuses its metadata sets for some members in place of the mapped ones.</summary>
+    /// <summary>
+    /// Every status an endpoint gives, with the statuses its metadata sets for some members in place of the
+    /// mapped ones, and none for the members it leaves out.
+    /// </summary>
     public IReadOnlyList<int> StatusesOf(IReadOnlyList<object> endpointMetadata) =>
-        [.. Type.Members.Select(fault => FaultStatuses.Override(endpointMetadata, fault, Type) ?? _answers[fault].Status).Distinct().Order()];
+        [.. AnsweredBy(endpointMetadata).Select(fault => StatusOf(fault, endpointMetadata)).Distinct().Order()];
 
     /// <summary>The problem types of the members an endpoint answers with <paramref name="status"/>, for that response's description.</summary>
     public IReadOnlyList<string> TypesOf(int status, IReadOnlyList<object> endpointMetadata) =>
-        [.. Type.Members.Where(fault => (FaultStatuses.Override(endpointMetadata, fault, Type) ?? _answers[fault].Status) == status)
-                        .Select(fault => _answers[fault].Type)
-                        .OfType<string>()
-                        .Distinct()];
+        [.. AnsweredBy(endpointMetadata).Where(fault => StatusOf(fault, endpointMetadata) == status)
+                                        .Select(fault => _answers[fault].Type)
+                                        .OfType<string>()
+                                        .Distinct()];
+
+    /// <summary>The members an endpoint answers with: every member, but those its metadata leaves out.</summary>
+    public IEnumerable<TFault> AnsweredBy(IReadOnlyList<object> endpointMetadata) =>
+        Type.Members.Where(fault => FaultExclusions.Excluding(endpointMetadata, fault, Type) is null);
+
+    private int StatusOf(TFault fault, IReadOnlyList<object> endpointMetadata) =>
+        FaultStatuses.Override(endpointMetadata, fault, Type) ?? _answers[fault].Status;
+
+    /// <summary>
+    /// How the host answers <typeparamref name="TFault"/>: its own mapping, or else the default for every
+    /// fault set, or <see langword="null"/> where neither answers it.
+    /// </summary>
+    public static FaultResponses<TFault>? Of(IServiceProvider services) =>
+        services.GetService(typeof(FaultResponses<TFault>)) as FaultResponses<TFault>
+     ?? (services.GetService(typeof(DefaultFaultResponses)) as DefaultFaultResponses)?.For<TFault>();
 
     public static InvalidOperationException Unmapped() =>
         new($"No HTTP status is mapped for the fault type {FaultTypes.NameOf(typeof(TFault))}. " +
@@ -116,8 +197,24 @@ internal abstract class FaultResponsesMetadata
     /// <summary>The problem types listed for <paramref name="status"/>.</summary>
     public abstract IReadOnlyList<string> Types(IServiceProvider services, int status, IReadOnlyList<object> endpointMetadata);
 
-    /// <summary>What is wrong with the endpoint's status overrides for this fault type: a name no member has.</summary>
+    /// <summary>
+    /// What is wrong with the endpoint's declarations for this fault type: a status or a member left out that
+    /// names no member.
+    /// </summary>
     public abstract IEnumerable<string> Problems(IServiceProvider services, IReadOnlyList<object> endpointMetadata);
+
+    /// <summary>
+    /// Each status the endpoint carries for a member it leaves out, with the member and how the pair reads in a
+    /// message. Not a problem of the endpoint alone: a scope's status is narrowed by an endpoint that leaves the
+    /// member out, and is a contradiction only where every endpoint of its scope does (the startup check).
+    /// </summary>
+    public abstract IEnumerable<(IFaultDeclaration Status, string Member, string Message)> StatusesLeftOut(IServiceProvider services, IReadOnlyList<object> endpointMetadata);
+
+    /// <summary>
+    /// The name and the qualified name of each member the endpoint answers with, those it leaves out aside, or
+    /// none where the host mapped no status.
+    /// </summary>
+    public abstract IEnumerable<(string Name, string QualifiedName)> Names(IServiceProvider services, IReadOnlyList<object> endpointMetadata);
 }
 
 internal sealed class FaultResponsesMetadata<TFault> : FaultResponsesMetadata where TFault : notnull
@@ -144,8 +241,31 @@ internal sealed class FaultResponsesMetadata<TFault> : FaultResponsesMetadata wh
         {
             if (status.Problem(responses.Type) is { } problem) yield return problem;
         }
+
+        foreach (var exclusion in endpointMetadata.OfType<IFaultExclusion<TFault>>())
+        {
+            if (exclusion.Problem(responses.Type) is { } problem) yield return problem;
+        }
     }
 
-    private static FaultResponses<TFault>? Responses(IServiceProvider services) =>
-        services.GetService(typeof(FaultResponses<TFault>)) as FaultResponses<TFault>;
+    public override IEnumerable<(IFaultDeclaration Status, string Member, string Message)> StatusesLeftOut(IServiceProvider services, IReadOnlyList<object> endpointMetadata)
+    {
+        if (Responses(services) is not { } responses) yield break;
+
+        foreach (var fault in responses.Type.Members)
+        {
+            if (FaultExclusions.Excluding(endpointMetadata, fault, responses.Type) is not { } exclusion) continue;
+
+            var member = responses.Type.QualifiedNameOf(fault);
+            foreach (var status in endpointMetadata.OfType<IFaultStatus<TFault>>().Where(status => status.Matches(fault, responses.Type)))
+                yield return (status, member, $"{status.Describe()} gives a status to {member}, which {exclusion.Describe()} leaves out");
+        }
+    }
+
+    public override IEnumerable<(string Name, string QualifiedName)> Names(IServiceProvider services, IReadOnlyList<object> endpointMetadata) =>
+        Responses(services) is { } responses
+            ? responses.AnsweredBy(endpointMetadata).Select(fault => (responses.Type.NameOf(fault), responses.Type.QualifiedNameOf(fault)))
+            : [];
+
+    private static FaultResponses<TFault>? Responses(IServiceProvider services) => FaultResponses<TFault>.Of(services);
 }

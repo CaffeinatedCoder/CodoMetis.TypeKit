@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 // Beside TypedResults, in a namespace every web project imports implicitly.
 namespace Microsoft.AspNetCore.Http;
 
-/// <summary>Turns a <c>Result</c> whose fault is an enum, or a <see cref="Fault{TFault}"/>, into the HTTP response an endpoint returns.</summary>
+/// <summary>Turns a <c>Result</c> whose fault is an enum, a <see cref="Fault{TFault}"/> or a fault of several types (<see cref="Fault{T1, T2}"/>), into the HTTP response an endpoint returns.</summary>
 /// <remarks>
 /// <para>
 /// Matching a result to a response is not serializing it: the success's value is written as the
@@ -97,7 +97,7 @@ public static class TypeKitHttpResultExtensions
         where TFault : notnull =>
         result.Match<Results<Ok<T>, FaultProblem<TFault>>>(
             static value => TypedResults.Ok(value),
-            static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail));
+            static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail, fault.Rule));
 
     /// <summary>A success as <c>204 No Content</c>; a fault as problem details for its reason, with its detail.</summary>
     /// <param name="result">The outcome of the operation the endpoint ran.</param>
@@ -106,7 +106,7 @@ public static class TypeKitHttpResultExtensions
         where TFault : notnull =>
         result.Match<Results<NoContent, FaultProblem<TFault>>>(
             static () => TypedResults.NoContent(),
-            static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail));
+            static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail, fault.Rule));
 
     /// <summary>A success as the response <paramref name="success"/> makes of its value; a fault as problem details for its reason, with its detail.</summary>
     /// <param name="result">The outcome of the operation the endpoint ran.</param>
@@ -118,7 +118,7 @@ public static class TypeKitHttpResultExtensions
         where TSuccess : IResult
     {
         ArgumentNullException.ThrowIfNull(success);
-        return result.Match<Results<TSuccess, FaultProblem<TFault>>>(value => success(value), static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail));
+        return result.Match<Results<TSuccess, FaultProblem<TFault>>>(value => success(value), static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail, fault.Rule));
     }
 
     /// <summary>A success as the response <paramref name="success"/> makes; a fault as problem details for its reason, with its detail.</summary>
@@ -130,8 +130,126 @@ public static class TypeKitHttpResultExtensions
         where TSuccess : IResult
     {
         ArgumentNullException.ThrowIfNull(success);
-        return result.Match<Results<TSuccess, FaultProblem<TFault>>>(() => success(), static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail));
+        return result.Match<Results<TSuccess, FaultProblem<TFault>>>(() => success(), static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail, fault.Rule));
     }
+
+    /// <summary>A success as <c>200 OK</c> with its value; a fault of either type as problem details for its reason, with its detail.</summary>
+    /// <remarks>
+    /// One <see cref="FaultProblem{TFault}"/> case per fault type, so the operation lists the statuses of every type, each
+    /// mapped once for the host with <c>AddFaultResponses</c>, and the host does not start while one is not.
+    /// </remarks>
+    /// <param name="result">The outcome of the operation the endpoint ran.</param>
+    /// <returns>The response.</returns>
+    public static Results<Ok<T>, FaultProblem<T1>, FaultProblem<T2>> ToHttpResult<T, [Distinct] T1, [Distinct] T2>(this Result<T, Fault<T1, T2>> result)
+        where T : notnull
+        where T1 : notnull
+        where T2 : notnull =>
+        result.Match<Results<Ok<T>, FaultProblem<T1>, FaultProblem<T2>>>(
+            static value => TypedResults.Ok(value),
+            static fault => fault.Match<Results<Ok<T>, FaultProblem<T1>, FaultProblem<T2>>>(static f => Problem(f), static f => Problem(f)));
+
+    /// <summary>A success as <c>204 No Content</c>; a fault of either type as problem details for its reason, with its detail.</summary>
+    /// <param name="result">The outcome of the operation the endpoint ran.</param>
+    /// <returns>The response.</returns>
+    public static Results<NoContent, FaultProblem<T1>, FaultProblem<T2>> ToHttpResult<[Distinct] T1, [Distinct] T2>(this Result<Fault<T1, T2>> result)
+        where T1 : notnull
+        where T2 : notnull =>
+        result.Match<Results<NoContent, FaultProblem<T1>, FaultProblem<T2>>>(
+            static () => TypedResults.NoContent(),
+            static fault => fault.Match<Results<NoContent, FaultProblem<T1>, FaultProblem<T2>>>(static f => Problem(f), static f => Problem(f)));
+
+    /// <summary>A success as the response <paramref name="success"/> makes of its value; a fault of either type as problem details.</summary>
+    /// <param name="result">The outcome of the operation the endpoint ran.</param>
+    /// <param name="success">Makes the response for the value.</param>
+    /// <returns>The response.</returns>
+    public static Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>> ToHttpResult<T, [Distinct] T1, [Distinct] T2, [DynamicallyAccessedMembers(SuccessMembers)] TSuccess>(this Result<T, Fault<T1, T2>> result, Func<T, TSuccess> success)
+        where T : notnull
+        where T1 : notnull
+        where T2 : notnull
+        where TSuccess : IResult
+    {
+        ArgumentNullException.ThrowIfNull(success);
+        return result.Match<Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>>>(
+            value => success(value),
+            static fault => fault.Match<Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>>>(static f => Problem(f), static f => Problem(f)));
+    }
+
+    /// <summary>A success as the response <paramref name="success"/> makes; a fault of either type as problem details.</summary>
+    /// <param name="result">The outcome of the operation the endpoint ran.</param>
+    /// <param name="success">Makes the response for a success.</param>
+    /// <returns>The response.</returns>
+    public static Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>> ToHttpResult<[Distinct] T1, [Distinct] T2, [DynamicallyAccessedMembers(SuccessMembers)] TSuccess>(this Result<Fault<T1, T2>> result, Func<TSuccess> success)
+        where T1 : notnull
+        where T2 : notnull
+        where TSuccess : IResult
+    {
+        ArgumentNullException.ThrowIfNull(success);
+        return result.Match<Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>>>(
+            () => success(),
+            static fault => fault.Match<Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>>>(static f => Problem(f), static f => Problem(f)));
+    }
+
+    /// <summary>A success as <c>200 OK</c> with its value; a fault of any of the three types as problem details for its reason, with its detail.</summary>
+    /// <remarks>
+    /// One <see cref="FaultProblem{TFault}"/> case per fault type, so the operation lists the statuses of every type, each
+    /// mapped once for the host with <c>AddFaultResponses</c>, and the host does not start while one is not.
+    /// </remarks>
+    /// <param name="result">The outcome of the operation the endpoint ran.</param>
+    /// <returns>The response.</returns>
+    public static Results<Ok<T>, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>> ToHttpResult<T, [Distinct] T1, [Distinct] T2, [Distinct] T3>(this Result<T, Fault<T1, T2, T3>> result)
+        where T : notnull
+        where T1 : notnull
+        where T2 : notnull
+        where T3 : notnull =>
+        result.Match<Results<Ok<T>, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>>>(
+            static value => TypedResults.Ok(value),
+            static fault => fault.Match<Results<Ok<T>, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>>>(static f => Problem(f), static f => Problem(f), static f => Problem(f)));
+
+    /// <summary>A success as <c>204 No Content</c>; a fault of any of the three types as problem details for its reason, with its detail.</summary>
+    /// <param name="result">The outcome of the operation the endpoint ran.</param>
+    /// <returns>The response.</returns>
+    public static Results<NoContent, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>> ToHttpResult<[Distinct] T1, [Distinct] T2, [Distinct] T3>(this Result<Fault<T1, T2, T3>> result)
+        where T1 : notnull
+        where T2 : notnull
+        where T3 : notnull =>
+        result.Match<Results<NoContent, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>>>(
+            static () => TypedResults.NoContent(),
+            static fault => fault.Match<Results<NoContent, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>>>(static f => Problem(f), static f => Problem(f), static f => Problem(f)));
+
+    /// <summary>A success as the response <paramref name="success"/> makes of its value; a fault of any of the three types as problem details.</summary>
+    /// <param name="result">The outcome of the operation the endpoint ran.</param>
+    /// <param name="success">Makes the response for the value.</param>
+    /// <returns>The response.</returns>
+    public static Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>> ToHttpResult<T, [Distinct] T1, [Distinct] T2, [Distinct] T3, [DynamicallyAccessedMembers(SuccessMembers)] TSuccess>(this Result<T, Fault<T1, T2, T3>> result, Func<T, TSuccess> success)
+        where T : notnull
+        where T1 : notnull
+        where T2 : notnull
+        where T3 : notnull
+        where TSuccess : IResult
+    {
+        ArgumentNullException.ThrowIfNull(success);
+        return result.Match<Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>>>(
+            value => success(value),
+            static fault => fault.Match<Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>>>(static f => Problem(f), static f => Problem(f), static f => Problem(f)));
+    }
+
+    /// <summary>A success as the response <paramref name="success"/> makes; a fault of any of the three types as problem details.</summary>
+    /// <param name="result">The outcome of the operation the endpoint ran.</param>
+    /// <param name="success">Makes the response for a success.</param>
+    /// <returns>The response.</returns>
+    public static Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>> ToHttpResult<[Distinct] T1, [Distinct] T2, [Distinct] T3, [DynamicallyAccessedMembers(SuccessMembers)] TSuccess>(this Result<Fault<T1, T2, T3>> result, Func<TSuccess> success)
+        where T1 : notnull
+        where T2 : notnull
+        where T3 : notnull
+        where TSuccess : IResult
+    {
+        ArgumentNullException.ThrowIfNull(success);
+        return result.Match<Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>>>(
+            () => success(),
+            static fault => fault.Match<Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>>>(static f => Problem(f), static f => Problem(f), static f => Problem(f)));
+    }
+
+    private static FaultProblem<TFault> Problem<TFault>(Fault<TFault> fault) where TFault : notnull => new(fault.Reason, fault.Detail, fault.Rule);
 }
 
 /// <summary>Turns a <c>Result</c> whose fault is a closed set into the HTTP response an endpoint returns, as <see cref="TypeKitHttpResultExtensions"/> does for an enum.</summary>

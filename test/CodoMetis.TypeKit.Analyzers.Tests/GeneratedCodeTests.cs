@@ -115,6 +115,10 @@ public sealed class GeneratedCodeTests
             "private static T Rebuild$<T>(int value) where T : IValueObjectMaterializer<T, int> => {|#0:T.Materialize(value)|};", "CMTK0004", DiagnosticSeverity.Error);
 
     [Fact]
+    public Task CMTK0014_reports_in_markup_only() =>
+        Verify<UndefinedEnumValueAnalyzer>("private CodoMetis.TypeKit.ClosedSets.FaultKind Kind$() => {|#0:(CodoMetis.TypeKit.ClosedSets.FaultKind)9|};", "CMTK0014", DiagnosticSeverity.Warning);
+
+    [Fact]
     public Task CMTK0005_reports_in_markup_only() =>
         Verify<DefaultFilledCollectionAnalyzer>("private Plain[] Slots$(int count) => {|#0:new Plain[count]|};", "CMTK0005", DiagnosticSeverity.Warning);
 

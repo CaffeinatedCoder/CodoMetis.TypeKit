@@ -19,6 +19,12 @@ public sealed class PatchSchemaTests
     public sealed record OrderPatch(Patch<string> Name, Patch<int> Quantity, Patch<ProbeCode> Code, Patch<ProbeId> Id, Patch<Lines> Lines);
 
     public sealed record Lines(int Count);
+    /// <summary>Under <c>RespectRequiredConstructorParameters</c>, <c>Name</c>, a constructor parameter, is required by the serializer, and <c>Quantity</c>, an <c>init</c> property, is not.</summary>
+    public sealed record StrictPatch(Patch<string> Name)
+    {
+        public Patch<int> Quantity { get; init; }
+    }
+
 
     public sealed record Control(string? Name, int Quantity, ProbeCode Code, ProbeId Id, Lines? Lines);
 
@@ -199,6 +205,33 @@ public sealed class PatchSchemaTests
         required.ShouldBeEmpty();
 
         document.Component(nameof(Control))["required"].ShouldNotBeNull("the control has required properties, so the patch's emptiness means something");
+    }
+
+    /// <summary>
+    /// The document follows the serializer: a patch parameter without a default is required under
+    /// <c>RespectRequiredConstructorParameters</c>, and a body without it is refused, so it stays in
+    /// <c>required</c>; an <c>init</c> property is optional under every option.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Versions))]
+    public async Task A_patch_the_serializer_requires_stays_required(OpenApiSpecVersion version)
+    {
+        var cancellation = TestContext.Current.CancellationToken;
+        await using var strict = await ProbeHost.StartAsync(
+            openApi => openApi.AddTypeKit(), json => json.SerializerOptions.RespectRequiredConstructorParameters = true, version,
+            app => app.MapPatch("/strict", int (StrictPatch patch) => patch.Quantity.Match(q => q, () => -1, () => 0)));
+        var lenient = await ProbeHost.DocumentAsync(openApi => openApi.AddTypeKit(), version: version, endpoints: app => app.MapPatch("/strict", int (StrictPatch patch) => 0));
+
+        Required(await strict.DocumentAsync()).ShouldBe(["name"]);
+        Required(lenient).ShouldBeEmpty();
+
+        using var missing = await strict.Client.PatchAsync("/strict", new StringContent("""{"quantity":2}""", System.Text.Encoding.UTF8, "application/json"), cancellation);
+        using var given = await strict.Client.PatchAsync("/strict", new StringContent("""{"name":null}""", System.Text.Encoding.UTF8, "application/json"), cancellation);
+        missing.StatusCode.ShouldBe(HttpStatusCode.BadRequest, "the document says name is required, and the endpoint refuses a body without it");
+        given.StatusCode.ShouldBe(HttpStatusCode.OK, "quantity is optional in the document, and the endpoint takes a body without it");
+
+        static IEnumerable<string> Required(OpenApiJson document) =>
+            document.Component(nameof(StrictPatch))["required"]?.AsArray().Select(node => node!.GetValue<string>()) ?? [];
     }
 
     private static bool AdmitsNull(JsonNode schema, OpenApiSpecVersion version) =>

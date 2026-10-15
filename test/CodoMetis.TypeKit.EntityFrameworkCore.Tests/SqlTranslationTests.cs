@@ -85,7 +85,8 @@ public sealed class SqlTranslationTests
     {
         using var db = new TestDb(TestDb.NpgsqlWithoutServer());
 
-        return db.Orders.Where(predicate).ToQueryString();
+        // EF writes the SQL's lines with Environment.NewLine, \r\n on Windows.
+        return db.Orders.Where(predicate).ToQueryString().ReplaceLineEndings("\n");
     }
 
     private static string Where(System.Linq.Expressions.Expression<Func<Order, bool>> predicate)

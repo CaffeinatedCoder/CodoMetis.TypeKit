@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codometis.typekit/probe/schemas/claims.schema.json",
+  "title": "Claims",
+  "description": "Tracked (corpus/claims.json): the claims the documents make, each naming the surfaces whose axes it takes.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "id",
+      "source",
+      "surfaces"
+    ],
+    "properties": {
+      "schemaVersion": {
+        "type": "integer",
+        "const": 1,
+        "description": "The schema version. A file or line without it is version 1 (the Python baseline)."
+      },
+      "id": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string",
+        "description": "file#heading of the document that states it"
+      },
+      "surfaces": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "minItems": 1
+      },
+      "axes": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "description": "claim-local axes"
+      },
+      "narrow": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        },
+        "description": "axis dropped, with the source sentence that limits it (checked verbatim)"
+      },
+      "exclude": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[^=]+=.*$"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "additionalProperties": true
+  }
+}

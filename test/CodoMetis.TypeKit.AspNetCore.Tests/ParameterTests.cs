@@ -1,3 +1,6 @@
+using CodoMetis.TypeKit.Generators.Probes;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
 
 namespace CodoMetis.TypeKit.AspNetCore.Tests;
@@ -73,5 +76,49 @@ public sealed class ParameterTests
         var items = document.Parameter(path, "get", "ids")["items"].ShouldNotBeNull("the array lost its items");
 
         document.Resolve(items).ShouldDescribeTheSameAs(document.Component("ProbeId"), path);
+    }
+
+    /// <summary>
+    /// MVC names no type for a complex type bound from the route under a name of its own, and the
+    /// closed-set transformer threw on it: the whole document failed. Neither a value object nor a set,
+    /// the parameter is what ASP.NET writes without <c>AddTypeKit()</c>; a set and a value object bound
+    /// the same way are still described.
+    /// </summary>
+    [Theory]
+    [InlineData(OpenApiSpecVersion.OpenApi3_1)]
+    [InlineData(OpenApiSpecVersion.OpenApi3_0)]
+    [InlineData(OpenApiSpecVersion.OpenApi2_0)]
+    public async Task A_parameter_MVC_names_no_type_for_is_described_as_ASP_NET_describes_it(OpenApiSpecVersion version)
+    {
+        var withTypeKit = await ProbeHost.DocumentAsync(openApi => openApi.AddTypeKit(), version: version, controllers: [typeof(RenamedRouteController)]);
+        var without = await ProbeHost.DocumentAsync(version: version, controllers: [typeof(RenamedRouteController)]);
+
+        Parameters(withTypeKit, "/mvc/renamed/{key}").ShouldDescribeTheSameAs(Parameters(without, "/mvc/renamed/{key}"), version.ToString());
+        Parameters(withTypeKit, "/mvc/renamed/id/{key}").ShouldDescribeTheSameAs(Parameters(withTypeKit, "/mvc/renamed/guid/{key}"), version.ToString());
+
+        // 2.0 writes a parameter's keywords on the parameter, 3.x in its schema.
+        var set = Parameters(withTypeKit, "/mvc/renamed/status/{key}")[0]!;
+        ((set["schema"] ?? set)["enum"]?.AsArray().Select(name => name!.GetValue<string>())).ShouldBe(["Open", "Shipped", "Cancelled"], set.ToJsonString());
+    }
+
+    private static JsonArray Parameters(OpenApiJson document, string path) =>
+        document.Root["paths"]?[path]?["get"]?["parameters"]?.AsArray() ?? throw new InvalidOperationException($"No parameters for GET {path}.");
+
+    public sealed record RenamedKey(int Value);
+
+    [ApiController]
+    public sealed class RenamedRouteController : ControllerBase
+    {
+        [HttpGet("/mvc/renamed/{key}")]
+        public int Get([FromRoute(Name = "key")] RenamedKey key) => 0;
+
+        [HttpGet("/mvc/renamed/status/{key}")]
+        public int Status([FromRoute(Name = "key")] ProbeStatus key) => 0;
+
+        [HttpGet("/mvc/renamed/id/{key}")]
+        public int Id([FromRoute(Name = "key")] ProbeId key) => 0;
+
+        [HttpGet("/mvc/renamed/guid/{key}")]
+        public int Guid([FromRoute(Name = "key")] Guid key) => 0;
     }
 }

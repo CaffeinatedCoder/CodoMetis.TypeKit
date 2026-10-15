@@ -60,8 +60,39 @@ dotnet build CodoMetis.TypeKit.slnx
 dotnet test --solution CodoMetis.TypeKit.slnx
 dotnet test --project test/CodoMetis.TypeKit.Conventions.Tests --filter-method "*Metalama*"
 dotnet build spikes/FabricSpike/FabricSpike.slnx      # the fabric spike, standalone
-./test/consumer-smoke-test.sh                          # the packages, installed into throwaway consumers, one published with Native AOT (needs clang)
+dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll   # the packages, installed into throwaway consumers, one published with Native AOT (needs the platform linker); build it with -c Release first
+dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--project P] [--filter-class C] [--filter-method M] [-- flags]   # an agent's build and test: a verdict, not the transcript
 ```
+
+The probing tool, prober (`tools/Prober`, started as its built dll like docs-query). These need no
+model, no login and no API key, and run in CI as anywhere:
+
+```bash
+dotnet tools/Prober/bin/Release/net10.0/prober.dll status    # coverage of the branch's documented claims, open findings
+dotnet tools/Prober/bin/Release/net10.0/prober.dll replay    # re-run the probes whose identity or footprint changed
+dotnet tools/Prober/bin/Release/net10.0/prober.dll gate      # the release gate, from the tracked corpus and a replay
+```
+
+Exploration needs a model and runs locally only, never in CI:
+
+```bash
+dotnet tools/Prober/bin/Release/net10.0/prober.dll round explore --minutes 10 --claims 2
+```
+
+An agent runs builds and tests through `tools/BuildVerdict`, run as its built dll (`build
+[<project|slnx>]` or `test`). It prints the exit code named, each diagnostic code once with its remedy
+from `tools/BuildVerdict/build-verdict-remedies.tsv`, and the failing tests with their assertion; the
+full log is `$GIT_DIR/build-verdict-last.log`. A code it prints as UNMAPPED gets a row once its fix is
+known. In an agent's Bash tool, `tools/BashGuard` (registered in `.claude/settings.json`) refuses
+`dotnet build` of anything but a tool, `dotnet test` and `dotnet msbuild`, and the verdict piped into
+`head` or `tail`, and prints the verdict's form of the command. The raw commands above are for a
+terminal.
+
+Both are tool projects under `tools/` (design/adr/0092): BCL only, in the solution, each with its
+tests (`tools/BuildVerdict.Tests`, `tools/BashGuard.Tests`), and run from `bin/Release`, which
+`.claude/settings.json` builds at session start. Each records the sources it was built from and
+refuses to run from others, naming the command that rebuilds it: `dotnet build tools/<Name> -c
+Release`, which the guard lets through.
 
 The SDK is pinned in `global.json` (10.0.4xx band, `latestPatch`). Tests run on Microsoft Testing
 Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TRX output is
@@ -78,6 +109,10 @@ here, so it leads and the source decides.
 - **Then the source and its tests**, read before concluding or editing. An edge is a lead.
 - **Text search** (`git grep`, `search_code`) for literals, messages, diagnostic ids,
   configuration, documentation, and what the generators emit.
+- **A framework question goes to the verified facts first**: `docs-query entry KB-NNN` or `docs-query find`
+  before researching what ASP.NET, System.Text.Json, EF Core, the runtime or the platform do, and a new
+  `design/knowledge/` entry when research settles one that something here turned on
+  ([decision 93](design/adr/0093-verified-facts-are-pinned-dated-and-executable-where-they-can-be.md)).
 - **An empty result proves nothing.** Fall back to text search when the graph is unavailable, stale
   or silent, and never conclude "unused", "no other caller" or "safe to change" from it alone.
   Measured on 2026-10-13, the graph:
@@ -105,6 +140,11 @@ here, so it leads and the source decides.
   `.claude/worktrees/` reads the main checkout's graph, not its own: index the worktree under a name
   of its own and delete that project when done, or search the source. `.codebase-memory/`, the
   tool's local artifact, is ignored by git.
+
+The way into the docs is docs-query (`dotnet tools/DocsQuery/bin/Release/net10.0/docs-query.dll`,
+[its README](tools/DocsQuery/README.md)): `entry`, `cites`, `cited-by`, `list`, `claims` and `check`
+answer exactly, and `find` ranks. It answers with file, heading and line, so read that section, not
+the whole page. A ranked miss proves nothing.
 
 ## Rules that are easy to break
 
@@ -156,6 +196,9 @@ here, so it leads and the source decides.
   A page in `docs/` is compiled by being there and must be linked from the root README's
   "Documentation" table; a package README is the reference for its package, a docs page the guide for
   a topic, and the same code block is never in both.
+- **Consumer docs are written in a plain, friendly voice.** The root README, the package READMEs and
+  `docs/` follow `.claude/skills/plain-docs`: written to "you", example first, plain words, edge
+  cases last. Design records and this file keep their own register.
 - **Silent is worse than broken.** A value object that compiles without being generated, an
   analyzer that stops firing, or a converter that materialises `default` are this repo's
   characteristic failures. Prefer a diagnostic or an exception to a plausible result.
@@ -170,3 +213,48 @@ here, so it leads and the source decides.
    (`.claude/skills/weaving-review`).
 5. Commit with conventional format: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `build:`,
    `spike:`.
+6. **Probes replay themselves; exploring is a separate, capped, local job.** Consumer probes check the
+   claims in `docs/` and the READMEs, pairwise over the axes in
+   [.claude/probe-axes.md](.claude/probe-axes.md); they, their rows, the claims and the waivers are the
+   corpus in `tools/probe/corpus/`, tracked like tests.
+   - **Replay** runs after every commit from a git `post-commit` hook, in the background and with no
+     model: `prober replay` re-runs only the probes whose identity or coverage footprint the commit
+     changed, and blocks nothing. Read `prober status` before your next change. A probe that passed with
+     the same identity and fails now is an open finding `R-<probe>-<sha>`, fixed like any failing test.
+     The hook is opt-in, per clone and untracked: put this in `$(git rev-parse --git-common-dir)/hooks/post-commit`
+     and make it executable (Git for Windows runs it through its own `sh`):
+
+     ```sh
+     #!/bin/sh
+     [ -f tools/Prober/Prober.csproj ] && nohup dotnet tools/Prober/bin/Release/net10.0/prober.dll replay > "$(git rev-parse --git-dir)/prober-replay-last.log" 2>&1 < /dev/null &
+     exit 0
+     ```
+   - **Explore** when a feature lands or `status` shows a claim without probes: `/probe explore`, the
+     `prober` agent under `prober round`, whose time and claim cap the tool enforces. Never in CI. Its
+     probes land in its staging; `prober publish` moves them into the corpus, committed as `test:`.
+   - **Full sweep** on request (`/probe full`) or nightly, locally: the whole corpus replayed, the axes
+     derived again, then exploration up to the cap. A report, not a gate.
+   - A probe that found a bug becomes a test in the suite (step 3); a dismissed finding is recorded with
+     `prober dismiss` and the reason. An intended difference a probe accepts cites the sentence of the
+     docs, the record, or the verified fact (`KB-NNN`, `design/knowledge/`) that makes it intended.
+
+## Releasing
+
+Before `git tag`, replay the whole probe corpus and run the gate:
+
+```bash
+dotnet tools/Prober/bin/Release/net10.0/prober.dll replay --all
+dotnet tools/Prober/bin/Release/net10.0/prober.dll gate
+```
+
+The gate never starts a model and needs nothing but the tracked corpus and a replay, so CI runs it
+with `PROBE_STATE_DIR` in its own workspace. It refuses while a finding is open, a probe has not
+passed at its current identity, or a claim touched since the last tag has pairwise combinations no
+probe covers; it lists what is missing. Every obligation is met by a probe in the corpus, written by
+hand or by a round, or by a reviewed waiver in `tools/probe/corpus/waivers.json` (claim, reason,
+reviewer).
+
+**The gate is advisory until the user names the first release it binds.** Until then, run it, report
+its result with the release, and tag regardless; a refusal is a list of work, not a stop. The binding
+release, once named, is written here. From that release on, never tag over a refusal without the
+user's word.

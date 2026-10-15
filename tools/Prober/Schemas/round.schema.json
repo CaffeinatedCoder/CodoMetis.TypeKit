@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codometis.typekit/probe/schemas/round.schema.json",
+  "title": "Round caps",
+  "description": "State (branches/<branch>/round.json): the caps `rows` enforces for the round that holds the lock.",
+  "type": "object",
+  "required": [
+    "holder",
+    "deadline",
+    "claims"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "The schema version. A file or line without it is version 1 (the Python baseline)."
+    },
+    "holder": {
+      "type": "string"
+    },
+    "started": {
+      "type": "number"
+    },
+    "deadline": {
+      "type": "number"
+    },
+    "max_claims": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

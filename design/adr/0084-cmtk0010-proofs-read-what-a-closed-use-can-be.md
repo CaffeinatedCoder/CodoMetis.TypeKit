@@ -1,0 +1,50 @@
+# 0084. CMTK0010's proofs read what a closed use can be, not the constraint as written
+
+Date: 2026-10-14
+Status: accepted
+
+Context: 2026-10-14, two independent reviews of the unreleased 2.1.0, an outside one and the
+code-analyst agent, each finding reproduced before it was fixed; refines the forwarding proofs of
+[decision 79](0079-distinct-and-unrelated-type-parameters.md) and [decision 83](0083-the-contract-s-converter-first-and-enum-proves-nothing-against-struct.md).
+CMTK0010's pair checks and its six new kinds ship at Error in 2.1.0, and an Error that later caught
+more would break builds within the major ([decision 34](0034-errors-fixed-within-major-version-warnings.md)),
+so each is settled before the tag. Measured in `TypeArgumentConstraintAnalyzerTests`.
+
+**A bound built from a type parameter is met by what the parameter is at each use.** A forwarding
+parameter was proved apart from a type when the type broke one of its bounds, each compared as written.
+`where T : IEquatable<T>` is met by `int`, which implements `IEquatable<int>`, not `IEquatable<T>`, so
+`Equatable<T> : Pair<T, int>` passed, and `Equatable<int>` is `Pair<int, int>`; so did
+`where TSet : class, IFaultSet<TSet>` against `Refusal` in `Fault<TSet, Refusal>`, `where T : Node<T>`
+against `Leaf : Node<Leaf>`, and `where TB : IEnumerable<TA>` against `List<int>`. An interface bound
+built from a parameter is now taken as met, as a bound that is a parameter already was. A class bound
+built from one is met by a type whose base chain holds its definition, since a class converts to a
+class only along its chain, so `where T : Node<T>` against `PlaceOrder` is still proved. Two class
+bounds, or a class bound and a type, are compared by their definitions when either is built from a
+parameter: `Node<TA>` and `Node<TB>` are one chain, and were proved apart for both `[Distinct]` and
+`[Unrelated]`; `Node<TA>` and `Command` are two. Rejected: substituting the parameter into its own bound
+before comparing, which covers `IEquatable<T>` and not a bound that names another parameter,
+`IEnumerable<TA>`, and adds a type rewriter for no case the rule above misses.
+
+**A type built from a type parameter is held as the parameter is.** The pair check asked for a proof only
+where an argument was a type parameter; `List<T>`, `T[]` and `IEnumerable<T>` were compared as written,
+as two closed types, so `Listed<T> : Pair<List<T>, List<int>>`, `Pair<T[], int[]>`,
+`Pair<List<TA>, List<TB>>` and `Apart<IEnumerable<T>, List<int>>` passed, and `Listed<int>` held one type
+twice. An argument built from a parameter is now a breach unless proved apart. For `[Distinct]` the proof
+is that no closed use makes the two one: two generic types of different definitions, two arrays of different
+ranks, an array and a generic type, a parameter and a type built from itself, or a pair of arguments in one
+position proved apart, as `List<T>` against `List<int>` where `T : class`, or `List<TA>` against `List<TB>`
+where both carry `[Distinct]`. Each position is asked on its own, so a parameter used twice errs toward a
+report. For `[Unrelated]`: a value type against a class, array or delegate no value type boxes to; two value
+types never one, since a value type converts to another by identity alone; two classes of different chains,
+compared by their definitions. Two arrays and two delegates are related by variance beyond their definitions,
+`T[]` to `object[]`, and an interface by whatever implements it, so neither proves anything. Against a type
+built from a parameter, a forwarding parameter's bounds and `unmanaged` are taken as met, since the type's
+arguments decide them.
+
+**The package's own generics over a composed fault declare `[Distinct]`.** `ShouldHold<T1, T2>` and
+`ShouldHold<T1, T2, T3>` (CodoMetis.TypeKit.Testing) and the eight `ToHttpResult` overloads over
+`Fault<T1, T2>` and `Fault<T1, T2, T3>` (CodoMetis.TypeKit.AspNetCore) forward their parameters into
+`Fault`'s `[Distinct]` ones without carrying it, which a consumer's code written the same way is refused
+for. The shipping projects build without the CMTK analyzers, so nothing said so: with the analyzer added to
+both projects for the measurement, they reported 38 CMTK0010 errors, and none once the parameters carry
+`[Distinct]`. A call with one type twice could not compile before either, as `Fault<A, A>` is refused.

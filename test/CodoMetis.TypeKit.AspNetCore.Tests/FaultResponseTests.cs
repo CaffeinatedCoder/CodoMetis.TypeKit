@@ -298,7 +298,7 @@ public sealed partial class FaultResponseTests
     }
 
     /// <summary>
-    /// Inline, as ProducesProblem writes it, with <c>fault</c> beside ASP.NET's members; ProducesProblem's
+    /// Inline, as ProducesProblem writes it, with <c>fault</c> and <c>rule</c> beside ASP.NET's members; ProducesProblem's
     /// own inline schema is another instance and stays without it.
     /// </summary>
     [Fact]
@@ -318,6 +318,11 @@ public sealed partial class FaultResponseTests
             ["type"] = "string",
             ["description"] = FaultResponsesOperationTransformer.FaultDescription(qualified: false),
         };
+        ProblemSchema(expected)["properties"]!["rule"] = new JsonObject
+        {
+            ["type"] = "string",
+            ["description"] = FaultResponsesOperationTransformer.RuleDescription,
+        };
 
         ProblemSchema(responses["404"]!)["$ref"].ShouldBeNull();
         JsonNode.DeepEquals(responses["404"], expected).ShouldBeTrue(responses["404"]!.ToJsonString());
@@ -333,7 +338,7 @@ public sealed partial class FaultResponseTests
     [InlineData(OpenApiSpecVersion.OpenApi3_0, false)]
     [InlineData(OpenApiSpecVersion.OpenApi3_1, true)]
     [InlineData(OpenApiSpecVersion.OpenApi3_0, true)]
-    public async Task The_problem_schema_describes_fault_as_an_optional_string(OpenApiSpecVersion version, bool qualified)
+    public async Task The_problem_schema_describes_fault_and_rule_as_optional_strings(OpenApiSpecVersion version, bool qualified)
     {
         await using var app = await StartAsync(version: version, services: services =>
         {
@@ -353,6 +358,51 @@ public sealed partial class FaultResponseTests
             : "The fault this problem reports: the name of its member. ");
         (problem["required"]?.AsArray().Select(name => name!.GetValue<string>()) ?? []).ShouldNotContain("fault");
         problem["properties"]!["status"].ShouldNotBeNull("ASP.NET's members stay");
+
+        var rule = problem["properties"]!["rule"].ShouldNotBeNull($"ProblemDetails has no rule: {problem.ToJsonString()}");
+        rule.AsObject().Select(keyword => keyword.Key).Order().ShouldBe(["description", "type"]);
+        rule["type"]!.ToJsonString().ShouldBe("\"string\"");
+        rule["description"]!.GetValue<string>().ShouldBe(FaultResponsesOperationTransformer.RuleDescription, "always qualified, whatever QualifiedFaultNames says");
+        (problem["required"]?.AsArray().Select(name => name!.GetValue<string>()) ?? []).ShouldNotContain("rule");
+    }
+
+    /// <summary>
+    /// A problem response the endpoint declares itself is kept, but it answers the fault too: with every mapped
+    /// status declared by <c>ProducesProblem</c>, nothing described <c>fault</c> or <c>rule</c>, though the problems
+    /// carried them, and no description named the problem types (reported 2026-10-14). Inline, the declared
+    /// response's own schema gets them.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Problem_responses_the_endpoint_declares_itself_describe_fault_and_rule(bool inline)
+    {
+        await using var app = await StartAsync(
+            orders: false,
+            controls: false,
+            openApi: options =>
+            {
+                if (inline) options.CreateSchemaReferenceId = type => type.Type == typeof(ProblemDetails) ? null : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
+            },
+            services: services => services.AddFaultResponses<OrderFault>(fault =>
+                FaultResponse.Status(fault switch
+                {
+                    OrderFault.NotFound => StatusCodes.Status404NotFound,
+                    OrderFault.AlreadyShipped => StatusCodes.Status409Conflict,
+                    _ => StatusCodes.Status403Forbidden,
+                }).WithType(new Uri($"https://problems.example/{fault}"))),
+            endpoints: app => app.MapGet("/declared/{id:int}", (int id) => Find(id).ToHttpResult())
+                                 .ProducesProblem(StatusCodes.Status403Forbidden).ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict));
+
+        (await ProblemAsync(app, "/declared/9"))["fault"]!.GetValue<string>().ShouldBe(nameof(OrderFault.NotFound), "the control: the problem carries it");
+
+        var document = await DocumentAsync(app);
+        var notFound = Responses(document, "/declared/{id}", "get")["404"]!;
+        var problem  = inline ? ProblemSchema(notFound) : document["components"]!["schemas"]!["ProblemDetails"]!;
+
+        problem["properties"]!["fault"].ShouldNotBeNull(problem.ToJsonString());
+        problem["properties"]!["rule"].ShouldNotBeNull(problem.ToJsonString());
+        notFound["description"]!.GetValue<string>().ShouldBe("Not Found. Problem types: https://problems.example/NotFound");
     }
 
     /// <summary>A host whose document has no fault response keeps ASP.NET's problem schema, and the whole document, byte for byte.</summary>
@@ -399,7 +449,7 @@ public sealed partial class FaultResponseTests
             FaultResponses<OrderFault>.Unmapped().Message,
             // ArgumentException puts the parameter after the message; the link ends the message itself.
             invalid.Message.Replace($" (Parameter '{invalid.ParamName}')", "", StringComparison.Ordinal),
-        };
+        }.Concat(typeof(FaultRefusals).GetFields(BindingFlags.Public | BindingFlags.Static).Select(link => (string)link.GetRawConstantValue()!));
 
         var anchors = File.ReadLines(ReadmePath()).Select(line => Heading().Match(line)).Where(match => match.Success)
                           .Select(match => Slug(match.Groups["text"].Value)).ToHashSet();

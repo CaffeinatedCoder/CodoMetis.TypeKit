@@ -1,0 +1,99 @@
+namespace Prober;
+
+internal static class Program
+{
+    private const string Usage =
+        """
+        prober: the probing workflow's core. No command starts a model; only `round` does, locally.
+
+        Ledger (any checkout of the repository; --branch B, default the checked-out branch):
+          universe [--base REF]             each claim's axes, from the claims, the axes file and the generated axes
+          rows --claim C [--full]           a pairwise covering array over the claim's pairs not yet covered;
+                                            inside a capped round it refuses past the deadline or the claim cap
+          status [--json]                   coverage from current evidence, open findings, done or not
+          gate [--since REF] [--json]       the release gate (needs only the tracked corpus and a replay)
+          stale [--json] [--include-retired]   the probes a replay would run
+          identity --probe P                what a result of P is bound to
+          record-run --probe P --result pass|fail [--evidence F] [--seconds S]
+          footprint --probe P --cobertura F... --root WT [--include src] [--compile-time PATH...]
+          register --probe P --claim C --filter F [--variants JSON]
+          publish | dismiss --id F --reason TEXT | mark retired --probe P
+          lock --holder H --mode replay|explore|full [--pid N] | unlock --holder H | heartbeat --holder H
+          round-start --holder H --minutes M [--claims N] | round-end --holder H | repair | abandon
+
+        Running probes:
+          replay [--all] [--holder H] [--dry-run] [--where]   replays the corpus with no model
+          round explore|full [--minutes M] [--claims N] [--usd X]   a capped exploration round (local only)
+
+        State goes under PROBE_STATE_DIR when set (CI), else the main checkout's prober memory.
+        Exit codes: 0 done, 1 refused or failed, 2 usage, 3 this dll is stale.
+        """;
+
+    private static readonly HashSet<string> Flags = new(StringComparer.Ordinal)
+        { "json", "full", "all", "include-retired", "dry-run", "where" };
+
+    private static int Main(string[] args)
+    {
+        Console.OutputEncoding = new System.Text.UTF8Encoding(false);
+        if (args.Length == 0 || args[0] is "help" or "-h" or "--help") { Console.Write(Usage); return args.Length == 0 ? 2 : 0; }
+        var home = FindRoot(AppContext.BaseDirectory);
+        if (home is not null && SourceFingerprint.Difference(home) is { } stale)
+        {
+            Console.Error.WriteLine($"prober: this dll was built from other sources than the checkout holds ({stale}). Run `{SourceFingerprint.RebuildCommand}`.");
+            return SourceFingerprint.StaleExitCode;
+        }
+        return Run(Context.FromProcess(), args);
+    }
+
+    /// <summary>Runs one command against a context: the process's, or a test's.</summary>
+    public static int Run(Context ctx, string[] args)
+    {
+        try
+        {
+            var command = args[0];
+            var a = new Args(args[1..], Flags);
+            if (command == "replay") return Replay.Run(ctx, a);
+            if (command == "round") return Round.Run(ctx, a);
+            var ledger = new Ledger(ctx, a.Get("branch"));
+            // Commands run under a round keep its lock alive.
+            if (command is not ("lock" or "unlock" or "abandon" or "heartbeat") && ctx.Env("PROBE_HOLDER") is { } holder)
+                RoundLock.Beat(ledger, holder);
+            return command switch
+            {
+                "universe" => Commands.UniverseCommand(ledger, a),
+                "rows" => Commands.Rows(ledger, a),
+                "status" => Commands.Status(ledger, a),
+                "gate" => Commands.Gate(ledger, a),
+                "stale" => Commands.Stale(ledger, a),
+                "identity" => Commands.IdentityCommand(ledger, a),
+                "record-run" => Commands.RecordRun(ledger, a),
+                "footprint" => Commands.Footprint(ledger, a),
+                "register" => Commands.Register(ledger, a),
+                "publish" => Commands.Publish(ledger, a),
+                "dismiss" => Commands.Dismiss(ledger, a),
+                "mark" => Commands.Mark(ledger, a),
+                "lock" => Commands.Lock(ledger, a),
+                "unlock" => Commands.Unlock(ledger, a),
+                "heartbeat" => Commands.HeartbeatCommand(ledger, a),
+                "owe-replay" => Commands.OweReplay(ledger, a),
+                "round-start" => Commands.RoundStart(ledger, a),
+                "round-end" => Commands.RoundEnd(ledger, a),
+                "repair" => Commands.Repair(ledger, a),
+                "abandon" => Commands.Abandon(ledger, a),
+                _ => throw new Refusal($"unknown command {command}; see `prober help`", 2),
+            };
+        }
+        catch (Refusal refusal)
+        {
+            ctx.Error.WriteLine("prober: " + refusal.Message);
+            return refusal.ExitCode;
+        }
+    }
+
+    private static string? FindRoot(string start)
+    {
+        for (var dir = new DirectoryInfo(start); dir is not null; dir = dir.Parent)
+            if (File.Exists(Path.Combine(dir.FullName, "CodoMetis.TypeKit.slnx"))) return dir.FullName;
+        return null;
+    }
+}

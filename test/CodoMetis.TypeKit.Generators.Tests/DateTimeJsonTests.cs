@@ -64,10 +64,15 @@ public sealed class DateTimeJsonTests
     /// <summary>
     /// Switches the local time zone through <c>TZ</c>, which .NET reads on Linux and macOS, to one
     /// with a fixed offset of +05:30. The assertion on the offset keeps a platform that ignores
-    /// <c>TZ</c> from passing vacuously.
+    /// <c>TZ</c> from passing vacuously. Windows ignores it, and nothing else switches the zone of a
+    /// running process there, so on Windows these tests are skipped by name and the Linux and macOS legs
+    /// of CI run them.
     /// </summary>
     private static void InTimeZoneAwayFromUtc(Action test)
     {
+        if (OperatingSystem.IsWindows())
+            Assert.Skip("Windows ignores TZ, so this process's time zone cannot be switched; the Linux and macOS legs run this test.");
+
         var previous = Environment.GetEnvironmentVariable("TZ");
         Environment.SetEnvironmentVariable("TZ", "Asia/Kolkata");
         TimeZoneInfo.ClearCachedData();

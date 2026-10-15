@@ -1,11 +1,14 @@
 # ASP.NET Core
 
-A value object binds from a route, a query, a header or a body through the members the generators
-add, so an endpoint takes `CustomerId` where it took `Guid`, and every way in applies `Create`.
-`CodoMetis.TypeKit.AspNetCore` adds what the host needs beyond that: the value object's schema in
-the OpenAPI document, and a `Result` as the response. The
-[package README](../src/CodoMetis.TypeKit.AspNetCore/README.md) is the reference for both; this page
-follows a request through a minimal API and an MVC controller.
+Your endpoints can take value objects as parameters and return a `Result`. An endpoint that took a
+`Guid` takes a `CustomerId` instead, and every request value goes through `Create` on its way in.
+Errors become problem-details responses, and the OpenAPI document shows each value object as the
+type inside it.
+
+Binding needs nothing beyond the generated code. `CodoMetis.TypeKit.AspNetCore` adds the other two
+parts: the OpenAPI schemas, and a `Result` as the response. This page follows one request through a
+minimal API and an MVC controller. The [package README](../src/CodoMetis.TypeKit.AspNetCore/README.md)
+is the reference for every option.
 
 ```csharp
 using CodoMetis.TypeKit;
@@ -40,7 +43,7 @@ public sealed record RegisterCustomer(Email Email, string Name);
 public sealed record CustomerDto(CustomerId Id, Email Email, string Name);
 ```
 
-## Setup
+## Set it up
 
 ```csharp
 builder.Services.AddOpenApi(options => options.AddTypeKit());          // the document: every value object as the schema of what it wraps
@@ -53,11 +56,15 @@ builder.Services.AddFaultResponses<CustomerFault>(fault => fault switch   // a R
 });
 ```
 
-Nothing is registered per value object, and the host does not reference the generators. The
-`Microsoft.AspNetCore.OpenApi` reference has to be direct, at 10.0.12 or later
-([the README says why](../src/CodoMetis.TypeKit.AspNetCore/README.md#setup)).
+That's all the setup there is. You register nothing per value object, and the web project doesn't
+reference the generators.
 
-## Binding in a minimal API
+**Good to know**
+
+- **Reference `Microsoft.AspNetCore.OpenApi` directly, at 10.0.12 or later.** The package README
+  explains why ([Setup](../src/CodoMetis.TypeKit.AspNetCore/README.md#setup)).
+
+## Bind value objects in a minimal API
 
 ```csharp
 app.MapGet("/customers/{id}", (CustomerId id) => customers.Find(id).ToHttpResult());                  // a route parameter, through the generated TryParse
@@ -66,34 +73,46 @@ app.MapPost("/customers", (RegisterCustomer body) => customers.Register(body).To
 ```
 
 Route, query and header parameters bind through the generated `TryParse`, with the invariant
-culture; a body through the generated JSON converter. A value object declared in the same project as
-the endpoint trips ASP0020 on a route parameter, since the route analyzer reads the source before the
-generators add `IParsable`; the binding is right, and the README shows the pragma that says so.
+culture. A body goes through the generated JSON converter.
+
+**Good to know**
+
+- **ASP0020 on a route parameter is a false alarm.** It appears when the value object is declared in
+  the same project as the endpoint. ASP.NET's route analyzer reads your code before the generators
+  add `IParsable`, so it sees an unfinished type. The binding itself is correct, and the package
+  README shows the pragma that suppresses it.
 
 ## What a refused value answers
 
+Here is what each request gets back from the endpoints above, and from the MVC controller further
+down:
+
 | Request | Answer |
 |---|---|
-| `GET /customers/0199aaaa-…` | 200, or the problem the fault maps to |
-| `GET /customers/not-an-id` | 400: `TryParse` refused the route value |
-| `GET /customers?page=500` | 400: `Create` refused it, through `TryParse` |
-| `POST /customers` with `"email": "nobody"` | 400: the `JsonException` names `Email` and `NoAt`, never the text, and is logged; the body is empty unless the host adds `UseStatusCodePages()` |
+| `GET /customers/0199aaaa-...` | 200, or the problem the fault maps to |
+| `GET /customers/not-an-id` | 400: `TryParse` rejected the route value |
+| `GET /customers?page=500` | 400: `Create` rejected it, through `TryParse` |
+| `POST /customers` with `"email": "nobody"` | 400. The `JsonException` names `Email` and `NoAt`, never the text, and is logged. The body is empty unless the host adds `UseStatusCodePages()` |
 | `POST /customers` without `email` | 200 with a default `Email`, unless `RespectRequiredConstructorParameters` is set, then 400 |
-| `GET /mvc/customers` without `page` | 400, since the action marks `page` `[BindRequired]`; without it, the action gets a default `PageSize` |
+| `GET /mvc/customers` without `page` | 400, because the action marks `page` `[BindRequired]`. Without it, the action gets a default `PageSize` |
 
-The last two rows are the ones to act on. System.Text.Json calls no converter for a property the body
-lacks, so it stays `default`, an instance that passed no factory. The README's
-[Binding](../src/CodoMetis.TypeKit.AspNetCore/README.md#binding) shows the two lines that make both
-minimal APIs and MVC answer 400 instead.
+The last two rows need something from you. In both, your code receives a `default` value that never
+went through `Create`.
 
-MVC does the same with a query, header or form value the request lacks: for a non-nullable struct, a
-struct value object as much as a `Guid` or an `int`, it binds nothing, keeps the model state valid
-and calls the action with `default`. A minimal API answers 400, and MVC already requires a closed set
-or a class value object, as any non-nullable reference type. Mark a struct value object's parameter
-`[BindRequired]` (`Microsoft.AspNetCore.Mvc.ModelBinding`), as the controller below does for `page`,
-and MVC answers 400; or make it nullable where it is optional.
+- **A property missing from the body.** System.Text.Json calls no converter for a property the body
+  doesn't have, so the property stays `default`. The package README's
+  [Binding](../src/CodoMetis.TypeKit.AspNetCore/README.md#binding) section shows the two lines that
+  make both minimal APIs and MVC answer 400 instead.
+- **A query, header or form value missing from an MVC request.** For a non-nullable struct, MVC
+  binds nothing, keeps the model state valid, and calls the action with `default`. That happens to a
+  struct value object just as it does to a `Guid` or an `int`. Mark the parameter `[BindRequired]`
+  (from `Microsoft.AspNetCore.Mvc.ModelBinding`), as the controller below does for `page`, and MVC
+  answers 400. Or make the parameter nullable where it is optional.
 
-## Binding in MVC
+A minimal API already answers 400 for a missing parameter. MVC already requires a closed set or a
+class value object, as it does any non-nullable reference type.
+
+## Bind value objects in MVC
 
 ```csharp
 [ApiController]
@@ -111,13 +130,22 @@ public sealed class CustomersController(ICustomers customers) : ControllerBase
 }
 ```
 
-MVC binds a route or query value object through the generated `TypeConverter`, and a body through
-the JSON converter as a minimal API does. The difference is the 400: MVC answers a refused body with
-its validation problem details, whose message is the `JsonException`'s, so the client reads
-`Email refused the JSON value (NoAt)` and never the text. The one exception is a value object used
-as a dictionary key: System.Text.Json puts the key in the `JsonException`'s `Path`, and MVC names the
-error after it (`"$.items.SE"`), so keep a secret out of a dictionary's keys
-([Logging and secrets](logging-and-secrets.md#refusals-never-quote-the-input)).
+MVC binds a route or query value object through the generated `TypeConverter`. A body goes through
+the JSON converter, as in a minimal API.
+
+The 400 is where the two differ. MVC answers a rejected body with its validation problem details,
+and the message in it is the `JsonException`'s. So the client reads
+`Email refused the JSON value (NoAt)`, never the text it sent.
+
+**Good to know**
+
+- **The OpenAPI document lists what ASP.NET's API explorer lists.** A controller is in it only with
+  `[ApiController]`, with `[ApiExplorerSettings(IgnoreApi = false)]`, or through a convention that sets
+  `ApiExplorer.IsVisible`, and TypeKit describes what is there.
+- **Keep secrets out of dictionary keys.** When a value object is a dictionary key, System.Text.Json
+  puts the key in the `JsonException`'s `Path`. MVC names the error after that path (`"$.items.SE"`),
+  so the key ends up in the response
+  ([Logging and secrets](logging-and-secrets.md#refusals-never-quote-the-input)).
 
 ## A Result as a response
 
@@ -132,10 +160,14 @@ public interface ICustomers
 }
 ```
 
-`ToHttpResult()` answers a success with `200 OK` and its value, `204 No Content` for a
-`Result<TError>`, and a fault with RFC 9457 problem details, whose status the host mapped in `Setup`
-and whose `fault` member names the fault. The domain declares the fault type; only the host
-references ASP.NET. A handler's outcome can be read without a host:
+`ToHttpResult()` turns a `Result` into a response:
+
+- **A success** becomes `200 OK` with its value, or `204 No Content` for a `Result<TError>`.
+- **An error** becomes RFC 9457 problem details. The status is the one you mapped in
+  [Set it up](#set-it-up), and the `fault` member names the error.
+
+Your domain project declares the error type and knows nothing about HTTP. Only the web project
+references ASP.NET. You can check a handler's outcome without starting a host:
 
 ```csharp
 var response = customers.Find(CustomerId.New()).ToHttpResult();
@@ -147,36 +179,54 @@ bool notFound = response.Result is FaultProblem<CustomerFault> { Fault: Customer
 { "type": "https://tools.ietf.org/html/rfc9110#section-15.5.5", "title": "Not Found", "status": 404, "fault": "NotFound", "traceId": "…" }
 ```
 
-A host whose endpoint answers with a fault type nobody mapped does not start, and the exception names
-the endpoint. `AddFaultResponses` calls `AddProblemDetails()`, so a `CustomizeProblemDetails` of the
-host's own reaches these problems:
+If an endpoint can answer with an error type you haven't mapped, the host doesn't start. The
+exception names the endpoint.
+
+`AddFaultResponses` calls `AddProblemDetails()`, so your own `CustomizeProblemDetails` applies to
+these problems too:
 
 ```csharp
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context => context.ProblemDetails.Extensions["service"] = "customers");
 ```
 
-A response can carry more, each part opt-in, so the default above stays as it is: a `type` and a
-`title` per fault, a closed set as the fault type, answered by its members' kinds and descriptions,
-a sentence per occurrence in a `Fault<TFault>`, a status per endpoint, route group or controller
-(applied to those of their endpoints that answer with the fault type), the endpoint's own success
-such as a `201 Created`, and the fault on the request for a `CustomizeProblemDetails`. The README's
-[Mapping faults to statuses](../src/CodoMetis.TypeKit.AspNetCore/README.md#mapping-faults-to-statuses)
-and the sections after it show each.
+### Say more in a response
 
-Every problem names its fault in `fault`, for every member, with a description or without one: the
-name reaches the client as the status does. Where two causes must not be told apart, an unknown user
-and a wrong password, which would say which accounts exist, map them to one member before
-`ToHttpResult()`, as the README's
-[Faults a client must not tell apart](../src/CodoMetis.TypeKit.AspNetCore/README.md#faults-a-client-must-not-tell-apart)
-shows.
+The response above is the default. You can opt in to more, one piece at a time, and the default
+stays as it is:
 
-## The document
+- **A `type` and a `title` per error.**
+- **A closed set as the error type**, answered by its members' kinds and descriptions.
+- **A sentence per occurrence**, in a `Fault<TFault>`, and the rule that rejected the value.
+- **Errors of several types side by side** (`Fault<T1, T2>`): a boundary's own errors beside the ones
+  shared code decides.
+- **A status per endpoint, route group or controller.** It applies to those of their endpoints that
+  answer with the error type.
+- **Members a route leaves out** of its document.
+- **The endpoint's own success**, such as a `201 Created`.
+- **The error on the request**, for your `CustomizeProblemDetails` to read.
 
-With `AddTypeKit()`, every value object is the schema ASP.NET publishes for the type it wraps,
-wherever it appears. One in a body keeps a component named after it; a route or query parameter is
-described inline, as ASP.NET describes a parameter of the wrapped type, so the `id` below is a `uuid`
-string with no component of its own. The fault responses are listed on every
-operation that returns the fault type:
+The package README shows each one, starting at
+[Mapping faults to statuses](../src/CodoMetis.TypeKit.AspNetCore/README.md#mapping-faults-to-statuses).
+
+**Good to know**
+
+- **The client always sees which error it was.** Every problem names its error in `fault`, for
+  every member, with a description or without one. The name reaches the client just as the status
+  does. Sometimes two causes must look the same, such as an unknown user and a wrong password, which
+  would otherwise tell a caller which accounts exist. Map them to one member before
+  `ToHttpResult()`, as the package README's
+  [Faults a client must not tell apart](../src/CodoMetis.TypeKit.AspNetCore/README.md#faults-a-client-must-not-tell-apart)
+  shows.
+
+## See value objects in the OpenAPI document
+
+With `AddTypeKit()`, every value object gets the schema ASP.NET publishes for the type inside it,
+wherever it appears.
+
+- **In a body**, a value object keeps a component named after it.
+- **As a route or query parameter**, it is described inline, just as ASP.NET describes a parameter
+  of the underlying type. So the `id` below is a `uuid` string with no component of its own.
+- **The error responses** are listed on every operation that returns the error type.
 
 ```json
 "/customers/{id}": { "get": {
@@ -187,14 +237,17 @@ operation that returns the fault type:
         "409": { "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } } } } }
 ```
 
-The `ProblemDetails` component those responses refer to describes `fault` too, as an optional string,
-so a client generated from the document has the member it matches on.
+The `ProblemDetails` component those responses point to describes `fault` too, as an optional
+string. A client generated from the document then has the member it matches on.
 
-A rule belongs in `Create`, not on the property: a validation attribute on a value-object property
-lands in the value object's shared component and then applies to every other use.
+**Good to know**
+
+- **Put rules in `Create`, not on the property.** A validation attribute on a value-object property
+  ends up in the value object's shared component, and from there it applies to every other use of
+  that value object.
 
 ## Native AOT
 
-The transformer and `ToHttpResult()` are trim- and AOT-safe, and the smoke test publishes a host with
-both. What the host's `JsonSerializerContext` has to list for the document, and for the problem
-details, is in [Native AOT](native-aot.md#openapi).
+The transformer and `ToHttpResult()` are trim- and AOT-safe, and the smoke test publishes a host
+that uses both. Your `JsonSerializerContext` needs a few entries for the document and the problem
+details. [Native AOT](native-aot.md#openapi) lists them.

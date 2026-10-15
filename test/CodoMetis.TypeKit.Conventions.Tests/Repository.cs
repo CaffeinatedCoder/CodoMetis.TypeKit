@@ -79,8 +79,8 @@ internal static class Repository
 
         if (!File.Exists(assets))
             throw new InvalidOperationException(
-                $"{assets} does not exist. Restore the solution first (`dotnet restore {SolutionMarker}`); " +
-                "the convention tests read restore output and do not trigger a restore themselves.");
+                $"{assets} does not exist. The build of this test project restores the shipping projects (its RestoreShippingProjects target); " +
+                $"a run with --no-build skips it, so restore the solution first (`dotnet restore {SolutionMarker}`).");
 
         return JsonDocument.Parse(File.ReadAllText(assets));
     }

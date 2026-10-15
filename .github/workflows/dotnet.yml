@@ -1,7 +1,9 @@
 # Build, test and pack on every push to main and every PR.
 #
-# Linux only, as in the sibling repositories: the shipping code is pure managed code on a single
-# TFM, and a second runner would re-test the .NET runtime rather than this library.
+# The tests run on Linux, Windows and macOS: a contributor needs git and the pinned SDK on any of
+# them (design/adr/0092-repository-tooling-is-dotnet-and-ci-needs-no-ai.md), and the second and third
+# runners test the repository's own assumptions (paths, line endings, child processes, the tooling)
+# rather than the .NET runtime. Packing, the smoke test and the SBOMs stay on Linux.
 #
 # Actions are pinned to commit SHAs, not tags: a tag can be moved to a different commit (the
 # tj-actions/changed-files compromise, March 2025), a SHA cannot. The trailing `# vX.Y.Z` is what
@@ -42,8 +44,12 @@ env:
 
 jobs:
   test:
-    name: Test (ubuntu-latest)
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
 
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -59,17 +65,20 @@ jobs:
       - name: Build
         run: dotnet build CodoMetis.TypeKit.slnx -c Release --no-restore
 
-      # The EF Core round trips start a PostgreSQL container; ubuntu runners have Docker.
+      # The EF Core round trips start a PostgreSQL container. Ubuntu runners have Docker; macOS
+      # runners have none and Windows runners run only Windows containers, so those legs leave the
+      # one class that needs it out.
       - name: Test
         run: >
           dotnet test --solution CodoMetis.TypeKit.slnx -c Release --no-build
           --report-xunit-trx --results-directory TestResults
+          ${{ runner.os != 'Linux' && '--filter-not-class "*PostgreSqlRoundTripTests"' || '' }}
 
       - name: Upload test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
-          name: test-results
+          name: test-results-${{ matrix.os }}
           path: TestResults/**/*.trx
           if-no-files-found: ignore
 
@@ -103,7 +112,7 @@ jobs:
       # package cache with the solution's dependencies, and a restore that only works because of that
       # passes one way and fails the other, which broke a release in a sibling repository.
       - name: Consumer smoke test against the packed feed
-        run: ./test/consumer-smoke-test.sh dist
+        run: dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll dist
 
       # Here as well as in the release, so a broken SBOM step surfaces on a PR rather than on release
       # day. The flags are the release workflow's; ReleaseWiringTests keeps the exclusions in step.
@@ -147,5 +156,9 @@ jobs:
       - name: Native AOT prerequisites
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang zlib1g-dev
 
+      # The smoke test is a tool project, run as its built dll (design/adr/0092).
+      - name: Build the consumer smoke test
+        run: dotnet build tools/ConsumerSmokeTest -c Release
+
       - name: Consumer smoke test, packing its own feed
-        run: ./test/consumer-smoke-test.sh
+        run: dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll

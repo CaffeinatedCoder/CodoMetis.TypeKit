@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codometis.typekit/probe/schemas/ledger-line.schema.json",
+  "title": "Ledger line (legacy, one line)",
+  "description": "State (ledger.jsonl): what a round recorded per pair. Informational: it earns no credit; only evidence does.",
+  "type": "object",
+  "required": [
+    "claim",
+    "pair",
+    "commit",
+    "result"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "The schema version. A file or line without it is version 1 (the Python baseline)."
+    },
+    "claim": {
+      "type": "string"
+    },
+    "pair": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[^=]+=.*$"
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "commit": {
+      "type": "string"
+    },
+    "result": {
+      "type": "string"
+    },
+    "probe": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string"
+    }
+  }
+}

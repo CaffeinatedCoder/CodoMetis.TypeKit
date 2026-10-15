@@ -5,7 +5,7 @@ instead. Please don't open a public issue for those.
 
 ## Getting set up
 
-A machine needs:
+A machine needs git and:
 
 - **The .NET SDK that `global.json` names**, or a later patch of its feature band. Other bands and
   previews are not used, so `dotnet --version` in the repository root must print a version of that
@@ -14,12 +14,19 @@ A machine needs:
   `dotnet-sdk` Homebrew cask. Homebrew's `dotnet` formula trails the releases, and its Native AOT
   publish failed to link (`ld: library 'ssl' not found`); `brew shellenv` puts it first on `PATH`, so
   put `/usr/local/share/dotnet` before it, or `brew unlink dotnet`.
-- **Docker, running** (Docker Desktop, OrbStack, Colima). The PostgreSQL round-trip tests start a
-  container through Testcontainers; without Docker those fail with `DockerUnavailableException`,
-  and every other test passes.
+
+That is all the build and the tests need, on Windows, macOS or Linux: the repository's tools are C#,
+a file-based app (`dotnet run tools/x.cs`) or a tool project under `tools/`, never shell or Python scripts
+([decision 92](design/adr/0092-repository-tooling-is-dotnet-and-ci-needs-no-ai.md)). Two tasks need one
+thing more each:
+
+- **Docker, running** (Docker Desktop, OrbStack, Colima), for the PostgreSQL round-trip tests, which
+  start a Linux container through Testcontainers. Without it those fail with
+  `DockerUnavailableException`, and every other test passes.
 - **The platform's native toolchain** for the smoke test, which publishes two consumers with Native
   AOT, a web host and a console application with EF Core: Xcode's command-line tools on macOS
-  (`xcode-select --install`), `clang` and `zlib1g-dev` on Debian and Ubuntu.
+  (`xcode-select --install`), `clang` and `zlib1g-dev` on Debian and Ubuntu, MSVC's C++ build tools
+  (Visual Studio's "Desktop development with C++") on Windows.
 
 An IDE started from the Dock or a launcher does not read the shell's profile: point its .NET CLI path
 at the same SDK (Rider: Settings, Build, Execution, Deployment, Toolset and Build).
@@ -31,7 +38,8 @@ the old SDK's workload set. Run `sudo dotnet workload update` in the repository 
 ```bash
 dotnet build CodoMetis.TypeKit.slnx
 dotnet test --solution CodoMetis.TypeKit.slnx
-./test/consumer-smoke-test.sh      # packs the packages and builds throwaway consumers against them
+dotnet build tools/ConsumerSmokeTest -c Release
+dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll   # packs the packages and builds throwaway consumers against them
 ```
 
 Dependabot raises the GitHub Actions weekly and the test projects' packages monthly, except

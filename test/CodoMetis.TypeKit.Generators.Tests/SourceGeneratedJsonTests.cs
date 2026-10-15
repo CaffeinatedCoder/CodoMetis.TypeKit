@@ -113,11 +113,52 @@ public sealed class SourceGeneratedJsonTests
         JsonSerializer.Deserialize<ProbeWeekday>("\"Friday\"", StringEnumConverterInOptions.Default.Options).Value.ShouldBe(DayOfWeek.Friday);
     }
 
+    /// <summary>
+    /// The contract made for a wrapped type the context never saw follows the serializer's order: a converter on
+    /// the options before the type's own <c>[JsonConverter]</c>.
+    /// </summary>
+    [Fact]
+    public void A_converter_on_the_options_comes_before_the_wrapped_type_s_own()
+    {
+        var options = new JsonSerializerOptions { TypeInfoResolver = CodesOnly.Default, Converters = { new CodeAsUpperConverter() } };
+
+        CodesOnly.Default.GetTypeInfo(typeof(Code)).ShouldBeNull("the control: the context never saw the wrapped type");
+        JsonSerializer.Serialize(new Code("Ab"), new JsonSerializerOptions { Converters = { new CodeAsUpperConverter() } }).ShouldBe("\"AB\"", "the control: the serializer's order");
+        JsonSerializer.Serialize(OverCode.From(new Code("Ab")), options).ShouldBe("\"AB\"");
+    }
+
     [Fact]
     public void Stored_JSON_is_read_without_the_rules() =>
         JsonSerializer.Deserialize<ProbePercentage>("101", new JsonSerializerOptions(ContextOnly) { Converters = { new StoredJsonConverterFactory() } })
                       .Value.ShouldBe(101);
 }
+
+/// <summary>A wrapped type with a converter of its own, which writes it in lower case.</summary>
+[JsonConverter(typeof(CodeAsLowerConverter))]
+public readonly struct Code(string text)
+{
+    public string Text { get; } = text;
+}
+
+public sealed class CodeAsLowerConverter : JsonConverter<Code>
+{
+    public override Code Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => new(reader.GetString()!);
+
+    public override void Write(Utf8JsonWriter writer, Code value, JsonSerializerOptions options) => writer.WriteStringValue(value.Text.ToLowerInvariant());
+}
+
+/// <summary>A converter on the options, which writes a <see cref="Code"/> in upper case.</summary>
+public sealed class CodeAsUpperConverter : JsonConverter<Code>
+{
+    public override Code Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => new(reader.GetString()!);
+
+    public override void Write(Utf8JsonWriter writer, Code value, JsonSerializerOptions options) => writer.WriteStringValue(value.Text.ToUpperInvariant());
+}
+
+public readonly partial record struct OverCode : IValue<Code>;
+
+[JsonSerializable(typeof(OverCode))]
+internal sealed partial class CodesOnly : JsonSerializerContext;
 
 [JsonSerializable(typeof(ProbeName))]
 [JsonSerializable(typeof(ProbeId))]

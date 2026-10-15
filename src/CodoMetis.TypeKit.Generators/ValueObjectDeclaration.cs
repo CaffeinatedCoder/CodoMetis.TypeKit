@@ -420,6 +420,30 @@ internal static class ValueObjectDeclaration
     }
 
     /// <summary>
+    /// A base record's hand-written equality: <c>Equals(TBase)</c>, <c>GetHashCode()</c>, or an explicit
+    /// <c>IEquatable&lt;TBase&gt;.Equals</c>, in this assembly or another. The derived record's
+    /// synthesized equality called them, so a base comparing by reference made two value objects holding
+    /// 42 unequal while <c>CompareTo</c> answered 0. Over a base record the equality is generated, the
+    /// wrapped value's (<see cref="ValueObjectContractAspect"/>), and it does not call them: CMTK1023
+    /// says so, rather than replace them without a word.
+    /// </summary>
+    public static IReadOnlyList<string> InheritedEquality(INamedType target)
+    {
+        var equatable = TypeFactory.GetNamedType(typeof(IEquatable<>));
+
+        return
+        [
+            .. SelfAndBases(target).Skip(1).SelectMany(type => type.Methods
+                                                                   .Where(method => method is { IsStatic: false } && IsHandWritten(method)
+                                                                                 && (method.IsExplicitInterfaceImplementation
+                                                                                         ? method.ExplicitInterfaceImplementations.Any(implemented => implemented.DeclaringType.Definition.Equals(equatable))
+                                                                                         : (method is { Name: nameof(Equals), Parameters: [{ } other] } && other.Type.Equals(type))
+                                                                                        || method is { Name: nameof(GetHashCode), Parameters.Count: 0 }))
+                                                                   .Select(method => $"{Describe(method)} in its base type {type.ToDisplayString()}"))
+        ];
+    }
+
+    /// <summary>
     /// The instance state <paramref name="target"/> declares or inherits besides the wrapped value: a
     /// field, an auto-property, a <c>required</c> member or a field-like event. The generated JSON,
     /// parsing, type converter and materializer carry the wrapped value alone, so such state was lost

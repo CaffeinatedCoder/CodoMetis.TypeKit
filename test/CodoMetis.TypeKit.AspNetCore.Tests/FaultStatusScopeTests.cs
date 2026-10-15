@@ -178,7 +178,9 @@ public sealed class FaultStatusScopeTests
 
     /// <summary>
     /// The builder <c>MapControllers()</c> returns covers every action, and ASP.NET puts its metadata after
-    /// the controllers' attributes: its status is the last, and wins over an action's own.
+    /// the controllers' attributes: its status is the last, and wins over an action's own, in the document
+    /// too. The document read the action's attributes alone, and said 410 where the endpoint answered 451
+    /// (reported 2026-10-14).
     /// </summary>
     [Fact]
     public async Task A_status_on_MapControllers_covers_every_action_and_comes_after_their_attributes()
@@ -189,6 +191,7 @@ public sealed class FaultStatusScopeTests
 
         await ProblemAsync(app, "/mvc/strict/9", HttpStatusCode.UnavailableForLegalReasons);
         (await app.GetTestClient().GetStringAsync("/mvc/plain", TestContext.Current.CancellationToken)).ShouldBe("ok");
+        Statuses(await DocumentAsync(app), "/mvc/strict/{id}").ShouldBe(["200", "409", "451"]);
     }
 
     // A status on one endpoint or action stays strict, also inside a scope whose own status is satisfied.

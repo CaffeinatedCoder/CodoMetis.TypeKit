@@ -342,6 +342,14 @@ internal sealed partial class ValueObjectAspect : TypeAspect
             return false;
         }
 
+        // A base record's equality, which the derived record's synthesized one called: over a base record
+        // the equality is generated, the wrapped value's, and no longer calls it. A Warning, and the value
+        // object is generated, since an Error that reports more waits for a major version.
+        var inheritedEquality = ValueObjectDeclaration.InheritedEquality(target);
+
+        if (inheritedEquality.Count > 0)
+            builder.Diagnostics.Report(InheritedEqualityNotUsed.WithArguments((target, string.Join(", ", inheritedEquality))));
+
         // Before the field is introduced, so what is found is the user's. JSON, parsing and the
         // materializer carried the wrapped value alone, while the record's equality compared the rest:
         // lost on a round trip, and a lazily filled cache made equal instances unequal. A required

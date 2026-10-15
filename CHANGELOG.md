@@ -10,7 +10,44 @@ A version's heading reads `## <version> — Unreleased` until the release is pre
 the release date. The release workflow refuses a tag whose section still says `Unreleased`, and the
 section is the GitHub release's notes.
 
-## 2.1.0 — Unreleased
+## 2.1.0 — 2026-10-15
+
+### Added
+
+- **Decimals in one spelling**: `DecimalNumberJsonConverter` and `DecimalStringJsonConverter` write the smallest scale, keys included, and read either token ([JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/json.md#decimals-in-one-spelling)).
+- **Converters that say what they write**: `IDescribedJsonConverter` and `JsonSchemaDescriptions`; the schema exporter (`DescribedJsonSchema`) and `AddTypeKit()` describe them everywhere ([JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/json.md#describing-what-a-converter-writes)).
+- **The rule that refused**: `Fault.Of(reason).WithRule(member)` names an enum's or a closed set's member, written as the problem's `rule` and on `IFaultFeature` ([The rule that refused](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#the-rule-that-refused)).
+- **`FaultKind.PreconditionFailed`** (412) and **`FaultKind.Malformed`** (400), answered with no mapping ([closed sets as faults](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type)).
+- **CMTK0014** (Warning): a `FaultKind` or `ConstructorAccessibility` that names no member, such as `(FaultKind)9` or `default` ([CMTK0014](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014)).
+- **`AsOptionalText()`/`AsOptionalIdentifier()`**: a blank is no text, a hidden character still `Hidden` ([Written text](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/text.md#required-and-optional)).
+- **Faults of several types**: `Fault<T1, T2>` and `Fault<T1, T2, T3>`, each answered as its type is mapped ([Faults of several types](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types)).
+- **`WithoutFaults`** and `[WithoutFaults<T>]`: a route leaves out of its document the members it never answers with, and reporting one throws ([Leaving out what a route cannot answer](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer)).
+- **CMTK1023** (Warning): a base record's `Equals`, `GetHashCode` or `IEquatable`, which the value object's equality no longer calls ([Build errors](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#build-errors)).
+- **`[Interface]`, `[Unsealed]`, `[ValueObject]`, `[ClosedSet]`, `[FlagsEnum]`, `[ReadOnlyStruct]`** (CMTK0010): six more kinds a type argument can be required to be ([Type constraints](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/type-constraints.md#the-kind-of-a-type-argument)).
+- **CMTK0010 at the methods the compiler calls for you**: a `foreach`'s `GetEnumerator`, an `await`'s `GetAwaiter`, a `Deconstruct`, and a collection expression's `Add` or builder, for every attribute but 2.0's four ([Type constraints](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/type-constraints.md)).
+- **`[Distinct]` and `[Unrelated]`** (CMTK0010): two type arguments that must differ, or must not derive from, implement or box to each other ([Type constraints](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/type-constraints.md#two-parameters-apart)).
+- **One mapping for every fault set**: `AddFaultResponses()` by kind, or `AddFaultResponses(fault => …)` over `IFault`, for each set with no mapping of its own ([Every fault set at once](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once)).
+- **Testing: `ShouldHold(reason)`** on `Fault<T1, T2>` and `Fault<T1, T2, T3>` hands back the fault it holds ([CodoMetis.TypeKit.Testing](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Testing/README.md)).
+
+### Changed
+
+- The OpenAPI problem schema describes `rule` beside `fault`: regenerate clients.
+- A host whose endpoint answers two fault types that write one fault name logs a warning at startup naming both; 3.0.0 refuses it ([Faults of several types](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types)).
+- The new attributes in the `CodoMetis.TypeKit` namespace (`[ValueObject]`, `[Interface]`, …) can be ambiguous beside another library's of the same name (CS0104): qualify or alias one.
+- OpenAPI: in a host with controllers, a document whose MVC and minimal-API JSON options write a type differently is refused, naming what differs ([OpenAPI](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says)).
+
+### Fixed
+
+- OpenAPI: a value object or closed set the JSON options write with a converter of their own is described as that converter says, or as ASP.NET writes it, not as its wrapped type ([OpenAPI](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says)).
+- OpenAPI: a `Patch<T>` the serializer requires stays `required`; under `RespectRequiredConstructorParameters`, declare patches as `init` properties ([Merge patches](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/merge-patches.md#required-constructor-parameters)).
+- OpenAPI: a `WithFaultStatus` on the builder `MapControllers()` returns reaches the document, as it reached the response.
+- OpenAPI: a problem response an endpoint declares itself (`ProducesProblem`, `[ProducesResponseType]`) describes `fault`, and names its problem types.
+- OpenAPI: an operation with fault responses lists every status ascending, the ones its endpoint declares itself among them; where an endpoint declares its own, the document's response order changes, so update snapshot tests.
+- Over a base record, a value object's equality is its wrapped value's, in a collection of the base too, whatever equality the base declares.
+- Under `ReferenceHandler.Preserve`, a value object over a type that could hold an `$id` throws `NotSupportedException` instead of writing a duplicate `$id` ([JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#json)).
+- A wrapped type's `Parse` whose result can't be assigned to it, or that takes its text by `ref`, or an abstract class's string constructor, no longer breaks the build; the value object has no parsing.
+- A value object over a NodaTime type parses after MVC bound a plain one first; it threw `TypeInitializationException` for the rest of the process.
+- OpenAPI: an MVC action binding a complex type from the route under a name of its own (`[FromRoute(Name = "id")]`) no longer fails the whole document with `AddTypeKit()`.
 
 ## 2.0.0 — 2026-10-14
 

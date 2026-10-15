@@ -1,15 +1,19 @@
 # Merge patches
 
-A PATCH endpoint that takes JSON Merge Patch (RFC 7396) reads each field as one of three things: not
-mentioned, so it stays as it is; `null`, so it is cleared; or a value, which replaces it.
-System.Text.Json reads a missing property and a `null` alike, because it calls no converter for a
-property it does not find, so every such endpoint rebuilt the difference by hand. `Patch<T>` is a
-field that keeps the three apart. The [base README](../src/CodoMetis.TypeKit/README.md#merge-patches)
-is its reference; this page is about using it: reading a body, applying it, the value objects inside
-it, writing one, the OpenAPI document and source-generated contexts. The examples import
+`Patch<T>` lets a PATCH endpoint tell three things apart: a field the request didn't mention, a field
+set to `null`, and a field with a new value. That's what JSON Merge Patch (RFC 7396) asks for.
+Unmentioned fields stay as they are, `null` clears a field, and a value replaces it.
+
+System.Text.Json can't tell a missing property from a `null` on its own, because it calls no
+converter for a property it doesn't find. So every such endpoint used to rebuild the difference by
+hand. A `Patch<T>` field keeps the three apart for you.
+
+This page shows how to read a body, apply it, validate the value objects inside it, write one, and
+describe it in the OpenAPI document and in source-generated contexts. The
+[base README](../src/CodoMetis.TypeKit/README.md#merge-patches) is the reference. The examples import
 `CodoMetis.TypeKit`, `System.Text.Json` and `System.Text.Json.Serialization`.
 
-## Three states
+## Tell absent, null and a value apart
 
 ```csharp
 public enum EmailFault { NoAt }
@@ -36,15 +40,16 @@ PatchState floor = patch.Floor.State;   // Value
 | `null` | `Null` | `onNull` | false | no | with `null` | `None` |
 | a value | `Value` | `onValue` | true | with the value | with the value | `Some` |
 
-`default(Patch<T>)` is `Absent`: the serializer never touches a property the document leaves out, so
-it keeps the struct's default, and the analyzers, which refuse a `default` of every other struct in
-this package, leave a patch alone. Reading never refuses a `null`, whatever `T` is: whether a clear
-is accepted is the application's rule. `ToString()` prints the state and never the value.
+**Good to know**
 
-## Applying one
+- **`default(Patch<T>)` is `Absent`.** The serializer never touches a property the document leaves
+  out, so it keeps the struct's default. That's why the analyzers, which reject a `default` of every
+  other struct in this package, leave a patch alone.
+- **Reading always accepts a `null`, whatever `T` is.** Whether a clear is allowed is your
+  application's rule.
+- **`ToString()` prints the state**, never the value.
 
-Each field's own rule says what a clear means. A required field refuses one, an optional one is
-cleared by it, and a field of a value type receives the clear as `null`, never as `0`:
+## Apply a patch
 
 ```csharp
 public sealed class Contact
@@ -81,36 +86,44 @@ int? floor = contact.Floor;                                  // 3
 Result<ContactFault> refused = contact.Apply(clearEmail);   // Error: EmailRequired
 ```
 
-`Tap` runs only for a value, for a target a clear cannot reach, as `Option`'s `Tap` does; `IfPresent`
-runs for a value and for a clear. Both return the patch unchanged. `Match` takes all three, for a rule
-that has to say what each means, and `ToOption()` is for a caller to whom a clear and an absence are
-the same. Refusing a clear of a required field, as `Apply` does, says so to the client; ignoring it
-with `Tap` alone would accept the request and do less than it asked.
+Each field's own rule decides what a clear means. A required field rejects one, and an optional field
+is cleared by it. A field of a value type receives the clear as `null`, never as `0`.
+
+Pick the member that fits the field:
+
+- **`Tap`** runs only for a value, as `Option`'s `Tap` does. Use it for a target a clear can't reach.
+- **`IfPresent`** runs for a value and for a clear.
+- **`Match`** takes all three, for a rule that has to say what each one means.
+- **`ToOption()`** is for code that treats a clear and an absence the same.
+
+`Tap` and `IfPresent` both return the patch unchanged.
+
+Rejecting a clear of a required field, as `Apply` does, tells the client what went wrong. Ignoring it
+with `Tap` alone would accept the request and quietly do less than it asked.
 
 ## A value object inside a patch
 
-A patch reads its value with the value object's own converter, so a value object inside one keeps its
-rule: a value `Create` refuses is refused as anywhere else, and the refusal does not quote it.
+A patch reads its value with the value object's own converter, so the value object keeps its rule. A
+value `Create` rejects is rejected here as anywhere else, and the error doesn't quote it.
 
 ```csharp
 JsonSerializer.Deserialize<ContactPatch>("""{"email":"nobody"}""", JsonSerializerOptions.Web);   // JsonException naming Email and NoAt, never the text
 ```
 
-The exception's `Path` is the field's, `$.email`, as it is for a property that is no patch, so the
-answer to the client can name the field. In an endpoint, that is the 400 any body a value object
-refuses gets, with problem details where the host adds `UseStatusCodePages()` ([ASP.NET Core](aspnet-core.md#what-a-refused-value-answers)). A `null` is
-not a refusal but the `Null` state, which `Apply` turns into a fault of its own, so a `Patch<Email?>`
-is never needed. A patch's `T` is `notnull`, as an option's is: `Patch<Email?>` or `Patch<string?>` is
-a warning (CS8714) at the declaration, and over the value's own type every member hands the value as
-it is, never null.
+The exception's `Path` is the field's, `$.email`, as it is for any property. So your answer to the
+client can name the field. In an endpoint, the client gets the same 400 as for any body a value
+object rejects, with problem details where the host adds `UseStatusCodePages()`
+([ASP.NET Core](aspnet-core.md#what-a-refused-value-answers)).
 
-## Validating one
+**Good to know**
 
-Where the refusal should be the endpoint's own fault rather than a 400, the request carries a patch
-over what was sent, and `Traverse` validates it into a patch over the domain's type: the value is
-validated when the field carried one, with `Create`'s own fault, and a clear or an absent field
-passes through, since there is nothing to validate. `Map` changes the value the same way and keeps
-a clear and an absence as they are.
+- **A `null` isn't an error.** It's the `Null` state, which `Apply` turns into an error of its own.
+  So you never need a `Patch<Email?>`.
+- **A patch's `T` is `notnull`, as an option's is.** `Patch<Email?>` or `Patch<string?>` gets a
+  warning at the declaration (CS8714). Over the value's own type, every member hands you the value as
+  it is, never null.
+
+## Validate a patch
 
 ```csharp
 public sealed record ContactRequest(Patch<string> Email, Patch<int> Floor);
@@ -127,14 +140,19 @@ Result<Patch<Email>, EmailFault> untouched = moved.Email.Traverse(Email.Create);
 Patch<int> tenfold = moved.Floor.Map(floor => floor * 10);                          // Value: 30, a clear and an absence kept as they are
 ```
 
-`CodoMetis.TypeKit.Testing` asserts the state: `ShouldBeValue()` hands the value back, `ShouldBeNull()`
-is a clear and `ShouldBeAbsent()` a field the document left out ([Testing](testing.md)).
+Sometimes the endpoint should answer with its own error type rather than a 400. Then let the request
+carry a patch over what was sent, and validate it with `Traverse` into a patch over your domain type:
 
-## Writing one
+- **A value** is validated, and a failure gives `Create`'s own error.
+- **A clear or an absent field** passes through, since there's nothing to validate.
 
-A client, or a test, writes a patch body with the same type. A converter cannot leave its property
-out of the document, so an absent patch is refused when it is written, unless the property says to
-skip a default:
+`Map` changes the value the same way, and keeps a clear and an absence as they are.
+
+`CodoMetis.TypeKit.Testing` checks the state in tests. `ShouldBeValue()` hands the value back,
+`ShouldBeNull()` expects a clear, and `ShouldBeAbsent()` a field the document left out
+([Testing](testing.md)).
+
+## Write a patch
 
 ```csharp
 public sealed record ContactChange(
@@ -148,30 +166,75 @@ string set = JsonSerializer.Serialize(new ContactChange(Patch.Absent<string>(), 
 JsonSerializer.Serialize(new ContactPatch(Patch.Absent<Email>(), Patch.Null<string>(), Patch.Value(4)));                         // NotSupportedException naming Email and WhenWritingDefault
 ```
 
+A client, or a test, writes a patch body with the same type. A converter can't leave its property out
+of the document. So writing an absent patch throws a `NotSupportedException`, unless the property says
+to skip a default, as above.
+
 `Patch.Value(null)` is the `Null` state, so a client that holds a nullable value can pass it as it is.
 
-## In an endpoint and in the document
+## Use it in an endpoint and in the document
 
 ```csharp
 builder.Services.AddOpenApi(options => options.AddTypeKit());
 app.MapPatch("/contacts/{id}", (int id, ContactPatch patch) => TypedResults.NoContent());
 ```
 
-The body binds as any other: each property of `ContactPatch` is read by its patch, and one the
-request leaves out is `Absent`. With `AddTypeKit()`, the document describes a patch property as its
-argument's schema, inlined rather than as a component of its own, admitting `null`, and never
-required, in OpenAPI 3.1 and 3.0. Null joins whatever restricts the values: the type, an enum's list
-(a closed set's names, an enum written as strings), or a branch beside the argument's own branches.
-A validator therefore accepts null and judges every other value as it judges the argument's. A value
-object inside a patch is described through the type it wraps, so `email` is a `string`. This is not ASP.NET Core's JSON Patch (RFC 6902,
-`application/json-patch+json`), which is a list of operations.
+The body binds like any other. Each property of `ContactPatch` is read by its patch, and one the
+request leaves out is `Absent`.
+
+With `AddTypeKit()`, the OpenAPI document describes a patch property as its argument's schema, in
+OpenAPI 3.1 and 3.0:
+
+- **Inlined**, rather than as a component of its own.
+- **Admitting `null`.** The null joins whatever restricts the values: the type, an enum's list (a
+  closed set's names, an enum written as strings), or a branch beside the argument's own branches. So
+  a validator accepts null, and judges every other value as it judges the argument's.
+- **Not required.** Under `RespectRequiredConstructorParameters`, make a patch an `init` property
+  ([below](#required-constructor-parameters)).
+
+A value object inside a patch is described through its underlying type, so `email` is a `string`.
+
+**Good to know**
+
+- **This isn't ASP.NET Core's JSON Patch** (RFC 6902, `application/json-patch+json`), which is a list
+  of operations.
+
+## Required constructor parameters
+
+```csharp
+public sealed record StrictContactPatch
+{
+    public Patch<Email> Email { get; init; }
+    public Patch<string> Phone { get; init; }
+    public Patch<int> Floor { get; init; }
+}
+```
+
+```csharp
+var strict = new JsonSerializerOptions(JsonSerializerDefaults.Web) { RespectRequiredConstructorParameters = true };
+StrictContactPatch moved = JsonSerializer.Deserialize<StrictContactPatch>("""{"floor":3}""", strict)!;
+PatchState untouched = moved.Phone.State;                             // Absent
+JsonSerializer.Deserialize<ContactPatch>("""{"floor":3}""", strict);   // JsonException naming ContactPatch and phone
+```
+
+`RespectRequiredConstructorParameters` is the option that rejects a body without a value object
+([JSON](json.md)). It makes every constructor parameter without a default required, a patch's too. So
+a request that leaves a field out, the very state a patch exists for, gets rejected.
+
+Declare the patch fields as `init` properties instead. The option requires constructor parameters
+only, and a property the request leaves out keeps its default, which is `Absent`.
+
+The document follows the serializer. `AddTypeKit()` leaves a patch out of `required` where the
+serializer lets it be absent, and keeps it there where the options reject a body without it. So the
+document never calls a field optional when the endpoint rejects a request without it.
+
+**Good to know**
+
+- **`= default` on a patch parameter breaks the document.** It satisfies the serializer too. But
+  System.Text.Json's schema exporter, which ASP.NET Core builds the document with, throws on a
+  parameter of a struct type whose default is `default`. So the endpoint's document fails.
 
 ## Source-generated contexts and Native AOT
-
-The patch's converter reads `T` itself, so a source-generated context never sees through a patch to
-what it holds. A primitive, a `string`, a `Guid`, a date or a `Uri` is read with the serializer's
-built-in converter and a value object with its own; any other type, a class or an enum, is listed in
-the context, or the serializer refuses with its own message naming it.
 
 ```csharp
 public sealed record Address(string Street, string City);
@@ -189,15 +252,25 @@ string city = move.Address.Match(address => address.City, () => "cleared", () =>
 string floor = move.Floor.Match(f => f.ToString(), () => "cleared", () => "unchanged");           // "unchanged"
 ```
 
-The same holds under Native AOT, which the consumer smoke test publishes: the converter for each
-closed `Patch<T>` is registered by that type's own static constructor, since a converter built by
+The patch's converter reads `T` itself, so a source-generated context never sees through a patch to
+what it holds. What that means for `T`:
+
+- **A primitive, a `string`, a `Guid`, a date or a `Uri`** is read with the serializer's built-in
+  converter.
+- **A value object** is read with its own converter.
+- **Any other type, a class or an enum,** must be listed in the context. Otherwise the serializer
+  throws with its own message naming the type.
+
+The same holds under Native AOT, which the consumer smoke test publishes. The converter for each
+closed `Patch<T>` is registered by that type's own static constructor, because a converter built by
 reflection has no code there.
 
 ## What it is not
 
 - **Not a deep merge.** Each field is its own patch, so `Patch<Address>` replaces the whole address.
-  For RFC 7396's merge of a nested object, its properties are patches too: `Patch<AddressPatch>`.
-- **Not an `Option`.** An option says whether a value exists, and refuses JSON; a patch says whether
-  a request mentioned a field, and is a wire type. `ToOption()` crosses from one to the other.
-- **Not a model.** A patch is the shape of a request; the entity it is applied to keeps its own
-  types, `int?` for a floor, and its own rules.
+  For RFC 7396's merge of a nested object, make its properties patches too: `Patch<AddressPatch>`.
+- **Not an `Option`.** An option says whether a value exists, and it rejects JSON. A patch says
+  whether a request mentioned a field, and it's made for the wire. `ToOption()` crosses from one to
+  the other.
+- **Not a model.** A patch is the shape of a request. The entity you apply it to keeps its own types,
+  like `int?` for a floor, and its own rules.

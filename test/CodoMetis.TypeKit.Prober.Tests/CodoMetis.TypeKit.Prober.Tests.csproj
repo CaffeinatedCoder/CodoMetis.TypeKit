@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      prober's tests, the behavioural spec of its ledger: each against a fixture repository of its own
+      (git, one claim, a corpus, a state directory), commands run in-process, and the racing lock tests
+      against real processes of the built dll.
+    -->
+    <ItemGroup>
+        <ProjectReference Include="..\..\tools\Prober\Prober.csproj" />
+    </ItemGroup>
+
+    <!-- The stale-tool test runs the built prober.dll from a throwaway repository (ToolSandbox.cs); ToolOutput says where the output is. -->
+    <ItemGroup>
+        <Compile Include="../CodoMetis.TypeKit.BuildVerdict.Tests/ToolSandbox.cs" Link="ToolSandbox.cs" />
+        <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+            <_Parameter1>ToolOutput</_Parameter1>
+            <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../tools/Prober/bin/$(Configuration)/$(TargetFramework)/'))</_Parameter2>
+        </AssemblyAttribute>
+    </ItemGroup>
+
+</Project>

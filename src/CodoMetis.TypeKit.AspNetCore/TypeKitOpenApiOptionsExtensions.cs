@@ -26,6 +26,12 @@ public static class TypeKitOpenApiOptionsExtensions
     /// does not matter.
     /// </para>
     /// <para>
+    /// A type whose JSON converter describes itself (<see cref="CodoMetis.TypeKit.IDescribedJsonConverter"/>), such as
+    /// <see cref="CodoMetis.TypeKit.DecimalStringJsonConverter"/>, or that the host's JSON options describe
+    /// (<see cref="CodoMetis.TypeKit.JsonSchemaDescriptions"/>), is described as that says, in every position, a list's
+    /// elements and a dictionary's values included; a parameter of it keeps ASP.NET's own description.
+    /// </para>
+    /// <para>
     /// An endpoint that returns <c>ToHttpResult()</c> also lists a problem-details response for every
     /// status its fault type is mapped to with <c>AddFaultResponses</c>, and the problem schema those
     /// responses refer to describes the <c>fault</c> member.
@@ -49,6 +55,7 @@ public static class TypeKitOpenApiOptionsExtensions
         return options.AddSchemaTransformer<ValueObjectSchemaTransformer>()
                       .AddSchemaTransformer<PatchSchemaTransformer>()
                       .AddSchemaTransformer<ClosedSetSchemaTransformer>()
+                      .AddSchemaTransformer<DescribedSchemaTransformer>()   // after the two above: the host's description replaces theirs
                       .AddOperationTransformer<FaultResponsesOperationTransformer>();
     }
 }

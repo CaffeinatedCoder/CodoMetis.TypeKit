@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codometis.typekit/probe/schemas/waivers.schema.json",
+  "title": "Waivers",
+  "description": "Tracked (corpus/waivers.json): a claim's gate obligation met without a probe. Counts only with a reason and a reviewer.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "claim",
+      "reason",
+      "reviewed_by"
+    ],
+    "properties": {
+      "schemaVersion": {
+        "type": "integer",
+        "const": 1,
+        "description": "The schema version. A file or line without it is version 1 (the Python baseline)."
+      },
+      "claim": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string",
+        "minLength": 1
+      },
+      "reviewed_by": {
+        "type": "string",
+        "minLength": 1
+      },
+      "date": {
+        "type": "string"
+      }
+    }
+  }
+}

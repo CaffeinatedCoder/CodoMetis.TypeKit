@@ -1,8 +1,9 @@
 # CodoMetis.TypeKit.Testing
 
 Test assertions for the `Option`, `Result` and `Patch<T>` of
-[CodoMetis.TypeKit](https://www.nuget.org/packages/CodoMetis.TypeKit). None of them has a `.Value`, so a
-test reaches the content through these, and fails with what the outcome was instead.
+[CodoMetis.TypeKit](https://www.nuget.org/packages/CodoMetis.TypeKit). None of these types has a
+`.Value`, so your tests reach the content through these assertions. They hand the content back, and
+when they fail, they say what the outcome was.
 
 ```bash
 dotnet add package CodoMetis.TypeKit.Testing   # the test project
@@ -19,8 +20,9 @@ Email.TryFrom("ops@example.com").ShouldBeSome();
 Email.TryFrom("nobody").ShouldBeNone();
 ```
 
-A `Patch<T>` field of a request says whether the request mentioned it, and the assertions say the
-same; `OrderPatch` here has `Patch<string> Name`, `Patch<string> Nickname` and `Patch<int> Quantity`:
+A request's `Patch<T>` field tells you whether the request mentioned it, and the assertions check
+the same. In this example, `OrderPatch` has `Patch<string> Name`, `Patch<string> Nickname` and
+`Patch<int> Quantity`:
 
 ```csharp
 OrderPatch patch = JsonSerializer.Deserialize<OrderPatch>("""{"nickname":null,"quantity":2}""", JsonSerializerOptions.Web)!;
@@ -30,14 +32,25 @@ patch.Nickname.ShouldBeNull();                   // a clear
 patch.Name.ShouldBeAbsent();                     // not in the document
 ```
 
+A fault of several types, such as `Fault<OrderFault, EditFault>`, has no public content either.
+`ShouldHold(reason)` fails unless the fault holds that reason, whichever of its types the reason
+belongs to. It hands back the `Fault<TFault>` with its detail and rule intact. A reason of a type the
+fault isn't made of doesn't compile.
+
+```csharp
+Fault<OrderFault, EditFault> refusal = orders.Rename(7, version: 3).ShouldBeError();
+Fault<EditFault> stale = refusal.ShouldHold(EditFault.Stale);   // this fault, or the test fails
+string? detail = stale.Detail;                                  // for the test's own assertions
+```
+
 - **The content comes back.** `ShouldBeSome()`, `ShouldBeSuccess()`, `ShouldBeError()` and
-  `ShouldBeValue()` return the value or the error, so it is compared with whatever assertions the test
-  already uses: xUnit's `Assert`, Shouldly, or another.
-- **No test framework.** A failure is a `TypeKitAssertionException`, and every framework reports an
-  exception from a test as its failure. The package depends on `CodoMetis.TypeKit` alone.
+  `ShouldBeValue()` return the value or the error. Compare it with whatever assertions your tests
+  already use: xUnit's `Assert`, Shouldly, or another.
+- **No test framework needed.** A failure throws a `TypeKitAssertionException`, and every framework
+  reports an exception from a test as its failure. The package depends on `CodoMetis.TypeKit` alone.
 - **A failure says what the outcome was**: `Expected a success, but the Result<Email, EmailFault> is
-  the error NoAt.` It prints the error through its `ToString()`, which is what a test needs to see, so
-  an exception's message or a `Fault`'s detail appears; it never prints a value, as `Option`, `Result`
-  and `Patch<T>` themselves never do.
-- **An uninitialized result fails every assertion**, saying it is a default instance, neither a
-  success nor an error.
+  the error NoAt.` It prints the error through its `ToString()`, which is what you need to see in a
+  test. So an exception's message or a `Fault`'s detail shows up. It never prints a value, just as
+  `Option`, `Result` and `Patch<T>` themselves never do.
+- **An uninitialized result fails every assertion.** The message says it is a default instance,
+  neither a success nor an error.

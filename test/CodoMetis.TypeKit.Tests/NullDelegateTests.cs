@@ -45,6 +45,10 @@ public sealed class NullDelegateTests
     private static Task<Option<int>> PendingOptionFault => Task.FromException<Option<int>>(new TimeoutException());
     private static Task<Result<string>>      PendingCommandFault => Task.FromException<Result<string>>(new TimeoutException());
 
+    // A fault of each type a composed fault can hold: the delegate not picked is checked too.
+    private static readonly Fault<string, int>[] TwoFaults = [Fault.Of("a"), Fault.Of(1)];
+    private static readonly Fault<string, int, bool>[] ThreeFaults = [Fault.Of("a"), Fault.Of(1), Fault.Of(true)];
+
     private static readonly Dictionary<string, Func<object?>[]> Cases = new()
     {
         ["Option<T>.Match(Func<T, TResult>, Func<TResult>): onSome"]  = [() => Some.Match(Null<Func<int, int>>(), () => 0), () => None.Match(Null<Func<int, int>>(), () => 0)],
@@ -141,6 +145,12 @@ public sealed class NullDelegateTests
 
         ["Result<T, TError>.Match(Func<T, TResult>, Func<TError, TResult>): onSuccess"]          = [() => Value.Match(Null<Func<int, int>>(), _ => 0), () => Error.Match(Null<Func<int, int>>(), _ => 0)],
         ["Result<T, TError>.Match(Func<T, TResult>, Func<TError, TResult>): onError"]            = [() => Value.Match(x => x, Null<Func<string, int>>()), () => Error.Match(x => x, Null<Func<string, int>>())],
+
+        ["Fault<T1, T2>.Match(Func<Fault<T1>, TResult>, Func<Fault<T2>, TResult>): first"]  = [.. TwoFaults.Select(f => (Func<object?>)(() => f.Match(Null<Func<Fault<string>, int>>(), _ => 0)))],
+        ["Fault<T1, T2>.Match(Func<Fault<T1>, TResult>, Func<Fault<T2>, TResult>): second"] = [.. TwoFaults.Select(f => (Func<object?>)(() => f.Match(_ => 0, Null<Func<Fault<int>, int>>())))],
+        ["Fault<T1, T2, T3>.Match(Func<Fault<T1>, TResult>, Func<Fault<T2>, TResult>, Func<Fault<T3>, TResult>): first"]  = [.. ThreeFaults.Select(f => (Func<object?>)(() => f.Match(Null<Func<Fault<string>, int>>(), _ => 0, _ => 0)))],
+        ["Fault<T1, T2, T3>.Match(Func<Fault<T1>, TResult>, Func<Fault<T2>, TResult>, Func<Fault<T3>, TResult>): second"] = [.. ThreeFaults.Select(f => (Func<object?>)(() => f.Match(_ => 0, Null<Func<Fault<int>, int>>(), _ => 0)))],
+        ["Fault<T1, T2, T3>.Match(Func<Fault<T1>, TResult>, Func<Fault<T2>, TResult>, Func<Fault<T3>, TResult>): third"]  = [.. ThreeFaults.Select(f => (Func<object?>)(() => f.Match(_ => 0, _ => 0, Null<Func<Fault<bool>, int>>())))],
         ["Result<T, TError>.Match(Func<T, TResult>, Func<TResult>): onSuccess"]                         = [() => Value.Match(Null<Func<int, int>>(), () => 0), () => Error.Match(Null<Func<int, int>>(), () => 0)],
         ["Result<T, TError>.Match(Func<T, TResult>, Func<TResult>): onError"]            = [() => Value.Match(x => x, Null<Func<int>>()), () => Error.Match(x => x, Null<Func<int>>())],
         ["Result<T, TError>.Map(Func<T, TResult>): selector"]                                          = [() => Value.Map(Null<Func<int, int>>()), () => Error.Map(Null<Func<int, int>>())],
@@ -238,6 +248,8 @@ public sealed class NullDelegateTests
         // What generated parsing calls for a wrapped type without TryParse; either input, readable or not.
         ["GeneratedParsing.Guarded(String, Func<String, T>): parse"] =
             [() => CodoMetis.TypeKit.CompilerServices.GeneratedParsing.Guarded<string, int>("1", Null<Func<string, int>>()), () => CodoMetis.TypeKit.CompilerServices.GeneratedParsing.Guarded<string, int>("x", Null<Func<string, int>>())],
+
+        ["JsonSchemaDescriptions.Describe(Func<Type, JsonSchemaDescription>): describe"] = [() => new JsonSchemaDescriptions().Describe(Null<Func<Type, JsonSchemaDescription?>>())],
     };
 
     public static TheoryData<string> CaseNames => [.. Cases.Keys];

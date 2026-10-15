@@ -33,3 +33,7 @@ BenchmarkDotNet.Artifacts/
 
 # The codebase-memory MCP server's local graph artifact: rebuilt per checkout, never committed
 .codebase-memory/
+
+# docs-query's index (tools/DocsQuery): one file, fingerprinted, rebuilt when the docs change
+/.docs-query.cache
+/.docs-query.cache.*.tmp

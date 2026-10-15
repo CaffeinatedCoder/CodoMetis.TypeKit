@@ -32,6 +32,8 @@ internal static class DiagnosticIds
 
     public const string ClosedSetMemberAssigned = "CMTK0013";
 
+    public const string UndefinedEnumValue = "CMTK0014";
+
     /// <summary>
     /// The rule's section of the analyzer README on GitHub, which an IDE opens from the diagnostic.
     /// The README's <c>## CMTK000N</c> headings give the anchors (AnalyzerHelpLinkTests).

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      docs-query: a disposable index over the repository's Markdown that answers with pointers (file,
+      heading path, line), never with prose. Repository tooling, not a package: BCL only, never packed.
+      It is in the solution so `dotnet build` builds it, and it is started as its built dll:
+
+          dotnet tools/DocsQuery/bin/Release/net10.0/docs-query.dll help
+
+      The README beside this file has the commands and the contracts.
+    -->
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <AssemblyName>docs-query</AssemblyName>
+        <RootNamespace>DocsQuery</RootNamespace>
+        <!-- Never packed: release.yml publishes whatever `dotnet pack` of the solution writes (PackabilityTests). -->
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="CodoMetis.TypeKit.DocsQuery.Tests" />
+    </ItemGroup>
+
+    <!--
+      The dll's own freshness is every tool's: tools/Directory.Build.targets stamps its sources, and at
+      startup tools/Shared/SourceFingerprint.cs refuses to answer from other sources (exit 3).
+    -->
+
+</Project>

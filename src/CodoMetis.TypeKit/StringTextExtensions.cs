@@ -129,7 +129,41 @@ public static class StringTextExtensions
         /// the line.
         /// </returns>
         public Result<string, TextFault> AsIdentifier() => Clean(text, tolerateJoiners: false, canonicalize: false);
+
+        /// <summary>
+        /// <see cref="AsText"/> for an optional field: a null, empty or whitespace-only string is no text,
+        /// and anything else is guarded as <see cref="AsText"/> guards it.
+        /// </summary>
+        /// <remarks>
+        /// Only <see cref="TextFault.Blank"/> becomes absence. A string of a hidden character is still
+        /// <see cref="TextFault.Hidden"/>, since it is not empty: it is text the person cannot see. In
+        /// globalization-invariant mode this throws as <see cref="AsText"/> does, for a blank string too.
+        /// </remarks>
+        /// <returns>
+        /// The text, or no text for a null, empty or whitespace-only string, or <see cref="TextFault.Hidden"/>
+        /// for one carrying a character that renders as nothing or breaks the line.
+        /// </returns>
+        /// <exception cref="PlatformNotSupportedException">
+        /// The process runs in globalization-invariant mode, as for <see cref="AsText"/>.
+        /// </exception>
+        public Result<Option<string>, TextFault> AsOptionalText() => Optional(text.AsText());
+
+        /// <summary>
+        /// <see cref="AsIdentifier"/> for an optional field: a null, empty or whitespace-only string is no
+        /// value, and anything else is guarded as <see cref="AsIdentifier"/> guards it.
+        /// </summary>
+        /// <remarks>Only <see cref="TextFault.Blank"/> becomes absence; <see cref="TextFault.Hidden"/> stays a refusal.</remarks>
+        /// <returns>
+        /// The value, or no value for a null, empty or whitespace-only string, or <see cref="TextFault.Hidden"/>
+        /// for one carrying a character that renders as nothing or breaks the line.
+        /// </returns>
+        public Result<Option<string>, TextFault> AsOptionalIdentifier() => Optional(text.AsIdentifier());
     }
+
+    /// <summary>A guard's answer for an optional field: <see cref="TextFault.Blank"/> is absence, every other fault a refusal.</summary>
+    private static Result<Option<string>, TextFault> Optional(Result<string, TextFault> guarded) =>
+        guarded.Map(Option.Some)
+               .Recover(fault => fault == TextFault.Blank ? Option.None<string>() : Result.Error(fault));
 
     private static Result<string, TextFault> Clean(string? text, bool tolerateJoiners, bool canonicalize)
     {

@@ -31,6 +31,10 @@ public sealed partial class AccountFault : IFaultSet<AccountFault>
 }
 // end sample
 
+// sample: CodoMetis.TypeKit.AspNetCore/fault-rule
+public enum EmailRule { InUse, Reserved }   // which check refused the address
+// end sample
+
 public sealed record Account(int Id, string Email);
 
 public sealed record NewAccount(string Email);
@@ -113,6 +117,11 @@ public static class Faults
         // sample: CodoMetis.TypeKit.AspNetCore/fault-detail
         app.MapPut("/accounts/{id:int}/email", (int id, NewAccount body) => accounts.Rename(id, body.Email).ToHttpResult());
         // end sample
+
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-left-out
+        app.MapPost("/v4/accounts", (NewAccount body) => accounts.Open(body).ToHttpResult())
+           .WithoutFaults(AccountFault.NotFound);   // opening an account never reports a missing one: no 404 here
+        // end sample
     }
 
     public static Result<Account, Fault<AccountFault>> Taken()
@@ -124,6 +133,15 @@ public static class Faults
         return taken;
     }
 
+    public static Result<Account, Fault<AccountFault>> Reserved()
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-rule-domain
+        Result<Account, Fault<AccountFault>> reserved = Result.Error(Fault.Of(AccountFault.EmailTaken).WithRule(EmailRule.Reserved));
+        // end sample
+
+        return reserved;
+    }
+
     public static void Shaped(WebApplicationBuilder builder)
     {
         // sample: CodoMetis.TypeKit.AspNetCore/fault-feature
@@ -133,6 +151,20 @@ public static class Faults
                 context.ProblemDetails.Extensions["code"] = $"ACC-{fault.Name}";   // the host's own extension, for this fault only
         });
         builder.Services.Configure<FaultResponseOptions>(options => options.QualifiedFaultNames = true);   // "fault": "AccountFault.EmailTaken"
+        // end sample
+    }
+
+    public static void EveryFaultSet(WebApplicationBuilder builder)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-sets-default
+        builder.Services.AddFaultResponses();   // every fault set an endpoint answers with, by its kind
+        // end sample
+    }
+
+    public static void EveryFaultSetTyped(WebApplicationBuilder builder)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-sets-default-mapping
+        builder.Services.AddFaultResponses(fault => FaultResponse.For(fault.Kind).WithType(new Uri($"https://example.com/problems/{fault.Kind}")));
         // end sample
     }
 }
@@ -174,6 +206,45 @@ public sealed class FaultResponseSampleTests
         return app;
     }
 
+    /// <summary>A host with the endpoints above and only the services <paramref name="services"/> adds.</summary>
+    private static async Task<WebApplication> StartWithAsync(Action<WebApplicationBuilder> services)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        builder.Services.AddOpenApi(options => options.AddTypeKit());
+        services(builder);
+
+        var app = builder.Build();
+        app.MapOpenApi();
+        Faults.Endpoints(app, new FixedAccounts(Result.Error(AccountFault.EmailTaken)));
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        return app;
+    }
+
+    /// <summary>The README's one call for every fault set: AccountFault answered by its kind with no mapping of its own.</summary>
+    [Fact]
+    public async Task Every_fault_set_is_answered_by_its_kind_with_one_call()
+    {
+        await using var app = await StartWithAsync(Faults.EveryFaultSet);
+
+        using var response = await app.GetTestClient().PostAsync("/v2/accounts", Body(), TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!["detail"]!.GetValue<string>()
+                .ShouldBe("Another account uses that email address.");
+    }
+
+    [Fact]
+    public async Task The_host_s_own_mapping_for_every_fault_set_gives_each_kind_its_type()
+    {
+        await using var app = await StartWithAsync(Faults.EveryFaultSetTyped);
+
+        using var response = await app.GetTestClient().PostAsync("/v2/accounts", Body(), TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!["type"]!.GetValue<string>()
+                .ShouldBe("https://example.com/problems/Conflict");
+    }
+
     private static StringContent Body() => new("""{"email":"ann@example.com"}""", System.Text.Encoding.UTF8, "application/json");
 
     [Fact]
@@ -206,6 +277,19 @@ public sealed class FaultResponseSampleTests
         paths["/v3/health"]!["get"]!["responses"]!.AsObject().Select(response => response.Key).ShouldBe(["200"]);
     }
 
+    /// <summary>The README's route that leaves a member out: no 404 in its operation, the other statuses kept.</summary>
+    [Fact]
+    public async Task A_route_leaves_out_of_its_document_what_it_cannot_answer()
+    {
+        await using var app = await StartAsync(Result.Error(AccountFault.EmailTaken));
+
+        using var refused = await app.GetTestClient().PostAsync("/v4/accounts", Body(), TestContext.Current.CancellationToken);
+        refused.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+
+        var paths = JsonNode.Parse(await app.GetTestClient().GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken))!["paths"]!;
+        paths["/v4/accounts"]!["post"]!["responses"]!.AsObject().Select(response => response.Key).ShouldBe(["200", "403", "409"]);
+    }
+
     [Fact]
     public async Task The_endpoint_s_own_success_is_a_201_with_its_location()
     {
@@ -226,6 +310,27 @@ public sealed class FaultResponseSampleTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         problem["detail"]!.GetValue<string>().ShouldBe("The address has been in use since 3 May.");
+    }
+
+    /// <summary>What the README says the problem reads: the fault's name and the rule's, qualified, at the fault's status.</summary>
+    [Fact]
+    public async Task An_occurrence_s_rule_reaches_the_problem_beside_the_fault()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        Faults.Responses(builder);
+        await using var app = builder.Build();
+        app.MapPut("/reserved", () => Faults.Reserved().ToHttpResult());
+        await app.StartAsync(TestContext.Current.CancellationToken);
+
+        using var response = await app.GetTestClient().PutAsync("/reserved", content: null, TestContext.Current.CancellationToken);
+        var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!;
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict, "the fault's status");
+        $"\"fault\": \"{problem["fault"]!.GetValue<string>()}\", \"rule\": \"{problem["rule"]!.GetValue<string>()}\""
+            .ShouldBe("\"fault\": \"EmailTaken\", \"rule\": \"EmailRule.Reserved\"");
+        problem["detail"]!.GetValue<string>().ShouldBe("Another account uses that email address.", "the member's description, as without a rule");
     }
 
     [Fact]

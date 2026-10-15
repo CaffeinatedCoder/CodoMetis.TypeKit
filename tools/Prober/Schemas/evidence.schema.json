@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codometis.typekit/probe/schemas/evidence.schema.json",
+  "title": "Evidence",
+  "description": "State (branches/<branch>/evidence/<probe>.json): what one replay of a probe did. Only rows expected, executed and ending as a pass earn credit, for the settings that applied, while the identity holds.",
+  "type": "object",
+  "required": [
+    "identity",
+    "variants",
+    "rows"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "The schema version. A file or line without it is version 1 (the Python baseline)."
+    },
+    "probe": {
+      "type": "string"
+    },
+    "identity": {
+      "type": "string"
+    },
+    "commit": {
+      "type": "string"
+    },
+    "result": {
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    },
+    "date": {
+      "type": "string"
+    },
+    "variants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "expected",
+          "executed"
+        ],
+        "properties": {
+          "env": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Axis name to value, both compared ordinally."
+          },
+          "expected": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "executed": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "rows": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "category",
+          "applied"
+        ],
+        "properties": {
+          "category": {
+            "enum": [
+              "pass",
+              "violation",
+              "expected-refusal",
+              "inapplicable",
+              "harness-error",
+              "inconclusive"
+            ]
+          },
+          "applied": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Axis name to value, both compared ordinally."
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

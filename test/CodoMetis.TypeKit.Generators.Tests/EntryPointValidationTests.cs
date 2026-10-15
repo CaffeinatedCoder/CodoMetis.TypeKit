@@ -55,9 +55,23 @@ public sealed class EntryPointValidationTests
         ["TypeConverter"]         = input => Catching<FormatException>(() => TypeDescriptor.GetConverter(typeof(ProbeCode)).ConvertFromInvariantString(input)),
     };
 
+    private static readonly Dictionary<string, Func<string, (Outcome Outcome, object? Value)>> ArticleEntryPoints = new()
+    {
+        ["Create(String)"]        = input => FromResult(ProbeArticle.Create(input).TryGetValue(out var v, out _), v),
+        ["TryFrom(String)"]       = input => FromResult(ProbeArticle.TryFrom(input).TryGetValue(out var v), v),
+        ["FromKnownGood(String)"] = input => Catching<InvalidOperationException>(() => ProbeArticle.FromKnownGood(input)),
+        ["Parse(String)"]         = input => Catching<FormatException>(() => ProbeArticle.Parse(input, null)),
+        ["TryParse(String)"]      = input => FromResult(ProbeArticle.TryParse(input, null, out var v), v),
+        ["JSON value"]            = input => Catching<JsonException>(() => JsonSerializer.Deserialize<ProbeArticle>(JsonSerializer.Serialize(input))),
+        ["JSON property name"]    = input => Catching<JsonException>(() => JsonSerializer.Deserialize<Dictionary<ProbeArticle, int>>($"{{{JsonSerializer.Serialize(input)}:1}}")!.Keys.Single()),
+        ["TypeConverter"]         = input => Catching<FormatException>(() => TypeDescriptor.GetConverter(typeof(ProbeArticle)).ConvertFromInvariantString(input)),
+    };
+
     public static TheoryData<string> PercentageEntryPointNames => [.. PercentageEntryPoints.Keys];
 
     public static TheoryData<string> CodeEntryPointNames => [.. CodeEntryPoints.Keys];
+
+    public static TheoryData<string> ArticleEntryPointNames => [.. ArticleEntryPoints.Keys];
 
     [Theory]
     [MemberData(nameof(PercentageEntryPointNames))]
@@ -88,6 +102,42 @@ public sealed class EntryPointValidationTests
 
         outcome.ShouldBe(Outcome.Accepted, $"{entryPoint} refused \"  ABC  \"");
         value.ShouldBeOfType<ProbeCode>().Value.ShouldBe("ABC");
+    }
+
+    /// <summary>A fault set as the fault type changes nothing about which way in applies <c>Create</c>.</summary>
+    [Theory]
+    [MemberData(nameof(ArticleEntryPointNames))]
+    public void A_value_whose_fault_type_is_a_fault_set_is_refused_and_normalised_by_every_entry_point(string entryPoint)
+    {
+        ArticleEntryPoints[entryPoint]("abc").Outcome.ShouldBe(Outcome.Refused, $"{entryPoint} accepted \"abc\", which ProbeArticle.Create refuses");
+
+        var (outcome, value) = ArticleEntryPoints[entryPoint]("  ABC  ");
+
+        outcome.ShouldBe(Outcome.Accepted, $"{entryPoint} refused \"  ABC  \"");
+        value.ShouldBeOfType<ProbeArticle>().Value.ShouldBe("ABC");
+    }
+
+    [Fact]
+    public void Every_public_way_to_an_article_has_a_case() =>
+        PublicFactories(typeof(ProbeArticle)).ShouldBe(ArticleEntryPoints.Keys.Where(key => key.Contains('(')).Order(), ignoreOrder: true);
+
+    /// <summary>
+    /// A fault set's member is named by its name, as an enum's is, and its description, a sentence for
+    /// a client, stays out of an exception that may be logged beside the request.
+    /// </summary>
+    [Fact]
+    public void A_refusal_through_a_fault_set_names_the_member_but_not_the_value()
+    {
+        var json = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<ProbeArticle>("\"s3cr3t\""));
+        var parse = Should.Throw<FormatException>(() => ProbeArticle.Parse("s3cr3t", null));
+
+        foreach (var message in new[] { json.Message, parse.Message })
+        {
+            message.ShouldStartWith($"{nameof(ProbeArticle)} refused the ");
+            message.ShouldContain($"({nameof(ProbeArticleFault.NotUpperCase)})");
+            message.ShouldNotContain("s3cr3t");
+            message.ShouldNotContain(ProbeArticleFault.NotUpperCase.Description!);
+        }
     }
 
     [Fact]

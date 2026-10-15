@@ -34,6 +34,9 @@ internal sealed class ClosedSetSchemaTransformer : IOpenApiSchemaTransformer
 
         if (Describe(info.Type) is { } set)
         {
+            // Written by a converter the options put in charge, not the generated one: not its names.
+            if (DescribedSchemaTransformer.Replaced(info.Type, info.Options)) return;
+
             // Where the set is a component, ASP.NET puts the null of a nullable property around the reference.
             // Inlined, the schema is this property's own, and the null goes in it (decision 36), as ASP.NET
             // puts it in an inlined nullable string's type and an inlined nullable enum's values.
@@ -50,7 +53,7 @@ internal sealed class ClosedSetSchemaTransformer : IOpenApiSchemaTransformer
             return;
         }
 
-        if (info.ElementType is not { } element || Describe(element) is null) return;
+        if (info.ElementType is not { } element || Describe(element) is null || DescribedSchemaTransformer.Replaced(element, info.Options)) return;
 
         // Only what ASP.NET left out: a schema it did build is its own description of the elements.
         if (info.Kind == JsonTypeInfoKind.Enumerable && schema.Items is null)
@@ -71,7 +74,11 @@ internal sealed class ClosedSetSchemaTransformer : IOpenApiSchemaTransformer
     }
 
     /// <summary>The set a parameter binds to: minimal APIs name it in the parameter's type, MVC in its model metadata.</summary>
+    /// <remarks>
+    /// MVC leaves the parameter's type <see langword="null"/> where it cannot name one, for a complex type bound
+    /// from the route under a name of its own (<c>[FromRoute(Name = "id")]</c>): such a parameter is no set.
+    /// </remarks>
     private static GeneratedClosedSetAttribute? ParameterSet(ApiParameterDescription parameter) =>
-        Describe(parameter.Type)
+        (parameter.Type is { } type ? Describe(type) : null)
      ?? (parameter.ModelMetadata?.ModelType is { } model ? Describe(model) : null);
 }

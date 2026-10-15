@@ -93,4 +93,12 @@ internal static class AspectDiagnostics
 
     public static readonly DiagnosticDefinition<INamedType> AbstractValueObject =
         new("CMTK1022", Severity.Error, "'{0}' is abstract, so it is not generated: an abstract type cannot be a value object. A value held as '{0}' would have no Value, and its JSON would be '{{}}'. Declare the marker on a sealed type." + SeeBuildErrors);
+
+    /// <summary>
+    /// A Warning, since an Error that reports more waits for a major version (decision 34): the value
+    /// object is generated, with the wrapped value's equality, and this names the base's that it no
+    /// longer calls (decision 75).
+    /// </summary>
+    public static readonly DiagnosticDefinition<(INamedType Type, string Members)> InheritedEqualityNotUsed =
+        new("CMTK1023", Severity.Warning, "'{0}' inherits {1}, which its generated equality does not call: a value object's equality is its wrapped value's, as its ordering, its JSON and its EF Core column are, and a base's would make values equal that sort apart. Remove them from the base, or derive from a record without them; to make values that differ only in form equal, normalise them in Create." + SeeBuildErrors);
 }

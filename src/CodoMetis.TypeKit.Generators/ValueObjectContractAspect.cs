@@ -38,6 +38,9 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
             }
         );
 
+        if (builder.Target.TypeKind == TypeKind.Class && builder.Target.BaseType is { SpecialType: not SpecialType.Object })
+            IntroduceEquality(builder, valueType);
+
         if (state.Kind == ValueObjectKind.Plain)
         {
             ImplementValueWrapper(builder, valueType, state.PrivateConstructor.GetTarget());
@@ -53,6 +56,107 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
             typeof(IEqualityOperators<,,>).ToNamedType().MakeGenericInstance(builder.Target, builder.Target, typeof(bool).ToNamedType()),
             OverrideStrategy.Ignore
         );
+    }
+
+    /// <summary>
+    /// <c>Equals(TSelf)</c> and <c>GetHashCode()</c> over the wrapped value alone, for a record class
+    /// derived from another record, whose synthesized equality calls the base's and so compares the
+    /// base's fields too.
+    /// </summary>
+    /// <remarks>
+    /// A base record's state is refused (CMTK1012) and its hand-written equality too (CMTK1011), but in
+    /// a referenced assembly its private fields are out of sight, and a reference assembly has none: a
+    /// base holding a private identity made two value objects holding 42 unequal, a <c>HashSet</c> hold
+    /// both, and a JSON round trip give back a value unequal to the one written, while a
+    /// <c>SortedSet</c> held one. The record's synthesized <c>Equals(object)</c>, <c>Equals(TBase)</c>
+    /// and <c>==</c> call this one. The record is sealed, so <c>other</c> is of this very type.
+    /// <para>
+    /// A base's <c>IEquatable&lt;TBase&gt;</c>, which a collection of the base calls, is implemented
+    /// again (<c>IReimplementedEquatable&lt;TBase&gt;</c>), by the public <c>Equals(TBase)</c> the
+    /// compiler synthesizes in the record derived from that base, which calls <c>Equals(object)</c> and so
+    /// this one: a base implementing it explicitly kept that implementation, so a <c>HashSet</c> of the
+    /// value object held one of two holding 42 and a <c>HashSet</c> of the base both (reported
+    /// 2026-10-14). Metalama implements no interface a base already does, nor explicit members of one it
+    /// skipped (LAMA0516), so the interface listed is one derived from it, which C# takes for
+    /// implementing it again. Every base's, whatever it declares.
+    /// </para>
+    /// <para>
+    /// The runtime maps a listed interface to a method the class declares, or else keeps the base's mapping,
+    /// so the synthesized <c>Equals(TBase)</c> takes over only where it is the value object's own: the direct
+    /// base's. A deeper base's explicit <c>IEquatable&lt;TBase&gt;</c>, or one a base between implements, kept
+    /// its implementation, and a <c>HashSet</c> of that base held both (reported 2026-10-14). There the value
+    /// object declares <c>new Equals(TBase)</c>, which calls <c>Equals(object)</c> as the one it hides does,
+    /// and only there: where CMTK1023 names that explicit implementation (decision 87).
+    /// </para>
+    /// </remarks>
+    private static void IntroduceEquality(IAspectBuilder<INamedType> builder, INamedType valueType)
+    {
+        var direct    = builder.Target.BaseType!;
+        var equatable = TypeFactory.GetNamedType(typeof(IEquatable<>));
+
+        for (var type = direct; type is { SpecialType: not SpecialType.Object }; type = type.BaseType)
+        {
+            builder.ImplementInterface(TypeFactory.GetNamedType(typeof(IReimplementedEquatable<>)).MakeGenericInstance(type), OverrideStrategy.Ignore);
+
+            if (type.Equals(direct) || !ExplicitlyImplementsEquatableBetween(direct, type, equatable.MakeGenericInstance(type))) continue;
+
+            // One the value object declares itself implements the interface already, as C# maps it.
+            if (builder.Target.Methods.Any(method => method is { Name: nameof(Equals), Parameters: [{ } other] } && other.Type.ToNonNullable().Equals(type))) continue;
+
+            var hidden = type;
+            builder.IntroduceMethod(
+                nameof(ReimplementedEqualsTemplate),
+                IntroductionScope.Instance,
+                OverrideStrategy.New,
+                buildMethod: method =>
+                {
+                    method.Name               = nameof(Equals);
+                    method.Accessibility      = Accessibility.Public;
+                    method.Parameters[0].Type = hidden.ToNullable();
+                    method.AddAttribute(CodeAnnotations.CompilerGenerated);
+                }
+            );
+        }
+
+        builder.IntroduceMethod(
+            nameof(EqualsTemplate),
+            IntroductionScope.Instance,
+            OverrideStrategy.Override,
+            buildMethod: method =>
+            {
+                method.Name               = nameof(Equals);
+                method.Accessibility      = Accessibility.Public;
+                method.Parameters[0].Type = builder.Target.ToNullable();
+                method.AddAttribute(CodeAnnotations.CompilerGenerated);
+            },
+            args: new { valueType }
+        );
+
+        builder.IntroduceMethod(
+            nameof(GetHashCodeTemplate),
+            IntroductionScope.Instance,
+            OverrideStrategy.Override,
+            buildMethod: method =>
+            {
+                method.Name = nameof(GetHashCode);
+                method.AddAttribute(CodeAnnotations.CompilerGenerated);
+            },
+            args: new { valueType }
+        );
+    }
+
+    /// <summary>Whether a type from <paramref name="direct"/> down to <paramref name="deeper"/> implements <paramref name="interfaceType"/> explicitly.</summary>
+    private static bool ExplicitlyImplementsEquatableBetween(INamedType direct, INamedType deeper, INamedType interfaceType)
+    {
+        for (var type = direct; type is not null; type = type.BaseType)
+        {
+            if (type.Methods.Any(method => method.IsExplicitInterfaceImplementation && method.ExplicitInterfaceImplementations.Any(implemented => implemented.DeclaringType.Equals(interfaceType))))
+                return true;
+
+            if (type.Equals(deeper)) return false;
+        }
+
+        return false;
     }
 
     private static void ImplementValueWrapper(IAspectBuilder<INamedType> builder, IType valueType, IConstructor privateConstructor)

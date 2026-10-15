@@ -213,14 +213,31 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
         if (valueType.Attributes.Any(attribute => attribute.Type.IsConvertibleTo(typeof(TypeConverterAttribute))))
             return ValueParseStrategy.TypeConverter;
 
-        if (valueType.Constructors.Any(constructor => constructor is { Accessibility: Accessibility.Public, Parameters: [{ Type.SpecialType: SpecialType.String }] }))
+        // Only a type the generated call can make: an abstract class's public constructor is for the
+        // classes derived from it (LAMA0611, CS0144).
+        if (!valueType.IsAbstract && valueType.Constructors.Any(constructor => constructor is { Accessibility: Accessibility.Public, Parameters: [{ } text] } && TakesText(text)))
             return ValueParseStrategy.StringConstructor;
 
-        // Not a generic one, such as Enum.Parse<TEnum>(string), whose type argument the generated call
-        // cannot infer (LAMA0611, CS0411).
-        if (valueType.Methods.Any(method => method is { Name: "Parse", IsStatic: true, Accessibility: Accessibility.Public, TypeParameters.Count: 0, Parameters: [{ Type.SpecialType: SpecialType.String }] }))
+        // Callable as the generated code calls it, Type.Parse(text), and giving the wrapped type back. Not
+        // a generic one, such as Enum.Parse<TEnum>(string), whose type argument the generated call cannot
+        // infer (LAMA0611, CS0411); not one that returns a type the wrapped one cannot be assigned from (a
+        // static int Parse(string) on a class failed as CS0029); not a static virtual one of an interface,
+        // which only a type parameter can call (CS8926). Assignable as the generated lambda's return is, a
+        // user-defined implicit operator included: the default conversion kind, C#'s `is`, left it out, and a
+        // Parse giving a Circle that converts to Shape lost IParsable where 2.0.0 generated it (CS0117 in a
+        // consumer's Parse call, reported 2026-10-14).
+        if (valueType.Methods.Any(method => method is { Name: "Parse", IsStatic: true, IsVirtual: false, Accessibility: Accessibility.Public, TypeParameters.Count: 0, Parameters: [{ } text] }
+                                         && TakesText(text)
+                                         && method.ReturnType.IsConvertibleTo(valueType, ConversionKind.Implicit)))
             return ValueParseStrategy.StaticParse;
 
         return ValueParseStrategy.Unsupported;
     }
+
+    /// <summary>
+    /// A string parameter the generated call can pass the text to as it is: not <c>ref</c> or
+    /// <c>out</c>, which failed inside the generated code (LAMA0611, CS1620).
+    /// </summary>
+    private static bool TakesText(IParameter parameter) =>
+        parameter is { Type.SpecialType: SpecialType.String, RefKind: RefKind.None or RefKind.In };
 }

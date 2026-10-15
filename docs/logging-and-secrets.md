@@ -1,18 +1,25 @@
 # Logging and secrets
 
-A value object over a secret, a token, a key, a PIN, is a string on its way to a log the moment it
-is interpolated, destructured or quoted in an exception. Three things keep it out: a value object
-prints what its `ToString()` says and nothing else reaches a string path; `Option` and `Result` print
-nothing of their content; and no refusal, in JSON, parsing, `FromKnownGood` or the type converter,
-quotes the input. The [Generators README](../src/CodoMetis.TypeKit.Generators/README.md#a-value-that-must-not-be-printed)
+Some value objects hold a secret: a token, a key, a PIN. This page shows how to keep that value out
+of your logs and error messages.
+
+A secret becomes a string on its way to a log the moment it is interpolated, destructured or quoted
+in an exception. Three things keep it out:
+
+- **A value object prints only what its `ToString()` says.** No other path turns it into a string.
+- **`Option` and `Result` print nothing of their content.**
+- **No rejection quotes the input.** That holds for JSON, parsing, `FromKnownGood` and the type
+  converter.
+
+The [Generators README](../src/CodoMetis.TypeKit.Generators/README.md#a-value-that-must-not-be-printed)
 and the [Serilog README](../src/CodoMetis.TypeKit.Serilog/README.md) are the reference. The examples
 import `CodoMetis.TypeKit` and `CodoMetis.TypeKit.ValueObjects`.
 
-## A value that must not be printed
+## Mask a value when it is printed
 
-Declare `ToString()`. It is kept, and then no formatting interface is generated, so interpolation,
-`string.Format`, `Convert.ToString`, a record that holds it and every Microsoft.Extensions.Logging
-path reach it too, `[LogProperties]` included.
+Write your own `ToString()`. The generators keep it, and then generate no formatting interface. So
+interpolation, `string.Format`, `Convert.ToString`, a record that holds the value object, and every
+Microsoft.Extensions.Logging path, `[LogProperties]` included, all print your `ToString()`.
 
 ```csharp
 public readonly partial record struct AccessToken : IValue<string>
@@ -32,16 +39,21 @@ string record = new Session(token, "Ann").ToString();                   // Sessi
 string json = JsonSerializer.Serialize(token);                          // "tok-123", a conversion, not display
 ```
 
-Still carrying the value, since they are conversions and not display: its JSON, the type converter
-and the database column; and the debugger, which shows `ToString()` but expands `Value`. A `Session`
-written as JSON carries the token, so the shape that is logged is not the shape that is sent.
+**Good to know**
 
-## Serilog
+- **Conversions still carry the value.** JSON, the type converter and the database column are
+  conversions, not display, so they write the real value. A `Session` written as JSON carries the
+  token, so the shape you log is not the shape you send.
+- **The debugger shows both.** It displays `ToString()`, but you can expand `Value`.
 
-Serilog destructures an object, `{@Session}` or a record holding a value object, by reading its
-public properties, and `Value` is public: without the satellite the token above is logged as
-`{ Value: "tok-123" }`, past the `ToString()`. `Destructure.WithTypeKit()` logs every value object as
-what it prints, masked or not, and nothing is registered per type:
+## Log with Serilog
+
+Serilog destructures an object, such as `{@Session}` or a record that holds a value object, by
+reading its public properties. `Value` is public. So without the Serilog package, the token above is
+logged as `{ Value: "tok-123" }`, and your `ToString()` is skipped.
+
+`Destructure.WithTypeKit()` logs every value object as what it prints, masked or not. There is
+nothing to register per type:
 
 ```csharp
 using Serilog;
@@ -58,13 +70,14 @@ logger.Information("Opened {@Session}", new Session(token, "Ann"));
 string logged = events.Messages.Single();   // Opened {"Token":"AccessToken(***)","Name":"Ann","$type":"Session"}
 ```
 
-An `OrderId` is then `"0199aaaa-…"` in the event rather than `{ Value: "0199aaaa-…" }`, and a list
-or dictionary of value objects a list or dictionary of strings, which is what the host's queries
-expect.
+With it, an `OrderId` shows up in the event as `"0199aaaa-..."` rather than
+`{ Value: "0199aaaa-..." }`. A list or a dictionary of value objects becomes a list or a dictionary
+of strings, which is what your queries over the logs expect.
 
-## Microsoft.Extensions.Logging
+## Log with Microsoft.Extensions.Logging
 
-Every path prints `ToString()`: a message template, the logging source generator, `[LogProperties]`.
+Every path prints `ToString()`: a message template, the logging source generator, and
+`[LogProperties]`.
 
 ```csharp
 using var factory = LoggerFactory.Create(logging => logging.AddProvider(sink));   // sink: a provider of your own that keeps the formatted messages
@@ -74,9 +87,11 @@ log.LogInformation("Opened for {Token}", token);
 string message = sink.Messages.Single();   // "Opened for AccessToken(***)"
 ```
 
-Microsoft.Extensions.Compliance classifies a logging method's parameter, not its type: a
-`DataClassificationAttribute` on the value object's type makes the logging generator report
-LOGGEN035 and generate nothing for the method. Classify the parameter.
+**Good to know**
+
+- **Classify the parameter, not the type.** Microsoft.Extensions.Compliance classifies a logging
+  method's parameter, not its type. Put a `DataClassificationAttribute` on the value object's type,
+  and the logging generator reports LOGGEN035 and generates nothing for the method.
 
 ## Refusals never quote the input
 
@@ -100,23 +115,30 @@ Pin.FromKnownGood(typed);                           // InvalidOperationException
 string printed = Option.Some(token).ToString();     // nothing of the token: an option prints no content, and neither does a result
 ```
 
-A refusal names the value object and the rule, or the wrapped type it could not read, and carries no
-inner exception that quotes the text: the wrapped type's own `FormatException` would. What reaches a
-log through this package is therefore the type and the fault. The fault's text is yours, so keep the
-input out of it ([Value objects](value-objects.md#faults)), and a `FromKnownGood` given a literal names
-the literal, since the literal is the expression. ASP.NET's own refusal of a route or query value
-quotes the input, as it does for a `Guid`: in MVC's model-state message ("The value '…' is not
-valid."), which reaches the response, and in a minimal API's log entry and developer exception page.
-A body refused by the JSON converter does not
-([ASP.NET Core](aspnet-core.md#what-a-refused-value-answers)), with one exception that is
-System.Text.Json's: a value object used as a dictionary key is read from the property name, and the
-`JsonException` for a refused or unreadable key carries the key in its `Path` (`$.items.SE`), which
-MVC uses as the error's name in its 400. Keep a secret out of a dictionary's keys.
+When a value is rejected, the message names the value object and the rule, or the underlying type
+it couldn't read. It carries no inner exception that quotes the text, as the underlying type's own
+`FormatException` would. So what reaches a log through this package is the type and the fault.
 
-## What a fault response tells the client
+**Good to know**
 
-A fault answered with `ToHttpResult()` names its member in the problem's `fault`, for every member,
-whatever its status or description: the name is meant for the client. Two refusals the client must
-not tell apart, an unknown user and a wrong password, therefore become one fault before the response,
-as [ASP.NET Core](../src/CodoMetis.TypeKit.AspNetCore/README.md#faults-a-client-must-not-tell-apart)
-shows; the domain keeps both for its log.
+- **The fault's text is yours.** Keep the input out of it ([Value objects](value-objects.md#errors)).
+- **`FromKnownGood` names the expression you passed.** Given a literal, it names the literal, because
+  the literal is the expression.
+- **ASP.NET Core's own rejection of a route or query value quotes the input**, as it does for a
+  `Guid`. In MVC that is the model-state message ("The value '...' is not valid."), which ends up in
+  the response. In a minimal API it is the log entry and the developer exception page.
+- **A body rejected by the JSON converter doesn't quote it**
+  ([ASP.NET Core](aspnet-core.md#what-a-refused-value-answers)), with one exception that comes from
+  System.Text.Json. A value object used as a dictionary key is read from the property name. The
+  `JsonException` for a rejected or unreadable key carries that key in its `Path` (`$.items.SE`), and
+  MVC uses the path as the error's name in its 400. Keep secrets out of a dictionary's keys.
+
+## What the client sees in a fault response
+
+When you answer with `ToHttpResult()`, the problem's `fault` field names the fault's member. It does
+so for every member, whatever its status or description, because the name is meant for the client.
+
+Some failures the client must not be able to tell apart, such as an unknown user and a wrong
+password. Turn those into one fault before the response, as
+[ASP.NET Core](../src/CodoMetis.TypeKit.AspNetCore/README.md#faults-a-client-must-not-tell-apart)
+shows. Your domain keeps both for its own log.

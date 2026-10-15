@@ -86,6 +86,16 @@ public readonly partial record struct DueOn : IValue<DateOnly>;
 public readonly partial record struct Homepage : IValue<Uri>;
 // end sample
 
+// sample: value-objects/enum-numbers
+public enum DayFault { NoSuchDay }
+
+public readonly partial record struct ScheduleDay : IValidatedValue<ScheduleDay, DayOfWeek, DayFault>
+{
+    public static Result<ScheduleDay, DayFault> Create(DayOfWeek value) =>
+        Enum.IsDefined(value) ? new ScheduleDay(value) : Result.Error(DayFault.NoSuchDay);
+}
+// end sample
+
 // sample: value-objects/own-compare-to
 public readonly partial record struct Priority : IValue<int>
 {
@@ -171,6 +181,17 @@ public static class Usage
         // end sample
 
         return (day, fifth, due, sooner, sortable);
+    }
+
+    public static (Weekday Ninth, bool Scheduled, bool Friday) EnumNumbers()
+    {
+        // sample: value-objects/enum-numbers-use
+        var ninth = Weekday.Parse("9", null);                              // 9, a Weekday no member names
+        bool scheduled = ScheduleDay.TryParse("9", null, out _);           // false, and JSON's 9 throws JsonException naming ScheduleDay and NoSuchDay
+        bool friday = ScheduleDay.TryParse("Friday", null, out _);         // true
+        // end sample
+
+        return (ninth, scheduled, friday);
     }
 
     public static void Factories(RegisterRequest request)
@@ -289,6 +310,27 @@ public sealed class ValueObjectsTests
         typeof(IComparable<Homepage>).IsAssignableFrom(typeof(Homepage)).ShouldBeShownIn(Readme, Bool);
         (day, fifth, sooner, sortable).ShouldBe((Weekday.From(DayOfWeek.Friday), Weekday.From(DayOfWeek.Friday), true, false));
         Homepage.Parse("https://example.com/", null).Value.ShouldBe(new Uri("https://example.com/"));
+    }
+
+    /// <summary>
+    /// A plain value object over an enum reads a number no member names, by every way in, as the enum does;
+    /// one whose <c>Create</c> checks <c>Enum.IsDefined</c> refuses it by every way in.
+    /// </summary>
+    [Fact]
+    public void A_number_no_member_names_is_read_by_a_plain_value_object_and_refused_by_a_validated_one()
+    {
+        var (ninth, scheduled, friday) = Usage.EnumNumbers();
+
+        Weekday.Parse("9", null).ShouldBeShownIn(Readme, d => ((int)d.Value).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        ScheduleDay.TryParse("9", null, out _).ShouldBeShownIn(Readme, Bool);
+        ScheduleDay.TryParse("Friday", null, out _).ShouldBeShownIn(Readme, Bool);
+        (ninth.Value, scheduled, friday).ShouldBe(((DayOfWeek)9, false, true));
+
+        System.Text.Json.JsonSerializer.Deserialize<Weekday>("9").Value.ShouldBe((DayOfWeek)9, "JSON reads what the enum reads");
+        var refused = Should.Throw<System.Text.Json.JsonException>(() => System.Text.Json.JsonSerializer.Deserialize<ScheduleDay>("9"));
+        refused.Message.ShouldContain(nameof(ScheduleDay));
+        refused.Message.ShouldContain(nameof(DayFault.NoSuchDay));
+        ScheduleDay.TryFrom((DayOfWeek)9).IsNone().ShouldBeTrue();
     }
 
     [Fact]

@@ -27,7 +27,7 @@ internal static class Outcomes
     /// type nested in a generic one is generic without an arity of its own (<c>Inner</c>, not
     /// <c>Inner`1</c>): each name in the chain takes as many arguments as its own arity says.
     /// </remarks>
-    private static string Name(Type type)
+    public static string Name(Type type)
     {
         if (type.IsArray)
             return $"{Name(type.GetElementType()!)}[{new string(',', type.GetArrayRank() - 1)}]";

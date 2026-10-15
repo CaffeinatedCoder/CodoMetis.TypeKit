@@ -58,7 +58,7 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0049](0049-fault-responses-client-can-act.md) | Fault responses a client can act on | 2026-10-13 | accepted |
 | [0050](0050-warnings-cmtk0003-alone-becomes-error-2.md) | Of the Warnings, CMTK0003 alone becomes an Error in 2.0.0 | 2026-10-13 | accepted |
 | [0051](0051-closed-set-parses-ignoring-case-only.md) | A closed set parses ignoring case only when asked, and refuses members that differ only in case | 2026-10-13 | accepted |
-| [0052](0052-cause-on-fault-joins-2-1.md) | A `Cause` on `Fault<TFault>` joins 2.1 | 2026-10-13 | accepted |
+| [0052](0052-cause-on-fault-joins-2-1.md) | A `Cause` on `Fault<TFault>` joins 2.1 | 2026-10-13 | accepted; moved to 2.2 by [0088](0088-2-1-0-ships-without-its-open-roadmap-items.md) |
 | [0053](0053-fault-made-by-fault-of-alone.md) | A `Fault<TFault>` is made by `Fault.Of` alone | 2026-10-13 | accepted |
 | [0054](0054-abstract-value-object-refused.md) | An abstract type with a value-object marker is refused (CMTK1022) | 2026-10-13 | accepted |
 | [0055](0055-component-name-claimed-twice-refused.md) | A component name two types claim is refused; a qualified fault name follows the nesting chain | 2026-10-13 | accepted |
@@ -70,5 +70,33 @@ per area ([design](../plan.md)) link to the records they rest on.
 | [0061](0061-scope-s-fault-status-applies-where-fault-type-answered.md) | A scope's fault status applies where its fault type is answered | 2026-10-13 | accepted |
 | [0062](0062-asynchronous-callbacks-run-where-awaited-task-completed.md) | An asynchronous callback runs where the task it waited for completed | 2026-10-13 | accepted |
 | [0063](0063-char-keys-application-assigned-ulong-documented.md) | A key over `char` is the application's to assign; a default key over `ulong` throws at `Add` | 2026-10-13 | accepted |
-| [0064](0064-fault-name-reaches-client-causes-not-told-apart-one-fault.md) | A fault's name reaches the client; causes it must not tell apart are one fault | 2026-10-13 | accepted |
+| [0064](0064-fault-name-reaches-client-causes-not-told-apart-one-fault.md) | A fault's name reaches the client; causes it must not tell apart are one fault | 2026-10-13 | accepted; its opt-in moved to 2.2 by [0088](0088-2-1-0-ships-without-its-open-roadmap-items.md) |
 | [0065](0065-2-0-0-ships-without-preview.md) | 2.0.0 ships without a preview | 2026-10-14 | accepted |
+| [0066](0066-precondition-failed-malformed-fault-kinds.md) | Two more fault kinds: `PreconditionFailed` (412) and `Malformed` (400) | 2026-10-14 | accepted |
+| [0067](0067-rule-that-refused-on-fault.md) | A fault names the rule that refused, as a member of a fixed set | 2026-10-14 | accepted |
+| [0068](0068-fault-set-composition-spiked-first.md) | Fault sets that share members are spiked before they are built | 2026-10-14 | superseded by [0078](0078-fault-sets-compose-side-by-side.md) |
+| [0069](0069-plain-enum-schemas-left-to-host.md) | A plain enum's schema stays the host's | 2026-10-14 | accepted |
+| [0070](0070-undefined-enum-value-warning.md) | A value of the package's input enums that names no member is a warning (CMTK0014) | 2026-10-14 | accepted |
+| [0071](0071-converters-say-what-they-write.md) | JSON converters say what they write; decimals get one spelling | 2026-10-14 | accepted |
+| [0072](0072-rule-identity-is-its-type.md) | A rule's identity is its type; its wire name stays without a namespace | 2026-10-14 | accepted |
+| [0073](0073-schema-descriptions-follow-the-serializer.md) | Schema descriptions follow the converter the serializer picks, and refuse what they cannot say | 2026-10-14 | accepted |
+| [0074](0074-descriptions-resolve-the-converter-as-the-serializer-does.md) | Descriptions resolve the converter as the serializer does, and survive the document's version | 2026-10-14 | accepted; the lookup order refined by [0083](0083-the-contract-s-converter-first-and-enum-proves-nothing-against-struct.md) |
+| [0075](0075-equality-over-base-record-generated.md) | Over a base record a value object's equality is generated; the base's is CMTK1023, a Warning | 2026-10-14 | accepted |
+| [0076](0076-preserved-references-refused.md) | A value object refuses preserved references inside its wrapped value | 2026-10-14 | accepted |
+| [0077](0077-third-review-refines-74-to-76.md) | A base's IEquatable is implemented again, the resolver's converter is described, and the reference scan reads what the serializer writes | 2026-10-14 | accepted; a deeper base's `IEquatable` refined by [0087](0087-a-deeper-base-s-explicit-equatable-is-hidden-by-the-value-object.md) |
+| [0078](0078-fault-sets-compose-side-by-side.md) | Fault sets compose side by side, and a route leaves out what it cannot answer | 2026-10-14 | accepted; its name refusal a warning until 3.0.0 by [0090](0090-faults-alike-are-a-warning-until-3-0.md), its status refusal judged by scope by [0091](0091-an-exclusion-narrows-a-wider-status.md) |
+| [0079](0079-distinct-and-unrelated-type-parameters.md) | `[Distinct]` and `[Unrelated]` constrain two type parameters against each other, under CMTK0010 | 2026-10-14 | accepted; an `Enum` bound no proof against `struct` by [0083](0083-the-contract-s-converter-first-and-enum-proves-nothing-against-struct.md), proofs read what a closed use can be by [0084](0084-cmtk0010-proofs-read-what-a-closed-use-can-be.md) |
+| [0080](0080-second-pilot-one-mapping-held-fault-bare-name.md) | One mapping for every fault set, a reader for a composed fault, and the bare name under a key of the host's | 2026-10-14 | accepted; the bare name withdrawn by [0082](0082-bare-fault-name-member-withdrawn.md) |
+| [0081](0081-six-more-kinds-of-type-argument.md) | Six more kinds a type parameter demands of its argument: `[Interface]`, `[Unsealed]`, `[ValueObject]`, `[ClosedSet]`, `[FlagsEnum]`, `[ReadOnlyStruct]` | 2026-10-14 | accepted; an interface no value object by [0085](0085-an-interface-is-no-value-object.md) |
+| [0082](0082-bare-fault-name-member-withdrawn.md) | The bare fault name under a member of the host's is withdrawn before it ships | 2026-10-14 | accepted |
+| [0083](0083-the-contract-s-converter-first-and-enum-proves-nothing-against-struct.md) | A description asks the contract's converter first, and an `Enum` bound proves nothing against `struct` | 2026-10-14 | accepted; a nullable seen through only at the adapter by [0086](0086-a-nullable-s-converter-is-seen-through-only-when-it-is-the-serializer-s-adapter.md) |
+| [0084](0084-cmtk0010-proofs-read-what-a-closed-use-can-be.md) | CMTK0010's proofs read what a closed use can be, not the constraint as written | 2026-10-14 | accepted |
+| [0085](0085-an-interface-is-no-value-object.md) | An interface is no value object to `[ValueObject]` | 2026-10-14 | accepted |
+| [0086](0086-a-nullable-s-converter-is-seen-through-only-when-it-is-the-serializer-s-adapter.md) | A nullable's converter is seen through only where it is the serializer's adapter, and a hand-built nullable contract is described by its value's | 2026-10-14 | accepted |
+| [0087](0087-a-deeper-base-s-explicit-equatable-is-hidden-by-the-value-object.md) | A deeper base's explicit `IEquatable` is taken over by a `new Equals(TBase)` the value object declares | 2026-10-14 | accepted |
+| [0088](0088-2-1-0-ships-without-its-open-roadmap-items.md) | 2.1.0 ships without its open roadmap items, which move to 2.2 | 2026-10-14 | accepted |
+| [0089](0089-cmtk0010-at-methods-bound-by-pattern.md) | CMTK0010 checks a method bound by pattern, for the kinds 2.1.0 adds; 2.0's four join at 3.0.0 | 2026-10-14 | accepted |
+| [0090](0090-faults-alike-are-a-warning-until-3-0.md) | Two fault types writing one name are a startup warning until 3.0.0 | 2026-10-14 | accepted |
+| [0091](0091-an-exclusion-narrows-a-wider-status.md) | An endpoint's exclusion narrows a wider scope's status; a status every endpoint leaves out is refused | 2026-10-14 | accepted |
+| [0092](0092-repository-tooling-is-dotnet-and-ci-needs-no-ai.md) | Repository tooling is .NET, a file-based app or a tool project by how it is used; git and the pinned SDK are the only prerequisites; the tests run on Linux, Windows and macOS; CI never depends on an AI | 2026-10-15 | accepted |
+| [0093](0093-verified-facts-are-pinned-dated-and-executable-where-they-can-be.md) | Verified facts are pinned, dated and executable where they can be: one fact per file in `design/knowledge/`, a characterization test per observable fact, and `docs-query check` holding the pins to what is installed | 2026-10-15 | accepted |

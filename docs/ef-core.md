@@ -1,10 +1,12 @@
 # EF Core
 
-`CodoMetis.TypeKit.EntityFrameworkCore` maps every value object to a column of the type it wraps,
-with nothing registered per type, and makes `.Value` work in a LINQ query as it does in memory. The
-project that hosts the `DbContext` references this package and the base package; the generators stay
-in the domain project. The [package README](../src/CodoMetis.TypeKit.EntityFrameworkCore/README.md)
-is the reference: setup, what maps, the provider notes. This page walks through a model.
+`CodoMetis.TypeKit.EntityFrameworkCore` stores every value object in a plain column of its underlying
+type, with nothing to register per type. In a LINQ query, `.Value` works the way it does in memory.
+
+The project that hosts your `DbContext` references this package and the base package. The generators
+stay in your domain project. This page walks through a model. The
+[package README](../src/CodoMetis.TypeKit.EntityFrameworkCore/README.md) is the reference for setup,
+what maps, and the notes per database provider.
 
 ```csharp
 using CodoMetis.TypeKit;
@@ -83,26 +85,17 @@ public sealed class BillingDb(DbContextOptions<BillingDb> options) : DbContext(o
 }
 ```
 
-Every property maps as a scalar of the wrapped type, nullable where the property is, and a facet
-configured on it, a precision, a length, a column type, is kept. `required` is what CMTK0006 asks
-for: a value object that nothing assigns would be a `default` instance, and the key is the one
-property the database fills in, which the pragma says. A model-wide convention is configured by the
-value object's type, since EF applies `ConfigureConventions` by CLR type.
+Every property maps as a column of the underlying type, nullable where the property is. A facet you
+configure on it is kept: a precision, a length, a column type.
+
+**Good to know**
+
+- **`required` is what CMTK0006 asks for.** A value object nothing assigns would be a `default`
+  instance. The key is the one property the database fills in, and the pragma says so.
+- **Configure a model-wide convention by the value object's type.** EF applies
+  `ConfigureConventions` by CLR type, so `Properties<decimal>()` wouldn't reach `Amount`.
 
 ## Keys
-
-A single-column key over an integer is declared generated on add, as a key of that integer type is,
-and the provider generates it as it would a plain one: an identity column on PostgreSQL and SQL
-Server, so switching an `int` key to a value object there changes no schema. Two exceptions. A key
-over `char` is the application's to assign on every provider, since none generates one; a default
-`'\0'` is stored as it is, so assign a meaningful character. A key over `ulong` added with its default
-value throws `OverflowException` at `Add` on SQL Server and PostgreSQL, whose column is a `decimal`;
-configure `ValueGeneratedNever()` on it and assign it. A key over
-a `Guid` is the application's to assign, `Id = OrderId.New()`, a version 7
-`Guid` that sorts by creation time; for EF to generate it, configure `ValueGeneratedOnAdd()`. The root
-of a TPH or TPT hierarchy is generated too; under TPC, as for an `int` key, only where the provider has
-a sequence for the hierarchy (PostgreSQL, SQL Server), not on SQLite. A composite
-key of value objects is `HasKey(x => new { x.Order, x.Line })`, as for primitives.
 
 ```csharp
 await using var connection = new SqliteConnection("Data Source=:memory:");   // one connection keeps the in-memory database alive
@@ -124,16 +117,32 @@ await db.SaveChangesAsync();
 long assigned = invoice.No.Value;   // 2, assigned by the database; the seeded invoice is 1
 ```
 
-SQLite fills such a key in, but its provider marks a key `AUTOINCREMENT` only for an integer CLR
-type, so a model that migrates on SQLite configures `UseAutoincrement()` on each value-object key
-([the README](../src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#what-maps) has the detail).
-`EnsureCreated`, as above, needs nothing.
+A single-column key over an integer is generated on add, like a key of that integer type. The
+provider generates it as it would a plain one. On PostgreSQL and SQL Server that's an identity
+column, so switching an `int` key to a value object changes no schema there.
+
+A key over a `Guid` is yours to assign: `Id = OrderId.New()` gives a version 7 `Guid` that sorts by
+creation time. To have EF generate it, configure `ValueGeneratedOnAdd()`.
+
+A composite key of value objects is `HasKey(x => new { x.Order, x.Line })`, as for primitives.
+
+**Good to know**
+
+- **A key over `char` is always yours to assign**, on every provider, since none generates one. A
+  default `'\0'` is stored as it is, so assign a meaningful character.
+- **A key over `ulong` needs `ValueGeneratedNever()` on SQL Server and PostgreSQL.** Their column is a
+  `decimal`, so adding the entity with the key's default value throws `OverflowException` at `Add`.
+  Configure `ValueGeneratedNever()` and assign the key.
+- **Inheritance hierarchies.** The root of a TPH or TPT hierarchy is generated too. Under TPC, as for
+  an `int` key, it's generated only where the provider has a sequence for the hierarchy (PostgreSQL,
+  SQL Server), not on SQLite.
+- **SQLite migrations need `UseAutoincrement()`.** SQLite fills such a key in, but its provider marks
+  a key `AUTOINCREMENT` only for an integer CLR type. So a model that migrates on SQLite configures
+  `UseAutoincrement()` on each value-object key
+  ([the README](../src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#what-maps) has the detail).
+  `EnsureCreated`, as above, needs nothing.
 
 ## Queries
-
-`.Value`, `GetValue()` and `ValueOrNull()` translate to the column itself, so the wrapped type's own
-operations are available on it, and a value object compares to a parameter or a column directly. The
-SQL below is PostgreSQL's, pinned by a test:
 
 ```csharp
 db.Invoices.Where(i => i.Total.Value >= 100m && i.Currency == eur);          // WHERE i."Total" >= 100.0 AND i."Currency" = @eur
@@ -146,24 +155,27 @@ db.Invoices.Select(i => new { i.No, Total = i.Total.Value });                   
 db.Invoices.GroupBy(i => i.Currency).Select(g => new { Currency = g.Key, Sum = g.Sum(i => i.Total.Value) });   // an aggregate over the column
 ```
 
+`.Value`, `GetValue()` and `ValueOrNull()` translate to the column itself. So the underlying type's own
+operations work on it, and a value object compares to a parameter or a column directly. The SQL above
+is PostgreSQL's, pinned by a test.
+
 A table's column is re-typed, not cast, so an index on it still serves the query. The element of a
 primitive collection, a property in a JSON column and a parameter are converted, which may add a
-cast. A property with a converter of the application's own does not hold `.Value`, so `.Value` on it
-is refused ("could not be translated"); comparing the value object itself still works.
+cast.
 
-Ordering in SQL follows the column's collation, while the generated comparison in memory is ordinal
-for a string, as for any string column. A value object with its own `CompareTo(TSelf)` cannot be
-compared, ordered, or taken the `Min` or `Max` of in a query, since the database orders the column by
-the wrapped value: such a query is refused, naming the value object, and `.Value` says the wrapped
-value's order is meant (`OrderBy(i => i.Priority.Value)`). A query filter that does the same is
-refused when the model is built.
+**Good to know**
+
+- **A property with your own converter has no `.Value` in a query.** `.Value` on it fails with "could
+  not be translated". Comparing the value object itself still works.
+- **Ordering follows the column's collation in SQL.** The generated comparison in memory is ordinal
+  for a string, as for any string column.
+- **Your own `CompareTo(TSelf)` can't run in the database.** The database orders the column by the
+  underlying value. So a query that compares or orders such a value object, or takes its `Min` or
+  `Max`, is rejected, and the error names the value object. Write `.Value` to say the underlying
+  value's order is what you mean: `OrderBy(i => i.Priority.Value)`. A query filter that does the same
+  is rejected when the model is built.
 
 ## Reading back without validation
-
-A column is read through the value object's materializer, not through `Create`: a rule added later
-must not make the rows written before it unreadable, and what the application wrote is trusted by
-contract. Input still goes through `Create`, nothing in the package is reachable from a request, and
-`Materialize` called anywhere else is CMTK0004. `Revalidate()` finds the rows today's rules refuse:
 
 ```csharp
 await db.Database.ExecuteSqlAsync($"UPDATE Invoices SET Reference = 'inv-2' WHERE No = 2");   // a row from before the upper-case rule
@@ -174,56 +186,89 @@ string verdict = read.Reference.Revalidate().Match(_ => "valid", fault => $"refu
 string stored = read.Reference.Value;                                                             // "inv-2", as the row holds it
 ```
 
-What to do with such a row is the application's decision: a migration that rewrites it, a report, or
-a `Create` applied to the stored value and saved back.
+EF reads a column back without validation, through the value object's `Materialize` rather than
+`Create`. A rule you add later shouldn't make the rows written before it unreadable. And the database
+holds what your application wrote, so it's trusted. `Revalidate()` finds the rows that today's rules reject, as above.
+
+Input still goes through `Create`. Nothing in the package can be reached from a request, and calling
+`Materialize` anywhere else fails the build (CMTK0004).
+
+What to do with such a row is up to you: a migration that rewrites it, a report, or `Create` applied
+to the stored value and saved back.
 
 ## Option and Result
-
-Neither is a column. EF cannot map an `Option` or a `Result` property, and the model says so when it
-is built. An optional value is `T?` on the entity, `Discount?` above, and `ToOption()` lifts it where
-the domain wants an option:
 
 ```csharp
 Option<Discount> discount = read.Discount.ToOption();   // None
 ```
 
-An element of a query as an option is `FirstOrNone`, `SingleOrNone` or `FirstOrNoneAsync`, which let
-the database run the condition and read one row ([the EF README](../src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found)).
-Only a condition written as a lambda at the call, or held as an `Expression<Func<T, bool>>`, runs there:
-a `Func<T, bool>` variable or a method group binds the synchronous ones to their overloads on a sequence,
-which read every row of the table and run the condition in memory, without a warning.
+Neither is a column. EF can't map an `Option` or a `Result` property, and building the model fails
+with an error that says so. Declare an optional value as `T?` on the entity, like `Discount?` above,
+and call `ToOption()` where your domain wants an option.
+
+To get one element of a query as an option, use `FirstOrNone`, `SingleOrNone` or
+`FirstOrNoneAsync`. The database runs the condition and reads one row
+([the EF README](../src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found)).
+
+**Good to know**
+
+- **Write the condition as a lambda at the call**, or hold it as an `Expression<Func<T, bool>>`. Only
+  then does it run in the database. A `Func<T, bool>` variable or a method group binds the synchronous
+  methods to their overloads on a sequence. Those read every row of the table and run the condition
+  in memory, without a warning.
 
 ## Compiled models
 
-EF Core runs under Native AOT only through a compiled model and precompiled queries, and
-`UseTypeKit()` works there: value objects map through the compiled model, `.Value` translates in
-precompiled queries, a value-object parameter binds, and a key over an integer is generated by the
-database, in the native binary. Five limitations of EF's own are described in the
-[README](../src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#compiled-models-and-native-aot). Two
-a single project meets first: precompiled queries compile their project without the generators'
-bodies, so the queries live in a project that references the one declaring the value objects, and a
-collection of converted elements, a `List<OrderId>`, cannot be read by a precompiled query. Three
-reach a value object: a struct value object that wraps a reference type cannot be a property of a
-compiled model, since EF cannot write its sentinel, so such a value object on an entity is a `sealed
-partial record`; a sealed entity class does not compile in precompiled queries; and precompiled
-queries need the converter `UseTypeKit()` composes, not one named in `HasConversion`. The commands
-and the project settings are in [Native AOT](native-aot.md#ef-core).
+Under Native AOT, EF Core runs only through a compiled model and precompiled queries, and
+`UseTypeKit()` works there. In the native binary:
+
+- **Value objects map** through the compiled model.
+- **`.Value` translates** in precompiled queries.
+- **A value-object parameter binds.**
+- **A key over an integer** is generated by the database.
+
+EF has five limitations of its own here, described in the
+[README](../src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#compiled-models-and-native-aot).
+
+Two of them you meet first in a single project:
+
+- **Precompiled queries compile their project without the generators' bodies.** So the queries live
+  in a project that references the one declaring the value objects.
+- **A collection of converted elements**, like a `List<OrderId>`, can't be read by a precompiled
+  query.
+
+Three of them affect value objects:
+
+- **A struct value object that wraps a reference type can't be a property of a compiled model**,
+  because EF can't write its sentinel. Make such a value object on an entity a `sealed partial
+  record`.
+- **A sealed entity class doesn't compile** in precompiled queries.
+- **Precompiled queries need the converter `UseTypeKit()` composes**, not one named in
+  `HasConversion`.
+
+The commands and the project settings are in [Native AOT](native-aot.md#ef-core).
 
 ## SQLite in tests
 
-The block under [Keys](#keys) is the whole setup: one open `SqliteConnection` to `:memory:` keeps the
-database alive for the test, `UseTypeKit()` on the options, `EnsureCreated` for the schema. EF's
-in-memory provider is not an option: it has no relational type mapping, so nothing is mapped there.
-The mapping is tested in this repository on SQLite and PostgreSQL, and every wrapped-type family makes
+The block under [Keys](#keys) is the whole setup:
+
+- **One open `SqliteConnection` to `:memory:`** keeps the database alive for the test.
+- **`UseTypeKit()`** on the options.
+- **`EnsureCreated`** for the schema.
+
+EF's in-memory provider won't work. It has no relational type mapping, so nothing is mapped there.
+
+This repository tests the mapping on SQLite and PostgreSQL, and every family of underlying types makes
 a round trip through a real PostgreSQL.
 
 ## If something does not map
 
-- **A struct value object is stored as it is, or a class one fails the model**: the provider has no
-  relational type mapping. EF's in-memory provider does that; use SQLite.
-- **NU1605 on restore**: a direct reference to an EF Core package below 10.0.12. Raise it.
-- **A convention does not reach a value object**: it was configured by the wrapped type;
-  configure it by the value object's type.
-- **Every migration repeats an `AlterColumn` on SQLite**: an integer key without `UseAutoincrement()`.
-- **A `default` instance reaches `SaveChanges`**: a property nothing set. CMTK0006 points at it;
-  `required` closes it.
+- **A struct value object is stored as it is, or a class one fails the model.** The provider has no
+  relational type mapping. EF's in-memory provider does that, so use SQLite.
+- **NU1605 on restore.** You reference an EF Core package below 10.0.12 directly. Raise it.
+- **A convention doesn't reach a value object.** It was configured by the underlying type. Configure
+  it by the value object's type.
+- **Every migration repeats an `AlterColumn` on SQLite.** An integer key is missing
+  `UseAutoincrement()`.
+- **A `default` instance reaches `SaveChanges`.** A property nothing set. CMTK0006 points at it, and
+  `required` fixes it.

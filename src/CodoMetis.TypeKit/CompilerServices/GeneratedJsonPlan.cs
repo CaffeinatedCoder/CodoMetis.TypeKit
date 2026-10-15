@@ -62,6 +62,86 @@ public sealed class GeneratedJsonPlan<T>
         _keyConverter = typeInfo.Converter as JsonConverter<T>;
         _writesAsIs   = !IsNumber || (handling & (JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowNamedFloatingPointLiterals)) == 0;
         _readsAsIs    = !IsNumber || handling == JsonNumberHandling.Strict;
+
+        if (_direct is null && options.ReferenceHandler is { } handler && handler != ReferenceHandler.IgnoreCycles && MayHoldReferences(options, typeInfo, []))
+            throw new NotSupportedException(
+                $"A value object over {typeof(T)} cannot be written or read under {nameof(JsonSerializerOptions.ReferenceHandler)}.{nameof(ReferenceHandler.Preserve)}: "
+              + $"the serializer numbers references per call, and the value object's converter reaches the {typeof(T)} through a call of its own, so its \"$id\" and \"$ref\" "
+              + $"would not be the document's. Register a JsonConverter<{typeof(T)}> on the options, or serialize without preserving references.");
+    }
+
+    /// <summary>
+    /// Whether the serializer may write <c>$id</c> and <c>$ref</c> inside a <typeparamref name="T"/> under
+    /// a preserving reference handler: an object or a collection of a reference type, an <c>object</c> the
+    /// serializer's own converter writes, which holds anything, or a struct with one among the properties it
+    /// writes or reads, through the converter in charge of each, or among the elements it holds as a
+    /// collection, a nullable struct as the struct it holds. A struct has no <c>$id</c> of its own, and a
+    /// value converter writes none, nor does a converter of one's own.
+    /// </summary>
+    /// <remarks>
+    /// The serializer keeps the references of one call, and a nested call starts again: under
+    /// <see cref="ReferenceHandler.Preserve"/> a value object over a class wrote <c>"$id":"1"</c> inside a
+    /// document that already had one, and two of them around one instance wrote it twice where the
+    /// wrapped type writes a <c>$ref</c>, which the value object's converter could not read back
+    /// (measured 2026-10-14). There is no way to reach the caller's references from a converter. A
+    /// cycle under <see cref="ReferenceHandler.IgnoreCycles"/> fails at the depth limit instead, which is
+    /// loud, so that handler is left alone.
+    /// <para>
+    /// A nullable struct's contract lists none of the properties of the struct it holds, which the
+    /// serializer's converter for it writes, so a class there wrote its <c>$id</c> twice unseen; a converter
+    /// of its own, which the contract has from a resolver or the options, writes none. Which one writes it is
+    /// the contract's word, not the options': a resolver's own was refused, and the serializer's put in
+    /// charge over one in the options let an <c>$id</c> through twice (both reported 2026-10-14). An ignored
+    /// property, which has neither getter nor setter
+    /// in the contract, is neither written nor read, so a class there refused a struct the serializer
+    /// writes without one (both reported 2026-10-14). The serializer's converter of a nullable struct is
+    /// judged by the struct's contract, since no public API names the converter it was built over: a resolver
+    /// that builds the nullable contract by hand over a converter that writes no <c>$id</c> is refused, a
+    /// known limit that is loud, and a converter of the nullable type itself lifts it.
+    /// </para>
+    /// </remarks>
+    private static bool MayHoldReferences(JsonSerializerOptions options, JsonTypeInfo typeInfo, HashSet<Type> visited)
+    {
+        if (Nullable.GetUnderlyingType(typeInfo.Type) is { } held && GeneratedJson.IsNullableAdapter(typeInfo.Converter, typeInfo.Type))
+            return MayHoldReferences(options, options.GetTypeInfo(held), visited);
+
+        if (typeInfo.Type == typeof(object)) return GeneratedJson.IsTheSerializers(typeInfo.Converter);
+        if (typeInfo.Kind == JsonTypeInfoKind.None) return false;
+        if (!typeInfo.Type.IsValueType) return true;
+        if (!visited.Add(typeInfo.Type)) return false;
+
+        // A struct collection has no $id of its own either; its elements may (dictionary keys are names).
+        if (typeInfo.Kind != JsonTypeInfoKind.Object)
+            return typeInfo.ElementType is not { } element || MayHoldReferences(options, options.GetTypeInfo(element), visited);
+
+        foreach (var property in typeInfo.Properties)
+        {
+            if (property is { Get: not null } or { Set: not null } && MayHoldReferences(options, property, visited)) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Whether the converter in charge of <paramref name="property"/> may write <c>$id</c> and <c>$ref</c>: the
+    /// contract's, or a converter of the property's own. One of one's own writes none. One of the serializer's,
+    /// a factory among them, writes as the serializer's contract of the type it converts, so that contract
+    /// judges it; where that contract has a converter of one's own instead, which says nothing of how the
+    /// serializer's would write, it is refused. A converter named on a nullable property is the serializer's
+    /// adapter of the one named, so the named one is judged, as a schema description reads it.
+    /// </summary>
+    private static bool MayHoldReferences(JsonSerializerOptions options, JsonPropertyInfo property, HashSet<Type> visited)
+    {
+        var contract = options.GetTypeInfo(property.PropertyType);
+
+        if (property.CustomConverter is not { } own || own == contract.Converter) return MayHoldReferences(options, contract, visited);
+
+        own = JsonSchemaDescription.PropertyConverter(own, property, property.PropertyType, Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType, options) ?? own;
+        if (!GeneratedJson.IsTheSerializers(own)) return false;
+
+        var converted = own.Type is { } type ? options.GetTypeInfo(type) : contract;
+
+        return !GeneratedJson.IsTheSerializers(converted.Converter) || MayHoldReferences(options, converted, visited);
     }
 
     /// <summary>The options this plan was made for.</summary>
@@ -74,6 +154,7 @@ public sealed class GeneratedJsonPlan<T>
     /// <param name="options">The caller's options.</param>
     /// <param name="builtIn">The converter for <typeparamref name="T"/> where the options have none: the serializer's built-in one, or NodaTime's.</param>
     /// <returns>The plan.</returns>
+    /// <exception cref="NotSupportedException">The options preserve references, and <typeparamref name="T"/> may hold some.</exception>
     public static GeneratedJsonPlan<T> For(JsonSerializerOptions options, JsonConverter<T>? builtIn)
     {
         ArgumentNullException.ThrowIfNull(options);

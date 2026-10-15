@@ -119,6 +119,24 @@ public static class GeneratedJson
     }
 
     /// <summary>
+    /// Whether <paramref name="converter"/>, in charge of the <see cref="Nullable{T}"/> <paramref name="type"/>,
+    /// is the serializer's own, which writes null or what the contract's converter for the value writes, and
+    /// is nothing itself; a converter of the nullable type that a resolver or the options put in charge
+    /// writes it otherwise. System.Text.Json has no other converter of a nullable type, and its own is
+    /// internal, so it is told by its assembly. Asked of the contract, not of the options' converters,
+    /// which a resolver of one's own passes over ([decision 83](design/adr/0083-the-contract-s-converter-first-and-enum-proves-nothing-against-struct.md)).
+    /// </summary>
+    internal static bool IsNullableAdapter(JsonConverter converter, Type type) =>
+        converter.Type == type && IsTheSerializers(converter);
+
+    /// <summary>
+    /// Whether <paramref name="converter"/> is one of System.Text.Json's own, whose converters are internal and
+    /// so told by their assembly: the only converters that may walk a value and write <c>$id</c> and <c>$ref</c>.
+    /// </summary>
+    internal static bool IsTheSerializers(JsonConverter converter) =>
+        converter.GetType().Assembly == typeof(JsonConverter).Assembly;
+
+    /// <summary>
     /// The converter a type's own <see cref="JsonConverterAttribute"/> names, created through the
     /// public parameterless constructor the attribute keeps under trimming.
     /// </summary>

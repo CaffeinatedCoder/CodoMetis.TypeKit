@@ -11,6 +11,17 @@ namespace ReadmeSamples.Testing;
 
 public sealed record OrderPatch(Patch<string> Name, Patch<string> Nickname, Patch<int> Quantity);
 
+public enum OrderFault { NotFound }
+
+public enum EditFault { Stale }
+
+/// <summary>A boundary answering with its own faults and a shared set's, for the composed fault's block.</summary>
+public sealed class Orders
+{
+    public Result<Fault<OrderFault, EditFault>> Rename(int id, int version) =>
+        Fault<OrderFault, EditFault>.Of(EditFault.Stale, $"Order {id} is at version {version + 1}, not {version}.");
+}
+
 public sealed partial class TestingSamples
 {
     private const string Readme = "src/CodoMetis.TypeKit.Testing/README.md";
@@ -45,6 +56,22 @@ public sealed partial class TestingSamples
         // end sample
 
         quantity.ShouldBe(2);
+    }
+
+    /// <summary>The README's composed-fault block, run: the held fault comes back with its detail.</summary>
+    [Fact]
+    public void A_composed_fault_hands_back_the_fault_it_holds()
+    {
+        var orders = new Orders();
+
+        // sample: CodoMetis.TypeKit.Testing/composed-fault
+        Fault<OrderFault, EditFault> refusal = orders.Rename(7, version: 3).ShouldBeError();
+        Fault<EditFault> stale = refusal.ShouldHold(EditFault.Stale);   // this fault, or the test fails
+        string? detail = stale.Detail;                                  // for the test's own assertions
+        // end sample
+
+        detail.ShouldBe("Order 7 is at version 4, not 3.");
+        Should.Throw<TypeKitAssertionException>(() => refusal.ShouldHold(OrderFault.NotFound));
     }
 
     /// <summary>The failure message the README quotes, read from the README, is the one the assertion throws.</summary>

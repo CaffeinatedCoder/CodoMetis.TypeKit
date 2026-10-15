@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codometis.typekit/probe/schemas/footprint-line.schema.json",
+  "title": "Footprint (one line)",
+  "description": "State (footprints.jsonl): the source files a run of a probe executed, the compile-time paths and the toolchain, each with its id. The last line per probe wins.",
+  "type": "object",
+  "required": [
+    "probe",
+    "footprint"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "The schema version. A file or line without it is version 1 (the Python baseline)."
+    },
+    "probe": {
+      "type": "string"
+    },
+    "commit": {
+      "type": "string"
+    },
+    "footprint": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Axis name to value, both compared ordinally."
+    },
+    "compileTime": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Axis name to value, both compared ordinally."
+    },
+    "date": {
+      "type": "string"
+    }
+  }
+}

@@ -1,8 +1,133 @@
+using System.ComponentModel;
 using System.Globalization;
 using CodoMetis.TypeKit.Generators.Probes;
+using CodoMetis.TypeKit.ValueObjects;
 using NodaTime;
 
 namespace CodoMetis.TypeKit.Generators.Tests;
+
+/// <summary>A type whose only static <c>Parse(string)</c> is generic, so it has no parsing of its own.</summary>
+public sealed class GenericParser
+{
+    /// <summary>Not a <c>Parse</c> of <see cref="GenericParser"/>: its type argument cannot be inferred.</summary>
+    public static T Parse<T>(string text) where T : new() => new();
+}
+
+/// <summary>
+/// Declared here, so that a generic <c>Parse</c> taken for the wrapped type's own fails this project's
+/// build (LAMA0611, CS0411). A consumer build cannot be asked for that error by name: the message names
+/// <see cref="GenericParser"/>, never the value object.
+/// </summary>
+public readonly partial record struct OverGenericParser : IValue<GenericParser>;
+
+/// <summary>An abstract class with a public string constructor, which only a derived class can call.</summary>
+public abstract class ConstructedAbstract
+{
+    public ConstructedAbstract(string text) => Text = text;
+
+    public string Text { get; }
+}
+
+public sealed class ConstructedConcrete(string text) : ConstructedAbstract(text);
+
+/// <summary>
+/// Declared here, so that an abstract class's constructor taken for its parser fails this project's build
+/// (LAMA0611, CS0144).
+/// </summary>
+public readonly partial record struct OverConstructedAbstract : IValue<ConstructedAbstract>;
+
+/// <summary>A wrapped type whose static <c>Parse(string)</c> gives another type back.</summary>
+public sealed class ParsesToAnotherType
+{
+    public static int Parse(string text) => text.Length;
+}
+
+/// <summary>A wrapped type whose string constructor takes the text by <c>ref</c>.</summary>
+public sealed class ConstructedByRef
+{
+    public ConstructedByRef(ref string text) => text = "";
+}
+
+/// <summary>A wrapped interface whose static <c>Parse(string)</c> is virtual: only a type parameter can call it.</summary>
+public interface IParsesVirtually
+{
+    static virtual IParsesVirtually Parse(string text) => throw new NotSupportedException();
+}
+
+/// <summary>A wrapped type whose static <c>Parse(string)</c> gives a derived type back, which it is.</summary>
+public class ParsesToADerivedType
+{
+    public string Text { get; init; } = "";
+
+    public static Derived Parse(string text) => new() { Text = text };
+
+    public sealed class Derived : ParsesToADerivedType;
+}
+
+// Each of the first three was taken for a parser, and the generated parsing failed inside the
+// generated code (LAMA0611: CS0029, CS1620, CS8926), so this project would not build.
+public readonly partial record struct OverParsesToAnotherType : IValue<ParsesToAnotherType>;
+
+public readonly partial record struct OverConstructedByRef : IValue<ConstructedByRef>;
+
+public readonly partial record struct OverParsesVirtually : IValue<IParsesVirtually>;
+
+public readonly partial record struct OverParsesToADerivedType : IValue<ParsesToADerivedType>;
+
+/// <summary>A wrapped type whose static <c>Parse</c> takes the text by <c>in</c>, which a call passes as it is.</summary>
+public sealed class ParsesFromIn
+{
+    public string Text { get; private init; } = "";
+
+    public static ParsesFromIn Parse(in string text) => new() { Text = text };
+}
+
+/// <summary>A wrapped type whose string constructor takes the text by <c>in</c>.</summary>
+public sealed class ConstructedFromIn(in string text)
+{
+    public string Text { get; } = text;
+}
+
+public readonly partial record struct OverParsesFromIn : IValue<ParsesFromIn>;
+
+/// <summary>A wrapped type whose static <c>Parse</c> gives back a type that converts to it by a user-defined implicit operator.</summary>
+public sealed class ParsedShape
+{
+    public string Text { get; init; } = "";
+
+    public static ParsedCircle Parse(string text) => new() { Text = text };
+}
+
+/// <summary>Unrelated to <see cref="ParsedShape"/>, and implicitly a shape.</summary>
+public sealed class ParsedCircle
+{
+    public string Text { get; init; } = "";
+
+    public static implicit operator ParsedShape(ParsedCircle circle) => new() { Text = circle.Text };
+}
+
+/// <summary>A wrapped type whose static <c>Parse</c> gives back a string, which converts to it implicitly.</summary>
+public sealed class ParsedFromText
+{
+    private ParsedFromText(string text) => Text = text;
+
+    public string Text { get; }
+
+    public static string Parse(string text) => text.Trim();
+
+    public static implicit operator ParsedFromText(string text) => new(text);
+}
+
+// 2.0.0 generated parsing over both, and the call compiles through the conversion; 2.1.0 took neither
+// for a parser, so ShapeId.Parse(...) failed with CS0117 in a consumer that built against 2.0.0.
+public readonly partial record struct OverParsedShape : IValue<ParsedShape>;
+
+public readonly partial record struct OverParsedFromText : IValue<ParsedFromText>;
+
+public readonly partial record struct OverConstructedFromIn : IValue<ConstructedFromIn>;
+
+// No other test in this process may use a LocalTime: TypeDescriptor's state is the process's.
+public readonly partial record struct OverLocalTime : IValue<LocalTime>;
 
 /// <summary>
 /// The generated <c>IParsable</c>/<c>ISpanParsable</c>/<c>IUtf8SpanParsable</c>, one probe per
@@ -95,6 +220,22 @@ public sealed class ParsingTests
     }
 
     /// <summary>
+    /// MVC asks <see cref="TypeDescriptor.GetConverter(Type)"/> for a plain <c>LocalDate</c> parameter's
+    /// converter. When that came first, registering the type did nothing, the registered lookup threw,
+    /// and every value object over the type failed to parse for the rest of the process.
+    /// </summary>
+    [Fact]
+    public void A_type_whose_converter_was_looked_up_first_still_parses_through_it()
+    {
+        TypeDescriptor.GetProvider(typeof(LocalTime)).IsRegisteredType(typeof(LocalTime)).ShouldBeFalse("another test used a LocalTime first");
+        TypeDescriptor.GetConverter(typeof(LocalTime)).CanConvertFrom(typeof(string)).ShouldBeTrue();
+
+        OverLocalTime.Parse("12:30:00", CultureInfo.InvariantCulture).Value.ShouldBe(new LocalTime(12, 30));
+        OverLocalTime.TryParse("not a time", CultureInfo.InvariantCulture, out _).ShouldBeFalse();
+        TypeDescriptor.GetConverter(typeof(OverLocalTime)).ConvertFromInvariantString("08:15:00").ShouldBe(OverLocalTime.From(new LocalTime(8, 15)));
+    }
+
+    /// <summary>
     /// An enum is <c>IConvertible</c> but <c>Convert.ChangeType</c> cannot make one from a string, so a
     /// parse that went that way threw <c>InvalidCastException</c> for every input and <c>TryParse</c>
     /// answered <see langword="false"/> for every input, while the type still advertised <c>IParsable</c>.
@@ -152,8 +293,73 @@ public sealed class ParsingTests
         }
     }
 
+    /// <summary>
+    /// A type whose only static <c>Parse(string)</c> is generic, such as <c>Enum.Parse&lt;TEnum&gt;(string)</c>,
+    /// is wrapped without parsing: the generic one was taken for its own and failed inside the generated
+    /// code (LAMA0611, CS0411). That regression fails this project's build; this is the run-time half.
+    /// </summary>
+    [Fact]
+    public void A_generic_Parse_is_not_the_wrapped_type_s_own()
+    {
+        typeof(OverGenericParser).GetInterfaces().ShouldNotContain(implemented => implemented.IsGenericType && implemented.GetGenericTypeDefinition() == typeof(IParsable<>));
+        OverGenericParser.From(new GenericParser()).Value.ShouldNotBeNull();
+    }
+
+    /// <summary>
+    /// An abstract class cannot be made by its constructor, so one with a public string constructor is
+    /// wrapped without parsing: the constructor was taken for its parser and failed inside the generated
+    /// code (LAMA0611, CS0144, reported 2026-10-14). That regression fails this project's build; this is
+    /// the run-time half.
+    /// </summary>
+    [Fact]
+    public void An_abstract_class_s_constructor_is_not_its_parser()
+    {
+        typeof(OverConstructedAbstract).GetInterfaces().ShouldNotContain(implemented => implemented.IsGenericType && implemented.GetGenericTypeDefinition() == typeof(IParsable<>));
+        OverConstructedAbstract.From(new ConstructedConcrete("x")).Value.Text.ShouldBe("x");
+    }
+
     /// <summary>The counterpart, so the fix is not "always invariant": a provider that is given is used.</summary>
     [Fact]
     public void A_given_provider_is_still_honoured() =>
         ProbeAmount.Parse("1,5", CultureInfo.GetCultureInfo("de-DE")).ShouldBe(ProbeAmount.From(1.5m));
+
+    /// <summary>
+    /// A parser is what the generated code can call as it calls it, <c>Type.Parse(text)</c> or
+    /// <c>new Type(text)</c>, and what gives the wrapped type back. Anything else is no parser, and the
+    /// value object is generated without parsing, as over a type with none.
+    /// </summary>
+    [Theory]
+    [InlineData(typeof(OverParsesToAnotherType))]
+    [InlineData(typeof(OverConstructedByRef))]
+    [InlineData(typeof(OverParsesVirtually))]
+    public void A_method_that_cannot_be_called_as_a_parser_is_none(Type valueObject) =>
+        valueObject.GetInterfaces().ShouldNotContain(type => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IParsable<>));
+
+    /// <summary>The counterpart of <c>ref</c>: a parameter taken by <c>in</c> is passed the text as it is, so it parses.</summary>
+    [Fact]
+    public void A_parser_that_takes_the_text_by_in_parses()
+    {
+        OverParsesFromIn.Parse("text", null).Value.Text.ShouldBe("text");
+        OverConstructedFromIn.Parse("text", null).Value.Text.ShouldBe("text");
+    }
+
+    /// <summary>
+    /// A <c>Parse</c> that gives back a type converting to the wrapped one by a user-defined implicit operator is
+    /// a parser, as the generated call compiles through the conversion: 2.1.0 counted only the conversions of
+    /// C#'s <c>is</c>, so the value object lost <c>IParsable</c>, <c>Parse</c> and <c>TryParse</c>, and a
+    /// consumer's <c>Parse</c> that built against 2.0.0 failed with CS0117 (reported 2026-10-14).
+    /// </summary>
+    [Fact]
+    public void A_static_Parse_that_converts_implicitly_to_the_wrapped_type_parses()
+    {
+        OverParsedShape.Parse("round", null).Value.Text.ShouldBe("round");
+        OverParsedFromText.Parse("  text  ", null).Value.Text.ShouldBe("text");
+        OverParsedShape.TryParse("round", null, out var shape).ShouldBeTrue();
+        shape.Value.Text.ShouldBe("round");
+        typeof(OverParsedShape).GetInterfaces().ShouldContain(typeof(IParsable<OverParsedShape>));
+    }
+
+    [Fact]
+    public void A_static_Parse_that_gives_a_derived_type_back_parses() =>
+        OverParsesToADerivedType.Parse("text", null).Value.Text.ShouldBe("text");
 }

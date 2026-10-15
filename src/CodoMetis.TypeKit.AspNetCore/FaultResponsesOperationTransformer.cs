@@ -1,5 +1,8 @@
 using System.Globalization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,18 +22,31 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// which MVC builds without them (spikes/ResultHttp, finding 4). ASP.NET has already put schemas into
 /// components when operation transformers run, so the problem schema is added as the component the
 /// host's <see cref="OpenApiOptions.CreateSchemaReferenceId"/> names, and referred to (finding 6). A
-/// response the operation already has is kept, which also makes a second <c>AddTypeKit()</c> a no-op.
+/// response the operation already has is kept, which also makes a second <c>AddTypeKit()</c> a no-op;
+/// a problem response among them still gets <c>fault</c> and <c>rule</c>, and the problem types where its
+/// description is the reason phrase alone.
 /// A response's description is the status's reason phrase, followed by the problem types of the
 /// members answered with it where the mapping gives any. The problem schema those responses refer to
-/// gains an optional <c>fault</c> string, the member a client of a fault response matches on: on the
+/// gains an optional <c>fault</c> string, the member a client of a fault response matches on, and an
+/// optional <c>rule</c> string, the rule that refused where the fault names one: on the
 /// shared component, which ASP.NET's own problem responses refer to as well, so its description says
 /// which problems carry it. A string, since an enum of every fault type would change every operation
-/// when one is added. A document without a fault response is left as ASP.NET writes it.
+/// when one is added. An operation given a fault response lists all its responses in ascending order,
+/// the endpoint's own among them; an operation without one, and a document without one, is left as
+/// ASP.NET writes it.
 /// </remarks>
 internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTransformer
 {
     /// <summary>The problem's extension member <see cref="FaultProblem{TFault}"/> writes.</summary>
     internal const string FaultMember = "fault";
+
+    /// <summary>The problem's extension member naming the rule that refused, where the fault names one.</summary>
+    internal const string RuleMember = "rule";
+
+    /// <summary>What <c>rule</c> holds.</summary>
+    internal const string RuleDescription =
+        "The rule that refused, where the fault answers for several: its type's name and its member's (Type.Member, a nested type after its nesting chain)."
+      + " Present only on a problem whose fault names one.";
 
     /// <summary>What <c>fault</c> holds, as the host writes it: the member's name, or its qualified name.</summary>
     internal static string FaultDescription(bool qualified) =>
@@ -39,11 +55,40 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
             : "The fault this problem reports: the name of its member.")
       + " Present only on a problem that answers a fault of the endpoint's Result.";
 
+    /// <summary>
+    /// The metadata of the endpoint the operation describes, as the response and the startup check read it.
+    /// </summary>
+    /// <remarks>
+    /// An MVC action's descriptor holds its attributes alone; what a convention builder adds, such as the
+    /// one <c>MapControllers()</c> returns, is on the endpoint only. Read from the descriptor, a
+    /// <c>WithFaultStatus</c> there answered 451 where the document said 404, and a <c>WithoutFaults</c>
+    /// left in the document a member the endpoint refuses to answer with (reported 2026-10-14). The
+    /// endpoint is the one whose metadata holds the operation's action; a minimal API's descriptor is built
+    /// from its endpoint's metadata already, and holds no action.
+    /// </remarks>
+    private static IReadOnlyList<object> EndpointMetadata(OpenApiOperationTransformerContext context)
+    {
+        var action = context.Description.ActionDescriptor;
+
+        if (context.ApplicationServices.GetService<EndpointDataSource>() is { } endpoints)
+        {
+            foreach (var endpoint in endpoints.Endpoints)
+            {
+                if (ReferenceEquals(endpoint.Metadata.GetMetadata<ActionDescriptor>(), action)) return [.. endpoint.Metadata];
+            }
+        }
+
+        return [.. action.EndpointMetadata];
+    }
+
     public async Task TransformAsync(OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
     {
         IOpenApiSchema? problem = null;
-        IReadOnlyList<object> endpointMetadata = [.. context.Description.ActionDescriptor.EndpointMetadata];
+        var endpointMetadata = EndpointMetadata(context);
 
+        // Every fault type the endpoint answers with, a Fault<T1, T2>'s each: a status two of them share is one
+        // response, which lists the problem types of both, and the statuses come in ascending order.
+        var answered = new SortedDictionary<int, List<string>>();
         foreach (var metadata in endpointMetadata.OfType<FaultResponsesMetadata>().Distinct())
         {
             var statuses = metadata.Statuses(context.ApplicationServices, endpointMetadata)
@@ -53,22 +98,77 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
 
             foreach (var status in statuses)
             {
-                var key = status.ToString(CultureInfo.InvariantCulture);
-                operation.Responses ??= [];
-                if (operation.Responses.ContainsKey(key)) continue;
-
-                problem ??= await ProblemSchemaAsync(context, cancellationToken);
-                var types = metadata.Types(context.ApplicationServices, status, endpointMetadata);
-                operation.Responses[key] = new OpenApiResponse
-                {
-                    Description = types.Count == 0
-                        ? ReasonPhrases.GetReasonPhrase(status)
-                        : $"{ReasonPhrases.GetReasonPhrase(status)}. Problem types: {string.Join(", ", types)}",
-                    Content = new Dictionary<string, OpenApiMediaType> { ["application/problem+json"] = new() { Schema = problem } },
-                };
+                if (!answered.TryGetValue(status, out var types)) answered[status] = types = [];
+                types.AddRange(metadata.Types(context.ApplicationServices, status, endpointMetadata).Except(types, StringComparer.Ordinal).ToList());
             }
         }
+
+        var touched = false;
+        foreach (var (status, types) in answered)
+        {
+            var key = status.ToString(CultureInfo.InvariantCulture);
+            operation.Responses ??= [];
+
+            if (operation.Responses.TryGetValue(key, out var declared))
+            {
+                // A problem response the endpoint declares itself (ProducesProblem, [ProducesResponseType]) is
+                // kept, but it answers the fault too: its problem schema gets fault and rule, and a description
+                // nobody wrote gets the problem types. Skipped whole, a host declaring every status described
+                // neither, though the problems carried fault (reported 2026-10-14).
+                if (declared is OpenApiResponse { Content: { } content } response
+                 && content.TryGetValue("application/problem+json", out var media))
+                {
+                    problem ??= await ProblemSchemaAsync(context, cancellationToken);
+                    touched = true;
+                    if (media.Schema is OpenApiSchema inline) WithFault(inline, Qualified(context));
+                    if (string.IsNullOrEmpty(response.Description) || response.Description == ReasonPhrases.GetReasonPhrase(status))
+                        response.Description = Description(status, types);
+                }
+
+                continue;
+            }
+
+            problem ??= await ProblemSchemaAsync(context, cancellationToken);
+            operation.Responses[key] = new OpenApiResponse
+            {
+                Description = Description(status, types),
+                Content = new Dictionary<string, OpenApiMediaType> { ["application/problem+json"] = new() { Schema = problem } },
+            };
+            touched = true;
+        }
+
+        if (touched) Ascending(operation.Responses!);
     }
+
+    /// <summary>
+    /// Puts every response of an operation the transformer answered in ascending order, the ones the endpoint
+    /// declares itself among them: added after those, faults at 404 and 412 beside a declared 409 read 200, 409,
+    /// 404, 412 (reported 2026-10-15). A range such as <c>4XX</c> follows the codes of its range, and
+    /// <c>default</c> comes last; a key that is neither keeps its place among the others, before <c>default</c>.
+    /// </summary>
+    private static void Ascending(OpenApiResponses responses)
+    {
+        var ordered = responses.OrderBy(response => Rank(response.Key)).ToList();
+        if (ordered.Select(response => response.Key).SequenceEqual(responses.Keys, StringComparer.Ordinal)) return;
+
+        // A dictionary cleared and filled again enumerates in the order it was filled, as the writer reads it.
+        responses.Clear();
+        foreach (var (key, response) in ordered) responses.Add(key, response);
+    }
+
+    private static (int Status, int Range) Rank(string key) =>
+        key.Length == 3 && int.TryParse(key, NumberStyles.None, CultureInfo.InvariantCulture, out var status) ? (status, 0)
+      : key.Length == 3 && key[0] is >= '1' and <= '5' && key.EndsWith("XX", StringComparison.OrdinalIgnoreCase) ? ((key[0] - '0') * 100 + 99, 1)
+      : string.Equals(key, "default", StringComparison.OrdinalIgnoreCase) ? (int.MaxValue, 1)
+      : (int.MaxValue, 0);
+
+    private static string Description(int status, List<string> types) =>
+        types.Count == 0
+            ? ReasonPhrases.GetReasonPhrase(status)
+            : $"{ReasonPhrases.GetReasonPhrase(status)}. Problem types: {string.Join(", ", types)}";
+
+    private static bool Qualified(OpenApiOperationTransformerContext context) =>
+        context.ApplicationServices.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true;
 
     private static async Task<IOpenApiSchema> ProblemSchemaAsync(OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
     {
@@ -78,7 +178,7 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
         var json = services.GetRequiredService<IOptions<HttpJsonOptions>>().Value.SerializerOptions;
         var id = services.GetRequiredService<IOptionsMonitor<OpenApiOptions>>().Get(context.DocumentName)
                          .CreateSchemaReferenceId(json.GetTypeInfo(typeof(ProblemDetails)));
-        var qualified = services.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true;
+        var qualified = Qualified(context);
 
         // A host that inlines it gets it inline, as ASP.NET writes its own problem responses there.
         if (id is null || context.Document is not { } document) return WithFault(schema, qualified);
@@ -94,16 +194,17 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
     }
 
     /// <summary>
-    /// Describes <c>fault</c> on the problem schema, beside what ASP.NET describes of
-    /// <see cref="ProblemDetails"/>, where nothing describes it yet: a <c>fault</c> another transformer
-    /// already gave the schema is kept, and a second fault response finds it there.
+    /// Describes <c>fault</c> and <c>rule</c> on the problem schema, beside what ASP.NET describes of
+    /// <see cref="ProblemDetails"/>, where nothing describes them yet: one another transformer already
+    /// gave the schema is kept, and a second fault response finds them there.
     /// </summary>
     private static IOpenApiSchema WithFault(IOpenApiSchema schema, bool qualified)
     {
-        if (schema is OpenApiSchema problem && problem.Properties?.ContainsKey(FaultMember) != true)
+        if (schema is OpenApiSchema problem)
         {
             problem.Properties ??= new Dictionary<string, IOpenApiSchema>(StringComparer.Ordinal);
-            problem.Properties[FaultMember] = new OpenApiSchema { Type = JsonSchemaType.String, Description = FaultDescription(qualified) };
+            problem.Properties.TryAdd(FaultMember, new OpenApiSchema { Type = JsonSchemaType.String, Description = FaultDescription(qualified) });
+            problem.Properties.TryAdd(RuleMember, new OpenApiSchema { Type = JsonSchemaType.String, Description = RuleDescription });
         }
 
         return schema;

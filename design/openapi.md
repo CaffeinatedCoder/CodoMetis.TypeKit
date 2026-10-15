@@ -23,6 +23,30 @@ position, and the change lands in the hoisted component.
   value object in the parameter's `Type`, MVC in `ModelMetadata.ModelType`; the parameter descriptor
   names the container for an MVC `[FromQuery]` object and is not used. Each parameter then publishes
   exactly what a parameter of the wrapped type publishes.
+- **Described types** ([decision 71](adr/0071-converters-say-what-they-write.md)): a converter that
+  implements `IDescribedJsonConverter`, or a type the host's JSON options describe with
+  `JsonSchemaDescriptions`, is described as that says by `DescribedSchemaTransformer`, registered after
+  the value-object and closed-set transformers so a host's description of a value object replaces their
+  shape (a reordering is a failing test). ASP.NET writes a converter of one's own as `{}` or a bare
+  `format` and drops `items`/`additionalProperties` for an element of one (measured, 10.0); the
+  description goes in every JSON position and the containers are repaired where they lack one. A body is
+  a parameter too, and every schema in one; only a non-body parameter binds through `TryParse`, and it
+  gets back the schema the type has without converters of one's own, beside ASP.NET's `format`. A
+  description is parsed by `OpenApiModelFactory.Parse<OpenApiSchema>` (Microsoft.OpenApi 2.0 on), measured
+  to survive Native AOT trimming in the smoke test's `aot` consumer, then written back in 3.1 and compared
+  with what was described: a keyword the model does not hold is written aside as unrecognised, where no
+  validator sees it, so a difference fails the document ([decision 73](adr/0073-schema-descriptions-follow-the-serializer.md)).
+  A document below 3.1 is written in its own version too, and a described keyword that reaches it only as
+  an `x-jsonschema-` extension or not at all (`if`, `contains`, `patternProperties`, `dependentRequired`)
+  fails it naming the keyword; 3.0's own spellings (`nullable`, `anyOf` of types, `enum` for a `const`)
+  are kept ([decision 74](adr/0074-descriptions-resolve-the-converter-as-the-serializer-does.md)). Where the host has a controller,
+  `DescribedOptionsAgreement` fails the document when MVC's JSON options describe a type the document
+  holds otherwise than the minimal-API ones, a patch's argument included, compared by what
+  `JsonSchemaDescription.For` answers under each: the document is built from the latter, and MVC writes
+  with the former. `For` resolves the converter as the serializer does, a factory for the converter it
+  makes and a `Nullable<T>` before `T`. A described converter one property names for a type with a
+  reference id fails the document as well, and so does one registered for the `Nullable<T>` of such a type
+  alone: the component is written once, for every position.
 - **A value object that reaches itself** through what it wraps is an `InvalidOperationException`
   naming the chain, not a stack overflow.
 - **Source-generated JSON** ([Native AOT](native-aot.md)): ASP.NET builds the wrapped type's schema from the host's JSON
@@ -45,7 +69,13 @@ position, and the change lands in the hoisted component.
   a problem answering a fault carries it; what a schema already says of `fault` is kept. ASP.NET's own
   problem responses refer to the same component (measured, 10.0.12: whichever endpoint comes first,
   and a second document without a fault response keeps it bare); an inline schema of theirs is another
-  instance and stays bare. A document without a fault response is ASP.NET's, byte for byte.
+  instance and stays bare. A document without a fault response is ASP.NET's, byte for byte. An
+  endpoint answering several fault types, a `Fault<T1, T2>`'s each, gets one response per status,
+  ascending, listing the problem types of every type at a status they share; the responses the endpoint
+  declares itself take their places among them (a range such as `4XX` after its codes, `default` last),
+  and an operation without a fault response keeps ASP.NET's order; a member the endpoint
+  leaves out (`WithoutFaults`) gives it no status and no problem type
+  ([decision 78](adr/0078-fault-sets-compose-side-by-side.md)).
 - **Known gaps, documented rather than fixed:** a validation attribute on a value-object property
   lands in the shared component, as ASP.NET does for any referenced schema (rules belong in `Create`);
   a property absent from a request body stays `default`, since System.Text.Json calls no converter
