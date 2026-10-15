@@ -1,453 +1,995 @@
 [
- {
-  "id": "C01-decimal-spelling",
-  "source": "docs/json.md#decimals-in-one-spelling",
-  "surfaces": [
-   "json"
-  ],
-  "axes": {
-   "converter": [
-    "number",
-    "string"
-   ],
-   "input": [
-    "7.80",
-    "7.8000",
-    "0.00",
-    "100",
-    "1E+2",
-    "max28digits",
-    "1e-28"
-   ]
-  }
- },
- {
-  "id": "C02-optional-text",
-  "source": "docs/text.md#required-and-optional",
-  "surfaces": [
-   "text"
-  ],
-  "axes": {
-   "entry": [
-    "AsOptionalText",
-    "AsOptionalIdentifier",
-    "AsText",
-    "AsIdentifier"
-   ],
-   "input": [
-    "null",
-    "empty",
-    "spaces",
-    "tab-newline",
-    "word",
-    "word+ZWSP",
-    "nbsp-only",
-    "ZWSP-only"
-   ]
+  {
+    "id": "C01-decimal-spelling",
+    "source": "docs/json.md#decimals-in-one-spelling",
+    "surfaces": [
+      "json"
+    ],
+    "axes": {
+      "converter": [
+        "number",
+        "string"
+      ],
+      "input": [
+        "7.80",
+        "7.8000",
+        "0.00",
+        "100",
+        "1E\u002B2",
+        "max28digits",
+        "1e-28"
+      ]
+    }
   },
-  "narrow": {
-   "shape.kind": "`AsOptionalText()` and `AsOptionalIdentifier()` return a `Result<Option<string>, TextFault>`",
-   "shape.wrapped": "`AsOptionalText()` and `AsOptionalIdentifier()` return a `Result<Option<string>, TextFault>`",
-   "text.entry": "`AsOptionalText()` and `AsOptionalIdentifier()` return a `Result<Option<string>, TextFault>`"
+  {
+    "id": "C02-optional-text",
+    "source": "docs/text.md#required-and-optional",
+    "surfaces": [
+      "text"
+    ],
+    "axes": {
+      "entry": [
+        "AsOptionalText",
+        "AsOptionalIdentifier",
+        "AsText",
+        "AsIdentifier"
+      ],
+      "input": [
+        "null",
+        "empty",
+        "spaces",
+        "tab-newline",
+        "word",
+        "word\u002BZWSP",
+        "nbsp-only",
+        "ZWSP-only"
+      ]
+    },
+    "narrow": {
+      "shape.kind": "\u0060AsOptionalText()\u0060 and \u0060AsOptionalIdentifier()\u0060 return a \u0060Result\u003COption\u003Cstring\u003E, TextFault\u003E\u0060",
+      "shape.wrapped": "\u0060AsOptionalText()\u0060 and \u0060AsOptionalIdentifier()\u0060 return a \u0060Result\u003COption\u003Cstring\u003E, TextFault\u003E\u0060",
+      "text.entry": "\u0060AsOptionalText()\u0060 and \u0060AsOptionalIdentifier()\u0060 return a \u0060Result\u003COption\u003Cstring\u003E, TextFault\u003E\u0060"
+    }
+  },
+  {
+    "id": "C03-composed-faults",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "surfaces": [
+      "http"
+    ],
+    "axes": {
+      "arity": [
+        "2",
+        "3"
+      ],
+      "error": [
+        "first-set",
+        "last-set",
+        "with-detail",
+        "with-rule"
+      ]
+    }
+  },
+  {
+    "id": "C04-without-faults",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer",
+    "surfaces": [
+      "http"
+    ],
+    "axes": {
+      "scope": [
+        "endpoint",
+        "group",
+        "controller"
+      ],
+      "combined": [
+        "alone",
+        "with-WithFaultStatus-on-group"
+      ]
+    }
+  },
+  {
+    "id": "C05-with-rule",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#the-rule-that-refused",
+    "surfaces": [
+      "http"
+    ],
+    "axes": {
+      "ruletype": [
+        "enum",
+        "closed-set",
+        "nested-enum",
+        "flags-combination",
+        "undefined-cast"
+      ],
+      "qualified": [
+        "bare",
+        "QualifiedFaultNames"
+      ]
+    }
+  },
+  {
+    "id": "C06-fault-kinds",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type",
+    "surfaces": [
+      "http"
+    ],
+    "axes": {
+      "kind": [
+        "PreconditionFailed",
+        "Malformed",
+        "Invalid",
+        "Unavailable"
+      ]
+    }
+  },
+  {
+    "id": "C07-fault-responses-blanket",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once",
+    "surfaces": [
+      "http"
+    ],
+    "axes": {
+      "mapping": [
+        "by-kind",
+        "own-IFault-mapping"
+      ],
+      "set": [
+        "fault-set",
+        "own-mapped-set",
+        "enum-unmapped",
+        "member-without-kind",
+        "mapping-throws",
+        "status-not-error"
+      ]
+    }
+  },
+  {
+    "id": "C08-same-name-warning",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "surfaces": [
+      "http"
+    ],
+    "axes": {
+      "naming": [
+        "bare",
+        "qualified"
+      ],
+      "arity": [
+        "2",
+        "3"
+      ],
+      "leave-out": [
+        "none",
+        "WithoutFaults-one"
+      ]
+    }
+  },
+  {
+    "id": "C09-base-record-equality",
+    "source": "CHANGELOG.md#2.1.0-fixed",
+    "surfaces": [
+      "generation"
+    ],
+    "axes": {
+      "base-equality": [
+        "none",
+        "override-Equals",
+        "override-GetHashCode",
+        "explicit-IEquatable"
+      ],
+      "collection": [
+        "HashSet",
+        "Dictionary-key",
+        "Distinct"
+      ]
+    }
+  },
+  {
+    "id": "C10-preserve-guard",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#json",
+    "surfaces": [
+      "json"
+    ],
+    "axes": {
+      "handler": [
+        "Preserve",
+        "IgnoreCycles",
+        "none"
+      ]
+    }
+  },
+  {
+    "id": "C11-parse-shapes-build",
+    "source": "CHANGELOG.md#2.1.0-fixed",
+    "surfaces": [
+      "text",
+      "generation"
+    ],
+    "axes": {
+      "parse-shape": [
+        "implicit-result",
+        "ref-text",
+        "abstract-string-ctor",
+        "ordinary"
+      ]
+    }
+  },
+  {
+    "id": "C12-described-converter",
+    "source": "docs/json.md#describing-what-a-converter-writes",
+    "surfaces": [
+      "http"
+    ],
+    "axes": {
+      "source": [
+        "IDescribedJsonConverter",
+        "JsonSchemaDescriptions",
+        "decimal-converter"
+      ],
+      "http.host": [
+        "minimal",
+        "mvc",
+        "both",
+        "route-group",
+        "controller-without-ApiController-visible"
+      ]
+    }
+  },
+  {
+    "id": "C13-patch-required",
+    "source": "docs/merge-patches.md#required-constructor-parameters",
+    "surfaces": [
+      "http"
+    ],
+    "axes": {
+      "declared": [
+        "init",
+        "ctor-parameter"
+      ],
+      "http.host": [
+        "minimal",
+        "mvc",
+        "both",
+        "route-group",
+        "controller-without-ApiController-visible"
+      ]
+    }
+  },
+  {
+    "id": "C14-declared-problem",
+    "source": "CHANGELOG.md#2.1.0-fixed",
+    "surfaces": [
+      "http"
+    ],
+    "axes": {
+      "declared": [
+        "ProducesProblem",
+        "ProducesResponseType",
+        "none"
+      ],
+      "http.host": [
+        "minimal",
+        "mvc",
+        "both",
+        "route-group",
+        "controller-without-ApiController-visible"
+      ]
+    }
+  },
+  {
+    "id": "C15-mvc-fault-status-doc",
+    "source": "CHANGELOG.md#2.1.0-fixed",
+    "surfaces": [
+      "http"
+    ],
+    "axes": {
+      "setter": [
+        "MapControllers().WithFaultStatus",
+        "action-attribute",
+        "controller-attribute"
+      ],
+      "kind": [
+        "status-only",
+        "WithoutFaults"
+      ],
+      "http.host": [
+        "minimal",
+        "mvc",
+        "both",
+        "route-group",
+        "controller-without-ApiController-visible"
+      ]
+    }
+  },
+  {
+    "id": "C16-options-agreement",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+    "surfaces": [
+      "http"
+    ],
+    "axes": {
+      "difference": [
+        "converter-only-http",
+        "naming-policy",
+        "number-handling"
+      ],
+      "http.host": [
+        "minimal",
+        "mvc",
+        "both",
+        "route-group",
+        "controller-without-ApiController-visible"
+      ]
+    }
+  },
+  {
+    "id": "C17-cmtk0014",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014",
+    "surfaces": [
+      "analyzers"
+    ],
+    "axes": {
+      "value": [
+        "(FaultKind)9",
+        "default",
+        "valid"
+      ],
+      "site": [
+        "attribute-argument",
+        "cast",
+        "default-literal"
+      ]
+    }
+  },
+  {
+    "id": "C18-cmtk1023",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "surfaces": [
+      "generation"
+    ],
+    "axes": {
+      "base-member": [
+        "Equals",
+        "GetHashCode",
+        "IEquatable"
+      ]
+    }
+  },
+  {
+    "id": "C19-cmtk0010-kinds",
+    "source": "docs/type-constraints.md#the-kind-of-a-type-argument",
+    "surfaces": [
+      "analyzers"
+    ],
+    "axes": {
+      "attribute": [
+        "Interface",
+        "Unsealed",
+        "ValueObject",
+        "ClosedSet",
+        "FlagsEnum",
+        "ReadOnlyStruct",
+        "Distinct",
+        "Unrelated"
+      ],
+      "site": [
+        "call",
+        "foreach",
+        "await",
+        "Deconstruct",
+        "collection-expression"
+      ]
+    }
+  },
+  {
+    "id": "C20-testing-shouldhold",
+    "source": "src/CodoMetis.TypeKit.Testing/README.md",
+    "surfaces": [
+      "option-result"
+    ],
+    "axes": {
+      "arity": [
+        "2",
+        "3"
+      ],
+      "set": [
+        "first",
+        "last"
+      ],
+      "wrong-reason": [
+        "no",
+        "yes"
+      ]
+    }
+  },
+  {
+    "id": "E01-column-parity",
+    "source": "docs/ef-core.md#the-model",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "ef.mapping": [
+        "property",
+        "nullable",
+        "key",
+        "owned",
+        "complex"
+      ],
+      "ef.facet": [
+        "none",
+        "HasMaxLength",
+        "HavePrecision",
+        "HasColumnType"
+      ],
+      "shape.wrapped": [
+        "string",
+        "Guid",
+        "int",
+        "long",
+        "byte",
+        "ulong",
+        "decimal",
+        "double",
+        "bool",
+        "char",
+        "DateTime",
+        "DateTimeOffset",
+        "DateOnly",
+        "TimeOnly",
+        "TimeSpan",
+        "enum",
+        "flags-enum",
+        "Uri"
+      ],
+      "shape.kind": [
+        "record-struct",
+        "sealed-record-class",
+        "validated-struct",
+        "validated-class"
+      ]
+    },
+    "narrow": {
+      "ef.query": "Every property maps as a column of the underlying type, nullable where the property is."
+    }
+  },
+  {
+    "id": "E02-value-translates-to-column",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "ef.query": [
+        "where-equals",
+        "where-value-compare",
+        "order-by",
+        "contains",
+        "select",
+        "group-by"
+      ],
+      "ef.accessor": [
+        "Value",
+        "GetValue",
+        "ValueOrNull"
+      ],
+      "shape.wrapped": [
+        "string",
+        "Guid",
+        "int",
+        "long",
+        "byte",
+        "ulong",
+        "decimal",
+        "double",
+        "bool",
+        "char",
+        "DateTime",
+        "DateTimeOffset",
+        "DateOnly",
+        "TimeOnly",
+        "TimeSpan",
+        "enum",
+        "flags-enum",
+        "Uri"
+      ],
+      "shape.kind": [
+        "record-struct",
+        "sealed-record-class",
+        "validated-struct",
+        "validated-class"
+      ]
+    },
+    "narrow": {
+      "ef.mapping": "\u0060.Value\u0060, \u0060GetValue()\u0060 and \u0060ValueOrNull()\u0060 translate to the column itself."
+    }
+  },
+  {
+    "id": "E03-column-round-trip",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#what-maps",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "ef.mapping": [
+        "property",
+        "nullable",
+        "key",
+        "owned",
+        "complex"
+      ],
+      "shape.wrapped": [
+        "string",
+        "Guid",
+        "int",
+        "long",
+        "byte",
+        "ulong",
+        "decimal",
+        "double",
+        "bool",
+        "char",
+        "DateTime",
+        "DateTimeOffset",
+        "DateOnly",
+        "TimeOnly",
+        "TimeSpan",
+        "enum",
+        "flags-enum",
+        "Uri"
+      ],
+      "shape.kind": [
+        "record-struct",
+        "sealed-record-class",
+        "validated-struct",
+        "validated-class"
+      ]
+    },
+    "narrow": {
+      "ef.query": "Keys, foreign keys, nullable properties, primitive collections and query parameters all map as plain columns of the underlying type."
+    }
+  },
+  {
+    "id": "E04-integer-key-generated",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "shape.wrapped": [
+        "int",
+        "long",
+        "byte",
+        "ulong",
+        "char",
+        "Guid",
+        "string"
+      ],
+      "shape.kind": [
+        "record-struct",
+        "sealed-record-class",
+        "validated-struct",
+        "validated-class"
+      ],
+      "ef.key-config": [
+        "default",
+        "ValueGeneratedOnAdd",
+        "ValueGeneratedNever"
+      ]
+    },
+    "narrow": {
+      "ef.query": "A single-column key over an integer is generated on add, like a key of that integer type.",
+      "ef.mapping": "A single-column key over an integer is generated on add, like a key of that integer type.",
+      "shape.site": "A single-column key over an integer is generated on add, like a key of that integer type."
+    }
+  },
+  {
+    "id": "E05-own-compareto-rejected",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "ef.op": [
+        "lt",
+        "gt",
+        "le",
+        "ge",
+        "CompareTo",
+        "OrderBy",
+        "OrderByDescending",
+        "ThenBy",
+        "Order",
+        "Min",
+        "Max",
+        "equals",
+        "HasQueryFilter",
+        "named-query-filter",
+        "value-order"
+      ],
+      "ef.vo": [
+        "int-struct",
+        "string-struct",
+        "decimal-struct",
+        "DateTime-struct",
+        "int-class",
+        "string-class"
+      ]
+    },
+    "narrow": {
+      "ef.query": "Your own \u0060CompareTo(TSelf)\u0060 can\u0027t run in the database.",
+      "ef.mapping": "Your own \u0060CompareTo(TSelf)\u0060 can\u0027t run in the database.",
+      "shape.kind": "Your own \u0060CompareTo(TSelf)\u0060 can\u0027t run in the database.",
+      "shape.wrapped": "Your own \u0060CompareTo(TSelf)\u0060 can\u0027t run in the database.",
+      "shape.site": "Your own \u0060CompareTo(TSelf)\u0060 can\u0027t run in the database."
+    }
+  },
+  {
+    "id": "E06-own-converter-no-value",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "ef.converter": [
+        "HasConversion-lambda",
+        "converter-type",
+        "ConfigureConventions"
+      ],
+      "ef.op": [
+        "value-access",
+        "vo-equality"
+      ],
+      "shape.wrapped": [
+        "string",
+        "int",
+        "Guid",
+        "decimal"
+      ]
+    },
+    "narrow": {
+      "ef.query": "A property your application converts itself",
+      "ef.mapping": "A property your application converts itself",
+      "shape.kind": "A property your application converts itself",
+      "shape.site": "A property your application converts itself"
+    }
+  },
+  {
+    "id": "E07-closed-set-stored-as-name",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#closed-sets",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "ef.site": [
+        "table",
+        "primitive-collection",
+        "json-column"
+      ],
+      "ef.event": [
+        "round-trip",
+        "unknown-name-on-read",
+        "non-member-on-write"
+      ]
+    },
+    "narrow": {
+      "ef.query": "A closed set (\u0060IClosedSet\u003CTSelf\u003E\u0060) is stored as a text column of the member\u0027s name, and read back as the member itself.",
+      "ef.mapping": "A closed set (\u0060IClosedSet\u003CTSelf\u003E\u0060) is stored as a text column of the member\u0027s name, and read back as the member itself.",
+      "shape.kind": "A closed set (\u0060IClosedSet\u003CTSelf\u003E\u0060) is stored as a text column of the member\u0027s name, and read back as the member itself.",
+      "shape.wrapped": "A closed set (\u0060IClosedSet\u003CTSelf\u003E\u0060) is stored as a text column of the member\u0027s name, and read back as the member itself.",
+      "shape.site": "A closed set (\u0060IClosedSet\u003CTSelf\u003E\u0060) is stored as a text column of the member\u0027s name, and read back as the member itself."
+    }
+  },
+  {
+    "id": "E08-option-result-not-columns",
+    "source": "docs/ef-core.md#option-and-result",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "ef.type": [
+        "Option-int",
+        "Option-VO",
+        "Result-int-E",
+        "Result-VO-E",
+        "Result-E"
+      ],
+      "ef.position": [
+        "property",
+        "key",
+        "collection",
+        "owned-property"
+      ],
+      "shape.wrapped": [
+        "string",
+        "int",
+        "Guid"
+      ]
+    },
+    "narrow": {
+      "ef.query": "EF can\u0027t map an \u0060Option\u0060 or a \u0060Result\u0060 property, and building the model fails with an error that says so.",
+      "ef.mapping": "EF can\u0027t map an \u0060Option\u0060 or a \u0060Result\u0060 property, and building the model fails with an error that says so.",
+      "shape.kind": "EF can\u0027t map an \u0060Option\u0060 or a \u0060Result\u0060 property, and building the model fails with an error that says so.",
+      "shape.site": "EF can\u0027t map an \u0060Option\u0060 or a \u0060Result\u0060 property, and building the model fails with an error that says so."
+    }
+  },
+  {
+    "id": "E09-or-none-in-database",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "ef.operator": [
+        "FirstOrNoneAsync",
+        "FirstOrNone",
+        "SingleOrNoneAsync",
+        "SingleOrNone",
+        "ElementAtOrNone",
+        "FirstOrError"
+      ],
+      "ef.data": [
+        "empty",
+        "one-match",
+        "many-match"
+      ],
+      "ef.condition": [
+        "lambda",
+        "expression-variable"
+      ],
+      "shape.wrapped": [
+        "int",
+        "Guid",
+        "string"
+      ]
+    },
+    "narrow": {
+      "ef.query": "These ask the database for one row and let it run the condition:",
+      "ef.mapping": "These ask the database for one row and let it run the condition:",
+      "shape.kind": "These ask the database for one row and let it run the condition:",
+      "shape.site": "These ask the database for one row and let it run the condition:"
+    }
+  },
+  {
+    "id": "E10-read-back-skips-validation",
+    "source": "docs/ef-core.md#reading-back-without-validation",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "ef.mapping": [
+        "property",
+        "key",
+        "nullable",
+        "owned",
+        "complex"
+      ],
+      "shape.wrapped": [
+        "string",
+        "int",
+        "Guid",
+        "decimal",
+        "DateTime",
+        "Uri"
+      ],
+      "shape.kind": [
+        "validated-struct",
+        "validated-class"
+      ]
+    },
+    "narrow": {
+      "ef.query": "EF reads a column back without validation, through the value object\u0027s \u0060Materialize\u0060 rather than \u0060Create\u0060.",
+      "shape.site": "EF reads a column back without validation, through the value object\u0027s \u0060Materialize\u0060 rather than \u0060Create\u0060."
+    }
+  },
+  {
+    "id": "E11-usetypekit-order",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#setup",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "ef.order": [
+        "before-provider",
+        "after-provider"
+      ],
+      "ef.mapping": [
+        "property",
+        "key",
+        "integer-key",
+        "nullable",
+        "owned",
+        "complex",
+        "closed-set"
+      ]
+    },
+    "narrow": {
+      "ef.query": "it doesn\u0027t matter whether you call it before or after \u0060UseNpgsql\u0060 or \u0060UseSqlite\u0060",
+      "shape.kind": "it doesn\u0027t matter whether you call it before or after \u0060UseNpgsql\u0060 or \u0060UseSqlite\u0060",
+      "shape.site": "it doesn\u0027t matter whether you call it before or after \u0060UseNpgsql\u0060 or \u0060UseSqlite\u0060",
+      "shape.wrapped": "it doesn\u0027t matter whether you call it before or after \u0060UseNpgsql\u0060 or \u0060UseSqlite\u0060"
+    }
+  },
+  {
+    "id": "E12-convention-by-vo-type",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#model-wide-conventions-follow-the-propertys-type",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "ef.convention": [
+        "HaveMaxLength",
+        "HavePrecision",
+        "HaveColumnType"
+      ],
+      "ef.convention-type": [
+        "value-object",
+        "underlying"
+      ],
+      "shape.wrapped": [
+        "string",
+        "decimal",
+        "Uri",
+        "int"
+      ]
+    },
+    "narrow": {
+      "ef.query": "Configure the value object instead:",
+      "ef.mapping": "Configure the value object instead:",
+      "shape.site": "Configure the value object instead:",
+      "shape.kind": "Configure the value object instead:"
+    }
+  },
+  {
+    "id": "E13-primitive-collections",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "ef.query": [
+        "contains",
+        "any-value-equals"
+      ],
+      "shape.wrapped": [
+        "string",
+        "int",
+        "Guid",
+        "long",
+        "decimal"
+      ]
+    },
+    "narrow": {
+      "ef.mapping": "db.Orders.Where(o =\u003E o.Tags.Contains(tag));",
+      "shape.site": "db.Orders.Where(o =\u003E o.Tags.Contains(tag));",
+      "shape.kind": "db.Orders.Where(o =\u003E o.Tags.Contains(tag));"
+    }
+  },
+  {
+    "id": "E14-inheritance-key-generation",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "ef.inheritance": [
+        "TPH",
+        "TPT",
+        "TPC"
+      ],
+      "shape.wrapped": [
+        "int",
+        "long",
+        "Guid"
+      ]
+    },
+    "narrow": {
+      "ef.query": "The root of an inheritance hierarchy follows the same rules under TPH and TPT.",
+      "ef.mapping": "The root of an inheritance hierarchy follows the same rules under TPH and TPT.",
+      "shape.site": "The root of an inheritance hierarchy follows the same rules under TPH and TPT.",
+      "shape.kind": "The root of an inheritance hierarchy follows the same rules under TPH and TPT."
+    }
+  },
+  {
+    "id": "E15-composite-key",
+    "source": "docs/ef-core.md#keys",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "shape.wrapped": [
+        "int",
+        "Guid",
+        "string",
+        "long"
+      ],
+      "ef.key-position": [
+        "first",
+        "second"
+      ]
+    },
+    "narrow": {
+      "ef.query": "A composite key of value objects is \u0060HasKey(x =\u003E new { x.Order, x.Line })\u0060, as for primitives.",
+      "ef.mapping": "A composite key of value objects is \u0060HasKey(x =\u003E new { x.Order, x.Line })\u0060, as for primitives.",
+      "shape.site": "A composite key of value objects is \u0060HasKey(x =\u003E new { x.Order, x.Line })\u0060, as for primitives.",
+      "shape.kind": "A composite key of value objects is \u0060HasKey(x =\u003E new { x.Order, x.Line })\u0060, as for primitives."
+    }
+  },
+  {
+    "id": "E16-own-configuration-wins",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "surfaces": [
+      "ef"
+    ],
+    "axes": {
+      "ef.config": [
+        "ValueGeneratedNever",
+        "ValueGeneratedOnAdd",
+        "HasConversion",
+        "HasColumnType",
+        "IsRequired-false"
+      ],
+      "shape.wrapped": [
+        "int",
+        "long",
+        "char",
+        "Guid",
+        "string"
+      ]
+    },
+    "narrow": {
+      "ef.query": "A configuration you write yourself always wins over these defaults.",
+      "ef.mapping": "A configuration you write yourself always wins over these defaults.",
+      "shape.site": "A configuration you write yourself always wins over these defaults.",
+      "shape.kind": "A configuration you write yourself always wins over these defaults."
+    }
+  },
+  {
+    "id": "L01-json-bytes",
+    "source": "README.md#what-typekit-guarantees",
+    "surfaces": [
+      "json"
+    ]
+  },
+  {
+    "id": "L02-no-quote",
+    "source": "README.md#what-typekit-guarantees",
+    "surfaces": [
+      "json",
+      "text",
+      "logging"
+    ]
+  },
+  {
+    "id": "L03-one-rule",
+    "source": "README.md#what-typekit-guarantees",
+    "surfaces": [
+      "text",
+      "json"
+    ]
+  },
+  {
+    "id": "L04-round-trip",
+    "source": "README.md#what-typekit-guarantees",
+    "surfaces": [
+      "text",
+      "json"
+    ]
+  },
+  {
+    "id": "L05-equality",
+    "source": "README.md#what-typekit-guarantees",
+    "surfaces": [
+      "generation"
+    ]
+  },
+  {
+    "id": "L06-off-the-wire",
+    "source": "README.md#what-typekit-guarantees",
+    "surfaces": [
+      "json",
+      "option-result"
+    ]
   }
- },
- {
-  "id": "C03-composed-faults",
-  "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
-  "surfaces": [
-   "http"
-  ],
-  "axes": {
-   "arity": [
-    "2",
-    "3"
-   ],
-   "error": [
-    "first-set",
-    "last-set",
-    "with-detail",
-    "with-rule"
-   ]
-  }
- },
- {
-  "id": "C04-without-faults",
-  "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer",
-  "surfaces": [
-   "http"
-  ],
-  "axes": {
-   "scope": [
-    "endpoint",
-    "group",
-    "controller"
-   ],
-   "combined": [
-    "alone",
-    "with-WithFaultStatus-on-group"
-   ]
-  }
- },
- {
-  "id": "C05-with-rule",
-  "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#the-rule-that-refused",
-  "surfaces": [
-   "http"
-  ],
-  "axes": {
-   "ruletype": [
-    "enum",
-    "closed-set",
-    "nested-enum",
-    "flags-combination",
-    "undefined-cast"
-   ],
-   "qualified": [
-    "bare",
-    "QualifiedFaultNames"
-   ]
-  }
- },
- {
-  "id": "C06-fault-kinds",
-  "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type",
-  "surfaces": [
-   "http"
-  ],
-  "axes": {
-   "kind": [
-    "PreconditionFailed",
-    "Malformed",
-    "Invalid",
-    "Unavailable"
-   ]
-  }
- },
- {
-  "id": "C07-fault-responses-blanket",
-  "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once",
-  "surfaces": [
-   "http"
-  ],
-  "axes": {
-   "mapping": [
-    "by-kind",
-    "own-IFault-mapping"
-   ],
-   "set": [
-    "fault-set",
-    "own-mapped-set",
-    "enum-unmapped",
-    "member-without-kind",
-    "mapping-throws",
-    "status-not-error"
-   ]
-  }
- },
- {
-  "id": "C08-same-name-warning",
-  "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
-  "surfaces": [
-   "http"
-  ],
-  "axes": {
-   "naming": [
-    "bare",
-    "qualified"
-   ],
-   "arity": [
-    "2",
-    "3"
-   ],
-   "leave-out": [
-    "none",
-    "WithoutFaults-one"
-   ]
-  }
- },
- {
-  "id": "C09-base-record-equality",
-  "source": "CHANGELOG.md#2.1.0-fixed",
-  "surfaces": [
-   "generation"
-  ],
-  "axes": {
-   "base-equality": [
-    "none",
-    "override-Equals",
-    "override-GetHashCode",
-    "explicit-IEquatable"
-   ],
-   "collection": [
-    "HashSet",
-    "Dictionary-key",
-    "Distinct"
-   ]
-  }
- },
- {
-  "id": "C10-preserve-guard",
-  "source": "src/CodoMetis.TypeKit.Generators/README.md#json",
-  "surfaces": [
-   "json"
-  ],
-  "axes": {
-   "handler": [
-    "Preserve",
-    "IgnoreCycles",
-    "none"
-   ]
-  }
- },
- {
-  "id": "C11-parse-shapes-build",
-  "source": "CHANGELOG.md#2.1.0-fixed",
-  "surfaces": [
-   "text",
-   "generation"
-  ],
-  "axes": {
-   "parse-shape": [
-    "implicit-result",
-    "ref-text",
-    "abstract-string-ctor",
-    "ordinary"
-   ]
-  }
- },
- {
-  "id": "C12-described-converter",
-  "source": "docs/json.md#describing-what-a-converter-writes",
-  "surfaces": [
-   "http"
-  ],
-  "axes": {
-   "source": [
-    "IDescribedJsonConverter",
-    "JsonSchemaDescriptions",
-    "decimal-converter"
-   ],
-   "http.host": [
-    "minimal",
-    "mvc",
-    "both",
-    "route-group",
-    "controller-without-ApiController-visible"
-   ]
-  }
- },
- {
-  "id": "C13-patch-required",
-  "source": "docs/merge-patches.md#required-constructor-parameters",
-  "surfaces": [
-   "http"
-  ],
-  "axes": {
-   "declared": [
-    "init",
-    "ctor-parameter"
-   ],
-   "http.host": [
-    "minimal",
-    "mvc",
-    "both",
-    "route-group",
-    "controller-without-ApiController-visible"
-   ]
-  }
- },
- {
-  "id": "C14-declared-problem",
-  "source": "CHANGELOG.md#2.1.0-fixed",
-  "surfaces": [
-   "http"
-  ],
-  "axes": {
-   "declared": [
-    "ProducesProblem",
-    "ProducesResponseType",
-    "none"
-   ],
-   "http.host": [
-    "minimal",
-    "mvc",
-    "both",
-    "route-group",
-    "controller-without-ApiController-visible"
-   ]
-  }
- },
- {
-  "id": "C15-mvc-fault-status-doc",
-  "source": "CHANGELOG.md#2.1.0-fixed",
-  "surfaces": [
-   "http"
-  ],
-  "axes": {
-   "setter": [
-    "MapControllers().WithFaultStatus",
-    "action-attribute",
-    "controller-attribute"
-   ],
-   "kind": [
-    "status-only",
-    "WithoutFaults"
-   ],
-   "http.host": [
-    "minimal",
-    "mvc",
-    "both",
-    "route-group",
-    "controller-without-ApiController-visible"
-   ]
-  }
- },
- {
-  "id": "C16-options-agreement",
-  "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
-  "surfaces": [
-   "http"
-  ],
-  "axes": {
-   "difference": [
-    "converter-only-http",
-    "naming-policy",
-    "number-handling"
-   ],
-   "http.host": [
-    "minimal",
-    "mvc",
-    "both",
-    "route-group",
-    "controller-without-ApiController-visible"
-   ]
-  }
- },
- {
-  "id": "C17-cmtk0014",
-  "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014",
-  "surfaces": [
-   "analyzers"
-  ],
-  "axes": {
-   "value": [
-    "(FaultKind)9",
-    "default",
-    "valid"
-   ],
-   "site": [
-    "attribute-argument",
-    "cast",
-    "default-literal"
-   ]
-  }
- },
- {
-  "id": "C18-cmtk1023",
-  "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
-  "surfaces": [
-   "generation"
-  ],
-  "axes": {
-   "base-member": [
-    "Equals",
-    "GetHashCode",
-    "IEquatable"
-   ]
-  }
- },
- {
-  "id": "C19-cmtk0010-kinds",
-  "source": "docs/type-constraints.md#the-kind-of-a-type-argument",
-  "surfaces": [
-   "analyzers"
-  ],
-  "axes": {
-   "attribute": [
-    "Interface",
-    "Unsealed",
-    "ValueObject",
-    "ClosedSet",
-    "FlagsEnum",
-    "ReadOnlyStruct",
-    "Distinct",
-    "Unrelated"
-   ],
-   "site": [
-    "call",
-    "foreach",
-    "await",
-    "Deconstruct",
-    "collection-expression"
-   ]
-  }
- },
- {
-  "id": "C20-testing-shouldhold",
-  "source": "src/CodoMetis.TypeKit.Testing/README.md",
-  "surfaces": [
-   "option-result"
-  ],
-  "axes": {
-   "arity": [
-    "2",
-    "3"
-   ],
-   "set": [
-    "first",
-    "last"
-   ],
-   "wrong-reason": [
-    "no",
-    "yes"
-   ]
-  }
- },
- {
-  "id": "L01-json-bytes",
-  "source": "README.md#what-typekit-guarantees",
-  "surfaces": [
-   "json"
-  ]
- },
- {
-  "id": "L02-no-quote",
-  "source": "README.md#what-typekit-guarantees",
-  "surfaces": [
-   "json",
-   "text",
-   "logging"
-  ]
- },
- {
-  "id": "L03-one-rule",
-  "source": "README.md#what-typekit-guarantees",
-  "surfaces": [
-   "text",
-   "json"
-  ]
- },
- {
-  "id": "L04-round-trip",
-  "source": "README.md#what-typekit-guarantees",
-  "surfaces": [
-   "text",
-   "json"
-  ]
- },
- {
-  "id": "L05-equality",
-  "source": "README.md#what-typekit-guarantees",
-  "surfaces": [
-   "generation"
-  ]
- },
- {
-  "id": "L06-off-the-wire",
-  "source": "README.md#what-typekit-guarantees",
-  "surfaces": [
-   "json",
-   "option-result"
-  ]
- }
 ]

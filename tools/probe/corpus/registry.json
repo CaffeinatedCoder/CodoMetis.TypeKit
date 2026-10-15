@@ -1,92 +1,108 @@
 {
- "probes": {
-  "BaseProbe": {
-   "claim": "C07-fault-responses-blanket",
-   "filter": "*BaseProbe",
-   "variants": [
-    {
-     "PROBE_ONLY": "process.converter-lookup=none"
+  "probes": {
+    "BaseProbe": {
+      "claim": "C07-fault-responses-blanket",
+      "filter": "*BaseProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ]
     },
-    {
-     "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+    "C03ComposedProbe": {
+      "claim": "C03-composed-faults",
+      "filter": "*C03ComposedProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ]
+    },
+    "C05RuleProbe": {
+      "claim": "C05-with-rule",
+      "filter": "*C05RuleProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ]
+    },
+    "E01ColumnParityProbe": {
+      "claim": "E01-column-parity",
+      "filter": "*E01ColumnParityProbe"
+    },
+    "E02ValueTranslatesProbe": {
+      "claim": "E02-value-translates-to-column",
+      "filter": "*E02ValueTranslatesProbe"
+    },
+    "E04IntegerKeyProbe": {
+      "claim": "E04-integer-key-generated",
+      "filter": "*E04IntegerKeyProbe"
+    },
+    "E05OwnCompareToProbe": {
+      "claim": "E05-own-compareto-rejected",
+      "filter": "*E05OwnCompareToProbe"
+    },
+    "L01JsonBytesProbe": {
+      "claim": "L01-json-bytes",
+      "filter": "*L01JsonBytesProbe"
+    },
+    "L02NoQuoteProbe": {
+      "claim": "L02-no-quote",
+      "filter": "*L02NoQuoteProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none,text.culture!=globalization-invariant"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first,text.culture!=globalization-invariant"
+        },
+        {
+          "PROBE_ONLY": "text.culture=globalization-invariant",
+          "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
+        }
+      ]
+    },
+    "L03OneRuleProbe": {
+      "claim": "L03-one-rule",
+      "filter": "*L03OneRuleProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none,text.culture!=globalization-invariant"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first,text.culture!=globalization-invariant"
+        },
+        {
+          "PROBE_ONLY": "text.culture=globalization-invariant",
+          "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
+        }
+      ]
+    },
+    "L04RoundTripProbe": {
+      "claim": "L04-round-trip",
+      "filter": "*L04RoundTripProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none,text.culture!=globalization-invariant"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first,text.culture!=globalization-invariant"
+        },
+        {
+          "PROBE_ONLY": "text.culture=globalization-invariant",
+          "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
+        }
+      ]
     }
-   ]
-  },
-  "C03ComposedProbe": {
-   "claim": "C03-composed-faults",
-   "filter": "*C03ComposedProbe",
-   "variants": [
-    {
-     "PROBE_ONLY": "process.converter-lookup=none"
-    },
-    {
-     "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
-    }
-   ]
-  },
-  "C05RuleProbe": {
-   "claim": "C05-with-rule",
-   "filter": "*C05RuleProbe",
-   "variants": [
-    {
-     "PROBE_ONLY": "process.converter-lookup=none"
-    },
-    {
-     "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
-    }
-   ]
-  },
-  "L01JsonBytesProbe": {
-   "claim": "L01-json-bytes",
-   "filter": "*L01JsonBytesProbe"
-  },
-  "L02NoQuoteProbe": {
-   "claim": "L02-no-quote",
-   "filter": "*L02NoQuoteProbe",
-   "variants": [
-    {
-     "PROBE_ONLY": "process.converter-lookup=none,text.culture!=globalization-invariant"
-    },
-    {
-     "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first,text.culture!=globalization-invariant"
-    },
-    {
-     "PROBE_ONLY": "text.culture=globalization-invariant",
-     "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
-    }
-   ]
-  },
-  "L03OneRuleProbe": {
-   "claim": "L03-one-rule",
-   "filter": "*L03OneRuleProbe",
-   "variants": [
-    {
-     "PROBE_ONLY": "process.converter-lookup=none,text.culture!=globalization-invariant"
-    },
-    {
-     "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first,text.culture!=globalization-invariant"
-    },
-    {
-     "PROBE_ONLY": "text.culture=globalization-invariant",
-     "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
-    }
-   ]
-  },
-  "L04RoundTripProbe": {
-   "claim": "L04-round-trip",
-   "filter": "*L04RoundTripProbe",
-   "variants": [
-    {
-     "PROBE_ONLY": "process.converter-lookup=none,text.culture!=globalization-invariant"
-    },
-    {
-     "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first,text.culture!=globalization-invariant"
-    },
-    {
-     "PROBE_ONLY": "text.culture=globalization-invariant",
-     "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
-    }
-   ]
   }
- }
 }
