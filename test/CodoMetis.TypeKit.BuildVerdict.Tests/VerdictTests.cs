@@ -270,6 +270,29 @@ public sealed class VerdictTests(VerdictTests.Sandbox sandbox) : IClassFixture<V
         Holds();
     }
 
+    // The same passing run as GitHub Actions prints it: the test platform colours redirected output there, and
+    // an escape sequence opens the summary's lines. Measured 2026-10-15 on the first CI replay of the probes.
+    [Fact]
+    public void A_passing_run_in_colour()
+    {
+        var esc = (char)27;
+        var f = $"""
+            Running tests from test/A.Tests/bin/Debug/net10.0/A.Tests.dll (net10.0|x64)
+            {esc}[m{R}/test/A.Tests/bin/Debug/net10.0/A.Tests.dll (net10.0|x64) {esc}[32mpassed{esc}[m {esc}[90m(17s 005ms){esc}[m
+
+            {esc}[32mTest run summary: Passed!
+            {esc}[m  total: 177
+              failed: 0
+            {esc}[32m  succeeded: 177
+            {esc}[m  skipped: 0
+              duration: 17s 005ms
+
+            """;
+        Exited("a passing run in colour exits 0", 0, Verdict(0, f, "test", "--project", "test/A.Tests"));
+        First("a passing run in colour reads its summary", "TESTS OK: 177 passed, 0 skipped, A.Tests, 17s 005ms");
+        Holds();
+    }
+
     // A solution-wide filter that matched one test, which passed: every other assembly exits 8, and so does the run.
     [Fact]
     public void A_solution_filter_that_matched_and_passed()
