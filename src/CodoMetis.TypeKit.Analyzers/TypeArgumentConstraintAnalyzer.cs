@@ -806,7 +806,8 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
         TypeArgumentConstraint.Sealed         => argument.TypeKind is TypeKind.Struct or TypeKind.Enum or TypeKind.Array || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Delegate, IsSealed: true, IsStatic: false },
         TypeArgumentConstraint.Record         => argument is INamedTypeSymbol { IsRecord: true },
         TypeArgumentConstraint.Interface      => argument.TypeKind is TypeKind.Interface,
-        // dynamic is object, a class that can be derived from, as [Concrete] takes it.
+        // dynamic is object, a class that can be derived from, as [Concrete] takes it. The abstract bases nothing
+        // derives from (Enum, Delegate, MulticastDelegate, ValueType, Array) are taken too until 3.0.0 (decision 34).
         TypeArgumentConstraint.Unsealed       => argument.TypeKind is TypeKind.Dynamic || argument is INamedTypeSymbol { TypeKind: TypeKind.Class, IsSealed: false, IsStatic: false },
         TypeArgumentConstraint.ValueObject    => argument.TypeKind is not TypeKind.Interface && symbols.FindMarker(argument, out _) is not null,
         TypeArgumentConstraint.ClosedSet      => symbols.FindClosedSetMarker(argument) is not null,

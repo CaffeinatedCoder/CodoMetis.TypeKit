@@ -47,7 +47,7 @@ Each attribute accepts some kinds of type and rejects the rest:
 | `[Record]` | a record class or record struct | a class or a struct |
 | `[Concrete]` | a class, record or struct that can be instantiated, an enum, a delegate | an abstract or static type, an interface, and the abstract bases `Enum`, `Delegate` and `ValueType`. Unlike `new()`, it demands no constructor |
 | `[Interface]` | an interface | a class, even one that implements the interface |
-| `[Unsealed]` | a class or record class that can be derived from, abstract included, and `dynamic`, which is `object` | a sealed or static class, an interface, a struct |
+| `[Unsealed]` | a class or record class that can be derived from, abstract included, and `dynamic`, which is `object`. Until 3.0.0 it also accepts `Enum`, `Delegate`, `MulticastDelegate`, `ValueType` and `Array`, which nothing can derive from | a sealed or static class, an interface, a struct |
 | `[ValueObject]` | a struct or class that implements `IValue<T>` for any `T`, which no `where` can say | any other type, a closed set included, and an interface, even one that derives from `IValue<T>` |
 | `[ClosedSet]` | a type that implements `IClosedSet<TSelf>`, a fault set included | any other type, a value object or an enum included |
 | `[FlagsEnum]` | an enum marked `[Flags]` | a plain enum, which `where T : Enum` admits |

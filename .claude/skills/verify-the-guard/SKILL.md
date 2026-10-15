@@ -48,6 +48,7 @@ before it is reported done:
    | Class | Catalogue | How |
    |---|---|---|
    | `AIS`, a type argument | `TypeArgumentSites` in `test/CodoMetis.TypeKit.Analyzers.Tests/Variants/` | A `TypeArgumentSubject` per constraint the rule reads (the constraint, an argument that breaks it, one that meets it), run as `TypeArgumentConstraintVariantTests` runs CMTK0010 |
+   | `AIS`, what a type argument is | `TypeArgumentKinds`, beside it, 79 kinds and 37 pairs: classes to delegates, arrays, `dynamic`, interfaces, the abstract bases, a type built from a parameter, a parameter under each constraint and attribute, and pairs | An oracle per constraint over what each kind is, from the rule's docs, run as `TypeArgumentConstraintKindTests` runs CMTK0010 |
    | `AIS`, any other input | The kinds the rule registers (`Register*Action`), plus method groups, crefs, extension blocks (method, property, static member, operator, the lowered call), generic attributes, `nameof`, null-conditional access, lambdas, local functions and generated code (`GeneratedCodeTests`) | No catalogue yet: build it in `Variants/` on `TypeArgumentSites`' pattern, the subject from the rule and the shapes from the catalogue |
    | `GTS` | The `shape.*` axes of `.claude/probe-axes.md` and the Samples' value objects | One declaration per value of each axis the fixed code reads (kind, site, inheritance at least), or the rows of the claim that covers it: `prober rows --claim C --full` |
    | `FCI` | The settings of the API the fix touches: the `json.*`, `openapi.*`, `mvc.*` axes | The claim's pairwise rows, `prober rows --claim C`, as a theory or as the claim's probe |
@@ -66,9 +67,9 @@ when a past chain exists, check out the chain's origin fix and run the catalogue
 records that run for `TypeArgumentSites`: at chain A's origin it fails on 20 sites, each green at
 the later fix that repaired it.
 
-The catalogue proves breadth, not semantics. What an input *is* (an enum, an array, `dynamic`, a type
-built from a type parameter) is a second axis; where the fix's defect lives on it, enumerate it in the
-test as well.
+A catalogue of sites proves breadth, not semantics. What an input *is* (an enum, an array, `dynamic`, a
+type built from a type parameter) is a second axis, `TypeArgumentKinds` for a type argument; for another
+input, where the fix's defect lives on it, enumerate it in the test as well.
 
 ## Reverting cleanly
 

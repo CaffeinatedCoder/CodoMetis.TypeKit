@@ -59,3 +59,12 @@
    settings axes. Measured: at the origin of CMTK0010's chain of fourteen fixes the catalogue fails on 20
    sites, each fixed by a later member of the chain; seeded, without the rule's method-group and property
    registrations, 15 cases fail.
+   What the argument is, the second axis, is `TypeArgumentKinds` beside it: 79 kinds (classes, records and
+   structs in each modifier, enums, delegates, arrays, `dynamic`, interfaces and the value-object marker,
+   the abstract bases, types built from a parameter, a parameter under each constraint, bound and
+   attribute) and 37 pairs. `TypeArgumentConstraintKindTests` runs every CMTK0010 attribute against each,
+   864 cases, with an oracle per attribute written from `docs/type-constraints.md`'s tables. Measured
+   2026-10-15 at each of chain A's commits: six of its seven fixes about what an argument is (`0d6ba1a`,
+   `2f8a854`, `7792801`, `d27cf2d`, `75fb3aa`, `6368c1c`) turn 35 cases green that fail at their parent;
+   `1a9d7f2` fixed the library's own declarations, which no analyzer test reads. It found one gap still
+   open, `[Unsealed]` taking the abstract bases nothing derives from, which waits for 3.0.0 (decision 34).
