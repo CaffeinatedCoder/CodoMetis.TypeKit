@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codometis.typekit/probe/schemas/rows.schema.json",
+  "title": "Rows",
+  "description": "Tracked (corpus/rows/<claim>.json, gzipped): the rows a claim's probe runs, a pairwise covering array over its axes.",
+  "type": "object",
+  "required": [
+    "rows"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "The schema version. A file or line without it is version 1 (the Python baseline)."
+    },
+    "claim": {
+      "type": "string"
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "row"
+        ],
+        "properties": {
+          "row": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Axis name to value, both compared ordinally."
+          },
+          "pairs": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[^=]+=.*$"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        }
+      }
+    }
+  }
+}

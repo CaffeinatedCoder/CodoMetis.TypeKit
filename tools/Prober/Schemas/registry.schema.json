@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codometis.typekit/probe/schemas/registry.schema.json",
+  "title": "Probe registry",
+  "description": "Tracked (corpus/registry.json): every probe, the claim it covers, how to select it, and the process variants it runs in.",
+  "type": "object",
+  "required": [
+    "probes"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "The schema version. A file or line without it is version 1 (the Python baseline)."
+    },
+    "probes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "claim",
+          "filter"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "filter": {
+            "type": "string"
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Axis name to value, both compared ordinally."
+            },
+            "description": "one process per environment map"
+          },
+          "retired": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

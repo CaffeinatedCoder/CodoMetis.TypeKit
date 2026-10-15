@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      prober's tests, the behavioural spec of its ledger: each against a fixture repository of its own
+      (git, one claim, a corpus, a state directory), commands run in-process, and the racing lock tests
+      against real processes of the built dll.
+    -->
+    <ItemGroup>
+        <ProjectReference Include="..\..\tools\Prober\Prober.csproj" />
+    </ItemGroup>
+
+</Project>

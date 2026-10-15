@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      prober: the probing workflow's core. It keeps the ledger (claims, universe, covering arrays,
+      evidence, coverage, the release gate, the round lock), replays the probe corpus with no model in
+      the loop, and runs a capped exploration round. Repository tooling, not a package: BCL only, never
+      packed. It is in the solution so `dotnet build` builds it, and it is started as its built dll:
+
+          dotnet tools/Prober/bin/Release/net10.0/prober.dll help
+
+      The file formats are the contract (Schemas/, versioned); this code is one reader of them. Building
+      and running probes goes through an adapter (ProbeAdapter.cs), so the core holds nothing of .NET's.
+      The README beside this file has the commands.
+    -->
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <AssemblyName>prober</AssemblyName>
+        <RootNamespace>Prober</RootNamespace>
+        <!-- Never packed: release.yml publishes whatever `dotnet pack` of the solution writes (PackabilityTests). -->
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="CodoMetis.TypeKit.Prober.Tests" />
+        <None Include="Schemas/*.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <!--
+      The dll's own freshness. Every source of this project, the schemas included, is hashed at build
+      time into BuildStamp.Sources; at startup the dll hashes them again and, when they differ, rebuilds
+      itself before answering (Freshness.cs). Content hashes, never timestamps.
+    -->
+    <Target Name="StampProberSources" BeforeTargets="CoreCompile">
+        <ItemGroup>
+            <_ProberSource Include="**/*.cs;Schemas/*.json;$(MSBuildProjectFile)" Exclude="bin/**;obj/**" />
+        </ItemGroup>
+
+        <GetFileHash Files="@(_ProberSource)" Algorithm="SHA256">
+            <Output TaskParameter="Items" ItemName="_ProberHashed" />
+        </GetFileHash>
+
+        <PropertyGroup>
+            <_ProberStampFile>$(IntermediateOutputPath)BuildStamp.g.cs</_ProberStampFile>
+        </PropertyGroup>
+
+        <!-- One line per source, "path|SHA256", in a verbatim string; %3B is a semicolon MSBuild would split on. -->
+        <WriteLinesToFile File="$(_ProberStampFile)" Overwrite="true" WriteOnlyWhenDifferent="true"
+                          Lines="// Written by StampProberSources in Prober.csproj.;namespace Prober%3B;internal static class BuildStamp;{;    public const string Configuration = &quot;$(Configuration)&quot;%3B;    public const string Sources = @&quot;;@(_ProberHashed->'%(Identity)|%(FileHash)');&quot;%3B;}" />
+
+        <ItemGroup>
+            <Compile Include="$(_ProberStampFile)" />
+            <FileWrites Include="$(_ProberStampFile)" />
+        </ItemGroup>
+    </Target>
+
+</Project>
