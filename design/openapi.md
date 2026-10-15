@@ -71,7 +71,9 @@ position, and the change lands in the hoisted component.
   and a second document without a fault response keeps it bare); an inline schema of theirs is another
   instance and stays bare. A document without a fault response is ASP.NET's, byte for byte. An
   endpoint answering several fault types, a `Fault<T1, T2>`'s each, gets one response per status,
-  ascending, listing the problem types of every type at a status they share; a member the endpoint
+  ascending, listing the problem types of every type at a status they share; the responses the endpoint
+  declares itself take their places among them (a range such as `4XX` after its codes, `default` last),
+  and an operation without a fault response keeps ASP.NET's order; a member the endpoint
   leaves out (`WithoutFaults`) gives it no status and no problem type
   ([decision 78](adr/0078-fault-sets-compose-side-by-side.md)).
 - **Known gaps, documented rather than fixed:** a validation attribute on a value-object property

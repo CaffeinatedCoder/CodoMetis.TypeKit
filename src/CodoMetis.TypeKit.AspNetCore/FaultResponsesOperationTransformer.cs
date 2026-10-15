@@ -31,7 +31,9 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// optional <c>rule</c> string, the rule that refused where the fault names one: on the
 /// shared component, which ASP.NET's own problem responses refer to as well, so its description says
 /// which problems carry it. A string, since an enum of every fault type would change every operation
-/// when one is added. A document without a fault response is left as ASP.NET writes it.
+/// when one is added. An operation given a fault response lists all its responses in ascending order,
+/// the endpoint's own among them; an operation without one, and a document without one, is left as
+/// ASP.NET writes it.
 /// </remarks>
 internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTransformer
 {
@@ -101,6 +103,7 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
             }
         }
 
+        var touched = false;
         foreach (var (status, types) in answered)
         {
             var key = status.ToString(CultureInfo.InvariantCulture);
@@ -116,6 +119,7 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
                  && content.TryGetValue("application/problem+json", out var media))
                 {
                     problem ??= await ProblemSchemaAsync(context, cancellationToken);
+                    touched = true;
                     if (media.Schema is OpenApiSchema inline) WithFault(inline, Qualified(context));
                     if (string.IsNullOrEmpty(response.Description) || response.Description == ReasonPhrases.GetReasonPhrase(status))
                         response.Description = Description(status, types);
@@ -130,8 +134,33 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
                 Description = Description(status, types),
                 Content = new Dictionary<string, OpenApiMediaType> { ["application/problem+json"] = new() { Schema = problem } },
             };
+            touched = true;
         }
+
+        if (touched) Ascending(operation.Responses!);
     }
+
+    /// <summary>
+    /// Puts every response of an operation the transformer answered in ascending order, the ones the endpoint
+    /// declares itself among them: added after those, faults at 404 and 412 beside a declared 409 read 200, 409,
+    /// 404, 412 (reported 2026-10-15). A range such as <c>4XX</c> follows the codes of its range, and
+    /// <c>default</c> comes last; a key that is neither keeps its place among the others, before <c>default</c>.
+    /// </summary>
+    private static void Ascending(OpenApiResponses responses)
+    {
+        var ordered = responses.OrderBy(response => Rank(response.Key)).ToList();
+        if (ordered.Select(response => response.Key).SequenceEqual(responses.Keys, StringComparer.Ordinal)) return;
+
+        // A dictionary cleared and filled again enumerates in the order it was filled, as the writer reads it.
+        responses.Clear();
+        foreach (var (key, response) in ordered) responses.Add(key, response);
+    }
+
+    private static (int Status, int Range) Rank(string key) =>
+        key.Length == 3 && int.TryParse(key, NumberStyles.None, CultureInfo.InvariantCulture, out var status) ? (status, 0)
+      : key.Length == 3 && key[0] is >= '1' and <= '5' && key.EndsWith("XX", StringComparison.OrdinalIgnoreCase) ? ((key[0] - '0') * 100 + 99, 1)
+      : string.Equals(key, "default", StringComparison.OrdinalIgnoreCase) ? (int.MaxValue, 1)
+      : (int.MaxValue, 0);
 
     private static string Description(int status, List<string> types) =>
         types.Count == 0

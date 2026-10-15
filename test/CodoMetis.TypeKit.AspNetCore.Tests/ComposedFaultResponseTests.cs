@@ -34,6 +34,8 @@ public sealed class ComposedFaultResponseTests
 
     public static TheoryData<OpenApiSpecVersion> Versions => [OpenApiSpecVersion.OpenApi3_1, OpenApiSpecVersion.OpenApi3_0];
 
+    public static TheoryData<OpenApiSpecVersion> EveryVersion => [OpenApiSpecVersion.OpenApi3_1, OpenApiSpecVersion.OpenApi3_0, OpenApiSpecVersion.OpenApi2_0];
+
     private static Result<Fault<OrderFault, ConcurrencyFault>> Rename(int id) => id switch
     {
         1 => Result<Fault<OrderFault, ConcurrencyFault>>.Success(),
@@ -41,6 +43,9 @@ public sealed class ComposedFaultResponseTests
         3 => Fault<OrderFault, ConcurrencyFault>.Of(Fault.Of(ConcurrencyFault.Stale, "The order is at version 4, not 3.").WithRule(RemovalFault.ReasonRequired)),
         _ => Fault<OrderFault, ConcurrencyFault>.Of(ConcurrencyFault.Conflict),
     };
+
+    private static Result<int, Fault<OrderFault, ConcurrencyFault>> Count(int id) =>
+        id == 1 ? id : Result.Error<Fault<OrderFault, ConcurrencyFault>>(Fault.Of(OrderFault.NotFound));
 
     private static Result<int, Fault<OrderFault, ConcurrencyFault, RemovalFault>> Remove(int id) => id switch
     {
@@ -111,6 +116,67 @@ public sealed class ComposedFaultResponseTests
 
         // The first type's statuses are the higher ones: listed by type, they read 409, 412, 404.
         Statuses(document, "/stale/{id}", "post").ShouldBe(["204", "404", "409", "412"]);
+    }
+
+    /// <summary>
+    /// A status the endpoint declares itself takes its place among the ones the transformer adds: it was kept
+    /// where ASP.NET put it and the others appended after it, so faults at 404 and 412 beside a declared 409
+    /// read 200, 409, 404, 412 (reported 2026-10-15).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(EveryVersion))]
+    public async Task A_status_the_endpoint_declares_itself_is_listed_in_ascending_order(OpenApiSpecVersion version)
+    {
+        await using var app = await StartAsync(version, mvc: [typeof(DeclaredController)], endpoints: app =>
+            app.MapGet("/declared/{id:int}", (int id) => Count(id).ToHttpResult()).ProducesProblem(StatusCodes.Status409Conflict));
+
+        var document = await DocumentAsync(app);
+
+        Statuses(document, "/declared/{id}", "get").ShouldBe(["200", "404", "409", "412"]);
+        Statuses(document, "/mvc/declared/{id}", "get").ShouldBe(["200", "404", "409", "412"]);
+    }
+
+    /// <summary>
+    /// A range follows the codes of its range and <c>default</c> comes last, wherever the responses before
+    /// TypeKit's transformer put them.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Versions))]
+    public async Task A_range_follows_its_codes_and_default_comes_last(OpenApiSpecVersion version)
+    {
+        await using var app = await StartAsync(
+            version,
+            openApi: options => options.AddOperationTransformer((operation, _, _) =>
+            {
+                foreach (var key in (string[])["default", "5XX", "4XX"]) operation.Responses!.TryAdd(key, new OpenApiResponse { Description = key });
+                return Task.CompletedTask;
+            }),
+            endpoints: app => app.MapGet("/declared/{id:int}", (int id) => Count(id).ToHttpResult()));
+
+        Statuses(await DocumentAsync(app), "/declared/{id}", "get").ShouldBe(["200", "404", "409", "412", "4XX", "5XX", "default"]);
+    }
+
+    /// <summary>
+    /// An operation the transformer gives no fault response is ASP.NET's, byte for byte, in a document where
+    /// another one has them: its statuses keep the order ASP.NET wrote them in, ascending or not.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(EveryVersion))]
+    public async Task An_operation_without_a_fault_response_keeps_ASP_NET_s_order(OpenApiSpecVersion version)
+    {
+        static void Endpoints(WebApplication app)
+        {
+            app.MapGet("/declared/{id:int}", (int id) => Count(id).ToHttpResult()).ProducesProblem(StatusCodes.Status409Conflict);
+            app.MapGet("/plain", () => "plain").ProducesProblem(StatusCodes.Status409Conflict).ProducesProblem(StatusCodes.Status404NotFound).Produces(StatusCodes.Status202Accepted);
+        }
+
+        await using var withTypeKit = await StartAsync(version, endpoints: Endpoints);
+        await using var without = await StartAsync(version, endpoints: Endpoints, typeKit: false);
+
+        var document = await DocumentAsync(withTypeKit);
+        document["paths"]!["/plain"]!["get"]!.ToJsonString().ShouldBe((await DocumentAsync(without))["paths"]!["/plain"]!["get"]!.ToJsonString());
+        Statuses(document, "/plain", "get").ShouldBe(["200", "409", "404", "202"], "as declared, which is ASP.NET's order");
+        Statuses(document, "/declared/{id}", "get").ShouldBe(["200", "404", "409", "412"], "the control: the other operation is sorted");
     }
 
     /// <summary>
@@ -245,7 +311,9 @@ public sealed class ComposedFaultResponseTests
         bool qualified = false,
         bool typed = false,
         Action<IServiceCollection>? services = null,
-        ILoggerProvider? logs = null)
+        ILoggerProvider? logs = null,
+        bool typeKit = true,
+        Action<Microsoft.AspNetCore.OpenApi.OpenApiOptions>? openApi = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
         builder.WebHost.UseTestServer();
@@ -254,7 +322,8 @@ public sealed class ComposedFaultResponseTests
         builder.Services.AddOpenApi(options =>
         {
             options.OpenApiVersion = version;
-            options.AddTypeKit();
+            openApi?.Invoke(options);
+            if (typeKit) options.AddTypeKit();
         });
         builder.Services.Configure<FaultResponseOptions>(options => options.QualifiedFaultNames = qualified);
         services?.Invoke(builder.Services);
@@ -356,6 +425,14 @@ public sealed class ComposedFaultResponseTests
     {
         [HttpPut("/mvc/orders/{id:int}")]
         public Results<NoContent, FaultProblem<OrderFault>, FaultProblem<ConcurrencyFault>> Put(int id) => Rename(id).ToHttpResult();
+    }
+
+    [ApiController]
+    public sealed class DeclaredController : ControllerBase
+    {
+        [HttpGet("/mvc/declared/{id:int}")]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public Results<Ok<int>, FaultProblem<OrderFault>, FaultProblem<ConcurrencyFault>> Get(int id) => Count(id).ToHttpResult();
     }
 }
 

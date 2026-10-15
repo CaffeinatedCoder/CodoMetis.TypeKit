@@ -42,6 +42,7 @@ section is the GitHub release's notes.
 - OpenAPI: a `Patch<T>` the serializer requires stays `required`; under `RespectRequiredConstructorParameters`, declare patches as `init` properties ([Merge patches](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/merge-patches.md#required-constructor-parameters)).
 - OpenAPI: a `WithFaultStatus` on the builder `MapControllers()` returns reaches the document, as it reached the response.
 - OpenAPI: a problem response an endpoint declares itself (`ProducesProblem`, `[ProducesResponseType]`) describes `fault`, and names its problem types.
+- OpenAPI: an operation with fault responses lists every status ascending, the ones its endpoint declares itself among them; where an endpoint declares its own, the document's response order changes, so update snapshot tests.
 - Over a base record, a value object's equality is its wrapped value's, in a collection of the base too, whatever equality the base declares.
 - Under `ReferenceHandler.Preserve`, a value object over a type that could hold an `$id` throws `NotSupportedException` instead of writing a duplicate `$id` ([JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#json)).
 - A wrapped type's `Parse` whose result can't be assigned to it, or that takes its text by `ref`, or an abstract class's string constructor, no longer breaks the build; the value object has no parsing.
