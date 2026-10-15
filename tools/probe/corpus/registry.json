@@ -12,6 +12,28 @@
         }
       ]
     },
+    "C02OptionalTextProbe": {
+      "claim": "C02-optional-text",
+      "filter": "*C02OptionalTextProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none,text.culture!=globalization-invariant"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first,text.culture!=globalization-invariant"
+        },
+        {
+          "PROBE_ONLY": "text.culture=globalization-invariant",
+          "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
+        },
+        {
+          "PROBE_ONLY": "text.culture=globalization-invariant,entry=AsText"
+        },
+        {
+          "PROBE_ONLY": "text.culture=globalization-invariant,entry=AsOptionalText"
+        }
+      ]
+    },
     "C03ComposedProbe": {
       "claim": "C03-composed-faults",
       "filter": "*C03ComposedProbe",
@@ -35,6 +57,10 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ]
+    },
+    "C20ShouldHoldProbe": {
+      "claim": "C20-testing-shouldhold",
+      "filter": "*C20ShouldHoldProbe"
     },
     "E01ColumnParityProbe": {
       "claim": "E01-column-parity",
