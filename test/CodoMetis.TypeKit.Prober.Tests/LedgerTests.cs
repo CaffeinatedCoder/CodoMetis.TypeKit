@@ -25,6 +25,14 @@ public sealed class AccountingTests : IDisposable
     }
 
     [Fact]
+    public void The_status_line_counts_what_the_json_counts()
+    {
+        RecordPass(TwoRows);
+        fx.Ledger("status").Out.ShouldStartWith("main at ");
+        fx.Ledger("status").Out.ShouldContain(": 2 of 4 pairs current (50.0%), 0 open finding(s)");
+    }
+
+    [Fact]
     public void An_old_pass_does_not_credit_a_row_added_since()
     {
         RecordPass(TwoRows);

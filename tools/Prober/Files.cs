@@ -104,8 +104,16 @@ internal static class Files
 
     public static string Str(JsonNode? node, string fallback = "") => node is JsonValue v && v.TryGetValue<string>(out var s) ? s : fallback;
 
-    public static double Num(JsonNode? node, double fallback = 0) =>
-        node is JsonValue v ? (v.TryGetValue<double>(out var d) ? d : v.TryGetValue<long>(out var l) ? l : fallback) : fallback;
+    /// <summary>A number, whether parsed from text or built in memory from any numeric type.</summary>
+    public static double Num(JsonNode? node, double fallback = 0)
+    {
+        if (node is not JsonValue v) return fallback;
+        if (v.TryGetValue<double>(out var d)) return d;
+        if (v.TryGetValue<long>(out var l)) return l;
+        if (v.TryGetValue<int>(out var i)) return i;
+        if (v.TryGetValue<decimal>(out var m)) return (double)m;
+        return double.TryParse(v.ToJsonString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var p) ? p : fallback;
+    }
 
     public static IEnumerable<string> Strings(JsonNode? node) => node is JsonArray a ? a.Select(x => Str(x)) : [];
 

@@ -123,7 +123,7 @@ internal static class Commands
         if (s["reason"] is { } reason) { l.Ctx.Out.WriteLine($"{l.Branch}: not done ({Files.Str(reason)})"); return 0; }
         var open = Files.Strings(s["open_findings"]).ToList();
         l.Ctx.Out.WriteLine($"{l.Branch} at {Files.Str(s["head"])[..7]}: {Files.Num(s["current"])} of {Files.Num(s["pairs"])} pairs current " +
-                            $"({Files.Num(s["share"]).ToString("P1", CultureInfo.InvariantCulture)}), {open.Count} open finding(s)" +
+                            $"({(Files.Num(s["share"]) * 100).ToString("F1", CultureInfo.InvariantCulture)}%), {open.Count} open finding(s)" +
                             (open.Count > 0 ? ": " + string.Join(", ", open) : "") + $" -> {(s["done"]!.GetValue<bool>() ? "DONE" : "not done")}");
         foreach (var (id, c) in (s["claims"] as JsonObject)!.OrderBy(kv => kv.Key, StringComparer.Ordinal))
             l.Ctx.Out.WriteLine($"  {id}: {Files.Num(c!["current"])}/{Files.Num(c["pairs"])}");
