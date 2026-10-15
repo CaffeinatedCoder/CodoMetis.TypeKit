@@ -209,14 +209,20 @@ the whole page. A ranked miss proves nothing.
 2. Run `dotnet test` after each change.
 3. **Prove every fix by reverting it.** See `.claude/skills/verify-the-guard`. The same applies to a
    new analyzer test or a convention test: seed the defect it claims to catch.
-4. A change to an aspect, the fabric, the analyzer or a satellite gets a generation review
+4. **Test every fix across its input class.** Before a fix is done, name the input class its defect
+   lives in and run the fix's test over that class's variant catalogue: `TypeArgumentSites`
+   (`test/CodoMetis.TypeKit.Analyzers.Tests/Variants/`) for a type argument, the `shape.*` axes for a
+   generated type, the settings axes for a framework option. Fix the siblings it finds, add a missing
+   shape to the catalogue, and say so in the commit body; a sibling found this way is `Found-By: VA`
+   ([decision 95](design/adr/0095-a-fix-is-tested-across-its-input-class.md), the skill's "The variants").
+5. A change to an aspect, the fabric, the analyzer or a satellite gets a generation review
    (`.claude/skills/weaving-review`).
-5. Commit with conventional format: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `build:`,
+6. Commit with conventional format: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `build:`,
    `spike:`. A `fix:` ends with the trailers `Defect-Class:` and `Found-By:`, one of each, from the
    tables of [decision 94](design/adr/0094-topic-branches-into-a-release-branch-and-fix-trailers.md)
    (`CommitTrailerTests`). Work happens on a `<type>/<slug>` branch from `release/<version>`, reaches it
    by a PR, and every merge is a merge commit: never squash or rebase a pushed branch.
-6. **Probes replay themselves; exploring is a separate, capped, local job.** Consumer probes check the
+7. **Probes replay themselves; exploring is a separate, capped, local job.** Consumer probes check the
    claims in `docs/` and the READMEs, pairwise over the axes in
    [.claude/probe-axes.md](.claude/probe-axes.md); they, their rows, the claims and the waivers are the
    corpus in `tools/probe/corpus/`, tracked like tests.
@@ -237,7 +243,7 @@ the whole page. A ranked miss proves nothing.
      probes land in its staging; `prober publish` moves them into the corpus, committed as `test:`.
    - **Full sweep** on request (`/probe full`) or nightly, locally: the whole corpus replayed, the axes
      derived again, then exploration up to the cap. A report, not a gate.
-   - A probe that found a bug becomes a test in the suite (step 3); a dismissed finding is recorded with
+   - A probe that found a bug becomes a test in the suite (steps 3 and 4); a dismissed finding is recorded with
      `prober dismiss` and the reason. An intended difference a probe accepts cites the sentence of the
      docs, the record, or the verified fact (`KB-NNN`, `design/knowledge/`) that makes it intended.
 

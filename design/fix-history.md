@@ -151,6 +151,16 @@ Twelve fixes repair a regression an earlier fix introduced or finish an earlier 
 - `8d1ebd8` finishes `66a5cec` (the transformer sorted only the statuses it added).
 - `27c59d0` follows `564a51e` (found while fixing it).
 
+Two more, measured after this note was written by running the variant catalogue at each commit of chain A
+([decision 95](adr/0095-a-fix-is-tested-across-its-input-class.md)); the counts above are this note's reading
+and leave them out:
+
+- `7c30840` repairs `e4361e9`, which moved CMTK0010's reporting to `context.ReportDiagnostic`, so a breach in
+  generated code was reported from `e4361e9` on (the catalogue's four generated-code sites fail at `e4361e9`,
+  `a0ddf61` and `370414a`, and pass at `a77bdda` and `37317de`).
+- `cdab810` repairs `e4361e9`: a default interface method called through a derived interface overflows the stack
+  from `e4361e9` on (the test host aborts at `e4361e9`, `a0ddf61`, `370414a` and `7c30840`; `37317de` completes).
+
 ## Source files with the most fixes
 
 Counts are `.cs` files under `src/` touched by a fix; READMEs are left out (they are touched by 24, 24, 18, 15 and 10 fixes for Generators, Analyzers, base, AspNetCore and EF Core). Classes are those of the commits that touch the file, so a file touched by a cross-cutting commit also shows that commit's class.
