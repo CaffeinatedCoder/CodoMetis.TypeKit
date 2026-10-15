@@ -2,6 +2,8 @@
 
 Read-only analysis of the 133 `fix:` commits on `feat/2.1.0` (`git log --grep='^fix' -E feat/2.1.0`, head `dc459b0`). Nothing in the repository was changed. This note is the baseline for the review approach (variant analysis, shape catalogues, redesign reviews, lens reviews, defect tracking). Consumers are called "downstream".
 
+From the 2.2.0 cycle on, each `fix:` commit records its class and finder itself, in the trailers `Defect-Class:` and `Found-By:` with the codes below ([decision 94](adr/0094-topic-branches-into-a-release-branch-and-fix-trailers.md)), so the next classification reads them from `git log` instead of reconstructing them.
+
 ## How to read this
 
 - **Class** is the primary cause of the defect. A commit that fixes several defects (16 of 133, flagged **B**) is counted once, under the class of its main defect. **S** marks a defect whose symptom was silent (compiled or ran and did less or something else); it is a flag, not a class, so a defect can be class `GTS` and still silent. 58 of 133 carry S. Class `SDL` is kept for the three commits where nothing more specific than "silent" could be said.

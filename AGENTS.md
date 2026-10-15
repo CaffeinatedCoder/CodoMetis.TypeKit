@@ -212,7 +212,10 @@ the whole page. A ranked miss proves nothing.
 4. A change to an aspect, the fabric, the analyzer or a satellite gets a generation review
    (`.claude/skills/weaving-review`).
 5. Commit with conventional format: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `build:`,
-   `spike:`.
+   `spike:`. A `fix:` ends with the trailers `Defect-Class:` and `Found-By:`, one of each, from the
+   tables of [decision 94](design/adr/0094-topic-branches-into-a-release-branch-and-fix-trailers.md)
+   (`CommitTrailerTests`). Work happens on a `<type>/<slug>` branch from `release/<version>`, reaches it
+   by a PR, and every merge is a merge commit: never squash or rebase a pushed branch.
 6. **Probes replay themselves; exploring is a separate, capped, local job.** Consumer probes check the
    claims in `docs/` and the READMEs, pairwise over the axes in
    [.claude/probe-axes.md](.claude/probe-axes.md); they, their rows, the claims and the waivers are the
