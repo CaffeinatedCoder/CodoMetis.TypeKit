@@ -115,7 +115,7 @@ public sealed class E16OwnConfigurationWinsProbe
             if (v.Raw != expect) return $"stored values are not the application's converter output: {v.Raw}, expected {expect}";
         }
         var vm = v.Model; var pm = p.Model;
-        if (config is "HasColumnType" or "HasConversion") { vm = vm.Replace("gen=Never", "gen=*").Replace("gen=OnAdd", "gen=*"); pm = pm.Replace("gen=Never", "gen=*").Replace("gen=OnAdd", "gen=*"); r.Note(NoteKeys.DocumentedCharGuidDefaultGenerationNormalized); }
+        if (config is "HasColumnType" or "HasConversion") { vm = vm.Replace("gen=Never", "gen=*").Replace("gen=OnAdd", "gen=*"); pm = pm.Replace("gen=Never", "gen=*").Replace("gen=OnAdd", "gen=*"); r.Note(NoteKeys.DocumentedCharGuidDefaultGenerationNormalized, "not-promised char-key-not-generated, guid-key-not-generated"); }
         if (vm != pm) return "model differs from the wrapped type's: " + EfModel.FirstDiff(vm, pm);
         if (StripScript(v.Script) != StripScript(p.Script)) return "create script differs from the wrapped type's: " + EfModel.FirstDiff(StripScript(v.Script), StripScript(p.Script));
         if (p.Assigned.StartsWith("threw") && !v.Assigned.StartsWith("threw"))

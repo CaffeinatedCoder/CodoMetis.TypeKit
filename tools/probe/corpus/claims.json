@@ -6862,7 +6862,69 @@
     },
     "narrow": {
       "ef.query": "Every property maps as a column of the underlying type, nullable where the property is."
-    }
+    },
+    "obligations": [
+      {
+        "id": "column-type",
+        "sentence": "Every property maps as a column of the underlying type, nullable where the property is.",
+        "axes": {
+          "ef.mapping": [
+            "property",
+            "key",
+            "owned",
+            "complex"
+          ]
+        }
+      },
+      {
+        "id": "nullable",
+        "sentence": "nullable where the property is",
+        "axes": {
+          "ef.mapping": [
+            "nullable"
+          ]
+        }
+      },
+      {
+        "id": "facet-kept",
+        "sentence": "A facet you configure on it is kept: a precision, a length, a column type.",
+        "axes": {
+          "ef.facet": [
+            "HasMaxLength",
+            "HavePrecision",
+            "HasColumnType"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "char-key-not-generated",
+        "source": "docs/ef-core.md#keys",
+        "sentence": "A key over `char` is always yours to assign",
+        "axes": {
+          "ef.mapping": [
+            "key"
+          ],
+          "shape.wrapped": [
+            "char"
+          ]
+        }
+      },
+      {
+        "id": "guid-key-not-generated",
+        "source": "docs/ef-core.md#keys",
+        "sentence": "A key over a `Guid` is yours to assign",
+        "axes": {
+          "ef.mapping": [
+            "key"
+          ],
+          "shape.wrapped": [
+            "Guid"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "E02-value-translates-to-column",
@@ -6913,7 +6975,68 @@
     },
     "narrow": {
       "ef.mapping": "`.Value`, `GetValue()` and `ValueOrNull()` translate to the column itself."
-    }
+    },
+    "obligations": [
+      {
+        "id": "value",
+        "sentence": "`.Value`, `GetValue()` and `ValueOrNull()` translate to the column itself.",
+        "axes": {
+          "ef.accessor": [
+            "Value"
+          ]
+        }
+      },
+      {
+        "id": "get-value",
+        "sentence": "db.Orders.Where(o => o.Total.GetValue() > 100m);",
+        "axes": {
+          "ef.accessor": [
+            "GetValue"
+          ]
+        }
+      },
+      {
+        "id": "value-or-null",
+        "sentence": "Use `ValueOrNull()` for an optional value object, where `.Value` would first unwrap the `Nullable`.",
+        "axes": {
+          "ef.accessor": [
+            "ValueOrNull"
+          ]
+        }
+      },
+      {
+        "id": "column-not-cast",
+        "sentence": "A table's column is re-typed, not cast, so an index on it still serves the query."
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "null-passes-no-comparison",
+        "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+        "sentence": "A null passes no `<`, `<=`, `>` or `>=` in the database.",
+        "axes": {
+          "ef.accessor": [
+            "ValueOrNull"
+          ],
+          "ef.query": [
+            "where-value-compare"
+          ]
+        }
+      },
+      {
+        "id": "collation-orders",
+        "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+        "sentence": "Ordering in SQL follows the database's collation",
+        "axes": {
+          "ef.query": [
+            "order-by"
+          ],
+          "shape.wrapped": [
+            "string"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "E03-column-round-trip",
@@ -6958,7 +7081,38 @@
     },
     "narrow": {
       "ef.query": "Keys, foreign keys, nullable properties, primitive collections and query parameters all map as plain columns of the underlying type."
-    }
+    },
+    "obligations": [
+      {
+        "id": "stored-as-underlying",
+        "sentence": "Every value object is stored in a plain column of its underlying type",
+        "axes": {
+          "ef.mapping": [
+            "property",
+            "owned",
+            "complex"
+          ]
+        }
+      },
+      {
+        "id": "keys",
+        "sentence": "Keys, foreign keys, nullable properties, primitive collections and query parameters all map as plain columns of the underlying type.",
+        "axes": {
+          "ef.mapping": [
+            "key"
+          ]
+        }
+      },
+      {
+        "id": "nullable-properties",
+        "sentence": "Keys, foreign keys, nullable properties, primitive collections and query parameters all map as plain columns of the underlying type.",
+        "axes": {
+          "ef.mapping": [
+            "nullable"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "E04-integer-key-generated",
@@ -6992,7 +7146,82 @@
       "ef.query": "A single-column key over an integer is generated on add, like a key of that integer type.",
       "ef.mapping": "A single-column key over an integer is generated on add, like a key of that integer type.",
       "shape.site": "A single-column key over an integer is generated on add, like a key of that integer type."
-    }
+    },
+    "obligations": [
+      {
+        "id": "generated-on-add",
+        "sentence": "A single-column key over an integer is generated on add, like a key of that integer type.",
+        "axes": {
+          "shape.wrapped": [
+            "int",
+            "long",
+            "ulong"
+          ]
+        }
+      },
+      {
+        "id": "byte-not-generated",
+        "sentence": "That's EF's own list: `int`, `long`, `short`, `sbyte`, `uint`, `ulong` and `ushort`, and not `byte`.",
+        "axes": {
+          "shape.wrapped": [
+            "byte"
+          ]
+        }
+      },
+      {
+        "id": "char-key-yours",
+        "sentence": "A key over `char` is yours to assign.",
+        "axes": {
+          "shape.wrapped": [
+            "char"
+          ],
+          "ef.key-config": [
+            "default"
+          ]
+        }
+      },
+      {
+        "id": "guid-key-yours",
+        "sentence": "A key over a `Guid` is yours to assign",
+        "axes": {
+          "shape.wrapped": [
+            "Guid"
+          ],
+          "ef.key-config": [
+            "default"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "meaningful-char-key-unchecked",
+        "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+        "sentence": "TypeKit stops that invented value, but it doesn't check that you set a meaningful one.",
+        "axes": {
+          "shape.wrapped": [
+            "char"
+          ],
+          "ef.key-config": [
+            "default"
+          ]
+        }
+      },
+      {
+        "id": "ulong-key-on-a-decimal-column",
+        "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+        "sentence": "A default key over `ulong` throws at `Add` where the column is a `decimal`",
+        "axes": {
+          "shape.wrapped": [
+            "ulong"
+          ],
+          "provider": [
+            "SQL Server",
+            "PostgreSQL"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "E05-own-compareto-rejected",
@@ -7033,7 +7262,88 @@
       "shape.kind": "Your own `CompareTo(TSelf)` can't run in the database.",
       "shape.wrapped": "Your own `CompareTo(TSelf)` can't run in the database.",
       "shape.site": "Your own `CompareTo(TSelf)` can't run in the database."
-    }
+    },
+    "obligations": [
+      {
+        "id": "comparison",
+        "sentence": "a comparison (`<`, `>`, `<=`, `>=`, `CompareTo`);",
+        "axes": {
+          "ef.op": [
+            "lt",
+            "gt",
+            "le",
+            "ge",
+            "CompareTo"
+          ]
+        }
+      },
+      {
+        "id": "ordering",
+        "sentence": "an ordering (`OrderBy`, `ThenBy`, their descending forms, `Order`);",
+        "axes": {
+          "ef.op": [
+            "OrderBy",
+            "OrderByDescending",
+            "ThenBy",
+            "Order"
+          ]
+        }
+      },
+      {
+        "id": "min-max",
+        "sentence": "`Min` or `Max`.",
+        "axes": {
+          "ef.op": [
+            "Min",
+            "Max"
+          ]
+        }
+      },
+      {
+        "id": "equality-allowed",
+        "sentence": "Equality isn't ordering, and stays allowed.",
+        "axes": {
+          "ef.op": [
+            "equals"
+          ]
+        }
+      },
+      {
+        "id": "value-order-allowed",
+        "sentence": "Compare or order by `.Value` where the underlying value's order is what you mean",
+        "axes": {
+          "ef.op": [
+            "value-order"
+          ]
+        }
+      },
+      {
+        "id": "query-filter",
+        "sentence": "A query filter (`HasQueryFilter`, named or not) that does the same fails when the model is built, naming the entity type, since it applies to every query of that type.",
+        "axes": {
+          "ef.op": [
+            "HasQueryFilter",
+            "named-query-filter"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "collation-orders",
+        "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+        "sentence": "Ordering in SQL follows the database's collation",
+        "axes": {
+          "ef.op": [
+            "value-order"
+          ],
+          "ef.vo": [
+            "string-struct",
+            "string-class"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "E06-own-converter-no-value",
@@ -7063,7 +7373,27 @@
       "ef.mapping": "A property your application converts itself",
       "shape.kind": "A property your application converts itself",
       "shape.site": "A property your application converts itself"
-    }
+    },
+    "obligations": [
+      {
+        "id": "value-not-translated",
+        "sentence": "So a filter, a sort, a grouping or an aggregate that reads `.Value` there fails with EF's \"could not be translated\", rather than comparing against what the column really holds.",
+        "axes": {
+          "ef.op": [
+            "value-access"
+          ]
+        }
+      },
+      {
+        "id": "value-object-comparison",
+        "sentence": "Comparing the value object itself (`o.Code == code`) goes through that converter and still works.",
+        "axes": {
+          "ef.op": [
+            "vo-equality"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "E07-closed-set-stored-as-name",
@@ -7089,7 +7419,49 @@
       "shape.kind": "A closed set (`IClosedSet<TSelf>`) is stored as a text column of the member's name, and read back as the member itself.",
       "shape.wrapped": "A closed set (`IClosedSet<TSelf>`) is stored as a text column of the member's name, and read back as the member itself.",
       "shape.site": "A closed set (`IClosedSet<TSelf>`) is stored as a text column of the member's name, and read back as the member itself."
-    }
+    },
+    "obligations": [
+      {
+        "id": "stored-as-name",
+        "sentence": "A closed set (`IClosedSet<TSelf>`) is stored as a text column of the member's name, and read back as the member itself.",
+        "axes": {
+          "ef.event": [
+            "round-trip"
+          ]
+        }
+      },
+      {
+        "id": "in-collections-and-json",
+        "sentence": "That holds in a table, in a primitive collection of names (`text[]` on PostgreSQL, a JSON array elsewhere) and in a JSON column alike, with nothing registered per set.",
+        "axes": {
+          "ef.site": [
+            "primitive-collection",
+            "json-column"
+          ],
+          "ef.event": [
+            "round-trip"
+          ]
+        }
+      },
+      {
+        "id": "unknown-name-throws",
+        "sentence": "A name the set no longer has throws when it's read, rather than reading as null.",
+        "axes": {
+          "ef.event": [
+            "unknown-name-on-read"
+          ]
+        }
+      },
+      {
+        "id": "non-member-throws",
+        "sentence": "An instance that isn't a member throws when it's written.",
+        "axes": {
+          "ef.event": [
+            "non-member-on-write"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "E08-option-result-not-columns",
@@ -7122,7 +7494,17 @@
       "ef.mapping": "EF can't map an `Option` or a `Result` property, and building the model fails with an error that says so.",
       "shape.kind": "EF can't map an `Option` or a `Result` property, and building the model fails with an error that says so.",
       "shape.site": "EF can't map an `Option` or a `Result` property, and building the model fails with an error that says so."
-    }
+    },
+    "obligations": [
+      {
+        "id": "model-fails",
+        "sentence": "EF can't map an `Option` or a `Result` property"
+      },
+      {
+        "id": "error-says-so",
+        "sentence": "building the model fails with an error that says so"
+      }
+    ]
   },
   {
     "id": "E09-or-none-in-database",
@@ -7159,7 +7541,73 @@
       "ef.mapping": "These ask the database for one row and let it run the condition:",
       "shape.kind": "These ask the database for one row and let it run the condition:",
       "shape.site": "These ask the database for one row and let it run the condition:"
-    }
+    },
+    "obligations": [
+      {
+        "id": "first-reads-one-row",
+        "sentence": "read one row: `WHERE ... LIMIT @p`.",
+        "axes": {
+          "ef.operator": [
+            "FirstOrNoneAsync",
+            "FirstOrNone",
+            "FirstOrError"
+          ]
+        }
+      },
+      {
+        "id": "single-asks-for-two",
+        "sentence": "ask for two rows, and throw for more than one.",
+        "axes": {
+          "ef.operator": [
+            "SingleOrNoneAsync",
+            "SingleOrNone"
+          ]
+        }
+      },
+      {
+        "id": "element-at-skips",
+        "sentence": "skips to its row: `OFFSET @p`.",
+        "axes": {
+          "ef.operator": [
+            "ElementAtOrNone"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "func-condition-runs-in-memory",
+        "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found",
+        "sentence": "Then every row is read and the condition runs in memory, without a warning.",
+        "axes": {
+          "ef.condition": [
+            "func-variable",
+            "method-group"
+          ]
+        }
+      },
+      {
+        "id": "last-on-a-query-does-not-compile",
+        "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found",
+        "sentence": "`LastOrNone` and `LastOrError` on a query don't compile.",
+        "axes": {
+          "ef.operator": [
+            "LastOrNone",
+            "LastOrError"
+          ]
+        }
+      },
+      {
+        "id": "not-precompiled-under-native-aot",
+        "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found",
+        "sentence": "Under Native AOT these throw \"Query wasn't precompiled\"",
+        "axes": {
+          "process": [
+            "native-aot"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "E10-read-back-skips-validation",
@@ -7191,7 +7639,17 @@
     "narrow": {
       "ef.query": "EF reads a column back without validation, through the value object's `Materialize` rather than `Create`.",
       "shape.site": "EF reads a column back without validation, through the value object's `Materialize` rather than `Create`."
-    }
+    },
+    "obligations": [
+      {
+        "id": "reads-without-create",
+        "sentence": "EF reads a column back without validation, through the value object's `Materialize` rather than `Create`."
+      },
+      {
+        "id": "revalidate-finds",
+        "sentence": "`Revalidate()` finds the rows that today's rules reject, as above."
+      }
+    ]
   },
   {
     "id": "E11-usetypekit-order",
@@ -7219,7 +7677,25 @@
       "shape.kind": "it doesn't matter whether you call it before or after `UseNpgsql` or `UseSqlite`",
       "shape.site": "it doesn't matter whether you call it before or after `UseNpgsql` or `UseSqlite`",
       "shape.wrapped": "it doesn't matter whether you call it before or after `UseNpgsql` or `UseSqlite`"
-    }
+    },
+    "obligations": [
+      {
+        "id": "order-does-not-matter",
+        "sentence": "it doesn't matter whether you call it before or after `UseNpgsql` or `UseSqlite`"
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "in-memory-provider-maps-nothing",
+        "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#setup",
+        "sentence": "EF's in-memory provider has no relational type mapping, so nothing is mapped there.",
+        "axes": {
+          "ef.provider": [
+            "InMemory"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "E12-convention-by-vo-type",
@@ -7249,7 +7725,30 @@
       "ef.mapping": "Configure the value object instead:",
       "shape.site": "Configure the value object instead:",
       "shape.kind": "Configure the value object instead:"
-    }
+    },
+    "obligations": [
+      {
+        "id": "value-object-type-reaches",
+        "sentence": "Configure the value object instead: `configurationBuilder.Properties<Amount>().HavePrecision(18, 2)`.",
+        "axes": {
+          "ef.convention-type": [
+            "value-object"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "underlying-type-convention",
+        "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#model-wide-conventions-follow-the-propertys-type",
+        "sentence": "EF applies `ConfigureConventions` by CLR type.",
+        "axes": {
+          "ef.convention-type": [
+            "underlying"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "E13-primitive-collections",
@@ -7274,7 +7773,30 @@
       "ef.mapping": "db.Orders.Where(o => o.Tags.Contains(tag));",
       "shape.site": "db.Orders.Where(o => o.Tags.Contains(tag));",
       "shape.kind": "db.Orders.Where(o => o.Tags.Contains(tag));"
-    }
+    },
+    "obligations": [
+      {
+        "id": "element-value",
+        "sentence": "db.Orders.Where(o => o.Tags.Any(t => t.Value == \"x\"));",
+        "axes": {
+          "ef.query": [
+            "any-value-equals"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "element-converted-may-cast",
+        "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+        "sentence": "These are converted instead, which works everywhere and may add a cast:",
+        "axes": {
+          "ef.query": [
+            "any-value-equals"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "E14-inheritance-key-generation",
@@ -7299,7 +7821,40 @@
       "ef.mapping": "The root of an inheritance hierarchy follows the same rules under TPH and TPT.",
       "shape.site": "The root of an inheritance hierarchy follows the same rules under TPH and TPT.",
       "shape.kind": "The root of an inheritance hierarchy follows the same rules under TPH and TPT."
-    }
+    },
+    "obligations": [
+      {
+        "id": "tph-tpt-root",
+        "sentence": "The root of an inheritance hierarchy follows the same rules under TPH and TPT.",
+        "axes": {
+          "ef.inheritance": [
+            "TPH",
+            "TPT"
+          ]
+        }
+      },
+      {
+        "id": "tpc-assign-on-sqlite",
+        "sentence": "SQLite has no such sequence, so there you assign it.",
+        "axes": {
+          "ef.inheritance": [
+            "TPC"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "guid-key-not-generated",
+        "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+        "sentence": "A key over a `Guid` is yours to assign",
+        "axes": {
+          "shape.wrapped": [
+            "Guid"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "E15-composite-key",
@@ -7324,7 +7879,13 @@
       "ef.mapping": "A composite key of value objects is `HasKey(x => new { x.Order, x.Line })`, as for primitives.",
       "shape.site": "A composite key of value objects is `HasKey(x => new { x.Order, x.Line })`, as for primitives.",
       "shape.kind": "A composite key of value objects is `HasKey(x => new { x.Order, x.Line })`, as for primitives."
-    }
+    },
+    "obligations": [
+      {
+        "id": "as-for-primitives",
+        "sentence": "A composite key of value objects is `HasKey(x => new { x.Order, x.Line })`, as for primitives."
+      }
+    ]
   },
   {
     "id": "E16-own-configuration-wins",
@@ -7353,7 +7914,84 @@
       "ef.mapping": "A configuration you write yourself always wins over these defaults.",
       "shape.site": "A configuration you write yourself always wins over these defaults.",
       "shape.kind": "A configuration you write yourself always wins over these defaults."
-    }
+    },
+    "obligations": [
+      {
+        "id": "never",
+        "sentence": "A configuration you write yourself always wins over these defaults.",
+        "axes": {
+          "ef.config": [
+            "ValueGeneratedNever"
+          ]
+        }
+      },
+      {
+        "id": "on-add",
+        "sentence": "A configuration you write yourself always wins over these defaults.",
+        "axes": {
+          "ef.config": [
+            "ValueGeneratedOnAdd"
+          ]
+        }
+      },
+      {
+        "id": "column-type",
+        "sentence": "A facet you configure on the property, such as a maximum length or a column type, is kept.",
+        "axes": {
+          "ef.config": [
+            "HasColumnType"
+          ]
+        }
+      },
+      {
+        "id": "conversion",
+        "sentence": "A configuration you write yourself always wins over these defaults.",
+        "axes": {
+          "ef.config": [
+            "HasConversion"
+          ]
+        }
+      },
+      {
+        "id": "optional",
+        "sentence": "A configuration you write yourself always wins over these defaults.",
+        "axes": {
+          "ef.config": [
+            "IsRequired-false"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "char-key-not-generated",
+        "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+        "sentence": "A key over `char` is yours to assign.",
+        "axes": {
+          "ef.config": [
+            "HasColumnType",
+            "HasConversion"
+          ],
+          "shape.wrapped": [
+            "char"
+          ]
+        }
+      },
+      {
+        "id": "guid-key-not-generated",
+        "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+        "sentence": "A key over a `Guid` is yours to assign",
+        "axes": {
+          "ef.config": [
+            "HasColumnType",
+            "HasConversion"
+          ],
+          "shape.wrapped": [
+            "Guid"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "L01-json-bytes",

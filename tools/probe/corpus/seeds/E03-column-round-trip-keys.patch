@@ -1,0 +1,12 @@
+diff --git a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTypeMappingSourcePlugin.cs b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTypeMappingSourcePlugin.cs
+index d04ed86..8f40572 100644
+--- a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTypeMappingSourcePlugin.cs
++++ b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTypeMappingSourcePlugin.cs
+@@ -45,6 +45,7 @@ internal sealed class ValueObjectTypeMappingSourcePlugin(IServiceProvider servic
+         }
+ 
+         if (ValueObjectTypes.Describe(Nullable.GetUnderlyingType(clrType) ?? clrType) is not { } valueObject) return null;
++        if (mappingInfo.IsKeyOrIndex) return null;
+ 
+         _typeMappingSource ??= services.GetRequiredService<IRelationalTypeMappingSource>();
+ 
