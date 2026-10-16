@@ -514,30 +514,12 @@
     "exclude": [
       ["scope=controller", "http.host=minimal"],
       ["scope=controller", "http.host=route-group"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=nullable-property"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=field"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=list-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=array-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=immutable-array-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=read-only-list-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=dictionary-key"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=dictionary-value"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=record-ctor-parameter"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=required-init"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=in-patch"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=polymorphic-derived-property"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=record-class"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=struct"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=record-struct"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=generic-type"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.wrapped=NodaTime.Instant"],
       ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=Preserve"],
       ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=IgnoreCycles"],
       ["json.TypeInfoResolver=source-generated-context", "json.TypeInfoResolverChain=context-then-default"]
     ],
     "excludeReasons": {
       "scope=controller x http.host=minimal|route-group": "a minimal-API host has no controller to leave a member out on; the README's controller scope is MVC's ([WithoutFaults<T>] on a controller class)",
-      "json.TypeInfoResolver=source-generated-context x shape.position other than root, property; x shape.containing other than class; x shape.wrapped=NodaTime.Instant": "harness-bound, not product-impossible: the probes' source-generated context (ProbeContext, harness/Shapes.g.cs) lists value objects only at root and as a property of a class, and none over NodaTime.Instant; under any other shape JsonRow falls back to reflection (ctx-fallback, substituted), so the strict context never runs there. Widening ProbeContext would make these coverable.",
       "json.PreferredObjectCreationHandling=Populate x json.ReferenceHandler=Preserve|IgnoreCycles": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
       "json.TypeInfoResolver=source-generated-context x json.TypeInfoResolverChain=context-then-default": "System.Text.Json refuses adding resolvers to TypeInfoResolverChain once a JsonSerializerContext is the TypeInfoResolver (JsonRow notes it as substituted, STJ refused it), so the strict context never runs with the chain."
     }
@@ -577,29 +559,11 @@
       ]
     },
     "exclude": [
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=nullable-property"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=field"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=list-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=array-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=immutable-array-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=read-only-list-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=dictionary-key"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=dictionary-value"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=record-ctor-parameter"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=required-init"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=in-patch"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=polymorphic-derived-property"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=record-class"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=struct"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=record-struct"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=generic-type"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.wrapped=NodaTime.Instant"],
       ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=Preserve"],
       ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=IgnoreCycles"],
       ["json.TypeInfoResolver=source-generated-context", "json.TypeInfoResolverChain=context-then-default"]
     ],
     "excludeReasons": {
-      "json.TypeInfoResolver=source-generated-context x shape.position other than root, property; x shape.containing other than class; x shape.wrapped=NodaTime.Instant": "harness-bound, not product-impossible: the probes' source-generated context (ProbeContext, harness/Shapes.g.cs) lists value objects only at root and as a property of a class, and none over NodaTime.Instant; under any other shape JsonRow falls back to reflection (ctx-fallback, substituted), so the strict context never runs there. Widening ProbeContext would make these coverable.",
       "json.PreferredObjectCreationHandling=Populate x json.ReferenceHandler=Preserve|IgnoreCycles": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
       "json.TypeInfoResolver=source-generated-context x json.TypeInfoResolverChain=context-then-default": "System.Text.Json refuses adding resolvers to TypeInfoResolverChain once a JsonSerializerContext is the TypeInfoResolver (JsonRow notes it as substituted, STJ refused it), so the strict context never runs with the chain."
     }
@@ -625,29 +589,11 @@
       ]
     },
     "exclude": [
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=nullable-property"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=field"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=list-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=array-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=immutable-array-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=read-only-list-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=dictionary-key"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=dictionary-value"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=record-ctor-parameter"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=required-init"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=in-patch"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=polymorphic-derived-property"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=record-class"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=struct"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=record-struct"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=generic-type"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.wrapped=NodaTime.Instant"],
       ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=Preserve"],
       ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=IgnoreCycles"],
       ["json.TypeInfoResolver=source-generated-context", "json.TypeInfoResolverChain=context-then-default"]
     ],
     "excludeReasons": {
-      "json.TypeInfoResolver=source-generated-context x shape.position other than root, property; x shape.containing other than class; x shape.wrapped=NodaTime.Instant": "harness-bound, not product-impossible: the probes' source-generated context (ProbeContext, harness/Shapes.g.cs) lists value objects only at root and as a property of a class, and none over NodaTime.Instant; under any other shape JsonRow falls back to reflection (ctx-fallback, substituted), so the strict context never runs there. Widening ProbeContext would make these coverable.",
       "json.PreferredObjectCreationHandling=Populate x json.ReferenceHandler=Preserve|IgnoreCycles": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
       "json.TypeInfoResolver=source-generated-context x json.TypeInfoResolverChain=context-then-default": "System.Text.Json refuses adding resolvers to TypeInfoResolverChain once a JsonSerializerContext is the TypeInfoResolver (JsonRow notes it as substituted, STJ refused it), so the strict context never runs with the chain."
     }
@@ -1895,29 +1841,11 @@
       ]
     },
     "exclude": [
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=nullable-property"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=field"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=list-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=array-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=immutable-array-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=read-only-list-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=dictionary-key"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=dictionary-value"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=record-ctor-parameter"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=required-init"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=in-patch"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=polymorphic-derived-property"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=record-class"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=struct"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=record-struct"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=generic-type"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.wrapped=NodaTime.Instant"],
       ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=Preserve"],
       ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=IgnoreCycles"],
       ["json.TypeInfoResolver=source-generated-context", "json.TypeInfoResolverChain=context-then-default"]
     ],
     "excludeReasons": {
-      "json.TypeInfoResolver=source-generated-context x shape.position other than root, property; x shape.containing other than class; x shape.wrapped=NodaTime.Instant": "harness-bound, not product-impossible: the probes' source-generated context (ProbeContext, harness/Shapes.g.cs) lists value objects only at root and as a property of a class, and none over NodaTime.Instant; under any other shape JsonRow falls back to reflection (ctx-fallback, substituted), so the strict context never runs there. Widening ProbeContext would make these coverable.",
       "json.PreferredObjectCreationHandling=Populate x json.ReferenceHandler=Preserve|IgnoreCycles": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
       "json.TypeInfoResolver=source-generated-context x json.TypeInfoResolverChain=context-then-default": "System.Text.Json refuses adding resolvers to TypeInfoResolverChain once a JsonSerializerContext is the TypeInfoResolver (JsonRow notes it as substituted, STJ refused it), so the strict context never runs with the chain."
     }
@@ -1947,29 +1875,11 @@
       ]
     },
     "exclude": [
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=nullable-property"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=field"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=list-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=array-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=immutable-array-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=read-only-list-element"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=dictionary-key"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=dictionary-value"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=record-ctor-parameter"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=required-init"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=in-patch"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.position=polymorphic-derived-property"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=record-class"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=struct"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=record-struct"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.containing=generic-type"],
-      ["json.TypeInfoResolver=source-generated-context", "shape.wrapped=NodaTime.Instant"],
       ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=Preserve"],
       ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=IgnoreCycles"],
       ["json.TypeInfoResolver=source-generated-context", "json.TypeInfoResolverChain=context-then-default"]
     ],
     "excludeReasons": {
-      "json.TypeInfoResolver=source-generated-context x shape.position other than root, property; x shape.containing other than class; x shape.wrapped=NodaTime.Instant": "harness-bound, not product-impossible: the probes' source-generated context (ProbeContext, harness/Shapes.g.cs) lists value objects only at root and as a property of a class, and none over NodaTime.Instant; under any other shape JsonRow falls back to reflection (ctx-fallback, substituted), so the strict context never runs there. Widening ProbeContext would make these coverable.",
       "json.PreferredObjectCreationHandling=Populate x json.ReferenceHandler=Preserve|IgnoreCycles": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
       "json.TypeInfoResolver=source-generated-context x json.TypeInfoResolverChain=context-then-default": "System.Text.Json refuses adding resolvers to TypeInfoResolverChain once a JsonSerializerContext is the TypeInfoResolver (JsonRow notes it as substituted, STJ refused it), so the strict context never runs with the chain."
     }
