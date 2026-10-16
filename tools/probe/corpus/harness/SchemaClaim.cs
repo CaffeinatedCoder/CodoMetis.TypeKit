@@ -258,7 +258,7 @@ namespace Probes.Schema
             }
             s.PostConfigure<HttpJsonOptions>(o => Strict(o.SerializerOptions));
             s.PostConfigure<MvcJsonOptions>(o => Strict(o.JsonSerializerOptions));
-            r.Note("ctx-strict", "the payload is not mapped; the context and SchemaJson list every type the host serializes");
+            r.Note(NoteKeys.CtxStrict, "the payload is not mapped; the context and SchemaJson list every type the host serializes");
         }
 
         static HostCfg Cfg(Row r, string[] actions, Action<IEndpointRouteBuilder> minimal, Action<IServiceCollection>? services = null) => new()
@@ -449,7 +449,7 @@ namespace Probes.Schema
                     // the plain struct beside it, which has no converter, is written the same, so the position has nothing to check
                     if (what == "a nullable property" && !dec && P("Twin") is { } twin && JsonNode.DeepEquals(got, twin) && Norm(twin) is JsonObject { Count: 0 })
                     {
-                        r.Note("schema:nullable-reference-lost-for-plain-too", path);
+                        r.Note(NoteKeys.SchemaNullableReferenceLostForPlainToo, path);
                         continue;
                     }
                     if (!JsonNode.DeepEquals(Norm(got), want)) return $"{path}: {what} is {Cut(got.ToJsonString())}, the {source} says {want!.ToJsonString()}";
@@ -465,7 +465,7 @@ namespace Probes.Schema
                     if (JsonNode.DeepEquals(Norm(qs), want)) return $"{path}: the query parameter q is described as the converter's JSON";
                 }
             }
-            r.Note("compared", source);
+            r.Note(NoteKeys.Compared, source);
             return null;
         }
 
@@ -506,7 +506,7 @@ namespace Probes.Schema
                     var w = await Hx.Send(app, HttpMethod.Post, path, body);
                     if (w.Thrown is null) return (w, null);
                     var twin = path.EndsWith("/c", StringComparison.Ordinal) ? await Hx.Send(app, HttpMethod.Post, path.Replace($"/s/{family}/c", "/s/box/c"), "{}") : null;
-                    if (twin?.Thrown is { } t && t.Split(':')[0] == w.Thrown.Split(':')[0]) { r.Note("mvc:plain-nested-body-throws-too", t.Split(':')[0]); return (null, null); }
+                    if (twin?.Thrown is { } t && t.Split(':')[0] == w.Thrown.Split(':')[0]) { r.Note(NoteKeys.MvcPlainNestedBodyThrowsToo, t.Split(':')[0]); return (null, null); }
                     return (null, $"{path} {body}: request threw {w.Thrown}");
                 }
                 var (absent, f1) = await Post("{}");
@@ -585,7 +585,7 @@ namespace Probes.Schema
             {
                 if (refuse && ex is InvalidOperationException && ex.Message.Contains($"'{type}'", StringComparison.Ordinal) && ex.Message.Contains(said, StringComparison.Ordinal))
                 {
-                    r.Note("compared", "refused naming the type and the minimal-API options' description");
+                    r.Note(NoteKeys.Compared, "refused naming the type and the minimal-API options' description");
                     return null;
                 }
                 // not the refusal the claim names: judged against ASP.NET alone

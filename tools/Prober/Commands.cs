@@ -249,6 +249,8 @@ internal static class Commands
 
     public static int Register(Ledger l, Args a)
     {
+        // A note or a skip built from text fails at run time after a build and a replay; the staged sources are read first.
+        SourceLint.Refuse(l, "register");
         var path = Path.Combine(l.StagingDir, "registry.json");
         var staged = Files.ReadJson(path) as JsonObject ?? new JsonObject { ["probes"] = new JsonObject() };
         var probes = staged["probes"] as JsonObject ?? [];
@@ -267,6 +269,7 @@ internal static class Commands
     public static int Publish(Ledger l, Args a)
     {
         if (!Directory.Exists(l.StagingDir)) { l.Ctx.Out.WriteLine("nothing staged"); return 0; }
+        SourceLint.Refuse(l, "publish");
         var moved = new List<string>();
         foreach (var src in Directory.EnumerateFiles(l.StagingDir, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
         {

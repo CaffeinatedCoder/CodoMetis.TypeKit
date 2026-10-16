@@ -38,13 +38,17 @@ type-shape catalogue with a script into a `Probes/Shapes.g.cs`, not by hand.
   `test/CodoMetis.TypeKit.AspNetCore.Tests/ProbeHost.cs` is a working example to copy from.
 - How a row ends: a check returns null or the failure text, and runs through `Rec.Run`, which fails the
   test for a violation or a harness error and skips it, with its reasons, for any other outcome but a
-  pass. A check says what it saw with `r.Note(key, detail)`, the key from `NoteKeys` in `harness/Row.cs`,
-  which alone decides the outcome; a new key goes there with its outcome, or the row is a harness error.
+  pass; a check that throws ends as a harness error, never a violation, and no seed counts it caught. A check
+  says what it saw with `r.Note(NoteKeys.Name, detail)`. The key, a member of `NoteKeys` in `harness/Row.cs`,
+  alone decides the outcome. Keys are constants the compiler checks: a new one goes into `NoteKeys` with its
+  outcome on one line, and a string, a misspelled member or a key built from text does not compile (decision
+  103). A probe outside the namespace `Probes.Shapes` writes `using NoteKeys = Probes.Shapes.NoteKeys;`.
   Never match a failure's text to excuse it. A difference the framework makes on its own is shown by a
   baseline in the same row (the document as ASP.NET writes it without `AddTypeKit()`,
   `Hx.DocRefusedByAspNetAlone`), not by a substring. A row that would fail for an open finding calls
-  `r.Skip("F7", why)`: the gate refuses while any row skips, and the replay fails a skip whose finding the
-  ledger has fixed or dismissed.
+  `r.Skip("F7", why)`, the finding as a string literal: `register` and `publish` refuse a skip whose finding
+  is built from text or is not open in the ledger, naming the file and line. The gate refuses while any row
+  skips, and the replay fails a skip whose finding the ledger has fixed or dismissed.
 - EF probes: SQLite in memory (`Data Source=:memory:` with the connection held open). PostgreSQL needs
   a server and is out of reach.
 - Analyzer probes (what compiles and what CMTK reports): in `test/CodoMetis.TypeKit.Analyzers.Tests`,

@@ -39,7 +39,7 @@ public sealed class Row
     public IEnumerable<KeyValuePair<string, string>> All { get { foreach (var kv in d) { Mark(kv.Key, kv.Value); yield return kv; } } }
     string Mark(string axis, string v) { lock (Ev) Ev.Read.Add(axis); return v; }
     /// <summary>The setting ran as <paramref name="actual"/>, not as the row asked: only the actual value earns credit.</summary>
-    public void Substituted(string axis, string actual, string reason) { lock (Ev) Ev.Applied[axis] = actual; Note("substituted", $"{axis}={actual}, {reason}"); }
+    public void Substituted(string axis, string actual, string reason) { lock (Ev) Ev.Applied[axis] = actual; Note(NoteKeys.Substituted, $"{axis}={actual}, {reason}"); }
     public void Outcome(string category, string reason) { lock (Ev) Ev.Raise(category, reason); }
     /// <summary>The settings that ran: the axes the harness read, at the value that applied.</summary>
     public Dictionary<string, string> AppliedSettings()
@@ -49,14 +49,13 @@ public sealed class Row
     public string Notes { get; private set; } = "";
     /// <summary>
     /// Records what a check saw, by a key of <see cref="NoteKeys"/>; the key alone decides the outcome, the
-    /// detail only explains it. A key the catalogue does not list is a harness error, never a pass.
+    /// detail only explains it.
     /// </summary>
-    public void Note(string key, string? detail = null)
+    public void Note(NoteKeys key, string? detail = null)
     {
-        var n = detail is null ? key : $"{key}({detail})";
+        var n = detail is null ? key.Key : $"{key.Key}({detail})";
         if (!Notes.Split(';').Contains(n)) Notes += (Notes.Length == 0 ? "" : ";") + n;
-        if (!NoteKeys.Category.TryGetValue(key, out var c)) Outcome("harness-error", $"note key {key} is not in NoteKeys: add it with its outcome");
-        else if (c != "pass") Outcome(c, n);
+        if (key.Outcome != "pass") Outcome(key.Outcome, n);
     }
     /// <summary>
     /// Steps around an open finding: the row ends as known-finding and earns nothing. The replay fails a probe
@@ -74,58 +73,102 @@ public sealed class Row
 }
 
 /// <summary>
-/// Every note a check may make, by exact key, and the outcome it stands for. A row whose checks returned no
-/// failure is a pass only if none of its notes says a check was skipped (inapplicable), ended in a refusal
-/// (expected refusal) or could not tell (inconclusive): a refusal is evidence about refusing, not about
-/// serializing or binding successfully. "pass" keys only explain how a check that ran was compared.
+/// Every note a check may make, by exact key, and the outcome it stands for: the catalogue, and each of its
+/// members one key. A check writes <c>r.Note(NoteKeys.Compared, detail)</c>; the constructor is private, so a
+/// key outside the catalogue, a misspelled one or one built from text does not compile (decision 103). A row
+/// whose checks returned no failure is a pass only if none of its notes says a check was skipped
+/// (inapplicable), ended in a refusal (expected refusal) or could not tell (inconclusive): a refusal is
+/// evidence about refusing, not about serializing or binding successfully. "pass" keys only explain how a
+/// check that ran was compared.
 /// </summary>
-public static class NoteKeys
+public sealed class NoteKeys
 {
-    public static readonly IReadOnlyDictionary<string, string> Category = new Dictionary<string, string>(StringComparer.Ordinal)
-    {
-        // how a check that ran was compared
-        ["compared"] = "pass", ["substituted"] = "pass", ["dropped"] = "pass", ["ctx-strict"] = "pass", ["ctx-fallback"] = "pass",
-        ["binding:nullable"] = "pass", ["own-vo"] = "pass", ["converter-wraps-inner"] = "pass",
-        ["documented-char-guid-key-never-generated-checked"] = "pass", ["documented-char-guid-not-generated-checked"] = "pass",
-        ["schema:compared-with-nullable-wrapped"] = "pass", ["schema:nullable-spellings-normalised"] = "pass",
-        ["schema:class-vo-nullability-normalised"] = "pass", ["schema:neither-side-documented"] = "pass",
-        // EF: the claim's check ran, against the documented expectation where the wrapped type's own side cannot answer
-        ["refusal-names-the-type"] = "pass", ["stored-factory-read-unvalidated"] = "pass", ["documented-char-guid-default-generation-normalized"] = "pass",
-        ["plain-key-throws-on-sqlite-vo-checked-against-expected"] = "pass", ["tpc-sqlite-no-sequence-assign-checked"] = "pass",
-        // the document part has nothing to check: ASP.NET alone refuses the same document in the same row, or
-        // leaves the controller out of it (docs/aspnet-core.md, "Bind value objects in MVC"), checked absent
-        ["doc:refused-by-aspnet-alone"] = "pass", ["doc:controller-not-in-api-explorer"] = "pass",
-        // L03's JSON half has nothing to compare: the wrapped type alone refuses under the row's options, the value object alike, in the same row
-        ["json-half:wrapped-alone-refuses"] = "pass",
-        // JSON family (C01, C10, L06): the options leave the member out of one direction for the plain type without TypeKit too, shown by a
-        // baseline in the same row; that direction has nothing to check, and the row is judged by the other one (both left out: inapplicable)
-        ["json:member-left-out-by-options"] = "pass", ["json:both-directions-left-out-by-options"] = "inapplicable",
-        // a read the wrapped type's shape refuses with the very same exception and message: the serializer refused the document before any
-        // value object ran (the baseline in the same row), so the read has nothing to check; the row is judged by its write and other reads
-        ["json:read-refused-by-stj-alone"] = "pass",
-        // ASP.NET's OpenAPI 2.0 writer drops the reference of a nullable struct component; a plain struct beside it in the same
-        // schema, without a converter, is written the same, so that position has nothing to check (C12)
-        ["schema:nullable-reference-lost-for-plain-too"] = "pass",
-        // a check that did not apply
-        ["own-vo-converter"] = "inapplicable", ["closed-set-vs-own-wrapped-converter"] = "inapplicable", ["closed-set-differs"] = "inapplicable",
-        ["byte-array-is-base64"] = "inapplicable", ["own-spelling"] = "inapplicable", ["not-bindable-from-text"] = "inapplicable",
-        ["route-text-unsafe"] = "inapplicable", ["own-vo:body-binding-skipped"] = "inapplicable",
-        ["mvc-maxvalidationdepth1-ignores-binding-errors"] = "inapplicable", ["stored-factory-skips-validation"] = "inapplicable",
-        ["schema:converter-not-described"] = "inapplicable", ["schema:nullability-not-comparable"] = "inapplicable",
-        ["closed-set-key-unpoliced"] = "inapplicable", ["plain-refused"] = "inapplicable", ["entry-not-applicable"] = "inapplicable",
-        ["no-text"] = "inapplicable", ["text:wrapped-round-trip-lossy-too"] = "inapplicable", ["no-operator"] = "inapplicable", ["refused-input-not-placeable"] = "inapplicable",
-        // a refusal, intended or the framework's own
-        ["documented-diff"] = "expected-refusal", ["stj-maxdepth"] = "expected-refusal", ["validated-refuses-type-limit"] = "expected-refusal",
-        ["class-vo-takes-null"] = "expected-refusal", ["bind:plain-unbindable"] = "expected-refusal", ["preserve-documented"] = "expected-refusal",
-        ["mvc-400-unwritable-under-source-gen"] = "expected-refusal", ["own-vo:read-back-refused"] = "expected-refusal",
-        ["both-threw"] = "expected-refusal", ["read-both-threw"] = "expected-refusal", ["ser-both-threw"] = "expected-refusal",
-        ["ser-refused"] = "expected-refusal", ["read-back-refused"] = "expected-refusal", ["plain-read-back-fails-too"] = "expected-refusal",
-        ["own-vo-converter-threw"] = "expected-refusal", ["own-converter-refused-for-wrapped-too"] = "expected-refusal",
-        // MVC's validator throws for a nested struct of a body (MaxValidationDepth) for a plain twin on the same side too (C13)
-        ["mvc:plain-nested-body-throws-too"] = "expected-refusal",
-        // both sides refused, but not alike
-        ["both-threw-differently"] = "inconclusive",
-    };
+    const string Pass = "pass", Inapplicable = "inapplicable", ExpectedRefusal = "expected-refusal", Inconclusive = "inconclusive";
+    /// <summary>The key as a row's notes and reasons spell it.</summary>
+    public string Key { get; }
+    /// <summary>The outcome a note with this key stands for; a note never makes a violation or a harness error.</summary>
+    public string Outcome { get; }
+    NoteKeys(string key, string outcome) { Key = key; Outcome = outcome; }
+    public override string ToString() => Key;
+
+    // how a check that ran was compared
+    public static readonly NoteKeys Compared = new("compared", Pass);
+    public static readonly NoteKeys Substituted = new("substituted", Pass);
+    public static readonly NoteKeys Dropped = new("dropped", Pass);
+    public static readonly NoteKeys CtxStrict = new("ctx-strict", Pass);
+    public static readonly NoteKeys CtxFallback = new("ctx-fallback", Pass);
+    public static readonly NoteKeys BindingNullable = new("binding:nullable", Pass);
+    public static readonly NoteKeys OwnVo = new("own-vo", Pass);
+    public static readonly NoteKeys ConverterWrapsInner = new("converter-wraps-inner", Pass);
+    public static readonly NoteKeys DocumentedCharGuidKeyNeverGeneratedChecked = new("documented-char-guid-key-never-generated-checked", Pass);
+    public static readonly NoteKeys DocumentedCharGuidNotGeneratedChecked = new("documented-char-guid-not-generated-checked", Pass);
+    public static readonly NoteKeys SchemaComparedWithNullableWrapped = new("schema:compared-with-nullable-wrapped", Pass);
+    public static readonly NoteKeys SchemaNullableSpellingsNormalised = new("schema:nullable-spellings-normalised", Pass);
+    public static readonly NoteKeys SchemaClassVoNullabilityNormalised = new("schema:class-vo-nullability-normalised", Pass);
+    public static readonly NoteKeys SchemaNeitherSideDocumented = new("schema:neither-side-documented", Pass);
+    // EF: the claim's check ran, against the documented expectation where the wrapped type's own side cannot answer
+    public static readonly NoteKeys RefusalNamesTheType = new("refusal-names-the-type", Pass);
+    public static readonly NoteKeys StoredFactoryReadUnvalidated = new("stored-factory-read-unvalidated", Pass);
+    public static readonly NoteKeys DocumentedCharGuidDefaultGenerationNormalized = new("documented-char-guid-default-generation-normalized", Pass);
+    public static readonly NoteKeys PlainKeyThrowsOnSqliteVoCheckedAgainstExpected = new("plain-key-throws-on-sqlite-vo-checked-against-expected", Pass);
+    public static readonly NoteKeys TpcSqliteNoSequenceAssignChecked = new("tpc-sqlite-no-sequence-assign-checked", Pass);
+    // the document part has nothing to check: ASP.NET alone refuses the same document in the same row, or
+    // leaves the controller out of it (docs/aspnet-core.md, "Bind value objects in MVC"), checked absent
+    public static readonly NoteKeys DocRefusedByAspnetAlone = new("doc:refused-by-aspnet-alone", Pass);
+    public static readonly NoteKeys DocControllerNotInApiExplorer = new("doc:controller-not-in-api-explorer", Pass);
+    // L03's JSON half has nothing to compare: the wrapped type alone refuses under the row's options, the value object alike, in the same row
+    public static readonly NoteKeys JsonHalfWrappedAloneRefuses = new("json-half:wrapped-alone-refuses", Pass);
+    // JSON family (C01, C10, L06): the options leave the member out of one direction for the plain type without TypeKit too, shown by a
+    // baseline in the same row; that direction has nothing to check, and the row is judged by the other one (both left out: inapplicable)
+    public static readonly NoteKeys JsonMemberLeftOutByOptions = new("json:member-left-out-by-options", Pass);
+    public static readonly NoteKeys JsonBothDirectionsLeftOutByOptions = new("json:both-directions-left-out-by-options", Inapplicable);
+    // a read the wrapped type's shape refuses with the very same exception and message: the serializer refused the document before any
+    // value object ran (the baseline in the same row), so the read has nothing to check; the row is judged by its write and other reads
+    public static readonly NoteKeys JsonReadRefusedByStjAlone = new("json:read-refused-by-stj-alone", Pass);
+    // ASP.NET's OpenAPI 2.0 writer drops the reference of a nullable struct component; a plain struct beside it in the same
+    // schema, without a converter, is written the same, so that position has nothing to check (C12)
+    public static readonly NoteKeys SchemaNullableReferenceLostForPlainToo = new("schema:nullable-reference-lost-for-plain-too", Pass);
+    // a check that did not apply
+    public static readonly NoteKeys OwnVoConverter = new("own-vo-converter", Inapplicable);
+    public static readonly NoteKeys ClosedSetVsOwnWrappedConverter = new("closed-set-vs-own-wrapped-converter", Inapplicable);
+    public static readonly NoteKeys ClosedSetDiffers = new("closed-set-differs", Inapplicable);
+    public static readonly NoteKeys ByteArrayIsBase64 = new("byte-array-is-base64", Inapplicable);
+    public static readonly NoteKeys OwnSpelling = new("own-spelling", Inapplicable);
+    public static readonly NoteKeys NotBindableFromText = new("not-bindable-from-text", Inapplicable);
+    public static readonly NoteKeys RouteTextUnsafe = new("route-text-unsafe", Inapplicable);
+    public static readonly NoteKeys OwnVoBodyBindingSkipped = new("own-vo:body-binding-skipped", Inapplicable);
+    public static readonly NoteKeys MvcMaxvalidationdepth1IgnoresBindingErrors = new("mvc-maxvalidationdepth1-ignores-binding-errors", Inapplicable);
+    public static readonly NoteKeys StoredFactorySkipsValidation = new("stored-factory-skips-validation", Inapplicable);
+    public static readonly NoteKeys SchemaConverterNotDescribed = new("schema:converter-not-described", Inapplicable);
+    public static readonly NoteKeys SchemaNullabilityNotComparable = new("schema:nullability-not-comparable", Inapplicable);
+    public static readonly NoteKeys ClosedSetKeyUnpoliced = new("closed-set-key-unpoliced", Inapplicable);
+    public static readonly NoteKeys PlainRefused = new("plain-refused", Inapplicable);
+    public static readonly NoteKeys EntryNotApplicable = new("entry-not-applicable", Inapplicable);
+    public static readonly NoteKeys NoText = new("no-text", Inapplicable);
+    public static readonly NoteKeys TextWrappedRoundTripLossyToo = new("text:wrapped-round-trip-lossy-too", Inapplicable);
+    public static readonly NoteKeys NoOperator = new("no-operator", Inapplicable);
+    public static readonly NoteKeys RefusedInputNotPlaceable = new("refused-input-not-placeable", Inapplicable);
+    // a refusal, intended or the framework's own
+    public static readonly NoteKeys DocumentedDiff = new("documented-diff", ExpectedRefusal);
+    public static readonly NoteKeys StjMaxdepth = new("stj-maxdepth", ExpectedRefusal);
+    public static readonly NoteKeys ValidatedRefusesTypeLimit = new("validated-refuses-type-limit", ExpectedRefusal);
+    public static readonly NoteKeys ClassVoTakesNull = new("class-vo-takes-null", ExpectedRefusal);
+    public static readonly NoteKeys BindPlainUnbindable = new("bind:plain-unbindable", ExpectedRefusal);
+    public static readonly NoteKeys PreserveDocumented = new("preserve-documented", ExpectedRefusal);
+    public static readonly NoteKeys Mvc400UnwritableUnderSourceGen = new("mvc-400-unwritable-under-source-gen", ExpectedRefusal);
+    public static readonly NoteKeys OwnVoReadBackRefused = new("own-vo:read-back-refused", ExpectedRefusal);
+    public static readonly NoteKeys BothThrew = new("both-threw", ExpectedRefusal);
+    public static readonly NoteKeys ReadBothThrew = new("read-both-threw", ExpectedRefusal);
+    public static readonly NoteKeys SerBothThrew = new("ser-both-threw", ExpectedRefusal);
+    public static readonly NoteKeys SerRefused = new("ser-refused", ExpectedRefusal);
+    public static readonly NoteKeys ReadBackRefused = new("read-back-refused", ExpectedRefusal);
+    public static readonly NoteKeys PlainReadBackFailsToo = new("plain-read-back-fails-too", ExpectedRefusal);
+    public static readonly NoteKeys OwnVoConverterThrew = new("own-vo-converter-threw", ExpectedRefusal);
+    public static readonly NoteKeys OwnConverterRefusedForWrappedToo = new("own-converter-refused-for-wrapped-too", ExpectedRefusal);
+    // MVC's validator throws for a nested struct of a body (MaxValidationDepth) for a plain twin on the same side too (C13)
+    public static readonly NoteKeys MvcPlainNestedBodyThrowsToo = new("mvc:plain-nested-body-throws-too", ExpectedRefusal);
+    // both sides refused, but not alike
+    public static readonly NoteKeys BothThrewDifferently = new("both-threw-differently", Inconclusive);
 }
 
 public static class Rows
@@ -182,19 +225,25 @@ public static class Rec
     }
     /// <summary>
     /// Runs the check on a fresh copy of the row (its own evidence); null = no failure, otherwise the failure text.
-    /// An exception the check did not expect is a harness error until triaged, never a pass. A violation or a
+    /// An exception the check did not expect is a harness error until triaged, never a pass and never a
+    /// violation: the row fails the test with the exception named, and no seed counts it caught. A violation or a
     /// harness error fails the test; any other outcome but a pass skips it with its reasons, so a test run
     /// counts what earned nothing.
     /// </summary>
-    public static async Task Run(string claim, int idx, Func<Row, Task<string?>> check, string? rowsOf = null)
+    public static Task Run(string claim, int idx, Func<Row, Task<string?>> check, string? rowsOf = null) => Run(claim, Rows.Get(rowsOf ?? claim, idx), check);
+
+    /// <summary>The same for a row in hand, without a rows file: how the prober's tests run the harness.</summary>
+    public static async Task Run(string claim, Row cached, Func<Row, Task<string?>> check)
     {
-        var cached = Rows.Get(rowsOf ?? claim, idx);
+        var idx = cached.Index;
         var row = new Row(cached.Index, cached.All.ToDictionary(kv => kv.Key, kv => kv.Value));
-        string? fail;
+        string? fail = null, unexpected = null;
         try { fail = await check(row); }
-        catch (Exception ex) { fail = "UNEXPECTED " + ex.GetType().Name + ": " + ex.Message; row.Outcome("harness-error", fail); }
+        catch (Exception ex) { unexpected = "UNEXPECTED " + ex.GetType().Name + ": " + ex.Message; row.Outcome("harness-error", unexpected); }
+        // An exception is the harness breaking, not the claim's check firing: a harness error and never a
+        // violation, so a seeded defect that only makes a check throw is no catch (decision 103).
         if (fail is not null) row.Outcome("violation", fail);
-        Write(claim, idx, row.Ev.Category, fail ?? row.Notes, row);
+        Write(claim, idx, row.Ev.Category, fail ?? unexpected ?? row.Notes, row);
         if (fail is not null) Assert.Fail($"[{claim} #{idx}] {row}\n{fail}");
         if (row.Ev.Category == "harness-error") Assert.Fail($"[{claim} #{idx}] {row}\nharness error: {string.Join("; ", row.Ev.Reasons)}");
         if (row.Ev.Category != "pass") Assert.Skip($"{row.Ev.Category}: {string.Join("; ", row.Ev.Reasons.Where(x => !x.StartsWith("pass:")))}");

@@ -101,7 +101,7 @@ public static class JsonRow
                 r.Substituted(kv.Key, "default", "STJ refused it: " + ex.GetType().Name);
             }
         }
-        r.Note("dropped", string.Join(",", dropped));
+        r.Note(NoteKeys.Dropped, string.Join(",", dropped));
         return new(o, dropped.Count == 0 ? null : string.Join(",", dropped));
     }
 
@@ -120,7 +120,7 @@ public static class JsonRow
             var pos = r["shape.position"]; var con = (r.Get("shape.containing") ?? "class");
             var hp = Pos.Build(pos, con, e, false, plain); var hv = Pos.Build(pos, con, e, true, vo);
             var ok = ProbeContext.Default.GetTypeInfo(hp.Declared) is not null && ProbeContext.Default.GetTypeInfo(hv.Declared) is not null;
-            r.Note(ok ? "ctx-strict" : "ctx-fallback");
+            if (ok) r.Note(NoteKeys.CtxStrict); else r.Note(NoteKeys.CtxFallback);
             if (!ok) r.Substituted("json.TypeInfoResolver", "source-generated-context+reflection-fallback", "the shape is not listed in the context");
             return ok;
         }

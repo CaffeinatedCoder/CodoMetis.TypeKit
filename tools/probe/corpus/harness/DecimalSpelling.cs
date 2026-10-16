@@ -68,7 +68,7 @@ public static class DecimalSpelling
         var (jp, xp) = Jx.Ser(hp, o); var (jv, xv) = Jx.Ser(hv, o); var (jb, xb) = Jx.Ser(hp, ob);
         var wrote = false;
         if (xb is not null && xp is not null && (xv is not null || ownVo) && xp.GetType() == xb.GetType())
-        { r.Note("both-threw", "write: " + Jx.Ex(xb)); return null; }   // the options refuse the shape for the serializer's own decimal too
+        { r.Note(NoteKeys.BothThrew, "write: " + Jx.Ex(xb)); return null; }   // the options refuse the shape for the serializer's own decimal too
         if (xp is not null) return $"write: the decimal with {conv.GetType().Name} threw {Jx.Ex(xp)}; without it the serializer wrote {Jx.Cut(jb)}";
         if (xv is not null && !ownVo) return $"write: the value object threw {Jx.Ex(xv)} where the decimal wrote {Jx.Cut(jp)}";
         var tp = Jx.Tokens(jp!).Where(t => IsDecimal(t, d)).ToList();
@@ -76,7 +76,7 @@ public static class DecimalSpelling
         if (tb is { Count: 0 })
         {
             if (tp.Count != 0) return $"write: the options leave the member out without the converter ({Jx.Cut(jb)}) but it wrote {Jx.Cut(jp)}";
-            r.Note("json:member-left-out-by-options", "write: " + Jx.Cut(jb));
+            r.Note(NoteKeys.JsonMemberLeftOutByOptions, "write: " + Jx.Cut(jb));
         }
         else
         {
@@ -92,7 +92,7 @@ public static class DecimalSpelling
         }
         if (ownVo)
         {
-            r.Note("own-vo");   // the application's converter for the value object writes its own document; it reads it back
+            r.Note(NoteKeys.OwnVo);   // the application's converter for the value object writes its own document; it reads it back
             var (_, xr) = Jx.De(jv!, hv.Declared, o);
             if (xr is not null) return "own converter for the value object: its document does not read back: " + Jx.Ex(xr);
         }
@@ -108,7 +108,7 @@ public static class DecimalSpelling
             // Nothing to read either: the options leave the member out of every document (a field without IncludeFields).
             var (jfb, _) = Jx.Ser(hp, Jx.Full(ob));
             if (jfb is null || Jx.Tokens(jfb).Any(t => IsDecimal(t, d))) { r.Outcome("harness-error", "no decimal in the document with every member written: " + jf); return null; }
-            if (!wrote) r.Note("json:both-directions-left-out-by-options", jf);
+            if (!wrote) r.Note(NoteKeys.JsonBothDirectionsLeftOutByOptions, jf);
             return null;
         }
         var key = at.Any(t => t.Type == JsonTokenType.PropertyName);
@@ -126,7 +126,7 @@ public static class DecimalSpelling
             var (vv, ev) = ownVo ? (null, null) : Jx.De(json, hv.Declared, o);
             if (ep is not null)
             {
-                if (eb is not null && (ownVo || ev is not null) && ep.GetType() == eb.GetType()) { r.Note("read-both-threw", name + ": " + Jx.Ex(eb)); continue; }
+                if (eb is not null && (ownVo || ev is not null) && ep.GetType() == eb.GetType()) { r.Note(NoteKeys.ReadBothThrew, name + ": " + Jx.Ex(eb)); continue; }
                 return $"read {name}: the decimal with {conv.GetType().Name} threw {Jx.Ex(ep)}\n  text={Jx.Cut(json)}";
             }
             if (ev is not null) return $"read {name}: the value object threw {Jx.Ex(ev)} where the decimal read it\n  text={Jx.Cut(json)}";
@@ -134,7 +134,7 @@ public static class DecimalSpelling
             if (leftOut)
             {
                 if (cp.Count != 0 || cv.Count != 0) return $"read {name}: the options read no member for the serializer's own decimal, yet it read {Show(cp)} / {Show(cv)}";
-                r.Note("json:member-left-out-by-options", "read: " + name);
+                r.Note(NoteKeys.JsonMemberLeftOutByOptions, "read: " + name);
                 continue;
             }
             if (cp.Count == 0) return $"read {name}: the decimal read nothing\n  text={Jx.Cut(json)}";
@@ -142,8 +142,8 @@ public static class DecimalSpelling
             if (cp.Count != cv.Count || cp.Zip(cv).Any(z => !Same(z.First, z.Second))) return $"read {name}: the value object read {Show(cv)}, the decimal {Show(cp)}\n  text={Jx.Cut(json)}";
             read = true;
         }
-        if (!wrote && !read) r.Note("json:both-directions-left-out-by-options");
-        r.Note("compared", $"{(number ? "number" : "string")} {text} -> {canon}");
+        if (!wrote && !read) r.Note(NoteKeys.JsonBothDirectionsLeftOutByOptions);
+        r.Note(NoteKeys.Compared, $"{(number ? "number" : "string")} {text} -> {canon}");
         return null;
     }
 }

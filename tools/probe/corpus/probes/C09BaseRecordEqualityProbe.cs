@@ -9,6 +9,7 @@
 // Dictionary key, Distinct) of the value object and of every base in its chain holds two of the three.
 using System.Reflection;
 using Probes.Build;
+using NoteKeys = Probes.Shapes.NoteKeys;
 using Probes.Build.C09;
 namespace Probes;
 
@@ -71,7 +72,7 @@ public sealed class C09BaseRecordEqualityProbe
             var f = (string?)typeof(C09BaseRecordEqualityProbe).GetMethod(nameof(Collect), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(t).Invoke(null, [collection, va, vb, vc]);
             if (f is not null) fails.Add($"{label}: {f}");
         }
-        r.Note("compared", $"{c.Bases.Length + 1} types, against EqualityComparer<{a.GetType().Name}>");
+        r.Note(NoteKeys.Compared, $"{c.Bases.Length + 1} types, against EqualityComparer<{a.GetType().Name}>");
         return fails.Count == 0 ? null : string.Join("; ", fails);
     }
 

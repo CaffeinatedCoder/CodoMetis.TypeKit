@@ -59,8 +59,8 @@ public sealed class E03ColumnRoundTripProbe
         var original = e.Valid();
         var voSide = await Run(mapping, EfModel.Entity(mapping, e.Vo), () => e.MakeVo(original), vo: true);
         var plainSide = await Run(mapping, EfModel.Entity(mapping, e.Plain), () => original, vo: false);
-        if (voSide.Ex is not null && plainSide.Ex is not null) { r.Note("both-threw", voSide.Ex.GetType().Name); return null; }
-        if (plainSide.Ex is not null) { r.Note("plain-refused", plainSide.Ex.GetType().Name); return null; }
+        if (voSide.Ex is not null && plainSide.Ex is not null) { r.Note(NoteKeys.BothThrew, voSide.Ex.GetType().Name); return null; }
+        if (plainSide.Ex is not null) { r.Note(NoteKeys.PlainRefused, plainSide.Ex.GetType().Name); return null; }
         if (voSide.Ex is not null) return $"the value object in a {mapping} failed with {voSide.Ex.GetType().Name}: {voSide.Ex.Message.Split('\n')[0]}; the wrapped type did not";
         if (voSide.Read.Count != plainSide.Read.Count) return $"read {voSide.Read.Count} rows, the wrapped type read {plainSide.Read.Count}";
         for (var i = 0; i < voSide.Read.Count; i++)

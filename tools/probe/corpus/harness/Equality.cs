@@ -176,7 +176,7 @@ public static class Equality
             }
         }
         if (fails.Count > 0) return $"{Jx.Name(v)} ({kind}, {wrapped}, {inh}, {site}, {position} in {containing}): " + string.Join("; ", fails);
-        r.Note("compared", $"{v.Name} {position}");
+        r.Note(NoteKeys.Compared, $"{v.Name} {position}");
         return null;
     }
 }

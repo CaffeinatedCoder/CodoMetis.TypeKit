@@ -151,7 +151,7 @@ public sealed class C17Cmtk0014Probe
         var run = await Rz.Analyze("CMTK0014", [("Row" + id + ".cs", source)]);
         if (run.Errors.Count > 0) { r.Outcome("harness-error", "the probe's source does not compile: " + run.ErrorText()); return null; }
         if (run.AnalyzerFailures.Count > 0) return "the analyzer failed: " + string.Join("; ", run.AnalyzerFailures.Select(f => f.GetMessage()));
-        r.Note("compared", $"{p.Labels.Count} places, {p.Expected.Count} expected reported");
+        r.Note(NoteKeys.Compared, $"{p.Labels.Count} places, {p.Expected.Count} expected reported");
         return Rz.Agree(run, p.Expected, (d, m) =>
         {
             var type = m.Label.StartsWith("ca") ? "ConstructorAccessibility" : "FaultKind";

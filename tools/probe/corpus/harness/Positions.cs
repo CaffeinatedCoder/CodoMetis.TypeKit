@@ -213,33 +213,33 @@ public static class JsonParity
                 var oOwn = new JsonSerializerOptions(oPlain);
                 oOwn.Converters.Insert(0, (System.Text.Json.Serialization.JsonConverter)Activator.CreateInstance(typeof(OwnWrappedConverter<>).MakeGenericType(Make.Held(e.Plain)), JsonRow.Inner(e))!);
                 var (_, eo) = Ser(hp, oOwn);
-                if (eo is not null && eo.GetType() == ev.GetType()) { r.Note("own-converter-refused-for-wrapped-too", eo.GetType().Name); return null; }
+                if (eo is not null && eo.GetType() == ev.GetType()) { r.Note(NoteKeys.OwnConverterRefusedForWrappedToo, eo.GetType().Name); return null; }
                 return $"own VO converter row: VO serialization threw {ev.GetType().Name}: {ev.Message}";
             }
-            r.Note("own-vo");
+            r.Note(NoteKeys.OwnVo);
             if (jv is not null)
             {
                 var (back, eb) = De(jv, hv, o);
-                if (eb is not null) { if (r.Get("json.UnmappedMemberHandling") == "Disallow" || input != "valid") { r.Note("own-vo:read-back-refused"); return null; } return "own VO converter: read-back threw " + eb.GetType().Name + ": " + eb.Message; }
+                if (eb is not null) { if (r.Get("json.UnmappedMemberHandling") == "Disallow" || input != "valid") { r.Note(NoteKeys.OwnVoReadBackRefused); return null; } return "own VO converter: read-back threw " + eb.GetType().Name + ": " + eb.Message; }
                 if (back != jv) return $"own VO converter round trip differs: {jv} vs {back}";
             }
             return null;
         }
-        if (e.Wrapped == "byte" && position == "array-element" && jp != jv) { r.Note("byte-array-is-base64", "write"); return null; } // STJ writes byte[] as base64; an array of byte value objects is a JSON array
+        if (e.Wrapped == "byte" && position == "array-element" && jp != jv) { r.Note(NoteKeys.ByteArrayIsBase64, "write"); return null; } // STJ writes byte[] as base64; an array of byte value objects is a JSON array
         if (ep is not null && ev is not null)
         {
             // Both refused: evidence about refusing, not about serializing. Refusing differently is no agreement at all.
-            if (ep.GetType() != ev.GetType()) { r.Note("both-threw-differently", ep.GetType().Name + "/" + ev.GetType().Name); return null; }
-            r.Note("both-threw", ep.GetType().Name + ": " + ev.Message[..Math.Min(70, ev.Message.Length)]); return null;
+            if (ep.GetType() != ev.GetType()) { r.Note(NoteKeys.BothThrewDifferently, ep.GetType().Name + "/" + ev.GetType().Name); return null; }
+            r.Note(NoteKeys.BothThrew, ep.GetType().Name + ": " + ev.Message[..Math.Min(70, ev.Message.Length)]); return null;
         }
         if (ep is null && ev is not null)
         {
-            if (r.Is("json.MaxDepth", "3") && ev is JsonException && ev.Message.Contains("maximum allowed depth")) { r.Note("stj-maxdepth", "charges custom converters"); return null; } // inherent to STJ: any custom converter costs a level (design note D1)
-            if (preserveOwn && e.Wrapped == "own-record-class" && ev is NotSupportedException) { r.Note("preserve-documented"); return null; } // documented (Generators README#json)
+            if (r.Is("json.MaxDepth", "3") && ev is JsonException && ev.Message.Contains("maximum allowed depth")) { r.Note(NoteKeys.StjMaxdepth, "charges custom converters"); return null; } // inherent to STJ: any custom converter costs a level (design note D1)
+            if (preserveOwn && e.Wrapped == "own-record-class" && ev is NotSupportedException) { r.Note(NoteKeys.PreserveDocumented); return null; } // documented (Generators README#json)
             return $"wrapped serialized ({jp}) but the value object threw {ev.GetType().Name}: {ev.Message}";
         }
         if (ep is not null && ev is null) return $"value object serialized ({jv}) where the wrapped type threw {ep.GetType().Name}: {ep.Message}";
-        if (jp != jv && e.Kind == "closed-set" && position == "dictionary-key" && r.Get("json.DictionaryKeyPolicy") != "default") { r.Note("closed-set-key-unpoliced"); return null; } // a closed set travels as its name
+        if (jp != jv && e.Kind == "closed-set" && position == "dictionary-key" && r.Get("json.DictionaryKeyPolicy") != "default") { r.Note(NoteKeys.ClosedSetKeyUnpoliced); return null; } // a closed set travels as its name
         if (jp != jv)
         {
             // intended: a struct VO over... none. DateTime is written as UTC; sample is UTC so equal.
@@ -250,8 +250,8 @@ public static class JsonParity
         var (dp, xp) = De(text, hp, oPlain); var (dv, xv) = De(text, hv, o);
         if (xp is not null && xv is not null)
         {
-            if (xp.GetType() != xv.GetType() && !(xp is JsonException && xv is JsonException)) { r.Note("both-threw-differently", "read: " + xp.GetType().Name + "/" + xv.GetType().Name); return null; }
-            r.Note("read-both-threw", xp.GetType().Name); return null;
+            if (xp.GetType() != xv.GetType() && !(xp is JsonException && xv is JsonException)) { r.Note(NoteKeys.BothThrewDifferently, "read: " + xp.GetType().Name + "/" + xv.GetType().Name); return null; }
+            r.Note(NoteKeys.ReadBothThrew, xp.GetType().Name); return null;
         }
         if (xp is null && xv is not null)
         {
@@ -266,7 +266,7 @@ public static class JsonParity
         if (Validated(e) && input == "refused-by-create" && text != jp && r.Get("json.Converters") != "StoredJsonConverterFactory" && position != "dictionary-key")
             return $"validated value object accepted the refused value: {Cut(text)}";
         if (dp != dv) return $"input {input}: read-back differs: wrapped {Cut(dp)} vs value object {Cut(dv)}";
-        r.Note("compared"); return null;
+        r.Note(NoteKeys.Compared); return null;
     }
     static string Cut(string? s) => s is null ? "(null)" : s.Length > 200 ? s[..200] + "..." : s;
 }

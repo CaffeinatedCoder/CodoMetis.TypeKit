@@ -9,7 +9,7 @@ namespace Prober;
 /// a patch against the product files (the replay's <c>include</c>, <c>src</c> here), an environment toggle,
 /// or both, and a sentence saying what it breaks. This applies each seed in a scratch worktree of its own,
 /// builds, replays that probe there, and counts the seed caught only where a row ends as a violation that
-/// the unseeded probe does not have. Nothing it runs is recorded as evidence: a seeded run proves the probe,
+/// the unseeded probe does not have and that no harness error raised. Nothing it runs is recorded as evidence: a seeded run proves the probe,
 /// not the product. Never in the checkout and never in the replay's worktree; one build per seed, so it runs
 /// locally, not in CI. A missed seed, a probe without one, a seed that no longer applies and a seeded build
 /// that fails all fail the command.
@@ -134,9 +134,12 @@ internal static class Seeds
             var build = Timed(() => adapter.Build(worktree, seeded), out var buildSeconds);
             if (build.ExitCode != 0) return End("build failed", $"the seeded build: {FirstLine(build)}");
             var rows = RunProbe(adapter, worktree, s, environment, env, results, "seed");
-            var own = rows.Where(kv => kv.Value.Category == "violation" && !baseline.Contains(kv.Key)).OrderBy(kv => kv.Key).ToList();
+            // A row that broke the harness says nothing about the claim's check, even where it also returned a failure.
+            var own = rows.Where(kv => kv.Value.Category == "violation" && !kv.Value.HarnessError && !baseline.Contains(kv.Key)).OrderBy(kv => kv.Key).ToList();
             var tally = string.Join(", ", rows.Values.GroupBy(r => r.Category, StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal).Select(g => $"{g.Key} {g.Count()}"));
-            if (own.Count == 0) return End("missed", $"no row violates that did not already ({rows.Count} rows: {(tally.Length > 0 ? tally : "none ran")}; build {Seconds(buildSeconds)})", 0, rows.Count);
+            var broken = rows.Values.Count(r => r.HarnessError);
+            var harness = broken > 0 ? $"; {broken} ended in a harness error, which is no catch" : "";
+            if (own.Count == 0) return End("missed", $"no row violates that did not already ({rows.Count} rows: {(tally.Length > 0 ? tally : "none ran")}{harness}; build {Seconds(buildSeconds)})", 0, rows.Count);
             var example = own[0];
             return End("caught", $"{own.Count} of {rows.Count} rows violate; e.g. #{example.Key}: {Cut(example.Value.Reason)}", own.Count, rows.Count);
         }
@@ -190,8 +193,8 @@ internal static class Seeds
         return problems;
     }
 
-    /// <summary>A row's outcome under one run: its category and the first reason given.</summary>
-    internal sealed record RowOutcome(string Category, string Reason);
+    /// <summary>A row's outcome under one run: its category, the first reason given, and whether any reason was a harness error.</summary>
+    internal sealed record RowOutcome(string Category, string Reason, bool HarnessError);
 
     /// <summary>Runs one probe in every one of its variants and reads how each row ended.</summary>
     private static Dictionary<int, RowOutcome> RunProbe(IProbeAdapter adapter, string worktree, Ledger.ProbeState s, Dictionary<string, string?> environment,
@@ -211,8 +214,10 @@ internal static class Seeds
                     foreach (var line in Files.ReadLines(file))
                     {
                         var category = Files.Str(line["category"], "violation");
-                        var reason = Files.Strings(line["reasons"]).FirstOrDefault(r => r.StartsWith(category + ":", StringComparison.Ordinal)) ?? Files.Str(line["note"]);
-                        rows[(int)Files.Num(line["idx"])] = new RowOutcome(category, reason);
+                        var reasons = Files.Strings(line["reasons"]).ToList();
+                        var reason = reasons.FirstOrDefault(r => r.StartsWith(category + ":", StringComparison.Ordinal)) ?? Files.Str(line["note"]);
+                        var harnessError = category == "harness-error" || reasons.Any(r => r.StartsWith("harness-error:", StringComparison.Ordinal));
+                        rows[(int)Files.Num(line["idx"])] = new RowOutcome(category, reason, harnessError);
                     }
             index++;
         }

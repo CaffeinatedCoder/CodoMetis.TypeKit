@@ -142,13 +142,13 @@ public static class TextClaims
         if (entry == "TryFrom")
         {
             var t = TextOps.TryFrom(e, plain);
-            if (t.NotApplicable) r.Note("entry-not-applicable", "TryFrom"); else if (!t.Ok || !Same(e, t.Value, vo)) return $"TryFrom(valid) gave ok={t.Ok} value={t.Value}, expected {vo}";
+            if (t.NotApplicable) r.Note(NoteKeys.EntryNotApplicable, "TryFrom"); else if (!t.Ok || !Same(e, t.Value, vo)) return $"TryFrom(valid) gave ok={t.Ok} value={t.Value}, expected {vo}";
         }
-        else if (!TextOps.HasText(e)) r.Note("no-text", e.Kind);
+        else if (!TextOps.HasText(e)) r.Note(NoteKeys.NoText, e.Kind);
         else
         {
             var w = TextOps.Write(e, entry is "Parse" or "TryParse" or "IParsable" or "ISpanParsable" ? "ToString" : entry, vo);
-            if (w.NotApplicable) r.Note("entry-not-applicable", entry);
+            if (w.NotApplicable) r.Note(NoteKeys.EntryNotApplicable, entry);
             else if (w.Ex is not null) return $"{entry}: writing text threw {w.Ex.GetType().Name}: {w.Ex.Message}";
             else
             {
@@ -179,7 +179,7 @@ public static class TextClaims
                             // Differential: the value object only has to round-trip where its wrapped type does
                             // (TimeOnly.ToString() under the invariant culture prints HH:mm and drops the seconds).
                             if (!WrappedLosesItToo(e, plain)) return $"{readEntry}: '{text}' read back as {back.Value}, expected {vo}";
-                            r.Note("text:wrapped-round-trip-lossy-too");
+                            r.Note(NoteKeys.TextWrappedRoundTripLossyToo);
                         }
                     }
                 }
@@ -198,7 +198,7 @@ public static class TextClaims
         try { jv = JsonSerializer.Serialize(hv.Value, hv.Declared, o); }
         catch (Exception ex)
         {
-            try { JsonSerializer.Serialize(hp.Value, hp.Declared, o); } catch { r.Note("ser-both-threw"); return null; }
+            try { JsonSerializer.Serialize(hp.Value, hp.Declared, o); } catch { r.Note(NoteKeys.SerBothThrew); return null; }
             if (r.Is("json.MaxDepth", "3") && ex.Message.Contains("maximum allowed depth")) return null;
             if (r.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class" && ex is NotSupportedException) return null; // documented
             return $"serializing threw {ex.GetType().Name} where the wrapped type did not: {ex.Message}";
@@ -211,8 +211,8 @@ public static class TextClaims
         var b = Back(jv, out var ex1);
         if (ex1 is not null)
         {
-            if (JsonParity.ReadMayDiffer(r, e, "valid", ex1) || r.Get("json.UnmappedMemberHandling") == "Disallow" || (r.Is("json.MaxDepth", "3") && ex1.Message.Contains("maximum allowed depth")) || r.Is("json.ReferenceHandler", "Preserve")) { r.Note("read-back-refused", ex1.GetType().Name); }
-            else if (PlainFailsToo(r, hp, o, pos, e)) r.Note("plain-read-back-fails-too");
+            if (JsonParity.ReadMayDiffer(r, e, "valid", ex1) || r.Get("json.UnmappedMemberHandling") == "Disallow" || (r.Is("json.MaxDepth", "3") && ex1.Message.Contains("maximum allowed depth")) || r.Is("json.ReferenceHandler", "Preserve")) { r.Note(NoteKeys.ReadBackRefused, ex1.GetType().Name); }
+            else if (PlainFailsToo(r, hp, o, pos, e)) r.Note(NoteKeys.PlainReadBackFailsToo);
             else return $"own JSON {Cut(jv)} did not read back: {ex1.GetType().Name}: {Cut(ex1.Message)}";
         }
         else if (b != jv && !r.Is("json.ReferenceHandler", "Preserve")) return $"JSON round trip differs: wrote {Cut(jv)}, read and wrote {Cut(b)}";
@@ -223,7 +223,7 @@ public static class TextClaims
             var text = JsonParity.InputFor(input, e, o, jv, pos);
             Back(text, out var ex2);
             // The application's own converter is in charge under own-for-value-object: what it throws is its own.
-            if (ex2 is not null && r.Is("json.Converters", "own-for-value-object")) r.Note("own-vo-converter-threw", ex2.GetType().Name);
+            if (ex2 is not null && r.Is("json.Converters", "own-for-value-object")) r.Note(NoteKeys.OwnVoConverterThrew, ex2.GetType().Name);
             else if (ex2 is not null && ex2 is not (JsonException or NotSupportedException or InvalidOperationException { }))
                 return $"input {input}: {ex2.GetType().Name} instead of JsonException: {Cut(ex2.Message)}"
                     + (ex2.InnerException is { } inner ? $" / inner {inner.GetType().FullName}: {Cut(inner.Message)} @ {Cut(inner.StackTrace?.Split('\n').FirstOrDefault()?.Trim() ?? "")}" : "");
@@ -258,14 +258,14 @@ public static class TextClaims
             foreach (var t in texts)
             {
                 var o = TextOps.Read(e, entry, t);
-                if (o.NotApplicable) { r.Note("entry-not-applicable", entry); continue; }
+                if (o.NotApplicable) { r.Note(NoteKeys.EntryNotApplicable, entry); continue; }
                 if (o.Ex is not null)
                 {
                     if (entry == "TryParse") return $"TryParse threw {o.Ex.GetType().Name} on '{t}': {Cut(o.Ex.Message)}";
                     if (Quotes(o.Ex, t, entry, false) is { } q) return q;
                     if (o.Ex.InnerException is not null && !(entry == "type-converter")) return $"{entry}: refusal of '{t}' carries an inner {o.Ex.InnerException.GetType().Name}";
                     if (entry != "type-converter" && o.Ex is not FormatException) return $"{entry}: refusal of '{t}' is {o.Ex.GetType().Name}, not FormatException: {Cut(o.Ex.Message)}";
-                    if (entry == "type-converter" && o.Ex.InnerException is not null) r.Note("converter-wraps-inner");
+                    if (entry == "type-converter" && o.Ex.InnerException is not null) r.Note(NoteKeys.ConverterWrapsInner);
                 }
             }
         }
@@ -278,7 +278,7 @@ public static class TextClaims
         var pos = r["shape.position"]; var con = r.Get("shape.containing") ?? "class";
         var hp = Pos.Build(pos, con, e, false, plain); var hv = Pos.Build(pos, con, e, true, Make.Vo(e, plain));
         string jp; string sample;
-        try { jp = JsonSerializer.Serialize(hv.Value, hv.Declared, opts); sample = JsonSerializer.Serialize(Make.Unwrap(e, Make.Vo(e, plain)), e.Plain, opts); } catch { r.Note("ser-refused"); return null; }
+        try { jp = JsonSerializer.Serialize(hv.Value, hv.Declared, opts); sample = JsonSerializer.Serialize(Make.Unwrap(e, Make.Vo(e, plain)), e.Plain, opts); } catch { r.Note(NoteKeys.SerRefused); return null; }
         if (r.Get("json.Converters") is "own-for-wrapped" or "own-for-value-object") return null; // the application's own converter owns the message
         var at = jp.IndexOf(sample, StringComparison.Ordinal);
         var variants = new List<(string Text, string Needle)>();
@@ -366,45 +366,44 @@ public static class TextClaims
         var (jp, xp) = Write(hp, o); var (jv, xv) = Write(hv, o);
         // Where the wrapped type alone refuses under the row's options, checked in the same row with the value object refusing alike,
         // the JSON half has nothing to compare and the row is judged by its text entries (as decision 99 judges a document ASP.NET alone refuses).
-        const string Alone = "json-half:wrapped-alone-refuses";
-        if (xp is not null && xv is not null) { r.Note(Alone, "write"); return null; }
-        if (xp is not null) { r.Note("plain-refused", "the wrapped type is not written under these options"); return null; }
+        if (xp is not null && xv is not null) { r.Note(NoteKeys.JsonHalfWrappedAloneRefuses, "write"); return null; }
+        if (xp is not null) { r.Note(NoteKeys.PlainRefused, "the wrapped type is not written under these options"); return null; }
         if (xv is not null)
         {
-            if (OwnConverterRefusedToo(xv)) { r.Note(Alone, "write, with a converter of the application's for the wrapped type"); return null; }
-            r.Note("ser-refused", "the value object is not written where the wrapped type is: JSON parity (L01) judges it"); return null;
+            if (OwnConverterRefusedToo(xv)) { r.Note(NoteKeys.JsonHalfWrappedAloneRefuses, "write, with a converter of the application's for the wrapped type"); return null; }
+            r.Note(NoteKeys.SerRefused, "the value object is not written where the wrapped type is: JSON parity (L01) judges it"); return null;
         }
         // 1. the valid value reads back as written
         var (back, xb) = Read(jv!, hv, o);
         if (xb is not null)
         {
-            if (OwnConverterRefusedToo(xb)) { r.Note(Alone, "read back, with a converter of the application's for the wrapped type"); return null; }
-            if (Read(jp!, hp, o).Ex is not null) { r.Note(Alone, "read back"); return null; }
+            if (OwnConverterRefusedToo(xb)) { r.Note(NoteKeys.JsonHalfWrappedAloneRefuses, "read back, with a converter of the application's for the wrapped type"); return null; }
+            if (Read(jp!, hp, o).Ex is not null) { r.Note(NoteKeys.JsonHalfWrappedAloneRefuses, "read back"); return null; }
             return $"JSON: the value object does not read back what it writes ({xb.GetType().Name}: {Cut(xb.Message)}): {Cut(jv)}";
         }
         var again = Write(new Held(hv.Declared, back!), o).Json;
         if (again != jv) return $"JSON: read back as {Cut(again)}, written as {Cut(jv)}";
-        if (r.Is("json.Converters", "own-for-value-object")) { r.Note("own-vo", "the application's converter takes precedence and reads its own spelling"); return null; }
+        if (r.Is("json.Converters", "own-for-value-object")) { r.Note(NoteKeys.OwnVo, "the application's converter takes precedence and reads its own spelling"); return null; }
         if (!validated) return null;
         // 2. the value Create refuses
         var text = JsonParity.InputFor("refused-by-create", e, o, jp!, pos);
-        if (text == jp) { r.Note("refused-input-not-placeable", pos); return null; }
+        if (text == jp) { r.Note(NoteKeys.RefusedInputNotPlaceable, pos); return null; }
         var (accepted, xr) = Read(text, hv, o);
         if (Read(text, hp, o).Ex is not null)
         {
             if (xr is null) return $"JSON read accepted text the wrapped type refuses: {Cut(text)}";
-            r.Note(Alone, "the refused value's JSON"); return null;
+            r.Note(NoteKeys.JsonHalfWrappedAloneRefuses, "the refused value's JSON"); return null;
         }
         if (r.Is("json.Converters", "StoredJsonConverterFactory"))
         {
             if (xr is not null) return $"StoredJsonConverterFactory refused a value Create refuses ({xr.GetType().Name}): it reads stored JSON without validation";
-            r.Note("stored-factory-read-unvalidated"); return null;
+            r.Note(NoteKeys.StoredFactoryReadUnvalidated); return null;
         }
         if (xr is null) return $"JSON read accepted the value Create refuses: {Cut(text)}";
         if (xr is not JsonException) return $"JSON refusal is {xr.GetType().Name}, not JsonException: {Cut(xr.Message)}";
         if (!xr.Message.Contains("Refused"))
         {
-            if (OwnConverterRefusedToo(xr)) { r.Note(Alone, "refused read, with a converter of the application's for the wrapped type"); return null; }
+            if (OwnConverterRefusedToo(xr)) { r.Note(NoteKeys.JsonHalfWrappedAloneRefuses, "refused read, with a converter of the application's for the wrapped type"); return null; }
             return $"JsonException does not name the fault: {Cut(xr.Message)}";
         }
         return null;

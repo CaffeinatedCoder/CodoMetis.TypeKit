@@ -69,7 +69,7 @@ public static class OffTheWire
         var (jv, xv) = Jx.Ser(hv, o);
         if (xOwn is not null)
         {
-            if (xv is not null && xv.GetType() == xOwn.GetType()) { r.Note("both-threw", "the options refuse the shape itself: " + Jx.Ex(xv)); return null; }
+            if (xv is not null && xv.GetType() == xOwn.GetType()) { r.Note(NoteKeys.BothThrew, "the options refuse the shape itself: " + Jx.Ex(xv)); return null; }
             return $"write: a converter registered on the options for {name} does not take precedence: {Jx.Ex(xOwn)}";
         }
         var ownWritten = Jx.Tokens(jOwn!).Any(t => t.Text == "own-or");
@@ -80,7 +80,7 @@ public static class OffTheWire
         if (xo is null)
         {
             if (ownWritten || jo != jOwn) return $"write: {name} was written: {Jx.Cut(jo)}";
-            r.Note("json:member-left-out-by-options", "write: " + Jx.Cut(jo));
+            r.Note(NoteKeys.JsonMemberLeftOutByOptions, "write: " + Jx.Cut(jo));
         }
         else { if (Refused(xo, "write") is { } f) return f; wrote = true; }
 
@@ -95,7 +95,7 @@ public static class OffTheWire
         {
             // the value object's own shape cannot be written here (a value object over a class under Preserve, a class as a key): the
             // document with the application's converter has a token where the Option or Result stands, and is read as it is
-            if (jOwnFull is null) { r.Note("both-threw", "read: no document has the member: " + Jx.Ex(xf)); return null; }
+            if (jOwnFull is null) { r.Note(NoteKeys.BothThrew, "read: no document has the member: " + Jx.Ex(xf)); return null; }
             _ = r["input.json"]; r.Substituted("input.json", "valid", "the value object's document cannot be written: " + xf.GetType().Name);
             input = "valid"; text = jOwnFull;
         }
@@ -106,23 +106,23 @@ public static class OffTheWire
         if (xr is null && input == "null" && position == "in-patch" && Jx.Member(ho.Declared, vr) is { } patch && patch.GetType().GetProperty("State")!.GetValue(patch)!.ToString() == "Null")
         {
             // a JSON null is the patch's own null (docs/merge-patches.md): it holds no Option or Result, and none was read
-            r.Note("compared", $"read null: the Patch<{name}> is null, nothing of {name} read");
+            r.Note(NoteKeys.Compared, $"read null: the Patch<{name}> is null, nothing of {name} read");
             return null;
         }
         if (xr is null)
         {
             if (memberRead) return $"read {input}: {name} was read without an exception\n  text={Jx.Cut(text)}";
-            r.Note("json:member-left-out-by-options", "read " + input);
-            if (!wrote) r.Note("json:both-directions-left-out-by-options");
+            r.Note(NoteKeys.JsonMemberLeftOutByOptions, "read " + input);
+            if (!wrote) r.Note(NoteKeys.JsonBothDirectionsLeftOutByOptions);
         }
         else if (Refused(xr, "read " + input) is { } f)
         {
             // the serializer may refuse the document before the member: the value object's shape refuses it with the very same exception
             var (_, xvr) = Jx.De(text, hv.Declared, o);
-            if (xvr is not null && xvr.GetType() == xr.GetType() && xvr.Message == Jx.Swap(Jx.Swap(xr.Message, ho.Declared, hv.Declared), orType, v)) r.Note("json:read-refused-by-stj-alone", input + ": " + Jx.Ex(xr));
+            if (xvr is not null && xvr.GetType() == xr.GetType() && xvr.Message == Jx.Swap(Jx.Swap(xr.Message, ho.Declared, hv.Declared), orType, v)) r.Note(NoteKeys.JsonReadRefusedByStjAlone, input + ": " + Jx.Ex(xr));
             else return f + $"\n  text={Jx.Cut(text)}";
         }
-        r.Note("compared", $"{name} by {op}, {position}");
+        r.Note(NoteKeys.Compared, $"{name} by {op}, {position}");
         return null;
     }
 

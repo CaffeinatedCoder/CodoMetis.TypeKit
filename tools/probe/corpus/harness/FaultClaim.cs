@@ -283,14 +283,14 @@ public static class FaultClaim
         }
         catch (Exception ex) when (ex.GetType() == withTypeKit.GetType() && ex.Message == withTypeKit.Message)
         {
-            r.Note("doc:refused-by-aspnet-alone", ex.GetType().Name);
+            r.Note(NoteKeys.DocRefusedByAspnetAlone, ex.GetType().Name);
             return null;
         }
         catch (Exception ex) when (r.Is("json.MaxDepth", "3") && Depth(ex) && Depth(withTypeKit))
         {
             // Both refuse the problem schema under MaxDepth=3, by System.Text.Json's own depth checks, but on different paths (TypeKit's
             // transformer through the schema exporter, ProducesProblem through the document writer): a refusal of STJ's own, nothing to check.
-            r.Note("stj-maxdepth", $"{Say(withTypeKit)} / {Say(ex)}");
+            r.Note(NoteKeys.StjMaxdepth, $"{Say(withTypeKit)} / {Say(ex)}");
             return null;
         }
         catch (Exception ex) { return $"document: AddTypeKit() fails ({Say(withTypeKit)}), ASP.NET alone with a ProducesProblem fails otherwise ({Say(ex)})"; }
@@ -329,7 +329,7 @@ public static class FaultClaim
     static string? DocOf(Row r, JsonNode doc, Ep ep)
     {
         var op = doc["paths"]?[ep.Url]?["get"];
-        if (op is null && ep.Mvc && !Hx.InDocument(r)) { r.Note("doc:controller-not-in-api-explorer"); return null; }
+        if (op is null && ep.Mvc && !Hx.InDocument(r)) { r.Note(NoteKeys.DocControllerNotInApiExplorer); return null; }
         if (op is null) return $"document has no GET {ep.Url}";
         var responses = op["responses"]?.AsObject();
         if (responses is null) return $"{ep.Url}: operation has no responses";

@@ -85,7 +85,7 @@ public sealed class E14InheritanceKeyProbe
             var keys = vA.Substring(vA.IndexOf('[') + 1).TrimEnd(']').Split(',');
             if (!vA.StartsWith("gen=OnAdd") || keys.Distinct().Count() != 3 || keys.Any(k => k is "0" or "")) return $"{strategy} root key is not generated on add: {vA}";
         }
-        else r.Note("tpc-sqlite-no-sequence-assign-checked");
+        else r.Note(NoteKeys.TpcSqliteNoSequenceAssignChecked);
         return null;
     }
 }
