@@ -131,23 +131,38 @@ internal sealed class Ledger
 
     private JsonObject? toolchain;
 
-    /// <summary>What no file in the repository records: the SDK a global.json roll-forward picked, say.</summary>
+    /// <summary>
+    /// What no file in the repository records: the SDK a global.json roll-forward picked, say. A command that cannot
+    /// say it (it does not start, exits non-zero or prints nothing) is a refusal: its error text in every identity
+    /// would read as a toolchain change, and every result as stale, without a word why.
+    /// </summary>
     public JsonObject Toolchain()
     {
         if (toolchain is not null) return toolchain;
+        JsonObject? commands;
+        try { commands = AxesBlock()["replay"]?["toolchain"] as JsonObject; } catch (Refusal) { commands = null; }
         var result = new JsonObject();
-        try
+        foreach (var (name, argv) in (commands ?? []).OrderBy(kv => kv.Key, StringComparer.Ordinal))
         {
-            if (AxesBlock()["replay"]?["toolchain"] is JsonObject commands)
-                foreach (var (name, argv) in commands.OrderBy(kv => kv.Key, StringComparer.Ordinal))
-                {
-                    var parts = Files.Strings(argv).ToArray();
-                    var ran = Proc.Run(parts[0], parts[1..], Top);
-                    var text = (ran.Stdout.Trim().Length > 0 ? ran.Stdout : ran.Stderr).Trim();
-                    result[name] = text.Split('\n')[0].Trim();
-                }
+            var parts = Files.Strings(argv).ToArray();
+            var shown = $"the toolchain command {name} (`{string.Join(' ', parts)}`)";
+            if (parts.Length == 0) throw new Refusal($"{shown} is empty");
+            Ran ran;
+            try { ran = Proc.Run(parts[0], parts[1..], Top); }
+            catch (System.ComponentModel.Win32Exception e) { throw new Refusal($"{shown} did not start: {e.Message}"); }
+            static string FirstLine(string s) => s.Trim().Split('\n')[0].Trim();
+            // A failing `dotnet --version` lists the installed SDKs on stdout ("10.0.401 [path]", a version to look at)
+            // and says why on stderr.
+            if (ran.ExitCode != 0)
+            {
+                var why = FirstLine(ran.Stderr) is { Length: > 0 } err ? err : FirstLine(ran.Stdout);
+                throw new Refusal($"{shown} exited {ran.ExitCode}: {(why.Length > 0 ? why : "no output")}. A result is bound to what it prints, " +
+                                  "so none could be current; put the toolchain global.json asks for first on PATH");
+            }
+            var first = FirstLine(ran.Stdout.Trim().Length > 0 ? ran.Stdout : ran.Stderr);
+            if (first.Length == 0) throw new Refusal($"{shown} printed nothing, so a result could be bound to no toolchain");
+            result[name] = first;
         }
-        catch (Exception e) when (e is Refusal or System.ComponentModel.Win32Exception) { }
         return toolchain = result;
     }
 
