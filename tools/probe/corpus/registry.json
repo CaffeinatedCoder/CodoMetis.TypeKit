@@ -100,10 +100,28 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C04-without-faults.patch",
-        "defect": "WithoutFaults leaves nothing out of the document: an operation still lists the status and problem type of a member its endpoint, group or controller leaves out."
-      }
+      "seeds": [
+        {
+          "obligation": "doc-omits-left-out",
+          "patch": "seeds/C04-without-faults.patch",
+          "defect": "WithoutFaults leaves nothing out of the document: an operation still lists the status and problem type of a member its endpoint, group or controller leaves out."
+        },
+        {
+          "obligation": "reporting-left-out-throws",
+          "patch": "seeds/C04-reporting-left-out-throws.patch",
+          "defect": "A member the endpoint leaves out is answered with its mapped status instead of throwing an InvalidOperationException."
+        },
+        {
+          "obligation": "narrows-wider-status",
+          "patch": "seeds/C04-narrows-wider-status.patch",
+          "defect": "A group's or a builder's status for a member stops the host as soon as one of its endpoints leaves the member out, though the others keep it."
+        },
+        {
+          "obligation": "left-out-everywhere-stops-start",
+          "patch": "seeds/C04-left-out-everywhere-stops-start.patch",
+          "defect": "A status that every endpoint of its scope leaves out no longer stops the host."
+        }
+      ]
     },
     "C05RuleProbe": {
       "claim": "C05-with-rule",

@@ -541,9 +541,60 @@
         "with-WithFaultStatus-on-group"
       ]
     },
+    "obligations": [
+      {
+        "id": "doc-omits-left-out",
+        "sentence": "The operation then lists no status and no problem type for a member left out."
+      },
+      {
+        "id": "reporting-left-out-throws",
+        "sentence": "Reporting a member left out anyway throws an `InvalidOperationException` naming the endpoint and the member, rather than answering with a status the document doesn't list."
+      },
+      {
+        "id": "narrows-wider-status",
+        "sentence": "If a group gives `NotFound` a status and one endpoint inside leaves `NotFound` out, that endpoint drops it, and the group's other endpoints keep the status.",
+        "axes": {
+          "scope": [
+            "endpoint",
+            "controller"
+          ],
+          "combined": [
+            "with-WithFaultStatus-on-group"
+          ]
+        }
+      },
+      {
+        "id": "left-out-everywhere-stops-start",
+        "sentence": "**These stop the host from starting**, as for a status: a value or a name no member has, a status that every endpoint it's set on leaves out (on the endpoint itself, or on a group whose endpoints all leave the member out), and a group or a controller none of whose endpoints answers with the type.",
+        "axes": {
+          "scope": [
+            "group"
+          ],
+          "combined": [
+            "with-WithFaultStatus-on-group"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "controller-scope-is-mvc",
+        "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer",
+        "sentence": "**In MVC**, an action or a controller says it with `[WithoutFaults<AccountFault>(nameof(AccountFault.NotFound))]`.",
+        "axes": {
+          "scope": [
+            "controller"
+          ],
+          "http.host": [
+            "minimal",
+            "route-group"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
-        "reason": "a minimal-API host has no controller to leave a member out on; the README's controller scope is MVC's ([WithoutFaults<T>] on a controller class)",
+        "reason": "A minimal-API host has no controller to leave a member out on: the controller scope is MVC's (not-promised controller-scope-is-mvc).",
         "pairs": [
           [
             "scope=controller",
