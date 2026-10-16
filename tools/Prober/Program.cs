@@ -19,7 +19,10 @@ internal static class Program
           identity --probe P                what a result of P is bound to
           record-run --probe P --result pass|fail [--evidence F] [--seconds S]
           footprint --probe P --cobertura F... --root WT [--include src] [--compile-time PATH...]
-          register --probe P --claim C --filter F [--variants JSON] [--seed PATCH --defect TEXT]
+          register --probe P --claim C --filter F [--variants JSON] [--seed PATCH] [--seed-env NAME=VALUE...] [--defect TEXT]
+                                            [--obligation O]: the seed (a patch, a toggle or both) into `seed`, or with
+                                            --obligation into `seeds`, in place of a seed naming O; refuses an O that
+                                            claim C does not list
           publish | dismiss --id F --reason TEXT | mark retired --probe P
           lock --holder H --mode replay|explore|full [--pid N] | unlock --holder H | heartbeat --holder H
           round-start --holder H --minutes M [--claims N] | round-end --holder H | repair | abandon

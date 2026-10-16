@@ -61,7 +61,11 @@ and counts the seed caught only for a row that ends as a violation, raised no ha
 violate in the unseeded probe (decision 103). The unseeded rows come from the ledger where the probe's
 evidence is current, else from an unseeded run first. Nothing it runs is evidence; it
 writes `seeds-last.json` (`Schemas/seeds-run.schema.json`), one outcome per seed, reported as
-`P/<obligation>` where the seed names one. A seed is not part of a probe's identity. Without a build,
+`P/<obligation>` where the seed names one. `register --obligation O --seed PATCH --defect TEXT` (or
+`--seed-env NAME=VALUE...` for a toggle) writes a seed into `seeds`, in place of any seed of the entry that
+names O, `seed` included, and refuses an O that the claim's entry in `claims.json` does not list; without
+`--obligation`, `--seed` and `--seed-env` set the one `seed`. No seed is written into the registry by hand.
+A seed is not part of a probe's identity. Without a build,
 `Seeds.Problems`, which the prober tests run over the repository, refuses a probe without a seed, a seed that
 does not apply, a seed naming an obligation its claim does not list, and a listed obligation no seed names.
 
@@ -83,8 +87,9 @@ to HEAD, overlays the corpus and the staging as the replay does, builds once thr
 harness's `PROBE_ROWS`, within the rows each variant's `PROBE_ONLY` selects. It prints each run's verdict line
 and how each row ended, and exits with the probe's code (1 when the build fails). It records no evidence,
 footprint or run and takes no lock, so a replay at the same time shares its worktree. Then write a seed per
-obligation, shown caught by `seeds --probe P`, `register` (its lint, below), and `publish`. A writer needs no
-build or sync script of their own.
+obligation and register it with the command `new` printed for that obligation (`register --obligation O`,
+under "Seeds"), show each caught with `seeds --probe P`, and `publish`. `register` lints the staged sources
+first (below). A writer needs no build or sync script of their own.
 
 ## Register and publish
 
