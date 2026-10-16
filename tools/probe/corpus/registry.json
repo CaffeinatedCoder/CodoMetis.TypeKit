@@ -218,6 +218,38 @@
         "defect": "A dictionary key is written with ToString(), not the wrapped type's key converter and DictionaryKeyPolicy."
       }
     },
+    "C01DecimalSpellingProbe": {
+      "claim": "C01-decimal-spelling",
+      "filter": "*C01DecimalSpellingProbe",
+      "seed": {
+        "patch": "seeds/C01-decimal-spelling.patch",
+        "defect": "DecimalStringJsonConverter, and every decimal dictionary key, write a decimal with the scale it arrived with (7.80, 7.8000) instead of its minimal spelling."
+      }
+    },
+    "C10PreserveGuardProbe": {
+      "claim": "C10-preserve-guard",
+      "filter": "*C10PreserveGuardProbe",
+      "seed": {
+        "patch": "seeds/C10-preserve-guard.patch",
+        "defect": "The Preserve guard misses a wrapped class the serializer walks as an object, so a value object over it writes and reads its own $id and $ref instead of refusing."
+      }
+    },
+    "L05EqualityProbe": {
+      "claim": "L05-equality",
+      "filter": "*L05EqualityProbe",
+      "seed": {
+        "patch": "seeds/L05-equality.patch",
+        "defect": "A deeper base record whose IEquatable is implemented explicitly keeps its own Equals, so equal value objects compare unequal through that base and a HashSet of it holds both."
+      }
+    },
+    "L06OffTheWireProbe": {
+      "claim": "L06-off-the-wire",
+      "filter": "*L06OffTheWireProbe",
+      "seed": {
+        "patch": "seeds/L06-off-the-wire.patch",
+        "defect": "The refusing converter writes {} for an Option or a Result instead of throwing NotSupportedException, so a Some is written as {} and reads back as None."
+      }
+    },
     "L02NoQuoteProbe": {
       "claim": "L02-no-quote",
       "filter": "*L02NoQuoteProbe",

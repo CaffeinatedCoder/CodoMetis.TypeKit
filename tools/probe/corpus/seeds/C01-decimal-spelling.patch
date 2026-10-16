@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit/DecimalJsonConverters.cs b/src/CodoMetis.TypeKit/DecimalJsonConverters.cs
+index 9007276..bab4a1e 100644
+--- a/src/CodoMetis.TypeKit/DecimalJsonConverters.cs
++++ b/src/CodoMetis.TypeKit/DecimalJsonConverters.cs
+@@ -138,7 +138,7 @@ internal static class DecimalJson
+     public static decimal Minimal(decimal value) => value == 0m ? 0m : value / OneAtLargestScale;
+ 
+     /// <summary>The minimal-scale spelling, invariant, never with an exponent.</summary>
+-    public static string Text(decimal value) => Minimal(value).ToString(CultureInfo.InvariantCulture);
++    public static string Text(decimal value) => value.ToString(CultureInfo.InvariantCulture);
+ 
+     /// <summary>A number, or a string holding one.</summary>
+     public static decimal Read(ref Utf8JsonReader reader) => reader.TokenType switch

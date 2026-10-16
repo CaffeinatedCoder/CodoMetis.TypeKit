@@ -97,6 +97,12 @@ public static class NoteKeys
         ["doc:refused-by-aspnet-alone"] = "pass", ["doc:controller-not-in-api-explorer"] = "pass",
         // L03's JSON half has nothing to compare: the wrapped type alone refuses under the row's options, the value object alike, in the same row
         ["json-half:wrapped-alone-refuses"] = "pass",
+        // JSON family (C01, C10, L06): the options leave the member out of one direction for the plain type without TypeKit too, shown by a
+        // baseline in the same row; that direction has nothing to check, and the row is judged by the other one (both left out: inapplicable)
+        ["json:member-left-out-by-options"] = "pass", ["json:both-directions-left-out-by-options"] = "inapplicable",
+        // a read the wrapped type's shape refuses with the very same exception and message: the serializer refused the document before any
+        // value object ran (the baseline in the same row), so the read has nothing to check; the row is judged by its write and other reads
+        ["json:read-refused-by-stj-alone"] = "pass",
         // a check that did not apply
         ["own-vo-converter"] = "inapplicable", ["closed-set-vs-own-wrapped-converter"] = "inapplicable", ["closed-set-differs"] = "inapplicable",
         ["byte-array-is-base64"] = "inapplicable", ["own-spelling"] = "inapplicable", ["not-bindable-from-text"] = "inapplicable",
