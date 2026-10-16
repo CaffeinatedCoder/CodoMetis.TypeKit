@@ -92,7 +92,10 @@ and a sentence saying what it breaks, in its registry entry:
   A seed that breaks some assertion of a probe shows the probe can fail, not that the claim is checked, so
   a probe whose claim lists `obligations` carries `seeds`, one per obligation it checks, each a seed as
   above with an `obligation` naming it; `seed` may name one too. A seed that names none counts only for a
-  claim without `obligations`. `prober seeds` runs each seed of a probe on its own and reports it as
+  claim without `obligations`. Register each with `prober register --probe P --claim C --filter "*P"
+  --obligation <id> --seed seeds/<claim>-<id>.patch --defect "<sentence>"`, the command `prober new` prints
+  for each obligation: it replaces a seed of the entry that names the same obligation and refuses an id the
+  claim does not list. Never edit the staged registry by hand. `prober seeds` runs each seed of a probe on its own and reports it as
   `P/<obligation>`, in its output and in `seeds-last.json`; `prober status` shows per claim its obligations
   and the ones no seed names; and `SeedsTests` refuses, without a build, a seed naming an obligation its
   claim does not list and a listed obligation of a claim with probes that no seed of them names.

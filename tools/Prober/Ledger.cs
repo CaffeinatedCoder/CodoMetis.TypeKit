@@ -106,9 +106,10 @@ internal sealed class Ledger
         using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         void Add(string s) => sha.AppendData(Encoding.UTF8.GetBytes(s + "\0"));
         var entry = Registry().GetValueOrDefault(probe) ?? [];
-        // The seed proves the probe; a result of the probe does not depend on it.
+        // The seeds prove the probe; a result of the probe depends on none of them (decisions 100 and 104).
         var registered = (JsonObject)entry.DeepClone();
         registered.Remove("seed");
+        registered.Remove("seeds");
         Add(Files.Canonical(registered));
         var sources = new SortedDictionary<string, string>(StringComparer.Ordinal);
         foreach (var baseDir in new[] { CorpusDir, StagingDir })

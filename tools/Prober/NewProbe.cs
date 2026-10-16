@@ -66,7 +66,7 @@ internal static partial class NewProbe
             o.WriteLine($"  {id}: the check {method} ({(sentence is null ? "the claim as a whole" : $"\"{sentence}\"")}), and a seed that breaks it " +
                         (id == Claim.ImplicitObligation && sentence is null
                              ? $"(`prober register --probe {probe} --claim {claimId} --filter \"*{probe}\" --seed seeds/{claimId}.patch --defect \"...\"`)"
-                             : $"(in the entry's `seeds`, with \"obligation\": \"{id}\")"));
+                             : $"(`prober register --probe {probe} --claim {claimId} --filter \"*{probe}\" --obligation {id} --seed seeds/{claimId}-{id}.patch --defect \"...\"`)"));
         o.WriteLine($"then: `prober try --probe {probe}` until each row ends as it should, `prober seeds --probe {probe}`, `prober register` (it lints the staged sources), `prober publish`");
         return 0;
     }
