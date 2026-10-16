@@ -36,7 +36,11 @@
         {
           "PROBE_ONLY": "text.culture=globalization-invariant,entry=AsOptionalText"
         }
-      ]
+      ],
+      "seed": {
+        "patch": "seeds/C02-optional-text.patch",
+        "defect": "AsOptionalText and AsOptionalIdentifier turn a hidden-character string into no text, as a blank one, rather than refusing it as Hidden."
+      }
     },
     "C03ComposedProbe": {
       "claim": "C03-composed-faults",
@@ -72,7 +76,11 @@
     },
     "C20ShouldHoldProbe": {
       "claim": "C20-testing-shouldhold",
-      "filter": "*C20ShouldHoldProbe"
+      "filter": "*C20ShouldHoldProbe",
+      "seed": {
+        "patch": "seeds/C20-testing-shouldhold.patch",
+        "defect": "ShouldHold(reason) checks only the held fault's type, so a fault of that type with another reason passes."
+      }
     },
     "E01ColumnParityProbe": {
       "claim": "E01-column-parity",
@@ -92,7 +100,11 @@
     },
     "E03ColumnRoundTripProbe": {
       "claim": "E03-column-round-trip",
-      "filter": "*E03ColumnRoundTripProbe"
+      "filter": "*E03ColumnRoundTripProbe",
+      "seed": {
+        "patch": "seeds/E03-column-round-trip.patch",
+        "defect": "A decimal value object is mapped through the double mapping, a REAL column, not the TEXT column a decimal gets."
+      }
     },
     "E04IntegerKeyProbe": {
       "claim": "E04-integer-key-generated",
@@ -112,47 +124,91 @@
     },
     "E06OwnConverterNoValueProbe": {
       "claim": "E06-own-converter-no-value",
-      "filter": "*E06OwnConverterNoValueProbe"
+      "filter": "*E06OwnConverterNoValueProbe",
+      "seed": {
+        "patch": "seeds/E06-own-converter-no-value.patch",
+        "defect": ".Value translates on a column the application converts itself, so the query compares against the converted text instead of failing."
+      }
     },
     "E07ClosedSetNameProbe": {
       "claim": "E07-closed-set-stored-as-name",
-      "filter": "*E07ClosedSetNameProbe"
+      "filter": "*E07ClosedSetNameProbe",
+      "seed": {
+        "patch": "seeds/E07-closed-set-stored-as-name.patch",
+        "defect": "A stored name the closed set no longer has reads back as null instead of throwing."
+      }
     },
     "E08OptionResultNotColumnsProbe": {
       "claim": "E08-option-result-not-columns",
-      "filter": "*E08OptionResultNotColumnsProbe"
+      "filter": "*E08OptionResultNotColumnsProbe",
+      "seed": {
+        "patch": "seeds/E08-option-result-not-columns.patch",
+        "defect": "TypeKit's conventions ignore an Option or Result property, so the model builds without the column instead of failing."
+      }
     },
     "E09OrNoneInDbProbe": {
       "claim": "E09-or-none-in-database",
-      "filter": "*E09OrNoneInDbProbe"
+      "filter": "*E09OrNoneInDbProbe",
+      "seed": {
+        "patch": "seeds/E09-or-none-in-database.patch",
+        "defect": "FirstOrNoneAsync with a condition reads every matching row, without LIMIT 1."
+      }
     },
     "E10ReadBackSkipsValidationProbe": {
       "claim": "E10-read-back-skips-validation",
-      "filter": "*E10ReadBackSkipsValidationProbe"
+      "filter": "*E10ReadBackSkipsValidationProbe",
+      "seed": {
+        "patch": "seeds/E10-read-back-skips-validation.patch",
+        "defect": "Reading a column back runs Create and throws for a value today's rules refuse, instead of materializing it."
+      }
     },
     "E11UseTypeKitOrderProbe": {
       "claim": "E11-usetypekit-order",
-      "filter": "*E11UseTypeKitOrderProbe"
+      "filter": "*E11UseTypeKitOrderProbe",
+      "seed": {
+        "patch": "seeds/E11-usetypekit-order.patch",
+        "defect": "UseTypeKit() adds its services only when the provider's are already registered, so calling it before UseSqlite does nothing."
+      }
     },
     "E12ConventionByTypeProbe": {
       "claim": "E12-convention-by-vo-type",
-      "filter": "*E12ConventionByTypeProbe"
+      "filter": "*E12ConventionByTypeProbe",
+      "seed": {
+        "patch": "seeds/E12-convention-by-vo-type.patch",
+        "defect": "A finalizing convention clears the max length, precision and scale of value-object properties, so a convention on the value object's type does not reach its property."
+      }
     },
     "E13PrimitiveCollectionProbe": {
       "claim": "E13-primitive-collections",
-      "filter": "*E13PrimitiveCollectionProbe"
+      "filter": "*E13PrimitiveCollectionProbe",
+      "seed": {
+        "patch": "seeds/E13-primitive-collections.patch",
+        "defect": ".Value on an element of a primitive collection of value objects is not translated, so Any(t => t.Value == x) fails."
+      }
     },
     "E14InheritanceKeyProbe": {
       "claim": "E14-inheritance-key-generation",
-      "filter": "*E14InheritanceKeyProbe"
+      "filter": "*E14InheritanceKeyProbe",
+      "seed": {
+        "patch": "seeds/E14-inheritance-key-generation.patch",
+        "defect": "Under TPC on a provider without a sequence (SQLite), an integer key of the hierarchy's root stays generated on add."
+      }
     },
     "E15CompositeKeyProbe": {
       "claim": "E15-composite-key",
-      "filter": "*E15CompositeKeyProbe"
+      "filter": "*E15CompositeKeyProbe",
+      "seed": {
+        "patch": "seeds/E15-composite-key.patch",
+        "defect": "The first value-object property of a composite key is treated as a single integer key and generated on add."
+      }
     },
     "E16OwnConfigurationWinsProbe": {
       "claim": "E16-own-configuration-wins",
-      "filter": "*E16OwnConfigurationWinsProbe"
+      "filter": "*E16OwnConfigurationWinsProbe",
+      "seed": {
+        "patch": "seeds/E16-own-configuration-wins.patch",
+        "defect": "The integer key default is set as an explicit configuration, so it overrides the application's own ValueGeneratedNever."
+      }
     },
     "L01JsonBytesProbe": {
       "claim": "L01-json-bytes",

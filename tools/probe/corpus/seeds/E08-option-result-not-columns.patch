@@ -1,0 +1,20 @@
+diff --git a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs
+index 934f884..0981e07 100644
+--- a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs
++++ b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs
+@@ -52,8 +52,15 @@ internal sealed class ValueObjectKeyValueGenerationConvention : IModelFinalizing
+     public void ProcessModelFinalizing(IConventionModelBuilder modelBuilder, IConventionContext<IConventionModelBuilder> context)
+     {
+         foreach (var entityType in modelBuilder.Metadata.GetEntityTypes())
++        {
++#pragma warning disable IL2075
++            foreach (var clr in entityType.ClrType.GetProperties())
++#pragma warning restore IL2075
++                if (clr.PropertyType.Name.StartsWith("Option`", StringComparison.Ordinal) || clr.PropertyType.Name.StartsWith("Result`", StringComparison.Ordinal))
++                    entityType.Builder.Ignore(clr.Name);
+             if (GeneratedKey(entityType) is { } property)
+                 property.Builder.ValueGenerated(ValueGenerated.OnAdd);
++        }
+     }
+ 
+     /// <summary>The entity type's key, where it is a value object over an integer EF generates a key of.</summary>

@@ -1,0 +1,11 @@
+diff --git a/src/CodoMetis.TypeKit.EntityFrameworkCore/ClosedSetConverter.cs b/src/CodoMetis.TypeKit.EntityFrameworkCore/ClosedSetConverter.cs
+index f0049b3..6ebae68 100644
+--- a/src/CodoMetis.TypeKit.EntityFrameworkCore/ClosedSetConverter.cs
++++ b/src/CodoMetis.TypeKit.EntityFrameworkCore/ClosedSetConverter.cs
+@@ -56,5 +56,5 @@ public sealed class ClosedSetConverter<TSet> : ValueConverter<TSet, string>
+     public static TSet MemberNamed(string name) =>
+         TSet.TryParse(name, out var member)
+             ? member
+-            : throw new InvalidOperationException($"{typeof(TSet).Name} has no member of that name: the column holds a name the set no longer has.");
++            : null!;
+ }

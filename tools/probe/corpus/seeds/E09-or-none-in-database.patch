@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.EntityFrameworkCore/TypeKitQueryableExtensions.cs b/src/CodoMetis.TypeKit.EntityFrameworkCore/TypeKitQueryableExtensions.cs
+index 9636046..8c15b34 100644
+--- a/src/CodoMetis.TypeKit.EntityFrameworkCore/TypeKitQueryableExtensions.cs
++++ b/src/CodoMetis.TypeKit.EntityFrameworkCore/TypeKitQueryableExtensions.cs
+@@ -43,7 +43,7 @@ public static class TypeKitQueryableExtensions
+             ArgumentNullException.ThrowIfNull(source);
+             ArgumentNullException.ThrowIfNull(predicate);
+ 
+-            return FirstOfAsync(source.Where(predicate).Take(1), cancellationToken);
++            return FirstOfAsync(source.Where(predicate), cancellationToken);
+         }
+ 
+         /// <summary>The only element of the query, or <c>None</c>: the database is asked for two, and more than one throws.</summary>

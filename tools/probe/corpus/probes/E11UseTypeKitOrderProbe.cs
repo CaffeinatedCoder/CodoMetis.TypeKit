@@ -24,7 +24,14 @@ public sealed class E11UseTypeKitOrderProbe
 
     sealed record Out(string Model, string Script, string Raw, string Read);
 
+    /// <summary>One order's model, script, stored row and values; a refusal anywhere on the way is that order's result, compared like the others.</summary>
     static async Task<Out> Run(string order, string mapping, Type entity, Func<int, object?> value, Action<ModelBuilder> cfg, string? wrapped)
+    {
+        try { return await RunUnguarded(order, mapping, entity, value, cfg, wrapped); }
+        catch (Exception ex) { return new Out($"threw {ex.GetType().Name}: {ex.Message.Split('\n')[0]}", "", "", ""); }
+    }
+
+    static async Task<Out> RunUnguarded(string order, string mapping, Type entity, Func<int, object?> value, Action<ModelBuilder> cfg, string? wrapped)
     {
         await using var db = new EfDb2(cfg, order);
         var model = EfModel.Describe(db.Context);
@@ -93,6 +100,7 @@ public sealed class E11UseTypeKitOrderProbe
             }
         }
         if (a.Model != b.Model) return $"model differs between {order} and {other}: " + EfModel.FirstDiff(a.Model, b.Model);
+        if (a.Model.StartsWith("threw ", StringComparison.Ordinal)) return $"the value object's entity is refused in both orders: {a.Model}";
         if (a.Script != b.Script) return $"create script differs between {order} and {other}: " + EfModel.FirstDiff(a.Script, b.Script);
         if (a.Raw != b.Raw) return $"stored row differs between {order} and {other}: {a.Raw} | {b.Raw}";
         if (a.Read != b.Read) return $"values read differ between {order} and {other}: {a.Read} | {b.Read}";
