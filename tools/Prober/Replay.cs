@@ -201,24 +201,9 @@ internal static class Replay
                               List<Ledger.ProbeState> todo, List<string> skipped, JsonObject? axes, Options options)
     {
         var clock = Stopwatch.StartNew();
-        string warmth;
-        if (!Directory.Exists(worktree))
-        {
-            var added = Git.Run(ledger.Root, "worktree", "add", "--detach", worktree, head);
-            if (added.ExitCode != 0) { ctx.Error.WriteLine(added.Stderr); return 2; }
-            warmth = "cold";
-        }
-        else
-        {
-            // No force: files the commits did not change keep their mtimes, so the build stays incremental.
-            if (Git.Run(worktree, "checkout", "--detach", head).ExitCode != 0) Git.Run(worktree, "reset", "--hard", head);
-            warmth = "warm";
-        }
-
+        var warmth = ProbeRun.Ready(ledger, worktree, head);
         var probeDir = Overlay(ledger, config, worktree);
-
-        var environment = new Dictionary<string, string?>(ctx.Environment, StringComparer.Ordinal);
-        foreach (var (k, v) in adapter.Environment(home)) environment[k] = v;
+        var environment = ProbeRun.Environment(ctx, adapter, home);
         var results = Directory.CreateTempSubdirectory("prober-replay-").FullName;
 
         var buildClock = Stopwatch.StartNew();
@@ -419,5 +404,5 @@ internal static class Replay
         return true;
     }
 
-    private static string FirstLine(Ran ran) => ran.Stdout.Split('\n')[0].Trim() is { Length: > 0 } line ? line : $"exit {ran.ExitCode}";
+    private static string FirstLine(Ran ran) => ProbeRun.FirstLine(ran);
 }

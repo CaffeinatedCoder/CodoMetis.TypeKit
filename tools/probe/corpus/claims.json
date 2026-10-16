@@ -24,6 +24,42 @@
       "shape.wrapped": "Register either one once, and it covers every decimal: nullable ones, dictionary keys, and every value object over a decimal, since its JSON is the underlying type's.",
       "input.json": "Both read a number, or a string holding one, and keep the scale they read."
     },
+    "obligations": [
+      {
+        "id": "smallest-scale",
+        "sentence": "Two converters write the smallest scale instead:"
+      },
+      {
+        "id": "number-is-a-number",
+        "sentence": "**`DecimalNumberJsonConverter`** writes it as a number.",
+        "axes": {
+          "converter": [
+            "number"
+          ]
+        }
+      },
+      {
+        "id": "string-is-a-string",
+        "sentence": "**`DecimalStringJsonConverter`** writes it as a string.",
+        "axes": {
+          "converter": [
+            "string"
+          ]
+        }
+      },
+      {
+        "id": "reads-a-number-or-a-string",
+        "sentence": "Both read a number, or a string holding one, and keep the scale they read."
+      },
+      {
+        "id": "keeps-the-scale-it-reads",
+        "sentence": "Both read a number, or a string holding one, and keep the scale they read."
+      },
+      {
+        "id": "covers-every-decimal",
+        "sentence": "Register either one once, and it covers every decimal: nullable ones, dictionary keys, and every value object over a decimal, since its JSON is the underlying type's."
+      }
+    ],
     "exclude": [
       {
         "reason": "A closed set wraps nothing, so it holds no decimal for a decimal converter to write (docs/json.md#decimals-in-one-spelling covers decimals, nullable ones, dictionary keys and value objects over a decimal).",
@@ -475,7 +511,78 @@
       "shape.kind": "`AsOptionalText()` and `AsOptionalIdentifier()` return a `Result<Option<string>, TextFault>`",
       "shape.wrapped": "`AsOptionalText()` and `AsOptionalIdentifier()` return a `Result<Option<string>, TextFault>`",
       "text.entry": "`AsOptionalText()` and `AsOptionalIdentifier()` return a `Result<Option<string>, TextFault>`"
-    }
+    },
+    "obligations": [
+      {
+        "id": "required-blank-is-an-error",
+        "sentence": "For a required field, `Blank` is an error.",
+        "axes": {
+          "entry": [
+            "AsText",
+            "AsIdentifier"
+          ],
+          "input": [
+            "null",
+            "empty",
+            "spaces",
+            "tab-newline",
+            "nbsp-only"
+          ]
+        }
+      },
+      {
+        "id": "optional-blank-is-no-value",
+        "sentence": "For an optional one, a blank means \"no value\", and `AsOptionalText()` and `AsOptionalIdentifier()` return a `Result<Option<string>, TextFault>`.",
+        "axes": {
+          "entry": [
+            "AsOptionalText",
+            "AsOptionalIdentifier"
+          ],
+          "input": [
+            "null",
+            "empty",
+            "spaces",
+            "tab-newline",
+            "nbsp-only"
+          ]
+        }
+      },
+      {
+        "id": "hidden-is-an-error-in-both",
+        "sentence": "`Hidden` is an error in both cases.",
+        "axes": {
+          "input": [
+            "word+ZWSP",
+            "ZWSP-only"
+          ]
+        }
+      },
+      {
+        "id": "null-is-blank",
+        "sentence": "A null string is `Blank`.",
+        "axes": {
+          "input": [
+            "null"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "as-text-refused-in-globalization-invariant-mode",
+        "source": "docs/text.md#globalization-invariant-mode",
+        "sentence": "So `AsText()` throws `PlatformNotSupportedException` there, on its first call, whatever the string.",
+        "axes": {
+          "text.culture": [
+            "globalization-invariant"
+          ],
+          "entry": [
+            "AsText",
+            "AsOptionalText"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "C03-composed-faults",
@@ -494,7 +601,35 @@
         "with-detail",
         "with-rule"
       ]
-    }
+    },
+    "obligations": [
+      {
+        "id": "each-error-own-set",
+        "sentence": "Each error is answered as its own set maps it."
+      },
+      {
+        "id": "detail-and-rule-intact",
+        "sentence": "`Fault<AccountFault, EditFault>` (from CodoMetis.TypeKit) holds one error of either set, with its detail and rule intact.",
+        "axes": {
+          "error": [
+            "with-detail",
+            "with-rule"
+          ]
+        }
+      },
+      {
+        "id": "statuses-ascending",
+        "sentence": "So its operation lists the statuses of both sets, in ascending order, with the problem types of both where they share a status."
+      },
+      {
+        "id": "shared-status-types",
+        "sentence": "So its operation lists the statuses of both sets, in ascending order, with the problem types of both where they share a status."
+      },
+      {
+        "id": "unmapped-set-stops-start",
+        "sentence": "The host doesn't start while either set is unmapped."
+      }
+    ]
   },
   {
     "id": "C04-without-faults",
@@ -513,9 +648,60 @@
         "with-WithFaultStatus-on-group"
       ]
     },
+    "obligations": [
+      {
+        "id": "doc-omits-left-out",
+        "sentence": "The operation then lists no status and no problem type for a member left out."
+      },
+      {
+        "id": "reporting-left-out-throws",
+        "sentence": "Reporting a member left out anyway throws an `InvalidOperationException` naming the endpoint and the member, rather than answering with a status the document doesn't list."
+      },
+      {
+        "id": "narrows-wider-status",
+        "sentence": "If a group gives `NotFound` a status and one endpoint inside leaves `NotFound` out, that endpoint drops it, and the group's other endpoints keep the status.",
+        "axes": {
+          "scope": [
+            "endpoint",
+            "controller"
+          ],
+          "combined": [
+            "with-WithFaultStatus-on-group"
+          ]
+        }
+      },
+      {
+        "id": "left-out-everywhere-stops-start",
+        "sentence": "**These stop the host from starting**, as for a status: a value or a name no member has, a status that every endpoint it's set on leaves out (on the endpoint itself, or on a group whose endpoints all leave the member out), and a group or a controller none of whose endpoints answers with the type.",
+        "axes": {
+          "scope": [
+            "group"
+          ],
+          "combined": [
+            "with-WithFaultStatus-on-group"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "controller-scope-is-mvc",
+        "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer",
+        "sentence": "**In MVC**, an action or a controller says it with `[WithoutFaults<AccountFault>(nameof(AccountFault.NotFound))]`.",
+        "axes": {
+          "scope": [
+            "controller"
+          ],
+          "http.host": [
+            "minimal",
+            "route-group"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
-        "reason": "a minimal-API host has no controller to leave a member out on; the README's controller scope is MVC's ([WithoutFaults<T>] on a controller class)",
+        "reason": "A minimal-API host has no controller to leave a member out on: the controller scope is MVC's (not-promised controller-scope-is-mvc).",
         "pairs": [
           [
             "scope=controller",
@@ -569,7 +755,60 @@
         "bare",
         "QualifiedFaultNames"
       ]
-    }
+    },
+    "obligations": [
+      {
+        "id": "rule-qualified",
+        "sentence": "The problem carries it as `rule`, qualified with its type's name, so two types' `Blank` can be told apart:",
+        "axes": {
+          "ruletype": [
+            "enum",
+            "closed-set"
+          ]
+        }
+      },
+      {
+        "id": "nested-chain",
+        "sentence": "A rule of a nested type is named after its nesting chain, whatever `QualifiedFaultNames` says.",
+        "axes": {
+          "ruletype": [
+            "nested-enum"
+          ]
+        }
+      },
+      {
+        "id": "stays-the-errors",
+        "sentence": "The status, the mapping and the document stay the error's.",
+        "axes": {
+          "ruletype": [
+            "enum",
+            "closed-set",
+            "nested-enum"
+          ]
+        }
+      },
+      {
+        "id": "unnamed-value-throws",
+        "sentence": "A value no member names, such as a combination of flags or a cast number, throws where it's given.",
+        "axes": {
+          "ruletype": [
+            "flags-combination",
+            "undefined-cast"
+          ]
+        }
+      },
+      {
+        "id": "no-namespace",
+        "sentence": "**The name carries no namespace**, which would publish your application's structure to every client.",
+        "axes": {
+          "ruletype": [
+            "enum",
+            "closed-set",
+            "nested-enum"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "C06-fault-kinds",
@@ -585,6 +824,24 @@
         "Unavailable"
       ]
     },
+    "obligations": [
+      {
+        "id": "kind-gives-status",
+        "sentence": "The kind gives the status:"
+      },
+      {
+        "id": "description-as-detail",
+        "sentence": "The description becomes the problem's `detail`, so a client can show it."
+      },
+      {
+        "id": "no-description-no-detail",
+        "sentence": "A member without one has no `detail`."
+      },
+      {
+        "id": "member-must-have-kind",
+        "sentence": "**A member must have a kind.** A member whose kind is `default`, which is no kind, fails this call."
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
@@ -630,6 +887,63 @@
         "status-not-error"
       ]
     },
+    "obligations": [
+      {
+        "id": "by-kind",
+        "sentence": "every fault set an endpoint answers with, by its kind",
+        "axes": {
+          "mapping": [
+            "by-kind"
+          ]
+        }
+      },
+      {
+        "id": "own-mapping",
+        "sentence": "The mapping can be your own. It reads each member's kind and description through `IFault`:",
+        "axes": {
+          "mapping": [
+            "own-IFault-mapping"
+          ]
+        }
+      },
+      {
+        "id": "own-set-keeps-mapping",
+        "sentence": "A set mapped on its own keeps its mapping.",
+        "axes": {
+          "set": [
+            "own-mapped-set"
+          ]
+        }
+      },
+      {
+        "id": "enum-needs-own-mapping",
+        "sentence": "Neither has a kind, and the host doesn't start while an endpoint answers with one that's unmapped.",
+        "axes": {
+          "set": [
+            "enum-unmapped"
+          ]
+        }
+      },
+      {
+        "id": "member-without-kind-stops-start",
+        "sentence": "A member with no kind stops the start, and so does one the mapping throws for or gives a status that isn't an error.",
+        "axes": {
+          "set": [
+            "member-without-kind"
+          ]
+        }
+      },
+      {
+        "id": "mapping-refusal-stops-start",
+        "sentence": "A member with no kind stops the start, and so does one the mapping throws for or gives a status that isn't an error.",
+        "axes": {
+          "set": [
+            "mapping-throws",
+            "status-not-error"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
@@ -675,6 +989,53 @@
         "WithoutFaults-one"
       ]
     },
+    "obligations": [
+      {
+        "id": "bare-names-warn",
+        "sentence": "With bare names, the default, that's `AccountFault.NotFound` beside an `EditFault.NotFound`.",
+        "axes": {
+          "naming": [
+            "bare"
+          ]
+        }
+      },
+      {
+        "id": "qualified-chain-warns",
+        "sentence": "With qualified names, it's two sets with one nesting chain in two namespaces, since the name carries no namespace.",
+        "axes": {
+          "naming": [
+            "qualified"
+          ]
+        }
+      },
+      {
+        "id": "warning-names-both",
+        "sentence": "A client reads the two errors as one, so the host logs a warning at startup naming both.",
+        "axes": {
+          "leave-out": [
+            "none"
+          ]
+        }
+      },
+      {
+        "id": "qualified-names-fix",
+        "sentence": "Fix it with `QualifiedFaultNames`, a rename, or by leaving one out of the route",
+        "axes": {
+          "naming": [
+            "qualified"
+          ]
+        }
+      },
+      {
+        "id": "leave-one-out-fixes",
+        "sentence": "Fix it with `QualifiedFaultNames`, a rename, or by leaving one out of the route",
+        "axes": {
+          "leave-out": [
+            "WithoutFaults-one"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
@@ -714,6 +1075,16 @@
       "shape.position": "Over a base record, a value object's equality is its wrapped value's, in a collection of the base too, whatever equality the base declares.",
       "shape.containing": "Over a base record, a value object's equality is its wrapped value's, in a collection of the base too, whatever equality the base declares."
     },
+    "obligations": [
+      {
+        "id": "equal-by-the-wrapped-value",
+        "sentence": "Over a base record, a value object's equality is its wrapped value's"
+      },
+      {
+        "id": "in-a-collection-of-the-base",
+        "sentence": "in a collection of the base too, whatever equality the base declares."
+      }
+    ],
     "exclude": [
       {
         "reason": "A record struct or a closed set has no base record: C# gives a struct no base type, and a closed set is a sealed class that is never a record (CMTK1020).",
@@ -2166,6 +2537,48 @@
         "none"
       ]
     },
+    "obligations": [
+      {
+        "id": "refused-where-references-could-be-written",
+        "sentence": "**Preserved references** (`ReferenceHandler.Preserve`) throw a `NotSupportedException` where the serializer could write `$id` or `$ref` inside the underlying value.",
+        "axes": {
+          "handler": [
+            "Preserve"
+          ],
+          "shape.wrapped": [
+            "own-record-class"
+          ]
+        }
+      },
+      {
+        "id": "value-converters-unaffected",
+        "sentence": "These are unaffected: a value the serializer writes with a value converter (a number, a string, a `Guid`, a `Uri`)",
+        "axes": {
+          "handler": [
+            "Preserve"
+          ]
+        }
+      },
+      {
+        "id": "own-converters-unaffected",
+        "sentence": "anything a converter of your own writes, on the options or on one property",
+        "axes": {
+          "json.Converters": [
+            "own-for-wrapped",
+            "own-for-value-object"
+          ]
+        }
+      },
+      {
+        "id": "ignore-cycles-unaffected",
+        "sentence": "a struct of such values, and `ReferenceHandler.IgnoreCycles`.",
+        "axes": {
+          "handler": [
+            "IgnoreCycles"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "handler is this claim's name for JsonSerializerOptions.ReferenceHandler (Preserve, IgnoreCycles, none = default), the same setting as json.ReferenceHandler; one setting cannot hold two values in one row.",
@@ -2307,51 +2720,6 @@
         ]
       },
       {
-        "reason": "The application's own converter for the value object reads only the documents it writes itself; input.json rewrites the wrapped type's document, which that converter never reads, so the row has no such read to make (the row checks that converter's own round trip, unaffected under every handler).",
-        "pairs": [
-          [
-            "input.json=at-type-limit",
-            "json.Converters=own-for-value-object"
-          ],
-          [
-            "input.json=duplicate-property",
-            "json.Converters=own-for-value-object"
-          ],
-          [
-            "input.json=empty-string",
-            "json.Converters=own-for-value-object"
-          ],
-          [
-            "input.json=escape-sequence",
-            "json.Converters=own-for-value-object"
-          ],
-          [
-            "input.json=metadata-property",
-            "json.Converters=own-for-value-object"
-          ],
-          [
-            "input.json=null",
-            "json.Converters=own-for-value-object"
-          ],
-          [
-            "input.json=quoted-number",
-            "json.Converters=own-for-value-object"
-          ],
-          [
-            "input.json=refused-by-create",
-            "json.Converters=own-for-value-object"
-          ],
-          [
-            "input.json=valid",
-            "json.Converters=own-for-value-object"
-          ],
-          [
-            "input.json=wrong-token",
-            "json.Converters=own-for-value-object"
-          ]
-        ]
-      },
-      {
         "reason": "System.Text.Json refuses JsonObjectCreationHandling.Populate together with a reference handler (InvalidOperationException when the options are used; harness/JsonRow.cs runs such a row without Populate), so no row can set both.",
         "pairs": [
           [
@@ -2393,6 +2761,35 @@
       "shape.position": "A wrapped type's `Parse` whose result can't be assigned to it, or that takes its text by `ref`, or an abstract class's string constructor, no longer breaks the build; the value object has no parsing.",
       "shape.containing": "A wrapped type's `Parse` whose result can't be assigned to it, or that takes its text by `ref`, or an abstract class's string constructor, no longer breaks the build; the value object has no parsing."
     },
+    "obligations": [
+      {
+        "id": "implicit-result",
+        "sentence": "A wrapped type's `Parse` whose result can't be assigned to it",
+        "axes": {
+          "parse-shape": [
+            "implicit-result"
+          ]
+        }
+      },
+      {
+        "id": "ref-text",
+        "sentence": "or that takes its text by `ref`",
+        "axes": {
+          "parse-shape": [
+            "ref-text"
+          ]
+        }
+      },
+      {
+        "id": "abstract-string-constructor",
+        "sentence": "or an abstract class's string constructor, no longer breaks the build; the value object has no parsing.",
+        "axes": {
+          "parse-shape": [
+            "abstract-string-ctor"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "A closed set wraps no type, so it has no wrapped type's Parse to take for its parser.",
@@ -3989,6 +4386,40 @@
         "controller-without-ApiController-visible"
       ]
     },
+    "obligations": [
+      {
+        "id": "own-converter-describes-itself",
+        "sentence": "**Your own converter** implements `IDescribedJsonConverter` and describes itself, as both decimal converters do.",
+        "axes": {
+          "source": [
+            "IDescribedJsonConverter",
+            "decimal-converter"
+          ]
+        }
+      },
+      {
+        "id": "options-describe",
+        "sentence": "**A converter someone else wrote**, or the serializer's own enum converter, is described in the options by `JsonSchemaDescriptions`.",
+        "axes": {
+          "source": [
+            "JsonSchemaDescriptions"
+          ]
+        }
+      },
+      {
+        "id": "every-position",
+        "sentence": "With CodoMetis.TypeKit.AspNetCore, `AddTypeKit()` writes the same descriptions into the OpenAPI document, in every position, a list's elements and a dictionary's values included."
+      },
+      {
+        "id": "parameter-keeps-aspnet",
+        "sentence": "So it keeps the description ASP.NET gives the type without your converters",
+        "axes": {
+          "source": [
+            "decimal-converter"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
@@ -4024,6 +4455,28 @@
         "controller-without-ApiController-visible"
       ]
     },
+    "obligations": [
+      {
+        "id": "doc-required-where-rejected",
+        "sentence": "So the document never calls a field optional when the endpoint rejects a request without it.",
+        "axes": {
+          "declared": [
+            "ctor-parameter"
+          ],
+          "json.RespectRequiredConstructorParameters": [
+            "true"
+          ]
+        }
+      },
+      {
+        "id": "doc-optional-where-absent",
+        "sentence": "`AddTypeKit()` leaves a patch out of `required` where the serializer lets it be absent, and keeps it there where the options reject a body without it."
+      },
+      {
+        "id": "absent-is-default",
+        "sentence": "a property the request leaves out keeps its default, which is `Absent`."
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
@@ -4060,6 +4513,47 @@
         "controller-without-ApiController-visible"
       ]
     },
+    "obligations": [
+      {
+        "id": "declared-describes-fault",
+        "sentence": "OpenAPI: a problem response an endpoint declares itself (`ProducesProblem`, `[ProducesResponseType]`) describes `fault`, and names its problem types.",
+        "axes": {
+          "declared": [
+            "ProducesProblem",
+            "ProducesResponseType"
+          ]
+        }
+      },
+      {
+        "id": "declared-names-types",
+        "sentence": "OpenAPI: a problem response an endpoint declares itself (`ProducesProblem`, `[ProducesResponseType]`) describes `fault`, and names its problem types.",
+        "axes": {
+          "declared": [
+            "ProducesProblem",
+            "ProducesResponseType"
+          ]
+        }
+      },
+      {
+        "id": "ascending-with-declared",
+        "sentence": "OpenAPI: an operation with fault responses lists every status ascending, the ones its endpoint declares itself among them",
+        "axes": {
+          "declared": [
+            "ProducesProblem",
+            "ProducesResponseType"
+          ]
+        }
+      },
+      {
+        "id": "application-json-declared",
+        "sentence": "OpenAPI: a problem response an endpoint declares as `application/json`, such as `Produces<ProblemDetails>(404)` or `[ProducesResponseType<ProblemDetails>(404)]`, describes `fault` and `rule` and names its problem types, and keeps its media type",
+        "axes": {
+          "declared": [
+            "ProducesResponseType"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
@@ -4109,6 +4603,20 @@
         "controller-without-ApiController-visible"
       ]
     },
+    "obligations": [
+      {
+        "id": "builder-reaches-doc",
+        "sentence": "OpenAPI: a `WithFaultStatus` on the builder `MapControllers()` returns reaches the document, as it reached the response."
+      },
+      {
+        "id": "without-faults-leaves-doc",
+        "sentence": "**`WithoutFaults`** and `[WithoutFaults<T>]`: a route leaves out of its document the members it never answers with, and reporting one throws"
+      },
+      {
+        "id": "status-per-scope",
+        "sentence": "`WithFaultStatus`/`[FaultStatus<T>]` per endpoint, group or controller"
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
@@ -4154,6 +4662,86 @@
         "controller-without-ApiController-visible"
       ]
     },
+    "obligations": [
+      {
+        "id": "differing-refused",
+        "sentence": "Otherwise building the document fails rather than describe JSON the controllers don't write.",
+        "axes": {
+          "difference": [
+            "converter-only-http"
+          ],
+          "http.host": [
+            "mvc",
+            "both",
+            "controller-without-ApiController-visible"
+          ]
+        }
+      },
+      {
+        "id": "error-names-type-and-descriptions",
+        "sentence": "The error names the type and what each set of options says of it, also for a type held only inside a patch.",
+        "axes": {
+          "difference": [
+            "converter-only-http"
+          ],
+          "http.host": [
+            "mvc",
+            "both",
+            "controller-without-ApiController-visible"
+          ]
+        }
+      },
+      {
+        "id": "patch-held-refused",
+        "sentence": "The error names the type and what each set of options says of it, also for a type held only inside a patch.",
+        "axes": {
+          "difference": [
+            "converter-only-http"
+          ],
+          "http.host": [
+            "mvc",
+            "both",
+            "controller-without-ApiController-visible"
+          ]
+        }
+      },
+      {
+        "id": "same-converters-build",
+        "sentence": "A host with controllers registers the same converters and descriptions on both, in the same order.",
+        "axes": {
+          "difference": [
+            "naming-policy",
+            "number-handling"
+          ]
+        }
+      },
+      {
+        "id": "minimal-host-not-compared",
+        "sentence": "A host with controllers registers the same converters and descriptions on both, in the same order.",
+        "axes": {
+          "difference": [
+            "converter-only-http"
+          ],
+          "http.host": [
+            "minimal",
+            "route-group"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "only-converters-and-descriptions-compared",
+        "source": "design/adr/0071-converters-say-what-they-write.md#0071-json-converters-say-what-they-write-decimals-get-one-spelling",
+        "sentence": "Where the host has a controller, building the document fails when the two option sets do not carry the same described converters and description sets, by type, naming each that differs; a host of minimal APIs alone is never compared.",
+        "axes": {
+          "difference": [
+            "naming-policy",
+            "number-handling"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
@@ -4188,6 +4776,48 @@
         "default-literal"
       ]
     },
+    "obligations": [
+      {
+        "id": "a-cast-naming-no-member",
+        "sentence": "A `FaultKind` or a `ConstructorAccessibility` that names no member: a cast",
+        "axes": {
+          "value": [
+            "(FaultKind)9"
+          ]
+        }
+      },
+      {
+        "id": "default-and-zero",
+        "sentence": "`default(FaultKind)`, a zero",
+        "axes": {
+          "value": [
+            "default"
+          ]
+        }
+      },
+      {
+        "id": "constructor-accessibility-too",
+        "sentence": "[RequireParameterlessConstructor((ConstructorAccessibility)7)]   // CMTK0014: no member, read as public",
+        "axes": {
+          "site": [
+            "attribute-argument"
+          ],
+          "value": [
+            "(FaultKind)9"
+          ]
+        }
+      },
+      {
+        "id": "reported-where-written",
+        "sentence": "Both are reported where the value is written:",
+        "axes": {
+          "value": [
+            "(FaultKind)9",
+            "default"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "A default literal is the value 0, so it cannot spell (FaultKind)9 or a member: FaultKind's members start at 1.",
@@ -4339,6 +4969,20 @@
         "IEquatable"
       ]
     },
+    "obligations": [
+      {
+        "id": "names-each-base-member",
+        "sentence": "So a hand-written `Equals(TBase)`, `GetHashCode()` or `IEquatable<TBase>.Equals` on a base record isn't used, and a warning names it (CMTK1023)."
+      },
+      {
+        "id": "a-warning-and-generated",
+        "sentence": "A warning, and the value object is generated."
+      },
+      {
+        "id": "generated-equality-never-calls-the-base",
+        "sentence": "Over a base record, the generated `Equals(TSelf)` and `GetHashCode()` compare the underlying value alone, and never call the base's."
+      }
+    ],
     "exclude": [
       {
         "reason": "A record struct or a closed set has no base record: C# gives a struct no base type, and a closed set is a sealed class that is never a record (CMTK1020). CMTK1023 is about a base record's equality.",
@@ -6343,6 +6987,60 @@
         "collection-expression"
       ]
     },
+    "obligations": [
+      {
+        "id": "interface-and-unsealed",
+        "sentence": "**`[Interface]` and `[Unsealed]`** are what a proxy needs: a contract to implement, or a class to derive from.",
+        "axes": {
+          "attribute": [
+            "Interface",
+            "Unsealed"
+          ]
+        }
+      },
+      {
+        "id": "value-object-and-closed-set",
+        "sentence": "**`[ValueObject]` and `[ClosedSet]`** accept their marker interface with any type argument.",
+        "axes": {
+          "attribute": [
+            "ValueObject",
+            "ClosedSet"
+          ]
+        }
+      },
+      {
+        "id": "flags-enum-and-read-only-struct",
+        "sentence": "**`[FlagsEnum]` and `[ReadOnlyStruct]`** narrow what `where T : Enum` and `where T : struct` admit.",
+        "axes": {
+          "attribute": [
+            "FlagsEnum",
+            "ReadOnlyStruct"
+          ]
+        }
+      },
+      {
+        "id": "a-pair-once-at-the-later-argument",
+        "sentence": "A breach is reported once, at the later argument.",
+        "axes": {
+          "attribute": [
+            "Distinct",
+            "Unrelated"
+          ]
+        }
+      },
+      {
+        "id": "methods-the-compiler-calls",
+        "sentence": "**Methods the compiler calls for you:** a `foreach`'s `GetEnumerator`, an `await`'s `GetAwaiter`, a `Deconstruct` (in `var (a, b) = x`, a `foreach`, or a pattern like `x is (1, 2)`), and a collection expression's `Add` or builder method.",
+        "axes": {
+          "site": [
+            "foreach",
+            "await",
+            "Deconstruct",
+            "collection-expression"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "A record struct has no base type, so it cannot derive from a base record or inherit a base's explicit IEquatable.",
@@ -6488,6 +7186,53 @@
         "yes"
       ]
     },
+    "obligations": [
+      {
+        "id": "fails-unless-it-holds-that-reason",
+        "sentence": "`ShouldHold(reason)` fails unless the fault holds that reason, whichever of its types the reason belongs to."
+      },
+      {
+        "id": "whichever-of-its-types",
+        "sentence": "whichever of its types the reason belongs to",
+        "axes": {
+          "set": [
+            "first",
+            "last"
+          ],
+          "arity": [
+            "2",
+            "3"
+          ]
+        }
+      },
+      {
+        "id": "hands-back-detail-and-rule",
+        "sentence": "It hands back the `Fault<TFault>` with its detail and rule intact.",
+        "axes": {
+          "wrong-reason": [
+            "no"
+          ]
+        }
+      },
+      {
+        "id": "uninitialized-fails",
+        "sentence": "**An uninitialized result fails every assertion.**",
+        "axes": {
+          "or.operation": [
+            "default-instance"
+          ]
+        }
+      },
+      {
+        "id": "a-failure-says-the-outcome",
+        "sentence": "**A failure says what the outcome was**",
+        "axes": {
+          "wrong-reason": [
+            "yes"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "Result.Catch turns an exception into a Result, never an Option (src/CodoMetis.TypeKit/ResultExtensions.cs), so no row can catch into an Option.",
@@ -7698,6 +8443,110 @@
     "source": "README.md#what-typekit-guarantees",
     "surfaces": [
       "json"
+    ],
+    "obligations": [
+      {
+        "id": "the-underlying-types-json",
+        "sentence": "Its JSON is the underlying type's under your options"
+      },
+      {
+        "id": "as-a-dictionary-key-too",
+        "sentence": "Its JSON is the underlying type's under your options",
+        "axes": {
+          "shape.position": [
+            "dictionary-key"
+          ]
+        }
+      },
+      {
+        "id": "read-as-the-underlying-type-reads",
+        "sentence": "**Swapping a primitive for a value object keeps the JSON, the column and the schema.**"
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "a-datetime-is-written-as-utc",
+        "source": "README.md#what-typekit-guarantees",
+        "sentence": "Its JSON is the underlying type's under your options, with two exceptions: a `DateTime` is written as UTC",
+        "axes": {
+          "shape.wrapped": [
+            "DateTime"
+          ]
+        }
+      },
+      {
+        "id": "number-handling-on-the-containing-type",
+        "source": "README.md#what-typekit-guarantees",
+        "sentence": "and no converter sees number handling set by an attribute on the containing type"
+      },
+      {
+        "id": "a-struct-refuses-a-json-null",
+        "source": "README.md#what-typekit-guarantees",
+        "sentence": "What changes is what the value object rejects, a JSON `null` for a struct value object included.",
+        "axes": {
+          "input.json": [
+            "null"
+          ],
+          "shape.kind": [
+            "record-struct",
+            "validated-struct"
+          ]
+        }
+      },
+      {
+        "id": "a-validated-value-object-refuses-what-create-refuses",
+        "source": "README.md#what-typekit-guarantees",
+        "sentence": "What changes is what the value object rejects",
+        "axes": {
+          "input.json": [
+            "refused-by-create"
+          ],
+          "shape.kind": [
+            "validated-struct",
+            "validated-class"
+          ]
+        }
+      },
+      {
+        "id": "an-enum-under-a-source-generated-context",
+        "source": "README.md#what-typekit-guarantees",
+        "sentence": "And under a source-generated context, a value object over an enum needs its enum listed",
+        "axes": {
+          "json.TypeInfoResolver": [
+            "source-generated-context"
+          ],
+          "shape.wrapped": [
+            "enum",
+            "flags-enum"
+          ]
+        }
+      },
+      {
+        "id": "preserved-references-over-a-walked-class",
+        "source": "src/CodoMetis.TypeKit.Generators/README.md#json",
+        "sentence": "**Preserved references** (`ReferenceHandler.Preserve`) throw a `NotSupportedException` where the serializer could write `$id` or `$ref` inside the underlying value.",
+        "axes": {
+          "json.ReferenceHandler": [
+            "Preserve"
+          ],
+          "shape.wrapped": [
+            "own-record-class"
+          ]
+        }
+      },
+      {
+        "id": "a-closed-set-key-is-its-name",
+        "source": "docs/closed-sets.md#send-it-as-json",
+        "sentence": "No naming policy renames it, because a renamed name wouldn't read back.",
+        "axes": {
+          "shape.kind": [
+            "closed-set"
+          ],
+          "shape.position": [
+            "dictionary-key"
+          ]
+        }
+      }
     ]
   },
   {
@@ -7707,6 +8556,61 @@
       "json",
       "text",
       "logging"
+    ],
+    "obligations": [
+      {
+        "id": "parsing-never-repeats",
+        "sentence": "**Rejections never repeat the input.**",
+        "axes": {
+          "text.entry": [
+            "Parse",
+            "TryParse",
+            "IParsable",
+            "ISpanParsable",
+            "type-converter"
+          ]
+        }
+      },
+      {
+        "id": "json-never-repeats",
+        "sentence": "A JSON or parsing rejection names the value object and the rule, or the underlying type it could not read."
+      },
+      {
+        "id": "no-inner-that-quotes",
+        "sentence": "It carries no inner exception that quotes the text.",
+        "axes": {
+          "text.entry": [
+            "Parse",
+            "TryParse",
+            "IParsable",
+            "ISpanParsable",
+            "type-converter"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "a-rejected-dictionary-key-in-the-path",
+        "source": "README.md#what-typekit-guarantees",
+        "sentence": "One exception comes from System.Text.Json: a rejected dictionary key is in the `JsonException`'s `Path`, and so in MVC's 400",
+        "axes": {
+          "shape.position": [
+            "dictionary-key"
+          ]
+        }
+      },
+      {
+        "id": "the-applications-own-converter",
+        "source": "README.md#what-typekit-guarantees",
+        "sentence": "So a secret doesn't end up in a message or a log through this package, as long as your fault type doesn't carry it.",
+        "axes": {
+          "json.Converters": [
+            "own-for-wrapped",
+            "own-for-value-object"
+          ]
+        }
+      }
     ]
   },
   {
@@ -7718,25 +8622,130 @@
     ],
     "narrow": {
       "input.json": "The generated `TryFrom`, `FromKnownGood`, JSON converter, parsing and type converter all run it, and each reports the fault you return from `Create`"
-    }
+    },
+    "obligations": [
+      {
+        "id": "tryfrom-runs-create",
+        "sentence": "The generated `TryFrom`, `FromKnownGood`, JSON converter, parsing and type converter all run it",
+        "axes": {
+          "text.entry": [
+            "TryFrom"
+          ]
+        }
+      },
+      {
+        "id": "parsing-runs-create",
+        "sentence": "The generated `TryFrom`, `FromKnownGood`, JSON converter, parsing and type converter all run it",
+        "axes": {
+          "text.entry": [
+            "Parse",
+            "TryParse",
+            "IParsable",
+            "ISpanParsable",
+            "type-converter"
+          ]
+        }
+      },
+      {
+        "id": "json-runs-create",
+        "sentence": "The generated `TryFrom`, `FromKnownGood`, JSON converter, parsing and type converter all run it"
+      },
+      {
+        "id": "refusals-name-the-fault",
+        "sentence": "the `JsonException`, the `FormatException` and the `FromKnownGood` exception all name your `EmailFault.NoAt`"
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "stored-json-skips-validation",
+        "source": "README.md#what-typekit-guarantees",
+        "sentence": "`StoredJsonConverterFactory` reads JSON the application stored itself.",
+        "axes": {
+          "json.Converters": [
+            "StoredJsonConverterFactory"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "L04-round-trip",
-    "source": "README.md#what-typekit-guarantees",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#parsing-and-formatting",
     "surfaces": [
       "text",
       "json"
+    ],
+    "obligations": [
+      {
+        "id": "invariant-whatever-the-culture",
+        "sentence": "A null `IFormatProvider` means the invariant culture in every generated `Parse`, `TryParse`, `ToString` and `TryFormat`, so the text doesn't depend on the culture the process runs in."
+      },
+      {
+        "id": "the-type-converter-writes-the-same",
+        "sentence": "`ToString()` is the underlying type's own default text under the invariant culture, and the type converter and `$\"{x}\"` write the same.",
+        "axes": {
+          "text.entry": [
+            "ToString-format",
+            "TryFormat-short-span",
+            "type-converter"
+          ]
+        }
+      },
+      {
+        "id": "text-reads-back",
+        "sentence": "That text reads back as the same value wherever the underlying type's own does"
+      },
+      {
+        "id": "json-refusal-is-a-json-exception",
+        "sentence": "Input it can't read throws a `JsonException` naming the value object and the underlying type"
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "dates-and-times-lose-detail-as-text",
+        "source": "src/CodoMetis.TypeKit.Generators/README.md#parsing-and-formatting",
+        "sentence": "**`TimeOnly`, `DateTime` and `DateTimeOffset` lose detail as text.**",
+        "axes": {
+          "shape.wrapped": [
+            "TimeOnly",
+            "DateTime",
+            "DateTimeOffset"
+          ]
+        }
+      }
     ]
   },
   {
     "id": "L05-equality",
-    "source": "README.md#what-typekit-guarantees",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#equality",
     "surfaces": [
       "generation"
     ],
     "narrow": {
-      "shape.refused-kind": "It never compiles into a type with nothing in it."
+      "shape.refused-kind": "A declaration that can't be generated fails the build, so no type is left half-generated."
     },
+    "obligations": [
+      {
+        "id": "equality-is-the-underlying-values",
+        "sentence": "Equality is the underlying value's, like the ordering, the JSON and the column."
+      },
+      {
+        "id": "ordering-follows-the-underlying-type",
+        "sentence": "`CompareTo` and the operators follow the underlying type's ordering, ordinal for a string."
+      },
+      {
+        "id": "through-every-base",
+        "sentence": "The value object implements each base's `IEquatable<TBase>` again (`IReimplementedEquatable<TBase>`), so a collection of the base compares it the way the value object does.",
+        "axes": {
+          "shape.inheritance": [
+            "base-depth-1",
+            "base-depth-2",
+            "base-depth-3",
+            "base-explicit-IEquatable"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "A struct cannot derive from a base type (C# structs inherit only from ValueType), so it has no base record.",
@@ -8098,6 +9107,36 @@
     "surfaces": [
       "json",
       "option-result"
+    ],
+    "obligations": [
+      {
+        "id": "never-written",
+        "sentence": "System.Text.Json throws `NotSupportedException` for either, in both directions, instead of writing `{}` that reads back as `None`."
+      },
+      {
+        "id": "never-read",
+        "sentence": "System.Text.Json throws `NotSupportedException` for either, in both directions, instead of writing `{}` that reads back as `None`."
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "a-source-generated-context-refuses-a-nullable",
+        "source": "src/CodoMetis.TypeKit/README.md#not-wire-types",
+        "sentence": "**A source-generated context can't describe an `Option<T>?` or `Result<...>?` property.**",
+        "axes": {
+          "json.TypeInfoResolver": [
+            "source-generated-context"
+          ],
+          "shape.position": [
+            "nullable-property"
+          ]
+        }
+      },
+      {
+        "id": "a-missing-property-reaches-no-converter",
+        "source": "src/CodoMetis.TypeKit/README.md#not-wire-types",
+        "sentence": "**A missing property reaches no converter.**"
+      }
     ],
     "exclude": [
       {

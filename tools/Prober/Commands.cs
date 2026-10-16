@@ -27,7 +27,7 @@ internal sealed class Args
         }
     }
 
-    private static readonly HashSet<string> Multi = new(StringComparer.Ordinal) { "cobertura", "include", "compile-time", "from" };
+    private static readonly HashSet<string> Multi = new(StringComparer.Ordinal) { "cobertura", "include", "compile-time", "from", "seed-env" };
     private void Add(string name, string value) { if (!options.TryGetValue(name, out var l)) options[name] = l = []; l.Add(value); }
     public string? Get(string name) => options.TryGetValue(name, out var l) ? l[^1] : null;
     public string Need(string name) => Get(name) is { Length: > 0 } v ? v : throw new Refusal($"--{name} is required", 2);
@@ -42,10 +42,19 @@ internal static class Commands
 
     public static int Rows(Ledger l, Args a)
     {
+        l.Ctx.Out.WriteLine(CoveringRows(l, a.Need("claim"), a.Flag("full"), a.Get("max"), a.Get("seed")).ToJsonString(Pretty));
+        return 0;
+    }
+
+    /// <summary>
+    /// What `rows` prints: a pairwise covering array over the claim's pairs not yet covered (all of them with
+    /// <paramref name="full"/>), each row with the pairs it covers. Inside a capped round the claim counts toward
+    /// the round's cap, and past the deadline or the cap this refuses.
+    /// </summary>
+    public static JsonObject CoveringRows(Ledger l, string claimId, bool full, string? max = null, string? seed = null)
+    {
         var universe = Universe.Load(l.P("universe.json")) ?? throw new Refusal("no universe.json for this branch yet; run `universe` first");
-        var claimId = a.Need("claim");
         if (!universe.ById.TryGetValue(claimId, out var claim)) throw new Refusal($"no claim {claimId} in the universe");
-        var full = a.Flag("full");
         if (!full && ActiveRound(l) is { } round)
         {
             if (RoundLock.Now() > Files.Num(round["deadline"]))
@@ -62,9 +71,8 @@ internal static class Commands
         }
         var covered = full ? [] : l.Covered(universe, claimId);
         var todo = claim.Pairs().Where(p => !covered.Contains((claimId, p))).ToHashSet();
-        var max = int.Parse(a.Get("max") ?? "2000", CultureInfo.InvariantCulture);
-        var rows = Covering.Rows(claim, todo, max, int.Parse(a.Get("seed") ?? "1", CultureInfo.InvariantCulture));
-        var output = new JsonObject
+        var rows = Covering.Rows(claim, todo, int.Parse(max ?? "2000", CultureInfo.InvariantCulture), int.Parse(seed ?? "1", CultureInfo.InvariantCulture));
+        return new JsonObject
         {
             ["claim"] = claimId,
             ["rows"] = new JsonArray([.. rows.Select(r => (JsonNode)new JsonObject
@@ -74,8 +82,6 @@ internal static class Commands
             })]),
             ["uncovered_after"] = todo.Count - rows.Sum(r => r.Pairs.Count),
         };
-        l.Ctx.Out.WriteLine(output.ToJsonString(Pretty));
-        return 0;
     }
 
     public static int UniverseCommand(Ledger l, Args a)
@@ -312,13 +318,49 @@ internal static class Commands
         var entry = l.Registry().GetValueOrDefault(a.Need("probe")) ?? [];
         entry["claim"] = a.Need("claim"); entry["filter"] = a.Need("filter");
         if (a.Get("variants") is { Length: > 0 } v) entry["variants"] = JsonNode.Parse(v);
-        // The defect `seeds` applies to prove the probe can fail (decision 100): a patch under the corpus, and what it breaks.
-        if (a.Get("seed") is { Length: > 0 } seed) entry["seed"] = new JsonObject { ["patch"] = seed, ["defect"] = a.Need("defect") };
+        // The defect `seeds` applies to prove the probe can fail (decision 100): a patch under the corpus, an
+        // environment toggle, or both, and what it breaks.
+        var seed = new JsonObject();
+        if (a.Get("seed") is { Length: > 0 } patch) seed["patch"] = patch;
+        if (a.All("seed-env") is { Count: > 0 } toggles) seed["env"] = SeedEnv(toggles);
+        if (a.Get("obligation") is { } obligation)
+        {
+            // A seed per obligation (decision 104): into `seeds`, in place of any seed that names the same obligation.
+            if (obligation.Length == 0) throw new Refusal("--obligation needs the id of one of the claim's obligations", 2);
+            if (seed.Count == 0) throw new Refusal("--obligation names the obligation of a seed: give the seed with --seed PATCH or --seed-env NAME=VALUE", 2);
+            var claim = l.Claims().FirstOrDefault(c => Files.Str(c["id"]) == a.Need("claim"))
+                        ?? throw new Refusal($"no claim {a.Need("claim")} in claims.json (tracked or staged), so obligation {obligation} cannot be checked");
+            var ids = Claim.ObligationIds(claim);
+            if (!ids.Contains(obligation))
+                throw new Refusal($"claim {a.Need("claim")} lists no obligation {obligation} (it lists {string.Join(", ", ids)})", 2);
+            var named = new JsonObject { ["obligation"] = obligation };
+            foreach (var (key, value) in seed) named[key] = value?.DeepClone();
+            named["defect"] = a.Need("defect");
+            var kept = (entry["seeds"] as JsonArray ?? []).Where(s => Files.Str(s?["obligation"]) != obligation).Select(s => s?.DeepClone()).ToList();
+            var replaced = (entry["seeds"] as JsonArray ?? []).Count - kept.Count;
+            entry["seeds"] = new JsonArray([.. kept, named]);
+            if (entry["seed"] is JsonObject one && Files.Str(one["obligation"]) == obligation) { entry.Remove("seed"); replaced++; }
+            l.Ctx.Out.WriteLine($"seed for obligation {obligation} of {a.Need("probe")}" + (replaced > 0 ? $", in place of the {replaced} it had" : ""));
+        }
+        else if (seed.Count > 0) { seed["defect"] = a.Need("defect"); entry["seed"] = seed; }
         probes[a.Need("probe")] = entry;
         staged["probes"] = probes.DeepClone();
         Files.WriteJson(path, staged);
         l.Ctx.Out.WriteLine($"registered {a.Need("probe")} (staged; `publish` moves it into the corpus)");
         return 0;
+    }
+
+    /// <summary>A seed's environment toggle from <c>--seed-env NAME=VALUE ...</c>; a toggle without a name or an <c>=</c> is refused.</summary>
+    private static JsonObject SeedEnv(List<string> toggles)
+    {
+        var env = new JsonObject();
+        foreach (var toggle in toggles)
+        {
+            var eq = toggle.IndexOf('=', StringComparison.Ordinal);
+            if (eq <= 0) throw new Refusal($"--seed-env {toggle}: a toggle is NAME=VALUE", 2);
+            env[toggle[..eq]] = toggle[(eq + 1)..];
+        }
+        return env;
     }
 
     public static int Publish(Ledger l, Args a)

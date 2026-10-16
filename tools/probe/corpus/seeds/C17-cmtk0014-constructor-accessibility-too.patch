@@ -1,0 +1,12 @@
+diff --git a/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs b/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs
+index 7265ea3..52c2a37 100644
+--- a/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs
++++ b/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs
+@@ -45,7 +45,6 @@ public sealed class UndefinedEnumValueAnalyzer : DiagnosticAnalyzer
+     private static readonly (string MetadataName, string Consequence)[] Enums =
+     [
+         ("CodoMetis.TypeKit.ClosedSets.FaultKind", "a host refuses a fault set's member of no kind where it maps the set, when it starts"),
+-        ("CodoMetis.TypeKit.ConstructorAccessibility", "CMTK0011 reads it as public"),
+     ];
+ 
+     /// <summary>The operations that can be a constant of an enum, folded or not; each is judged only where no other contains it.</summary>

@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesOperationTransformer.cs b/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesOperationTransformer.cs
+index 8e936ee..691cb3e 100644
+--- a/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesOperationTransformer.cs
++++ b/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesOperationTransformer.cs
+@@ -137,7 +137,7 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
+             touched = true;
+         }
+ 
+-        if (touched) Ascending(operation.Responses!);
++        if (touched && operation.Responses!.Count == 0) Ascending(operation.Responses!);
+     }
+ 
+     /// <summary>

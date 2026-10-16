@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs b/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs
+index 5c1fd7e..bce7547 100644
+--- a/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs
++++ b/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs
+@@ -809,7 +809,7 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
+         // dynamic is object, a class that can be derived from, as [Concrete] takes it. The abstract bases nothing
+         // derives from (Enum, Delegate, MulticastDelegate, ValueType, Array) are taken too until 3.0.0 (decision 34).
+         TypeArgumentConstraint.Unsealed       => argument.TypeKind is TypeKind.Dynamic || argument is INamedTypeSymbol { TypeKind: TypeKind.Class, IsSealed: false, IsStatic: false },
+-        TypeArgumentConstraint.ValueObject    => argument.TypeKind is not TypeKind.Interface && symbols.FindMarker(argument, out _) is not null,
++        TypeArgumentConstraint.ValueObject    => argument.TypeKind is not TypeKind.Interface,
+         TypeArgumentConstraint.ClosedSet      => symbols.FindClosedSetMarker(argument) is not null,
+         TypeArgumentConstraint.FlagsEnum      => symbols.IsFlagsEnum(argument),
+         TypeArgumentConstraint.ReadOnlyStruct => argument is INamedTypeSymbol { TypeKind: TypeKind.Struct, IsReadOnly: true },

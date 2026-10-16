@@ -1,6 +1,6 @@
 // Claim C20-testing-shouldhold (src/CodoMetis.TypeKit.Testing/README.md): "ShouldHold(reason) fails unless the fault holds that reason, whichever of its types the reason belongs to. It hands back the Fault<TFault> with its detail and rule intact."
 // "An uninitialized result fails every assertion." "A failure says what the outcome was" and "never prints a value".
-// Oracle: claim. Held reason -> returns the Fault<TW> with Reason/Detail/Rule intact; wrong reason (same type other value, or a fault of another type) -> TypeKitAssertionException naming the fault; default composed fault -> TypeKitAssertionException "uninitialized".
+// Oracle: claim. Held reason (with a detail and a rule) -> returns the Fault<TW> with Reason/Detail/Rule intact; wrong reason (same type other value, or a fault of another type) -> TypeKitAssertionException naming the fault it holds; default composed fault -> TypeKitAssertionException "uninitialized".
 #pragma warning disable xUnit1051, CMTK0014, CMTK0010 // CMTK0010: TW is a run-time-chosen type, distinct from the fixed Alt enums by construction
 using CodoMetis.TypeKit;
 using CodoMetis.TypeKit.Testing;
@@ -33,11 +33,16 @@ public sealed class C20ShouldHoldProbe
     {
         var arity = r["arity"]; var first = r["set"] == "first"; var wrong = r["wrong-reason"] == "yes";
         if (arity == "2")
-            return first ? await Run<TW, Fault<TW, C20Alt1>>(r, a, b, x => Fault<TW, C20Alt1>.Of(x), f => f.ShouldHold(a), f => f.ShouldHold(b), Fault<TW, C20Alt1>.Of(C20Alt1.A), f => f.ShouldHold(C20Alt1.A))
-                          : await Run<TW, Fault<C20Alt1, TW>>(r, a, b, x => Fault<C20Alt1, TW>.Of(x), f => f.ShouldHold(a), f => f.ShouldHold(b), Fault<C20Alt1, TW>.Of(C20Alt1.A), f => f.ShouldHold(C20Alt1.A));
-        return first ? await Run<TW, Fault<TW, C20Alt1, C20Alt2>>(r, a, b, x => Fault<TW, C20Alt1, C20Alt2>.Of(x), f => f.ShouldHold(a), f => f.ShouldHold(b), Fault<TW, C20Alt1, C20Alt2>.Of(C20Alt2.A), f => f.ShouldHold(C20Alt2.A))
-                      : await Run<TW, Fault<C20Alt1, C20Alt2, TW>>(r, a, b, x => Fault<C20Alt1, C20Alt2, TW>.Of(x), f => f.ShouldHold(a), f => f.ShouldHold(b), Fault<C20Alt1, C20Alt2, TW>.Of(C20Alt1.A), f => f.ShouldHold(C20Alt1.A));
+            return first ? await Run<TW, Fault<TW, C20Alt1>>(r, a, b, x => Fault<TW, C20Alt1>.Of(Held(x)), f => f.ShouldHold(a), f => f.ShouldHold(b), Fault<TW, C20Alt1>.Of(C20Alt1.A), f => f.ShouldHold(C20Alt1.A))
+                          : await Run<TW, Fault<C20Alt1, TW>>(r, a, b, x => Fault<C20Alt1, TW>.Of(Held(x)), f => f.ShouldHold(a), f => f.ShouldHold(b), Fault<C20Alt1, TW>.Of(C20Alt1.A), f => f.ShouldHold(C20Alt1.A));
+        return first ? await Run<TW, Fault<TW, C20Alt1, C20Alt2>>(r, a, b, x => Fault<TW, C20Alt1, C20Alt2>.Of(Held(x)), f => f.ShouldHold(a), f => f.ShouldHold(b), Fault<TW, C20Alt1, C20Alt2>.Of(C20Alt2.A), f => f.ShouldHold(C20Alt2.A))
+                      : await Run<TW, Fault<C20Alt1, C20Alt2, TW>>(r, a, b, x => Fault<C20Alt1, C20Alt2, TW>.Of(Held(x)), f => f.ShouldHold(a), f => f.ShouldHold(b), Fault<C20Alt1, C20Alt2, TW>.Of(C20Alt1.A), f => f.ShouldHold(C20Alt1.A));
     }
+
+    const string Detail = "probe-detail";
+
+    /// <summary>The fault a row holds: its reason with a detail and a rule, which ShouldHold hands back intact.</summary>
+    static Fault<TW> Held<TW>(TW reason) where TW : notnull => Fault.Of(reason, Detail).WithRule(C20RuleKind.Strict);
 
     static async Task<string?> Run<TW, TC>(Row r, TW a, TW b, Func<TW, TC> make, Func<TC, Fault<TW>> holdA, Func<TC, Fault<TW>> holdB, TC foreign, Func<TC, object> holdForeignSet)
         where TW : notnull where TC : struct
@@ -61,6 +66,9 @@ public sealed class C20ShouldHoldProbe
         {
             if (thrown is not TypeKitAssertionException e) return $"ShouldHold({a}) on a fault of another type gave {(thrown is null ? "a result: " + hand : thrown.GetType().Name)}; expected TypeKitAssertionException";
             if (!e.Message.Contains("Expected the fault") || e.Message.Contains("UNEXPECTED")) return "message: " + e.Message;
+            // the outcome: the fault the composed fault holds, as ShouldHold of its own reason hands it back
+            var outcome = holdForeignSet(composed).ToString()!;
+            if (!e.Message.Contains(outcome)) return $"the failure does not say what the outcome was ({outcome}): {e.Message}";
             // same type other value
             try { holdB(composed); return "ShouldHold(other value) passed on a fault of another type"; } catch (TypeKitAssertionException) { }
             // and the held reason itself is still reachable by its own type
@@ -69,6 +77,8 @@ public sealed class C20ShouldHoldProbe
         }
         if (thrown is not null) return $"ShouldHold({a}) on a fault holding it threw {thrown.GetType().Name}: {thrown.Message}";
         if (!EqualityComparer<TW>.Default.Equals(hand!.Value.Reason, a)) return $"returned fault has reason {hand.Value.Reason}, expected {a}";
+        var want = Held(a);
+        if (hand.Value.Detail != want.Detail || hand.Value.Rule != want.Rule) return $"returned fault has detail '{hand.Value.Detail}' and rule '{hand.Value.Rule}', expected '{want.Detail}' and '{want.Rule}'";
         try { holdB(composed); fail = "ShouldHold(other value of the same type) passed"; } catch (TypeKitAssertionException) { }
         return fail;
     }

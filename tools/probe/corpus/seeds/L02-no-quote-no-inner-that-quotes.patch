@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.Generators/ValueObjectParsableAspect.cs b/src/CodoMetis.TypeKit.Generators/ValueObjectParsableAspect.cs
+index c734b98..9917c71 100644
+--- a/src/CodoMetis.TypeKit.Generators/ValueObjectParsableAspect.cs
++++ b/src/CodoMetis.TypeKit.Generators/ValueObjectParsableAspect.cs
+@@ -54,7 +54,7 @@ internal sealed class ParsableImplementationArguments
+     public string InnerParse(string input = "s")
+     {
+         var valueType   = ValueObjectTypes.SourceName(ValueType);
+-        var unreadable  = $"throw global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing.Unreadable<{ValueObjectTypes.SourceName(ValueObjectType)}, {valueType}>()";
++        var unreadable  = $"throw new global::System.FormatException(global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing.Unreadable<{ValueObjectTypes.SourceName(ValueObjectType)}, {valueType}>().Message, new global::System.FormatException(\"The input '\" + {input}.ToString() + \"' was not in a correct format.\"))";
+         const string at = "global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing";
+ 
+         return Strategy switch

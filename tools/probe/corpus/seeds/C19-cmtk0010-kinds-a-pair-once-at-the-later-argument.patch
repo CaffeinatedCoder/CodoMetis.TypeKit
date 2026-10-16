@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs b/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs
+index 5c1fd7e..703f84c 100644
+--- a/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs
++++ b/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs
+@@ -518,7 +518,7 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
+                 {
+                     yield return Diagnostic.Create(
+                         Rule,
+-                        locationOf(later),
++                        locationOf(earlier),
+                         arguments[later].Argument.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+                         arguments[later].Parameter.Name,
+                         Owner(arguments[later].Owner),

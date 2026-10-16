@@ -1,6 +1,7 @@
 // Claims C03-composed-faults (AspNetCore README#faults-of-several-types) and C05-with-rule (README#the-rule-that-refused).
-// C03: a Fault<T1,T2[,T3]> is "answered as its own set maps it" (status, `fault`, detail, rule intact); "its operation lists the statuses of both
-//   sets, in ascending order"; "the host doesn't start while either set is unmapped".
+// C03: a Fault<T1,T2[,T3]> is "answered as its own set maps it" (status, `fault`, problem type, detail, rule intact); "its operation lists the
+//   statuses of both sets, in ascending order, with the problem types of both where they share a status"; "the host doesn't start while either
+//   set is unmapped". The host maps every fault set with a problem type of its set and kind (TypeOf), so two sets sharing a status name two types.
 // C05: WithRule(member) is written as `rule`, "qualified with its type's name", a nested type after its nesting chain "whatever QualifiedFaultNames
 //   says"; "The status, the mapping and the document stay the error's"; a value no member names "throws where it's given"; the document describes `rule`.
 // Oracle: claim (README text) + differential wire/document. Expected: see Cmp.Expect / Cmp.DocStatuses.
@@ -25,7 +26,12 @@ public static class ComposedClaims
     {
         FaultControllers = true, Controllers = Hx.Plain(r) ? [typeof(RulePlainController)] : [typeof(RuleApiController)],
         Minimal = Cmp.MapMinimal, Qualified = r.Is("qualified", "QualifiedFaultNames"),
+        Mapping = "own-per-set-type",
+        Services = s => s.AddFaultResponses(f => FaultResponse.For(f.Kind).WithType(new Uri(TypeOf(f.GetType().Name, f.Kind.ToString())))),
     };
+
+    /// <summary>The problem type the host maps a fault-set member to: its set's and its kind's, so two sets sharing a status name two types.</summary>
+    public static string TypeOf(string set, string kind) => $"https://p.example/{set}/{kind}";
 
     /// <summary>The wire and the document of one endpoint family under the row. e: the error code of Cmp.</summary>
     public static async Task<string?> WireAndDoc(Row r, Entry en, int arity, int e, string rule)
@@ -59,6 +65,9 @@ public static class ComposedClaims
             if (e == 3 && Un(r, body?["detail"]?.GetValue<string>()) != Cmp.Detail) return $"{path} e={e}: detail {body?["detail"]}, expected the occurrence's";
             var gotRule = Un(r, body?["rule"]?.GetValue<string>());
             if (gotRule != (rule == "" ? null : rule)) return $"{path} e={e}: rule {gotRule ?? "(none)"}, expected {(rule == "" ? "(none)" : rule)}";
+            // an enum (SFault) is mapped to a status alone, and ASP.NET writes its own default type there
+            if (Cmp.KindOf(type, member) is { } kind && Un(r, body?["type"]?.GetValue<string>()) is var gotType && gotType != TypeOf(type, kind))
+                return $"{path} e={e}: type {gotType ?? "(none)"}, expected {TypeOf(type, kind)}";
             if (int.Parse(body?["status"]?.ToString() is { } st ? Un(r, st)!.Trim('"') : "0") != status) return $"{path} e={e}: problem status field {body?["status"]}";
             // the document
             if (docFail is not null) return docFail;
@@ -76,6 +85,13 @@ public static class ComposedClaims
                 var txt = Hx.Deep(doc!, ops["responses"]![k.ToString()])?.ToJsonString() ?? "";
                 if (!txt.Contains("\"fault\"")) return $"{path} {k}: response schema does not describe fault: {Cut(txt)}";
                 if (!txt.Contains("\"rule\"")) return $"{path} {k}: response schema does not describe rule: {Cut(txt)}";
+                var desc = ops["responses"]![k.ToString()]?["description"]?.GetValue<string>() ?? "";
+                const string Lead = "Problem types: ";
+                var at = desc.IndexOf(Lead, StringComparison.Ordinal);
+                var types = at < 0 ? [] : desc[(at + Lead.Length)..].Split(", ").ToHashSet();
+                var wantTypes = Cmp.TypesAt(arity, variant, k);
+                if (!types.SetEquals(wantTypes))
+                    return $"{path} {k}: description \"{desc}\" names problem types {{{string.Join(", ", types)}}}, expected {{{string.Join(", ", wantTypes)}}}";
             }
         }
         return null;

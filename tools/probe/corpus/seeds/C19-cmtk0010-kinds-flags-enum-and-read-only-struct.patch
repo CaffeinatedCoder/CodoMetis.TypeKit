@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs b/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs
+index 5c1fd7e..2f1a554 100644
+--- a/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs
++++ b/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs
+@@ -812,7 +812,7 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
+         TypeArgumentConstraint.ValueObject    => argument.TypeKind is not TypeKind.Interface && symbols.FindMarker(argument, out _) is not null,
+         TypeArgumentConstraint.ClosedSet      => symbols.FindClosedSetMarker(argument) is not null,
+         TypeArgumentConstraint.FlagsEnum      => symbols.IsFlagsEnum(argument),
+-        TypeArgumentConstraint.ReadOnlyStruct => argument is INamedTypeSymbol { TypeKind: TypeKind.Struct, IsReadOnly: true },
++        TypeArgumentConstraint.ReadOnlyStruct => argument is INamedTypeSymbol { TypeKind: TypeKind.Struct },
+         _                                     => argument.TypeKind is TypeKind.Array or TypeKind.Enum or TypeKind.Delegate or TypeKind.Dynamic
+                                               || argument is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct, IsAbstract: false, IsStatic: false },
+     };

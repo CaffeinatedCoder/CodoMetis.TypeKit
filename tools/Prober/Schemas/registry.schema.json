@@ -44,8 +44,7 @@
           },
           "seeds": {
             "type": "array",
-            "minItems": 1,
-            "description": "One seeded defect per obligation of the probe's claim that this probe checks (decision 104): each as `seed` below, naming the obligation it breaks. A probe may carry `seed` and `seeds` both.",
+            "description": "One seeded defect per obligation of the probe's claim that this probe checks (decision 104): each as `seed` below, naming the obligation it breaks. A probe may carry `seed` and `seeds` both. Empty in the entry `prober new` stages, until the writer registers each with `prober register --obligation O`, which replaces a seed naming O; `seeds` and Seeds.Problems refuse a probe with none. Not part of the probe's identity.",
             "items": {
               "type": "object",
               "required": [
