@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
@@ -46,10 +47,19 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
     /// <summary>The types described as another on this call path, to refuse a description that never ends.</summary>
     private static readonly AsyncLocal<ImmutableStack<Type>?> SameAsPath = new();
 
+    /// <summary>
+    /// The elements put back into a container ASP.NET left without one, with their type. ASP.NET goes on to visit each
+    /// as that type, where a nullable one of a type with a component reads as the component, which admits no null.
+    /// </summary>
+    private static readonly ConditionalWeakTable<OpenApiSchema, Type> PutBack = new();
+
     public async Task TransformAsync(OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
     {
         // A non-abstract polymorphic base's own branch, which ASP.NET hands to no transformer.
         await PolymorphicBaseBranch.WalkAsync(schema, context, this, cancellationToken);
+
+        // Already complete: visited again as a nullable type with a component, it would lose its null.
+        if (PutBack.TryGetValue(schema, out _)) return;
 
         var info = context.JsonTypeInfo;
         var options = info.Options;
@@ -120,6 +130,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
         var elementDescribed = await SchemaAsync(elementDescription, element, context, cancellationToken);
         if (Nullable.GetUnderlyingType(element) is not null) PatchSchemaTransformer.AdmitNull(elementSchema, elementDescribed);
         else elementSchema.FillFrom(elementDescribed);
+        PutBack.AddOrUpdate(elementSchema, element);
 
         if (info.Kind == JsonTypeInfoKind.Enumerable) schema.Items = elementSchema;
         else schema.AdditionalProperties = elementSchema;
