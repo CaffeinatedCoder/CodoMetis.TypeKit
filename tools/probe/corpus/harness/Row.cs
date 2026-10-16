@@ -333,6 +333,8 @@ public sealed class NoteKeys
     public static readonly NoteKeys SchemaNullableSpellingsNormalised = new("schema:nullable-spellings-normalised", Pass);
     public static readonly NoteKeys SchemaClassVoNullabilityNormalised = new("schema:class-vo-nullability-normalised", Pass);
     public static readonly NoteKeys SchemaNeitherSideDocumented = new("schema:neither-side-documented", Pass);
+    // a nullable value object that is a component is null around its reference, the wrapped type null inside its schema (decision 36)
+    public static readonly NoteKeys SchemaNullAroundReferenceNormalised = new("schema:null-around-reference-normalised", Pass);
     // EF: the claim's check ran, against the documented expectation where the wrapped type's own side cannot answer
     public static readonly NoteKeys RefusalNamesTheType = new("refusal-names-the-type", Pass);
     public static readonly NoteKeys StoredFactoryReadUnvalidated = new("stored-factory-read-unvalidated", Pass);
@@ -368,6 +370,10 @@ public sealed class NoteKeys
     public static readonly NoteKeys StoredFactorySkipsValidation = new("stored-factory-skips-validation", Inapplicable);
     public static readonly NoteKeys SchemaConverterNotDescribed = new("schema:converter-not-described", Inapplicable);
     public static readonly NoteKeys SchemaNullabilityNotComparable = new("schema:nullability-not-comparable", Inapplicable);
+    // C21's not-promised entries, made by ASP.NET's OpenAPI 2.0 writer: a nullable property of a component loses its reference (KB-026),
+    // a nullable body of a value type keeps only its null (KB-001)
+    public static readonly NoteKeys SchemaOpenApi2NullableComponentLosesType = new("schema:openapi2-nullable-component-loses-type", Inapplicable);
+    public static readonly NoteKeys SchemaOpenApi2NullableBodyKeepsOnlyNull = new("schema:openapi2-nullable-body-keeps-only-null", Inapplicable);
     public static readonly NoteKeys ClosedSetKeyUnpoliced = new("closed-set-key-unpoliced", Inapplicable);
     public static readonly NoteKeys PlainRefused = new("plain-refused", Inapplicable);
     public static readonly NoteKeys EntryNotApplicable = new("entry-not-applicable", Inapplicable);

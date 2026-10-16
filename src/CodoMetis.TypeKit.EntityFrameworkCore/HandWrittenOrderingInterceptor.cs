@@ -1,6 +1,8 @@
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using CodoMetis.TypeKit.CompilerServices;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
@@ -65,7 +67,10 @@ internal sealed class HandWrittenOrderingQueryFilterConvention : IModelFinalized
     }
 }
 
-/// <summary>Finds a comparison, an ordering, or a minimum or maximum of a value object with a hand-written ordering, and throws.</summary>
+/// <summary>
+/// Finds a comparison, an ordering, or a minimum or maximum of a value object with a hand-written ordering, and throws:
+/// in C#, or through the database's own <c>EF.Functions.Greatest</c>, <c>Least</c> and row-value comparisons.
+/// </summary>
 internal static class HandWrittenOrdering
 {
     /// <summary>In a query's LINQ tree, which EF has already stripped of what it evaluates in memory.</summary>
@@ -113,8 +118,39 @@ internal static class HandWrittenOrdering
                 // value object's CompareTo, while EF drops the conversion and orders by the column.
                 if (KeySelector(node) is { } key) Refuse(Unconverted(key.Body).Type, $"ordered by {method.Name}");
             }
+            else if (IsDbFunction(method) && !RunsInMemory(node))
+            {
+                // EF.Functions.Greatest and Least (relational: GREATEST, LEAST, SQLite's max and min) pick by the
+                // column's order, as Max does.
+                if (method.Name is "Greatest" or "Least" && method.IsGenericMethod)
+                    Refuse(method.GetGenericArguments()[0], $"compared by {method.Name}");
+
+                // A row-value comparison (Npgsql's EF.Functions.GreaterThan((a, b), (x, y)) and its siblings) compares
+                // each element by its column's order; its tuples arrive boxed to ITuple.
+                if (method.Name is "GreaterThan" or "GreaterThanOrEqual" or "LessThan" or "LessThanOrEqual")
+                    foreach (var argument in node.Arguments)
+                        if (argument.Type == typeof(ITuple))
+                            foreach (var element in TupleElements(Unconverted(argument).Type))
+                                Refuse(element, $"compared in a row value by {method.Name}");
+            }
 
             return base.VisitMethodCall(node);
+        }
+
+        /// <summary>A function of <c>EF.Functions</c>: an extension of <see cref="DbFunctions"/>, whichever provider declares it.</summary>
+        private static bool IsDbFunction(MethodInfo method) =>
+            method.IsStatic && method.GetParameters() is [{ ParameterType: var functions }, ..] && functions == typeof(DbFunctions);
+
+        /// <summary>The element types of a tuple type, a long tuple's rest included; none for a type that is no generic tuple.</summary>
+        private static IEnumerable<Type> TupleElements(Type tuple)
+        {
+            if (!tuple.IsGenericType || !typeof(ITuple).IsAssignableFrom(tuple)) yield break;
+
+            foreach (var element in tuple.GetGenericArguments())
+            {
+                yield return element;
+                foreach (var nested in TupleElements(element)) yield return nested;
+            }
         }
 
         /// <summary>The operator's key or value selector, quoted for <c>Queryable</c>, a lambda for <c>Enumerable</c>.</summary>

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using CodoMetis.TypeKit.EntityFrameworkCore.Tests.Variants;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -74,6 +75,10 @@ public sealed class QueryTranslationVariantTests
             case RefusedOrdering:
                 Refusal(valueObject, "its ordering is its own CompareTo").ShouldContain(@case.Kind.ValueObject.Name);
                 return;
+            // The same last step through EF.Functions, which EF takes in memory too, where a database's function cannot run.
+            case RefusedForeign when @case is { Op: Op.Greatest or Op.Least, Site: Site.Column or Site.Nullable }:
+                Refusal(valueObject, "is not supported because the query has switched to client-evaluation");
+                return;
             case RefusedForeign when @case.Op is Op.Select or Op.Distinct:
                 var memory = Memory(@case);
                 if (memory.Refusal is { } thrown)
@@ -105,13 +110,13 @@ public sealed class QueryTranslationVariantTests
         if (valueObject.Refusal is not null)
         {
             if (plain is { Refusal: null }) throw new ShouldAssertException($"refused where the same query over the wrapped type answers [{string.Join(", ", plain.Rows!)}]: {valueObject.Refusal}");
-            if (plain is null) throw new ShouldAssertException($"refused, where memory answers {Said(Memory(@case))}: {valueObject.Refusal}");
+            if (plain is null) throw new ShouldAssertException($"refused, where memory answers {Shown(Memory(@case))}: {valueObject.Refusal}");
             return;
         }
 
         if (plain is { Refusal: null })
         {
-            valueObject.Rows.ShouldBe(plain.Rows, $"the rows of the same query over the wrapped type; memory answers {Said(Memory(@case))}");
+            valueObject.Rows.ShouldBe(plain.Rows, $"the rows of the same query over the wrapped type; memory answers {Shown(Memory(@case))}");
             if (ClaimsTheColumn(@case) && plain.Sql is not null)
                 valueObject.Sql.ShouldBe(plain.Sql, "the SQL of the same query over the wrapped type");
         }
@@ -183,6 +188,13 @@ public sealed class QueryTranslationVariantTests
         }
 
         if (@case.Kind.Ordering == Ordering.HandWritten && @case is { ReadsWrapped: false, Orders: true }) return new RefusedOrdering();
+
+        // EF refuses the wrapped type's Greatest and Least over a primitive collection's element ("The LINQ expression
+        // 'p' could not be translated"), so memory is the only oracle there, and SQLite compares these elements as the
+        // JSON text EF stores: "1:2:00:00" before "2:00:00", "09:30:00.0000000" against a parameter '09:30:00'. The
+        // wrapped type's own max over a TimeSpan column answers the same text order (measured on 2026-10-16).
+        if (@case is { Site: Site.CollectionElement, Op: Op.Greatest or Op.Least, ReadsWrapped: true } && (@case.Kind.Wrapped == typeof(TimeSpan) || @case.Kind.Wrapped == typeof(TimeOnly)))
+            return new Unclaimed("SQLite orders a primitive collection's TimeSpan and TimeOnly elements as the text EF stores, and the wrapped type's query is refused there");
 
         // The generated operators of a record class sort null first, so in memory null < x is true; SQL's
         // "N" < @x is unknown for a null N, as it is for the wrapped type's lifted operator.
@@ -266,8 +278,8 @@ public sealed class QueryTranslationVariantTests
     }
 
     /// <summary>
-    /// The same query over the value objects in memory, with the query filter applied as EF would; what it throws,
-    /// where it reads through a null (<c>r.N!.Value</c>, <see cref="Accessor.ValueThroughTypeParameter"/>), as SQL does not.
+    /// The same query over the value objects in memory, with the query filter applied as EF would, and
+    /// <c>EF.Functions</c> answered as <see cref="InMemoryFunctions"/> does.
     /// </summary>
     private static Answer Memory(QueryCase @case)
     {
@@ -279,15 +291,56 @@ public sealed class QueryTranslationVariantTests
         var (query, ordered) = builder.Build(root);
         try
         {
-            return Execute(source.Provider, query, ordered, sql: false);
+            return Execute(source.Provider, new InMemoryFunctions().Visit(query), ordered, sql: false);
         }
-        catch (Exception exception) when (exception is NullReferenceException or InvalidOperationException)
+        catch (Exception exception) when (exception is not ShouldAssertException)
         {
-            return new Answer(null, null, exception);
+            return new Answer(null, null, Unwrapped(exception));
         }
     }
 
-    private static string Said(Answer answer) => answer.Refusal is { } refusal ? $"nothing, it throws {refusal.GetType().Name}" : $"[{string.Join(", ", answer.Rows!)}]";
+    /// <summary>
+    /// <c>EF.Functions.Greatest</c>, <c>Least</c> and Npgsql's row-value comparisons, which throw outside a query, as
+    /// SQLite answers them: by each type's default comparer, which is the wrapped type's order for a value object
+    /// that declares none of its own, and a null wherever <c>Greatest</c> or <c>Least</c> meets one.
+    /// </summary>
+    private sealed class InMemoryFunctions : ExpressionVisitor
+    {
+        protected override Expression VisitMethodCall(MethodCallExpression node)
+        {
+            if (node.Method.GetParameters() is not [{ ParameterType: var functions }, ..] || functions != typeof(DbFunctions))
+                return base.VisitMethodCall(node);
+
+            Expression[] arguments = [.. node.Arguments.Skip(1).Select(argument => Visit(argument))];
+            return node.Method.Name is nameof(Greatest) or nameof(Least)
+                       ? Expression.Call(typeof(InMemoryFunctions), node.Method.Name, node.Method.GetGenericArguments(), arguments)
+                       : Expression.Call(typeof(InMemoryFunctions), nameof(RowValue), null, [Expression.Constant(node.Method.Name), .. arguments]);
+        }
+
+        public static T Greatest<T>(T[] values) => Pick(values, order => order > 0);
+
+        public static T Least<T>(T[] values) => Pick(values, order => order < 0);
+
+        private static T Pick<T>(T[] values, Func<int, bool> keeps) =>
+            values.Any(value => value is null) ? default! : values.Aggregate((kept, value) => keeps(Comparer<T>.Default.Compare(value, kept)) ? value : kept);
+
+        /// <summary>A tuple's own order is its elements', one after the other, each by its default comparer.</summary>
+        public static bool RowValue(string comparison, ITuple left, ITuple right)
+        {
+            var order = ((IComparable)left).CompareTo(right);
+            return comparison switch
+            {
+                "GreaterThan"        => order > 0,
+                "GreaterThanOrEqual" => order >= 0,
+                "LessThan"           => order < 0,
+                _                    => order <= 0,
+            };
+        }
+    }
+
+    /// <summary>An answer as a message shows it: its rows, or its refusal.</summary>
+    private static string Shown(Answer answer) =>
+        answer.Refusal is { } refusal ? $"refused ({refusal.Message})" : $"[{string.Join(", ", answer.Rows!)}]";
 
     private static (SqliteConnection, Exception?) Seeded(QueryModel model, QueryBuilder builder)
     {

@@ -82,7 +82,7 @@ The 24 confirmed escapes, by earliest tag with the defect:
 
 The 6 `P`: `37317de`, `780353b`, `e269ec8`, `71a4565`, `a7003bf`, `2e68a70`. CMTK0003 was a Warning in 1.x with the same false positives (`await held.ConfigureAwait(false)` read as a dropped result, a tap on a held result) and the same missed forms; 2.0.0 made it an Error and widened it as decision 50. They are counted separately because a Warning false positive is not the same harm as a wrong EF query.
 
-Finder and escape (post-1.0.0 fixes only):
+Finder and escape (post-1.0.0 fixes only). Which of today's finders detect these escapes when each is put back as a seed is measured in the [finder benchmark of 2026-10-16](finder-benchmark-2026-10-16.md).
 
 | Found by | Fixes after v1.0.0 | Y | P |
 |---|---|---|---|
