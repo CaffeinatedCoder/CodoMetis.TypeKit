@@ -71,32 +71,39 @@ public sealed class ClaimsFileTests : IDisposable
         error.ShouldContain("claim C1: exclude[0].why is not a field the schema has");
     }
 
-    [Fact]
-    public void The_universe_shows_each_exclusion_with_its_reason()
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public void The_universe_shows_each_exclusion_with_its_reason(string newLine)
     {
         Claims(new JsonObject
         {
             ["exclude"] = new JsonArray(new JsonObject { ["reason"] = "No row holds x=1 with y=2.", ["pairs"] = Pairs(("y=2", "x=1")) }),
         });
-        var (exit, output, error) = fx.Ledger("universe", "--base", "HEAD");
+        var (exit, output, error) = fx.LedgerEnding([], newLine, "universe", "--base", "HEAD");
         exit.ShouldBe(0, error);
-        output.ShouldContain("C1: 2 axes, 3 pairs\n  exclude 1 pair(s), first x=1 y=2: No row holds x=1 with y=2.\n");
+        output.ReplaceLineEndings("\n").ShouldContain("C1: 2 axes, 3 pairs\n  exclude 1 pair(s), first x=1 y=2: No row holds x=1 with y=2.\n");
     }
 
-    [Fact]
-    public void The_universe_shows_each_narrowing_with_its_quote()
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public void The_universe_shows_each_narrowing_with_its_quote(string newLine)
     {
         Claims(new JsonObject { ["narrow"] = new JsonObject { ["y"] = "The claim." } });
-        var (exit, output, error) = fx.Ledger("universe", "--base", "HEAD");
+        var (exit, output, error) = fx.LedgerEnding([], newLine, "universe", "--base", "HEAD");
         exit.ShouldBe(0, error);
-        output.ShouldContain("C1: 1 axes, 0 pairs\n  narrow y: \"The claim.\"\n");
+        output.ReplaceLineEndings("\n").ShouldContain("C1: 1 axes, 0 pairs\n  narrow y: \"The claim.\"\n");
     }
 
-    [Fact]
-    public void A_publish_that_changes_nothing_keeps_the_file_as_it_is()
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public void A_publish_that_changes_nothing_keeps_the_file_as_it_is(string staged)
     {
-        // The form publish writes, by hand: a reason with a backtick, a plus and angle brackets, all literal.
-        const string tracked = """
+        // The form publish writes, by hand: a reason with a backtick, a plus and angle brackets, all literal, and \n line
+        // ends, whatever this source file was checked out with. The staged copy may come with either line end.
+        var tracked = """
             [
               {
                 "id": "C1",
@@ -118,26 +125,29 @@ public sealed class ClaimsFileTests : IDisposable
               }
             ]
 
-            """;
+            """.ReplaceLineEndings("\n");
         fx.Write("tools/probe/corpus/claims.json", tracked);
         fx.Commit("claims");
-        fx.Write(".claude/agent-memory-local/prober/branches/main/staging/claims.json", tracked);
+        fx.Write(".claude/agent-memory-local/prober/branches/main/staging/claims.json", tracked.ReplaceLineEndings(staged));
         var (exit, _, error) = fx.Ledger("publish");
         exit.ShouldBe(0, error);
         fx.Sh("git", "diff", "--exit-code", "--", "tools/probe/corpus/claims.json");
-        File.ReadAllText(Path.Combine(fx.Root, "tools/probe/corpus/claims.json")).ShouldContain("A `+` row and an Option<T> row cannot meet.");
+        File.ReadAllText(Path.Combine(fx.Root, "tools/probe/corpus/claims.json")).ShouldBe(tracked, "byte for byte: the escapes and the line ends are the ones publish writes");
     }
 
-    [Fact]
-    public void The_corpus_claims_match_their_schema_in_the_form_publish_writes()
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public void The_corpus_claims_match_their_schema_in_the_form_publish_writes(string checkedOut)
     {
         var root = AppContext.BaseDirectory;
         while (!File.Exists(Path.Combine(root, "CodoMetis.TypeKit.slnx"))) root = Path.GetDirectoryName(root) ?? throw new InvalidOperationException("no CodoMetis.TypeKit.slnx above the test output");
         var path = Path.Combine(root, "tools/probe/corpus/claims.json");
         var claims = Ledger.ReadClaims(path, "tools/probe/corpus/claims.json");
         claims.ShouldNotBeEmpty();
-        var text = File.ReadAllText(path);
-        Files.Format(JsonNode.Parse(text)!).ShouldBe(text, "claims.json is in the form `prober publish` writes, so a publish diffs only what it changes");
+        // Git may check the file out with either line end (core.autocrlf on Windows); what it stores, and diffs, has \n.
+        var text = File.ReadAllText(path).ReplaceLineEndings(checkedOut);
+        Files.Format(JsonNode.Parse(text)!).ShouldBe(text.ReplaceLineEndings("\n"), "claims.json is in the form `prober publish` writes, so a publish diffs only what it changes");
     }
 
     [Fact]
