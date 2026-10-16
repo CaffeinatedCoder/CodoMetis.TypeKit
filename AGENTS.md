@@ -223,8 +223,9 @@ the whole page. A ranked miss proves nothing.
 4. **Test every fix across its input class.** Before a fix is done, name the input class its defect
    lives in and run the fix's test over that class's variant catalogue: `TypeArgumentSites` and
    `TypeArgumentKinds` (`test/CodoMetis.TypeKit.Analyzers.Tests/Variants/`) for a type argument, where
-   it is written and what it is, the `shape.*` axes for a generated type, the settings axes for a
-   framework option. Fix the siblings it finds, add a missing
+   it is written and what it is, `KeyShapes` and `QueryShapes`
+   (`test/CodoMetis.TypeKit.EntityFrameworkCore.Tests/Variants/`) for an EF key or query, the `shape.*`
+   axes for a generated type, the settings axes for a framework option. Fix the siblings it finds, add a missing
    shape to the catalogue, and say so in the commit body; a sibling found this way is `Found-By: VA`
    ([decision 95](design/adr/0095-a-fix-is-tested-across-its-input-class.md), the skill's "The variants").
 5. A change to an aspect, the fabric, the analyzer or a satellite gets a generation review
