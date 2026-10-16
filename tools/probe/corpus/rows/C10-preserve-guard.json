@@ -38050,6 +38050,45 @@
           "shape.wrapped=own-record-class"
         ]
       ]
+    },
+    {
+      "row": {
+        "handler": "Preserve",
+        "input.json": "valid",
+        "json.AllowDuplicateProperties": "default",
+        "json.AllowOutOfOrderMetadataProperties": "default",
+        "json.AllowTrailingCommas": "default",
+        "json.Converters": "default",
+        "json.DefaultIgnoreCondition": "default",
+        "json.DictionaryKeyPolicy": "default",
+        "json.Encoder": "default",
+        "json.IgnoreReadOnlyFields": "default",
+        "json.IgnoreReadOnlyProperties": "default",
+        "json.IncludeFields": "default",
+        "json.MaxDepth": "default",
+        "json.NumberHandling": "default",
+        "json.PreferredObjectCreationHandling": "default",
+        "json.PropertyNameCaseInsensitive": "default",
+        "json.PropertyNamingPolicy": "default",
+        "json.ReadCommentHandling": "default",
+        "json.ReferenceHandler": "default",
+        "json.RespectNullableAnnotations": "default",
+        "json.RespectRequiredConstructorParameters": "default",
+        "json.TypeInfoResolver": "default",
+        "json.TypeInfoResolverChain": "default",
+        "json.UnknownTypeHandling": "default",
+        "json.UnmappedMemberHandling": "default",
+        "shape.containing": "class",
+        "shape.kind": "record-struct",
+        "shape.position": "polymorphic-derived-property",
+        "shape.wrapped": "own-record-class"
+      },
+      "pairs": [
+        [
+          "shape.position=polymorphic-derived-property",
+          "shape.wrapped=own-record-class"
+        ]
+      ]
     }
   ],
   "uncovered_after": 0
