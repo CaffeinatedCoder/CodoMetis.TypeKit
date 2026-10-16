@@ -5,7 +5,7 @@ pins:
   - Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3
   - Microsoft.EntityFrameworkCore.Relational 10.0.12
 source: https://www.postgresql.org/docs/17/datatype-numeric.html §8.1.2 ("PostgreSQL treats NaN values as equal, and greater than all non-NaN values"), the same for floating point in §8.1.3, measured on the postgres 17 image
-turned-on: none yet, measured by the analyst's PostgreSQL consumer of 2026-10-16 (Q10, Q10b, Q11) where Ratio.Value > 5 kept the NaN row for the value object and its plain twin alike, which in memory is false
+turned-on: none yet, until WS6's real-database checks turn it on; measured by the analyst's PostgreSQL consumer of 2026-10-16 (Q10, Q10b, Q11) where Ratio.Value > 5 kept the NaN row for the value object and its plain twin alike, which in memory is false
 test: test/CodoMetis.TypeKit.Facts/KB028.cs (runs only with TYPEKIT_PG set, until WS6's CI service)
 ---
 

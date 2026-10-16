@@ -5,7 +5,7 @@ pins:
   - Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3
   - Microsoft.EntityFrameworkCore.Relational 10.0.12
 source: measured on the postgres 17 image, whose databases take the collation en_US.utf8 from template1 (EF translates StartsWith to LIKE 'b%', which on SQLite is case-insensitive for ASCII)
-turned-on: none yet beyond the EF README's "Ordering in SQL follows the database's collation" (the analyst's consumer of 2026-10-16, Q01, Q02, Q05, Q20c, the value object and its plain twin alike)
+turned-on: none yet, until WS6's real-database checks turn it on, beyond the EF README's "Ordering in SQL follows the database's collation" (the analyst's consumer of 2026-10-16, Q01, Q02, Q05, Q20c, the value object and its plain twin alike)
 test: test/CodoMetis.TypeKit.Facts/KB033.cs (runs only with TYPEKIT_PG set, until WS6's CI service)
 ---
 
