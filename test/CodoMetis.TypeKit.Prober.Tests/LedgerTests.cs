@@ -126,7 +126,7 @@ public sealed class OutcomeTests : IDisposable
         var outcomes = JsonNode.Parse(fx.Ledger("status", "--json").Out)!["claims"]!["C1"]!["outcomes"]!;
         outcomes["pass"]!.GetValue<double>().ShouldBe(1);
         outcomes["expected-refusal"]!.GetValue<double>().ShouldBe(1);
-        fx.Ledger("status").Out.ShouldContain("C1: 1/4  (rows: expected-refusal 1, pass 1)");
+        fx.Ledger("status").Out.ShouldContain("C1: 1/4  (rows: expected-refusal 1, pass 1; checks: expected-refusal 1, pass 1)");
     }
 
     [Fact]

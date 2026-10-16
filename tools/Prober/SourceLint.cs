@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 namespace Prober;
@@ -9,7 +10,10 @@ namespace Prober;
 /// corpus or the staging declares), and a two-argument <c>Skip</c> (the harness's, not LINQ's) whose first
 /// argument is not a string literal naming a finding this ledger holds open. The compiler refuses a key
 /// outside the catalogue too; this says so by file and line before a build, and holds the finding ids,
-/// which stay strings. It reads code with comments and string literals blanked out, so a call written in
+/// which stay strings. A check's <c>Inapplicable</c> and <c>Refused</c> cite their reason by a <c>Cite</c>
+/// factory with a string literal, and what it names exists: a not-promised entry of the probe's claim (of any
+/// claim, for a harness source no one probe owns), a file of the docs, a knowledge entry under design/knowledge/,
+/// a record under design/adr/. It reads code with comments and string literals blanked out, so a call written in
 /// either does not count.
 /// </summary>
 internal static partial class SourceLint
@@ -18,8 +22,11 @@ internal static partial class SourceLint
     [GeneratedRegex(@"public\s+static\s+readonly\s+NoteKeys\s+(\w+)\s*=")]
     private static partial Regex CatalogueMember();
 
-    [GeneratedRegex(@"\.\s*(Note|Skip)\s*\(")]
+    [GeneratedRegex(@"\.\s*(Note|Skip|Inapplicable|Refused)\s*\(")]
     private static partial Regex Call();
+
+    [GeneratedRegex("^Cite\\s*\\.\\s*(NotPromised|Docs|Fact|Record)\\s*\\(\\s*\"([^\"\\\\]*)\"\\s*\\)$")]
+    private static partial Regex CiteFactory();
 
     [GeneratedRegex(@"^NoteKeys\s*\.\s*(\w+)$")]
     private static partial Regex CatalogueKey();
@@ -32,7 +39,7 @@ internal static partial class SourceLint
     {
         var problems = Problems(l);
         if (problems.Count > 0)
-            throw new Refusal($"{command}: the staged sources make a note or a skip that is not written out (decision 103):\n  " + string.Join("\n  ", problems));
+            throw new Refusal($"{command}: the staged sources make a note, a skip or a citation that is not written out (decision 103):\n  " + string.Join("\n  ", problems));
     }
 
     /// <summary>Every problem in the staged harness and probe sources, with the finding ids checked against this ledger.</summary>
@@ -44,12 +51,24 @@ internal static partial class SourceLint
         foreach (var file in Sources(l.CorpusDir).Concat(staged))
             foreach (Match m in CatalogueMember().Matches(Mask(File.ReadAllText(file)))) catalogue.Add(m.Groups[1].Value);
         var findings = l.Findings();
+        // The not-promised ids of each claim, and the claim of each registered probe: a probe's source cites its own
+        // claim's entries, a harness source that no one probe owns any claim's.
+        var notPromised = l.Claims().ToDictionary(c => Files.Str(c["id"]),
+            c => (IReadOnlySet<string>)(c["not-promised"] as JsonArray ?? []).OfType<JsonObject>().Select(n => Files.Str(n["id"])).ToHashSet(StringComparer.Ordinal), StringComparer.Ordinal);
+        // A probe's source is named for it, or for the class its filter selects (*C1Probe).
+        var claimOf = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (name, entry) in l.Registry())
+        {
+            claimOf[name] = Files.Str(entry["claim"]);
+            if (Files.Str(entry["filter"]).TrimStart('*') is { Length: > 0 } cls) claimOf.TryAdd(cls, Files.Str(entry["claim"]));
+        }
         var problems = new List<string>();
         foreach (var file in staged)
         {
             // Relative to the checkout where the state lives in it, else in full (PROBE_STATE_DIR elsewhere).
             var path = Path.GetRelativePath(l.Top, file) is var rel && !rel.StartsWith("..", StringComparison.Ordinal) ? rel.Replace('\\', '/') : file;
-            foreach (var (line, problem, finding) in Scan(File.ReadAllText(file), catalogue))
+            var cites = new Citations(l.Top, claimOf.TryGetValue(Path.GetFileNameWithoutExtension(file), out var claim) ? claim : null, notPromised);
+            foreach (var (line, problem, finding) in Scan(File.ReadAllText(file), catalogue, cites.Problem))
             {
                 if (problem is not null) problems.Add($"{path}:{line}: {problem}");
                 else if (finding is not null && Status(findings, finding) is { } status)
@@ -69,10 +88,42 @@ internal static partial class SourceLint
                                      .SelectMany(dir => Directory.EnumerateFiles(dir, "*.cs")).Order(StringComparer.Ordinal);
 
     /// <summary>
-    /// Each <c>Note</c> and two-argument <c>Skip</c> of one source: its line, the rule it breaks (or null), and
-    /// for a skip written out, the finding it names.
+    /// What a citation of one source may name, and why one does not: <see cref="Problem"/> takes the factory and its
+    /// literal and says what is missing, or null. <paramref name="Claim"/> is the claim of the probe the source is, or
+    /// null for a source that no one probe owns, which may cite any claim's not-promised entry.
     /// </summary>
-    internal static IEnumerable<(int Line, string? Problem, string? Finding)> Scan(string source, IReadOnlySet<string> catalogue)
+    internal sealed record Citations(string Top, string? Claim, IReadOnlyDictionary<string, IReadOnlySet<string>> NotPromised)
+    {
+        public string? Problem(string factory, string value)
+        {
+            switch (factory)
+            {
+                case "NotPromised" when Claim is not null:
+                    return NotPromised.GetValueOrDefault(Claim)?.Contains(value) ?? false ? null : $"names no not-promised entry of its claim {Claim}";
+                case "NotPromised":
+                    return NotPromised.Values.Any(ids => ids.Contains(value)) ? null : "names no not-promised entry of any claim";
+                case "Docs":
+                    var file = value.Split('#')[0];
+                    return file.Length > 0 && !file.Contains("..", StringComparison.Ordinal) && File.Exists(Path.Combine(Top, file)) ? null : $"names no file {file} in the repository";
+                case "Fact":
+                    return Named(Path.Combine(Top, "design", "knowledge"), value) ? null : "names no entry under design/knowledge/";
+                default:
+                    return Named(Path.Combine(Top, "design", "adr"), value) ? null : "names no record under design/adr/";
+            }
+        }
+
+        /// <summary>A file of the directory named for the id: <c>KB-031-...md</c>, <c>0094-...md</c>.</summary>
+        private static bool Named(string directory, string id) =>
+            id.Length > 0 && Directory.Exists(directory)
+            && Directory.EnumerateFiles(directory, "*.md").Any(f => Path.GetFileName(f).StartsWith(id + "-", StringComparison.Ordinal) || Path.GetFileName(f) == id + ".md");
+    }
+
+    /// <summary>
+    /// Each <c>Note</c>, two-argument <c>Skip</c>, and <c>Inapplicable</c> or <c>Refused</c> with an argument, of one
+    /// source: its line, the rule it breaks (or null), and for a skip written out, the finding it names.
+    /// <paramref name="cite"/> says what a citation's factory and literal fail to name; without it only the form is held.
+    /// </summary>
+    internal static IEnumerable<(int Line, string? Problem, string? Finding)> Scan(string source, IReadOnlySet<string> catalogue, Func<string, string, string?>? cite = null)
     {
         var masked = Mask(source);
         foreach (Match m in Call().Matches(masked))
@@ -82,7 +133,16 @@ internal static partial class SourceLint
             if (arguments is null) continue;
             var line = 1 + masked.AsSpan(0, m.Index).Count('\n');
             var first = arguments.Count > 0 ? arguments[0] : "";
-            if (m.Groups[1].Value == "Note")
+            if (m.Groups[1].Value is "Inapplicable" or "Refused")
+            {
+                if (arguments.Count == 0) continue;   // an entry's own Refused() of the harness, not a check's
+                var call = m.Groups[1].Value;
+                var factory = CiteFactory().Match(first);
+                if (!factory.Success) yield return (line, $"{call}({Shown(first)}, ...) does not cite by a Cite factory with a string literal", null);
+                else if (cite?.Invoke(factory.Groups[1].Value, factory.Groups[2].Value) is { } missing)
+                    yield return (line, $"{call}({Shown(first)}, ...) {missing}", null);
+            }
+            else if (m.Groups[1].Value == "Note")
             {
                 var key = CatalogueKey().Match(first);
                 if (!key.Success) yield return (line, $"Note({Shown(first)}, ...) does not name a key of NoteKeys", null);

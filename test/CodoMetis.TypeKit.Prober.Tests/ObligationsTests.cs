@@ -48,7 +48,7 @@ public sealed class ObligationsTests : IDisposable
         fx.Write("tools/probe/corpus/claims.json", new JsonArray(c).ToJsonString());
     }
 
-    /// <summary>Registers P for C1 with the seeds given, each an environment toggle that makes row <c>row</c> violate.</summary>
+    /// <summary>Registers P for C1 with the seeds given, each an environment toggle that makes the check of its obligation violate in row <c>row</c>.</summary>
     private void Register(JsonObject? seed = null, params (string Obligation, string Row)[] seeds)
     {
         var entry = new JsonObject { ["claim"] = "C1", ["filter"] = "*P" };
@@ -56,7 +56,7 @@ public sealed class ObligationsTests : IDisposable
         if (seeds.Length > 0)
             entry["seeds"] = new JsonArray([.. seeds.Select(s => (JsonNode)new JsonObject
             {
-                ["obligation"] = s.Obligation, ["env"] = new JsonObject { ["SEED_ROW"] = s.Row }, ["defect"] = $"{s.Obligation} is broken.",
+                ["obligation"] = s.Obligation, ["env"] = new JsonObject { ["SEED_ROW"] = s.Row, ["SEED_CHECK"] = s.Obligation }, ["defect"] = $"{s.Obligation} is broken.",
             })]);
         fx.Write("tools/probe/corpus/registry.json", new JsonObject { ["probes"] = new JsonObject { ["P"] = entry } }.ToJsonString());
         fx.Commit("register");
@@ -140,10 +140,10 @@ public sealed class ObligationsTests : IDisposable
         ObligationsOf(Status()).ShouldBe(["keys: P", "nulls: "]);
         var (exit, output, error) = fx.LedgerEnding([], newLine, "status");
         exit.ShouldBe(0, error);
-        output.ReplaceLineEndings("\n").ShouldContain("\n  C1: 0/4  obligations 2 (1 without a seed: nulls)\n");
+        output.ReplaceLineEndings("\n").ShouldContain("\n  C1: 0/4  obligations 2 (1 without a seed: nulls), 2 uncredited\n");
 
         Register(null, ("keys", "1"), ("nulls", "0"));
-        fx.LedgerEnding([], newLine, "status").Out.ReplaceLineEndings("\n").ShouldContain("\n  C1: 0/4  obligations 2, each seeded\n");
+        fx.LedgerEnding([], newLine, "status").Out.ReplaceLineEndings("\n").ShouldContain("\n  C1: 0/4  obligations 2, each seeded, 2 uncredited\n");
     }
 
     [Fact]
@@ -180,14 +180,17 @@ public sealed class ObligationsTests : IDisposable
         exit.ShouldBe(1, "the nulls seed makes no row violate, so it is missed and fails the command");
         var text = output.ToString().ReplaceLineEndings("\n");
         text.ShouldContain(": 2 seeds of 1 probes, in ");
-        text.ShouldContain("\n  P/keys (C1): caught, 1 of 2 rows violate; e.g. #1: violation:row 1 is broken\n");
+        text.ShouldContain("\n  P/keys (C1): caught, 1 of 2 rows violate; e.g. #1 keys: violation:row 1 is broken\n");
         text.ShouldContain("\n  P/nulls (C1): missed, no row violates that did not already (2 rows: pass 2;");
         var last = JsonNode.Parse(File.ReadAllText(Path.Combine(fx.BranchDir, "seeds-last.json")))!["seeds"]!.AsArray()
                            .Select(s => (s!["probe"]!.GetValue<string>(), s["obligation"]!.GetValue<string>(), s["seed"]!.GetValue<string>(), s["result"]!.GetValue<string>()));
-        last.ShouldBe([("P", "keys", "SEED_ROW=1", "caught"), ("P", "nulls", "SEED_ROW=7", "missed")]);
+        last.ShouldBe([("P", "keys", "SEED_ROW=1,SEED_CHECK=keys", "caught"), ("P", "nulls", "SEED_ROW=7,SEED_CHECK=nulls", "missed")]);
     }
 
-    /// <summary>The probe P over C1's two rows, without a build: row N violates where SEED_ROW is N.</summary>
+    /// <summary>
+    /// The probe P over C1's two rows, without a build: row N violates where SEED_ROW is N, by its check of the
+    /// obligation SEED_CHECK names where it names one (each row then runs that check), else as a row without checks.
+    /// </summary>
     private sealed class FakeAdapter : IProbeAdapter
     {
         public Ran Build(string worktree, IReadOnlyDictionary<string, string?> environment) => new(0, "Build: OK", "");
@@ -195,16 +198,24 @@ public sealed class ObligationsTests : IDisposable
         public Ran RunProbe(string worktree, string filter, string results, string coverageFile, IReadOnlyDictionary<string, string?> environment)
         {
             var broken = environment.GetValueOrDefault("SEED_ROW");
+            var check = environment.GetValueOrDefault("SEED_CHECK");
             var outDir = environment["PROBE_OUT"]!;
             Directory.CreateDirectory(outDir);
             var lines = Enumerable.Range(0, 2).Select(idx =>
             {
                 var violates = broken == idx.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                return new JsonObject
+                var line = new JsonObject
                 {
                     ["idx"] = idx, ["category"] = violates ? "violation" : "pass",
-                    ["reasons"] = violates ? new JsonArray($"violation:row {idx} is broken") : new JsonArray(),
-                }.ToJsonString();
+                    ["reasons"] = violates && check is null ? new JsonArray($"violation:row {idx} is broken") : new JsonArray(),
+                };
+                if (check is not null)
+                    line["checks"] = new JsonArray(new JsonObject
+                    {
+                        ["obligation"] = check, ["baseline"] = "twin", ["category"] = violates ? "violation" : "pass",
+                        ["reasons"] = violates ? new JsonArray($"violation:row {idx} is broken") : new JsonArray(),
+                    });
+                return line.ToJsonString();
             }).ToList();
             File.WriteAllText(Path.Combine(outDir, "C1.jsonl"), string.Join('\n', lines) + "\n");
             return new Ran(lines.Any(l => l.Contains("\"violation\"", StringComparison.Ordinal)) ? 1 : 0, "", "");
