@@ -95,15 +95,18 @@ An agent runs builds and tests through `tools/BuildVerdict`, run as its built dl
 from `tools/BuildVerdict/build-verdict-remedies.tsv`, and the failing tests with their assertion; the
 full log is `$GIT_DIR/build-verdict-last.log`. A code it prints as UNMAPPED gets a row once its fix is
 known. In an agent's Bash tool, `tools/BashGuard` (registered in `.claude/settings.json`) refuses
-`dotnet build` of anything but a tool, `dotnet test` and `dotnet msbuild`, and the verdict piped into
+`dotnet build` of anything but a tool, `dotnet test` and `dotnet msbuild` (a `-getProperty`/`-getItem` query
+without a target excepted), and the verdict piped into
 `head` or `tail`, and prints the verdict's form of the command. The raw commands above are for a
 terminal.
 
 Both are tool projects under `tools/` (design/adr/0092): BCL only, in the solution, each with its
 tests (`tools/BuildVerdict.Tests`, `tools/BashGuard.Tests`), and run from `bin/Release`, which
-`.claude/settings.json` builds at session start. Each records the sources it was built from and
-refuses to run from others, naming the command that rebuilds it: `dotnet build tools/<Name> -c
-Release`, which the guard lets through.
+`.claude/settings.json` builds at session start: the guard in the main checkout, every other tool
+(`tools/AgentTools.slnf`) in the session's own, a worktree included, with the SDK installer's `dotnet`
+when the one on PATH lacks the pinned SDK; a session start that builds nothing says so in your context
+(design/adr/0105). Each records the sources it was built from and refuses to run from others, naming
+the command that rebuilds it: `dotnet build tools/<Name> -c Release`, which the guard lets through.
 
 The SDK is pinned in `global.json` (10.0.4xx band, `latestPatch`). Tests run on Microsoft Testing
 Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TRX output is

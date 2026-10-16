@@ -30,10 +30,15 @@ internal sealed record Ran(int ExitCode, string Stdout, string Stderr);
 
 internal static class Proc
 {
-    /// <summary>Runs a program to completion, capturing its output. Never through a shell.</summary>
+    /// <summary>
+    /// Runs a program to completion, capturing its output. Never through a shell. `dotnet` is the one that
+    /// satisfies the directory's global.json, the installer's when the one on PATH cannot (Dotnet).
+    /// </summary>
     public static Ran Run(string fileName, IEnumerable<string> arguments, string workingDirectory,
                           IReadOnlyDictionary<string, string?>? environment = null, TimeSpan? timeout = null)
     {
+        string? dotnetDirectory = null;
+        if (fileName == "dotnet") (fileName, dotnetDirectory) = Dotnet.For(workingDirectory);
         var start = new ProcessStartInfo(fileName)
         {
             WorkingDirectory = workingDirectory, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false,
@@ -43,6 +48,7 @@ internal static class Proc
         if (environment is not null)
             foreach (var (name, value) in environment)
                 if (value is null) start.Environment.Remove(name); else start.Environment[name] = value;
+        Dotnet.Apply(dotnetDirectory, start.Environment);
 
         using var process = Process.Start(start) ?? throw new InvalidOperationException($"could not start {fileName}");
         var stdout = process.StandardOutput.ReadToEndAsync();
