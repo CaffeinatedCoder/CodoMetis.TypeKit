@@ -73,14 +73,15 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
             // Where ASP.NET makes the value object a component, it adds the null around the reference itself.
             // Inlined, the schema is this position's own, and the null goes in it where ASP.NET's exporter puts
             // it into the wrapped type's schema in the same position: for a nullable property of that type, and
-            // elsewhere for the Nullable<T> of a wrapped value type. Not at the root of a parameter outside the
-            // body, which ASP.NET describes without its null (a query int? is an integer), and not at the root
-            // of a wrapped reference type, which has none (a string? body is a string, inside ASP.NET's null-or).
-            var admitsNull = (context.JsonPropertyInfo is { IsGetNullable: true } or { IsSetNullable: true }
-                           || Nullable.GetUnderlyingType(info.Type) is not null && wrapped.IsValueType && !IsParameterOutsideTheBody(context))
-                          && SchemaReferenceId(info, context) is null;
+            // elsewhere for the Nullable<T> of a wrapped value type, a parameter outside the body included. Not at
+            // the root of a wrapped reference type, which has none (a string? body is a string, inside ASP.NET's null-or).
+            var position = SchemaReferenceId(info, context) is not null ? NullablePosition.None
+                : context.JsonPropertyInfo is { IsGetNullable: true } or { IsSetNullable: true } ? NullablePosition.Property
+                : Nullable.GetUnderlyingType(info.Type) is null || !wrapped.IsValueType ? NullablePosition.None
+                : IsParameterOutsideTheBody(context) ? NullablePosition.ParameterOutsideTheBody
+                : NullablePosition.Root;
 
-            await DescribeAsync(schema, info.Type, wrapped, parameter: null, admitsNull, context, cancellationToken);
+            await DescribeAsync(schema, info.Type, wrapped, parameter: null, position, context, cancellationToken);
             return;
         }
 
@@ -95,12 +96,14 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
 
             // MVC hands a value object bound from the body here too, as the string it would parse. There
             // ASP.NET's exporter admits null in the schema of the Nullable<T> of a wrapped value type, inside
-            // the null-or ASP.NET puts around a nullable body; a parameter outside the body has no null.
-            var admitsNull = parameter.Source == BindingSource.Body && Nullable.GetUnderlyingType(valueObject) is not null && parameterWrapped.IsValueType;
+            // the null-or ASP.NET puts around a nullable body, and outside the body among its values alone.
+            var position = Nullable.GetUnderlyingType(valueObject) is null || !parameterWrapped.IsValueType ? NullablePosition.None
+                : parameter.Source == BindingSource.Body ? NullablePosition.Root
+                : NullablePosition.ParameterOutsideTheBody;
 
             // ASP.NET's placeholder for any TryParse-bound parameter; the wrapped type says what it is.
             schema.Type = null;
-            await DescribeAsync(schema, valueObject, parameterWrapped, parameter, admitsNull, context, cancellationToken);
+            await DescribeAsync(schema, valueObject, parameterWrapped, parameter, position, context, cancellationToken);
             return;
         }
 
@@ -137,6 +140,17 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
         NullableElements.AddOrUpdate(valueObjectOrNull, element);
 
         return valueObjectOrNull;
+    }
+
+    /// <summary>
+    /// Puts the null into an inlined schema: into its type, as ASP.NET's exporter writes a nullable property of a
+    /// number, a string or a Guid, unless <paramref name="inType"/> says not, and among its values, since an enum
+    /// lists every value a validator accepts. A new list: the old one may be the wrapped type's.
+    /// </summary>
+    private static void AdmitNull(OpenApiSchema schema, bool inType)
+    {
+        if (inType && schema.Type is { } type) schema.Type = type | JsonSchemaType.Null;
+        if (schema.Enum is { Count: > 0 } values && !values.Contains(null!)) schema.Enum = [.. values, null!];
     }
 
     /// <summary>
@@ -182,6 +196,29 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
      && parameter.Source != BindingSource.Body
      && (Nullable.GetUnderlyingType(parameter.Type) ?? parameter.Type) == (Nullable.GetUnderlyingType(context.JsonTypeInfo.Type) ?? context.JsonTypeInfo.Type);
 
+    /// <summary>Where a schema of a value object stands, which decides where its null goes.</summary>
+    private enum NullablePosition
+    {
+        /// <summary>Not nullable, or a component, around whose reference ASP.NET puts the null itself.</summary>
+        None,
+
+        /// <summary>A nullable property: ASP.NET's null-or-reference where the wrapped type is a component.</summary>
+        Property,
+
+        /// <summary>
+        /// The <see cref="Nullable{T}"/> of a value type in a body, a response or a container's element: inside the
+        /// null-or ASP.NET puts around a nullable body or response, or the element's own.
+        /// </summary>
+        Root,
+
+        /// <summary>
+        /// The <see cref="Nullable{T}"/> of a value type as a route, query, header or form parameter, which ASP.NET
+        /// describes without the null in its type (a query <c>int?</c> is an integer) and with it among its values
+        /// (a query <c>DayOfWeek?</c> written by name lists null).
+        /// </summary>
+        ParameterOutsideTheBody,
+    }
+
     private static Type? ParameterValueObject(ApiParameterDescription parameter) =>
         ValueObjectTypes.IsValueObject(parameter.Type) ? parameter.Type
         : parameter.ModelMetadata?.ModelType is { } model && ValueObjectTypes.IsValueObject(model) ? model
@@ -192,7 +229,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
         Type valueObject,
         Type wrapped,
         ApiParameterDescription? parameter,
-        bool admitsNull,
+        NullablePosition position,
         OpenApiSchemaTransformerContext context,
         CancellationToken cancellationToken)
     {
@@ -211,16 +248,16 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
         {
             var wrappedSchema = await context.GetOrCreateSchemaAsync(wrapped, parameter, cancellationToken);
 
-            if (!admitsNull)
+            if (position == NullablePosition.None)
             {
                 schema.FillFrom(wrappedSchema);
             }
             else if (SchemaReferenceId(context.JsonTypeInfo.Options.GetTypeInfo(wrapped), context) is not null)
             {
-                if (parameter is not null)
+                if (parameter is not null || position == NullablePosition.ParameterOutsideTheBody)
                 {
                     // A body's: the null-or ASP.NET puts around a nullable body holds the wrapped type's component
-                    // as it is, so its content goes here as it is.
+                    // as it is, so its content goes here as it is. A parameter outside the body is the reference alone.
                     schema.FillFrom(wrappedSchema);
                     return;
                 }
@@ -234,13 +271,11 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
             }
             else
             {
-                // An inlined wrapped type (a number, a string, a Guid) admits null in its type, as ASP.NET's
-                // exporter writes a nullable property of it; an inlined enum or closed set among its values
-                // too, since an enum lists every value a validator accepts. A new list: the wrapped one is
-                // the wrapped type's.
+                // An inlined wrapped type admits null in its type and among its values. Outside the body ASP.NET
+                // takes the null out of the type and leaves it among the values (a query DayOfWeek? written by
+                // name), so it goes there alone.
                 schema.FillFrom(wrappedSchema);
-                if (schema.Type is { } type) schema.Type = type | JsonSchemaType.Null;
-                if (schema.Enum is { Count: > 0 } values && !values.Contains(null!)) schema.Enum = [.. values, null!];
+                AdmitNull(schema, inType: position != NullablePosition.ParameterOutsideTheBody);
             }
         }
         catch (NotSupportedException unsupported)
