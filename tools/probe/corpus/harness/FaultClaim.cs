@@ -12,6 +12,9 @@
 //    responses ascending; each fault status's problem schema describes fault and rule, and its description names exactly the problem types
 //    of the members answered with it ("names its problem types", CHANGELOG 2.1.0);
 //  - a status that every endpoint of its scope leaves out stops the host, naming the member and the status.
+// Each comparison is about one Aspect, and a claim's Spec.Of names the obligations it is checked for: the row runs one check (Row.Check) per
+// obligation it reaches, against the README's rules (Spec.Against) or, for a refusal, the documented one (Spec.Refusals), every check on the
+// one host and the answers fetched once.
 // http.response picks what every endpoint of the row answers (one fault type, a composed fault, two types writing one name) and what the
 // outermost scope adds (a status for another member, a member left out, a problem the endpoint declares itself).
 using System.Text.Json.Nodes;
@@ -82,9 +85,32 @@ public sealed record Ep(bool Mvc, string Url, string T, Decl[] Decls, int[] Decl
         [.. FxErr.Answered(T).Where(m => !LeftOut(m) && StatusOf(m) == status).Select(m => Map(m).Type).OfType<string>()];
 }
 
+/// <summary>What one comparison of <see cref="FaultClaim.Run"/> is about; a claim's <see cref="Spec.Of"/> names the obligations each is checked for.</summary>
+public static class Aspect
+{
+    /// <summary>The host starts, or refuses to as the README says.</summary>
+    public const string Start = "start";
+    /// <summary>Reporting a member left out throws, naming the endpoint and the member.</summary>
+    public const string LeftOut = "left-out";
+    /// <summary>A member's status, on the wire and in the problem's status field.</summary>
+    public const string Status = "status";
+    /// <summary>The problem's fault, its type and its detail.</summary>
+    public const string Fault = "fault", Type = "type", Detail = "detail";
+    /// <summary>The operation's statuses (which), their order, the problem schema's fault and rule, and the problem types its description names.</summary>
+    public const string DocListed = "doc-listed", DocOrder = "doc-order", DocDescribes = "doc-describes", DocTypes = "doc-types";
+    public static readonly string[] Answer = [Status, Fault, Type, Detail];
+    public static readonly string[] Doc = [DocListed, DocOrder, DocDescribes, DocTypes];
+}
+
 /// <summary>What one claim's row asks: see the header.</summary>
 public sealed class Spec
 {
+    /// <summary>The obligations a comparison of an aspect is checked for, given the member it is about (none for the start and the document).</summary>
+    public Func<string, Mem?, string[]> Of = (_, _) => ["claim"];
+    /// <summary>What the README's rules are compared as: the sentence of the claim's source.</summary>
+    public Baseline Against = Baseline.Model;
+    /// <summary>The obligations whose check holds a refusal by its type and what it names.</summary>
+    public string[] Refusals = [];
     public MGrp? Minimal;                  // under the outer group /m, where the host has minimal APIs
     public string[] Controllers = [];      // FxCtl keys, where it has MVC
     public Decl[] Builder = [];            // added to MapControllers()'s builder, after the response's own
@@ -226,42 +252,76 @@ public static class FaultClaim
         var resp = Resp.Of(r);
         var (eps, cfg) = Plan(r, s, resp);
         if (eps.Count == 0) return "harness: the row maps no endpoint of the claim (an excluded pair?)";
-        WebApplication app;
+        WebApplication? app = null; Exception? down = null;
         try { app = await Hx.Start(r, en, cfg); }
-        catch (Exception ex)
-        {
-            if (s.RefusedAs is { } judge) return judge(ex);
-            if (s.Refused is not { } names) return "host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message);
-            var ioe = ex as InvalidOperationException ?? ex.InnerException as InvalidOperationException;
-            if (ioe is null) return $"host refused to start, but with {ex.GetType().Name}, not InvalidOperationException: {Cut(ex.Message)}";
-            var missing = names.Where(n => !ioe.Message.Contains(n, StringComparison.Ordinal)).ToList();
-            return missing.Count == 0 ? null : $"host refused to start, but not naming {string.Join(", ", missing)}: {Cut(ioe.Message)}";
-        }
+        catch (Exception ex) { down = ex; }
         await using var _ = app;
-        if (s.RefusedAs is not null) return "host started, though the README says this set stops the start";
-        if (s.Refused is { } refused) return $"host started, though a status every endpoint of its scope leaves out must stop it ({string.Join(", ", refused)})";
+        Baseline Against(string o) => s.Refusals.Contains(o) ? Baseline.Refusal : s.Against;
+        string? failed = null;
 
-        var display = app.Services.GetRequiredService<EndpointDataSource>().Endpoints.OfType<RouteEndpoint>()
+        // A host the README says must not start: that is the row's one comparison.
+        if (s.Refused is not null || s.RefusedAs is not null)
+        {
+            foreach (var o in s.Of(Aspect.Start, null))
+            {
+                var f = r.Check(o, Against(o), _ => down is null
+                    ? (s.RefusedAs is not null ? "host started, though the README says this set stops the start"
+                                              : $"host started, though a status every endpoint of its scope leaves out must stop it ({string.Join(", ", s.Refused!)})")
+                    : StartRefused(s, down));
+                failed ??= f;
+            }
+            return failed;
+        }
+
+        var members = s.Errors.Select(e => FxErr.H[e - 1]).ToList();
+        var obligations = Aspect.Answer.Append(Aspect.LeftOut).SelectMany(a => members.SelectMany(m => s.Of(a, m)))
+            .Concat(Aspect.Doc.SelectMany(a => s.Of(a, null))).Distinct().ToList();
+        if (down is not null)
+        {
+            foreach (var o in obligations) { var f = r.Check(o, Against(o), _ => "host did not start: " + down.GetType().Name + ": " + Cut(down.Message)); failed ??= f; }
+            return failed;
+        }
+
+        var display = app!.Services.GetRequiredService<EndpointDataSource>().Endpoints.OfType<RouteEndpoint>()
             .GroupBy(e => "/" + (e.RoutePattern.RawText ?? "").TrimStart('/'), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First().DisplayName ?? "", StringComparer.OrdinalIgnoreCase);
-
-        JsonNode? doc = null; string? docFail = null;
+        JsonNode? doc = null; Exception? docFailed = null;
         try { doc = await Hx.Doc(app); }
-        catch (Exception ex) { docFail = await DocRefusedByAspNetAlone(r, en, cfg, ex); }
-        if (docFail is not null) return docFail;
-
+        catch (Exception ex) { docFailed = ex; }
+        var wires = new Dictionary<(string Url, int E), Hx.Wire>();
         foreach (var ep in eps)
-        {
             foreach (var e in s.Errors)
+                wires[(ep.Url, e)] = await Hx.Get(app, $"{ep.Url}?e={e}");
+
+        foreach (var o in obligations)
+        {
+            var f = await r.Check(o, Against(o), async c =>
             {
-                var fail = await Wire(r, app, ep, FxErr.H[e - 1], e, display);
-                if (fail is not null) return fail;
-            }
-            if (doc is null) continue;   // ASP.NET alone refuses this document too (noted)
-            var f = DocOf(r, doc, ep);
-            if (f is not null) return f;
+                bool want(string aspect, Mem? m) => s.Of(aspect, m).Contains(o);
+                foreach (var ep in eps)
+                    foreach (var e in s.Errors)
+                        if (Wire(r, ep, FxErr.H[e - 1], wires[(ep.Url, e)], display, want) is { } fail) return fail;
+                if (!Aspect.Doc.Any(a => want(a, null))) return null;
+                // A document ASP.NET alone refuses too has nothing to check (noted there); any other failure is returned.
+                if (docFailed is not null) return await DocRefusedByAspNetAlone(c, r, en, cfg, docFailed);
+                foreach (var ep in eps)
+                    if (DocOf(r, doc!, ep, want) is { } fail) return fail;
+                return null;
+            });
+            failed ??= f;
         }
-        return null;
+        return failed;
+    }
+
+    /// <summary>The host refused to start: as the README says, with an InvalidOperationException naming each of <see cref="Spec.Refused"/>, or as <see cref="Spec.RefusedAs"/> judges.</summary>
+    static string? StartRefused(Spec s, Exception ex)
+    {
+        if (s.RefusedAs is { } judge) return judge(ex);
+        var names = s.Refused!;
+        var ioe = ex as InvalidOperationException ?? ex.InnerException as InvalidOperationException;
+        if (ioe is null) return $"host refused to start, but with {ex.GetType().Name}, not InvalidOperationException: {Cut(ex.Message)}";
+        var missing = names.Where(n => !ioe.Message.Contains(n, StringComparison.Ordinal)).ToList();
+        return missing.Count == 0 ? null : $"host refused to start, but not naming {string.Join(", ", missing)}: {Cut(ioe.Message)}";
     }
 
     /// <summary>
@@ -270,7 +330,7 @@ public static class FaultClaim
     /// (README "A Result as a response"), so ASP.NET alone writing a document of the same host without any problem response says nothing about
     /// them: under json.MaxDepth=3 System.Text.Json refuses the problem schema of ASP.NET's own ProducesProblem too (decision 99).
     /// </summary>
-    static async Task<string?> DocRefusedByAspNetAlone(Row r, Entry en, HostCfg cfg, Exception withTypeKit)
+    static async Task<string?> DocRefusedByAspNetAlone(Check c, Row r, Entry en, HostCfg cfg, Exception withTypeKit)
     {
         static string Say(Exception x) => x.GetType().Name + ": " + Cut(x.Message);
         var alone = cfg.Copy(); alone.TypeKitOpenApi = false;
@@ -289,9 +349,9 @@ public static class FaultClaim
         catch (Exception ex) when (r.Is("json.MaxDepth", "3") && Depth(ex) && Depth(withTypeKit))
         {
             // Both refuse the problem schema under MaxDepth=3, by System.Text.Json's own depth checks, but on different paths (TypeKit's
-            // transformer through the schema exporter, ProducesProblem through the document writer): a refusal of STJ's own, nothing to check.
-            r.Note(NoteKeys.StjMaxdepth, $"{Say(withTypeKit)} / {Say(ex)}");
-            return null;
+            // transformer through the schema exporter, ProducesProblem through the document writer): a refusal of STJ's own, nothing to check
+            // (decision 99: under MaxDepth=3 System.Text.Json refuses the OpenAPI document of a problem response for plain ASP.NET too).
+            return c.Refused(Cite.Record("0099"), $"{Say(withTypeKit)} / {Say(ex)}");
         }
         catch (Exception ex) { return $"document: AddTypeKit() fails ({Say(withTypeKit)}), ASP.NET alone with a ProducesProblem fails otherwise ({Say(ex)})"; }
         return $"document: AddTypeKit() fails ({Say(withTypeKit)}), ASP.NET alone with a ProducesProblem writes it";
@@ -299,12 +359,13 @@ public static class FaultClaim
 
     static bool Depth(Exception x) => x is InvalidOperationException or System.Text.Json.JsonException;
 
-    static async Task<string?> Wire(Row r, WebApplication app, Ep ep, Mem m, int e, Dictionary<string, string> display)
+    /// <summary>One endpoint's answer <paramref name="w"/> to reporting <paramref name="m"/>, judged on the aspects <paramref name="want"/> names.</summary>
+    static string? Wire(Row r, Ep ep, Mem m, Hx.Wire w, Dictionary<string, string> display, Func<string, Mem?, bool> want)
     {
-        var w = await Hx.Get(app, $"{ep.Url}?e={e}");
         var at = $"{ep.Url} reporting {m.Q}";
         if (ep.LeftOut(m))
         {
+            if (!want(Aspect.LeftOut, m)) return null;
             if (w.Thrown is null) return $"{at}: left out of its document, but answered {(int)w.Status}: {Cut(w.Body)}";
             if (!w.Thrown.StartsWith(nameof(InvalidOperationException) + ":", StringComparison.Ordinal)) return $"{at}: left out, threw {Cut(w.Thrown)}, expected an InvalidOperationException";
             if (!display.TryGetValue(ep.Url, out var name) || name.Length == 0) return $"harness: no endpoint named at {ep.Url}";
@@ -312,21 +373,23 @@ public static class FaultClaim
                 return $"{at}: the refusal does not name the endpoint ({name}) and the member ({m.Q}): {Cut(w.Thrown)}";
             return null;
         }
+        if (!Aspect.Answer.Any(a => want(a, m))) return null;
         if (w.Thrown is not null) return $"{at}: request threw {Cut(w.Thrown)}";
         var status = ep.StatusOf(m);
-        if ((int)w.Status != status) return $"{at}: status {(int)w.Status}, expected {status}: {Cut(w.Body)}";
+        if (want(Aspect.Status, m) && (int)w.Status != status) return $"{at}: status {(int)w.Status}, expected {status}: {Cut(w.Body)}";
         JsonNode? body; try { body = JsonNode.Parse(w.Body); } catch { return $"{at}: body is not JSON: {Cut(w.Body)}"; }
         var fault = Un(r, body?["fault"]?.GetValue<string>());
-        if (fault != m.Name) return $"{at}: fault {fault ?? "(none)"}, expected {m.Name}";
-        if (int.Parse(body?["status"]?.ToString() is { } st ? Un(r, st)!.Trim('"') : "0") != status) return $"{at}: problem status field {body?["status"]}, expected {status}";
-        if (ep.Map(m).Type is { } type && Un(r, body?["type"]?.GetValue<string>()) != type) return $"{at}: type {body?["type"]}, expected {type}";
+        if (want(Aspect.Fault, m) && fault != m.Name) return $"{at}: fault {fault ?? "(none)"}, expected {m.Name}";
+        if (want(Aspect.Status, m) && int.Parse(body?["status"]?.ToString() is { } st ? Un(r, st)!.Trim('"') : "0") != status) return $"{at}: problem status field {body?["status"]}, expected {status}";
+        if (want(Aspect.Type, m) && ep.Map(m).Type is { } type && Un(r, body?["type"]?.GetValue<string>()) != type) return $"{at}: type {body?["type"]}, expected {type}";
         var detail = Un(r, body?["detail"]?.GetValue<string>());
         var wantDetail = m.Q == "HFault.Missing" ? "Missing." : null;
-        if (detail != wantDetail) return $"{at}: detail {detail ?? "(none)"}, expected {wantDetail ?? "none (the member has no description)"}";
+        if (want(Aspect.Detail, m) && detail != wantDetail) return $"{at}: detail {detail ?? "(none)"}, expected {wantDetail ?? "none (the member has no description)"}";
         return null;
     }
 
-    static string? DocOf(Row r, JsonNode doc, Ep ep)
+    /// <summary>One endpoint's operation in the document, judged on the aspects <paramref name="want"/> names.</summary>
+    static string? DocOf(Row r, JsonNode doc, Ep ep, Func<string, Mem?, bool> want)
     {
         var op = doc["paths"]?[ep.Url]?["get"];
         if (op is null && ep.Mvc && !Hx.InDocument(r)) { r.Note(NoteKeys.DocControllerNotInApiExplorer); return null; }
@@ -334,22 +397,23 @@ public static class FaultClaim
         var responses = op["responses"]?.AsObject();
         if (responses is null) return $"{ep.Url}: operation has no responses";
         var nums = responses.Select(kv => kv.Key).Where(k => int.TryParse(k, out _)).Select(int.Parse).ToList();
-        if (!nums.SequenceEqual(nums.Order())) return $"{ep.Url}: responses {string.Join(",", responses.Select(kv => kv.Key))} are not in ascending order";
+        if (want(Aspect.DocOrder, null) && !nums.SequenceEqual(nums.Order())) return $"{ep.Url}: responses {string.Join(",", responses.Select(kv => kv.Key))} are not in ascending order";
         var got = nums.Where(n => n >= 400).ToList();
-        var want = ep.DocStatuses();
-        if (!got.SequenceEqual(want)) return $"{ep.Url}: document lists {string.Join(",", got)}, expected {string.Join(",", want)} ({string.Join(" ", ep.Decls)})";
+        var listed = ep.DocStatuses();
+        // which statuses are listed, as a set: their order is DocOrder's, above
+        if (want(Aspect.DocListed, null) && !got.Order().SequenceEqual(listed)) return $"{ep.Url}: document lists {string.Join(",", got)}, expected {string.Join(",", listed)} ({string.Join(" ", ep.Decls)})";
         foreach (var status in ep.FaultStatuses())
         {
             var resp = responses[status.ToString()];
             var txt = Hx.Deep(doc, resp)?.ToJsonString() ?? "";
-            if (!txt.Contains("\"fault\"")) return $"{ep.Url} {status}: response schema does not describe fault: {Cut(txt)}";
-            if (!txt.Contains("\"rule\"")) return $"{ep.Url} {status}: response schema does not describe rule: {Cut(txt)}";
+            if (want(Aspect.DocDescribes, null) && !txt.Contains("\"fault\"")) return $"{ep.Url} {status}: response schema does not describe fault: {Cut(txt)}";
+            if (want(Aspect.DocDescribes, null) && !txt.Contains("\"rule\"")) return $"{ep.Url} {status}: response schema does not describe rule: {Cut(txt)}";
             var desc = resp?["description"]?.GetValue<string>() ?? "";
             const string Lead = "Problem types: ";
             var i = desc.IndexOf(Lead, StringComparison.Ordinal);
             var types = i < 0 ? [] : desc[(i + Lead.Length)..].Split(", ").ToHashSet();
             var wantTypes = ep.TypesAt(status);
-            if (!types.SetEquals(wantTypes))
+            if (want(Aspect.DocTypes, null) && !types.SetEquals(wantTypes))
                 return $"{ep.Url} {status}: description \"{desc}\" names problem types {{{string.Join(", ", types)}}}, expected {{{string.Join(", ", wantTypes)}}}";
         }
         return null;
