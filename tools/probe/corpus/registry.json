@@ -456,10 +456,33 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C16-options-agreement.patch",
-        "defect": "A type the minimal-API options describe and MVC's options say nothing of is not refused, so the document describes JSON the controllers do not write."
-      }
+      "seeds": [
+        {
+          "obligation": "differing-refused",
+          "patch": "seeds/C16-options-agreement.patch",
+          "defect": "A type the minimal-API options describe and MVC's options say nothing of is not refused, so the document describes JSON the controllers do not write."
+        },
+        {
+          "obligation": "error-names-type-and-descriptions",
+          "patch": "seeds/C16-error-names-descriptions.patch",
+          "defect": "The refusal names the type but not what each set of options says of it."
+        },
+        {
+          "obligation": "patch-held-refused",
+          "patch": "seeds/C16-patch-held-refused.patch",
+          "defect": "A type held only inside a patch is never compared across the two option sets, so the document describes it as the minimal-API options alone say."
+        },
+        {
+          "obligation": "same-converters-build",
+          "patch": "seeds/C16-same-converters-build.patch",
+          "defect": "Two option sets with the same converters are refused when their naming policy or number handling differs."
+        },
+        {
+          "obligation": "minimal-host-not-compared",
+          "patch": "seeds/C16-minimal-host-builds.patch",
+          "defect": "A host of minimal APIs alone is compared against MVC's default options, so a converter on its own options refuses its document."
+        }
+      ]
     },
     "C17Cmtk0014Probe": {
       "claim": "C17-cmtk0014",

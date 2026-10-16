@@ -4534,6 +4534,86 @@
         "controller-without-ApiController-visible"
       ]
     },
+    "obligations": [
+      {
+        "id": "differing-refused",
+        "sentence": "Otherwise building the document fails rather than describe JSON the controllers don't write.",
+        "axes": {
+          "difference": [
+            "converter-only-http"
+          ],
+          "http.host": [
+            "mvc",
+            "both",
+            "controller-without-ApiController-visible"
+          ]
+        }
+      },
+      {
+        "id": "error-names-type-and-descriptions",
+        "sentence": "The error names the type and what each set of options says of it, also for a type held only inside a patch.",
+        "axes": {
+          "difference": [
+            "converter-only-http"
+          ],
+          "http.host": [
+            "mvc",
+            "both",
+            "controller-without-ApiController-visible"
+          ]
+        }
+      },
+      {
+        "id": "patch-held-refused",
+        "sentence": "The error names the type and what each set of options says of it, also for a type held only inside a patch.",
+        "axes": {
+          "difference": [
+            "converter-only-http"
+          ],
+          "http.host": [
+            "mvc",
+            "both",
+            "controller-without-ApiController-visible"
+          ]
+        }
+      },
+      {
+        "id": "same-converters-build",
+        "sentence": "A host with controllers registers the same converters and descriptions on both, in the same order.",
+        "axes": {
+          "difference": [
+            "naming-policy",
+            "number-handling"
+          ]
+        }
+      },
+      {
+        "id": "minimal-host-not-compared",
+        "sentence": "A host with controllers registers the same converters and descriptions on both, in the same order.",
+        "axes": {
+          "difference": [
+            "converter-only-http"
+          ],
+          "http.host": [
+            "minimal",
+            "route-group"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "only-converters-and-descriptions-compared",
+        "source": "design/adr/0071-converters-say-what-they-write.md#0071-json-converters-say-what-they-write-decimals-get-one-spelling",
+        "sentence": "Where the host has a controller, building the document fails when the two option sets do not carry the same described converters and description sets, by type, naming each that differs; a host of minimal APIs alone is never compared.",
+        "axes": {
+          "difference": [
+            "naming-policy",
+            "number-handling"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
