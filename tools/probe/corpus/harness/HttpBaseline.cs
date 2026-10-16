@@ -215,7 +215,10 @@ public static class HttpBaseline
         {
             var method = pp0.Contains("/schema/") || pp0.Contains("/body/") || pp0.Contains("/form/") ? "post" : "get";
             // Like with like from the start: a class value object against the wrapped type at its nullability.
-            var pp = e.Vo.IsValueType != e.Plain.IsValueType && Hx.PlainNull(r, e) is not null && pp0.Contains("/bind/") ? pp0.Replace("/plain", "/plainnull") : pp0;
+            // The schema endpoint has the twin at the root only, where its body is the entry's own type (row 384 of C07:
+            // a record class over TimeOnly, optional, against a required TimeOnly).
+            var twinned = pp0.Contains("/bind/") || pp0.Contains("/schema/") && r["shape.position"] == "root";
+            var pp = e.Vo.IsValueType != e.Plain.IsValueType && Hx.PlainNull(r, e) is not null && twinned ? pp0.Replace("/plain", "/plainnull") : pp0;
             if (pp != pp0) r.Note(NoteKeys.SchemaComparedWithNullableWrapped);
             if (Op(pp, method, out var po) is { } m1)
             {
