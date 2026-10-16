@@ -4,23 +4,36 @@
 // await's GetAwaiter, a Deconstruct (in var (a, b) = x, a foreach, or a pattern like x is (1, 2)), and a collection expression's Add or
 // builder method ... every other attribute is [checked]", and at a call; "An inferred one is reported at the call ... the foreach's
 // collection, the await, the deconstruction, the pattern or the collection expression"; a pair's breach "once, at the later argument".
-// Oracle: the page's table ("Accepts") over what each argument is. Each row compiles, with the CMTK0010 analyzer:
-//  - the catalogue (test/CodoMetis.TypeKit.Analyzers.Tests/Variants: TypeArgumentSites' subjects and its uses of the row's site,
-//    TypeArgumentKinds' candidates), with one argument that breaks the attribute and one that meets it (a pair attribute: subjects of
-//    two parameters at the same sites), plus a collection expression's builder method, which the catalogue has no use of;
-//  - the row's shapes as arguments at the same sites: the value object or closed set of shape.kind over shape.wrapped at shape.site,
-//    its base and its explicit interface (shape.inheritance), the wrapped type itself, and a declaration of shape.refused-kind (one
-//    that compiles without the generators; the two that do not are excluded); each use hosted in a member of shape.containing at
-//    shape.position.
-// Every breaking use is reported exactly once at its span, no meeting one anywhere.
+// Obligations (claims.json), each with a check below and a seed of its own in the registry entry (decision 104), the row's attribute
+// selecting one of the first four and a site other than a call the fifth:
+//   interface-and-unsealed, value-object-and-closed-set, flags-enum-and-read-only-struct (attribute): the page's sentences on the pairs
+//   of kinds; a-pair-once-at-the-later-argument (Distinct, Unrelated): "A breach is reported once, at the later argument.";
+//   methods-the-compiler-calls (site foreach, await, Deconstruct, collection-expression): "**Methods the compiler calls for you:** ..."
+// Oracle: the page (Baseline.Docs): its table ("Accepts") over what each argument is, and its list of what the rule checks. Each row
+// compiles, with the CMTK0010 analyzer:
+//  - the catalogue (test/CodoMetis.TypeKit.Analyzers.Tests/Variants: TypeArgumentSites' subjects, its calls with written and inferred
+//    arguments and its uses of the row's site, TypeArgumentKinds' candidates), with one argument that breaks the attribute and one that
+//    meets it (a pair attribute: subjects of two parameters at the same sites), plus a collection expression's builder method, which
+//    the catalogue has no use of;
+//  - the row's shapes as arguments at the same calls and sites: the value object or closed set of shape.kind over shape.wrapped at
+//    shape.site, its base and its explicit interface (shape.inheritance), the wrapped type itself, and a declaration of
+//    shape.refused-kind (one that compiles without the generators; the two that do not are excluded); each use hosted in a member of
+//    shape.containing at shape.position.
+// The attribute's check judges the calls: every breaking use reported exactly once at its span, no meeting one, nothing anywhere else.
+// The methods' check judges the uses at the row's site against each argument's call with inferred arguments in the same compilation:
+// reported once at its span where that call is reported, silent where it is silent; so a kind the rule misjudges fails the attribute's
+// check alone, and a site the rule does not check fails the methods' check alone.
 using Probes.Build;
+using Baseline = Probes.Shapes.Baseline;
 using NoteKeys = Probes.Shapes.NoteKeys;
 using CodoMetis.TypeKit.Analyzers.Tests.Variants;
 namespace Probes;
 
 public sealed class C19Cmtk0010KindsProbe
 {
-    public static TheoryData<string, int> Data() => Probes.Shapes.Rows.Data("C19Cmtk0010KindsProbe");
+    const string RowsFile = "C19Cmtk0010KindsProbe"; // the probe's own rows
+
+    public static TheoryData<string, int> Data() => Probes.Shapes.Rows.Data(RowsFile);
 
     [Theory, MemberData(nameof(Data))]
     public Task Probe(string probe, int idx) => Probes.Shapes.Rec.Run(probe, idx, Check);
@@ -160,12 +173,34 @@ public sealed class C19Cmtk0010KindsProbe
         int n;
         public readonly HashSet<string> Expected = new();
         public readonly List<string> All = new();
+        /// <summary>The uses at a call, written or inferred: what the attribute's check judges.</summary>
+        public readonly HashSet<string> Calls = new();
+        /// <summary>Each argument's call with inferred arguments, the baseline of its uses at the row's site.</summary>
+        public readonly Dictionary<string, string> InferredCall = new();
+        /// <summary>The uses at the row's site when it is not a call, each with its argument: what the methods' check judges.</summary>
+        public readonly Dictionary<string, string> AtSite = new();
         public readonly System.Text.StringBuilder Core = new();
         /// <summary>Relabels a statement's {|#0:…|} with a label of its own; its breaking or meeting is recorded.</summary>
-        public string Label(string statements, bool breaking)
+        public string Label(string statements, bool breaking) => Label(statements, breaking, out _);
+        string Label(string statements, bool breaking, out string l)
         {
-            var l = "u" + n++; All.Add(l); if (breaking) Expected.Add(l);
+            l = "u" + n++; All.Add(l); if (breaking) Expected.Add(l);
             return statements.Replace("{|#0:", "{|#" + l + ":");
+        }
+        /// <summary>A use at a call of <paramref name="argument"/>, the inferred one its uses at the site are compared with.</summary>
+        public string Call(string statements, bool breaking, string argument, bool inferred)
+        {
+            var s = Label(statements, breaking, out var l);
+            Calls.Add(l);
+            if (inferred) InferredCall[argument] = l;
+            return s;
+        }
+        /// <summary>A use of <paramref name="argument"/> at the row's site, a method the compiler calls.</summary>
+        public string Site(string statements, bool breaking, string argument)
+        {
+            var s = Label(statements, breaking, out var l);
+            AtSite[l] = argument;
+            return s;
         }
         public int Next => n++;
     }
@@ -186,15 +221,35 @@ public sealed class C19Cmtk0010KindsProbe
         return use[prefix.Length..^suffix.Length];
     }
 
+    const string Inferred = "a call with inferred arguments";
+
+    /// <summary>The obligation of each attribute's row (claims.json).</summary>
+    static readonly Dictionary<string, string> ObligationOf = new()
+    {
+        ["Interface"] = "interface-and-unsealed", ["Unsealed"] = "interface-and-unsealed",
+        ["ValueObject"] = "value-object-and-closed-set", ["ClosedSet"] = "value-object-and-closed-set",
+        ["FlagsEnum"] = "flags-enum-and-read-only-struct", ["ReadOnlyStruct"] = "flags-enum-and-read-only-struct",
+        ["Distinct"] = "a-pair-once-at-the-later-argument", ["Unrelated"] = "a-pair-once-at-the-later-argument",
+    };
+
     static async Task<string?> Check(Probes.Shapes.Row r)
     {
-        var attribute = r["attribute"]; var site = r["site"];
+        // The row as the rows file holds it, read without marking the run's row: each check marks the axes it ran, so the attribute's
+        // check, judged at the calls, is credited with the row's site only where the site is a call.
+        var row = Probes.Shapes.Rows.Get(RowsFile, r.Index);
+        var read = new List<string>();
+        var substituted = new List<(string Axis, string Value, string Why)>();
+        string Read(string axis) { read.Add(axis); return row[axis]; }
+
+        var attribute = Read("attribute"); var site = Read("site");
         var pair = Pair.Contains(attribute);
         var constraint = $"[{attribute}]";
         var uses = new Uses();
         var id = r.Index.ToString();
+        var atCall = site == "call";
 
-        // The catalogue, with an argument that breaks the attribute and one that meets it.
+        // The catalogue, with an argument that breaks the attribute and one that meets it, each used at a call, written and inferred,
+        // and, where the row's site is not a call, at the site.
         if (!pair)
         {
             var (breaking, meeting) = attribute switch
@@ -207,18 +262,19 @@ public sealed class C19Cmtk0010KindsProbe
                 "ReadOnlyStruct" => ("Mutable", "Frozen"),
                 _ => throw new ArgumentException(attribute),
             };
-            var names = CatalogueSites(site);
             var k = 0;
-            foreach (var name in names)
-                foreach (var (arg, breaks) in new[] { (breaking, true), (meeting, false) })
-                {
-                    var use = TypeArgumentSites.All.Single(s => s.Name == name).Use.Replace("{A}", arg)
-                        .Replace("public static class Use", $"public static class Use{k++}");
-                    uses.Core.AppendLine(uses.Label(use, breaks));
-                }
-            if (site == "collection-expression")
-                foreach (var (arg, breaks) in new[] { (breaking, true), (meeting, false) })
-                    uses.Core.AppendLine(uses.Label(TypeArgumentSites.Body("Built<{A}> built = {|#0:[a]|};").Replace("{A}", arg).Replace("public static class Use", $"public static class Use{k++}"), breaks));
+            foreach (var (arg, breaks) in new[] { (breaking, true), (meeting, false) })
+            {
+                var argument = "catalogue:" + arg;
+                string Use(string use) => use.Replace("{A}", arg).Replace("public static class Use", $"public static class Use{k++}");
+                foreach (var name in CatalogueSites("call"))
+                    uses.Core.AppendLine(uses.Call(Use(TypeArgumentSites.All.Single(s => s.Name == name).Use), breaks, argument, name == Inferred));
+                if (atCall) continue;
+                foreach (var name in CatalogueSites(site))
+                    uses.Core.AppendLine(uses.Site(Use(TypeArgumentSites.All.Single(s => s.Name == name).Use), breaks, argument));
+                if (site == "collection-expression")
+                    uses.Core.AppendLine(uses.Site(Use(TypeArgumentSites.Body("Built<{A}> built = {|#0:[a]|};")), breaks, argument));
+            }
         }
         else
         {
@@ -226,15 +282,22 @@ public sealed class C19Cmtk0010KindsProbe
             var cases = new List<(string F, string S, bool Breaks)> { ("int", "string", false), ("Placed", "Placed", true), ("Handler", "OrderHandler", attribute == "Unrelated") };
             var k = 0;
             foreach (var (f, s, breaks) in cases)
+            {
+                var argument = $"catalogue:{f},{s}";
+                var calls = PairStatements("call");
+                for (var i = 0; i < calls.Length; i++)
+                    uses.Core.AppendLine(uses.Call(PairHost("root", "class", $"Pair{k++}", f, s, calls[i]), breaks, argument, inferred: i == 1));
+                if (atCall) continue;
                 foreach (var statement in PairStatements(site))
-                    uses.Core.AppendLine(uses.Label(PairHost("root", "class", $"Pair{k++}", f, s, statement), breaks));
+                    uses.Core.AppendLine(uses.Site(PairHost("root", "class", $"Pair{k++}", f, s, statement), breaks, argument));
+            }
         }
 
         // The row's shapes.
-        var kind = r["shape.kind"]; var inheritance = r["shape.inheritance"];
+        var kind = Read("shape.kind"); var inheritance = Read("shape.inheritance");
         if (Src.IsStructKind(kind) && inheritance is not ("none" or "explicit-interface-member"))
         {
-            r.Substituted("shape.inheritance", "none", "a record struct has no base type (excluded pair)");
+            substituted.Add(("shape.inheritance", "none", "a record struct has no base type (excluded pair)"));
             inheritance = "none";
         }
         var depth = inheritance switch { "base-depth-1" or "base-explicit-IEquatable" => 1, "base-depth-2" => 2, "base-depth-3" => 3, _ => 0 };
@@ -266,7 +329,7 @@ public sealed class C19Cmtk0010KindsProbe
                 """);
         else
         {
-            wrapped = r["shape.wrapped"];
+            wrapped = Read("shape.wrapped");
             var w = Src.Wrapped(wrapped, id);
             decl.AppendLine($"public enum DF{id} {{ No }}");
             decl.AppendLine(kind switch
@@ -281,10 +344,10 @@ public sealed class C19Cmtk0010KindsProbe
         // shape.refused-kind: refused by the generators, an ordinary declaration to the compiler. The two kinds that are not (a closed
         // set named as a generated member, CS0535; a hand-written operator ==, CS0111) are excluded in claims.json, and a row the
         // covering array fills with one runs over object instead.
-        var refused = r["shape.refused-kind"];
+        var refused = Read("shape.refused-kind");
         if (refused is "closed-set-named-as-generated-member (CMTK1021)" or "equality-operator (CMTK1011)")
         {
-            r.Substituted("shape.refused-kind", "over-object (CMTK1005)", "it does not compile without the generators (excluded pair)");
+            substituted.Add(("shape.refused-kind", "over-object (CMTK1005)", "it does not compile without the generators (excluded pair)"));
             refused = "over-object (CMTK1005)";
         }
         var rName = refused == "named-as-generated-member (CMTK1005)" ? Refusals.ValueObjectNames[r.Index % Refusals.ValueObjectNames.Length] : $"R{id}";
@@ -300,7 +363,7 @@ public sealed class C19Cmtk0010KindsProbe
             _ => throw new ArgumentException(refused),
         });
 
-        var containing = r["shape.containing"]; var position = r["shape.position"];
+        var containing = Read("shape.containing"); var position = Read("shape.position");
         var dFacts = OfKind(kind);
         if (!pair)
         {
@@ -309,11 +372,16 @@ public sealed class C19Cmtk0010KindsProbe
             if (explicitMember) arguments.Add(($"IMark{id}", !Accepts(attribute, new Facts(Interface: true))));
             if (wrapped is not null) arguments.Add((Src.Wrapped(wrapped, id), !Accepts(attribute, OfWrapped(wrapped))));
             foreach (var (type, breaks) in arguments)
+            {
+                var argument = "shape:" + type;
+                foreach (var name in CatalogueSites("call"))
+                    decl.AppendLine(uses.Call(Host(position, containing, $"C{id}_{uses.Next}", type, StatementsOf(name)), breaks, argument, name == Inferred));
+                if (atCall) continue;
                 foreach (var name in CatalogueSites(site))
-                    decl.AppendLine(uses.Label(Host(position, containing, $"C{id}_{uses.Next}", type, StatementsOf(name)), breaks));
-            if (site == "collection-expression")
-                foreach (var (type, breaks) in arguments)
-                    decl.AppendLine(uses.Label(Host(position, containing, $"C{id}_{uses.Next}", type, "Built<{A}> built = {|#0:[a]|};"), breaks));
+                    decl.AppendLine(uses.Site(Host(position, containing, $"C{id}_{uses.Next}", type, StatementsOf(name)), breaks, argument));
+                if (site == "collection-expression")
+                    decl.AppendLine(uses.Site(Host(position, containing, $"C{id}_{uses.Next}", type, "Built<{A}> built = {|#0:[a]|};"), breaks, argument));
+            }
         }
         else
         {
@@ -327,11 +395,18 @@ public sealed class C19Cmtk0010KindsProbe
                 (rName, $"D{id}", false),
             };
             foreach (var (f, s, breaks) in cases)
+            {
+                var argument = $"shape:{f},{s}";
+                var calls = PairStatements("call");
+                for (var i = 0; i < calls.Length; i++)
+                    decl.AppendLine(uses.Call(PairHost(position, containing, $"C{id}_{uses.Next}", f, s, calls[i]), breaks, argument, inferred: i == 1));
+                if (atCall) continue;
                 foreach (var statement in PairStatements(site))
-                    decl.AppendLine(uses.Label(PairHost(position, containing, $"C{id}_{uses.Next}", f, s, statement), breaks));
+                    decl.AppendLine(uses.Site(PairHost(position, containing, $"C{id}_{uses.Next}", f, s, statement), breaks, argument));
+            }
         }
 
-        var shapes = Src.Usings + Src.WrappedDeclarations(id) + Src.AtSite(r["shape.site"], id, decl.ToString());
+        var shapes = Src.Usings + Src.WrappedDeclarations(id) + Src.AtSite(Read("shape.site"), id, decl.ToString());
         var subjects = TypeArgumentSites.Subjects.Replace("{C}", pair ? "" : constraint);
         var run = await Rz.Analyze("CMTK0010",
         [
@@ -341,10 +416,38 @@ public sealed class C19Cmtk0010KindsProbe
         ]);
         if (run.Errors.Count > 0) { r.Outcome("harness-error", "the probe's source does not compile: " + run.ErrorText()); return null; }
         if (run.AnalyzerFailures.Count > 0) return "the analyzer failed: " + string.Join("; ", run.AnalyzerFailures.Select(f => f.GetMessage()));
-        r.Note(NoteKeys.Compared, $"{uses.All.Count} uses, {uses.Expected.Count} expected reported");
-        return Rz.Agree(run, uses.Expected);
-    }
 
+        void Ran(Probes.Shapes.Check c, bool withSite)
+        {
+            foreach (var axis in read) if (withSite || axis != "site") _ = c[axis];
+            foreach (var (axis, value, why) in substituted) c.Substituted(axis, value, why);
+        }
+
+        // The attribute's obligation, judged at the calls: each breaking argument reported once at its span, each meeting one silent, and
+        // nothing reported outside every use. Where the row's site is a call, that is every use of the row.
+        var page = pair ? "docs/type-constraints.md#two-parameters-apart" : "docs/type-constraints.md#the-kind-of-a-type-argument";
+        var kinds = r.Check(ObligationOf[attribute], Baseline.Docs(page), c =>
+        {
+            Ran(c, withSite: atCall);
+            var fail = Rz.Agree(run, uses.Expected, m => uses.Calls.Contains(m.Label), outside: true);
+            if (fail is null) c.Note(NoteKeys.Compared, $"{uses.Calls.Count} uses at a call, {uses.Calls.Count(uses.Expected.Contains)} expected reported");
+            return fail;
+        });
+        if (atCall) return kinds;
+
+        // The methods the compiler calls, judged against each argument's own call with inferred arguments in the same compilation: a use
+        // at the row's site is reported once at its span where that call is reported, and is silent where it is silent.
+        var methods = r.Check("methods-the-compiler-calls", Baseline.Docs("docs/type-constraints.md#constrain-a-type-parameter"), c =>
+        {
+            Ran(c, withSite: true);
+            var marks = run.Marks.ToDictionary(m => m.Label);
+            var expected = uses.AtSite.Where(u => Rz.At(run, marks[uses.InferredCall[u.Value]]).Count > 0).Select(u => u.Key).ToHashSet();
+            var fail = Rz.Agree(run, expected, m => uses.AtSite.ContainsKey(m.Label), outside: false);
+            if (fail is null) c.Note(NoteKeys.Compared, $"{uses.AtSite.Count} uses at a {site}, {expected.Count} reported as their inferred calls are");
+            return fail;
+        });
+        return kinds ?? methods;
+    }
     /// <summary>
     /// A member of shape.containing at shape.position holding <paramref name="statements"/> in the catalogue's frame: a, holder,
     /// bag, crate and o of the argument {A}. A struct is given no instance initializer and no lambda over this.

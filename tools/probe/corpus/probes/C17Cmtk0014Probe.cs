@@ -1,13 +1,26 @@
 // Claim C17-cmtk0014 (src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014): "A FaultKind or a ConstructorAccessibility that names
 // no member: a cast, default(FaultKind), a zero, or a folded constant" is reported (Warning), and "Both are reported where the value
 // is written". The documented cases: `[RequireParameterlessConstructor((ConstructorAccessibility)7)]` and a fault set's member
-// `new(default)`; "a default that is a member is silent" (ConstructorAccessibility.Public is 0).
-// Oracle: claim. Each row writes the value (value axis) in the written form (site axis) at every place its shape axes describe, each
-// place marked: in the declaration of shape.kind over shape.wrapped at shape.site (a fault set's member for closed-set, a static member
-// of a value object otherwise), in the topmost base of its shape.inheritance chain and in an explicit interface member, in a member of a
-// shape.containing type at shape.position, and in a declaration of shape.refused-kind (which compiles here, with no generators; the two
-// kinds that do not are excluded). An attribute-argument row also writes the documented RequireParameterlessConstructor case. Every
-// place of an undefined value is reported exactly once at the value, naming its enum; a valid one nowhere; nothing else is reported.
+// `new(default)`, beside `new(FaultKind.Conflict)`, a member, which is silent; "a default that is a member is silent"
+// (ConstructorAccessibility.Public is 0).
+// Obligations (claims.json), each with a check below and a seed of its own in the registry entry (decision 104), the row's value
+// and site selecting them:
+//   a-cast-naming-no-member (value (FaultKind)9): "A `FaultKind` or a `ConstructorAccessibility` that names no member: a cast"
+//   default-and-zero (value default): "`default(FaultKind)`, a zero"
+//   constructor-accessibility-too (value (FaultKind)9, site attribute-argument): "[RequireParameterlessConstructor((ConstructorAccessibility)7)]   // CMTK0014: no member, read as public"
+//   reported-where-written (value (FaultKind)9 or default): "Both are reported where the value is written:"
+//   a-member-is-silent (value valid): "public static readonly ImportFault Duplicate = new(FaultKind.Conflict);"
+// Oracle: the README's section (Baseline.Docs). Each row writes the value (value axis) in the written form (site axis) at every place
+// its shape axes describe, each place marked: in the declaration of shape.kind over shape.wrapped at shape.site (a fault set's member
+// for closed-set, a static member of a value object otherwise), in the topmost base of its shape.inheritance chain and in an explicit
+// interface member, in a member of a shape.containing type at shape.position, and in a declaration of shape.refused-kind (which
+// compiles here, with no generators; the two kinds that do not are excluded). An attribute-argument row also writes the documented
+// RequireParameterlessConstructor case. One compilation per row, and every check judges its share of it:
+//   a-cast-naming-no-member, default-and-zero: each FaultKind place of an undefined value is reported once, at or around the value,
+//   naming FaultKind (default-and-zero also judges RequireParameterlessConstructor's default, Public, silent);
+//   constructor-accessibility-too: RequireParameterlessConstructor's (ConstructorAccessibility)9 is reported, naming its enum;
+//   reported-where-written: every report sits at the value's own span, and none outside every place;
+//   a-member-is-silent: no place of a value that names a member is reported, and nothing is reported anywhere.
 using Probes.Build;
 using Probes.Shapes;
 namespace Probes;
@@ -161,12 +174,43 @@ public sealed class C17Cmtk0014Probe
         var run = await Rz.Analyze("CMTK0014", [("Row" + id + ".cs", source)]);
         if (run.Errors.Count > 0) { r.Outcome("harness-error", "the probe's source does not compile: " + run.ErrorText()); return null; }
         if (run.AnalyzerFailures.Count > 0) return "the analyzer failed: " + string.Join("; ", run.AnalyzerFailures.Select(f => f.GetMessage()));
-        r.Note(NoteKeys.Compared, $"{p.Labels.Count} places, {p.Expected.Count} expected reported");
-        return Rz.Agree(run, p.Expected, (d, m) =>
+
+        // Every check the row's value selects runs, so a seed that breaks one obligation is seen by its own check whatever the others find.
+        var readme = Baseline.Docs("src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014");
+        var kinds = p.Labels.Where(l => l.StartsWith('p')).ToList();
+        var accessibilities = p.Labels.Where(l => l.StartsWith("ca", StringComparison.Ordinal)).ToList();
+        var failures = new List<string?>();
+        switch (value)
         {
-            var type = m.Label.StartsWith("ca") ? "ConstructorAccessibility" : "FaultKind";
-            return d.GetMessage().Contains($"names no member of {type}") ? null : $"the report does not name {type}: {d.GetMessage()}";
-        });
+            case "(FaultKind)9":
+                failures.Add(r.Check("a-cast-naming-no-member", readme, c => Judged(c, Rz.Reported(run, kinds, p.Expected, Names), $"{kinds.Count} FaultKind places reported")));
+                if (site == "attribute-argument")
+                    failures.Add(r.Check("constructor-accessibility-too", readme, c => Judged(c, Rz.Reported(run, accessibilities, p.Expected, Names), "RequireParameterlessConstructor's (ConstructorAccessibility)9 reported")));
+                failures.Add(r.Check("reported-where-written", readme, c => Judged(c, Rz.WhereWritten(run, p.Expected), $"{p.Expected.Count} reports at the value")));
+                break;
+            case "default":
+                failures.Add(r.Check("default-and-zero", readme, c => Judged(c, Rz.Reported(run, p.Labels, p.Expected, Names), $"{kinds.Count} FaultKind places reported, {accessibilities.Count} default ConstructorAccessibility silent")));
+                failures.Add(r.Check("reported-where-written", readme, c => Judged(c, Rz.WhereWritten(run, p.Expected), $"{p.Expected.Count} reports at the value")));
+                break;
+            case "valid":
+                failures.Add(r.Check("a-member-is-silent", readme, c => Judged(c, Rz.Reported(run, p.Labels, p.Expected) ?? Rz.WhereWritten(run, p.Expected), $"{p.Labels.Count} places silent")));
+                break;
+            default: throw new ArgumentException("value " + value);
+        }
+        return failures.FirstOrDefault(f => f is not null);
+    }
+
+    static string? Judged(Probes.Shapes.Check c, string? failure, string compared)
+    {
+        if (failure is null) c.Note(NoteKeys.Compared, compared);
+        return failure;
+    }
+
+    /// <summary>A report names the enum of the place it is at: FaultKind, or ConstructorAccessibility for RequireParameterlessConstructor's.</summary>
+    static string? Names(Microsoft.CodeAnalysis.Diagnostic d, Mark m)
+    {
+        var type = m.Label.StartsWith("ca", StringComparison.Ordinal) ? "ConstructorAccessibility" : "FaultKind";
+        return d.GetMessage().Contains($"names no member of {type}") ? null : $"the report does not name {type}: {d.GetMessage()}";
     }
 
     static string Member((string E, string Attr) place, string name) => $"{place.Attr}public static FaultKind {name} => {place.E};";

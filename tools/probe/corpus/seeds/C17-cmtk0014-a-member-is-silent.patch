@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs b/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs
+index 7265ea3..4b7d467 100644
+--- a/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs
++++ b/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs
+@@ -70,7 +70,7 @@ public sealed class UndefinedEnumValueAnalyzer : DiagnosticAnalyzer
+                 {
+                     if (type.TypeKind != TypeKind.Enum) continue;
+ 
+-                    var members = new HashSet<object>(type.GetMembers().OfType<IFieldSymbol>().Where(field => field.HasConstantValue).Select(field => field.ConstantValue!));
++                    var members = new HashSet<object>(type.GetMembers().OfType<IFieldSymbol>().Where(field => field.HasConstantValue).Select(field => (object)field.Name));
+                     enums[type] = (members, consequence);
+                 }
+             }

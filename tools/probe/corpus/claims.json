@@ -3648,6 +3648,15 @@
             "abstract-string-ctor"
           ]
         }
+      },
+      {
+        "id": "parsing-where-it-can-be-parsed",
+        "sentence": "`IParsable`/`ISpanParsable`/`IUtf8SpanParsable`, formatting in the invariant culture",
+        "axes": {
+          "parse-shape": [
+            "ordinary"
+          ]
+        }
       }
     ],
     "exclude": [
@@ -6774,6 +6783,15 @@
           "value": [
             "(FaultKind)9",
             "default"
+          ]
+        }
+      },
+      {
+        "id": "a-member-is-silent",
+        "sentence": "public static readonly ImportFault Duplicate = new(FaultKind.Conflict);",
+        "axes": {
+          "value": [
+            "valid"
           ]
         }
       }

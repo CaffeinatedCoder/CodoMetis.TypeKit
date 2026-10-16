@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.Generators/ValueObjectParsableAspect.cs b/src/CodoMetis.TypeKit.Generators/ValueObjectParsableAspect.cs
+index c734b98..8095340 100644
+--- a/src/CodoMetis.TypeKit.Generators/ValueObjectParsableAspect.cs
++++ b/src/CodoMetis.TypeKit.Generators/ValueObjectParsableAspect.cs
+@@ -203,8 +203,6 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
+         // An enum is IConvertible, but Convert.ChangeType cannot make one from a string: a strategy
+         // built on it threw for every input while the type advertised IParsable. Nothing else that is
+         // convertible lacks ISpanParsable, so enums are the only type that gets here this way.
+-        if (valueType.TypeKind == TypeKind.Enum)
+-            return ValueParseStrategy.Enum;
+ 
+         // Before the string constructor, which Uri has too: relative or absolute, as JSON reads it.
+         if (valueType.Equals(typeof(Uri)))
