@@ -1,4 +1,4 @@
-// Claim C16-options-agreement (src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says, Register the same on both option sets). The check is SchemaChecks.C16 in harness/SchemaClaim.cs.
+// Claim C16-options-agreement (src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says, Register the same on both option sets). Its checks, one per obligation, are SchemaChecks.C16 in harness/SchemaClaim.cs.
 using Probes.Schema;
 using Probes.Shapes;
 namespace Probes;

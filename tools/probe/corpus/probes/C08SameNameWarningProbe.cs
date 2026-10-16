@@ -1,4 +1,4 @@
-// Claim C08-same-name-warning (src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types, Keep names distinct). The check is SchemaChecks.C08 in harness/SchemaClaim.cs.
+// Claim C08-same-name-warning (src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types, Keep names distinct). Its checks, one per obligation, are SchemaChecks.C08 in harness/SchemaClaim.cs.
 using Probes.Schema;
 using Probes.Shapes;
 namespace Probes;
