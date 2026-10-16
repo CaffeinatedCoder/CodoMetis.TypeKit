@@ -27,7 +27,7 @@ internal sealed class Args
         }
     }
 
-    private static readonly HashSet<string> Multi = new(StringComparer.Ordinal) { "cobertura", "include", "compile-time", "from" };
+    private static readonly HashSet<string> Multi = new(StringComparer.Ordinal) { "cobertura", "include", "compile-time", "from", "seed-env" };
     private void Add(string name, string value) { if (!options.TryGetValue(name, out var l)) options[name] = l = []; l.Add(value); }
     public string? Get(string name) => options.TryGetValue(name, out var l) ? l[^1] : null;
     public string Need(string name) => Get(name) is { Length: > 0 } v ? v : throw new Refusal($"--{name} is required", 2);
@@ -318,13 +318,49 @@ internal static class Commands
         var entry = l.Registry().GetValueOrDefault(a.Need("probe")) ?? [];
         entry["claim"] = a.Need("claim"); entry["filter"] = a.Need("filter");
         if (a.Get("variants") is { Length: > 0 } v) entry["variants"] = JsonNode.Parse(v);
-        // The defect `seeds` applies to prove the probe can fail (decision 100): a patch under the corpus, and what it breaks.
-        if (a.Get("seed") is { Length: > 0 } seed) entry["seed"] = new JsonObject { ["patch"] = seed, ["defect"] = a.Need("defect") };
+        // The defect `seeds` applies to prove the probe can fail (decision 100): a patch under the corpus, an
+        // environment toggle, or both, and what it breaks.
+        var seed = new JsonObject();
+        if (a.Get("seed") is { Length: > 0 } patch) seed["patch"] = patch;
+        if (a.All("seed-env") is { Count: > 0 } toggles) seed["env"] = SeedEnv(toggles);
+        if (a.Get("obligation") is { } obligation)
+        {
+            // A seed per obligation (decision 104): into `seeds`, in place of any seed that names the same obligation.
+            if (obligation.Length == 0) throw new Refusal("--obligation needs the id of one of the claim's obligations", 2);
+            if (seed.Count == 0) throw new Refusal("--obligation names the obligation of a seed: give the seed with --seed PATCH or --seed-env NAME=VALUE", 2);
+            var claim = l.Claims().FirstOrDefault(c => Files.Str(c["id"]) == a.Need("claim"))
+                        ?? throw new Refusal($"no claim {a.Need("claim")} in claims.json (tracked or staged), so obligation {obligation} cannot be checked");
+            var ids = Claim.ObligationIds(claim);
+            if (!ids.Contains(obligation))
+                throw new Refusal($"claim {a.Need("claim")} lists no obligation {obligation} (it lists {string.Join(", ", ids)})", 2);
+            var named = new JsonObject { ["obligation"] = obligation };
+            foreach (var (key, value) in seed) named[key] = value?.DeepClone();
+            named["defect"] = a.Need("defect");
+            var kept = (entry["seeds"] as JsonArray ?? []).Where(s => Files.Str(s?["obligation"]) != obligation).Select(s => s?.DeepClone()).ToList();
+            var replaced = (entry["seeds"] as JsonArray ?? []).Count - kept.Count;
+            entry["seeds"] = new JsonArray([.. kept, named]);
+            if (entry["seed"] is JsonObject one && Files.Str(one["obligation"]) == obligation) { entry.Remove("seed"); replaced++; }
+            l.Ctx.Out.WriteLine($"seed for obligation {obligation} of {a.Need("probe")}" + (replaced > 0 ? $", in place of the {replaced} it had" : ""));
+        }
+        else if (seed.Count > 0) { seed["defect"] = a.Need("defect"); entry["seed"] = seed; }
         probes[a.Need("probe")] = entry;
         staged["probes"] = probes.DeepClone();
         Files.WriteJson(path, staged);
         l.Ctx.Out.WriteLine($"registered {a.Need("probe")} (staged; `publish` moves it into the corpus)");
         return 0;
+    }
+
+    /// <summary>A seed's environment toggle from <c>--seed-env NAME=VALUE ...</c>; a toggle without a name or an <c>=</c> is refused.</summary>
+    private static JsonObject SeedEnv(List<string> toggles)
+    {
+        var env = new JsonObject();
+        foreach (var toggle in toggles)
+        {
+            var eq = toggle.IndexOf('=', StringComparison.Ordinal);
+            if (eq <= 0) throw new Refusal($"--seed-env {toggle}: a toggle is NAME=VALUE", 2);
+            env[toggle[..eq]] = toggle[(eq + 1)..];
+        }
+        return env;
     }
 
     public static int Publish(Ledger l, Args a)

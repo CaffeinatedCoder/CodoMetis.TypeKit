@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit/DecimalJsonConverters.cs b/src/CodoMetis.TypeKit/DecimalJsonConverters.cs
+index 9007276..cd760e4 100644
+--- a/src/CodoMetis.TypeKit/DecimalJsonConverters.cs
++++ b/src/CodoMetis.TypeKit/DecimalJsonConverters.cs
+@@ -144,7 +144,7 @@ internal static class DecimalJson
+     public static decimal Read(ref Utf8JsonReader reader) => reader.TokenType switch
+     {
+         JsonTokenType.Number => reader.TryGetDecimal(out var value) ? value : throw new JsonException(),
+-        JsonTokenType.String => ReadText(ref reader),
++        JsonTokenType.String => throw new JsonException(),
+         _ => throw new JsonException(),
+     };
+ 

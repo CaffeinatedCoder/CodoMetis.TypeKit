@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit/DecimalJsonConverters.cs b/src/CodoMetis.TypeKit/DecimalJsonConverters.cs
+index 9007276..ef426a1 100644
+--- a/src/CodoMetis.TypeKit/DecimalJsonConverters.cs
++++ b/src/CodoMetis.TypeKit/DecimalJsonConverters.cs
+@@ -45,7 +45,7 @@ public sealed class DecimalNumberJsonConverter : JsonConverter<decimal>, IDescri
+     public override void Write(Utf8JsonWriter writer, decimal value, JsonSerializerOptions options)
+     {
+         ArgumentNullException.ThrowIfNull(writer);
+-        writer.WriteNumberValue(DecimalJson.Minimal(value));
++        writer.WriteStringValue(DecimalJson.Text(value));
+     }
+ 
+     /// <inheritdoc />

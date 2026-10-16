@@ -39,6 +39,18 @@ it is (decision 102). The harness's generated declarations, `harness/*.g.cs`, ar
 apps of `tools/probe/generators/` from the rows and the axes file, and `GeneratedHarnessTests` in the
 conventions tests holds each to its app's output (that directory's README).
 
+The round lock, `round.lock` and its mutex, sits in the branch's directory (`branches/<branch>/`), beside
+everything a round or a replay writes, so rounds and replays of two branches run at once and two of one branch
+never do. The scratch worktrees, `wt` (the replay's), `seeds`, `explore` (the `prober` agent's) and `enumerate`,
+are per checkout: under `PROBE_CACHE_DIR` when set, else `~/.cache/probe-replay/<checkout>-<hash of its path>`,
+and `replay --where` prints them. So a linked worktree (`git worktree add`, as each session under
+`.claude/worktrees/` is) builds a warm copy of its own, about a gigabyte of disk, and two sessions never reset
+each other's copy; the main checkout keeps the directory it had before. Since the lock is per branch and the
+worktree per checkout, a replay also holds `replay.lock` beside them (an OS lock, gone with its process), and a
+replay of another branch in the same checkout, after a branch switch, is skipped while one runs. Removing a
+linked worktree leaves its cache behind: before you remove it, run there the `remove:` line that `replay --where`
+prints, which removes the cache's worktrees (`git worktree remove`) and then its directory, every path written out.
+
 A claim lists what it promises in `obligations`, each an id and a sentence quoted verbatim from the claim's
 source, and what it does not promise in `not-promised`, each an id and the sentence of the document or record
 that makes the difference intended, quoted from that source. `universe` checks every quote as it checks a
@@ -63,7 +75,11 @@ and counts the seed caught only for a row that ends as a violation, raised no ha
 violate in the unseeded probe (decision 103). The unseeded rows come from the ledger where the probe's
 evidence is current, else from an unseeded run first. Nothing it runs is evidence; it
 writes `seeds-last.json` (`Schemas/seeds-run.schema.json`), one outcome per seed, reported as
-`P/<obligation>` where the seed names one. A seed is not part of a probe's identity. Without a build,
+`P/<obligation>` where the seed names one. `register --obligation O --seed PATCH --defect TEXT` (or
+`--seed-env NAME=VALUE...` for a toggle) writes a seed into `seeds`, in place of any seed of the entry that
+names O, `seed` included, and refuses an O that the claim's entry in `claims.json` does not list; without
+`--obligation`, `--seed` and `--seed-env` set the one `seed`. No seed is written into the registry by hand.
+A seed is not part of a probe's identity, neither `seed` nor `seeds`. Without a build,
 `Seeds.Problems`, which the prober tests run over the repository, refuses a probe without a seed, a seed that
 does not apply, a seed naming an obligation its claim does not list, and a listed obligation no seed names.
 
@@ -85,8 +101,9 @@ to HEAD, overlays the corpus and the staging as the replay does, builds once thr
 harness's `PROBE_ROWS`, within the rows each variant's `PROBE_ONLY` selects. It prints each run's verdict line
 and how each row ended, and exits with the probe's code (1 when the build fails). It records no evidence,
 footprint or run and takes no lock, so a replay at the same time shares its worktree. Then write a seed per
-obligation, shown caught by `seeds --probe P`, `register` (its lint, below), and `publish`. A writer needs no
-build or sync script of their own.
+obligation and register it with the command `new` printed for that obligation (`register --obligation O`,
+under "Seeds"), show each caught with `seeds --probe P`, and `publish`. `register` lints the staged sources
+first (below). A writer needs no build or sync script of their own.
 
 ## Register and publish
 

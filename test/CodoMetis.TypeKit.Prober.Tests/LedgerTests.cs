@@ -229,7 +229,7 @@ public sealed class LockTests : IDisposable
             threads.ForEach(t => t.Start());
             threads.ForEach(t => t.Join());
             exits.Count(e => e == 0).ShouldBe(1, $"round {round}");
-            File.Delete(Path.Combine(fx.Memory, "round.lock"));
+            File.Delete(fx.LockFile());
         }
     }
 
@@ -243,10 +243,11 @@ public sealed class LockTests : IDisposable
     [Fact]
     public void A_mutex_the_OS_refuses_to_create_is_waited_for_and_refused_not_thrown()
     {
-        Directory.CreateDirectory(fx.Memory);
-        var mutex = Path.Combine(fx.Memory, "round.lock.mutex");
+        var directory = Path.GetDirectoryName(fx.LockFile())!;
+        Directory.CreateDirectory(directory);
+        var mutex = fx.LockFile() + ".mutex";
         if (OperatingSystem.IsWindows()) Directory.CreateDirectory(mutex);
-        else File.SetUnixFileMode(fx.Memory, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        else File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserExecute);
         try
         {
             var (exit, _, error) = fx.Ledger("lock", "--holder", "a", "--mode", "explore");
@@ -257,8 +258,30 @@ public sealed class LockTests : IDisposable
         finally
         {
             if (OperatingSystem.IsWindows()) Directory.Delete(mutex);
-            else File.SetUnixFileMode(fx.Memory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            else File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         }
+    }
+
+    [Fact]
+    public void A_lock_of_one_branch_leaves_another_branchs_lock_free()
+    {
+        var other = fx.Linked("other");
+        fx.Ledger("lock", "--holder", "a", "--mode", "explore").Exit.ShouldBe(0);
+
+        var (exit, output, error) = fx.LedgerIn(other, "lock", "--holder", "b", "--mode", "explore");
+
+        exit.ShouldBe(0, error + output);
+        File.Exists(fx.LockFile("other")).ShouldBeTrue();
+        File.Exists(fx.LockFile("main")).ShouldBeTrue("a's lock is still held");
+    }
+
+    [Fact]
+    public void A_second_lock_of_one_branch_is_refused_from_another_checkout()
+    {
+        var other = fx.Linked("other");
+        fx.Ledger("lock", "--holder", "a", "--mode", "explore").Exit.ShouldBe(0);
+
+        fx.LedgerIn(other, "lock", "--branch", "main", "--holder", "b", "--mode", "replay").Exit.ShouldNotBe(0);
     }
 
     private int RaceOf(int takers)
@@ -319,8 +342,8 @@ public sealed class GateTests : IDisposable
         try
         {
             fx.LedgerWith(new() { ["PROBE_STATE_DIR"] = state }, "lock", "--holder", "ci", "--mode", "replay").Exit.ShouldBe(0);
-            File.Exists(Path.Combine(state, "round.lock")).ShouldBeTrue();
-            File.Exists(Path.Combine(fx.Memory, "round.lock")).ShouldBeFalse();
+            Directory.EnumerateFiles(state, "round.lock", SearchOption.AllDirectories).ShouldNotBeEmpty();
+            File.Exists(fx.LockFile()).ShouldBeFalse();
         }
         finally { if (Directory.Exists(state)) Directory.Delete(state, recursive: true); }
     }

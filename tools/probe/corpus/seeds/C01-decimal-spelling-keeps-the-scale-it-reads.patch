@@ -1,0 +1,22 @@
+diff --git a/src/CodoMetis.TypeKit/DecimalJsonConverters.cs b/src/CodoMetis.TypeKit/DecimalJsonConverters.cs
+index 9007276..471f160 100644
+--- a/src/CodoMetis.TypeKit/DecimalJsonConverters.cs
++++ b/src/CodoMetis.TypeKit/DecimalJsonConverters.cs
+@@ -143,7 +143,7 @@ internal static class DecimalJson
+     /// <summary>A number, or a string holding one.</summary>
+     public static decimal Read(ref Utf8JsonReader reader) => reader.TokenType switch
+     {
+-        JsonTokenType.Number => reader.TryGetDecimal(out var value) ? value : throw new JsonException(),
++        JsonTokenType.Number => reader.TryGetDecimal(out var value) ? Minimal(value) : throw new JsonException(),
+         JsonTokenType.String => ReadText(ref reader),
+         _ => throw new JsonException(),
+     };
+@@ -164,7 +164,7 @@ internal static class DecimalJson
+             return text is not null && TryParse(Encoding.UTF8.GetBytes(text), out var unescaped) ? unescaped : throw new JsonException();
+         }
+ 
+-        return TryParse(reader.ValueSpan, out var value) ? value : throw new JsonException();
++        return TryParse(reader.ValueSpan, out var value) ? Minimal(value) : throw new JsonException();
+     }
+ 
+     private static bool TryParse(ReadOnlySpan<byte> utf8, out decimal value) =>

@@ -98,7 +98,7 @@ public static class PreserveGuard
             var (jf, _) = Jx.Ser(hv, Jx.Full(o));
             var (_, xr) = Jx.De(jf ?? jv!, hv.Declared, o);
             if (xr is not null) return "own converter for the value object: its document does not read back: " + Jx.Ex(xr);
-            return null;   // input.json rewrites the wrapped type's document, which this converter does not read (claims.json excludes the pairs)
+            return OwnReadsInput(r, e, hv, o);
         }
         if (jv != jp)
         {
@@ -119,6 +119,38 @@ public static class PreserveGuard
         var full = Jx.Ser(hp, Jx.Full(op)).Json ?? jp!;
         var text = JsonParity.InputFor(input, e, Jx.Full(op), full, r["shape.position"]);
         return ReadAlike.Check(r, e, input, text, hp, hv, op, ownVo ? null : o);
+    }
+
+    /// <summary>
+    /// The application's converter for the value object reads the row's input inside its own spelling ("vo:" and the wrapped
+    /// type's JSON) alike under the row's reference handler and under none: "anything a converter of your own writes" is unaffected
+    /// (Generators README#json). Each side writes its own document, so Preserve's metadata is its own, and only the value is rewritten.
+    /// </summary>
+    static string? OwnReadsInput(Row r, Entry e, Held hv, JsonSerializerOptions o)
+    {
+        var input = r["input.json"];
+        var inner = JsonRow.Inner(e);
+        var wrapped = JsonSerializer.Serialize(Make.Unwrap(e, Make.Vo(e, e.Valid())), Make.Held(e.Plain), inner);
+        var value = "vo:" + JsonParity.InputFor(input, e, inner, wrapped, "root");
+        var bare = new JsonSerializerOptions(o) { ReferenceHandler = null };
+        (string? Read, string? Refused, Exception? Depth) Through(JsonSerializerOptions x)
+        {
+            var (doc, wx) = Jx.Ser(hv, Jx.Full(x));
+            if (wx is not null) return (null, "write: " + wx.GetType().Name, Jx.Depth(r, wx) ? wx : null);
+            var own = Jx.Tokens(doc!).Where(t => t.Type is JsonTokenType.String or JsonTokenType.PropertyName && t.Text is { } s && s.StartsWith("vo:", StringComparison.Ordinal)).ToList();
+            if (own.Count == 0) return (null, null, null);
+            var (v, rx) = Jx.De(Jx.Rewrite(doc!, own, _ => JsonSerializer.Serialize(value)), hv.Declared, x);
+            if (rx is not null) return (null, "read: " + rx.GetType().Name, Jx.Depth(r, rx) ? rx : null);
+            return (JsonSerializer.Serialize(v, hv.Declared, bare), null, null);
+        }
+        var handled = Through(o); var unhandled = Through(bare);
+        if ((handled.Depth ?? unhandled.Depth) is { } depth) { r.Note(NoteKeys.StjMaxdepth, "own converter, read " + input + ": " + Jx.Ex(depth)); return null; }
+        if (handled.Read is null && handled.Refused is null && unhandled.Read is null && unhandled.Refused is null)
+        { r.Note(NoteKeys.JsonMemberLeftOutByOptions, "own converter: the options write no member"); return null; }
+        if (handled.Read != unhandled.Read || handled.Refused != unhandled.Refused)
+            return $"read {input} through the application's converter: {handled.Read ?? handled.Refused ?? "no member"} under ReferenceHandler {r["handler"]}, {unhandled.Read ?? unhandled.Refused ?? "no member"} without one";
+        r.Note(NoteKeys.Compared, $"read {input} through the application's converter, alike with and without the reference handler: {Jx.Cut(handled.Read ?? handled.Refused)}");
+        return null;
     }
 
     /// <summary>The first $id value a document holds twice, or null.</summary>
