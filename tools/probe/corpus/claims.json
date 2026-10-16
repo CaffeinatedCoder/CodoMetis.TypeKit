@@ -630,6 +630,63 @@
         "status-not-error"
       ]
     },
+    "obligations": [
+      {
+        "id": "by-kind",
+        "sentence": "every fault set an endpoint answers with, by its kind",
+        "axes": {
+          "mapping": [
+            "by-kind"
+          ]
+        }
+      },
+      {
+        "id": "own-mapping",
+        "sentence": "The mapping can be your own. It reads each member's kind and description through `IFault`:",
+        "axes": {
+          "mapping": [
+            "own-IFault-mapping"
+          ]
+        }
+      },
+      {
+        "id": "own-set-keeps-mapping",
+        "sentence": "A set mapped on its own keeps its mapping.",
+        "axes": {
+          "set": [
+            "own-mapped-set"
+          ]
+        }
+      },
+      {
+        "id": "enum-needs-own-mapping",
+        "sentence": "Neither has a kind, and the host doesn't start while an endpoint answers with one that's unmapped.",
+        "axes": {
+          "set": [
+            "enum-unmapped"
+          ]
+        }
+      },
+      {
+        "id": "member-without-kind-stops-start",
+        "sentence": "A member with no kind stops the start, and so does one the mapping throws for or gives a status that isn't an error.",
+        "axes": {
+          "set": [
+            "member-without-kind"
+          ]
+        }
+      },
+      {
+        "id": "mapping-refusal-stops-start",
+        "sentence": "A member with no kind stops the start, and so does one the mapping throws for or gives a status that isn't an error.",
+        "axes": {
+          "set": [
+            "mapping-throws",
+            "status-not-error"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",

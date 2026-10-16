@@ -125,10 +125,38 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C07-blanket-mapping.patch",
-        "defect": "A fault set mapped on its own loses its mapping to the mapping for every set (AddFaultResponses()), which is consulted first."
-      }
+      "seeds": [
+        {
+          "obligation": "by-kind",
+          "patch": "seeds/C07-by-kind.patch",
+          "defect": "AddFaultResponses() answers a member of kind Conflict with 400, not the 409 its kind gives."
+        },
+        {
+          "obligation": "own-mapping",
+          "patch": "seeds/C07-own-mapping.patch",
+          "defect": "AddFaultResponses(fault => ...) keeps only the status its mapping gives and drops the problem type."
+        },
+        {
+          "obligation": "own-set-keeps-mapping",
+          "patch": "seeds/C07-blanket-mapping.patch",
+          "defect": "A fault set mapped on its own loses its mapping to the mapping for every set (AddFaultResponses()), which is consulted first."
+        },
+        {
+          "obligation": "enum-needs-own-mapping",
+          "patch": "seeds/C07-enum-needs-own-mapping.patch",
+          "defect": "The startup check skips an endpoint that answers with an unmapped enum, so the host starts."
+        },
+        {
+          "obligation": "member-without-kind-stops-start",
+          "patch": "seeds/C07-member-without-kind.patch",
+          "defect": "AddFaultResponses() answers a fault-set member of no kind with 500 instead of stopping the start."
+        },
+        {
+          "obligation": "mapping-refusal-stops-start",
+          "patch": "seeds/C07-mapping-refused.patch",
+          "defect": "AddFaultResponses(fault => ...) answers a member its mapping throws for, or gives a status that is no error, with 500 instead of stopping the start."
+        }
+      ]
     },
     "C08SameNameWarningProbe": {
       "claim": "C08-same-name-warning",
