@@ -173,10 +173,28 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C06-fault-kinds.patch",
-        "defect": "FaultKind.Malformed is answered and documented as 422, not 400."
-      }
+      "seeds": [
+        {
+          "obligation": "kind-gives-status",
+          "patch": "seeds/C06-fault-kinds.patch",
+          "defect": "FaultKind.Malformed is answered and documented as 422, not 400."
+        },
+        {
+          "obligation": "description-as-detail",
+          "patch": "seeds/C06-description-as-detail.patch",
+          "defect": "A fault-set member's description is not written as the problem's detail."
+        },
+        {
+          "obligation": "no-description-no-detail",
+          "patch": "seeds/C06-no-description-no-detail.patch",
+          "defect": "A member without a description is given its name as the problem's detail."
+        },
+        {
+          "obligation": "member-must-have-kind",
+          "patch": "seeds/C06-member-must-have-kind.patch",
+          "defect": "AddFaultResponses<TSet>() maps a member of no kind to 500 instead of failing."
+        }
+      ]
     },
     "C07BlanketMappingProbe": {
       "claim": "C07-fault-responses-blanket",

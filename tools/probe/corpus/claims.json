@@ -717,6 +717,24 @@
         "Unavailable"
       ]
     },
+    "obligations": [
+      {
+        "id": "kind-gives-status",
+        "sentence": "The kind gives the status:"
+      },
+      {
+        "id": "description-as-detail",
+        "sentence": "The description becomes the problem's `detail`, so a client can show it."
+      },
+      {
+        "id": "no-description-no-detail",
+        "sentence": "A member without one has no `detail`."
+      },
+      {
+        "id": "member-must-have-kind",
+        "sentence": "**A member must have a kind.** A member whose kind is `default`, which is no kind, fails this call."
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
