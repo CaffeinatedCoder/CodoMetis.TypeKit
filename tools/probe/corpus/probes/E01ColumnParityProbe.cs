@@ -43,7 +43,7 @@ public sealed class E01ColumnParityProbe
             if (!voModel!.Contains("pk=True gen=Never")) return "a key over char or Guid is not ValueGeneratedNever: " + voModel;
             voScript = voScript!.Replace(" AUTOINCREMENT", ""); plainScript = plainScript!.Replace(" AUTOINCREMENT", "");
             voModel = voModel.Replace("gen=Never", "gen=*"); plainModel = plainModel!.Replace("gen=OnAdd", "gen=*").Replace("gen=Never", "gen=*");
-            r.Note(NoteKeys.DocumentedCharGuidKeyNeverGeneratedChecked);
+            r.Note(NoteKeys.DocumentedCharGuidKeyNeverGeneratedChecked, "generation compared apart: not-promised char-key-not-generated, guid-key-not-generated");
         }
         if (voModel != plainModel) return "model differs: " + EfModel.FirstDiff(voModel!, plainModel!);
         if (voScript != plainScript) return "create script differs: " + EfModel.FirstDiff(voScript!, plainScript!);

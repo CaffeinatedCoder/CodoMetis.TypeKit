@@ -61,10 +61,33 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C03-composed-faults.patch",
-        "defect": "A composed fault's operation lists its statuses in descending order."
-      }
+      "seeds": [
+        {
+          "obligation": "each-error-own-set",
+          "patch": "seeds/C03-each-error-own-set.patch",
+          "defect": "A composed fault's problem drops the problem type its own set's mapping gives it."
+        },
+        {
+          "obligation": "detail-and-rule-intact",
+          "patch": "seeds/C03-detail-and-rule-intact.patch",
+          "defect": "A composed fault's problem drops the occurrence's detail."
+        },
+        {
+          "obligation": "statuses-ascending",
+          "patch": "seeds/C03-composed-faults.patch",
+          "defect": "A composed fault's operation lists its statuses in descending order."
+        },
+        {
+          "obligation": "shared-status-types",
+          "patch": "seeds/C03-shared-status-types.patch",
+          "defect": "A status two fault sets share names only the problem types of the first set the endpoint answers with."
+        },
+        {
+          "obligation": "unmapped-set-stops-start",
+          "patch": "seeds/C03-unmapped-set-stops-start.patch",
+          "defect": "The startup check skips an unmapped fault type on an endpoint that answers with several, so the host starts."
+        }
+      ]
     },
     "C04WithoutFaultsProbe": {
       "claim": "C04-without-faults",
@@ -77,10 +100,28 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C04-without-faults.patch",
-        "defect": "WithoutFaults leaves nothing out of the document: an operation still lists the status and problem type of a member its endpoint, group or controller leaves out."
-      }
+      "seeds": [
+        {
+          "obligation": "doc-omits-left-out",
+          "patch": "seeds/C04-without-faults.patch",
+          "defect": "WithoutFaults leaves nothing out of the document: an operation still lists the status and problem type of a member its endpoint, group or controller leaves out."
+        },
+        {
+          "obligation": "reporting-left-out-throws",
+          "patch": "seeds/C04-reporting-left-out-throws.patch",
+          "defect": "A member the endpoint leaves out is answered with its mapped status instead of throwing an InvalidOperationException."
+        },
+        {
+          "obligation": "narrows-wider-status",
+          "patch": "seeds/C04-narrows-wider-status.patch",
+          "defect": "A group's or a builder's status for a member stops the host as soon as one of its endpoints leaves the member out, though the others keep it."
+        },
+        {
+          "obligation": "left-out-everywhere-stops-start",
+          "patch": "seeds/C04-left-out-everywhere-stops-start.patch",
+          "defect": "A status that every endpoint of its scope leaves out no longer stops the host."
+        }
+      ]
     },
     "C05RuleProbe": {
       "claim": "C05-with-rule",
@@ -93,10 +134,33 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C05-with-rule.patch",
-        "defect": "WithRule names an enum rule without its nesting chain: Rules.Fault.NoAt is written Fault.NoAt."
-      }
+      "seeds": [
+        {
+          "obligation": "rule-qualified",
+          "patch": "seeds/C05-rule-qualified.patch",
+          "defect": "WithRule writes a closed set's rule as its member's bare name, without its type's: RuleSet.X is written X."
+        },
+        {
+          "obligation": "nested-chain",
+          "patch": "seeds/C05-with-rule.patch",
+          "defect": "WithRule names an enum rule without its nesting chain: Rules.Fault.NoAt is written Fault.NoAt."
+        },
+        {
+          "obligation": "stays-the-errors",
+          "patch": "seeds/C05-stays-the-errors.patch",
+          "defect": "A fault that names a rule is answered 400, not the status its mapping gives the error."
+        },
+        {
+          "obligation": "unnamed-value-throws",
+          "patch": "seeds/C05-unnamed-value-throws.patch",
+          "defect": "WithRule takes an enum value no member names, a combination of flags or a cast number, and writes it as a rule."
+        },
+        {
+          "obligation": "no-namespace",
+          "patch": "seeds/C05-no-namespace.patch",
+          "defect": "WithRule names an enum rule with its namespace: PRule.A is written Probes.PRule.A."
+        }
+      ]
     },
     "C06FaultKindsProbe": {
       "claim": "C06-fault-kinds",
@@ -109,10 +173,28 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C06-fault-kinds.patch",
-        "defect": "FaultKind.Malformed is answered and documented as 422, not 400."
-      }
+      "seeds": [
+        {
+          "obligation": "kind-gives-status",
+          "patch": "seeds/C06-fault-kinds.patch",
+          "defect": "FaultKind.Malformed is answered and documented as 422, not 400."
+        },
+        {
+          "obligation": "description-as-detail",
+          "patch": "seeds/C06-description-as-detail.patch",
+          "defect": "A fault-set member's description is not written as the problem's detail."
+        },
+        {
+          "obligation": "no-description-no-detail",
+          "patch": "seeds/C06-no-description-no-detail.patch",
+          "defect": "A member without a description is given its name as the problem's detail."
+        },
+        {
+          "obligation": "member-must-have-kind",
+          "patch": "seeds/C06-member-must-have-kind.patch",
+          "defect": "AddFaultResponses<TSet>() maps a member of no kind to 500 instead of failing."
+        }
+      ]
     },
     "C07BlanketMappingProbe": {
       "claim": "C07-fault-responses-blanket",
@@ -125,10 +207,38 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C07-blanket-mapping.patch",
-        "defect": "A fault set mapped on its own loses its mapping to the mapping for every set (AddFaultResponses()), which is consulted first."
-      }
+      "seeds": [
+        {
+          "obligation": "by-kind",
+          "patch": "seeds/C07-by-kind.patch",
+          "defect": "AddFaultResponses() answers a member of kind Conflict with 400, not the 409 its kind gives."
+        },
+        {
+          "obligation": "own-mapping",
+          "patch": "seeds/C07-own-mapping.patch",
+          "defect": "AddFaultResponses(fault => ...) keeps only the status its mapping gives and drops the problem type."
+        },
+        {
+          "obligation": "own-set-keeps-mapping",
+          "patch": "seeds/C07-blanket-mapping.patch",
+          "defect": "A fault set mapped on its own loses its mapping to the mapping for every set (AddFaultResponses()), which is consulted first."
+        },
+        {
+          "obligation": "enum-needs-own-mapping",
+          "patch": "seeds/C07-enum-needs-own-mapping.patch",
+          "defect": "The startup check skips an endpoint that answers with an unmapped enum, so the host starts."
+        },
+        {
+          "obligation": "member-without-kind-stops-start",
+          "patch": "seeds/C07-member-without-kind.patch",
+          "defect": "AddFaultResponses() answers a fault-set member of no kind with 500 instead of stopping the start."
+        },
+        {
+          "obligation": "mapping-refusal-stops-start",
+          "patch": "seeds/C07-mapping-refused.patch",
+          "defect": "AddFaultResponses(fault => ...) answers a member its mapping throws for, or gives a status that is no error, with 500 instead of stopping the start."
+        }
+      ]
     },
     "C08SameNameWarningProbe": {
       "claim": "C08-same-name-warning",
@@ -141,10 +251,33 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C08-same-name-warning.patch",
-        "defect": "Bare fault names are compared as qualified ones, so two fault types an endpoint answers with that write one name (HFault.Clash beside KFault.Clash) log no startup warning."
-      }
+      "seeds": [
+        {
+          "obligation": "bare-names-warn",
+          "patch": "seeds/C08-same-name-warning.patch",
+          "defect": "Bare fault names are compared as qualified ones, so two fault types an endpoint answers with that write one name (HFault.Clash beside KFault.Clash) log no startup warning."
+        },
+        {
+          "obligation": "qualified-chain-warns",
+          "patch": "seeds/C08-qualified-chain-warns.patch",
+          "defect": "Qualified fault names are compared with their namespace, so two sets of one nesting chain in two namespaces log no startup warning."
+        },
+        {
+          "obligation": "warning-names-both",
+          "patch": "seeds/C08-warning-names-both.patch",
+          "defect": "The startup warning names only the first of the two members written alike."
+        },
+        {
+          "obligation": "qualified-names-fix",
+          "patch": "seeds/C08-qualified-names-fix.patch",
+          "defect": "Under QualifiedFaultNames, fault names are still compared bare, so HFault.Clash beside KFault.Clash logs a warning."
+        },
+        {
+          "obligation": "leave-one-out-fixes",
+          "patch": "seeds/C08-leave-one-out-fixes.patch",
+          "defect": "The same-name check counts a member the endpoint leaves out, so leaving one out does not end the warning."
+        }
+      ]
     },
     "C09BaseRecordEqualityProbe": {
       "claim": "C09-base-record-equality",
@@ -197,10 +330,28 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C12-described-converter.patch",
-        "defect": "A list's items and a dictionary's additionalProperties of a described type are filled only where ASP.NET already wrote them, so the document drops them."
-      }
+      "seeds": [
+        {
+          "obligation": "own-converter-describes-itself",
+          "patch": "seeds/C12-described-converter-own.patch",
+          "defect": "Only a generated converter's description is read: an application's own IDescribedJsonConverter, the decimal converters among them, leaves its type undescribed."
+        },
+        {
+          "obligation": "options-describe",
+          "patch": "seeds/C12-options-descriptions.patch",
+          "defect": "A description the options give through JsonSchemaDescriptions is never found."
+        },
+        {
+          "obligation": "every-position",
+          "patch": "seeds/C12-described-converter.patch",
+          "defect": "A list's items and a dictionary's additionalProperties of a described type are filled only where ASP.NET already wrote them, so the document drops them."
+        },
+        {
+          "obligation": "parameter-keeps-aspnet",
+          "patch": "seeds/C12-parameter-keeps-aspnet.patch",
+          "defect": "A query parameter of a described type is described as its converter writes JSON, not as ASP.NET writes it without converters."
+        }
+      ]
     },
     "C13PatchRequiredProbe": {
       "claim": "C13-patch-required",
@@ -213,10 +364,23 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C13-patch-required.patch",
-        "defect": "Every patch is taken out of required, also a constructor parameter that RespectRequiredConstructorParameters makes the serializer require."
-      }
+      "seeds": [
+        {
+          "obligation": "doc-required-where-rejected",
+          "patch": "seeds/C13-patch-required.patch",
+          "defect": "Every patch is taken out of required, also a constructor parameter that RespectRequiredConstructorParameters makes the serializer require."
+        },
+        {
+          "obligation": "doc-optional-where-absent",
+          "patch": "seeds/C13-doc-optional-where-absent.patch",
+          "defect": "Every patch is listed in required, also one the serializer lets a body leave out."
+        },
+        {
+          "obligation": "absent-is-default",
+          "patch": "seeds/C13-absent-is-default.patch",
+          "defect": "The default of a Patch<T>, what a field the request leaves out keeps, reads as Null instead of Absent."
+        }
+      ]
     },
     "C14DeclaredProblemProbe": {
       "claim": "C14-declared-problem",
@@ -229,10 +393,28 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C14-declared-problem.patch",
-        "defect": "A problem response the endpoint declares itself keeps ASP.NET's description, which names none of the problem types answered with its status."
-      }
+      "seeds": [
+        {
+          "obligation": "declared-describes-fault",
+          "patch": "seeds/C14-declared-describes-fault.patch",
+          "defect": "A problem response the endpoint declares itself gets no fault or rule on its own schema, only on the shared component."
+        },
+        {
+          "obligation": "declared-names-types",
+          "patch": "seeds/C14-declared-problem.patch",
+          "defect": "A problem response the endpoint declares itself keeps ASP.NET's description, which names none of the problem types answered with its status."
+        },
+        {
+          "obligation": "ascending-with-declared",
+          "patch": "seeds/C14-ascending-with-declared.patch",
+          "defect": "An operation's responses are left in the order they were added, so a status the endpoint declares itself comes before the lower fault statuses."
+        },
+        {
+          "obligation": "application-json-declared",
+          "patch": "seeds/C14-application-json-declared.patch",
+          "defect": "Only an application/problem+json response counts as a declared problem, so [ProducesResponseType<ProblemDetails>(404)] under application/json names no problem types."
+        }
+      ]
     },
     "C15MvcFaultStatusDocProbe": {
       "claim": "C15-mvc-fault-status-doc",
@@ -245,10 +427,23 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C15-mvc-fault-status-doc.patch",
-        "defect": "The document reads an MVC action's metadata from its descriptor, so what MapControllers()'s builder declares (WithFaultStatus, WithoutFaults) reaches the response but not the document."
-      }
+      "seeds": [
+        {
+          "obligation": "builder-reaches-doc",
+          "patch": "seeds/C15-mvc-fault-status-doc.patch",
+          "defect": "The document reads an MVC action's metadata from its descriptor, so what MapControllers()'s builder declares (WithFaultStatus, WithoutFaults) reaches the response but not the document."
+        },
+        {
+          "obligation": "without-faults-leaves-doc",
+          "patch": "seeds/C15-without-faults-doc.patch",
+          "defect": "The document lists every member, also one the endpoint, its controller or its builder leaves out."
+        },
+        {
+          "obligation": "status-per-scope",
+          "patch": "seeds/C15-status-per-scope.patch",
+          "defect": "The document lists each member's mapped status, not the one its endpoint, controller or builder sets, which the response answers with."
+        }
+      ]
     },
     "C16OptionsAgreementProbe": {
       "claim": "C16-options-agreement",
@@ -261,10 +456,33 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C16-options-agreement.patch",
-        "defect": "A type the minimal-API options describe and MVC's options say nothing of is not refused, so the document describes JSON the controllers do not write."
-      }
+      "seeds": [
+        {
+          "obligation": "differing-refused",
+          "patch": "seeds/C16-options-agreement.patch",
+          "defect": "A type the minimal-API options describe and MVC's options say nothing of is not refused, so the document describes JSON the controllers do not write."
+        },
+        {
+          "obligation": "error-names-type-and-descriptions",
+          "patch": "seeds/C16-error-names-descriptions.patch",
+          "defect": "The refusal names the type but not what each set of options says of it."
+        },
+        {
+          "obligation": "patch-held-refused",
+          "patch": "seeds/C16-patch-held-refused.patch",
+          "defect": "A type held only inside a patch is never compared across the two option sets, so the document describes it as the minimal-API options alone say."
+        },
+        {
+          "obligation": "same-converters-build",
+          "patch": "seeds/C16-same-converters-build.patch",
+          "defect": "Two option sets with the same converters are refused when their naming policy or number handling differs."
+        },
+        {
+          "obligation": "minimal-host-not-compared",
+          "patch": "seeds/C16-minimal-host-builds.patch",
+          "defect": "A host of minimal APIs alone is compared against MVC's default options, so a converter on its own options refuses its document."
+        }
+      ]
     },
     "C17Cmtk0014Probe": {
       "claim": "C17-cmtk0014",
@@ -301,130 +519,318 @@
     "E01ColumnParityProbe": {
       "claim": "E01-column-parity",
       "filter": "*E01ColumnParityProbe",
-      "seed": {
-        "patch": "seeds/E01-column-parity.patch",
-        "defect": "A value object over an enum is mapped as a text column, as a closed set is, not as the enum's integer column."
-      }
+      "seeds": [
+        {
+          "obligation": "column-type",
+          "patch": "seeds/E01-column-parity-column-type.patch",
+          "defect": "A value object over an enum is mapped as a text column, as a closed set is, not as the enum's integer column."
+        },
+        {
+          "obligation": "nullable",
+          "patch": "seeds/E01-column-parity-nullable.patch",
+          "defect": "A convention marks every value-object property required, so a nullable one gets a NOT NULL column."
+        },
+        {
+          "obligation": "facet-kept",
+          "patch": "seeds/E01-column-parity-facet-kept.patch",
+          "defect": "A finalizing convention clears the maximum length, precision, scale and column type configured on a value-object property."
+        }
+      ]
     },
     "E02ValueTranslatesProbe": {
       "claim": "E02-value-translates-to-column",
       "filter": "*E02ValueTranslatesProbe",
-      "seed": {
-        "patch": "seeds/E02-value-translates-to-column.patch",
-        "defect": ".Value on a column is translated as a cast of the column, not the column itself."
-      }
+      "seeds": [
+        {
+          "obligation": "value",
+          "patch": "seeds/E02-value-translates-to-column-value.patch",
+          "defect": "The member translator leaves .Value to EF, so a filter, sort or grouping on it is not translated."
+        },
+        {
+          "obligation": "get-value",
+          "patch": "seeds/E02-value-translates-to-column-get-value.patch",
+          "defect": "The method-call translator leaves GetValue() to EF, so a query on it is not translated."
+        },
+        {
+          "obligation": "value-or-null",
+          "patch": "seeds/E02-value-translates-to-column-value-or-null.patch",
+          "defect": "The method-call translator leaves ValueOrNull() to EF, so a query on an optional value object's value is not translated."
+        },
+        {
+          "obligation": "column-not-cast",
+          "patch": "seeds/E02-value-translates-to-column-column-not-cast.patch",
+          "defect": ".Value on a column is translated as a cast of the column, not the column itself."
+        }
+      ]
     },
     "E03ColumnRoundTripProbe": {
       "claim": "E03-column-round-trip",
       "filter": "*E03ColumnRoundTripProbe",
-      "seed": {
-        "patch": "seeds/E03-column-round-trip.patch",
-        "defect": "A decimal value object is mapped through the double mapping, a REAL column, not the TEXT column a decimal gets."
-      }
+      "seeds": [
+        {
+          "obligation": "stored-as-underlying",
+          "patch": "seeds/E03-column-round-trip-stored-as-underlying.patch",
+          "defect": "A decimal value object is mapped through the double mapping, a REAL column, not the TEXT column a decimal gets."
+        },
+        {
+          "obligation": "keys",
+          "patch": "seeds/E03-column-round-trip-keys.patch",
+          "defect": "The type mapping plugin maps no value object used as a key or an index, so a value-object key cannot be stored."
+        },
+        {
+          "obligation": "nullable-properties",
+          "patch": "seeds/E03-column-round-trip-nullable-properties.patch",
+          "defect": "A convention marks every value-object property required, so a nullable one cannot store null."
+        }
+      ]
     },
     "E04IntegerKeyProbe": {
       "claim": "E04-integer-key-generated",
       "filter": "*E04IntegerKeyProbe",
-      "seed": {
-        "patch": "seeds/E04-integer-key-generated.patch",
-        "defect": "A key over an integer is declared never generated, so entities added without a key are stored with 0."
-      }
+      "seeds": [
+        {
+          "obligation": "generated-on-add",
+          "patch": "seeds/E04-integer-key-generated-generated-on-add.patch",
+          "defect": "A key over an integer is declared never generated, so entities added without a key are stored with 0."
+        },
+        {
+          "obligation": "byte-not-generated",
+          "patch": "seeds/E04-integer-key-generated-byte-not-generated.patch",
+          "defect": "A key over byte is declared generated on add, which EF does not do for a plain byte key."
+        },
+        {
+          "obligation": "char-key-yours",
+          "patch": "seeds/E04-integer-key-generated-char-key-yours.patch",
+          "defect": "A key over char is declared generated on add, as EF would for a plain char key."
+        },
+        {
+          "obligation": "guid-key-yours",
+          "patch": "seeds/E04-integer-key-generated-guid-key-yours.patch",
+          "defect": "A key over a Guid is declared generated on add, so EF invents a Guid for an entity added without one."
+        }
+      ]
     },
     "E05OwnCompareToProbe": {
       "claim": "E05-own-compareto-rejected",
       "filter": "*E05OwnCompareToProbe",
-      "seed": {
-        "patch": "seeds/E05-own-compareto-rejected.patch",
-        "defect": "A query that compares or orders by a hand-written CompareTo runs in the database instead of throwing."
-      }
+      "seeds": [
+        {
+          "obligation": "comparison",
+          "patch": "seeds/E05-own-compareto-rejected-comparison.patch",
+          "defect": "A query comparing a value object with a hand-written CompareTo (an operator or CompareTo) runs in the database instead of throwing."
+        },
+        {
+          "obligation": "ordering",
+          "patch": "seeds/E05-own-compareto-rejected-ordering.patch",
+          "defect": "A query ordering by a value object with a hand-written CompareTo runs in the database instead of throwing."
+        },
+        {
+          "obligation": "min-max",
+          "patch": "seeds/E05-own-compareto-rejected-min-max.patch",
+          "defect": "Min or Max of a value object with a hand-written CompareTo runs in the database instead of throwing."
+        },
+        {
+          "obligation": "equality-allowed",
+          "patch": "seeds/E05-own-compareto-rejected-equality-allowed.patch",
+          "defect": "An equality of a value object with a hand-written CompareTo is refused as if it were a comparison."
+        },
+        {
+          "obligation": "value-order-allowed",
+          "patch": "seeds/E05-own-compareto-rejected-value-order-allowed.patch",
+          "defect": "Ordering by .Value of a value object with a hand-written CompareTo is refused as if it ordered by the value object."
+        },
+        {
+          "obligation": "query-filter",
+          "patch": "seeds/E05-own-compareto-rejected-query-filter.patch",
+          "defect": "A query filter comparing a value object with a hand-written CompareTo is accepted when the model is built."
+        }
+      ]
     },
     "E06OwnConverterNoValueProbe": {
       "claim": "E06-own-converter-no-value",
       "filter": "*E06OwnConverterNoValueProbe",
-      "seed": {
-        "patch": "seeds/E06-own-converter-no-value.patch",
-        "defect": ".Value translates on a column the application converts itself, so the query compares against the converted text instead of failing."
-      }
+      "seeds": [
+        {
+          "obligation": "value-not-translated",
+          "patch": "seeds/E06-own-converter-no-value-value-not-translated.patch",
+          "defect": ".Value translates on a column the application converts itself, so the query compares against the converted text instead of failing."
+        },
+        {
+          "obligation": "value-object-comparison",
+          "patch": "seeds/E06-own-converter-no-value-value-object-comparison.patch",
+          "defect": "The query interceptor rewrites a value-object equality as an equality of .Value, which a column the application converts itself cannot answer."
+        }
+      ]
     },
     "E07ClosedSetNameProbe": {
       "claim": "E07-closed-set-stored-as-name",
       "filter": "*E07ClosedSetNameProbe",
-      "seed": {
-        "patch": "seeds/E07-closed-set-stored-as-name.patch",
-        "defect": "A stored name the closed set no longer has reads back as null instead of throwing."
-      }
+      "seeds": [
+        {
+          "obligation": "stored-as-name",
+          "patch": "seeds/E07-closed-set-stored-as-name-stored-as-name.patch",
+          "defect": "A closed set's member is stored as its name in upper case, not its name."
+        },
+        {
+          "obligation": "in-collections-and-json",
+          "patch": "seeds/E07-closed-set-stored-as-name-in-collections-and-json.patch",
+          "defect": "The JSON reader/writer of a closed set writes something other than the member's name, so a primitive collection or a JSON column holds no names."
+        },
+        {
+          "obligation": "unknown-name-throws",
+          "patch": "seeds/E07-closed-set-stored-as-name-unknown-name-throws.patch",
+          "defect": "A stored name the closed set no longer has reads back as null instead of throwing."
+        },
+        {
+          "obligation": "non-member-throws",
+          "patch": "seeds/E07-closed-set-stored-as-name-non-member-throws.patch",
+          "defect": "An instance that is not a member of its closed set is written as the name Unknown instead of throwing."
+        }
+      ]
     },
     "E08OptionResultNotColumnsProbe": {
       "claim": "E08-option-result-not-columns",
       "filter": "*E08OptionResultNotColumnsProbe",
-      "seed": {
-        "patch": "seeds/E08-option-result-not-columns.patch",
-        "defect": "TypeKit's conventions ignore an Option or Result property, so the model builds without the column instead of failing."
-      }
+      "seeds": [
+        {
+          "obligation": "model-fails",
+          "patch": "seeds/E08-option-result-not-columns-model-fails.patch",
+          "defect": "TypeKit's conventions ignore an Option or Result property, so the model builds without the column instead of failing."
+        },
+        {
+          "obligation": "error-says-so",
+          "patch": "seeds/E08-option-result-not-columns-error-says-so.patch",
+          "defect": "The type mapping plugin refuses an Option or Result property with an error that does not name the type."
+        }
+      ]
     },
     "E09OrNoneInDbProbe": {
       "claim": "E09-or-none-in-database",
       "filter": "*E09OrNoneInDbProbe",
-      "seed": {
-        "patch": "seeds/E09-or-none-in-database.patch",
-        "defect": "FirstOrNoneAsync with a condition reads every matching row, without LIMIT 1."
-      }
+      "seeds": [
+        {
+          "obligation": "first-reads-one-row",
+          "patch": "seeds/E09-or-none-in-database-first-reads-one-row.patch",
+          "defect": "FirstOrNoneAsync with a condition reads every matching row, without LIMIT 1."
+        },
+        {
+          "obligation": "single-asks-for-two",
+          "patch": "seeds/E09-or-none-in-database-single-asks-for-two.patch",
+          "defect": "SingleOrNoneAsync answers the first of two matching rows instead of throwing."
+        },
+        {
+          "obligation": "element-at-skips",
+          "patch": "seeds/E09-or-none-in-database-element-at-skips.patch",
+          "defect": "ElementAtOrNone on a query reads every row up to its index and skips in memory, without OFFSET."
+        }
+      ]
     },
     "E10ReadBackSkipsValidationProbe": {
       "claim": "E10-read-back-skips-validation",
       "filter": "*E10ReadBackSkipsValidationProbe",
-      "seed": {
-        "patch": "seeds/E10-read-back-skips-validation.patch",
-        "defect": "Reading a column back runs Create and throws for a value today's rules refuse, instead of materializing it."
-      }
+      "seeds": [
+        {
+          "obligation": "reads-without-create",
+          "patch": "seeds/E10-read-back-skips-validation-reads-without-create.patch",
+          "defect": "Reading a column back runs Create and throws for a value today's rules refuse, instead of materializing it."
+        },
+        {
+          "obligation": "revalidate-finds",
+          "patch": "seeds/E10-read-back-skips-validation-revalidate-finds.patch",
+          "defect": "The generated Revalidate() answers the value object itself, so a stored value today's rules refuse reads as valid."
+        }
+      ]
     },
     "E11UseTypeKitOrderProbe": {
       "claim": "E11-usetypekit-order",
       "filter": "*E11UseTypeKitOrderProbe",
-      "seed": {
-        "patch": "seeds/E11-usetypekit-order.patch",
-        "defect": "UseTypeKit() adds its services only when the provider's are already registered, so calling it before UseSqlite does nothing."
-      }
+      "seeds": [
+        {
+          "obligation": "order-does-not-matter",
+          "patch": "seeds/E11-usetypekit-order-order-does-not-matter.patch",
+          "defect": "UseTypeKit() adds its services only when the provider's are already registered, so calling it before UseSqlite does nothing."
+        }
+      ]
     },
     "E12ConventionByTypeProbe": {
       "claim": "E12-convention-by-vo-type",
       "filter": "*E12ConventionByTypeProbe",
-      "seed": {
-        "patch": "seeds/E12-convention-by-vo-type.patch",
-        "defect": "A finalizing convention clears the max length, precision and scale of value-object properties, so a convention on the value object's type does not reach its property."
-      }
+      "seeds": [
+        {
+          "obligation": "value-object-type-reaches",
+          "patch": "seeds/E12-convention-by-vo-type-value-object-type-reaches.patch",
+          "defect": "A finalizing convention clears the max length, precision and scale of value-object properties, so a convention on the value object's type does not reach its property."
+        }
+      ]
     },
     "E13PrimitiveCollectionProbe": {
       "claim": "E13-primitive-collections",
       "filter": "*E13PrimitiveCollectionProbe",
-      "seed": {
-        "patch": "seeds/E13-primitive-collections.patch",
-        "defect": ".Value on an element of a primitive collection of value objects is not translated, so Any(t => t.Value == x) fails."
-      }
+      "seeds": [
+        {
+          "obligation": "element-value",
+          "patch": "seeds/E13-primitive-collections-element-value.patch",
+          "defect": ".Value on an element of a primitive collection of value objects is not translated, so Any(t => t.Value == x) fails."
+        }
+      ]
     },
     "E14InheritanceKeyProbe": {
       "claim": "E14-inheritance-key-generation",
       "filter": "*E14InheritanceKeyProbe",
-      "seed": {
-        "patch": "seeds/E14-inheritance-key-generation.patch",
-        "defect": "Under TPC on a provider without a sequence (SQLite), an integer key of the hierarchy's root stays generated on add."
-      }
+      "seeds": [
+        {
+          "obligation": "tph-tpt-root",
+          "patch": "seeds/E14-inheritance-key-generation-tph-tpt-root.patch",
+          "defect": "The integer key of a TPH or TPT hierarchy's root is left as EF leaves a value object, never generated."
+        },
+        {
+          "obligation": "tpc-assign-on-sqlite",
+          "patch": "seeds/E14-inheritance-key-generation-tpc-assign-on-sqlite.patch",
+          "defect": "Under TPC on a provider without a sequence (SQLite), an integer key of the hierarchy's root stays generated on add."
+        }
+      ]
     },
     "E15CompositeKeyProbe": {
       "claim": "E15-composite-key",
       "filter": "*E15CompositeKeyProbe",
-      "seed": {
-        "patch": "seeds/E15-composite-key.patch",
-        "defect": "The first value-object property of a composite key is treated as a single integer key and generated on add."
-      }
+      "seeds": [
+        {
+          "obligation": "as-for-primitives",
+          "patch": "seeds/E15-composite-key-as-for-primitives.patch",
+          "defect": "The first value-object property of a composite key is treated as a single integer key and generated on add."
+        }
+      ]
     },
     "E16OwnConfigurationWinsProbe": {
       "claim": "E16-own-configuration-wins",
       "filter": "*E16OwnConfigurationWinsProbe",
-      "seed": {
-        "patch": "seeds/E16-own-configuration-wins.patch",
-        "defect": "The integer key default is set as an explicit configuration, so it overrides the application's own ValueGeneratedNever."
-      }
+      "seeds": [
+        {
+          "obligation": "never",
+          "patch": "seeds/E16-own-configuration-wins-never.patch",
+          "defect": "The integer key default is set as an explicit configuration, so it overrides the application's own ValueGeneratedNever."
+        },
+        {
+          "obligation": "on-add",
+          "patch": "seeds/E16-own-configuration-wins-on-add.patch",
+          "defect": "A key over char or Guid is declared never generated as an explicit configuration, so it overrides the application's own ValueGeneratedOnAdd."
+        },
+        {
+          "obligation": "column-type",
+          "patch": "seeds/E16-own-configuration-wins-column-type.patch",
+          "defect": "A finalizing convention clears the column type configured on a value-object property."
+        },
+        {
+          "obligation": "conversion",
+          "patch": "seeds/E16-own-configuration-wins-conversion.patch",
+          "defect": "A finalizing convention removes the converter the application configured on a value-object property, so TypeKit's mapping stores the plain value."
+        },
+        {
+          "obligation": "optional",
+          "patch": "seeds/E16-own-configuration-wins-optional.patch",
+          "defect": "A finalizing convention makes a value-object property required again after the application configured IsRequired(false)."
+        }
+      ]
     },
     "L01JsonBytesProbe": {
       "claim": "L01-json-bytes",

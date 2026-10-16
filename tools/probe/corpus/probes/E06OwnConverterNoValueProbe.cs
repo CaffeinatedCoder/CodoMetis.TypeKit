@@ -48,7 +48,10 @@ public sealed class E06OwnConverterNoValueProbe
         {
             var box = Q.NewBox(e.Vo, e.MakeVo(EfX.Sample(w, 1)));
             var pred = Expression.Lambda(Expression.Equal(prop, Expression.Field(Expression.Constant(box), "Value")), p);
-            var got = EfX.Enumerate(Q.Call("Where", [entity], src, pred)).ToList();
+            List<object> got;
+            // a refusal here is the claim failing, not the harness: comparing the value object goes through the application's converter
+            try { got = EfX.Enumerate(Q.Call("Where", [entity], src, pred)).ToList(); }
+            catch (InvalidOperationException ex) { return $"{form}: comparing the value object failed with {ex.GetType().Name}: {ex.Message[..Math.Min(200, ex.Message.Length)]}"; }
             if (got.Count != 1 || EfX.Plainify(EfX.Get(got[0], "P")) != EfX.Plainify(EfX.Sample(w, 1))) return $"{form}: comparing the value object returned {got.Count} row(s), expected the one that matches";
             return null;
         }
