@@ -207,6 +207,14 @@
       ],
       [
         "json.PreferredObjectCreationHandling=Populate",
+        "json.ReferenceHandler=IgnoreCycles"
+      ],
+      [
+        "json.PreferredObjectCreationHandling=Populate",
+        "json.ReferenceHandler=Preserve"
+      ],
+      [
+        "json.PreferredObjectCreationHandling=Populate",
         "shape.kind=closed-set"
       ],
       [
@@ -430,6 +438,10 @@
       {
         "match": "shape.position=field x json.IncludeFields=default",
         "reason": "System.Text.Json serializes a field only under IncludeFields (or [JsonInclude]), so without it the member is in no document and no converter runs in either direction, for the plain type alike."
+      },
+      {
+        "match": "json.PreferredObjectCreationHandling=Populate x json.ReferenceHandler=Preserve|IgnoreCycles",
+        "reason": "System.Text.Json refuses JsonObjectCreationHandling.Populate together with a reference handler (InvalidOperationException when the options are used; harness/JsonRow.cs runs such a row without Populate), so no row can set both."
       }
     ]
   },
@@ -613,11 +625,19 @@
     "exclude": [
       [
         "handler=IgnoreCycles",
+        "json.PreferredObjectCreationHandling=Populate"
+      ],
+      [
+        "handler=IgnoreCycles",
         "json.ReferenceHandler=Preserve"
       ],
       [
         "handler=IgnoreCycles",
         "json.ReferenceHandler=default"
+      ],
+      [
+        "handler=Preserve",
+        "json.PreferredObjectCreationHandling=Populate"
       ],
       [
         "handler=Preserve",
@@ -674,6 +694,14 @@
       [
         "input.json=wrong-token",
         "json.Converters=own-for-value-object"
+      ],
+      [
+        "json.PreferredObjectCreationHandling=Populate",
+        "json.ReferenceHandler=IgnoreCycles"
+      ],
+      [
+        "json.PreferredObjectCreationHandling=Populate",
+        "json.ReferenceHandler=Preserve"
       ],
       [
         "shape.containing=class",
@@ -792,6 +820,10 @@
       {
         "match": "json.Converters=own-for-value-object x input.json",
         "reason": "The application\u0027s own converter for the value object reads only the documents it writes itself; input.json rewrites the wrapped type\u0027s document, which that converter never reads, so the row has no such read to make (the row checks that converter\u0027s own round trip, unaffected under every handler)."
+      },
+      {
+        "match": "json.PreferredObjectCreationHandling=Populate x json.ReferenceHandler=Preserve|IgnoreCycles (and handler=Preserve|IgnoreCycles)",
+        "reason": "System.Text.Json refuses JsonObjectCreationHandling.Populate together with a reference handler (InvalidOperationException when the options are used; harness/JsonRow.cs runs such a row without Populate), so no row can set both."
       }
     ]
   },
@@ -1965,6 +1997,14 @@
         "shape.position=field"
       ],
       [
+        "json.PreferredObjectCreationHandling=Populate",
+        "json.ReferenceHandler=IgnoreCycles"
+      ],
+      [
+        "json.PreferredObjectCreationHandling=Populate",
+        "json.ReferenceHandler=Preserve"
+      ],
+      [
         "or.operation=FirstOrNone",
         "or.shape=Result-E"
       ],
@@ -2089,6 +2129,10 @@
       {
         "match": "shape.position=field x json.IncludeFields=default",
         "reason": "System.Text.Json serializes a field only under IncludeFields (or [JsonInclude]), so without it the member is in no document and no converter runs in either direction, for the plain type alike."
+      },
+      {
+        "match": "json.PreferredObjectCreationHandling=Populate x json.ReferenceHandler=Preserve|IgnoreCycles",
+        "reason": "System.Text.Json refuses JsonObjectCreationHandling.Populate together with a reference handler (InvalidOperationException when the options are used; harness/JsonRow.cs runs such a row without Populate), so no row can set both."
       }
     ]
   }

@@ -37851,6 +37851,127 @@
           "shape.wrapped=Uri"
         ]
       ]
+    },
+    {
+      "row": {
+        "handler": "none",
+        "input.json": "escape-sequence",
+        "json.AllowDuplicateProperties": "false",
+        "json.AllowOutOfOrderMetadataProperties": "default",
+        "json.AllowTrailingCommas": "true",
+        "json.Converters": "JsonStringEnumConverter",
+        "json.DefaultIgnoreCondition": "default",
+        "json.DictionaryKeyPolicy": "CamelCase",
+        "json.Encoder": "default",
+        "json.IgnoreReadOnlyFields": "default",
+        "json.IgnoreReadOnlyProperties": "true",
+        "json.IncludeFields": "true",
+        "json.MaxDepth": "3",
+        "json.NumberHandling": "AllowNamedFloatingPointLiterals",
+        "json.PreferredObjectCreationHandling": "Populate",
+        "json.PropertyNameCaseInsensitive": "true",
+        "json.PropertyNamingPolicy": "SnakeCaseUpper",
+        "json.ReadCommentHandling": "Skip",
+        "json.ReferenceHandler": "default",
+        "json.RespectNullableAnnotations": "true",
+        "json.RespectRequiredConstructorParameters": "default",
+        "json.TypeInfoResolver": "source-generated-context",
+        "json.TypeInfoResolverChain": "default",
+        "json.UnknownTypeHandling": "JsonNode",
+        "json.UnmappedMemberHandling": "default",
+        "shape.containing": "generic-type",
+        "shape.kind": "validated-class",
+        "shape.position": "array-element",
+        "shape.wrapped": "byte"
+      },
+      "pairs": [
+        [
+          "json.PreferredObjectCreationHandling=Populate",
+          "shape.wrapped=byte"
+        ],
+        [
+          "shape.position=array-element",
+          "shape.wrapped=byte"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "handler": "none",
+        "input.json": "metadata-property",
+        "json.AllowDuplicateProperties": "default",
+        "json.AllowOutOfOrderMetadataProperties": "true",
+        "json.AllowTrailingCommas": "true",
+        "json.Converters": "StoredJsonConverterFactory",
+        "json.DefaultIgnoreCondition": "WhenWritingDefault",
+        "json.DictionaryKeyPolicy": "SnakeCaseLower",
+        "json.Encoder": "default",
+        "json.IgnoreReadOnlyFields": "default",
+        "json.IgnoreReadOnlyProperties": "default",
+        "json.IncludeFields": "default",
+        "json.MaxDepth": "3",
+        "json.NumberHandling": "default",
+        "json.PreferredObjectCreationHandling": "default",
+        "json.PropertyNameCaseInsensitive": "default",
+        "json.PropertyNamingPolicy": "default",
+        "json.ReadCommentHandling": "default",
+        "json.ReferenceHandler": "default",
+        "json.RespectNullableAnnotations": "true",
+        "json.RespectRequiredConstructorParameters": "default",
+        "json.TypeInfoResolver": "source-generated-context",
+        "json.TypeInfoResolverChain": "context-then-default",
+        "json.UnknownTypeHandling": "JsonNode",
+        "json.UnmappedMemberHandling": "default",
+        "shape.containing": "struct",
+        "shape.kind": "validated-struct",
+        "shape.position": "polymorphic-derived-property",
+        "shape.wrapped": "own-record-class"
+      },
+      "pairs": [
+        [
+          "shape.position=polymorphic-derived-property",
+          "shape.wrapped=own-record-class"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "handler": "Preserve",
+        "input.json": "at-type-limit",
+        "json.AllowDuplicateProperties": "default",
+        "json.AllowOutOfOrderMetadataProperties": "true",
+        "json.AllowTrailingCommas": "default",
+        "json.Converters": "StoredJsonConverterFactory",
+        "json.DefaultIgnoreCondition": "WhenWriting",
+        "json.DictionaryKeyPolicy": "SnakeCaseLower",
+        "json.Encoder": "default",
+        "json.IgnoreReadOnlyFields": "true",
+        "json.IgnoreReadOnlyProperties": "default",
+        "json.IncludeFields": "default",
+        "json.MaxDepth": "3",
+        "json.NumberHandling": "AllowReadingFromString",
+        "json.PreferredObjectCreationHandling": "default",
+        "json.PropertyNameCaseInsensitive": "default",
+        "json.PropertyNamingPolicy": "SnakeCaseLower",
+        "json.ReadCommentHandling": "Skip",
+        "json.ReferenceHandler": "Preserve",
+        "json.RespectNullableAnnotations": "true",
+        "json.RespectRequiredConstructorParameters": "true",
+        "json.TypeInfoResolver": "default",
+        "json.TypeInfoResolverChain": "context-then-default",
+        "json.UnknownTypeHandling": "JsonNode",
+        "json.UnmappedMemberHandling": "default",
+        "shape.containing": "record-struct",
+        "shape.kind": "validated-class",
+        "shape.position": "list-element",
+        "shape.wrapped": "DateTime"
+      },
+      "pairs": [
+        [
+          "shape.position=list-element",
+          "shape.wrapped=DateTime"
+        ]
+      ]
     }
   ],
   "uncovered_after": 0

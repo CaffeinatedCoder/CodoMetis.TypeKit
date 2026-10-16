@@ -102,7 +102,17 @@ public static class PreserveGuard
         }
         if (jv != jp)
         {
-            if (e.Wrapped == "byte" && r.Is("shape.position", "array-element")) { r.Note("byte-array-is-base64", "write"); return null; }
+            if (e.Wrapped == "byte" && r.Is("shape.position", "array-element"))
+            {
+                // byte[] is base64 by the serializer's own rule, an array of value objects a JSON array: unaffected means the value
+                // object's document reads back as written
+                var (back, xb) = Jx.De(jv!, hv.Declared, o);
+                if (xb is not null) return "write: the array of byte value objects does not read back: " + Jx.Ex(xb);
+                var again = JsonSerializer.Serialize(back, hv.Declared, o);
+                if (again != jv) return $"round trip: {Jx.Cut(jv)} read back as {Jx.Cut(again)}";
+                r.Note("compared", "an array of byte value objects round-trips as a JSON array");
+                return null;
+            }
             return $"write: the value object wrote {Jx.Cut(jv)}, the wrapped type {Jx.Cut(jp)}";
         }
         var input = r["input.json"];
