@@ -184,6 +184,29 @@ public sealed class TryProbeTests : IDisposable
             Directory.EnumerateFileSystemEntries(dir, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal)
                      .Select(p => Path.GetRelativePath(dir, p) + ":" + (File.Exists(p) ? Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(p))) : "dir"))))));
 
+    [Fact]
+    public void It_holds_the_replay_worktree_while_it_runs()
+    {
+        var (exit, output, error) = Try("--probe", "P");
+        exit.ShouldBe(7, output + error);
+        adapter.WorktreeFreeDuringRun.ShouldBe([false], "a replay of the same checkout must not take the worktree while a try runs in it");
+    }
+
+    [Fact]
+    public void It_refuses_while_a_replay_holds_the_worktree_and_runs_nothing()
+    {
+        var context = new Context(fx.Root, new Dictionary<string, string?> { ["PROBE_CACHE_DIR"] = cache }, TextWriter.Null, TextWriter.Null);
+        var home = global::Prober.Replay.Home(context, new Ledger(context, null));
+        using (global::Prober.Replay.HoldWorktree(home).ShouldNotBeNull())
+        {
+            var (exit, _, error) = Try("--probe", "P");
+            exit.ShouldBe(1);
+            error.ShouldContain($"a replay in this checkout is using {Path.Combine(home, "wt")}; run `prober try` when it ends");
+            adapter.Runs.ShouldBeEmpty();
+        }
+        Try("--probe", "P").Exit.ShouldBe(7, "the worktree is free again once the replay ends");
+    }
+
     /// <summary>
     /// Runs the probe the filter names over its claim's rows in the worktree, as the harness does: PROBE_ONLY and
     /// PROBE_ROWS select, and each row it ran is one line of PROBE_OUT's jsonl. Row 1 of C1 violates.
@@ -195,6 +218,8 @@ public sealed class TryProbeTests : IDisposable
         public int Builds { get; private set; }
         public List<(string Filter, string? Only, string? Rows)> Runs { get; } = [];
         public List<string> Worktrees { get; } = [];
+        /// <summary>For each run, whether a replay could have taken the worktree (<c>replay.lock</c> beside it) while the probe ran.</summary>
+        public List<bool> WorktreeFreeDuringRun { get; } = [];
 
         public Ran Build(string worktree, IReadOnlyDictionary<string, string?> environment)
         {
@@ -206,6 +231,7 @@ public sealed class TryProbeTests : IDisposable
         public Ran RunProbe(string worktree, string filter, string results, string coverageFile, IReadOnlyDictionary<string, string?> environment)
         {
             Worktrees.Add(worktree);
+            using (var replay = global::Prober.Replay.HoldWorktree(Path.GetDirectoryName(worktree)!)) WorktreeFreeDuringRun.Add(replay is not null);
             var only = environment.GetValueOrDefault("PROBE_ONLY");
             var range = environment.GetValueOrDefault("PROBE_ROWS");
             Runs.Add((filter, only, range));

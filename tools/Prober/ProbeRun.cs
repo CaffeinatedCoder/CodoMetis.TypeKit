@@ -9,8 +9,20 @@ namespace Prober;
 /// </summary>
 internal static class ProbeRun
 {
-    /// <summary>A row's outcome under one run: its category, the first reason given, and whether any reason was a harness error.</summary>
-    internal sealed record RowOutcome(string Category, string Reason, bool HarnessError);
+    /// <summary>
+    /// A row's outcome under one run: its category, the first reason given, whether any reason of the row or of a check
+    /// of it was a harness error, and its checks. A row that ran no check is one check of the obligation <c>claim</c>.
+    /// </summary>
+    internal sealed record RowOutcome(string Category, string Reason, bool HarnessError, IReadOnlyList<CheckOutcome> Checks);
+
+    /// <summary>
+    /// One check of a row under one run: its obligation, category and first reason, and whether a harness error broke it
+    /// or its row outside any check. Only a clean violation, one with no harness error, says the check fired (decision 103).
+    /// </summary>
+    internal sealed record CheckOutcome(string Obligation, string Category, string Reason, bool HarnessError)
+    {
+        public bool CleanViolation => Category == "violation" && !HarnessError;
+    }
 
     /// <summary>
     /// Adds the worktree at <paramref name="head"/> ("cold"), or moves it there without force ("warm"): files the
@@ -69,8 +81,23 @@ internal static class ProbeRun
                 var category = Files.Str(line["category"], "violation");
                 var reasons = Files.Strings(line["reasons"]).ToList();
                 var reason = reasons.FirstOrDefault(r => r.StartsWith(category + ":", StringComparison.Ordinal)) ?? Files.Str(line["note"]);
-                var harnessError = category == "harness-error" || reasons.Any(r => r.StartsWith("harness-error:", StringComparison.Ordinal));
-                rows[(int)Files.Num(line["idx"])] = new RowOutcome(category, reason, harnessError);
+                static bool Broken(IEnumerable<string> reasons) => reasons.Any(r => r.StartsWith("harness-error:", StringComparison.Ordinal));
+                var checks = new List<CheckOutcome>();
+                if (line["checks"] is JsonArray { Count: > 0 } ran)
+                {
+                    // The row's own harness error (outside any check) breaks every check of it; a check's breaks that check.
+                    var rowBroken = Broken(reasons);
+                    foreach (var c in ran.OfType<JsonObject>())
+                    {
+                        var cc = Files.Str(c["category"], "violation");
+                        var cr = Files.Strings(c["reasons"]).ToList();
+                        checks.Add(new CheckOutcome(Files.Str(c["obligation"]), cc, cr.FirstOrDefault(r => r.StartsWith(cc + ":", StringComparison.Ordinal)) ?? Files.Str(c["notes"]),
+                                                    rowBroken || cc == "harness-error" || Broken(cr)));
+                    }
+                }
+                else checks.Add(new CheckOutcome(Claim.ImplicitObligation, category, reason, category == "harness-error" || Broken(reasons)));
+                var harnessError = Broken(reasons) || checks.Any(c => c.HarnessError);
+                rows[(int)Files.Num(line["idx"])] = new RowOutcome(category, reason, harnessError, checks);
             }
         return rows;
     }

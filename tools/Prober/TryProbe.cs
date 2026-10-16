@@ -11,8 +11,9 @@ namespace Prober;
 /// harness's <c>PROBE_ROWS</c> one stretch of consecutive rows at a time, within the rows each variant's
 /// <c>PROBE_ONLY</c> selects. It prints each run's first line (the verdict's) and how each row ended, from the
 /// jsonl the harness writes. It records nothing, no evidence, footprint or run, so nothing under the state
-/// directory changes, and takes no lock: a replay running at the same time shares the worktree. Its exit code is
-/// the probe's: the first run's that failed, else 0; 1 when the build fails.
+/// directory changes, and takes no round lock, but it holds the replay's worktree (<see cref="Replay.HoldWorktree"/>)
+/// while it runs: a try and a replay of the same checkout never build in it at once, and a try refuses while a
+/// replay holds it. Its exit code is the probe's: the first run's that failed, else 0; 1 when the build fails.
 /// </summary>
 internal static class TryProbe
 {
@@ -46,7 +47,9 @@ internal static class TryProbe
         var worktree = Path.Combine(home, "wt");
         var noBuild = a.Flag("no-build");
         if (noBuild && !Directory.Exists(worktree)) throw new Refusal($"--no-build: the replay worktree {worktree} does not exist yet, so nothing is built; run without it", 2);
-        Directory.CreateDirectory(home);
+        // The worktree is the replay's: held for the whole try, so neither moves it or builds in it under the other.
+        using var held = Replay.HoldWorktree(home)
+                         ?? throw new Refusal($"a replay in this checkout is using {worktree}; run `prober try` when it ends");
         var head = ledger.Head;
         var warmth = ProbeRun.Ready(ledger, worktree, head);
         Replay.Overlay(ledger, config, worktree);
