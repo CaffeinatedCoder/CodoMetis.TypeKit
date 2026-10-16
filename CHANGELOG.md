@@ -12,6 +12,10 @@ section is the GitHub release's notes.
 
 ## 2.2.0 — Unreleased
 
+### Fixed
+
+- OpenAPI: a route, query or header parameter of a type a converter describes, such as a `decimal` under `DecimalStringJsonConverter`, is what ASP.NET writes without the converter: an OpenAPI 2.0 document builds, and a nullable one no longer admits `null` ([Parameters aren't JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says)).
+
 ## 2.1.0 — 2026-10-15
 
 Still `net10.0` and Metalama 2026.1. What builds or runs differently, and what to write instead:

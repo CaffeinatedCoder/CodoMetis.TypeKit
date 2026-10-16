@@ -54,7 +54,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
         // route, the query, a header or a form field is text TryParse reads.
         if (context is { JsonPropertyInfo: null, ParameterDescription: { } parameter } && parameter.Source != BindingSource.Body)
         {
-            if (Description(info.Type, options, property: null) is not null) Parameter(schema, info.Type, options, Version(context));
+            if (Description(info.Type, options, property: null) is not null) Parameter(schema, info.Type, options);
             return;
         }
 
@@ -195,12 +195,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
     /// </summary>
     internal static OpenApiSchema Parse(JsonObject schema, Type type, OpenApiSpecVersion version = OpenApiSpecVersion.OpenApi3_1)
     {
-        var parsed = OpenApiModelFactory.Parse<OpenApiSchema>(schema.ToJsonString(), OpenApiSpecVersion.OpenApi3_1, new OpenApiDocument(), out var diagnostic, "json");
-
-        if (parsed is null || diagnostic is { Errors.Count: > 0 })
-            throw new InvalidOperationException(
-                $"The JSON schema described for '{type}' is not one an OpenAPI document can hold: " +
-                string.Join("; ", diagnostic?.Errors.Select(error => error.Message) ?? ["it did not parse"]) + ".");
+        var parsed = Read(schema, type);
 
         if (FirstChanged(schema, Written(parsed, OpenApiSpecVersion.OpenApi3_1), "") is { } changed)
             throw new InvalidOperationException(
@@ -211,6 +206,19 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
             throw new InvalidOperationException(
                 $"The JSON schema described for '{type}' does not survive into an OpenAPI {Name(version)} document: '{lost}' is written aside as an extension or left out, " +
                 $"where no validator reads it. Describe it with the keywords OpenAPI {Name(version)} models, or write the document in 3.1.");
+
+        return parsed;
+    }
+
+    /// <summary>A JSON Schema as Microsoft.OpenApi reads one, refused only where it does not read.</summary>
+    private static OpenApiSchema Read(JsonObject schema, Type type)
+    {
+        var parsed = OpenApiModelFactory.Parse<OpenApiSchema>(schema.ToJsonString(), OpenApiSpecVersion.OpenApi3_1, new OpenApiDocument(), out var diagnostic, "json");
+
+        if (parsed is null || diagnostic is { Errors.Count: > 0 })
+            throw new InvalidOperationException(
+                $"The JSON schema described for '{type}' is not one an OpenAPI document can hold: " +
+                string.Join("; ", diagnostic?.Errors.Select(error => error.Message) ?? ["it did not parse"]) + ".");
 
         return parsed;
     }
@@ -356,20 +364,23 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
 
     /// <summary>
     /// A parameter of <paramref name="type"/> as ASP.NET describes it without converters of one's own: the
-    /// schema the options' resolver gives the type with none registered, beside the format ASP.NET kept.
+    /// schema the options' resolver gives the type with none registered, beside the format ASP.NET kept. A
+    /// nullable parameter is its underlying type, as ASP.NET writes it: an absent parameter is its null. The
+    /// schema is ASP.NET's, not a description, so it is not held to what a description must survive into: a
+    /// 2.0 document writes a decimal read from a string, <c>["number","string"]</c>, as it writes ASP.NET's own.
     /// </summary>
-    private static void Parameter(OpenApiSchema schema, Type type, JsonSerializerOptions options, OpenApiSpecVersion version)
+    private static void Parameter(OpenApiSchema schema, Type type, JsonSerializerOptions options)
     {
         var plain = new JsonSerializerOptions(options);
         plain.Converters.Clear();
 
-        if (!plain.TryGetTypeInfo(type, out var info)) return;
+        if (!plain.TryGetTypeInfo(Nullable.GetUnderlyingType(type) ?? type, out var info)) return;
         if (info.GetJsonSchemaAsNode() is not JsonObject native) return;
 
         var format = schema.Format;
         var description = schema.Description;
         Reshape(schema);
-        schema.FillFrom(Parse(native, type, version));
+        schema.FillFrom(Read(native, type));
         schema.Format ??= format;
         schema.Description ??= description;
     }
