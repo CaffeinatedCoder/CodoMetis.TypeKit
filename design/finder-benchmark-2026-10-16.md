@@ -137,6 +137,9 @@ The suite ran on the Mac for rows 1 to 5 and on the Linux host for the rest. The
   declarations, `shape.refused-kind`, is in the axes file, but every claim that meets it excludes its
   pairs (C09, C11, C18) or narrows it away (L05), so no probe row declares a type the generators must
   refuse; the build-outcome consumers of `Generators.Tests` are the only finder there.
+  Since 2026-10-17 the claim `C22-generator-refusals` declares every refused kind, and its probe detects rows
+  3, 11 and 12 when each is seeded again (20, 6 and 51 of 144 rows violate); rows 13 and 14 are generated
+  members' edges, which no refusal reaches, and stay with their own tests.
 - **The variant catalogues are the strongest second finder.** `QueryTranslationVariantTests` and
   `KeyGenerationVariantTests` ([decision 95](adr/0095-a-fix-is-tested-across-its-input-class.md), written
   2026-10-15) catch six of the seven EF escapes (rows 5 to 10), with 12 to 627 rows each, `8f6af8b`
