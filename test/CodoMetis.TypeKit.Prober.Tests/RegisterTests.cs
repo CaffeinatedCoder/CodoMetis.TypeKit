@@ -136,6 +136,16 @@ public sealed class RegisterTests : IDisposable
     }
 
     [Fact]
+    public void A_seed_stales_no_result()
+    {
+        var before = new Ledger(new Context(fx.Root, new Dictionary<string, string?>(), TextWriter.Null, TextWriter.Null), null).Identity("P");
+        Register("--obligation", "keys", "--seed", "seeds/C1-keys.patch", "--defect", "d").Exit.ShouldBe(0);
+        Register("--seed", "seeds/C1.patch", "--defect", "d").Exit.ShouldBe(0);
+        Entry().ContainsKey("seeds").ShouldBeTrue();
+        new Ledger(new Context(fx.Root, new Dictionary<string, string?>(), TextWriter.Null, TextWriter.Null), null).Identity("P").ShouldBe(before);
+    }
+
+    [Fact]
     public void The_commands_new_prints_register_each_obligation_s_seed()
     {
         var (exit, output, _) = fx.Ledger("new", "--claim", "C1", "--probe", "C1KeysProbe");

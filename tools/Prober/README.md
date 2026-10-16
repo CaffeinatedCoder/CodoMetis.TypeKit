@@ -65,7 +65,7 @@ writes `seeds-last.json` (`Schemas/seeds-run.schema.json`), one outcome per seed
 `--seed-env NAME=VALUE...` for a toggle) writes a seed into `seeds`, in place of any seed of the entry that
 names O, `seed` included, and refuses an O that the claim's entry in `claims.json` does not list; without
 `--obligation`, `--seed` and `--seed-env` set the one `seed`. No seed is written into the registry by hand.
-A seed is not part of a probe's identity. Without a build,
+A seed is not part of a probe's identity, neither `seed` nor `seeds`. Without a build,
 `Seeds.Problems`, which the prober tests run over the repository, refuses a probe without a seed, a seed that
 does not apply, a seed naming an obligation its claim does not list, and a listed obligation no seed names.
 
