@@ -103,6 +103,9 @@ public static class NoteKeys
         // a read the wrapped type's shape refuses with the very same exception and message: the serializer refused the document before any
         // value object ran (the baseline in the same row), so the read has nothing to check; the row is judged by its write and other reads
         ["json:read-refused-by-stj-alone"] = "pass",
+        // ASP.NET's OpenAPI 2.0 writer drops the reference of a nullable struct component; a plain struct beside it in the same
+        // schema, without a converter, is written the same, so that position has nothing to check (C12)
+        ["schema:nullable-reference-lost-for-plain-too"] = "pass",
         // a check that did not apply
         ["own-vo-converter"] = "inapplicable", ["closed-set-vs-own-wrapped-converter"] = "inapplicable", ["closed-set-differs"] = "inapplicable",
         ["byte-array-is-base64"] = "inapplicable", ["own-spelling"] = "inapplicable", ["not-bindable-from-text"] = "inapplicable",
@@ -118,6 +121,8 @@ public static class NoteKeys
         ["both-threw"] = "expected-refusal", ["read-both-threw"] = "expected-refusal", ["ser-both-threw"] = "expected-refusal",
         ["ser-refused"] = "expected-refusal", ["read-back-refused"] = "expected-refusal", ["plain-read-back-fails-too"] = "expected-refusal",
         ["own-vo-converter-threw"] = "expected-refusal", ["own-converter-refused-for-wrapped-too"] = "expected-refusal",
+        // MVC's validator throws for a nested struct of a body (MaxValidationDepth) for a plain twin on the same side too (C13)
+        ["mvc:plain-nested-body-throws-too"] = "expected-refusal",
         // both sides refused, but not alike
         ["both-threw-differently"] = "inconclusive",
     };

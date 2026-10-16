@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.AspNetCore/DescribedOptionsAgreement.cs b/src/CodoMetis.TypeKit.AspNetCore/DescribedOptionsAgreement.cs
+index d8b04d4..b333446 100644
+--- a/src/CodoMetis.TypeKit.AspNetCore/DescribedOptionsAgreement.cs
++++ b/src/CodoMetis.TypeKit.AspNetCore/DescribedOptionsAgreement.cs
+@@ -41,7 +41,7 @@ internal static class DescribedOptionsAgreement
+ 
+         var http = JsonSchemaDescription.For(type, document);
+         var controllers = JsonSchemaDescription.For(type, mvc);
+-        if (Same(http, controllers)) return;
++        if (controllers is null || Same(http, controllers)) return;
+ 
+         throw new InvalidOperationException(
+             $"The OpenAPI document is built from the minimal-API JSON options (ConfigureHttpJsonOptions), and the controllers write with MVC's "

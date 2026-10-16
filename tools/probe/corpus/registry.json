@@ -16,6 +16,14 @@
         "defect": "A value object's OpenAPI schema drops the wrapped type's format (int32, uuid, date-time)."
       }
     },
+    "C01DecimalSpellingProbe": {
+      "claim": "C01-decimal-spelling",
+      "filter": "*C01DecimalSpellingProbe",
+      "seed": {
+        "patch": "seeds/C01-decimal-spelling.patch",
+        "defect": "DecimalStringJsonConverter, and every decimal dictionary key, write a decimal with the scale it arrived with (7.80, 7.8000) instead of its minimal spelling."
+      }
+    },
     "C02OptionalTextProbe": {
       "claim": "C02-optional-text",
       "filter": "*C02OptionalTextProbe",
@@ -74,12 +82,36 @@
         "defect": "WithRule names an enum rule without its nesting chain: Rules.Fault.NoAt is written Fault.NoAt."
       }
     },
+    "C08SameNameWarningProbe": {
+      "claim": "C08-same-name-warning",
+      "filter": "*C08SameNameWarningProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C08-same-name-warning.patch",
+        "defect": "Bare fault names are compared as qualified ones, so two fault types an endpoint answers with that write one name (HFault.Clash beside KFault.Clash) log no startup warning."
+      }
+    },
     "C09BaseRecordEqualityProbe": {
       "claim": "C09-base-record-equality",
       "filter": "*C09BaseRecordEqualityProbe",
       "seed": {
         "patch": "seeds/C09-base-record-equality.patch",
         "defect": "The value object implements only its direct base's IEquatable<TBase> again, so a collection of a deeper base compares it by that base's own equality."
+      }
+    },
+    "C10PreserveGuardProbe": {
+      "claim": "C10-preserve-guard",
+      "filter": "*C10PreserveGuardProbe",
+      "seed": {
+        "patch": "seeds/C10-preserve-guard.patch",
+        "defect": "The Preserve guard misses a wrapped class the serializer walks as an object, so a value object over it writes and reads its own $id and $ref instead of refusing."
       }
     },
     "C11ParseShapesBuildProbe": {
@@ -104,6 +136,54 @@
       "seed": {
         "patch": "seeds/C11-parse-shapes-build.patch",
         "defect": "A static Parse counts as a parser only where C#'s `is` converts its result, so one returning a type that converts by a user-defined implicit operator, which can be assigned, gives the value object no parsing."
+      }
+    },
+    "C12DescribedConverterProbe": {
+      "claim": "C12-described-converter",
+      "filter": "*C12DescribedConverterProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C12-described-converter.patch",
+        "defect": "A list's items and a dictionary's additionalProperties of a described type are filled only where ASP.NET already wrote them, so the document drops them."
+      }
+    },
+    "C13PatchRequiredProbe": {
+      "claim": "C13-patch-required",
+      "filter": "*C13PatchRequiredProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C13-patch-required.patch",
+        "defect": "Every patch is taken out of required, also a constructor parameter that RespectRequiredConstructorParameters makes the serializer require."
+      }
+    },
+    "C16OptionsAgreementProbe": {
+      "claim": "C16-options-agreement",
+      "filter": "*C16OptionsAgreementProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C16-options-agreement.patch",
+        "defect": "A type the minimal-API options describe and MVC's options say nothing of is not refused, so the document describes JSON the controllers do not write."
       }
     },
     "C17Cmtk0014Probe": {
@@ -274,38 +354,6 @@
         "defect": "A dictionary key is written with ToString(), not the wrapped type's key converter and DictionaryKeyPolicy."
       }
     },
-    "C01DecimalSpellingProbe": {
-      "claim": "C01-decimal-spelling",
-      "filter": "*C01DecimalSpellingProbe",
-      "seed": {
-        "patch": "seeds/C01-decimal-spelling.patch",
-        "defect": "DecimalStringJsonConverter, and every decimal dictionary key, write a decimal with the scale it arrived with (7.80, 7.8000) instead of its minimal spelling."
-      }
-    },
-    "C10PreserveGuardProbe": {
-      "claim": "C10-preserve-guard",
-      "filter": "*C10PreserveGuardProbe",
-      "seed": {
-        "patch": "seeds/C10-preserve-guard.patch",
-        "defect": "The Preserve guard misses a wrapped class the serializer walks as an object, so a value object over it writes and reads its own $id and $ref instead of refusing."
-      }
-    },
-    "L05EqualityProbe": {
-      "claim": "L05-equality",
-      "filter": "*L05EqualityProbe",
-      "seed": {
-        "patch": "seeds/L05-equality.patch",
-        "defect": "A deeper base record whose IEquatable is implemented explicitly keeps its own Equals, so equal value objects compare unequal through that base and a HashSet of it holds both."
-      }
-    },
-    "L06OffTheWireProbe": {
-      "claim": "L06-off-the-wire",
-      "filter": "*L06OffTheWireProbe",
-      "seed": {
-        "patch": "seeds/L06-off-the-wire.patch",
-        "defect": "The refusing converter writes {} for an Option or a Result instead of throwing NotSupportedException, so a Some is written as {} and reads back as None."
-      }
-    },
     "L02NoQuoteProbe": {
       "claim": "L02-no-quote",
       "filter": "*L02NoQuoteProbe",
@@ -364,6 +412,22 @@
       "seed": {
         "patch": "seeds/L04-round-trip.patch",
         "defect": "Generated formatting uses the current culture instead of the provider (invariant by default)."
+      }
+    },
+    "L05EqualityProbe": {
+      "claim": "L05-equality",
+      "filter": "*L05EqualityProbe",
+      "seed": {
+        "patch": "seeds/L05-equality.patch",
+        "defect": "A deeper base record whose IEquatable is implemented explicitly keeps its own Equals, so equal value objects compare unequal through that base and a HashSet of it holds both."
+      }
+    },
+    "L06OffTheWireProbe": {
+      "claim": "L06-off-the-wire",
+      "filter": "*L06OffTheWireProbe",
+      "seed": {
+        "patch": "seeds/L06-off-the-wire.patch",
+        "defect": "The refusing converter writes {} for an Option or a Result instead of throwing NotSupportedException, so a Some is written as {} and reads back as None."
       }
     }
   }

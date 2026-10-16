@@ -587,6 +587,13 @@
         "none",
         "WithoutFaults-one"
       ]
+    },
+    "exclude": [
+      ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=Preserve"],
+      ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=IgnoreCycles"]
+    ],
+    "excludeReasons": {
+      "json.PreferredObjectCreationHandling=Populate x json.ReferenceHandler=Preserve|IgnoreCycles": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies."
     }
   },
   {
@@ -1747,6 +1754,13 @@
         "route-group",
         "controller-without-ApiController-visible"
       ]
+    },
+    "exclude": [
+      ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=Preserve"],
+      ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=IgnoreCycles"]
+    ],
+    "excludeReasons": {
+      "json.PreferredObjectCreationHandling=Populate x json.ReferenceHandler=Preserve|IgnoreCycles": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies."
     }
   },
   {
@@ -1767,6 +1781,13 @@
         "route-group",
         "controller-without-ApiController-visible"
       ]
+    },
+    "exclude": [
+      ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=Preserve"],
+      ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=IgnoreCycles"]
+    ],
+    "excludeReasons": {
+      "json.PreferredObjectCreationHandling=Populate x json.ReferenceHandler=Preserve|IgnoreCycles": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies."
     }
   },
   {
@@ -1834,6 +1855,13 @@
         "route-group",
         "controller-without-ApiController-visible"
       ]
+    },
+    "exclude": [
+      ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=Preserve"],
+      ["json.PreferredObjectCreationHandling=Populate", "json.ReferenceHandler=IgnoreCycles"]
+    ],
+    "excludeReasons": {
+      "json.PreferredObjectCreationHandling=Populate x json.ReferenceHandler=Preserve|IgnoreCycles": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies."
     }
   },
   {
