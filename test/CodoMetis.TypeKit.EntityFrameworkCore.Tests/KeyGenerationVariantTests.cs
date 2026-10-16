@@ -60,6 +60,82 @@ public sealed partial class KeyGenerationVariantTests : IDisposable
             Inserted(shape, wrapped.ValueObject, typeKit: true).ShouldBe(Inserted(shape, wrapped.Wrapped, typeKit: false), $"the keys SQLite filled in for {shape} keyed by {kind}");
     }
 
+    public static TheoryData<string, string> ConfiguredOnAddCases
+    {
+        get
+        {
+            var cases = new TheoryData<string, string>();
+            foreach (var provider in KeyShapes.Providers)
+            foreach (var kind in WrappedKinds.Keys)
+                cases.Add(provider, kind.Name);
+            return cases;
+        }
+    }
+
+    /// <summary>
+    /// A key configured <c>ValueGeneratedOnAdd()</c> is filled in at <c>Add</c> by the generator the provider
+    /// gives a key of the wrapped type: on PostgreSQL a version 7 Guid where the wrapped key gets one, on SQL
+    /// Server a Guid sequential in its order. The providers pick it by the property's CLR type, which gave a
+    /// value object's key EF's random Guid instead. No database is opened: the client generates these.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ConfiguredOnAddCases))]
+    public void A_value_object_key_generated_on_add_gets_values_as_a_key_of_the_wrapped_type_does(string provider, string kind)
+    {
+        var wrapped = WrappedKinds.Named(kind);
+        _connection.Open();
+
+        var plain = Added(provider, wrapped.Wrapped, typeKit: false);
+        if (plain is null) Assert.Skip("the wrapped type's key is not generated at Add");
+
+        Added(provider, wrapped.ValueObject, typeKit: true).ShouldBe(AddedExpected(provider, wrapped, plain), $"{kind} configured OnAdd on {provider}");
+    }
+
+    /// <summary>
+    /// The README's departures at <c>Add</c>: "A default key over <c>ulong</c> throws at <c>Add</c> where the column
+    /// is a <c>decimal</c> (SQL Server, PostgreSQL)", and on SQL Server a key over <c>char</c> configured
+    /// <c>ValueGeneratedOnAdd()</c> gets "one character of a GUID string", since EF reaches the generator through the
+    /// column's <c>nvarchar(1)</c>, so sixteen of them collide.
+    /// </summary>
+    private static string? AddedExpected(string provider, WrappedKind kind, string plain) => (provider, kind.Name) switch
+    {
+        ("npgsql" or "sqlserver", "ulong") => null,
+        ("sqlserver", "char")              => null,
+        _                                  => plain,
+    };
+
+    /// <summary>What the values generated at <c>Add</c> are, or null where <c>Add</c> generates none or refuses.</summary>
+    private string? Added(string provider, Type key, bool typeKit)
+    {
+        using var db = KeyShapeDb.Create(provider, KeyShape.ConfiguredOnAdd, key, typeKit, _connection);
+        var entities = Enumerable.Range(0, 16).Select(_ => Activator.CreateInstance(KeyShapes.Subject(KeyShape.ConfiguredOnAdd, key))!).ToArray();
+        try
+        {
+            db.AddRange(entities);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or NotSupportedException or OverflowException)
+        {
+            return null;
+        }
+
+        var keys = entities.Select(entity => db.Entry(entity).Property("Id")).ToArray();
+        return keys.All(property => property.IsTemporary) ? "temporary" : GeneratedShape([.. keys.Select(property => WrappedKind.Text(property.CurrentValue))]);
+    }
+
+    /// <summary>
+    /// What tells the generators apart: whether each value is a Guid (or a Guid's text), its version, and whether
+    /// the values ascend in SQL Server's order, as its sequential generator's do and random ones do not.
+    /// </summary>
+    private static string GeneratedShape(string[] values)
+    {
+        if (!values.All(value => System.Guid.TryParse(value, out _))) return $"not Guids: {string.Join(", ", values.Take(2))}";
+
+        var guids = values.Select(System.Guid.Parse).ToArray();
+        var versions = string.Join(",", guids.Select(guid => guid.Version).Distinct());
+        var ascending = guids.Zip(guids.Skip(1)).All(pair => new System.Data.SqlTypes.SqlGuid(pair.First).CompareTo(new System.Data.SqlTypes.SqlGuid(pair.Second)) < 0);
+        return $"version {versions}, {(ascending ? "sequential" : "unordered")} in SQL Server's order";
+    }
+
     /// <summary>A guard against a vacuous run: the catalogue's size, and the kinds and shapes it crosses.</summary>
     [Fact]
     public void The_catalogue_crosses_every_shape_with_every_key_kind_on_three_providers() =>

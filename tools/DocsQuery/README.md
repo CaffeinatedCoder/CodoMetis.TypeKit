@@ -49,7 +49,7 @@ was verified, and `check` holds every fact to these rules:
 | `fact-behind`, `fact-ahead` | A pin `{PackageId} {version}` differs from `Directory.Packages.props`, or `sdk {band}` (`sdk 10.0.4xx`) from the band of the SDK `global.json` pins. `external {name} {version}` is never compared |
 | `fact-not-installed`, `fact-bad-pin` | A pin names a package neither file installs, or is not one of those forms |
 | `fact-incomplete`, `fact-frontmatter` | A field is missing, `verified:` is no `YYYY-MM-DD`, or a value is not a plain YAML string (a `: ` or ` #` inside, a quote or backtick first) |
-| `fact-untested` | `test:` is neither `none, ` and a reason nor a file in `test/CodoMetis.TypeKit.Facts/` that declares the class named by the id (`KB007`) |
+| `fact-untested` | `test:` is neither `none, ` and a reason nor a file in `test/CodoMetis.TypeKit.Facts/` that declares the class named by the id (`KB007`); a note in parentheses after the path, such as where the test runs, is not part of it |
 | `fact-orphan-test` | A `KBNNN.cs` in the facts project that no fact names |
 
 The pins are read from the checkout at each `check`, never from the index.
