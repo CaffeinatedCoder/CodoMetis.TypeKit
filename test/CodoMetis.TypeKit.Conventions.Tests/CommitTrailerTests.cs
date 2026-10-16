@@ -30,7 +30,12 @@ public sealed partial class CommitTrailerTests
     /// Fix commits that reached a pushed branch without their trailers, which is never rewritten: the full
     /// hash, and the trailers the commit should have carried.
     /// </summary>
-    private static readonly Dictionary<string, (string DefectClass, string FoundBy)> Exempt = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, (string DefectClass, string FoundBy)> Exempt = new(StringComparer.Ordinal)
+    {
+        // fix: a nullable value object is its wrapped type at the same nullability in every position (PR #28): its
+        // trailers stood a paragraph above Co-Authored-By, outside the trailer block.
+        ["686682291de8060074fd26a2ce4ae121d6dc515c"] = ("FCI", "PR"),
+    };
 
     [Fact]
     public void The_history_is_whole() => RequireWholeHistory();

@@ -264,8 +264,14 @@ public static class Hx
             typeof(Hx).GetMethod(nameof(MapSchema), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(h.Declared).Invoke(null, [b, which]);
         }
         if (only is "both" or "plain" && PlainNull(r, e) is { } pn)
+        {
             typeof(Hx).GetMethod(nameof(MapBind), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(pn)
                 .Invoke(null, [b, "plainnull", e.Wrapped is "own-record-class" or "NodaTime.Instant"]);
+            // At the root the schema endpoint's body is the entry's own type, so it needs the same twin: a class
+            // value object's body is optional, as a reference type's is, and a wrapped struct's required.
+            if (r["shape.position"] == "root")
+                typeof(Hx).GetMethod(nameof(MapSchema), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(pn).Invoke(null, [b, "plainnull"]);
+        }
     }
 
     /// <summary>
@@ -385,10 +391,34 @@ public static class Hx
                 }
                 var c = new JsonObject();
                 foreach (var kv in o.OrderBy(k => k.Key, StringComparer.Ordinal))
-                    if (kv.Key is not ("title" or "description" or "example" or "examples")) c[kv.Key] = Deep(doc, kv.Value, seen);
+                    if (kv.Key is not ("title" or "description" or "example" or "examples"))
+                        c[kv.Key] = kv.Key == "discriminator" ? Discriminator(o, kv.Value) : Deep(doc, kv.Value, seen);
                 return c;
             case JsonArray a: var ca = new JsonArray(); foreach (var x in a) ca.Add(Deep(doc, x, seen)); return ca;
             default: return n?.DeepClone();
         }
+    }
+
+    /// <summary>
+    /// A discriminator's mapping names a component per value, and a component's name is made of the type's, which
+    /// differs between the two sides by construction (row 347 of C07: <c>PB&lt;TimeSpan&gt;</c> against
+    /// <c>PB&lt;V&gt;</c>). Each value names instead the branch of the same schema's anyOf or oneOf it maps to, whose
+    /// content <see cref="Deep"/> compares; a target that is no branch stays as it is, and so still differs.
+    /// </summary>
+    static JsonNode? Discriminator(JsonObject schema, JsonNode? discriminator)
+    {
+        if (discriminator is not JsonObject d || d["mapping"] is not JsonObject mapping) return discriminator?.DeepClone();
+        var branches = (schema["anyOf"] ?? schema["oneOf"]) as JsonArray;
+        var c = (JsonObject)d.DeepClone();
+        var named = new JsonObject();
+        foreach (var (value, target) in mapping.OrderBy(m => m.Key, StringComparer.Ordinal))
+        {
+            var index = -1;
+            for (var i = 0; target is JsonValue && i < (branches?.Count ?? 0); i++)
+                if (branches![i]?["$ref"]?.GetValue<string>() == target.GetValue<string>()) { index = i; break; }
+            named[value] = index >= 0 ? $"branch {index}" : target?.DeepClone();
+        }
+        c["mapping"] = named;
+        return c;
     }
 }
