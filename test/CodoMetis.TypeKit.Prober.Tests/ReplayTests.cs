@@ -145,17 +145,31 @@ public sealed class ReplayTests : IDisposable
     }
 
     [Fact]
-    public void Probes_run_as_many_at_a_time_as_asked_and_are_recorded_in_registry_order()
+    public void Probes_run_as_many_at_a_time_as_asked_without_a_footprint_and_are_recorded_in_registry_order()
     {
-        var (exit, output, error) = Replay(null, "--all", "--parallel", "2");
+        var (exit, output, error) = Replay(null, "--all", "--no-footprint", "--parallel", "2");
         exit.ShouldBe(0, error + output);
         adapter.MostAtOnce.ShouldBe(2);
         output.IndexOf("  P:", StringComparison.Ordinal).ShouldBeLessThan(output.IndexOf("  Q:", StringComparison.Ordinal));
         Last(null)["parallel"]!.GetValue<int>().ShouldBe(2);
 
         adapter.MostAtOnce = 0;
-        Replay(null, "--all", "--parallel", "1").Exit.ShouldBe(0);
+        Replay(null, "--all", "--no-footprint", "--parallel", "1").Exit.ShouldBe(0);
         adapter.MostAtOnce.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// The coverage collector rewrites the assemblies on disk, so two hosts from one output directory corrupt
+    /// each other (KB-025): a replay that records a footprint runs one host at a time, whatever --parallel says.
+    /// </summary>
+    [Fact]
+    public void A_replay_with_a_footprint_runs_one_host_at_a_time()
+    {
+        var (exit, output, error) = Replay(null, "--all", "--parallel", "2");
+        exit.ShouldBe(0, error + output);
+        adapter.MostAtOnce.ShouldBe(1);
+        output.ShouldContain("one at a time (the coverage collector rewrites the assemblies on disk)");
+        Last(null)["parallel"]!.GetValue<int>().ShouldBe(1);
     }
 
     [Fact]

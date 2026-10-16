@@ -16,11 +16,17 @@ an empty state records and nothing reads.
 
 ## Decision
 
-**The replay runs its probes in parallel.** `prober replay` starts every variant of every selected probe at
-once and runs them `--parallel N` at a time, one per core by default, and records each probe in registry
-order once its variants have ended, so the transcript and the state files read as before. The verdict tool's
-test mode takes `--no-build` and the replay's test template uses it: the replay builds once, and two builds of
-one project at once would race in its `obj` directory.
+**The replay runs its probes in parallel where it records no footprint.** `prober replay` starts every
+variant of every selected probe at once and runs them `--parallel N` at a time, one per core by default, and
+records each probe in registry order once its variants have ended, so the transcript and the state files read
+as before. A replay that records a footprint runs one host at a time whatever `--parallel` says: the coverage
+collector instruments the assemblies on disk, and hosts started together from one output directory corrupt
+each other ([KB-025](../knowledge/KB-025-the-coverage-collector-rewrites-assemblies-on-disk.md)); its
+in-memory mode avoids that and records nothing the footprint can read. The verdict tool's test mode takes
+`--no-build` and the replay's test template uses it: the replay builds once, and two builds of one project at
+once would race in its `obj` directory. Each verdict process now writes and reads a log of its own and
+publishes the shared one when it ends (six at once had all reported the last one's duration), and a failed
+run's full log is kept under the state's `logs/`, so CI's `probe-state` artifact holds it.
 
 **The build workflow splits the corpus into legs by family.** The replay configuration of
 `.claude/probe-axes.md` gains `families`, a name to the surfaces it holds (`http`, `ef`, `json`, `text` with
@@ -79,9 +85,11 @@ follows the legs always, downloads before merging, reports after, and saves the 
   branch is red; the push after the merge shows the red, as the base already does.
 - Every probe's identity changed with this decision (the axes block holds the replay configuration), so the
   first push replays everything, as it would anyway.
-- The verdict tool's log, one per git directory, is written by several processes at once during a replay and
-  ends as the last writer's; the replay reads each process's verdict from its output, not from the log.
-- A replay on a machine with many cores starts as many test hosts; see the measurement below for the limit.
+- A push's legs run their probes one at a time, since they record footprints; the five legs run at once, so the
+  push replay is bounded by its largest family (`http`, 13 probes, 26 processes). A pull request's legs run
+  their probes as many at a time as the runner has cores.
+- The parallelism of a push's legs is the next thing to buy if the push replay grows long: a copy of the
+  output directory per run slot would let the collector instrument each copy alone, at the cost of the copies.
 
 ## Evidence
 
@@ -92,11 +100,17 @@ worktree, while other builds ran on the machine:
 |---|---|---|---|
 | serial, with coverage, at 00d3b8f (the gate round's measurement) | 35 s | 1,039 s | 40 passed, 3 failed: BaseProbe, C12, C14 |
 | `--parallel 4 --no-footprint` | 3 s | 458 s | the same 40 and 3 |
-| `--parallel 4`, with coverage | | PENDING | |
-| `--parallel 16`, with coverage | 53 s | 122 s | 1 passed, 42 test hosts exited 7 having run zero tests |
+| `--parallel 4`, with coverage (before the one-at-a-time rule) | 3 s | 428 s | 29 passed, 14 hosts exited 7; a second run 56 |
+| `--parallel 16`, with coverage (before the rule) | 53 s | 122 s | 1 passed, 42 hosts exited 7 having run zero tests |
 
-On `ubuntu-latest` (4 cores): pull request #20's serial job, 26 min 50 s; this decision's own pull request,
-PENDING.
+The crashed hosts' logs, kept by this change, show the collector's instrumentation racing between hosts
+(KB-025). With the in-memory mode of the collector eight hosts of three probes ran at once without a crash,
+and every coverage report was empty of `src/`.
+
+On `ubuntu-latest` (4 cores): pull request #20's serial job, 26 min 50 s. This decision's own pull request,
+where the base branch had no saved state yet, so every probe ran in its family's leg without a footprint, and
+the first push after it, every probe with coverage one at a time per leg: see the pull request's job times,
+recorded in the changelog of the next release.
 
 The seven prober tests and the convention test were each shown to fail against a seeded defect: the family
 filter ignored (3 tests fail), a probe in no family not refused, `--no-footprint` still asking for coverage,

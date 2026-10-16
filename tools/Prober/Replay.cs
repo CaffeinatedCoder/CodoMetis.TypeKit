@@ -9,11 +9,13 @@ namespace Prober;
 /// <summary>
 /// Replays the written probes with no model in the loop. Per commit it runs only the probes whose identity or
 /// footprint changed; <c>--all</c> runs every probe, retired ones included (the release run). Each probe runs
-/// once per process variant; the variants of every selected probe run <c>--parallel N</c> at a time (the
-/// machine's cores by default), and the replay records each probe in registry order whatever order the runs
+/// once per process variant, and the replay records each probe in registry order whatever order the runs
 /// finished in: per-row evidence (rows expected, rows executed, each row's outcome and applied settings), the
 /// result, and the fresh footprint. <c>--no-footprint</c> runs without coverage and records no footprint, for a
-/// state nobody keeps (a pull request's). <c>--family F</c> replays the probes whose claim's first surface the
+/// state nobody keeps (a pull request's); only then do the variants of every selected probe run
+/// <c>--parallel N</c> at a time (the machine's cores by default), since the coverage collector rewrites the
+/// assemblies on disk and two hosts from one output directory corrupt each other (KB-025).
+/// <c>--family F</c> replays the probes whose claim's first surface the
 /// replay configuration's <c>families</c> puts under F, so a matrix of jobs can split the corpus and
 /// <c>merge</c> join their states; it refuses while any probe's surface is in no family, so a matrix cannot
 /// quietly leave a probe out. It works in one warm worktree kept between runs and moved to HEAD without force,
@@ -33,14 +35,19 @@ internal static class Replay
         var home = Home(ctx, ledger);
         if (a.Flag("where")) { ctx.Out.WriteLine($"replay:  {Path.Combine(home, "wt")}\nexplore: {Path.Combine(home, "explore")}\nseeds:   {Path.Combine(home, "seeds")}"); return 0; }
 
-        var options = new Options(a.Flag("all"), a.Get("family"), Parallelism(a.Get("parallel")), !a.Flag("no-footprint"));
+        // With a footprint the coverage collector instruments the assemblies on disk, so two hosts from one
+        // output directory corrupt each other (KB-025): one at a time, whatever --parallel says.
+        var footprint = !a.Flag("no-footprint");
+        var asked = Parallelism(a.Get("parallel"));
+        var options = new Options(a.Flag("all"), a.Get("family"), footprint ? 1 : asked, footprint);
         var states = ledger.ProbeStates(options.All);
         var scope = options.Family is null ? states : OfFamily(config, ledger, states, options.Family);
         var todo = options.All ? scope : [.. scope.Where(s => s.Replay)];
         var skipped = scope.Where(s => !todo.Contains(s)).Select(s => s.Probe).ToList();
         var head = ledger.Head;
         ctx.Out.WriteLine($"prober replay: {ledger.Branch} at {head[..7]}: {todo.Count} of {scope.Count} probes to replay" +
-                          $"{(options.Family is null ? "" : $" (family {options.Family})")}, {options.Parallel} at a time{(options.Footprint ? "" : ", no footprint")}");
+                          $"{(options.Family is null ? "" : $" (family {options.Family})")}, " +
+                          (footprint ? "one at a time (the coverage collector rewrites the assemblies on disk)" : $"{options.Parallel} at a time, no footprint"));
         if (a.Flag("dry-run")) { foreach (var s in todo) ctx.Out.WriteLine($"  {s.Probe}"); return 0; }
 
         Directory.CreateDirectory(home);
