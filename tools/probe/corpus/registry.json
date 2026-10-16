@@ -697,11 +697,6 @@
           "defect": "A value object's OpenAPI schema drops the wrapped type's format (int32, uuid, date-time)."
         },
         {
-          "obligation": "nullable-admits-null-as-the-wrapped-does",
-          "patch": "seeds/C21-openapi-schema-parity-nullable-admits-null-as-the-wrapped-does.patch",
-          "defect": "6866822 reversed: a nullable value object admits null where ASP.NET's exporter puts none for the wrapped type (a query, header or form VO?, a nullable struct over string or Uri at a root), and an MVC [FromBody] VO? none where the wrapped ulong? or long? has one."
-        },
-        {
           "obligation": "container-elements",
           "patch": "seeds/C21-openapi-schema-parity-container-elements.patch",
           "defect": "A list's or an array's items are not put back for a container of value objects, so the elements lose their schema."
@@ -715,6 +710,11 @@
           "obligation": "every-document-version",
           "patch": "seeds/C21-openapi-schema-parity-every-document-version.patch",
           "defect": "Under OpenAPI 2.0 and 3.0 a value object's schema drops the wrapped type's format."
+        },
+        {
+          "obligation": "nullable-admits-null-as-the-wrapped-does",
+          "patch": "seeds/C21-openapi-schema-parity-nullable-admits-null-as-the-wrapped-does.patch",
+          "defect": "6866822 and F3's fixes reversed: every nullable value object in a JSON position takes a nullable property's null (a query, header or form VO? admits null in its type, a nullable struct over string or Uri at a root admits null), and a parameter MVC hands over as a string admits none (an MVC [FromBody] VO? over ulong or long, a query VO? over an enum written by name)."
         }
       ],
       "variants": [

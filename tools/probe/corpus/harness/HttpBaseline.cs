@@ -187,6 +187,14 @@ public static class HttpBaseline
     /// admits null is kept; everywhere else, inlined schemas included, the comparison stays byte for byte (rows 170,
     /// 196 and 215 of C21). Returns both sides without the marks <see cref="Hx.Deep"/> put on resolved references.
     /// </summary>
+    /// <summary>The node at a path <see cref="Difference"/> names (<c>$.parameters[0].schema</c>), or none.</summary>
+    static JsonNode? At(JsonNode? node, string path)
+    {
+        foreach (System.Text.RegularExpressions.Match step in System.Text.RegularExpressions.Regex.Matches(path, @"\.([^.\[]+)|\[(\d+)\]"))
+            node = step.Groups[1].Success ? (node as JsonObject)?[step.Groups[1].Value] : (node as JsonArray) is { } a && int.Parse(step.Groups[2].Value) is var i && i < a.Count ? a[i] : null;
+        return node;
+    }
+
     static (string, string, bool) NullAroundReferences(string sp, string sv)
     {
         var around = false;
@@ -381,12 +389,14 @@ public static class HttpBaseline
                     "schema":{"allOf":[{"x-nullable":true}]}
                     """, StringComparison.Ordinal))
                 { r.Note(NoteKeys.SchemaOpenApi2NullableBodyKeepsOnlyNull, pp); continue; }
-                // F3: a nullable value object over an enum written by name, as a parameter outside the body, leaves out the null ASP.NET
-                // keeps in the enum's list for the wrapped E? (row 285 of C21).
-                if (at.StartsWith("$.parameters", StringComparison.Ordinal) && !vp.Contains("/body/") && !vp.Contains("/schema/")
-                    && at.EndsWith(".enum", StringComparison.Ordinal) && wp is JsonArray we && wv is JsonArray ve && we.Count == ve.Count + 1 && we[^1] is null
-                    && JsonNode.DeepEquals(new JsonArray(we.Take(ve.Count).Select(x => x?.DeepClone()).ToArray()), ve))
-                { r.Skip("F3", $"{vp}: the value object's enum has no null where the wrapped type's has one"); continue; }
+                // KB-027: the component ASP.NET makes for an enum written by name is the schema of the first use it meets, so a wrapped E?
+                // parameter lists null through E's component where E was first met nullable; the value object's parameter is the enum's
+                // content without it wherever the enum is a component (not-promised enum-component-is-its-first-use; row 285 of C21).
+                if (at.StartsWith("$.parameters", StringComparison.Ordinal) && at.EndsWith(".enum", StringComparison.Ordinal)
+                    && wp is JsonArray we && wv is JsonArray ve && we.Count == ve.Count + 1 && we[^1] is null
+                    && JsonNode.DeepEquals(new JsonArray(we.Take(ve.Count).Select(x => x?.DeepClone()).ToArray()), ve)
+                    && At(JsonNode.Parse(written), at[..^".enum".Length]) is JsonObject held && held.ContainsKey(Hx.ResolvedReference))
+                { r.Note(NoteKeys.SchemaEnumComponentIsItsFirstUse, vp); continue; }
                 return $"schema differs for {pp} vs {vp} at {FirstDifference(JsonNode.Parse(sp), JsonNode.Parse(sv), "$")}:\n  wrapped {Cut(sp)}\n  value object {Cut(sv)}";
             }
         }

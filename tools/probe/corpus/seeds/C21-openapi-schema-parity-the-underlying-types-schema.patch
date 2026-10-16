@@ -1,9 +1,9 @@
 diff --git a/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs b/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
-index 4c226cd..1804403 100644
+index b415acf..9b7e9e0 100644
 --- a/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
 +++ b/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
-@@ -214,6 +214,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
-             if (!admitsNull)
+@@ -267,6 +267,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
+             if (position == NullablePosition.None)
              {
                  schema.FillFrom(wrappedSchema);
 +                schema.Format = null;
