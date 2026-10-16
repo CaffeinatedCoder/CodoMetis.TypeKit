@@ -16,6 +16,40 @@
         "defect": "A value object's OpenAPI schema drops the wrapped type's format (int32, uuid, date-time)."
       }
     },
+    "C01DecimalSpellingProbe": {
+      "claim": "C01-decimal-spelling",
+      "filter": "*C01DecimalSpellingProbe",
+      "seed": {
+        "patch": "seeds/C01-decimal-spelling.patch",
+        "defect": "DecimalStringJsonConverter, and every decimal dictionary key, write a decimal with the scale it arrived with (7.80, 7.8000) instead of its minimal spelling."
+      }
+    },
+    "C02OptionalTextProbe": {
+      "claim": "C02-optional-text",
+      "filter": "*C02OptionalTextProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none,text.culture!=globalization-invariant"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first,text.culture!=globalization-invariant"
+        },
+        {
+          "PROBE_ONLY": "text.culture=globalization-invariant",
+          "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
+        },
+        {
+          "PROBE_ONLY": "text.culture=globalization-invariant,entry=AsText"
+        },
+        {
+          "PROBE_ONLY": "text.culture=globalization-invariant,entry=AsOptionalText"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C02-optional-text.patch",
+        "defect": "AsOptionalText and AsOptionalIdentifier turn a hidden-character string into no text, as a blank one, rather than refusing it as Hidden."
+      }
+    },
     "C03ComposedProbe": {
       "claim": "C03-composed-faults",
       "filter": "*C03ComposedProbe",
@@ -30,6 +64,22 @@
       "seed": {
         "patch": "seeds/C03-composed-faults.patch",
         "defect": "A composed fault's operation lists its statuses in descending order."
+      }
+    },
+    "C04WithoutFaultsProbe": {
+      "claim": "C04-without-faults",
+      "filter": "*C04WithoutFaultsProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C04-without-faults.patch",
+        "defect": "WithoutFaults leaves nothing out of the document: an operation still lists the status and problem type of a member its endpoint, group or controller leaves out."
       }
     },
     "C05RuleProbe": {
@@ -48,6 +98,206 @@
         "defect": "WithRule names an enum rule without its nesting chain: Rules.Fault.NoAt is written Fault.NoAt."
       }
     },
+    "C06FaultKindsProbe": {
+      "claim": "C06-fault-kinds",
+      "filter": "*C06FaultKindsProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C06-fault-kinds.patch",
+        "defect": "FaultKind.Malformed is answered and documented as 422, not 400."
+      }
+    },
+    "C07BlanketMappingProbe": {
+      "claim": "C07-fault-responses-blanket",
+      "filter": "*C07BlanketMappingProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C07-blanket-mapping.patch",
+        "defect": "A fault set mapped on its own loses its mapping to the mapping for every set (AddFaultResponses()), which is consulted first."
+      }
+    },
+    "C08SameNameWarningProbe": {
+      "claim": "C08-same-name-warning",
+      "filter": "*C08SameNameWarningProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C08-same-name-warning.patch",
+        "defect": "Bare fault names are compared as qualified ones, so two fault types an endpoint answers with that write one name (HFault.Clash beside KFault.Clash) log no startup warning."
+      }
+    },
+    "C09BaseRecordEqualityProbe": {
+      "claim": "C09-base-record-equality",
+      "filter": "*C09BaseRecordEqualityProbe",
+      "seed": {
+        "patch": "seeds/C09-base-record-equality.patch",
+        "defect": "The value object implements only its direct base's IEquatable<TBase> again, so a collection of a deeper base compares it by that base's own equality."
+      }
+    },
+    "C10PreserveGuardProbe": {
+      "claim": "C10-preserve-guard",
+      "filter": "*C10PreserveGuardProbe",
+      "seed": {
+        "patch": "seeds/C10-preserve-guard.patch",
+        "defect": "The Preserve guard misses a wrapped class the serializer walks as an object, so a value object over it writes and reads its own $id and $ref instead of refusing."
+      }
+    },
+    "C11ParseShapesBuildProbe": {
+      "claim": "C11-parse-shapes-build",
+      "filter": "*C11ParseShapesBuildProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none,text.culture!=globalization-invariant"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first,text.culture!=globalization-invariant"
+        },
+        {
+          "PROBE_ONLY": "text.culture=globalization-invariant,process.converter-lookup=none",
+          "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
+        },
+        {
+          "PROBE_ONLY": "text.culture=globalization-invariant,process.converter-lookup=wrapped-type-converter-looked-up-first",
+          "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C11-parse-shapes-build.patch",
+        "defect": "A static Parse counts as a parser only where C#'s `is` converts its result, so one returning a type that converts by a user-defined implicit operator, which can be assigned, gives the value object no parsing."
+      }
+    },
+    "C12DescribedConverterProbe": {
+      "claim": "C12-described-converter",
+      "filter": "*C12DescribedConverterProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C12-described-converter.patch",
+        "defect": "A list's items and a dictionary's additionalProperties of a described type are filled only where ASP.NET already wrote them, so the document drops them."
+      }
+    },
+    "C13PatchRequiredProbe": {
+      "claim": "C13-patch-required",
+      "filter": "*C13PatchRequiredProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C13-patch-required.patch",
+        "defect": "Every patch is taken out of required, also a constructor parameter that RespectRequiredConstructorParameters makes the serializer require."
+      }
+    },
+    "C14DeclaredProblemProbe": {
+      "claim": "C14-declared-problem",
+      "filter": "*C14DeclaredProblemProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C14-declared-problem.patch",
+        "defect": "A problem response the endpoint declares itself keeps ASP.NET's description, which names none of the problem types answered with its status."
+      }
+    },
+    "C15MvcFaultStatusDocProbe": {
+      "claim": "C15-mvc-fault-status-doc",
+      "filter": "*C15MvcFaultStatusDocProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C15-mvc-fault-status-doc.patch",
+        "defect": "The document reads an MVC action's metadata from its descriptor, so what MapControllers()'s builder declares (WithFaultStatus, WithoutFaults) reaches the response but not the document."
+      }
+    },
+    "C16OptionsAgreementProbe": {
+      "claim": "C16-options-agreement",
+      "filter": "*C16OptionsAgreementProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C16-options-agreement.patch",
+        "defect": "A type the minimal-API options describe and MVC's options say nothing of is not refused, so the document describes JSON the controllers do not write."
+      }
+    },
+    "C17Cmtk0014Probe": {
+      "claim": "C17-cmtk0014",
+      "filter": "*C17Cmtk0014Probe",
+      "seed": {
+        "patch": "seeds/C17-cmtk0014.patch",
+        "defect": "CMTK0014 no longer judges a default: default and default(FaultKind) are silent where they name no member."
+      }
+    },
+    "C18Cmtk1023Probe": {
+      "claim": "C18-cmtk1023",
+      "filter": "*C18Cmtk1023Probe",
+      "seed": {
+        "patch": "seeds/C18-cmtk1023.patch",
+        "defect": "CMTK1023 leaves out a base's explicit IEquatable<TBase>.Equals, so a base comparing by reference through it compiles without a word."
+      }
+    },
+    "C19Cmtk0010KindsProbe": {
+      "claim": "C19-cmtk0010-kinds",
+      "filter": "*C19Cmtk0010KindsProbe",
+      "seed": {
+        "patch": "seeds/C19-cmtk0010-kinds.patch",
+        "defect": "CMTK0010 no longer checks a collection expression's builder method, so a breaking argument it infers there compiles."
+      }
+    },
+    "C20ShouldHoldProbe": {
+      "claim": "C20-testing-shouldhold",
+      "filter": "*C20ShouldHoldProbe",
+      "seed": {
+        "patch": "seeds/C20-testing-shouldhold.patch",
+        "defect": "ShouldHold(reason) checks only the held fault's type, so a fault of that type with another reason passes."
+      }
+    },
     "E01ColumnParityProbe": {
       "claim": "E01-column-parity",
       "filter": "*E01ColumnParityProbe",
@@ -64,6 +314,14 @@
         "defect": ".Value on a column is translated as a cast of the column, not the column itself."
       }
     },
+    "E03ColumnRoundTripProbe": {
+      "claim": "E03-column-round-trip",
+      "filter": "*E03ColumnRoundTripProbe",
+      "seed": {
+        "patch": "seeds/E03-column-round-trip.patch",
+        "defect": "A decimal value object is mapped through the double mapping, a REAL column, not the TEXT column a decimal gets."
+      }
+    },
     "E04IntegerKeyProbe": {
       "claim": "E04-integer-key-generated",
       "filter": "*E04IntegerKeyProbe",
@@ -78,6 +336,94 @@
       "seed": {
         "patch": "seeds/E05-own-compareto-rejected.patch",
         "defect": "A query that compares or orders by a hand-written CompareTo runs in the database instead of throwing."
+      }
+    },
+    "E06OwnConverterNoValueProbe": {
+      "claim": "E06-own-converter-no-value",
+      "filter": "*E06OwnConverterNoValueProbe",
+      "seed": {
+        "patch": "seeds/E06-own-converter-no-value.patch",
+        "defect": ".Value translates on a column the application converts itself, so the query compares against the converted text instead of failing."
+      }
+    },
+    "E07ClosedSetNameProbe": {
+      "claim": "E07-closed-set-stored-as-name",
+      "filter": "*E07ClosedSetNameProbe",
+      "seed": {
+        "patch": "seeds/E07-closed-set-stored-as-name.patch",
+        "defect": "A stored name the closed set no longer has reads back as null instead of throwing."
+      }
+    },
+    "E08OptionResultNotColumnsProbe": {
+      "claim": "E08-option-result-not-columns",
+      "filter": "*E08OptionResultNotColumnsProbe",
+      "seed": {
+        "patch": "seeds/E08-option-result-not-columns.patch",
+        "defect": "TypeKit's conventions ignore an Option or Result property, so the model builds without the column instead of failing."
+      }
+    },
+    "E09OrNoneInDbProbe": {
+      "claim": "E09-or-none-in-database",
+      "filter": "*E09OrNoneInDbProbe",
+      "seed": {
+        "patch": "seeds/E09-or-none-in-database.patch",
+        "defect": "FirstOrNoneAsync with a condition reads every matching row, without LIMIT 1."
+      }
+    },
+    "E10ReadBackSkipsValidationProbe": {
+      "claim": "E10-read-back-skips-validation",
+      "filter": "*E10ReadBackSkipsValidationProbe",
+      "seed": {
+        "patch": "seeds/E10-read-back-skips-validation.patch",
+        "defect": "Reading a column back runs Create and throws for a value today's rules refuse, instead of materializing it."
+      }
+    },
+    "E11UseTypeKitOrderProbe": {
+      "claim": "E11-usetypekit-order",
+      "filter": "*E11UseTypeKitOrderProbe",
+      "seed": {
+        "patch": "seeds/E11-usetypekit-order.patch",
+        "defect": "UseTypeKit() adds its services only when the provider's are already registered, so calling it before UseSqlite does nothing."
+      }
+    },
+    "E12ConventionByTypeProbe": {
+      "claim": "E12-convention-by-vo-type",
+      "filter": "*E12ConventionByTypeProbe",
+      "seed": {
+        "patch": "seeds/E12-convention-by-vo-type.patch",
+        "defect": "A finalizing convention clears the max length, precision and scale of value-object properties, so a convention on the value object's type does not reach its property."
+      }
+    },
+    "E13PrimitiveCollectionProbe": {
+      "claim": "E13-primitive-collections",
+      "filter": "*E13PrimitiveCollectionProbe",
+      "seed": {
+        "patch": "seeds/E13-primitive-collections.patch",
+        "defect": ".Value on an element of a primitive collection of value objects is not translated, so Any(t => t.Value == x) fails."
+      }
+    },
+    "E14InheritanceKeyProbe": {
+      "claim": "E14-inheritance-key-generation",
+      "filter": "*E14InheritanceKeyProbe",
+      "seed": {
+        "patch": "seeds/E14-inheritance-key-generation.patch",
+        "defect": "Under TPC on a provider without a sequence (SQLite), an integer key of the hierarchy's root stays generated on add."
+      }
+    },
+    "E15CompositeKeyProbe": {
+      "claim": "E15-composite-key",
+      "filter": "*E15CompositeKeyProbe",
+      "seed": {
+        "patch": "seeds/E15-composite-key.patch",
+        "defect": "The first value-object property of a composite key is treated as a single integer key and generated on add."
+      }
+    },
+    "E16OwnConfigurationWinsProbe": {
+      "claim": "E16-own-configuration-wins",
+      "filter": "*E16OwnConfigurationWinsProbe",
+      "seed": {
+        "patch": "seeds/E16-own-configuration-wins.patch",
+        "defect": "The integer key default is set as an explicit configuration, so it overrides the application's own ValueGeneratedNever."
       }
     },
     "L01JsonBytesProbe": {
@@ -146,6 +492,22 @@
       "seed": {
         "patch": "seeds/L04-round-trip.patch",
         "defect": "Generated formatting uses the current culture instead of the provider (invariant by default)."
+      }
+    },
+    "L05EqualityProbe": {
+      "claim": "L05-equality",
+      "filter": "*L05EqualityProbe",
+      "seed": {
+        "patch": "seeds/L05-equality.patch",
+        "defect": "A deeper base record whose IEquatable is implemented explicitly keeps its own Equals, so equal value objects compare unequal through that base and a HashSet of it holds both."
+      }
+    },
+    "L06OffTheWireProbe": {
+      "claim": "L06-off-the-wire",
+      "filter": "*L06OffTheWireProbe",
+      "seed": {
+        "patch": "seeds/L06-off-the-wire.patch",
+        "defect": "The refusing converter writes {} for an Option or a Result instead of throwing NotSupportedException, so a Some is written as {} and reads back as None."
       }
     }
   }

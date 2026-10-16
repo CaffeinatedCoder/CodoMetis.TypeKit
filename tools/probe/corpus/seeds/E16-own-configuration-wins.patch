@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs
+index 934f884..a0f8ac8 100644
+--- a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs
++++ b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs
+@@ -53,7 +53,7 @@ internal sealed class ValueObjectKeyValueGenerationConvention : IModelFinalizing
+     {
+         foreach (var entityType in modelBuilder.Metadata.GetEntityTypes())
+             if (GeneratedKey(entityType) is { } property)
+-                property.Builder.ValueGenerated(ValueGenerated.OnAdd);
++                ((IMutableProperty)property).ValueGenerated = ValueGenerated.OnAdd;
+     }
+ 
+     /// <summary>The entity type's key, where it is a value object over an integer EF generates a key of.</summary>

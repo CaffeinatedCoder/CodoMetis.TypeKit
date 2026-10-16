@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.Generators/ValueObjectParsableAspect.cs b/src/CodoMetis.TypeKit.Generators/ValueObjectParsableAspect.cs
+index c734b98..28481fb 100644
+--- a/src/CodoMetis.TypeKit.Generators/ValueObjectParsableAspect.cs
++++ b/src/CodoMetis.TypeKit.Generators/ValueObjectParsableAspect.cs
+@@ -228,7 +228,7 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
+         // consumer's Parse call, reported 2026-10-14).
+         if (valueType.Methods.Any(method => method is { Name: "Parse", IsStatic: true, IsVirtual: false, Accessibility: Accessibility.Public, TypeParameters.Count: 0, Parameters: [{ } text] }
+                                          && TakesText(text)
+-                                         && method.ReturnType.IsConvertibleTo(valueType, ConversionKind.Implicit)))
++                                         && method.ReturnType.IsConvertibleTo(valueType)))
+             return ValueParseStrategy.StaticParse;
+ 
+         return ValueParseStrategy.Unsupported;

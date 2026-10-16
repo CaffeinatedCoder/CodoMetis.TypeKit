@@ -89,9 +89,23 @@ public static class NoteKeys
         ["documented-char-guid-key-never-generated-checked"] = "pass", ["documented-char-guid-not-generated-checked"] = "pass",
         ["schema:compared-with-nullable-wrapped"] = "pass", ["schema:nullable-spellings-normalised"] = "pass",
         ["schema:class-vo-nullability-normalised"] = "pass", ["schema:neither-side-documented"] = "pass",
+        // EF: the claim's check ran, against the documented expectation where the wrapped type's own side cannot answer
+        ["refusal-names-the-type"] = "pass", ["stored-factory-read-unvalidated"] = "pass", ["documented-char-guid-default-generation-normalized"] = "pass",
+        ["plain-key-throws-on-sqlite-vo-checked-against-expected"] = "pass", ["tpc-sqlite-no-sequence-assign-checked"] = "pass",
         // the document part has nothing to check: ASP.NET alone refuses the same document in the same row, or
         // leaves the controller out of it (docs/aspnet-core.md, "Bind value objects in MVC"), checked absent
         ["doc:refused-by-aspnet-alone"] = "pass", ["doc:controller-not-in-api-explorer"] = "pass",
+        // L03's JSON half has nothing to compare: the wrapped type alone refuses under the row's options, the value object alike, in the same row
+        ["json-half:wrapped-alone-refuses"] = "pass",
+        // JSON family (C01, C10, L06): the options leave the member out of one direction for the plain type without TypeKit too, shown by a
+        // baseline in the same row; that direction has nothing to check, and the row is judged by the other one (both left out: inapplicable)
+        ["json:member-left-out-by-options"] = "pass", ["json:both-directions-left-out-by-options"] = "inapplicable",
+        // a read the wrapped type's shape refuses with the very same exception and message: the serializer refused the document before any
+        // value object ran (the baseline in the same row), so the read has nothing to check; the row is judged by its write and other reads
+        ["json:read-refused-by-stj-alone"] = "pass",
+        // ASP.NET's OpenAPI 2.0 writer drops the reference of a nullable struct component; a plain struct beside it in the same
+        // schema, without a converter, is written the same, so that position has nothing to check (C12)
+        ["schema:nullable-reference-lost-for-plain-too"] = "pass",
         // a check that did not apply
         ["own-vo-converter"] = "inapplicable", ["closed-set-vs-own-wrapped-converter"] = "inapplicable", ["closed-set-differs"] = "inapplicable",
         ["byte-array-is-base64"] = "inapplicable", ["own-spelling"] = "inapplicable", ["not-bindable-from-text"] = "inapplicable",
@@ -99,14 +113,16 @@ public static class NoteKeys
         ["mvc-maxvalidationdepth1-ignores-binding-errors"] = "inapplicable", ["stored-factory-skips-validation"] = "inapplicable",
         ["schema:converter-not-described"] = "inapplicable", ["schema:nullability-not-comparable"] = "inapplicable",
         ["closed-set-key-unpoliced"] = "inapplicable", ["plain-refused"] = "inapplicable", ["entry-not-applicable"] = "inapplicable",
-        ["no-text"] = "inapplicable", ["text:wrapped-round-trip-lossy-too"] = "inapplicable", ["no-operator"] = "inapplicable",
+        ["no-text"] = "inapplicable", ["text:wrapped-round-trip-lossy-too"] = "inapplicable", ["no-operator"] = "inapplicable", ["refused-input-not-placeable"] = "inapplicable",
         // a refusal, intended or the framework's own
         ["documented-diff"] = "expected-refusal", ["stj-maxdepth"] = "expected-refusal", ["validated-refuses-type-limit"] = "expected-refusal",
         ["class-vo-takes-null"] = "expected-refusal", ["bind:plain-unbindable"] = "expected-refusal", ["preserve-documented"] = "expected-refusal",
         ["mvc-400-unwritable-under-source-gen"] = "expected-refusal", ["own-vo:read-back-refused"] = "expected-refusal",
         ["both-threw"] = "expected-refusal", ["read-both-threw"] = "expected-refusal", ["ser-both-threw"] = "expected-refusal",
         ["ser-refused"] = "expected-refusal", ["read-back-refused"] = "expected-refusal", ["plain-read-back-fails-too"] = "expected-refusal",
-        ["own-vo-converter-threw"] = "expected-refusal",
+        ["own-vo-converter-threw"] = "expected-refusal", ["own-converter-refused-for-wrapped-too"] = "expected-refusal",
+        // MVC's validator throws for a nested struct of a body (MaxValidationDepth) for a plain twin on the same side too (C13)
+        ["mvc:plain-nested-body-throws-too"] = "expected-refusal",
         // both sides refused, but not alike
         ["both-threw-differently"] = "inconclusive",
     };

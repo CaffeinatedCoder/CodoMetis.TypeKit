@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.cs b/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.cs
+index c5f440a..420295b 100644
+--- a/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.cs
++++ b/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.cs
+@@ -96,6 +96,8 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
+ 
+         for (var type = direct; type is { SpecialType: not SpecialType.Object }; type = type.BaseType)
+         {
++            if (!type.Equals(direct)) break;
++
+             builder.ImplementInterface(TypeFactory.GetNamedType(typeof(IReimplementedEquatable<>)).MakeGenericInstance(type), OverrideStrategy.Ignore);
+ 
+             if (type.Equals(direct) || !ExplicitlyImplementsEquatableBetween(direct, type, equatable.MakeGenericInstance(type))) continue;

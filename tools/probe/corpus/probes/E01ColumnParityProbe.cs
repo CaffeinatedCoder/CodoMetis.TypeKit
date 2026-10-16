@@ -13,8 +13,7 @@ public sealed class E01ColumnParityProbe
 
     static async Task<string?> Check(Probes.Shapes.Row r)
     {
-        if (r["shape.site"] == "in-generic-type") { r.Outcome("expected-refusal", "CMTK1005: a value object cannot be nested in a generic type (loud, at build)"); return null; }
-        var e = EfRegistry.Of(r);
+        var e = Probes.Ef3.E4.At(r, r["shape.kind"], r["shape.wrapped"], r["shape.site"]);
         var mapping = r["ef.mapping"];
         var facet = r["ef.facet"];
         Action<Microsoft.EntityFrameworkCore.Metadata.IMutableProperty>? apply = null;

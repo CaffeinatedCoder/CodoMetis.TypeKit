@@ -340,23 +340,73 @@ public static class TextClaims
     }
     static Exception? Unwrap(Func<object?> f) { try { f(); return null; } catch (TargetInvocationException t) { return t.InnerException; } catch (Exception ex) { return ex; } }
 
+    /// <summary>
+    /// The JSON half of "one set of rules", on every row under the row's options: the value object reads back what it writes, and a
+    /// validated one refuses the value Create refuses, where the wrapped type reads it, with a JsonException naming the fault. The two
+    /// named paths are checked as what they are: an application's own converter for the value object takes precedence (it reads its
+    /// own spelling back), and StoredJsonConverterFactory reads the refused value without validation (README, "Only two paths skip
+    /// validation"). A depth limit is the framework's only where a converter the application registers for the wrapped type, at the
+    /// same position, is refused alike (design note D1: System.Text.Json counts a custom converter's value one level deeper).
+    /// </summary>
     static string? JsonOneRule(Row r, Entry e, bool validated)
     {
-        if (!validated || r["input.json"] != "refused-by-create") return null;
-        if (r.Get("json.Converters") is "own-for-wrapped" or "own-for-value-object" or "StoredJsonConverterFactory") return null; // named: own converter / stored reads skip Create
         var o = JsonRow.Apply(r, e).Options!;
         var pos = r["shape.position"]; var con = r.Get("shape.containing") ?? "class"; var plain = e.Valid();
         var hp = Pos.Build(pos, con, e, false, plain); var hv = Pos.Build(pos, con, e, true, Make.Vo(e, plain));
-        string jp; try { jp = JsonSerializer.Serialize(hp.Value, hp.Declared, o); } catch { return null; }
-        var text = JsonParity.InputFor("refused-by-create", e, o, jp, pos);
-        if (text == jp) return null;
-        try { JsonSerializer.Deserialize(text, hp.Declared, o); } catch { return null; } // the wrapped type refuses this itself
-        try { JsonSerializer.Deserialize(text, hv.Declared, o); return $"JSON read accepted the value Create refuses: {Cut(text)}"; }
-        catch (JsonException ex)
+        static (string? Json, Exception? Ex) Write(Held h, JsonSerializerOptions x) { try { return (JsonSerializer.Serialize(h.Value, h.Declared, x), null); } catch (Exception ex) { return (null, ex); } }
+        static (object? Value, Exception? Ex) Read(string text, Held h, JsonSerializerOptions x) { try { return (JsonSerializer.Deserialize(text, h.Declared, x), null); } catch (Exception ex) { return (null, ex); } }
+        bool OwnConverterRefusedToo(Exception voEx)
         {
-            if (ex.Message.Contains("Refused") || ex.Message.Contains("maximum allowed depth")) return null;
-            return $"JsonException does not name the fault: {Cut(ex.Message)}";
+            var own = new JsonSerializerOptions(o);
+            own.Converters.Insert(0, (System.Text.Json.Serialization.JsonConverter)Activator.CreateInstance(typeof(OwnWrappedConverter<>).MakeGenericType(Make.Held(e.Plain)), JsonRow.Inner(e))!);
+            var (text, wex) = Write(hp, own);
+            var ex = wex ?? Read(text!, hp, own).Ex;
+            return ex is not null && ex.GetType() == voEx.GetType();
         }
-        catch (Exception ex) { return $"JSON refusal is {ex.GetType().Name}, not JsonException: {Cut(ex.Message)}"; }
+        var (jp, xp) = Write(hp, o); var (jv, xv) = Write(hv, o);
+        // Where the wrapped type alone refuses under the row's options, checked in the same row with the value object refusing alike,
+        // the JSON half has nothing to compare and the row is judged by its text entries (as decision 99 judges a document ASP.NET alone refuses).
+        const string Alone = "json-half:wrapped-alone-refuses";
+        if (xp is not null && xv is not null) { r.Note(Alone, "write"); return null; }
+        if (xp is not null) { r.Note("plain-refused", "the wrapped type is not written under these options"); return null; }
+        if (xv is not null)
+        {
+            if (OwnConverterRefusedToo(xv)) { r.Note(Alone, "write, with a converter of the application's for the wrapped type"); return null; }
+            r.Note("ser-refused", "the value object is not written where the wrapped type is: JSON parity (L01) judges it"); return null;
+        }
+        // 1. the valid value reads back as written
+        var (back, xb) = Read(jv!, hv, o);
+        if (xb is not null)
+        {
+            if (OwnConverterRefusedToo(xb)) { r.Note(Alone, "read back, with a converter of the application's for the wrapped type"); return null; }
+            if (Read(jp!, hp, o).Ex is not null) { r.Note(Alone, "read back"); return null; }
+            return $"JSON: the value object does not read back what it writes ({xb.GetType().Name}: {Cut(xb.Message)}): {Cut(jv)}";
+        }
+        var again = Write(new Held(hv.Declared, back!), o).Json;
+        if (again != jv) return $"JSON: read back as {Cut(again)}, written as {Cut(jv)}";
+        if (r.Is("json.Converters", "own-for-value-object")) { r.Note("own-vo", "the application's converter takes precedence and reads its own spelling"); return null; }
+        if (!validated) return null;
+        // 2. the value Create refuses
+        var text = JsonParity.InputFor("refused-by-create", e, o, jp!, pos);
+        if (text == jp) { r.Note("refused-input-not-placeable", pos); return null; }
+        var (accepted, xr) = Read(text, hv, o);
+        if (Read(text, hp, o).Ex is not null)
+        {
+            if (xr is null) return $"JSON read accepted text the wrapped type refuses: {Cut(text)}";
+            r.Note(Alone, "the refused value's JSON"); return null;
+        }
+        if (r.Is("json.Converters", "StoredJsonConverterFactory"))
+        {
+            if (xr is not null) return $"StoredJsonConverterFactory refused a value Create refuses ({xr.GetType().Name}): it reads stored JSON without validation";
+            r.Note("stored-factory-read-unvalidated"); return null;
+        }
+        if (xr is null) return $"JSON read accepted the value Create refuses: {Cut(text)}";
+        if (xr is not JsonException) return $"JSON refusal is {xr.GetType().Name}, not JsonException: {Cut(xr.Message)}";
+        if (!xr.Message.Contains("Refused"))
+        {
+            if (OwnConverterRefusedToo(xr)) { r.Note(Alone, "refused read, with a converter of the application's for the wrapped type"); return null; }
+            return $"JsonException does not name the fault: {Cut(xr.Message)}";
+        }
+        return null;
     }
 }

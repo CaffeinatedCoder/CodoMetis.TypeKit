@@ -18,8 +18,7 @@ public sealed class E02ValueTranslatesProbe
 
     static async Task<string?> Check(Probes.Shapes.Row r)
     {
-        if (r["shape.site"] == "in-generic-type") { r.Outcome("expected-refusal", "CMTK1005: a value object cannot be nested in a generic type (loud, at build)"); return null; }
-        var e = EfRegistry.Of(r);
+        var e = Probes.Ef3.E4.At(r, r["shape.kind"], r["shape.wrapped"], r["shape.site"]);
         var acc = r["ef.accessor"];
         var q = r["ef.query"];
         var nullable = acc == "ValueOrNull";

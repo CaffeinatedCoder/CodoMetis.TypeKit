@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.cs b/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.cs
+index c5f440a..1bddab3 100644
+--- a/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.cs
++++ b/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.cs
+@@ -98,7 +98,7 @@ internal sealed partial class ValueObjectContractAspect : TypeAspect
+         {
+             builder.ImplementInterface(TypeFactory.GetNamedType(typeof(IReimplementedEquatable<>)).MakeGenericInstance(type), OverrideStrategy.Ignore);
+ 
+-            if (type.Equals(direct) || !ExplicitlyImplementsEquatableBetween(direct, type, equatable.MakeGenericInstance(type))) continue;
++            if (type.Equals(direct) || ExplicitlyImplementsEquatableBetween(direct, type, equatable.MakeGenericInstance(type))) continue;
+ 
+             // One the value object declares itself implements the interface already, as C# maps it.
+             if (builder.Target.Methods.Any(method => method is { Name: nameof(Equals), Parameters: [{ } other] } && other.Type.ToNonNullable().Equals(type))) continue;

@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs b/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs
+index 7265ea3..272ea50 100644
+--- a/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs
++++ b/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs
+@@ -50,7 +50,7 @@ public sealed class UndefinedEnumValueAnalyzer : DiagnosticAnalyzer
+ 
+     /// <summary>The operations that can be a constant of an enum, folded or not; each is judged only where no other contains it.</summary>
+     private static readonly ImmutableArray<OperationKind> Kinds =
+-        [OperationKind.Conversion, OperationKind.DefaultValue, OperationKind.Binary, OperationKind.Unary, OperationKind.Conditional];
++        [OperationKind.Conversion, OperationKind.Binary, OperationKind.Unary, OperationKind.Conditional];
+ 
+     /// <inheritdoc/>
+     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
