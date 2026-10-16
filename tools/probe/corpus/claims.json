@@ -4463,30 +4463,15 @@
     "obligations": [
       {
         "id": "builder-reaches-doc",
-        "sentence": "OpenAPI: a `WithFaultStatus` on the builder `MapControllers()` returns reaches the document, as it reached the response.",
-        "axes": {
-          "setter": [
-            "MapControllers().WithFaultStatus"
-          ]
-        }
+        "sentence": "OpenAPI: a `WithFaultStatus` on the builder `MapControllers()` returns reaches the document, as it reached the response."
       },
       {
         "id": "without-faults-leaves-doc",
-        "sentence": "**`WithoutFaults`** and `[WithoutFaults<T>]`: a route leaves out of its document the members it never answers with, and reporting one throws",
-        "axes": {
-          "kind": [
-            "WithoutFaults"
-          ]
-        }
+        "sentence": "**`WithoutFaults`** and `[WithoutFaults<T>]`: a route leaves out of its document the members it never answers with, and reporting one throws"
       },
       {
         "id": "status-per-scope",
-        "sentence": "`WithFaultStatus`/`[FaultStatus<T>]` per endpoint, group or controller",
-        "axes": {
-          "kind": [
-            "status-only"
-          ]
-        }
+        "sentence": "`WithFaultStatus`/`[FaultStatus<T>]` per endpoint, group or controller"
       }
     ],
     "exclude": [
