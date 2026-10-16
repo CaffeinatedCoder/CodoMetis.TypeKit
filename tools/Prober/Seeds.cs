@@ -16,8 +16,23 @@ namespace Prober;
 /// </summary>
 internal static class Seeds
 {
-    /// <summary>How one seed ended.</summary>
-    internal sealed record Outcome(string Probe, string Claim, string Seed, string Result, int Violations, int Rows, string Detail);
+    /// <summary>How one seed ended; <paramref name="Obligation"/> is the claim's obligation it breaks, or null for a seed that proves the probe alone.</summary>
+    internal sealed record Outcome(string Probe, string Claim, string? Obligation, string Seed, string Result, int Violations, int Rows, string Detail);
+
+    /// <summary>
+    /// Every seed of a registry entry, each with the obligation it names: the one `seed` (its `obligation`, if
+    /// any) and each of `seeds` (decision 104). An entry without either has none.
+    /// </summary>
+    internal static List<(string? Obligation, JsonObject Seed)> SeedsOf(JsonObject entry)
+    {
+        var result = new List<(string?, JsonObject)>();
+        if (entry["seed"] is JsonObject one) result.Add((Files.Str(one["obligation"]) is { Length: > 0 } o ? o : null, one));
+        foreach (var seed in (entry["seeds"] as JsonArray ?? []).OfType<JsonObject>())
+            result.Add((Files.Str(seed["obligation"]) is { Length: > 0 } o ? o : null, seed));
+        return result;
+    }
+
+    private static string Named(string probe, string? obligation) => obligation is null ? probe : $"{probe}/{obligation}";
 
     public static int Run(Context ctx, Args a, IProbeAdapter? adapter = null)
     {
@@ -34,10 +49,15 @@ internal static class Seeds
         var head = ledger.Head;
         var home = Replay.Home(ctx, ledger);
         var worktree = Path.Combine(home, "seeds");
-        ctx.Out.WriteLine($"prober seeds: {ledger.Branch} at {head[..7]}: {states.Count} probes, in {worktree}");
+        var seedsOf = states.ToDictionary(s => s.Probe, s => SeedsOf(registry[s.Probe]), StringComparer.Ordinal);
+        ctx.Out.WriteLine($"prober seeds: {ledger.Branch} at {head[..7]}: {seedsOf.Values.Sum(x => x.Count)} seeds of {states.Count} probes, in {worktree}");
         if (a.Flag("dry-run"))
         {
-            foreach (var s in states) ctx.Out.WriteLine($"  {s.Probe}: {Describe(registry[s.Probe]["seed"])}");
+            foreach (var s in states)
+            {
+                if (seedsOf[s.Probe].Count == 0) ctx.Out.WriteLine($"  {s.Probe}: (none)");
+                foreach (var (obligation, seed) in seedsOf[s.Probe]) ctx.Out.WriteLine($"  {Named(s.Probe, obligation)}: {Describe(seed)}");
+            }
             return 0;
         }
 
@@ -84,9 +104,14 @@ internal static class Seeds
 
             foreach (var s in states)
             {
-                var outcome = One(ledger, config, adapter, worktree, head, include, environment, results, s, registry[s.Probe]["seed"], baseline[s.Probe]);
-                outcomes.Add(outcome);
-                ctx.Out.WriteLine($"  {s.Probe} ({s.Claim}): {outcome.Result}{(outcome.Detail.Length > 0 ? ", " + outcome.Detail : "")}");
+                // A probe without a seed is one outcome, "no seed"; a probe with several runs each under its obligation.
+                var seeds = seedsOf[s.Probe].Count > 0 ? seedsOf[s.Probe] : [(null, null)!];
+                foreach (var (obligation, seed) in seeds)
+                {
+                    var outcome = One(ledger, config, adapter, worktree, head, include, environment, results, s, obligation, seed, baseline[s.Probe]);
+                    outcomes.Add(outcome);
+                    ctx.Out.WriteLine($"  {Named(s.Probe, obligation)} ({s.Claim}): {outcome.Result}{(outcome.Detail.Length > 0 ? ", " + outcome.Detail : "")}");
+                }
             }
         }
         finally
@@ -102,7 +127,7 @@ internal static class Seeds
             ["seconds"] = Math.Round(clock.Elapsed.TotalSeconds, 1),
             ["seeds"] = new JsonArray([.. outcomes.Select(o => (JsonNode)new JsonObject
             {
-                ["probe"] = o.Probe, ["claim"] = o.Claim, ["seed"] = o.Seed, ["result"] = o.Result,
+                ["probe"] = o.Probe, ["claim"] = o.Claim, ["obligation"] = o.Obligation, ["seed"] = o.Seed, ["result"] = o.Result,
                 ["violations"] = o.Violations, ["rows"] = o.Rows, ["detail"] = o.Detail,
             })]),
         });
@@ -114,9 +139,9 @@ internal static class Seeds
 
     /// <summary>Applies one probe's seed, builds, runs the probe, and undoes the seed.</summary>
     private static Outcome One(Ledger ledger, JsonObject config, IProbeAdapter adapter, string worktree, string head, string[] include,
-                               Dictionary<string, string?> environment, string results, Ledger.ProbeState s, JsonNode? seed, HashSet<int> baseline)
+                               Dictionary<string, string?> environment, string results, Ledger.ProbeState s, string? obligation, JsonNode? seed, HashSet<int> baseline)
     {
-        Outcome End(string result, string detail, int violations = 0, int rows = 0) => new(s.Probe, s.Claim, Describe(seed), result, violations, rows, detail);
+        Outcome End(string result, string detail, int violations = 0, int rows = 0) => new(s.Probe, s.Claim, obligation, Describe(seed), result, violations, rows, detail);
 
         Reset(worktree, head);
         Replay.Overlay(ledger, config, worktree);
@@ -184,11 +209,35 @@ internal static class Seeds
         var config = ledger.AxesBlock()["replay"] as JsonObject ?? [];
         var include = Files.Strings(config["include"]).ToArray() is { Length: > 0 } inc ? inc : ["src"];
         var problems = new List<string>();
+        // The obligations each claim lists (or its one implicit obligation), and the seeds that name each.
+        var obligations = ledger.Claims().ToDictionary(c => Files.Str(c["id"]), Claim.ObligationIds, StringComparer.Ordinal);
+        var seeded = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
         foreach (var (probe, entry) in ledger.Registry())
         {
             if (entry["retired"] is JsonValue retired && retired.TryGetValue<bool>(out var r) && r) continue;
-            if (Validate(ledger, include, entry["seed"], ledger.Top) is { Refused: { } refused, Detail: var detail })
-                problems.Add($"{probe}: {refused}, {detail}");
+            var claim = Files.Str(entry["claim"]);
+            var seeds = SeedsOf(entry);
+            if (seeds.Count == 0) { problems.Add($"{probe}: no seed, its registry entry names none"); continue; }
+            foreach (var (obligation, seed) in seeds)
+            {
+                if (Validate(ledger, include, seed, ledger.Top) is { Refused: { } refused, Detail: var detail })
+                    problems.Add($"{Named(probe, obligation)}: {refused}, {detail}");
+                var ids = obligations.GetValueOrDefault(claim) ?? [Claim.ImplicitObligation];
+                // A seed naming no obligation proves the probe; it counts for the claim's one implicit obligation only.
+                var counts = obligation ?? (ids is [Claim.ImplicitObligation] ? Claim.ImplicitObligation : null);
+                if (counts is null) continue;
+                if (!ids.Contains(counts)) { problems.Add($"{Named(probe, obligation)}: names obligation {counts}, which claim {claim} does not list"); continue; }
+                (seeded.TryGetValue(claim, out var set) ? set : seeded[claim] = new(StringComparer.Ordinal)).Add(counts);
+            }
+        }
+        // Every listed obligation of a claim that has a probe is seeded by some probe of that claim (decision 104);
+        // the implicit obligation is covered by the rule above that every probe has a seed.
+        var claimed = ledger.Registry().Values.Select(e => Files.Str(e["claim"])).ToHashSet(StringComparer.Ordinal);
+        foreach (var (claim, ids) in obligations.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+        {
+            if (ids is [Claim.ImplicitObligation] || !claimed.Contains(claim)) continue;
+            foreach (var id in ids.Where(id => !(seeded.GetValueOrDefault(claim)?.Contains(id) ?? false)))
+                problems.Add($"{claim}: obligation {id} has no seed in any of its probes");
         }
         return problems;
     }

@@ -114,14 +114,28 @@ internal static class Commands
             foreach (var (category, n) in Ledger.Outcomes(evidence)) sum[category] = sum.GetValueOrDefault(category) + n;
             foreach (var (finding, n) in Ledger.FindingSkips(evidence)) skips[finding] = skips.GetValueOrDefault(finding) + n;
         }
+        // Each claim's obligations (decision 104), the probes registered for the claim, and the probes whose seeds
+        // break each obligation: the claim's promise is checked only where a probe can be shown to fail on it.
+        var listed = l.Claims().ToDictionary(c => Files.Str(c["id"]), Claim.ObligationIds, StringComparer.Ordinal);
+        var registry = l.Registry();
         var claims = new JsonObject(); var total = 0; var current = 0;
         foreach (var c in universe.Claims)
         {
             var pairs = c.Pairs(); var hit = pairs.Count(p => done.Contains((c.Id, p)));
+            var probes = registry.Where(kv => Files.Str(kv.Value["claim"]) == c.Id).ToList();
+            var ids = listed.GetValueOrDefault(c.Id) ?? [Claim.ImplicitObligation];
+            var obligations = new JsonArray();
+            foreach (var id in ids)
+            {
+                var seededBy = probes.Where(kv => Seeds.SeedsOf(kv.Value).Any(s => (s.Obligation ?? (ids is [Claim.ImplicitObligation] ? Claim.ImplicitObligation : null)) == id))
+                                     .Select(kv => (JsonNode)kv.Key).ToList();
+                obligations.Add(new JsonObject { ["id"] = id, ["seeded_by"] = new JsonArray([.. seededBy]) });
+            }
             claims[c.Id] = new JsonObject
             {
                 ["pairs"] = pairs.Count, ["current"] = hit,
                 ["outcomes"] = new JsonObject((outcomes.GetValueOrDefault(c.Id) ?? []).Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))),
+                ["probes"] = new JsonArray([.. probes.Select(kv => (JsonNode)kv.Key)]), ["obligations"] = obligations,
             };
             total += pairs.Count; current += hit;
         }
@@ -150,9 +164,50 @@ internal static class Commands
         foreach (var (id, c) in (s["claims"] as JsonObject)!.OrderBy(kv => kv.Key, StringComparer.Ordinal))
         {
             var rows = (c!["outcomes"] as JsonObject)!.Select(kv => $"{kv.Key} {Files.Num(kv.Value)}").ToList();
-            l.Ctx.Out.WriteLine($"  {id}: {Files.Num(c["current"])}/{Files.Num(c["pairs"])}" + (rows.Count > 0 ? $"  (rows: {string.Join(", ", rows)})" : ""));
+            var obligations = (c["obligations"] as JsonArray ?? []).OfType<JsonObject>().ToList();
+            var unseeded = obligations.Where(o => (o["seeded_by"] as JsonArray ?? []).Count == 0).Select(o => Files.Str(o["id"])).ToList();
+            var promise = obligations.Count == 0 ? "" : $"  obligations {obligations.Count}" + (unseeded.Count > 0 ? $" ({unseeded.Count} without a seed: {string.Join(", ", unseeded)})" : ", each seeded");
+            l.Ctx.Out.WriteLine($"  {id}: {Files.Num(c["current"])}/{Files.Num(c["pairs"])}" + (rows.Count > 0 ? $"  (rows: {string.Join(", ", rows)})" : "") + promise);
         }
         return 0;
+    }
+
+    /// <summary>
+    /// What the corpus leaves out, each with its recorded reason, from the tracked corpus and the generated axes
+    /// alone: the settings no surface reaches and nothing ignores, the settings without values, the declarations
+    /// the generators refuse, the values the frameworks refuse on their own, what the claims say they do not
+    /// promise (their not-promised entries and narrowings), and the surfaces the axes file declares out of reach.
+    /// A report for the release checklist and a feature-research round; it decides nothing (decision 104).
+    /// </summary>
+    public static int Gaps(Ledger l, Args a)
+    {
+        var (universe, problems) = Axes.Build(l, a.Get("base") ?? "origin/main");
+        var block = l.AxesBlock();
+        var generated = Files.ReadJson(Path.Combine(l.Memory, "axes-generated.json")) as JsonObject ?? [];
+        var versions = string.Join(", ", (generated["versions"] as JsonObject ?? []).Select(kv => $"{kv.Key} {Files.Str(kv.Value)}"));
+        l.Ctx.Out.WriteLine($"prober gaps: {l.Branch} at {l.Head[..7]}: what the corpus leaves out, each with its recorded reason; a report, no decision");
+        Section("settings no surface reaches and nothing ignores" + (versions.Length > 0 ? $" (enumerated at {versions})" : ""),
+                problems.Where(p => p.StartsWith("unassigned: ", StringComparison.Ordinal)).Select(p => p["unassigned: ".Length..]));
+        Section("settings without values", problems.Where(p => p.StartsWith("needs values: ", StringComparison.Ordinal)).Select(p => p["needs values: ".Length..]));
+        Section("declarations the generators refuse (shape.refused-kind)", Files.Strings(block["axes"]?["shape.refused-kind"]));
+        Section("values the frameworks refuse on their own",
+                (block["refused"] as JsonObject ?? []).SelectMany(axis => (axis.Value as JsonObject ?? []).Select(v => $"{axis.Key}={v.Key}: {Files.Str(v.Value)}")));
+        Section("not promised, by what it concerns",
+                universe.Claims.SelectMany(c => c.NotPromised.Select(n => (Key: Concerns(n.Axes), Line: $"{Concerns(n.Axes)}: {c.Id}/{n.Id} \"{n.Sentence}\" ({n.Source})"))
+                                                 .Concat(c.Narrowed.Select(kv => (Key: kv.Key, Line: $"{kv.Key}: {c.Id} narrows it, \"{kv.Value}\" ({c.Source})"))))
+                        .OrderBy(x => x.Key, StringComparer.Ordinal).ThenBy(x => x.Line, StringComparer.Ordinal).Select(x => x.Line));
+        Section("out of reach", (block["out-of-reach"] as JsonObject ?? []).Select(kv => $"{kv.Key}: {Files.Str(kv.Value)}"));
+        return 0;
+
+        void Section(string title, IEnumerable<string> items)
+        {
+            var list = items.ToList();
+            l.Ctx.Out.WriteLine($"{title}: {(list.Count == 0 ? "none" : list.Count.ToString(CultureInfo.InvariantCulture))}");
+            foreach (var item in list) l.Ctx.Out.WriteLine($"  {item}");
+        }
+
+        static string Concerns(IReadOnlyDictionary<string, List<string>> axes) =>
+            axes.Count == 0 ? "the whole claim" : string.Join(" ", axes.Select(kv => $"{kv.Key}={string.Join("|", kv.Value)}"));
     }
 
     public static int Gate(Ledger l, Args a) => ReleaseGate.Run(l, a.Get("since"), a.Flag("json"));

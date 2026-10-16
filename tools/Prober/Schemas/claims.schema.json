@@ -49,6 +49,77 @@
         },
         "description": "axis dropped, with the source sentence that limits it (checked verbatim)"
       },
+      "obligations": {
+        "type": "array",
+        "minItems": 1,
+        "description": "what the claim promises, each checkable on its own: a sentence quoted verbatim from the claim's source document (checked as a narrowing is), under an id a probe's seed names (decision 104); a claim without the field has one obligation, the claim itself, under the id `claim`",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "sentence"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
+            },
+            "sentence": {
+              "type": "string",
+              "pattern": "\\S"
+            },
+            "axes": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "description": "the axis values the obligation concerns, where it is not the whole claim"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "not-promised": {
+        "type": "array",
+        "minItems": 1,
+        "description": "what the claim does not promise, one entry per intended difference: the sentence of the document or record that makes it intended, quoted verbatim from `source` (checked as a narrowing is), and the axis values it concerns; a note key of outcome expected-refusal, a narrowing or an applicability condition cites an entry by its id (decision 104)",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "source",
+            "sentence"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
+            },
+            "source": {
+              "type": "string",
+              "description": "file#heading of the document or record that states it"
+            },
+            "sentence": {
+              "type": "string",
+              "pattern": "\\S"
+            },
+            "axes": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "description": "the axis values or shapes the difference concerns"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
       "exclude": {
         "type": "array",
         "description": "pairs no row can hold, each group with the reason why; `prober universe` prints the reasons, since nothing checks them mechanically",

@@ -42,6 +42,50 @@
           "retired": {
             "type": "boolean"
           },
+          "seeds": {
+            "type": "array",
+            "minItems": 1,
+            "description": "One seeded defect per obligation of the probe's claim that this probe checks (decision 104): each as `seed` below, naming the obligation it breaks. A probe may carry `seed` and `seeds` both.",
+            "items": {
+              "type": "object",
+              "required": [
+                "obligation",
+                "defect"
+              ],
+              "anyOf": [
+                {
+                  "required": [
+                    "patch"
+                  ]
+                },
+                {
+                  "required": [
+                    "env"
+                  ]
+                }
+              ],
+              "properties": {
+                "obligation": {
+                  "type": "string",
+                  "description": "The id of the claim's obligation this seed breaks (claims.json `obligations[].id`, or `claim` for a claim without the field)."
+                },
+                "patch": {
+                  "type": "string"
+                },
+                "env": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "defect": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          },
           "seed": {
             "type": "object",
             "required": [
@@ -75,6 +119,10 @@
                 "type": "string",
                 "minLength": 1,
                 "description": "What the seed breaks, in one sentence."
+              },
+              "obligation": {
+                "type": "string",
+                "description": "The id of the claim's obligation this seed breaks (decision 104); absent, the seed proves the probe and counts for the claim's one implicit obligation only where the claim lists none."
               }
             },
             "additionalProperties": false,

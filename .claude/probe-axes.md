@@ -514,6 +514,10 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
       ]
     }
   },
+  "out-of-reach": {
+    "postgresql": "needs a server; the EF probes run SQLite in memory, and the EF translation claims are checked by translation alone",
+    "native-aot": "measured only by the consumer smoke test (tools/ConsumerSmokeTest), minutes and a platform linker; no probe publishes with Native AOT"
+  },
   "refused": {
     "shape.site": {
       "in-generic-type": "CMTK1005: the generators refuse a value object nested in a generic type at build (Generators README, Build errors)"
