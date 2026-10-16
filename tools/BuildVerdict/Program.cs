@@ -40,7 +40,11 @@
 //   - An agent's shell may find a dotnet first on PATH that cannot satisfy global.json (exit 155).
 //     Then the one the SDK installer puts in /usr/local/share/dotnet or %ProgramFiles%\dotnet is
 //     used, if it can, and the verdict says so.
-//   - The log is written beside and renamed into place, so a reader never sees half of it.
+//   - Each process writes and reads a log of its own and replaces the shared one when it ends, so a
+//     reader never sees half of it, and several at once (the probe replay) never read each other's:
+//     measured 2026-10-16, six at once each reported the same duration, the last one's.
+//     BUILD_VERDICT_LOG_DIR=<dir> keeps each process's log there as build-verdict-<pid>.log instead,
+//     for a caller that runs many and wants each.
 //
 // Parse-only mode, for BuildVerdict.Tests: BUILD_VERDICT_LOG=<file> BUILD_VERDICT_EXIT=<n> reads
 // that fixture as the output of the one dotnet command the mode would run (for `test`, the test
@@ -67,6 +71,7 @@ static class Verdict
     static string solution = "";
     static string remedies = "";
     static string log = "";
+    static string? sharedLog;
     static bool parseOnly;
     static string dotnet = "dotnet";
     static string note = "";
@@ -95,9 +100,24 @@ static class Verdict
         }
         else
         {
-            var (code, output) = Capture("git", ["-C", root, "rev-parse", "--absolute-git-dir"]);
-            var gitDir = code == 0 ? output.Trim() : Path.GetTempPath();
-            log = Path.Combine(gitDir, "build-verdict-last.log");
+            // Each process writes a log of its own and reads its own: the probe replay runs several at once,
+            // and one that read the shared log after replacing it could read another's. The shared one,
+            // $GIT_DIR/build-verdict-last.log, is replaced with this process's when it ends. Under
+            // BUILD_VERDICT_LOG_DIR each process's log is kept there under its process id instead, for a
+            // caller that runs many and wants each.
+            var keep = Environment.GetEnvironmentVariable("BUILD_VERDICT_LOG_DIR");
+            if (!string.IsNullOrEmpty(keep))
+            {
+                Directory.CreateDirectory(keep);
+                log = Path.Combine(keep, $"build-verdict-{Environment.ProcessId}.log");
+            }
+            else
+            {
+                var (code, output) = Capture("git", ["-C", root, "rev-parse", "--absolute-git-dir"]);
+                var gitDir = code == 0 ? output.Trim() : Path.GetTempPath();
+                sharedLog = Path.Combine(gitDir, "build-verdict-last.log");
+                log = TemporaryBeside(sharedLog);
+            }
         }
         var overrideDotnet = Environment.GetEnvironmentVariable("BUILD_VERDICT_DOTNET");
         if (!string.IsNullOrEmpty(overrideDotnet)) dotnet = overrideDotnet;
@@ -111,6 +131,17 @@ static class Verdict
             Console.Error.WriteLine(Usage);
             return 2;
         }
+        finally
+        {
+            Publish();
+        }
+    }
+
+    // This process's log becomes the shared one, once, when the process is done with it.
+    static void Publish()
+    {
+        if (sharedLog is { } shared && File.Exists(log)) SharedFile.Replace(log, shared);
+        sharedLog = null;
     }
 
     static int Dispatch(string[] args)
@@ -246,7 +277,7 @@ static class Verdict
         return i < 0 ? lines : lines.Take(i).ToList();
     }
 
-    static void LogLine() => Console.Write($"\nlog: {log}\n");
+    static void LogLine() => Console.Write($"\nlog: {sharedLog ?? log}\n");
 
     // A tail of the log for the reader: repository paths relative, indented.
     static void Excerpt(List<string> lines, int n)
@@ -308,7 +339,7 @@ static class Verdict
     {
         if (parseOnly) return;
         var (code, output) = Capture(dotnet, ["--version"]);
-        WriteAtomically(log, output);
+        File.WriteAllText(log, output);
         if (code == 0) return;
         var fallbackDir = OperatingSystem.IsWindows()
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet")
@@ -324,6 +355,7 @@ static class Verdict
             return;
         }
         ReportBuild(1);
+        Publish();
         Environment.Exit(1);
     }
 
@@ -345,21 +377,10 @@ static class Verdict
     {
         if (parseOnly)
             return int.TryParse(Environment.GetEnvironmentVariable("BUILD_VERDICT_EXIT"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var e) ? e : 0;
-        var temporary = TemporaryBeside(log);
-        if (append && File.Exists(log)) File.Copy(log, temporary, overwrite: true);
-        var code = RunInto(temporary, args, append);
-        SharedFile.Replace(temporary, log);
-        return code;
+        return RunInto(log, args, append);
     }
 
     static string TemporaryBeside(string path) => $"{path}.{Environment.ProcessId}.tmp";
-
-    static void WriteAtomically(string path, string text)
-    {
-        var temporary = TemporaryBeside(path);
-        File.WriteAllText(temporary, text);
-        SharedFile.Replace(temporary, path);
-    }
 
     static int RunInto(string file, string[] args, bool append)
     {

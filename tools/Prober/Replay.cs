@@ -143,8 +143,8 @@ internal static class Replay
         };
     }
 
-    /// <summary>One process variant of a probe, run: what it was asked, what it answered, and where its rows and coverage went.</summary>
-    private sealed record VariantRun(JsonObject Variant, int Index, Ran Ran, double Seconds, string OutDir, string Coverage);
+    /// <summary>One process variant of a probe, run: what it was asked, what it answered, and where its rows, coverage and logs went.</summary>
+    private sealed record VariantRun(JsonObject Variant, int Index, Ran Ran, double Seconds, string OutDir, string Coverage, string LogDir);
 
     /// <summary>
     /// Starts every variant of a probe, each on a thread of its own that waits its turn at the gate, so the
@@ -160,7 +160,9 @@ internal static class Replay
             var i = index++;
             var coverageFile = coverage ? $"{s.Probe}-{i}.cobertura.xml" : "";
             var outDir = Path.Combine(results, $"{s.Probe}-{i}-rows");
-            var env = new Dictionary<string, string?>(environment, StringComparer.Ordinal) { ["PROBE_OUT"] = outDir };
+            // PROBE_LOG_DIR: where the run may leave its full logs; a failed run's are kept in the state.
+            var logDir = Path.Combine(results, $"{s.Probe}-{i}-log");
+            var env = new Dictionary<string, string?>(environment, StringComparer.Ordinal) { ["PROBE_OUT"] = outDir, ["PROBE_LOG_DIR"] = logDir };
             foreach (var (k, v) in variant) env[k] = Files.Str(v);
             pending.Add(Task.Factory.StartNew(() =>
             {
@@ -169,7 +171,7 @@ internal static class Replay
                 {
                     var clock = Stopwatch.StartNew();
                     var ran = adapter.RunProbe(worktree, s.Filter, results, coverageFile, env);
-                    return new VariantRun(variant, i, ran, clock.Elapsed.TotalSeconds, outDir, coverageFile);
+                    return new VariantRun(variant, i, ran, clock.Elapsed.TotalSeconds, outDir, coverageFile, logDir);
                 }
                 finally { gate.Release(); }
             }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default));
@@ -225,6 +227,15 @@ internal static class Replay
                 var label = v.Variant.Count > 0 ? " [" + string.Join(", ", v.Variant.Select(kv => $"{kv.Key}={Files.Str(kv.Value)}")) + "]" : "";
                 ctx.Out.WriteLine($"  {s.Probe}{label}: {FirstLine(v.Ran)} ({v.Seconds.ToString("F1", CultureInfo.InvariantCulture)} s)");
                 if (v.Ran.ExitCode != 0) { result = "fail"; ctx.Out.WriteLine(string.Join('\n', v.Ran.Stdout.Split('\n').Skip(1).Take(11))); }
+                // A failed run's full logs, kept under the state's logs/ for triage: in CI the state is the artifact.
+                if (v.Ran.ExitCode != 0 && Directory.Exists(v.LogDir))
+                    foreach (var file in Directory.EnumerateFiles(v.LogDir))
+                    {
+                        var kept = ledger.P(Path.Combine("logs", $"{s.Probe}-{v.Index}-{Path.GetFileName(file)}"));
+                        Directory.CreateDirectory(Path.GetDirectoryName(kept)!);
+                        File.Copy(file, kept, overwrite: true);
+                        ctx.Out.WriteLine($"    log: {kept}");
+                    }
                 if (v.Coverage.Length > 0) reports.AddRange(Directory.EnumerateFiles(results, v.Coverage, SearchOption.AllDirectories));
 
                 // Execution evidence: the rows this variant should run, the rows it did, how each ended and the

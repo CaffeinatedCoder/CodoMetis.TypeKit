@@ -447,10 +447,13 @@ internal static class Commands
                 throw new Refusal($"{from} replayed {Files.Str(last["commit"])[..7]}, another leg {Files.Str(legs[0]["commit"])[..7]}; the legs of one replay share a commit");
             legs.Add(last);
             foreach (var name in new[] { "runs.jsonl", "footprints.jsonl", "findings.jsonl", "ledger.jsonl" }) UnionLines(Path.Combine(dir, name), l.P(name));
-            var evidence = Path.Combine(dir, "evidence");
-            if (Directory.Exists(evidence))
-                foreach (var file in Directory.EnumerateFiles(evidence, "*.json"))
-                    File.Copy(file, Path.Combine(l.Dir, "evidence", Path.GetFileName(file)), overwrite: true);
+            foreach (var sub in new[] { "evidence", "logs" })
+            {
+                var source = Path.Combine(dir, sub);
+                if (!Directory.Exists(source)) continue;
+                Directory.CreateDirectory(l.P(sub));
+                foreach (var file in Directory.EnumerateFiles(source)) File.Copy(file, l.P(Path.Combine(sub, Path.GetFileName(file))), overwrite: true);
+            }
             foreach (var name in new[] { "universe.json" })
                 if (File.Exists(Path.Combine(dir, name)) && !File.Exists(l.P(name))) File.Copy(Path.Combine(dir, name), l.P(name));
             var axes = Path.Combine(root, "axes-generated.json");

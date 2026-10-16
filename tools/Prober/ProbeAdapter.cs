@@ -74,6 +74,10 @@ internal sealed class DotNetAdapter(JsonObject config) : IProbeAdapter
         if (coverageFile.Length == 0 && Files.Strings(config["test"]).Any(arg => arg.Contains("{cobertura}", StringComparison.Ordinal)))
             throw new Refusal("the replay's test template carries the coverage arguments itself; move them to a \"coverage\" array of the replay configuration, so a run without a footprint can leave them out");
         string[] argv = coverageFile.Length > 0 ? [.. Expand(config["test"], values), .. Expand(config["coverage"], values)] : Expand(config["test"], values);
+        // The template runs the verdict tool, which keeps its full log where BUILD_VERDICT_LOG_DIR says: the
+        // directory the replay offers as PROBE_LOG_DIR, whose files it keeps for a failed run.
+        if (environment.TryGetValue("PROBE_LOG_DIR", out var logDir) && logDir is { Length: > 0 })
+            environment = new Dictionary<string, string?>(environment, StringComparer.Ordinal) { ["BUILD_VERDICT_LOG_DIR"] = logDir };
         return Start(worktree, argv, environment);
     }
 
