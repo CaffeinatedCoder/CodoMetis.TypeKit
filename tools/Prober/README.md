@@ -18,7 +18,7 @@ dotnet tools/Prober/bin/Release/net10.0/prober.dll help
 | `status`, `stale`, `universe`, `rows [--claim C \| --probe P]`, … | none | anywhere |
 | `gaps [--base REF]` | none | anywhere: what the corpus leaves out, each with its recorded reason; a report that decides nothing (decision 104) |
 | `new --claim C [--probe P] [--family F]` | none | anywhere: stages a probe's skeleton, its own rows and its registry entry with no seed yet, and prints what the writer still owes |
-| `try --probe P [--rows i,j,...] [--no-build]` | none | locally: builds once in the replay's worktree and runs that one probe, every row or the rows given; records nothing and takes no lock |
+| `try --probe P [--rows i,j,...] [--no-build]` | none | locally: builds once in the replay's worktree and runs that one probe, every row or the rows given; records nothing, and holds the worktree from a replay while it runs |
 | `round explore\|full` | the `prober` agent | locally only, under caps it cannot overrun |
 | `seeds [--probe P]` | none | locally only: one build per seed, in a scratch worktree (decision 100) |
 
@@ -78,10 +78,17 @@ narrowing's and refuses a sentence its document does not hold, or an id listed t
 ones no seed names, and `gaps` prints every not-promised entry and narrowing beside the settings no surface
 reaches, the refused shapes and values, and the axes file's `out-of-reach` surfaces (decision 104).
 
-A pair of a claim's axes counts as covered only by evidence a replay recorded: a row that was expected,
-executed and ended as a pass, for the settings that actually applied, while the result's identity holds
+A pair of a claim's axes counts as covered only by evidence a replay recorded: a check that ended as a pass, in a
+row that was expected and executed, for the settings that actually applied, while the result's identity holds
 (the probe, every compiled corpus source, the rows, the axes file, the build environment, this tool's
-version and the schema version) and the product files the probe ran are unchanged.
+version and the schema version) and the product files the probe ran are unchanged. A row's checks
+(`Row.Check` in the harness) each name an obligation and a baseline and record the axes they read; a check is
+credited with those and the row's own (read outside any check), and a pair is never put together from two
+checks' axes. A row without checks is one check of the obligation `claim` with the row's category. Evidence is
+version 2 (`Schemas/evidence.schema.json`): the replay copies each row's `checks` beside its `applied` and
+`reasons`. `status --json` gives each obligation `current`, the pairs current checks naming it earned, and
+`passed`; the text line counts rows and checks by outcome and ends with the obligations no passing check named
+at the last replay (`K uncredited`).
 
 ## Seeds
 
@@ -90,8 +97,10 @@ files (the replay's `include`), an environment toggle, or both, and the sentence
 lists obligations, the entry's `seeds` holds one such seed per obligation the probe checks, each naming it in
 `obligation`, and every listed obligation of a claim with probes has a seed in one of them (decision 104).
 `seeds` applies each seed on its own in the `seeds` worktree beside the replay's, builds, runs the probe
-and counts the seed caught only for a row that ends as a violation, raised no harness error and does not
-violate in the unseeded probe (decision 103). The unseeded rows come from the ledger where the probe's
+and counts the seed caught only for a check that ends as a violation, with no harness error in it or in its
+row outside its checks (decision 103), in a row whose unseeded run had no violation of the same obligation; a
+seed naming an obligation is caught only by a check naming it, so a probe whose rows run no checks (each the
+one check `claim`) catches only seeds that name none. The unseeded rows come from the ledger where the probe's
 evidence is current, else from an unseeded run first. Nothing it runs is evidence; it
 writes `seeds-last.json` (`Schemas/seeds-run.schema.json`), one outcome per seed, reported as
 `P/<obligation>` where the seed names one. `register --obligation O --seed PATCH --defect TEXT` (or
@@ -119,7 +128,8 @@ to HEAD, overlays the corpus and the staging as the replay does, builds once thr
 `--no-build`), and runs P alone in each of its registry variants, or only the rows `--rows` names, through the
 harness's `PROBE_ROWS`, within the rows each variant's `PROBE_ONLY` selects. It prints each run's verdict line
 and how each row ended, and exits with the probe's code (1 when the build fails). It records no evidence,
-footprint or run and takes no lock, so a replay at the same time shares its worktree. Then write a seed per
+footprint or run and takes no round lock, but holds the replay's worktree (`replay.lock`) while it runs, so a try
+refuses while a replay of the checkout runs, and a replay skips while a try does. Then write a seed per
 obligation and register it with the command `new` printed for that obligation (`register --obligation O`,
 under "Seeds"), show each caught with `seeds --probe P`, and `publish`. `register` lints the staged sources
 first (below). A writer needs no build or sync script of their own.
@@ -127,8 +137,12 @@ first (below). A writer needs no build or sync script of their own.
 ## Register and publish
 
 `register` and `publish` read the staged harness and probe sources first and refuse, by file and line, a
-`Note` whose first argument is not a `NoteKeys` member the corpus declares, and a harness `Skip` whose finding
-is not a string literal naming a finding this ledger holds open (decision 103). The scan blanks out comments
+`Note` whose first argument is not a `NoteKeys` member the corpus declares, a harness `Skip` whose finding
+is not a string literal naming a finding this ledger holds open (decision 103), and a check's `Inapplicable` or
+`Refused` whose first argument is not a `Cite` factory with a string literal, or names what does not exist: a
+not-promised entry the probe's claim does not list (any claim's, for a harness source no one probe owns), a docs
+file, a knowledge entry under `design/knowledge/`, a record under `design/adr/`. `ProbeCiteTests` in the
+conventions tests holds the same over the tracked corpus. The scan blanks out comments
 and string literals and reads text, since this tool references the base class library only.
 
 ## The adapter

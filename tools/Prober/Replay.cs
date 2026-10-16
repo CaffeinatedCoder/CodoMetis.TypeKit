@@ -253,12 +253,7 @@ internal static class Replay
                         {
                             var idx = (int)Files.Num(line["idx"]);
                             executed.Add(idx);
-                            (evidence["rows"] as JsonObject)![idx.ToString(CultureInfo.InvariantCulture)] = new JsonObject
-                            {
-                                ["category"] = Files.Str(line["category"], "violation"), ["applied"] = line["applied"]?.DeepClone() ?? new JsonObject(),
-                                ["reasons"] = new JsonArray([.. Files.Strings(line["reasons"]).Take(6).Select(x => (JsonNode)x)]),
-                                ["findings"] = new JsonArray([.. Files.Strings(line["findings"]).Select(x => (JsonNode)x)]),
-                            };
+                            (evidence["rows"] as JsonObject)![idx.ToString(CultureInfo.InvariantCulture)] = EvidenceRow(line);
                         }
                 (evidence["variants"] as JsonArray)!.Add(new JsonObject
                 {
@@ -273,7 +268,10 @@ internal static class Replay
             Files.WriteJson(evidencePath, evidence);
             var categories = (evidence["rows"] as JsonObject)!.GroupBy(kv => Files.Str(kv.Value!["category"]), StringComparer.Ordinal)
                                                                .OrderBy(g => g.Key, StringComparer.Ordinal).Select(g => $"{g.Key} {g.Count()}");
-            ctx.Out.WriteLine("    outcomes: " + string.Join(", ", categories));
+            // Checks beside rows, once a row of the probe ran any: until then every row is its one check and the line says nothing more.
+            var checks = (evidence["rows"] as JsonObject)!.Any(kv => kv.Value?["checks"] is JsonArray { Count: > 0 })
+                ? "; checks: " + string.Join(", ", Ledger.CheckOutcomes(evidence).Select(kv => $"{kv.Key} {kv.Value}")) : "";
+            ctx.Out.WriteLine("    outcomes: " + string.Join(", ", categories) + checks);
             var record = new StringWriter();
             Program.Run(new Context(ledger.Top, ctx.Environment, record, ctx.Error),
                 ["record-run", "--branch", ledger.Branch, "--probe", s.Probe, "--result", result,
@@ -389,6 +387,30 @@ internal static class Replay
             if (!File.Exists(dst) || !File.ReadAllBytes(dst).AsSpan().SequenceEqual(data)) File.WriteAllBytes(dst, data);
         }
         return probeDir;
+    }
+
+    /// <summary>
+    /// One row of the harness's jsonl as evidence keeps it: its category, the settings that applied, six reasons, the
+    /// findings it skipped for, and each check it ran with the same fields (obligation, baseline, category, its own
+    /// settings, six reasons, notes). A row that ran no check keeps no <c>checks</c>.
+    /// </summary>
+    internal static JsonObject EvidenceRow(JsonObject line)
+    {
+        static JsonArray Six(JsonNode? reasons) => new([.. Files.Strings(reasons).Take(6).Select(x => (JsonNode)x)]);
+        var row = new JsonObject
+        {
+            ["category"] = Files.Str(line["category"], "violation"), ["applied"] = line["applied"]?.DeepClone() ?? new JsonObject(),
+            ["reasons"] = Six(line["reasons"]),
+            ["findings"] = new JsonArray([.. Files.Strings(line["findings"]).Select(x => (JsonNode)x)]),
+        };
+        if (line["checks"] is JsonArray checks && checks.Count > 0)
+            row["checks"] = new JsonArray([.. checks.OfType<JsonObject>().Select(c => (JsonNode)new JsonObject
+            {
+                ["obligation"] = Files.Str(c["obligation"]), ["baseline"] = c["baseline"] is JsonValue b ? Files.Str(b) : null,
+                ["category"] = Files.Str(c["category"], "violation"), ["applied"] = c["applied"]?.DeepClone() ?? new JsonObject(),
+                ["reasons"] = Six(c["reasons"]), ["notes"] = Files.Str(c["notes"]),
+            })]);
+        return row;
     }
 
     /// <summary>The harness's PROBE_ONLY filter, replicated: the rows a variant is expected to run.</summary>

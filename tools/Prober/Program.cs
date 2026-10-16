@@ -39,7 +39,7 @@ internal static class Program
                                             the claims, a name taken, a family that is not the claim's
           try --probe P [--rows i,j,...] [--no-build]   builds once in the replay's worktree and runs P alone, every
                                             variant or the rows given, printing how each row ended; records nothing,
-                                            takes no lock, exits with the probe's exit code
+                                            holds the worktree from a replay, exits with the probe's exit code
 
         Running probes:
           replay [--all] [--family F] [--parallel N] [--no-footprint] [--holder H] [--dry-run] [--where]
