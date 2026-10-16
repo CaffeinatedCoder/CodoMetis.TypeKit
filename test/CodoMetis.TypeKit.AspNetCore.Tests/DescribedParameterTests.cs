@@ -43,7 +43,9 @@ public sealed class DescribedParameterTests
         (Key<decimal>(), Key<decimal>()),
         (Key<decimal?>(), Key<decimal?>()),
         // A value object over it, declared in this assembly and in a referenced one (A3), which ASP.NET hands to the
-        // transformers differently.
+        // transformers differently. The items of a nullable one's array admit null, as decimal?[]'s do, where the
+        // parameter itself does not: the element is told from the parameter by its type (IsParameterItself; the
+        // analyst's seed S2, which no test caught before these rows, fails the 72 query-items and header-items rows).
         (Key<ParameterMoney>(), Key<decimal>()),
         (Key<ParameterMoney?>(), Key<decimal?>()),
         (Key<ProbeAmount>(), Key<decimal>()),
