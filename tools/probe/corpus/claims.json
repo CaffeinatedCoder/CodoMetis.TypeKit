@@ -6913,6 +6913,496 @@
             "shape.wrapped=ulong"
           ]
         ]
+      },
+      {
+        "reason": "Declared as .claude/probe-axes.md says (as C22's harness, BuildRefusals.cs, declares it), a closed set named as one of its generated members leaves their writing to the generators, so in this compilation without them it does not implement IClosedSet's members: the compiler's own CS0535, and no row can hold it beside the analyzer's places.",
+        "pairs": [
+          [
+            "shape.containing=class",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.containing=generic-type",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.containing=record-class",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.containing=record-struct",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.containing=struct",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.inheritance=base-depth-1",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.inheritance=base-depth-2",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.inheritance=base-depth-3",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.inheritance=base-explicit-IEquatable",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.inheritance=explicit-interface-member",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.inheritance=none",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.kind=closed-set",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.kind=record-struct",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.kind=sealed-record-class",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.kind=validated-class",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.kind=validated-struct",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=array-element",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=dictionary-key",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=dictionary-value",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=field",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=immutable-array-element",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=in-patch",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=list-element",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=nullable-property",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=polymorphic-derived-property",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=property",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=read-only-list-element",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=record-ctor-parameter",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=required-init",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=root",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.site=nested-in-class"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.site=nested-in-struct"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.site=nested-two-levels"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.site=top-level"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=DateOnly"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=DateTime"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=DateTimeOffset"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=Guid"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=NodaTime.Instant"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=TimeOnly"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=TimeSpan"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=Uri"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=bool"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=byte"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=char"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=decimal"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=double"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=enum"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=flags-enum"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=int"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=long"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=own-record-class"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=string"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=ulong"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "site=attribute-argument"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "site=cast"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "site=default-literal"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "value=(FaultKind)9"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "value=default"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "value=valid"
+          ]
+        ]
+      },
+      {
+        "reason": "A value object with a hand-written operator == and != between two of the type is C#'s own CS0111 without the generators (Generators README, Build errors: CMTK1011, 'which C# also reports as CS0111'), since a record already declares both, so this compilation without the generators cannot hold it.",
+        "pairs": [
+          [
+            "shape.containing=class",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.containing=generic-type",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.containing=record-class",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.containing=record-struct",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.containing=struct",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.inheritance=base-depth-1",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.inheritance=base-depth-2",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.inheritance=base-depth-3",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.inheritance=base-explicit-IEquatable",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.inheritance=explicit-interface-member",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.inheritance=none",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.kind=closed-set",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.kind=record-struct",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.kind=sealed-record-class",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.kind=validated-class",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.kind=validated-struct",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=array-element",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=dictionary-key",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=dictionary-value",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=field",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=immutable-array-element",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=in-patch",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=list-element",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=nullable-property",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=polymorphic-derived-property",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=property",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=read-only-list-element",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=record-ctor-parameter",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=required-init",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=root",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.site=nested-in-class"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.site=nested-in-struct"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.site=nested-two-levels"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.site=top-level"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=DateOnly"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=DateTime"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=DateTimeOffset"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=Guid"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=NodaTime.Instant"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=TimeOnly"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=TimeSpan"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=Uri"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=bool"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=byte"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=char"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=decimal"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=double"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=enum"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=flags-enum"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=int"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=long"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=own-record-class"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=string"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=ulong"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "site=attribute-argument"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "site=cast"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "site=default-literal"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "value=(FaultKind)9"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "value=default"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "value=valid"
+          ]
+        ]
       }
     ]
   },
@@ -10281,6 +10771,552 @@
           [
             "shape.kind=closed-set",
             "shape.wrapped=ulong"
+          ]
+        ]
+      },
+      {
+        "reason": "Declared as .claude/probe-axes.md says (as C22's harness, BuildRefusals.cs, declares it), a closed set named as one of its generated members leaves their writing to the generators, so in this compilation without them it does not implement IClosedSet's members: the compiler's own CS0535, and no row can hold it beside the analyzer's places.",
+        "pairs": [
+          [
+            "attribute=ClosedSet",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "attribute=Distinct",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "attribute=FlagsEnum",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "attribute=Interface",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "attribute=ReadOnlyStruct",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "attribute=Unrelated",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "attribute=Unsealed",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "attribute=ValueObject",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.containing=class",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.containing=generic-type",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.containing=record-class",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.containing=record-struct",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.containing=struct",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.inheritance=base-depth-1",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.inheritance=base-depth-2",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.inheritance=base-depth-3",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.inheritance=base-explicit-IEquatable",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.inheritance=explicit-interface-member",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.inheritance=none",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.kind=closed-set",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.kind=record-struct",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.kind=sealed-record-class",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.kind=validated-class",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.kind=validated-struct",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=array-element",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=dictionary-key",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=dictionary-value",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=field",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=immutable-array-element",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=in-patch",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=list-element",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=nullable-property",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=polymorphic-derived-property",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=property",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=read-only-list-element",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=record-ctor-parameter",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=required-init",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.position=root",
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.site=nested-in-class"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.site=nested-in-struct"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.site=nested-two-levels"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.site=top-level"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=DateOnly"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=DateTime"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=DateTimeOffset"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=Guid"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=NodaTime.Instant"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=TimeOnly"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=TimeSpan"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=Uri"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=bool"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=byte"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=char"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=decimal"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=double"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=enum"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=flags-enum"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=int"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=long"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=own-record-class"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=string"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "shape.wrapped=ulong"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "site=Deconstruct"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "site=await"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "site=call"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "site=collection-expression"
+          ],
+          [
+            "shape.refused-kind=closed-set-named-as-generated-member (CMTK1021)",
+            "site=foreach"
+          ]
+        ]
+      },
+      {
+        "reason": "A value object with a hand-written operator == and != between two of the type is C#'s own CS0111 without the generators (Generators README, Build errors: CMTK1011, 'which C# also reports as CS0111'), since a record already declares both, so this compilation without the generators cannot hold it.",
+        "pairs": [
+          [
+            "attribute=ClosedSet",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "attribute=Distinct",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "attribute=FlagsEnum",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "attribute=Interface",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "attribute=ReadOnlyStruct",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "attribute=Unrelated",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "attribute=Unsealed",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "attribute=ValueObject",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.containing=class",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.containing=generic-type",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.containing=record-class",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.containing=record-struct",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.containing=struct",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.inheritance=base-depth-1",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.inheritance=base-depth-2",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.inheritance=base-depth-3",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.inheritance=base-explicit-IEquatable",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.inheritance=explicit-interface-member",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.inheritance=none",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.kind=closed-set",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.kind=record-struct",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.kind=sealed-record-class",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.kind=validated-class",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.kind=validated-struct",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=array-element",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=dictionary-key",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=dictionary-value",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=field",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=immutable-array-element",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=in-patch",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=list-element",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=nullable-property",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=polymorphic-derived-property",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=property",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=read-only-list-element",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=record-ctor-parameter",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=required-init",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.position=root",
+            "shape.refused-kind=equality-operator (CMTK1011)"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.site=nested-in-class"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.site=nested-in-struct"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.site=nested-two-levels"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.site=top-level"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=DateOnly"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=DateTime"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=DateTimeOffset"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=Guid"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=NodaTime.Instant"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=TimeOnly"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=TimeSpan"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=Uri"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=bool"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=byte"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=char"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=decimal"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=double"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=enum"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=flags-enum"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=int"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=long"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=own-record-class"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=string"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "shape.wrapped=ulong"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "site=Deconstruct"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "site=await"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "site=call"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "site=collection-expression"
+          ],
+          [
+            "shape.refused-kind=equality-operator (CMTK1011)",
+            "site=foreach"
           ]
         ]
       }

@@ -5,9 +5,9 @@
 // Oracle: claim. Each row writes the value (value axis) in the written form (site axis) at every place its shape axes describe, each
 // place marked: in the declaration of shape.kind over shape.wrapped at shape.site (a fault set's member for closed-set, a static member
 // of a value object otherwise), in the topmost base of its shape.inheritance chain and in an explicit interface member, in a member of a
-// shape.containing type at shape.position, and in a declaration of shape.refused-kind (which compiles here, with no generators). An
-// attribute-argument row also writes the documented RequireParameterlessConstructor case. Every place of an undefined value is reported
-// exactly once at the value, naming its enum; a valid one nowhere; nothing else is reported.
+// shape.containing type at shape.position, and in a declaration of shape.refused-kind (which compiles here, with no generators; the two
+// kinds that do not are excluded). An attribute-argument row also writes the documented RequireParameterlessConstructor case. Every
+// place of an undefined value is reported exactly once at the value, naming its enum; a valid one nowhere; nothing else is reported.
 using Probes.Build;
 using Probes.Shapes;
 namespace Probes;
@@ -127,8 +127,15 @@ public sealed class C17Cmtk0014Probe
             body.AppendLine($"{head}\n{{\n    {Member(p.Place(), "K")}{create}{Explicit()}\n}}");
         }
 
-        // shape.refused-kind: refused by the generators, an ordinary declaration to the compiler.
+        // shape.refused-kind: refused by the generators, an ordinary declaration to the compiler. The two kinds that are not (a closed
+        // set named as a generated member, CS0535; a hand-written operator ==, CS0111) are excluded in claims.json, and a row the
+        // covering array fills with one runs over object instead.
         var refused = r["shape.refused-kind"];
+        if (refused is "closed-set-named-as-generated-member (CMTK1021)" or "equality-operator (CMTK1011)")
+        {
+            r.Substituted("shape.refused-kind", "over-object (CMTK1005)", "it does not compile without the generators (excluded pair)");
+            refused = "over-object (CMTK1005)";
+        }
         var rm = Member(p.Place(), "RK");
         body.AppendLine(refused switch
         {
@@ -136,6 +143,9 @@ public sealed class C17Cmtk0014Probe
             "over-value-object (CMTK1005)" => $"public readonly partial record struct RIn{id} : IValue<int>;\npublic sealed partial record R{id} : IValue<RIn{id}> {{ {rm} }}",
             "generic-wrapped (CMTK1005)" => $"public readonly partial record struct R{id} : IValue<List<int>> {{ {rm} }}",
             "abstract (CMTK1005)" => $"public abstract partial record R{id} : IValue<string> {{ {rm} }}",
+            "over-object (CMTK1005)" => $"public sealed partial record R{id} : IValue<object> {{ {rm} }}",
+            "over-System.Enum (CMTK1005)" => $"public readonly partial record struct R{id} : IValue<System.Enum> {{ {rm} }}",
+            "named-as-generated-member (CMTK1005)" => $"public readonly partial record struct {Refusals.ValueObjectNames[r.Index % Refusals.ValueObjectNames.Length]} : IValue<int> {{ {rm} }}",
             _ => throw new ArgumentException(refused),
         });
 

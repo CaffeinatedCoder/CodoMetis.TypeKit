@@ -9,8 +9,9 @@
 //    TypeArgumentKinds' candidates), with one argument that breaks the attribute and one that meets it (a pair attribute: subjects of
 //    two parameters at the same sites), plus a collection expression's builder method, which the catalogue has no use of;
 //  - the row's shapes as arguments at the same sites: the value object or closed set of shape.kind over shape.wrapped at shape.site,
-//    its base and its explicit interface (shape.inheritance), the wrapped type itself, and a declaration of shape.refused-kind; each
-//    use hosted in a member of shape.containing at shape.position.
+//    its base and its explicit interface (shape.inheritance), the wrapped type itself, and a declaration of shape.refused-kind (one
+//    that compiles without the generators; the two that do not are excluded); each use hosted in a member of shape.containing at
+//    shape.position.
 // Every breaking use is reported exactly once at its span, no meeting one anywhere.
 using Probes.Build;
 using NoteKeys = Probes.Shapes.NoteKeys;
@@ -53,6 +54,9 @@ public sealed class C19Cmtk0010KindsProbe
         "over-value-object (CMTK1005)" => new(Class: true, Sealed: true, ValueObject: true),
         "generic-wrapped (CMTK1005)" => new(Struct: true, ReadOnly: true, Sealed: true, ValueObject: true),
         "abstract (CMTK1005)" => new(Class: true, ValueObject: true),
+        "over-object (CMTK1005)" => new(Class: true, Sealed: true, ValueObject: true),
+        "over-System.Enum (CMTK1005)" => new(Struct: true, ReadOnly: true, Sealed: true, ValueObject: true),
+        "named-as-generated-member (CMTK1005)" => new(Struct: true, ReadOnly: true, Sealed: true, ValueObject: true),
         _ => throw new ArgumentException(refused),
     };
 
@@ -274,13 +278,25 @@ public sealed class C19Cmtk0010KindsProbe
                 _ => throw new ArgumentException(kind),
             });
         }
+        // shape.refused-kind: refused by the generators, an ordinary declaration to the compiler. The two kinds that are not (a closed
+        // set named as a generated member, CS0535; a hand-written operator ==, CS0111) are excluded in claims.json, and a row the
+        // covering array fills with one runs over object instead.
         var refused = r["shape.refused-kind"];
+        if (refused is "closed-set-named-as-generated-member (CMTK1021)" or "equality-operator (CMTK1011)")
+        {
+            r.Substituted("shape.refused-kind", "over-object (CMTK1005)", "it does not compile without the generators (excluded pair)");
+            refused = "over-object (CMTK1005)";
+        }
+        var rName = refused == "named-as-generated-member (CMTK1005)" ? Refusals.ValueObjectNames[r.Index % Refusals.ValueObjectNames.Length] : $"R{id}";
         decl.AppendLine(refused switch
         {
             "unsealed-record-class (CMTK1006)" => $"public partial record R{id} : IValue<string>;",
             "over-value-object (CMTK1005)" => $"public readonly partial record struct RIn{id} : IValue<int>;\npublic sealed partial record R{id} : IValue<RIn{id}>;",
             "generic-wrapped (CMTK1005)" => $"public readonly partial record struct R{id} : IValue<List<int>>;",
             "abstract (CMTK1005)" => $"public abstract partial record R{id} : IValue<string>;",
+            "over-object (CMTK1005)" => $"public sealed partial record R{id} : IValue<object>;",
+            "over-System.Enum (CMTK1005)" => $"public readonly partial record struct R{id} : IValue<System.Enum>;",
+            "named-as-generated-member (CMTK1005)" => $"public readonly partial record struct {rName} : IValue<int>;",
             _ => throw new ArgumentException(refused),
         });
 
@@ -288,7 +304,7 @@ public sealed class C19Cmtk0010KindsProbe
         var dFacts = OfKind(kind);
         if (!pair)
         {
-            var arguments = new List<(string Type, bool Breaks)> { ($"D{id}", !Accepts(attribute, dFacts)), ($"R{id}", !Accepts(attribute, OfRefused(refused))) };
+            var arguments = new List<(string Type, bool Breaks)> { ($"D{id}", !Accepts(attribute, dFacts)), (rName, !Accepts(attribute, OfRefused(refused))) };
             if (depth > 0) arguments.Add(($"DB{id}_{depth}", !Accepts(attribute, new Facts(Class: true))));
             if (explicitMember) arguments.Add(($"IMark{id}", !Accepts(attribute, new Facts(Interface: true))));
             if (wrapped is not null) arguments.Add((Src.Wrapped(wrapped, id), !Accepts(attribute, OfWrapped(wrapped))));
@@ -307,8 +323,8 @@ public sealed class C19Cmtk0010KindsProbe
             {
                 ($"D{id}", $"D{id}", true),                                   // one type twice
                 (other, $"D{id}", related && attribute == "Unrelated"),
-                ($"R{id}", $"R{id}", true),
-                ($"R{id}", $"D{id}", false),
+                (rName, rName, true),
+                (rName, $"D{id}", false),
             };
             foreach (var (f, s, breaks) in cases)
                 foreach (var statement in PairStatements(site))
