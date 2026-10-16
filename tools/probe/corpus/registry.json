@@ -116,10 +116,33 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C05-with-rule.patch",
-        "defect": "WithRule names an enum rule without its nesting chain: Rules.Fault.NoAt is written Fault.NoAt."
-      }
+      "seeds": [
+        {
+          "obligation": "rule-qualified",
+          "patch": "seeds/C05-rule-qualified.patch",
+          "defect": "WithRule writes a closed set's rule as its member's bare name, without its type's: RuleSet.X is written X."
+        },
+        {
+          "obligation": "nested-chain",
+          "patch": "seeds/C05-with-rule.patch",
+          "defect": "WithRule names an enum rule without its nesting chain: Rules.Fault.NoAt is written Fault.NoAt."
+        },
+        {
+          "obligation": "stays-the-errors",
+          "patch": "seeds/C05-stays-the-errors.patch",
+          "defect": "A fault that names a rule is answered 400, not the status its mapping gives the error."
+        },
+        {
+          "obligation": "unnamed-value-throws",
+          "patch": "seeds/C05-unnamed-value-throws.patch",
+          "defect": "WithRule takes an enum value no member names, a combination of flags or a cast number, and writes it as a rule."
+        },
+        {
+          "obligation": "no-namespace",
+          "patch": "seeds/C05-no-namespace.patch",
+          "defect": "WithRule names an enum rule with its namespace: PRule.A is written Probes.PRule.A."
+        }
+      ]
     },
     "C06FaultKindsProbe": {
       "claim": "C06-fault-kinds",

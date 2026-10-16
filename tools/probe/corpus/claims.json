@@ -597,7 +597,60 @@
         "bare",
         "QualifiedFaultNames"
       ]
-    }
+    },
+    "obligations": [
+      {
+        "id": "rule-qualified",
+        "sentence": "The problem carries it as `rule`, qualified with its type's name, so two types' `Blank` can be told apart:",
+        "axes": {
+          "ruletype": [
+            "enum",
+            "closed-set"
+          ]
+        }
+      },
+      {
+        "id": "nested-chain",
+        "sentence": "A rule of a nested type is named after its nesting chain, whatever `QualifiedFaultNames` says.",
+        "axes": {
+          "ruletype": [
+            "nested-enum"
+          ]
+        }
+      },
+      {
+        "id": "stays-the-errors",
+        "sentence": "The status, the mapping and the document stay the error's.",
+        "axes": {
+          "ruletype": [
+            "enum",
+            "closed-set",
+            "nested-enum"
+          ]
+        }
+      },
+      {
+        "id": "unnamed-value-throws",
+        "sentence": "A value no member names, such as a combination of flags or a cast number, throws where it's given.",
+        "axes": {
+          "ruletype": [
+            "flags-combination",
+            "undefined-cast"
+          ]
+        }
+      },
+      {
+        "id": "no-namespace",
+        "sentence": "**The name carries no namespace**, which would publish your application's structure to every client.",
+        "axes": {
+          "ruletype": [
+            "enum",
+            "closed-set",
+            "nested-enum"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "C06-fault-kinds",
