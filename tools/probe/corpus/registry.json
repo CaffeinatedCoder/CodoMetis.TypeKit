@@ -61,10 +61,33 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C03-composed-faults.patch",
-        "defect": "A composed fault's operation lists its statuses in descending order."
-      }
+      "seeds": [
+        {
+          "obligation": "each-error-own-set",
+          "patch": "seeds/C03-each-error-own-set.patch",
+          "defect": "A composed fault's problem drops the problem type its own set's mapping gives it."
+        },
+        {
+          "obligation": "detail-and-rule-intact",
+          "patch": "seeds/C03-detail-and-rule-intact.patch",
+          "defect": "A composed fault's problem drops the occurrence's detail."
+        },
+        {
+          "obligation": "statuses-ascending",
+          "patch": "seeds/C03-composed-faults.patch",
+          "defect": "A composed fault's operation lists its statuses in descending order."
+        },
+        {
+          "obligation": "shared-status-types",
+          "patch": "seeds/C03-shared-status-types.patch",
+          "defect": "A status two fault sets share names only the problem types of the first set the endpoint answers with."
+        },
+        {
+          "obligation": "unmapped-set-stops-start",
+          "patch": "seeds/C03-unmapped-set-stops-start.patch",
+          "defect": "The startup check skips an unmapped fault type on an endpoint that answers with several, so the host starts."
+        }
+      ]
     },
     "C04WithoutFaultsProbe": {
       "claim": "C04-without-faults",
@@ -77,10 +100,28 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C04-without-faults.patch",
-        "defect": "WithoutFaults leaves nothing out of the document: an operation still lists the status and problem type of a member its endpoint, group or controller leaves out."
-      }
+      "seeds": [
+        {
+          "obligation": "doc-omits-left-out",
+          "patch": "seeds/C04-without-faults.patch",
+          "defect": "WithoutFaults leaves nothing out of the document: an operation still lists the status and problem type of a member its endpoint, group or controller leaves out."
+        },
+        {
+          "obligation": "reporting-left-out-throws",
+          "patch": "seeds/C04-reporting-left-out-throws.patch",
+          "defect": "A member the endpoint leaves out is answered with its mapped status instead of throwing an InvalidOperationException."
+        },
+        {
+          "obligation": "narrows-wider-status",
+          "patch": "seeds/C04-narrows-wider-status.patch",
+          "defect": "A group's or a builder's status for a member stops the host as soon as one of its endpoints leaves the member out, though the others keep it."
+        },
+        {
+          "obligation": "left-out-everywhere-stops-start",
+          "patch": "seeds/C04-left-out-everywhere-stops-start.patch",
+          "defect": "A status that every endpoint of its scope leaves out no longer stops the host."
+        }
+      ]
     },
     "C05RuleProbe": {
       "claim": "C05-with-rule",
@@ -93,10 +134,33 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C05-with-rule.patch",
-        "defect": "WithRule names an enum rule without its nesting chain: Rules.Fault.NoAt is written Fault.NoAt."
-      }
+      "seeds": [
+        {
+          "obligation": "rule-qualified",
+          "patch": "seeds/C05-rule-qualified.patch",
+          "defect": "WithRule writes a closed set's rule as its member's bare name, without its type's: RuleSet.X is written X."
+        },
+        {
+          "obligation": "nested-chain",
+          "patch": "seeds/C05-with-rule.patch",
+          "defect": "WithRule names an enum rule without its nesting chain: Rules.Fault.NoAt is written Fault.NoAt."
+        },
+        {
+          "obligation": "stays-the-errors",
+          "patch": "seeds/C05-stays-the-errors.patch",
+          "defect": "A fault that names a rule is answered 400, not the status its mapping gives the error."
+        },
+        {
+          "obligation": "unnamed-value-throws",
+          "patch": "seeds/C05-unnamed-value-throws.patch",
+          "defect": "WithRule takes an enum value no member names, a combination of flags or a cast number, and writes it as a rule."
+        },
+        {
+          "obligation": "no-namespace",
+          "patch": "seeds/C05-no-namespace.patch",
+          "defect": "WithRule names an enum rule with its namespace: PRule.A is written Probes.PRule.A."
+        }
+      ]
     },
     "C06FaultKindsProbe": {
       "claim": "C06-fault-kinds",
@@ -109,10 +173,28 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C06-fault-kinds.patch",
-        "defect": "FaultKind.Malformed is answered and documented as 422, not 400."
-      }
+      "seeds": [
+        {
+          "obligation": "kind-gives-status",
+          "patch": "seeds/C06-fault-kinds.patch",
+          "defect": "FaultKind.Malformed is answered and documented as 422, not 400."
+        },
+        {
+          "obligation": "description-as-detail",
+          "patch": "seeds/C06-description-as-detail.patch",
+          "defect": "A fault-set member's description is not written as the problem's detail."
+        },
+        {
+          "obligation": "no-description-no-detail",
+          "patch": "seeds/C06-no-description-no-detail.patch",
+          "defect": "A member without a description is given its name as the problem's detail."
+        },
+        {
+          "obligation": "member-must-have-kind",
+          "patch": "seeds/C06-member-must-have-kind.patch",
+          "defect": "AddFaultResponses<TSet>() maps a member of no kind to 500 instead of failing."
+        }
+      ]
     },
     "C07BlanketMappingProbe": {
       "claim": "C07-fault-responses-blanket",
@@ -125,10 +207,38 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C07-blanket-mapping.patch",
-        "defect": "A fault set mapped on its own loses its mapping to the mapping for every set (AddFaultResponses()), which is consulted first."
-      }
+      "seeds": [
+        {
+          "obligation": "by-kind",
+          "patch": "seeds/C07-by-kind.patch",
+          "defect": "AddFaultResponses() answers a member of kind Conflict with 400, not the 409 its kind gives."
+        },
+        {
+          "obligation": "own-mapping",
+          "patch": "seeds/C07-own-mapping.patch",
+          "defect": "AddFaultResponses(fault => ...) keeps only the status its mapping gives and drops the problem type."
+        },
+        {
+          "obligation": "own-set-keeps-mapping",
+          "patch": "seeds/C07-blanket-mapping.patch",
+          "defect": "A fault set mapped on its own loses its mapping to the mapping for every set (AddFaultResponses()), which is consulted first."
+        },
+        {
+          "obligation": "enum-needs-own-mapping",
+          "patch": "seeds/C07-enum-needs-own-mapping.patch",
+          "defect": "The startup check skips an endpoint that answers with an unmapped enum, so the host starts."
+        },
+        {
+          "obligation": "member-without-kind-stops-start",
+          "patch": "seeds/C07-member-without-kind.patch",
+          "defect": "AddFaultResponses() answers a fault-set member of no kind with 500 instead of stopping the start."
+        },
+        {
+          "obligation": "mapping-refusal-stops-start",
+          "patch": "seeds/C07-mapping-refused.patch",
+          "defect": "AddFaultResponses(fault => ...) answers a member its mapping throws for, or gives a status that is no error, with 500 instead of stopping the start."
+        }
+      ]
     },
     "C08SameNameWarningProbe": {
       "claim": "C08-same-name-warning",
@@ -141,10 +251,33 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C08-same-name-warning.patch",
-        "defect": "Bare fault names are compared as qualified ones, so two fault types an endpoint answers with that write one name (HFault.Clash beside KFault.Clash) log no startup warning."
-      }
+      "seeds": [
+        {
+          "obligation": "bare-names-warn",
+          "patch": "seeds/C08-same-name-warning.patch",
+          "defect": "Bare fault names are compared as qualified ones, so two fault types an endpoint answers with that write one name (HFault.Clash beside KFault.Clash) log no startup warning."
+        },
+        {
+          "obligation": "qualified-chain-warns",
+          "patch": "seeds/C08-qualified-chain-warns.patch",
+          "defect": "Qualified fault names are compared with their namespace, so two sets of one nesting chain in two namespaces log no startup warning."
+        },
+        {
+          "obligation": "warning-names-both",
+          "patch": "seeds/C08-warning-names-both.patch",
+          "defect": "The startup warning names only the first of the two members written alike."
+        },
+        {
+          "obligation": "qualified-names-fix",
+          "patch": "seeds/C08-qualified-names-fix.patch",
+          "defect": "Under QualifiedFaultNames, fault names are still compared bare, so HFault.Clash beside KFault.Clash logs a warning."
+        },
+        {
+          "obligation": "leave-one-out-fixes",
+          "patch": "seeds/C08-leave-one-out-fixes.patch",
+          "defect": "The same-name check counts a member the endpoint leaves out, so leaving one out does not end the warning."
+        }
+      ]
     },
     "C09BaseRecordEqualityProbe": {
       "claim": "C09-base-record-equality",
@@ -197,10 +330,28 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C12-described-converter.patch",
-        "defect": "A list's items and a dictionary's additionalProperties of a described type are filled only where ASP.NET already wrote them, so the document drops them."
-      }
+      "seeds": [
+        {
+          "obligation": "own-converter-describes-itself",
+          "patch": "seeds/C12-described-converter-own.patch",
+          "defect": "Only a generated converter's description is read: an application's own IDescribedJsonConverter, the decimal converters among them, leaves its type undescribed."
+        },
+        {
+          "obligation": "options-describe",
+          "patch": "seeds/C12-options-descriptions.patch",
+          "defect": "A description the options give through JsonSchemaDescriptions is never found."
+        },
+        {
+          "obligation": "every-position",
+          "patch": "seeds/C12-described-converter.patch",
+          "defect": "A list's items and a dictionary's additionalProperties of a described type are filled only where ASP.NET already wrote them, so the document drops them."
+        },
+        {
+          "obligation": "parameter-keeps-aspnet",
+          "patch": "seeds/C12-parameter-keeps-aspnet.patch",
+          "defect": "A query parameter of a described type is described as its converter writes JSON, not as ASP.NET writes it without converters."
+        }
+      ]
     },
     "C13PatchRequiredProbe": {
       "claim": "C13-patch-required",
@@ -213,10 +364,23 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C13-patch-required.patch",
-        "defect": "Every patch is taken out of required, also a constructor parameter that RespectRequiredConstructorParameters makes the serializer require."
-      }
+      "seeds": [
+        {
+          "obligation": "doc-required-where-rejected",
+          "patch": "seeds/C13-patch-required.patch",
+          "defect": "Every patch is taken out of required, also a constructor parameter that RespectRequiredConstructorParameters makes the serializer require."
+        },
+        {
+          "obligation": "doc-optional-where-absent",
+          "patch": "seeds/C13-doc-optional-where-absent.patch",
+          "defect": "Every patch is listed in required, also one the serializer lets a body leave out."
+        },
+        {
+          "obligation": "absent-is-default",
+          "patch": "seeds/C13-absent-is-default.patch",
+          "defect": "The default of a Patch<T>, what a field the request leaves out keeps, reads as Null instead of Absent."
+        }
+      ]
     },
     "C14DeclaredProblemProbe": {
       "claim": "C14-declared-problem",
@@ -229,10 +393,28 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C14-declared-problem.patch",
-        "defect": "A problem response the endpoint declares itself keeps ASP.NET's description, which names none of the problem types answered with its status."
-      }
+      "seeds": [
+        {
+          "obligation": "declared-describes-fault",
+          "patch": "seeds/C14-declared-describes-fault.patch",
+          "defect": "A problem response the endpoint declares itself gets no fault or rule on its own schema, only on the shared component."
+        },
+        {
+          "obligation": "declared-names-types",
+          "patch": "seeds/C14-declared-problem.patch",
+          "defect": "A problem response the endpoint declares itself keeps ASP.NET's description, which names none of the problem types answered with its status."
+        },
+        {
+          "obligation": "ascending-with-declared",
+          "patch": "seeds/C14-ascending-with-declared.patch",
+          "defect": "An operation's responses are left in the order they were added, so a status the endpoint declares itself comes before the lower fault statuses."
+        },
+        {
+          "obligation": "application-json-declared",
+          "patch": "seeds/C14-application-json-declared.patch",
+          "defect": "Only an application/problem+json response counts as a declared problem, so [ProducesResponseType<ProblemDetails>(404)] under application/json names no problem types."
+        }
+      ]
     },
     "C15MvcFaultStatusDocProbe": {
       "claim": "C15-mvc-fault-status-doc",
@@ -245,10 +427,23 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C15-mvc-fault-status-doc.patch",
-        "defect": "The document reads an MVC action's metadata from its descriptor, so what MapControllers()'s builder declares (WithFaultStatus, WithoutFaults) reaches the response but not the document."
-      }
+      "seeds": [
+        {
+          "obligation": "builder-reaches-doc",
+          "patch": "seeds/C15-mvc-fault-status-doc.patch",
+          "defect": "The document reads an MVC action's metadata from its descriptor, so what MapControllers()'s builder declares (WithFaultStatus, WithoutFaults) reaches the response but not the document."
+        },
+        {
+          "obligation": "without-faults-leaves-doc",
+          "patch": "seeds/C15-without-faults-doc.patch",
+          "defect": "The document lists every member, also one the endpoint, its controller or its builder leaves out."
+        },
+        {
+          "obligation": "status-per-scope",
+          "patch": "seeds/C15-status-per-scope.patch",
+          "defect": "The document lists each member's mapped status, not the one its endpoint, controller or builder sets, which the response answers with."
+        }
+      ]
     },
     "C16OptionsAgreementProbe": {
       "claim": "C16-options-agreement",
@@ -261,10 +456,33 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C16-options-agreement.patch",
-        "defect": "A type the minimal-API options describe and MVC's options say nothing of is not refused, so the document describes JSON the controllers do not write."
-      }
+      "seeds": [
+        {
+          "obligation": "differing-refused",
+          "patch": "seeds/C16-options-agreement.patch",
+          "defect": "A type the minimal-API options describe and MVC's options say nothing of is not refused, so the document describes JSON the controllers do not write."
+        },
+        {
+          "obligation": "error-names-type-and-descriptions",
+          "patch": "seeds/C16-error-names-descriptions.patch",
+          "defect": "The refusal names the type but not what each set of options says of it."
+        },
+        {
+          "obligation": "patch-held-refused",
+          "patch": "seeds/C16-patch-held-refused.patch",
+          "defect": "A type held only inside a patch is never compared across the two option sets, so the document describes it as the minimal-API options alone say."
+        },
+        {
+          "obligation": "same-converters-build",
+          "patch": "seeds/C16-same-converters-build.patch",
+          "defect": "Two option sets with the same converters are refused when their naming policy or number handling differs."
+        },
+        {
+          "obligation": "minimal-host-not-compared",
+          "patch": "seeds/C16-minimal-host-builds.patch",
+          "defect": "A host of minimal APIs alone is compared against MVC's default options, so a converter on its own options refuses its document."
+        }
+      ]
     },
     "C17Cmtk0014Probe": {
       "claim": "C17-cmtk0014",

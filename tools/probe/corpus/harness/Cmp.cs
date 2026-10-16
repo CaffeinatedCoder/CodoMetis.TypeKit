@@ -85,6 +85,30 @@ public static class Cmp
         return s;
     }
 
+    static readonly Dictionary<string, string> Kinds = new(StringComparer.Ordinal)
+    {
+        ["HFault.Missing"] = "NotFound", ["HFault.Clash"] = "Conflict", ["HFault.Bad"] = "Invalid", ["HFault.Denied"] = "Forbidden",
+        ["HFault.Down"] = "Unavailable", ["HFault.Stale"] = "PreconditionFailed", ["HFault.Garbled"] = "Malformed",
+        ["GFault.Gone"] = "NotFound", ["GFault.Raced"] = "Conflict", ["GFault.Old"] = "PreconditionFailed",
+        ["KFault.Clash"] = "Conflict", ["KFault.Lost"] = "NotFound",
+    };
+    /// <summary>The kind of a fault-set member, or null for a member of the enum SFault, which has none.</summary>
+    public static string? KindOf(string type, string member) => Kinds.GetValueOrDefault(type + "." + member);
+    /// <summary>The problem types the operation's response for <paramref name="status"/> names: every member answered with it, of every set.</summary>
+    public static HashSet<string> TypesAt(int arity, string variant, int status)
+    {
+        var members = new List<(string Type, string Member, int Status)>
+        {
+            ("HFault", "Missing", 404), ("HFault", "Clash", variant == "group" ? 422 : 409), ("HFault", "Denied", 403), ("HFault", "Down", 503),
+            ("HFault", "Stale", 412), ("HFault", "Garbled", 400),
+        };
+        if (variant != "wo") members.Add(("HFault", "Bad", 422));
+        if (variant == "dup") members.AddRange([("KFault", "Clash", 409), ("KFault", "Lost", 404)]);
+        else members.AddRange([("GFault", "Gone", 404), ("GFault", "Raced", 409), ("GFault", "Old", 412)]);
+        // arity 3 adds SFault, an enum mapped to 409 and 410 with no type
+        return [.. members.Where(m => m.Status == status).Select(m => ComposedClaims.TypeOf(m.Type, KindOf(m.Type, m.Member)!))];
+    }
+
     public static RouteHandlerBuilder Decorate(RouteHandlerBuilder rb, string variant) => variant switch
     {
         "wo" => rb.WithoutFaults(HFault.Bad),

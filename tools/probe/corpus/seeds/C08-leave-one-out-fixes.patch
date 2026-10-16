@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs b/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs
+index 45c20b0..1621816 100644
+--- a/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs
++++ b/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs
+@@ -264,7 +264,7 @@ internal sealed class FaultResponsesMetadata<TFault> : FaultResponsesMetadata wh
+ 
+     public override IEnumerable<(string Name, string QualifiedName)> Names(IServiceProvider services, IReadOnlyList<object> endpointMetadata) =>
+         Responses(services) is { } responses
+-            ? responses.AnsweredBy(endpointMetadata).Select(fault => (responses.Type.NameOf(fault), responses.Type.QualifiedNameOf(fault)))
++            ? responses.Type.Members.Select(fault => (responses.Type.NameOf(fault), responses.Type.QualifiedNameOf(fault)))
+             : [];
+ 
+     private static FaultResponses<TFault>? Responses(IServiceProvider services) => FaultResponses<TFault>.Of(services);

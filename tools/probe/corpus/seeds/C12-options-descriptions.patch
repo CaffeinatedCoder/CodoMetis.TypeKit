@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit/JsonSchemaDescription.cs b/src/CodoMetis.TypeKit/JsonSchemaDescription.cs
+index 246ba41..008bc05 100644
+--- a/src/CodoMetis.TypeKit/JsonSchemaDescription.cs
++++ b/src/CodoMetis.TypeKit/JsonSchemaDescription.cs
+@@ -343,7 +343,7 @@ public sealed class JsonSchemaDescriptions : JsonConverterFactory
+         var value = Nullable.GetUnderlyingType(type) ?? type;
+         foreach (var converter in options.Converters)
+         {
+-            if (converter is JsonSchemaDescriptions descriptions && descriptions.Of(value) is { } described) return described;
++            if (converter is JsonSchemaDescriptions descriptions && descriptions.Of(typeof(void)) is { } described) return described;
+         }
+ 
+         return null;

@@ -494,7 +494,35 @@
         "with-detail",
         "with-rule"
       ]
-    }
+    },
+    "obligations": [
+      {
+        "id": "each-error-own-set",
+        "sentence": "Each error is answered as its own set maps it."
+      },
+      {
+        "id": "detail-and-rule-intact",
+        "sentence": "`Fault<AccountFault, EditFault>` (from CodoMetis.TypeKit) holds one error of either set, with its detail and rule intact.",
+        "axes": {
+          "error": [
+            "with-detail",
+            "with-rule"
+          ]
+        }
+      },
+      {
+        "id": "statuses-ascending",
+        "sentence": "So its operation lists the statuses of both sets, in ascending order, with the problem types of both where they share a status."
+      },
+      {
+        "id": "shared-status-types",
+        "sentence": "So its operation lists the statuses of both sets, in ascending order, with the problem types of both where they share a status."
+      },
+      {
+        "id": "unmapped-set-stops-start",
+        "sentence": "The host doesn't start while either set is unmapped."
+      }
+    ]
   },
   {
     "id": "C04-without-faults",
@@ -513,9 +541,60 @@
         "with-WithFaultStatus-on-group"
       ]
     },
+    "obligations": [
+      {
+        "id": "doc-omits-left-out",
+        "sentence": "The operation then lists no status and no problem type for a member left out."
+      },
+      {
+        "id": "reporting-left-out-throws",
+        "sentence": "Reporting a member left out anyway throws an `InvalidOperationException` naming the endpoint and the member, rather than answering with a status the document doesn't list."
+      },
+      {
+        "id": "narrows-wider-status",
+        "sentence": "If a group gives `NotFound` a status and one endpoint inside leaves `NotFound` out, that endpoint drops it, and the group's other endpoints keep the status.",
+        "axes": {
+          "scope": [
+            "endpoint",
+            "controller"
+          ],
+          "combined": [
+            "with-WithFaultStatus-on-group"
+          ]
+        }
+      },
+      {
+        "id": "left-out-everywhere-stops-start",
+        "sentence": "**These stop the host from starting**, as for a status: a value or a name no member has, a status that every endpoint it's set on leaves out (on the endpoint itself, or on a group whose endpoints all leave the member out), and a group or a controller none of whose endpoints answers with the type.",
+        "axes": {
+          "scope": [
+            "group"
+          ],
+          "combined": [
+            "with-WithFaultStatus-on-group"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "controller-scope-is-mvc",
+        "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer",
+        "sentence": "**In MVC**, an action or a controller says it with `[WithoutFaults<AccountFault>(nameof(AccountFault.NotFound))]`.",
+        "axes": {
+          "scope": [
+            "controller"
+          ],
+          "http.host": [
+            "minimal",
+            "route-group"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
-        "reason": "a minimal-API host has no controller to leave a member out on; the README's controller scope is MVC's ([WithoutFaults<T>] on a controller class)",
+        "reason": "A minimal-API host has no controller to leave a member out on: the controller scope is MVC's (not-promised controller-scope-is-mvc).",
         "pairs": [
           [
             "scope=controller",
@@ -569,7 +648,60 @@
         "bare",
         "QualifiedFaultNames"
       ]
-    }
+    },
+    "obligations": [
+      {
+        "id": "rule-qualified",
+        "sentence": "The problem carries it as `rule`, qualified with its type's name, so two types' `Blank` can be told apart:",
+        "axes": {
+          "ruletype": [
+            "enum",
+            "closed-set"
+          ]
+        }
+      },
+      {
+        "id": "nested-chain",
+        "sentence": "A rule of a nested type is named after its nesting chain, whatever `QualifiedFaultNames` says.",
+        "axes": {
+          "ruletype": [
+            "nested-enum"
+          ]
+        }
+      },
+      {
+        "id": "stays-the-errors",
+        "sentence": "The status, the mapping and the document stay the error's.",
+        "axes": {
+          "ruletype": [
+            "enum",
+            "closed-set",
+            "nested-enum"
+          ]
+        }
+      },
+      {
+        "id": "unnamed-value-throws",
+        "sentence": "A value no member names, such as a combination of flags or a cast number, throws where it's given.",
+        "axes": {
+          "ruletype": [
+            "flags-combination",
+            "undefined-cast"
+          ]
+        }
+      },
+      {
+        "id": "no-namespace",
+        "sentence": "**The name carries no namespace**, which would publish your application's structure to every client.",
+        "axes": {
+          "ruletype": [
+            "enum",
+            "closed-set",
+            "nested-enum"
+          ]
+        }
+      }
+    ]
   },
   {
     "id": "C06-fault-kinds",
@@ -585,6 +717,24 @@
         "Unavailable"
       ]
     },
+    "obligations": [
+      {
+        "id": "kind-gives-status",
+        "sentence": "The kind gives the status:"
+      },
+      {
+        "id": "description-as-detail",
+        "sentence": "The description becomes the problem's `detail`, so a client can show it."
+      },
+      {
+        "id": "no-description-no-detail",
+        "sentence": "A member without one has no `detail`."
+      },
+      {
+        "id": "member-must-have-kind",
+        "sentence": "**A member must have a kind.** A member whose kind is `default`, which is no kind, fails this call."
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
@@ -630,6 +780,63 @@
         "status-not-error"
       ]
     },
+    "obligations": [
+      {
+        "id": "by-kind",
+        "sentence": "every fault set an endpoint answers with, by its kind",
+        "axes": {
+          "mapping": [
+            "by-kind"
+          ]
+        }
+      },
+      {
+        "id": "own-mapping",
+        "sentence": "The mapping can be your own. It reads each member's kind and description through `IFault`:",
+        "axes": {
+          "mapping": [
+            "own-IFault-mapping"
+          ]
+        }
+      },
+      {
+        "id": "own-set-keeps-mapping",
+        "sentence": "A set mapped on its own keeps its mapping.",
+        "axes": {
+          "set": [
+            "own-mapped-set"
+          ]
+        }
+      },
+      {
+        "id": "enum-needs-own-mapping",
+        "sentence": "Neither has a kind, and the host doesn't start while an endpoint answers with one that's unmapped.",
+        "axes": {
+          "set": [
+            "enum-unmapped"
+          ]
+        }
+      },
+      {
+        "id": "member-without-kind-stops-start",
+        "sentence": "A member with no kind stops the start, and so does one the mapping throws for or gives a status that isn't an error.",
+        "axes": {
+          "set": [
+            "member-without-kind"
+          ]
+        }
+      },
+      {
+        "id": "mapping-refusal-stops-start",
+        "sentence": "A member with no kind stops the start, and so does one the mapping throws for or gives a status that isn't an error.",
+        "axes": {
+          "set": [
+            "mapping-throws",
+            "status-not-error"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
@@ -675,6 +882,53 @@
         "WithoutFaults-one"
       ]
     },
+    "obligations": [
+      {
+        "id": "bare-names-warn",
+        "sentence": "With bare names, the default, that's `AccountFault.NotFound` beside an `EditFault.NotFound`.",
+        "axes": {
+          "naming": [
+            "bare"
+          ]
+        }
+      },
+      {
+        "id": "qualified-chain-warns",
+        "sentence": "With qualified names, it's two sets with one nesting chain in two namespaces, since the name carries no namespace.",
+        "axes": {
+          "naming": [
+            "qualified"
+          ]
+        }
+      },
+      {
+        "id": "warning-names-both",
+        "sentence": "A client reads the two errors as one, so the host logs a warning at startup naming both.",
+        "axes": {
+          "leave-out": [
+            "none"
+          ]
+        }
+      },
+      {
+        "id": "qualified-names-fix",
+        "sentence": "Fix it with `QualifiedFaultNames`, a rename, or by leaving one out of the route",
+        "axes": {
+          "naming": [
+            "qualified"
+          ]
+        }
+      },
+      {
+        "id": "leave-one-out-fixes",
+        "sentence": "Fix it with `QualifiedFaultNames`, a rename, or by leaving one out of the route",
+        "axes": {
+          "leave-out": [
+            "WithoutFaults-one"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
@@ -3989,6 +4243,40 @@
         "controller-without-ApiController-visible"
       ]
     },
+    "obligations": [
+      {
+        "id": "own-converter-describes-itself",
+        "sentence": "**Your own converter** implements `IDescribedJsonConverter` and describes itself, as both decimal converters do.",
+        "axes": {
+          "source": [
+            "IDescribedJsonConverter",
+            "decimal-converter"
+          ]
+        }
+      },
+      {
+        "id": "options-describe",
+        "sentence": "**A converter someone else wrote**, or the serializer's own enum converter, is described in the options by `JsonSchemaDescriptions`.",
+        "axes": {
+          "source": [
+            "JsonSchemaDescriptions"
+          ]
+        }
+      },
+      {
+        "id": "every-position",
+        "sentence": "With CodoMetis.TypeKit.AspNetCore, `AddTypeKit()` writes the same descriptions into the OpenAPI document, in every position, a list's elements and a dictionary's values included."
+      },
+      {
+        "id": "parameter-keeps-aspnet",
+        "sentence": "So it keeps the description ASP.NET gives the type without your converters",
+        "axes": {
+          "source": [
+            "decimal-converter"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
@@ -4024,6 +4312,28 @@
         "controller-without-ApiController-visible"
       ]
     },
+    "obligations": [
+      {
+        "id": "doc-required-where-rejected",
+        "sentence": "So the document never calls a field optional when the endpoint rejects a request without it.",
+        "axes": {
+          "declared": [
+            "ctor-parameter"
+          ],
+          "json.RespectRequiredConstructorParameters": [
+            "true"
+          ]
+        }
+      },
+      {
+        "id": "doc-optional-where-absent",
+        "sentence": "`AddTypeKit()` leaves a patch out of `required` where the serializer lets it be absent, and keeps it there where the options reject a body without it."
+      },
+      {
+        "id": "absent-is-default",
+        "sentence": "a property the request leaves out keeps its default, which is `Absent`."
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
@@ -4060,6 +4370,47 @@
         "controller-without-ApiController-visible"
       ]
     },
+    "obligations": [
+      {
+        "id": "declared-describes-fault",
+        "sentence": "OpenAPI: a problem response an endpoint declares itself (`ProducesProblem`, `[ProducesResponseType]`) describes `fault`, and names its problem types.",
+        "axes": {
+          "declared": [
+            "ProducesProblem",
+            "ProducesResponseType"
+          ]
+        }
+      },
+      {
+        "id": "declared-names-types",
+        "sentence": "OpenAPI: a problem response an endpoint declares itself (`ProducesProblem`, `[ProducesResponseType]`) describes `fault`, and names its problem types.",
+        "axes": {
+          "declared": [
+            "ProducesProblem",
+            "ProducesResponseType"
+          ]
+        }
+      },
+      {
+        "id": "ascending-with-declared",
+        "sentence": "OpenAPI: an operation with fault responses lists every status ascending, the ones its endpoint declares itself among them",
+        "axes": {
+          "declared": [
+            "ProducesProblem",
+            "ProducesResponseType"
+          ]
+        }
+      },
+      {
+        "id": "application-json-declared",
+        "sentence": "OpenAPI: a problem response an endpoint declares as `application/json`, such as `Produces<ProblemDetails>(404)` or `[ProducesResponseType<ProblemDetails>(404)]`, describes `fault` and `rule` and names its problem types, and keeps its media type",
+        "axes": {
+          "declared": [
+            "ProducesResponseType"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
@@ -4109,6 +4460,20 @@
         "controller-without-ApiController-visible"
       ]
     },
+    "obligations": [
+      {
+        "id": "builder-reaches-doc",
+        "sentence": "OpenAPI: a `WithFaultStatus` on the builder `MapControllers()` returns reaches the document, as it reached the response."
+      },
+      {
+        "id": "without-faults-leaves-doc",
+        "sentence": "**`WithoutFaults`** and `[WithoutFaults<T>]`: a route leaves out of its document the members it never answers with, and reporting one throws"
+      },
+      {
+        "id": "status-per-scope",
+        "sentence": "`WithFaultStatus`/`[FaultStatus<T>]` per endpoint, group or controller"
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
@@ -4154,6 +4519,86 @@
         "controller-without-ApiController-visible"
       ]
     },
+    "obligations": [
+      {
+        "id": "differing-refused",
+        "sentence": "Otherwise building the document fails rather than describe JSON the controllers don't write.",
+        "axes": {
+          "difference": [
+            "converter-only-http"
+          ],
+          "http.host": [
+            "mvc",
+            "both",
+            "controller-without-ApiController-visible"
+          ]
+        }
+      },
+      {
+        "id": "error-names-type-and-descriptions",
+        "sentence": "The error names the type and what each set of options says of it, also for a type held only inside a patch.",
+        "axes": {
+          "difference": [
+            "converter-only-http"
+          ],
+          "http.host": [
+            "mvc",
+            "both",
+            "controller-without-ApiController-visible"
+          ]
+        }
+      },
+      {
+        "id": "patch-held-refused",
+        "sentence": "The error names the type and what each set of options says of it, also for a type held only inside a patch.",
+        "axes": {
+          "difference": [
+            "converter-only-http"
+          ],
+          "http.host": [
+            "mvc",
+            "both",
+            "controller-without-ApiController-visible"
+          ]
+        }
+      },
+      {
+        "id": "same-converters-build",
+        "sentence": "A host with controllers registers the same converters and descriptions on both, in the same order.",
+        "axes": {
+          "difference": [
+            "naming-policy",
+            "number-handling"
+          ]
+        }
+      },
+      {
+        "id": "minimal-host-not-compared",
+        "sentence": "A host with controllers registers the same converters and descriptions on both, in the same order.",
+        "axes": {
+          "difference": [
+            "converter-only-http"
+          ],
+          "http.host": [
+            "minimal",
+            "route-group"
+          ]
+        }
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "only-converters-and-descriptions-compared",
+        "source": "design/adr/0071-converters-say-what-they-write.md#0071-json-converters-say-what-they-write-decimals-get-one-spelling",
+        "sentence": "Where the host has a controller, building the document fails when the two option sets do not carry the same described converters and description sets, by type, naming each that differs; a host of minimal APIs alone is never compared.",
+        "axes": {
+          "difference": [
+            "naming-policy",
+            "number-handling"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
