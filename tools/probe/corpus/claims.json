@@ -4243,6 +4243,40 @@
         "controller-without-ApiController-visible"
       ]
     },
+    "obligations": [
+      {
+        "id": "own-converter-describes-itself",
+        "sentence": "**Your own converter** implements `IDescribedJsonConverter` and describes itself, as both decimal converters do.",
+        "axes": {
+          "source": [
+            "IDescribedJsonConverter",
+            "decimal-converter"
+          ]
+        }
+      },
+      {
+        "id": "options-describe",
+        "sentence": "**A converter someone else wrote**, or the serializer's own enum converter, is described in the options by `JsonSchemaDescriptions`.",
+        "axes": {
+          "source": [
+            "JsonSchemaDescriptions"
+          ]
+        }
+      },
+      {
+        "id": "every-position",
+        "sentence": "With CodoMetis.TypeKit.AspNetCore, `AddTypeKit()` writes the same descriptions into the OpenAPI document, in every position, a list's elements and a dictionary's values included."
+      },
+      {
+        "id": "parameter-keeps-aspnet",
+        "sentence": "So it keeps the description ASP.NET gives the type without your converters",
+        "axes": {
+          "source": [
+            "decimal-converter"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",

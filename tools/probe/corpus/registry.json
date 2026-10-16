@@ -330,10 +330,28 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C12-described-converter.patch",
-        "defect": "A list's items and a dictionary's additionalProperties of a described type are filled only where ASP.NET already wrote them, so the document drops them."
-      }
+      "seeds": [
+        {
+          "obligation": "own-converter-describes-itself",
+          "patch": "seeds/C12-described-converter-own.patch",
+          "defect": "Only a generated converter's description is read: an application's own IDescribedJsonConverter, the decimal converters among them, leaves its type undescribed."
+        },
+        {
+          "obligation": "options-describe",
+          "patch": "seeds/C12-options-descriptions.patch",
+          "defect": "A description the options give through JsonSchemaDescriptions is never found."
+        },
+        {
+          "obligation": "every-position",
+          "patch": "seeds/C12-described-converter.patch",
+          "defect": "A list's items and a dictionary's additionalProperties of a described type are filled only where ASP.NET already wrote them, so the document drops them."
+        },
+        {
+          "obligation": "parameter-keeps-aspnet",
+          "patch": "seeds/C12-parameter-keeps-aspnet.patch",
+          "defect": "A query parameter of a described type is described as its converter writes JSON, not as ASP.NET writes it without converters."
+        }
+      ]
     },
     "C13PatchRequiredProbe": {
       "claim": "C13-patch-required",
