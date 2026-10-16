@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi;
 
@@ -5,7 +7,8 @@ namespace CodoMetis.TypeKit.Facts;
 
 /// <summary>
 /// design/knowledge/KB-001: under OpenAPI 2.0, ASP.NET writes a nullable request body as
-/// <c>allOf: [{x-nullable: true}]</c>, without the <c>pattern</c> the same type's non-nullable body has.
+/// <c>allOf: [{x-nullable: true}]</c>, without the <c>pattern</c> the same type's non-nullable body has, and without
+/// its <c>type</c>, in MVC and in minimal APIs alike.
 /// </summary>
 public sealed class KB001
 {
@@ -40,6 +43,18 @@ public sealed class KB001
 
         plain.ToJsonString().ShouldBe("""{"in":"body","name":"body","required":true,"schema":{"format":"int32",""" + Int32Pattern + "}}");
         nullable.ToJsonString().ShouldBe("""{"in":"body","name":"body","schema":{"format":"int32","allOf":[{"x-nullable":true}]}}""", "optional, and no pattern");
+    }
+
+    public enum Shade { Light, Dark }
+
+    [Fact]
+    public async Task Under_OpenApi_2_0_a_minimal_API_nullable_enum_body_is_allOf_x_nullable_alone()
+    {
+        var document = await FactHost.DocumentAsync(OpenApiSpecVersion.OpenApi2_0, [],
+            minimal: app => app.MapPost("/kb001/minimal", ([FromBody] Shade? value) => Results.Ok()));
+        var body = document["paths"]!["/kb001/minimal"]!["post"]!["parameters"]!.AsArray().Single(parameter => (string?)parameter!["in"] == "body")!;
+
+        body.ToJsonString().ShouldBe("""{"in":"body","name":"body","schema":{"allOf":[{"x-nullable":true}]}}""", "no type, nothing but the null");
     }
 
     [Fact]
