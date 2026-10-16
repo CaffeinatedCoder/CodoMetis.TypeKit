@@ -7676,6 +7676,498 @@
           "shape.wrapped=char"
         ]
       ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "validated-class",
+        "shape.position": "in-patch",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "byte"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-explicit-IEquatable",
+          "shape.wrapped=byte"
+        ],
+        [
+          "shape.position=in-patch",
+          "shape.wrapped=byte"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "class",
+        "shape.inheritance": "none",
+        "shape.kind": "validated-class",
+        "shape.position": "array-element",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "own-record-class"
+      },
+      "pairs": [
+        [
+          "shape.containing=class",
+          "shape.wrapped=own-record-class"
+        ],
+        [
+          "shape.position=array-element",
+          "shape.wrapped=own-record-class"
+        ],
+        [
+          "shape.site=nested-in-class",
+          "shape.wrapped=own-record-class"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "struct",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "nullable-property",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "string"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-explicit-IEquatable",
+          "shape.wrapped=string"
+        ],
+        [
+          "shape.position=nullable-property",
+          "shape.wrapped=string"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "record-struct",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "read-only-list-element",
+        "shape.site": "top-level",
+        "shape.wrapped": "DateOnly"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-3",
+          "shape.wrapped=DateOnly"
+        ],
+        [
+          "shape.position=read-only-list-element",
+          "shape.wrapped=DateOnly"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "record-struct",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "dictionary-value",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "bool"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-3",
+          "shape.wrapped=bool"
+        ],
+        [
+          "shape.position=dictionary-value",
+          "shape.wrapped=bool"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "struct",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "polymorphic-derived-property",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "DateTimeOffset"
+      },
+      "pairs": [
+        [
+          "shape.containing=struct",
+          "shape.wrapped=DateTimeOffset"
+        ],
+        [
+          "shape.position=polymorphic-derived-property",
+          "shape.wrapped=DateTimeOffset"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "struct",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "required-init",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "flags-enum"
+      },
+      "pairs": [
+        [
+          "shape.position=required-init",
+          "shape.wrapped=flags-enum"
+        ],
+        [
+          "shape.site=nested-in-struct",
+          "shape.wrapped=flags-enum"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "struct",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "required-init",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "DateOnly"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-2",
+          "shape.wrapped=DateOnly"
+        ],
+        [
+          "shape.position=required-init",
+          "shape.wrapped=DateOnly"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "validated-class",
+        "shape.position": "immutable-array-element",
+        "shape.site": "top-level",
+        "shape.wrapped": "TimeOnly"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-2",
+          "shape.wrapped=TimeOnly"
+        ],
+        [
+          "shape.position=immutable-array-element",
+          "shape.wrapped=TimeOnly"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "record-struct",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "record-struct",
+        "shape.position": "immutable-array-element",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "NodaTime.Instant"
+      },
+      "pairs": [
+        [
+          "shape.position=immutable-array-element",
+          "shape.wrapped=NodaTime.Instant"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "record-class",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "validated-class",
+        "shape.position": "dictionary-key",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "NodaTime.Instant"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-2",
+          "shape.wrapped=NodaTime.Instant"
+        ],
+        [
+          "shape.position=dictionary-key",
+          "shape.wrapped=NodaTime.Instant"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "class",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "validated-class",
+        "shape.position": "property",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "ulong"
+      },
+      "pairs": [
+        [
+          "shape.position=property",
+          "shape.wrapped=ulong"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "record-class",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "nullable-property",
+        "shape.site": "top-level",
+        "shape.wrapped": "double"
+      },
+      "pairs": [
+        [
+          "shape.position=nullable-property",
+          "shape.wrapped=double"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "record-struct",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "validated-class",
+        "shape.position": "immutable-array-element",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "enum"
+      },
+      "pairs": [
+        [
+          "shape.position=immutable-array-element",
+          "shape.wrapped=enum"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "class",
+        "shape.inheritance": "none",
+        "shape.kind": "validated-struct",
+        "shape.position": "record-ctor-parameter",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "Guid"
+      },
+      "pairs": [
+        [
+          "shape.position=record-ctor-parameter",
+          "shape.wrapped=Guid"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "record-class",
+        "shape.inheritance": "none",
+        "shape.kind": "validated-class",
+        "shape.position": "record-ctor-parameter",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "Uri"
+      },
+      "pairs": [
+        [
+          "shape.position=record-ctor-parameter",
+          "shape.wrapped=Uri"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "none",
+        "shape.kind": "record-struct",
+        "shape.position": "array-element",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "decimal"
+      },
+      "pairs": [
+        [
+          "shape.position=array-element",
+          "shape.wrapped=decimal"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "record-struct",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "validated-class",
+        "shape.position": "polymorphic-derived-property",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "byte"
+      },
+      "pairs": [
+        [
+          "shape.position=polymorphic-derived-property",
+          "shape.wrapped=byte"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "struct",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "record-struct",
+        "shape.position": "field",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "enum"
+      },
+      "pairs": [
+        [
+          "shape.position=field",
+          "shape.wrapped=enum"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "record-struct",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "record-ctor-parameter",
+        "shape.site": "top-level",
+        "shape.wrapped": "DateTimeOffset"
+      },
+      "pairs": [
+        [
+          "shape.position=record-ctor-parameter",
+          "shape.wrapped=DateTimeOffset"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "property",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "flags-enum"
+      },
+      "pairs": [
+        [
+          "shape.position=property",
+          "shape.wrapped=flags-enum"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "record-struct",
+        "shape.position": "list-element",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "bool"
+      },
+      "pairs": [
+        [
+          "shape.position=list-element",
+          "shape.wrapped=bool"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "record-ctor-parameter",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "enum"
+      },
+      "pairs": [
+        [
+          "shape.position=record-ctor-parameter",
+          "shape.wrapped=enum"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "validated-class",
+        "shape.position": "root",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "byte"
+      },
+      "pairs": [
+        [
+          "shape.position=root",
+          "shape.wrapped=byte"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "record-ctor-parameter",
+        "shape.site": "top-level",
+        "shape.wrapped": "decimal"
+      },
+      "pairs": [
+        [
+          "shape.position=record-ctor-parameter",
+          "shape.wrapped=decimal"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "class",
+        "shape.inheritance": "none",
+        "shape.kind": "record-struct",
+        "shape.position": "property",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "long"
+      },
+      "pairs": [
+        [
+          "shape.position=property",
+          "shape.wrapped=long"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "validated-class",
+        "shape.position": "root",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "bool"
+      },
+      "pairs": [
+        [
+          "shape.position=root",
+          "shape.wrapped=bool"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "class",
+        "shape.inheritance": "none",
+        "shape.kind": "validated-struct",
+        "shape.position": "read-only-list-element",
+        "shape.site": "top-level",
+        "shape.wrapped": "int"
+      },
+      "pairs": [
+        [
+          "shape.position=read-only-list-element",
+          "shape.wrapped=int"
+        ]
+      ]
     }
   ],
   "uncovered_after": 0
