@@ -18,6 +18,13 @@ internal static class Files
     public const int SchemaVersion = 1;
 
     /// <summary>
+    /// The version of evidence/&lt;probe&gt;.json this tool writes: 2 records each row's checks, one entry per check
+    /// with its own obligation, baseline, outcome and settings. A version-1 file reads as rows without checks, each one
+    /// check of the obligation <c>claim</c>.
+    /// </summary>
+    public const int EvidenceSchemaVersion = 2;
+
+    /// <summary>
     /// Indented, and with only what JSON itself requires escaped: the tracked corpus is read in a diff, where
     /// the default encoder's six-character escapes for <c>+</c>, a backtick and <c>&lt;</c> made every publish a
     /// rewrite (decision 102). No reader here or in the harness parses these files as

@@ -133,16 +133,24 @@ internal static class Commands
     {
         var universe = Universe.Load(l.P("universe.json"));
         if (universe is null) return new JsonObject { ["branch"] = l.Branch, ["done"] = false, ["reason"] = "no universe.json: run `universe` (no round has run here)" };
-        var done = l.Covered(universe);
-        // How the rows of each claim's probes ended at their last replay: only a pass earns pairs, so the rest is
-        // what the claim's coverage loses, and a skip for a finding is an open finding the corpus records.
+        var credits = l.Credits(universe);
+        var done = credits.Select(x => (x.Claim, x.Pair)).ToHashSet();
+        // How the rows and the checks of each claim's probes ended at their last replay: only a passing check earns
+        // pairs, so the rest is what the claim's coverage loses, and a skip for a finding is an open finding the corpus
+        // records. A row without checks counts as its one check.
         var outcomes = new Dictionary<string, SortedDictionary<string, int>>(StringComparer.Ordinal);
+        var checkOutcomes = new Dictionary<string, SortedDictionary<string, int>>(StringComparer.Ordinal);
+        var passed = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
         var skips = new SortedDictionary<string, int>(StringComparer.Ordinal);
         foreach (var (probe, entry) in l.Registry())
         {
             var evidence = Files.ReadJson(l.EvidencePath(probe)) as JsonObject;
-            var sum = outcomes.TryGetValue(Files.Str(entry["claim"]), out var o) ? o : outcomes[Files.Str(entry["claim"])] = new(StringComparer.Ordinal);
+            var claim = Files.Str(entry["claim"]);
+            var sum = outcomes.TryGetValue(claim, out var o) ? o : outcomes[claim] = new(StringComparer.Ordinal);
             foreach (var (category, n) in Ledger.Outcomes(evidence)) sum[category] = sum.GetValueOrDefault(category) + n;
+            var checkSum = checkOutcomes.TryGetValue(claim, out var co) ? co : checkOutcomes[claim] = new(StringComparer.Ordinal);
+            if (evidence is not null) foreach (var (category, n) in Ledger.CheckOutcomes(evidence)) checkSum[category] = checkSum.GetValueOrDefault(category) + n;
+            (passed.TryGetValue(claim, out var p) ? p : passed[claim] = new(StringComparer.Ordinal)).UnionWith(Ledger.PassedObligations(evidence));
             foreach (var (finding, n) in Ledger.FindingSkips(evidence)) skips[finding] = skips.GetValueOrDefault(finding) + n;
         }
         // Each claim's obligations (decision 104), the probes registered for the claim, and the probes whose seeds
@@ -160,12 +168,20 @@ internal static class Commands
             {
                 var seededBy = probes.Where(kv => Seeds.SeedsOf(kv.Value).Any(s => (s.Obligation ?? (ids is [Claim.ImplicitObligation] ? Claim.ImplicitObligation : null)) == id))
                                      .Select(kv => (JsonNode)kv.Key).ToList();
-                obligations.Add(new JsonObject { ["id"] = id, ["seeded_by"] = new JsonArray([.. seededBy]) });
+                // current: the claim's pairs credited by current checks naming this obligation; passed: whether any check
+                // named it and passed at the last replay, current or not (status's "K uncredited" counts those that did not).
+                obligations.Add(new JsonObject
+                {
+                    ["id"] = id, ["seeded_by"] = new JsonArray([.. seededBy]),
+                    ["current"] = pairs.Count(p => credits.Contains((c.Id, id, p))),
+                    ["passed"] = passed.GetValueOrDefault(c.Id)?.Contains(id) ?? false,
+                });
             }
             claims[c.Id] = new JsonObject
             {
                 ["pairs"] = pairs.Count, ["current"] = hit,
                 ["outcomes"] = new JsonObject((outcomes.GetValueOrDefault(c.Id) ?? []).Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))),
+                ["check_outcomes"] = new JsonObject((checkOutcomes.GetValueOrDefault(c.Id) ?? []).Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))),
                 ["probes"] = new JsonArray([.. probes.Select(kv => (JsonNode)kv.Key)]), ["obligations"] = obligations,
             };
             total += pairs.Count; current += hit;
@@ -195,10 +211,14 @@ internal static class Commands
         foreach (var (id, c) in (s["claims"] as JsonObject)!.OrderBy(kv => kv.Key, StringComparer.Ordinal))
         {
             var rows = (c!["outcomes"] as JsonObject)!.Select(kv => $"{kv.Key} {Files.Num(kv.Value)}").ToList();
+            var checks = (c["check_outcomes"] as JsonObject ?? []).Select(kv => $"{kv.Key} {Files.Num(kv.Value)}").ToList();
             var obligations = (c["obligations"] as JsonArray ?? []).OfType<JsonObject>().ToList();
             var unseeded = obligations.Where(o => (o["seeded_by"] as JsonArray ?? []).Count == 0).Select(o => Files.Str(o["id"])).ToList();
-            var promise = obligations.Count == 0 ? "" : $"  obligations {obligations.Count}" + (unseeded.Count > 0 ? $" ({unseeded.Count} without a seed: {string.Join(", ", unseeded)})" : ", each seeded");
-            l.Ctx.Out.WriteLine($"  {id}: {Files.Num(c["current"])}/{Files.Num(c["pairs"])}" + (rows.Count > 0 ? $"  (rows: {string.Join(", ", rows)})" : "") + promise);
+            // K uncredited: the obligations no passing check named at the last replay.
+            var uncredited = obligations.Count(o => o["passed"] is not JsonValue v || !v.GetValue<bool>());
+            var promise = obligations.Count == 0 ? "" : $"  obligations {obligations.Count}" + (unseeded.Count > 0 ? $" ({unseeded.Count} without a seed: {string.Join(", ", unseeded)})" : ", each seeded")
+                                                        + $", {uncredited} uncredited";
+            l.Ctx.Out.WriteLine($"  {id}: {Files.Num(c["current"])}/{Files.Num(c["pairs"])}" + (rows.Count > 0 ? $"  (rows: {string.Join(", ", rows)}; checks: {string.Join(", ", checks)})" : "") + promise);
         }
         return 0;
     }
@@ -319,7 +339,7 @@ internal static class Commands
         if (a.Get("evidence") is { } evidencePath)
         {
             var evidence = Files.ReadJson(evidencePath) as JsonObject ?? [];
-            evidence["schemaVersion"] = Files.SchemaVersion; evidence["probe"] = probe; evidence["identity"] = identity;
+            evidence["schemaVersion"] = Files.EvidenceSchemaVersion; evidence["probe"] = probe; evidence["identity"] = identity;
             evidence["commit"] = rev; evidence["result"] = result; evidence["date"] = a.Get("date") ?? Today;
             Files.WriteJson(l.EvidencePath(probe), evidence);
         }

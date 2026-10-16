@@ -56,6 +56,19 @@ and `GeneratedHarnessTests` in the conventions tests holds each file to its app'
   `r.Skip("F7", why)`, the finding as a string literal: `register` and `publish` refuse a skip whose finding
   is built from text or is not open in the ledger, naming the file and line. The gate refuses while any row
   skips, and the replay fails a skip whose finding the ledger has fixed or dismissed.
+- Checks: a comparison is `r.Check("obligation", Baseline.Twin, c => ...)` (or the `async` form), one per
+  obligation of the claim (`claim` for a claim without them), against one baseline of `Baseline` (`Twin`,
+  `Framework`, `RoundTrip`, `Model`, `Refusal`, `Cost`, `Fact("KB-031")`, `Docs("file#anchor")`). The check reads
+  through `c["axis"]` (or the row, inside the body: both read for the check), notes how it compared with
+  `c.Note(NoteKeys.Compared, ...)`, and says why it did not compare with `c.Inapplicable(Cite...)`,
+  `c.Refused(Cite...)` or `c.Inconclusive(reason)`, each returning null. A citation is `Cite.NotPromised("id")` (an
+  entry of the claim's `not-promised`), `Cite.Docs("file#anchor")`, `Cite.Fact("KB-031")` or `Cite.Record("0094")`,
+  written with a string literal; `register`, `publish` and the conventions tests refuse anything else and a
+  citation that names nothing. A failure returned is the check's violation, an exception its harness error (the
+  row's other checks still run), and a pass with no baseline a harness error. A row passes when no check failed
+  and one passed, so a check that did not apply voids no other; the ledger credits each passing check with the
+  axes it read and the row's, never a pair put together from two checks. A seed naming an obligation is caught
+  only by a check naming it.
 - EF probes: SQLite in memory (`Data Source=:memory:` with the connection held open). PostgreSQL needs
   a server and is out of reach.
 - Analyzer probes (what compiles and what CMTK reports): in `test/CodoMetis.TypeKit.Analyzers.Tests`,

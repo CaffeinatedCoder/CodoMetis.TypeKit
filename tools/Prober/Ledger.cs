@@ -225,13 +225,19 @@ internal sealed class Ledger
 
     public string EvidencePath(string probe) => P(Path.Combine("evidence", probe + ".json"));
 
+    /// <summary>A check that earned credit: the obligation it named and the settings it ran under.</summary>
+    public sealed record Credit(string Obligation, Dictionary<string, string> Applied);
+
     /// <summary>
-    /// The rows of one probe's evidence that earn credit, as applied settings: only while its identity and
-    /// product footprint are current, and only rows that were expected, executed and ended as a pass.
+    /// The checks of one probe's evidence that earn credit, each with its obligation and settings: only while the
+    /// probe's identity and product footprint are current, and only checks that ended as a pass in rows that were
+    /// expected and executed. A check's settings are the row's (read outside any check, so every check ran under them)
+    /// with its own laid over them; a row without checks is one check of the obligation <c>claim</c>, credited when
+    /// the row passed.
     /// </summary>
-    public List<Dictionary<string, string>> CreditedRows(string probe, JsonObject? evidence, Dictionary<string, JsonObject>? footprints)
+    public List<Credit> CreditedChecks(string probe, JsonObject? evidence, Dictionary<string, JsonObject>? footprints)
     {
-        var result = new List<Dictionary<string, string>>();
+        var result = new List<Credit>();
         if (evidence is null || Files.Str(evidence["identity"]) != Identity(probe)) return result;
         if (footprints is not null && !FootprintCurrent(probe, footprints)) return result;
         var expected = new HashSet<int>(); var executed = new HashSet<int>();
@@ -243,31 +249,61 @@ internal sealed class Ledger
         foreach (var (key, row) in evidence["rows"] as JsonObject ?? [])
         {
             var i = int.Parse(key, System.Globalization.CultureInfo.InvariantCulture);
-            if (row is JsonObject r && expected.Contains(i) && executed.Contains(i) && Files.Str(r["category"]) == "pass"
-                && r["applied"] is JsonObject applied && applied.Count > 0)
-                result.Add(Files.StringMap(applied));
+            if (row is not JsonObject r || !expected.Contains(i) || !executed.Contains(i)) continue;
+            foreach (var check in ChecksOf(r))
+                if (check.Category == "pass" && check.Applied.Count > 0) result.Add(new Credit(check.Obligation, check.Applied));
         }
         return result;
+    }
+
+    /// <summary>One check of an evidence row as the ledger reads it.</summary>
+    public sealed record CheckRead(string Obligation, string Category, Dictionary<string, string> Applied, string? Baseline);
+
+    /// <summary>
+    /// The checks of one evidence row: each with its obligation, category and settings (the row's, the check's laid
+    /// over them). A row without checks, every row of a version-1 file among them, is one check of the implicit
+    /// obligation <c>claim</c> with the row's category and settings and no baseline.
+    /// </summary>
+    public static List<CheckRead> ChecksOf(JsonObject row)
+    {
+        var applied = row["applied"] is JsonObject a ? Files.StringMap(a) : new Dictionary<string, string>(StringComparer.Ordinal);
+        if (row["checks"] is not JsonArray { Count: > 0 } checks)
+            return [new CheckRead(Claim.ImplicitObligation, Files.Str(row["category"], "violation"), applied, null)];
+        var result = new List<CheckRead>();
+        foreach (var c in checks.OfType<JsonObject>())
+        {
+            var own = new Dictionary<string, string>(applied, StringComparer.Ordinal);
+            if (c["applied"] is JsonObject ca) foreach (var (axis, value) in Files.StringMap(ca)) own[axis] = value;
+            result.Add(new CheckRead(Files.Str(c["obligation"]), Files.Str(c["category"], "violation"), own, c["baseline"] is JsonValue b ? Files.Str(b) : null));
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// (claim, obligation, pair) for every pair a current check earned, leaving out the probe <paramref name="except"/>
+    /// names. Each check's settings alone make its pairs: a pair is never put together from two checks' settings.
+    /// </summary>
+    public HashSet<(string Claim, string Obligation, Pair Pair)> Credits(Universe universe, string? claimId = null, string? except = null)
+    {
+        var footprints = Footprints();
+        var done = new HashSet<(string, string, Pair)>();
+        foreach (var (name, entry) in Registry())
+        {
+            var cid = Files.Str(entry["claim"]);
+            if (name == except || (claimId is not null && cid != claimId) || !universe.ById.TryGetValue(cid, out var claim)) continue;
+            var evidence = Files.ReadJson(EvidencePath(name)) as JsonObject;
+            foreach (var credit in CreditedChecks(name, evidence, footprints))
+                foreach (var pair in claim.PairsOfRow(credit.Applied)) done.Add((cid, credit.Obligation, pair));
+        }
+        return done;
     }
 
     /// <summary>
     /// (claim, pair) for every pair current evidence earned, leaving out the probe <paramref name="except"/> names. A round's
     /// own ledger lines earn nothing.
     /// </summary>
-    public HashSet<(string Claim, Pair Pair)> Covered(Universe universe, string? claimId = null, string? except = null)
-    {
-        var footprints = Footprints();
-        var done = new HashSet<(string, Pair)>();
-        foreach (var (name, entry) in Registry())
-        {
-            var cid = Files.Str(entry["claim"]);
-            if (name == except || (claimId is not null && cid != claimId) || !universe.ById.TryGetValue(cid, out var claim)) continue;
-            var evidence = Files.ReadJson(EvidencePath(name)) as JsonObject;
-            foreach (var applied in CreditedRows(name, evidence, footprints))
-                foreach (var pair in claim.PairsOfRow(applied)) done.Add((cid, pair));
-        }
-        return done;
-    }
+    public HashSet<(string Claim, Pair Pair)> Covered(Universe universe, string? claimId = null, string? except = null) =>
+        [.. Credits(universe, claimId, except).Select(x => (x.Claim, x.Pair))];
 
     /// <summary>The last event per finding; a fixed line counts once its commit is in HEAD's history, a dismissal in the corpus everywhere.</summary>
     public Dictionary<string, JsonObject> Findings()
@@ -325,6 +361,26 @@ internal sealed class Ledger
             outcomes[category] = outcomes.GetValueOrDefault(category) + 1;
         }
         return outcomes;
+    }
+
+    /// <summary>How the checks of one probe's evidence ended, by category; a row without checks counts as its one check <c>claim</c>.</summary>
+    public static SortedDictionary<string, int> CheckOutcomes(JsonObject? evidence)
+    {
+        var outcomes = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        foreach (var (_, row) in evidence?["rows"] as JsonObject ?? [])
+            if (row is JsonObject r)
+                foreach (var check in ChecksOf(r)) outcomes[check.Category] = outcomes.GetValueOrDefault(check.Category) + 1;
+        return outcomes;
+    }
+
+    /// <summary>The obligations a check of one probe's evidence passed for at its last replay, current or not.</summary>
+    public static HashSet<string> PassedObligations(JsonObject? evidence)
+    {
+        var passed = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (_, row) in evidence?["rows"] as JsonObject ?? [])
+            if (row is JsonObject r)
+                foreach (var check in ChecksOf(r).Where(c => c.Category == "pass")) passed.Add(check.Obligation);
+        return passed;
     }
 
     public List<string> OpenFindings() => [.. Findings().Where(kv => Files.Str(kv.Value["status"]) == "open").Select(kv => kv.Key).Order(StringComparer.Ordinal)];

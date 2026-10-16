@@ -8,8 +8,10 @@ namespace Prober;
 /// Proves that each probe can fail (decision 100). A probe's registry entry names a seeded product defect:
 /// a patch against the product files (the replay's <c>include</c>, <c>src</c> here), an environment toggle,
 /// or both, and a sentence saying what it breaks. This applies each seed in a scratch worktree of its own,
-/// builds, replays that probe there, and counts the seed caught only where a row ends as a violation that
-/// the unseeded probe does not have and that no harness error raised. Nothing it runs is recorded as evidence: a seeded run proves the probe,
+/// builds, replays that probe there, and counts the seed caught only where a check ends as a violation that the
+/// unseeded probe does not have in the same row for the same obligation and that no harness error raised, and, for a
+/// seed naming an obligation, only a check naming that obligation (a row without checks is one check, <c>claim</c>).
+/// Nothing it runs is recorded as evidence: a seeded run proves the probe,
 /// not the product. Never in the checkout and never in the replay's worktree; one build per seed, so it runs
 /// locally, not in CI. A missed seed, a probe without one, a seed that no longer applies and a seeded build
 /// that fails all fail the command.
@@ -80,15 +82,17 @@ internal static class Seeds
         var outcomes = new List<Outcome>();
         try
         {
-            // The baseline: the rows each probe already fails without a seed. From the ledger where its evidence is
-            // current, else from an unseeded run here, so a seed is credited only with violations of its own.
-            var baseline = new Dictionary<string, HashSet<int>>(StringComparer.Ordinal);
+            // The baseline: the checks each probe already fails without a seed, by row and obligation. From the ledger
+            // where its evidence is current, else from an unseeded run here, so a seed is credited only with violations
+            // of its own.
+            var baseline = new Dictionary<string, HashSet<(int Row, string Obligation)>>(StringComparer.Ordinal);
             var unseeded = new List<Ledger.ProbeState>();
             foreach (var s in states)
             {
                 if (!s.Stale && Files.ReadJson(ledger.EvidencePath(s.Probe)) is JsonObject evidence)
-                    baseline[s.Probe] = [.. (evidence["rows"] as JsonObject ?? []).Where(kv => Files.Str(kv.Value?["category"]) == "violation")
-                                                                                .Select(kv => int.Parse(kv.Key, CultureInfo.InvariantCulture))];
+                    baseline[s.Probe] = [.. (evidence["rows"] as JsonObject ?? []).Where(kv => kv.Value is JsonObject)
+                        .SelectMany(kv => Ledger.ChecksOf((JsonObject)kv.Value!).Where(c => c.Category == "violation")
+                                                .Select(c => (int.Parse(kv.Key, CultureInfo.InvariantCulture), c.Obligation)))];
                 else unseeded.Add(s);
             }
             ctx.Out.WriteLine($"  baseline: {states.Count - unseeded.Count} from the ledger, {unseeded.Count} to run unseeded");
@@ -102,8 +106,8 @@ internal static class Seeds
                 foreach (var s in unseeded)
                 {
                     var rows = RunProbe(adapter, worktree, s, environment, null, results, "base");
-                    baseline[s.Probe] = [.. rows.Where(kv => kv.Value.Category == "violation").Select(kv => kv.Key)];
-                    ctx.Out.WriteLine($"    {s.Probe}: {rows.Count} rows, {baseline[s.Probe].Count} violations unseeded");
+                    baseline[s.Probe] = Violating(rows);
+                    ctx.Out.WriteLine($"    {s.Probe}: {rows.Count} rows, {baseline[s.Probe].Select(x => x.Row).Distinct().Count()} violations unseeded");
                 }
             }
 
@@ -143,7 +147,8 @@ internal static class Seeds
 
     /// <summary>Applies one probe's seed, builds, runs the probe, and undoes the seed.</summary>
     private static Outcome One(Ledger ledger, JsonObject config, IProbeAdapter adapter, string worktree, string head, string[] include,
-                               Dictionary<string, string?> environment, string results, Ledger.ProbeState s, string? obligation, JsonNode? seed, HashSet<int> baseline)
+                               Dictionary<string, string?> environment, string results, Ledger.ProbeState s, string? obligation, JsonNode? seed,
+                               HashSet<(int Row, string Obligation)> baseline)
     {
         Outcome End(string result, string detail, int violations = 0, int rows = 0) => new(s.Probe, s.Claim, obligation, Describe(seed), result, violations, rows, detail);
 
@@ -163,14 +168,23 @@ internal static class Seeds
             var build = Timed(() => adapter.Build(worktree, seeded), out var buildSeconds);
             if (build.ExitCode != 0) return End("build failed", $"the seeded build: {FirstLine(build)}");
             var rows = RunProbe(adapter, worktree, s, environment, env, results, "seed");
-            // A row that broke the harness says nothing about the claim's check, even where it also returned a failure.
-            var own = rows.Where(kv => kv.Value.Category == "violation" && !kv.Value.HarnessError && !baseline.Contains(kv.Key)).OrderBy(kv => kv.Key).ToList();
+            // A check that broke the harness says nothing about the claim, even where it also returned a failure; a
+            // seed naming an obligation is caught only by a check naming it (decision 104), a seed naming none by any.
+            var fresh = rows.SelectMany(kv => kv.Value.Checks.Select(c => (Row: kv.Key, Check: c)))
+                            .Where(x => x.Check.CleanViolation && !baseline.Contains((x.Row, x.Check.Obligation))).OrderBy(x => x.Row).ToList();
+            var own = fresh.Where(x => obligation is null || x.Check.Obligation == obligation).ToList();
+            var caughtRows = own.Select(x => x.Row).Distinct().Count();
             var tally = string.Join(", ", rows.Values.GroupBy(r => r.Category, StringComparer.Ordinal).OrderBy(g => g.Key, StringComparer.Ordinal).Select(g => $"{g.Key} {g.Count()}"));
             var broken = rows.Values.Count(r => r.HarnessError);
             var harness = broken > 0 ? $"; {broken} ended in a harness error, which is no catch" : "";
-            if (own.Count == 0) return End("missed", $"no row violates that did not already ({rows.Count} rows: {(tally.Length > 0 ? tally : "none ran")}{harness}; build {Seconds(buildSeconds)})", 0, rows.Count);
+            // Violations by checks of other obligations are no catch of this one; say whose they were, a row without checks being `claim`'s.
+            var others = fresh.Count > own.Count
+                ? $"; {fresh.Select(x => x.Row).Distinct().Count()} violate by a check naming {string.Join(", ", fresh.Select(x => x.Check.Obligation).Distinct().Order(StringComparer.Ordinal))}, not {obligation}"
+                : "";
+            if (own.Count == 0) return End("missed", $"no row violates that did not already ({rows.Count} rows: {(tally.Length > 0 ? tally : "none ran")}{harness}{others}; build {Seconds(buildSeconds)})", 0, rows.Count);
             var example = own[0];
-            return End("caught", $"{own.Count} of {rows.Count} rows violate; e.g. #{example.Key}: {Cut(example.Value.Reason)}", own.Count, rows.Count);
+            var named = example.Check.Obligation == Claim.ImplicitObligation && rows[example.Row].Checks.Count == 1 ? "" : " " + example.Check.Obligation;
+            return End("caught", $"{caughtRows} of {rows.Count} rows violate; e.g. #{example.Row}{named}: {Cut(example.Check.Reason)}", caughtRows, rows.Count);
         }
         finally
         {
@@ -245,6 +259,10 @@ internal static class Seeds
         }
         return problems;
     }
+
+    /// <summary>The (row, obligation) of every check that ended as a violation, clean or not: what a seed's violations are measured against.</summary>
+    private static HashSet<(int Row, string Obligation)> Violating(Dictionary<int, ProbeRun.RowOutcome> rows) =>
+        [.. rows.SelectMany(kv => kv.Value.Checks.Where(c => c.Category == "violation").Select(c => (kv.Key, c.Obligation)))];
 
     /// <summary>Runs one probe in every one of its variants and reads how each row ended.</summary>
     private static Dictionary<int, ProbeRun.RowOutcome> RunProbe(IProbeAdapter adapter, string worktree, Ledger.ProbeState s, Dictionary<string, string?> environment,
