@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://codometis.typekit/probe/schemas/lock.schema.json",
   "title": "Round lock",
-  "description": "State (round.lock): one round at a time. Created exclusively; alive while its heartbeat is recent.",
+  "description": "State (branches/<branch>/round.lock): one round at a time per branch. Created exclusively; alive while its heartbeat is recent.",
   "type": "object",
   "required": [
     "holder",

@@ -82,8 +82,9 @@ and a sentence saying what it breaks, in its registry entry:
   and the command counts it as a failure.
 - `prober seeds [--probe P]` applies each seed in a scratch worktree of its own (`replay --where` names
   it), builds, replays the probe there and requires a row that ends as a violation the unseeded probe
-  does not have; a missed seed fails it. It records no evidence and takes no lock, but two runs at once
-  share the worktree. One build per seed, so it runs locally, never in CI: after writing a probe or
+  does not have; a missed seed fails it. It records no evidence and takes no lock. The worktree is per
+  checkout, so runs in two checkouts (a linked worktree each) never meet, but two runs at once in one
+  checkout share it. One build per seed, so it runs locally, never in CI: after writing a probe or
   changing its harness, and before a release.
 - Without a build, the prober tests hold the rest on every run (`SeedsTests`): every registered probe
   has a seed, and its patch touches only `src/` and still applies. A product change that moves the
