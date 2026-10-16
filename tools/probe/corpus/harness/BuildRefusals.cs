@@ -47,8 +47,11 @@ public static partial class Refusals
         new("equality-operator (CMTK1011)", "CMTK1011", "equality-operator", "operators", ["CS0111"]),
     }.ToDictionary(r => r.Kind);
 
-    /// <summary>The value-object names CMTK1005 refuses (the README's list), and the closed-set names CMTK1021 refuses; a row takes one by its index.</summary>
-    static readonly string[] ValueObjectNames = ["Value", "From", "TryFrom", "FromKnownGood", "Revalidate", "Parse", "TryParse", "TryFormat", "MinValue", "MaxValue", "CompareTo"];
+    /// <summary>
+    /// The value-object names CMTK1005 refuses (the README's list), and the closed-set names CMTK1021 refuses; a row takes one by its
+    /// index. C17's and C19's probes name their named-as-generated-member declaration from the same list.
+    /// </summary>
+    public static readonly string[] ValueObjectNames = ["Value", "From", "TryFrom", "FromKnownGood", "Revalidate", "Parse", "TryParse", "TryFormat", "MinValue", "MaxValue", "CompareTo"];
     static readonly string[] ClosedSetNames = ["Name", "QualifiedName", "All", "Match", "Parse", "TryParse"];
 
     /// <summary>The link every generator error ends with (Generators README, Build errors: "Every error ends with a link to this table").</summary>
