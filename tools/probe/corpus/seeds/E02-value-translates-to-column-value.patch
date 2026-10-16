@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTranslators.cs b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTranslators.cs
+index 4cbf797..28a0492 100644
+--- a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTranslators.cs
++++ b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTranslators.cs
+@@ -34,7 +34,7 @@ internal sealed class ValueObjectMemberTranslatorPlugin(
+             IDiagnosticsLogger<DbLoggerCategory.Query> logger
+         )
+         {
+-            if (instance is null || member.Name != nameof(IValueObject<,>.Value)) return null;
++            if (instance is null || member.Name != nameof(IValueObject<,>.Value) || member.Name.Length > 0) return null;
+             if (member.DeclaringType is not { } declaringType || ValueObjectTypes.Describe(declaringType) is not { } valueObject) return null;
+ 
+             return WrappedValue.Of(instance, valueObject, returnType, sqlExpressionFactory, typeMappingSource);
