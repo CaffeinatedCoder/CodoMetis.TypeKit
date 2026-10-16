@@ -1,0 +1,12 @@
+diff --git a/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs b/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
+index 4c226cd..1804403 100644
+--- a/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
++++ b/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
+@@ -214,6 +214,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
+             if (!admitsNull)
+             {
+                 schema.FillFrom(wrappedSchema);
++                schema.Format = null;
+             }
+             else if (SchemaReferenceId(context.JsonTypeInfo.Options.GetTypeInfo(wrapped), context) is not null)
+             {

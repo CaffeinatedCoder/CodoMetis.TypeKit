@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs b/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
+index 4c226cd..5b478a8 100644
+--- a/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
++++ b/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
+@@ -108,7 +108,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
+ 
+         // Only what ASP.NET left out: a schema it did build is its own description of the elements.
+         if (info.Kind == JsonTypeInfoKind.Enumerable && schema.Items is null)
+-            schema.Items = await ElementSchemaAsync(element, context, cancellationToken);
++            return;
+         else if (info.Kind == JsonTypeInfoKind.Dictionary && schema.AdditionalProperties is null)
+             schema.AdditionalProperties = await ElementSchemaAsync(element, context, cancellationToken);
+     }
