@@ -50,13 +50,19 @@ internal static class Seeds
         var home = Replay.Home(ctx, ledger);
         var worktree = Path.Combine(home, "seeds");
         var seedsOf = states.ToDictionary(s => s.Probe, s => SeedsOf(registry[s.Probe]), StringComparer.Ordinal);
+        // A probe without a seed owes one per obligation its claim lists (decision 104), each an outcome of its own;
+        // under a claim without obligations, one.
+        var listed = ledger.Claims().ToDictionary(c => Files.Str(c["id"]), Claim.ObligationIds, StringComparer.Ordinal);
+        List<(string? Obligation, JsonNode? Seed)> Owed(Ledger.ProbeState s) =>
+            seedsOf[s.Probe].Count > 0 ? [.. seedsOf[s.Probe].Select(x => (x.Obligation, (JsonNode?)x.Seed))]
+            : listed.GetValueOrDefault(s.Claim) is { } ids && ids is not [Claim.ImplicitObligation] ? [.. ids.Select(id => ((string?)id, (JsonNode?)null))]
+            : [(null, null)];
         ctx.Out.WriteLine($"prober seeds: {ledger.Branch} at {head[..7]}: {seedsOf.Values.Sum(x => x.Count)} seeds of {states.Count} probes, in {worktree}");
         if (a.Flag("dry-run"))
         {
             foreach (var s in states)
             {
-                if (seedsOf[s.Probe].Count == 0) ctx.Out.WriteLine($"  {s.Probe}: (none)");
-                foreach (var (obligation, seed) in seedsOf[s.Probe]) ctx.Out.WriteLine($"  {Named(s.Probe, obligation)}: {Describe(seed)}");
+                foreach (var (obligation, seed) in Owed(s)) ctx.Out.WriteLine($"  {Named(s.Probe, obligation)}: {Describe(seed)}");
             }
             return 0;
         }
@@ -69,8 +75,7 @@ internal static class Seeds
             if (added.ExitCode != 0) throw new Refusal("could not add the scratch worktree: " + added.Stderr.Trim());
         }
         var include = Files.Strings(config["include"]).ToArray() is { Length: > 0 } inc ? inc : ["src"];
-        var environment = new Dictionary<string, string?>(ctx.Environment, StringComparer.Ordinal);
-        foreach (var (k, v) in adapter.Environment(home)) environment[k] = v;
+        var environment = ProbeRun.Environment(ctx, adapter, home);
         var results = Directory.CreateTempSubdirectory("prober-seeds-").FullName;
         var outcomes = new List<Outcome>();
         try
@@ -104,9 +109,8 @@ internal static class Seeds
 
             foreach (var s in states)
             {
-                // A probe without a seed is one outcome, "no seed"; a probe with several runs each under its obligation.
-                var seeds = seedsOf[s.Probe].Count > 0 ? seedsOf[s.Probe] : [(null, null)!];
-                foreach (var (obligation, seed) in seeds)
+                // A seed missing is an outcome "no seed"; a probe with several runs each under its obligation.
+                foreach (var (obligation, seed) in Owed(s))
                 {
                     var outcome = One(ledger, config, adapter, worktree, head, include, environment, results, s, obligation, seed, baseline[s.Probe]);
                     outcomes.Add(outcome);
@@ -242,32 +246,17 @@ internal static class Seeds
         return problems;
     }
 
-    /// <summary>A row's outcome under one run: its category, the first reason given, and whether any reason was a harness error.</summary>
-    internal sealed record RowOutcome(string Category, string Reason, bool HarnessError);
-
     /// <summary>Runs one probe in every one of its variants and reads how each row ended.</summary>
-    private static Dictionary<int, RowOutcome> RunProbe(IProbeAdapter adapter, string worktree, Ledger.ProbeState s, Dictionary<string, string?> environment,
-                                                        JsonObject? seedEnv, string results, string tag)
+    private static Dictionary<int, ProbeRun.RowOutcome> RunProbe(IProbeAdapter adapter, string worktree, Ledger.ProbeState s, Dictionary<string, string?> environment,
+                                                                 JsonObject? seedEnv, string results, string tag)
     {
-        var rows = new Dictionary<int, RowOutcome>();
+        var rows = new Dictionary<int, ProbeRun.RowOutcome>();
         var index = 0;
         foreach (var variant in s.Variants.OfType<JsonObject>())
         {
-            var outDir = Path.Combine(results, $"{s.Probe}-{tag}-{index}-rows");
-            var env = new Dictionary<string, string?>(environment, StringComparer.Ordinal) { ["PROBE_OUT"] = outDir };
-            foreach (var (k, v) in variant) env[k] = Files.Str(v);
-            foreach (var (k, v) in seedEnv ?? []) env[k] = Files.Str(v);
-            adapter.RunProbe(worktree, s.Filter, results, $"{s.Probe}-{tag}-{index}.cobertura.xml", env);
-            if (Directory.Exists(outDir))
-                foreach (var file in Directory.EnumerateFiles(outDir, "*.jsonl"))
-                    foreach (var line in Files.ReadLines(file))
-                    {
-                        var category = Files.Str(line["category"], "violation");
-                        var reasons = Files.Strings(line["reasons"]).ToList();
-                        var reason = reasons.FirstOrDefault(r => r.StartsWith(category + ":", StringComparison.Ordinal)) ?? Files.Str(line["note"]);
-                        var harnessError = category == "harness-error" || reasons.Any(r => r.StartsWith("harness-error:", StringComparison.Ordinal));
-                        rows[(int)Files.Num(line["idx"])] = new RowOutcome(category, reason, harnessError);
-                    }
+            var name = $"{s.Probe}-{tag}-{index}";
+            var (_, outcomes) = ProbeRun.Once(adapter, worktree, s.Filter, results, name, name + ".cobertura.xml", ProbeRun.Variant(environment, variant, seedEnv));
+            foreach (var (idx, outcome) in outcomes) rows[idx] = outcome;
             index++;
         }
         return rows;
@@ -298,7 +287,7 @@ internal static class Seeds
 
     private static string Cut(string s) => string.Join(" ", s.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)) is var line && line.Length > 160 ? line[..160] + "..." : line;
 
-    private static string FirstLine(Ran ran) => ran.Stdout.Split('\n')[0].Trim() is { Length: > 0 } line ? line : $"exit {ran.ExitCode}";
+    private static string FirstLine(Ran ran) => ProbeRun.FirstLine(ran);
 
     private static string FirstLine(string text) => text.Trim().Split('\n')[0].Trim();
 }

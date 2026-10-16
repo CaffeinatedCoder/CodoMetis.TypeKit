@@ -15,6 +15,11 @@ fabric, and loads the analyzer as an analyzer. A probe file may declare its own 
 (`readonly partial record struct ProbeId : IValue<Guid>;`); generate the declarations of the
 type-shape catalogue with a script into a `Probes/Shapes.g.cs`, not by hand.
 
+- Start a probe with `prober new --claim <id>` and iterate with `prober try --probe <P> [--rows i,j,...]`
+  (tools/Prober/README.md, "Writing a probe"): `new` stages the skeleton in this harness's form, with the
+  claim's obligations quoted and a throwing check each, the claim's rows and the registry entry; `try`
+  builds the corpus and the staging in the replay's worktree and runs that one probe, printing each row's
+  outcome and recording nothing. Never copy the corpus into a worktree or write a build or sync script.
 - Build and run only through the verdict tool, which pins English output, builds before it tests,
   names the exit codes and prints failing tests by name with their assertion:
   `dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll build test/CodoMetis.TypeKit.Samples`
