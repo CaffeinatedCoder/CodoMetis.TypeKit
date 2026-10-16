@@ -66,6 +66,22 @@
         "defect": "A composed fault's operation lists its statuses in descending order."
       }
     },
+    "C04WithoutFaultsProbe": {
+      "claim": "C04-without-faults",
+      "filter": "*C04WithoutFaultsProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C04-without-faults.patch",
+        "defect": "WithoutFaults leaves nothing out of the document: an operation still lists the status and problem type of a member its endpoint, group or controller leaves out."
+      }
+    },
     "C05RuleProbe": {
       "claim": "C05-with-rule",
       "filter": "*C05RuleProbe",
@@ -80,6 +96,38 @@
       "seed": {
         "patch": "seeds/C05-with-rule.patch",
         "defect": "WithRule names an enum rule without its nesting chain: Rules.Fault.NoAt is written Fault.NoAt."
+      }
+    },
+    "C06FaultKindsProbe": {
+      "claim": "C06-fault-kinds",
+      "filter": "*C06FaultKindsProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C06-fault-kinds.patch",
+        "defect": "FaultKind.Malformed is answered and documented as 422, not 400."
+      }
+    },
+    "C07BlanketMappingProbe": {
+      "claim": "C07-fault-responses-blanket",
+      "filter": "*C07BlanketMappingProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C07-blanket-mapping.patch",
+        "defect": "A fault set mapped on its own loses its mapping to the mapping for every set (AddFaultResponses()), which is consulted first."
       }
     },
     "C08SameNameWarningProbe": {
@@ -168,6 +216,38 @@
       "seed": {
         "patch": "seeds/C13-patch-required.patch",
         "defect": "Every patch is taken out of required, also a constructor parameter that RespectRequiredConstructorParameters makes the serializer require."
+      }
+    },
+    "C14DeclaredProblemProbe": {
+      "claim": "C14-declared-problem",
+      "filter": "*C14DeclaredProblemProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C14-declared-problem.patch",
+        "defect": "A problem response the endpoint declares itself keeps ASP.NET's description, which names none of the problem types answered with its status."
+      }
+    },
+    "C15MvcFaultStatusDocProbe": {
+      "claim": "C15-mvc-fault-status-doc",
+      "filter": "*C15MvcFaultStatusDocProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C15-mvc-fault-status-doc.patch",
+        "defect": "The document reads an MVC action's metadata from its descriptor, so what MapControllers()'s builder declares (WithFaultStatus, WithoutFaults) reaches the response but not the document."
       }
     },
     "C16OptionsAgreementProbe": {
