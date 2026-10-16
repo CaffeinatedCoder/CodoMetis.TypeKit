@@ -1,0 +1,17 @@
+diff --git a/src/CodoMetis.TypeKit.Generators/ValueObjectAspect.cs b/src/CodoMetis.TypeKit.Generators/ValueObjectAspect.cs
+index db8d4e9..c8e8392 100644
+--- a/src/CodoMetis.TypeKit.Generators/ValueObjectAspect.cs
++++ b/src/CodoMetis.TypeKit.Generators/ValueObjectAspect.cs
+@@ -163,12 +163,6 @@ internal sealed partial class ValueObjectAspect : TypeAspect
+         // A record class that can be derived from is not generated: a derived record compares equal
+         // only to its own type, which is not value equality, and a derived value object then failed
+         // inside the generated code (LAMA0611), where the error names nothing the user wrote.
+-        if (target is { TypeKind: TypeKind.Class, IsSealed: false })
+-        {
+-            builder.Diagnostics.Report(MissingSealedKeyword.WithArguments(target));
+-            return false;
+-        }
+-
+         for (var baseType = target.BaseType; baseType is not null; baseType = baseType.BaseType)
+         {
+             if (!baseType.IsAbstract && ValueObjectTypes.Markers(baseType).Count > 0)

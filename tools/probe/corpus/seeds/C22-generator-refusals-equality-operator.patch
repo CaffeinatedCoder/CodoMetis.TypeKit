@@ -1,0 +1,15 @@
+diff --git a/src/CodoMetis.TypeKit.Generators/ValueObjectDeclaration.cs b/src/CodoMetis.TypeKit.Generators/ValueObjectDeclaration.cs
+index cb0cbae..7d2bf7f 100644
+--- a/src/CodoMetis.TypeKit.Generators/ValueObjectDeclaration.cs
++++ b/src/CodoMetis.TypeKit.Generators/ValueObjectDeclaration.cs
+@@ -411,10 +411,6 @@ internal static class ValueObjectDeclaration
+                                            ? method.ExplicitInterfaceImplementations.Any(implemented => implemented.DeclaringType.Definition.Equals(equatable))
+                                            : (method is { Name: nameof(Equals), Parameters: [{ } other] } && other.Type.Equals(target))
+                                           || method is { Name: nameof(GetHashCode), Parameters.Count: 0 }))
+-                     .Select(Describe),
+-            .. target.Methods
+-                     .Where(method => method is { IsStatic: true, IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false, OperatorKind: OperatorKind.Equality or OperatorKind.Inequality, Parameters: [{ } left, { } right] }
+-                                   && left.Type.ToNonNullable().Equals(target) && right.Type.ToNonNullable().Equals(target))
+                      .Select(Describe)
+         ];
+     }

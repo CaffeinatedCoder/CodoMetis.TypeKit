@@ -148,7 +148,15 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
   ([decision 102](../design/adr/0102-an-exclusion-carries-its-reason.md)).
 - `refused` drops a value the framework itself refuses on its own, so no row wastes its pairs on it.
   `shape.refused-kind` holds the declarations the generators refuse; only the generation surface takes
-  it, where the refusal is the claim.
+  it, where the refusal is the claim. Each value is a declaration and the id the Generators README's
+  "Build errors" table gives it, declared as C22's probe does (`harness/BuildRefusals.cs`): an unsealed
+  record class; a value object over another value object; over `List<T>`; an abstract record or class with
+  a marker (CMTK1022 since `1ef30be`: the label keeps the id it had when C09's and C11's rows were
+  generated, which carry it); over `object`; over `System.Enum`; a value object named as a member the
+  generators add (`From`, `Parse`, `MinValue`, ...); a closed set named as one of its generated members
+  (`Name`, `All`, `Match`, ...); a value object with a hand-written `operator ==` and `!=` between two of
+  the type. The last five are the refusals of the fixes `53188ed` and `e4b751c`, which no probe reached
+  until C22 (design/finder-benchmark-2026-10-16.md).
 - A claim lists what it promises in `obligations`, one entry per promise a probe can check on its own: an
   `id`, the `sentence` quoted verbatim from the claim's source and checked as a narrowing is, and the `axes`
   values it concerns where it is not the whole claim. A claim without the field has one obligation, the
@@ -444,7 +452,12 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
       "unsealed-record-class (CMTK1006)",
       "over-value-object (CMTK1005)",
       "generic-wrapped (CMTK1005)",
-      "abstract (CMTK1005)"
+      "abstract (CMTK1005)",
+      "over-object (CMTK1005)",
+      "over-System.Enum (CMTK1005)",
+      "named-as-generated-member (CMTK1005)",
+      "closed-set-named-as-generated-member (CMTK1021)",
+      "equality-operator (CMTK1011)"
     ],
     "process.converter-lookup": [
       "none",
@@ -702,8 +715,8 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
 - A struct value object refuses a JSON `null`.
 - A rejected dictionary key appears in `JsonException.Path`, and so in MVC's 400.
 - Under a source-generated context, a value object over an enum needs the enum listed in the context.
-- A validated value object has no `From`; an abstract value object and a generic wrapped type fail
-  with CMTK1005.
+- A validated value object has no `From`; an abstract value object fails with CMTK1022, and a generic
+  wrapped type with CMTK1005.
 - A missing `Option` property, and an empty collection or dictionary of `Option` or `Result`, pass
   through System.Text.Json without an exception, since no converter runs (a wording question for the
   README, raised 2026-10-15, not a finding).
