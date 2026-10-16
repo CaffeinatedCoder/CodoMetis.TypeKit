@@ -539,19 +539,42 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
       "dotnet",
       "tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll",
       "test",
+      "--no-build",
       "--project",
       "{project}",
       "--filter-class",
       "{filter}",
       "--",
+      "--results-directory",
+      "{results}"
+    ],
+    "coverage": [
       "--coverage",
       "--coverage-output-format",
       "cobertura",
       "--coverage-output",
-      "{cobertura}",
-      "--results-directory",
-      "{results}"
+      "{cobertura}"
     ],
+    "families": {
+      "http": [
+        "http"
+      ],
+      "ef": [
+        "ef"
+      ],
+      "json": [
+        "json"
+      ],
+      "text": [
+        "text",
+        "logging"
+      ],
+      "build": [
+        "generation",
+        "analyzers",
+        "option-result"
+      ]
+    },
     "include": [
       "src"
     ],

@@ -597,6 +597,27 @@ public sealed class VerdictTests(VerdictTests.Sandbox sandbox) : IClassFixture<V
         Holds();
     }
 
+    /// <summary>
+    /// The probe replay builds the probes once and runs many at a time; a build per run would race in the
+    /// project's obj directory. So --no-build runs the test step alone, and the verdict reads as it does after
+    /// a build.
+    /// </summary>
+    [Fact]
+    public void A_pinned_test_run_without_a_build()
+    {
+        var project = Path.GetFullPath(Path.Combine(R, "test", "A.Tests"));
+        Exited("a test run without a build passes", 0, RunStub(null, "test", "--no-build", "--project", Path.Combine("repo", "test", "A.Tests"), "--filter-class", "*A*"));
+        First("a test run without a build reads its summary", "TESTS OK: 3 passed, 0 skipped, A.Tests, --filter-class *A*, 1s");
+        Check(RecordedCalls().Length == 2, "no build runs: the SDK check and the test step only", string.Join("; ", RecordedCalls()));
+        Check(Call(2) == $"en|test --no-build --project {project} --filter-class *A*", "the test step is --no-build with the filters", Call(2));
+        var log = File.Exists(LogFile) ? File.ReadAllText(LogFile) : "";
+        Check(log.Split('\n').Any(l => l.StartsWith("==== build-verdict: dotnet test", StringComparison.Ordinal)) && !log.Contains("Build succeeded", StringComparison.Ordinal),
+              "the log holds the test step and no build", log);
+
+        Exited("a failing build is still reported when --no-build is not given", 1, RunStub("fail", "test", "--project", Path.Combine("repo", "test", "A.Tests")));
+        Holds();
+    }
+
     [Fact]
     public void A_test_run_whose_build_fails()
     {

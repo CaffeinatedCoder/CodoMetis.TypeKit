@@ -27,7 +27,7 @@ internal sealed class Args
         }
     }
 
-    private static readonly HashSet<string> Multi = new(StringComparer.Ordinal) { "cobertura", "include", "compile-time" };
+    private static readonly HashSet<string> Multi = new(StringComparer.Ordinal) { "cobertura", "include", "compile-time", "from" };
     private void Add(string name, string value) { if (!options.TryGetValue(name, out var l)) options[name] = l = []; l.Add(value); }
     public string? Get(string name) => options.TryGetValue(name, out var l) ? l[^1] : null;
     public string Need(string name) => Get(name) is { Length: > 0 } v ? v : throw new Refusal($"--{name} is required", 2);
@@ -419,5 +419,75 @@ internal static class Commands
         var held = RoundLock.Abandon(l);
         l.Ctx.Out.WriteLine(held is null ? "no lock was held" : $"lock of {Files.Str(held["holder"])} ({Files.Str(held["mode"])}) released");
         return 0;
+    }
+
+    /// <summary>
+    /// Joins the states of a replay split by family (<c>replay --family F</c>, one state directory per leg) into
+    /// this branch's state: each leg's evidence files are copied in, its run, footprint, finding and ledger lines
+    /// are added where this state lacks them (a line a leg carried over from a restored state is not added
+    /// twice), and one replay-last.json sums the legs. It refuses while a probe the registry lists was neither
+    /// replayed nor skipped by any leg, which is how a matrix that leaves a family out fails instead of passing
+    /// on what it ran, and it fails (exit 1) when any leg failed, so the job that merges fails as the legs did.
+    /// </summary>
+    public static int Merge(Ledger l, Args a)
+    {
+        var sources = a.All("from").Where(x => x.Length > 0).ToList();
+        if (sources.Count == 0) throw new Refusal("--from DIR... is required: the state directories of the legs to join into this one", 2);
+        var branchDir = Path.GetFileName(l.Dir);
+        Directory.CreateDirectory(Path.Combine(l.Dir, "evidence"));
+        var legs = new List<JsonObject>();
+        var seen = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var from in sources)
+        {
+            var root = Path.GetFullPath(from);
+            var dir = Path.Combine(root, "branches", branchDir);
+            var last = Files.ReadJson(Path.Combine(dir, "replay-last.json")) as JsonObject
+                       ?? throw new Refusal($"{from} holds no replay of {l.Branch}: no branches/{branchDir}/replay-last.json");
+            if (legs.Count > 0 && Files.Str(last["commit"]) != Files.Str(legs[0]["commit"]))
+                throw new Refusal($"{from} replayed {Files.Str(last["commit"])[..7]}, another leg {Files.Str(legs[0]["commit"])[..7]}; the legs of one replay share a commit");
+            legs.Add(last);
+            foreach (var name in new[] { "runs.jsonl", "footprints.jsonl", "findings.jsonl", "ledger.jsonl" }) UnionLines(Path.Combine(dir, name), l.P(name));
+            var evidence = Path.Combine(dir, "evidence");
+            if (Directory.Exists(evidence))
+                foreach (var file in Directory.EnumerateFiles(evidence, "*.json"))
+                    File.Copy(file, Path.Combine(l.Dir, "evidence", Path.GetFileName(file)), overwrite: true);
+            foreach (var name in new[] { "universe.json" })
+                if (File.Exists(Path.Combine(dir, name)) && !File.Exists(l.P(name))) File.Copy(Path.Combine(dir, name), l.P(name));
+            var axes = Path.Combine(root, "axes-generated.json");
+            if (File.Exists(axes) && !File.Exists(Path.Combine(l.Memory, "axes-generated.json"))) File.Copy(axes, Path.Combine(l.Memory, "axes-generated.json"));
+            foreach (var probe in Files.Strings(last["selected"]).Concat(Files.Strings(last["skipped"]))) seen.Add(probe);
+        }
+
+        var all = legs.Any(x => x["all"] is JsonValue v && v.TryGetValue<bool>(out var b) && b);
+        var selected = new SortedSet<string>(legs.SelectMany(x => Files.Strings(x["selected"])), StringComparer.Ordinal);
+        var skipped = new SortedSet<string>(legs.SelectMany(x => Files.Strings(x["skipped"])).Where(p => !selected.Contains(p)), StringComparer.Ordinal);
+        var failed = new SortedSet<string>(legs.SelectMany(x => Files.Strings(x["failed"])), StringComparer.Ordinal);
+        static JsonArray Names(IEnumerable<string> names) => new([.. names.Select(x => (JsonNode)x)]);
+        Files.WriteJson(l.P("replay-last.json"), new JsonObject
+        {
+            ["branch"] = l.Branch, ["commit"] = Files.Str(legs[0]["commit"]), ["replayed"] = selected.Count, ["failed"] = Names(failed),
+            ["seconds"] = Math.Round(legs.Max(x => Files.Num(x["seconds"])), 1), ["build_seconds"] = Math.Round(legs.Max(x => Files.Num(x["build_seconds"])), 1),
+            ["all"] = all, ["legs"] = Names(legs.Select(x => Files.Str(x["family"], "all"))), ["footprint"] = legs.All(x => x["footprint"] is not JsonValue f || !f.TryGetValue<bool>(out var ft) || ft),
+            ["selected"] = Names(selected), ["skipped"] = Names(skipped),
+        });
+        l.Ctx.Out.WriteLine($"prober merge: {legs.Count} leg(s) into {l.Dir}: {selected.Count} replayed, {failed.Count} failed, {skipped.Count} current");
+
+        var missing = l.Registry().Where(kv => all || kv.Value["retired"] is not JsonValue r || !r.TryGetValue<bool>(out var retired) || !retired)
+                                  .Select(kv => kv.Key).Where(p => !seen.Contains(p)).ToList();
+        if (missing.Count > 0)
+            throw new Refusal($"no leg replayed or skipped {string.Join(", ", missing)}: every probe's family is a leg of the matrix, or the merged state is short");
+        if (failed.Count > 0) { l.Ctx.Out.WriteLine($"  failed: {string.Join(", ", failed)}"); return 1; }
+        return 0;
+    }
+
+    /// <summary>Adds to <paramref name="target"/> every line of <paramref name="source"/> it does not already hold, in order.</summary>
+    private static void UnionLines(string source, string target)
+    {
+        if (!File.Exists(source)) return;
+        var have = File.Exists(target) ? SharedFile.ReadAllLines(target).Where(x => x.Trim().Length > 0).ToList() : [];
+        var known = new HashSet<string>(have, StringComparer.Ordinal);
+        var added = SharedFile.ReadAllLines(source).Where(x => x.Trim().Length > 0 && known.Add(x)).ToList();
+        if (added.Count == 0 && File.Exists(target)) return;
+        Files.WriteAtomically(target, string.Join('\n', have.Concat(added)) + (have.Count + added.Count > 0 ? "\n" : ""));
     }
 }

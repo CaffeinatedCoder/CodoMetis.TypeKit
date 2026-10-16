@@ -5,10 +5,12 @@
 //
 // Usage:
 //   dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll build [<project-dir|csproj|slnx>] [-- <dotnet build flags>]
-//   dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--project <dir|csproj>] [--filter-class <C>] [--filter-method <M>] [-- <dotnet test flags>]
+//   dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--no-build] [--project <dir|csproj>] [--filter-class <C>] [--filter-method <M>] [-- <dotnet test flags>]
 //
 // Every --filter-* option of the test hosts is passed on with its value, and may repeat (the filters
-// of one kind OR together). Without --project the whole solution builds and runs.
+// of one kind OR together). Without --project the whole solution builds and runs. With --no-build the
+// build is the caller's: the probe replay builds the probes once and runs many of them at a time, and
+// two builds of one project at once would race in its obj directory.
 //
 // The verdict's first line is one of BUILD OK, BUILD FAILED, BUILD DID NOT REPORT, TESTS OK, TESTS
 // FAILED, TESTS REJECTED, TESTS NONE, TESTS ABORTED, TESTS DID NOT REPORT, or TOOL STALE. Exit 0 is a
@@ -57,7 +59,7 @@ static class Verdict
     const string Usage = """
         Usage:
           dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll build [<project-dir|csproj|slnx>] [-- <dotnet build flags>]
-          dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--project <dir|csproj>] [--filter-class <C>] [--filter-method <M>] [-- <dotnet test flags>]
+          dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--no-build] [--project <dir|csproj>] [--filter-class <C>] [--filter-method <M>] [-- <dotnet test flags>]
         """;
     const string TestMarker = "==== build-verdict: dotnet test";
 
@@ -136,6 +138,7 @@ static class Verdict
             case "test":
             {
                 string? project = null;
+                var noBuild = false;
                 var filters = new List<string>();
                 var extra = new List<string>();
                 for (var i = 0; i < rest.Count; i++)
@@ -145,6 +148,10 @@ static class Verdict
                     {
                         if (i + 1 >= rest.Count) throw new UsageException();
                         project = Absolute(rest[++i]);
+                    }
+                    else if (a == "--no-build")
+                    {
+                        noBuild = true;
                     }
                     else if (a.StartsWith("--filter", StringComparison.Ordinal))
                     {
@@ -167,8 +174,9 @@ static class Verdict
                 string[] selector = project is null ? ["--solution", solution] : ["--project", project];
 
                 ResolveSdk();
-                // Parse-only mode carries one fixture and one exit code, and they belong to the test step.
-                if (!parseOnly)
+                // Parse-only mode carries one fixture and one exit code, and they belong to the test step. With
+                // --no-build the caller built; the log then holds the SDK line and the test step alone.
+                if (!parseOnly && !noBuild)
                 {
                     var code = Run(["build", project ?? solution], append: false);
                     if (code != 0 || !BuildSection().Any(l => l.StartsWith("Build succeeded", StringComparison.Ordinal)))
