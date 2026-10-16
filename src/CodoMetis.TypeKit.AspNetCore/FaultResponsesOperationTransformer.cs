@@ -116,11 +116,11 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
                 // nobody wrote gets the problem types. Skipped whole, a host declaring every status described
                 // neither, though the problems carried fault (reported 2026-10-14).
                 if (declared is OpenApiResponse { Content: { } content } response
-                 && content.TryGetValue("application/problem+json", out var media))
+                 && DeclaredProblems(context, status, content) is { } schemas)
                 {
                     problem ??= await ProblemSchemaAsync(context, cancellationToken);
                     touched = true;
-                    if (media.Schema is OpenApiSchema inline) WithFault(inline, Qualified(context));
+                    foreach (var schema in schemas) WithFault(schema, Qualified(context));
                     if (string.IsNullOrEmpty(response.Description) || response.Description == ReasonPhrases.GetReasonPhrase(status))
                         response.Description = Description(status, types);
                 }
@@ -161,6 +161,39 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
       : key.Length == 3 && key[0] is >= '1' and <= '5' && key.EndsWith("XX", StringComparison.OrdinalIgnoreCase) ? ((key[0] - '0') * 100 + 99, 1)
       : string.Equals(key, "default", StringComparison.OrdinalIgnoreCase) ? (int.MaxValue, 1)
       : (int.MaxValue, 0);
+
+    /// <summary>
+    /// The problem schemas of a response the endpoint declares itself: its <c>application/problem+json</c>
+    /// content's, and every content's whose type the endpoint declares as <see cref="ProblemDetails"/> or one
+    /// derived from it, under the media type it declares. <c>Produces&lt;ProblemDetails&gt;(404)</c> and
+    /// <c>[ProducesResponseType&lt;ProblemDetails&gt;(404)]</c> declare <c>application/json</c>, and read for
+    /// <c>application/problem+json</c> alone their 404 described neither <c>fault</c> nor the problem types (reported
+    /// 2026-10-16). A schema that refers to a component is that component, so a derived type's own one gets them;
+    /// <see cref="ProblemDetails"/>'s gets them from <see cref="ProblemSchemaAsync"/> as well. A <c>$ref</c> under
+    /// <c>application/problem+json</c> to a type that is no problem is left alone. Null where no content is a problem.
+    /// </summary>
+    private static List<IOpenApiSchema>? DeclaredProblems(OpenApiOperationTransformerContext context, int status, IDictionary<string, OpenApiMediaType> content)
+    {
+        var problems = context.Description.SupportedResponseTypes
+                              .Where(declared => declared.StatusCode == status && declared.Type is { } type && typeof(ProblemDetails).IsAssignableFrom(type))
+                              .ToList();
+        List<IOpenApiSchema>? schemas = null;
+
+        foreach (var (mediaType, media) in content)
+        {
+            var declaresProblem = problems.Any(declared => declared.ApiResponseFormats.Count == 0
+                                                        || declared.ApiResponseFormats.Any(format => string.Equals(format.MediaType, mediaType, StringComparison.OrdinalIgnoreCase)));
+            if (!declaresProblem && mediaType != "application/problem+json") continue;
+
+            schemas ??= [];
+            if (media.Schema is OpenApiSchema inline) schemas.Add(inline);
+            else if (declaresProblem && media.Schema is OpenApiSchemaReference { Reference.Id: { } id }
+                  && context.Document?.Components?.Schemas?.TryGetValue(id, out var component) == true && component is not null)
+                schemas.Add(component);
+        }
+
+        return schemas;
+    }
 
     private static string Description(int status, List<string> types) =>
         types.Count == 0

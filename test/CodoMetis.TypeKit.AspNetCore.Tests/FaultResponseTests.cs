@@ -59,6 +59,15 @@ public sealed partial class FaultResponseTests
             _ => StatusCodes.Status403Forbidden,
         });
 
+    private static void MapOrderProblemTypes(IServiceCollection services) =>
+        services.AddFaultResponses<OrderFault>(fault =>
+            FaultResponse.Status(fault switch
+            {
+                OrderFault.NotFound => StatusCodes.Status404NotFound,
+                OrderFault.AlreadyShipped => StatusCodes.Status409Conflict,
+                _ => StatusCodes.Status403Forbidden,
+            }).WithType(new Uri($"https://problems.example/{fault}")));
+
     [Theory]
     [MemberData(nameof(Ids))]
     public async Task A_success_is_its_value_and_a_fault_is_problem_details_with_its_mapped_status(int id)
@@ -384,13 +393,7 @@ public sealed partial class FaultResponseTests
             {
                 if (inline) options.CreateSchemaReferenceId = type => type.Type == typeof(ProblemDetails) ? null : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
             },
-            services: services => services.AddFaultResponses<OrderFault>(fault =>
-                FaultResponse.Status(fault switch
-                {
-                    OrderFault.NotFound => StatusCodes.Status404NotFound,
-                    OrderFault.AlreadyShipped => StatusCodes.Status409Conflict,
-                    _ => StatusCodes.Status403Forbidden,
-                }).WithType(new Uri($"https://problems.example/{fault}"))),
+            services: MapOrderProblemTypes,
             endpoints: app => app.MapGet("/declared/{id:int}", (int id) => Find(id).ToHttpResult())
                                  .ProducesProblem(StatusCodes.Status403Forbidden).ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict));
 
@@ -403,6 +406,146 @@ public sealed partial class FaultResponseTests
         problem["properties"]!["fault"].ShouldNotBeNull(problem.ToJsonString());
         problem["properties"]!["rule"].ShouldNotBeNull(problem.ToJsonString());
         notFound["description"]!.GetValue<string>().ShouldBe("Not Found. Problem types: https://problems.example/NotFound");
+    }
+
+    /// <summary>
+    /// Every way an endpoint declares a problem response itself describes <c>fault</c> and <c>rule</c> and names the
+    /// problem types, and keeps the media type it declares: <c>Produces&lt;ProblemDetails&gt;(404)</c> and
+    /// <c>[ProducesResponseType&lt;ProblemDetails&gt;(404)]</c> declare <c>application/json</c>, where the transformer
+    /// looked for <c>application/problem+json</c> alone, so their 404 named no problem type and its schema had
+    /// neither (reported 2026-10-16). A type derived from <see cref="ProblemDetails"/> is a component of its own,
+    /// which gets them too. Decision 95's input class: declaration form × host × media type declared × problem
+    /// type × document version × a host that inlines the problem schema.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(DeclaredProblems))]
+    public async Task A_problem_response_the_endpoint_declares_itself_describes_fault_and_rule_under_the_media_type_it_declares(
+        string host, string form, string media, string type, OpenApiSpecVersion version, bool inline)
+    {
+        var withTypeKit = await DeclaredAsync(typeKit: true);
+        var aspNet = await DeclaredAsync(typeKit: false);
+
+        var notFound = Responses(withTypeKit, "/declared/{id}", "get")["404"].ShouldNotBeNull();
+        notFound["description"]!.GetValue<string>().ShouldBe("Not Found. Problem types: https://problems.example/NotFound");
+        if (version == OpenApiSpecVersion.OpenApi2_0)
+            DeclaredMediaTypes(aspNet).Except(DeclaredMediaTypes(withTypeKit)).ShouldBeEmpty("2.0's produces is the operation's, the added 403 and 409 among it");
+        else
+            DeclaredMediaTypes(withTypeKit).ShouldBe(DeclaredMediaTypes(aspNet), "the media type is the one the endpoint declares");
+
+        var schemas = notFound["content"] is JsonObject content ? [.. content.Select(each => each.Value!["schema"]!)] : (List<JsonNode>)[notFound["schema"]!];
+        schemas.ShouldNotBeEmpty();
+        foreach (var schema in schemas)
+        {
+            var problem = schema["$ref"] is { } reference
+                ? reference.GetValue<string>()[2..].Split('/').Aggregate(withTypeKit, (node, step) => node[step]!)
+                : schema;
+            problem["properties"]!["fault"].ShouldNotBeNull(problem.ToJsonString());
+            problem["properties"]!["rule"].ShouldNotBeNull(problem.ToJsonString());
+        }
+
+        async Task<JsonNode> DeclaredAsync(bool typeKit)
+        {
+            await using var app = await StartAsync(
+                services: MapOrderProblemTypes,
+                openApi: options =>
+                {
+                    if (inline) options.CreateSchemaReferenceId = info => typeof(ProblemDetails).IsAssignableFrom(info.Type) ? null : OpenApiOptions.CreateDefaultSchemaReferenceId(info);
+                },
+                version: version,
+                mvc: host == Mvc,
+                controllers: host == Mvc ? [DeclaringControllers[(form, media, type)]] : null,
+                endpoints: host == Mvc ? null : app => MapDeclared(app, form, media, type),
+                controls: false,
+                orders: false,
+                typeKit: typeKit);
+
+            return await DocumentAsync(app);
+        }
+    }
+
+    private const string Minimal = "minimal", Mvc = "mvc";
+    private const string ProducesProblem = "ProducesProblem", Produces = "Produces<T>", ProducesOfType = "Produces(typeof)";
+    private const string Attribute = "[ProducesResponseType<T>]", AttributeOfType = "[ProducesResponseType(typeof)]";
+    private const string Unnamed = "(none)", Json = "application/json", ProblemJson = "application/problem+json";
+    private const string Problem = nameof(ProblemDetails), ValidationProblem = nameof(HttpValidationProblemDetails);
+
+    /// <summary>
+    /// The declarations of a 404 problem response, by host: ASP.NET's builder methods on a minimal API
+    /// (<c>ProducesProblem</c> is <c>ProducesValidationProblem</c> for the derived type), the attributes on a lambda
+    /// or an action; each with no content type, <c>application/json</c> and <c>application/problem+json</c>.
+    /// </summary>
+    public static TheoryData<string, string, string, string, OpenApiSpecVersion, bool> DeclaredProblems()
+    {
+        var data = new TheoryData<string, string, string, string, OpenApiSpecVersion, bool>();
+        foreach (var (host, forms) in new (string, string[])[] { (Minimal, [ProducesProblem, Produces, ProducesOfType, Attribute, AttributeOfType]), (Mvc, [Attribute, AttributeOfType]) })
+        foreach (var form in forms)
+        foreach (var media in (string[])[Unnamed, Json, ProblemJson])
+        foreach (var type in (string[])[Problem, ValidationProblem])
+        foreach (var version in (OpenApiSpecVersion[])[OpenApiSpecVersion.OpenApi3_1, OpenApiSpecVersion.OpenApi3_0, OpenApiSpecVersion.OpenApi2_0])
+        foreach (var inline in (bool[])[false, true])
+            data.Add(host, form, media, type, version, inline);
+
+        return data;
+    }
+
+    private static void MapDeclared(WebApplication app, string form, string media, string type)
+    {
+        const string path = "/declared/{id:int}";
+        const int status = StatusCodes.Status404NotFound;
+        var contentType = media == Unnamed ? null : media;
+
+        _ = (form, type) switch
+        {
+            (ProducesProblem, Problem) => app.MapGet(path, (int id) => Find(id).ToHttpResult()).ProducesProblem(status, contentType),
+            (ProducesProblem, _) => app.MapGet(path, (int id) => Find(id).ToHttpResult()).ProducesValidationProblem(status, contentType),
+            (Produces, Problem) => app.MapGet(path, (int id) => Find(id).ToHttpResult()).Produces<ProblemDetails>(status, contentType),
+            (Produces, _) => app.MapGet(path, (int id) => Find(id).ToHttpResult()).Produces<HttpValidationProblemDetails>(status, contentType),
+            (ProducesOfType, _) => app.MapGet(path, (int id) => Find(id).ToHttpResult())
+                                      .Produces(status, type == Problem ? typeof(ProblemDetails) : typeof(HttpValidationProblemDetails), contentType),
+            _ => app.MapGet(path, DeclaringLambdas[(form, media, type)]),
+        };
+    }
+
+    private static readonly Dictionary<(string Form, string Media, string Type), Delegate> DeclaringLambdas = new()
+    {
+        [(Attribute, Unnamed, Problem)] = [ProducesResponseType<ProblemDetails>(404)] (int id) => Find(id).ToHttpResult(),
+        [(Attribute, Json, Problem)] = [ProducesResponseType<ProblemDetails>(404, Json)] (int id) => Find(id).ToHttpResult(),
+        [(Attribute, ProblemJson, Problem)] = [ProducesResponseType<ProblemDetails>(404, ProblemJson)] (int id) => Find(id).ToHttpResult(),
+        [(Attribute, Unnamed, ValidationProblem)] = [ProducesResponseType<HttpValidationProblemDetails>(404)] (int id) => Find(id).ToHttpResult(),
+        [(Attribute, Json, ValidationProblem)] = [ProducesResponseType<HttpValidationProblemDetails>(404, Json)] (int id) => Find(id).ToHttpResult(),
+        [(Attribute, ProblemJson, ValidationProblem)] = [ProducesResponseType<HttpValidationProblemDetails>(404, ProblemJson)] (int id) => Find(id).ToHttpResult(),
+        [(AttributeOfType, Unnamed, Problem)] = [ProducesResponseType(typeof(ProblemDetails), 404)] (int id) => Find(id).ToHttpResult(),
+        [(AttributeOfType, Json, Problem)] = [ProducesResponseType(typeof(ProblemDetails), 404, Json)] (int id) => Find(id).ToHttpResult(),
+        [(AttributeOfType, ProblemJson, Problem)] = [ProducesResponseType(typeof(ProblemDetails), 404, ProblemJson)] (int id) => Find(id).ToHttpResult(),
+        [(AttributeOfType, Unnamed, ValidationProblem)] = [ProducesResponseType(typeof(HttpValidationProblemDetails), 404)] (int id) => Find(id).ToHttpResult(),
+        [(AttributeOfType, Json, ValidationProblem)] = [ProducesResponseType(typeof(HttpValidationProblemDetails), 404, Json)] (int id) => Find(id).ToHttpResult(),
+        [(AttributeOfType, ProblemJson, ValidationProblem)] = [ProducesResponseType(typeof(HttpValidationProblemDetails), 404, ProblemJson)] (int id) => Find(id).ToHttpResult(),
+    };
+
+    private static readonly Dictionary<(string Form, string Media, string Type), Type> DeclaringControllers = new()
+    {
+        [(Attribute, Unnamed, Problem)] = typeof(DeclaresProblem),
+        [(Attribute, Json, Problem)] = typeof(DeclaresJsonProblem),
+        [(Attribute, ProblemJson, Problem)] = typeof(DeclaresProblemJsonProblem),
+        [(Attribute, Unnamed, ValidationProblem)] = typeof(DeclaresValidationProblem),
+        [(Attribute, Json, ValidationProblem)] = typeof(DeclaresJsonValidationProblem),
+        [(Attribute, ProblemJson, ValidationProblem)] = typeof(DeclaresProblemJsonValidationProblem),
+        [(AttributeOfType, Unnamed, Problem)] = typeof(DeclaresProblemOfType),
+        [(AttributeOfType, Json, Problem)] = typeof(DeclaresJsonProblemOfType),
+        [(AttributeOfType, ProblemJson, Problem)] = typeof(DeclaresProblemJsonProblemOfType),
+        [(AttributeOfType, Unnamed, ValidationProblem)] = typeof(DeclaresValidationProblemOfType),
+        [(AttributeOfType, Json, ValidationProblem)] = typeof(DeclaresJsonValidationProblemOfType),
+        [(AttributeOfType, ProblemJson, ValidationProblem)] = typeof(DeclaresProblemJsonValidationProblemOfType),
+    };
+
+    /// <summary>The media types the declared 404 is written with: its content's, or a 2.0 operation's <c>produces</c>, which are every response's.</summary>
+    private static string[] DeclaredMediaTypes(JsonNode document)
+    {
+        var operation = document["paths"]!["/declared/{id}"]!["get"]!;
+
+        return operation["responses"]!["404"]!["content"] is JsonObject content
+            ? [.. content.Select(media => media.Key)]
+            : [.. operation["produces"]!.AsArray().Select(media => media!.GetValue<string>())];
     }
 
     /// <summary>A host whose document has no fault response keeps ASP.NET's problem schema, and the whole document, byte for byte.</summary>
@@ -467,6 +610,7 @@ public sealed partial class FaultResponseTests
         Action<OpenApiOptions>? openApi = null,
         OpenApiSpecVersion version = OpenApiSpecVersion.OpenApi3_1,
         bool mvc = false,
+        Type[]? controllers = null,
         Action<WebApplication>? endpoints = null,
         bool map = true,
         bool controls = true,
@@ -490,7 +634,7 @@ public sealed partial class FaultResponseTests
             builder.Services.AddControllers().ConfigureApplicationPartManager(parts =>
             {
                 parts.ApplicationParts.Clear();
-                parts.FeatureProviders.Add(new OnlyControllers(typeof(OrdersController)));
+                parts.FeatureProviders.Add(new OnlyControllers(controllers ?? [typeof(OrdersController)]));
             });
         }
 
@@ -581,6 +725,90 @@ public sealed partial class FaultResponseTests
     public sealed class OrdersController : ControllerBase
     {
         [HttpGet("/mvc/orders/{id:int}")]
+        public Results<Ok<Order>, FaultProblem<OrderFault>> Get(int id) => Find(id).ToHttpResult();
+    }
+
+    [ApiController]
+    public sealed class DeclaresProblem : ControllerBase
+    {
+        [HttpGet("/declared/{id:int}"), ProducesResponseType<ProblemDetails>(404)]
+        public Results<Ok<Order>, FaultProblem<OrderFault>> Get(int id) => Find(id).ToHttpResult();
+    }
+
+    [ApiController]
+    public sealed class DeclaresJsonProblem : ControllerBase
+    {
+        [HttpGet("/declared/{id:int}"), ProducesResponseType<ProblemDetails>(404, Json)]
+        public Results<Ok<Order>, FaultProblem<OrderFault>> Get(int id) => Find(id).ToHttpResult();
+    }
+
+    [ApiController]
+    public sealed class DeclaresProblemJsonProblem : ControllerBase
+    {
+        [HttpGet("/declared/{id:int}"), ProducesResponseType<ProblemDetails>(404, ProblemJson)]
+        public Results<Ok<Order>, FaultProblem<OrderFault>> Get(int id) => Find(id).ToHttpResult();
+    }
+
+    [ApiController]
+    public sealed class DeclaresValidationProblem : ControllerBase
+    {
+        [HttpGet("/declared/{id:int}"), ProducesResponseType<HttpValidationProblemDetails>(404)]
+        public Results<Ok<Order>, FaultProblem<OrderFault>> Get(int id) => Find(id).ToHttpResult();
+    }
+
+    [ApiController]
+    public sealed class DeclaresJsonValidationProblem : ControllerBase
+    {
+        [HttpGet("/declared/{id:int}"), ProducesResponseType<HttpValidationProblemDetails>(404, Json)]
+        public Results<Ok<Order>, FaultProblem<OrderFault>> Get(int id) => Find(id).ToHttpResult();
+    }
+
+    [ApiController]
+    public sealed class DeclaresProblemJsonValidationProblem : ControllerBase
+    {
+        [HttpGet("/declared/{id:int}"), ProducesResponseType<HttpValidationProblemDetails>(404, ProblemJson)]
+        public Results<Ok<Order>, FaultProblem<OrderFault>> Get(int id) => Find(id).ToHttpResult();
+    }
+
+    [ApiController]
+    public sealed class DeclaresProblemOfType : ControllerBase
+    {
+        [HttpGet("/declared/{id:int}"), ProducesResponseType(typeof(ProblemDetails), 404)]
+        public Results<Ok<Order>, FaultProblem<OrderFault>> Get(int id) => Find(id).ToHttpResult();
+    }
+
+    [ApiController]
+    public sealed class DeclaresJsonProblemOfType : ControllerBase
+    {
+        [HttpGet("/declared/{id:int}"), ProducesResponseType(typeof(ProblemDetails), 404, Json)]
+        public Results<Ok<Order>, FaultProblem<OrderFault>> Get(int id) => Find(id).ToHttpResult();
+    }
+
+    [ApiController]
+    public sealed class DeclaresProblemJsonProblemOfType : ControllerBase
+    {
+        [HttpGet("/declared/{id:int}"), ProducesResponseType(typeof(ProblemDetails), 404, ProblemJson)]
+        public Results<Ok<Order>, FaultProblem<OrderFault>> Get(int id) => Find(id).ToHttpResult();
+    }
+
+    [ApiController]
+    public sealed class DeclaresValidationProblemOfType : ControllerBase
+    {
+        [HttpGet("/declared/{id:int}"), ProducesResponseType(typeof(HttpValidationProblemDetails), 404)]
+        public Results<Ok<Order>, FaultProblem<OrderFault>> Get(int id) => Find(id).ToHttpResult();
+    }
+
+    [ApiController]
+    public sealed class DeclaresJsonValidationProblemOfType : ControllerBase
+    {
+        [HttpGet("/declared/{id:int}"), ProducesResponseType(typeof(HttpValidationProblemDetails), 404, Json)]
+        public Results<Ok<Order>, FaultProblem<OrderFault>> Get(int id) => Find(id).ToHttpResult();
+    }
+
+    [ApiController]
+    public sealed class DeclaresProblemJsonValidationProblemOfType : ControllerBase
+    {
+        [HttpGet("/declared/{id:int}"), ProducesResponseType(typeof(HttpValidationProblemDetails), 404, ProblemJson)]
         public Results<Ok<Order>, FaultProblem<OrderFault>> Get(int id) => Find(id).ToHttpResult();
     }
 }
