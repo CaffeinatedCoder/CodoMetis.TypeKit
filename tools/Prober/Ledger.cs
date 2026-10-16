@@ -289,6 +289,9 @@ internal sealed class Ledger
 
     public sealed record ProbeState(string Probe, string Claim, string Filter, JsonArray Variants, bool Stale, bool Retired, int Passes, bool Replay);
 
+    /// <summary>A registry entry's process variants: its own, or one that sets nothing.</summary>
+    public static JsonArray VariantsOf(JsonObject entry) => entry["variants"] is JsonArray va && va.Count > 0 ? (JsonArray)va.DeepClone() : [new JsonObject()];
+
     public List<ProbeState> ProbeStates(bool includeRetired)
     {
         var footprints = Footprints();
@@ -300,7 +303,7 @@ internal sealed class Ledger
             var retired = r["retired"] is JsonValue rv && rv.TryGetValue<bool>(out var b) && b;
             var evidence = Files.ReadJson(EvidencePath(probe));
             var stale = !FootprintCurrent(probe, footprints) || evidence is null || Files.Str(evidence["identity"]) != Identity(probe);
-            var variants = r["variants"] is JsonArray va && va.Count > 0 ? (JsonArray)va.DeepClone() : [new JsonObject()];
+            var variants = VariantsOf(r);
             states.Add(new ProbeState(probe, Files.Str(r["claim"]), Files.Str(r["filter"]), variants, stale, retired, passes, stale && (includeRetired || !retired)));
         }
         return states;

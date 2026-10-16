@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.AspNetCore/TypeKitFaultResponsesServiceCollectionExtensions.cs b/src/CodoMetis.TypeKit.AspNetCore/TypeKitFaultResponsesServiceCollectionExtensions.cs
+index 778a3b0..af9eeaa 100644
+--- a/src/CodoMetis.TypeKit.AspNetCore/TypeKitFaultResponsesServiceCollectionExtensions.cs
++++ b/src/CodoMetis.TypeKit.AspNetCore/TypeKitFaultResponsesServiceCollectionExtensions.cs
+@@ -91,7 +91,7 @@ public static class TypeKitClosedSetFaultResponsesServiceCollectionExtensions
+     {
+         ArgumentNullException.ThrowIfNull(services);
+ 
+-        return FaultRegistration.Add(services, FaultTypes.Set<TFault>(), static fault => FaultRegistration.ByKind(fault, fault.QualifiedName, nameof(TFault)), nameof(TFault));
++        return FaultRegistration.Add(services, FaultTypes.Set<TFault>(), static fault => fault.Kind == default ? FaultResponse.Status(500) : FaultRegistration.ByKind(fault, fault.QualifiedName, nameof(TFault)), nameof(TFault));
+     }
+ 
+     /// <summary>

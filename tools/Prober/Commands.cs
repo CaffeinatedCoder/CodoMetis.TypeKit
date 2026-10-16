@@ -42,10 +42,19 @@ internal static class Commands
 
     public static int Rows(Ledger l, Args a)
     {
+        l.Ctx.Out.WriteLine(CoveringRows(l, a.Need("claim"), a.Flag("full"), a.Get("max"), a.Get("seed")).ToJsonString(Pretty));
+        return 0;
+    }
+
+    /// <summary>
+    /// What `rows` prints: a pairwise covering array over the claim's pairs not yet covered (all of them with
+    /// <paramref name="full"/>), each row with the pairs it covers. Inside a capped round the claim counts toward
+    /// the round's cap, and past the deadline or the cap this refuses.
+    /// </summary>
+    public static JsonObject CoveringRows(Ledger l, string claimId, bool full, string? max = null, string? seed = null)
+    {
         var universe = Universe.Load(l.P("universe.json")) ?? throw new Refusal("no universe.json for this branch yet; run `universe` first");
-        var claimId = a.Need("claim");
         if (!universe.ById.TryGetValue(claimId, out var claim)) throw new Refusal($"no claim {claimId} in the universe");
-        var full = a.Flag("full");
         if (!full && ActiveRound(l) is { } round)
         {
             if (RoundLock.Now() > Files.Num(round["deadline"]))
@@ -62,9 +71,8 @@ internal static class Commands
         }
         var covered = full ? [] : l.Covered(universe, claimId);
         var todo = claim.Pairs().Where(p => !covered.Contains((claimId, p))).ToHashSet();
-        var max = int.Parse(a.Get("max") ?? "2000", CultureInfo.InvariantCulture);
-        var rows = Covering.Rows(claim, todo, max, int.Parse(a.Get("seed") ?? "1", CultureInfo.InvariantCulture));
-        var output = new JsonObject
+        var rows = Covering.Rows(claim, todo, int.Parse(max ?? "2000", CultureInfo.InvariantCulture), int.Parse(seed ?? "1", CultureInfo.InvariantCulture));
+        return new JsonObject
         {
             ["claim"] = claimId,
             ["rows"] = new JsonArray([.. rows.Select(r => (JsonNode)new JsonObject
@@ -74,8 +82,6 @@ internal static class Commands
             })]),
             ["uncovered_after"] = todo.Count - rows.Sum(r => r.Pairs.Count),
         };
-        l.Ctx.Out.WriteLine(output.ToJsonString(Pretty));
-        return 0;
     }
 
     public static int UniverseCommand(Ledger l, Args a)
