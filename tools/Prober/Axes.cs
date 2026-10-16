@@ -17,6 +17,9 @@ internal readonly record struct Pair
     public override string ToString() => $"{A} {B}";
 }
 
+/// <summary>Pairs a claim excludes, and the one sentence that says why no row can hold them or the documents do not promise them.</summary>
+internal sealed record Exclusion(string Reason, IReadOnlyList<Pair> Pairs);
+
 /// <summary>One claim of the universe: its axes and values, its watched paths, and the pairs it excludes.</summary>
 internal sealed class Claim
 {
@@ -26,6 +29,12 @@ internal sealed class Claim
     public required IReadOnlyList<string> Watched { get; init; }
     public required SortedDictionary<string, List<string>> Axes { get; init; }
     public required HashSet<Pair> Excluded { get; init; }
+
+    /// <summary>The claim's exclusions with their reasons, as claims.json holds them; universe.json keeps only <see cref="Excluded"/>.</summary>
+    public IReadOnlyList<Exclusion> Exclusions { get; init; } = [];
+
+    /// <summary>Each axis the claim drops, with the document sentence that limits it; universe.json does not keep these.</summary>
+    public IReadOnlyDictionary<string, string> Narrowed { get; init; } = new SortedDictionary<string, string>(StringComparer.Ordinal);
 
     public HashSet<Pair> Pairs()
     {
@@ -169,18 +178,23 @@ internal static class Axes
             }
             var sourcePath = Path.Combine(ledger.Top, sourceFile);
             var sourceText = File.Exists(sourcePath) ? Collapse(File.ReadAllText(sourcePath)) : "";
+            var narrowed = new SortedDictionary<string, string>(StringComparer.Ordinal);
             foreach (var (name, quote) in c["narrow"] as JsonObject ?? [])
             {
                 if (!sourceText.Contains(Collapse(Files.Str(quote)), StringComparison.Ordinal))
                     throw new Refusal($"claim {id} narrows {name} by a quote not found in {sourceFile}");
                 mine.Remove(name);
+                narrowed[name] = Files.Str(quote);
             }
             foreach (var (name, values) in c["axes"] as JsonObject ?? []) mine[name] = [.. Files.Strings(values)];
+            // The claims file's schema holds the form (Ledger.ReadClaims): each entry a reason and its pairs.
+            List<Exclusion> exclusions = [.. (c["exclude"] as JsonArray ?? []).OfType<JsonObject>().Select(e => new Exclusion(Files.Str(e["reason"]),
+                [.. (e["pairs"] as JsonArray ?? []).OfType<JsonArray>().Select(p => new Pair(Files.Str(p[0]), Files.Str(p[1])))]))];
             built.Add(new Claim
             {
                 Id = id, Source = source, Surfaces = [.. Files.Strings(c["surfaces"])],
                 Watched = [.. watched.Append(sourceFile).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)], Axes = mine,
-                Excluded = [.. (c["exclude"] as JsonArray ?? []).OfType<JsonArray>().Select(p => new Pair(Files.Str(p[0]), Files.Str(p[1])))],
+                Excluded = [.. exclusions.SelectMany(e => e.Pairs)], Exclusions = exclusions, Narrowed = narrowed,
             });
         }
         var universe = new Universe

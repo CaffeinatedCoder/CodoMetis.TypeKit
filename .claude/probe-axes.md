@@ -103,6 +103,12 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
 - `shape.*` is the type-shape catalogue: the forms a consumer's own type takes. Generate the
   declarations a round needs with a script, once per round, as one pairwise set shared by every claim.
 - A claim may drop a surface axis only by quoting the document sentence that limits it (`narrow`).
+- A claim may drop pairs no row can hold, or that the documents do not promise, only with the reason
+  (`exclude`: a list of `{"reason": "...", "pairs": [["a=1", "b=2"], ...]}`): one sentence, citing the docs
+  sentence, the record or the KB fact where one applies. Nothing checks a reason mechanically, so
+  `prober universe` prints each one beside the claim's narrowings for a reviewer, and the prober refuses a
+  claims.json with any field its schema (`tools/Prober/Schemas/claims.schema.json`) does not have
+  ([decision 102](../design/adr/0102-an-exclusion-carries-its-reason.md)).
 - `refused` drops a value the framework itself refuses on its own, so no row wastes its pairs on it.
   `shape.refused-kind` holds the declarations the generators refuse; only the generation surface takes
   it, where the refusal is the claim.
