@@ -28,7 +28,11 @@ by a probe in the corpus, written by hand or by a round, or by a reviewed waiver
 The corpus is tracked under `tools/probe/corpus/`: claims, the probe registry, harness and probe sources,
 rows (gzipped), waivers and dismissed findings. State goes under `PROBE_STATE_DIR` when set (CI sets it),
 else the main checkout's `.claude/agent-memory-local/prober/`. Every file's shape is in `Schemas/`, versioned;
-a file or line without `schemaVersion` is version 1.
+a file or line without `schemaVersion` is version 1. `claims.json` is checked against its schema wherever it is
+read, and a field the schema does not have is refused with the claim and the field named; each `exclude` entry
+is a reason and its pairs, which `universe` prints beside the claim's narrowings. The JSON files the prober
+writes keep `+`, backticks and `<` literal, so a `publish` that changes nothing in a tracked file leaves it as
+it is (decision 102).
 
 A pair of a claim's axes counts as covered only by evidence a replay recorded: a row that was expected,
 executed and ended as a pass, for the settings that actually applied, while the result's identity holds
