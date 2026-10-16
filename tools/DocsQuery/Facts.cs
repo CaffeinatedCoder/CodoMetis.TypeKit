@@ -180,19 +180,20 @@ internal static partial class FactRules
 
                 if (test.Value.StartsWith("none, ", StringComparison.Ordinal) && test.Value.Length > "none, ".Length) continue;
 
-                if (!test.Value.StartsWith(FactsProject + "/", StringComparison.Ordinal))
+                var path = TestPath(test.Value);
+                if (!path.StartsWith(FactsProject + "/", StringComparison.Ordinal))
                 {
                     problems.Add(new Problem(At(test.Line), "fact-untested", test.Value, $"write the path of its test in {FactsProject}/, or 'none, ' and why no test can observe it"));
                     continue;
                 }
 
-                named.Add(test.Value);
-                var file = Path.Combine(root, test.Value);
+                named.Add(path);
+                var file = Path.Combine(root, path);
 
                 if (!File.Exists(file))
-                    problems.Add(new Problem(At(test.Line), "fact-untested", test.Value, "the file does not exist"));
+                    problems.Add(new Problem(At(test.Line), "fact-untested", path, "the file does not exist"));
                 else if (!Regex.IsMatch(File.ReadAllText(file), $@"\bclass\s+{className}\b"))
-                    problems.Add(new Problem(At(test.Line), "fact-untested", test.Value, $"declares no class {className}, the test named by the fact's id"));
+                    problems.Add(new Problem(At(test.Line), "fact-untested", path, $"declares no class {className}, the test named by the fact's id"));
             }
         }
 
@@ -208,6 +209,13 @@ internal static partial class FactRules
 
         return problems;
     }
+
+    /// <summary>
+    /// The test's path, without a note in parentheses after it, such as where the test runs:
+    /// <c>test/CodoMetis.TypeKit.Facts/KB028.cs (runs only with TYPEKIT_PG set, until WS6's CI service)</c>.
+    /// </summary>
+    private static string TestPath(string value) =>
+        value.EndsWith(')') && value.IndexOf(" (", StringComparison.Ordinal) is > 0 and var note ? value[..note] : value;
 
     /// <summary>Why a frontmatter value would not read back as the plain YAML string it is meant to be, or null.</summary>
     private static string? NotPlain(string value) =>

@@ -57,6 +57,19 @@ public sealed class FactTests : IDisposable
         answer.Summary.ShouldEndWith("and 1 fact");
     }
 
+    /// <summary>A note after the test's path, such as where it runs, leaves the path the test: the fact is tested and the test named.</summary>
+    [Fact]
+    public void A_test_named_with_a_note_after_its_path_is_the_fact_s_test()
+    {
+        _repo.With("design/knowledge/KB-002-noted.md", Fact(2, "  - sdk 10.0.4xx", "test/CodoMetis.TypeKit.Facts/KB002.cs (runs only with A_SERVER set, until a CI service)"))
+             .With("test/CodoMetis.TypeKit.Facts/KB002.cs", "public sealed class KB002 { }\n");
+
+        var answer = _repo.Queries().Check();
+
+        answer.Rows.ShouldBeEmpty(answer.Text());
+        answer.Summary.ShouldEndWith("and 2 facts");
+    }
+
     [Fact]
     public void A_fact_answers_to_its_id_in_any_spelling_and_is_cited()
     {
