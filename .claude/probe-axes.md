@@ -83,6 +83,14 @@ and a sentence saying what it breaks, in its registry entry:
 - Without a build, the prober tests hold the rest on every run (`SeedsTests`): every registered probe
   has a seed, and its patch touches only `src/` and still applies. A product change that moves the
   patched lines fails there; make the seed again against the new code.
+- A seed per obligation ([decision 104](../design/adr/0104-a-claim-states-its-obligations-and-each-has-a-seed.md)).
+  A seed that breaks some assertion of a probe shows the probe can fail, not that the claim is checked, so
+  a probe whose claim lists `obligations` carries `seeds`, one per obligation it checks, each a seed as
+  above with an `obligation` naming it; `seed` may name one too. A seed that names none counts only for a
+  claim without `obligations`. `prober seeds` runs each seed of a probe on its own and reports it as
+  `P/<obligation>`, in its output and in `seeds-last.json`; `prober status` shows per claim its obligations
+  and the ones no seed names; and `SeedsTests` refuses, without a build, a seed naming an obligation its
+  claim does not list and a listed obligation of a claim with probes that no seed of them names.
 
 ## Claim sources
 
@@ -116,6 +124,21 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
 - `refused` drops a value the framework itself refuses on its own, so no row wastes its pairs on it.
   `shape.refused-kind` holds the declarations the generators refuse; only the generation surface takes
   it, where the refusal is the claim.
+- A claim lists what it promises in `obligations`, one entry per promise a probe can check on its own: an
+  `id`, the `sentence` quoted verbatim from the claim's source and checked as a narrowing is, and the `axes`
+  values it concerns where it is not the whole claim. A claim without the field has one obligation, the
+  claim itself, under the id `claim`. Each obligation of a claim with probes has a seed that names it
+  ([decision 104](../design/adr/0104-a-claim-states-its-obligations-and-each-has-a-seed.md)).
+- What a claim does not promise goes in `not-promised`: an `id`, the `source` (`file#heading`) of the
+  document or record that makes the difference intended, its `sentence`, quoted verbatim and checked against
+  that source, and the `axes` values it concerns. A note of outcome expected-refusal, a narrowing or an
+  applicability condition cites the entry by its id. `prober universe` refuses an obligation or an entry
+  whose sentence its document does not hold, and an id listed twice, naming the claim and the id.
+- `out-of-reach` names a surface no probe reaches, with the reason: one that needs a server, a toolchain
+  or minutes a replay does not have. `prober gaps` prints it beside the settings no surface reaches, the
+  settings without values, the refused shapes and values, and every not-promised entry and narrowing, each
+  with its recorded reason. It is a report for the release checklist and a feature-research round; it
+  decides nothing and runs no model.
 - `http.host` has two values without `[ApiController]`, where MVC infers no `[FromBody]` and answers no
   automatic 400. `controller-without-ApiController` is for **runtime claims only**: ASP.NET's API explorer
   leaves such a controller out of the document (docs/aspnet-core.md, "Bind value objects in MVC"), so a
@@ -513,6 +536,10 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
         "src/CodoMetis.TypeKit/Refusals.cs"
       ]
     }
+  },
+  "out-of-reach": {
+    "postgresql": "needs a server; the EF probes run SQLite in memory, and the EF translation claims are checked by translation alone",
+    "native-aot": "measured only by the consumer smoke test (tools/ConsumerSmokeTest), minutes and a platform linker; no probe publishes with Native AOT"
   },
   "refused": {
     "shape.site": {

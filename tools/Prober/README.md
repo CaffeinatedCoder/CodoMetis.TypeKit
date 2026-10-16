@@ -16,6 +16,7 @@ dotnet tools/Prober/bin/Release/net10.0/prober.dll help
 | `merge --from DIR...` | none | anywhere, CI included: joins the states of a replay split by family, and refuses while a registered probe was in no leg |
 | `gate [--since REF]` | none | anywhere, CI included: needs only the tracked corpus and a replay |
 | `status`, `stale`, `universe`, `rows`, … | none | anywhere |
+| `gaps [--base REF]` | none | anywhere: what the corpus leaves out, each with its recorded reason; a report that decides nothing (decision 104) |
 | `round explore\|full` | the `prober` agent | locally only, under caps it cannot overrun |
 | `seeds [--probe P]` | none | locally only: one build per seed, in a scratch worktree (decision 100) |
 
@@ -34,6 +35,14 @@ is a reason and its pairs, which `universe` prints beside the claim's narrowings
 writes keep `+`, backticks and `<` literal, so a `publish` that changes nothing in a tracked file leaves it as
 it is (decision 102).
 
+A claim lists what it promises in `obligations`, each an id and a sentence quoted verbatim from the claim's
+source, and what it does not promise in `not-promised`, each an id and the sentence of the document or record
+that makes the difference intended, quoted from that source. `universe` checks every quote as it checks a
+narrowing's and refuses a sentence its document does not hold, or an id listed twice. A claim without
+`obligations` has one, the claim itself, under the id `claim`. `status` shows per claim its obligations and the
+ones no seed names, and `gaps` prints every not-promised entry and narrowing beside the settings no surface
+reaches, the refused shapes and values, and the axes file's `out-of-reach` surfaces (decision 104).
+
 A pair of a claim's axes counts as covered only by evidence a replay recorded: a row that was expected,
 executed and ended as a pass, for the settings that actually applied, while the result's identity holds
 (the probe, every compiled corpus source, the rows, the axes file, the build environment, this tool's
@@ -42,12 +51,17 @@ version and the schema version) and the product files the probe ran are unchange
 ## Seeds
 
 Each probe's registry entry names a seeded product defect: a patch under `seeds/` against the product
-files (the replay's `include`), an environment toggle, or both, and the sentence `defect`. `seeds` applies
-each in the `seeds` worktree beside the replay's, builds, runs the probe and counts the seed caught only for
-a row that ends as a violation, raised no harness error and does not violate in the unseeded probe
-(decision 103). The unseeded rows come from the ledger
-where the probe's evidence is current, else from an unseeded run first. Nothing it runs is evidence; it
-writes `seeds-last.json` (`Schemas/seeds-run.schema.json`). A seed is not part of a probe's identity.
+files (the replay's `include`), an environment toggle, or both, and the sentence `defect`. Where its claim
+lists obligations, the entry's `seeds` holds one such seed per obligation the probe checks, each naming it in
+`obligation`, and every listed obligation of a claim with probes has a seed in one of them (decision 104).
+`seeds` applies each seed on its own in the `seeds` worktree beside the replay's, builds, runs the probe
+and counts the seed caught only for a row that ends as a violation, raised no harness error and does not
+violate in the unseeded probe (decision 103). The unseeded rows come from the ledger where the probe's
+evidence is current, else from an unseeded run first. Nothing it runs is evidence; it
+writes `seeds-last.json` (`Schemas/seeds-run.schema.json`), one outcome per seed, reported as
+`P/<obligation>` where the seed names one. A seed is not part of a probe's identity. Without a build,
+`Seeds.Problems`, which the prober tests run over the repository, refuses a probe without a seed, a seed that
+does not apply, a seed naming an obligation its claim does not list, and a listed obligation no seed names.
 
 ## Register and publish
 

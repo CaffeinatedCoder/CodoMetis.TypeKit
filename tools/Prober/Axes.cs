@@ -20,6 +20,12 @@ internal readonly record struct Pair
 /// <summary>Pairs a claim excludes, and the one sentence that says why no row can hold them or the documents do not promise them.</summary>
 internal sealed record Exclusion(string Reason, IReadOnlyList<Pair> Pairs);
 
+/// <summary>One thing a claim promises, checkable on its own: a sentence quoted from the claim's source, under an id a seed names (decision 104).</summary>
+internal sealed record Obligation(string Id, string Sentence, IReadOnlyDictionary<string, List<string>> Axes);
+
+/// <summary>One thing a claim does not promise: the sentence of the document or record that makes the difference intended, and what it concerns.</summary>
+internal sealed record NotPromised(string Id, string Source, string Sentence, IReadOnlyDictionary<string, List<string>> Axes);
+
 /// <summary>One claim of the universe: its axes and values, its watched paths, and the pairs it excludes.</summary>
 internal sealed class Claim
 {
@@ -35,6 +41,22 @@ internal sealed class Claim
 
     /// <summary>Each axis the claim drops, with the document sentence that limits it; universe.json does not keep these.</summary>
     public IReadOnlyDictionary<string, string> Narrowed { get; init; } = new SortedDictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>What the claim promises, each checkable on its own, as claims.json lists them (empty: one implicit obligation, the claim); universe.json does not keep these.</summary>
+    public IReadOnlyList<Obligation> Obligations { get; init; } = [];
+
+    /// <summary>What the claim does not promise, each with the sentence that makes it intended; universe.json does not keep these.</summary>
+    public IReadOnlyList<NotPromised> NotPromised { get; init; } = [];
+
+    /// <summary>The id of a claim's one obligation where claims.json lists none: the claim itself.</summary>
+    public const string ImplicitObligation = "claim";
+
+    /// <summary>The obligation ids of a claim as claims.json holds it: the listed ones, or the implicit one.</summary>
+    public static List<string> ObligationIds(JsonObject claim)
+    {
+        var ids = (claim["obligations"] as JsonArray ?? []).OfType<JsonObject>().Select(o => Files.Str(o["id"])).Where(id => id.Length > 0).ToList();
+        return ids.Count > 0 ? ids : [ImplicitObligation];
+    }
 
     public HashSet<Pair> Pairs()
     {
@@ -126,6 +148,14 @@ internal static class Axes
 
     private static string Collapse(string s) => Regex.Replace(s, @"\s+", " ");
 
+    /// <summary>An axis-to-values object of claims.json (an obligation's or a not-promised entry's `axes`), or none.</summary>
+    private static SortedDictionary<string, List<string>> AxesOf(JsonNode? node)
+    {
+        var result = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (var (name, values) in node as JsonObject ?? []) result[name] = [.. Files.Strings(values)];
+        return result;
+    }
+
     /// <summary>Builds the universe: each claim takes every axis of its surfaces, minus quoted narrowings, plus its own axes.</summary>
     public static (Universe Universe, List<string> Problems) Build(Ledger ledger, string baseRef, List<JsonObject>? claimsOverride = null, JsonObject? generatedOverride = null)
     {
@@ -187,6 +217,28 @@ internal static class Axes
                 narrowed[name] = Files.Str(quote);
             }
             foreach (var (name, values) in c["axes"] as JsonObject ?? []) mine[name] = [.. Files.Strings(values)];
+            // What the claim promises and what it does not, each a sentence quoted from its document, checked as a
+            // narrowing is: a sentence the document no longer holds is a refusal, never a stale promise (decision 104).
+            var obligations = new List<Obligation>();
+            foreach (var o in (c["obligations"] as JsonArray ?? []).OfType<JsonObject>())
+            {
+                var oid = Files.Str(o["id"]);
+                if (obligations.Any(x => x.Id == oid)) throw new Refusal($"claim {id}: obligation {oid} is listed twice");
+                if (!sourceText.Contains(Collapse(Files.Str(o["sentence"])), StringComparison.Ordinal))
+                    throw new Refusal($"claim {id}: obligation {oid} quotes a sentence not found in {sourceFile}");
+                obligations.Add(new Obligation(oid, Files.Str(o["sentence"]), AxesOf(o["axes"])));
+            }
+            var notPromised = new List<NotPromised>();
+            foreach (var n in (c["not-promised"] as JsonArray ?? []).OfType<JsonObject>())
+            {
+                var nid = Files.Str(n["id"]); var nsource = Files.Str(n["source"]); var nfile = nsource.Split('#')[0];
+                if (notPromised.Any(x => x.Id == nid)) throw new Refusal($"claim {id}: not-promised {nid} is listed twice");
+                var npath = Path.Combine(ledger.Top, nfile);
+                var ntext = File.Exists(npath) ? Collapse(File.ReadAllText(npath)) : "";
+                if (!ntext.Contains(Collapse(Files.Str(n["sentence"])), StringComparison.Ordinal))
+                    throw new Refusal($"claim {id}: not-promised {nid} quotes a sentence not found in {nfile}");
+                notPromised.Add(new NotPromised(nid, nsource, Files.Str(n["sentence"]), AxesOf(n["axes"])));
+            }
             // The claims file's schema holds the form (Ledger.ReadClaims): each entry a reason and its pairs.
             List<Exclusion> exclusions = [.. (c["exclude"] as JsonArray ?? []).OfType<JsonObject>().Select(e => new Exclusion(Files.Str(e["reason"]),
                 [.. (e["pairs"] as JsonArray ?? []).OfType<JsonArray>().Select(p => new Pair(Files.Str(p[0]), Files.Str(p[1])))]))];
@@ -195,6 +247,7 @@ internal static class Axes
                 Id = id, Source = source, Surfaces = [.. Files.Strings(c["surfaces"])],
                 Watched = [.. watched.Append(sourceFile).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)], Axes = mine,
                 Excluded = [.. exclusions.SelectMany(e => e.Pairs)], Exclusions = exclusions, Narrowed = narrowed,
+                Obligations = obligations, NotPromised = notPromised,
             });
         }
         var universe = new Universe
