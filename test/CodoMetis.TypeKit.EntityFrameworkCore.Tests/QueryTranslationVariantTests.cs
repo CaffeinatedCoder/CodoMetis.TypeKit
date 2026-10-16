@@ -80,8 +80,16 @@ public sealed class QueryTranslationVariantTests
                 Refusal(valueObject, "is not supported because the query has switched to client-evaluation");
                 return;
             case RefusedForeign when @case.Op is Op.Select or Op.Distinct:
+                var memory = Memory(@case);
+                if (memory.Refusal is { } thrown)
+                {
+                    // r.N!.Value over the null row, read through the converter and then unwrapped in memory, as memory does.
+                    valueObject.Refusal.ShouldBeOfType(thrown.GetType(), "the query's last step, which throws in memory too");
+                    return;
+                }
+
                 valueObject.Refusal.ShouldBeNull("the query's last step, which EF evaluates in memory after reading the value object through its converter");
-                valueObject.Rows.ShouldBe(Memory(@case).Rows, "the query's last step, evaluated in memory");
+                valueObject.Rows.ShouldBe(memory.Rows, "the query's last step, evaluated in memory");
                 return;
             case RefusedForeign:
                 Refusal(valueObject, "could not be translated");

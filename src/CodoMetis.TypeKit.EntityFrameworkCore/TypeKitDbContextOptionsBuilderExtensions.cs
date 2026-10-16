@@ -24,7 +24,7 @@ public static class TypeKitDbContextOptionsBuilderExtensions
     /// (<see cref="CodoMetis.TypeKit.ValueObjects.IValueObjectMaterializer{TSelf,T}"/>).
     /// </para>
     /// <para>
-    /// It only adds plugins, conventions and an interceptor, so it replaces nothing of EF's or of
+    /// It only adds plugins, conventions and interceptors, so it replaces nothing of EF's or of
     /// another library's, and the order against the database provider does not matter.
     /// </para>
     /// </remarks>
