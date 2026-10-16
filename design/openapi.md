@@ -31,7 +31,13 @@ position, and the change lands in the hoisted component.
   `format` and drops `items`/`additionalProperties` for an element of one (measured, 10.0); the
   description goes in every JSON position and the containers are repaired where they lack one. A body is
   a parameter too, and every schema in one; only a non-body parameter binds through `TryParse`, and it
-  gets back the schema the type has without converters of one's own, beside ASP.NET's `format`. A
+  gets back the schema the type has without converters of one's own, beside ASP.NET's `format`; so does
+  the element of a query or header array of it, whose `items` ASP.NET dropped, and a value object over it,
+  whose wrapped type is asked for as the parameter's. Below a parameter, the wrapped type and an element are
+  asked for with the parameter's source and type alone, since ASP.NET applies a parameter's default and
+  attributes to whatever it is asked for. Where value objects are components, such a value object is written
+  inline as a parameter, because its component is the JSON positions'
+  ([decision 106](adr/0106-a-parameter-of-a-value-object-over-a-described-type-is-inlined.md)). A
   description is parsed by `OpenApiModelFactory.Parse<OpenApiSchema>` (Microsoft.OpenApi 2.0 on), measured
   to survive Native AOT trimming in the smoke test's `aot` consumer, then written back in 3.1 and compared
   with what was described: a keyword the model does not hold is written aside as unrecognised, where no

@@ -67,9 +67,9 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
             if (Description(item, options, property: null) is null) return;
 
             if (info.Kind == JsonTypeInfoKind.Enumerable && schema.Items is null)
-                schema.Items = await context.GetOrCreateSchemaAsync(item, ValueObjectSchemaTransformer.ElementOf(parameter), cancellationToken);
+                schema.Items = await context.GetOrCreateSchemaAsync(item, ValueObjectSchemaTransformer.Detached(parameter), cancellationToken);
             else if (info.Kind == JsonTypeInfoKind.Dictionary && schema.AdditionalProperties is null)
-                schema.AdditionalProperties = await context.GetOrCreateSchemaAsync(item, ValueObjectSchemaTransformer.ElementOf(parameter), cancellationToken);
+                schema.AdditionalProperties = await context.GetOrCreateSchemaAsync(item, ValueObjectSchemaTransformer.Detached(parameter), cancellationToken);
 
             return;
         }

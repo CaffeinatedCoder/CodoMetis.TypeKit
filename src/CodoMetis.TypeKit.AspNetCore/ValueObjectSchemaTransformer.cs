@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -44,6 +45,11 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// generated one, is not the wrapped type's in a JSON position: it is what that converter says it writes
 /// (<see cref="DescribedSchemaTransformer"/>), or, where it says nothing, what ASP.NET writes for a
 /// converter of one's own. A parameter binds through <c>TryParse</c> and is unchanged.</item>
+/// <item>Outside the body, a value object binds through <c>TryParse</c>, as a parameter and as an element of a query or
+/// header array: the type it wraps is asked for as the parameter's, so a converter that describes that type, such as
+/// <c>DecimalStringJsonConverter</c>, says nothing of it there. Such a parameter is written inline where value objects
+/// are components, since the component is what its JSON positions say
+/// ([decision 106](design/adr/0106-a-parameter-of-a-value-object-over-a-described-type-is-inlined.md)).</item>
 /// </list>
 /// </remarks>
 internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
@@ -75,13 +81,22 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
             // it into the wrapped type's schema in the same position: for a nullable property of that type, and
             // elsewhere for the Nullable<T> of a wrapped value type, a parameter outside the body included. Not at
             // the root of a wrapped reference type, which has none (a string? body is a string, inside ASP.NET's null-or).
-            var position = SchemaReferenceId(info, context) is not null ? NullablePosition.None
+            //
+            // Outside the body, as a parameter or an element of one, the value object binds through TryParse: the type it
+            // wraps is asked for as that parameter's, so a converter that describes it says nothing here, as it says
+            // nothing of a parameter of that type. Then the schema is not its JSON's, and it is written inline, never as
+            // the component its JSON positions share (decision 106).
+            var outside = ParameterOutsideTheBody(context) is { } given ? Detached(given) : null;
+            var inline = outside is not null && WrapsDescribed(info.Type, info.Options);
+            if (inline) Inline(schema);
+
+            var position = !inline && SchemaReferenceId(info, context) is not null ? NullablePosition.None
                 : context.JsonPropertyInfo is { IsGetNullable: true } or { IsSetNullable: true } ? NullablePosition.Property
                 : Nullable.GetUnderlyingType(info.Type) is null || !wrapped.IsValueType ? NullablePosition.None
                 : IsParameterOutsideTheBody(context) ? NullablePosition.ParameterOutsideTheBody
                 : NullablePosition.Root;
 
-            await DescribeAsync(schema, info.Type, wrapped, parameter: null, position, context, cancellationToken);
+            await DescribeAsync(schema, info.Type, wrapped, outside, position, context, cancellationToken);
             return;
         }
 
@@ -130,6 +145,11 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
     /// </remarks>
     private static async Task<IOpenApiSchema> ElementSchemaAsync(Type element, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
     {
+        // An element of a parameter outside the body binds through TryParse, as the parameter does: asked for as the
+        // parameter's element, it is described as such and written inline where that is not its JSON (decision 106).
+        if (ParameterOutsideTheBody(context) is { } parameter && WrapsDescribed(element, context.JsonTypeInfo.Options))
+            return await context.GetOrCreateSchemaAsync(element, Detached(parameter), cancellationToken);
+
         var valueObject = Nullable.GetUnderlyingType(element);
         if (valueObject is null) return await context.GetOrCreateSchemaAsync(element, parameterDescription: null, cancellationToken);
 
@@ -208,9 +228,43 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
     /// a header, a form field), rather than a body's, a response's, or an element's or property's below one.
     /// </summary>
     private static bool IsParameterOutsideTheBody(OpenApiSchemaTransformerContext context) =>
-        context is { JsonPropertyInfo: null, ParameterDescription: { } parameter }
-     && parameter.Source != BindingSource.Body
-     && IsParameterItself(parameter, context.JsonTypeInfo.Type);
+        ParameterOutsideTheBody(context) is { } parameter && IsParameterItself(parameter, context.JsonTypeInfo.Type);
+
+    /// <summary>
+    /// The parameter bound from anywhere but the body whose schema this is, its own or an element's or a wrapped type's
+    /// below it; <see langword="null"/> in a JSON position: a body, a response, or a property below either.
+    /// </summary>
+    private static ApiParameterDescription? ParameterOutsideTheBody(OpenApiSchemaTransformerContext context) =>
+        context is { JsonPropertyInfo: null, ParameterDescription: { } parameter } && parameter.Source != BindingSource.Body ? parameter : null;
+
+    /// <summary>
+    /// Whether the value object wraps a type the options describe, itself or through the value objects it wraps: as
+    /// a parameter it is then described otherwise than in JSON.
+    /// </summary>
+    private static bool WrapsDescribed(Type valueObject, System.Text.Json.JsonSerializerOptions options)
+    {
+        var seen = new HashSet<Type>();
+        for (var type = Nullable.GetUnderlyingType(valueObject) ?? valueObject; seen.Add(type) && ValueObjectTypes.WrappedType(type) is { } wrapped; type = wrapped)
+        {
+            if (DescribedSchemaTransformer.Description(wrapped, options, property: null) is not null) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Writes the schema where it is used rather than as the component ASP.NET would make of it. ASP.NET reads the
+    /// component's name from the schema's metadata, and puts a parameter's default there to write it on the reference
+    /// instead of the shared schema, each under a key of its own (<c>OpenApiConstants.SchemaId</c> and
+    /// <c>RefDefaultAnnotation</c>, internal; measured with Microsoft.AspNetCore.OpenApi 10.0). Without the name it writes
+    /// the schema inline, so the default goes back on the schema.
+    /// </summary>
+    private static void Inline(OpenApiSchema schema)
+    {
+        if (schema.Metadata is not { } metadata || !metadata.Remove("x-schema-id")) return;
+
+        if (metadata.TryGetValue("x-ref-default", out var value) && metadata.Remove("x-ref-default") && value is JsonNode defaultValue) schema.Default ??= defaultValue;
+    }
 
     /// <summary>
     /// Whether a schema of <paramref name="type"/> visited with <paramref name="parameter"/> is the parameter's own,
@@ -221,11 +275,13 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
         (Nullable.GetUnderlyingType(parameter.Type) ?? parameter.Type) == (Nullable.GetUnderlyingType(type) ?? type);
 
     /// <summary>
-    /// The description an element of a parameter outside the body is asked for with: where the parameter binds from,
-    /// and the parameter's type, so it reads as an element. Not the parameter's own: ASP.NET applies a parameter's
-    /// default and its validation attributes to the schema it is asked for, and they are the array's, not each element's.
+    /// The description a schema below a parameter is asked for with, an element's or the type a value object wraps:
+    /// where the parameter binds from, and its type, so the schema reads as below it (<see cref="IsParameterItself"/>).
+    /// Not the parameter's own: ASP.NET applies a parameter's default and its validation attributes to the schema it is
+    /// asked for, and they are the parameter's, already on its schema. Asked for again, they would be the array's on each
+    /// element, and a value object's default would be written as the wrapped type, which throws.
     /// </summary>
-    internal static ApiParameterDescription ElementOf(ApiParameterDescription parameter) =>
+    internal static ApiParameterDescription Detached(ApiParameterDescription parameter) =>
         new() { Name = parameter.Name, Source = parameter.Source, Type = parameter.Type };
 
     /// <summary>Where a schema of a value object stands, which decides where its null goes.</summary>

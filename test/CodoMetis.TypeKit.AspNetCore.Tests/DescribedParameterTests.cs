@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json.Serialization;
 using CodoMetis.TypeKit.CompilerServices;
@@ -25,7 +26,11 @@ namespace CodoMetis.TypeKit.AspNetCore.Tests;
 /// assembly, which ASP.NET hands to the transformers differently.
 /// </summary>
 /// <remarks>
-/// Found by the code analyst (2026-10-16, A2): a query or header array of a described type lost its <c>items</c>.
+/// Found by the code analyst (2026-10-16, A2 and A3): a query or header array of a described type lost its
+/// <c>items</c>, and a value object over a described type was its JSON spelling (<c>"type":"string"</c>, whose
+/// pattern refuses <c>1.50</c>, which <c>TryParse</c> binds) as a header, a form field, a query scalar and a query or
+/// header array's items. Where value objects are components, a parameter of one over a described type is written
+/// inline (decision 106): the component is the JSON positions', shared with every use.
 /// </remarks>
 public sealed class DescribedParameterTests
 {
@@ -37,6 +42,12 @@ public sealed class DescribedParameterTests
         // The described type itself, a sibling of c56d38a in the array position (A2).
         (Key<decimal>(), Key<decimal>()),
         (Key<decimal?>(), Key<decimal?>()),
+        // A value object over it, declared in this assembly and in a referenced one (A3), which ASP.NET hands to the
+        // transformers differently.
+        (Key<ParameterMoney>(), Key<decimal>()),
+        (Key<ParameterMoney?>(), Key<decimal?>()),
+        (Key<ProbeAmount>(), Key<decimal>()),
+        (Key<ProbeAmount?>(), Key<decimal?>()),
     ];
 
     private static readonly Type[] TypeArguments =
@@ -53,7 +64,7 @@ public sealed class DescribedParameterTests
         foreach (var references in References)
         foreach (var strict in new[] { false, true })
         foreach (var host in new[] { "mvc", "minimal" })
-        foreach (var position in new[] { "route", "query", "header", "form", "query-items", "header-items" })
+        foreach (var position in new[] { "route", "query", "query-default", "header", "form", "query-items", "header-items" })
             data.Add(version, references, strict, host, position);
 
         return data;
@@ -70,8 +81,11 @@ public sealed class DescribedParameterTests
         var differences = new List<string>();
         foreach (var (parameter, twin) in Pairs)
         {
-            var actual = NullablePositionTests.Inline(described, NullablePositionTests.Schema(described, version, host, position, parameter));
-            var expected = NullablePositionTests.Inline(plain, NullablePositionTests.Schema(plain, version, host, position, twin));
+            // A value object's default in MVC stops ASP.NET's own document (DefaultController).
+            if (position == "query-default" && host == "mvc" && parameter != twin) continue;
+
+            var actual = KeptDefault(NullablePositionTests.Inline(described, NullablePositionTests.Schema(described, version, host, position, parameter)));
+            var expected = KeptDefault(NullablePositionTests.Inline(plain, NullablePositionTests.Schema(plain, version, host, position, twin)));
 
             if (!JsonNode.DeepEquals(actual, expected))
                 differences.Add($"{parameter}: {actual?.ToJsonString()}\n   {twin} without the converter: {expected?.ToJsonString()}");
@@ -80,7 +94,19 @@ public sealed class DescribedParameterTests
         differences.ShouldBeEmpty(string.Join("\n", differences));
     }
 
-    public static TheoryData<OpenApiSpecVersion, string, bool> Documents_()
+    /// <summary>Whether a default is written, not how: its spelling is the next fix's.</summary>
+    private static JsonNode? KeptDefault(JsonNode? parameter)
+    {
+        if (parameter is null) return null;
+        foreach (var holder in new[] { parameter, parameter["schema"] })
+        {
+            if (holder is JsonObject keywords && keywords.ContainsKey("default")) keywords["default"] = "kept";
+        }
+
+        return parameter;
+    }
+
+    public static TheoryData<OpenApiSpecVersion, string, bool> DocumentVariants()
     {
         var data = new TheoryData<OpenApiSpecVersion, string, bool>();
         foreach (var version in Versions)
@@ -97,7 +123,7 @@ public sealed class DescribedParameterTests
     /// (KB-027).
     /// </summary>
     [Theory]
-    [MemberData(nameof(Documents_))]
+    [MemberData(nameof(DocumentVariants))]
     public async Task A_value_object_s_JSON_positions_keep_the_described_spelling_beside_parameters_of_it(OpenApiSpecVersion version, string references, bool strict)
     {
         var document = await DocumentAsync(version, references, strict, described: true);
@@ -146,7 +172,7 @@ public sealed class DescribedParameterTests
             },
             version: key.Item1,
             endpoints: MapMinimal,
-            controllers: [.. TypeArguments.Select(type => typeof(ParameterController<>).MakeGenericType(type))],
+            controllers: [.. TypeArguments.Select(type => typeof(ParameterController<>).MakeGenericType(type)), typeof(DefaultController)],
             services: services => services.Configure<MvcOptions>(mvc => mvc.Conventions.Add(new ParameterRoutes()))));
 
     private static string Key<T>() => Key(typeof(T));
@@ -156,6 +182,18 @@ public sealed class DescribedParameterTests
     private static void MapMinimal(WebApplication app)
     {
         Map<decimal>(app); Map<decimal?>(app); Map<ParameterMoney>(app); Map<ParameterMoney?>(app); Map<ProbeAmount>(app); Map<ProbeAmount?>(app);
+
+        // A parameter with a default, which ASP.NET writes in the parameter's schema, or on the reference to a component.
+        // A [DefaultValue] that the type converter reads: minimal APIs cannot bind a C# default of a type parameter, nor
+        // default(T) of a struct ("Argument types do not match"), and MVC's attributes cannot name a type parameter.
+        app.MapGet("/minimal/Decimal/query-default", ([FromQuery(Name = "v"), DefaultValue(typeof(decimal), "1.5")] decimal v) => 0);
+        app.MapGet("/minimal/Decimal-nullable/query-default", ([FromQuery(Name = "v"), DefaultValue(typeof(decimal), "1.5")] decimal? v) => 0);
+#pragma warning disable ASP0020 // ParameterMoney implements IParsable once generated; a query parameter with an attribute meets it too
+        app.MapGet("/minimal/ParameterMoney/query-default", ([FromQuery(Name = "v"), DefaultValue(typeof(ParameterMoney), "1.5")] ParameterMoney v) => 0);
+        app.MapGet("/minimal/ParameterMoney-nullable/query-default", ([FromQuery(Name = "v"), DefaultValue(typeof(ParameterMoney), "1.5")] ParameterMoney? v) => 0);
+#pragma warning restore ASP0020
+        app.MapGet("/minimal/ProbeAmount/query-default", ([FromQuery(Name = "v"), DefaultValue(typeof(ProbeAmount), "1.5")] ProbeAmount v) => 0);
+        app.MapGet("/minimal/ProbeAmount-nullable/query-default", ([FromQuery(Name = "v"), DefaultValue(typeof(ProbeAmount), "1.5")] ProbeAmount? v) => 0);
 
         // A JSON position of each value object, after the parameters.
         app.MapPost("/minimal/json", ([FromBody] ParameterBody body) => 0);
@@ -183,6 +221,18 @@ public sealed class DescribedParameterTests
         [HttpGet("header-items")] public int HeaderItems([FromHeader(Name = "v")] T[] v) => 0;
         [HttpPost("form")] public int Form([FromForm(Name = "v")] T v) => 0;
         [HttpGet("route/{v}")] public int Route(T v) => 0;
+    }
+
+    /// <summary>
+    /// A query parameter with a default, which an attribute cannot give a type parameter. Not of a value object: MVC
+    /// describes it by ASP.NET's placeholder <see cref="string"/>, and ASP.NET throws writing the value object's default as
+    /// a string, with or without <c>AddTypeKit()</c>.
+    /// </summary>
+    [ApiController]
+    public sealed class DefaultController : ControllerBase
+    {
+        [HttpGet("mvc/Decimal/query-default")] public int Decimal([FromQuery(Name = "v"), DefaultValue(typeof(decimal), "1.5")] decimal v) => 0;
+        [HttpGet("mvc/Decimal-nullable/query-default")] public int NullableDecimal([FromQuery(Name = "v"), DefaultValue(typeof(decimal), "1.5")] decimal? v) => 0;
     }
 
     /// <summary>Puts each closed <see cref="ParameterController{T}"/> under <c>mvc/{its type argument}</c>.</summary>
