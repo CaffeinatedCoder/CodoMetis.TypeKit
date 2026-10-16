@@ -54,6 +54,7 @@ public static class OffTheWire
         var oOwn = new JsonSerializerOptions(o); oOwn.Converters.Insert(0, own);
         int OwnReads() => (int)own.GetType().GetField("Reads")!.GetValue(own)!;
         var name = Jx.Name(orType);
+        // not-promised a-source-generated-context-refuses-a-nullable
         var nullableUnderContext = r.Is("json.TypeInfoResolver", "source-generated-context") && position == "nullable-property";
         string? Refused(Exception? x, string dir)
         {
@@ -112,7 +113,7 @@ public static class OffTheWire
         if (xr is null)
         {
             if (memberRead) return $"read {input}: {name} was read without an exception\n  text={Jx.Cut(text)}";
-            r.Note(NoteKeys.JsonMemberLeftOutByOptions, "read " + input);
+            r.Note(NoteKeys.JsonMemberLeftOutByOptions, "read " + input);   // not-promised a-missing-property-reaches-no-converter
             if (!wrote) r.Note(NoteKeys.JsonBothDirectionsLeftOutByOptions);
         }
         else if (Refused(xr, "read " + input) is { } f)

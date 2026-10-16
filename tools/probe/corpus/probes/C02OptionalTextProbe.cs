@@ -31,7 +31,7 @@ public sealed class C02OptionalTextProbe
 
         var entry = r["entry"]; var kind = r["input"]; var s = Input(kind);
         var expected = kind switch { "word" => "ok", "word+ZWSP" or "ZWSP-only" => "Hidden", _ => "Blank" };
-        // AsText/AsOptionalText refuse in globalization-invariant mode (documented, StringTextExtensions): the row runs on the identifier counterpart, and the refusal itself is checked without credit.
+        // AsText/AsOptionalText refuse in globalization-invariant mode (not-promised as-text-refused-in-globalization-invariant-mode): the row runs on the identifier counterpart, and the refusal itself is checked without credit.
         if (gi && entry is "AsText" or "AsOptionalText") // (a normal process runs these rows as they are, under the invariant culture)
         {
             var refused = false;

@@ -1,0 +1,12 @@
+diff --git a/src/CodoMetis.TypeKit/StringTextExtensions.cs b/src/CodoMetis.TypeKit/StringTextExtensions.cs
+index 29681aa..76d683e 100644
+--- a/src/CodoMetis.TypeKit/StringTextExtensions.cs
++++ b/src/CodoMetis.TypeKit/StringTextExtensions.cs
+@@ -167,6 +167,7 @@ public static class StringTextExtensions
+ 
+     private static Result<string, TextFault> Clean(string? text, bool tolerateJoiners, bool canonicalize)
+     {
++        if (text is null) return Result.Error(TextFault.Hidden);
+         var trimmed = text?.Trim() ?? string.Empty;
+ 
+         if (trimmed.Length == 0) return Result.Error(TextFault.Blank);

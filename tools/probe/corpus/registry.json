@@ -19,10 +19,38 @@
     "C01DecimalSpellingProbe": {
       "claim": "C01-decimal-spelling",
       "filter": "*C01DecimalSpellingProbe",
-      "seed": {
-        "patch": "seeds/C01-decimal-spelling.patch",
-        "defect": "DecimalStringJsonConverter, and every decimal dictionary key, write a decimal with the scale it arrived with (7.80, 7.8000) instead of its minimal spelling."
-      }
+      "seeds": [
+        {
+          "obligation": "smallest-scale",
+          "patch": "seeds/C01-decimal-spelling-smallest-scale.patch",
+          "defect": "Neither decimal converter narrows the scale: both write a decimal with the scale it arrived with (7.80, 7.8000)."
+        },
+        {
+          "obligation": "number-is-a-number",
+          "patch": "seeds/C01-decimal-spelling-number-is-a-number.patch",
+          "defect": "DecimalNumberJsonConverter writes the smallest scale as a string, not as a number."
+        },
+        {
+          "obligation": "string-is-a-string",
+          "patch": "seeds/C01-decimal-spelling-string-is-a-string.patch",
+          "defect": "DecimalStringJsonConverter writes the smallest scale as a number, not as a string."
+        },
+        {
+          "obligation": "reads-a-number-or-a-string",
+          "patch": "seeds/C01-decimal-spelling-reads-a-number-or-a-string.patch",
+          "defect": "Both decimal converters refuse a string holding a number."
+        },
+        {
+          "obligation": "keeps-the-scale-it-reads",
+          "patch": "seeds/C01-decimal-spelling-keeps-the-scale-it-reads.patch",
+          "defect": "Both decimal converters narrow the scale of what they read (7.80 reads as 7.8), as a number or a string."
+        },
+        {
+          "obligation": "covers-every-decimal",
+          "patch": "seeds/C01-decimal-spelling-covers-every-decimal.patch",
+          "defect": "Both decimal converters write a decimal dictionary key with the scale it arrived with, so a key over a decimal, or over a value object over one, keeps its spellings."
+        }
+      ]
     },
     "C02OptionalTextProbe": {
       "claim": "C02-optional-text",
@@ -45,10 +73,28 @@
           "PROBE_ONLY": "text.culture=globalization-invariant,entry=AsOptionalText"
         }
       ],
-      "seed": {
-        "patch": "seeds/C02-optional-text.patch",
-        "defect": "AsOptionalText and AsOptionalIdentifier turn a hidden-character string into no text, as a blank one, rather than refusing it as Hidden."
-      }
+      "seeds": [
+        {
+          "obligation": "hidden-is-an-error-in-both",
+          "patch": "seeds/C02-optional-text-hidden-is-an-error-in-both.patch",
+          "defect": "AsOptionalText and AsOptionalIdentifier turn a hidden-character string into no text, as a blank one, rather than refusing it as Hidden."
+        },
+        {
+          "obligation": "required-blank-is-an-error",
+          "patch": "seeds/C02-optional-text-required-blank-is-an-error.patch",
+          "defect": "An empty or whitespace-only string passes the guard as empty text; only null is Blank."
+        },
+        {
+          "obligation": "optional-blank-is-no-value",
+          "patch": "seeds/C02-optional-text-optional-blank-is-no-value.patch",
+          "defect": "AsOptionalText and AsOptionalIdentifier keep Blank a refusal instead of no value."
+        },
+        {
+          "obligation": "null-is-blank",
+          "patch": "seeds/C02-optional-text-null-is-blank.patch",
+          "defect": "A null string is Hidden, not Blank."
+        }
+      ]
     },
     "C03ComposedProbe": {
       "claim": "C03-composed-faults",
@@ -149,18 +195,44 @@
     "C09BaseRecordEqualityProbe": {
       "claim": "C09-base-record-equality",
       "filter": "*C09BaseRecordEqualityProbe",
-      "seed": {
-        "patch": "seeds/C09-base-record-equality.patch",
-        "defect": "The value object implements only its direct base's IEquatable<TBase> again, so a collection of a deeper base compares it by that base's own equality."
-      }
+      "seeds": [
+        {
+          "obligation": "in-a-collection-of-the-base",
+          "patch": "seeds/C09-base-record-equality-in-a-collection-of-the-base.patch",
+          "defect": "The value object implements only its direct base's IEquatable<TBase> again, so a collection of a deeper base compares it by that base's own equality."
+        },
+        {
+          "obligation": "equal-by-the-wrapped-value",
+          "patch": "seeds/C09-base-record-equality-equal-by-the-wrapped-value.patch",
+          "defect": "Over a base record, the generated Equals(TSelf) also calls the base's Equals(TBase), so a base comparing by reference makes two value objects over one value unequal."
+        }
+      ]
     },
     "C10PreserveGuardProbe": {
       "claim": "C10-preserve-guard",
       "filter": "*C10PreserveGuardProbe",
-      "seed": {
-        "patch": "seeds/C10-preserve-guard.patch",
-        "defect": "The Preserve guard misses a wrapped class the serializer walks as an object, so a value object over it writes and reads its own $id and $ref instead of refusing."
-      }
+      "seeds": [
+        {
+          "obligation": "refused-where-references-could-be-written",
+          "patch": "seeds/C10-preserve-guard-refused-where-references-could-be-written.patch",
+          "defect": "The Preserve guard misses a wrapped class the serializer walks as an object, so a value object over it writes and reads its own $id and $ref instead of refusing."
+        },
+        {
+          "obligation": "value-converters-unaffected",
+          "patch": "seeds/C10-preserve-guard-value-converters-unaffected.patch",
+          "defect": "Under ReferenceHandler.Preserve, the guard refuses a value object over any reference type, a string or a Uri written by a value converter included."
+        },
+        {
+          "obligation": "own-converters-unaffected",
+          "patch": "seeds/C10-preserve-guard-own-converters-unaffected.patch",
+          "defect": "Under ReferenceHandler.Preserve, the guard refuses a value object whose wrapped type the application converts with a converter of its own."
+        },
+        {
+          "obligation": "ignore-cycles-unaffected",
+          "patch": "seeds/C10-preserve-guard-ignore-cycles-unaffected.patch",
+          "defect": "The Preserve guard fires under ReferenceHandler.IgnoreCycles too."
+        }
+      ]
     },
     "C11ParseShapesBuildProbe": {
       "claim": "C11-parse-shapes-build",
@@ -181,10 +253,23 @@
           "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
         }
       ],
-      "seed": {
-        "patch": "seeds/C11-parse-shapes-build.patch",
-        "defect": "A static Parse counts as a parser only where C#'s `is` converts its result, so one returning a type that converts by a user-defined implicit operator, which can be assigned, gives the value object no parsing."
-      }
+      "seeds": [
+        {
+          "obligation": "implicit-result",
+          "patch": "seeds/C11-parse-shapes-build-implicit-result.patch",
+          "defect": "A wrapped type whose static Parse returns a type it can't be assigned from is parsed through its type converter, so the value object has parsing."
+        },
+        {
+          "obligation": "ref-text",
+          "patch": "seeds/C11-parse-shapes-build-ref-text.patch",
+          "defect": "A wrapped type whose Parse or string constructor takes its text by ref is parsed through its type converter, so the value object has parsing."
+        },
+        {
+          "obligation": "abstract-string-constructor",
+          "patch": "seeds/C11-parse-shapes-build-abstract-string-constructor.patch",
+          "defect": "An abstract wrapped class with a string constructor is parsed through its type converter, so the value object has parsing."
+        }
+      ]
     },
     "C12DescribedConverterProbe": {
       "claim": "C12-described-converter",
@@ -269,34 +354,111 @@
     "C17Cmtk0014Probe": {
       "claim": "C17-cmtk0014",
       "filter": "*C17Cmtk0014Probe",
-      "seed": {
-        "patch": "seeds/C17-cmtk0014.patch",
-        "defect": "CMTK0014 no longer judges a default: default and default(FaultKind) are silent where they name no member."
-      }
+      "seeds": [
+        {
+          "obligation": "a-cast-naming-no-member",
+          "patch": "seeds/C17-cmtk0014-a-cast-naming-no-member.patch",
+          "defect": "CMTK0014 no longer judges a conversion, so a cast to a FaultKind or a ConstructorAccessibility that names no member is silent."
+        },
+        {
+          "obligation": "default-and-zero",
+          "patch": "seeds/C17-cmtk0014-default-and-zero.patch",
+          "defect": "CMTK0014 takes a zero for a member, so default, default(FaultKind) and (FaultKind)0 are silent."
+        },
+        {
+          "obligation": "constructor-accessibility-too",
+          "patch": "seeds/C17-cmtk0014-constructor-accessibility-too.patch",
+          "defect": "CMTK0014 no longer reads ConstructorAccessibility, so RequireParameterlessConstructor's argument that names no member is silent."
+        },
+        {
+          "obligation": "reported-where-written",
+          "patch": "seeds/C17-cmtk0014-reported-where-written.patch",
+          "defect": "CMTK0014 is reported at the syntax around the value, not at the value."
+        }
+      ]
     },
     "C18Cmtk1023Probe": {
       "claim": "C18-cmtk1023",
       "filter": "*C18Cmtk1023Probe",
-      "seed": {
-        "patch": "seeds/C18-cmtk1023.patch",
-        "defect": "CMTK1023 leaves out a base's explicit IEquatable<TBase>.Equals, so a base comparing by reference through it compiles without a word."
-      }
+      "seeds": [
+        {
+          "obligation": "names-each-base-member",
+          "patch": "seeds/C18-cmtk1023-names-each-base-member.patch",
+          "defect": "CMTK1023 leaves out a base's explicit IEquatable<TBase>.Equals, so a base comparing by reference through it compiles without a word."
+        },
+        {
+          "obligation": "a-warning-and-generated",
+          "patch": "seeds/C18-cmtk1023-a-warning-and-generated.patch",
+          "defect": "CMTK1023 is reported as information, not as a warning."
+        },
+        {
+          "obligation": "generated-equality-never-calls-the-base",
+          "patch": "seeds/C18-cmtk1023-generated-equality-never-calls-the-base.patch",
+          "defect": "Over a base record, the generated GetHashCode() combines the base's, so a base hashing by reference makes two value objects over one value hash apart."
+        }
+      ]
     },
     "C19Cmtk0010KindsProbe": {
       "claim": "C19-cmtk0010-kinds",
       "filter": "*C19Cmtk0010KindsProbe",
-      "seed": {
-        "patch": "seeds/C19-cmtk0010-kinds.patch",
-        "defect": "CMTK0010 no longer checks a collection expression's builder method, so a breaking argument it infers there compiles."
-      }
+      "seeds": [
+        {
+          "obligation": "methods-the-compiler-calls",
+          "patch": "seeds/C19-cmtk0010-kinds-methods-the-compiler-calls.patch",
+          "defect": "CMTK0010 no longer checks a collection expression's builder method, so a breaking argument it infers there compiles."
+        },
+        {
+          "obligation": "interface-and-unsealed",
+          "patch": "seeds/C19-cmtk0010-kinds-interface-and-unsealed.patch",
+          "defect": "CMTK0010 takes a sealed class for [Unsealed]."
+        },
+        {
+          "obligation": "value-object-and-closed-set",
+          "patch": "seeds/C19-cmtk0010-kinds-value-object-and-closed-set.patch",
+          "defect": "CMTK0010 takes any type that is not an interface for [ValueObject], value object or not."
+        },
+        {
+          "obligation": "flags-enum-and-read-only-struct",
+          "patch": "seeds/C19-cmtk0010-kinds-flags-enum-and-read-only-struct.patch",
+          "defect": "CMTK0010 takes a mutable struct for [ReadOnlyStruct]."
+        },
+        {
+          "obligation": "a-pair-once-at-the-later-argument",
+          "patch": "seeds/C19-cmtk0010-kinds-a-pair-once-at-the-later-argument.patch",
+          "defect": "CMTK0010 reports a breach of [Distinct] or [Unrelated] at the earlier argument of the pair."
+        }
+      ]
     },
     "C20ShouldHoldProbe": {
       "claim": "C20-testing-shouldhold",
       "filter": "*C20ShouldHoldProbe",
-      "seed": {
-        "patch": "seeds/C20-testing-shouldhold.patch",
-        "defect": "ShouldHold(reason) checks only the held fault's type, so a fault of that type with another reason passes."
-      }
+      "seeds": [
+        {
+          "obligation": "fails-unless-it-holds-that-reason",
+          "patch": "seeds/C20-testing-shouldhold-fails-unless-it-holds-that-reason.patch",
+          "defect": "ShouldHold(reason) checks only the held fault's type, so a fault of that type with another reason passes."
+        },
+        {
+          "obligation": "whichever-of-its-types",
+          "patch": "seeds/C20-testing-shouldhold-whichever-of-its-types.patch",
+          "defect": "ShouldHold(reason) never finds a reason of a composed fault's last type: it reads that case as the bare reason, not as a Fault<TFault>."
+        },
+        {
+          "obligation": "hands-back-detail-and-rule",
+          "patch": "seeds/C20-testing-shouldhold-hands-back-detail-and-rule.patch",
+          "defect": "ShouldHold(reason) hands back a new Fault<TFault> of the reason alone, without the held fault's detail and rule."
+        },
+        {
+          "obligation": "uninitialized-fails",
+          "patch": "seeds/C20-testing-shouldhold-uninitialized-fails.patch",
+          "defect": "ShouldHold(reason) reads an uninitialized composed fault instead of failing as an assertion."
+        },
+        {
+          "obligation": "a-failure-says-the-outcome",
+          "patch": "seeds/C20-testing-shouldhold-a-failure-says-the-outcome.patch",
+          "defect": "A failed ShouldHold(reason) no longer says which fault the composed fault holds."
+        }
+      ]
     },
     "E01ColumnParityProbe": {
       "claim": "E01-column-parity",
@@ -429,10 +591,23 @@
     "L01JsonBytesProbe": {
       "claim": "L01-json-bytes",
       "filter": "*L01JsonBytesProbe",
-      "seed": {
-        "patch": "seeds/L01-json-bytes.patch",
-        "defect": "A dictionary key is written with ToString(), not the wrapped type's key converter and DictionaryKeyPolicy."
-      }
+      "seeds": [
+        {
+          "obligation": "as-a-dictionary-key-too",
+          "patch": "seeds/L01-json-bytes-as-a-dictionary-key-too.patch",
+          "defect": "A dictionary key is written with ToString(), not the wrapped type's key converter and DictionaryKeyPolicy."
+        },
+        {
+          "obligation": "the-underlying-types-json",
+          "patch": "seeds/L01-json-bytes-the-underlying-types-json.patch",
+          "defect": "The generated converter writes a number as it is, ignoring the options' JsonNumberHandling.WriteAsString."
+        },
+        {
+          "obligation": "read-as-the-underlying-type-reads",
+          "patch": "seeds/L01-json-bytes-read-as-the-underlying-type-reads.patch",
+          "defect": "The generated converter refuses a JSON string that holds an escape sequence, which the wrapped type reads."
+        }
+      ]
     },
     "L02NoQuoteProbe": {
       "claim": "L02-no-quote",
@@ -449,10 +624,23 @@
           "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
         }
       ],
-      "seed": {
-        "patch": "seeds/L02-no-quote.patch",
-        "defect": "Generated parsing calls the wrapped type's Parse instead of its TryParse, whose FormatException quotes the input."
-      }
+      "seeds": [
+        {
+          "obligation": "parsing-never-repeats",
+          "patch": "seeds/L02-no-quote-parsing-never-repeats.patch",
+          "defect": "Generated parsing calls the wrapped type's Parse instead of its TryParse, whose FormatException quotes the input."
+        },
+        {
+          "obligation": "json-never-repeats",
+          "patch": "seeds/L02-no-quote-json-never-repeats.patch",
+          "defect": "A JSON value the wrapped type can't read is refused with its text in the JsonException's message."
+        },
+        {
+          "obligation": "no-inner-that-quotes",
+          "patch": "seeds/L02-no-quote-no-inner-that-quotes.patch",
+          "defect": "Generated parsing refuses unreadable text with an inner FormatException that quotes it."
+        }
+      ]
     },
     "L03OneRuleProbe": {
       "claim": "L03-one-rule",
@@ -469,10 +657,28 @@
           "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
         }
       ],
-      "seed": {
-        "patch": "seeds/L03-one-rule.patch",
-        "defect": "Parse and the type converter build a validated value object without Create."
-      }
+      "seeds": [
+        {
+          "obligation": "parsing-runs-create",
+          "patch": "seeds/L03-one-rule-parsing-runs-create.patch",
+          "defect": "Parse and the type converter build a validated value object without Create."
+        },
+        {
+          "obligation": "tryfrom-runs-create",
+          "patch": "seeds/L03-one-rule-tryfrom-runs-create.patch",
+          "defect": "TryFrom wraps the value without Create, so it gives a value Create refuses."
+        },
+        {
+          "obligation": "json-runs-create",
+          "patch": "seeds/L03-one-rule-json-runs-create.patch",
+          "defect": "The JSON converter's materialize flag is read backwards: a JSON read skips Create, and only StoredJsonConverterFactory runs it."
+        },
+        {
+          "obligation": "refusals-name-the-fault",
+          "patch": "seeds/L03-one-rule-refusals-name-the-fault.patch",
+          "defect": "The JsonException, the FormatException and the FromKnownGood exception no longer name the fault Create returned."
+        }
+      ]
     },
     "L04RoundTripProbe": {
       "claim": "L04-round-trip",
@@ -489,26 +695,65 @@
           "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
         }
       ],
-      "seed": {
-        "patch": "seeds/L04-round-trip.patch",
-        "defect": "Generated formatting uses the current culture instead of the provider (invariant by default)."
-      }
+      "seeds": [
+        {
+          "obligation": "invariant-whatever-the-culture",
+          "patch": "seeds/L04-round-trip-invariant-whatever-the-culture.patch",
+          "defect": "Generated formatting uses the current culture instead of the provider (invariant by default)."
+        },
+        {
+          "obligation": "the-type-converter-writes-the-same",
+          "patch": "seeds/L04-round-trip-the-type-converter-writes-the-same.patch",
+          "defect": "The type converter writes the wrapped value in the current culture when no culture is passed."
+        },
+        {
+          "obligation": "text-reads-back",
+          "patch": "seeds/L04-round-trip-text-reads-back.patch",
+          "defect": "The type converter reads text in the current culture when no culture is passed."
+        },
+        {
+          "obligation": "json-refusal-is-a-json-exception",
+          "patch": "seeds/L04-round-trip-json-refusal-is-a-json-exception.patch",
+          "defect": "The generated converter lets the wrapped converter's own exception out for input it can't read (a FormatException for a Guid)."
+        }
+      ]
     },
     "L05EqualityProbe": {
       "claim": "L05-equality",
       "filter": "*L05EqualityProbe",
-      "seed": {
-        "patch": "seeds/L05-equality.patch",
-        "defect": "A deeper base record whose IEquatable is implemented explicitly keeps its own Equals, so equal value objects compare unequal through that base and a HashSet of it holds both."
-      }
+      "seeds": [
+        {
+          "obligation": "through-every-base",
+          "patch": "seeds/L05-equality-through-every-base.patch",
+          "defect": "A deeper base record whose IEquatable is implemented explicitly keeps its own Equals, so equal value objects compare unequal through that base and a HashSet of it holds both."
+        },
+        {
+          "obligation": "equality-is-the-underlying-values",
+          "patch": "seeds/L05-equality-equality-is-the-underlying-values.patch",
+          "defect": "Over a base record, the generated GetHashCode() hashes the value's text, so 7.8m and 7.80m, or 0.0 and -0.0, hash apart."
+        },
+        {
+          "obligation": "ordering-follows-the-underlying-type",
+          "patch": "seeds/L05-equality-ordering-follows-the-underlying-type.patch",
+          "defect": "The generated CompareTo orders the wrapped values in reverse."
+        }
+      ]
     },
     "L06OffTheWireProbe": {
       "claim": "L06-off-the-wire",
       "filter": "*L06OffTheWireProbe",
-      "seed": {
-        "patch": "seeds/L06-off-the-wire.patch",
-        "defect": "The refusing converter writes {} for an Option or a Result instead of throwing NotSupportedException, so a Some is written as {} and reads back as None."
-      }
+      "seeds": [
+        {
+          "obligation": "never-written",
+          "patch": "seeds/L06-off-the-wire-never-written.patch",
+          "defect": "The refusing converter writes {} for an Option or a Result instead of throwing NotSupportedException, so a Some is written as {} and reads back as None."
+        },
+        {
+          "obligation": "never-read",
+          "patch": "seeds/L06-off-the-wire-never-read.patch",
+          "defect": "Reading an Option or a Result throws a JsonException, as for malformed input, not NotSupportedException."
+        }
+      ]
     }
   }
 }
