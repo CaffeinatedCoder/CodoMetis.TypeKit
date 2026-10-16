@@ -101,7 +101,7 @@ public static class JsonRow
                 r.Substituted(kv.Key, "default", "STJ refused it: " + ex.GetType().Name);
             }
         }
-        r.Note("dropped[" + string.Join(",", dropped) + "]");
+        r.Note("dropped", string.Join(",", dropped));
         return new(o, dropped.Count == 0 ? null : string.Join(",", dropped));
     }
 

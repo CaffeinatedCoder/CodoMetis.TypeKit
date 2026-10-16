@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Prober;
 
 namespace CodoMetis.TypeKit.Prober.Tests;
 
@@ -88,6 +89,82 @@ public sealed class AccountingTests : IDisposable
     {
         RecordPass(TwoRows, executed: [0]);
         fx.Covered().ShouldBe(1);
+    }
+}
+
+/// <summary>
+/// What earned nothing is counted where the coverage is read, and a row that steps around a finding binds: the
+/// gate refuses while one does, and the ledger names a skip whose finding is fixed or dismissed.
+/// </summary>
+public sealed class OutcomeTests : IDisposable
+{
+    private readonly Fixture fx = new();
+    public void Dispose() => fx.Dispose();
+
+    private static Dictionary<string, string> R(string x, string y) => new(StringComparer.Ordinal) { ["x"] = x, ["y"] = y };
+
+    private string Record(params (string Category, string? Finding)[] outcomes)
+    {
+        fx.Footprint();
+        var evidence = fx.Evidence([R("1", "1"), R("2", "2")], outcomes: outcomes);
+        fx.Ledger("record-run", "--probe", "P", "--result", "pass", "--evidence", evidence).Exit.ShouldBe(0);
+        return evidence;
+    }
+
+    private List<string> StaleSkips(string evidence) =>
+        new Ledger(new Context(fx.Root, new Dictionary<string, string?>(), TextWriter.Null, TextWriter.Null), null)
+            .StaleSkips(JsonNode.Parse(File.ReadAllText(evidence)) as JsonObject);
+
+    private void Finding(string status, string commit) =>
+        File.AppendAllText(Path.Combine(fx.BranchDir, "findings.jsonl"),
+            new JsonObject { ["id"] = "F9", ["claim"] = "C1", ["status"] = status, ["commit"] = commit }.ToJsonString() + "\n");
+
+    [Fact]
+    public void Status_counts_how_the_rows_of_a_claim_ended()
+    {
+        Record(("pass", null), ("expected-refusal", null));
+        var outcomes = JsonNode.Parse(fx.Ledger("status", "--json").Out)!["claims"]!["C1"]!["outcomes"]!;
+        outcomes["pass"]!.GetValue<double>().ShouldBe(1);
+        outcomes["expected-refusal"]!.GetValue<double>().ShouldBe(1);
+        fx.Ledger("status").Out.ShouldContain("C1: 1/4  (rows: expected-refusal 1, pass 1)");
+    }
+
+    [Fact]
+    public void A_skip_for_a_finding_is_shown_and_refused_by_the_gate_without_any_ledger_of_findings()
+    {
+        fx.Sh("git", "tag", "v1");
+        Record(("pass", null), ("known-finding", "F9"));
+        fx.Ledger("status").Out.ShouldContain("1 row(s) skip for finding F9");
+        var (exit, output, _) = fx.Ledger("gate", "--since", "v1", "--json");
+        exit.ShouldNotBe(0);
+        JsonNode.Parse(output)!["reasons"]!.AsArray().Select(r => r!.GetValue<string>()).ShouldContain("P: 1 row(s) skip for finding F9; fix it and remove the skip, or dismiss it");
+    }
+
+    [Fact]
+    public void A_skip_for_an_open_finding_stands()
+    {
+        var evidence = Record(("known-finding", "F9"), ("pass", null));
+        Finding("open", "");
+        StaleSkips(evidence).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void A_skip_for_a_fixed_finding_is_stale()
+    {
+        var evidence = Record(("known-finding", "F9"), ("pass", null));
+        var head = fx.Sh("git", "rev-parse", "HEAD").Trim();
+        Finding("open", "");
+        Finding("fixed", head);
+        StaleSkips(evidence).ShouldBe([$"1 row(s) skip for F9, which is fixed at {head[..7]}: remove the skip"]);
+    }
+
+    [Fact]
+    public void A_skip_for_a_dismissed_finding_is_stale()
+    {
+        var evidence = Record(("known-finding", "F9"), ("pass", null));
+        Finding("open", "");
+        fx.Write("tools/probe/corpus/dismissed.jsonl", new JsonObject { ["id"] = "F9", ["reason"] = "intended", ["date"] = "2026-10-15" }.ToJsonString() + "\n");
+        StaleSkips(evidence).ShouldBe(["1 row(s) skip for F9, which is dismissed: remove the skip"]);
     }
 }
 

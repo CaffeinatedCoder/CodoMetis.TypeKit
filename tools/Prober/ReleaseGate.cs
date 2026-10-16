@@ -5,8 +5,8 @@ namespace Prober;
 
 /// <summary>
 /// The release gate. It needs nothing but the tracked corpus and a replay: no model, no login, no local
-/// memory of a developer's machine. It refuses while the staging is unpublished, a finding is open, a probe
-/// has not passed at its current identity and footprint, an expected row did not run, or a claim touched
+/// memory of a developer's machine. It refuses while the staging is unpublished, a finding is open or a row
+/// skips for one, a probe has not passed at its current identity and footprint, an expected row did not run, or a claim touched
 /// since the release has pairs no probe covers and no reviewed waiver. Touched is chosen conservatively: the
 /// claim's source document, its surfaces' source areas or the build inputs changed; footprints only add.
 /// </summary>
@@ -39,6 +39,9 @@ internal static class ReleaseGate
             }
             expected.ExceptWith(executed);
             if (expected.Count > 0) reasons.Add($"{s.Probe}: {expected.Count} expected row(s) did not run");
+            // A skip is an open finding the corpus itself records, so it binds where the ledger has none (CI).
+            foreach (var (finding, rows) in Ledger.FindingSkips(evidence))
+                reasons.Add($"{s.Probe}: {rows} row(s) skip for finding {finding}; fix it and remove the skip, or dismiss it");
         }
 
         var done = l.Covered(universe);

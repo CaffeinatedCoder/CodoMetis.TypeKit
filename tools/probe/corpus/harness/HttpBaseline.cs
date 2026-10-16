@@ -29,26 +29,26 @@ public static class HttpBaseline
         if (r.Is("json.Converters", "own-for-value-object") && ok(v) && ok(p)) { r.Note("own-vo-converter"); return null; }
         if (ok(p) && !ok(v))
         {
-            if (JsonParity.ReadMayDiffer(r, e, input, null) || (r.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class")) { r.Note(what + ":documented-diff"); return null; }
-            if (r.Is("json.MaxDepth", "3") && (v.Thrown ?? v.Body).Contains("maximum allowed depth")) { r.Note("stj-maxdepth"); return null; }
+            if (JsonParity.ReadMayDiffer(r, e, input, null) || (r.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class")) { r.Note("documented-diff", what); return null; }
+            if (r.Is("json.MaxDepth", "3") && (v.Thrown ?? v.Body).Contains("maximum allowed depth")) { r.Note("stj-maxdepth", "value-object side"); return null; }
             // A closed set travels as its member's name; the wrapped type under the application's converter is no reference.
-            if (e.Kind == "closed-set" && r.Is("json.Converters", "own-for-wrapped")) { r.Note(what + ":closed-set-vs-own-wrapped-converter"); return null; }
+            if (e.Kind == "closed-set" && r.Is("json.Converters", "own-for-wrapped")) { r.Note("closed-set-vs-own-wrapped-converter", what); return null; }
             // The validated shapes' Create refuses the wrapped type's limit on purpose, so the limit input is a refusal.
-            if (e.Kind.StartsWith("validated") && input == "at-type-limit" && RefusesItsLimit(e)) { r.Note(what + ":validated-refuses-type-limit"); return null; }
+            if (e.Kind.StartsWith("validated") && input == "at-type-limit" && RefusesItsLimit(e)) { r.Note("validated-refuses-type-limit", what); return null; }
             return (e.Wrapped == "NodaTime.Instant" && what.StartsWith("mvc bind") ? "[F1] " : "") + $"{what}: wrapped answered {(int)p.Status} {Cut(p.Body)}, value object answered {(int)v.Status} {Cut(v.Body)} {v.Thrown}";
         }
         if (!ok(p) && ok(v))
         {
             // README "What TypeKit guarantees": a JSON null is refused by a struct value object; a class value object
             // takes it as a reference does, where the struct it wraps refuses it.
-            if (input == "null" && !e.Vo.IsValueType && e.Plain.IsValueType) { r.Note(what + ":class-vo-takes-null"); return null; }
-            if (r.Is("json.MaxDepth", "3") && (p.Thrown ?? p.Body).Contains("maximum allowed depth")) { r.Note("stj-maxdepth:wrapped-side"); return null; }
+            if (input == "null" && !e.Vo.IsValueType && e.Plain.IsValueType) { r.Note("class-vo-takes-null", what); return null; }
+            if (r.Is("json.MaxDepth", "3") && (p.Thrown ?? p.Body).Contains("maximum allowed depth")) { r.Note("stj-maxdepth", "wrapped side"); return null; }
         }
         if (!ok(p) && ok(v)) return $"{what}: value object answered {(int)v.Status} {Cut(v.Body)} where wrapped answered {(int)p.Status} {Cut(p.Body)} {p.Thrown}";
         if (p.Body != v.Body)
         {
-            if (e.Kind == "closed-set") { r.Note(what + ":closed-set-differs"); return null; }
-            if (e.Wrapped == "byte" && r["shape.position"] == "array-element") { r.Note("byte[]-base64"); return null; }
+            if (e.Kind == "closed-set") { r.Note("closed-set-differs", what); return null; }
+            if (e.Wrapped == "byte" && r["shape.position"] == "array-element") { r.Note("byte-array-is-base64", "echo"); return null; }
             return $"{what}: bodies differ: wrapped {Cut(p.Body)} vs value object {Cut(v.Body)}";
         }
         return null;
@@ -72,23 +72,23 @@ public static class HttpBaseline
             var ep = await Hx.Get(app, path(echo + "plain")); var ev = await Hx.Get(app, path(echo + "vo"));
             if (Same(r, e, name + " echo", ep, ev) is { } f1) return f1;
             // 2. request side, with the row's input.json
-            if (e.Wrapped == "byte" && position == "array-element") r.Note("in:byte[]-is-base64-inherent");
+            if (e.Wrapped == "byte" && position == "array-element") r.Note("byte-array-is-base64", "in");
             else if ((int)ep.Status == 200)
             {
                 var input = (r.Get("input.json") ?? "valid");
                 var text = JsonParity.InputFor(input, e, jopts, ep.Body, position);
                 var ownText = r.Is("json.Converters", "own-for-value-object") || e.Kind == "closed-set";   // a closed set travels as its name: it reads its own spelling, the string is only a stand-in
                 var textVo = text;
-                if (ownText) { r.Note("own-converter:value-object-reads-its-own-spelling"); text = ep.Body; textVo = ev.Body; }
+                if (ownText) { r.Note("own-spelling", "own converter: the value object reads its own spelling"); text = ep.Body; textVo = ev.Body; }
                 var ip = await Hx.Send(app, HttpMethod.Post, path(inn + "plain"), text); var iv = await Hx.Send(app, HttpMethod.Post, path(inn + "vo"), textVo);
-                if (ownText) { if ((int)ev.Status == 200 && (int)iv.Status != 200 && (int)ip.Status == 200) return $"{name} in: the value object cannot read its own response ({(int)iv.Status}): {Cut(iv.Body)}"; r.Note("in:own-spelling"); }
+                if (ownText) { if ((int)ev.Status == 200 && (int)iv.Status != 200 && (int)ip.Status == 200) return $"{name} in: the value object cannot read its own response ({(int)iv.Status}): {Cut(iv.Body)}"; r.Note("own-spelling", "in"); }
                 else
                 if (Same(r, e, name + " in(" + input + ")", ip, iv, input) is { } f2) return f2;
             }
             // 3. binding, the row's http.binding
             var bind = r["http.binding"];
-            if (e.Wrapped == "own-record-class" && bind != "body") { r.Note("bind:record-class-not-bindable-from-text"); bind = "none"; }
-            if (e.Wrapped == "NodaTime.Instant" && name == "minimal" && bind != "body") { r.Note("bind:minimal-cannot-bind-Instant"); bind = "none"; }
+            if (e.Wrapped == "own-record-class" && bind != "body") { r.Note("not-bindable-from-text", "record class"); bind = "none"; }
+            if (e.Wrapped == "NodaTime.Instant" && name == "minimal" && bind != "body") { r.Note("not-bindable-from-text", "minimal API, Instant"); bind = "none"; }
             var valid = Hx.BindText(e, plainSample);
             var refused = e.Refused() is { } rf ? Hx.BindText(e, rf) : null;
             foreach (var (which, txt) in new[] { ("valid", valid), ("refused", refused) })
@@ -119,13 +119,13 @@ public static class HttpBaseline
                 r.Log.AppendLine($"{name} bind {bind} {which} text={txt}: plain {(int)bp.Status} {Cut(bp.Body)} {bp.Thrown} | vo {(int)bv.Status} {Cut(bv.Body)} {bv.Thrown}");
                 if (which == "valid")
                 {
-                    if (!plainOk) { r.Note(name + " bind:plain-unbindable"); continue; }
+                    if (!plainOk) { r.Note("bind:plain-unbindable", name); continue; }
                     if (Same(r, e, name + " bind " + bind, bp, bv) is { } f3) return f3;
                 }
                 else
                 {
                     if (!plainOk) continue;
-                    if (r.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class") { r.Note("bind:preserve-documented"); continue; }
+                    if (r.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class") { r.Note("preserve-documented", "bind"); continue; }
                     if (name == "mvc" && r.Is("mvc.MaxValidationDepth", "1")) { r.Note("mvc-maxvalidationdepth1-ignores-binding-errors"); continue; } // MVC itself: any type's binding error is ignored (D2)
                     if (bind == "body" && r.Is("json.Converters", "StoredJsonConverterFactory")) { r.Note("stored-factory-skips-validation"); continue; } // intended
                     // a refused value must not bind (the one set of rules), except where the application skips validation on purpose
@@ -149,26 +149,11 @@ public static class HttpBaseline
         try { doc = (await Hx.Doc(app))!; }
         catch (Exception ex)
         {
-            // isolate: does the document fail for the wrapped type alone?
-            foreach (var only in new[] { "plain", "vo" })
-            {
-                try
-                {
-                    var cfg = new HostCfg { FaultControllers = false, MapBlanketMapping = false, PayloadOnly = only };
-                    if (Hx.HasMvc(r)) cfg.Payload = true;
-                    await using var a2 = await Hx.Start(r, e, cfg);
-                    await Hx.Doc(a2);
-                }
-                catch (Exception ex2)
-                {
-                    if (only == "plain") { r.Note("doc-refused-for-wrapped-too"); return null; }
-                    return $"document fails with the value object ({ex2.GetType().Name}: {Cut(ex2.Message)}) but not with the wrapped type";
-                }
-            }
-            return $"document failed ({ex.GetType().Name}: {Cut(ex.Message)}) with both, but not alone";
+            // The baseline is ASP.NET alone on the same host: a document it refuses too has no schema to compare.
+            return await Hx.DocRefusedByAspNetAlone(r, e, new HostCfg { FaultControllers = false, MapBlanketMapping = false }, ex);
         }
-        if (r.Is("json.Converters", "own-for-wrapped")) { r.Note("schema:own-wrapped-converter-not-described"); return null; }   // docs/json.md "Describing what a converter writes": ASP.NET drops items/additionalProperties of a converter it cannot see into, the value object's schema is the underlying type's
-        if (r.Is("json.Converters", "own-for-value-object")) { r.Note("schema:own-vo-converter-not-described"); return null; }   // docs/json.md "Describing what a converter writes": the exporter loses track of a converter it cannot see into
+        if (r.Is("json.Converters", "own-for-wrapped")) { r.Note("schema:converter-not-described", "own converter for the wrapped type"); return null; }   // docs/json.md "Describing what a converter writes": ASP.NET drops items/additionalProperties of a converter it cannot see into, the value object's schema is the underlying type's
+        if (r.Is("json.Converters", "own-for-value-object")) { r.Note("schema:converter-not-described", "own converter for the value object"); return null; }   // docs/json.md "Describing what a converter writes": the exporter loses track of a converter it cannot see into
         string? Op(string path, string method, out JsonNode? node)
         {
             node = doc["paths"]?[path]?[method]; return node is null ? "missing " + method + " " + path : null;
@@ -236,7 +221,7 @@ public static class HttpBaseline
             {
                 // Mapped for bodies only (a record class, Instant in a minimal API): neither side is there.
                 if (Op(vp, method, out _) is null) return $"harness: the value object's {method} {vp} is documented, its plain twin is not ({m1})";
-                r.Note("schema:" + m1); continue;
+                r.Note("schema:neither-side-documented", m1); continue;
             }
             if (Op(vp, method, out var vo) is { } m2) return m2;
             if (Inputs(po!) is var ip && Inputs(vo!) is var iv && ip != iv)
@@ -262,7 +247,7 @@ public static class HttpBaseline
             }
             if (sp != sv)
             {
-                if (e.Kind == "closed-set") { r.Note("schema:closed-set-differs"); continue; }
+                if (e.Kind == "closed-set") { r.Note("closed-set-differs", "schema"); continue; }
                 return $"schema differs for {pp} vs {vp}:\n  wrapped {Cut(sp)}\n  value object {Cut(sv)}";
             }
         }

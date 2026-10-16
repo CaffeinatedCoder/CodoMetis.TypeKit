@@ -36,6 +36,15 @@ type-shape catalogue with a script into a `Probes/Shapes.g.cs`, not by hand.
   every other host in the project. A host with controllers must put its own converters and resolvers
   on MVC's `JsonOptions` too, or the document is refused on purpose (`DescribedOptionsAgreement`).
   `test/CodoMetis.TypeKit.AspNetCore.Tests/ProbeHost.cs` is a working example to copy from.
+- How a row ends: a check returns null or the failure text, and runs through `Rec.Run`, which fails the
+  test for a violation or a harness error and skips it, with its reasons, for any other outcome but a
+  pass. A check says what it saw with `r.Note(key, detail)`, the key from `NoteKeys` in `harness/Row.cs`,
+  which alone decides the outcome; a new key goes there with its outcome, or the row is a harness error.
+  Never match a failure's text to excuse it. A difference the framework makes on its own is shown by a
+  baseline in the same row (the document as ASP.NET writes it without `AddTypeKit()`,
+  `Hx.DocRefusedByAspNetAlone`), not by a substring. A row that would fail for an open finding calls
+  `r.Skip("F7", why)`: the gate refuses while any row skips, and the replay fails a skip whose finding the
+  ledger has fixed or dismissed.
 - EF probes: SQLite in memory (`Data Source=:memory:` with the connection held open). PostgreSQL needs
   a server and is out of reach.
 - Analyzer probes (what compiles and what CMTK reports): in `test/CodoMetis.TypeKit.Analyzers.Tests`,

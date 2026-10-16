@@ -91,8 +91,8 @@ public sealed class E02ValueTranslatesProbe
         }
         var v = await Side(voEntity, true);
         var pl = await Side(plainEntity, false);
-        if (v.Ex is not null && pl.Ex is not null) { r.Note("both-threw:" + v.Ex.GetType().Name); return null; }
-        if (pl.Ex is not null) { r.Note("plain-refused-NA:" + pl.Ex.GetType().Name); return null; }
+        if (v.Ex is not null && pl.Ex is not null) { r.Note("both-threw", v.Ex.GetType().Name); return null; }
+        if (pl.Ex is not null) { r.Note("plain-refused", pl.Ex.GetType().Name); return null; }
         if (v.Ex is not null) return $"the query over the value object threw {v.Ex.GetType().Name}: {Trim(v.Ex.Message)}; the same query over the wrapped type did not";
         if (v.Sql != pl.Sql) return $"SQL differs.\nVO:\n{v.Sql}\nplain:\n{pl.Sql}";
         if (!v.Rows!.SequenceEqual(pl.Rows!)) return $"rows differ: VO [{string.Join(",", v.Rows!)}] plain [{string.Join(",", pl.Rows!)}]";

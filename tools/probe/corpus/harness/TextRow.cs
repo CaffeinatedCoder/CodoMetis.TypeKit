@@ -142,13 +142,13 @@ public static class TextClaims
         if (entry == "TryFrom")
         {
             var t = TextOps.TryFrom(e, plain);
-            if (t.NotApplicable) r.Note("TryFrom-NA"); else if (!t.Ok || !Same(e, t.Value, vo)) return $"TryFrom(valid) gave ok={t.Ok} value={t.Value}, expected {vo}";
+            if (t.NotApplicable) r.Note("entry-not-applicable", "TryFrom"); else if (!t.Ok || !Same(e, t.Value, vo)) return $"TryFrom(valid) gave ok={t.Ok} value={t.Value}, expected {vo}";
         }
-        else if (!TextOps.HasText(e)) r.Note("no-text:" + e.Kind);
+        else if (!TextOps.HasText(e)) r.Note("no-text", e.Kind);
         else
         {
             var w = TextOps.Write(e, entry is "Parse" or "TryParse" or "IParsable" or "ISpanParsable" ? "ToString" : entry, vo);
-            if (w.NotApplicable) r.Note(entry + "-NA");
+            if (w.NotApplicable) r.Note("entry-not-applicable", entry);
             else if (w.Ex is not null) return $"{entry}: writing text threw {w.Ex.GetType().Name}: {w.Ex.Message}";
             else
             {
@@ -211,7 +211,7 @@ public static class TextClaims
         var b = Back(jv, out var ex1);
         if (ex1 is not null)
         {
-            if (JsonParity.ReadMayDiffer(r, e, "valid", ex1) || r.Get("json.UnmappedMemberHandling") == "Disallow" || (r.Is("json.MaxDepth", "3") && ex1.Message.Contains("maximum allowed depth")) || r.Is("json.ReferenceHandler", "Preserve")) { r.Note("read-back-refused:" + ex1.GetType().Name); }
+            if (JsonParity.ReadMayDiffer(r, e, "valid", ex1) || r.Get("json.UnmappedMemberHandling") == "Disallow" || (r.Is("json.MaxDepth", "3") && ex1.Message.Contains("maximum allowed depth")) || r.Is("json.ReferenceHandler", "Preserve")) { r.Note("read-back-refused", ex1.GetType().Name); }
             else if (PlainFailsToo(r, hp, o, pos, e)) r.Note("plain-read-back-fails-too");
             else return $"own JSON {Cut(jv)} did not read back: {ex1.GetType().Name}: {Cut(ex1.Message)}";
         }
@@ -223,7 +223,7 @@ public static class TextClaims
             var text = JsonParity.InputFor(input, e, o, jv, pos);
             Back(text, out var ex2);
             // The application's own converter is in charge under own-for-value-object: what it throws is its own.
-            if (ex2 is not null && r.Is("json.Converters", "own-for-value-object")) r.Note("input:own-vo-converter-threw-" + ex2.GetType().Name);
+            if (ex2 is not null && r.Is("json.Converters", "own-for-value-object")) r.Note("own-vo-converter-threw", ex2.GetType().Name);
             else if (ex2 is not null && ex2 is not (JsonException or NotSupportedException or InvalidOperationException { }))
                 return $"input {input}: {ex2.GetType().Name} instead of JsonException: {Cut(ex2.Message)}"
                     + (ex2.InnerException is { } inner ? $" / inner {inner.GetType().FullName}: {Cut(inner.Message)} @ {Cut(inner.StackTrace?.Split('\n').FirstOrDefault()?.Trim() ?? "")}" : "");
@@ -258,7 +258,7 @@ public static class TextClaims
             foreach (var t in texts)
             {
                 var o = TextOps.Read(e, entry, t);
-                if (o.NotApplicable) { r.Note(entry + "-NA"); continue; }
+                if (o.NotApplicable) { r.Note("entry-not-applicable", entry); continue; }
                 if (o.Ex is not null)
                 {
                     if (entry == "TryParse") return $"TryParse threw {o.Ex.GetType().Name} on '{t}': {Cut(o.Ex.Message)}";

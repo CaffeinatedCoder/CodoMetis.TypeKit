@@ -35,8 +35,8 @@ public sealed class E01ColumnParityProbe
             try { voModel = EfModel.Describe(vo.Context); voScript = vo.Context.Database.GenerateCreateScript(); } catch (Exception ex) { voEx = ex; }
         await using (var plain = new EfDb(EfModel.Configure(mapping, plainEntity, apply, false), typeKit: false))
             try { plainModel = EfModel.Describe(plain.Context); plainScript = plain.Context.Database.GenerateCreateScript(); } catch (Exception ex) { plainEx = ex; }
-        if (voEx is not null && plainEx is not null) { r.Note("both-threw:" + voEx.GetType().Name); return null; }
-        if (plainEx is not null) { r.Note("plain-refused-NA:" + plainEx.GetType().Name); return null; }
+        if (voEx is not null && plainEx is not null) { r.Note("both-threw", voEx.GetType().Name); return null; }
+        if (plainEx is not null) { r.Note("plain-refused", plainEx.GetType().Name); return null; }
         if (voEx is not null) return $"model/script with the value object threw {voEx.GetType().Name}: {Short(voEx.Message)}; the wrapped type's did not";
         if (mapping == "key" && e.Wrapped is "char" or "Guid")
         {
