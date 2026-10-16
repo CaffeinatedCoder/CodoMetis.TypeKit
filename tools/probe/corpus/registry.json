@@ -103,7 +103,7 @@
       ],
       "seed": {
         "patch": "seeds/C11-parse-shapes-build.patch",
-        "defect": "An enum is taken for a type with no parser, so a value object over an enum is generated without parsing."
+        "defect": "A static Parse counts as a parser only where C#'s `is` converts its result, so one returning a type that converts by a user-defined implicit operator, which can be assigned, gives the value object no parsing."
       }
     },
     "C17Cmtk0014Probe": {

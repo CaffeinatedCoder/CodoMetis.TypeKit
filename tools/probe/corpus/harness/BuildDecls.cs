@@ -5,8 +5,11 @@ namespace Probes.Build;
 /// <summary>One C09 row as declared: the effective settings, the value object, its bases from the direct one up, and its factory.</summary>
 public sealed record C09Case(int Index, string Key, string Kind, string Site, string Inheritance, Type Vo, Type[] Bases, Func<object, object> Make, (string Axis, string Value)[] Substituted);
 
-/// <summary>One C11 row as declared: the effective settings, the value object and the type it wraps.</summary>
-public sealed record C11Case(int Index, string Key, string Kind, string Site, string Inheritance, Type Vo, Type Wrapped, (string Axis, string Value)[] Substituted);
+/// <summary>
+/// One C11 row as declared: the effective settings, the value object and the type it wraps, and for a parse shape its control: a value
+/// object of the same kind, site and inheritance over the nearest type that does parse.
+/// </summary>
+public sealed record C11Case(int Index, string Key, string Kind, string Site, string Inheritance, Type Vo, Type Wrapped, Type? Control, Type? ControlWrapped, (string Axis, string Value)[] Substituted);
 
 public static class Decls
 {
@@ -53,3 +56,36 @@ public abstract class C11AbstractText
 }
 
 public sealed class C11ConcreteText(string text) : C11AbstractText(text);
+
+// The controls, each the nearest type that can be parsed (Generators README, "What you can wrap": "Parsing where it can be parsed"):
+// a Parse whose result converts to the type by a user-defined implicit operator, so it can be assigned; a Parse taking its text by in,
+// which a call passes as it is; a sealed class's public string constructor.
+
+/// <summary>Control of implicit-result: Parse gives a type that converts to this one implicitly.</summary>
+public sealed class C11ParsedShape
+{
+    public string Text { get; init; } = "";
+    public static C11ParsedCircle Parse(string text) => new() { Text = text };
+    public override string ToString() => Text;
+}
+
+public sealed class C11ParsedCircle
+{
+    public string Text { get; init; } = "";
+    public static implicit operator C11ParsedShape(C11ParsedCircle circle) => new() { Text = circle.Text };
+}
+
+/// <summary>Control of ref-text: Parse takes its text by in.</summary>
+public sealed class C11ParsesFromIn
+{
+    public string Text { get; private init; } = "";
+    public static C11ParsesFromIn Parse(in string text) => new() { Text = text };
+    public override string ToString() => Text;
+}
+
+/// <summary>Control of abstract-string-ctor: a sealed class with a public string constructor.</summary>
+public sealed class C11ConstructedConcrete(string text)
+{
+    public string Text { get; } = text;
+    public override string ToString() => Text;
+}

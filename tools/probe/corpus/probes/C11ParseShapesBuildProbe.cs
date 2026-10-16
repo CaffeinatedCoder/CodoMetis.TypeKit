@@ -51,7 +51,25 @@ public sealed class C11ParseShapesBuildProbe
         TextOps.Prepare(r, e);
         var vo = Make.Vo(e, sample);
         if (!Equals(Make.Unwrap(e, vo), sample)) return $"the value object does not hold the value it was made from";
-        return ordinary ? Ordinary(r, e, entry, wrapped!, sample, vo) : NoParsing(r, e, entry, sample, vo);
+        if (ordinary) return Ordinary(r, e, entry, wrapped!, sample, vo);
+        return NoParsing(r, e, entry, sample, vo) ?? Control(c);
+    }
+
+    /// <summary>
+    /// The parse shape's control, the same declaration over the nearest type that parses: it has IParsable, and Parse gives back the text
+    /// it was given. Without it a generator that took parsing from every class would pass the shapes.
+    /// </summary>
+    static string? Control(C11Case c)
+    {
+        if (c.Control is null) throw new InvalidOperationException($"row {c.Index} has no control");
+        if (!TextOps.Implements(typeof(IParsable<>), c.Control)) return $"the control over {c.ControlWrapped!.Name}, which can be parsed, has no IParsable";
+        var parse = c.Control.GetMethod("Parse", [typeof(string), typeof(IFormatProvider)]);
+        if (parse is null) return $"the control over {c.ControlWrapped!.Name} has no Parse(string, IFormatProvider)";
+        object? parsed;
+        try { parsed = parse.Invoke(null, ["control-text", null]); }
+        catch (TargetInvocationException t) { return $"the control's Parse threw {t.InnerException!.GetType().Name}: {t.InnerException.Message}"; }
+        var value = c.Control.GetProperty("Value")!.GetValue(parsed);
+        return value?.ToString() == "control-text" ? null : $"the control's Parse gave back '{value}', not 'control-text'";
     }
 
     static bool Has(Type t, string name) => t.GetMethods(BindingFlags.Public | BindingFlags.Static).Any(m => m.Name == name);
@@ -110,7 +128,7 @@ public sealed class C11ParseShapesBuildProbe
             }
             default: throw new ArgumentException("text.entry " + entry);
         }
-        r.Note("compared", $"no parsing; {entry}");
+        r.Note("compared", $"no parsing; {entry}; the control parses");
         return null;
     }
 
