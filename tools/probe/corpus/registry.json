@@ -13,7 +13,7 @@
       ],
       "seed": {
         "patch": "seeds/C07-fault-responses-blanket.patch",
-        "defect": "A value object's OpenAPI schema drops the wrapped type's format (int32, uuid, date-time)."
+        "defect": "TryParse builds a validated value object without Create, so binding a route, query, header or form value takes a value Create refuses."
       }
     },
     "C01DecimalSpellingProbe": {
@@ -684,6 +684,45 @@
           "obligation": "a-failure-says-the-outcome",
           "patch": "seeds/C20-testing-shouldhold-a-failure-says-the-outcome.patch",
           "defect": "A failed ShouldHold(reason) no longer says which fault the composed fault holds."
+        }
+      ]
+    },
+    "C21OpenapiSchemaParityProbe": {
+      "claim": "C21-openapi-schema-parity",
+      "filter": "*C21OpenapiSchemaParityProbe",
+      "seeds": [
+        {
+          "obligation": "the-underlying-types-schema",
+          "patch": "seeds/C21-openapi-schema-parity-the-underlying-types-schema.patch",
+          "defect": "A value object's OpenAPI schema drops the wrapped type's format (int32, uuid, date-time)."
+        },
+        {
+          "obligation": "nullable-admits-null-as-the-wrapped-does",
+          "patch": "seeds/C21-openapi-schema-parity-nullable-admits-null-as-the-wrapped-does.patch",
+          "defect": "6866822 reversed: a nullable value object admits null where ASP.NET's exporter puts none for the wrapped type (a query, header or form VO?, a nullable struct over string or Uri at a root), and an MVC [FromBody] VO? none where the wrapped ulong? or long? has one."
+        },
+        {
+          "obligation": "container-elements",
+          "patch": "seeds/C21-openapi-schema-parity-container-elements.patch",
+          "defect": "A list's or an array's items are not put back for a container of value objects, so the elements lose their schema."
+        },
+        {
+          "obligation": "dictionary-key",
+          "patch": "seeds/C21-openapi-schema-parity-dictionary-key.patch",
+          "defect": "A dictionary keyed by a value object is described with the key's schema for its values."
+        },
+        {
+          "obligation": "every-document-version",
+          "patch": "seeds/C21-openapi-schema-parity-every-document-version.patch",
+          "defect": "Under OpenAPI 2.0 and 3.0 a value object's schema drops the wrapped type's format."
+        }
+      ],
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ]
     },

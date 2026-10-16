@@ -335,7 +335,7 @@ public static class Hx
             await using var app = await Start(r, e, alone);
             await Doc(app);
         }
-        catch (Exception ex) when (ex.GetType() == withTypeKit.GetType() && ex.Message == withTypeKit.Message)
+        catch (Exception ex) when (ex.GetType() == withTypeKit.GetType() && Unplaced(ex.Message) == Unplaced(withTypeKit.Message))
         {
             r.Note(NoteKeys.DocRefusedByAspnetAlone, ex.GetType().Name);
             return null;
@@ -343,6 +343,13 @@ public static class Hx
         catch (Exception ex) { return $"document: AddTypeKit() fails ({Say(withTypeKit)}), ASP.NET alone fails otherwise ({Say(ex)})"; }
         return $"document: AddTypeKit() fails ({Say(withTypeKit)}), ASP.NET alone writes it";
     }
+
+    /// <summary>
+    /// A JsonException's message without the line and byte it names: the two documents differ in length by what
+    /// AddTypeKit() wrote, so one refusal is at another byte of each (rows 31 and 140 of C21: "Path: $ | LineNumber: 0 |
+    /// BytePositionInLine: 32." against 41, the same refusal of a char under WriteAsString).
+    /// </summary>
+    static string Unplaced(string message) => System.Text.RegularExpressions.Regex.Replace(message, @" \| LineNumber: \d+ \| BytePositionInLine: \d+\.$", ".");
 
     public static string BindText(Entry e, object plain) => e.Wrapped switch
     {
@@ -365,9 +372,12 @@ public static class Hx
                 var c = new JsonObject();
                 foreach (var kv in o)
                 {
-                    if (kv.Key is "nullable" or "x-nullable" or "required") continue;
+                    if (kv.Key is "nullable" or "x-nullable" or "x-null" or "required") continue;
                     if (kv.Key == "type" && kv.Value is JsonArray ta) { var f = ta.Where(x => x?.GetValue<string>() != "null").ToList(); c["type"] = f.Count == 1 ? f[0]!.DeepClone() : new JsonArray(f.Select(x => x!.DeepClone()).ToArray()); continue; }
                     if (kv.Key == "allOf" && kv.Value is JsonArray aa && aa.Count == 1 && aa[0] is JsonObject a0 && a0.Count == 1 && a0.ContainsKey("x-nullable")) continue;
+                    // OpenAPI 3.0 writes a type of several with null as anyOf [{type: integer}, {type: string}, {enum: [null]}] (row 260 of C21)
+                    if (kv.Key == "anyOf" && kv.Value is JsonArray any && any.Any(IsNull)) { c["anyOf"] = new JsonArray(any.Where(x => !IsNull(x)).Select(NoNull).ToArray()); continue; }
+                    if (kv.Key == "enum" && kv.Value is JsonArray en && en.Any(x => x is null)) { c["enum"] = new JsonArray(en.Where(x => x is not null).Select(x => x!.DeepClone()).ToArray()); continue; }
                     c[kv.Key] = NoNull(kv.Value);
                 }
                 return c;
@@ -376,7 +386,10 @@ public static class Hx
         }
     }
 
-    public static JsonNode? Deep(JsonNode doc, JsonNode? n, HashSet<string>? seen = null)
+    /// <summary>The key <see cref="Deep"/> puts on a schema it resolved from a reference, when asked to mark them.</summary>
+    public const string ResolvedReference = "x-probe-resolved-reference";
+
+    public static JsonNode? Deep(JsonNode doc, JsonNode? n, HashSet<string>? seen = null, bool mark = false)
     {
         seen ??= [];
         switch (n)
@@ -387,14 +400,16 @@ public static class Hx
                     var key = rf.GetValue<string>();
                     if (!seen.Add(key)) return JsonValue.Create("<cycle>");
                     var target = doc; foreach (var seg in key.TrimStart('#', '/').Split('/')) target = target?[seg];
-                    var res = Deep(doc, target, seen); seen.Remove(key); return res;
+                    var res = Deep(doc, target, seen, mark); seen.Remove(key);
+                    if (mark && res is JsonObject resolved) resolved[ResolvedReference] = true;
+                    return res;
                 }
                 var c = new JsonObject();
                 foreach (var kv in o.OrderBy(k => k.Key, StringComparer.Ordinal))
                     if (kv.Key is not ("title" or "description" or "example" or "examples"))
-                        c[kv.Key] = kv.Key == "discriminator" ? Discriminator(o, kv.Value) : Deep(doc, kv.Value, seen);
+                        c[kv.Key] = kv.Key == "discriminator" ? Discriminator(o, kv.Value) : Deep(doc, kv.Value, seen, mark);
                 return c;
-            case JsonArray a: var ca = new JsonArray(); foreach (var x in a) ca.Add(Deep(doc, x, seen)); return ca;
+            case JsonArray a: var ca = new JsonArray(); foreach (var x in a) ca.Add(Deep(doc, x, seen, mark)); return ca;
             default: return n?.DeepClone();
         }
     }

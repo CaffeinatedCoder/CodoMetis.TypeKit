@@ -116,6 +116,11 @@ element schema, so `Quantity` gets no component at all, and both parameters are 
   referenced one allows it around its reference. A closed set's property is then the enum of its
   names plus null.
 
+  OpenAPI 2.0 can't put null around a reference. ASP.NET writes a nullable property of any component as
+  `{"allOf":[{"x-nullable":true}]}` there, without the reference. So under 2.0 a nullable value-object
+  property loses its type, where the underlying type's nullable property keeps it. Inline value objects
+  if your 2.0 document needs it.
+
 - **Put rules in `Create`, not on the property.** A validation attribute on a value-object property
   (`[MaxLength]`, `[Range]`) ends up in the value object's shared component, as ASP.NET does for any
   referenced schema. From there it applies to every other use too. `Create` is where every way of

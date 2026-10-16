@@ -54,6 +54,26 @@ public static class HttpBaseline
         return null;
     }
 
+    /// <summary>Where two schemas first differ, and what each side has there: the comparison's 220 characters rarely reach it.</summary>
+    static string FirstDifference(JsonNode? p, JsonNode? v, string path) =>
+        Difference(p, v, path) is var (at, wp, wv) ? $"{at}: wrapped {Cut(wp?.ToJsonString() ?? "(absent)")} | value object {Cut(wv?.ToJsonString() ?? "(absent)")}" : "";
+
+    /// <summary>The path where two schemas first differ, and each side's node there (null where it is absent).</summary>
+    static (string, JsonNode?, JsonNode?) Difference(JsonNode? p, JsonNode? v, string path)
+    {
+        if (p is JsonObject po && v is JsonObject vo)
+        {
+            foreach (var k in po.Select(kv => kv.Key).Union(vo.Select(kv => kv.Key)).Order(StringComparer.Ordinal))
+                if (!JsonNode.DeepEquals(po[k], vo[k])) return Difference(po[k], vo[k], path + "." + k);
+        }
+        else if (p is JsonArray pa && v is JsonArray va && pa.Count == va.Count)
+        {
+            for (var i = 0; i < pa.Count; i++)
+                if (!JsonNode.DeepEquals(pa[i], va[i])) return Difference(pa[i], va[i], $"{path}[{i}]");
+        }
+        return (path, p, v);
+    }
+
     public static async Task<string?> Run(Row r, Entry e, bool schema = true)
     {
         WebApplication app;
@@ -143,6 +163,101 @@ public static class HttpBaseline
         return null;
     }
 
+    /// <summary>
+    /// The schema parity alone, on the same host as <see cref="Run"/>: claim C21's check (C21OpenapiSchemaParityProbe),
+    /// which BaseProbe leaves out of its calibration.
+    /// </summary>
+    public static async Task<string?> Schema(Row r, Entry e)
+    {
+        WebApplication app;
+        try { app = await Hx.Start(r, e, new HostCfg { FaultControllers = false, MapBlanketMapping = false }); }
+        catch (Exception ex) { return "schema host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message); }
+        await using var _ = app;
+        return await SchemaParity(app, r, e);
+    }
+
+    /// <summary>
+    /// Where either side is a null-or-reference (<c>oneOf [null, component]</c>), both sides there in one spelling:
+    /// the null as <c>x-null</c> beside the schema, wherever the side spelled it (<c>type [null, X]</c>, <c>nullable</c>,
+    /// <c>x-nullable</c>, a null in an enum, or the null-or itself). A shared component cannot hold the null of one
+    /// position, so a nullable value object that is one is null around its reference, where ASP.NET writes the
+    /// wrapped type's null inside its inline schema (decision 36: "as a container's element (`oneOf: [null,
+    /// component]`, ASP.NET's own form)"; AspNetCore README: "A nullable element (`List&lt;Quantity?&gt;`,
+    /// `Dictionary&lt;string, Quantity?&gt;`) is the component or null, as a nullable property is."). Whether a side
+    /// admits null is kept; everywhere else, inlined schemas included, the comparison stays byte for byte (rows 170,
+    /// 196 and 215 of C21). Returns both sides without the marks <see cref="Hx.Deep"/> put on resolved references.
+    /// </summary>
+    static (string, string, bool) NullAroundReferences(string sp, string sv)
+    {
+        var around = false;
+        static bool IsNull(JsonNode? a) => a is JsonObject ao && (ao["type"]?.ToJsonString() == "\"null\"" || ao["enum"]?.ToJsonString() == "[null]");
+        static bool NullOrReference(JsonNode? n) =>
+            n is JsonObject o && o["oneOf"] is JsonArray alts && alts.Count == 2 && alts.Any(IsNull) && alts.Any(a => a is JsonObject ao && ao.ContainsKey(Hx.ResolvedReference));
+        static JsonNode? Unmark(JsonNode? n) => n switch
+        {
+            JsonObject o => new JsonObject(o.Where(kv => kv.Key != Hx.ResolvedReference).Select(kv => KeyValuePair.Create(kv.Key, Unmark(kv.Value)))),
+            JsonArray a => new JsonArray(a.Select(Unmark).ToArray()),
+            _ => n?.DeepClone(),
+        };
+        static JsonNode? OneSpelling(JsonNode? n)
+        {
+            switch (n)
+            {
+                case JsonObject o when o["oneOf"] is JsonArray alts && alts.Count == 2 && alts.Any(IsNull) && alts.FirstOrDefault(a => !IsNull(a)) is JsonObject keep:
+                {
+                    var c = (JsonObject)OneSpelling(keep)!; c["x-null"] = true; return Sorted(c);
+                }
+                case JsonObject o:
+                {
+                    var c = new JsonObject();
+                    foreach (var (k, v) in o)
+                    {
+                        if (k == Hx.ResolvedReference) continue;
+                        if (k is "nullable" or "x-nullable") { if (v?.GetValue<bool>() == true) c["x-null"] = true; continue; }
+                        if (k == "allOf" && v is JsonArray aa && aa.Count == 1 && aa[0] is JsonObject a0 && a0.Count == 1 && a0.ContainsKey("x-nullable")) { c["x-null"] = true; continue; }
+                        if (k == "type" && v is JsonArray ta && ta.Any(x => x?.GetValue<string>() == "null"))
+                        {
+                            var f = ta.Where(x => x?.GetValue<string>() != "null").ToList();
+                            c["type"] = f.Count == 1 ? f[0]!.DeepClone() : new JsonArray(f.Select(x => x!.DeepClone()).ToArray()); c["x-null"] = true; continue;
+                        }
+                        if (k == "type" && v?.ToJsonString() == "\"null\"") { c["x-null"] = true; continue; }
+                        if (k == "enum" && v is JsonArray en && en.Any(x => x is null)) { c["enum"] = new JsonArray(en.Where(x => x is not null).Select(x => x!.DeepClone()).ToArray()); c["x-null"] = true; continue; }
+                        if (k == "anyOf" && v is JsonArray any && any.Any(IsNull)) { c["anyOf"] = new JsonArray(any.Where(x => !IsNull(x)).Select(OneSpelling).ToArray()); c["x-null"] = true; continue; }
+                        c[k] = OneSpelling(v);
+                    }
+                    return Sorted(c);
+                }
+                case JsonArray a: return new JsonArray(a.Select(OneSpelling).ToArray());
+                default: return n?.DeepClone();
+            }
+        }
+        static JsonObject Sorted(JsonObject o) => new(o.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => KeyValuePair.Create(kv.Key, kv.Value?.DeepClone())));
+        (JsonNode?, JsonNode?) Walk(JsonNode? p, JsonNode? v)
+        {
+            if (NullOrReference(p) || NullOrReference(v)) { around = true; return (OneSpelling(p), OneSpelling(v)); }
+            if (p is JsonObject po && v is JsonObject vo)
+            {
+                var cp = new JsonObject(); var cv = new JsonObject();
+                foreach (var k in po.Select(kv => kv.Key).Union(vo.Select(kv => kv.Key)).Where(k => k != Hx.ResolvedReference).Order(StringComparer.Ordinal))
+                {
+                    if (!po.ContainsKey(k)) { cv[k] = Unmark(vo[k]); continue; }
+                    if (!vo.ContainsKey(k)) { cp[k] = Unmark(po[k]); continue; }
+                    var (a, b) = Walk(po[k], vo[k]); cp[k] = a; cv[k] = b;
+                }
+                return (cp, cv);
+            }
+            if (p is JsonArray pa && v is JsonArray va && pa.Count == va.Count)
+            {
+                var cp = new JsonArray(); var cv = new JsonArray();
+                for (var i = 0; i < pa.Count; i++) { var (a, b) = Walk(pa[i], va[i]); cp.Add(a); cv.Add(b); }
+                return (cp, cv);
+            }
+            return (Unmark(p), Unmark(v));
+        }
+        var (np, nv) = Walk(JsonNode.Parse(sp), JsonNode.Parse(sv));
+        return (np?.ToJsonString() ?? "null", nv?.ToJsonString() ?? "null", around);
+    }
+
     static async Task<string?> SchemaParity(WebApplication app, Row r, Entry e)
     {
         JsonNode doc;
@@ -180,9 +295,9 @@ public static class HttpBaseline
         string Sig(JsonNode op)
         {
             var o = new JsonObject();
-            o["parameters"] = Schemas(Hx.Deep(doc, op["parameters"]));
-            o["requestBody"] = Schemas(Hx.Deep(doc, op["requestBody"]));
-            o["ok"] = Schemas(Hx.Deep(doc, op["responses"]?["200"]));
+            o["parameters"] = Schemas(Hx.Deep(doc, op["parameters"], mark: true));
+            o["requestBody"] = Schemas(Hx.Deep(doc, op["requestBody"], mark: true));
+            o["ok"] = Schemas(Hx.Deep(doc, op["responses"]?["200"], mark: true));
             return o.ToJsonString();
         }
         var checks = new List<(string, string)>();
@@ -234,8 +349,9 @@ public static class HttpBaseline
                 else r.Outcome("harness-error", $"inputs not equivalent for {pp} vs {vp}: wrapped [{ip}] vs value object [{iv}]");
                 continue;
             }
-            var sp = Sig(po!); var sv = Sig(vo!);
-            if (sp != sv && (r["shape.position"] == "nullable-property" || pp != pp0))
+            var sp = Sig(po!); var sv = Sig(vo!); var written = sp;
+            if (NullAroundReferences(sp, sv) is var (np, nv, around)) { sp = np; sv = nv; if (around) r.Note(NoteKeys.SchemaNullAroundReferenceNormalised); }
+            if (sp != sv && pp != pp0)
             {
                 // Both sides nullable alike; OpenAPI 3.x spells nullability two ways (oneOf [null, X] or type [null, X]).
                 sp = Hx.NoNull(JsonNode.Parse(sp))!.ToJsonString(); sv = Hx.NoNull(JsonNode.Parse(sv))!.ToJsonString();
@@ -251,7 +367,27 @@ public static class HttpBaseline
             if (sp != sv)
             {
                 if (e.Kind == "closed-set") { r.Note(NoteKeys.ClosedSetDiffers, "schema"); continue; }
-                return $"schema differs for {pp} vs {vp}:\n  wrapped {Cut(sp)}\n  value object {Cut(sv)}";
+                var (at, wp, wv) = Difference(JsonNode.Parse(sp), JsonNode.Parse(sv), "$");
+                var openApi2 = r.Is("openapi.OpenApiVersion", "OpenApi2_0");
+                // KB-026: OpenAPI 2.0 writes a nullable property of any component as allOf [{x-nullable: true}], without the reference, and a
+                // value object keeps a component of its own (not-promised openapi-2-nullable-component-loses-its-type; row 38 of C21).
+                if (openApi2 && !r.Is("openapi.CreateSchemaReferenceId", "null-inlines-all") && at.EndsWith(".allOf", StringComparison.Ordinal)
+                    && wp is null && wv?.ToJsonString() == """[{"x-nullable":true}]""")
+                { r.Note(NoteKeys.SchemaOpenApi2NullableComponentLosesType, at); continue; }
+                // KB-001: OpenAPI 2.0 writes a nullable body of the wrapped value type as allOf [{x-nullable: true}] alone, where a class value
+                // object's body in a minimal API is not nullable and keeps its schema (not-promised openapi-2-nullable-body-keeps-only-its-null; row 257).
+                if (openApi2 && !e.Vo.IsValueType && Nullable.GetUnderlyingType(e.Plain) is not null
+                    && written.Contains("""
+                    "schema":{"allOf":[{"x-nullable":true}]}
+                    """, StringComparison.Ordinal))
+                { r.Note(NoteKeys.SchemaOpenApi2NullableBodyKeepsOnlyNull, pp); continue; }
+                // F3: a nullable value object over an enum written by name, as a parameter outside the body, leaves out the null ASP.NET
+                // keeps in the enum's list for the wrapped E? (row 285 of C21).
+                if (at.StartsWith("$.parameters", StringComparison.Ordinal) && !vp.Contains("/body/") && !vp.Contains("/schema/")
+                    && at.EndsWith(".enum", StringComparison.Ordinal) && wp is JsonArray we && wv is JsonArray ve && we.Count == ve.Count + 1 && we[^1] is null
+                    && JsonNode.DeepEquals(new JsonArray(we.Take(ve.Count).Select(x => x?.DeepClone()).ToArray()), ve))
+                { r.Skip("F3", $"{vp}: the value object's enum has no null where the wrapped type's has one"); continue; }
+                return $"schema differs for {pp} vs {vp} at {FirstDifference(JsonNode.Parse(sp), JsonNode.Parse(sv), "$")}:\n  wrapped {Cut(sp)}\n  value object {Cut(sv)}";
             }
         }
         return null;
