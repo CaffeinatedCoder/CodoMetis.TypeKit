@@ -1,6 +1,6 @@
 // Claim C21-openapi-schema-parity (README.md#what-you-get), surfaces http, json, family http.
-// Obligations (claims.json), each held by the one comparison below in the rows its axes select, and each with a seed of its own in the
-// registry entry (decision 104):
+// Obligations (claims.json), each a check of its own (Row.Check) in the rows its axes select, and each with a seed of its own in the
+// registry entry (decision 104); the-underlying-types-schema is checked where no other obligation's axes apply:
 //   the-underlying-types-schema: "The JSON, the database column and the OpenAPI schema are the same as the underlying type's."
 //   nullable-admits-null-as-the-wrapped-does (http.nullability=nullable): "Its OpenAPI schema is the one ASP.NET Core publishes for the underlying type."
 //   container-elements (a list's, an array's, a read-only list's, an immutable array's element, a dictionary's value): the same sentence.
@@ -22,5 +22,25 @@ public sealed class C21OpenapiSchemaParityProbe
     [Theory, MemberData(nameof(Data))]
     public Task Row(string probe, int idx) => Rec.Run(probe, idx, Check);
 
-    static Task<string?> Check(Row r) => HttpBaseline.Schema(r, Registry.Of(r));
+    static readonly string[] Containers = ["list-element", "array-element", "immutable-array-element", "read-only-list-element", "dictionary-value"];
+
+    /// <summary>The obligations whose axes the row has, each checked by the same comparison against the wrapped twin.</summary>
+    static IEnumerable<string> Obligations(Row r)
+    {
+        var any = false;
+        if (r.Is("http.nullability", "nullable")) { any = true; yield return "nullable-admits-null-as-the-wrapped-does"; }
+        if (Containers.Contains(r["shape.position"])) { any = true; yield return "container-elements"; }
+        if (r.Is("shape.position", "dictionary-key")) { any = true; yield return "dictionary-key"; }
+        if (r["openapi.OpenApiVersion"] is "OpenApi2_0" or "OpenApi3_0") { any = true; yield return "every-document-version"; }
+        if (!any) yield return "the-underlying-types-schema";
+    }
+
+    static async Task<string?> Check(Row r)
+    {
+        var e = Registry.Of(r);
+        string? failed = null;
+        foreach (var obligation in Obligations(r).ToList())
+            failed ??= await r.Check(obligation, Baseline.Twin, _ => HttpBaseline.Schema(r, e));
+        return failed;
+    }
 }
