@@ -75,8 +75,16 @@ public sealed class QueryTranslationVariantTests
                 Refusal(valueObject, "its ordering is its own CompareTo").ShouldContain(@case.Kind.ValueObject.Name);
                 return;
             case RefusedForeign when @case.Op is Op.Select or Op.Distinct:
+                var memory = Memory(@case);
+                if (memory.Refusal is { } thrown)
+                {
+                    // r.N!.Value over the null row, read through the converter and then unwrapped in memory, as memory does.
+                    valueObject.Refusal.ShouldBeOfType(thrown.GetType(), "the query's last step, which throws in memory too");
+                    return;
+                }
+
                 valueObject.Refusal.ShouldBeNull("the query's last step, which EF evaluates in memory after reading the value object through its converter");
-                valueObject.Rows.ShouldBe(Memory(@case).Rows, "the query's last step, evaluated in memory");
+                valueObject.Rows.ShouldBe(memory.Rows, "the query's last step, evaluated in memory");
                 return;
             case RefusedForeign:
                 Refusal(valueObject, "could not be translated");
@@ -97,13 +105,13 @@ public sealed class QueryTranslationVariantTests
         if (valueObject.Refusal is not null)
         {
             if (plain is { Refusal: null }) throw new ShouldAssertException($"refused where the same query over the wrapped type answers [{string.Join(", ", plain.Rows!)}]: {valueObject.Refusal}");
-            if (plain is null) throw new ShouldAssertException($"refused, where memory answers [{string.Join(", ", Memory(@case).Rows!)}]: {valueObject.Refusal}");
+            if (plain is null) throw new ShouldAssertException($"refused, where memory answers {Said(Memory(@case))}: {valueObject.Refusal}");
             return;
         }
 
         if (plain is { Refusal: null })
         {
-            valueObject.Rows.ShouldBe(plain.Rows, $"the rows of the same query over the wrapped type; memory answers [{string.Join(", ", Memory(@case).Rows!)}]");
+            valueObject.Rows.ShouldBe(plain.Rows, $"the rows of the same query over the wrapped type; memory answers {Said(Memory(@case))}");
             if (ClaimsTheColumn(@case) && plain.Sql is not null)
                 valueObject.Sql.ShouldBe(plain.Sql, "the SQL of the same query over the wrapped type");
         }
@@ -257,7 +265,10 @@ public sealed class QueryTranslationVariantTests
         }
     }
 
-    /// <summary>The same query over the value objects in memory, with the query filter applied as EF would.</summary>
+    /// <summary>
+    /// The same query over the value objects in memory, with the query filter applied as EF would; what it throws,
+    /// where it reads through a null (<c>r.N!.Value</c>, <see cref="Accessor.ValueThroughTypeParameter"/>), as SQL does not.
+    /// </summary>
     private static Answer Memory(QueryCase @case)
     {
         var builder = new QueryBuilder(@case, valueObject: true);
@@ -266,8 +277,17 @@ public sealed class QueryTranslationVariantTests
                        ? Expression.Call(typeof(Queryable), nameof(Queryable.Where), [builder.Source], source.Expression, Expression.Quote(builder.Filter()))
                        : source.Expression;
         var (query, ordered) = builder.Build(root);
-        return Execute(source.Provider, query, ordered, sql: false);
+        try
+        {
+            return Execute(source.Provider, query, ordered, sql: false);
+        }
+        catch (Exception exception) when (exception is NullReferenceException or InvalidOperationException)
+        {
+            return new Answer(null, null, exception);
+        }
     }
+
+    private static string Said(Answer answer) => answer.Refusal is { } refusal ? $"nothing, it throws {refusal.GetType().Name}" : $"[{string.Join(", ", answer.Rows!)}]";
 
     private static (SqliteConnection, Exception?) Seeded(QueryModel model, QueryBuilder builder)
     {

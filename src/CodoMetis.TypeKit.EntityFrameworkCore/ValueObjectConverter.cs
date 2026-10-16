@@ -1,3 +1,4 @@
+using CodoMetis.TypeKit.CompilerServices;
 using System.ComponentModel;
 using System.Linq.Expressions;
 using CodoMetis.TypeKit.ValueObjects;
@@ -55,7 +56,12 @@ public sealed class ValueObjectConverter<TValueObject, T> : ValueConverter<TValu
     /// <remarks>Public for the code EF's compiled model generates; nothing else needs to call it.</remarks>
     /// <param name="instance">The value object.</param>
     /// <returns>The value it wraps.</returns>
+    /// <remarks>
+    /// A query that reads <c>.Value</c> through <see cref="IValueObject{TSelf,T}"/>, as a generic method
+    /// does, is rewritten to call this, which is translated as the column it reads.
+    /// </remarks>
     [EditorBrowsable(EditorBrowsableState.Never)]
+    [TranslatedAsWrappedValue]
     public static T ProviderValue(TValueObject instance) => instance.Value;
 
     /// <summary>

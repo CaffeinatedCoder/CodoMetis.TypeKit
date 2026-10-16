@@ -44,6 +44,13 @@ public enum Accessor
 
     /// <summary>Not at all: the value object itself, compared, ordered or projected.</summary>
     Itself,
+
+    /// <summary>
+    /// <c>.Value</c> in a generic method or base class, <c>where T : IValueObject&lt;T, TValue&gt;</c>: the tree
+    /// C# writes holds <c>((IValueObject&lt;X, W&gt;)r.P).Value</c>, the interface's member, not the value object's
+    /// (<c>r.N!.Value.Value</c> through a <c>Nullable</c>).
+    /// </summary>
+    ValueThroughTypeParameter,
 }
 
 /// <summary>Who stores the value object's column.</summary>
@@ -155,9 +162,9 @@ public static class QueryShapes
 
     private static Accessor[] Accessors(Site site) => site switch
     {
-        Site.Nullable                                   => [Accessor.ValueOrNull, Accessor.Itself],
-        Site.QueryFilter or Site.NamedQueryFilter       => [Accessor.Value, Accessor.Itself],
-        _                                               => [Accessor.Value, Accessor.GetValue, Accessor.Itself],
+        Site.Nullable                                   => [Accessor.ValueOrNull, Accessor.ValueThroughTypeParameter, Accessor.Itself],
+        Site.QueryFilter or Site.NamedQueryFilter       => [Accessor.Value, Accessor.ValueThroughTypeParameter, Accessor.Itself],
+        _                                               => [Accessor.Value, Accessor.GetValue, Accessor.ValueThroughTypeParameter, Accessor.Itself],
     };
 
     /// <summary>The kinds a converter of the application's own is tried on, and the sites it reaches: the table's columns.</summary>
@@ -331,16 +338,31 @@ public sealed class QueryBuilder(QueryCase @case, bool valueObject)
         return Expression.Lambda(body, entity);
     }
 
-    /// <summary>The value the query reads, through the case's accessor; the wrapped type is read as it is.</summary>
+    /// <summary>
+    /// The value the query reads, through the case's accessor; the wrapped type is read as it is, but for a
+    /// <c>Nullable</c> read through a type parameter: <c>r.N!.Value</c> over the value object is <c>r.N!.Value</c>
+    /// over an <c>int?</c>, and both throw on a null they project.
+    /// </summary>
     private Expression Read(Expression operand) => !valueObject || @case.Accessor == Accessor.Itself
-        ? operand
+        ? !valueObject && @case.Accessor == Accessor.ValueThroughTypeParameter && Nullable.GetUnderlyingType(operand.Type) is not null
+              ? Expression.Property(operand, "Value")
+              : operand
         : @case.Accessor switch
         {
             Accessor.Value       => Expression.Property(operand, "Value"),
             Accessor.GetValue    => Expression.Call(Kind.Companion("GetValue"), operand),
             Accessor.ValueOrNull => Expression.Call(Kind.Companion("ValueOrNull"), operand),
+            Accessor.ValueThroughTypeParameter => ThroughTypeParameter(operand),
             _                    => throw new ArgumentOutOfRangeException(nameof(@case), @case, null),
         };
+
+    /// <summary>What C# writes for <c>.Value</c> on a <c>T</c> constrained to the interface: a conversion to it, and its member.</summary>
+    private Expression ThroughTypeParameter(Expression operand)
+    {
+        var contract = typeof(IValueObject<,>).MakeGenericType(Kind.ValueObject, Kind.Wrapped);
+        var instance = Nullable.GetUnderlyingType(operand.Type) is null ? operand : Expression.Property(operand, "Value");
+        return Expression.Property(Expression.Convert(instance, contract), contract.GetProperty("Value")!);
+    }
 
     /// <summary>The middle value, as the type the query reads it as.</summary>
     private object Middle => valueObject && @case.Accessor == Accessor.Itself ? Kind.Wrap(Kind.Values[1]) : Kind.Values[1];
