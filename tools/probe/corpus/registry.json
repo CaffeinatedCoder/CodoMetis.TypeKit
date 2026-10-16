@@ -393,10 +393,28 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C14-declared-problem.patch",
-        "defect": "A problem response the endpoint declares itself keeps ASP.NET's description, which names none of the problem types answered with its status."
-      }
+      "seeds": [
+        {
+          "obligation": "declared-describes-fault",
+          "patch": "seeds/C14-declared-describes-fault.patch",
+          "defect": "A problem response the endpoint declares itself gets no fault or rule on its own schema, only on the shared component."
+        },
+        {
+          "obligation": "declared-names-types",
+          "patch": "seeds/C14-declared-problem.patch",
+          "defect": "A problem response the endpoint declares itself keeps ASP.NET's description, which names none of the problem types answered with its status."
+        },
+        {
+          "obligation": "ascending-with-declared",
+          "patch": "seeds/C14-ascending-with-declared.patch",
+          "defect": "An operation's responses are left in the order they were added, so a status the endpoint declares itself comes before the lower fault statuses."
+        },
+        {
+          "obligation": "application-json-declared",
+          "patch": "seeds/C14-application-json-declared.patch",
+          "defect": "Only an application/problem+json response counts as a declared problem, so [ProducesResponseType<ProblemDetails>(404)] under application/json names no problem types."
+        }
+      ]
     },
     "C15MvcFaultStatusDocProbe": {
       "claim": "C15-mvc-fault-status-doc",

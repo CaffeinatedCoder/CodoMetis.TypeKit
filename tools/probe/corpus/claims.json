@@ -4370,6 +4370,47 @@
         "controller-without-ApiController-visible"
       ]
     },
+    "obligations": [
+      {
+        "id": "declared-describes-fault",
+        "sentence": "OpenAPI: a problem response an endpoint declares itself (`ProducesProblem`, `[ProducesResponseType]`) describes `fault`, and names its problem types.",
+        "axes": {
+          "declared": [
+            "ProducesProblem",
+            "ProducesResponseType"
+          ]
+        }
+      },
+      {
+        "id": "declared-names-types",
+        "sentence": "OpenAPI: a problem response an endpoint declares itself (`ProducesProblem`, `[ProducesResponseType]`) describes `fault`, and names its problem types.",
+        "axes": {
+          "declared": [
+            "ProducesProblem",
+            "ProducesResponseType"
+          ]
+        }
+      },
+      {
+        "id": "ascending-with-declared",
+        "sentence": "OpenAPI: an operation with fault responses lists every status ascending, the ones its endpoint declares itself among them",
+        "axes": {
+          "declared": [
+            "ProducesProblem",
+            "ProducesResponseType"
+          ]
+        }
+      },
+      {
+        "id": "application-json-declared",
+        "sentence": "OpenAPI: a problem response an endpoint declares as `application/json`, such as `Produces<ProblemDetails>(404)` or `[ProducesResponseType<ProblemDetails>(404)]`, describes `fault` and `rule` and names its problem types, and keeps its media type",
+        "axes": {
+          "declared": [
+            "ProducesResponseType"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
