@@ -4,7 +4,7 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class L02NoQuoteProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("L02-no-quote");
+    public static TheoryData<string, int> Data() => Rows.Data("L02NoQuoteProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, r => Task.FromResult(TextClaims.NoQuote(r, Registry.Of(r))));
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, r => Task.FromResult(TextClaims.NoQuote(r, Registry.Of(r))));
 }

@@ -17,8 +17,8 @@ public static class Decls
     /// The row's settings as the generator keyed them; a table generated from other rows is a harness error, not a pass. Read from
     /// the cached copy of the row, so the run's own row marks no axis read.
     /// </summary>
-    public static string Key(string claim, int index) =>
-        string.Join(";", Probes.Shapes.Rows.Get(claim, index).All.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key}={kv.Value}"));
+    public static string Key(string probe, int index) =>
+        string.Join(";", Probes.Shapes.Rows.Get(probe, index).All.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key}={kv.Value}"));
 }
 
 // C11's parse shapes, each the whole wrapped type (CHANGELOG 2.1.0, Fixed): "A wrapped type's `Parse` whose result can't be assigned

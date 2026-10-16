@@ -7,10 +7,9 @@ using System.Text.Json;
 namespace Probes;
 public sealed class L01JsonBytesProbe
 {
-    const string Claim = "L01-json-bytes";
-    public static TheoryData<string, int> Data() => Rows.Data(Claim);
+    public static TheoryData<string, int> Data() => Rows.Data("L01JsonBytesProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, async r =>
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, async r =>
     {
         var e = Registry.Of(r);
         var a = JsonRow.Apply(r, e);

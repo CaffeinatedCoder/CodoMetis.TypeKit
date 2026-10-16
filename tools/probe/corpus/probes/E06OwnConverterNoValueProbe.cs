@@ -7,9 +7,9 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class E06OwnConverterNoValueProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("E06-own-converter-no-value");
+    public static TheoryData<string, int> Data() => Rows.Data("E06OwnConverterNoValueProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, Check);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, Check);
 
     static Action<ModelBuilder> Model<T>(string form) where T : notnull => mb => mb.Entity<EntP<T>>(eb =>
     {

@@ -8,9 +8,9 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class E14InheritanceKeyProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("E14-inheritance-key-generation");
+    public static TheoryData<string, int> Data() => Rows.Data("E14InheritanceKeyProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, Check);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, Check);
 
     static Action<Microsoft.EntityFrameworkCore.ModelBuilder> Cfg(string strategy, Type root, Type a, Type b) => mb =>
     {

@@ -7,9 +7,9 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class E11UseTypeKitOrderProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("E11-usetypekit-order");
+    public static TheoryData<string, int> Data() => Rows.Data("E11UseTypeKitOrderProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, Check);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, Check);
 
     static readonly string[] Ws = ["string", "int", "decimal", "Guid", "long"];
 

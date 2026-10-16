@@ -19,7 +19,7 @@ and `GeneratedHarnessTests` in the conventions tests holds each file to its app'
 
 - Start a probe with `prober new --claim <id>` and iterate with `prober try --probe <P> [--rows i,j,...]`
   (tools/Prober/README.md, "Writing a probe"): `new` stages the skeleton in this harness's form, with the
-  claim's obligations quoted and a throwing check each, the claim's rows and the registry entry; `try`
+  claim's obligations quoted and a throwing check each, the probe's own rows and the registry entry; `try`
   builds the corpus and the staging in the replay's worktree and runs that one probe, printing each row's
   outcome and recording nothing. Never copy the corpus into a worktree or write a build or sync script.
 - Build and run only through the verdict tool, which pins English output, builds before it tests,

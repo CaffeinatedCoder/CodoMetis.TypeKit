@@ -10,9 +10,9 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class E08OptionResultNotColumnsProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("E08-option-result-not-columns");
+    public static TheoryData<string, int> Data() => Rows.Data("E08OptionResultNotColumnsProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, Check);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, Check);
 
     static Type PlainOf(string w) => w switch { "string" => typeof(string), "int" => typeof(int), "Guid" => typeof(Guid), _ => throw new ArgumentException(w) };
 

@@ -3,7 +3,7 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class BaseProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("C07-fault-responses-blanket");
+    public static TheoryData<string, int> Data() => Rows.Data("BaseProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run("BASE", idx, async r => await HttpBaseline.Run(r, Registry.Of(r)), claim);
+    public Task Row(string probe, int idx) => Rec.Run("BASE", idx, async r => await HttpBaseline.Run(r, Registry.Of(r)), probe);
 }

@@ -9,9 +9,9 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class E03ColumnRoundTripProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("E03-column-round-trip");
+    public static TheoryData<string, int> Data() => Rows.Data("E03ColumnRoundTripProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, Check);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, Check);
 
     sealed record Side(string? Raw, List<object?> Read, Exception? Ex);
 

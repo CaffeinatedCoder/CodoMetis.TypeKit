@@ -15,12 +15,12 @@ namespace Probes;
 
 public sealed class C09BaseRecordEqualityProbe
 {
-    const string Claim = "C09-base-record-equality";
+    const string RowsFile = "C09BaseRecordEqualityProbe"; // the probe's own rows
 
-    public static TheoryData<string, int> Data() => Probes.Shapes.Rows.Data(Claim);
+    public static TheoryData<string, int> Data() => Probes.Shapes.Rows.Data(RowsFile);
 
     [Theory, MemberData(nameof(Data))]
-    public Task Probe(string claim, int idx) => Probes.Shapes.Rec.Run(claim, idx, r => Task.FromResult(Check(r)));
+    public Task Probe(string probe, int idx) => Probes.Shapes.Rec.Run(probe, idx, r => Task.FromResult(Check(r)));
 
     /// <summary>A sample, an equal one that is another instance where the type is a class, and another value.</summary>
     static (object A, object Same, object Other) Values(string wrapped) => wrapped switch
@@ -45,7 +45,7 @@ public sealed class C09BaseRecordEqualityProbe
     static string? Check(Probes.Shapes.Row r)
     {
         var c = C09Table.Cases.SingleOrDefault(x => x.Index == r.Index);
-        if (c is null || c.Key != Decls.Key(Claim, r.Index))
+        if (c is null || c.Key != Decls.Key(RowsFile, r.Index))
         { r.Outcome("harness-error", "C09Shapes.g.cs was generated from other rows: regenerate it with the rows"); return null; }
         foreach (var (axis, value) in c.Substituted) r.Substituted(axis, value, "the declaration cannot exist as the row asks (excluded in claims.json)");
         _ = r["shape.kind"]; _ = r["shape.site"]; _ = r["shape.inheritance"]; _ = r["base-equality"];

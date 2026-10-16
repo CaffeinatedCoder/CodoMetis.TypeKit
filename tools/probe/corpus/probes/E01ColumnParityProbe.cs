@@ -7,9 +7,9 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class E01ColumnParityProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("E01-column-parity");
+    public static TheoryData<string, int> Data() => Rows.Data("E01ColumnParityProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, Check);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, Check);
 
     static async Task<string?> Check(Probes.Shapes.Row r)
     {

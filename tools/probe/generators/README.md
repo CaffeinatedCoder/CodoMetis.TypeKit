@@ -20,7 +20,8 @@ hand: change the app, or its input, and run it again.
 | `rules.cs` | | `RuleControllers.g.cs`: the controllers of C03 and C05, one action per arity and response variant | the table in the app |
 
 The axes file is `.claude/probe-axes.md`, read from its `json probe-axes` block. A rows file is
-`tools/probe/corpus/rows/<claim>.json.gz`, gzipped JSON, which `prober rows` writes. A value the app's
+`tools/probe/corpus/rows/<probe>.json.gz`, gzipped JSON, one per probe with its claim inside, which `prober rows --probe P`
+writes. A value the app's
 tables do not know (a new `shape.wrapped`, say) is refused with exit 2 and the value named, never skipped.
 
 ## Running one
@@ -32,7 +33,7 @@ dotnet run tools/probe/generators/shapes.cs -- --axes .claude/probe-axes.md --ou
 ```
 
 ```bash
-dotnet run tools/probe/generators/decls.cs -- C09 --rows tools/probe/corpus/rows/C09-base-record-equality.json.gz --out tools/probe/corpus/harness/C09Shapes.g.cs
+dotnet run tools/probe/generators/decls.cs -- C09 --rows tools/probe/corpus/rows/C09BaseRecordEqualityProbe.json.gz --out tools/probe/corpus/harness/C09Shapes.g.cs
 ```
 
 The arguments of every file are in the table `Generators` of
