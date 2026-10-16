@@ -1,12 +1,19 @@
-diff --git a/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs b/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
-index fdc6ea9..8a07496 100644
---- a/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
-+++ b/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
-@@ -196,6 +196,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
-             if (!admitsNull)
-             {
-                 schema.FillFrom(wrappedSchema);
-+                schema.Format = null;
-             }
-             else if (SchemaReferenceId(context.JsonTypeInfo.Options.GetTypeInfo(wrapped), context) is not null)
-             {
+diff --git a/src/CodoMetis.TypeKit.Generators/ValueObjectAspect.Templates.cs b/src/CodoMetis.TypeKit.Generators/ValueObjectAspect.Templates.cs
+index 185f65e..a1c4646 100644
+--- a/src/CodoMetis.TypeKit.Generators/ValueObjectAspect.Templates.cs
++++ b/src/CodoMetis.TypeKit.Generators/ValueObjectAspect.Templates.cs
+@@ -81,12 +81,7 @@ internal sealed partial class ValueObjectAspect
+             return true;
+         }
+ 
+-        result = meta.Default(target);
+-
+-        return (bool)ExpressionFactory.Parse(
+-            $"{ValueObjectTypes.SourceName(target)}.Create(value).TryGetValue(out result, out _)",
+-            TypeFactory.GetType(SpecialType.Boolean),
+-            false
+-        ).Value!;
++        result = constructor.Invoke(value);
++        return true;
+     }
+ }

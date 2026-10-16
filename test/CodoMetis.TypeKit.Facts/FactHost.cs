@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -17,8 +18,12 @@ namespace CodoMetis.TypeKit.Facts;
 /// </summary>
 internal static class FactHost
 {
-    /// <summary>The document of a host whose only controllers are <paramref name="controllers"/>.</summary>
-    public static async Task<JsonNode> DocumentAsync(OpenApiSpecVersion version, Type[] controllers, Action<MvcOptions>? mvc = null)
+    /// <summary>
+    /// The document of a host whose only controllers are <paramref name="controllers"/>, and whose only minimal
+    /// endpoints are those <paramref name="minimal"/> maps.
+    /// </summary>
+    public static async Task<JsonNode> DocumentAsync(
+        OpenApiSpecVersion version, Type[] controllers, Action<MvcOptions>? mvc = null, Action<IEndpointRouteBuilder>? minimal = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
         builder.WebHost.UseTestServer();
@@ -33,6 +38,7 @@ internal static class FactHost
 
         await using var app = builder.Build();
         app.MapControllers();
+        minimal?.Invoke(app);
         app.MapOpenApi();
         await app.StartAsync(TestContext.Current.CancellationToken);
 
