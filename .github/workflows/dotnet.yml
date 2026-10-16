@@ -1,4 +1,5 @@
-# Build, test and pack on every push to main or a release branch and every PR into one. Topics
+# Build, test and pack on every push to main or a release branch and every PR into one; a PR packs
+# only when its diff can change a package (the changes job). Topics
 # merge into release/<version> and the release branch into main
 # (design/adr/0094-topic-branches-into-a-release-branch-and-fix-trailers.md).
 #
@@ -45,6 +46,57 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
+  # Whether this run can change a package or a trimmed consumer: on a push and in the release always, on
+  # a pull request only when the diff against the base branch touches a shipping project, a build
+  # property file, a project file, the SDK pin, the package versions, a workflow or the smoke test
+  # itself. The pack and consumer jobs below run on that answer; the deciding paths are in this job's log.
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      product: ${{ steps.product.outputs.product }}
+
+    steps:
+      # The whole history: the diff is against the base branch, which a shallow clone has not fetched.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+
+      # Bash runs with -e; `git diff` of a base branch that was not fetched fails the job rather than
+      # answering false, so a broken diff can never skip the pack.
+      - name: Can the diff change a package?
+        id: product
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
+            echo "product=true" >> "$GITHUB_OUTPUT"
+            echo "A $GITHUB_EVENT_NAME: the packages and the consumer are always built."
+            exit 0
+          fi
+          git diff --name-only "origin/$GITHUB_BASE_REF...HEAD" > changed-paths.txt
+          product=false
+          while IFS= read -r path; do
+            case "$path" in
+              global.json) reason='global.json' ;;
+              Directory.Packages.props) reason='Directory.Packages.props' ;;
+              src/*) reason='src/' ;;
+              Directory.*.props|*/Directory.*.props) reason='Directory.*.props' ;;
+              Directory.*.targets|*/Directory.*.targets) reason='Directory.*.targets' ;;
+              *.csproj) reason='*.csproj' ;;
+              .github/workflows/*) reason='.github/workflows/' ;;
+              tools/ConsumerSmokeTest/*) reason='tools/ConsumerSmokeTest/' ;;
+              *) continue ;;
+            esac
+            echo "$path ($reason)"
+            product=true
+          done < changed-paths.txt
+          echo "product=$product" >> "$GITHUB_OUTPUT"
+          if [ "$product" = true ]; then
+            echo "The paths above can change a package or a trimmed consumer: the packages and the consumer are built."
+          else
+            echo "No changed path can change a package or a trimmed consumer: the pack and consumer jobs are skipped."
+          fi
+
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -225,10 +277,16 @@ jobs:
           path: ${{ runner.temp }}/probe-state
           if-no-files-found: ignore
 
+  # The pack catches a package that names a README it does not pack and a broken SBOM step, and the two
+  # smoke tests a consumer that no longer restores, compiles or publishes with Native AOT against the
+  # packed feed and against one packed on the spot. A pull request that touches none of the paths the
+  # changes job lists cannot change any of them, so it skips both, while every push and the release
+  # (release.yml) still run them.
   pack:
     name: Pack
     runs-on: ubuntu-latest
-    needs: test
+    needs: [ test, changes ]
+    if: needs.changes.outputs.product == 'true'
 
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -284,7 +342,8 @@ jobs:
   consumer:
     name: Consumer smoke test
     runs-on: ubuntu-latest
-    needs: test
+    needs: [ test, changes ]
+    if: needs.changes.outputs.product == 'true'
 
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0

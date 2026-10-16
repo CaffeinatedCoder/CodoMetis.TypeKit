@@ -160,6 +160,74 @@ public sealed partial class ReleaseWiringTests
     }
 
     /// <summary>
+    /// Measured on PR #22's run, 2026-10-16: on a pull request that changed no package, the pack job took four
+    /// minutes and the consumer smoke test four more after a test job of five to eight, a thirteen-minute run. So on
+    /// a pull request the build workflow packs and smoke-tests only when the diff against the base branch touches a
+    /// path that can change a package or a trimmed consumer, as its <c>changes</c> job decides, and on a push always.
+    /// A job that loses the condition runs on every pull request again, which fails nothing but the maintainer's
+    /// time; a path the step no longer lists lets a change to a package merge unpacked and untested, silently. Both
+    /// are held here, by structure: the job-level keys and the case labels of the deciding step.
+    /// </summary>
+    [Fact]
+    public void The_build_workflow_packs_a_pull_request_only_when_the_diff_can_change_a_package()
+    {
+        var changes = Job(BuildWorkflow, "changes");
+        var output = Regex.Match(changes, @"(?m)^      product:\s*\$\{\{ steps\.(?<id>[A-Za-z0-9_-]+)\.outputs\.product \}\}\s*$");
+
+        output.Success.ShouldBeTrue("dotnet.yml:changes has no `product` output taken from a step's output, so the pack and consumer jobs have nothing to read.");
+
+        var decide = Steps(changes).SingleOrDefault(step => Regex.IsMatch(step, $@"(?m)^\s+id:\s*{Regex.Escape(output.Groups["id"].Value)}\s*$"));
+
+        decide.ShouldNotBeNull($"dotnet.yml:changes has no step with id {output.Groups["id"].Value}, which its `product` output names.");
+        decide.ShouldMatch(@"(?m)^\s+if \[ ""\$GITHUB_EVENT_NAME"" != pull_request \]; then\s*$",
+            "dotnet.yml:changes does not answer true for every event but a pull request, so a push or the dispatch would skip the pack.");
+        decide.ShouldMatch(@"(?m)^\s+echo ""product=true"" >> ""\$GITHUB_OUTPUT""\s*$", "dotnet.yml:changes never writes product=true to the step's output.");
+        decide.ShouldMatch(@"(?m)^\s+git diff --name-only ""origin/\$GITHUB_BASE_REF\.\.\.HEAD"" > \S+\s*$",
+            "dotnet.yml:changes does not diff the pull request against its base branch (origin/$GITHUB_BASE_REF...HEAD) as a command of its own, whose failure fails the job.");
+        decide.ShouldMatch(@"(?m)^\s+echo ""product=\$product"" >> ""\$GITHUB_OUTPUT""\s*$", "dotnet.yml:changes never writes the diff's answer to the step's output.");
+
+        foreach (var pattern in ProductPaths)
+            decide.ShouldMatch(CaseLabel(pattern),
+                $"dotnet.yml:changes no longer lists {pattern} as a case label of the deciding step, so a pull request changing it alone would merge unpacked and untested.");
+
+        foreach (var name in new[] { "pack", "consumer" })
+        {
+            var job = Job(BuildWorkflow, name);
+
+            job.ShouldMatch(JobKey("needs", @"\[\s*test,\s*changes\s*\]"), $"dotnet.yml:{name} does not need [ test, changes ], so it cannot read the changes job's output.");
+            job.ShouldMatch(JobKey("if", Regex.Escape("needs.changes.outputs.product == 'true'")),
+                $"dotnet.yml:{name} is not conditioned on `needs.changes.outputs.product == 'true'`, so it runs on every pull request again.");
+        }
+    }
+
+    /// <summary>
+    /// The release packs and smoke-tests always: the artifacts it publishes are the artifacts it tested, whatever
+    /// the tag's diff. Neither its verify job nor the pack or smoke test step carries a condition.
+    /// </summary>
+    [Fact]
+    public void The_release_packs_and_smoke_tests_unconditionally()
+    {
+        var job = Job(ReleaseWorkflow, "verify");
+        var steps = Steps(job).ToList();
+
+        job.ShouldNotMatch(JobKey("if", ".*"), "release.yml:verify carries a job-level condition; the release packs and smoke-tests every tag.");
+
+        foreach (var (what, step) in new[] { ("pack", steps.Single(candidate => candidate.Contains("dotnet pack", StringComparison.Ordinal))), ("smoke test", steps.Single(candidate => SmokeTestStep().IsMatch(candidate))) })
+            step.ShouldNotMatch(@"(?m)^\s+if:", $"release.yml:verify's {what} step carries a condition; the release packs and smoke-tests every tag.");
+    }
+
+    /// <summary>
+    /// The paths a pull request must touch for its diff to change a package or a trimmed consumer, each a case label
+    /// of the changes job's deciding step: the shipping projects, the build property files at any depth, any project
+    /// file, the SDK pin, the package versions, the workflows and the smoke test itself.
+    /// </summary>
+    private static readonly string[] ProductPaths =
+        ["src/", "Directory.*.props", "Directory.*.targets", "*.csproj", "global.json", "Directory.Packages.props", ".github/workflows/", "tools/ConsumerSmokeTest/"];
+
+    /// <summary>A bash case label naming the path pattern, alone or among alternatives, a trailing <c>*</c> allowed for a directory.</summary>
+    private static string CaseLabel(string pattern) => $@"(?m)^\s+(?:[^\s)|]+\|)*{Regex.Escape(pattern)}\*?(?:\|[^\s)|]+)*\)";
+
+    /// <summary>
     /// CI replays the probe corpus with no model (design/adr/0096), split by family into legs that run at once
     /// and a job that merges their states (design/adr/0101): on a push every probe, with coverage, and the merged
     /// state saved for the branch's pull requests; on a pull request the base branch's state restored and only
