@@ -41,9 +41,10 @@ internal sealed class ProbeHost : IAsyncDisposable
         Action<JsonOptions>? json = null,
         OpenApiSpecVersion version = OpenApiSpecVersion.OpenApi3_1,
         Action<WebApplication>? endpoints = null,
-        Type[]? controllers = null)
+        Type[]? controllers = null,
+        Action<IServiceCollection>? services = null)
     {
-        await using var host = await StartAsync(openApi, json, version, endpoints, controllers);
+        await using var host = await StartAsync(openApi, json, version, endpoints, controllers, services);
         return await host.DocumentAsync();
     }
 
@@ -52,7 +53,8 @@ internal sealed class ProbeHost : IAsyncDisposable
         Action<JsonOptions>? json = null,
         OpenApiSpecVersion version = OpenApiSpecVersion.OpenApi3_1,
         Action<WebApplication>? endpoints = null,
-        Type[]? controllers = null)
+        Type[]? controllers = null,
+        Action<IServiceCollection>? services = null)
     {
         // Pinned, not read from ASPNETCORE_ENVIRONMENT: in Development the host adds the developer exception
         // page on its own, and a refusal then reaches the test as a 500 instead of the exception it asserts.
@@ -71,6 +73,7 @@ internal sealed class ProbeHost : IAsyncDisposable
             });
         }
         if (json is not null) builder.Services.ConfigureHttpJsonOptions(json);
+        services?.Invoke(builder.Services);
 
         // The converters and the resolvers of one's own go on MVC's options too, as a host with controllers
         // must register them (DescribedOptionsAgreement refuses the document otherwise; DescribedSchemaTests
