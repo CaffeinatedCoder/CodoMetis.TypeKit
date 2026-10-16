@@ -9,7 +9,8 @@ namespace Prober;
 /// <c>new</c>: the mechanical half of writing a probe, done the same way every time, into the branch's staging.
 /// It writes the probe's skeleton in the harness's form (<c>probes/P.cs</c>), headed by the claim's source and
 /// every obligation's id and sentence, with one check per obligation that throws until it is written; stages the
-/// claim's rows (the rows it has, then a covering array over its pairs not yet covered, as <c>rows</c> prints);
+/// probe's own rows (a covering array over its claim's pairs the claim's other probes have not covered, as
+/// <c>rows --probe P</c> writes);
 /// and registers the probe with an empty <c>seeds</c>, so <c>seeds</c> and <c>Seeds.Problems</c> name each
 /// obligation's seed as owed. The skeleton builds, so the other probes keep building beside it, and every row of
 /// it ends as a harness error, which fails the row, earns nothing and is never a seed's catch (decision 103).
@@ -38,16 +39,10 @@ internal static partial class NewProbe
         var family = Family(l, claim, a.Get("family"));
         var obligations = Obligations(claim);
 
-        // The claim's rows: those it has keep their indices, so the evidence of its other probes still reads them;
-        // the covering array over its pairs not yet covered follows, without a row it holds already.
-        var had = l.RowsOf(claimId);
-        var known = had.Select(Key).ToHashSet(StringComparer.Ordinal);
-        var added = (Commands.CoveringRows(l, claimId, full: false)["rows"] as JsonArray ?? []).Where(r => known.Add(Key(r))).ToList();
-        var rows = new JsonArray([.. had.Select(r => r?.DeepClone()), .. added.Select(r => r?.DeepClone())]);
-
         var source = Path.Combine(l.StagingDir, "probes", probe + ".cs");
         Files.WriteAtomically(source, Skeleton(claim, probe, family, obligations));
-        Files.WriteJson(Path.Combine(l.StagingDir, "rows", claimId + ".json"), new JsonObject { ["claim"] = claimId, ["rows"] = rows });
+        // The probe's own rows, its claim's other probes' untouched: a covering array over the pairs they have not covered.
+        var (rows, _) = Commands.StageRows(l, probe, claimId, full: false);
         var registry = Path.Combine(l.StagingDir, "registry.json");
         var staged = Files.ReadJson(registry) as JsonObject ?? new JsonObject { ["probes"] = new JsonObject() };
         var probes = staged["probes"] as JsonObject ?? [];
@@ -58,8 +53,8 @@ internal static partial class NewProbe
         var o = l.Ctx.Out;
         o.WriteLine($"prober new: {probe} for claim {claimId}{(family is null ? "" : $" (family {family})")}, staged in {l.StagingDir}");
         o.WriteLine($"  probes/{probe}.cs: the skeleton; it builds, and every row ends as a harness error until each obligation's check is written");
-        o.WriteLine($"  rows/{claimId}.json: {rows.Count} rows, {had.Count} the claim had and {added.Count} new over its pairs not yet covered" +
-                    (rows.Count == 0 ? "; with no row the probe has no test to run" : ""));
+        o.WriteLine($"  rows/{probe}.json: {rows} rows over the claim's pairs its other probes have not covered" +
+                    (rows == 0 ? "; with no row the probe has no test to run" : ""));
         o.WriteLine($"  registry.json: {probe}, claim {claimId}, filter *{probe}, no seed yet");
         o.WriteLine("still owed, per obligation:");
         foreach (var (id, sentence, method) in obligations)
@@ -136,7 +131,7 @@ internal static partial class NewProbe
     internal static string Skeleton(JsonObject claim, string probe, string? family, List<(string Id, string? Sentence, string Method)> obligations)
     {
         var id = Files.Str(claim["id"]);
-        var literal = JsonSerializer.Serialize(id);
+        var literal = JsonSerializer.Serialize(probe);
         var b = new StringBuilder();
         void Line(string text = "") => b.Append(text).Append('\n');
         Line($"// Claim {id} ({Files.Str(claim["source"])}), surfaces {string.Join(", ", Files.Strings(claim["surfaces"]))}{(family is null ? "" : $", family {family}")}.");
@@ -151,7 +146,7 @@ internal static partial class NewProbe
         Line("{");
         Line($"    public static TheoryData<string, int> Data() => Rows.Data({literal});");
         Line("    [Theory, MemberData(nameof(Data))]");
-        Line("    public Task Row(string claim, int idx) => Rec.Run(claim, idx, Check);");
+        Line("    public Task Row(string probe, int idx) => Rec.Run(probe, idx, Check);");
         Line();
         Line("    static async Task<string?> Check(Row r) =>");
         for (var i = 0; i < obligations.Count; i++)
@@ -168,6 +163,4 @@ internal static partial class NewProbe
     }
 
     private static string OneLine(string text) => string.Join(" ", text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-
-    private static string Key(JsonNode? row) => Files.Canonical(row?["row"] ?? row);
 }

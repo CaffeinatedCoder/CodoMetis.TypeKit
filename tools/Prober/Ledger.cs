@@ -88,12 +88,23 @@ internal sealed class Ledger
         return [.. claims.OfType<JsonObject>()];
     }
 
-    public JsonArray RowsOf(string claim)
+    /// <summary>
+    /// A probe's own rows (rows/P.json, staged, else the corpus's rows/P.json.gz). Each probe has a file of its own, its claim
+    /// inside, so the rows of one probe of a claim never move another's identity.
+    /// </summary>
+    public JsonArray RowsOf(string probe)
     {
-        var relative = Path.Combine("rows", claim + ".json");
+        var relative = Path.Combine("rows", probe + ".json");
         var staged = Path.Combine(StagingDir, relative);
         return File.Exists(staged) ? Files.ReadRows(staged) : Files.ReadRows(Path.Combine(CorpusDir, relative));
     }
+
+    /// <summary>
+    /// The paths a probe's registry entry watches: what its result depends on that the footprint cannot see, such as a
+    /// variant catalogue under test/ compiled into the probes or a build input a child process reads. They stale its
+    /// footprint like the paths it ran.
+    /// </summary>
+    public IReadOnlyList<string> Watched(string probe) => [.. Files.Strings(Registry().GetValueOrDefault(probe)?["watched"])];
 
     public JsonObject AxesBlock() => Axes.Block(AxesFile);
 
@@ -101,7 +112,7 @@ internal sealed class Ledger
 
     /// <summary>
     /// What a probe's result depends on besides the product footprint: its registry entry (not its seed), every source
-    /// compiled with it (the harness and all probes), its claim's rows, the axes file, the build environment
+    /// compiled with it (the harness and all probes), its own rows (not a sibling's), the axes file, the build environment
     /// (SDK, central package versions, build props, global.json), this tool's version and the schema version.
     /// A result counts only while this is unchanged.
     /// </summary>
@@ -124,7 +135,7 @@ internal sealed class Ledger
                     foreach (var file in Directory.EnumerateFiles(folder, "*.cs")) sources[Path.GetFileName(file)] = file;
             }
         foreach (var (name, file) in sources) { Add(name); sha.AppendData(File.ReadAllBytes(file)); }
-        Add(Files.Canonical(RowsOf(Files.Str(entry["claim"]))));
+        Add(Files.Canonical(RowsOf(probe)));
         try { Add(Files.Canonical(AxesBlock())); } catch (Refusal) { Add("no axes file"); }
         foreach (var path in new[] { "Directory.Packages.props", "Directory.Build.props", "global.json" })
             Add(path + (Git.ObjectId(Top, path) ?? "-"));
@@ -179,14 +190,20 @@ internal sealed class Ledger
 
     private readonly Dictionary<string, bool> currentCache = new(StringComparer.Ordinal);
 
-    /// <summary>A probe's footprint is current when every path it ran, every compile-time path and the toolchain are unchanged at HEAD.</summary>
+    /// <summary>
+    /// A probe's footprint is current when every path it ran, every compile-time path, every path its registry entry
+    /// watches and the toolchain are unchanged at HEAD. A watched path the footprint did not record (one added to the
+    /// entry since) is not current.
+    /// </summary>
     public bool FootprintCurrent(string probe, Dictionary<string, JsonObject> footprints)
     {
         if (currentCache.TryGetValue(probe, out var cached)) return cached;
         var ok = false;
         if (footprints.TryGetValue(probe, out var r) && r["footprint"] is JsonObject fp && fp.Count > 0)
         {
-            ok = fp.Concat(r["compileTime"] as JsonObject ?? []).All(kv => Git.ObjectId(Top, kv.Key) == Files.Str(kv.Value, null!));
+            var watched = r["watched"] as JsonObject ?? [];
+            ok = Watched(probe).All(watched.ContainsKey)
+                 && fp.Concat(r["compileTime"] as JsonObject ?? []).Concat(watched).All(kv => Git.ObjectId(Top, kv.Key) == Files.Str(kv.Value, null!));
             if (ok)
             {
                 var now = Toolchain();
@@ -199,7 +216,9 @@ internal sealed class Ledger
     public bool FootprintChangedSince(string probe, string since, Dictionary<string, JsonObject> footprints)
     {
         if (!footprints.TryGetValue(probe, out var r)) return true;
-        var paths = (r["footprint"] as JsonObject ?? []).Select(kv => kv.Key).Concat((r["compileTime"] as JsonObject ?? []).Select(kv => kv.Key)).ToArray();
+        var paths = (r["footprint"] as JsonObject ?? []).Select(kv => kv.Key).Concat((r["compileTime"] as JsonObject ?? []).Select(kv => kv.Key))
+                                                         .Concat((r["watched"] as JsonObject ?? []).Select(kv => kv.Key)).Concat(Watched(probe))
+                                                         .Distinct(StringComparer.Ordinal).ToArray();
         if (paths.Length == 0) return true;
         return Git.Run(Top, ["diff", "--quiet", since, "HEAD", "--", .. paths]).ExitCode != 0;
     }
@@ -231,15 +250,18 @@ internal sealed class Ledger
         return result;
     }
 
-    /// <summary>(claim, pair) for every pair current evidence earned. A round's own ledger lines earn nothing.</summary>
-    public HashSet<(string Claim, Pair Pair)> Covered(Universe universe, string? claimId = null)
+    /// <summary>
+    /// (claim, pair) for every pair current evidence earned, leaving out the probe <paramref name="except"/> names. A round's
+    /// own ledger lines earn nothing.
+    /// </summary>
+    public HashSet<(string Claim, Pair Pair)> Covered(Universe universe, string? claimId = null, string? except = null)
     {
         var footprints = Footprints();
         var done = new HashSet<(string, Pair)>();
         foreach (var (name, entry) in Registry())
         {
             var cid = Files.Str(entry["claim"]);
-            if ((claimId is not null && cid != claimId) || !universe.ById.TryGetValue(cid, out var claim)) continue;
+            if (name == except || (claimId is not null && cid != claimId) || !universe.ById.TryGetValue(cid, out var claim)) continue;
             var evidence = Files.ReadJson(EvidencePath(name)) as JsonObject;
             foreach (var applied in CreditedRows(name, evidence, footprints))
                 foreach (var pair in claim.PairsOfRow(applied)) done.Add((cid, pair));

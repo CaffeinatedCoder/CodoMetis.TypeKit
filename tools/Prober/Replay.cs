@@ -221,7 +221,7 @@ internal static class Replay
         foreach (var (s, pending) in todo.Zip(started))
         {
             var variants = pending.Select(t => t.GetAwaiter().GetResult()).OrderBy(v => v.Index).ToList();
-            var claimRows = Files.ReadRows(Path.Combine(probeDir, "rows", s.Claim + ".json"));
+            var probeRows = Files.ReadRows(Path.Combine(probeDir, "rows", s.Probe + ".json"));
             var evidence = new JsonObject { ["variants"] = new JsonArray(), ["rows"] = new JsonObject() };
             var result = "pass"; var seconds = 0.0; var reports = new List<string>();
             foreach (var v in variants)
@@ -245,8 +245,8 @@ internal static class Replay
                 // settings that applied. A row missing here, or recorded without its settings, earns nothing.
                 var only = Files.Str(v.Variant["PROBE_ONLY"]);
                 var expected = new JsonArray(); var executed = new SortedSet<int>();
-                for (var i = 0; i < claimRows.Count; i++)
-                    if (Selected(Files.StringMap(claimRows[i]?["row"] ?? claimRows[i]), only)) expected.Add(i);
+                for (var i = 0; i < probeRows.Count; i++)
+                    if (Selected(Files.StringMap(probeRows[i]?["row"] ?? probeRows[i]), only)) expected.Add(i);
                 if (Directory.Exists(v.OutDir))
                     foreach (var file in Directory.EnumerateFiles(v.OutDir, "*.jsonl"))
                         foreach (var line in Files.ReadLines(file))
@@ -356,7 +356,10 @@ internal static class Replay
         catch (IOException) { return null; }
     }
 
-    /// <summary>Copies the corpus into the worktree's probe directory: tracked, overlaid by the branch's unpublished staging; rows unpacked.</summary>
+    /// <summary>
+    /// Copies the corpus into the worktree's probe directory: tracked, overlaid by the branch's unpublished staging; rows
+    /// unpacked, one file per probe, and a rows file the corpus no longer has removed.
+    /// </summary>
     internal static string Overlay(Ledger ledger, JsonObject config, string worktree)
     {
         var probeDir = Path.Combine(worktree, Files.Str(config["probeDir"]));
@@ -373,6 +376,7 @@ internal static class Replay
                     rows[Path.GetFileName(f).Replace(".gz", "", StringComparison.Ordinal)] = f;
         }
         foreach (var existing in Directory.EnumerateFiles(probeDir)) if (!wanted.ContainsKey(Path.GetFileName(existing))) File.Delete(existing);
+        foreach (var existing in Directory.EnumerateFiles(Path.Combine(probeDir, "rows"))) if (!rows.ContainsKey(Path.GetFileName(existing))) File.Delete(existing);
         foreach (var (name, src) in wanted)
         {
             var dst = Path.Combine(probeDir, name);

@@ -28,13 +28,13 @@ internal static class TryProbe
         var filter = Files.Str(entry["filter"]);
 
         // What each variant runs: the rows its PROBE_ONLY selects, those of --rows among them, in stretches.
-        var claimRows = ledger.RowsOf(claim);
-        var asked = Indices(a.Get("rows"), claimRows.Count);
+        var probeRows = ledger.RowsOf(probe);
+        var asked = Indices(a.Get("rows"), probeRows.Count);
         var plan = new List<(JsonObject Variant, List<int> Rows, List<string?> Stretches)>();
         foreach (var variant in Ledger.VariantsOf(entry).OfType<JsonObject>())
         {
             var only = Files.Str(variant["PROBE_ONLY"]);
-            var selected = Enumerable.Range(0, claimRows.Count).Where(i => Replay.Selected(Files.StringMap(claimRows[i]?["row"] ?? claimRows[i]), only)).ToList();
+            var selected = Enumerable.Range(0, probeRows.Count).Where(i => Replay.Selected(Files.StringMap(probeRows[i]?["row"] ?? probeRows[i]), only)).ToList();
             if (asked is null) { plan.Add((variant, selected, [null])); continue; }
             var rows = selected.Where(asked.Contains).ToList();
             if (rows.Count > 0) plan.Add((variant, rows, Stretches(rows)));

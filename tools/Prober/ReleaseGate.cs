@@ -8,7 +8,7 @@ namespace Prober;
 /// memory of a developer's machine. It refuses while the staging is unpublished, a finding is open or a row
 /// skips for one, a probe has not passed at its current identity and footprint, an expected row did not run, or a claim touched
 /// since the release has pairs no probe covers and no reviewed waiver. Touched is chosen conservatively: the
-/// claim's source document, its surfaces' source areas or the build inputs changed; footprints only add.
+/// claim's source document, its surfaces' source areas, the paths its probes watch or the build inputs changed; footprints only add.
 /// </summary>
 internal static class ReleaseGate
 {
@@ -58,8 +58,9 @@ internal static class ReleaseGate
         var missingTotal = 0;
         foreach (var claim in universe.Claims)
         {
-            var conservative = Under([claim.Source.Split('#')[0]]) || Under(claim.Watched) || Under(BuildInputs);
             var probes = byClaim.GetValueOrDefault(claim.Id) ?? [];
+            // What the claim's surfaces watch, and what its probes' registry entries watch beyond their footprints.
+            var conservative = Under([claim.Source.Split('#')[0]]) || Under(claim.Watched) || Under(probes.SelectMany(l.Watched)) || Under(BuildInputs);
             var footprint = probes.Count > 0 && probes.Any(p => l.FootprintChangedSince(p, since, footprints));
             if (probes.Count > 0 && conservative && !footprint) missedByFootprint.Add(claim.Id);
             if (footprint && !conservative) footprintOnly.Add(claim.Id);

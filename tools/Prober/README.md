@@ -15,9 +15,9 @@ dotnet tools/Prober/bin/Release/net10.0/prober.dll help
 | `replay [--all] [--family F] [--parallel N] [--no-footprint]` | none | anywhere, CI included: the probes whose identity or footprint changed, or all of them; one family of the replay configuration; N probe processes at a time (the cores by default); without coverage or a footprint, for a state nobody keeps (decision 101) |
 | `merge --from DIR...` | none | anywhere, CI included: joins the states of a replay split by family, and refuses while a registered probe was in no leg |
 | `gate [--since REF]` | none | anywhere, CI included: needs only the tracked corpus and a replay |
-| `status`, `stale`, `universe`, `rows`, … | none | anywhere |
+| `status`, `stale`, `universe`, `rows [--claim C \| --probe P]`, … | none | anywhere |
 | `gaps [--base REF]` | none | anywhere: what the corpus leaves out, each with its recorded reason; a report that decides nothing (decision 104) |
-| `new --claim C [--probe P] [--family F]` | none | anywhere: stages a probe's skeleton, its claim's rows and its registry entry with no seed yet, and prints what the writer still owes |
+| `new --claim C [--probe P] [--family F]` | none | anywhere: stages a probe's skeleton, its own rows and its registry entry with no seed yet, and prints what the writer still owes |
 | `try --probe P [--rows i,j,...] [--no-build]` | none | locally: builds once in the replay's worktree and runs that one probe, every row or the rows given; records nothing and takes no lock |
 | `round explore\|full` | the `prober` agent | locally only, under caps it cannot overrun |
 | `seeds [--probe P]` | none | locally only: one build per seed, in a scratch worktree (decision 100) |
@@ -38,6 +38,25 @@ writes keep `+`, backticks and `<` literal, so a `publish` that changes nothing 
 it is (decision 102). The harness's generated declarations, `harness/*.g.cs`, are written by the file-based
 apps of `tools/probe/generators/` from the rows and the axes file, and `GeneratedHarnessTests` in the
 conventions tests holds each to its app's output (that directory's README).
+
+Rows are per probe: `rows/<probe>.json.gz`, one file for each registered probe, its claim inside (`claim`), so
+two probes of one claim (C07's `BaseProbe` and `C07BlanketMappingProbe`) each run rows of their own, and a
+probe's identity reads its own file only: a sibling's rows changing leaves it as it was. The probe's
+`Rows.Data("P")` names the file, and the replay, `try` and the identity read it. `rows --probe P` writes P's file
+whole into the staging, never appended: a covering array over its claim's pairs less those the claim's other
+probes have credited (P's own credit is not subtracted, since it came from the rows the file replaces), and
+`publish` moves it into the corpus by probe; `rows --claim C` only prints such an array. The stored rows are
+definitions, the evidence is in the state. `ProbeRowsTests` in the conventions tests refuses two rows of one
+file with the same axis map, a file whose `claim` is not in `claims.json` or is not its probe's, a file that
+names no registered probe, and a registered probe without a file.
+
+A registry entry may list `watched`: paths, files or directories, that the probe's result depends on and its
+footprint cannot see, since the footprint is what ran in the probe's own process under `src/` beside the
+`compileTimeFootprint` paths. A variant catalogue under `test/` compiled into the probes is one (C19 builds
+over the analyzer tests' `TypeArgumentSites` and `TypeArgumentKinds`), a build input a child process reads is
+another (C18's consumer build compiles against the base package and evaluates `src/Directory.Build.*`). The
+replay records each with its object id in the footprint line, a change to one stales the footprint like a path
+the probe ran, and the gate counts it as touching the probe's claim.
 
 The round lock, `round.lock` and its mutex, sits in the branch's directory (`branches/<branch>/`), beside
 everything a round or a replay writes, so rounds and replays of two branches run at once and two of one branch
@@ -89,8 +108,8 @@ does not apply, a seed naming an obligation its claim does not list, and a liste
 the corpus's probes have (`Rows.Data`, `[Theory, MemberData(nameof(Data))]`, `Rec.Run`), headed by the claim's
 source and each obligation's id and sentence, with one check per obligation that throws until it is written:
 the probe builds beside the others, and every row of it ends as a harness error, which fails the row, earns
-nothing and is never a seed's catch. It stages the claim's rows, the ones it has at their indices and then a
-covering array over its pairs not yet covered, as `rows` prints it, and the registry entry with an empty
+nothing and is never a seed's catch. It stages the probe's own rows, a covering array over its claim's pairs the
+claim's other probes have not covered, as `rows --probe P` writes them, and the registry entry with an empty
 `seeds`, so `seeds` and `Seeds.Problems` name the seed each obligation owes. P defaults to the claim id's
 prefix and words (`C20-testing-shouldhold` is `C20TestingShouldholdProbe`); it refuses a claim that is not in
 the claims, a name a probe has, and a claim whose first surface is in no family, or not in `--family`'s.
