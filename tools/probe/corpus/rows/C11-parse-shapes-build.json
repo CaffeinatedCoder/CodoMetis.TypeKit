@@ -8489,6 +8489,132 @@
           "text.entry=TryFrom"
         ]
       ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "top-level",
+        "shape.wrapped": "DateTimeOffset",
+        "text.culture": "globalization-invariant",
+        "text.entry": "TryFrom"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-3",
+          "shape.wrapped=DateTimeOffset"
+        ],
+        [
+          "shape.kind=validated-class",
+          "shape.wrapped=DateTimeOffset"
+        ],
+        [
+          "shape.wrapped=DateTimeOffset",
+          "text.culture=globalization-invariant"
+        ],
+        [
+          "shape.wrapped=DateTimeOffset",
+          "text.entry=TryFrom"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "bool",
+        "text.culture": "de-DE",
+        "text.entry": "Parse"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-3",
+          "shape.wrapped=bool"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "decimal",
+        "text.culture": "tr-TR",
+        "text.entry": "TryFormat-short-span"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-2",
+          "shape.wrapped=decimal"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "ulong",
+        "text.culture": "de-DE",
+        "text.entry": "TryFormat-short-span"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=ulong"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "double",
+        "text.culture": "de-DE",
+        "text.entry": "IParsable"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=double"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "byte",
+        "text.culture": "ar-SA",
+        "text.entry": "TryFrom"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=byte"
+        ]
+      ]
     }
   ],
   "uncovered_after": 0
