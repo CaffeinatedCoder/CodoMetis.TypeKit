@@ -74,6 +74,62 @@
         "defect": "WithRule names an enum rule without its nesting chain: Rules.Fault.NoAt is written Fault.NoAt."
       }
     },
+    "C09BaseRecordEqualityProbe": {
+      "claim": "C09-base-record-equality",
+      "filter": "*C09BaseRecordEqualityProbe",
+      "seed": {
+        "patch": "seeds/C09-base-record-equality.patch",
+        "defect": "The value object implements only its direct base's IEquatable<TBase> again, so a collection of a deeper base compares it by that base's own equality."
+      }
+    },
+    "C11ParseShapesBuildProbe": {
+      "claim": "C11-parse-shapes-build",
+      "filter": "*C11ParseShapesBuildProbe",
+      "variants": [
+        {
+          "PROBE_ONLY": "process.converter-lookup=none,text.culture!=globalization-invariant"
+        },
+        {
+          "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first,text.culture!=globalization-invariant"
+        },
+        {
+          "PROBE_ONLY": "text.culture=globalization-invariant,process.converter-lookup=none",
+          "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
+        },
+        {
+          "PROBE_ONLY": "text.culture=globalization-invariant,process.converter-lookup=wrapped-type-converter-looked-up-first",
+          "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
+        }
+      ],
+      "seed": {
+        "patch": "seeds/C11-parse-shapes-build.patch",
+        "defect": "An enum is taken for a type with no parser, so a value object over an enum is generated without parsing."
+      }
+    },
+    "C17Cmtk0014Probe": {
+      "claim": "C17-cmtk0014",
+      "filter": "*C17Cmtk0014Probe",
+      "seed": {
+        "patch": "seeds/C17-cmtk0014.patch",
+        "defect": "CMTK0014 no longer judges a default: default and default(FaultKind) are silent where they name no member."
+      }
+    },
+    "C18Cmtk1023Probe": {
+      "claim": "C18-cmtk1023",
+      "filter": "*C18Cmtk1023Probe",
+      "seed": {
+        "patch": "seeds/C18-cmtk1023.patch",
+        "defect": "CMTK1023 leaves out a base's explicit IEquatable<TBase>.Equals, so a base comparing by reference through it compiles without a word."
+      }
+    },
+    "C19Cmtk0010KindsProbe": {
+      "claim": "C19-cmtk0010-kinds",
+      "filter": "*C19Cmtk0010KindsProbe",
+      "seed": {
+        "patch": "seeds/C19-cmtk0010-kinds.patch",
+        "defect": "CMTK0010 no longer checks a collection expression's builder method, so a breaking argument it infers there compiles."
+      }
+    },
     "C20ShouldHoldProbe": {
       "claim": "C20-testing-shouldhold",
       "filter": "*C20ShouldHoldProbe",
