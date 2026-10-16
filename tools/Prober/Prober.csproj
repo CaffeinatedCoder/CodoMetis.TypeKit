@@ -24,6 +24,8 @@
     <ItemGroup>
         <InternalsVisibleTo Include="CodoMetis.TypeKit.Prober.Tests" />
         <None Include="Schemas/*.json" CopyToOutputDirectory="PreserveNewest" />
+        <!-- The schemas SchemaCheck reads where a file is read (decision 102), by file name. -->
+        <EmbeddedResource Include="Schemas/claims.schema.json" LogicalName="%(Filename)%(Extension)" />
     </ItemGroup>
 
     <!--
