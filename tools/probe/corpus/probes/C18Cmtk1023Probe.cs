@@ -11,6 +11,7 @@
 // In this process too, the half of the sentence a run can show: over a base that declares the base-member by reference, the generated
 // equality is the underlying value's (one value object per base-member, built by this project's own weaving).
 using Probes.Build;
+using NoteKeys = Probes.Shapes.NoteKeys;
 namespace Probes;
 
 #pragma warning disable CMTK1023, CS8851 // the bases' own equality is the point; CS8851: the Equals base has no GetHashCode, on purpose
@@ -192,7 +193,7 @@ public sealed class C18Cmtk1023Probe
         var entry = s.Kind == "validated-class" ? "TryFrom" : "From";
         if (!methods.Contains(entry)) return $"the value object is not generated: {type} has no {entry} ({string.Join(", ", methods.Order())})";
         if (Twin(s.Member) is { } twin) return twin;
-        r.Note("compared", $"{named.Count} members named");
+        r.Note(NoteKeys.Compared, $"{named.Count} members named");
         return null;
     }
 }

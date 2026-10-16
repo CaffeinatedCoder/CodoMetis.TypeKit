@@ -69,7 +69,7 @@ public sealed class E13PrimitiveCollectionProbe
         var v = await Side(true);
         if (v.err is null) return v.res == truth ? null : $"{qk} returned [{v.res}], the collections hold [{truth}]";
         var p = await Side(false);
-        if (p.err is not null) { r.Note("both-threw", v.err.Split(':')[0] + "/" + p.err.Split(':')[0]); return null; }
+        if (p.err is not null) { r.Note(NoteKeys.BothThrew, v.err.Split(':')[0] + "/" + p.err.Split(':')[0]); return null; }
         return $"{qk} over List<{w} value object> threw ({v.err}) where List<{w}> returned [{p.res}]";
     }
 }

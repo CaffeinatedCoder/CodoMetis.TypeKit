@@ -40,7 +40,7 @@ public sealed class E05OwnCompareToProbe
                 _ => null,
             };
         }
-        catch (InvalidOperationException ex) { r.Note("no-operator", ex.Message); return null; }
+        catch (InvalidOperationException ex) { r.Note(NoteKeys.NoOperator, ex.Message); return null; }
 
         Action<ModelBuilder> cfg = mb =>
         {

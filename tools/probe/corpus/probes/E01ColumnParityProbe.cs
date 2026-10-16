@@ -34,8 +34,8 @@ public sealed class E01ColumnParityProbe
             try { voModel = EfModel.Describe(vo.Context); voScript = vo.Context.Database.GenerateCreateScript(); } catch (Exception ex) { voEx = ex; }
         await using (var plain = new EfDb(EfModel.Configure(mapping, plainEntity, apply, false), typeKit: false))
             try { plainModel = EfModel.Describe(plain.Context); plainScript = plain.Context.Database.GenerateCreateScript(); } catch (Exception ex) { plainEx = ex; }
-        if (voEx is not null && plainEx is not null) { r.Note("both-threw", voEx.GetType().Name); return null; }
-        if (plainEx is not null) { r.Note("plain-refused", plainEx.GetType().Name); return null; }
+        if (voEx is not null && plainEx is not null) { r.Note(NoteKeys.BothThrew, voEx.GetType().Name); return null; }
+        if (plainEx is not null) { r.Note(NoteKeys.PlainRefused, plainEx.GetType().Name); return null; }
         if (voEx is not null) return $"model/script with the value object threw {voEx.GetType().Name}: {Short(voEx.Message)}; the wrapped type's did not";
         if (mapping == "key" && e.Wrapped is "char" or "Guid")
         {
@@ -43,7 +43,7 @@ public sealed class E01ColumnParityProbe
             if (!voModel!.Contains("pk=True gen=Never")) return "a key over char or Guid is not ValueGeneratedNever: " + voModel;
             voScript = voScript!.Replace(" AUTOINCREMENT", ""); plainScript = plainScript!.Replace(" AUTOINCREMENT", "");
             voModel = voModel.Replace("gen=Never", "gen=*"); plainModel = plainModel!.Replace("gen=OnAdd", "gen=*").Replace("gen=Never", "gen=*");
-            r.Note("documented-char-guid-key-never-generated-checked");
+            r.Note(NoteKeys.DocumentedCharGuidKeyNeverGeneratedChecked);
         }
         if (voModel != plainModel) return "model differs: " + EfModel.FirstDiff(voModel!, plainModel!);
         if (voScript != plainScript) return "create script differs: " + EfModel.FirstDiff(voScript!, plainScript!);

@@ -16,7 +16,7 @@ public static partial class Registry
         {
             // The parameter or body declared nullable on both sides (T? against wrapped?): the dimension G1 exposed.
             static Type N(Type t) => t.IsValueType && Nullable.GetUnderlyingType(t) is null ? typeof(Nullable<>).MakeGenericType(t) : t;
-            r.Note("binding:nullable");
+            r.Note(NoteKeys.BindingNullable);
             e = e with { Vo = N(e.Vo), Plain = N(e.Plain) };
         }
         return e;

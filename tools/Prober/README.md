@@ -40,9 +40,17 @@ version and the schema version) and the product files the probe ran are unchange
 Each probe's registry entry names a seeded product defect: a patch under `seeds/` against the product
 files (the replay's `include`), an environment toggle, or both, and the sentence `defect`. `seeds` applies
 each in the `seeds` worktree beside the replay's, builds, runs the probe and counts the seed caught only for
-a row that ends as a violation and does not in the unseeded probe. The unseeded rows come from the ledger
+a row that ends as a violation, raised no harness error and does not violate in the unseeded probe
+(decision 103). The unseeded rows come from the ledger
 where the probe's evidence is current, else from an unseeded run first. Nothing it runs is evidence; it
 writes `seeds-last.json` (`Schemas/seeds-run.schema.json`). A seed is not part of a probe's identity.
+
+## Register and publish
+
+`register` and `publish` read the staged harness and probe sources first and refuse, by file and line, a
+`Note` whose first argument is not a `NoteKeys` member the corpus declares, and a harness `Skip` whose finding
+is not a string literal naming a finding this ledger holds open (decision 103). The scan blanks out comments
+and string literals and reads text, since this tool references the base class library only.
 
 ## The adapter
 

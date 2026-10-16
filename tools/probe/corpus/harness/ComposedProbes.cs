@@ -64,7 +64,7 @@ public static class ComposedClaims
             if (docFail is not null) return docFail;
             if (doc is null) continue;   // ASP.NET alone refuses this document too (noted)
             var ops = doc["paths"]?[path]?["get"];
-            if (ops is null && !Hx.InDocument(r) && path.Contains("/c/")) { r.Note("doc:controller-not-in-api-explorer"); continue; }
+            if (ops is null && !Hx.InDocument(r) && path.Contains("/c/")) { r.Note(NoteKeys.DocControllerNotInApiExplorer); continue; }
             if (ops is null) return $"document has no GET {path}";
             var keys = ops["responses"]!.AsObject().Select(kv => kv.Key).Where(k => int.TryParse(k, out var n) && n >= 400).Select(int.Parse).ToList();
             var want = Cmp.DocStatuses(arity, variant);

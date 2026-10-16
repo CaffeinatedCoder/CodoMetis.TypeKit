@@ -115,7 +115,7 @@ public sealed class E16OwnConfigurationWinsProbe
             if (v.Raw != expect) return $"stored values are not the application's converter output: {v.Raw}, expected {expect}";
         }
         var vm = v.Model; var pm = p.Model;
-        if (config is "HasColumnType" or "HasConversion") { vm = vm.Replace("gen=Never", "gen=*").Replace("gen=OnAdd", "gen=*"); pm = pm.Replace("gen=Never", "gen=*").Replace("gen=OnAdd", "gen=*"); r.Note("documented-char-guid-default-generation-normalized"); }
+        if (config is "HasColumnType" or "HasConversion") { vm = vm.Replace("gen=Never", "gen=*").Replace("gen=OnAdd", "gen=*"); pm = pm.Replace("gen=Never", "gen=*").Replace("gen=OnAdd", "gen=*"); r.Note(NoteKeys.DocumentedCharGuidDefaultGenerationNormalized); }
         if (vm != pm) return "model differs from the wrapped type's: " + EfModel.FirstDiff(vm, pm);
         if (StripScript(v.Script) != StripScript(p.Script)) return "create script differs from the wrapped type's: " + EfModel.FirstDiff(StripScript(v.Script), StripScript(p.Script));
         if (p.Assigned.StartsWith("threw") && !v.Assigned.StartsWith("threw"))
@@ -124,7 +124,7 @@ public sealed class E16OwnConfigurationWinsProbe
             var expectRead = Norm(Sample(w, 0)) + "/t0," + Norm(Sample(w, 1)) + "/t1 find1=t1";
             var sorted = string.Join(",", expectRead.Split(" find1=")[0].Split(',').OrderBy(x => x, StringComparer.Ordinal)) + " find1=t1";
             if (v.Assigned != sorted) return $"assigned keys read back as {v.Assigned}, expected {sorted} (the plain key threw: {p.Assigned})";
-            r.Note("plain-key-throws-on-sqlite-vo-checked-against-expected");
+            r.Note(NoteKeys.PlainKeyThrowsOnSqliteVoCheckedAgainstExpected);
         }
         else
         {

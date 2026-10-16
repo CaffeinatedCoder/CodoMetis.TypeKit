@@ -331,7 +331,7 @@ public static class Hx
         }
         catch (Exception ex) when (ex.GetType() == withTypeKit.GetType() && ex.Message == withTypeKit.Message)
         {
-            r.Note("doc:refused-by-aspnet-alone", ex.GetType().Name);
+            r.Note(NoteKeys.DocRefusedByAspnetAlone, ex.GetType().Name);
             return null;
         }
         catch (Exception ex) { return $"document: AddTypeKit() fails ({Say(withTypeKit)}), ASP.NET alone fails otherwise ({Say(ex)})"; }

@@ -128,7 +128,7 @@ public sealed class C11ParseShapesBuildProbe
             }
             default: throw new ArgumentException("text.entry " + entry);
         }
-        r.Note("compared", $"no parsing; {entry}; the control parses");
+        r.Note(NoteKeys.Compared, $"no parsing; {entry}; the control parses");
         return null;
     }
 
@@ -174,7 +174,7 @@ public sealed class C11ParseShapesBuildProbe
                 if (text.Length > 0 && (bool)shortArgs[2]!) fail = $"TryFormat into a span of {text.Length - 1} said '{text}' fit";
             }
         }
-        if (fail is null) r.Note("compared", $"{entry} against the catalogue's {e.Kind} over {wrapped}");
+        if (fail is null) r.Note(NoteKeys.Compared, $"{entry} against the catalogue's {e.Kind} over {wrapped}");
         return fail;
     }
 }

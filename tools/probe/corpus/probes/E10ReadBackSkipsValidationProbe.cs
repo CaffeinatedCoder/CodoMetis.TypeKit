@@ -30,7 +30,7 @@ public sealed class E10ReadBackSkipsValidationProbe
         var voEntity = EfModel.Entity(mapping, e.Vo);
         var plainEntity = EfModel.Entity(mapping, e.Plain);
         await using var vo = new EfDb(EfModel.Configure(mapping, voEntity, null, false), typeKit: true);
-        try { await vo.Context.Database.EnsureCreatedAsync(); } catch (Exception ex) { r.Note("both-threw", "model " + ex.GetType().Name); return null; }
+        try { await vo.Context.Database.EnsureCreatedAsync(); } catch (Exception ex) { r.Note(NoteKeys.BothThrew, "model " + ex.GetType().Name); return null; }
         // a plain-typed twin on the same connection writes the row (nothing validates a plain value)
         var twinCfg = EfModel.Configure(mapping, plainEntity, p => { if (mapping == "key") p.ValueGenerated = Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.Never; }, false);
         var twinOpts = new DbContextOptionsBuilder<DynCtx>().UseSqlite(vo.Connection).ReplaceService<Microsoft.EntityFrameworkCore.Infrastructure.IModelCacheKeyFactory, UniqueModelKey>().Options;
@@ -46,7 +46,7 @@ public sealed class E10ReadBackSkipsValidationProbe
                 EfX.Set(holder!, "P", refused);
             }
             twin.Add(row);
-            try { await twin.SaveChangesAsync(); } catch (Exception ex) { r.Note("plain-refused", ex.GetType().Name); return null; }
+            try { await twin.SaveChangesAsync(); } catch (Exception ex) { r.Note(NoteKeys.PlainRefused, ex.GetType().Name); return null; }
         }
         object? read;
         try

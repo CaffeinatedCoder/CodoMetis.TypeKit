@@ -13,6 +13,7 @@
 //    use hosted in a member of shape.containing at shape.position.
 // Every breaking use is reported exactly once at its span, no meeting one anywhere.
 using Probes.Build;
+using NoteKeys = Probes.Shapes.NoteKeys;
 using CodoMetis.TypeKit.Analyzers.Tests.Variants;
 namespace Probes;
 
@@ -324,7 +325,7 @@ public sealed class C19Cmtk0010KindsProbe
         ]);
         if (run.Errors.Count > 0) { r.Outcome("harness-error", "the probe's source does not compile: " + run.ErrorText()); return null; }
         if (run.AnalyzerFailures.Count > 0) return "the analyzer failed: " + string.Join("; ", run.AnalyzerFailures.Select(f => f.GetMessage()));
-        r.Note("compared", $"{uses.All.Count} uses, {uses.Expected.Count} expected reported");
+        r.Note(NoteKeys.Compared, $"{uses.All.Count} uses, {uses.Expected.Count} expected reported");
         return Rz.Agree(run, uses.Expected);
     }
 
