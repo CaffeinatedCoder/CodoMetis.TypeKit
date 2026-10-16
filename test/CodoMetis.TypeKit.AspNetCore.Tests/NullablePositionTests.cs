@@ -283,7 +283,7 @@ public sealed class NullablePositionTests
     }
 
     /// <summary>The schema of the position: the request body's, the parameter's, or the response's.</summary>
-    private static JsonNode? Schema(OpenApiJson document, OpenApiSpecVersion version, string host, string position, string key)
+    internal static JsonNode? Schema(OpenApiJson document, OpenApiSpecVersion version, string host, string position, string key)
     {
         var path = $"/{host}/{key}/{position}" + (position == "route" ? "/{v}" : "");
         var method = position is "body" or "form" or "elements" or "values" ? "post" : "get";
@@ -307,7 +307,7 @@ public sealed class NullablePositionTests
     /// <summary>What holds a container's <c>items</c> or <c>additionalProperties</c>: a body's schema, a 3.x parameter's schema, or a 2.0 parameter itself.</summary>
     private static JsonObject? Holder(JsonNode? schema) => schema?["schema"] as JsonObject ?? schema as JsonObject;
 
-    private static JsonNode? Inline(OpenApiJson document, JsonNode? schema) => schema switch
+    internal static JsonNode? Inline(OpenApiJson document, JsonNode? schema) => schema switch
     {
         JsonObject reference when reference["$ref"] is { } id => Inline(document, Target(document, id.GetValue<string>())),
         JsonObject keywords => new JsonObject(keywords

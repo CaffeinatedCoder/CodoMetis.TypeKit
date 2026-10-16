@@ -210,7 +210,23 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
     private static bool IsParameterOutsideTheBody(OpenApiSchemaTransformerContext context) =>
         context is { JsonPropertyInfo: null, ParameterDescription: { } parameter }
      && parameter.Source != BindingSource.Body
-     && (Nullable.GetUnderlyingType(parameter.Type) ?? parameter.Type) == (Nullable.GetUnderlyingType(context.JsonTypeInfo.Type) ?? context.JsonTypeInfo.Type);
+     && IsParameterItself(parameter, context.JsonTypeInfo.Type);
+
+    /// <summary>
+    /// Whether a schema of <paramref name="type"/> visited with <paramref name="parameter"/> is the parameter's own,
+    /// rather than an element's below it (<c>decimal</c> under <c>decimal[]</c>) or the type a value object wraps:
+    /// ASP.NET hands each of those to the transformers with the parameter's description too.
+    /// </summary>
+    internal static bool IsParameterItself(ApiParameterDescription parameter, Type type) =>
+        (Nullable.GetUnderlyingType(parameter.Type) ?? parameter.Type) == (Nullable.GetUnderlyingType(type) ?? type);
+
+    /// <summary>
+    /// The description an element of a parameter outside the body is asked for with: where the parameter binds from,
+    /// and the parameter's type, so it reads as an element. Not the parameter's own: ASP.NET applies a parameter's
+    /// default and its validation attributes to the schema it is asked for, and they are the array's, not each element's.
+    /// </summary>
+    internal static ApiParameterDescription ElementOf(ApiParameterDescription parameter) =>
+        new() { Name = parameter.Name, Source = parameter.Source, Type = parameter.Type };
 
     /// <summary>Where a schema of a value object stands, which decides where its null goes.</summary>
     private enum NullablePosition

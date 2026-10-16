@@ -37,7 +37,8 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// A route, query or header parameter binds through <c>TryParse</c>, not JSON, so a described converter
 /// says nothing of it. ASP.NET describes a parameter of a primitive, a date, a <see cref="decimal"/> or a
 /// <see cref="Guid"/> by the type's JSON schema, which the converter emptied; the parameter gets back the
-/// schema the type has without converters of one's own, beside the <c>format</c> ASP.NET kept.
+/// schema the type has without converters of one's own, beside the <c>format</c> ASP.NET kept. A query or header
+/// array of it, whose <c>items</c> ASP.NET dropped for the converter, gets them back the same way.
 /// </para>
 /// </remarks>
 internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
@@ -54,7 +55,22 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
         // route, the query, a header or a form field is text TryParse reads.
         if (context is { JsonPropertyInfo: null, ParameterDescription: { } parameter } && parameter.Source != BindingSource.Body)
         {
-            if (Description(info.Type, options, property: null) is not null) Parameter(schema, info.Type, options);
+            if (Description(info.Type, options, property: null) is not null)
+            {
+                Parameter(schema, info.Type, options, itself: ValueObjectSchemaTransformer.IsParameterItself(parameter, info.Type));
+                return;
+            }
+
+            // A query or header array of a described type: ASP.NET dropped the items for the converter, as it does in JSON.
+            // The element is ASP.NET's own, asked for as a parameter's element, which this transformer then describes as above.
+            if (info.ElementType is not { } item || info.Kind is not (JsonTypeInfoKind.Enumerable or JsonTypeInfoKind.Dictionary)) return;
+            if (Description(item, options, property: null) is null) return;
+
+            if (info.Kind == JsonTypeInfoKind.Enumerable && schema.Items is null)
+                schema.Items = await context.GetOrCreateSchemaAsync(item, ValueObjectSchemaTransformer.ElementOf(parameter), cancellationToken);
+            else if (info.Kind == JsonTypeInfoKind.Dictionary && schema.AdditionalProperties is null)
+                schema.AdditionalProperties = await context.GetOrCreateSchemaAsync(item, ValueObjectSchemaTransformer.ElementOf(parameter), cancellationToken);
+
             return;
         }
 
@@ -365,16 +381,18 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
     /// <summary>
     /// A parameter of <paramref name="type"/> as ASP.NET describes it without converters of one's own: the
     /// schema the options' resolver gives the type with none registered, beside the format ASP.NET kept. A
-    /// nullable parameter is its underlying type, as ASP.NET writes it: an absent parameter is its null. The
+    /// nullable parameter is its underlying type, as ASP.NET writes it: an absent parameter is its null. A
+    /// nullable element of a parameter array (<c>decimal?[]</c>), and anything else below the parameter, keeps
+    /// its null, as ASP.NET writes it there. The
     /// schema is ASP.NET's, not a description, so it is not held to what a description must survive into: a
     /// 2.0 document writes a decimal read from a string, <c>["number","string"]</c>, as it writes ASP.NET's own.
     /// </summary>
-    private static void Parameter(OpenApiSchema schema, Type type, JsonSerializerOptions options)
+    private static void Parameter(OpenApiSchema schema, Type type, JsonSerializerOptions options, bool itself)
     {
         var plain = new JsonSerializerOptions(options);
         plain.Converters.Clear();
 
-        if (!plain.TryGetTypeInfo(Nullable.GetUnderlyingType(type) ?? type, out var info)) return;
+        if (!plain.TryGetTypeInfo(itself ? Nullable.GetUnderlyingType(type) ?? type : type, out var info)) return;
         if (info.GetJsonSchemaAsNode() is not JsonObject native) return;
 
         var format = schema.Format;

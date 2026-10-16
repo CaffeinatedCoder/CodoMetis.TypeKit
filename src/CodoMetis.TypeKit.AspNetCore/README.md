@@ -176,8 +176,9 @@ value, and inside a value object or a patch.
   which then writes it instead of the generated converter. Both hold in a patch of it too.
 - **The converter asked is the one the serializer runs.** For a factory, that's the converter it
   makes. For the nullable positions, it's a converter registered for `Nullable<T>`.
-- **Parameters aren't JSON.** A route, query or header parameter binds through `TryParse`, not JSON.
-  It keeps what ASP.NET writes for the type without custom converters.
+- **Parameters aren't JSON.** A route, query, header or form parameter binds through `TryParse`, not
+  JSON. It keeps what ASP.NET writes for the type without custom converters, and so do the items of a
+  query or header array (`decimal[]`).
 - **Register the same on both option sets.** ASP.NET builds the document from the minimal-API JSON
   options (`ConfigureHttpJsonOptions`), while controllers write with MVC's (`AddJsonOptions`). A host
   with controllers registers the same converters and descriptions on both, in the same order.
