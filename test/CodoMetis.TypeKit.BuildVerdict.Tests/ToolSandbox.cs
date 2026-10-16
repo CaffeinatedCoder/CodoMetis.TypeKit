@@ -53,7 +53,7 @@ public sealed class ToolSandbox : IDisposable
         foreach (var a in arguments) psi.ArgumentList.Add(a);
         // The caller's own settings never reach the tool: a DOTNET_CLI_UI_LANGUAGE=en exported in the shell
         // that runs the tests would make the stub answer in English whether or not the tool pins it.
-        foreach (var name in new[] { "BUILD_VERDICT_LOG", "BUILD_VERDICT_EXIT", "BUILD_VERDICT_DOTNET", "STUB_CALLS", "STUB_ROOT", "STUB_BUILD", "DOTNET_CLI_UI_LANGUAGE" })
+        foreach (var name in new[] { "BUILD_VERDICT_LOG", "BUILD_VERDICT_EXIT", "BUILD_VERDICT_DOTNET", "BUILD_VERDICT_LOG_DIR", "STUB_CALLS", "STUB_ROOT", "STUB_BUILD", "STUB_SHARED_LOG", "DOTNET_CLI_UI_LANGUAGE" })
             psi.Environment.Remove(name);
         foreach (var (k, v) in environment ?? new Dictionary<string, string?>())
         {

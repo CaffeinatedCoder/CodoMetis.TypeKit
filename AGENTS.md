@@ -65,9 +65,11 @@ dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--project 
 ```
 
 The probing tool, prober (`tools/Prober`, started as its built dll like docs-query). These need no
-model, no login and no API key, and run in CI as anywhere: the `probes` job of `dotnet.yml` runs
-`replay --all` and `status` on every push and pull request, and `release.yml` runs `replay --all` and
-`gate` before it packs ([decision 96](design/adr/0096-ci-replays-every-probe-and-the-release-runs-the-gate.md)):
+model, no login and no API key, and run in CI as anywhere: the `probes` legs of `dotnet.yml` replay
+the corpus by family, every probe on a push and the probes the branch stales on a pull request, judged
+against the base branch's saved state, and `probe-status` merges the legs and reports
+([decision 101](design/adr/0101-ci-replays-by-family-and-footprint.md)); `release.yml` runs `replay --all`
+and `gate` before it packs ([decision 96](design/adr/0096-ci-replays-every-probe-and-the-release-runs-the-gate.md)):
 
 ```bash
 dotnet tools/Prober/bin/Release/net10.0/prober.dll status    # coverage of the branch's documented claims, open findings

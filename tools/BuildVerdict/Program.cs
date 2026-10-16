@@ -5,10 +5,12 @@
 //
 // Usage:
 //   dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll build [<project-dir|csproj|slnx>] [-- <dotnet build flags>]
-//   dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--project <dir|csproj>] [--filter-class <C>] [--filter-method <M>] [-- <dotnet test flags>]
+//   dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--no-build] [--project <dir|csproj>] [--filter-class <C>] [--filter-method <M>] [-- <dotnet test flags>]
 //
 // Every --filter-* option of the test hosts is passed on with its value, and may repeat (the filters
-// of one kind OR together). Without --project the whole solution builds and runs.
+// of one kind OR together). Without --project the whole solution builds and runs. With --no-build the
+// build is the caller's: the probe replay builds the probes once and runs many of them at a time, and
+// two builds of one project at once would race in its obj directory.
 //
 // The verdict's first line is one of BUILD OK, BUILD FAILED, BUILD DID NOT REPORT, TESTS OK, TESTS
 // FAILED, TESTS REJECTED, TESTS NONE, TESTS ABORTED, TESTS DID NOT REPORT, or TOOL STALE. Exit 0 is a
@@ -38,7 +40,11 @@
 //   - An agent's shell may find a dotnet first on PATH that cannot satisfy global.json (exit 155).
 //     Then the one the SDK installer puts in /usr/local/share/dotnet or %ProgramFiles%\dotnet is
 //     used, if it can, and the verdict says so.
-//   - The log is written beside and renamed into place, so a reader never sees half of it.
+//   - Each process writes and reads a log of its own and replaces the shared one when it ends, so a
+//     reader never sees half of it, and several at once (the probe replay) never read each other's:
+//     measured 2026-10-16, six at once each reported the same duration, the last one's.
+//     BUILD_VERDICT_LOG_DIR=<dir> keeps each process's log there as build-verdict-<pid>.log instead,
+//     for a caller that runs many and wants each.
 //
 // Parse-only mode, for BuildVerdict.Tests: BUILD_VERDICT_LOG=<file> BUILD_VERDICT_EXIT=<n> reads
 // that fixture as the output of the one dotnet command the mode would run (for `test`, the test
@@ -57,7 +63,7 @@ static class Verdict
     const string Usage = """
         Usage:
           dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll build [<project-dir|csproj|slnx>] [-- <dotnet build flags>]
-          dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--project <dir|csproj>] [--filter-class <C>] [--filter-method <M>] [-- <dotnet test flags>]
+          dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--no-build] [--project <dir|csproj>] [--filter-class <C>] [--filter-method <M>] [-- <dotnet test flags>]
         """;
     const string TestMarker = "==== build-verdict: dotnet test";
 
@@ -65,6 +71,7 @@ static class Verdict
     static string solution = "";
     static string remedies = "";
     static string log = "";
+    static string? sharedLog;
     static bool parseOnly;
     static string dotnet = "dotnet";
     static string note = "";
@@ -93,9 +100,24 @@ static class Verdict
         }
         else
         {
-            var (code, output) = Capture("git", ["-C", root, "rev-parse", "--absolute-git-dir"]);
-            var gitDir = code == 0 ? output.Trim() : Path.GetTempPath();
-            log = Path.Combine(gitDir, "build-verdict-last.log");
+            // Each process writes a log of its own and reads its own: the probe replay runs several at once,
+            // and one that read the shared log after replacing it could read another's. The shared one,
+            // $GIT_DIR/build-verdict-last.log, is replaced with this process's when it ends. Under
+            // BUILD_VERDICT_LOG_DIR each process's log is kept there under its process id instead, for a
+            // caller that runs many and wants each.
+            var keep = Environment.GetEnvironmentVariable("BUILD_VERDICT_LOG_DIR");
+            if (!string.IsNullOrEmpty(keep))
+            {
+                Directory.CreateDirectory(keep);
+                log = Path.Combine(keep, $"build-verdict-{Environment.ProcessId}.log");
+            }
+            else
+            {
+                var (code, output) = Capture("git", ["-C", root, "rev-parse", "--absolute-git-dir"]);
+                var gitDir = code == 0 ? output.Trim() : Path.GetTempPath();
+                sharedLog = Path.Combine(gitDir, "build-verdict-last.log");
+                log = TemporaryBeside(sharedLog);
+            }
         }
         var overrideDotnet = Environment.GetEnvironmentVariable("BUILD_VERDICT_DOTNET");
         if (!string.IsNullOrEmpty(overrideDotnet)) dotnet = overrideDotnet;
@@ -109,6 +131,17 @@ static class Verdict
             Console.Error.WriteLine(Usage);
             return 2;
         }
+        finally
+        {
+            Publish();
+        }
+    }
+
+    // This process's log becomes the shared one, once, when the process is done with it.
+    static void Publish()
+    {
+        if (sharedLog is { } shared && File.Exists(log)) SharedFile.Replace(log, shared);
+        sharedLog = null;
     }
 
     static int Dispatch(string[] args)
@@ -136,6 +169,7 @@ static class Verdict
             case "test":
             {
                 string? project = null;
+                var noBuild = false;
                 var filters = new List<string>();
                 var extra = new List<string>();
                 for (var i = 0; i < rest.Count; i++)
@@ -145,6 +179,10 @@ static class Verdict
                     {
                         if (i + 1 >= rest.Count) throw new UsageException();
                         project = Absolute(rest[++i]);
+                    }
+                    else if (a == "--no-build")
+                    {
+                        noBuild = true;
                     }
                     else if (a.StartsWith("--filter", StringComparison.Ordinal))
                     {
@@ -167,8 +205,9 @@ static class Verdict
                 string[] selector = project is null ? ["--solution", solution] : ["--project", project];
 
                 ResolveSdk();
-                // Parse-only mode carries one fixture and one exit code, and they belong to the test step.
-                if (!parseOnly)
+                // Parse-only mode carries one fixture and one exit code, and they belong to the test step. With
+                // --no-build the caller built; the log then holds the SDK line and the test step alone.
+                if (!parseOnly && !noBuild)
                 {
                     var code = Run(["build", project ?? solution], append: false);
                     if (code != 0 || !BuildSection().Any(l => l.StartsWith("Build succeeded", StringComparison.Ordinal)))
@@ -238,7 +277,7 @@ static class Verdict
         return i < 0 ? lines : lines.Take(i).ToList();
     }
 
-    static void LogLine() => Console.Write($"\nlog: {log}\n");
+    static void LogLine() => Console.Write($"\nlog: {sharedLog ?? log}\n");
 
     // A tail of the log for the reader: repository paths relative, indented.
     static void Excerpt(List<string> lines, int n)
@@ -300,7 +339,7 @@ static class Verdict
     {
         if (parseOnly) return;
         var (code, output) = Capture(dotnet, ["--version"]);
-        WriteAtomically(log, output);
+        File.WriteAllText(log, output);
         if (code == 0) return;
         var fallbackDir = OperatingSystem.IsWindows()
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet")
@@ -316,6 +355,7 @@ static class Verdict
             return;
         }
         ReportBuild(1);
+        Publish();
         Environment.Exit(1);
     }
 
@@ -337,21 +377,10 @@ static class Verdict
     {
         if (parseOnly)
             return int.TryParse(Environment.GetEnvironmentVariable("BUILD_VERDICT_EXIT"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var e) ? e : 0;
-        var temporary = TemporaryBeside(log);
-        if (append && File.Exists(log)) File.Copy(log, temporary, overwrite: true);
-        var code = RunInto(temporary, args, append);
-        SharedFile.Replace(temporary, log);
-        return code;
+        return RunInto(log, args, append);
     }
 
     static string TemporaryBeside(string path) => $"{path}.{Environment.ProcessId}.tmp";
-
-    static void WriteAtomically(string path, string text)
-    {
-        var temporary = TemporaryBeside(path);
-        File.WriteAllText(temporary, text);
-        SharedFile.Replace(temporary, path);
-    }
 
     static int RunInto(string file, string[] args, bool append)
     {

@@ -20,9 +20,14 @@ internal static class Program
           publish | dismiss --id F --reason TEXT | mark retired --probe P
           lock --holder H --mode replay|explore|full [--pid N] | unlock --holder H | heartbeat --holder H
           round-start --holder H --minutes M [--claims N] | round-end --holder H | repair | abandon
+          merge --from DIR...               joins the states of a replay split by family (one DIR per leg) into
+                                            this one; refuses while a registered probe was in no leg
 
         Running probes:
-          replay [--all] [--holder H] [--dry-run] [--where]   replays the corpus with no model
+          replay [--all] [--family F] [--parallel N] [--no-footprint] [--holder H] [--dry-run] [--where]
+                                            replays the corpus with no model: the stale probes, or all; one family
+                                            of the replay configuration; N probe processes at a time (default:
+                                            the cores); without coverage or footprint, for a state nobody keeps
           round explore|full [--minutes M] [--claims N] [--usd X]   a capped exploration round (local only)
           seeds [--probe P] [--dry-run]       applies each probe's seeded defect in a scratch worktree, replays the probe
                                             there and requires a violation it causes (local only, a build per seed)
@@ -32,7 +37,7 @@ internal static class Program
         """;
 
     private static readonly HashSet<string> Flags = new(StringComparer.Ordinal)
-        { "json", "full", "all", "include-retired", "dry-run", "where" };
+        { "json", "full", "all", "include-retired", "dry-run", "where", "no-footprint" };
 
     private static int Main(string[] args)
     {
@@ -83,6 +88,7 @@ internal static class Program
                 "round-end" => Commands.RoundEnd(ledger, a),
                 "repair" => Commands.Repair(ledger, a),
                 "abandon" => Commands.Abandon(ledger, a),
+                "merge" => Commands.Merge(ledger, a),
                 _ => throw new Refusal($"unknown command {command}; see `prober help`", 2),
             };
         }

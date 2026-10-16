@@ -160,19 +160,84 @@ public sealed partial class ReleaseWiringTests
     }
 
     /// <summary>
-    /// CI replays the whole probe corpus on every push and pull request, with no model (design/adr/0096). The
-    /// replay had been documented as running in CI while no workflow called it, and a dropped step fails nothing:
-    /// a regression the corpus would catch merges instead.
+    /// CI replays the probe corpus with no model (design/adr/0096), split by family into legs that run at once
+    /// and a job that merges their states (design/adr/0101): on a push every probe, with coverage, and the merged
+    /// state saved for the branch's pull requests; on a pull request the base branch's state restored and only
+    /// the probes it stales replayed, without a footprint. The replay had once been documented as running in CI
+    /// while no workflow called it, and a dropped step fails nothing: a regression the corpus would catch merges
+    /// instead. So a dropped leg, a family in no leg, a replay that cannot fail its job, a merge that cannot fail
+    /// its job, a state saved from a pull request, or a job with no time limit each fail here.
     /// </summary>
     [Fact]
-    public void The_build_workflow_replays_every_probe_and_reports_the_status()
+    public void The_build_workflow_replays_every_probe_by_family_and_merges_the_legs()
     {
-        var (name, steps) = ProberJob("dotnet.yml", BuildWorkflow);
+        var (name, job, steps) = ProberJob("dotnet.yml", BuildWorkflow);
+        var jobName = name[(name.IndexOf(':') + 1)..];
 
-        var replay = StrictReplay(name, steps);
-        var status = steps.FindIndex(step => ProberStep("status").IsMatch(step));
+        var listed = Regex.Match(job, @"(?m)^\s+family:\s*\[(?<families>[^\]]*)\]").Groups["families"].Value
+                          .Split(',').Select(f => f.Trim()).Where(f => f.Length > 0).ToList();
+        listed.ShouldBe(ReplayFamilies(), ignoreOrder: true,
+            $"{name}'s matrix does not list exactly the families of the axes file's replay configuration: a family in no leg is never replayed (`prober merge` then refuses), a leg of no family runs nothing.");
+        job.ShouldMatch(JobKey("timeout-minutes", @"\d+"), $"{name} has no timeout-minutes, so a hung replay runs to the six-hour default.");
+        job.ShouldMatch(@"PROBE_BRANCH=\$\{\{ github\.event_name == 'pull_request' && github\.base_ref \|\| github\.ref_name \}\}",
+            $"{name} does not take the base branch's state on a pull request (PROBE_BRANCH), so the base's footprints would not decide what the branch stales.");
 
-        status.ShouldBeGreaterThan(replay, $"{name} does not run `prober status` after the replay, so the run reports no coverage.");
+        var replay = steps.FindIndex(step => ProberStep("replay").IsMatch(step));
+        var build = steps.FindIndex(step => ProberBuild().IsMatch(step));
+        replay.ShouldBeGreaterThanOrEqualTo(0, $"{name} does not run `prober replay`.");
+        build.ShouldBeInRange(0, replay - 1, $"{name} runs the prober without building it in Release first: build the solution or tools/Prober with -c Release.");
+        var lines = steps[replay].Split('\n').Where(line => ProberStep("replay").IsMatch(line)).Select(line => line.Trim()).ToList();
+        lines.Count.ShouldBe(2, $"{name} does not run the replay one way on a push and another on a pull request.");
+        lines.Single(line => line.Contains(" --all", StringComparison.Ordinal))
+             .ShouldMatch($@"^{Regex.Escape(Prober)} replay --all --branch ""\$PROBE_BRANCH"" --family ""\$\{{\{{ matrix\.family \}}\}}""$",
+                 $"{name}'s push replay is not `replay --all` of the branch's family leg: every probe, with a footprint, for the state the branch saves.");
+        lines.Single(line => !line.Contains(" --all", StringComparison.Ordinal))
+             .ShouldMatch($@"^{Regex.Escape(Prober)} replay --branch ""\$PROBE_BRANCH"" --family ""\$\{{\{{ matrix\.family \}}\}}"" --no-footprint$",
+                 $"{name}'s pull request replay is not the family leg's stale probes without a footprint: coverage would be spent on a state nobody keeps.");
+        steps[replay].ShouldNotMatch(@"\|\|\s*true", $"{name} lets the replay fail without failing the job.");
+        steps[replay].ShouldNotMatch(@"(?m)^\s+continue-on-error:", $"{name} lets the replay fail without failing the job.");
+
+        var restore = steps.FindIndex(step => step.Contains("uses: actions/cache/restore@", StringComparison.Ordinal));
+        restore.ShouldBeInRange(0, replay - 1, $"{name} does not restore the base branch's probe state before the replay, so a pull request replays every probe.");
+        steps[restore].ShouldMatch(@"(?m)^\s+if:\s*github\.event_name == 'pull_request'\s*$", $"{name} restores a saved state on a push too, where decision 0101 keeps the replay from an empty state.");
+        steps[restore].ShouldMatch(@"restore-keys:\s*probe-state-\$\{\{ github\.base_ref \}\}-", $"{name} does not restore the base branch's newest saved state (restore-keys by base_ref).");
+
+        var merge = Jobs(BuildWorkflow).Single(candidate => Steps(candidate.Value).Any(step => ProberStep("merge").IsMatch(step)));
+        var mergeName = $"dotnet.yml:{merge.Key}";
+        merge.Value.ShouldMatch(JobKey("needs", Regex.Escape(jobName)), $"{mergeName} does not follow the {jobName} legs.");
+        merge.Value.ShouldMatch(JobKey("if", @"always\(\)"), $"{mergeName} is skipped when a leg fails, so a failing run reports no status.");
+        merge.Value.ShouldMatch(JobKey("timeout-minutes", @"\d+"), $"{mergeName} has no timeout-minutes.");
+        merge.Value.ShouldMatch(StateDirectory, $"{mergeName} does not set PROBE_STATE_DIR, so the prober writes into a developer's state directory.");
+        var mergeSteps = Steps(merge.Value).ToList();
+        var merging = mergeSteps.FindIndex(step => ProberStep("merge").IsMatch(step));
+        var download = mergeSteps.FindIndex(step => step.Contains("uses: actions/download-artifact@", StringComparison.Ordinal));
+        var status = mergeSteps.FindIndex(step => ProberStep("status").IsMatch(step));
+        var save = mergeSteps.FindIndex(step => step.Contains("uses: actions/cache/save@", StringComparison.Ordinal));
+        download.ShouldBeInRange(0, merging - 1, $"{mergeName} does not download the legs' states before merging them.");
+        mergeSteps[merging].ShouldMatch($@"(?m)^\s+run:\s*{Regex.Escape(Prober)} merge --branch ""\$PROBE_BRANCH"" --from \S", $"{mergeName} does not merge the legs' states with `prober merge --branch --from` alone on its run line.");
+        mergeSteps[merging].ShouldNotMatch(@"\|\|\s*true", $"{mergeName} lets the merge fail without failing the job, so a probe in no leg or a failed leg would pass.");
+        mergeSteps[merging].ShouldNotMatch(@"(?m)^\s+continue-on-error:", $"{mergeName} lets the merge fail without failing the job, so a probe in no leg or a failed leg would pass.");
+        status.ShouldBeGreaterThan(merging, $"{mergeName} does not run `prober status` after the merge, so the run reports no coverage.");
+        save.ShouldBeGreaterThan(merging, $"{mergeName} does not save the merged state for the branch's pull requests.");
+        mergeSteps[save].ShouldMatch(@"(?m)^\s+if:\s*github\.event_name == 'push'\s*$", $"{mergeName} saves the state from a pull request too, whose replay was partial and without a footprint.");
+        mergeSteps[save].ShouldMatch(@"key:\s*probe-state-\$\{\{ github\.ref_name \}\}-", $"{mergeName} does not save the state under the branch's key, which its pull requests restore by prefix.");
+    }
+
+    /// <summary>A key of the job itself, at the job's indentation (four spaces), never a step's key of the same name.</summary>
+    private static string JobKey(string key, string value) => $@"(?m)^    {key}:\s*{value}\s*$";
+
+    /// <summary>The families of the axes file's replay configuration, which the matrix lists in full.</summary>
+    private static List<string> ReplayFamilies()
+    {
+        var text = File.ReadAllText(Path.Combine(Repository.Root, ".claude", "probe-axes.md"));
+        var start = text.IndexOf("```json probe-axes", StringComparison.Ordinal);
+        start.ShouldBeGreaterThanOrEqualTo(0, "No `json probe-axes` block in .claude/probe-axes.md.");
+        start = text.IndexOf('\n', start) + 1;
+        var end = text.IndexOf("\n```", start, StringComparison.Ordinal);
+        using var block = System.Text.Json.JsonDocument.Parse(text[start..end]);
+        var families = block.RootElement.GetProperty("replay").GetProperty("families").EnumerateObject().Select(property => property.Name).ToList();
+        families.ShouldNotBeEmpty("The replay configuration of .claude/probe-axes.md names no families.");
+        return families;
     }
 
     /// <summary>
@@ -201,15 +266,15 @@ public sealed partial class ReleaseWiringTests
         job.ShouldMatch(StateDirectory, "release.yml:verify does not set PROBE_STATE_DIR, so the prober writes into a developer's state directory.");
     }
 
-    /// <summary>The one job of a workflow whose steps run the prober.</summary>
-    private static (string Name, List<string> Steps) ProberJob(string workflow, string text)
+    /// <summary>The one job of a workflow whose steps run `prober replay`: its name, its text and its steps.</summary>
+    private static (string Name, string Job, List<string> Steps) ProberJob(string workflow, string text)
     {
         var jobs = Jobs(text).Where(job => Steps(job.Value).Any(step => ProberStep("replay").IsMatch(step))).ToList();
 
         jobs.Count.ShouldBe(1, $"{workflow} has no job that runs `prober replay`, or more than one.");
         jobs[0].Value.ShouldMatch(StateDirectory, $"{workflow}:{jobs[0].Key} does not set PROBE_STATE_DIR, so the prober writes into a developer's state directory.");
 
-        return ($"{workflow}:{jobs[0].Key}", Steps(jobs[0].Value).ToList());
+        return ($"{workflow}:{jobs[0].Key}", jobs[0].Value, Steps(jobs[0].Value).ToList());
     }
 
     /// <summary>

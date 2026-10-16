@@ -8,26 +8,46 @@ namespace Prober;
 
 /// <summary>
 /// Replays the written probes with no model in the loop. Per commit it runs only the probes whose identity or
-/// footprint changed; <c>--all</c> runs every probe, retired ones included (the release run). Each runs alone,
-/// once per process variant, with coverage; the replay records per-row evidence (rows expected, rows executed,
-/// each row's outcome and applied settings), the result, and the fresh footprint. It works in one warm
-/// worktree kept between runs and moved to HEAD without force, so only what changed is rebuilt. A dependency
-/// input that changed stales every probe, and the axes are derived again. Only one round runs at a time.
+/// footprint changed; <c>--all</c> runs every probe, retired ones included (the release run). Each probe runs
+/// once per process variant, and the replay records each probe in registry order whatever order the runs
+/// finished in: per-row evidence (rows expected, rows executed, each row's outcome and applied settings), the
+/// result, and the fresh footprint. <c>--no-footprint</c> runs without coverage and records no footprint, for a
+/// state nobody keeps (a pull request's); only then do the variants of every selected probe run
+/// <c>--parallel N</c> at a time (the machine's cores by default), since the coverage collector rewrites the
+/// assemblies on disk and two hosts from one output directory corrupt each other (KB-025).
+/// <c>--family F</c> replays the probes whose claim's first surface the
+/// replay configuration's <c>families</c> puts under F, so a matrix of jobs can split the corpus and
+/// <c>merge</c> join their states; it refuses while any probe's surface is in no family, so a matrix cannot
+/// quietly leave a probe out. It works in one warm worktree kept between runs and moved to HEAD without force,
+/// so only what changed is rebuilt. A dependency input that changed stales every probe, and the axes are
+/// derived again. Only one round runs at a time.
 /// </summary>
 internal static class Replay
 {
-    public static int Run(Context ctx, Args a)
+    /// <summary>How this replay was asked to run, recorded in replay-last.json for <c>merge</c> to read.</summary>
+    internal sealed record Options(bool All, string? Family, int Parallel, bool Footprint);
+
+    public static int Run(Context ctx, Args a, IProbeAdapter? adapter = null)
     {
         var ledger = new Ledger(ctx, a.Get("branch"));
         var config = ledger.AxesBlock()["replay"] as JsonObject ?? throw new Refusal("the axes file's block has no \"replay\" configuration");
-        IProbeAdapter adapter = new DotNetAdapter(config);
+        adapter ??= new DotNetAdapter(config);
         var home = Home(ctx, ledger);
         if (a.Flag("where")) { ctx.Out.WriteLine($"replay:  {Path.Combine(home, "wt")}\nexplore: {Path.Combine(home, "explore")}\nseeds:   {Path.Combine(home, "seeds")}"); return 0; }
 
-        var states = ledger.ProbeStates(a.Flag("all"));
-        var todo = a.Flag("all") ? states : [.. states.Where(s => s.Replay)];
+        // With a footprint the coverage collector instruments the assemblies on disk, so two hosts from one
+        // output directory corrupt each other (KB-025): one at a time, whatever --parallel says.
+        var footprint = !a.Flag("no-footprint");
+        var asked = Parallelism(a.Get("parallel"));
+        var options = new Options(a.Flag("all"), a.Get("family"), footprint ? 1 : asked, footprint);
+        var states = ledger.ProbeStates(options.All);
+        var scope = options.Family is null ? states : OfFamily(config, ledger, states, options.Family);
+        var todo = options.All ? scope : [.. scope.Where(s => s.Replay)];
+        var skipped = scope.Where(s => !todo.Contains(s)).Select(s => s.Probe).ToList();
         var head = ledger.Head;
-        ctx.Out.WriteLine($"prober replay: {ledger.Branch} at {head[..7]}: {todo.Count} of {states.Count} probes to replay");
+        ctx.Out.WriteLine($"prober replay: {ledger.Branch} at {head[..7]}: {todo.Count} of {scope.Count} probes to replay" +
+                          $"{(options.Family is null ? "" : $" (family {options.Family})")}, " +
+                          (footprint ? "one at a time (the coverage collector rewrites the assemblies on disk)" : $"{options.Parallel} at a time, no footprint"));
         if (a.Flag("dry-run")) { foreach (var s in todo) ctx.Out.WriteLine($"  {s.Probe}"); return 0; }
 
         Directory.CreateDirectory(home);
@@ -43,7 +63,7 @@ internal static class Replay
         try
         {
             using var beat = new RoundLock.Heartbeat(ledger, holder);
-            var axes = Rederive(ledger, adapter, config, Path.Combine(home, "enumerate"), force: a.Flag("all"));
+            var axes = Rederive(ledger, adapter, config, Path.Combine(home, "enumerate"), force: options.All);
             if (axes is not null)
             {
                 if (axes["error"] is { } error) ctx.Out.WriteLine($"  axes: {Files.Str(error)}");
@@ -56,15 +76,52 @@ internal static class Replay
             }
             if (todo.Count == 0)
             {
-                Files.WriteJson(ledger.P("replay-last.json"), new JsonObject { ["branch"] = ledger.Branch, ["commit"] = head, ["replayed"] = 0, ["failed"] = new JsonArray(), ["axes"] = axes?.DeepClone() });
+                Summary(ledger, head, warmth: null, buildSeconds: 0, todo, skipped, failed: [], seconds: 0, axes, options);
                 return 0;
             }
-            return Probes(ctx, ledger, adapter, config, home, Path.GetFullPath(a.Get("worktree") ?? Path.Combine(home, "wt")), head, todo, axes);
+            return Probes(ctx, ledger, adapter, config, home, Path.GetFullPath(a.Get("worktree") ?? Path.Combine(home, "wt")), head, todo, skipped, axes, options);
         }
         finally
         {
             if (a.Get("holder") is null) RoundLock.Release(ledger, holder);
         }
+    }
+
+    /// <summary>How many probe processes run at once: <c>--parallel N</c>, else one per core.</summary>
+    internal static int Parallelism(string? given)
+    {
+        if (given is null) return Math.Max(1, System.Environment.ProcessorCount);
+        if (!int.TryParse(given, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) || n < 1) throw new Refusal("--parallel takes a whole number of 1 or more", 2);
+        return n;
+    }
+
+    /// <summary>
+    /// The probes of one family: those whose claim's first surface the replay configuration's <c>families</c>
+    /// (name to surfaces) puts under it. Every probe of the registry must have a family, or a matrix of jobs by
+    /// family would never run the one that has none; so this refuses for the whole registry, not only the family
+    /// asked for.
+    /// </summary>
+    internal static List<Ledger.ProbeState> OfFamily(JsonObject config, Ledger ledger, List<Ledger.ProbeState> states, string family)
+    {
+        var families = config["families"] as JsonObject ?? throw new Refusal("the replay configuration names no families; add \"families\" (a name to the surfaces it holds) to the axes file's replay block", 2);
+        if (families[family] is not JsonArray) throw new Refusal($"no family {family}; the replay configuration has {string.Join(", ", families.Select(kv => kv.Key))}", 2);
+        var bySurface = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (name, surfaces) in families)
+            foreach (var surface in Files.Strings(surfaces))
+            {
+                if (bySurface.TryGetValue(surface, out var other) && other != name) throw new Refusal($"the surface {surface} is in two families, {other} and {name}", 2);
+                bySurface[surface] = name;
+            }
+        var firstSurface = ledger.Claims().ToDictionary(c => Files.Str(c["id"]), c => Files.Strings(c["surfaces"]).FirstOrDefault() ?? "", StringComparer.Ordinal);
+        var result = new List<Ledger.ProbeState>();
+        foreach (var s in states)
+        {
+            var surface = firstSurface.GetValueOrDefault(s.Claim) ?? "";
+            if (!bySurface.TryGetValue(surface, out var f))
+                throw new Refusal($"{s.Probe}: the first surface of its claim {s.Claim} ({(surface.Length > 0 ? surface : "none")}) is in no family of the replay configuration, so a replay by family would never run it");
+            if (f == family) result.Add(s);
+        }
+        return result;
     }
 
     /// <summary>Derives the generated axes again when a dependency input or the toolchain changed, or always when forced.</summary>
@@ -93,8 +150,44 @@ internal static class Replay
         };
     }
 
+    /// <summary>One process variant of a probe, run: what it was asked, what it answered, and where its rows, coverage and logs went.</summary>
+    private sealed record VariantRun(JsonObject Variant, int Index, Ran Ran, double Seconds, string OutDir, string Coverage, string LogDir);
+
+    /// <summary>
+    /// Starts every variant of a probe, each on a thread of its own that waits its turn at the gate, so the
+    /// variants of all selected probes share the <c>--parallel</c> slots in the order they were started.
+    /// </summary>
+    private static List<Task<VariantRun>> Start(IProbeAdapter adapter, string worktree, string results, IReadOnlyDictionary<string, string?> environment,
+                                                Ledger.ProbeState s, SemaphoreSlim gate, bool coverage)
+    {
+        var pending = new List<Task<VariantRun>>();
+        var index = 0;
+        foreach (var variant in s.Variants.OfType<JsonObject>())
+        {
+            var i = index++;
+            var coverageFile = coverage ? $"{s.Probe}-{i}.cobertura.xml" : "";
+            var outDir = Path.Combine(results, $"{s.Probe}-{i}-rows");
+            // PROBE_LOG_DIR: where the run may leave its full logs; a failed run's are kept in the state.
+            var logDir = Path.Combine(results, $"{s.Probe}-{i}-log");
+            var env = new Dictionary<string, string?>(environment, StringComparer.Ordinal) { ["PROBE_OUT"] = outDir, ["PROBE_LOG_DIR"] = logDir };
+            foreach (var (k, v) in variant) env[k] = Files.Str(v);
+            pending.Add(Task.Factory.StartNew(() =>
+            {
+                gate.Wait();
+                try
+                {
+                    var clock = Stopwatch.StartNew();
+                    var ran = adapter.RunProbe(worktree, s.Filter, results, coverageFile, env);
+                    return new VariantRun(variant, i, ran, clock.Elapsed.TotalSeconds, outDir, coverageFile, logDir);
+                }
+                finally { gate.Release(); }
+            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default));
+        }
+        return pending;
+    }
+
     private static int Probes(Context ctx, Ledger ledger, IProbeAdapter adapter, JsonObject config, string home, string worktree, string head,
-                              List<Ledger.ProbeState> todo, JsonObject? axes)
+                              List<Ledger.ProbeState> todo, List<string> skipped, JsonObject? axes, Options options)
     {
         var clock = Stopwatch.StartNew();
         string warmth;
@@ -123,35 +216,43 @@ internal static class Replay
         ctx.Out.WriteLine($"  build ({warmth}): {buildSeconds.ToString("F1", CultureInfo.InvariantCulture)} s, {FirstLine(build)}");
         if (build.ExitCode != 0) { ctx.Out.WriteLine(build.Stdout); return 2; }
 
+        // Every variant of every probe is started now and runs when a slot frees; the probes are then read,
+        // reported and recorded one by one in registry order, each once all its variants have ended.
+        using var gate = new SemaphoreSlim(options.Parallel);
+        var started = todo.Select(s => Start(adapter, worktree, results, environment, s, gate, options.Footprint)).ToList();
+
         var failed = new List<string>();
-        foreach (var s in todo)
+        foreach (var (s, pending) in todo.Zip(started))
         {
+            var variants = pending.Select(t => t.GetAwaiter().GetResult()).OrderBy(v => v.Index).ToList();
             var claimRows = Files.ReadRows(Path.Combine(probeDir, "rows", s.Claim + ".json"));
             var evidence = new JsonObject { ["variants"] = new JsonArray(), ["rows"] = new JsonObject() };
             var result = "pass"; var seconds = 0.0; var reports = new List<string>();
-            var index = 0;
-            foreach (var variant in s.Variants.OfType<JsonObject>())
+            foreach (var v in variants)
             {
-                var coverage = $"{s.Probe}-{index}.cobertura.xml";
-                var outDir = Path.Combine(results, $"{s.Probe}-{index}-rows");
-                var env = new Dictionary<string, string?>(environment, StringComparer.Ordinal) { ["PROBE_OUT"] = outDir };
-                foreach (var (k, v) in variant) env[k] = Files.Str(v);
-                var probeClock = Stopwatch.StartNew();
-                var ran = adapter.RunProbe(worktree, s.Filter, results, coverage, env);
-                seconds += probeClock.Elapsed.TotalSeconds;
-                var label = variant.Count > 0 ? " [" + string.Join(", ", variant.Select(kv => $"{kv.Key}={Files.Str(kv.Value)}")) + "]" : "";
-                ctx.Out.WriteLine($"  {s.Probe}{label}: {FirstLine(ran)} ({probeClock.Elapsed.TotalSeconds.ToString("F1", CultureInfo.InvariantCulture)} s)");
-                if (ran.ExitCode != 0) { result = "fail"; ctx.Out.WriteLine(string.Join('\n', ran.Stdout.Split('\n').Skip(1).Take(11))); }
-                reports.AddRange(Directory.EnumerateFiles(results, coverage, SearchOption.AllDirectories));
+                seconds += v.Seconds;
+                var label = v.Variant.Count > 0 ? " [" + string.Join(", ", v.Variant.Select(kv => $"{kv.Key}={Files.Str(kv.Value)}")) + "]" : "";
+                ctx.Out.WriteLine($"  {s.Probe}{label}: {FirstLine(v.Ran)} ({v.Seconds.ToString("F1", CultureInfo.InvariantCulture)} s)");
+                if (v.Ran.ExitCode != 0) { result = "fail"; ctx.Out.WriteLine(string.Join('\n', v.Ran.Stdout.Split('\n').Skip(1).Take(11))); }
+                // A failed run's full logs, kept under the state's logs/ for triage: in CI the state is the artifact.
+                if (v.Ran.ExitCode != 0 && Directory.Exists(v.LogDir))
+                    foreach (var file in Directory.EnumerateFiles(v.LogDir))
+                    {
+                        var kept = ledger.P(Path.Combine("logs", $"{s.Probe}-{v.Index}-{Path.GetFileName(file)}"));
+                        Directory.CreateDirectory(Path.GetDirectoryName(kept)!);
+                        File.Copy(file, kept, overwrite: true);
+                        ctx.Out.WriteLine($"    log: {kept}");
+                    }
+                if (v.Coverage.Length > 0) reports.AddRange(Directory.EnumerateFiles(results, v.Coverage, SearchOption.AllDirectories));
 
                 // Execution evidence: the rows this variant should run, the rows it did, how each ended and the
                 // settings that applied. A row missing here, or recorded without its settings, earns nothing.
-                var only = Files.Str(variant["PROBE_ONLY"]);
+                var only = Files.Str(v.Variant["PROBE_ONLY"]);
                 var expected = new JsonArray(); var executed = new SortedSet<int>();
                 for (var i = 0; i < claimRows.Count; i++)
                     if (Selected(Files.StringMap(claimRows[i]?["row"] ?? claimRows[i]), only)) expected.Add(i);
-                if (Directory.Exists(outDir))
-                    foreach (var file in Directory.EnumerateFiles(outDir, "*.jsonl"))
+                if (Directory.Exists(v.OutDir))
+                    foreach (var file in Directory.EnumerateFiles(v.OutDir, "*.jsonl"))
                         foreach (var line in Files.ReadLines(file))
                         {
                             var idx = (int)Files.Num(line["idx"]);
@@ -165,11 +266,10 @@ internal static class Replay
                         }
                 (evidence["variants"] as JsonArray)!.Add(new JsonObject
                 {
-                    ["env"] = variant.DeepClone(), ["expected"] = expected, ["executed"] = new JsonArray([.. executed.Select(x => (JsonNode)x)]),
+                    ["env"] = v.Variant.DeepClone(), ["expected"] = expected, ["executed"] = new JsonArray([.. executed.Select(x => (JsonNode)x)]),
                 });
                 var missing = expected.Select(x => (int)Files.Num(x)).Where(x => !executed.Contains(x)).ToList();
                 if (missing.Count > 0) ctx.Out.WriteLine($"    {missing.Count} expected row(s) did not run: [{string.Join(", ", missing.Take(10))}]");
-                index++;
             }
             foreach (var stale in ledger.StaleSkips(evidence)) { result = "fail"; ctx.Out.WriteLine($"    {stale}"); }
             if (result == "fail") failed.Add(s.Probe);
@@ -184,8 +284,10 @@ internal static class Replay
                  "--seconds", seconds.ToString("F1", CultureInfo.InvariantCulture), "--evidence", evidencePath]);
             if (record.ToString().Trim() is { Length: > 0 } said) ctx.Out.WriteLine("    " + said);
             // The footprint is what ran, pass or fail: a probe failing for an open finding is skipped like any
-            // other until its footprint changes (a fix touches it).
-            if (reports.Count > 0)
+            // other until its footprint changes (a fix touches it). Without one the probe stays stale, which is
+            // right for a state nobody keeps.
+            if (!options.Footprint) ctx.Out.WriteLine("    footprint: not recorded (--no-footprint)");
+            else if (reports.Count > 0)
             {
                 var fp = new StringWriter(); var fpError = new StringWriter();
                 Program.Run(new Context(ledger.Top, ctx.Environment, fp, fpError),
@@ -197,15 +299,27 @@ internal static class Replay
             else ctx.Error.WriteLine("    footprint: no coverage report found; the probe stays stale");
         }
 
-        Files.WriteJson(ledger.P("replay-last.json"), new JsonObject
-        {
-            ["branch"] = ledger.Branch, ["commit"] = head, ["build"] = warmth, ["build_seconds"] = Math.Round(buildSeconds, 1),
-            ["replayed"] = todo.Count, ["failed"] = new JsonArray([.. failed.Select(x => (JsonNode)x)]),
-            ["seconds"] = Math.Round(clock.Elapsed.TotalSeconds, 1), ["axes"] = axes?.DeepClone(),
-        });
+        Summary(ledger, head, warmth, buildSeconds, todo, skipped, failed, clock.Elapsed.TotalSeconds, axes, options);
         ctx.Out.WriteLine($"prober replay: {todo.Count - failed.Count} passed, {failed.Count} failed, {clock.Elapsed.TotalSeconds.ToString("F1", CultureInfo.InvariantCulture)} s in all");
         try { Directory.Delete(results, recursive: true); } catch (IOException) { }
         return failed.Count > 0 ? 1 : 0;
+    }
+
+    /// <summary>
+    /// replay-last.json: what this replay did, and how it was asked to run. <c>selected</c> and <c>skipped</c>
+    /// together are the probes in its scope (its family, or all), so <c>merge</c> can tell a probe no leg saw.
+    /// </summary>
+    private static void Summary(Ledger ledger, string head, string? warmth, double buildSeconds, List<Ledger.ProbeState> todo, List<string> skipped,
+                                List<string> failed, double seconds, JsonObject? axes, Options options)
+    {
+        static JsonArray Names(IEnumerable<string> names) => new([.. names.Select(x => (JsonNode)x)]);
+        Files.WriteJson(ledger.P("replay-last.json"), new JsonObject
+        {
+            ["branch"] = ledger.Branch, ["commit"] = head, ["build"] = warmth, ["build_seconds"] = Math.Round(buildSeconds, 1),
+            ["replayed"] = todo.Count, ["failed"] = Names(failed), ["seconds"] = Math.Round(seconds, 1), ["axes"] = axes?.DeepClone(),
+            ["all"] = options.All, ["family"] = options.Family, ["parallel"] = options.Parallel, ["footprint"] = options.Footprint,
+            ["selected"] = Names(todo.Select(s => s.Probe)), ["skipped"] = Names(skipped),
+        });
     }
 
     /// <summary>The cache directory of this repository's replay worktrees (PROBE_CACHE_DIR, else ~/.cache/probe-replay).</summary>

@@ -537,6 +537,7 @@ public sealed class VerdictTests(VerdictTests.Sandbox sandbox) : IClassFixture<V
                 Console.WriteLine(en ? "Build succeeded.\nTime Elapsed 00:00:01.00" : "Der Buildvorgang wurde erfolgreich ausgeführt.");
                 break;
             case "test":
+                if (Environment.GetEnvironmentVariable("STUB_SHARED_LOG") is { } shared) File.AppendAllText(calls, $"shared-log-exists={File.Exists(shared)}\n");
                 Console.Write(en ? "  total: 3\n  failed: 0\n  succeeded: 3\n  skipped: 0\n  duration: 1s\n" : "  gesamt: 3\n  fehlgeschlagen: 0\n  erfolgreich: 3\n");
                 break;
         }
@@ -557,14 +558,18 @@ public sealed class VerdictTests(VerdictTests.Sandbox sandbox) : IClassFixture<V
     private string Call(int n) => RecordedCalls().ElementAtOrDefault(n - 1) ?? "";
     private string LogFile => Path.Combine(ToolSandbox.RunProcess("git", ["-C", R, "rev-parse", "--absolute-git-dir"], sandbox.Tool.Work).Output.Trim(), "build-verdict-last.log");
 
-    private int RunStub(string? build, params string[] arguments)
+    private int RunStub(string? build, params string[] arguments) => RunStubWith(new Dictionary<string, string?>(), build, arguments);
+
+    private int RunStubWith(IReadOnlyDictionary<string, string?> extra, string? build, params string[] arguments)
     {
         File.Exists(Stub.Value).ShouldBeTrue($"the stub dotnet did not build: {Stub.Value}");
         File.WriteAllText(Calls, "");
-        return Run(new Dictionary<string, string?>
+        var environment = new Dictionary<string, string?>
         {
             ["BUILD_VERDICT_DOTNET"] = Stub.Value, ["STUB_CALLS"] = Calls, ["STUB_ROOT"] = R, ["STUB_BUILD"] = build,
-        }, arguments);
+        };
+        foreach (var (name, value) in extra) environment[name] = value;
+        return Run(environment, arguments);
     }
 
     [Fact]
@@ -594,6 +599,58 @@ public sealed class VerdictTests(VerdictTests.Sandbox sandbox) : IClassFixture<V
 
         Exited("a bare test run passes", 0, RunStub(null, "test"));
         Check(Call(3) == $"en|test --no-build --solution {Path.Combine(R, "CodoMetis.TypeKit.slnx")}", "a bare test run runs the solution", Call(3));
+        Holds();
+    }
+
+    /// <summary>
+    /// The probe replay builds the probes once and runs many at a time; a build per run would race in the
+    /// project's obj directory. So --no-build runs the test step alone, and the verdict reads as it does after
+    /// a build.
+    /// </summary>
+    [Fact]
+    public void A_pinned_test_run_without_a_build()
+    {
+        var project = Path.GetFullPath(Path.Combine(R, "test", "A.Tests"));
+        Exited("a test run without a build passes", 0, RunStub(null, "test", "--no-build", "--project", Path.Combine("repo", "test", "A.Tests"), "--filter-class", "*A*"));
+        First("a test run without a build reads its summary", "TESTS OK: 3 passed, 0 skipped, A.Tests, --filter-class *A*, 1s");
+        Check(RecordedCalls().Length == 2, "no build runs: the SDK check and the test step only", string.Join("; ", RecordedCalls()));
+        Check(Call(2) == $"en|test --no-build --project {project} --filter-class *A*", "the test step is --no-build with the filters", Call(2));
+        var log = File.Exists(LogFile) ? File.ReadAllText(LogFile) : "";
+        Check(log.Split('\n').Any(l => l.StartsWith("==== build-verdict: dotnet test", StringComparison.Ordinal)) && !log.Contains("Build succeeded", StringComparison.Ordinal),
+              "the log holds the test step and no build", log);
+
+        Exited("a failing build is still reported when --no-build is not given", 1, RunStub("fail", "test", "--project", Path.Combine("repo", "test", "A.Tests")));
+        Holds();
+    }
+
+    /// <summary>
+    /// The probe replay runs several of these at once. Each reads the log it wrote, and the shared log is
+    /// replaced only when the process is done: the stub sees no shared log during the test step, and the
+    /// verdict is read all the same. Measured 2026-10-16 before this: six at once reported one duration, the
+    /// last one's.
+    /// </summary>
+    [Fact]
+    public void A_process_reads_its_own_log_and_publishes_it_when_done()
+    {
+        if (File.Exists(LogFile)) File.Delete(LogFile);
+        Exited("a run passes", 0, RunStubWith(new Dictionary<string, string?> { ["STUB_SHARED_LOG"] = LogFile }, null, "test", "--no-build", "--project", Path.Combine("repo", "test", "A.Tests")));
+        First("the verdict is read from the process's own log", "TESTS OK: 3 passed, 0 skipped, A.Tests, 1s");
+        Check(RecordedCalls().Contains("shared-log-exists=False"), "the shared log is untouched while the process runs", string.Join("; ", RecordedCalls()));
+        Check(File.Exists(LogFile), "the shared log is published when the process is done", LogFile);
+        Check(!Directory.EnumerateFiles(Path.GetDirectoryName(LogFile)!).Any(f => f.EndsWith(".tmp", StringComparison.Ordinal)), "no log of the process is left beside the shared one", "a .tmp remains");
+        Holds();
+    }
+
+    [Fact]
+    public void A_log_directory_keeps_each_process_s_log_and_leaves_the_shared_one_alone()
+    {
+        if (File.Exists(LogFile)) File.Delete(LogFile);
+        var logs = Path.Combine(sandbox.Tool.Work, "logs-" + Guid.NewGuid().ToString("N"));
+        Exited("a run passes", 0, RunStubWith(new Dictionary<string, string?> { ["BUILD_VERDICT_LOG_DIR"] = logs }, null, "test", "--no-build", "--project", Path.Combine("repo", "test", "A.Tests")));
+        var kept = Directory.Exists(logs) ? Directory.GetFiles(logs) : [];
+        Check(kept.Length == 1 && System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(kept[0]), @"^build-verdict-\d+\.log$"), "one log, named by the process id, is kept in the directory", string.Join("; ", kept));
+        Check(kept.Length == 1 && File.ReadAllText(kept[0]).Contains("==== build-verdict: dotnet test", StringComparison.Ordinal), "the kept log is the run's", kept.Length == 1 ? File.ReadAllText(kept[0]) : "no log");
+        Check(!File.Exists(LogFile), "the shared log is left alone", LogFile);
         Holds();
     }
 
