@@ -198,6 +198,75 @@ public sealed class DescribedSchemaTests
         described.Parameter("/probes/kinds", "get", "amount").ShouldDescribeTheSameAs(plain.Parameter("/probes/kinds", "get", "amount"), "a value object over a decimal");
     }
 
+    /// <summary>
+    /// The input class of a parameter of a described type: where it binds from, the type, the document's
+    /// version, the number handling, and the describing converter or none. Each builds the document, and the
+    /// parameter is what ASP.NET writes, without <c>AddTypeKit()</c> or the converter, for the same version and
+    /// number handling. Found by the probe gate: the 2.0 refusal meant for a description refused ASP.NET's own
+    /// <c>["number","string"]</c> of a decimal read from a string.
+    /// </summary>
+    public static TheoryData<string, OpenApiSpecVersion, bool, bool> ParameterVariants()
+    {
+        var data = new TheoryData<string, OpenApiSpecVersion, bool, bool>();
+        foreach (var path in ParameterPaths.Keys)
+        foreach (var version in new[] { OpenApiSpecVersion.OpenApi3_1, OpenApiSpecVersion.OpenApi3_0, OpenApiSpecVersion.OpenApi2_0 })
+        foreach (var strict in new[] { false, true })
+        foreach (var converter in new[] { true, false })
+            data.Add(path, version, strict, converter);
+        return data;
+    }
+
+    /// <summary>The parameter <c>q</c> of each source and type, by path.</summary>
+    private static readonly Dictionary<string, string> ParameterPaths = new()
+    {
+        ["/parameters/route/{q}"] = "route, decimal",
+        ["/parameters/route-nullable/{q}"] = "route, decimal?",
+        ["/parameters/query"] = "query, decimal",
+        ["/parameters/query-nullable"] = "query, decimal?",
+        ["/parameters/header"] = "header, decimal",
+        ["/parameters/header-nullable"] = "header, decimal?",
+    };
+
+    private static void ParameterEndpoints(WebApplication app)
+    {
+        app.MapGet("/parameters/route/{q}", int (decimal q) => 0);
+        app.MapGet("/parameters/route-nullable/{q}", int (decimal? q) => 0);
+        app.MapGet("/parameters/query", int (decimal q) => 0);
+        app.MapGet("/parameters/query-nullable", int (decimal? q) => 0);
+        app.MapGet("/parameters/header", int ([Microsoft.AspNetCore.Mvc.FromHeader(Name = "q")] decimal q) => 0);
+        app.MapGet("/parameters/header-nullable", int ([Microsoft.AspNetCore.Mvc.FromHeader(Name = "q")] decimal? q) => 0);
+    }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(OpenApiSpecVersion, bool Strict, bool Converter, bool TypeKit), Task<OpenApiJson>> ParameterDocuments = new();
+
+    private static Task<OpenApiJson> ParameterDocumentAsync(OpenApiSpecVersion version, bool strict, bool converter, bool typeKit) =>
+        ParameterDocuments.GetOrAdd((version, strict, converter, typeKit), key => ProbeHost.DocumentAsync(
+            openApi: key.TypeKit ? openApi => openApi.AddTypeKit() : null,
+            json: json =>
+            {
+                if (key.Strict) json.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+                if (key.Converter) json.SerializerOptions.Converters.Add(new DecimalStringJsonConverter());
+            },
+            version: key.Item1,
+            endpoints: ParameterEndpoints));
+
+    /// <summary>The parameter object whole: 2.0 writes a parameter's keywords on it, 3.x in its schema.</summary>
+    private static JsonNode ParameterObject(OpenApiJson document, string path) =>
+        document.Root["paths"]?[path]?["get"]?["parameters"]?.AsArray().SingleOrDefault(p => p!["name"]!.GetValue<string>() == "q")
+     ?? throw new InvalidOperationException($"GET {path} has no parameter 'q'.");
+
+    [Theory]
+    [MemberData(nameof(ParameterVariants))]
+    public async Task A_parameter_of_a_described_type_is_what_ASP_NET_writes_without_the_converter(string path, OpenApiSpecVersion version, bool strict, bool converter)
+    {
+        var context = $"{ParameterPaths[path]}, {version}, {(strict ? "Strict" : "AllowReadingFromString")}, {(converter ? "described converter" : "no converter")}";
+
+        var described = await ParameterDocumentAsync(version, strict, converter, typeKit: true);
+        var aspNet = await ParameterDocumentAsync(version, strict, converter: false, typeKit: false);
+
+        ParameterObject(described, path).ShouldDescribeTheSameAs(ParameterObject(aspNet, path), context);
+    }
+
     [Theory]
     [MemberData(nameof(Versions))]
     public async Task A_property_s_own_described_converter_is_described_and_its_neighbour_left_alone(OpenApiSpecVersion version)

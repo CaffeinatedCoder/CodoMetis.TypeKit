@@ -59,10 +59,29 @@ internal sealed class Ledger
     {
         var merged = new SortedDictionary<string, JsonObject>(StringComparer.Ordinal);
         foreach (var path in new[] { Path.Combine(CorpusDir, "claims.json"), Path.Combine(StagingDir, "claims.json") })
-            if (Files.ReadJson(path) is JsonArray claims)
-                foreach (var c in claims.OfType<JsonObject>())
-                    merged[Files.Str(c["id"])] = (JsonObject)c.DeepClone();
+            foreach (var c in ReadClaims(path, Path.GetRelativePath(Top, path).Replace('\\', '/')))
+                merged[Files.Str(c["id"])] = (JsonObject)c.DeepClone();
         return [.. merged.Values];
+    }
+
+    /// <summary>
+    /// A claims file, refused unless it matches Schemas/claims.schema.json, each problem named by its claim and
+    /// field (decision 102). No file is no claims.
+    /// </summary>
+    public static List<JsonObject> ReadClaims(string path, string shown)
+    {
+        if (!File.Exists(path)) return [];
+        if (Files.ReadJson(path) is not JsonArray claims) throw new Refusal($"{shown} is not a JSON list of claims");
+        var schema = SchemaCheck.Load("claims.schema.json")["items"] as JsonObject ?? throw new InvalidOperationException("claims.schema.json has no items");
+        var problems = new List<string>();
+        for (var i = 0; i < claims.Count; i++)
+        {
+            var id = claims[i] is JsonObject o && Files.Str(o["id"]) is { Length: > 0 } s ? s : $"#{i}";
+            problems.AddRange(SchemaCheck.Problems(claims[i], schema).Select(p => $"claim {id}: {p}"));
+        }
+        if (problems.Count > 0)
+            throw new Refusal($"{shown} does not match tools/Prober/Schemas/claims.schema.json:\n  " + string.Join("\n  ", problems));
+        return [.. claims.OfType<JsonObject>()];
     }
 
     public JsonArray RowsOf(string claim)

@@ -80,7 +80,7 @@ internal static class Commands
 
     public static int UniverseCommand(Ledger l, Args a)
     {
-        var claims = a.Get("claims") is { } cp ? (Files.ReadJson(cp) as JsonArray ?? []).OfType<JsonObject>().ToList() : null;
+        var claims = a.Get("claims") is { } cp ? Ledger.ReadClaims(cp, cp) : null;
         var generated = a.Get("generated") is { } gp ? Files.ReadJson(gp) as JsonObject : null;
         var (universe, problems) = Axes.Build(l, a.Get("base") ?? "origin/main", claims, generated);
         var total = 0;
@@ -88,6 +88,10 @@ internal static class Commands
         {
             var n = c.Pairs().Count; total += n;
             l.Ctx.Out.WriteLine($"{c.Id}: {c.Axes.Count} axes, {n} pairs");
+            // What the claim leaves out and why: a narrowing's quote is checked against its document, an exclusion's reason by a reviewer only.
+            foreach (var (axis, quote) in c.Narrowed) l.Ctx.Out.WriteLine($"  narrow {axis}: \"{quote}\"");
+            foreach (var e in c.Exclusions)
+                l.Ctx.Out.WriteLine($"  exclude {e.Pairs.Count} pair(s), first {e.Pairs[0]}: {e.Reason}");
         }
         l.Ctx.Out.WriteLine($"universe: {universe.Claims.Count} claims, {total} pairs");
         foreach (var p in problems) l.Ctx.Out.WriteLine($"  {p}");
@@ -282,7 +286,7 @@ internal static class Commands
             else if (rel == "claims.json")
             {
                 var merged = new SortedDictionary<string, JsonNode>(StringComparer.Ordinal);
-                foreach (var c in (Files.ReadJson(dst) as JsonArray ?? []).Concat(Files.ReadJson(src) as JsonArray ?? []).OfType<JsonObject>())
+                foreach (var c in Ledger.ReadClaims(dst, "the corpus's claims.json").Concat(Ledger.ReadClaims(src, "the staged claims.json")))
                     merged[Files.Str(c["id"])] = c.DeepClone();
                 Files.WriteJson(dst, new JsonArray([.. merged.Values]));
             }

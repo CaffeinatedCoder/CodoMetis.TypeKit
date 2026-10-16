@@ -69,9 +69,12 @@ internal sealed class Fixture : IDisposable
     /// <summary>Runs a prober command in-process, in this repository, with the environment given.</summary>
     public (int Exit, string Out, string Err) Ledger(params string[] args) => LedgerWith(new Dictionary<string, string?>(), args);
 
-    public (int Exit, string Out, string Err) LedgerWith(Dictionary<string, string?> env, params string[] args)
+    public (int Exit, string Out, string Err) LedgerWith(Dictionary<string, string?> env, params string[] args) => LedgerEnding(env, Environment.NewLine, args);
+
+    /// <summary>As <see cref="LedgerWith"/>, with the line end the output writers use, so a test sees Windows' output on any OS.</summary>
+    public (int Exit, string Out, string Err) LedgerEnding(Dictionary<string, string?> env, string newLine, params string[] args)
     {
-        var output = new StringWriter(); var error = new StringWriter();
+        var output = new StringWriter { NewLine = newLine }; var error = new StringWriter { NewLine = newLine };
         var exit = Program.Run(new Context(Root, env, output, error), args);
         return (exit, output.ToString(), error.ToString());
     }
