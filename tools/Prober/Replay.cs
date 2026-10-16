@@ -33,7 +33,12 @@ internal static class Replay
         var config = ledger.AxesBlock()["replay"] as JsonObject ?? throw new Refusal("the axes file's block has no \"replay\" configuration");
         adapter ??= new DotNetAdapter(config);
         var home = Home(ctx, ledger);
-        if (a.Flag("where")) { ctx.Out.WriteLine($"replay:  {Path.Combine(home, "wt")}\nexplore: {Path.Combine(home, "explore")}\nseeds:   {Path.Combine(home, "seeds")}"); return 0; }
+        if (a.Flag("where"))
+        {
+            ctx.Out.WriteLine($"replay:  {Path.Combine(home, "wt")}\nexplore: {Path.Combine(home, "explore")}\nseeds:   {Path.Combine(home, "seeds")}");
+            ctx.Out.WriteLine($"remove:  {RemoveCommand(home)}");
+            return 0;
+        }
 
         // With a footprint the coverage collector instruments the assemblies on disk, so two hosts from one
         // output directory corrupt each other (KB-025): one at a time, whatever --parallel says.
@@ -63,6 +68,12 @@ internal static class Replay
         try
         {
             using var beat = new RoundLock.Heartbeat(ledger, holder);
+            using var held = HoldWorktree(home);
+            if (held is null)
+            {
+                ctx.Out.WriteLine($"prober replay: skipped, another branch's replay in this checkout is using {home}; run `prober replay` when it ends");
+                return 0;
+            }
             var axes = Rederive(ledger, adapter, config, Path.Combine(home, "enumerate"), force: options.All);
             if (axes is not null)
             {
@@ -322,12 +333,42 @@ internal static class Replay
         });
     }
 
-    /// <summary>The cache directory of this repository's replay worktrees (PROBE_CACHE_DIR, else ~/.cache/probe-replay).</summary>
+    /// <summary>
+    /// The cache directory of this checkout's scratch worktrees (<c>wt</c>, <c>seeds</c>, <c>explore</c>, <c>enumerate</c>) under
+    /// PROBE_CACHE_DIR, else ~/.cache/probe-replay: the checkout's directory name and a hash of its path. A linked worktree
+    /// has one of its own, so sessions in two checkouts never reset each other's copy; the main checkout is keyed on
+    /// <see cref="Ledger.Root"/>, as it was before, so its warm copy stays where it is.
+    /// </summary>
     internal static string Home(Context ctx, Ledger ledger)
     {
-        var key = Convert.ToHexStringLower(SHA1.HashData(Encoding.UTF8.GetBytes(ledger.Root)))[..8];
+        var checkout = ledger.Linked ? ledger.Top : ledger.Root;
+        var key = Convert.ToHexStringLower(SHA1.HashData(Encoding.UTF8.GetBytes(checkout)))[..8];
         return Path.Combine(ctx.Env("PROBE_CACHE_DIR") ?? Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), ".cache", "probe-replay"),
-                            $"{Path.GetFileName(ledger.Root)}-{key}");
+                            $"{Path.GetFileName(checkout)}-{key}");
+    }
+
+    /// <summary>
+    /// The command that removes this checkout's cache, its worktrees first (for <c>git worktree list</c>) and then the
+    /// directory, every path literal: removing a linked worktree leaves its cache behind.
+    /// </summary>
+    internal static string RemoveCommand(string home)
+    {
+        // Forward slashes on Windows, which git and the sh of Git for Windows both read.
+        static string Quoted(string path) => "'" + (Path.DirectorySeparatorChar == '\\' ? path.Replace('\\', '/') : path).Replace("'", "'\\''") + "'";
+        var worktrees = new[] { "wt", "seeds", "explore" }.Select(w => Path.Combine(home, w)).Where(w => File.Exists(Path.Combine(w, ".git")));
+        return string.Join("; ", worktrees.Select(w => $"git worktree remove --force {Quoted(w)}").Append($"rm -rf {Quoted(home)}"));
+    }
+
+    /// <summary>
+    /// Holds this checkout's replay worktree for one replay: the lock is per branch, the worktree per checkout, so two
+    /// branches' replays in one checkout (a branch switched while the post-commit replay runs) would otherwise share it.
+    /// An OS lock on <c>replay.lock</c> beside it, released by the OS when its process ends; null when another holds it.
+    /// </summary>
+    internal static FileStream? HoldWorktree(string home)
+    {
+        Directory.CreateDirectory(home);
+        try { return new FileStream(Path.Combine(home, "replay.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
+        catch (IOException) { return null; }
     }
 
     /// <summary>Copies the corpus into the worktree's probe directory: tracked, overlaid by the branch's unpublished staging; rows unpacked.</summary>

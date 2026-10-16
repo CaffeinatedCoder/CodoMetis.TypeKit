@@ -15,6 +15,7 @@ internal sealed class Ledger
     public Context Ctx { get; }
     public string Root { get; }          // the main checkout, also from a linked worktree
     public string Top { get; }           // this checkout
+    public bool Linked { get; }          // a linked worktree (git worktree add), not the main checkout
     public string Branch { get; }
     public string Memory { get; }        // PROBE_STATE_DIR, else the main checkout's prober memory
     public string Dir { get; }           // the branch's directory under Memory
@@ -25,9 +26,12 @@ internal sealed class Ledger
     public Ledger(Context ctx, string? branch)
     {
         Ctx = ctx;
-        var common = Git.Run(ctx.WorkingDirectory, "rev-parse", "--path-format=absolute", "--git-common-dir");
-        if (common.ExitCode != 0) throw new Refusal("not inside a git repository");
-        Root = Path.GetDirectoryName(common.Stdout.Trim().TrimEnd('/', '\\'))!;
+        var dirs = Git.Run(ctx.WorkingDirectory, "rev-parse", "--path-format=absolute", "--git-common-dir", "--git-dir");
+        if (dirs.ExitCode != 0) throw new Refusal("not inside a git repository");
+        var lines = dirs.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(d => d.TrimEnd('/', '\\')).ToArray();
+        if (lines is not [var common, var own]) throw new Refusal("git rev-parse named no git directory");
+        Root = Path.GetDirectoryName(common)!;
+        Linked = own != common;
         Top = Git.Out(ctx.WorkingDirectory, "rev-parse", "--show-toplevel");
         Branch = branch ?? Git.Out(ctx.WorkingDirectory, "rev-parse", "--abbrev-ref", "HEAD");
         Memory = ctx.Env("PROBE_STATE_DIR") ?? Path.Combine(Root, ".claude", "agent-memory-local", "prober");

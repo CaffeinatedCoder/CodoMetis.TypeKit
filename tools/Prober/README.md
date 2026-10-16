@@ -35,6 +35,18 @@ is a reason and its pairs, which `universe` prints beside the claim's narrowings
 writes keep `+`, backticks and `<` literal, so a `publish` that changes nothing in a tracked file leaves it as
 it is (decision 102).
 
+The round lock, `round.lock` and its mutex, sits in the branch's directory (`branches/<branch>/`), beside
+everything a round or a replay writes, so rounds and replays of two branches run at once and two of one branch
+never do. The scratch worktrees, `wt` (the replay's), `seeds`, `explore` (the `prober` agent's) and `enumerate`,
+are per checkout: under `PROBE_CACHE_DIR` when set, else `~/.cache/probe-replay/<checkout>-<hash of its path>`,
+and `replay --where` prints them. So a linked worktree (`git worktree add`, as each session under
+`.claude/worktrees/` is) builds a warm copy of its own, about a gigabyte of disk, and two sessions never reset
+each other's copy; the main checkout keeps the directory it had before. Since the lock is per branch and the
+worktree per checkout, a replay also holds `replay.lock` beside them (an OS lock, gone with its process), and a
+replay of another branch in the same checkout, after a branch switch, is skipped while one runs. Removing a
+linked worktree leaves its cache behind: before you remove it, run there the `remove:` line that `replay --where`
+prints, which removes the cache's worktrees (`git worktree remove`) and then its directory, every path written out.
+
 A claim lists what it promises in `obligations`, each an id and a sentence quoted verbatim from the claim's
 source, and what it does not promise in `not-promised`, each an id and the sentence of the document or record
 that makes the difference intended, quoted from that source. `universe` checks every quote as it checks a
