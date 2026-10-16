@@ -124,15 +124,31 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
     /// <remarks>
     /// Asking ASP.NET for the <see cref="Nullable{T}"/> itself returned the bare value object where it is a
     /// component: the component is shared with every non-nullable use, so it cannot admit null, and ASP.NET
-    /// adds the null only for a property, a body or a response, never for an element it did not build.
+    /// adds the null only for a property, a body or a response, never for an element it did not build. The
+    /// same holds for the component of the type an inlined value object wraps (an enum's), whose content is
+    /// then the element's, with the null put in.
     /// </remarks>
     private static async Task<IOpenApiSchema> ElementSchemaAsync(Type element, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
     {
         var valueObject = Nullable.GetUnderlyingType(element);
+        if (valueObject is null) return await context.GetOrCreateSchemaAsync(element, parameterDescription: null, cancellationToken);
 
-        // Inlined, the nullable value object's own schema admits null (above).
-        if (valueObject is null || SchemaReferenceId(context.JsonTypeInfo.Options.GetTypeInfo(element), context) is null)
-            return await context.GetOrCreateSchemaAsync(element, parameterDescription: null, cancellationToken);
+        var options = context.JsonTypeInfo.Options;
+        if (SchemaReferenceId(options.GetTypeInfo(element), context) is null)
+        {
+            // Inlined over an inlined wrapped type, the nullable value object's own schema admits null (above).
+            if (SchemaReferenceId(options.GetTypeInfo(ValueObjectTypes.WrappedType(valueObject)!), context) is null)
+                return await context.GetOrCreateSchemaAsync(element, parameterDescription: null, cancellationToken);
+
+            // Over the wrapped type's component, the content admits null as it does over an inlined wrapped type: a
+            // null-or around it is what OpenAPI 2.0 writes as a bare x-nullable, without the type.
+            var content = new OpenApiSchema();
+            content.FillFrom(await context.GetOrCreateSchemaAsync(valueObject, parameterDescription: null, cancellationToken));
+            AdmitNull(content, inType: true);
+            NullableElements.AddOrUpdate(content, element);
+
+            return content;
+        }
 
         var schema = await context.GetOrCreateSchemaAsync(valueObject, parameterDescription: null, cancellationToken);
 
@@ -254,10 +270,11 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
             }
             else if (SchemaReferenceId(context.JsonTypeInfo.Options.GetTypeInfo(wrapped), context) is not null)
             {
-                if (parameter is not null || position == NullablePosition.ParameterOutsideTheBody)
+                if (position != NullablePosition.Property)
                 {
-                    // A body's: the null-or ASP.NET puts around a nullable body holds the wrapped type's component
-                    // as it is, so its content goes here as it is. A parameter outside the body is the reference alone.
+                    // The wrapped type's component holds no null, and ASP.NET puts none beside it but a property's:
+                    // a body's or a response's null-or holds it as it is, a parameter is the reference alone, and an
+                    // element gets its null from ElementSchemaAsync. So its content goes here as it is.
                     schema.FillFrom(wrappedSchema);
                     return;
                 }

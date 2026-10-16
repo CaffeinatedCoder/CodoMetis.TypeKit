@@ -1,11 +1,14 @@
 using System.Collections.Concurrent;
+using System.Reflection;
 using System.Text.Json.Serialization;
+using CodoMetis.TypeKit.CompilerServices;
 using CodoMetis.TypeKit.Generators.Probes;
 using CodoMetis.TypeKit.ValueObjects;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
@@ -16,8 +19,9 @@ namespace CodoMetis.TypeKit.AspNetCore.Tests;
 /// A nullable value object, or a value object where it is not nullable, publishes in every position of an
 /// operation (body, query, header, form, route, response, a list's elements, a dictionary's values, a query or header
 /// array's items), in MVC
-/// and in minimal APIs, with enums written by number or by name, and inlined or as components, exactly the schema
-/// ASP.NET publishes for the wrapped type in the same position at the same nullability.
+/// and in minimal APIs, with enums written by number or by name, and with everything inlined, value objects alone
+/// inlined or components, exactly the schema ASP.NET publishes for the wrapped type in the same position at the same
+/// nullability.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -35,7 +39,9 @@ namespace CodoMetis.TypeKit.AspNetCore.Tests;
 /// </para>
 /// <para>
 /// A query, header, route or form <c>DayOfWeek?</c> written by name lists null among its values, where its type
-/// admits none: the value object over it left the null out (finding F3, C21 row 285).
+/// admits none: the value object over it left the null out (finding F3, C21 row 285). An element of a nullable
+/// enum that is ASP.NET's component is the bare reference, without the null its JSON holds; an inlined nullable
+/// value object over it admits the null (decision 36), which the comparison takes out.
 /// </para>
 /// </remarks>
 public sealed class NullablePositionTests
@@ -73,7 +79,7 @@ public sealed class NullablePositionTests
     {
         var data = new TheoryData<OpenApiSpecVersion, string, bool, string, string>();
         foreach (var version in new[] { OpenApiSpecVersion.OpenApi3_1, OpenApiSpecVersion.OpenApi3_0, OpenApiSpecVersion.OpenApi2_0 })
-        foreach (var references in new[] { "inline-all", "components" })
+        foreach (var references in new[] { "inline-all", "inline-value-objects", "components" })
         foreach (var enumsByName in new[] { false, true })
         foreach (var host in new[] { "mvc", "minimal" })
         foreach (var position in new[] { "body", "query", "header", "form", "route", "response", "elements", "values", "query-items", "header-items" })
@@ -97,6 +103,13 @@ public sealed class NullablePositionTests
             {
                 if (key.Item2 == "inline-all") openApi.CreateSchemaReferenceId = _ => null;
                 openApi.AddTypeKit();
+
+                // The README's way to inline value objects alone: the wrapped enum stays ASP.NET's component.
+                if (key.Item2 == "inline-value-objects")
+                    openApi.CreateSchemaReferenceId = type =>
+                        (Nullable.GetUnderlyingType(type.Type) ?? type.Type).GetCustomAttribute<GeneratedValueObjectAttribute>() is not null
+                            ? null
+                            : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
             },
             // An enum the host writes by name is a string enum, whose nullable form lists null among its values.
             json: key.Item3 ? json => json.SerializerOptions.Converters.Add(new JsonStringEnumConverter()) : null,
@@ -114,6 +127,17 @@ public sealed class NullablePositionTests
             // Decision 36: a component shared with the non-nullable uses cannot admit null; the null is around it.
             if (actual?["oneOf"] is JsonArray { Count: 2 } nullOr && nullOr[1]?["$ref"] is not null && expected?["oneOf"] is JsonArray { Count: 2 } wrappedNullOr)
                 wrappedNullOr[1] = WithoutNull(wrappedNullOr[1]!);
+
+            // Decision 36 too: an inlined nullable element admits null, where ASP.NET's own element of a nullable
+            // component type (an enum's) is the bare reference, without the null its JSON holds.
+            var keyword = position == "values" ? "additionalProperties" : "items";
+            if (wrapped.EndsWith("-nullable", StringComparison.Ordinal)
+             && Holder(actual) is { } container && container[keyword] is JsonObject element && element["$ref"] is null
+             && Holder(expected)?[keyword]?["$ref"] is not null)
+            {
+                if (JsonNode.DeepEquals(WithoutNull(element), element)) differences.Add($"{valueObject}: the element admits no null: {element.ToJsonString()}");
+                container[keyword] = WithoutNull(element);
+            }
 
             if (!JsonNode.DeepEquals(Inline(document, actual), Inline(document, expected)))
                 differences.Add($"{valueObject}: {Inline(document, actual)?.ToJsonString()}\n   {wrapped}: {Inline(document, expected)?.ToJsonString()}");
@@ -278,6 +302,9 @@ public sealed class NullablePositionTests
         return schema?.DeepClone();
     }
 
+    /// <summary>What holds a container's <c>items</c> or <c>additionalProperties</c>: a body's schema, a 3.x parameter's schema, or a 2.0 parameter itself.</summary>
+    private static JsonObject? Holder(JsonNode? schema) => schema?["schema"] as JsonObject ?? schema as JsonObject;
+
     private static JsonNode? Inline(OpenApiJson document, JsonNode? schema) => schema switch
     {
         JsonObject reference when reference["$ref"] is { } id => Inline(document, Target(document, id.GetValue<string>())),
@@ -295,16 +322,20 @@ public sealed class NullablePositionTests
             ?? throw new InvalidOperationException($"No schema '{reference}'.");
     }
 
-    /// <summary>The schema without the null it admits: <c>null</c> out of its type, <c>nullable</c> and a null branch gone.</summary>
+    /// <summary>The schema without the null it admits: <c>null</c> out of its type and its values, <c>nullable</c> and a null branch gone.</summary>
     private static JsonNode WithoutNull(JsonNode schema)
     {
         var copy = schema.DeepClone().AsObject();
         copy.Remove("nullable");
+        copy.Remove("x-nullable");
         if (copy["type"] is JsonArray types)
         {
             var kept = types.Where(type => type!.GetValue<string>() != "null").Select(type => type!.DeepClone()).ToArray();
             copy["type"] = kept.Length == 1 ? kept[0] : new JsonArray(kept);
         }
+
+        if (copy["enum"] is JsonArray values)
+            copy["enum"] = new JsonArray([.. values.Where(value => value is not null).Select(value => value!.DeepClone())]);
 
         if (copy["anyOf"] is JsonArray branches)
             copy["anyOf"] = new JsonArray([.. branches.Where(branch => branch!["nullable"] is null).Select(branch => branch!.DeepClone())]);
