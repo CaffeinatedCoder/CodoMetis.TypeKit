@@ -78,6 +78,18 @@ narrowing's and refuses a sentence its document does not hold, or an id listed t
 ones no seed names, and `gaps` prints every not-promised entry and narrowing beside the settings no surface
 reaches, the refused shapes and values, and the axes file's `out-of-reach` surfaces (decision 104).
 
+An obligation may declare where it does not apply: `inapplicable`, each entry the claim's own axis values
+(`axes`) and a citation (`cite`: `not-promised:id` of the claim's list, `docs:file#anchor`, `fact:KB-NNN` or
+`record:NNNN`). A row holding every axis of a declaration at one of its values runs no check of that
+obligation: `Row.Check` records the check inapplicable with the cite before its body runs, for that check only.
+The replay stages the claims beside the rows (`claims.json` in the probe directory) for the harness's
+`Rows.Claim`, and a probe's identity takes its claim's declarations. A pair a declaration matches is not wanted
+by that obligation (`Claim.PairsWantedBy`); a pair no obligation wants is declared inapplicable: `universe`
+prints each claim's count with the citations, `gaps` lists them under a heading of their own, `status --json`
+gives `inapplicable_pairs` per claim, the covering generator never puts one in a row, and the gate leaves them
+out as it leaves out an exclusion. A claim's pairs stay its pairs. `universe` refuses a declaration whose axis
+or value the claim does not list, whose cite is malformed, or whose not-promised id the claim lacks.
+
 A pair of a claim's axes counts as covered only by evidence a replay recorded: a check that ended as a pass, in a
 row that was expected and executed, for the settings that actually applied, while the result's identity holds
 (the probe, every compiled corpus source, the rows, the axes file, the build environment, this tool's

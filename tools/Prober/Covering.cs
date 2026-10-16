@@ -2,13 +2,19 @@ namespace Prober;
 
 /// <summary>
 /// A greedy pairwise covering array: each row is the best of a few randomized greedy candidates, and the
-/// rows together cover every pair asked for. Deterministic for a seed.
+/// rows together cover every pair asked for that at least one of the claim's obligations wants. A pair no
+/// obligation wants (declared inapplicable) is never asked for and never put in a row, as an excluded pair is
+/// not: every check of such a row would be inapplicable. Deterministic for a seed.
 /// </summary>
 internal static class Covering
 {
     public static List<(SortedDictionary<string, string> Row, List<Pair> Pairs)> Rows(Claim claim, IReadOnlySet<Pair> wanted, int max, int seed)
     {
+        var dead = claim.DeclaredInapplicable();
+        bool Blocked(Pair pair) => claim.Excluded.Contains(pair) || dead.ContainsKey(pair);
+        // The pairs asked for, each once however many obligations want it, so a row's gain counts it once.
         var todo = new HashSet<Pair>(wanted);
+        todo.ExceptWith(dead.Keys);
         var names = claim.Axes.Keys.ToList();
         var random = new Random(seed);
         var rows = new List<(SortedDictionary<string, string>, List<Pair>)>();
@@ -29,7 +35,7 @@ internal static class Covering
                         foreach (var (n, w) in row)
                         {
                             var pair = new Pair($"{name}={v}", $"{n}={w}");
-                            if (claim.Excluded.Contains(pair)) { gain = -1; break; }
+                            if (Blocked(pair)) { gain = -1; break; }
                             if (todo.Contains(pair)) gain++;
                         }
                         if (gain > pickGain) { pick = v; pickGain = gain; }
@@ -42,15 +48,26 @@ internal static class Covering
             if (bestGain <= 0)
             {
                 // Seed a row from one uncovered pair so progress never stalls.
-                var pair = todo.OrderBy(p => p.A, StringComparer.Ordinal).ThenBy(p => p.B, StringComparer.Ordinal).First();
-                best = new SortedDictionary<string, string>(names.ToDictionary(n => n, n => claim.Axes[n][0]), StringComparer.Ordinal);
-                foreach (var item in new[] { pair.A, pair.B }) { var at = item.IndexOf('='); best[item[..at]] = item[(at + 1)..]; }
+                best = Seeded(claim, todo.OrderBy(p => p.A, StringComparer.Ordinal).ThenBy(p => p.B, StringComparer.Ordinal).First(), dead);
             }
             var newly = Gained(best!, todo);
             todo.ExceptWith(newly);
             rows.Add((best!, newly));
         }
         return rows;
+    }
+
+    /// <summary>
+    /// A row seeded from one pair: the pair's two settings, and each other axis at its first value that puts no pair
+    /// no obligation wants (<paramref name="dead"/>) in the row, else at its first value.
+    /// </summary>
+    internal static SortedDictionary<string, string> Seeded(Claim claim, Pair pair, IReadOnlyDictionary<Pair, SortedSet<string>> dead)
+    {
+        var row = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (var item in new[] { pair.A, pair.B }) { var at = item.IndexOf('=', StringComparison.Ordinal); row[item[..at]] = item[(at + 1)..]; }
+        foreach (var name in claim.Axes.Keys.Where(n => !row.ContainsKey(n)).ToList())
+            row[name] = claim.Axes[name].FirstOrDefault(v => !row.Any(kv => dead.ContainsKey(new Pair($"{name}={v}", $"{kv.Key}={kv.Value}")))) ?? claim.Axes[name][0];
+        return row;
     }
 
     private static List<Pair> Gained(SortedDictionary<string, string> row, HashSet<Pair> todo)
