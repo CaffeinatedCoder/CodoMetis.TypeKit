@@ -15,6 +15,7 @@ section is the GitHub release's notes.
 ### Fixed
 
 - OpenAPI: a route, query or header parameter of a type a converter describes, such as a `decimal` under `DecimalStringJsonConverter`, is what ASP.NET writes without the converter: an OpenAPI 2.0 document builds, and a nullable one no longer admits `null` ([Parameters aren't JSON](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says)).
+- OpenAPI: a problem response an endpoint declares as `application/json`, such as `Produces<ProblemDetails>(404)` or `[ProducesResponseType<ProblemDetails>(404)]`, describes `fault` and `rule` and names its problem types, and keeps its media type; so does one of a type derived from `ProblemDetails`, such as `ProducesValidationProblem(404)` ([A Result as a response](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#a-result-as-a-response)).
 
 ## 2.1.0 — 2026-10-15
 
