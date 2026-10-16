@@ -1,11 +1,11 @@
 diff --git a/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs b/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
-index b415acf..ba3bbd3 100644
+index f83ec7e..c7b2a33 100644
 --- a/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
 +++ b/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
-@@ -76,10 +76,8 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
-             // elsewhere for the Nullable<T> of a wrapped value type, a parameter outside the body included. Not at
-             // the root of a wrapped reference type, which has none (a string? body is a string, inside ASP.NET's null-or).
-             var position = SchemaReferenceId(info, context) is not null ? NullablePosition.None
+@@ -98,10 +98,8 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
+             }
+ 
+             var position = !inline && SchemaReferenceId(info, context) is not null ? NullablePosition.None
 -                : context.JsonPropertyInfo is { IsGetNullable: true } or { IsSetNullable: true } ? NullablePosition.Property
 -                : Nullable.GetUnderlyingType(info.Type) is null || !wrapped.IsValueType ? NullablePosition.None
 -                : IsParameterOutsideTheBody(context) ? NullablePosition.ParameterOutsideTheBody
@@ -13,9 +13,9 @@ index b415acf..ba3bbd3 100644
 +                : Nullable.GetUnderlyingType(info.Type) is not null || context.JsonPropertyInfo is { IsGetNullable: true } or { IsSetNullable: true } ? NullablePosition.Property
 +                : NullablePosition.None;
  
-             await DescribeAsync(schema, info.Type, wrapped, parameter: null, position, context, cancellationToken);
+             await DescribeAsync(schema, info.Type, wrapped, outside, position, context, cancellationToken);
              return;
-@@ -97,9 +95,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
+@@ -119,9 +117,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
              // MVC hands a value object bound from the body here too, as the string it would parse. There
              // ASP.NET's exporter admits null in the schema of the Nullable<T> of a wrapped value type, inside
              // the null-or ASP.NET puts around a nullable body, and outside the body among its values alone.
