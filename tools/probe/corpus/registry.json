@@ -598,6 +598,11 @@
     "C18Cmtk1023Probe": {
       "claim": "C18-cmtk1023",
       "filter": "*C18Cmtk1023Probe",
+      "watched": [
+        "src/CodoMetis.TypeKit",
+        "src/Directory.Build.props",
+        "src/Directory.Build.targets"
+      ],
       "seeds": [
         {
           "obligation": "names-each-base-member",
@@ -619,6 +624,10 @@
     "C19Cmtk0010KindsProbe": {
       "claim": "C19-cmtk0010-kinds",
       "filter": "*C19Cmtk0010KindsProbe",
+      "watched": [
+        "test/CodoMetis.TypeKit.Analyzers.Tests/Variants/TypeArgumentKinds.cs",
+        "test/CodoMetis.TypeKit.Analyzers.Tests/Variants/TypeArgumentSites.cs"
+      ],
       "seeds": [
         {
           "obligation": "methods-the-compiler-calls",

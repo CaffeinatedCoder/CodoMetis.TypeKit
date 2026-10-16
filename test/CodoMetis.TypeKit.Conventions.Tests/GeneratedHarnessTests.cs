@@ -34,20 +34,20 @@ public sealed class GeneratedHarnessTests
         ("EfShapes.g.cs", "ef.cs", ["catalogue", .. EfCatalogue]),
         ("EfShapes3.g.cs", "ef.cs", ["top-level", .. EfCatalogue]),
         ("EfShapes4.g.cs", "ef.cs", ["nested", .. EfCatalogue]),
-        ("KeyShapes.g.cs", "ef.cs", ["keys", "--rows", $"{Rows}/E04-integer-key-generated.json.gz"]),
+        ("KeyShapes.g.cs", "ef.cs", ["keys", "--rows", $"{Rows}/E04IntegerKeyProbe.json.gz"]),
         ("JsonFamilyShapes.g.cs", "json-family.cs",
-            ["contexts", "--c01", $"{Rows}/C01-decimal-spelling.json.gz", "--c10", $"{Rows}/C10-preserve-guard.json.gz", "--l06", $"{Rows}/L06-off-the-wire.json.gz"]),
-        ("L05Shapes.g.cs", "json-family.cs", ["l05", "--rows", $"{Rows}/L05-equality.json.gz"]),
-        ("C09Shapes.g.cs", "decls.cs", ["C09", "--rows", $"{Rows}/C09-base-record-equality.json.gz"]),
-        ("C11Shapes.g.cs", "decls.cs", ["C11", "--rows", $"{Rows}/C11-parse-shapes-build.json.gz"]),
+            ["contexts", "--c01", $"{Rows}/C01DecimalSpellingProbe.json.gz", "--c10", $"{Rows}/C10PreserveGuardProbe.json.gz", "--l06", $"{Rows}/L06OffTheWireProbe.json.gz"]),
+        ("L05Shapes.g.cs", "json-family.cs", ["l05", "--rows", $"{Rows}/L05EqualityProbe.json.gz"]),
+        ("C09Shapes.g.cs", "decls.cs", ["C09", "--rows", $"{Rows}/C09BaseRecordEqualityProbe.json.gz"]),
+        ("C11Shapes.g.cs", "decls.cs", ["C11", "--rows", $"{Rows}/C11ParseShapesBuildProbe.json.gz"]),
         ("FaultClaimControllers.g.cs", "faults.cs", []),
         ("RuleControllers.g.cs", "rules.cs", []),
     ];
 
     private static string[] EfCatalogue =>
     [
-        "--rows", $"{Rows}/E01-column-parity.json.gz", "--first", "90",
-        "--rows", $"{Rows}/E02-value-translates-to-column.json.gz", "--first", "108",
+        "--rows", $"{Rows}/E01ColumnParityProbe.json.gz", "--first", "90",
+        "--rows", $"{Rows}/E02ValueTranslatesProbe.json.gz", "--first", "108",
     ];
 
     public static TheoryData<string> Files => [.. Generators.Select(generator => generator.File)];

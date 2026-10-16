@@ -154,13 +154,13 @@ public static class ComposedShrinkInit
 }
 public sealed class C03ComposedProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("C03-composed-faults");
+    public static TheoryData<string, int> Data() => Rows.Data("C03ComposedProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run("C03", idx, ComposedChecks.C03, claim);
+    public Task Row(string probe, int idx) => Rec.Run("C03", idx, ComposedChecks.C03, probe);
 }
 public sealed class C05RuleProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("C05-with-rule");
+    public static TheoryData<string, int> Data() => Rows.Data("C05RuleProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run("C05", idx, ComposedChecks.C05, claim);
+    public Task Row(string probe, int idx) => Rec.Run("C05", idx, ComposedChecks.C05, probe);
 }

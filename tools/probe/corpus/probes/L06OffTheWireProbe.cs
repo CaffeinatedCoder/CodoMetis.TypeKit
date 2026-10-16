@@ -6,8 +6,7 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class L06OffTheWireProbe
 {
-    const string Claim = "L06-off-the-wire";
-    public static TheoryData<string, int> Data() => Rows.Data(Claim);
+    public static TheoryData<string, int> Data() => Rows.Data("L06OffTheWireProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, OffTheWire.Check);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, OffTheWire.Check);
 }

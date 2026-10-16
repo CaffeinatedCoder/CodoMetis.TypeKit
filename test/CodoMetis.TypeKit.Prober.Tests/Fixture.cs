@@ -42,8 +42,9 @@ internal sealed class Fixture : IDisposable
         File.WriteAllText(path, text);
     }
 
+    /// <summary>P's rows: each probe has a rows file of its own, its claim inside.</summary>
     public void Rows(IEnumerable<(string X, string Y)> rows) =>
-        Write("tools/probe/corpus/rows/C1.json", new JsonObject
+        Write("tools/probe/corpus/rows/P.json", new JsonObject
         {
             ["claim"] = "C1",
             ["rows"] = new JsonArray([.. rows.Select(r => (JsonNode)new JsonObject { ["row"] = new JsonObject { ["x"] = r.X, ["y"] = r.Y } })]),

@@ -10,6 +10,8 @@ internal static class Program
           universe [--base REF]             each claim's axes, from the claims, the axes file and the generated axes
           rows --claim C [--full]           a pairwise covering array over the claim's pairs not yet covered;
                                             inside a capped round it refuses past the deadline or the claim cap
+          rows --probe P [--full]           writes P's rows file whole into the staging: a covering array over its
+                                            claim's pairs less those the claim's other probes have credited
           status [--json]                   coverage from current evidence, open findings, done or not; per claim
                                             its obligations and which have a seed
           gaps [--base REF]                 what the corpus leaves out, each with its reason: unassigned settings,

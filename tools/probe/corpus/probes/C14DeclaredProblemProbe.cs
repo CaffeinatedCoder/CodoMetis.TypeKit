@@ -9,9 +9,9 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class C14DeclaredProblemProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("C14-declared-problem");
+    public static TheoryData<string, int> Data() => Rows.Data("C14DeclaredProblemProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run("C14", idx, r => FaultClaim.Run(r, Spec(r)), claim);
+    public Task Row(string probe, int idx) => Rec.Run("C14", idx, r => FaultClaim.Run(r, Spec(r)), probe);
 
     public static Spec Spec(Probes.Shapes.Row r)
     {

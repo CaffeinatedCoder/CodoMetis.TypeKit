@@ -8,9 +8,9 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class E15CompositeKeyProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("E15-composite-key");
+    public static TheoryData<string, int> Data() => Rows.Data("E15CompositeKeyProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, Check);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, Check);
 
     static async Task<string?> Check(Probes.Shapes.Row r)
     {

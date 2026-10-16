@@ -12,9 +12,9 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class C06FaultKindsProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("C06-fault-kinds");
+    public static TheoryData<string, int> Data() => Rows.Data("C06FaultKindsProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run("C06", idx, async r => NoKindRefused() ?? await FaultClaim.Run(r, Spec(r)), claim);
+    public Task Row(string probe, int idx) => Rec.Run("C06", idx, async r => NoKindRefused() ?? await FaultClaim.Run(r, Spec(r)), probe);
 
     /// <summary>"A member must have a kind. A member whose kind is default, which is no kind, fails this call."</summary>
     static string? NoKindRefused()

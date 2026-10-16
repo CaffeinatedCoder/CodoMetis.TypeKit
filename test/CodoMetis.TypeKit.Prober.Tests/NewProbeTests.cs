@@ -52,10 +52,11 @@ public sealed class NewProbeTests : IDisposable
         source.ShouldContain("// TODO keys: \"A key is written as the wrapped type writes it.\"");
         source.ShouldContain("// TODO nulls: \"A null is refused.\"");
 
-        // The rows C1 had keep their indices; the covering array over its four pairs adds the two it lacked.
-        var rows = JsonNode.Parse(File.ReadAllText(Staged("rows/C1.json")))!["rows"]!.AsArray().Select(r => $"{r!["row"]!["x"]}{r["row"]!["y"]}").ToList();
-        rows.Take(2).ShouldBe(["11", "22"]);
-        rows.Order().ShouldBe(["11", "12", "21", "22"]);
+        // The probe's own rows, C1's other probe P's untouched: P has covered nothing, so a covering array over all four pairs.
+        var staged = JsonNode.Parse(File.ReadAllText(Staged("rows/C1KeysProbe.json")))!;
+        staged["claim"]!.GetValue<string>().ShouldBe("C1");
+        staged["rows"]!.AsArray().Select(r => $"{r!["row"]!["x"]}{r["row"]!["y"]}").Order().ShouldBe(["11", "12", "21", "22"]);
+        File.Exists(Staged("rows/P.json")).ShouldBeFalse("a new probe leaves its sibling's rows as they are");
 
         var entry = JsonNode.Parse(File.ReadAllText(Staged("registry.json")))!["probes"]!["C1KeysProbe"]!.AsObject();
         entry["claim"]!.GetValue<string>().ShouldBe("C1");
@@ -145,9 +146,9 @@ public sealed class NewProbeTests : IDisposable
             _ when line.StartsWith("namespace ", StringComparison.Ordinal) => line,
             _ when Regex.IsMatch(line, @"^public sealed class \w+Probe$") => "public sealed class {probe}",
             _ when line.StartsWith("public static TheoryData<string, int> Data()", StringComparison.Ordinal) =>
-                Regex.Replace(line, @"Rows\.Data\(""[^""]+""\)", "Rows.Data({claim})"),
+                Regex.Replace(line, @"Rows\.Data\(""[^""]+""\)", "Rows.Data({probe})"),
             _ when line.StartsWith("[Theory", StringComparison.Ordinal) => line,
-            _ when line.StartsWith("public Task ", StringComparison.Ordinal) => Regex.Replace(line, @"Rec\.Run\(claim, idx, [^;]+\);$", "Rec.Run(claim, idx, {check});"),
+            _ when line.StartsWith("public Task ", StringComparison.Ordinal) => Regex.Replace(line, @"Rec\.Run\(probe, idx, [^;]+\);$", "Rec.Run(probe, idx, {check});"),
             _ => null,
         }).OfType<string>()];
 

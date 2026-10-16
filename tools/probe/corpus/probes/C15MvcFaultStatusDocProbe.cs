@@ -11,9 +11,9 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class C15MvcFaultStatusDocProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("C15-mvc-fault-status-doc");
+    public static TheoryData<string, int> Data() => Rows.Data("C15MvcFaultStatusDocProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run("C15", idx, r => FaultClaim.Run(r, Spec(r)), claim);
+    public Task Row(string probe, int idx) => Rec.Run("C15", idx, r => FaultClaim.Run(r, Spec(r)), probe);
 
     static readonly Decl Own = new("HFault", "Denied", 452);
     public static Spec Spec(Probes.Shapes.Row r)

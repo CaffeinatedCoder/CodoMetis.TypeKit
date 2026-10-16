@@ -22,9 +22,9 @@ public sealed class SqlCap : DbCommandInterceptor
 
 public sealed class E09OrNoneInDbProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("E09-or-none-in-database");
+    public static TheoryData<string, int> Data() => Rows.Data("E09OrNoneInDbProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, Check);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, Check);
 
     static Task<string?> Check(Probes.Shapes.Row r) => r["shape.wrapped"] switch { "int" => Run_int(r), "Guid" => Run_Guid(r), "string" => Run_string(r), var w => throw new ArgumentException(w) };
 

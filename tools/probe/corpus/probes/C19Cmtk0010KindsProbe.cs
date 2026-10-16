@@ -19,10 +19,10 @@ namespace Probes;
 
 public sealed class C19Cmtk0010KindsProbe
 {
-    public static TheoryData<string, int> Data() => Probes.Shapes.Rows.Data("C19-cmtk0010-kinds");
+    public static TheoryData<string, int> Data() => Probes.Shapes.Rows.Data("C19Cmtk0010KindsProbe");
 
     [Theory, MemberData(nameof(Data))]
-    public Task Probe(string claim, int idx) => Probes.Shapes.Rec.Run(claim, idx, Check);
+    public Task Probe(string probe, int idx) => Probes.Shapes.Rec.Run(probe, idx, Check);
 
     /// <summary>What a type is, as the page's table reads it.</summary>
     sealed record Facts(bool Interface = false, bool Class = false, bool Sealed = false, bool Struct = false, bool ReadOnly = false, bool Enum = false, bool Flags = false, bool ValueObject = false, bool ClosedSet = false);

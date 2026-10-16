@@ -6,9 +6,9 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class E07ClosedSetNameProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("E07-closed-set-stored-as-name");
+    public static TheoryData<string, int> Data() => Rows.Data("E07ClosedSetNameProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, Check);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, Check);
 
     static async Task<string?> Check(Probes.Shapes.Row r)
     {

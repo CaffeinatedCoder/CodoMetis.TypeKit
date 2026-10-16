@@ -4,7 +4,7 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class C16OptionsAgreementProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("C16-options-agreement");
+    public static TheoryData<string, int> Data() => Rows.Data("C16OptionsAgreementProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, SchemaChecks.C16);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, SchemaChecks.C16);
 }

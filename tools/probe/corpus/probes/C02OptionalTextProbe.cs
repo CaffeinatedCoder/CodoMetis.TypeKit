@@ -9,9 +9,9 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class C02OptionalTextProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("C02-optional-text");
+    public static TheoryData<string, int> Data() => Rows.Data("C02OptionalTextProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, r => Task.FromResult(Check(r)));
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, r => Task.FromResult(Check(r)));
 
     static string? Input(string k) => k switch
     {
