@@ -18,6 +18,12 @@
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
         <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+        <!--
+          The PostgreSQL facts, with plain EF Core and Npgsql; they run where TYPEKIT_PG names a server (PgFactHost).
+          Relational is named so that EF Core is the version the facts pin, not the older floor the provider brings.
+        -->
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     </ItemGroup>
 
     <ItemGroup>
