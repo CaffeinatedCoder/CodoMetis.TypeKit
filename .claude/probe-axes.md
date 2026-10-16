@@ -53,6 +53,33 @@ type-shape catalogue with a script into a `Probes/Shapes.g.cs`, not by hand.
 - Native AOT is measured only by `./test/consumer-smoke-test.sh` (minutes, needs clang). Probe it only
   when the caller asks for it.
 
+## Seeds: every probe shows it can fail
+
+A probe that passes proves something only if it can fail. Every registered probe names one seeded
+product defect ([decision 100](../design/adr/0100-every-probe-is-shown-to-fail-against-a-seeded-defect.md)):
+a patch against `src/` that breaks what its claim promises, in `tools/probe/corpus/seeds/<claim>.patch`,
+and a sentence saying what it breaks, in its registry entry:
+
+```json
+"seed": { "patch": "seeds/L01-json-bytes.patch", "defect": "A dictionary key is written with ToString(), not the wrapped type's key converter and DictionaryKeyPolicy." }
+```
+
+- Write the seed with the probe. Make the defect in `src/` of the scratch copy, take `git diff -- <file>`
+  as the patch, undo it by inverse edit (`git apply -R <patch>`), and register with `prober register ...
+  --seed seeds/<claim>.patch --defect "<sentence>"`. An environment toggle (`"env": {...}`, set for the
+  build and every run) is a seed too, where the product reads one; none does today.
+- Seed the defect the claim is about, the one a consumer would meet: a facet dropped, a refusal that
+  quotes its input, a rule skipped, a key no longer generated. A seed whose build fails proves nothing,
+  and the command counts it as a failure.
+- `prober seeds [--probe P]` applies each seed in a scratch worktree of its own (`replay --where` names
+  it), builds, replays the probe there and requires a row that ends as a violation the unseeded probe
+  does not have; a missed seed fails it. It records no evidence and takes no lock, but two runs at once
+  share the worktree. One build per seed, so it runs locally, never in CI: after writing a probe or
+  changing its harness, and before a release.
+- Without a build, the prober tests hold the rest on every run (`SeedsTests`): every registered probe
+  has a seed, and its patch touches only `src/` and still applies. A product change that moves the
+  patched lines fails there; make the seed again against the new code.
+
 ## Claim sources
 
 In this order: the root `README.md` ("What TypeKit guarantees" first), `docs/*.md`, the package

@@ -77,7 +77,7 @@ internal sealed class Ledger
     // ---- identity --------------------------------------------------------------------------------------
 
     /// <summary>
-    /// What a probe's result depends on besides the product footprint: its registry entry, every source
+    /// What a probe's result depends on besides the product footprint: its registry entry (not its seed), every source
     /// compiled with it (the harness and all probes), its claim's rows, the axes file, the build environment
     /// (SDK, central package versions, build props, global.json), this tool's version and the schema version.
     /// A result counts only while this is unchanged.
@@ -87,7 +87,10 @@ internal sealed class Ledger
         using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         void Add(string s) => sha.AppendData(Encoding.UTF8.GetBytes(s + "\0"));
         var entry = Registry().GetValueOrDefault(probe) ?? [];
-        Add(Files.Canonical(entry));
+        // The seed proves the probe; a result of the probe does not depend on it.
+        var registered = (JsonObject)entry.DeepClone();
+        registered.Remove("seed");
+        Add(Files.Canonical(registered));
         var sources = new SortedDictionary<string, string>(StringComparer.Ordinal);
         foreach (var baseDir in new[] { CorpusDir, StagingDir })
             foreach (var sub in new[] { "harness", "probes" })

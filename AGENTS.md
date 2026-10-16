@@ -75,6 +75,13 @@ dotnet tools/Prober/bin/Release/net10.0/prober.dll replay    # re-run the probes
 dotnet tools/Prober/bin/Release/net10.0/prober.dll gate      # the release gate, from the tracked corpus and a replay
 ```
 
+Proving that each probe can fail needs no model either, but builds once per seed, so it runs locally
+only ([decision 100](design/adr/0100-every-probe-is-shown-to-fail-against-a-seeded-defect.md)):
+
+```bash
+dotnet tools/Prober/bin/Release/net10.0/prober.dll seeds     # each probe's seeded defect, applied in a scratch worktree, must fail it
+```
+
 Exploration needs a model and runs locally only, never in CI:
 
 ```bash

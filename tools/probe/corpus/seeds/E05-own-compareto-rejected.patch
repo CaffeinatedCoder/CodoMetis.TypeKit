@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.EntityFrameworkCore/HandWrittenOrderingInterceptor.cs b/src/CodoMetis.TypeKit.EntityFrameworkCore/HandWrittenOrderingInterceptor.cs
+index 5f1499f..977a6f5 100644
+--- a/src/CodoMetis.TypeKit.EntityFrameworkCore/HandWrittenOrderingInterceptor.cs
++++ b/src/CodoMetis.TypeKit.EntityFrameworkCore/HandWrittenOrderingInterceptor.cs
+@@ -32,8 +32,6 @@ internal sealed class HandWrittenOrderingInterceptor : IQueryExpressionIntercept
+ {
+     public Expression QueryCompilationStarting(Expression queryExpression, QueryExpressionEventData eventData)
+     {
+-        HandWrittenOrdering.RefuseIn(queryExpression);
+-
+         return queryExpression;
+     }
+ }

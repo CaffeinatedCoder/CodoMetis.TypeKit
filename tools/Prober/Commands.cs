@@ -251,6 +251,8 @@ internal static class Commands
         var entry = l.Registry().GetValueOrDefault(a.Need("probe")) ?? [];
         entry["claim"] = a.Need("claim"); entry["filter"] = a.Need("filter");
         if (a.Get("variants") is { Length: > 0 } v) entry["variants"] = JsonNode.Parse(v);
+        // The defect `seeds` applies to prove the probe can fail (decision 100): a patch under the corpus, and what it breaks.
+        if (a.Get("seed") is { Length: > 0 } seed) entry["seed"] = new JsonObject { ["patch"] = seed, ["defect"] = a.Need("defect") };
         probes[a.Need("probe")] = entry;
         staged["probes"] = probes.DeepClone();
         Files.WriteJson(path, staged);

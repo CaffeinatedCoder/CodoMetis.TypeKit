@@ -16,6 +16,7 @@ dotnet tools/Prober/bin/Release/net10.0/prober.dll help
 | `gate [--since REF]` | none | anywhere, CI included: needs only the tracked corpus and a replay |
 | `status`, `stale`, `universe`, `rows`, … | none | anywhere |
 | `round explore\|full` | the `prober` agent | locally only, under caps it cannot overrun |
+| `seeds [--probe P]` | none | locally only: one build per seed, in a scratch worktree (decision 100) |
 
 No command in the gate's path needs a login, an API key or a Claude executable. A gate obligation is met
 by a probe in the corpus, written by hand or by a round, or by a reviewed waiver in
@@ -32,6 +33,15 @@ A pair of a claim's axes counts as covered only by evidence a replay recorded: a
 executed and ended as a pass, for the settings that actually applied, while the result's identity holds
 (the probe, every compiled corpus source, the rows, the axes file, the build environment, this tool's
 version and the schema version) and the product files the probe ran are unchanged.
+
+## Seeds
+
+Each probe's registry entry names a seeded product defect: a patch under `seeds/` against the product
+files (the replay's `include`), an environment toggle, or both, and the sentence `defect`. `seeds` applies
+each in the `seeds` worktree beside the replay's, builds, runs the probe and counts the seed caught only for
+a row that ends as a violation and does not in the unseeded probe. The unseeded rows come from the ledger
+where the probe's evidence is current, else from an unseeded run first. Nothing it runs is evidence; it
+writes `seeds-last.json` (`Schemas/seeds-run.schema.json`). A seed is not part of a probe's identity.
 
 ## The adapter
 
