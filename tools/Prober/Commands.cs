@@ -95,7 +95,8 @@ internal static class Commands
             }
         }
         var covered = full ? [] : l.Covered(universe, claimId, except);
-        var todo = claim.Pairs().Where(p => !covered.Contains((claimId, p))).ToHashSet();
+        // The pairs some obligation wants: a pair declared inapplicable for every obligation is asked for by no row.
+        var todo = claim.PairsWanted().Where(p => !covered.Contains((claimId, p))).ToHashSet();
         var rows = Covering.Rows(claim, todo, int.Parse(max ?? "2000", CultureInfo.InvariantCulture), int.Parse(seed ?? "1", CultureInfo.InvariantCulture));
         return new JsonObject
         {
@@ -123,10 +124,24 @@ internal static class Commands
             foreach (var (axis, quote) in c.Narrowed) l.Ctx.Out.WriteLine($"  narrow {axis}: \"{quote}\"");
             foreach (var e in c.Exclusions)
                 l.Ctx.Out.WriteLine($"  exclude {e.Pairs.Count} pair(s), first {e.Pairs[0]}: {e.Reason}");
+            if (Inapplicable(c) is { } line) l.Ctx.Out.WriteLine($"  {line}");
         }
         l.Ctx.Out.WriteLine($"universe: {universe.Claims.Count} claims, {total} pairs");
         foreach (var p in problems) l.Ctx.Out.WriteLine($"  {p}");
         return 0;
+    }
+
+    /// <summary>
+    /// The pairs of a claim no obligation wants, as one line: their count, the first, and the citations of the
+    /// declarations that leave them out; null where there are none.
+    /// </summary>
+    private static string? Inapplicable(Claim c)
+    {
+        var dead = c.DeclaredInapplicable();
+        if (dead.Count == 0) return null;
+        var first = dead.Keys.OrderBy(p => p.A, StringComparer.Ordinal).ThenBy(p => p.B, StringComparer.Ordinal).First();
+        var cites = new SortedSet<string>(dead.Values.SelectMany(x => x), StringComparer.Ordinal);
+        return $"inapplicable {dead.Count} pair(s), wanted by no obligation, first {first}: {string.Join(", ", cites)}";
     }
 
     public static JsonObject ComputeStatus(Ledger l)
@@ -157,10 +172,13 @@ internal static class Commands
         // break each obligation: the claim's promise is checked only where a probe can be shown to fail on it.
         var listed = l.Claims().ToDictionary(c => Files.Str(c["id"]), Claim.ObligationIds, StringComparer.Ordinal);
         var registry = l.Registry();
-        var claims = new JsonObject(); var total = 0; var current = 0;
+        var claims = new JsonObject(); var total = 0; var current = 0; var inapplicableTotal = 0; var wantedTotal = 0; var wantedCurrent = 0;
         foreach (var c in universe.Claims)
         {
             var pairs = c.Pairs(); var hit = pairs.Count(p => done.Contains((c.Id, p)));
+            // The pairs no obligation wants are declared inapplicable: left out of what is still to cover, as the gate leaves them out.
+            var wanted = c.PairsWanted(); var inapplicable = pairs.Count - wanted.Count;
+            inapplicableTotal += inapplicable; wantedTotal += wanted.Count; wantedCurrent += wanted.Count(p => done.Contains((c.Id, p)));
             var probes = registry.Where(kv => Files.Str(kv.Value["claim"]) == c.Id).ToList();
             var ids = listed.GetValueOrDefault(c.Id) ?? [Claim.ImplicitObligation];
             var obligations = new JsonArray();
@@ -179,7 +197,7 @@ internal static class Commands
             }
             claims[c.Id] = new JsonObject
             {
-                ["pairs"] = pairs.Count, ["current"] = hit,
+                ["pairs"] = pairs.Count, ["current"] = hit, ["inapplicable_pairs"] = inapplicable,
                 ["outcomes"] = new JsonObject((outcomes.GetValueOrDefault(c.Id) ?? []).Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))),
                 ["check_outcomes"] = new JsonObject((checkOutcomes.GetValueOrDefault(c.Id) ?? []).Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))),
                 ["probes"] = new JsonArray([.. probes.Select(kv => (JsonNode)kv.Key)]), ["obligations"] = obligations,
@@ -190,10 +208,11 @@ internal static class Commands
         return new JsonObject
         {
             ["branch"] = l.Branch, ["head"] = l.Head, ["universe_commit"] = universe.Commit, ["pairs"] = total, ["current"] = current,
+            ["inapplicable_pairs"] = inapplicableTotal,
             ["share"] = total > 0 ? Math.Round((double)current / total, 4) : 1.0,
             ["open_findings"] = new JsonArray([.. open.Select(f => (JsonNode)f)]),
             ["skipped_for_findings"] = new JsonObject(skips.Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))), ["claims"] = claims,
-            ["done"] = total > 0 && current == total && open.Count == 0,
+            ["done"] = total > 0 && wantedCurrent == wantedTotal && open.Count == 0,
         };
     }
 
@@ -218,7 +237,8 @@ internal static class Commands
             var uncredited = obligations.Count(o => o["passed"] is not JsonValue v || !v.GetValue<bool>());
             var promise = obligations.Count == 0 ? "" : $"  obligations {obligations.Count}" + (unseeded.Count > 0 ? $" ({unseeded.Count} without a seed: {string.Join(", ", unseeded)})" : ", each seeded")
                                                         + $", {uncredited} uncredited";
-            l.Ctx.Out.WriteLine($"  {id}: {Files.Num(c["current"])}/{Files.Num(c["pairs"])}" + (rows.Count > 0 ? $"  (rows: {string.Join(", ", rows)}; checks: {string.Join(", ", checks)})" : "") + promise);
+            var inapplicable = Files.Num(c["inapplicable_pairs"]) is var n and > 0 ? $", {n} inapplicable" : "";
+            l.Ctx.Out.WriteLine($"  {id}: {Files.Num(c["current"])}/{Files.Num(c["pairs"])}{inapplicable}" + (rows.Count > 0 ? $"  (rows: {string.Join(", ", rows)}; checks: {string.Join(", ", checks)})" : "") + promise);
         }
         return 0;
     }
@@ -247,6 +267,8 @@ internal static class Commands
                 universe.Claims.SelectMany(c => c.NotPromised.Select(n => (Key: Concerns(n.Axes), Line: $"{Concerns(n.Axes)}: {c.Id}/{n.Id} \"{n.Sentence}\" ({n.Source})"))
                                                  .Concat(c.Narrowed.Select(kv => (Key: kv.Key, Line: $"{kv.Key}: {c.Id} narrows it, \"{kv.Value}\" ({c.Source})"))))
                         .OrderBy(x => x.Key, StringComparer.Ordinal).ThenBy(x => x.Line, StringComparer.Ordinal).Select(x => x.Line));
+        Section("pairs no obligation wants (declared inapplicable)",
+                universe.Claims.Select(c => Inapplicable(c) is { } line ? $"{c.Id}: {line}" : null).OfType<string>());
         Section("out of reach", (block["out-of-reach"] as JsonObject ?? []).Select(kv => $"{kv.Key}: {Files.Str(kv.Value)}"));
         return 0;
 

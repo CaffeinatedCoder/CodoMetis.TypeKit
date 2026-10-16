@@ -146,6 +146,12 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
   `prober universe` prints each one beside the claim's narrowings for a reviewer, and the prober refuses a
   claims.json with any field its schema (`tools/Prober/Schemas/claims.schema.json`) does not have
   ([decision 102](../design/adr/0102-an-exclusion-carries-its-reason.md)).
+- An obligation may say where it does not apply, by the claim's own axis values and a citation
+  (`inapplicable`: a list of `{"axes": {"shape.kind": ["closed-set"]}, "cite": "not-promised:closed-set-has-no-scale"}`,
+  the cite `not-promised:id`, `docs:file#anchor`, `fact:KB-NNN` or `record:NNNN`). `Row.Check` reads the same
+  declarations and records such a check inapplicable before its body runs; a pair no obligation wants is never
+  put in a generated row, and the gate leaves it out as it leaves out an exclusion. A condition only the shape
+  instance decides at run time stays in the check's body as `c.Inapplicable(cite)`.
 - `refused` drops a value the framework itself refuses on its own, so no row wastes its pairs on it.
   `shape.refused-kind` holds the declarations the generators refuse; only the generation surface takes
   it, where the refusal is the claim. Each value is a declaration and the id the Generators README's

@@ -356,7 +356,8 @@ internal static class Replay
 
     /// <summary>
     /// Copies the corpus into the worktree's probe directory: tracked, overlaid by the branch's unpublished staging; rows
-    /// unpacked, one file per probe, and a rows file the corpus no longer has removed.
+    /// unpacked, one file per probe, and a rows file the corpus no longer has removed; and the claims as claims.json,
+    /// whose declarations of where an obligation does not apply the harness reads.
     /// </summary>
     internal static string Overlay(Ledger ledger, JsonObject config, string worktree)
     {
@@ -373,7 +374,7 @@ internal static class Replay
                 foreach (var f in Directory.EnumerateFiles(Path.Combine(source, "rows")).Where(f => f.EndsWith(".json", StringComparison.Ordinal) || f.EndsWith(".json.gz", StringComparison.Ordinal)))
                     rows[Path.GetFileName(f).Replace(".gz", "", StringComparison.Ordinal)] = f;
         }
-        foreach (var existing in Directory.EnumerateFiles(probeDir)) if (!wanted.ContainsKey(Path.GetFileName(existing))) File.Delete(existing);
+        foreach (var existing in Directory.EnumerateFiles(probeDir)) if (!wanted.ContainsKey(Path.GetFileName(existing)) && Path.GetFileName(existing) != "claims.json") File.Delete(existing);
         foreach (var existing in Directory.EnumerateFiles(Path.Combine(probeDir, "rows"))) if (!rows.ContainsKey(Path.GetFileName(existing))) File.Delete(existing);
         foreach (var (name, src) in wanted)
         {
@@ -386,6 +387,11 @@ internal static class Replay
             var dst = Path.Combine(probeDir, "rows", name);
             if (!File.Exists(dst) || !File.ReadAllBytes(dst).AsSpan().SequenceEqual(data)) File.WriteAllBytes(dst, data);
         }
+        // The claims beside the rows, the corpus's with the staging's over them: the harness's Rows.Claim reads each
+        // obligation's declarations from here, so Row.Check skips a check where its claim declares it inapplicable.
+        var claims = Path.Combine(probeDir, "claims.json");
+        var text = new JsonArray([.. ledger.Claims().Select(c => (JsonNode)c)]).ToJsonString();
+        if (!File.Exists(claims) || File.ReadAllText(claims) != text) File.WriteAllText(claims, text);
         return probeDir;
     }
 
