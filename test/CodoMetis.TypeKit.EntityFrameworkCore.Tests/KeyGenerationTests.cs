@@ -264,6 +264,28 @@ public sealed class KeyGenerationTests : IDisposable
         valueObjectKey.ValueGenerated.ShouldBe(ValueGenerated.Never, $"{dependentByValueObject.Name} on {provider}");
     }
 
+    /// <summary>
+    /// A compiled model (<c>dotnet ef dbcontext optimize</c>) can name only a value generator factory's type,
+    /// never a delegate: the factory a Guid key generated on add gets is written out, and makes the provider's
+    /// version 7 Guids from it. No database is opened: Npgsql generates these at <c>Add</c>.
+    /// </summary>
+    [Fact]
+    public void In_a_compiled_model_a_Guid_key_generated_on_add_gets_the_provider_s_generator()
+    {
+        DbContextOptionsBuilder<CompiledGeneratedKeysDb> Options() => new DbContextOptionsBuilder<CompiledGeneratedKeysDb>().UseNpgsql("Host=localhost;Database=none").UseTypeKit();
+
+        using var design = new CompiledGeneratedKeysDb(Options().Options);
+        var compiled = DesignTime.CompiledModel(design);
+        using var db = new CompiledGeneratedKeysDb(Options().UseModel(compiled).Options);
+
+        db.Model.ShouldBeSameAs(compiled);
+        compiled.FindEntityType(typeof(GeneratedByWrapsGuid))!.FindProperty("Id")!.GetValueGeneratorFactory().ShouldNotBeNull();
+        GeneratedByWrapsGuid[] guids = [new(), new()];
+        db.AddRange(guids);
+
+        guids.Select(e => e.Id.Value.Version).ShouldBe([7, 7]);
+    }
+
     public void Dispose() => _connection.Dispose();
 
     private HierarchyKeysDb Create(string provider) => new(Options<HierarchyKeysDb>(provider));
@@ -556,6 +578,32 @@ public sealed class PostgreSqlIntegerKeysDb(DbContextOptions<PostgreSqlIntegerKe
         modelBuilder.Entity<KeyedByUInt32>();
     }
 }
+
+/// <summary>Keys over a Guid and a string configured generated on add, each beside the plain type's.</summary>
+public sealed class PostgreSqlGeneratedKeysDb(DbContextOptions<PostgreSqlGeneratedKeysDb> options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<GeneratedByGuid>().Property(e => e.Id).ValueGeneratedOnAdd();
+        modelBuilder.Entity<GeneratedByWrapsGuid>().Property(e => e.Id).ValueGeneratedOnAdd();
+        modelBuilder.Entity<GeneratedByString>().Property(e => e.Id).ValueGeneratedOnAdd();
+        modelBuilder.Entity<GeneratedByWrapsString>().Property(e => e.Id).ValueGeneratedOnAdd();
+    }
+}
+
+/// <summary>The Guid half of <see cref="PostgreSqlGeneratedKeysDb"/>, for a compiled model.</summary>
+public sealed class CompiledGeneratedKeysDb(DbContextOptions<CompiledGeneratedKeysDb> options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder) => modelBuilder.Entity<GeneratedByWrapsGuid>().Property(e => e.Id).ValueGeneratedOnAdd();
+}
+
+public class GeneratedByGuid { public Guid Id { get; set; } }
+
+public class GeneratedByWrapsGuid { public Variants.WrapsGuid Id { get; set; } }
+
+public class GeneratedByString { public string Id { get; set; } = null!; }
+
+public class GeneratedByWrapsString { public Variants.WrapsString Id { get; set; } }
 
 public class SharedKeyPrincipal { public ShipmentNo Id { get; set; } }
 

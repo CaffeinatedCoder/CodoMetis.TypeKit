@@ -172,6 +172,31 @@ public sealed class PostgreSqlRoundTripTests(PostgreSqlRoundTripTests.Database d
         vehicles.Select(vehicle => vehicle.Id.Value).ShouldBe([1L, 2L, 3L], ignoreOrder: true);
     }
 
+    /// <summary>
+    /// A key over a Guid or a string configured <c>ValueGeneratedOnAdd()</c> gets a version 7 Guid from Npgsql, as
+    /// the plain key does, and is stored and read back as generated. Npgsql chooses the generator by the
+    /// property's CLR type, which gave the value object EF's random version 4 Guid.
+    /// </summary>
+    [Fact]
+    public async Task A_key_generated_on_add_gets_a_version_7_Guid_as_the_plain_key_does()
+    {
+        var cancellation = TestContext.Current.CancellationToken;
+
+        await using (var db = new PostgreSqlGeneratedKeysDb(database.Options<PostgreSqlGeneratedKeysDb>("typekit_generated_keys")))
+        {
+            await db.Database.EnsureCreatedAsync(cancellation);
+            db.AddRange(new GeneratedByGuid(), new GeneratedByGuid(), new GeneratedByWrapsGuid(), new GeneratedByWrapsGuid(),
+                        new GeneratedByString(), new GeneratedByString(), new GeneratedByWrapsString(), new GeneratedByWrapsString());
+            await db.SaveChangesAsync(cancellation);
+        }
+
+        await using var read = new PostgreSqlGeneratedKeysDb(database.Options<PostgreSqlGeneratedKeysDb>("typekit_generated_keys"));
+        (await read.Set<GeneratedByGuid>().Select(e => e.Id).ToListAsync(cancellation)).Select(id => id.Version).ShouldBe([7, 7]);
+        (await read.Set<GeneratedByWrapsGuid>().Select(e => e.Id).ToListAsync(cancellation)).Select(id => id.Value.Version).ShouldBe([7, 7]);
+        (await read.Set<GeneratedByString>().Select(e => e.Id).ToListAsync(cancellation)).Select(id => Guid.Parse(id).Version).ShouldBe([7, 7]);
+        (await read.Set<GeneratedByWrapsString>().Select(e => e.Id).ToListAsync(cancellation)).Select(id => Guid.Parse(id.Value).Version).ShouldBe([7, 7]);
+    }
+
     /// <summary>One PostgreSQL container and one schema for the class.</summary>
     public sealed class Database : IAsyncLifetime
     {

@@ -115,3 +115,40 @@ internal sealed class ValueObjectTpcKeyValueGenerationConvention : IModelFinaliz
         }
     }
 }
+
+/// <summary>
+/// A value object over a <see cref="Guid"/> or a <see cref="string"/> that EF generates on add gets its values
+/// from the generator the provider gives a property of that type (<see cref="WrappedTypeValueGeneratorFactory"/>).
+/// </summary>
+/// <remarks>
+/// <para>
+/// PostgreSQL's and SQL Server's providers choose a generated property's generator by its CLR type
+/// (<c>FindForType</c> of <c>NpgsqlValueGeneratorSelector</c> and <c>SqlServerValueGeneratorSelector</c>), and
+/// for any other type fall back to EF's, through the column's converter. So <c>ValueGeneratedOnAdd()</c> on a key
+/// over a <see cref="Guid"/> gave the value object a random version 4 Guid where the plain key gets a version 7
+/// one on PostgreSQL and one sequential in SQL Server's order, and a key over a <see cref="string"/> a random
+/// Guid's text where PostgreSQL gives the plain key a version 7 one. The other wrapped types' generators are
+/// chosen through the converter's provider type, a sequence's (HiLo) included, as for the plain type.
+/// </para>
+/// <para>
+/// A property with a default or computed SQL value is left alone: both keys then get EF's temporary value,
+/// which the database replaces. It sets the convention's value only, so a generator or a factory configured
+/// on the property still wins.
+/// </para>
+/// </remarks>
+internal sealed class ValueObjectValueGeneratorConvention : IModelFinalizingConvention
+{
+    public void ProcessModelFinalizing(IConventionModelBuilder modelBuilder, IConventionContext<IConventionModelBuilder> context)
+    {
+        foreach (var entityType in modelBuilder.Metadata.GetEntityTypes())
+        foreach (var property in entityType.GetDeclaredProperties())
+        {
+            if (property.ValueGenerated == ValueGenerated.Never || property.GetValueGeneratorFactory() is not null) continue;
+            if (property.GetDefaultValueSql() is not null || property.GetComputedColumnSql() is not null) continue;
+
+            if (ValueObjectTypes.Describe(Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType) is { WrappedType: var wrapped }
+             && WrappedTypeValueGenerator.Generates(wrapped))
+                property.Builder.HasValueGeneratorFactory(typeof(WrappedTypeValueGeneratorFactory));
+        }
+    }
+}

@@ -104,8 +104,9 @@ column's type, not by the underlying type:
 
 A key over a `Guid` is yours to assign, `Id = OrderId.New()` (a version 7 Guid, which sorts by
 creation time), and EF inserts it as given. To have EF generate it instead, configure
-`ValueGeneratedOnAdd()` on the property. EF then also treats an entity whose key is already set,
-reached through a navigation, as an existing one.
+`ValueGeneratedOnAdd()` on the property. It's then generated as a plain `Guid` key is: a version 7
+Guid on PostgreSQL, one that's sequential in SQL Server's order on SQL Server. EF then also treats
+an entity whose key is already set, reached through a navigation, as an existing one.
 
 The root of an inheritance hierarchy follows the same rules under TPH and TPT. Under TPC, as for an
 `int` key, the key is generated only where the provider numbers the whole hierarchy from a sequence
