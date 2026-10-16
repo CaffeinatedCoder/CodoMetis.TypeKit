@@ -494,7 +494,35 @@
         "with-detail",
         "with-rule"
       ]
-    }
+    },
+    "obligations": [
+      {
+        "id": "each-error-own-set",
+        "sentence": "Each error is answered as its own set maps it."
+      },
+      {
+        "id": "detail-and-rule-intact",
+        "sentence": "`Fault<AccountFault, EditFault>` (from CodoMetis.TypeKit) holds one error of either set, with its detail and rule intact.",
+        "axes": {
+          "error": [
+            "with-detail",
+            "with-rule"
+          ]
+        }
+      },
+      {
+        "id": "statuses-ascending",
+        "sentence": "So its operation lists the statuses of both sets, in ascending order, with the problem types of both where they share a status."
+      },
+      {
+        "id": "shared-status-types",
+        "sentence": "So its operation lists the statuses of both sets, in ascending order, with the problem types of both where they share a status."
+      },
+      {
+        "id": "unmapped-set-stops-start",
+        "sentence": "The host doesn't start while either set is unmapped."
+      }
+    ]
   },
   {
     "id": "C04-without-faults",

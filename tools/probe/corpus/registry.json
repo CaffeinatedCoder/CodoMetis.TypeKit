@@ -61,10 +61,33 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C03-composed-faults.patch",
-        "defect": "A composed fault's operation lists its statuses in descending order."
-      }
+      "seeds": [
+        {
+          "obligation": "each-error-own-set",
+          "patch": "seeds/C03-each-error-own-set.patch",
+          "defect": "A composed fault's problem drops the problem type its own set's mapping gives it."
+        },
+        {
+          "obligation": "detail-and-rule-intact",
+          "patch": "seeds/C03-detail-and-rule-intact.patch",
+          "defect": "A composed fault's problem drops the occurrence's detail."
+        },
+        {
+          "obligation": "statuses-ascending",
+          "patch": "seeds/C03-composed-faults.patch",
+          "defect": "A composed fault's operation lists its statuses in descending order."
+        },
+        {
+          "obligation": "shared-status-types",
+          "patch": "seeds/C03-shared-status-types.patch",
+          "defect": "A status two fault sets share names only the problem types of the first set the endpoint answers with."
+        },
+        {
+          "obligation": "unmapped-set-stops-start",
+          "patch": "seeds/C03-unmapped-set-stops-start.patch",
+          "defect": "The startup check skips an unmapped fault type on an endpoint that answers with several, so the host starts."
+        }
+      ]
     },
     "C04WithoutFaultsProbe": {
       "claim": "C04-without-faults",
