@@ -401,7 +401,21 @@
         "no",
         "yes"
       ]
-    }
+    },
+    "exclude": [
+      [
+        "or.operation=Result.Catch",
+        "or.shape=Option"
+      ],
+      [
+        "or.operation=FirstOrNone",
+        "or.shape=Result-E"
+      ],
+      [
+        "or.operation=query-syntax",
+        "or.shape=Result-E"
+      ]
+    ]
   },
   {
     "id": "E01-column-parity",
@@ -967,7 +981,10 @@
     "surfaces": [
       "text",
       "json"
-    ]
+    ],
+    "narrow": {
+      "input.json": "The generated `TryFrom`, `FromKnownGood`, JSON converter, parsing and type converter all run it, and each reports the fault you return from `Create`"
+    }
   },
   {
     "id": "L04-round-trip",

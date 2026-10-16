@@ -50,12 +50,12 @@ public sealed class E03ColumnRoundTripProbe
         catch (Exception ex) { return new Side(null, [], ex); }
     }
 
-    static object? Plainify(object? o) => o is not null && o.GetType().Namespace is "Probes.Ef3" or "Probes.Ef" ? o.GetType().GetProperty("Value")!.GetValue(o) : o;
+    static object? Plainify(object? o) => o is not null && o.GetType().Namespace is "Probes.Ef3" or "Probes.Ef" or "Probes.Ef4" ? o.GetType().GetProperty("Value")!.GetValue(o) : o;
 
     static async Task<string?> Check(Probes.Shapes.Row r)
     {
         var w = r["shape.wrapped"]; var kind = r["shape.kind"]; var mapping = r["ef.mapping"];
-        var e = Probes.Ef3.E3.Find(kind, w);
+        var e = Probes.Ef3.E4.At(r, kind, w, r["shape.site"]);
         var original = e.Valid();
         var voSide = await Run(mapping, EfModel.Entity(mapping, e.Vo), () => e.MakeVo(original), vo: true);
         var plainSide = await Run(mapping, EfModel.Entity(mapping, e.Plain), () => original, vo: false);

@@ -505,6 +505,9 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
     }
   },
   "refused": {
+    "shape.site": {
+      "in-generic-type": "CMTK1005: the generators refuse a value object nested in a generic type at build (Generators README, Build errors)"
+    },
     "json.ReadCommentHandling": {
       "Allow": "System.Text.Json refuses it on the options object"
     },

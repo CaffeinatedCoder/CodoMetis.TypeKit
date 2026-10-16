@@ -205,7 +205,17 @@ public static class JsonParity
         var preserveOwn = r.Get("json.ReferenceHandler") == "Preserve";
         if (ownVo)
         {
-            if (ev is not null && ep is null) return $"own VO converter row: VO serialization threw {ev.GetType().Name}: {ev.Message}";
+            if (ev is not null && ep is null)
+            {
+                // The application's converter sits on the value object's side only. Its baseline is a converter the application
+                // registers for the wrapped type at the same position: where that throws alike, System.Text.Json refuses any
+                // custom converter there (MaxDepth counts its value one level deeper, design note D1), not the value object.
+                var oOwn = new JsonSerializerOptions(oPlain);
+                oOwn.Converters.Insert(0, (System.Text.Json.Serialization.JsonConverter)Activator.CreateInstance(typeof(OwnWrappedConverter<>).MakeGenericType(Make.Held(e.Plain)), JsonRow.Inner(e))!);
+                var (_, eo) = Ser(hp, oOwn);
+                if (eo is not null && eo.GetType() == ev.GetType()) { r.Note("own-converter-refused-for-wrapped-too", eo.GetType().Name); return null; }
+                return $"own VO converter row: VO serialization threw {ev.GetType().Name}: {ev.Message}";
+            }
             r.Note("own-vo");
             if (jv is not null)
             {
