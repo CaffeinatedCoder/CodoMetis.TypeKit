@@ -51,7 +51,7 @@ public sealed class E08OptionResultNotColumnsProbe
         }
         catch (InvalidOperationException ex)
         {
-            r.Note("msg:" + ex.Message.Split('\n')[0]); var friendly = t.Name.Split('`')[0] + "<"; return ex.Message.Contains(friendly) ? null : $"model build failed but the message does not name the type: {ex.Message.Split('\n')[0]}";
+            r.Note("refusal-names-the-type", ex.Message.Split('\n')[0]); var friendly = t.Name.Split('`')[0] + "<"; return ex.Message.Contains(friendly) ? null : $"model build failed but the message does not name the type: {ex.Message.Split('\n')[0]}";
         }
         catch (Exception ex) { return $"model build threw {ex.GetType().Name}, not InvalidOperationException: {ex.Message.Split('\n')[0]}"; }
         return $"the model with {t.Name} as {pos} built and created the table";

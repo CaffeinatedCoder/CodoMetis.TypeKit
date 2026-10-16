@@ -89,6 +89,9 @@ public static class NoteKeys
         ["documented-char-guid-key-never-generated-checked"] = "pass", ["documented-char-guid-not-generated-checked"] = "pass",
         ["schema:compared-with-nullable-wrapped"] = "pass", ["schema:nullable-spellings-normalised"] = "pass",
         ["schema:class-vo-nullability-normalised"] = "pass", ["schema:neither-side-documented"] = "pass",
+        // EF: the claim's check ran, against the documented expectation where the wrapped type's own side cannot answer
+        ["refusal-names-the-type"] = "pass", ["documented-char-guid-default-generation-normalized"] = "pass",
+        ["plain-key-throws-on-sqlite-vo-checked-against-expected"] = "pass", ["tpc-sqlite-no-sequence-assign-checked"] = "pass",
         // the document part has nothing to check: ASP.NET alone refuses the same document in the same row, or
         // leaves the controller out of it (docs/aspnet-core.md, "Bind value objects in MVC"), checked absent
         ["doc:refused-by-aspnet-alone"] = "pass", ["doc:controller-not-in-api-explorer"] = "pass",

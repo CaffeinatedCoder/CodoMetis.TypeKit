@@ -112,7 +112,7 @@ public sealed class C20ShouldHoldProbe
                     case "Sequence-Transpose": re = new[] { re }.Sequence(); break;
                     case "Result.Catch": re = Result.Catch((Action)(() => throw new InvalidOperationException())).MapError(_ => fault); break;
                     case "after-await-elsewhere": await Task.Yield(); re = await Task.Run(() => re).ConfigureAwait(false); break;
-                    default: r.Note("op-NA:" + op + " on Result-E"); return null;
+                    default: r.Note("entry-not-applicable", op + " on Result-E"); return null;
                 }
                 return re.ShouldBeError();
             }
@@ -127,7 +127,7 @@ public sealed class C20ShouldHoldProbe
                     case "FirstOrNone": opt = new[] { fault }.FirstOrNone(); break;
                     case "Sequence-Transpose": { var back = Option.Some<Result<int, TC>>(Result.Error(fault)).Transpose().ShouldBeError(); opt = Option.Some(back); break; }
                     case "after-await-elsewhere": await Task.Yield(); opt = await Task.Run(() => opt).ConfigureAwait(false); break;
-                    default: r.Note("op-NA:" + op + " on Option"); return null;
+                    default: r.Note("entry-not-applicable", op + " on Option"); return null;
                 }
                 return opt.ShouldBeSome();
             }
