@@ -4312,6 +4312,28 @@
         "controller-without-ApiController-visible"
       ]
     },
+    "obligations": [
+      {
+        "id": "doc-required-where-rejected",
+        "sentence": "So the document never calls a field optional when the endpoint rejects a request without it.",
+        "axes": {
+          "declared": [
+            "ctor-parameter"
+          ],
+          "json.RespectRequiredConstructorParameters": [
+            "true"
+          ]
+        }
+      },
+      {
+        "id": "doc-optional-where-absent",
+        "sentence": "`AddTypeKit()` leaves a patch out of `required` where the serializer lets it be absent, and keeps it there where the options reject a body without it."
+      },
+      {
+        "id": "absent-is-default",
+        "sentence": "a property the request leaves out keeps its default, which is `Absent`."
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",

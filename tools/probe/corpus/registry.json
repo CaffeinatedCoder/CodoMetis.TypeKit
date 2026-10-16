@@ -364,10 +364,23 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C13-patch-required.patch",
-        "defect": "Every patch is taken out of required, also a constructor parameter that RespectRequiredConstructorParameters makes the serializer require."
-      }
+      "seeds": [
+        {
+          "obligation": "doc-required-where-rejected",
+          "patch": "seeds/C13-patch-required.patch",
+          "defect": "Every patch is taken out of required, also a constructor parameter that RespectRequiredConstructorParameters makes the serializer require."
+        },
+        {
+          "obligation": "doc-optional-where-absent",
+          "patch": "seeds/C13-doc-optional-where-absent.patch",
+          "defect": "Every patch is listed in required, also one the serializer lets a body leave out."
+        },
+        {
+          "obligation": "absent-is-default",
+          "patch": "seeds/C13-absent-is-default.patch",
+          "defect": "The default of a Patch<T>, what a field the request leaves out keeps, reads as Null instead of Absent."
+        }
+      ]
     },
     "C14DeclaredProblemProbe": {
       "claim": "C14-declared-problem",
