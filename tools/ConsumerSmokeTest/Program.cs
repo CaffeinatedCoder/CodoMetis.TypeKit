@@ -60,6 +60,7 @@ namespace ConsumerSmokeTest
         private readonly DirectoryInfo _created = Directory.CreateTempSubdirectory("consumer-smoke-test-");
         private string Work => _created.FullName;
         private string _cwd = "";
+        private string _dotnet = "dotnet";
         private string _version = "";
         private bool _failed;
 
@@ -99,6 +100,18 @@ namespace ConsumerSmokeTest
             // deliberately sabotaged build that way.
             Environment.SetEnvironmentVariable("NUGET_PACKAGES", Path.Combine(Work, "packages"));
             _cwd = repoRoot;
+
+            // Every dotnet below, the consumers' too, is the one that satisfies global.json: the installer's when
+            // the one first on PATH cannot (Homebrew's on macOS), as the verdict tool does (design/adr/0105). Started
+            // by its full path: .NET looks for a bare `dotnet` beside the running host before it reads PATH.
+            var (dotnet, dotnetDirectory) = Dotnet.For(repoRoot);
+            _dotnet = dotnet;
+            if (dotnetDirectory is not null)
+            {
+                Environment.SetEnvironmentVariable("PATH", dotnetDirectory + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
+                Environment.SetEnvironmentVariable("DOTNET_ROOT", dotnetDirectory);
+                Console.WriteLine($"note: the dotnet on PATH cannot satisfy global.json; using {dotnet}");
+            }
 
             _version = Run("dotnet", "msbuild", Path.Combine(repoRoot, "src", "CodoMetis.TypeKit", "CodoMetis.TypeKit.csproj"), "-getProperty:Version").Trim();
 
@@ -529,7 +542,7 @@ namespace ConsumerSmokeTest
         // stdout and stderr together, in order of arrival, trailing newlines trimmed.
         private (int Code, string Output) Exec(string file, string[] arguments)
         {
-            var psi = new ProcessStartInfo(file) { RedirectStandardOutput = true, RedirectStandardError = true, WorkingDirectory = _cwd };
+            var psi = new ProcessStartInfo(file == "dotnet" ? _dotnet : file) { RedirectStandardOutput = true, RedirectStandardError = true, WorkingDirectory = _cwd };
             foreach (var a in arguments) psi.ArgumentList.Add(a);
             var text = new StringBuilder();
             var gate = new object();

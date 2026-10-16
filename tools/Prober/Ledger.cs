@@ -173,7 +173,8 @@ internal sealed class Ledger
             {
                 var why = FirstLine(ran.Stderr) is { Length: > 0 } err ? err : FirstLine(ran.Stdout);
                 throw new Refusal($"{shown} exited {ran.ExitCode}: {(why.Length > 0 ? why : "no output")}. A result is bound to what it prints, " +
-                                  "so none could be current; put the toolchain global.json asks for first on PATH");
+                                  "so none could be current; put the toolchain global.json asks for first on PATH, or install it where " +
+                                  $"the SDK installer puts it ({Dotnet.InstallerDirectory}), which `dotnet` falls back to");
             }
             var first = FirstLine(ran.Stdout.Trim().Length > 0 ? ran.Stdout : ran.Stderr);
             if (first.Length == 0) throw new Refusal($"{shown} printed nothing, so a result could be bound to no toolchain");

@@ -89,6 +89,44 @@ public sealed class ToolchainTests : IDisposable
         error.ShouldContain("the toolchain command sdk");
     }
 
+    /// <summary>
+    /// The case that was found next: Homebrew's dotnet first on PATH (10.0.401 against the 10.0.402 pin) made every
+    /// `dotnet` the prober starts fail, though the SDK installer's had the pinned SDK. Here the dotnet that runs the
+    /// built prober has no SDK the pin accepts, and a stub in the installer's place (TOOLS_DOTNET_FALLBACK_DIR) answers:
+    /// the prober falls back to it, records the pass under what it prints, and keeps the pass current.
+    /// </summary>
+    [Fact]
+    public void A_dotnet_without_the_pinned_sdk_falls_back_to_the_installers()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "the stub installer is a shell script");
+        Toolchain("dotnet", "--version");
+        fx.Write("global.json", """{"sdk": {"version": "0.0.1", "rollForward": "disable"}}""");
+        fx.Commit("a pin no dotnet here has");
+        fx.Footprint();
+        var evidence = fx.Evidence([R("1", "1"), R("2", "2")]);
+
+        var installer = Directory.CreateTempSubdirectory("prober-installer-").FullName;
+        try
+        {
+            var stub = Path.Combine(installer, "dotnet");
+            File.WriteAllText(stub, "#!/bin/sh\necho 0.0.1\n");
+            if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(stub, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            using var sandbox = new ToolSandbox("Prober", "prober");
+            var environment = new Dictionary<string, string?> { ["TOOLS_DOTNET_FALLBACK_DIR"] = installer };
+            (int, string, string) Prober(params string[] arguments) => ToolSandbox.RunProcess("dotnet", [sandbox.Dll, .. arguments], fx.Root, environment);
+
+            var (recorded, _, why) = Prober("record-run", "--probe", "P", "--result", "pass", "--evidence", evidence);
+            recorded.ShouldBe(0, why);
+            var (exit, output, error) = Prober("status", "--json");
+            exit.ShouldBe(0, error);
+            ((int)JsonNode.Parse(output)!["claims"]!["C1"]!["current"]!.GetValue<double>()).ShouldBe(2, "the pass, recorded under the fallback, is current");
+        }
+        finally
+        {
+            Directory.Delete(installer, recursive: true);
+        }
+    }
+
     [Fact]
     public void A_toolchain_that_names_itself_keeps_the_result_current()
     {

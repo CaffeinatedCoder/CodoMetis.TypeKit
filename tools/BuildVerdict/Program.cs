@@ -341,9 +341,7 @@ static class Verdict
         var (code, output) = Capture(dotnet, ["--version"]);
         File.WriteAllText(log, output);
         if (code == 0) return;
-        var fallbackDir = OperatingSystem.IsWindows()
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet")
-            : "/usr/local/share/dotnet";
+        var fallbackDir = Dotnet.InstallerDirectory;
         var fallback = Path.Combine(fallbackDir, OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet");
         if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("BUILD_VERDICT_DOTNET")) && File.Exists(fallback) &&
             Capture(fallback, ["--version"]).Code == 0)
