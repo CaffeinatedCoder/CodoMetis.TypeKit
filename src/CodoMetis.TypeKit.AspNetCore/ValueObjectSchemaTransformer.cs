@@ -69,6 +69,9 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
         // its oneOf, and a null then no longer matched them.
         if (NullableElements.TryGetValue(schema, out _)) return;
 
+        // A non-abstract polymorphic base's own branch, which ASP.NET hands to no transformer.
+        await PolymorphicBaseBranch.WalkAsync(schema, context, this, cancellationToken);
+
         var info = context.JsonTypeInfo;
 
         if (ValueObjectTypes.WrappedType(info.Type) is { } wrapped)
@@ -152,29 +155,29 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
         // An element of a parameter outside the body binds through TryParse, as the parameter does: asked for as the
         // parameter's element, it is described as such and written inline where that is not its JSON (decision 106).
         if (ParameterOutsideTheBody(context) is { } parameter && WrapsDescribed(element, context.JsonTypeInfo.Options))
-            return await context.GetOrCreateSchemaAsync(element, Detached(parameter), cancellationToken);
+            return await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, element, Detached(parameter), cancellationToken);
 
         var valueObject = Nullable.GetUnderlyingType(element);
-        if (valueObject is null) return await context.GetOrCreateSchemaAsync(element, parameterDescription: null, cancellationToken);
+        if (valueObject is null) return await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, element, parameterDescription: null, cancellationToken);
 
         var options = context.JsonTypeInfo.Options;
         if (SchemaReferenceId(options.GetTypeInfo(element), context) is null)
         {
             // Inlined over an inlined wrapped type, the nullable value object's own schema admits null (above).
             if (SchemaReferenceId(options.GetTypeInfo(ValueObjectTypes.WrappedType(valueObject)!), context) is null)
-                return await context.GetOrCreateSchemaAsync(element, parameterDescription: null, cancellationToken);
+                return await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, element, parameterDescription: null, cancellationToken);
 
             // Over the wrapped type's component, the content admits null as it does over an inlined wrapped type: a
             // null-or around it is what OpenAPI 2.0 writes as a bare x-nullable, without the type.
             var content = new OpenApiSchema();
-            content.FillFrom(await context.GetOrCreateSchemaAsync(valueObject, parameterDescription: null, cancellationToken));
+            content.FillFrom(await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, valueObject, parameterDescription: null, cancellationToken));
             AdmitNull(content, inType: true);
             NullableElements.AddOrUpdate(content, element);
 
             return content;
         }
 
-        var schema = await context.GetOrCreateSchemaAsync(valueObject, parameterDescription: null, cancellationToken);
+        var schema = await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, valueObject, parameterDescription: null, cancellationToken);
 
         var valueObjectOrNull = new OpenApiSchema { OneOf = [new OpenApiSchema { Type = JsonSchemaType.Null }, schema] };
         NullableElements.AddOrUpdate(valueObjectOrNull, element);
@@ -338,7 +341,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
         Describing.Value = describing.Push(self);
         try
         {
-            var wrappedSchema = await context.GetOrCreateSchemaAsync(wrapped, parameter, cancellationToken);
+            var wrappedSchema = await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, wrapped, parameter, cancellationToken);
 
             if (position == NullablePosition.None)
             {

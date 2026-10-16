@@ -53,6 +53,15 @@ position, and the change lands in the hoisted component.
   makes and a `Nullable<T>` before `T`. A described converter one property names for a type with a
   reference id fails the document as well, and so does one registered for the `Nullable<T>` of such a type
   alone: the component is written once, for every position.
+- **A non-abstract polymorphic base** is serialized as itself too, and its schema is an `anyOf` of each derived
+  type's branch and, last, the base's own (`x-schema-id` `Base`, the component `{Base}Base`). ASP.NET hands the
+  branches to the transformers by `PolymorphismOptions.DerivedTypes`, one per index, and never the base's own
+  (measured with 10.0, and read in `InnerApplySchemaTransformersAsync`), so its value objects, patches, closed sets
+  and described types were `{}` and its lists lost their `items`. Each transformer walks that branch from the
+  polymorphic schema, in ASP.NET's order (`PolymorphicBaseBranch`). A transformer context cannot be pointed at
+  another type from outside, so each visit gets one of its own, and a schema it asks for is asked of the context
+  ASP.NET made, which alone holds the document's transformers. 2.0 leaves the base's branch out of the root's
+  `allOf`, for any base: ASP.NET's own.
 - **A value object that reaches itself** through what it wraps is an `InvalidOperationException`
   naming the chain, not a stack overflow.
 - **Source-generated JSON** ([Native AOT](native-aot.md)): ASP.NET builds the wrapped type's schema from the host's JSON

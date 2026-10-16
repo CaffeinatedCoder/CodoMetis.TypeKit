@@ -48,6 +48,9 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
 
     public async Task TransformAsync(OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
     {
+        // A non-abstract polymorphic base's own branch, which ASP.NET hands to no transformer.
+        await PolymorphicBaseBranch.WalkAsync(schema, context, this, cancellationToken);
+
         var info = context.JsonTypeInfo;
         var options = info.Options;
 
@@ -67,9 +70,9 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
             if (Description(item, options, property: null) is null) return;
 
             if (info.Kind == JsonTypeInfoKind.Enumerable && schema.Items is null)
-                schema.Items = await context.GetOrCreateSchemaAsync(item, ValueObjectSchemaTransformer.Detached(parameter), cancellationToken);
+                schema.Items = await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, item, ValueObjectSchemaTransformer.Detached(parameter), cancellationToken);
             else if (info.Kind == JsonTypeInfoKind.Dictionary && schema.AdditionalProperties is null)
-                schema.AdditionalProperties = await context.GetOrCreateSchemaAsync(item, ValueObjectSchemaTransformer.Detached(parameter), cancellationToken);
+                schema.AdditionalProperties = await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, item, ValueObjectSchemaTransformer.Detached(parameter), cancellationToken);
 
             return;
         }
@@ -190,7 +193,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
         SameAsPath.Value = path.Push(sameAs);
         try
         {
-            var other = await context.GetOrCreateSchemaAsync(sameAs, parameterDescription: null, cancellationToken);
+            var other = await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, sameAs, parameterDescription: null, cancellationToken);
             var copy = new OpenApiSchema();
             copy.FillFrom(other is OpenApiSchema concrete ? concrete : new OpenApiSchema());
             return copy;
