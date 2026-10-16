@@ -14,9 +14,9 @@ public enum C20WEnum { One, Two }
 public sealed record C20Own(int N);
 public sealed class C20ShouldHoldProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("C20-testing-shouldhold");
+    public static TheoryData<string, int> Data() => Rows.Data("C20ShouldHoldProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, Check);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, Check);
 
     static Task<string?> Check(Row r) => r["shape.wrapped"] switch
     {

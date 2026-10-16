@@ -6,8 +6,7 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class L05EqualityProbe
 {
-    const string Claim = "L05-equality";
-    public static TheoryData<string, int> Data() => Rows.Data(Claim);
+    public static TheoryData<string, int> Data() => Rows.Data("L05EqualityProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, r => Task.FromResult(Equality.Check(r)));
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, r => Task.FromResult(Equality.Check(r)));
 }

@@ -4,7 +4,7 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class C08SameNameWarningProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("C08-same-name-warning");
+    public static TheoryData<string, int> Data() => Rows.Data("C08SameNameWarningProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, SchemaChecks.C08);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, SchemaChecks.C08);
 }

@@ -9,9 +9,9 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class E02ValueTranslatesProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("E02-value-translates-to-column");
+    public static TheoryData<string, int> Data() => Rows.Data("E02ValueTranslatesProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, Check);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, Check);
 
     static MethodInfo? Unwrap(Type vo, string name) =>
         vo.GetMethods(BindingFlags.Public | BindingFlags.Static).FirstOrDefault(m => m.Name == name && m.GetParameters().Length == 1);

@@ -17,9 +17,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Probes;
 public sealed class C07BlanketMappingProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("C07-fault-responses-blanket");
+    public static TheoryData<string, int> Data() => Rows.Data("C07BlanketMappingProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run("C07", idx, r => FaultClaim.Run(r, Spec(r)), claim);
+    public Task Row(string probe, int idx) => Rec.Run("C07", idx, r => FaultClaim.Run(r, Spec(r)), probe);
 
     /// <summary>HFault mapped on its own (set=own-mapped-set): a status and a problem type of its own per member.</summary>
     static readonly Dictionary<string, int> Own = new() { ["Missing"] = 410, ["Clash"] = 409, ["Bad"] = 422, ["Denied"] = 451, ["Down"] = 503, ["Stale"] = 428, ["Garbled"] = 400 };

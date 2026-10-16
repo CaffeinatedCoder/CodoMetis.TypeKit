@@ -1,5 +1,6 @@
-// Row plumbing shared by every probe: rows come from `prober rows --claim X` (JSON, copied to Probes/rows/X.json);
-// each probe records one line per row to $PROBE_OUT/<claim>.jsonl (idx, category, applied settings, reasons, findings, note), which the replay reads.
+// Row plumbing shared by every probe: each probe's rows are its own file, written by `prober rows --probe P` (the corpus's
+// rows/P.json.gz, unpacked by the replay to Probes/rows/P.json); each probe records one line per row to $PROBE_OUT/<label>.jsonl
+// (idx, category, applied settings, reasons, findings, note), which the replay reads.
 using System.Text.Json;
 using System.Text.Json.Nodes;
 namespace Probes.Shapes;
@@ -179,47 +180,50 @@ public static class Rows
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "CodoMetis.TypeKit.Samples.csproj"))) dir = dir.Parent;
         return dir!.FullName;
     }
-    public static IEnumerable<Row> Load(string claim)
+    /// <summary>The rows of one probe, from its own file (rows/<paramref name="probe"/>.json); a sibling probe of the claim reads its own.</summary>
+    public static IEnumerable<Row> Load(string probe)
     {
-        var doc = JsonNode.Parse(File.ReadAllText(Path.Combine(Root(), "Probes", "rows", claim + ".json")))!;
+        var path = Path.Combine(Root(), "Probes", "rows", probe + ".json");
+        if (!File.Exists(path)) throw new FileNotFoundException($"no rows file for the probe {probe}: {path}", path);
+        var doc = JsonNode.Parse(File.ReadAllText(path))!;
         var i = 0;
         foreach (var r in doc["rows"]!.AsArray())
             yield return new Row(i++, r!["row"]!.AsObject().ToDictionary(kv => kv.Key, kv => kv.Value!.GetValue<string>()));
     }
     /// <summary>
-    /// xunit MemberData: (claim, index), labelled with the row's settings so a test list or a failure names
-    /// them. Optional filter by env PROBE_ROWS="0-20" for quick runs.
+    /// xunit MemberData: (probe, index), the probe naming its rows file, labelled with the row's settings so a test list or a
+    /// failure names them. Optional filter by env PROBE_ROWS="0-20" for quick runs.
     /// </summary>
-    public static TheoryData<string, int> Data(string claim)
+    public static TheoryData<string, int> Data(string probe)
     {
         var d = new TheoryData<string, int>();
         var range = Environment.GetEnvironmentVariable("PROBE_ROWS");
         (int lo, int hi) = range is null ? (0, int.MaxValue) : (int.Parse(range.Split('-')[0]), int.Parse(range.Split('-')[1]));
         var only = Environment.GetEnvironmentVariable("PROBE_ONLY"); // "axis=value" keeps rows with that value
-        foreach (var r in Load(claim))
+        foreach (var r in Load(probe))
             if (r.Index >= lo && r.Index <= hi && (only is null || only.Split(',').All(c => c.Contains("!=") ? !r.Is(c.Split("!=")[0], c.Split("!=")[1]) : r.Is(c.Split('=')[0], c.Split('=')[1]))))
-                d.Add(new TheoryDataRow<string, int>(claim, r.Index) { Label = $"#{r.Index} {r}" });
+                d.Add(new TheoryDataRow<string, int>(probe, r.Index) { Label = $"#{r.Index} {r}" });
         return d;
     }
     static readonly Dictionary<string, List<Row>> Cache = new();
-    public static Row Get(string claim, int index)
+    public static Row Get(string probe, int index)
     {
-        lock (Cache) { if (!Cache.TryGetValue(claim, out var l)) Cache[claim] = l = Load(claim).ToList(); return l[index]; }
+        lock (Cache) { if (!Cache.TryGetValue(probe, out var l)) Cache[probe] = l = Load(probe).ToList(); return l[index]; }
     }
 }
 
 public static class Rec
 {
     static readonly object Gate = new();
-    /// <summary>One line per row to $PROBE_OUT/claim.jsonl: how it ended and the settings that ran.</summary>
-    public static void Write(string claim, int idx, string category, string note, Row? row = null)
+    /// <summary>One line per row to $PROBE_OUT/label.jsonl: how it ended and the settings that ran.</summary>
+    public static void Write(string label, int idx, string category, string note, Row? row = null)
     {
         var dir = Environment.GetEnvironmentVariable("PROBE_OUT") ?? "/tmp/probe-out";
         Directory.CreateDirectory(dir);
         var applied = row?.AppliedSettings() ?? new Dictionary<string, string>();
         var reasons = row is null ? [] : row.Ev.Reasons.ToArray();
         var findings = row is null ? [] : row.Ev.Findings.ToArray();
-        lock (Gate) File.AppendAllText(Path.Combine(dir, claim + ".jsonl"),
+        lock (Gate) File.AppendAllText(Path.Combine(dir, label + ".jsonl"),
             JsonSerializer.Serialize(new { idx, status = category == "pass" ? "pass" : "fail", category, completed = row is not null,
                                            applied, reasons, findings, note = note.Length > 600 ? note[..600] : note }) + "\n");
     }
@@ -228,12 +232,14 @@ public static class Rec
     /// An exception the check did not expect is a harness error until triaged, never a pass and never a
     /// violation: the row fails the test with the exception named, and no seed counts it caught. A violation or a
     /// harness error fails the test; any other outcome but a pass skips it with its reasons, so a test run
-    /// counts what earned nothing.
+    /// counts what earned nothing. <paramref name="label"/> names the row in a failure and its evidence file, and is the probe
+    /// whose rows file holds the row unless <paramref name="rowsOf"/> names it: a probe passes its theory's first argument,
+    /// the probe's own name, as one or the other.
     /// </summary>
-    public static Task Run(string claim, int idx, Func<Row, Task<string?>> check, string? rowsOf = null) => Run(claim, Rows.Get(rowsOf ?? claim, idx), check);
+    public static Task Run(string label, int idx, Func<Row, Task<string?>> check, string? rowsOf = null) => Run(label, Rows.Get(rowsOf ?? label, idx), check);
 
     /// <summary>The same for a row in hand, without a rows file: how the prober's tests run the harness.</summary>
-    public static async Task Run(string claim, Row cached, Func<Row, Task<string?>> check)
+    public static async Task Run(string label, Row cached, Func<Row, Task<string?>> check)
     {
         var idx = cached.Index;
         var row = new Row(cached.Index, cached.All.ToDictionary(kv => kv.Key, kv => kv.Value));
@@ -243,9 +249,9 @@ public static class Rec
         // An exception is the harness breaking, not the claim's check firing: a harness error and never a
         // violation, so a seeded defect that only makes a check throw is no catch (decision 103).
         if (fail is not null) row.Outcome("violation", fail);
-        Write(claim, idx, row.Ev.Category, fail ?? unexpected ?? row.Notes, row);
-        if (fail is not null) Assert.Fail($"[{claim} #{idx}] {row}\n{fail}");
-        if (row.Ev.Category == "harness-error") Assert.Fail($"[{claim} #{idx}] {row}\nharness error: {string.Join("; ", row.Ev.Reasons)}");
+        Write(label, idx, row.Ev.Category, fail ?? unexpected ?? row.Notes, row);
+        if (fail is not null) Assert.Fail($"[{label} #{idx}] {row}\n{fail}");
+        if (row.Ev.Category == "harness-error") Assert.Fail($"[{label} #{idx}] {row}\nharness error: {string.Join("; ", row.Ev.Reasons)}");
         if (row.Ev.Category != "pass") Assert.Skip($"{row.Ev.Category}: {string.Join("; ", row.Ev.Reasons.Where(x => !x.StartsWith("pass:")))}");
     }
 }

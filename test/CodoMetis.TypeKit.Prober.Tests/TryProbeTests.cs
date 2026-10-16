@@ -27,7 +27,7 @@ public sealed class TryProbeTests : IDisposable
             ["replay"] = new JsonObject { ["probeDir"] = "probes", ["include"] = new JsonArray("src") },
         }.ToJsonString() + "\n```\n");
         fx.Write("tools/probe/corpus/claims.json", """[{"id": "C1", "source": "README.md#a", "surfaces": ["s"]}, {"id": "C2", "source": "README.md#a", "surfaces": ["s"]}]""");
-        fx.Write("tools/probe/corpus/rows/C2.json", """{"claim": "C2", "rows": [{"row": {"x": "1", "y": "1"}}]}""");
+        fx.Write("tools/probe/corpus/rows/Q.json", """{"claim": "C2", "rows": [{"row": {"x": "1", "y": "1"}}]}""");
         fx.Write("tools/probe/corpus/harness/Q.cs", "// probe Q\n");
         Registry(new JsonObject { ["claim"] = "C1", ["filter"] = "*P" });
         fx.Rows([("1", "1"), ("2", "2"), ("1", "2")]);
@@ -210,14 +210,15 @@ public sealed class TryProbeTests : IDisposable
             var range = environment.GetValueOrDefault("PROBE_ROWS");
             Runs.Add((filter, only, range));
             coverageFile.ShouldBeEmpty("try asks for no coverage");
-            var claim = filter == "*P" ? "C1" : "C2";
-            var rows = JsonNode.Parse(File.ReadAllText(Path.Combine(worktree, "probes", "rows", claim + ".json")))!["rows"]!.AsArray();
+            // The probe's own rows: P's are C1's, Q's C2's.
+            var probe = filter.TrimStart('*');
+            var rows = JsonNode.Parse(File.ReadAllText(Path.Combine(worktree, "probes", "rows", probe + ".json")))!["rows"]!.AsArray();
             var (lo, hi) = range is null ? (0, int.MaxValue) : (int.Parse(range.Split('-')[0]), int.Parse(range.Split('-')[1]));
             var lines = new List<string>(); var failed = 0;
             for (var i = 0; i < rows.Count; i++)
             {
                 if (i < lo || i > hi || !global::Prober.Replay.Selected(Files.StringMap(rows[i]!["row"]), only ?? "")) continue;
-                var violates = claim == "C1" && i == Violates;
+                var violates = probe == "P" && i == Violates;
                 if (violates) failed++;
                 lines.Add(new JsonObject
                 {
@@ -227,7 +228,7 @@ public sealed class TryProbeTests : IDisposable
             }
             var outDir = environment["PROBE_OUT"]!;
             Directory.CreateDirectory(outDir);
-            File.WriteAllText(Path.Combine(outDir, claim + ".jsonl"), string.Join('\n', lines) + "\n");
+            File.WriteAllText(Path.Combine(outDir, probe + ".jsonl"), string.Join('\n', lines) + "\n");
             return failed > 0 ? new Ran(7, $"Tests: {failed} failed of {lines.Count}\n", "") : new Ran(0, $"Tests: {lines.Count} passed\n", "");
         }
 

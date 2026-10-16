@@ -29,12 +29,12 @@ public sealed partial record C18EquatableTwin : C18EquatableBase, CodoMetis.Type
 
 public sealed class C18Cmtk1023Probe
 {
-    const string Claim = "C18-cmtk1023";
+    const string RowsFile = "C18Cmtk1023Probe"; // the probe's own rows
 
-    public static TheoryData<string, int> Data() => Probes.Shapes.Rows.Data(Claim);
+    public static TheoryData<string, int> Data() => Probes.Shapes.Rows.Data(RowsFile);
 
     [Theory, MemberData(nameof(Data))]
-    public Task Probe(string claim, int idx) => Probes.Shapes.Rec.Run(claim, idx, Check);
+    public Task Probe(string probe, int idx) => Probes.Shapes.Rec.Run(probe, idx, Check);
 
     /// <summary>A row as it is declared: the excluded values it carries replaced by the nearest that exists, each named.</summary>
     sealed record Shape(string Kind, string Site, string Inheritance, string Wrapped, string Member, string Containing, string Position, List<(string Axis, string Value, string Why)> Substituted);
@@ -159,8 +159,8 @@ public sealed class C18Cmtk1023Probe
         return null;
     }
 
-    static Task<ConsumerOutcome> Built() => Consumer.Build(Claim, () =>
-        Probes.Shapes.Rows.Load(Claim).ToDictionary(row => $"R{row.Index}.cs", row => Source(Of(row), row.Index.ToString())));
+    static Task<ConsumerOutcome> Built() => Consumer.Build(RowsFile, () =>
+        Probes.Shapes.Rows.Load(RowsFile).ToDictionary(row => $"R{row.Index}.cs", row => Source(Of(row), row.Index.ToString())));
 
     static async Task<string?> Check(Probes.Shapes.Row r)
     {

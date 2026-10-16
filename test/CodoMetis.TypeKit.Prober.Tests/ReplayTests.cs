@@ -24,7 +24,7 @@ public sealed class ReplayTests : IDisposable
         fx.Write("tools/probe/corpus/claims.json", """[{"id": "C1", "source": "README.md#a", "surfaces": ["s"]}, {"id": "C2", "source": "README.md#a", "surfaces": ["t"]}]""");
         fx.Write("tools/probe/corpus/registry.json", """{"probes": {"P": {"claim": "C1", "filter": "*P"}, "Q": {"claim": "C2", "filter": "*Q"}}}""");
         fx.Write("tools/probe/corpus/harness/Q.cs", "// probe Q\n");
-        fx.Write("tools/probe/corpus/rows/C2.json", new JsonObject
+        fx.Write("tools/probe/corpus/rows/Q.json", new JsonObject
         {
             ["claim"] = "C2", ["rows"] = new JsonArray(new JsonObject { ["row"] = new JsonObject { ["x"] = "1", ["y"] = "1" } }),
         }.ToJsonString());
@@ -156,6 +156,16 @@ public sealed class ReplayTests : IDisposable
         adapter.CoverageAsked.Count.ShouldBe(2);
         Lines(null, "footprints.jsonl").ShouldBe(2);
         Ledger(null, "stale").Out.ShouldStartWith("0 of 2 probes to replay");
+    }
+
+    [Fact]
+    public void The_rows_a_probe_is_expected_to_run_are_those_of_its_own_rows_file()
+    {
+        Replay(null, "--all", "--no-footprint").Exit.ShouldBe(0);
+        List<int> Expected(string probe) =>
+            [.. JsonNode.Parse(File.ReadAllText(Path.Combine(BranchDir(null), "evidence", probe + ".json")))!["variants"]![0]!["expected"]!.AsArray().Select(i => i!.GetValue<int>())];
+        Expected("P").ShouldBe([0, 1], "rows/P.json holds two rows");
+        Expected("Q").ShouldBe([0], "rows/Q.json holds one");
     }
 
     [Fact]

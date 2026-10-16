@@ -6,9 +6,9 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class E12ConventionByTypeProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("E12-convention-by-vo-type");
+    public static TheoryData<string, int> Data() => Rows.Data("E12ConventionByTypeProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, Check);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, Check);
 
     static string PLine(EfDb2 db) => EfModel.Describe(db.Context).Split('\n').First(l => l.StartsWith("t.P: "));
 

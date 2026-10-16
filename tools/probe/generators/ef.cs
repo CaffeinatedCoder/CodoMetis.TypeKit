@@ -6,8 +6,8 @@
 //   nested     EfShapes4.g.cs  every kind at each nested site for each wrapped type the catalogue holds, and Reg4
 //
 //   dotnet run tools/probe/generators/ef.cs -- catalogue --out tools/probe/corpus/harness/EfShapes.g.cs \
-//       --rows tools/probe/corpus/rows/E01-column-parity.json.gz --first 90 \
-//       --rows tools/probe/corpus/rows/E02-value-translates-to-column.json.gz --first 108
+//       --rows tools/probe/corpus/rows/E01ColumnParityProbe.json.gz --first 90 \
+//       --rows tools/probe/corpus/rows/E02ValueTranslatesProbe.json.gz --first 108
 //
 // --rows names a rows file (gzipped JSON, written by `prober rows`); --first after it reads only its first n rows.
 // The catalogue is E01's and E02's first round of rows: the rows appended since run on the complete grids of

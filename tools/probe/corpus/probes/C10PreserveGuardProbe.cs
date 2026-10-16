@@ -6,8 +6,7 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class C10PreserveGuardProbe
 {
-    const string Claim = "C10-preserve-guard";
-    public static TheoryData<string, int> Data() => Rows.Data(Claim);
+    public static TheoryData<string, int> Data() => Rows.Data("C10PreserveGuardProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, r => Task.FromResult(PreserveGuard.Check(r)));
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, r => Task.FromResult(PreserveGuard.Check(r)));
 }

@@ -14,10 +14,10 @@ namespace Probes;
 
 public sealed class C17Cmtk0014Probe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("C17-cmtk0014");
+    public static TheoryData<string, int> Data() => Rows.Data("C17Cmtk0014Probe");
 
     [Theory, MemberData(nameof(Data))]
-    public Task Probe(string claim, int idx) => Rec.Run(claim, idx, Check);
+    public Task Probe(string probe, int idx) => Rec.Run(probe, idx, Check);
 
     sealed class Places(string value, string site)
     {

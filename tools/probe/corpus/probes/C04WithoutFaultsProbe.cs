@@ -13,9 +13,9 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class C04WithoutFaultsProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("C04-without-faults");
+    public static TheoryData<string, int> Data() => Rows.Data("C04WithoutFaultsProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run("C04", idx, r => FaultClaim.Run(r, Spec(r)), claim);
+    public Task Row(string probe, int idx) => Rec.Run("C04", idx, r => FaultClaim.Run(r, Spec(r)), probe);
 
     static readonly Decl Out = new("HFault", "Down", 0), Status = new("HFault", "Down", 507);
     public static Spec Spec(Probes.Shapes.Row r)

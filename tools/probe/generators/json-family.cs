@@ -7,10 +7,10 @@
 //                                    rows name, and L05Registry
 //
 //   dotnet run tools/probe/generators/json-family.cs -- contexts --out tools/probe/corpus/harness/JsonFamilyShapes.g.cs \
-//       --c01 tools/probe/corpus/rows/C01-decimal-spelling.json.gz --c10 tools/probe/corpus/rows/C10-preserve-guard.json.gz \
-//       --l06 tools/probe/corpus/rows/L06-off-the-wire.json.gz
+//       --c01 tools/probe/corpus/rows/C01DecimalSpellingProbe.json.gz --c10 tools/probe/corpus/rows/C10PreserveGuardProbe.json.gz \
+//       --l06 tools/probe/corpus/rows/L06OffTheWireProbe.json.gz
 //   dotnet run tools/probe/generators/json-family.cs -- l05 --out tools/probe/corpus/harness/L05Shapes.g.cs \
-//       --rows tools/probe/corpus/rows/L05-equality.json.gz
+//       --rows tools/probe/corpus/rows/L05EqualityProbe.json.gz
 //
 // A rows file is gzipped JSON, written by `prober rows`. GeneratedHarnessTests in the conventions tests holds each
 // file to this output.

@@ -4,7 +4,7 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class C13PatchRequiredProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("C13-patch-required");
+    public static TheoryData<string, int> Data() => Rows.Data("C13PatchRequiredProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, SchemaChecks.C13);
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, SchemaChecks.C13);
 }

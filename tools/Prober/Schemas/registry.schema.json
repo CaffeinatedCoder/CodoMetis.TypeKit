@@ -42,6 +42,14 @@
           "retired": {
             "type": "boolean"
           },
+          "watched": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Paths, files or directories relative to the repository root, that the probe's result depends on and its footprint cannot see: a variant catalogue under test/ compiled into the probes, a build input a child process reads. The replay records each with its object id in the probe's footprint line; a change to one stales the footprint (Ledger.FootprintCurrent, FootprintChangedSince), and the release gate counts a change to one as touching the probe's claim. Part of the probe's identity, as the whole entry but its seeds is."
+          },
           "seeds": {
             "type": "array",
             "description": "One seeded defect per obligation of the probe's claim that this probe checks (decision 104): each as `seed` below, naming the obligation it breaks. A probe may carry `seed` and `seeds` both. Empty in the entry `prober new` stages, until the writer registers each with `prober register --obligation O`, which replaces a seed naming O; `seeds` and Seeds.Problems refuse a probe with none. Not part of the probe's identity.",

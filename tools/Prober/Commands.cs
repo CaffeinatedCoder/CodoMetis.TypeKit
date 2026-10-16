@@ -42,8 +42,33 @@ internal static class Commands
 
     public static int Rows(Ledger l, Args a)
     {
-        l.Ctx.Out.WriteLine(CoveringRows(l, a.Need("claim"), a.Flag("full"), a.Get("max"), a.Get("seed")).ToJsonString(Pretty));
+        if (a.Get("probe") is not { Length: > 0 } probe)
+        {
+            l.Ctx.Out.WriteLine(CoveringRows(l, a.Need("claim"), a.Flag("full"), a.Get("max"), a.Get("seed")).ToJsonString(Pretty));
+            return 0;
+        }
+        if (!l.Registry().TryGetValue(probe, out var entry)) throw new Refusal($"no probe {probe} in the registry, tracked or staged; `prober new` stages one", 2);
+        var claimId = Files.Str(entry["claim"]);
+        if (a.Get("claim") is { Length: > 0 } named && named != claimId) throw new Refusal($"{probe} is a probe of {claimId}, not of {named}", 2);
+        var (rows, uncovered) = StageRows(l, probe, claimId, a.Flag("full"), a.Get("max"), a.Get("seed"));
+        l.Ctx.Out.WriteLine($"rows/{probe}.json: {rows} rows for claim {claimId} over its pairs{(a.Flag("full") ? "" : " its other probes have not covered")}" +
+                            $"{(uncovered > 0 ? $", {uncovered} left uncovered" : "")}; staged in {l.StagingDir}, the file written whole. " +
+                            "`prober publish` moves it into the corpus");
         return 0;
+    }
+
+    /// <summary>
+    /// Writes a probe's rows file in the staging, whole, never appended: a covering array over its claim's pairs (all of
+    /// them with <paramref name="full"/>) less those the claim's other probes have credited. The probe's own credit is
+    /// not subtracted, since it came from the rows this file replaces and ends with them. The stored rows are
+    /// definitions; the evidence is in the state.
+    /// </summary>
+    internal static (int Rows, int Uncovered) StageRows(Ledger l, string probe, string claimId, bool full, string? max = null, string? seed = null)
+    {
+        var covering = CoveringRows(l, claimId, full, max, seed, except: probe);
+        var rows = new JsonArray([.. (covering["rows"] as JsonArray ?? []).Select(r => (JsonNode)new JsonObject { ["row"] = r?["row"]?.DeepClone() })]);
+        Files.WriteJson(Path.Combine(l.StagingDir, "rows", probe + ".json"), new JsonObject { ["claim"] = claimId, ["rows"] = rows });
+        return (rows.Count, (int)Files.Num(covering["uncovered_after"]));
     }
 
     /// <summary>
@@ -51,7 +76,7 @@ internal static class Commands
     /// <paramref name="full"/>), each row with the pairs it covers. Inside a capped round the claim counts toward
     /// the round's cap, and past the deadline or the cap this refuses.
     /// </summary>
-    public static JsonObject CoveringRows(Ledger l, string claimId, bool full, string? max = null, string? seed = null)
+    public static JsonObject CoveringRows(Ledger l, string claimId, bool full, string? max = null, string? seed = null, string? except = null)
     {
         var universe = Universe.Load(l.P("universe.json")) ?? throw new Refusal("no universe.json for this branch yet; run `universe` first");
         if (!universe.ById.TryGetValue(claimId, out var claim)) throw new Refusal($"no claim {claimId} in the universe");
@@ -69,7 +94,7 @@ internal static class Commands
                 Files.WriteJson(l.P("round.json"), round);
             }
         }
-        var covered = full ? [] : l.Covered(universe, claimId);
+        var covered = full ? [] : l.Covered(universe, claimId, except);
         var todo = claim.Pairs().Where(p => !covered.Contains((claimId, p))).ToHashSet();
         var rows = Covering.Rows(claim, todo, int.Parse(max ?? "2000", CultureInfo.InvariantCulture), int.Parse(seed ?? "1", CultureInfo.InvariantCulture));
         return new JsonObject
@@ -247,12 +272,15 @@ internal static class Commands
         var rev = Git.Out(worktree, "rev-parse", "HEAD");
         var footprint = new JsonObject(hit.Select(p => KeyValuePair.Create(p, (JsonNode?)Git.ObjectId(worktree, p))));
         var compileTime = new JsonObject(a.All("compile-time").Select(p => KeyValuePair.Create(p, (JsonNode?)Git.ObjectId(worktree, p))));
+        // What the probe's registry entry watches beyond what ran: recorded with the ids it ran at, so a change stales it.
+        var watched = new JsonObject(l.Watched(a.Need("probe")).Select(p => KeyValuePair.Create(p, (JsonNode?)Git.ObjectId(worktree, p))));
         Files.AppendLine(l.P("footprints.jsonl"), new JsonObject
         {
             ["schemaVersion"] = Files.SchemaVersion, ["probe"] = a.Need("probe"), ["commit"] = rev, ["footprint"] = footprint,
-            ["compileTime"] = compileTime, ["toolchain"] = l.Toolchain().DeepClone(), ["date"] = a.Get("date") ?? Today,
+            ["compileTime"] = compileTime, ["watched"] = watched, ["toolchain"] = l.Toolchain().DeepClone(), ["date"] = a.Get("date") ?? Today,
         });
-        l.Ctx.Out.WriteLine($"{a.Need("probe")}: {footprint.Count} src files, {compileTime.Count} compile-time paths at {rev[..Math.Min(7, rev.Length)]}");
+        l.Ctx.Out.WriteLine($"{a.Need("probe")}: {footprint.Count} src files, {compileTime.Count} compile-time paths" +
+                            $"{(watched.Count > 0 ? $", {watched.Count} watched" : "")} at {rev[..Math.Min(7, rev.Length)]}");
         return 0;
     }
 
@@ -389,7 +417,11 @@ internal static class Commands
             }
             else if (rel.StartsWith("rows/", StringComparison.Ordinal) && rel.EndsWith(".json", StringComparison.Ordinal))
             {
-                var claim = Path.GetFileNameWithoutExtension(rel);
+                // A probe's rows, by probe: the file keeps the claim it names, else its probe's registry entry's.
+                var probe = Path.GetFileNameWithoutExtension(rel);
+                var claim = Files.Str(Files.ReadJson(src)?["claim"]) is { Length: > 0 } named ? named
+                            : l.Registry().GetValueOrDefault(probe)?["claim"] is { } registered ? Files.Str(registered)
+                            : throw new Refusal($"the staged {rel} names no claim and {probe} is no registered probe; a rows file is a probe's, its claim inside");
                 Files.WriteRowsGzipped(dst + ".gz", claim, Files.ReadRows(src).OfType<JsonObject>().Select(r => r["row"] as JsonObject ?? r));
                 rel += ".gz";
             }
