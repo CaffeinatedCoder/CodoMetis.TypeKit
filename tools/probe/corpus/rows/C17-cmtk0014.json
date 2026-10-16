@@ -11093,6 +11093,563 @@
           "shape.wrapped=own-record-class"
         ]
       ]
+    },
+    {
+      "row": {
+        "shape.containing": "record-struct",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "validated-class",
+        "shape.position": "read-only-list-element",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "DateOnly",
+        "site": "default-literal",
+        "value": "default"
+      },
+      "pairs": [
+        [
+          "shape.containing=record-struct",
+          "shape.wrapped=DateOnly"
+        ],
+        [
+          "shape.position=read-only-list-element",
+          "shape.wrapped=DateOnly"
+        ],
+        [
+          "shape.site=nested-two-levels",
+          "shape.wrapped=DateOnly"
+        ],
+        [
+          "shape.wrapped=DateOnly",
+          "site=default-literal"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "immutable-array-element",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "TimeSpan",
+        "site": "attribute-argument",
+        "value": "valid"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-explicit-IEquatable",
+          "shape.wrapped=TimeSpan"
+        ],
+        [
+          "shape.position=immutable-array-element",
+          "shape.wrapped=TimeSpan"
+        ],
+        [
+          "shape.site=nested-in-class",
+          "shape.wrapped=TimeSpan"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "record-struct",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "validated-class",
+        "shape.position": "root",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "in-generic-type",
+        "shape.wrapped": "Uri",
+        "site": "default-literal",
+        "value": "default"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-2",
+          "shape.wrapped=Uri"
+        ],
+        [
+          "shape.position=root",
+          "shape.wrapped=Uri"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "record-struct",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "validated-class",
+        "shape.position": "nullable-property",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "int",
+        "site": "cast",
+        "value": "(FaultKind)9"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-explicit-IEquatable",
+          "shape.wrapped=int"
+        ],
+        [
+          "shape.position=nullable-property",
+          "shape.wrapped=int"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "struct",
+        "shape.inheritance": "none",
+        "shape.kind": "validated-struct",
+        "shape.position": "record-ctor-parameter",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "bool",
+        "site": "attribute-argument",
+        "value": "valid"
+      },
+      "pairs": [
+        [
+          "shape.position=record-ctor-parameter",
+          "shape.wrapped=bool"
+        ],
+        [
+          "shape.wrapped=bool",
+          "value=valid"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "class",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "dictionary-value",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "Guid",
+        "site": "cast",
+        "value": "(FaultKind)9"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-3",
+          "shape.wrapped=Guid"
+        ],
+        [
+          "shape.position=dictionary-value",
+          "shape.wrapped=Guid"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "validated-class",
+        "shape.position": "polymorphic-derived-property",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "TimeOnly",
+        "site": "cast",
+        "value": "(FaultKind)9"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-explicit-IEquatable",
+          "shape.wrapped=TimeOnly"
+        ],
+        [
+          "shape.position=polymorphic-derived-property",
+          "shape.wrapped=TimeOnly"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "array-element",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "TimeOnly",
+        "site": "default-literal",
+        "value": "default"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-2",
+          "shape.wrapped=TimeOnly"
+        ],
+        [
+          "shape.position=array-element",
+          "shape.wrapped=TimeOnly"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "struct",
+        "shape.inheritance": "none",
+        "shape.kind": "validated-struct",
+        "shape.position": "array-element",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "in-generic-type",
+        "shape.wrapped": "double",
+        "site": "attribute-argument",
+        "value": "default"
+      },
+      "pairs": [
+        [
+          "shape.position=array-element",
+          "shape.wrapped=double"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "struct",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "validated-struct",
+        "shape.position": "root",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "double",
+        "site": "attribute-argument",
+        "value": "(FaultKind)9"
+      },
+      "pairs": [
+        [
+          "shape.position=root",
+          "shape.wrapped=double"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "class",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "validated-class",
+        "shape.position": "read-only-list-element",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "double",
+        "site": "attribute-argument",
+        "value": "valid"
+      },
+      "pairs": [
+        [
+          "shape.position=read-only-list-element",
+          "shape.wrapped=double"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "struct",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "validated-class",
+        "shape.position": "required-init",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "Uri",
+        "site": "cast",
+        "value": "default"
+      },
+      "pairs": [
+        [
+          "shape.position=required-init",
+          "shape.wrapped=Uri"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "none",
+        "shape.kind": "validated-struct",
+        "shape.position": "dictionary-key",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "DateTime",
+        "site": "cast",
+        "value": "valid"
+      },
+      "pairs": [
+        [
+          "shape.position=dictionary-key",
+          "shape.wrapped=DateTime"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "struct",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "list-element",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "ulong",
+        "site": "default-literal",
+        "value": "default"
+      },
+      "pairs": [
+        [
+          "shape.position=list-element",
+          "shape.wrapped=ulong"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "record-struct",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "validated-class",
+        "shape.position": "field",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "in-generic-type",
+        "shape.wrapped": "DateTimeOffset",
+        "site": "default-literal",
+        "value": "default"
+      },
+      "pairs": [
+        [
+          "shape.position=field",
+          "shape.wrapped=DateTimeOffset"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "polymorphic-derived-property",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "decimal",
+        "site": "cast",
+        "value": "valid"
+      },
+      "pairs": [
+        [
+          "shape.position=polymorphic-derived-property",
+          "shape.wrapped=decimal"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "record-class",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "record-struct",
+        "shape.position": "dictionary-key",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "char",
+        "site": "attribute-argument",
+        "value": "valid"
+      },
+      "pairs": [
+        [
+          "shape.position=dictionary-key",
+          "shape.wrapped=char"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "struct",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "list-element",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "decimal",
+        "site": "attribute-argument",
+        "value": "default"
+      },
+      "pairs": [
+        [
+          "shape.position=list-element",
+          "shape.wrapped=decimal"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "none",
+        "shape.kind": "validated-struct",
+        "shape.position": "dictionary-value",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "DateTime",
+        "site": "cast",
+        "value": "(FaultKind)9"
+      },
+      "pairs": [
+        [
+          "shape.position=dictionary-value",
+          "shape.wrapped=DateTime"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "class",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "validated-class",
+        "shape.position": "dictionary-value",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "in-generic-type",
+        "shape.wrapped": "own-record-class",
+        "site": "attribute-argument",
+        "value": "valid"
+      },
+      "pairs": [
+        [
+          "shape.position=dictionary-value",
+          "shape.wrapped=own-record-class"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "struct",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "field",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "DateOnly",
+        "site": "attribute-argument",
+        "value": "(FaultKind)9"
+      },
+      "pairs": [
+        [
+          "shape.position=field",
+          "shape.wrapped=DateOnly"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "struct",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "dictionary-value",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "char",
+        "site": "default-literal",
+        "value": "default"
+      },
+      "pairs": [
+        [
+          "shape.position=dictionary-value",
+          "shape.wrapped=char"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "record-struct",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "validated-class",
+        "shape.position": "in-patch",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "DateTimeOffset",
+        "site": "attribute-argument",
+        "value": "valid"
+      },
+      "pairs": [
+        [
+          "shape.position=in-patch",
+          "shape.wrapped=DateTimeOffset"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "struct",
+        "shape.inheritance": "none",
+        "shape.kind": "record-struct",
+        "shape.position": "property",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "double",
+        "site": "cast",
+        "value": "(FaultKind)9"
+      },
+      "pairs": [
+        [
+          "shape.position=property",
+          "shape.wrapped=double"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "sealed-record-class",
+        "shape.position": "property",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "flags-enum",
+        "site": "attribute-argument",
+        "value": "default"
+      },
+      "pairs": [
+        [
+          "shape.position=property",
+          "shape.wrapped=flags-enum"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "class",
+        "shape.inheritance": "none",
+        "shape.kind": "record-struct",
+        "shape.position": "dictionary-key",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "top-level",
+        "shape.wrapped": "DateOnly",
+        "site": "attribute-argument",
+        "value": "(FaultKind)9"
+      },
+      "pairs": [
+        [
+          "shape.position=dictionary-key",
+          "shape.wrapped=DateOnly"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "shape.containing": "generic-type",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "validated-class",
+        "shape.position": "dictionary-value",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "byte",
+        "site": "cast",
+        "value": "valid"
+      },
+      "pairs": [
+        [
+          "shape.position=dictionary-value",
+          "shape.wrapped=byte"
+        ]
+      ]
     }
   ],
   "uncovered_after": 0

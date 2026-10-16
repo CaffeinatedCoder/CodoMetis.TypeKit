@@ -6607,6 +6607,1888 @@
           "text.entry=type-converter"
         ]
       ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "none",
+        "shape.kind": "record-struct",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "Guid",
+        "text.culture": "invariant",
+        "text.entry": "type-converter"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=none",
+          "shape.wrapped=Guid"
+        ],
+        [
+          "shape.kind=record-struct",
+          "shape.wrapped=Guid"
+        ],
+        [
+          "shape.site=nested-in-class",
+          "shape.wrapped=Guid"
+        ],
+        [
+          "shape.wrapped=Guid",
+          "text.culture=invariant"
+        ],
+        [
+          "shape.wrapped=Guid",
+          "text.entry=type-converter"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "DateTime",
+        "text.culture": "invariant",
+        "text.entry": "TryFormat-short-span"
+      },
+      "pairs": [
+        [
+          "process.converter-lookup=none",
+          "shape.wrapped=DateTime"
+        ],
+        [
+          "shape.inheritance=base-depth-3",
+          "shape.wrapped=DateTime"
+        ],
+        [
+          "shape.kind=sealed-record-class",
+          "shape.wrapped=DateTime"
+        ],
+        [
+          "shape.site=nested-in-struct",
+          "shape.wrapped=DateTime"
+        ],
+        [
+          "shape.wrapped=DateTime",
+          "text.culture=invariant"
+        ],
+        [
+          "shape.wrapped=DateTime",
+          "text.entry=TryFormat-short-span"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "DateTimeOffset",
+        "text.culture": "invariant",
+        "text.entry": "ToString-format"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-explicit-IEquatable",
+          "shape.wrapped=DateTimeOffset"
+        ],
+        [
+          "shape.inheritance=base-explicit-IEquatable",
+          "text.entry=ToString-format"
+        ],
+        [
+          "shape.kind=sealed-record-class",
+          "shape.wrapped=DateTimeOffset"
+        ],
+        [
+          "shape.site=nested-in-struct",
+          "shape.wrapped=DateTimeOffset"
+        ],
+        [
+          "shape.wrapped=DateTimeOffset",
+          "text.culture=invariant"
+        ],
+        [
+          "shape.wrapped=DateTimeOffset",
+          "text.entry=ToString-format"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "validated-struct",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "byte",
+        "text.culture": "ar-SA",
+        "text.entry": "IParsable"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=explicit-interface-member",
+          "shape.wrapped=byte"
+        ],
+        [
+          "shape.kind=validated-struct",
+          "shape.wrapped=byte"
+        ],
+        [
+          "shape.site=nested-in-struct",
+          "shape.wrapped=byte"
+        ],
+        [
+          "shape.wrapped=byte",
+          "text.culture=ar-SA"
+        ],
+        [
+          "shape.wrapped=byte",
+          "text.entry=IParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "DateOnly",
+        "text.culture": "de-DE",
+        "text.entry": "ToString-format"
+      },
+      "pairs": [
+        [
+          "process.converter-lookup=none",
+          "shape.wrapped=DateOnly"
+        ],
+        [
+          "shape.inheritance=base-explicit-IEquatable",
+          "shape.wrapped=DateOnly"
+        ],
+        [
+          "shape.kind=sealed-record-class",
+          "shape.wrapped=DateOnly"
+        ],
+        [
+          "shape.site=top-level",
+          "shape.wrapped=DateOnly"
+        ],
+        [
+          "shape.wrapped=DateOnly",
+          "text.culture=de-DE"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "none",
+        "shape.kind": "record-struct",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "decimal",
+        "text.culture": "ar-SA",
+        "text.entry": "ToString-format"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=none",
+          "shape.wrapped=decimal"
+        ],
+        [
+          "shape.kind=record-struct",
+          "shape.wrapped=decimal"
+        ],
+        [
+          "shape.site=nested-in-class",
+          "shape.wrapped=decimal"
+        ],
+        [
+          "shape.wrapped=decimal",
+          "text.culture=ar-SA"
+        ],
+        [
+          "shape.wrapped=decimal",
+          "text.entry=ToString-format"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "none",
+        "shape.kind": "record-struct",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "string",
+        "text.culture": "de-DE",
+        "text.entry": "Parse"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=none",
+          "shape.wrapped=string"
+        ],
+        [
+          "shape.kind=record-struct",
+          "shape.wrapped=string"
+        ],
+        [
+          "shape.site=nested-in-class",
+          "shape.wrapped=string"
+        ],
+        [
+          "shape.wrapped=string",
+          "text.culture=de-DE"
+        ],
+        [
+          "shape.wrapped=string",
+          "text.entry=Parse"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "record-struct",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "ulong",
+        "text.culture": "ar-SA",
+        "text.entry": "TryFormat-short-span"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=ulong"
+        ],
+        [
+          "shape.kind=record-struct",
+          "shape.wrapped=ulong"
+        ],
+        [
+          "shape.wrapped=ulong",
+          "text.culture=ar-SA"
+        ],
+        [
+          "shape.wrapped=ulong",
+          "text.entry=TryFormat-short-span"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "record-struct",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "bool",
+        "text.culture": "de-DE",
+        "text.entry": "ISpanParsable"
+      },
+      "pairs": [
+        [
+          "shape.kind=record-struct",
+          "shape.wrapped=bool"
+        ],
+        [
+          "shape.site=nested-in-struct",
+          "shape.wrapped=bool"
+        ],
+        [
+          "shape.wrapped=bool",
+          "text.culture=de-DE"
+        ],
+        [
+          "shape.wrapped=bool",
+          "text.entry=ISpanParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "none",
+        "shape.kind": "validated-struct",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "own-record-class",
+        "text.culture": "invariant",
+        "text.entry": "ToString-format"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=none",
+          "shape.wrapped=own-record-class"
+        ],
+        [
+          "shape.kind=validated-struct",
+          "shape.wrapped=own-record-class"
+        ],
+        [
+          "shape.site=nested-two-levels",
+          "shape.wrapped=own-record-class"
+        ],
+        [
+          "shape.wrapped=own-record-class",
+          "text.culture=invariant"
+        ],
+        [
+          "shape.wrapped=own-record-class",
+          "text.entry=ToString-format"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "none",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "byte",
+        "text.culture": "globalization-invariant",
+        "text.entry": "ISpanParsable"
+      },
+      "pairs": [
+        [
+          "shape.kind=validated-class",
+          "shape.wrapped=byte"
+        ],
+        [
+          "shape.site=nested-in-class",
+          "shape.wrapped=byte"
+        ],
+        [
+          "shape.wrapped=byte",
+          "text.culture=globalization-invariant"
+        ],
+        [
+          "shape.wrapped=byte",
+          "text.entry=ISpanParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "TimeOnly",
+        "text.culture": "ar-SA",
+        "text.entry": "Parse"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-2",
+          "shape.wrapped=TimeOnly"
+        ],
+        [
+          "shape.site=nested-two-levels",
+          "shape.wrapped=TimeOnly"
+        ],
+        [
+          "shape.wrapped=TimeOnly",
+          "text.culture=ar-SA"
+        ],
+        [
+          "shape.wrapped=TimeOnly",
+          "text.entry=Parse"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "top-level",
+        "shape.wrapped": "TimeOnly",
+        "text.culture": "tr-TR",
+        "text.entry": "TryFormat-short-span"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-3",
+          "shape.wrapped=TimeOnly"
+        ],
+        [
+          "shape.kind=validated-class",
+          "shape.wrapped=TimeOnly"
+        ],
+        [
+          "shape.site=top-level",
+          "shape.wrapped=TimeOnly"
+        ],
+        [
+          "shape.wrapped=TimeOnly",
+          "text.culture=tr-TR"
+        ],
+        [
+          "shape.wrapped=TimeOnly",
+          "text.entry=TryFormat-short-span"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "Uri",
+        "text.culture": "invariant",
+        "text.entry": "ISpanParsable"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-3",
+          "shape.wrapped=Uri"
+        ],
+        [
+          "shape.kind=validated-class",
+          "shape.wrapped=Uri"
+        ],
+        [
+          "shape.wrapped=Uri",
+          "text.culture=invariant"
+        ],
+        [
+          "shape.wrapped=Uri",
+          "text.entry=ISpanParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "validated-struct",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "double",
+        "text.culture": "ar-SA",
+        "text.entry": "ISpanParsable"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=double"
+        ],
+        [
+          "shape.kind=validated-struct",
+          "shape.wrapped=double"
+        ],
+        [
+          "shape.wrapped=double",
+          "text.culture=ar-SA"
+        ],
+        [
+          "shape.wrapped=double",
+          "text.entry=ISpanParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "string",
+        "text.culture": "tr-TR",
+        "text.entry": "ToString-format"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-explicit-IEquatable",
+          "shape.wrapped=string"
+        ],
+        [
+          "shape.kind=sealed-record-class",
+          "shape.wrapped=string"
+        ],
+        [
+          "shape.site=nested-in-struct",
+          "shape.wrapped=string"
+        ],
+        [
+          "shape.wrapped=string",
+          "text.culture=tr-TR"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ref-text",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "DateTimeOffset",
+        "text.culture": "globalization-invariant",
+        "text.entry": "TryFrom"
+      },
+      "pairs": [
+        [
+          "parse-shape=ref-text",
+          "shape.inheritance=base-depth-3"
+        ],
+        [
+          "shape.inheritance=base-depth-3",
+          "shape.wrapped=DateTimeOffset"
+        ],
+        [
+          "shape.kind=validated-class",
+          "shape.wrapped=DateTimeOffset"
+        ],
+        [
+          "shape.wrapped=DateTimeOffset",
+          "text.culture=globalization-invariant"
+        ],
+        [
+          "shape.wrapped=DateTimeOffset",
+          "text.entry=TryFrom"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "validated-struct",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "Guid",
+        "text.culture": "tr-TR",
+        "text.entry": "ToString-format"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=explicit-interface-member",
+          "shape.wrapped=Guid"
+        ],
+        [
+          "shape.kind=validated-struct",
+          "shape.wrapped=Guid"
+        ],
+        [
+          "shape.site=nested-in-struct",
+          "shape.wrapped=Guid"
+        ],
+        [
+          "shape.wrapped=Guid",
+          "text.entry=ToString-format"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "none",
+        "shape.kind": "validated-struct",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "TimeOnly",
+        "text.culture": "globalization-invariant",
+        "text.entry": "TryFrom"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=none",
+          "shape.wrapped=TimeOnly"
+        ],
+        [
+          "shape.kind=validated-struct",
+          "shape.wrapped=TimeOnly"
+        ],
+        [
+          "shape.wrapped=TimeOnly",
+          "text.culture=globalization-invariant"
+        ],
+        [
+          "shape.wrapped=TimeOnly",
+          "text.entry=TryFrom"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "record-struct",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "enum",
+        "text.culture": "globalization-invariant",
+        "text.entry": "ISpanParsable"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=explicit-interface-member",
+          "shape.wrapped=enum"
+        ],
+        [
+          "shape.kind=record-struct",
+          "shape.wrapped=enum"
+        ],
+        [
+          "shape.site=nested-two-levels",
+          "shape.wrapped=enum"
+        ],
+        [
+          "shape.wrapped=enum",
+          "text.entry=ISpanParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "validated-struct",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "TimeSpan",
+        "text.culture": "tr-TR",
+        "text.entry": "IParsable"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=explicit-interface-member",
+          "shape.wrapped=TimeSpan"
+        ],
+        [
+          "shape.kind=validated-struct",
+          "shape.wrapped=TimeSpan"
+        ],
+        [
+          "shape.wrapped=TimeSpan",
+          "text.culture=tr-TR"
+        ],
+        [
+          "shape.wrapped=TimeSpan",
+          "text.entry=IParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "validated-struct",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "decimal",
+        "text.culture": "tr-TR",
+        "text.entry": "TryFormat-short-span"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-2",
+          "shape.wrapped=decimal"
+        ],
+        [
+          "shape.kind=validated-struct",
+          "shape.wrapped=decimal"
+        ],
+        [
+          "shape.wrapped=decimal",
+          "text.culture=tr-TR"
+        ],
+        [
+          "shape.wrapped=decimal",
+          "text.entry=TryFormat-short-span"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "flags-enum",
+        "text.culture": "invariant",
+        "text.entry": "ISpanParsable"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-3",
+          "shape.wrapped=flags-enum"
+        ],
+        [
+          "shape.site=nested-in-struct",
+          "shape.wrapped=flags-enum"
+        ],
+        [
+          "shape.wrapped=flags-enum",
+          "text.entry=ISpanParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "top-level",
+        "shape.wrapped": "DateTime",
+        "text.culture": "globalization-invariant",
+        "text.entry": "type-converter"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=DateTime"
+        ],
+        [
+          "shape.site=top-level",
+          "shape.wrapped=DateTime"
+        ],
+        [
+          "shape.wrapped=DateTime",
+          "text.culture=globalization-invariant"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "record-struct",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "bool",
+        "text.culture": "ar-SA",
+        "text.entry": "IParsable"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-3",
+          "shape.wrapped=bool"
+        ],
+        [
+          "shape.wrapped=bool",
+          "text.culture=ar-SA"
+        ],
+        [
+          "shape.wrapped=bool",
+          "text.entry=IParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "long",
+        "text.culture": "globalization-invariant",
+        "text.entry": "ToString-format"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-3",
+          "shape.wrapped=long"
+        ],
+        [
+          "shape.site=top-level",
+          "shape.wrapped=long"
+        ],
+        [
+          "shape.wrapped=long",
+          "text.entry=ToString-format"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "in-generic-type",
+        "shape.wrapped": "DateOnly",
+        "text.culture": "invariant",
+        "text.entry": "TryFrom"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=DateOnly"
+        ],
+        [
+          "shape.wrapped=DateOnly",
+          "text.culture=invariant"
+        ],
+        [
+          "shape.wrapped=DateOnly",
+          "text.entry=TryFrom"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "record-struct",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "int",
+        "text.culture": "invariant",
+        "text.entry": "Parse"
+      },
+      "pairs": [
+        [
+          "shape.kind=record-struct",
+          "shape.wrapped=int"
+        ],
+        [
+          "shape.wrapped=int",
+          "text.culture=invariant"
+        ],
+        [
+          "shape.wrapped=int",
+          "text.entry=Parse"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "NodaTime.Instant",
+        "text.culture": "invariant",
+        "text.entry": "ISpanParsable"
+      },
+      "pairs": [
+        [
+          "shape.site=nested-two-levels",
+          "shape.wrapped=NodaTime.Instant"
+        ],
+        [
+          "shape.wrapped=NodaTime.Instant",
+          "text.entry=ISpanParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "Guid",
+        "text.culture": "de-DE",
+        "text.entry": "TryFrom"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-3",
+          "shape.wrapped=Guid"
+        ],
+        [
+          "shape.wrapped=Guid",
+          "text.culture=de-DE"
+        ],
+        [
+          "shape.wrapped=Guid",
+          "text.entry=TryFrom"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "string",
+        "text.culture": "globalization-invariant",
+        "text.entry": "TryParse"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=string",
+          "text.culture=globalization-invariant"
+        ],
+        [
+          "shape.wrapped=string",
+          "text.entry=TryParse"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "ulong",
+        "text.culture": "globalization-invariant",
+        "text.entry": "type-converter"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-explicit-IEquatable",
+          "shape.wrapped=ulong"
+        ],
+        [
+          "shape.wrapped=ulong",
+          "text.entry=type-converter"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "top-level",
+        "shape.wrapped": "DateOnly",
+        "text.culture": "globalization-invariant",
+        "text.entry": "TryParse"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-2",
+          "shape.wrapped=DateOnly"
+        ],
+        [
+          "shape.wrapped=DateOnly",
+          "text.entry=TryParse"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "byte",
+        "text.culture": "de-DE",
+        "text.entry": "TryFrom"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-2",
+          "shape.wrapped=byte"
+        ],
+        [
+          "shape.wrapped=byte",
+          "text.culture=de-DE"
+        ],
+        [
+          "shape.wrapped=byte",
+          "text.entry=TryFrom"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "flags-enum",
+        "text.culture": "globalization-invariant",
+        "text.entry": "Parse"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=explicit-interface-member",
+          "shape.wrapped=flags-enum"
+        ],
+        [
+          "shape.wrapped=flags-enum",
+          "text.entry=Parse"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "double",
+        "text.culture": "ar-SA",
+        "text.entry": "type-converter"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-explicit-IEquatable",
+          "shape.wrapped=double"
+        ],
+        [
+          "shape.site=top-level",
+          "shape.wrapped=double"
+        ],
+        [
+          "shape.wrapped=double",
+          "text.entry=type-converter"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "DateTime",
+        "text.culture": "invariant",
+        "text.entry": "TryFrom"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-2",
+          "shape.wrapped=DateTime"
+        ],
+        [
+          "shape.wrapped=DateTime",
+          "text.entry=TryFrom"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "validated-struct",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "byte",
+        "text.culture": "invariant",
+        "text.entry": "type-converter"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=byte"
+        ],
+        [
+          "shape.wrapped=byte",
+          "text.entry=type-converter"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "validated-struct",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "char",
+        "text.culture": "invariant",
+        "text.entry": "IParsable"
+      },
+      "pairs": [
+        [
+          "shape.kind=validated-struct",
+          "shape.wrapped=char"
+        ],
+        [
+          "shape.wrapped=char",
+          "text.entry=IParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "enum",
+        "text.culture": "ar-SA",
+        "text.entry": "TryFormat-short-span"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-explicit-IEquatable",
+          "shape.wrapped=enum"
+        ],
+        [
+          "shape.wrapped=enum",
+          "text.entry=TryFormat-short-span"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "Guid",
+        "text.culture": "globalization-invariant",
+        "text.entry": "ISpanParsable"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=Guid",
+          "text.culture=globalization-invariant"
+        ],
+        [
+          "shape.wrapped=Guid",
+          "text.entry=ISpanParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "DateTimeOffset",
+        "text.culture": "de-DE",
+        "text.entry": "IParsable"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-2",
+          "shape.wrapped=DateTimeOffset"
+        ],
+        [
+          "shape.wrapped=DateTimeOffset",
+          "text.entry=IParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "char",
+        "text.culture": "invariant",
+        "text.entry": "TryParse"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=char"
+        ],
+        [
+          "shape.wrapped=char",
+          "text.entry=TryParse"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "TimeOnly",
+        "text.culture": "invariant",
+        "text.entry": "ISpanParsable"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=TimeOnly"
+        ],
+        [
+          "shape.wrapped=TimeOnly",
+          "text.entry=ISpanParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "string",
+        "text.culture": "tr-TR",
+        "text.entry": "ISpanParsable"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=string"
+        ],
+        [
+          "shape.wrapped=string",
+          "text.entry=ISpanParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "Uri",
+        "text.culture": "tr-TR",
+        "text.entry": "TryFrom"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=Uri"
+        ],
+        [
+          "shape.wrapped=Uri",
+          "text.entry=TryFrom"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "top-level",
+        "shape.wrapped": "DateTimeOffset",
+        "text.culture": "ar-SA",
+        "text.entry": "ISpanParsable"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=DateTimeOffset"
+        ],
+        [
+          "shape.wrapped=DateTimeOffset",
+          "text.entry=ISpanParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "long",
+        "text.culture": "ar-SA",
+        "text.entry": "Parse"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=long",
+          "text.entry=Parse"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "ulong",
+        "text.culture": "de-DE",
+        "text.entry": "ISpanParsable"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=explicit-interface-member",
+          "shape.wrapped=ulong"
+        ],
+        [
+          "shape.wrapped=ulong",
+          "text.entry=ISpanParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "bool",
+        "text.culture": "invariant",
+        "text.entry": "ToString-format"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=bool"
+        ],
+        [
+          "shape.wrapped=bool",
+          "text.entry=ToString-format"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "TimeSpan",
+        "text.culture": "tr-TR",
+        "text.entry": "Parse"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-explicit-IEquatable",
+          "shape.wrapped=TimeSpan"
+        ],
+        [
+          "shape.wrapped=TimeSpan",
+          "text.entry=Parse"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "int",
+        "text.culture": "globalization-invariant",
+        "text.entry": "TryFrom"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-3",
+          "shape.wrapped=int"
+        ],
+        [
+          "shape.wrapped=int",
+          "text.entry=TryFrom"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "in-generic-type",
+        "shape.wrapped": "int",
+        "text.culture": "invariant",
+        "text.entry": "ToString-format"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-explicit-IEquatable",
+          "shape.wrapped=int"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "top-level",
+        "shape.wrapped": "decimal",
+        "text.culture": "tr-TR",
+        "text.entry": "IParsable"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=decimal",
+          "text.entry=IParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "byte",
+        "text.culture": "de-DE",
+        "text.entry": "TryFormat-short-span"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-explicit-IEquatable",
+          "shape.wrapped=byte"
+        ],
+        [
+          "shape.wrapped=byte",
+          "text.entry=TryFormat-short-span"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "own-record-class",
+        "text.culture": "ar-SA",
+        "text.entry": "TryParse"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=own-record-class"
+        ],
+        [
+          "shape.wrapped=own-record-class",
+          "text.entry=TryParse"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "none",
+        "shape.kind": "validated-struct",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "int",
+        "text.culture": "invariant",
+        "text.entry": "ISpanParsable"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=int",
+          "text.entry=ISpanParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "in-generic-type",
+        "shape.wrapped": "string",
+        "text.culture": "globalization-invariant",
+        "text.entry": "type-converter"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=string",
+          "text.entry=type-converter"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "Guid",
+        "text.culture": "invariant",
+        "text.entry": "Parse"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=Guid",
+          "text.entry=Parse"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "flags-enum",
+        "text.culture": "globalization-invariant",
+        "text.entry": "type-converter"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=flags-enum",
+          "text.entry=type-converter"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "none",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "byte",
+        "text.culture": "invariant",
+        "text.entry": "Parse"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=byte",
+          "text.entry=Parse"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "DateTime",
+        "text.culture": "tr-TR",
+        "text.entry": "Parse"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=DateTime",
+          "text.entry=Parse"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "none",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "top-level",
+        "shape.wrapped": "own-record-class",
+        "text.culture": "tr-TR",
+        "text.entry": "TryFrom"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=own-record-class",
+          "text.entry=TryFrom"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-1",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "NodaTime.Instant",
+        "text.culture": "tr-TR",
+        "text.entry": "type-converter"
+      },
+      "pairs": [
+        [
+          "shape.inheritance=base-depth-1",
+          "shape.wrapped=NodaTime.Instant"
+        ],
+        [
+          "shape.wrapped=NodaTime.Instant",
+          "text.entry=type-converter"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-2",
+        "shape.kind": "record-struct",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "DateOnly",
+        "text.culture": "de-DE",
+        "text.entry": "type-converter"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=DateOnly",
+          "text.entry=type-converter"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "validated-struct",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "DateTimeOffset",
+        "text.culture": "invariant",
+        "text.entry": "type-converter"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=DateTimeOffset",
+          "text.entry=type-converter"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "sealed-record-class",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "TimeOnly",
+        "text.culture": "ar-SA",
+        "text.entry": "IParsable"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=TimeOnly",
+          "text.entry=IParsable"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "validated-struct",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "TimeSpan",
+        "text.culture": "globalization-invariant",
+        "text.entry": "TryFrom"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=TimeSpan",
+          "text.entry=TryFrom"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "DateTime",
+        "text.culture": "tr-TR",
+        "text.entry": "ToString-format"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=DateTime",
+          "text.entry=ToString-format"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-explicit-IEquatable",
+        "shape.kind": "validated-class",
+        "shape.refused-kind": "generic-wrapped (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "double",
+        "text.culture": "globalization-invariant",
+        "text.entry": "TryFormat-short-span"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=double",
+          "text.entry=TryFormat-short-span"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "validated-struct",
+        "shape.refused-kind": "abstract (CMTK1005)",
+        "shape.site": "nested-in-class",
+        "shape.wrapped": "Uri",
+        "text.culture": "ar-SA",
+        "text.entry": "ToString-format"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=Uri",
+          "text.entry=ToString-format"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "explicit-interface-member",
+        "shape.kind": "record-struct",
+        "shape.refused-kind": "over-value-object (CMTK1005)",
+        "shape.site": "nested-in-struct",
+        "shape.wrapped": "double",
+        "text.culture": "ar-SA",
+        "text.entry": "Parse"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=double",
+          "text.entry=Parse"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "wrapped-type-converter-looked-up-first",
+        "shape.inheritance": "base-depth-3",
+        "shape.kind": "record-struct",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "nested-two-levels",
+        "shape.wrapped": "DateOnly",
+        "text.culture": "tr-TR",
+        "text.entry": "TryFormat-short-span"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=DateOnly",
+          "text.entry=TryFormat-short-span"
+        ]
+      ]
+    },
+    {
+      "row": {
+        "parse-shape": "ordinary",
+        "process.converter-lookup": "none",
+        "shape.inheritance": "none",
+        "shape.kind": "record-struct",
+        "shape.refused-kind": "unsealed-record-class (CMTK1006)",
+        "shape.site": "top-level",
+        "shape.wrapped": "enum",
+        "text.culture": "invariant",
+        "text.entry": "TryFrom"
+      },
+      "pairs": [
+        [
+          "shape.wrapped=enum",
+          "text.entry=TryFrom"
+        ]
+      ]
     }
   ],
   "uncovered_after": 0

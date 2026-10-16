@@ -8,8 +8,23 @@
 // shape.position of a shape.containing type. Each file reports CMTK1023 once, as a warning, for that value object, naming each equality
 // member its bases declare and nothing else; it reports no error; and the value object is generated (its From or TryFrom is in the
 // built assembly).
+// In this process too, the half of the sentence a run can show: over a base that declares the base-member by reference, the generated
+// equality is the underlying value's (one value object per base-member, built by this project's own weaving).
 using Probes.Build;
 namespace Probes;
+
+#pragma warning disable CMTK1023, CS8851 // the bases' own equality is the point; CS8851: the Equals base has no GetHashCode, on purpose
+public enum C18TwinFault { No }
+public abstract record C18EqualsBase { public virtual bool Equals(C18EqualsBase? other) => ReferenceEquals(this, other); }
+public abstract record C18HashBase { public override int GetHashCode() => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this); }
+public abstract record C18EquatableBase : IEquatable<C18EquatableBase> { bool IEquatable<C18EquatableBase>.Equals(C18EquatableBase? other) => ReferenceEquals(this, other); }
+public sealed partial record C18EqualsTwin : C18EqualsBase, CodoMetis.TypeKit.ValueObjects.IValidatedValue<C18EqualsTwin, int, C18TwinFault>
+{ public static CodoMetis.TypeKit.Result<C18EqualsTwin, C18TwinFault> Create(int value) => new C18EqualsTwin(value); }
+public sealed partial record C18HashTwin : C18HashBase, CodoMetis.TypeKit.ValueObjects.IValidatedValue<C18HashTwin, int, C18TwinFault>
+{ public static CodoMetis.TypeKit.Result<C18HashTwin, C18TwinFault> Create(int value) => new C18HashTwin(value); }
+public sealed partial record C18EquatableTwin : C18EquatableBase, CodoMetis.TypeKit.ValueObjects.IValidatedValue<C18EquatableTwin, int, C18TwinFault>
+{ public static CodoMetis.TypeKit.Result<C18EquatableTwin, C18TwinFault> Create(int value) => new C18EquatableTwin(value); }
+#pragma warning restore CMTK1023, CS8851
 
 public sealed class C18Cmtk1023Probe
 {
@@ -127,6 +142,22 @@ public sealed class C18Cmtk1023Probe
         "top-level" => "", "nested-in-class" or "nested-in-struct" => $"O{id}+", "nested-two-levels" => $"O{id}+P{id}+", _ => throw new ArgumentException(s.Site),
     } + $"V{id}";
 
+    /// <summary>Two value objects holding 42 over a base declaring the member by reference: equal, of one hash, and one holding 43 not.</summary>
+    static string? Twin(string member)
+    {
+        (object A, object B, object C, object BaseA, object BaseB) v = member switch
+        {
+            "Equals" => (C18EqualsTwin.FromKnownGood(42), C18EqualsTwin.FromKnownGood(42), C18EqualsTwin.FromKnownGood(43), (C18EqualsBase)C18EqualsTwin.FromKnownGood(42), (C18EqualsBase)C18EqualsTwin.FromKnownGood(42)),
+            "GetHashCode" => (C18HashTwin.FromKnownGood(42), C18HashTwin.FromKnownGood(42), C18HashTwin.FromKnownGood(43), C18HashTwin.FromKnownGood(42), C18HashTwin.FromKnownGood(42)),
+            "IEquatable" => (C18EquatableTwin.FromKnownGood(42), C18EquatableTwin.FromKnownGood(42), C18EquatableTwin.FromKnownGood(43), C18EquatableTwin.FromKnownGood(42), C18EquatableTwin.FromKnownGood(42)),
+            _ => throw new ArgumentException(member),
+        };
+        if (!v.A.Equals(v.B) || v.A.GetHashCode() != v.B.GetHashCode()) return $"over a base declaring {member} by reference, two value objects holding 42 are unequal or hash apart: the generated equality called the base's";
+        if (v.A.Equals(v.C)) return $"over a base declaring {member}, value objects holding 42 and 43 are equal";
+        if (member == "IEquatable" && !((IEquatable<C18EquatableBase>)v.BaseA).Equals((C18EquatableBase)v.BaseB)) return "the base's explicit IEquatable<TBase> compares two value objects holding 42 by reference";
+        return null;
+    }
+
     static Task<ConsumerOutcome> Built() => Consumer.Build(Claim, () =>
         Probes.Shapes.Rows.Load(Claim).ToDictionary(row => $"R{row.Index}.cs", row => Source(Of(row), row.Index.ToString())));
 
@@ -160,6 +191,7 @@ public sealed class C18Cmtk1023Probe
         if (!build.Methods.TryGetValue(type, out var methods)) { r.Outcome("harness-error", $"no type {type} in the consumer"); return null; }
         var entry = s.Kind == "validated-class" ? "TryFrom" : "From";
         if (!methods.Contains(entry)) return $"the value object is not generated: {type} has no {entry} ({string.Join(", ", methods.Order())})";
+        if (Twin(s.Member) is { } twin) return twin;
         r.Note("compared", $"{named.Count} members named");
         return null;
     }
