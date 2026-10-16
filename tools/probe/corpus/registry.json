@@ -676,7 +676,7 @@
         {
           "obligation": "refusals-name-the-fault",
           "patch": "seeds/L03-one-rule-refusals-name-the-fault.patch",
-          "defect": "The JsonException, the FormatException and the FromKnownGood exception no longer name the fault Create returned."
+          "defect": "The JsonException, the FormatException and the FromKnownGood exception name the type of the fault Create returned, not the fault."
         }
       ]
     },

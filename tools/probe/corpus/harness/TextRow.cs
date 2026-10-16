@@ -227,8 +227,30 @@ public static class TextClaims
             else if (ex2 is not null && ex2 is not (JsonException or NotSupportedException or InvalidOperationException { }))
                 return $"input {input}: {ex2.GetType().Name} instead of JsonException: {Cut(ex2.Message)}"
                     + (ex2.InnerException is { } inner ? $" / inner {inner.GetType().FullName}: {Cut(inner.Message)} @ {Cut(inner.StackTrace?.Split('\n').FirstOrDefault()?.Trim() ?? "")}" : "");
+            if (!r.Is("json.Converters", "own-for-value-object") && RootRefusal(e, o, input) is { } refusal) return refusal;
         }
         return null;
+    }
+
+    /// <summary>
+    /// The changed input read at the root, where no container stands between the serializer and the generated converter: a
+    /// JsonException the value object throws there names it and carries no inner exception, "Input it can't read throws a
+    /// JsonException naming the value object and the underlying type" (Generators README#json).
+    /// </summary>
+    static string? RootRefusal(Entry e, JsonSerializerOptions o, string input)
+    {
+        var vt = Make.Held(e.Vo);
+        string root;
+        try { root = JsonSerializer.Serialize(Make.Vo(e, e.Valid()), vt, o); } catch { return null; }   // a root the options refuse to write is judged above
+        var text = JsonParity.InputFor(input, e, o, root, "root");
+        if (text == root) return null;
+        try { JsonSerializer.Deserialize(text, vt, o); return null; }
+        catch (JsonException x)
+        {
+            if (x.InnerException is null && x.Message.Contains(vt.Name, StringComparison.Ordinal)) return null;
+            return $"input {input} at the root: the JsonException {(x.InnerException is { } i ? "carries an inner " + i.GetType().Name : "does not name " + vt.Name)}: {Cut(x.Message)}\n  text={Cut(text)}";
+        }
+        catch (Exception) { return null; }   // another exception type is judged above, at the row's position
     }
     static bool PlainFailsToo(Row r, Held hp, JsonSerializerOptions o, string pos, Entry e)
     {
