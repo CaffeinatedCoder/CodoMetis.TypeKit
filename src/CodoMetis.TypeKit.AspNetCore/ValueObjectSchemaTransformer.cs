@@ -88,7 +88,11 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
             // the component its JSON positions share (decision 106).
             var outside = ParameterOutsideTheBody(context) is { } given ? Detached(given) : null;
             var inline = outside is not null && WrapsDescribed(info.Type, info.Options);
-            if (inline) Inline(schema);
+            if (inline)
+            {
+                Inline(schema);
+                DescribedSchemaTransformer.ParameterDefault(schema, info.Type, info.Options);
+            }
 
             var position = !inline && SchemaReferenceId(info, context) is not null ? NullablePosition.None
                 : context.JsonPropertyInfo is { IsGetNullable: true } or { IsSetNullable: true } ? NullablePosition.Property

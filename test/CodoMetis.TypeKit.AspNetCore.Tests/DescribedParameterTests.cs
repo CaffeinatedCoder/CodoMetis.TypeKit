@@ -84,26 +84,14 @@ public sealed class DescribedParameterTests
             // A value object's default in MVC stops ASP.NET's own document (DefaultController).
             if (position == "query-default" && host == "mvc" && parameter != twin) continue;
 
-            var actual = KeptDefault(NullablePositionTests.Inline(described, NullablePositionTests.Schema(described, version, host, position, parameter)));
-            var expected = KeptDefault(NullablePositionTests.Inline(plain, NullablePositionTests.Schema(plain, version, host, position, twin)));
+            var actual = NullablePositionTests.Inline(described, NullablePositionTests.Schema(described, version, host, position, parameter));
+            var expected = NullablePositionTests.Inline(plain, NullablePositionTests.Schema(plain, version, host, position, twin));
 
             if (!JsonNode.DeepEquals(actual, expected))
                 differences.Add($"{parameter}: {actual?.ToJsonString()}\n   {twin} without the converter: {expected?.ToJsonString()}");
         }
 
         differences.ShouldBeEmpty(string.Join("\n", differences));
-    }
-
-    /// <summary>Whether a default is written, not how: its spelling is the next fix's.</summary>
-    private static JsonNode? KeptDefault(JsonNode? parameter)
-    {
-        if (parameter is null) return null;
-        foreach (var holder in new[] { parameter, parameter["schema"] })
-        {
-            if (holder is JsonObject keywords && keywords.ContainsKey("default")) keywords["default"] = "kept";
-        }
-
-        return parameter;
     }
 
     public static TheoryData<OpenApiSpecVersion, string, bool> DocumentVariants()

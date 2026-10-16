@@ -389,8 +389,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
     /// </summary>
     private static void Parameter(OpenApiSchema schema, Type type, JsonSerializerOptions options, bool itself)
     {
-        var plain = new JsonSerializerOptions(options);
-        plain.Converters.Clear();
+        var plain = Plain(options);
 
         if (!plain.TryGetTypeInfo(itself ? Nullable.GetUnderlyingType(type) ?? type : type, out var info)) return;
         if (info.GetJsonSchemaAsNode() is not JsonObject native) return;
@@ -401,5 +400,28 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
         schema.FillFrom(Read(native, type));
         schema.Format ??= format;
         schema.Description ??= description;
+        ParameterDefault(schema, type, options);
+    }
+
+    /// <summary>The options without converters of one's own: what ASP.NET writes a parameter with where there are none.</summary>
+    private static JsonSerializerOptions Plain(JsonSerializerOptions options)
+    {
+        var plain = new JsonSerializerOptions(options);
+        plain.Converters.Clear();
+        return plain;
+    }
+
+    /// <summary>
+    /// A parameter's default as ASP.NET writes it without converters of one's own. ASP.NET writes the default of a
+    /// parameter of <paramref name="type"/> with the JSON options, a described converter included (a decimal's
+    /// <c>"1.5"</c> under <c>DecimalStringJsonConverter</c>), where the parameter binds through <c>TryParse</c> and its
+    /// schema is the type's without the converter (<c>1.5</c>). Read back as the options wrote it, the value is written
+    /// again without them; for a value object, its generated converter writes the type it wraps the same way.
+    /// </summary>
+    internal static void ParameterDefault(OpenApiSchema schema, Type type, JsonSerializerOptions options)
+    {
+        if (schema.Default is not { } written || !Plain(options).TryGetTypeInfo(type, out var plain)) return;
+
+        schema.Default = JsonSerializer.SerializeToNode(JsonSerializer.Deserialize(written, options.GetTypeInfo(type)), plain);
     }
 }
