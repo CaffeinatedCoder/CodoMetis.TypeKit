@@ -374,6 +374,8 @@ public sealed class NoteKeys
     // a nullable body of a value type keeps only its null (KB-001)
     public static readonly NoteKeys SchemaOpenApi2NullableComponentLosesType = new("schema:openapi2-nullable-component-loses-type", Inapplicable);
     public static readonly NoteKeys SchemaOpenApi2NullableBodyKeepsOnlyNull = new("schema:openapi2-nullable-body-keeps-only-null", Inapplicable);
+    // C21's not-promised enum-component-is-its-first-use, made by ASP.NET: an enum's component is the schema of its first use (KB-027)
+    public static readonly NoteKeys SchemaEnumComponentIsItsFirstUse = new("schema:enum-component-is-its-first-use", Inapplicable);
     public static readonly NoteKeys ClosedSetKeyUnpoliced = new("closed-set-key-unpoliced", Inapplicable);
     public static readonly NoteKeys PlainRefused = new("plain-refused", Inapplicable);
     public static readonly NoteKeys EntryNotApplicable = new("entry-not-applicable", Inapplicable);
