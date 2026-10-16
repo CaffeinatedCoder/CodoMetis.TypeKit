@@ -12,7 +12,8 @@ dotnet tools/Prober/bin/Release/net10.0/prober.dll help
 
 | Command | Model | Where |
 |---|---|---|
-| `replay [--all]` | none | anywhere, CI included: the probes whose identity or footprint changed, or all of them |
+| `replay [--all] [--family F] [--parallel N] [--no-footprint]` | none | anywhere, CI included: the probes whose identity or footprint changed, or all of them; one family of the replay configuration; N probe processes at a time (the cores by default); without coverage or a footprint, for a state nobody keeps (decision 101) |
+| `merge --from DIR...` | none | anywhere, CI included: joins the states of a replay split by family, and refuses while a registered probe was in no leg |
 | `gate [--since REF]` | none | anywhere, CI included: needs only the tracked corpus and a replay |
 | `status`, `stale`, `universe`, `rows`, … | none | anywhere |
 | `round explore\|full` | the `prober` agent | locally only, under caps it cannot overrun |
