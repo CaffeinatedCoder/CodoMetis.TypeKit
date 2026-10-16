@@ -1,0 +1,22 @@
+diff --git a/src/CodoMetis.TypeKit/DecimalJsonConverters.cs b/src/CodoMetis.TypeKit/DecimalJsonConverters.cs
+index 9007276..b60dc4d 100644
+--- a/src/CodoMetis.TypeKit/DecimalJsonConverters.cs
++++ b/src/CodoMetis.TypeKit/DecimalJsonConverters.cs
+@@ -55,7 +55,7 @@ public sealed class DecimalNumberJsonConverter : JsonConverter<decimal>, IDescri
+     public override void WriteAsPropertyName(Utf8JsonWriter writer, decimal value, JsonSerializerOptions options)
+     {
+         ArgumentNullException.ThrowIfNull(writer);
+-        writer.WritePropertyName(DecimalJson.Text(value));
++        writer.WritePropertyName(value.ToString(CultureInfo.InvariantCulture));
+     }
+ }
+ 
+@@ -105,7 +105,7 @@ public sealed class DecimalStringJsonConverter : JsonConverter<decimal>, IDescri
+     public override void WriteAsPropertyName(Utf8JsonWriter writer, decimal value, JsonSerializerOptions options)
+     {
+         ArgumentNullException.ThrowIfNull(writer);
+-        writer.WritePropertyName(DecimalJson.Text(value));
++        writer.WritePropertyName(value.ToString(CultureInfo.InvariantCulture));
+     }
+ }
+ 

@@ -235,11 +235,11 @@ public static class JsonParity
         if (ep is null && ev is not null)
         {
             if (r.Is("json.MaxDepth", "3") && ev is JsonException && ev.Message.Contains("maximum allowed depth")) { r.Note(NoteKeys.StjMaxdepth, "charges custom converters"); return null; } // inherent to STJ: any custom converter costs a level (design note D1)
-            if (preserveOwn && e.Wrapped == "own-record-class" && ev is NotSupportedException) { r.Note(NoteKeys.PreserveDocumented); return null; } // documented (Generators README#json)
+            if (preserveOwn && e.Wrapped == "own-record-class" && ev is NotSupportedException) { r.Note(NoteKeys.PreserveDocumented); return null; } // documented (Generators README#json; not-promised preserved-references-over-a-walked-class)
             return $"wrapped serialized ({jp}) but the value object threw {ev.GetType().Name}: {ev.Message}";
         }
         if (ep is not null && ev is null) return $"value object serialized ({jv}) where the wrapped type threw {ep.GetType().Name}: {ep.Message}";
-        if (jp != jv && e.Kind == "closed-set" && position == "dictionary-key" && r.Get("json.DictionaryKeyPolicy") != "default") { r.Note(NoteKeys.ClosedSetKeyUnpoliced); return null; } // a closed set travels as its name
+        if (jp != jv && e.Kind == "closed-set" && position == "dictionary-key" && r.Get("json.DictionaryKeyPolicy") != "default") { r.Note(NoteKeys.ClosedSetKeyUnpoliced); return null; } // a closed set travels as its name (not-promised a-closed-set-key-is-its-name)
         if (jp != jv)
         {
             // intended: a struct VO over... none. DateTime is written as UTC; sample is UTC so equal.
@@ -257,7 +257,7 @@ public static class JsonParity
         {
             if (preserveOwn && e.Wrapped == "own-record-class" && xv is NotSupportedException) return null;
             if (Validated(e) && input == "refused-by-create" && r.Get("json.Converters") != "StoredJsonConverterFactory") return xv is JsonException ? null : $"refusal is {xv.GetType().Name}, not JsonException: {xv.Message}";
-            if (input == "null" && e.Vo.IsValueType) return null; // intended: a struct value object refuses JSON null
+            if (input == "null" && e.Vo.IsValueType) return null; // intended: a struct value object refuses JSON null (not-promised a-struct-refuses-a-json-null)
             if (e.Kind == "closed-set" && input != "valid") return xv is JsonException ? null : $"closed set refusal is {xv.GetType().Name}"; // a closed set has the members it has
             return $"input {input}: wrapped read it, value object threw {xv.GetType().Name}: {Cut(xv.Message)}\n  text={Cut(text)}";
         }

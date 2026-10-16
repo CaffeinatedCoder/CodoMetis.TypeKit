@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs b/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs
+index 45c20b0..27e934e 100644
+--- a/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs
++++ b/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs
+@@ -74,7 +74,7 @@ internal sealed class DefaultFaultResponses(Func<IFault, FaultResponse>? respons
+     private string Parameter => parameter;
+ 
+     private FaultResponse ResponseOf(IFault fault, string qualifiedName) =>
+-        responseOf is not null ? responseOf(fault) : FaultRegistration.ByKind(fault, qualifiedName, parameter);
++        responseOf is not null ? responseOf(fault) : fault.Kind == default ? FaultResponse.Status(500) : FaultRegistration.ByKind(fault, qualifiedName, parameter);
+ 
+     private sealed class Mapper(DefaultFaultResponses defaults) : IClosedSetVisitor<object>
+     {

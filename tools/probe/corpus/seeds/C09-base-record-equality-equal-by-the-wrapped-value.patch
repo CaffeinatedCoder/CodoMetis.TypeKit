@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.Templates.cs b/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.Templates.cs
+index 07a7ecb..6ee3f6e 100644
+--- a/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.Templates.cs
++++ b/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.Templates.cs
+@@ -51,7 +51,7 @@ internal sealed partial class ValueObjectContractAspect
+     [Template]
+     public bool EqualsTemplate(dynamic? other, [CompileTime] INamedType valueType) =>
+         (bool)ExpressionFactory.Parse(
+-            $"global::System.Object.ReferenceEquals(this, other) || (other is not null && global::System.Collections.Generic.EqualityComparer<{ValueObjectTypes.SourceName(valueType)}>.Default.Equals(this._value, other._value))"
++            $"global::System.Object.ReferenceEquals(this, other) || (other is not null && base.Equals(other) && global::System.Collections.Generic.EqualityComparer<{ValueObjectTypes.SourceName(valueType)}>.Default.Equals(this._value, other._value))"
+         ).Value!;
+ 
+     /// <summary>The wrapped value's hash code, which a default instance over a reference type has as 0.</summary>

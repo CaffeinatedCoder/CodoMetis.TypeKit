@@ -209,7 +209,7 @@ public static class FaultClaim
     /// Under json.TypeInfoResolver=source-generated-context the payload's shape moves to one the context lists (as a property of a class),
     /// so the strict context applies and its pairs with the fault axes are earned; JsonRow would otherwise fall back to reflection for the
     /// whole row. NodaTime.Instant is listed nowhere and keeps JsonRow's fallback. The pairs of the strict context with the other positions
-    /// and containers are excluded in claims.json for the same reason.
+    /// and containers are left uncovered: a limit of this harness, not a refusal of the product, so claims.json excludes none of them.
     /// </summary>
     static Row StrictContext(Row r)
     {

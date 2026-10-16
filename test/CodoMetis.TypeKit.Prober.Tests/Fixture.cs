@@ -79,6 +79,29 @@ internal sealed class Fixture : IDisposable
         return (exit, output.ToString(), error.ToString());
     }
 
+    /// <summary>Runs a prober command in-process in another checkout of this repository (a linked worktree).</summary>
+    public (int Exit, string Out, string Err) LedgerIn(string checkout, params string[] args)
+    {
+        var output = new StringWriter(); var error = new StringWriter();
+        var exit = Program.Run(new Context(checkout, new Dictionary<string, string?>(), output, error), args);
+        return (exit, output.ToString(), error.ToString());
+    }
+
+    /// <summary>A linked worktree of this repository (<c>git worktree add</c>) on a new branch, beside it; removed with the fixture.</summary>
+    public string Linked(string branch)
+    {
+        var path = Root + "-" + branch;
+        Sh("git", "worktree", "add", "-q", "-b", branch, path);
+        linked.Add(path);
+        return path;
+    }
+
+    private readonly List<string> linked = [];
+
+    /// <summary>The lock file of a branch's state, wherever the tool puts it.</summary>
+    public string LockFile(string branch = "main") =>
+        RoundLock.LockPath(new Ledger(new Context(Root, new Dictionary<string, string?>(), TextWriter.Null, TextWriter.Null), branch));
+
     /// <summary>Runs the built dll as its own process: for the tests that race several takers.</summary>
     public Process Spawn(params string[] args)
     {
@@ -129,7 +152,7 @@ internal sealed class Fixture : IDisposable
 
     public void AgeTheLock()
     {
-        var path = Path.Combine(Memory, "round.lock");
+        var path = LockFile();
         var held = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
         held["heartbeat"] = held["heartbeat"]!.GetValue<double>() - 21 * 60;
         File.WriteAllText(path, held.ToJsonString());
@@ -137,6 +160,7 @@ internal sealed class Fixture : IDisposable
 
     public void Dispose()
     {
-        try { Directory.Delete(Root, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+        foreach (var dir in linked.Append(Root))
+            try { Directory.Delete(dir, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 }

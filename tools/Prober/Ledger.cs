@@ -15,6 +15,7 @@ internal sealed class Ledger
     public Context Ctx { get; }
     public string Root { get; }          // the main checkout, also from a linked worktree
     public string Top { get; }           // this checkout
+    public bool Linked { get; }          // a linked worktree (git worktree add), not the main checkout
     public string Branch { get; }
     public string Memory { get; }        // PROBE_STATE_DIR, else the main checkout's prober memory
     public string Dir { get; }           // the branch's directory under Memory
@@ -25,9 +26,12 @@ internal sealed class Ledger
     public Ledger(Context ctx, string? branch)
     {
         Ctx = ctx;
-        var common = Git.Run(ctx.WorkingDirectory, "rev-parse", "--path-format=absolute", "--git-common-dir");
-        if (common.ExitCode != 0) throw new Refusal("not inside a git repository");
-        Root = Path.GetDirectoryName(common.Stdout.Trim().TrimEnd('/', '\\'))!;
+        var dirs = Git.Run(ctx.WorkingDirectory, "rev-parse", "--path-format=absolute", "--git-common-dir", "--git-dir");
+        if (dirs.ExitCode != 0) throw new Refusal("not inside a git repository");
+        var lines = dirs.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(d => d.TrimEnd('/', '\\')).ToArray();
+        if (lines is not [var common, var own]) throw new Refusal("git rev-parse named no git directory");
+        Root = Path.GetDirectoryName(common)!;
+        Linked = own != common;
         Top = Git.Out(ctx.WorkingDirectory, "rev-parse", "--show-toplevel");
         Branch = branch ?? Git.Out(ctx.WorkingDirectory, "rev-parse", "--abbrev-ref", "HEAD");
         Memory = ctx.Env("PROBE_STATE_DIR") ?? Path.Combine(Root, ".claude", "agent-memory-local", "prober");
@@ -106,9 +110,10 @@ internal sealed class Ledger
         using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         void Add(string s) => sha.AppendData(Encoding.UTF8.GetBytes(s + "\0"));
         var entry = Registry().GetValueOrDefault(probe) ?? [];
-        // The seed proves the probe; a result of the probe does not depend on it.
+        // The seeds prove the probe; a result of the probe depends on none of them (decisions 100 and 104).
         var registered = (JsonObject)entry.DeepClone();
         registered.Remove("seed");
+        registered.Remove("seeds");
         Add(Files.Canonical(registered));
         var sources = new SortedDictionary<string, string>(StringComparer.Ordinal);
         foreach (var baseDir in new[] { CorpusDir, StagingDir })
@@ -304,6 +309,9 @@ internal sealed class Ledger
 
     public sealed record ProbeState(string Probe, string Claim, string Filter, JsonArray Variants, bool Stale, bool Retired, int Passes, bool Replay);
 
+    /// <summary>A registry entry's process variants: its own, or one that sets nothing.</summary>
+    public static JsonArray VariantsOf(JsonObject entry) => entry["variants"] is JsonArray va && va.Count > 0 ? (JsonArray)va.DeepClone() : [new JsonObject()];
+
     public List<ProbeState> ProbeStates(bool includeRetired)
     {
         var footprints = Footprints();
@@ -315,7 +323,7 @@ internal sealed class Ledger
             var retired = r["retired"] is JsonValue rv && rv.TryGetValue<bool>(out var b) && b;
             var evidence = Files.ReadJson(EvidencePath(probe));
             var stale = !FootprintCurrent(probe, footprints) || evidence is null || Files.Str(evidence["identity"]) != Identity(probe);
-            var variants = r["variants"] is JsonArray va && va.Count > 0 ? (JsonArray)va.DeepClone() : [new JsonObject()];
+            var variants = VariantsOf(r);
             states.Add(new ProbeState(probe, Files.Str(r["claim"]), Files.Str(r["filter"]), variants, stale, retired, passes, stale && (includeRetired || !retired)));
         }
         return states;

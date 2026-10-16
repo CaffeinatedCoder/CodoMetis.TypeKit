@@ -15,6 +15,11 @@ fabric, and loads the analyzer as an analyzer. A probe file may declare its own 
 (`readonly partial record struct ProbeId : IValue<Guid>;`); generate the declarations of the
 type-shape catalogue with a script into a `Probes/Shapes.g.cs`, not by hand.
 
+- Start a probe with `prober new --claim <id>` and iterate with `prober try --probe <P> [--rows i,j,...]`
+  (tools/Prober/README.md, "Writing a probe"): `new` stages the skeleton in this harness's form, with the
+  claim's obligations quoted and a throwing check each, the claim's rows and the registry entry; `try`
+  builds the corpus and the staging in the replay's worktree and runs that one probe, printing each row's
+  outcome and recording nothing. Never copy the corpus into a worktree or write a build or sync script.
 - Build and run only through the verdict tool, which pins English output, builds before it tests,
   names the exit codes and prints failing tests by name with their assertion:
   `dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll build test/CodoMetis.TypeKit.Samples`
@@ -77,8 +82,9 @@ and a sentence saying what it breaks, in its registry entry:
   and the command counts it as a failure.
 - `prober seeds [--probe P]` applies each seed in a scratch worktree of its own (`replay --where` names
   it), builds, replays the probe there and requires a row that ends as a violation the unseeded probe
-  does not have; a missed seed fails it. It records no evidence and takes no lock, but two runs at once
-  share the worktree. One build per seed, so it runs locally, never in CI: after writing a probe or
+  does not have; a missed seed fails it. It records no evidence and takes no lock. The worktree is per
+  checkout, so runs in two checkouts (a linked worktree each) never meet, but two runs at once in one
+  checkout share it. One build per seed, so it runs locally, never in CI: after writing a probe or
   changing its harness, and before a release.
 - Without a build, the prober tests hold the rest on every run (`SeedsTests`): every registered probe
   has a seed, and its patch touches only `src/` and still applies. A product change that moves the
@@ -87,7 +93,10 @@ and a sentence saying what it breaks, in its registry entry:
   A seed that breaks some assertion of a probe shows the probe can fail, not that the claim is checked, so
   a probe whose claim lists `obligations` carries `seeds`, one per obligation it checks, each a seed as
   above with an `obligation` naming it; `seed` may name one too. A seed that names none counts only for a
-  claim without `obligations`. `prober seeds` runs each seed of a probe on its own and reports it as
+  claim without `obligations`. Register each with `prober register --probe P --claim C --filter "*P"
+  --obligation <id> --seed seeds/<claim>-<id>.patch --defect "<sentence>"`, the command `prober new` prints
+  for each obligation: it replaces a seed of the entry that names the same obligation and refuses an id the
+  claim does not list. Never edit the staged registry by hand. `prober seeds` runs each seed of a probe on its own and reports it as
   `P/<obligation>`, in its output and in `seeds-last.json`; `prober status` shows per claim its obligations
   and the ones no seed names; and `SeedsTests` refuses, without a build, a seed naming an obligation its
   claim does not list and a listed obligation of a claim with probes that no seed of them names.

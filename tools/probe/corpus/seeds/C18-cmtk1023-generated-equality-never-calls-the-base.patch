@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.Templates.cs b/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.Templates.cs
+index 07a7ecb..1bc5231 100644
+--- a/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.Templates.cs
++++ b/src/CodoMetis.TypeKit.Generators/ValueObjectContractAspect.Templates.cs
+@@ -58,7 +58,7 @@ internal sealed partial class ValueObjectContractAspect
+     [Template]
+     public int GetHashCodeTemplate([CompileTime] INamedType valueType) =>
+         (int)ExpressionFactory.Parse(
+-            $"global::System.Collections.Generic.EqualityComparer<{ValueObjectTypes.SourceName(valueType)}>.Default.GetHashCode(this._value!)"
++            $"global::System.HashCode.Combine(base.GetHashCode(), global::System.Collections.Generic.EqualityComparer<{ValueObjectTypes.SourceName(valueType)}>.Default.GetHashCode(this._value!))"
+         ).Value!;
+ 
+     /// <summary><c>Create</c> with the fault carried into the throw.</summary>

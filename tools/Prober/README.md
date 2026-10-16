@@ -17,6 +17,8 @@ dotnet tools/Prober/bin/Release/net10.0/prober.dll help
 | `gate [--since REF]` | none | anywhere, CI included: needs only the tracked corpus and a replay |
 | `status`, `stale`, `universe`, `rows`, … | none | anywhere |
 | `gaps [--base REF]` | none | anywhere: what the corpus leaves out, each with its recorded reason; a report that decides nothing (decision 104) |
+| `new --claim C [--probe P] [--family F]` | none | anywhere: stages a probe's skeleton, its claim's rows and its registry entry with no seed yet, and prints what the writer still owes |
+| `try --probe P [--rows i,j,...] [--no-build]` | none | locally: builds once in the replay's worktree and runs that one probe, every row or the rows given; records nothing and takes no lock |
 | `round explore\|full` | the `prober` agent | locally only, under caps it cannot overrun |
 | `seeds [--probe P]` | none | locally only: one build per seed, in a scratch worktree (decision 100) |
 
@@ -34,6 +36,18 @@ read, and a field the schema does not have is refused with the claim and the fie
 is a reason and its pairs, which `universe` prints beside the claim's narrowings. The JSON files the prober
 writes keep `+`, backticks and `<` literal, so a `publish` that changes nothing in a tracked file leaves it as
 it is (decision 102).
+
+The round lock, `round.lock` and its mutex, sits in the branch's directory (`branches/<branch>/`), beside
+everything a round or a replay writes, so rounds and replays of two branches run at once and two of one branch
+never do. The scratch worktrees, `wt` (the replay's), `seeds`, `explore` (the `prober` agent's) and `enumerate`,
+are per checkout: under `PROBE_CACHE_DIR` when set, else `~/.cache/probe-replay/<checkout>-<hash of its path>`,
+and `replay --where` prints them. So a linked worktree (`git worktree add`, as each session under
+`.claude/worktrees/` is) builds a warm copy of its own, about a gigabyte of disk, and two sessions never reset
+each other's copy; the main checkout keeps the directory it had before. Since the lock is per branch and the
+worktree per checkout, a replay also holds `replay.lock` beside them (an OS lock, gone with its process), and a
+replay of another branch in the same checkout, after a branch switch, is skipped while one runs. Removing a
+linked worktree leaves its cache behind: before you remove it, run there the `remove:` line that `replay --where`
+prints, which removes the cache's worktrees (`git worktree remove`) and then its directory, every path written out.
 
 A claim lists what it promises in `obligations`, each an id and a sentence quoted verbatim from the claim's
 source, and what it does not promise in `not-promised`, each an id and the sentence of the document or record
@@ -59,9 +73,35 @@ and counts the seed caught only for a row that ends as a violation, raised no ha
 violate in the unseeded probe (decision 103). The unseeded rows come from the ledger where the probe's
 evidence is current, else from an unseeded run first. Nothing it runs is evidence; it
 writes `seeds-last.json` (`Schemas/seeds-run.schema.json`), one outcome per seed, reported as
-`P/<obligation>` where the seed names one. A seed is not part of a probe's identity. Without a build,
+`P/<obligation>` where the seed names one. `register --obligation O --seed PATCH --defect TEXT` (or
+`--seed-env NAME=VALUE...` for a toggle) writes a seed into `seeds`, in place of any seed of the entry that
+names O, `seed` included, and refuses an O that the claim's entry in `claims.json` does not list; without
+`--obligation`, `--seed` and `--seed-env` set the one `seed`. No seed is written into the registry by hand.
+A seed is not part of a probe's identity, neither `seed` nor `seeds`. Without a build,
 `Seeds.Problems`, which the prober tests run over the repository, refuses a probe without a seed, a seed that
 does not apply, a seed naming an obligation its claim does not list, and a listed obligation no seed names.
+
+## Writing a probe
+
+`new --claim C` starts one in the branch's staging, whose path it prints. It writes `probes/P.cs` in the form
+the corpus's probes have (`Rows.Data`, `[Theory, MemberData(nameof(Data))]`, `Rec.Run`), headed by the claim's
+source and each obligation's id and sentence, with one check per obligation that throws until it is written:
+the probe builds beside the others, and every row of it ends as a harness error, which fails the row, earns
+nothing and is never a seed's catch. It stages the claim's rows, the ones it has at their indices and then a
+covering array over its pairs not yet covered, as `rows` prints it, and the registry entry with an empty
+`seeds`, so `seeds` and `Seeds.Problems` name the seed each obligation owes. P defaults to the claim id's
+prefix and words (`C20-testing-shouldhold` is `C20TestingShouldholdProbe`); it refuses a claim that is not in
+the claims, a name a probe has, and a claim whose first surface is in no family, or not in `--family`'s.
+
+Then fill each check and run `try --probe P` until each row ends as it should. It moves the replay's worktree
+to HEAD, overlays the corpus and the staging as the replay does, builds once through the adapter (not with
+`--no-build`), and runs P alone in each of its registry variants, or only the rows `--rows` names, through the
+harness's `PROBE_ROWS`, within the rows each variant's `PROBE_ONLY` selects. It prints each run's verdict line
+and how each row ended, and exits with the probe's code (1 when the build fails). It records no evidence,
+footprint or run and takes no lock, so a replay at the same time shares its worktree. Then write a seed per
+obligation and register it with the command `new` printed for that obligation (`register --obligation O`,
+under "Seeds"), show each caught with `seeds --probe P`, and `publish`. `register` lints the staged sources
+first (below). A writer needs no build or sync script of their own.
 
 ## Register and publish
 

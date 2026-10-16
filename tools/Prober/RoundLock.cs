@@ -3,11 +3,12 @@ using System.Text.Json.Nodes;
 namespace Prober;
 
 /// <summary>
-/// One round at a time. The lock file is created exclusively, with its holder's owner and a heartbeat
-/// inside; a holder is alive while its heartbeat is younger than <see cref="HeartbeatMinutes"/>. Liveness is
-/// the heartbeat alone (no process is probed, no signal sent), which is the same on every OS. Every
-/// read-judge-write of the lock runs under an exclusive file create (the mutex), so two takers can never both see
-/// it free, or both take over a holder whose heartbeat stopped.
+/// One round at a time per branch. The lock file sits in the branch's directory (<c>branches/&lt;branch&gt;/round.lock</c>),
+/// beside everything a round or a replay writes, so two branches' rounds may run at once and two of one branch never do.
+/// It is created exclusively, with its holder's owner and a heartbeat inside; a holder is alive while its heartbeat is
+/// younger than <see cref="HeartbeatMinutes"/>. Liveness is the heartbeat alone (no process is probed, no signal sent),
+/// which is the same on every OS. Every read-judge-write of the lock runs under an exclusive file create (the mutex), so
+/// two takers can never both see it free, or both take over a holder whose heartbeat stopped.
 /// </summary>
 internal static class RoundLock
 {
@@ -15,7 +16,7 @@ internal static class RoundLock
     public static readonly TimeSpan BeatEvery = TimeSpan.FromSeconds(30);
     private const int MutexStaleSeconds = 60;
 
-    public static string LockPath(Ledger l) => Path.Combine(l.Memory, "round.lock");
+    public static string LockPath(Ledger l) => Path.Combine(l.Dir, "round.lock");
 
     public static double Now() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
 
@@ -30,7 +31,7 @@ internal static class RoundLock
     /// </summary>
     public static T WithMutex<T>(Ledger l, Func<T> body)
     {
-        Directory.CreateDirectory(l.Memory);
+        Directory.CreateDirectory(l.Dir);
         var path = LockPath(l) + ".mutex";
         var deadline = DateTime.UtcNow.AddSeconds(10);
         while (true)

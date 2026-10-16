@@ -76,6 +76,20 @@ public sealed class ReplayTests : IDisposable
         return (exit, output.ToString(), error.ToString());
     }
 
+    /// <summary>A replay in another checkout of the repository, a linked worktree, with the fake adapter.</summary>
+    private (int Exit, string Out, string Err) ReplayIn(string checkout, params string[] args)
+    {
+        var output = new StringWriter(); var error = new StringWriter();
+        int exit;
+        try { exit = global::Prober.Replay.Run(new Context(checkout, new Dictionary<string, string?> { ["PROBE_CACHE_DIR"] = cache }, output, error), new Args(args, Flags), adapter); }
+        catch (Refusal refusal) { error.WriteLine(refusal.Message); exit = refusal.ExitCode; }
+        return (exit, output.ToString(), error.ToString());
+    }
+
+    private string Home(string checkout) =>
+        global::Prober.Replay.Home(new Context(checkout, new Dictionary<string, string?> { ["PROBE_CACHE_DIR"] = cache }, TextWriter.Null, TextWriter.Null),
+                                   new global::Prober.Ledger(new Context(checkout, new Dictionary<string, string?>(), TextWriter.Null, TextWriter.Null), null));
+
     private (int Exit, string Out, string Err) Ledger(string? state, params string[] args) =>
         state is null ? fx.Ledger(args) : fx.LedgerWith(new Dictionary<string, string?> { ["PROBE_STATE_DIR"] = state }, args);
 
@@ -220,6 +234,76 @@ public sealed class ReplayTests : IDisposable
         Files.Strings(Last(merged)["failed"]).ShouldBe(["P"]);
         HasEvidence(merged, "Q").ShouldBeTrue("the merge still joined every leg");
         File.Exists(Path.Combine(BranchDir(merged), "logs", "P-0-host.log")).ShouldBeTrue("the merge carries the legs' logs");
+    }
+
+    [Fact]
+    public void Two_checkouts_of_one_repository_get_scratch_worktrees_of_their_own()
+    {
+        var other = fx.Linked("other");
+
+        var (main, linked) = (Home(fx.Root), Home(other));
+
+        linked.ShouldNotBe(main);
+        Path.GetFileName(linked).ShouldStartWith(Path.GetFileName(other) + "-");
+        ReplayIn(other, "--where").Out.ShouldContain(Path.Combine(linked, "seeds"));
+    }
+
+    /// <summary>Removing a linked worktree leaves its cache behind; the line `--where` prints removes it, worktrees first.</summary>
+    [Fact]
+    public void The_remove_line_of_where_removes_the_cache_and_its_worktrees()
+    {
+        var other = fx.Linked("other");
+        var home = Home(other);
+        fx.Sh("git", "worktree", "add", "-q", "--detach", Path.Combine(home, "seeds"), "HEAD");
+        var line = ReplayIn(other, "--where").Out.Split('\n').Single(l => l.StartsWith("remove:", StringComparison.Ordinal))["remove:".Length..].Trim();
+
+        static string Slashed(string path) => path.Replace('\\', '/');
+        Slashed(line).ShouldContain($"'{Slashed(home)}'");
+        fx.Sh("sh", "-c", line);
+
+        Directory.Exists(home).ShouldBeFalse();
+        Slashed(fx.Sh("git", "worktree", "list", "--porcelain")).ShouldNotContain(Slashed(home));
+    }
+
+    /// <summary>The main checkout's cache is keyed as it was before linked worktrees had their own, so its warm copy is kept.</summary>
+    [Fact]
+    public void The_main_checkout_keeps_the_cache_it_had()
+    {
+        var root = Path.GetDirectoryName(fx.Sh("git", "rev-parse", "--path-format=absolute", "--git-common-dir").Trim().TrimEnd('/', '\\'))!;
+        var key = Convert.ToHexStringLower(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(root)))[..8];
+
+        Home(fx.Root).ShouldBe(Path.Combine(cache, $"{Path.GetFileName(root)}-{key}"));
+    }
+
+    [Fact]
+    public void A_round_on_one_branch_does_not_skip_a_replay_of_another()
+    {
+        var other = fx.Linked("other");
+        fx.Ledger("lock", "--holder", "round-explore-1", "--mode", "explore").Exit.ShouldBe(0);
+
+        var (exit, output, error) = ReplayIn(other, "--all");
+
+        exit.ShouldBe(0, error + output);
+        output.ShouldNotContain("skipped");
+        File.Exists(Path.Combine(fx.Memory, "branches", "other", "evidence", "P.json")).ShouldBeTrue(output);
+    }
+
+    /// <summary>
+    /// The lock is per branch and the replay worktree per checkout: a replay of another branch in this checkout (the
+    /// branch switched while the post-commit replay runs) skips while one holds the worktree, and never shares it.
+    /// </summary>
+    [Fact]
+    public void A_replay_skips_while_another_branchs_replay_in_its_checkout_holds_the_worktree()
+    {
+        using (global::Prober.Replay.HoldWorktree(Home(fx.Root)))
+        {
+            var (exit, output, error) = Replay(null, "--all", "--branch", "other");
+
+            exit.ShouldBe(0, error);
+            output.ShouldContain("skipped, another branch's replay in this checkout");
+            File.Exists(Path.Combine(fx.Memory, "branches", "other", "evidence", "P.json")).ShouldBeFalse();
+        }
+        Replay(null, "--all", "--branch", "other").Out.ShouldNotContain("skipped");
     }
 
     /// <summary>P over C1's two rows and Q over C2's one; a run takes a moment, so runs at once can be counted.</summary>

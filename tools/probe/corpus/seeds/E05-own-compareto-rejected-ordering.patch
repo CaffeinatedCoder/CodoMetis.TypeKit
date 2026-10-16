@@ -1,0 +1,15 @@
+diff --git a/src/CodoMetis.TypeKit.EntityFrameworkCore/HandWrittenOrderingInterceptor.cs b/src/CodoMetis.TypeKit.EntityFrameworkCore/HandWrittenOrderingInterceptor.cs
+index 5f1499f..6acc064 100644
+--- a/src/CodoMetis.TypeKit.EntityFrameworkCore/HandWrittenOrderingInterceptor.cs
++++ b/src/CodoMetis.TypeKit.EntityFrameworkCore/HandWrittenOrderingInterceptor.cs
+@@ -139,9 +139,7 @@ internal static class HandWrittenOrdering
+         /// <summary>The type a LINQ operator orders by: the key, the element for <c>Order</c>, the result for <c>Min</c> and <c>Max</c>.</summary>
+         private static Type? OrderedType(MethodInfo method) => method.Name switch
+         {
+-            nameof(Queryable.OrderBy) or nameof(Queryable.OrderByDescending) or nameof(Queryable.ThenBy) or nameof(Queryable.ThenByDescending)
+-             or nameof(Queryable.MinBy) or nameof(Queryable.MaxBy) when method.IsGenericMethod => method.GetGenericArguments()[1],
+-            nameof(Queryable.Order) or nameof(Queryable.OrderDescending) when method.IsGenericMethod => method.GetGenericArguments()[0],
++            nameof(Queryable.MinBy) or nameof(Queryable.MaxBy) when method.IsGenericMethod => method.GetGenericArguments()[1],
+             nameof(Queryable.Min) or nameof(Queryable.Max) => method.ReturnType,
+             _ => null,
+         };

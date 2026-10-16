@@ -19,12 +19,25 @@ internal static class Program
           identity --probe P                what a result of P is bound to
           record-run --probe P --result pass|fail [--evidence F] [--seconds S]
           footprint --probe P --cobertura F... --root WT [--include src] [--compile-time PATH...]
-          register --probe P --claim C --filter F [--variants JSON] [--seed PATCH --defect TEXT]
+          register --probe P --claim C --filter F [--variants JSON] [--seed PATCH] [--seed-env NAME=VALUE...] [--defect TEXT]
+                                            [--obligation O]: the seed (a patch, a toggle or both) into `seed`, or with
+                                            --obligation into `seeds`, in place of a seed naming O; refuses an O that
+                                            claim C does not list
           publish | dismiss --id F --reason TEXT | mark retired --probe P
           lock --holder H --mode replay|explore|full [--pid N] | unlock --holder H | heartbeat --holder H
           round-start --holder H --minutes M [--claims N] | round-end --holder H | repair | abandon
           merge --from DIR...               joins the states of a replay split by family (one DIR per leg) into
                                             this one; refuses while a registered probe was in no leg
+
+        Writing a probe (into the branch's staging):
+          new --claim C [--probe P] [--family F]   stages P's skeleton (the claim's source and obligations quoted, one
+                                            check per obligation that throws until written), the claim's rows and P's
+                                            registry entry with no seed yet; P defaults to the claim's prefix and words
+                                            (C20-testing-shouldhold: C20TestingShouldholdProbe); refuses a claim not in
+                                            the claims, a name taken, a family that is not the claim's
+          try --probe P [--rows i,j,...] [--no-build]   builds once in the replay's worktree and runs P alone, every
+                                            variant or the rows given, printing how each row ended; records nothing,
+                                            takes no lock, exits with the probe's exit code
 
         Running probes:
           replay [--all] [--family F] [--parallel N] [--no-footprint] [--holder H] [--dry-run] [--where]
@@ -36,11 +49,11 @@ internal static class Program
                                             there and requires a violation it causes (local only, a build per seed)
 
         State goes under PROBE_STATE_DIR when set (CI), else the main checkout's prober memory.
-        Exit codes: 0 done, 1 refused or failed, 2 usage, 3 this dll is stale.
+        Exit codes: 0 done, 1 refused or failed, 2 usage, 3 this dll is stale; `try` exits with the probe's own.
         """;
 
     private static readonly HashSet<string> Flags = new(StringComparer.Ordinal)
-        { "json", "full", "all", "include-retired", "dry-run", "where", "no-footprint" };
+        { "json", "full", "all", "include-retired", "dry-run", "where", "no-footprint", "no-build" };
 
     private static int Main(string[] args)
     {
@@ -65,6 +78,7 @@ internal static class Program
             if (command == "replay") return Replay.Run(ctx, a);
             if (command == "round") return Round.Run(ctx, a);
             if (command == "seeds") return Seeds.Run(ctx, a);
+            if (command == "try") return TryProbe.Run(ctx, a);
             var ledger = new Ledger(ctx, a.Get("branch"));
             // Commands run under a round keep its lock alive.
             if (command is not ("lock" or "unlock" or "abandon" or "heartbeat") && ctx.Env("PROBE_HOLDER") is { } holder)
@@ -79,6 +93,7 @@ internal static class Program
                 "identity" => Commands.IdentityCommand(ledger, a),
                 "record-run" => Commands.RecordRun(ledger, a),
                 "footprint" => Commands.Footprint(ledger, a),
+                "new" => NewProbe.Run(ledger, a),
                 "register" => Commands.Register(ledger, a),
                 "publish" => Commands.Publish(ledger, a),
                 "dismiss" => Commands.Dismiss(ledger, a),
