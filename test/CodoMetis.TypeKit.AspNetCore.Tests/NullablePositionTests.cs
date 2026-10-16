@@ -56,6 +56,8 @@ public sealed class NullablePositionTests
         (Key<ProbePercentage?>(), Key<int?>()),
         (Key<ProbeId?>(), Key<Guid?>()),
         (Key<ProbeWeekday?>(), Key<DayOfWeek?>()),
+        // A validated struct over an enum, the shape of C21 row 285.
+        (Key<PositionValidatedWeekday?>(), Key<DayOfWeek?>()),
         // A nullable struct over a flags enum, written by name or by number as the host writes the enum.
         (Key<PositionAccessMask?>(), Key<PositionAccess?>()),
         (Key<ProbeDuration?>(), Key<TimeSpan?>()),
@@ -150,7 +152,7 @@ public sealed class NullablePositionTests
     [
         typeof(ProbeCount?), typeof(ProbePercentage?), typeof(ProbeId?), typeof(ProbeWeekday?), typeof(ProbeDuration?), typeof(ProbeAmount?),
         typeof(ProbeFlag?), typeof(ProbeDate?), typeof(ProbeName?), typeof(ProbeUri?), typeof(ProbeCount), typeof(ProbeId), typeof(ProbeLabel),
-        typeof(ProbeWeekday), typeof(PositionAccessMask?), typeof(PositionAccessMask),
+        typeof(ProbeWeekday), typeof(PositionAccessMask?), typeof(PositionAccessMask), typeof(PositionValidatedWeekday?),
         typeof(int?), typeof(Guid?), typeof(DayOfWeek?), typeof(TimeSpan?), typeof(decimal?), typeof(bool?), typeof(DateOnly?), typeof(int),
         typeof(Guid), typeof(string), typeof(DayOfWeek), typeof(PositionAccess?), typeof(PositionAccess),
     ];
@@ -163,7 +165,7 @@ public sealed class NullablePositionTests
     {
         Map<ProbeCount?>(app); Map<ProbePercentage?>(app); Map<ProbeId?>(app); Map<ProbeWeekday?>(app); Map<ProbeDuration?>(app);
         Map<ProbeAmount?>(app); Map<ProbeFlag?>(app); Map<ProbeDate?>(app); Map<ProbeName?>(app); Map<ProbeUri?>(app);
-        Map<ProbeCount>(app); Map<ProbeId>(app); Map<ProbeLabel>(app); Map<ProbeWeekday>(app); Map<PositionAccessMask?>(app); Map<PositionAccessMask>(app);
+        Map<ProbeCount>(app); Map<ProbeId>(app); Map<ProbeLabel>(app); Map<ProbeWeekday>(app); Map<PositionAccessMask?>(app); Map<PositionAccessMask>(app); Map<PositionValidatedWeekday?>(app);
         Map<int?>(app); Map<Guid?>(app); Map<DayOfWeek?>(app); Map<TimeSpan?>(app); Map<decimal?>(app); Map<bool?>(app); Map<DateOnly?>(app);
         Map<int>(app); Map<Guid>(app); Map<string>(app); Map<DayOfWeek>(app); Map<PositionAccess?>(app); Map<PositionAccess>(app);
 
@@ -355,3 +357,16 @@ public enum PositionAccess
 
 /// <summary>A value object over a flags enum.</summary>
 public readonly partial record struct PositionAccessMask : IValue<PositionAccess>;
+
+/// <summary>Why a <see cref="PositionValidatedWeekday"/> refuses a value.</summary>
+public enum PositionWeekdayFault
+{
+    Undefined,
+}
+
+/// <summary>A validated value object over an enum.</summary>
+public readonly partial record struct PositionValidatedWeekday : IValidatedValue<PositionValidatedWeekday, DayOfWeek, PositionWeekdayFault>
+{
+    public static Result<PositionValidatedWeekday, PositionWeekdayFault> Create(DayOfWeek value) =>
+        Enum.IsDefined(value) ? new PositionValidatedWeekday(value) : Result.Error(PositionWeekdayFault.Undefined);
+}
