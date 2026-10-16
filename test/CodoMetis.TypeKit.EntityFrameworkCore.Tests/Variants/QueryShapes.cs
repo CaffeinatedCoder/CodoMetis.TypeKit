@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using CodoMetis.TypeKit.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -105,6 +106,19 @@ public enum Op
     NavigationMax,
     NavigationOrderFirst,
     NavigationOrderDescendingFirst,
+
+    /// <summary><c>EF.Functions.Greatest(r.P, x)</c>, relational: SQLite's <c>max</c>, PostgreSQL's <c>GREATEST</c>.</summary>
+    Greatest,
+
+    /// <summary><c>EF.Functions.Least(r.P, x)</c>.</summary>
+    Least,
+
+    /// <summary>Npgsql's row value, <c>EF.Functions.GreaterThan((r.P, r.Id), (x, 0))</c>; SQLite translates none of the four.</summary>
+    RowGreaterThan,
+
+    RowLessThan,
+    RowGreaterOrEqual,
+    RowLessOrEqual,
 }
 
 /// <summary>One query of the catalogue: a kind, who stores it, where the query reads it, how, and what it does.</summary>
@@ -120,7 +134,8 @@ public sealed record QueryCase(WrappedKind Kind, Conversion Conversion, Site Sit
     public bool Orders => Op is Op.GreaterOrEqual or Op.LessThan or Op.LessOrEqual or Op.LessThanOrNull or Op.CompareTo or Op.OrderBy or Op.OrderByDescending or Op.ThenBy or Op.ThenByDescending
                              or Op.OrderByBoxed or Op.ThenByBoxed or Op.Order or Op.OrderDescending or Op.Min or Op.Max or Op.MinBy or Op.MaxBy
                              or Op.AnyGreaterOrEqual or Op.CountGreaterOrEqual or Op.ElementMax or Op.ElementOrderFirst
-                             or Op.NavigationMin or Op.NavigationMax or Op.NavigationOrderFirst or Op.NavigationOrderDescendingFirst;
+                             or Op.NavigationMin or Op.NavigationMax or Op.NavigationOrderFirst or Op.NavigationOrderDescendingFirst
+                             or Op.Greatest or Op.Least or Op.RowGreaterThan or Op.RowLessThan or Op.RowGreaterOrEqual or Op.RowLessOrEqual;
 
     public bool IsFilter => Site is Site.QueryFilter or Site.NamedQueryFilter;
 
@@ -134,22 +149,25 @@ public sealed record QueryCase(WrappedKind Kind, Conversion Conversion, Site Sit
 /// </summary>
 public static class QueryShapes
 {
+    /// <summary>The database's own orderings, called through <c>EF.Functions</c>; declared first, as <see cref="ColumnOps"/> reads it.</summary>
+    private static readonly Op[] FunctionOps = [Op.Greatest, Op.Least, Op.RowGreaterThan, Op.RowLessThan, Op.RowGreaterOrEqual, Op.RowLessOrEqual];
+
     private static readonly Op[] ColumnOps =
     [
         Op.EqualsLiteral, Op.EqualsCaptured, Op.NotEquals, Op.GreaterOrEqual, Op.LessThan, Op.LessOrEqual, Op.CompareTo,
         Op.OrderBy, Op.OrderByDescending, Op.ThenBy, Op.ThenByDescending, Op.OrderByBoxed, Op.ThenByBoxed, Op.Order, Op.OrderDescending,
-        Op.Min, Op.Max, Op.MinBy, Op.MaxBy, Op.Contains, Op.GroupBy, Op.Select, Op.Distinct,
+        Op.Min, Op.Max, Op.MinBy, Op.MaxBy, Op.Contains, Op.GroupBy, Op.Select, Op.Distinct, .. FunctionOps,
     ];
 
     private static readonly Dictionary<Site, Op[]> Ops = new()
     {
         [Site.Column]            = ColumnOps,
         [Site.Nullable]          = [.. ColumnOps.Where(op => op != Op.CompareTo), Op.LessThanOrNull],
-        [Site.CollectionElement] = [Op.AnyEquals, Op.AnyGreaterOrEqual, Op.ElementContains, Op.ElementMax, Op.ElementOrderFirst],
+        [Site.CollectionElement] = [Op.AnyEquals, Op.AnyGreaterOrEqual, Op.ElementContains, Op.ElementMax, Op.ElementOrderFirst, .. FunctionOps],
         [Site.ParameterElement]  = [Op.AnyEquals, Op.AnyGreaterOrEqual],
         [Site.Navigation]        = [Op.AnyEquals, Op.CountGreaterOrEqual, Op.NavigationMin, Op.NavigationMax, Op.NavigationOrderFirst, Op.NavigationOrderDescendingFirst],
         [Site.JsonProperty]      = [Op.EqualsCaptured, Op.GreaterOrEqual, Op.OrderBy, Op.Max, Op.Select],
-        [Site.QueryFilter]       = [Op.EqualsLiteral, Op.GreaterOrEqual, Op.CompareTo, Op.NavigationMax],
+        [Site.QueryFilter]       = [Op.EqualsLiteral, Op.GreaterOrEqual, Op.CompareTo, Op.NavigationMax, .. FunctionOps],
         [Site.NamedQueryFilter]  = [Op.GreaterOrEqual],
     };
 
@@ -326,6 +344,9 @@ public sealed class QueryBuilder(QueryCase @case, bool valueObject)
             Op.EqualsLiteral  => Expression.Equal(read, Literal(read.Type)),
             Op.GreaterOrEqual => Expression.GreaterThanOrEqual(read, Literal(read.Type)),
             Op.CompareTo      => Expression.GreaterThan(CompareTo(read, Literal(read.Type)), Expression.Constant(0)),
+            Op.Greatest or Op.Least => Expression.Equal(Function(@case.Op, read, Literal(read.Type)), read),
+            Op.RowGreaterThan or Op.RowLessThan or Op.RowGreaterOrEqual or Op.RowLessOrEqual
+                              => RowValue(@case.Op, read, Expression.Property(entity, "Id"), Literal(read.Type), Expression.Constant(0)),
             _                 => throw new ArgumentOutOfRangeException(nameof(@case), @case, null),
         };
         return Expression.Lambda(body, entity);
@@ -349,6 +370,29 @@ public sealed class QueryBuilder(QueryCase @case, bool valueObject)
 
     private Expression Captured(Type type) =>
         Expression.Field(Expression.Constant(Activator.CreateInstance(typeof(Box<>).MakeGenericType(type), Middle)), "Value");
+
+    /// <summary><c>EF.Functions</c>, as C# writes it in an expression tree.</summary>
+    private static readonly Expression Functions = Expression.Property(null, typeof(EF).GetProperty(nameof(EF.Functions))!);
+
+    /// <summary><c>EF.Functions.Greatest(left, right)</c> or <c>Least</c>, typed as <paramref name="left"/>.</summary>
+    private static Expression Function(Op op, Expression left, Expression right) =>
+        Expression.Call(typeof(RelationalDbFunctionsExtensions), op.ToString(), [left.Type], Functions, Expression.NewArrayInit(left.Type, left, right));
+
+    /// <summary>Npgsql's row-value comparison of <c>(left, leftKey)</c> with <c>(right, rightKey)</c>, each tuple passed as an <see cref="ITuple"/>.</summary>
+    private static Expression RowValue(Op op, Expression left, Expression leftKey, Expression right, Expression rightKey)
+    {
+        var name = op switch
+        {
+            Op.RowGreaterThan    => nameof(NpgsqlDbFunctionsExtensions.GreaterThan),
+            Op.RowLessThan       => nameof(NpgsqlDbFunctionsExtensions.LessThan),
+            Op.RowGreaterOrEqual => nameof(NpgsqlDbFunctionsExtensions.GreaterThanOrEqual),
+            _                    => nameof(NpgsqlDbFunctionsExtensions.LessThanOrEqual),
+        };
+        Expression Tuple(Expression item1, Expression item2) =>
+            Expression.Convert(Expression.Call(typeof(ValueTuple), nameof(ValueTuple.Create), [item1.Type, item2.Type], item1, item2), typeof(ITuple));
+
+        return Expression.Call(typeof(NpgsqlDbFunctionsExtensions), name, null, Functions, Tuple(left, leftKey), Tuple(right, rightKey));
+    }
 
     private static Expression CompareTo(Expression left, Expression right) =>
         Expression.Call(left, left.Type.GetMethod("CompareTo", [left.Type]) ?? throw new InvalidOperationException($"{left.Type} has no CompareTo({left.Type})"), right);
@@ -399,6 +443,9 @@ public sealed class QueryBuilder(QueryCase @case, bool valueObject)
             Op.GroupBy           => (Grouped(source, key, type), false),
             Op.Select            => (Values(source), false),
             Op.Distinct          => (Q("Distinct", [type], Values(source)), false),
+            Op.Greatest or Op.Least => (Q("Select", [Source, type], source, Expression.Lambda(Function(@case.Op, read, Captured(type)), row)), false),
+            Op.RowGreaterThan or Op.RowLessThan or Op.RowGreaterOrEqual or Op.RowLessOrEqual
+                                 => (Where(RowValue(@case.Op, read, Expression.Property(row, "Id"), Captured(type), Captured(typeof(int), 0))), false),
             _                    => throw new ArgumentOutOfRangeException(nameof(@case), @case, null),
         };
     }
@@ -430,6 +477,9 @@ public sealed class QueryBuilder(QueryCase @case, bool valueObject)
             Op.ElementContains   => (Where(E("Contains", [type], E("Select", [Element, type], tags, key), Captured(type))), false),
             Op.ElementMax        => (Select(E("Max", [Element, type], tags, key)), false),
             Op.ElementOrderFirst => (Select(E("First", [type], E("Select", [Element, type], E("OrderBy", [Element, type], tags, key), key))), false),
+            Op.Greatest or Op.Least => (Where(E("Any", [Element], tags, Expression.Lambda(Expression.Equal(Function(@case.Op, read, Captured(type)), read), tag))), false),
+            Op.RowGreaterThan or Op.RowLessThan or Op.RowGreaterOrEqual or Op.RowLessOrEqual
+                                 => (Where(E("Any", [Element], tags, Expression.Lambda(RowValue(@case.Op, read, Expression.Property(row, "Id"), Captured(type), Captured(typeof(int), 0)), tag))), false),
             _                    => throw new ArgumentOutOfRangeException(nameof(@case), @case, null),
         };
     }

@@ -202,6 +202,8 @@ instead, which works everywhere and may add a cast:
   object:
   - a comparison (`<`, `>`, `<=`, `>=`, `CompareTo`);
   - an ordering (`OrderBy`, `ThenBy`, their descending forms, `Order`);
+  - the database's own orderings: `EF.Functions.Greatest` and `Least`, and a row-value comparison
+    such as Npgsql's `EF.Functions.GreaterThan((o.Priority, o.Id), (priority, id))`;
   - `Min` or `Max`.
 
   Compare or order by `.Value` where the underlying value's order is what you mean

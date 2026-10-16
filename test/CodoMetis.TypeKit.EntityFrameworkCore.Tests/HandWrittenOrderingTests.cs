@@ -42,6 +42,26 @@ public sealed class HandWrittenOrderingTests : IDisposable
         // Boxed, the key still orders by CompareTo in memory, 3, 2, 1; EF dropped the cast and answered 1, 2, 3.
         ["OrderBy a key cast to object"] = db => db.Ranked.OrderBy(r => (object)r.Rank).ToList(),
         ["ThenBy a key cast to object"]  = db => db.Ranked.OrderBy(r => r.Id % 1).ThenBy(r => (object)r.Rank).ToList(),
+
+        // The database's own GREATEST and LEAST (SQLite's max and min) order by the column: the first answered
+        // 2, 2, 3 where memory's order answers 1, 1, 2 (measured on PostgreSQL 17 before the refusal).
+        ["Greatest"]               = db => db.Ranked.Select(r => EF.Functions.Greatest(r.Rank, Two)).ToList(),
+        ["Least"]                  = db => db.Ranked.Where(r => EF.Functions.Least(r.Optional, Two) == r.Optional).ToList(),
+        ["Least of a record class"] = db => db.Ranked.Select(r => EF.Functions.Least(r.Label, ProbeReversedLabel.From("2"))).ToList(),
+    };
+
+    /// <summary>
+    /// Npgsql's row-value comparisons, <c>(a, b) &gt; (x, y)</c>, which compare each element by the column's order:
+    /// <c>GreaterThan((Rank, Id), (2, 0))</c> kept every row from 2 up where memory's order keeps only 1. Translated
+    /// without a server, since the refusal comes before any SQL.
+    /// </summary>
+    private static readonly Dictionary<string, Func<RankedDb, IQueryable>> RefusedOnPostgreSql = new()
+    {
+        ["GreaterThan"]          = db => db.Ranked.Where(r => EF.Functions.GreaterThan(ValueTuple.Create(r.Rank, r.Id), ValueTuple.Create(Two, 0))),
+        ["LessThan"]             = db => db.Ranked.Where(r => EF.Functions.LessThan(ValueTuple.Create(r.Id, r.Optional), ValueTuple.Create(0, (ProbeDescending?)Two))),
+        ["GreaterThanOrEqual"]   = db => db.Ranked.Where(r => EF.Functions.GreaterThanOrEqual(new ValueTuple<int, ProbeDescending>(r.Id, r.Rank), new ValueTuple<int, ProbeDescending>(0, Two))),
+        ["LessThanOrEqual"]      = db => db.Ranked.Where(r => EF.Functions.LessThanOrEqual(ValueTuple.Create(r.Label, r.Id), ValueTuple.Create(ProbeReversedLabel.From("2"), 0))),
+        ["Greatest"]             = db => db.Ranked.Select(r => EF.Functions.Greatest(r.Rank, Two)),
     };
 
     private readonly SqliteConnection _connection = new("Data Source=:memory:");
@@ -57,8 +77,40 @@ public sealed class HandWrittenOrderingTests : IDisposable
         var refusal = Should.Throw<InvalidOperationException>(() => Refused[query](db)).Message;
 
         refusal.ShouldContain("its ordering is its own CompareTo, which the database cannot run");
-        refusal.ShouldContain(query == "a record class" ? "ProbeReversedLabel" : "ProbeDescending");
+        refusal.ShouldContain(query is "a record class" or "Least of a record class" ? "ProbeReversedLabel" : "ProbeDescending");
         refusal.ShouldContain("Compare or order by .Value explicitly");
+    }
+
+    public static TheoryData<string> RefusedPostgreSqlQueries => [.. RefusedOnPostgreSql.Keys];
+
+    [Theory]
+    [MemberData(nameof(RefusedPostgreSqlQueries))]
+    public void A_row_value_comparison_by_its_own_CompareTo_is_refused_on_PostgreSQL(string query)
+    {
+        using var db = new RankedDb(new DbContextOptionsBuilder<RankedDb>().UseNpgsql("Host=localhost;Database=none").UseTypeKit().Options);
+
+        var refusal = Should.Throw<InvalidOperationException>(() => RefusedOnPostgreSql[query](db).ToQueryString()).Message;
+
+        refusal.ShouldContain("its ordering is its own CompareTo, which the database cannot run");
+        refusal.ShouldContain(query == "LessThanOrEqual" ? "ProbeReversedLabel is compared" : "ProbeDescending is compared");
+        refusal.ShouldContain($"by {query} in a query");
+    }
+
+    /// <summary>The same functions over <c>.Value</c>, or over a value object ordered by what it wraps, still translate.</summary>
+    [Fact]
+    public void Greatest_Least_and_row_values_by_Value_still_translate()
+    {
+        using (var db = Seeded())
+        {
+            db.Ranked.Select(r => EF.Functions.Greatest(r.Rank.Value, 2)).ToList().Order().ShouldBe([2, 2, 3]);
+            db.Ranked.Select(r => EF.Functions.Least(r.Count, ProbeCount.From(2))).ToList().Order().ShouldBe([ProbeCount.From(1), ProbeCount.From(2), ProbeCount.From(2)]);
+        }
+
+        using var postgreSql = new RankedDb(new DbContextOptionsBuilder<RankedDb>().UseNpgsql("Host=localhost;Database=none").UseTypeKit().Options);
+        postgreSql.Ranked.Where(r => EF.Functions.GreaterThan(ValueTuple.Create(r.Rank.Value, r.Id), ValueTuple.Create(2, 0))).ToQueryString()
+                  .ShouldContain("(r.\"Rank\", r.\"Id\") > (");
+        postgreSql.Ranked.Where(r => EF.Functions.LessThan(ValueTuple.Create(r.Count, r.Id), ValueTuple.Create(ProbeCount.From(2), 0))).ToQueryString()
+                  .ShouldContain("(r.\"Count\", r.\"Id\") < (");
     }
 
     /// <summary>
@@ -100,10 +152,11 @@ public sealed class HandWrittenOrderingTests : IDisposable
     /// keeps 1. The filter is refused when the model is built, named or not, naming the entity type.
     /// </summary>
     [Theory]
-    [InlineData(typeof(FilteredByRankDb), "the query filter of FilteredRank")]
-    [InlineData(typeof(NamedFilterByRankDb), "the query filter \"AboveTwo\" of FilteredRank")]
-    [InlineData(typeof(FilteredByChildRankDb), "the query filter of RankParent")]
-    public void A_query_filter_that_orders_by_its_own_CompareTo_is_refused(Type context, string filter)
+    [InlineData(typeof(FilteredByRankDb), "compared with >", "the query filter of FilteredRank")]
+    [InlineData(typeof(NamedFilterByRankDb), "compared with >", "the query filter \"AboveTwo\" of FilteredRank")]
+    [InlineData(typeof(FilteredByChildRankDb), "compared with >", "the query filter of RankParent")]
+    [InlineData(typeof(FilteredByGreatestDb), "compared by Greatest", "the query filter of FilteredRank")]
+    public void A_query_filter_that_orders_by_its_own_CompareTo_is_refused(Type context, string how, string filter)
     {
         _connection.Open();
         using var db = (DbContext)Activator.CreateInstance(context, new DbContextOptionsBuilder().UseSqlite(_connection).UseTypeKit().Options)!;
@@ -114,9 +167,21 @@ public sealed class HandWrittenOrderingTests : IDisposable
             return db.Set<FilteredRank>().Select(r => r.Rank.Value).ToList();
         }).Message;
 
-        refusal.ShouldContain($"ProbeDescending is compared with > in {filter}");
+        refusal.ShouldContain($"ProbeDescending is {how} in {filter}");
         refusal.ShouldContain("its ordering is its own CompareTo, which the database cannot run");
         refusal.ShouldContain("Compare or order by .Value explicitly");
+    }
+
+    /// <summary>A row-value comparison in a filter is refused when the model is built, on the provider that has one.</summary>
+    [Fact]
+    public void A_query_filter_with_a_row_value_comparison_by_its_own_CompareTo_is_refused_on_PostgreSQL()
+    {
+        using var db = new FilteredByRowValueDb(new DbContextOptionsBuilder().UseNpgsql("Host=localhost;Database=none").UseTypeKit().Options);
+
+        var refusal = Should.Throw<InvalidOperationException>(() => db.Model).Message;
+
+        refusal.ShouldContain("ProbeDescending is compared in a row value by GreaterThan in the query filter of FilteredRank");
+        refusal.ShouldContain("its ordering is its own CompareTo, which the database cannot run");
     }
 
     /// <summary>
@@ -227,6 +292,20 @@ public sealed class FilteredByChildRankDb(DbContextOptions options) : DbContext(
         modelBuilder.Entity<FilteredRank>();
         modelBuilder.Entity<RankParent>().HasQueryFilter(p => p.Children.Max(c => c.Rank) > ProbeDescending.From(2));
     }
+}
+
+/// <summary>A query filter that keeps the rows whose rank is the greater of it and 2, by the database's GREATEST.</summary>
+public sealed class FilteredByGreatestDb(DbContextOptions options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<FilteredRank>().HasQueryFilter(r => EF.Functions.Greatest(r.Rank, ProbeDescending.From(2)) == r.Rank);
+}
+
+/// <summary>A query filter by Npgsql's row-value comparison.</summary>
+public sealed class FilteredByRowValueDb(DbContextOptions options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<FilteredRank>().HasQueryFilter(r => EF.Functions.GreaterThan(ValueTuple.Create(r.Rank, r.Id), ValueTuple.Create(ProbeDescending.From(2), 0)));
 }
 
 /// <summary>Filters that are allowed: by <c>.Value</c>, and a comparison of the context's own value, evaluated in memory.</summary>
