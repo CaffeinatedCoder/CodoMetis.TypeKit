@@ -882,6 +882,53 @@
         "WithoutFaults-one"
       ]
     },
+    "obligations": [
+      {
+        "id": "bare-names-warn",
+        "sentence": "With bare names, the default, that's `AccountFault.NotFound` beside an `EditFault.NotFound`.",
+        "axes": {
+          "naming": [
+            "bare"
+          ]
+        }
+      },
+      {
+        "id": "qualified-chain-warns",
+        "sentence": "With qualified names, it's two sets with one nesting chain in two namespaces, since the name carries no namespace.",
+        "axes": {
+          "naming": [
+            "qualified"
+          ]
+        }
+      },
+      {
+        "id": "warning-names-both",
+        "sentence": "A client reads the two errors as one, so the host logs a warning at startup naming both.",
+        "axes": {
+          "leave-out": [
+            "none"
+          ]
+        }
+      },
+      {
+        "id": "qualified-names-fix",
+        "sentence": "Fix it with `QualifiedFaultNames`, a rename, or by leaving one out of the route",
+        "axes": {
+          "naming": [
+            "qualified"
+          ]
+        }
+      },
+      {
+        "id": "leave-one-out-fixes",
+        "sentence": "Fix it with `QualifiedFaultNames`, a rename, or by leaving one out of the route",
+        "axes": {
+          "leave-out": [
+            "WithoutFaults-one"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",

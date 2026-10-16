@@ -251,10 +251,33 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C08-same-name-warning.patch",
-        "defect": "Bare fault names are compared as qualified ones, so two fault types an endpoint answers with that write one name (HFault.Clash beside KFault.Clash) log no startup warning."
-      }
+      "seeds": [
+        {
+          "obligation": "bare-names-warn",
+          "patch": "seeds/C08-same-name-warning.patch",
+          "defect": "Bare fault names are compared as qualified ones, so two fault types an endpoint answers with that write one name (HFault.Clash beside KFault.Clash) log no startup warning."
+        },
+        {
+          "obligation": "qualified-chain-warns",
+          "patch": "seeds/C08-qualified-chain-warns.patch",
+          "defect": "Qualified fault names are compared with their namespace, so two sets of one nesting chain in two namespaces log no startup warning."
+        },
+        {
+          "obligation": "warning-names-both",
+          "patch": "seeds/C08-warning-names-both.patch",
+          "defect": "The startup warning names only the first of the two members written alike."
+        },
+        {
+          "obligation": "qualified-names-fix",
+          "patch": "seeds/C08-qualified-names-fix.patch",
+          "defect": "Under QualifiedFaultNames, fault names are still compared bare, so HFault.Clash beside KFault.Clash logs a warning."
+        },
+        {
+          "obligation": "leave-one-out-fixes",
+          "patch": "seeds/C08-leave-one-out-fixes.patch",
+          "defect": "The same-name check counts a member the endpoint leaves out, so leaving one out does not end the warning."
+        }
+      ]
     },
     "C09BaseRecordEqualityProbe": {
       "claim": "C09-base-record-equality",
