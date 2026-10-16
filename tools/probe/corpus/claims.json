@@ -4460,6 +4460,35 @@
         "controller-without-ApiController-visible"
       ]
     },
+    "obligations": [
+      {
+        "id": "builder-reaches-doc",
+        "sentence": "OpenAPI: a `WithFaultStatus` on the builder `MapControllers()` returns reaches the document, as it reached the response.",
+        "axes": {
+          "setter": [
+            "MapControllers().WithFaultStatus"
+          ]
+        }
+      },
+      {
+        "id": "without-faults-leaves-doc",
+        "sentence": "**`WithoutFaults`** and `[WithoutFaults<T>]`: a route leaves out of its document the members it never answers with, and reporting one throws",
+        "axes": {
+          "kind": [
+            "WithoutFaults"
+          ]
+        }
+      },
+      {
+        "id": "status-per-scope",
+        "sentence": "`WithFaultStatus`/`[FaultStatus<T>]` per endpoint, group or controller",
+        "axes": {
+          "kind": [
+            "status-only"
+          ]
+        }
+      }
+    ],
     "exclude": [
       {
         "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",

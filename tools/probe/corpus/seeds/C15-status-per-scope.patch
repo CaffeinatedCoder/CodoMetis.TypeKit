@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs b/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs
+index 45c20b0..3acdab7 100644
+--- a/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs
++++ b/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs
+@@ -160,7 +160,7 @@ internal sealed class FaultResponses<TFault> where TFault : notnull
+         Type.Members.Where(fault => FaultExclusions.Excluding(endpointMetadata, fault, Type) is null);
+ 
+     private int StatusOf(TFault fault, IReadOnlyList<object> endpointMetadata) =>
+-        FaultStatuses.Override(endpointMetadata, fault, Type) ?? _answers[fault].Status;
++        FaultStatuses.Override(endpointMetadata.Take(0).ToList(), fault, Type) ?? _answers[fault].Status;
+ 
+     /// <summary>
+     /// How the host answers <typeparamref name="TFault"/>: its own mapping, or else the default for every

@@ -427,10 +427,23 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
-      "seed": {
-        "patch": "seeds/C15-mvc-fault-status-doc.patch",
-        "defect": "The document reads an MVC action's metadata from its descriptor, so what MapControllers()'s builder declares (WithFaultStatus, WithoutFaults) reaches the response but not the document."
-      }
+      "seeds": [
+        {
+          "obligation": "builder-reaches-doc",
+          "patch": "seeds/C15-mvc-fault-status-doc.patch",
+          "defect": "The document reads an MVC action's metadata from its descriptor, so what MapControllers()'s builder declares (WithFaultStatus, WithoutFaults) reaches the response but not the document."
+        },
+        {
+          "obligation": "without-faults-leaves-doc",
+          "patch": "seeds/C15-without-faults-doc.patch",
+          "defect": "The document lists every member, also one the endpoint, its controller or its builder leaves out."
+        },
+        {
+          "obligation": "status-per-scope",
+          "patch": "seeds/C15-status-per-scope.patch",
+          "defect": "The document lists each member's mapped status, not the one its endpoint, controller or builder sets, which the response answers with."
+        }
+      ]
     },
     "C16OptionsAgreementProbe": {
       "claim": "C16-options-agreement",
