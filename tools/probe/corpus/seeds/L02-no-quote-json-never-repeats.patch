@@ -1,0 +1,22 @@
+diff --git a/src/CodoMetis.TypeKit/CompilerServices/GeneratedJsonPlan.cs b/src/CodoMetis.TypeKit/CompilerServices/GeneratedJsonPlan.cs
+index 8597206..c2f989a 100644
+--- a/src/CodoMetis.TypeKit/CompilerServices/GeneratedJsonPlan.cs
++++ b/src/CodoMetis.TypeKit/CompilerServices/GeneratedJsonPlan.cs
+@@ -198,7 +198,7 @@ public sealed class GeneratedJsonPlan<T>
+         }
+         catch (Exception exception) when (GeneratedJson.IsRefusal(exception))
+         {
+-            throw GeneratedJson.Unreadable<TValueObject, T>();
++            throw new JsonException(GeneratedJson.Unreadable<TValueObject, T>().Message + " (" + System.Text.Encoding.UTF8.GetString(reader.ValueSpan) + ")");
+         }
+ 
+         return value is null ? throw GeneratedJson.Unreadable<TValueObject, T>() : value;
+@@ -240,7 +240,7 @@ public sealed class GeneratedJsonPlan<T>
+         }
+         catch (Exception exception) when (GeneratedJson.IsRefusal(exception))
+         {
+-            throw GeneratedJson.Unreadable<TValueObject, T>();
++            throw new JsonException(GeneratedJson.Unreadable<TValueObject, T>().Message + " (" + System.Text.Encoding.UTF8.GetString(reader.ValueSpan) + ")");
+         }
+ 
+         return value is null ? throw GeneratedJson.Unreadable<TValueObject, T>() : value;

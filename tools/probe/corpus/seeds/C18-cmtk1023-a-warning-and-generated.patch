@@ -1,0 +1,11 @@
+diff --git a/src/CodoMetis.TypeKit.Generators/AspectDiagnostics.cs b/src/CodoMetis.TypeKit.Generators/AspectDiagnostics.cs
+index 6fd2f8d..9a8f738 100644
+--- a/src/CodoMetis.TypeKit.Generators/AspectDiagnostics.cs
++++ b/src/CodoMetis.TypeKit.Generators/AspectDiagnostics.cs
+@@ -100,5 +100,5 @@ internal static class AspectDiagnostics
+     /// longer calls (decision 75).
+     /// </summary>
+     public static readonly DiagnosticDefinition<(INamedType Type, string Members)> InheritedEqualityNotUsed =
+-        new("CMTK1023", Severity.Warning, "'{0}' inherits {1}, which its generated equality does not call: a value object's equality is its wrapped value's, as its ordering, its JSON and its EF Core column are, and a base's would make values equal that sort apart. Remove them from the base, or derive from a record without them; to make values that differ only in form equal, normalise them in Create." + SeeBuildErrors);
++        new("CMTK1023", Severity.Info, "'{0}' inherits {1}, which its generated equality does not call: a value object's equality is its wrapped value's, as its ordering, its JSON and its EF Core column are, and a base's would make values equal that sort apart. Remove them from the base, or derive from a record without them; to make values that differ only in form equal, normalise them in Create." + SeeBuildErrors);
+ }

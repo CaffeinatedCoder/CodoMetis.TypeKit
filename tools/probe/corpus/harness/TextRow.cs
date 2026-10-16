@@ -167,7 +167,7 @@ public static class TextClaims
                     catch (TargetInvocationException t) { return $"TryFormat into a short span threw {t.InnerException!.GetType().Name}"; }
                 }
                 var readEntry = entry is "ToString-format" or "TryFormat-short-span" ? "Parse" : entry;
-                if (!(entry == "type-converter" && TextOps.Lossy(e)))
+                if (!(entry == "type-converter" && TextOps.Lossy(e)))   // not-promised dates-and-times-lose-detail-as-text
                 {
                     var back = TextOps.Read(e, readEntry, text);
                     if (!back.NotApplicable)
@@ -227,8 +227,30 @@ public static class TextClaims
             else if (ex2 is not null && ex2 is not (JsonException or NotSupportedException or InvalidOperationException { }))
                 return $"input {input}: {ex2.GetType().Name} instead of JsonException: {Cut(ex2.Message)}"
                     + (ex2.InnerException is { } inner ? $" / inner {inner.GetType().FullName}: {Cut(inner.Message)} @ {Cut(inner.StackTrace?.Split('\n').FirstOrDefault()?.Trim() ?? "")}" : "");
+            if (!r.Is("json.Converters", "own-for-value-object") && RootRefusal(e, o, input) is { } refusal) return refusal;
         }
         return null;
+    }
+
+    /// <summary>
+    /// The changed input read at the root, where no container stands between the serializer and the generated converter: a
+    /// JsonException the value object throws there names it and carries no inner exception, "Input it can't read throws a
+    /// JsonException naming the value object and the underlying type" (Generators README#json).
+    /// </summary>
+    static string? RootRefusal(Entry e, JsonSerializerOptions o, string input)
+    {
+        var vt = Make.Held(e.Vo);
+        string root;
+        try { root = JsonSerializer.Serialize(Make.Vo(e, e.Valid()), vt, o); } catch { return null; }   // a root the options refuse to write is judged above
+        var text = JsonParity.InputFor(input, e, o, root, "root");
+        if (text == root) return null;
+        try { JsonSerializer.Deserialize(text, vt, o); return null; }
+        catch (JsonException x)
+        {
+            if (x.InnerException is null && x.Message.Contains(vt.Name, StringComparison.Ordinal)) return null;
+            return $"input {input} at the root: the JsonException {(x.InnerException is { } i ? "carries an inner " + i.GetType().Name : "does not name " + vt.Name)}: {Cut(x.Message)}\n  text={Cut(text)}";
+        }
+        catch (Exception) { return null; }   // another exception type is judged above, at the row's position
     }
     static bool PlainFailsToo(Row r, Held hp, JsonSerializerOptions o, string pos, Entry e)
     {
@@ -279,7 +301,7 @@ public static class TextClaims
         var hp = Pos.Build(pos, con, e, false, plain); var hv = Pos.Build(pos, con, e, true, Make.Vo(e, plain));
         string jp; string sample;
         try { jp = JsonSerializer.Serialize(hv.Value, hv.Declared, opts); sample = JsonSerializer.Serialize(Make.Unwrap(e, Make.Vo(e, plain)), e.Plain, opts); } catch { r.Note(NoteKeys.SerRefused); return null; }
-        if (r.Get("json.Converters") is "own-for-wrapped" or "own-for-value-object") return null; // the application's own converter owns the message
+        if (r.Get("json.Converters") is "own-for-wrapped" or "own-for-value-object") return null; // the application's own converter owns the message (not-promised the-applications-own-converter)
         var at = jp.IndexOf(sample, StringComparison.Ordinal);
         var variants = new List<(string Text, string Needle)>();
         if (at >= 0) variants.Add((jp[..at] + "\"" + TextOps.Secret + "\"" + jp[(at + sample.Length)..], TextOps.Secret));
@@ -295,7 +317,8 @@ public static class TextClaims
             try { JsonSerializer.Deserialize(text, hv.Declared, opts); }
             catch (Exception ex)
             {
-                if (ex is JsonException je && Quotes(je, needle, "JSON read", true) is { } q) return q + (pos == "dictionary-key" ? " [dictionary-key]" : "");
+                if (ex is JsonException je && Quotes(je, needle, "JSON read", true) is { } q) // the Path is System.Text.Json's (not-promised a-rejected-dictionary-key-in-the-path)
+                    return q + (pos == "dictionary-key" ? " [dictionary-key]" : "");
                 if (ex.InnerException is not null && ex is JsonException && !(ex.InnerException is JsonException) && !PlainHasInner(text, hp, opts)) return $"JSON read: refusal carries inner {ex.InnerException.GetType().Name}: {Cut(ex.InnerException.Message)}";
             }
         }
@@ -397,7 +420,7 @@ public static class TextClaims
         if (r.Is("json.Converters", "StoredJsonConverterFactory"))
         {
             if (xr is not null) return $"StoredJsonConverterFactory refused a value Create refuses ({xr.GetType().Name}): it reads stored JSON without validation";
-            r.Note(NoteKeys.StoredFactoryReadUnvalidated); return null;
+            r.Note(NoteKeys.StoredFactoryReadUnvalidated); return null;   // not-promised stored-json-skips-validation
         }
         if (xr is null) return $"JSON read accepted the value Create refuses: {Cut(text)}";
         if (xr is not JsonException) return $"JSON refusal is {xr.GetType().Name}, not JsonException: {Cut(xr.Message)}";

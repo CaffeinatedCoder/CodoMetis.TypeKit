@@ -1,0 +1,12 @@
+diff --git a/src/CodoMetis.TypeKit.Testing/FaultAssertions.cs b/src/CodoMetis.TypeKit.Testing/FaultAssertions.cs
+index 6b825b3..443a910 100644
+--- a/src/CodoMetis.TypeKit.Testing/FaultAssertions.cs
++++ b/src/CodoMetis.TypeKit.Testing/FaultAssertions.cs
+@@ -68,6 +68,6 @@ internal static class HeldFaults
+         var held = read();
+         return held is Fault<TFault> asked && EqualityComparer<TFault>.Default.Equals(asked.Reason, reason)
+             ? asked
+-            : throw new TypeKitAssertionException($"Expected the fault {reason}, but the {Outcomes.Name<TComposed>()} is the fault {held}.");
++            : throw new TypeKitAssertionException($"Expected the fault {reason}, but the {Outcomes.Name<TComposed>()} holds another.");
+     }
+ }
