@@ -12,8 +12,10 @@ scratch copy, one file per claim, class name ending in `Probe`, rows fed through
 the covering array (`prober rows`), read from a JSON file beside the probe. That project is the
 closest thing to a consumer: it references every package, weaves value objects through the real
 fabric, and loads the analyzer as an analyzer. A probe file may declare its own value objects
-(`readonly partial record struct ProbeId : IValue<Guid>;`); generate the declarations of the
-type-shape catalogue with a script into a `Probes/Shapes.g.cs`, not by hand.
+(`readonly partial record struct ProbeId : IValue<Guid>;`); the declarations of the type-shape
+catalogue, `tools/probe/corpus/harness/*.g.cs`, are written by the file-based apps of
+`tools/probe/generators/` (`dotnet run tools/probe/generators/<app>.cs -- ...`, its README), never by hand,
+and `GeneratedHarnessTests` in the conventions tests holds each file to its app's output.
 
 - Start a probe with `prober new --claim <id>` and iterate with `prober try --probe <P> [--rows i,j,...]`
   (tools/Prober/README.md, "Writing a probe"): `new` stages the skeleton in this harness's form, with the
@@ -118,7 +120,8 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
   reason. The script reports any other as **unassigned**: a setting a new framework version added,
   which needs a decision here.
 - `shape.*` is the type-shape catalogue: the forms a consumer's own type takes. Generate the
-  declarations a round needs with a script, once per round, as one pairwise set shared by every claim.
+  declarations a round needs with an app of `tools/probe/generators/` (extend one, or add one and its row
+  in `GeneratedHarnessTests`), once per round, as one pairwise set shared by every claim.
 - A claim may drop a surface axis only by quoting the document sentence that limits it (`narrow`).
 - A claim may drop pairs no row can hold, or that the documents do not promise, only with the reason
   (`exclude`: a list of `{"reason": "...", "pairs": [["a=1", "b=2"], ...]}`): one sentence, citing the docs

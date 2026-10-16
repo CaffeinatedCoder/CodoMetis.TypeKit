@@ -1,0 +1,8 @@
+<Project>
+    <!--
+      The harness generators are file-based apps (design/adr/0092, form 1), not tool projects: they take the
+      repository's settings (warnings are errors, nullable, C# 14) and none of tools/Directory.Build.*, which
+      compile tools/Shared into a tool and stamp its sources for a project file a file-based app does not have.
+    -->
+    <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove('$(MSBuildThisFileDirectory)', 'CodoMetis.TypeKit.slnx'))/Directory.Build.props" />
+</Project>

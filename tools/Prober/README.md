@@ -35,7 +35,9 @@ a file or line without `schemaVersion` is version 1. `claims.json` is checked ag
 read, and a field the schema does not have is refused with the claim and the field named; each `exclude` entry
 is a reason and its pairs, which `universe` prints beside the claim's narrowings. The JSON files the prober
 writes keep `+`, backticks and `<` literal, so a `publish` that changes nothing in a tracked file leaves it as
-it is (decision 102).
+it is (decision 102). The harness's generated declarations, `harness/*.g.cs`, are written by the file-based
+apps of `tools/probe/generators/` from the rows and the axes file, and `GeneratedHarnessTests` in the
+conventions tests holds each to its app's output (that directory's README).
 
 A claim lists what it promises in `obligations`, each an id and a sentence quoted verbatim from the claim's
 source, and what it does not promise in `not-promised`, each an id and the sentence of the document or record
