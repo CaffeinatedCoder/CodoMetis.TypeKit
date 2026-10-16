@@ -46,9 +46,12 @@ public sealed class TryProbeTests : IDisposable
             ["probes"] = new JsonObject { ["P"] = p, ["Q"] = new JsonObject { ["claim"] = "C2", ["filter"] = "*Q" } },
         }.ToJsonString());
 
-    private (int Exit, string Out, string Err) Try(params string[] args)
+    private (int Exit, string Out, string Err) Try(params string[] args) => TryEnding(Environment.NewLine, args);
+
+    /// <summary>As <see cref="Try"/>, with the line end the output writers use, so a test sees Windows' output on any OS.</summary>
+    private (int Exit, string Out, string Err) TryEnding(string newLine, params string[] args)
     {
-        var output = new StringWriter(); var error = new StringWriter();
+        var output = new StringWriter { NewLine = newLine }; var error = new StringWriter { NewLine = newLine };
         var context = new Context(fx.Root, new Dictionary<string, string?> { ["PROBE_CACHE_DIR"] = cache }, output, error);
         int exit;
         try { exit = TryProbe.Run(context, new Args(args, new HashSet<string>(StringComparer.Ordinal) { "no-build" }), adapter); }
@@ -56,19 +59,25 @@ public sealed class TryProbeTests : IDisposable
         return (exit, output.ToString(), error.ToString());
     }
 
-    [Fact]
-    public void It_runs_the_one_probe_and_prints_how_each_row_ended()
+    /// <summary>The output's lines, whatever line end the writer used.</summary>
+    private static string[] Lines(string output) => output.ReplaceLineEndings("\n").Split('\n');
+
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public void It_runs_the_one_probe_and_prints_how_each_row_ended(string newLine)
     {
-        var (exit, output, error) = Try("--probe", "P");
+        var (exit, output, error) = TryEnding(newLine, "--probe", "P");
         exit.ShouldBe(7, output + error);
         adapter.Builds.ShouldBe(1);
         adapter.Runs.ShouldHaveSingleItem().Filter.ShouldBe("*P");
         adapter.Runs[0].Rows.ShouldBeNull("every row, as the registry runs it");
-        output.ShouldContain("  P: Tests: 1 failed of 3 (exit 7, ");
-        output.ShouldContain("    #0 pass\n");
-        output.ShouldContain("    #1 violation: row 1 breaks the claim\n");
-        output.ShouldContain("    #2 pass\n");
-        output.ShouldContain("prober try: P: pass 2, violation 1; exit 7");
+        var lines = Lines(output);
+        lines.ShouldContain(l => l.StartsWith("  P: Tests: 1 failed of 3 (exit 7, ", StringComparison.Ordinal));
+        lines.ShouldContain("    #0 pass");
+        lines.ShouldContain("    #1 violation: row 1 breaks the claim");
+        lines.ShouldContain("    #2 pass");
+        lines.ShouldContain("prober try: P: pass 2, violation 1; exit 7");
     }
 
     [Fact]
