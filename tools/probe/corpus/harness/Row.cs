@@ -88,7 +88,7 @@ public sealed class Row
     /// </summary>
     public void Note(NoteKeys key, string? detail = null)
     {
-        if (Scope.Running(Ev) is { } c) { c.Note(key, detail); return; }
+        if (Scope.Running(Ev) is { } c) { c.Noted(key, detail); return; }
         var n = detail is null ? key.Key : $"{key.Key}({detail})";
         if (!Notes.Split(';').Contains(n)) Notes += (Notes.Length == 0 ? "" : ";") + n;
         if (key.Outcome != "pass") Outcome(key.Outcome, n);
@@ -201,7 +201,9 @@ public sealed class Check
         Note(NoteKeys.Substituted, $"{axis}={actual}, {reason}");
     }
     /// <summary>How the check was compared, by a key of <see cref="NoteKeys"/>; a key of another outcome raises the check's.</summary>
-    public void Note(NoteKeys key, string? detail = null)
+    public void Note(NoteKeys key, string? detail = null) => Noted(key, detail);
+    /// <summary>A note the row routes here from inside the check's body; its key is a member, written out where the row's note was made.</summary>
+    internal void Noted(NoteKeys key, string? detail)
     {
         var n = detail is null ? key.Key : $"{key.Key}({detail})";
         Remember(n);
