@@ -726,6 +726,72 @@
         }
       ]
     },
+    "C22GeneratorRefusalsProbe": {
+      "claim": "C22-generator-refusals",
+      "filter": "*C22GeneratorRefusalsProbe",
+      "watched": [
+        "src/CodoMetis.TypeKit",
+        "src/Directory.Build.props",
+        "src/Directory.Build.targets"
+      ],
+      "seeds": [
+        {
+          "obligation": "every-error-links-the-table",
+          "patch": "seeds/C22-generator-refusals-every-error-links-the-table.patch",
+          "defect": "CMTK1005's message no longer ends with the link to the Build errors table."
+        },
+        {
+          "obligation": "unsealed-record-class",
+          "patch": "seeds/C22-generator-refusals-unsealed-record-class.patch",
+          "defect": "A record class not declared sealed is no longer refused (CMTK1006 is never reported)."
+        },
+        {
+          "obligation": "over-value-object",
+          "patch": "seeds/C22-generator-refusals-over-value-object.patch",
+          "defect": "The fabric hands the aspect no wrapped-value-object refusal, so a value object over another value object is generated."
+        },
+        {
+          "obligation": "generic-wrapped",
+          "patch": "seeds/C22-generator-refusals-generic-wrapped.patch",
+          "defect": "A generic wrapped type is no longer refused, so List<T> fails inside the generated code (LAMA0611) instead of CMTK1005."
+        },
+        {
+          "obligation": "abstract",
+          "patch": "seeds/C22-generator-refusals-abstract.patch",
+          "defect": "1ef30be reversed: the fabric no longer reports CMTK1022, so an abstract type with a marker compiles with nothing generated and nothing said."
+        },
+        {
+          "obligation": "over-system-enum",
+          "patch": "seeds/C22-generator-refusals-over-system-enum.patch",
+          "defect": "e4b751c's System.Enum refusal reversed: a value object over System.Enum is no longer refused (CMTK1005)."
+        },
+        {
+          "obligation": "named-as-generated-member",
+          "patch": "seeds/C22-generator-refusals-named-as-generated-member.patch",
+          "defect": "e4b751c's name refusal reversed: a value object named From, Parse, MinValue or another generated member is not refused, and fails inside the generated code (LAMA0611, CS0542)."
+        },
+        {
+          "obligation": "closed-set-named-as-generated-member",
+          "patch": "seeds/C22-generator-refusals-closed-set-named-as-generated-member.patch",
+          "defect": "e4b751c's set-name refusal reversed: a closed set named Name, All, Match or another of its generated members is not refused (CMTK1021) and fails inside the generated code."
+        },
+        {
+          "obligation": "equality-operator",
+          "patch": "seeds/C22-generator-refusals-equality-operator.patch",
+          "defect": "e4b751c's operator refusal reversed: a hand-written operator == or != between two of the type is C#'s bare CS0111, with no CMTK1011 naming it."
+        },
+        {
+          "obligation": "no-type-half-generated",
+          "patch": "seeds/C22-generator-refusals-no-type-half-generated.patch",
+          "defect": "CMTK1005 is reported as a warning, so a declaration that cannot be generated builds, with nothing generated for it."
+        },
+        {
+          "obligation": "over-object",
+          "patch": "seeds/C22-generator-refusals-over-object.patch",
+          "defect": "53188ed reversed: a value object over object is no longer refused (CMTK1005) and compiles."
+        }
+      ]
+    },
     "E01ColumnParityProbe": {
       "claim": "E01-column-parity",
       "filter": "*E01ColumnParityProbe",

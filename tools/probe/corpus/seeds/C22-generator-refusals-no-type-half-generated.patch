@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.Generators/AspectDiagnostics.cs b/src/CodoMetis.TypeKit.Generators/AspectDiagnostics.cs
+index 6fd2f8d..1f23cde 100644
+--- a/src/CodoMetis.TypeKit.Generators/AspectDiagnostics.cs
++++ b/src/CodoMetis.TypeKit.Generators/AspectDiagnostics.cs
+@@ -34,7 +34,7 @@ internal static class AspectDiagnostics
+         new("CMTK1004", Severity.Error, "'{0}' implements {1}, whose first type argument must be '{0}' itself, so it is not generated." + SeeBuildErrors);
+ 
+     public static readonly DiagnosticDefinition<(INamedType Type, string Reason)> UnsupportedValueObject =
+-        new("CMTK1005", Severity.Error, "'{0}' cannot be generated as a value object: {1}." + SeeBuildErrors);
++        new("CMTK1005", Severity.Warning, "'{0}' cannot be generated as a value object: {1}." + SeeBuildErrors);
+ 
+     public static readonly DiagnosticDefinition<INamedType> MissingSealedKeyword =
+         new("CMTK1006", Severity.Error, "'{0}' is a value object and must be declared sealed, so it is not generated." + SeeBuildErrors);
