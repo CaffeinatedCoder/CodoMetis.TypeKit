@@ -7378,6 +7378,22 @@
         }
       },
       {
+        "id": "enum-component-is-its-first-use",
+        "source": "design/knowledge/KB-027-an-enum-component-is-its-first-use.md#kb-027-the-component-aspnet-makes-for-an-enum-written-by-name-is-the-schema-of-the-first-use-it-meets",
+        "sentence": "So whether a parameter of the wrapped `E?` admits null in a document with components depends on the endpoints and their order, not on the parameter.",
+        "axes": {
+          "json.Converters": [
+            "JsonStringEnumConverter"
+          ],
+          "http.nullability": [
+            "nullable"
+          ],
+          "shape.wrapped": [
+            "enum"
+          ]
+        }
+      },
+      {
         "id": "openapi-2-nullable-body-keeps-only-its-null",
         "source": "design/knowledge/KB-001-openapi-2-nullable-body-drops-pattern.md#kb-001-under-openapi-20-aspnet-writes-a-nullable-request-body-as-allof-x-nullable-true-and-drops-its-pattern",
         "sentence": "A minimal API writes it the same, and a nullable enum body, which has no `format`, keeps nothing but the null:",
