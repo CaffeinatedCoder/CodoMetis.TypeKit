@@ -215,16 +215,16 @@ public static class JsonParity
             }
             return null;
         }
-        if (e.Wrapped == "byte" && position == "array-element" && jp != jv) { r.Note("byte[]-is-base64-inherent"); return null; } // STJ writes byte[] as base64; an array of byte value objects is a JSON array
+        if (e.Wrapped == "byte" && position == "array-element" && jp != jv) { r.Note("byte-array-is-base64", "write"); return null; } // STJ writes byte[] as base64; an array of byte value objects is a JSON array
         if (ep is not null && ev is not null)
         {
             // Both refused: evidence about refusing, not about serializing. Refusing differently is no agreement at all.
-            if (ep.GetType() != ev.GetType()) { r.Note("both-threw-differently:" + ep.GetType().Name + "/" + ev.GetType().Name); return null; }
-            r.Note("both-threw:" + ep.GetType().Name + ":" + ev.Message[..Math.Min(70, ev.Message.Length)]); return null;
+            if (ep.GetType() != ev.GetType()) { r.Note("both-threw-differently", ep.GetType().Name + "/" + ev.GetType().Name); return null; }
+            r.Note("both-threw", ep.GetType().Name + ": " + ev.Message[..Math.Min(70, ev.Message.Length)]); return null;
         }
         if (ep is null && ev is not null)
         {
-            if (r.Is("json.MaxDepth", "3") && ev is JsonException && ev.Message.Contains("maximum allowed depth")) { r.Note("stj-maxdepth-charges-custom-converters"); return null; } // inherent to STJ: any custom converter costs a level (design note D1)
+            if (r.Is("json.MaxDepth", "3") && ev is JsonException && ev.Message.Contains("maximum allowed depth")) { r.Note("stj-maxdepth", "charges custom converters"); return null; } // inherent to STJ: any custom converter costs a level (design note D1)
             if (preserveOwn && e.Wrapped == "own-record-class" && ev is NotSupportedException) { r.Note("preserve-documented"); return null; } // documented (Generators README#json)
             return $"wrapped serialized ({jp}) but the value object threw {ev.GetType().Name}: {ev.Message}";
         }
@@ -240,8 +240,8 @@ public static class JsonParity
         var (dp, xp) = De(text, hp, oPlain); var (dv, xv) = De(text, hv, o);
         if (xp is not null && xv is not null)
         {
-            if (xp.GetType() != xv.GetType() && !(xp is JsonException && xv is JsonException)) { r.Note("both-threw-differently(read):" + xp.GetType().Name + "/" + xv.GetType().Name); return null; }
-            r.Note("read-both-threw:" + xp.GetType().Name); return null;
+            if (xp.GetType() != xv.GetType() && !(xp is JsonException && xv is JsonException)) { r.Note("both-threw-differently", "read: " + xp.GetType().Name + "/" + xv.GetType().Name); return null; }
+            r.Note("read-both-threw", xp.GetType().Name); return null;
         }
         if (xp is null && xv is not null)
         {

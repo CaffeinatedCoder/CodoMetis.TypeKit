@@ -130,6 +130,8 @@ public sealed class HostCfg
     public bool Payload = true;          // payload echo / in / binding / schema endpoints
     public string PayloadOnly = "both";  // "both", "vo" or "plain" (to isolate a document refusal)
     public bool MapBlanketMapping = true;
+    public bool TypeKitOpenApi = true;   // false: the document as ASP.NET alone writes it, the baseline of a refused one
+    public HostCfg Copy() => (HostCfg)MemberwiseClone();
 }
 
 public static class Hx
@@ -196,7 +198,7 @@ public static class Hx
             Pos.Build(r["shape.position"], (r.Get("shape.containing") ?? "class"), e, false, plain));
         builder.Services.AddSingleton(payload);
         builder.Services.ConfigureHttpJsonOptions(o => JsonRow.Apply(r, e, o.SerializerOptions));
-        builder.Services.AddOpenApi(x => { ApplyOpenApi(x, r); x.AddTypeKit(); });
+        builder.Services.AddOpenApi(x => { ApplyOpenApi(x, r); if (c.TypeKitOpenApi) x.AddTypeKit(); });
         builder.Services.Configure<FaultResponseOptions>(x => x.QualifiedFaultNames = c.Qualified);
         c.Services?.Invoke(builder.Services);
         if (c.MapBlanketMapping)
@@ -311,6 +313,30 @@ public static class Hx
     }
     public static Task<Wire> Get(WebApplication app, string path) => Send(app, HttpMethod.Get, path);
     public static async Task<JsonNode?> Doc(WebApplication app) => JsonNode.Parse(await app.GetTestClient().GetStringAsync("/openapi/v1.json"));
+
+    /// <summary>
+    /// The document failed with AddTypeKit(). The same host without it is the baseline: when ASP.NET alone
+    /// refuses the document with the same exception, the document part has nothing to check and the note says
+    /// so; when it writes the document, or fails otherwise, the failure is returned (F2 hid behind a baseline
+    /// that kept AddTypeKit() on both sides).
+    /// </summary>
+    public static async Task<string?> DocRefusedByAspNetAlone(Row r, Entry e, HostCfg c, Exception withTypeKit)
+    {
+        static string Say(Exception x) => x.GetType().Name + ": " + (x.Message.Length > 200 ? x.Message[..200] + "..." : x.Message);
+        var alone = c.Copy(); alone.TypeKitOpenApi = false;
+        try
+        {
+            await using var app = await Start(r, e, alone);
+            await Doc(app);
+        }
+        catch (Exception ex) when (ex.GetType() == withTypeKit.GetType() && ex.Message == withTypeKit.Message)
+        {
+            r.Note("doc:refused-by-aspnet-alone", ex.GetType().Name);
+            return null;
+        }
+        catch (Exception ex) { return $"document: AddTypeKit() fails ({Say(withTypeKit)}), ASP.NET alone fails otherwise ({Say(ex)})"; }
+        return $"document: AddTypeKit() fails ({Say(withTypeKit)}), ASP.NET alone writes it";
+    }
 
     public static string BindText(Entry e, object plain) => e.Wrapped switch
     {

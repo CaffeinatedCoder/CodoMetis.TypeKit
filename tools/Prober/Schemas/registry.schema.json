@@ -41,6 +41,44 @@
           },
           "retired": {
             "type": "boolean"
+          },
+          "seed": {
+            "type": "object",
+            "required": [
+              "defect"
+            ],
+            "anyOf": [
+              {
+                "required": [
+                  "patch"
+                ]
+              },
+              {
+                "required": [
+                  "env"
+                ]
+              }
+            ],
+            "properties": {
+              "patch": {
+                "type": "string",
+                "description": "A unified diff against the product files (the replay's \"include\"), relative to the corpus directory: seeds/<claim>.patch."
+              },
+              "env": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Environment variables set for the seeded build and every variant's run."
+              },
+              "defect": {
+                "type": "string",
+                "minLength": 1,
+                "description": "What the seed breaks, in one sentence."
+              }
+            },
+            "additionalProperties": false,
+            "description": "The product defect `prober seeds` applies in a scratch worktree to prove the probe can fail (decision 100). Not part of the probe's identity."
           }
         },
         "additionalProperties": false

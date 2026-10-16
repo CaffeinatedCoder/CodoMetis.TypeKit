@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codometis.typekit/probe/schemas/seeds-run.schema.json",
+  "title": "Seeds run",
+  "description": "State (seeds-last.json): the last `prober seeds` run on the branch, one outcome per probe. Never evidence: a seeded run proves the probe, not the product.",
+  "type": "object",
+  "required": [
+    "branch",
+    "commit",
+    "seeds"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "The schema version. A file or line without it is version 1 (the Python baseline)."
+    },
+    "branch": {
+      "type": "string"
+    },
+    "commit": {
+      "type": "string"
+    },
+    "seconds": {
+      "type": "number"
+    },
+    "seeds": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "probe",
+          "claim",
+          "result"
+        ],
+        "properties": {
+          "probe": {
+            "type": "string"
+          },
+          "claim": {
+            "type": "string"
+          },
+          "seed": {
+            "type": "string",
+            "description": "The patch and the environment toggle applied, or (none)."
+          },
+          "result": {
+            "enum": [
+              "caught",
+              "missed",
+              "no seed",
+              "does not apply",
+              "build failed"
+            ]
+          },
+          "violations": {
+            "type": "integer",
+            "description": "Rows the seed made violations that the unseeded probe does not have."
+          },
+          "rows": {
+            "type": "integer",
+            "description": "Rows that ran under the seed."
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

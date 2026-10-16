@@ -68,3 +68,23 @@
    `2f8a854`, `7792801`, `d27cf2d`, `75fb3aa`, `6368c1c`) turn 35 cases green that fail at their parent;
    `1a9d7f2` fixed the library's own declarations, which no analyzer test reads. It found one gap still
    open, `[Unsealed]` taking the abstract bases nothing derives from, which waits for 3.0.0 (decision 34).
+   For the EF satellite, whose translation defects escaped most (7 of 10 in the fix history, all silent),
+   the catalogue is `KeyShapes`, `QueryShapes` and `WrappedKinds` in
+   `test/CodoMetis.TypeKit.EntityFrameworkCore.Tests/Variants/`, each case a differential against the same
+   entity over the wrapped type. `KeyGenerationVariantTests` builds 13 key shapes (alone, the root of each
+   mapping strategy, abstract or not, three dependents whose key is a foreign key, composite, configured)
+   keyed by 13 wrapped types on SQLite, Npgsql and SQL Server, 507 cases, and has SQLite fill the keys in.
+   `QueryTranslationVariantTests` runs 5,200 queries over 22 wrapped types (three with their own
+   `CompareTo`) by accessor, site (column, nullable column, collection element, captured list, navigation,
+   JSON, query filter, named or not), converter (TypeKit's, named, and three of the application's own) and
+   operation, on SQLite against the wrapped type's rows and SQL and against memory, and translated for
+   PostgreSQL. The README's departures from parity are its oracle: a `char` or `Guid` key and a TPC root
+   without a sequence are not generated, `.Value` on a foreign converter's column and an own `CompareTo`
+   in an ordering are refused. Measured 2026-10-15 at each fix of chains H and I, the catalogue replayed at
+   the fix and at its parent: all nine turn cases green (`7732936` 272, `63471e7` 579, `717de54` 111,
+   `719ee82` 12, `8f6af8b` 12, `92dfe16` 12, `e644a8a` 67, `3bddba7` 13, `84e9776` 17), and three of them
+   turn cases red that the chain's next fix repaired: `92dfe16` the abstract TPC root on Npgsql and SQL
+   Server (6), `e644a8a` and `3bddba7` the `char` key (16 and 1). Seeded: without the TPC convention 16 key
+   cases fail, without the foreign-converter check 579 queries, with element columns re-typed 272. It
+   found one divergence still open: a nullable record-class value object compared with `<` keeps its null
+   rows in memory, where the generated operators sort null first, and SQL drops them.

@@ -165,10 +165,16 @@ cast.
 
 **Good to know**
 
-- **A property with your own converter has no `.Value` in a query.** `.Value` on it fails with "could
-  not be translated". Comparing the value object itself still works.
+- **A property with your own converter has `.Value` only in the query's last `Select`.** `.Value` on
+  it in a filter, a sort, a grouping or an aggregate fails with "could not be translated". Selecting
+  it as the last step works, since EF takes it in memory. Comparing the value object itself still
+  works.
 - **Ordering follows the column's collation in SQL.** The generated comparison in memory is ordinal
   for a string, as for any string column.
+- **A null passes no `<`, `<=`, `>` or `>=` in SQL.** A record-class value object puts null first in
+  memory. So for a nullable `Rank` record class, `i.Rank < rank` keeps an invoice without a rank in a
+  list, and leaves it out of the query. Write `i.Rank == null || i.Rank < rank` to keep it in the
+  query too.
 - **Your own `CompareTo(TSelf)` can't run in the database.** The database orders the column by the
   underlying value. So a query that compares or orders such a value object, or takes its `Min` or
   `Max`, is rejected, and the error names the value object. Write `.Value` to say the underlying

@@ -92,8 +92,12 @@ internal sealed class Fixture : IDisposable
             new JsonObject { ["probe"] = "P", ["footprint"] = new JsonObject { ["src/a.cs"] = blob }, ["compileTime"] = new JsonObject(), ["toolchain"] = new JsonObject() }.ToJsonString() + "\n");
     }
 
-    /// <summary>What a replay of P records: the rows it ran, how each ended and the settings that applied.</summary>
-    public string Evidence(IReadOnlyList<Dictionary<string, string>> applied, string category = "pass", int[]? executed = null)
+    /// <summary>
+    /// What a replay of P records: the rows it ran, how each ended and the settings that applied; outcomes, when
+    /// given, sets each row's category and the finding it skips for.
+    /// </summary>
+    public string Evidence(IReadOnlyList<Dictionary<string, string>> applied, string category = "pass", int[]? executed = null,
+                           IReadOnlyList<(string Category, string? Finding)>? outcomes = null)
     {
         var idx = Enumerable.Range(0, applied.Count).ToArray();
         var path = Path.Combine(Root, "evidence.json");
@@ -106,7 +110,8 @@ internal sealed class Fixture : IDisposable
             }),
             ["rows"] = new JsonObject(idx.Select(i => KeyValuePair.Create(i.ToString(System.Globalization.CultureInfo.InvariantCulture), (JsonNode?)new JsonObject
             {
-                ["category"] = category, ["applied"] = new JsonObject(applied[i].Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))),
+                ["category"] = outcomes?[i].Category ?? category, ["applied"] = new JsonObject(applied[i].Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))),
+                ["findings"] = outcomes?[i].Finding is { } finding ? new JsonArray(finding) : new JsonArray(),
             }))),
         }.ToJsonString());
         return path;

@@ -77,7 +77,7 @@ internal sealed class Ledger
     // ---- identity --------------------------------------------------------------------------------------
 
     /// <summary>
-    /// What a probe's result depends on besides the product footprint: its registry entry, every source
+    /// What a probe's result depends on besides the product footprint: its registry entry (not its seed), every source
     /// compiled with it (the harness and all probes), its claim's rows, the axes file, the build environment
     /// (SDK, central package versions, build props, global.json), this tool's version and the schema version.
     /// A result counts only while this is unchanged.
@@ -87,7 +87,10 @@ internal sealed class Ledger
         using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         void Add(string s) => sha.AppendData(Encoding.UTF8.GetBytes(s + "\0"));
         var entry = Registry().GetValueOrDefault(probe) ?? [];
-        Add(Files.Canonical(entry));
+        // The seed proves the probe; a result of the probe does not depend on it.
+        var registered = (JsonObject)entry.DeepClone();
+        registered.Remove("seed");
+        Add(Files.Canonical(registered));
         var sources = new SortedDictionary<string, string>(StringComparer.Ordinal);
         foreach (var baseDir in new[] { CorpusDir, StagingDir })
             foreach (var sub in new[] { "harness", "probes" })
@@ -221,6 +224,46 @@ internal sealed class Ledger
             last[Files.Str(f["id"])] = d;
         }
         return last;
+    }
+
+    /// <summary>The findings one probe's evidence steps around, with the number of rows that skip for each.</summary>
+    public static SortedDictionary<string, int> FindingSkips(JsonObject? evidence)
+    {
+        var skips = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        foreach (var (_, row) in evidence?["rows"] as JsonObject ?? [])
+            foreach (var f in Files.Strings(row?["findings"])) skips[f] = skips.GetValueOrDefault(f) + 1;
+        return skips;
+    }
+
+    /// <summary>
+    /// The skips of one probe's evidence that no longer stand: a finding this ledger has fixed (in HEAD's history)
+    /// or the corpus has dismissed. Such a skip would hide the defect coming back, so the replay fails the probe.
+    /// A finding this ledger has never seen (a fresh state, as in CI) is left to the gate, which refuses any skip.
+    /// </summary>
+    public List<string> StaleSkips(JsonObject? evidence)
+    {
+        var findings = Findings();
+        var stale = new List<string>();
+        foreach (var (id, rows) in FindingSkips(evidence))
+        {
+            if (!findings.TryGetValue(id, out var f)) continue;
+            var status = Files.Str(f["status"]);
+            if (status == "fixed" && Files.Str(f["commit"]) is { Length: >= 7 } commit) status += " at " + commit[..7];
+            if (status != "open") stale.Add($"{rows} row(s) skip for {id}, which is {status}: remove the skip");
+        }
+        return stale;
+    }
+
+    /// <summary>How the rows of one probe's evidence ended, by category.</summary>
+    public static SortedDictionary<string, int> Outcomes(JsonObject? evidence)
+    {
+        var outcomes = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        foreach (var (_, row) in evidence?["rows"] as JsonObject ?? [])
+        {
+            var category = Files.Str(row?["category"], "violation");
+            outcomes[category] = outcomes.GetValueOrDefault(category) + 1;
+        }
+        return outcomes;
     }
 
     public List<string> OpenFindings() => [.. Findings().Where(kv => Files.Str(kv.Value["status"]) == "open").Select(kv => kv.Key).Order(StringComparer.Ordinal)];

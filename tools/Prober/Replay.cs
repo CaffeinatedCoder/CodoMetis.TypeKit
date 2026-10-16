@@ -21,10 +21,8 @@ internal static class Replay
         var ledger = new Ledger(ctx, a.Get("branch"));
         var config = ledger.AxesBlock()["replay"] as JsonObject ?? throw new Refusal("the axes file's block has no \"replay\" configuration");
         IProbeAdapter adapter = new DotNetAdapter(config);
-        var key = Convert.ToHexStringLower(SHA1.HashData(Encoding.UTF8.GetBytes(ledger.Root)))[..8];
-        var home = Path.Combine(ctx.Env("PROBE_CACHE_DIR") ?? Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), ".cache", "probe-replay"),
-                                $"{Path.GetFileName(ledger.Root)}-{key}");
-        if (a.Flag("where")) { ctx.Out.WriteLine($"replay:  {Path.Combine(home, "wt")}\nexplore: {Path.Combine(home, "explore")}"); return 0; }
+        var home = Home(ctx, ledger);
+        if (a.Flag("where")) { ctx.Out.WriteLine($"replay:  {Path.Combine(home, "wt")}\nexplore: {Path.Combine(home, "explore")}\nseeds:   {Path.Combine(home, "seeds")}"); return 0; }
 
         var states = ledger.ProbeStates(a.Flag("all"));
         var todo = a.Flag("all") ? states : [.. states.Where(s => s.Replay)];
@@ -113,32 +111,7 @@ internal static class Replay
             warmth = "warm";
         }
 
-        // The corpus: tracked, overlaid by the branch's unpublished staging; rows unpacked.
-        var probeDir = Path.Combine(worktree, Files.Str(config["probeDir"]));
-        Directory.CreateDirectory(Path.Combine(probeDir, "rows"));
-        var wanted = new SortedDictionary<string, string>(StringComparer.Ordinal);
-        var rows = new SortedDictionary<string, string>(StringComparer.Ordinal);
-        foreach (var source in new[] { ledger.CorpusDir, ledger.StagingDir })
-        {
-            foreach (var sub in new[] { "harness", "probes" })
-                if (Directory.Exists(Path.Combine(source, sub)))
-                    foreach (var f in Directory.EnumerateFiles(Path.Combine(source, sub), "*.cs")) wanted[Path.GetFileName(f)] = f;
-            if (Directory.Exists(Path.Combine(source, "rows")))
-                foreach (var f in Directory.EnumerateFiles(Path.Combine(source, "rows")).Where(f => f.EndsWith(".json", StringComparison.Ordinal) || f.EndsWith(".json.gz", StringComparison.Ordinal)))
-                    rows[Path.GetFileName(f).Replace(".gz", "", StringComparison.Ordinal)] = f;
-        }
-        foreach (var existing in Directory.EnumerateFiles(probeDir)) if (!wanted.ContainsKey(Path.GetFileName(existing))) File.Delete(existing);
-        foreach (var (name, src) in wanted)
-        {
-            var dst = Path.Combine(probeDir, name);
-            if (!File.Exists(dst) || !File.ReadAllBytes(dst).AsSpan().SequenceEqual(File.ReadAllBytes(src))) File.Copy(src, dst, overwrite: true);
-        }
-        foreach (var (name, src) in rows)
-        {
-            var data = src.EndsWith(".gz", StringComparison.Ordinal) ? Files.Gunzip(src) : File.ReadAllBytes(src);
-            var dst = Path.Combine(probeDir, "rows", name);
-            if (!File.Exists(dst) || !File.ReadAllBytes(dst).AsSpan().SequenceEqual(data)) File.WriteAllBytes(dst, data);
-        }
+        var probeDir = Overlay(ledger, config, worktree);
 
         var environment = new Dictionary<string, string?>(ctx.Environment, StringComparer.Ordinal);
         foreach (var (k, v) in adapter.Environment(home)) environment[k] = v;
@@ -187,6 +160,7 @@ internal static class Replay
                             {
                                 ["category"] = Files.Str(line["category"], "violation"), ["applied"] = line["applied"]?.DeepClone() ?? new JsonObject(),
                                 ["reasons"] = new JsonArray([.. Files.Strings(line["reasons"]).Take(6).Select(x => (JsonNode)x)]),
+                                ["findings"] = new JsonArray([.. Files.Strings(line["findings"]).Select(x => (JsonNode)x)]),
                             };
                         }
                 (evidence["variants"] as JsonArray)!.Add(new JsonObject
@@ -197,6 +171,7 @@ internal static class Replay
                 if (missing.Count > 0) ctx.Out.WriteLine($"    {missing.Count} expected row(s) did not run: [{string.Join(", ", missing.Take(10))}]");
                 index++;
             }
+            foreach (var stale in ledger.StaleSkips(evidence)) { result = "fail"; ctx.Out.WriteLine($"    {stale}"); }
             if (result == "fail") failed.Add(s.Probe);
             var evidencePath = Path.Combine(results, $"{s.Probe}-evidence.json");
             Files.WriteJson(evidencePath, evidence);
@@ -231,6 +206,45 @@ internal static class Replay
         ctx.Out.WriteLine($"prober replay: {todo.Count - failed.Count} passed, {failed.Count} failed, {clock.Elapsed.TotalSeconds.ToString("F1", CultureInfo.InvariantCulture)} s in all");
         try { Directory.Delete(results, recursive: true); } catch (IOException) { }
         return failed.Count > 0 ? 1 : 0;
+    }
+
+    /// <summary>The cache directory of this repository's replay worktrees (PROBE_CACHE_DIR, else ~/.cache/probe-replay).</summary>
+    internal static string Home(Context ctx, Ledger ledger)
+    {
+        var key = Convert.ToHexStringLower(SHA1.HashData(Encoding.UTF8.GetBytes(ledger.Root)))[..8];
+        return Path.Combine(ctx.Env("PROBE_CACHE_DIR") ?? Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), ".cache", "probe-replay"),
+                            $"{Path.GetFileName(ledger.Root)}-{key}");
+    }
+
+    /// <summary>Copies the corpus into the worktree's probe directory: tracked, overlaid by the branch's unpublished staging; rows unpacked.</summary>
+    internal static string Overlay(Ledger ledger, JsonObject config, string worktree)
+    {
+        var probeDir = Path.Combine(worktree, Files.Str(config["probeDir"]));
+        Directory.CreateDirectory(Path.Combine(probeDir, "rows"));
+        var wanted = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        var rows = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (var source in new[] { ledger.CorpusDir, ledger.StagingDir })
+        {
+            foreach (var sub in new[] { "harness", "probes" })
+                if (Directory.Exists(Path.Combine(source, sub)))
+                    foreach (var f in Directory.EnumerateFiles(Path.Combine(source, sub), "*.cs")) wanted[Path.GetFileName(f)] = f;
+            if (Directory.Exists(Path.Combine(source, "rows")))
+                foreach (var f in Directory.EnumerateFiles(Path.Combine(source, "rows")).Where(f => f.EndsWith(".json", StringComparison.Ordinal) || f.EndsWith(".json.gz", StringComparison.Ordinal)))
+                    rows[Path.GetFileName(f).Replace(".gz", "", StringComparison.Ordinal)] = f;
+        }
+        foreach (var existing in Directory.EnumerateFiles(probeDir)) if (!wanted.ContainsKey(Path.GetFileName(existing))) File.Delete(existing);
+        foreach (var (name, src) in wanted)
+        {
+            var dst = Path.Combine(probeDir, name);
+            if (!File.Exists(dst) || !File.ReadAllBytes(dst).AsSpan().SequenceEqual(File.ReadAllBytes(src))) File.Copy(src, dst, overwrite: true);
+        }
+        foreach (var (name, src) in rows)
+        {
+            var data = src.EndsWith(".gz", StringComparison.Ordinal) ? Files.Gunzip(src) : File.ReadAllBytes(src);
+            var dst = Path.Combine(probeDir, "rows", name);
+            if (!File.Exists(dst) || !File.ReadAllBytes(dst).AsSpan().SequenceEqual(data)) File.WriteAllBytes(dst, data);
+        }
+        return probeDir;
     }
 
     /// <summary>The harness's PROBE_ONLY filter, replicated: the rows a variant is expected to run.</summary>
