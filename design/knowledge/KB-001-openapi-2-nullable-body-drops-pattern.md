@@ -6,6 +6,7 @@ pins:
 source: the document Microsoft.AspNetCore.OpenApi writes for an MVC [FromBody] int and int?, and a minimal-API [FromBody] enum?, under OpenApiSpecVersion.OpenApi2_0 and OpenApi3_1, measured in a host without TypeKit
 turned-on: the probe finding G1, dismissed as no TypeKit bug (tools/probe/corpus/dismissed.jsonl), and the probe harness comparing a nullable value object with the nullable wrapped type
 test: test/CodoMetis.TypeKit.Facts/KB001.cs
+fixture: test/CodoMetis.TypeKit.Facts/KB001.fixture.json
 ---
 
 # KB-001. Under OpenAPI 2.0, ASP.NET writes a nullable request body as `allOf: [{x-nullable: true}]` and drops its `pattern`
