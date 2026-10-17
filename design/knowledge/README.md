@@ -53,3 +53,5 @@ entry's frontmatter, write the test first where a test can observe it, and add a
 | [KB-034](KB-034-numeric-p-s-rounds-on-write.md) | `numeric(p,s)` rounds a value with more fractional digits on write | PostgreSQL 17.11, Npgsql EF 10.0.3, EF Core 10.0.12 | `KB034`, with `TYPEKIT_PG` |
 | [KB-035](KB-035-npgsql-refuses-non-utc-for-timestamptz.md) | Npgsql refuses a non-UTC `DateTime` and a non-zero-offset `DateTimeOffset` for `timestamptz` | PostgreSQL 17.11, Npgsql EF 10.0.3, EF Core 10.0.12 | `KB035`, with `TYPEKIT_PG` |
 | [KB-036](KB-036-a-char-key-gets-an-identity-postgresql-refuses.md) | A plain `char` key gets an identity column on Npgsql, which PostgreSQL refuses | PostgreSQL 17.11, Npgsql EF 10.0.3, EF Core 10.0.12 | `KB036`, with `TYPEKIT_PG` |
+| [KB-037](KB-037-mvc-under-max-validation-depth-1-runs-an-unbound-action.md) | Under `MaxValidationDepth = 1`, MVC runs an action whose parameter it could not bind, with the parameter at its default | SDK 10.0.4xx | `KB037` |
+| [KB-038](KB-038-a-byte-array-is-a-base64-string.md) | System.Text.Json writes a `byte[]` as one base64 string, and every other collection as a JSON array | SDK 10.0.4xx | `KB038` |

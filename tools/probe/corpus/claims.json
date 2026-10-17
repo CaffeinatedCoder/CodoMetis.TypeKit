@@ -13642,6 +13642,19 @@
             "dictionary-key"
           ]
         }
+      },
+      {
+        "id": "a-byte-array-is-base64",
+        "source": "docs/json.md#the-wrapped-types-json",
+        "sentence": "An array of value objects over `byte` is a JSON array of numbers.",
+        "axes": {
+          "shape.wrapped": [
+            "byte"
+          ],
+          "shape.position": [
+            "array-element"
+          ]
+        }
       }
     ]
   },

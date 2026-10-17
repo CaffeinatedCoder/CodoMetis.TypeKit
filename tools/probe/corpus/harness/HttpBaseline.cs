@@ -4,6 +4,8 @@
 // as that citation (Cite), and one no document makes intended is compared.
 using System.Net;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 namespace Probes.Shapes;
@@ -38,6 +40,8 @@ public static class HttpBaseline
         if (ok(p) && !ok(v))
         {
             if (ReadRefusedAsDocumented(c, r, e, input, what)) return null;
+            // the same: the value object's array reads a JSON array of numbers, never the base64 string the twin's byte[] wrote and reads
+            if (ByteArray(r, e)) return c.Inapplicable(Cite.Docs("docs/json.md#the-wrapped-types-json"), what);
             // Text-matching site, kept in this step: the depth refusal is told by the message's words. Baseline gap: no twin in the row
             // shows System.Text.Json charging a converter a level (the three-sided differential, next step), and no record cites it.
             if (r.Is("json.MaxDepth", "3") && (v.Thrown ?? v.Body).Contains("maximum allowed depth")) { r.Note(NoteKeys.StjMaxdepth, "value-object side"); return null; }
@@ -60,12 +64,37 @@ public static class HttpBaseline
         {
             // A closed set travels as its member's name, never as the string or number standing in for it.
             if (e.Kind == "closed-set") return c.Inapplicable(Cite.Docs("README.md#what-you-get"), what);
-            // No sentence makes a byte array's base64 intended (an array of byte value objects is a JSON array): uncited, so compared.
+            // docs/json.md "The wrapped type's JSON": an array of value objects over byte is a JSON array of numbers, where the twin, a byte[],
+            // is one base64 string (KB-038).
+            if (ByteArray(r, e)) return c.Inapplicable(Cite.Docs("docs/json.md#the-wrapped-types-json"), what);
             return $"{what}: bodies differ: wrapped {Cut(p.Body)} vs value object {Cut(v.Body)}";
         }
         c.Note(NoteKeys.Compared, what);
         return null;
     }
+
+    /// <summary>An array of value objects over byte, whose twin is a byte[] (KB-038).</summary>
+    static bool ByteArray(Row r, Entry e) => e.Wrapped == "byte" && r["shape.position"] == "array-element";
+
+    /// <summary>What MVC writes for a type's default: null for no content (a reference, or a Nullable), else its JSON under MVC's options.</summary>
+    static string? DefaultBody(WebApplication app, Type t) =>
+        !t.IsValueType || Nullable.GetUnderlyingType(t) is not null ? null
+        : JsonSerializer.Serialize(Activator.CreateInstance(t), t, app.Services.GetRequiredService<IOptions<Microsoft.AspNetCore.Mvc.JsonOptions>>().Value.JsonSerializerOptions);
+
+    /// <summary>
+    /// Whether an answer is the type's default as MVC writes it: 204 for null, else 200 with its JSON, compared as JSON, since MVC's
+    /// formatter escapes with its own encoder where the options name none.
+    /// </summary>
+    static bool HoldsDefault(Hx.Wire w, string? body)
+    {
+        if (body is null) return w.Status == HttpStatusCode.NoContent;
+        if (w.Status != HttpStatusCode.OK) return false;
+        try { return JsonNode.DeepEquals(JsonNode.Parse(w.Body), JsonNode.Parse(body)); }
+        catch (JsonException) { return false; }
+    }
+
+    /// <summary>A text the wrapped type does not read, for a twin that shows what MVC does with a binding failure; none where any text binds.</summary>
+    static string? Unreadable(Entry e) => e.Wrapped is "string" or "Uri" or "own-record-class" ? null : "not-a-value";
 
     /// <summary>
     /// The value object refused a read the wrapped type answered, as a document says it does (JsonParity.ReadMayDiffer's reasons, the JSON
@@ -228,7 +257,34 @@ public static class HttpBaseline
                 if (r.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class") return c.Refused(Cite.Docs("src/CodoMetis.TypeKit.Generators/README.md#json"), "bind");
                 // README "What TypeKit guarantees": StoredJsonConverterFactory reads JSON the application stored itself, without validation.
                 if (bind == "body" && r.Is("json.Converters", "StoredJsonConverterFactory")) return c.Inapplicable(Cite.Docs("README.md#what-typekit-guarantees"), "bind body");
-                // MVC under MaxValidationDepth=1 ignored any type's binding error (design note D2), uncited: compared.
+                // KB-037: under MaxValidationDepth=1 MVC runs an action whose parameter it could not bind, with the parameter at its default. The
+                // value object must hold its default then, never the refused value; the twin, sent a text it cannot read in the same host, shows
+                // the framework doing the same.
+                if (name == "mvc" && r.Is("mvc.MaxValidationDepth", "1") && (int)bv.Status is >= 200 and < 300)
+                {
+                    if (DefaultBody(app, e.Vo) is var voDefault && !HoldsDefault(bv, voDefault))
+                        return $"{name} bind {bind}: validated value object bound the refused value (status {(int)bv.Status}) {Cut(bv.Body)}, not its default ({(voDefault is null ? "204" : "200 " + Cut(voDefault))})";
+                    if (Unreadable(e) is not { } text)
+                        return c.Inapplicable(Cite.Fact("KB-037"), $"{name} bind {bind}: the value object holds its default; any text binds the wrapped type, so no twin shows it");
+                    var enc = Uri.EscapeDataString(text);
+                    var bt = bind switch
+                    {
+                        "route" => await Hx.Get(app, path(bindPre + "route/plain/" + enc)),
+                        "query" => await Hx.Get(app, path(bindPre + "query/plain?v=" + enc)),
+                        "as-parameters" => await Hx.Get(app, path(bindPre + "params/plain?v=" + enc)),
+                        "header" => await Hx.Send(app, HttpMethod.Get, path(bindPre + "header/plain"), header: ("v", text)),
+                        "form" => await Hx.Send(app, HttpMethod.Post, path(bindPre + "form/plain"), "v=" + enc, "application/x-www-form-urlencoded"),
+                        _ => await Hx.Send(app, HttpMethod.Post, path(bindPre + "body/plain"), JsonSerializer.Serialize(text)),
+                    };
+                    r.Log.AppendLine($"{name} bind {bind} unreadable text={text}: plain {(int)bt.Status} {Cut(bt.Body)} {bt.Thrown}");
+                    if (HoldsDefault(bt, DefaultBody(app, e.Plain)))
+                        return c.Inapplicable(Cite.Fact("KB-037"), $"{name} bind {bind}: both hold their default, the wrapped type for a text it cannot read");
+                    if ((int)bt.Status is >= 400 and < 500)
+                        return $"{name} bind {bind}: the value object answered {(int)bv.Status} holding its default, where the wrapped type rejects a text it cannot read ({(int)bt.Status})";
+                    // KB-037's class from the query: the validator throws at the twin's property, and the value object, written by a
+                    // converter of its own, is no class it walks
+                    return c.Inconclusive($"{name} bind {bind}: the value object holds its default (KB-037); the wrapped type answered {(int)bt.Status} {Cut(bt.Body)} {bt.Thrown}");
+                }
                 // a refused value must not bind (the one set of rules), except where the application skips validation on purpose
                 if ((int)bv.Status is >= 200 and < 300) return $"{name} bind {bind}: validated value object bound the refused value (status {(int)bv.Status}) {Cut(bv.Body)}";
                 // Text-matching site, kept in this step: MVC writes its 400 as ValidationProblemDetails, which a source-generated context alone
