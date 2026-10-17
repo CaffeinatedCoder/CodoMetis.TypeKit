@@ -149,6 +149,31 @@ public static class EfModel
     }
 }
 
+/// <summary>
+/// How a check of a two-sided EF row ends where a side threw: the value object's context under <c>UseTypeKit()</c> and the
+/// wrapped twin's under plain EF ran the same step, named by <c>what</c>. Neither threw: false, compare on. The value object
+/// alone: its violation. Both, with exceptions of one type: nothing to compare, inconclusive, since no fact or sentence says why
+/// the framework refuses it. Both, otherwise: a violation, since the value object did not fail as its twin does. The twin alone:
+/// inconclusive, no twin to compare with.
+/// </summary>
+public static class EfSides
+{
+    public static bool Threw(Check c, Exception? vo, Exception? plain, string what, out string? failure)
+    {
+        failure = null;
+        if (vo is null && plain is null) return false;
+        if (vo is not null && plain is not null)
+            failure = vo.GetType() == plain.GetType()
+                ? c.Inconclusive($"both sides refuse {what} alike: {vo.GetType().Name}: {Short(vo.Message)}")
+                : $"{what}: the value object's side threw {vo.GetType().Name}: {Short(vo.Message)}; the wrapped type's {plain.GetType().Name}: {Short(plain.Message)}";
+        else if (plain is not null) failure = c.Inconclusive($"the wrapped type's side refuses {what}, so there is no twin to compare with: {plain.GetType().Name}: {Short(plain.Message)}");
+        else failure = $"{what} with the value object threw {vo!.GetType().Name}: {Short(vo.Message)}; the wrapped type's did not";
+        return true;
+    }
+
+    static string Short(string s) { s = s.Split('\n')[0]; return s.Length > 300 ? s[..300] : s; }
+}
+
 public static class Q
 {
     public static IQueryable Call(string name, Type[] typeArgs, IQueryable src, params Expression[] args)

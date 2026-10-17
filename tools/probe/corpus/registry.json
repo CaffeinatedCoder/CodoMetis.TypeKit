@@ -893,6 +893,16 @@
           "obligation": "guid-key-yours",
           "patch": "seeds/E04-integer-key-generated-guid-key-yours.patch",
           "defect": "A key over a Guid is declared generated on add, so EF invents a Guid for an entity added without one."
+        },
+        {
+          "obligation": "not-on-efs-list",
+          "patch": "seeds/E04-integer-key-generated-not-on-efs-list.patch",
+          "defect": "A key over a string is declared generated on add, as a key over an integer is, so EF invents a Guid's text for an entity added without one, where a plain string key is never generated."
+        },
+        {
+          "obligation": "own-configuration-wins",
+          "patch": "seeds/E04-integer-key-generated-own-configuration-wins.patch",
+          "defect": "A key over char or Guid is declared never generated as an explicit configuration, so it overrides the ValueGeneratedOnAdd() the application wrote."
         }
       ]
     },
@@ -1046,6 +1056,11 @@
           "obligation": "value-object-type-reaches",
           "patch": "seeds/E12-convention-by-vo-type-value-object-type-reaches.patch",
           "defect": "A finalizing convention clears the max length, precision and scale of value-object properties, so a convention on the value object's type does not reach its property."
+        },
+        {
+          "obligation": "underlying-type-does-not-reach",
+          "patch": "seeds/E12-convention-by-vo-type-underlying-type-does-not-reach.patch",
+          "defect": "A value-object property is configured as the type it wraps is, so a ConfigureConventions convention on decimal reaches an Amount property."
         }
       ]
     },
@@ -1057,6 +1072,11 @@
           "obligation": "element-value",
           "patch": "seeds/E13-primitive-collections-element-value.patch",
           "defect": ".Value on an element of a primitive collection of value objects is not translated, so Any(t => t.Value == x) fails."
+        },
+        {
+          "obligation": "contains",
+          "patch": "seeds/E13-primitive-collections-contains.patch",
+          "defect": "The query interceptor rewrites Contains of a value object in a primitive collection as false, so the query matches no row."
         }
       ]
     },

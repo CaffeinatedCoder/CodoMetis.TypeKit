@@ -1,4 +1,6 @@
 // Claim E13-primitive-collections (README#queries): "db.Orders.Where(o => o.Tags.Contains(tag)); db.Orders.Where(o => o.Tags.Any(t => t.Value == "x"));" over a List<ValueObject> primitive collection.
+// Obligations (claims.json), one per row by ef.query, against the ids memory computes (Baseline.Model): element-value (any-value-equals,
+// "db.Orders.Where(o => o.Tags.Any(t => t.Value == "x"));") and contains ("db.Orders.Where(o => o.Tags.Contains(tag));").
 // Oracle: claim plus differential. The ids the query returns equal the ids whose collection holds the value (ground truth computed in memory), and equal what the same query returns over List<wrapped type>.
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
@@ -67,9 +69,21 @@ public sealed class E13PrimitiveCollectionProbe
         }
         var truth = string.Join(" ", needles.Select(n => $"{n}:" + string.Join(",", Enumerable.Range(0, data.Length).Where(i => data[i].Contains(n)).Select(i => i + 1))));
         var v = await Side(true);
-        if (v.err is null) return v.res == truth ? null : $"{qk} returned [{v.res}], the collections hold [{truth}]";
-        var p = await Side(false);
-        if (p.err is not null) { r.Note(NoteKeys.BothThrew, v.err.Split(':')[0] + "/" + p.err.Split(':')[0]); return null; }
-        return $"{qk} over List<{w} value object> threw ({v.err}) where List<{w}> returned [{p.res}]";
+        // element-value (Any over .Value) and contains (Contains of a value object): the ids memory finds in the same collections
+        return await r.Check(qk == "contains" ? "contains" : "element-value", Baseline.Model, async c =>
+        {
+            if (v.err is null)
+            {
+                if (v.res != truth) return $"{qk} returned [{v.res}], the collections hold [{truth}]";
+                c.Note(NoteKeys.Compared, truth);
+                return null;
+            }
+            // the value object's query failed: the same query over List<wrapped type> tells the framework's refusal from the value object's
+            var p = await Side(false);
+            if (p.err is null) return $"{qk} over List<{w} value object> threw ({v.err}) where List<{w}> returned [{p.res}]";
+            return v.err.Split(':')[0] == p.err.Split(':')[0]
+                ? c.Inconclusive($"both sides refuse {qk} alike: {v.err}")
+                : $"{qk}: the value object's side threw {v.err}, the wrapped type's {p.err}";
+        });
     }
 }

@@ -1,4 +1,6 @@
 // Claim E12-convention-by-vo-type (src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#model-wide-conventions-follow-the-propertys-type): "EF applies ConfigureConventions by CLR type. So Properties<decimal>().HavePrecision(18, 2) reaches decimal properties, and not an Amount that wraps one. Configure the value object instead: Properties<Amount>().HavePrecision(18, 2)."
+// Obligations (claims.json), one per row by ef.convention-type: value-object-type-reaches (value-object), against the same convention on
+// the wrapped type and a plain property (Baseline.Twin); underlying-type-does-not-reach (underlying), against the README (Baseline.Docs).
 // Oracle: differential + claim. A convention on the value object type reaches the value object's property exactly as the same convention on the wrapped type reaches a plain property; a convention on the wrapped type does not reach the value object's property (its model equals the model without the convention) while it does reach the plain one.
 using Microsoft.EntityFrameworkCore;
 using Probes.Ef;
@@ -43,17 +45,27 @@ public sealed class E12ConventionByTypeProbe
             r.Substituted("ef.convention", fallback, $"{facet} has no effect on a plain {w} property");
             facet = fallback;
             plainConv = await Line(e.Plain, "none", Conv(facet, e.Plain, w));
-            if (plainConv == plainNone) { r.Outcome("inapplicable", $"{facet} changes nothing on a plain {w}"); return null; }
         }
-        var voNone = await Line(e.Vo, "after-provider", null);
-        if (ct == "underlying")
+        var underlying = ct == "underlying";
+        // value-object-type-reaches: as the same convention on the wrapped type reaches a plain property (the twin);
+        // underlying-type-does-not-reach: the README's "reaches `decimal` properties, and not an `Amount` that wraps one"
+        return await r.Check(underlying ? "underlying-type-does-not-reach" : "value-object-type-reaches",
+            underlying ? Baseline.Docs("src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#model-wide-conventions-follow-the-propertys-type") : Baseline.Twin, async c =>
         {
-            var reached = await Line(e.Vo, "after-provider", Conv(facet, e.Plain, w));
-            return (reached == voNone ? null : $"a convention on {w} reached the value object's property: {reached} (without it: {voNone}); the plain property got {plainConv}");
-        }
-        var voConv = await Line(e.Vo, "after-provider", Conv(facet, e.Vo, w));
-        if (voConv == voNone) return ($"a convention on the value object type {e.Vo.Name} did not reach its property: {voConv}");
-        if (voConv != plainConv) return ($"the convention on the value object gave {voConv}; on the plain {w} {plainConv}");
-        return null;
+            if (plainConv == plainNone) return c.Inconclusive($"{facet} changes nothing on a plain {w} property either, so there is nothing to compare");
+            var voNone = await Line(e.Vo, "after-provider", null);
+            if (underlying)
+            {
+                var reached = await Line(e.Vo, "after-provider", Conv(facet, e.Plain, w));
+                if (reached != voNone) return $"a convention on {w} reached the value object's property: {reached} (without it: {voNone}); the plain property got {plainConv}";
+                c.Note(NoteKeys.Compared, $"{facet} on {w} reaches the plain property ({plainConv}), not the value object's ({reached})");
+                return null;
+            }
+            var voConv = await Line(e.Vo, "after-provider", Conv(facet, e.Vo, w));
+            if (voConv == voNone) return $"a convention on the value object type {e.Vo.Name} did not reach its property: {voConv}";
+            if (voConv != plainConv) return $"the convention on the value object gave {voConv}; on the plain {w} {plainConv}";
+            c.Note(NoteKeys.Compared, voConv);
+            return null;
+        });
     }
 }

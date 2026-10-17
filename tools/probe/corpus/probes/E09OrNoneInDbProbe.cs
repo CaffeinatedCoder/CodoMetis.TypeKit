@@ -1,5 +1,7 @@
 // Claim E09-or-none-in-database (src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found): "These ask the database for one row and let it run the condition: FirstOrNoneAsync, FirstOrNone, FirstOrError read one row (WHERE ... LIMIT); SingleOrNone(Async) ask for two rows and throw for more than one; ElementAtOrNone skips to its row (OFFSET)."
 // Oracle: claim. Over a table of value-object keys the operator returns what an in-memory evaluation of the same condition gives (none / the first match / the error), the executed SELECT carries the condition (WHERE) and LIMIT (OFFSET for ElementAtOrNone), and SingleOrNone throws InvalidOperationException for more than one match.
+// Obligations (claims.json), one per row by ef.operator, against the README (Baseline.Docs): first-reads-one-row (FirstOrNoneAsync,
+// FirstOrNone, FirstOrError), single-asks-for-two (SingleOrNoneAsync, SingleOrNone), element-at-skips (ElementAtOrNone).
 // Expected: no failure for any row. The condition is written as a lambda at the call or held as an Expression<Func<T,bool>> variable.
 #nullable enable
 #pragma warning disable CMTK0014, CS8618, CS1591, CMTK0005, CMTK1000, CMTK0003, CMTK0006, CA1000
@@ -26,7 +28,18 @@ public sealed class E09OrNoneInDbProbe
     [Theory, MemberData(nameof(Data))]
     public Task Row(string probe, int idx) => Rec.Run(probe, idx, Check);
 
-    static Task<string?> Check(Probes.Shapes.Row r) => r["shape.wrapped"] switch { "int" => Run_int(r), "Guid" => Run_Guid(r), "string" => Run_string(r), var w => throw new ArgumentException(w) };
+    /// <summary>One check per row, the operator's obligation, held to the README's SQL and to the in-memory answer of the same condition.</summary>
+    static Task<string?> Check(Probes.Shapes.Row r)
+    {
+        var obligation = r["ef.operator"] switch
+        {
+            "FirstOrNoneAsync" or "FirstOrNone" or "FirstOrError" => "first-reads-one-row",
+            "SingleOrNoneAsync" or "SingleOrNone" => "single-asks-for-two",
+            _ => "element-at-skips",
+        };
+        return r.Check(obligation, Baseline.Docs("src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found"), c =>
+            c["shape.wrapped"] switch { "int" => Run_int(r), "Guid" => Run_Guid(r), "string" => Run_string(r), var w => throw new ArgumentException(w) });
+    }
 
     static string Flat(string s) => s.Replace("\n", " ");
     static string? Verify(string op, string data, string got, string? thrown, List<int> matching, SqlCap cap)
