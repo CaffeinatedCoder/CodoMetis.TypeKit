@@ -77,6 +77,37 @@
                 }
               },
               "description": "the axis values the obligation concerns, where it is not the whole claim"
+            },
+            "inapplicable": {
+              "type": "array",
+              "minItems": 1,
+              "description": "where the obligation does not apply: a row holding every axis of a declaration at one of its values runs no check of the obligation (Row.Check records it inapplicable with the cite), a pair matched by a declaration is not wanted by the obligation, and a pair no obligation wants is declared inapplicable, never put in a generated row and left out of the gate's count as an exclusion is. `Axes.Build` refuses an axis or value the claim does not list, a malformed cite, and a not-promised id the claim lacks",
+              "items": {
+                "type": "object",
+                "required": [
+                  "axes",
+                  "cite"
+                ],
+                "properties": {
+                  "axes": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "description": "axis to the values where the obligation does not apply; every axis must hold at one of its values"
+                  },
+                  "cite": {
+                    "type": "string",
+                    "pattern": "^(not-promised|docs|fact|record):",
+                    "description": "why: not-promised:<id of the claim's not-promised list>, docs:<file#anchor>, fact:KB-NNN or record:NNNN, in the forms the harness's Cite accepts"
+                  }
+                },
+                "additionalProperties": false
+              }
             }
           },
           "additionalProperties": false

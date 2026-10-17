@@ -21,7 +21,34 @@ internal readonly record struct Pair
 internal sealed record Exclusion(string Reason, IReadOnlyList<Pair> Pairs);
 
 /// <summary>One thing a claim promises, checkable on its own: a sentence quoted from the claim's source, under an id a seed names (decision 104).</summary>
-internal sealed record Obligation(string Id, string Sentence, IReadOnlyDictionary<string, List<string>> Axes);
+internal sealed record Obligation(string Id, string Sentence, IReadOnlyDictionary<string, List<string>> Axes)
+{
+    /// <summary>Where the obligation does not apply, each declaration with its citation; the harness's <c>Row.Check</c> reads the same ones.</summary>
+    public IReadOnlyList<Inapplicability> Inapplicable { get; init; } = [];
+}
+
+/// <summary>
+/// Where an obligation does not apply: every axis of the declaration at one of the values it lists, and the citation
+/// that says why (<c>not-promised:id</c>, <c>docs:file#anchor</c>, <c>fact:KB-NNN</c>, <c>record:NNNN</c>). A row
+/// matches when it holds each axis at a listed value; a pair matches when every row holding it does, so when each
+/// axis of the declaration is one of the pair's two at a listed value.
+/// </summary>
+internal sealed record Inapplicability(IReadOnlyDictionary<string, List<string>> Axes, string Cite)
+{
+    public bool Matches(Pair pair) => Axes.All(axis => Holds(pair.A, axis) || Holds(pair.B, axis));
+
+    private static bool Holds(string setting, KeyValuePair<string, List<string>> axis)
+    {
+        var at = setting.IndexOf('=', StringComparison.Ordinal);
+        return at > 0 && string.Equals(setting[..at], axis.Key, StringComparison.Ordinal) && axis.Value.Contains(setting[(at + 1)..]);
+    }
+
+    public JsonObject ToJson() => new()
+    {
+        ["axes"] = new JsonObject(Axes.Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)new JsonArray([.. kv.Value.Select(v => (JsonNode)v)])))),
+        ["cite"] = Cite,
+    };
+}
 
 /// <summary>One thing a claim does not promise: the sentence of the document or record that makes the difference intended, and what it concerns.</summary>
 internal sealed record NotPromised(string Id, string Source, string Sentence, IReadOnlyDictionary<string, List<string>> Axes);
@@ -56,6 +83,44 @@ internal sealed class Claim
     {
         var ids = (claim["obligations"] as JsonArray ?? []).OfType<JsonObject>().Select(o => Files.Str(o["id"])).Where(id => id.Length > 0).ToList();
         return ids.Count > 0 ? ids : [ImplicitObligation];
+    }
+
+    /// <summary>The ids of the claim's obligations as built: the listed ones, or the implicit one.</summary>
+    public IEnumerable<string> ObligationIdsBuilt => Obligations.Count > 0 ? Obligations.Select(o => o.Id) : [ImplicitObligation];
+
+    /// <summary>
+    /// The pairs <paramref name="obligation"/> wants: the claim's pairs less those a declaration of that obligation
+    /// matches on either side. An obligation that declares nothing, the implicit one among them, wants them all.
+    /// </summary>
+    public HashSet<Pair> PairsWantedBy(string obligation)
+    {
+        var declared = Obligations.FirstOrDefault(o => o.Id == obligation)?.Inapplicable ?? [];
+        var result = Pairs();
+        if (declared.Count > 0) result.RemoveWhere(p => declared.Any(d => d.Matches(p)));
+        return result;
+    }
+
+    /// <summary>The pairs at least one obligation wants: the union of <see cref="PairsWantedBy"/>, each pair once.</summary>
+    public HashSet<Pair> PairsWanted()
+    {
+        if (!Obligations.Any(o => o.Inapplicable.Count > 0)) return Pairs();
+        var result = new HashSet<Pair>();
+        foreach (var id in ObligationIdsBuilt) result.UnionWith(PairsWantedBy(id));
+        return result;
+    }
+
+    /// <summary>
+    /// The pairs no obligation wants, each with the citations of the declarations that match it: declared
+    /// inapplicable, so no row is generated for them and the gate leaves them out as it leaves out an exclusion.
+    /// </summary>
+    public Dictionary<Pair, SortedSet<string>> DeclaredInapplicable()
+    {
+        var result = new Dictionary<Pair, SortedSet<string>>();
+        var wanted = PairsWanted();
+        foreach (var pair in Pairs())
+            if (!wanted.Contains(pair))
+                result[pair] = new SortedSet<string>(Obligations.SelectMany(o => o.Inapplicable).Where(d => d.Matches(pair)).Select(d => d.Cite), StringComparer.Ordinal);
+        return result;
     }
 
     public HashSet<Pair> Pairs()
@@ -94,6 +159,15 @@ internal sealed class Claim
             ["axes"] = new JsonObject(Axes.Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)new JsonArray([.. kv.Value.Select(v => (JsonNode)v)])))),
         };
         if (Excluded.Count > 0) o["exclude"] = new JsonArray([.. Excluded.Select(p => (JsonNode)new JsonArray(p.A, p.B))]);
+        // Every obligation's id with its declarations, written only where one declares something, so the covering
+        // generator and the gate, which read universe.json, know which pairs each wants.
+        if (Obligations.Any(ob => ob.Inapplicable.Count > 0))
+            o["obligations"] = new JsonArray([.. Obligations.Select(ob =>
+            {
+                var item = new JsonObject { ["id"] = ob.Id };
+                if (ob.Inapplicable.Count > 0) item["inapplicable"] = new JsonArray([.. ob.Inapplicable.Select(d => (JsonNode)d.ToJson())]);
+                return (JsonNode)item;
+            })]);
         return o;
     }
 
@@ -103,6 +177,10 @@ internal sealed class Claim
         Watched = [.. Files.Strings(o["watched"])],
         Axes = new((o["axes"] as JsonObject ?? []).ToDictionary(kv => kv.Key, kv => Files.Strings(kv.Value).ToList(), StringComparer.Ordinal), StringComparer.Ordinal),
         Excluded = [.. (o["exclude"] as JsonArray ?? []).OfType<JsonArray>().Where(p => p.Count == 2).Select(p => new Pair(Files.Str(p[0]), Files.Str(p[1])))],
+        Obligations = [.. (o["obligations"] as JsonArray ?? []).OfType<JsonObject>().Select(ob => new Obligation(Files.Str(ob["id"]), "", new SortedDictionary<string, List<string>>(StringComparer.Ordinal))
+        {
+            Inapplicable = [.. (ob["inapplicable"] as JsonArray ?? []).OfType<JsonObject>().Select(Prober.Axes.Declaration)],
+        })],
     };
 }
 
@@ -154,6 +232,32 @@ internal static class Axes
         var result = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
         foreach (var (name, values) in node as JsonObject ?? []) result[name] = [.. Files.Strings(values)];
         return result;
+    }
+
+    /// <summary>A declaration of where an obligation does not apply, as claims.json and universe.json hold it.</summary>
+    internal static Inapplicability Declaration(JsonObject d) => new(AxesOf(d["axes"]), Files.Str(d["cite"]));
+
+    private static readonly Regex CiteId = new("^[a-z0-9][a-z0-9-]*$");
+    private static readonly Regex CiteSource = new(@"^(?!/)(?!.*(^|/)\.\.?(/|#|$))[A-Za-z0-9_./-]+\.[A-Za-z0-9]+(#[A-Za-z0-9][A-Za-z0-9._-]*)?$");
+    private static readonly Regex CiteFact = new(@"^KB-\d{3}$");
+    private static readonly Regex CiteRecord = new(@"^\d{4}$");
+
+    /// <summary>
+    /// What is wrong with a citation's form, or null: the forms the harness's <c>Cite</c> (harness/Row.cs) accepts, so
+    /// every declaration the universe reads, the harness can cite (<c>CiteFormTests</c> holds the two alike).
+    /// </summary>
+    internal static string? CiteProblem(string cite)
+    {
+        var at = cite.IndexOf(':', StringComparison.Ordinal);
+        var (kind, value) = at < 0 ? ("", cite) : (cite[..at], cite[(at + 1)..]);
+        return kind switch
+        {
+            "not-promised" => CiteId.IsMatch(value) ? null : "is not a not-promised id (not-promised:closed-set-has-no-text)",
+            "docs" => CiteSource.IsMatch(value) ? null : "is not a docs source (docs:docs/json.md#decimals-in-one-spelling)",
+            "fact" => CiteFact.IsMatch(value) ? null : "is not a knowledge entry's id (fact:KB-031)",
+            "record" => CiteRecord.IsMatch(value) ? null : "is not a decision record's number (record:0094)",
+            _ => "is not a citation (not-promised:id, docs:file#anchor, fact:KB-NNN or record:NNNN)",
+        };
     }
 
     /// <summary>Builds the universe: each claim takes every axis of its surfaces, minus quoted narrowings, plus its own axes.</summary>
@@ -220,13 +324,34 @@ internal static class Axes
             // What the claim promises and what it does not, each a sentence quoted from its document, checked as a
             // narrowing is: a sentence the document no longer holds is a refusal, never a stale promise (decision 104).
             var obligations = new List<Obligation>();
+            var notPromisedIds = (c["not-promised"] as JsonArray ?? []).OfType<JsonObject>().Select(n => Files.Str(n["id"])).ToHashSet(StringComparer.Ordinal);
             foreach (var o in (c["obligations"] as JsonArray ?? []).OfType<JsonObject>())
             {
                 var oid = Files.Str(o["id"]);
                 if (obligations.Any(x => x.Id == oid)) throw new Refusal($"claim {id}: obligation {oid} is listed twice");
                 if (!sourceText.Contains(Collapse(Files.Str(o["sentence"])), StringComparison.Ordinal))
                     throw new Refusal($"claim {id}: obligation {oid} quotes a sentence not found in {sourceFile}");
-                obligations.Add(new Obligation(oid, Files.Str(o["sentence"]), AxesOf(o["axes"])));
+                // Where the obligation does not apply, said by the claim's own axes and values and cited: the covering
+                // generator, the gate and the harness read the same declarations, so they never disagree.
+                var declared = new List<Inapplicability>();
+                foreach (var (d, i) in (o["inapplicable"] as JsonArray ?? []).OfType<JsonObject>().Select((d, i) => (d, i)))
+                {
+                    var at = $"claim {id}: obligation {oid}: inapplicable[{i}]";
+                    var declaration = Declaration(d);
+                    if (declaration.Axes.Count == 0) throw new Refusal($"{at} names no axis");
+                    foreach (var (name, values) in declaration.Axes)
+                    {
+                        if (!mine.TryGetValue(name, out var listed)) throw new Refusal($"{at} names axis {name}, which the claim does not have");
+                        if (values.Count == 0) throw new Refusal($"{at} names no value of {name}");
+                        foreach (var value in values.Where(v => !listed.Contains(v)))
+                            throw new Refusal($"{at} names {name}={value}, a value the claim does not list for {name}");
+                    }
+                    if (CiteProblem(declaration.Cite) is { } problem) throw new Refusal($"{at}: cite {declaration.Cite} {problem}");
+                    if (declaration.Cite.StartsWith("not-promised:", StringComparison.Ordinal) && !notPromisedIds.Contains(declaration.Cite["not-promised:".Length..]))
+                        throw new Refusal($"{at} cites {declaration.Cite}, which the claim's not-promised list does not hold");
+                    declared.Add(declaration);
+                }
+                obligations.Add(new Obligation(oid, Files.Str(o["sentence"]), AxesOf(o["axes"])) { Inapplicable = declared });
             }
             var notPromised = new List<NotPromised>();
             foreach (var n in (c["not-promised"] as JsonArray ?? []).OfType<JsonObject>())

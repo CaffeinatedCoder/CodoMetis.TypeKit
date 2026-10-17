@@ -113,7 +113,8 @@ internal sealed class Ledger
     /// <summary>
     /// What a probe's result depends on besides the product footprint: its registry entry (not its seed), every source
     /// compiled with it (the harness and all probes), its own rows (not a sibling's), the axes file, the build environment
-    /// (SDK, central package versions, build props, global.json), this tool's version and the schema version.
+    /// (SDK, central package versions, build props, global.json), this tool's version and the schema version, and
+    /// where its claim declares where an obligation does not apply, those declarations, which the harness reads.
     /// A result counts only while this is unchanged.
     /// </summary>
     public string Identity(string probe)
@@ -136,6 +137,9 @@ internal sealed class Ledger
             }
         foreach (var (name, file) in sources) { Add(name); sha.AppendData(File.ReadAllBytes(file)); }
         Add(Files.Canonical(RowsOf(probe)));
+        // The declarations Row.Check applies before a check's body runs: a change to one changes what the probe's rows
+        // check. Added only where the claim declares something, so a claim without declarations leaves the identity as it was.
+        if (Declarations(Files.Str(entry["claim"])) is { } declared) Add("inapplicable:" + Files.Canonical(declared));
         try { Add(Files.Canonical(AxesBlock())); } catch (Refusal) { Add("no axes file"); }
         foreach (var path in new[] { "Directory.Packages.props", "Directory.Build.props", "global.json" })
             Add(path + (Git.ObjectId(Top, path) ?? "-"));
@@ -143,6 +147,17 @@ internal sealed class Ledger
         Add("tool:" + SourceFingerprint.ToolVersion[..16]);
         Add("schema:" + Files.SchemaVersion);
         return Convert.ToHexStringLower(sha.GetHashAndReset())[..16];
+    }
+
+    private Dictionary<string, JsonArray>? declarations;
+
+    /// <summary>A claim's declarations of where its obligations do not apply, as claims.json holds them, by obligation; null where it declares none.</summary>
+    private JsonArray? Declarations(string claim)
+    {
+        declarations ??= Claims().ToDictionary(c => Files.Str(c["id"]), c => new JsonArray([.. (c["obligations"] as JsonArray ?? []).OfType<JsonObject>()
+            .Where(o => o["inapplicable"] is JsonArray { Count: > 0 })
+            .Select(o => (JsonNode)new JsonObject { ["obligation"] = Files.Str(o["id"]), ["inapplicable"] = o["inapplicable"]!.DeepClone() })]), StringComparer.Ordinal);
+        return declarations.TryGetValue(claim, out var declared) && declared.Count > 0 ? declared : null;
     }
 
     private JsonObject? toolchain;
