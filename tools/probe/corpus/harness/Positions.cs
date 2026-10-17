@@ -188,8 +188,13 @@ public static class JsonParity
     }
     static bool Validated(Entry e) => e.Kind.StartsWith("validated");
 
-    /// <summary>The oracle "JSON parity" (differential): a shape with the value object and the same shape with the wrapped type give the same
-    /// bytes under the same options and read each other's JSON. Returns null for a pass, otherwise the failure.</summary>
+    /// <summary>
+    /// The oracle "JSON parity" (differential) as L01's checks: the value object's write against the wrapped twin in the same shape
+    /// under the same options (the-underlying-types-json, or as-a-dictionary-key-too where the value object is a dictionary key), and
+    /// the read of the twin's document with the row's input.json against the twin's read (read-as-the-underlying-type-reads). Under an
+    /// application's converter for the value object, which writes it instead of the generated one, the read is that converter's own
+    /// document read back. Every check runs; returns the first failure.
+    /// </summary>
     public static string? Check(Row r, Entry e, JsonSerializerOptions o, string position, string containing, string input, JsonSerializerOptions? oPlain = null)
     {
         oPlain ??= o;
@@ -201,74 +206,112 @@ public static class JsonParity
         if (Equivalence.Shapes(hp.Declared, hv.Declared, e) is { } whyShape) { r.Outcome("harness-error", "inputs not equivalent: " + whyShape); return null; }
         if (Equivalence.Options(oPlain, o, allowConverters: e.Kind == "closed-set") is { } whyOptions) { r.Outcome("harness-error", "inputs not equivalent: " + whyOptions); return null; }
         var (jp, ep) = Ser(hp, oPlain); var (jv, ev) = Ser(hv, o);
-        var ownVo = r.Get("json.Converters") == "own-for-value-object";
-        var preserveOwn = r.Get("json.ReferenceHandler") == "Preserve";
-        if (ownVo)
+        var write = position == "dictionary-key" ? "as-a-dictionary-key-too" : "the-underlying-types-json";
+        const string read = "read-as-the-underlying-type-reads";
+        string? fw, fr;
+        if (r.Get("json.Converters") == "own-for-value-object")
         {
-            if (ev is not null && ep is null)
-            {
-                // The application's converter sits on the value object's side only. Its baseline is a converter the application
-                // registers for the wrapped type at the same position: where that throws alike, System.Text.Json refuses any
-                // custom converter there (MaxDepth counts its value one level deeper, design note D1), not the value object.
-                var oOwn = new JsonSerializerOptions(oPlain);
-                oOwn.Converters.Insert(0, (System.Text.Json.Serialization.JsonConverter)Activator.CreateInstance(typeof(OwnWrappedConverter<>).MakeGenericType(Make.Held(e.Plain)), JsonRow.Inner(e))!);
-                var (_, eo) = Ser(hp, oOwn);
-                if (eo is not null && eo.GetType() == ev.GetType()) { r.Note(NoteKeys.OwnConverterRefusedForWrappedToo, eo.GetType().Name); return null; }
-                return $"own VO converter row: VO serialization threw {ev.GetType().Name}: {ev.Message}";
-            }
-            r.Note(NoteKeys.OwnVo);
-            if (jv is not null)
-            {
-                var (back, eb) = De(jv, hv, o);
-                if (eb is not null) { if (r.Get("json.UnmappedMemberHandling") == "Disallow" || input != "valid") { r.Note(NoteKeys.OwnVoReadBackRefused); return null; } return "own VO converter: read-back threw " + eb.GetType().Name + ": " + eb.Message; }
-                if (back != jv) return $"own VO converter round trip differs: {jv} vs {back}";
-            }
-            return null;
+            // "Your own converter wins" (AspNetCore README#what-the-document-says): the application's converter writes the value object
+            // instead of the generated one, so the twin's bytes are none of its. claims.json declares the write inapplicable there.
+            fw = r.Check(write, Baseline.Twin, c => c.Inapplicable(Cite.Docs("src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says"), "write"));
+            fr = r.Check(read, Baseline.RoundTrip, c => OwnVoRead(c, e, hp, hv, oPlain, o, jv, ev, ep));
+            return fw ?? fr;
         }
-        if (e.Wrapped == "byte" && position == "array-element" && jp != jv) { r.Note(NoteKeys.ByteArrayIsBase64, "write"); return null; } // STJ writes byte[] as base64; an array of byte value objects is a JSON array
+        fw = r.Check(write, Baseline.Twin, c => Write(c, e, position, jp, ep, jv, ev));
+        fr = r.Check(read, Baseline.Twin, c => Read(c, e, position, input, hp, hv, oPlain, o, jp));
+        return fw ?? fr;
+    }
+
+    /// <summary>The value object's document is the wrapped twin's, byte for byte, in the same shape under the same options.</summary>
+    static string? Write(Check c, Entry e, string position, string? jp, Exception? ep, string? jv, Exception? ev)
+    {
+        // System.Text.Json writes byte[] as base64 and an array of value objects over byte as a JSON array (KB-038); claims.json declares it
+        if (e.Wrapped == "byte" && position == "array-element" && jp != jv) return c.Inapplicable(Cite.NotPromised("a-byte-array-is-base64"), "write");
         if (ep is not null && ev is not null)
-        {
-            // Both refused: evidence about refusing, not about serializing. Refusing differently is no agreement at all.
-            if (ep.GetType() != ev.GetType()) { r.Note(NoteKeys.BothThrewDifferently, ep.GetType().Name + "/" + ev.GetType().Name); return null; }
-            r.Note(NoteKeys.BothThrew, ep.GetType().Name + ": " + ev.Message[..Math.Min(70, ev.Message.Length)]); return null;
-        }
+            // Both refused: evidence about refusing, not about serializing, and nothing to compare.
+            return c.Inconclusive(ep.GetType() != ev.GetType()
+                ? $"write: both refuse, differently: the wrapped type {ep.GetType().Name}, the value object {ev.GetType().Name}"
+                : $"write: the options refuse the shape for the wrapped type too: {ep.GetType().Name}: {Cut(ep.Message)}");
         if (ep is null && ev is not null)
         {
-            // Text-matching site, kept in this step (WS2 step 4, the http family): the depth refusal is told by the message's words. Baseline
-            // gap: no twin in the row shows System.Text.Json charging a converter a level, and no record or fact cites it (the three-sided differential).
-            if (r.Is("json.MaxDepth", "3") && ev is JsonException && ev.Message.Contains("maximum allowed depth")) { r.Note(NoteKeys.StjMaxdepth, "charges custom converters"); return null; } // inherent to STJ: any custom converter costs a level (design note D1)
-            if (preserveOwn && e.Wrapped == "own-record-class" && ev is NotSupportedException) { r.Note(NoteKeys.PreserveDocumented); return null; } // documented (Generators README#json; not-promised preserved-references-over-a-walked-class)
+            // Text-matching site, kept in this step (WS2 step 4): the depth refusal is told by the message's words. Baseline gap: no twin in
+            // the row shows System.Text.Json charging a converter a level, and no record or fact cites it (the three-sided differential).
+            if (c.Is("json.MaxDepth", "3") && ev is JsonException && ev.Message.Contains("maximum allowed depth")) { c.Note(NoteKeys.StjMaxdepth, "charges custom converters"); return null; } // inherent to STJ: any custom converter costs a level (design note D1)
+            if (c.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class" && ev is NotSupportedException) return c.Refused(Cite.NotPromised("preserved-references-over-a-walked-class"), "write");
             return $"wrapped serialized ({jp}) but the value object threw {ev.GetType().Name}: {ev.Message}";
         }
         if (ep is not null && ev is null) return $"value object serialized ({jv}) where the wrapped type threw {ep.GetType().Name}: {ep.Message}";
-        if (jp != jv && e.Kind == "closed-set" && position == "dictionary-key" && r.Get("json.DictionaryKeyPolicy") != "default") { r.Note(NoteKeys.ClosedSetKeyUnpoliced); return null; } // a closed set travels as its name (not-promised a-closed-set-key-is-its-name)
-        if (jp != jv)
-        {
-            // intended: a struct VO over... none. DateTime is written as UTC; sample is UTC so equal.
-            return $"JSON differs: wrapped {Cut(jp)} vs value object {Cut(jv)}";
-        }
-        // reading
-        var text = Input(input, e, oPlain, jp!, position);
+        // a closed set travels as its name, which no key policy renames; claims.json declares it
+        if (jp != jv && e.Kind == "closed-set" && position == "dictionary-key" && c.Get("json.DictionaryKeyPolicy") is not (null or "default")) return c.Inapplicable(Cite.NotPromised("a-closed-set-key-is-its-name"), "write");
+        if (jp != jv) return $"JSON differs: wrapped {Cut(jp)} vs value object {Cut(jv)}";
+        c.Note(NoteKeys.Compared, "write");
+        return null;
+    }
+
+    /// <summary>The wrapped twin's document, with the row's input.json, read into both shapes: each reads it as the other does, or refuses as a document says.</summary>
+    static string? Read(Check c, Entry e, string position, string input, Held hp, Held hv, JsonSerializerOptions oPlain, JsonSerializerOptions o, string? jp)
+    {
+        if (e.Wrapped == "byte" && position == "array-element") return c.Inapplicable(Cite.NotPromised("a-byte-array-is-base64"), "read");
+        if (e.Kind == "closed-set" && position == "dictionary-key" && c.Get("json.DictionaryKeyPolicy") is not (null or "default")) return c.Inapplicable(Cite.NotPromised("a-closed-set-key-is-its-name"), "read");
+        if (jp is null) return c.Inconclusive("read: the wrapped type is not written under these options, so there is no document to read");
+        var text = Input(input, e, oPlain, jp, position);
         var (dp, xp) = De(text, hp, oPlain); var (dv, xv) = De(text, hv, o);
+        var stored = c.Get("json.Converters") == "StoredJsonConverterFactory";
         if (xp is not null && xv is not null)
-        {
-            if (xp.GetType() != xv.GetType() && !(xp is JsonException && xv is JsonException)) { r.Note(NoteKeys.BothThrewDifferently, "read: " + xp.GetType().Name + "/" + xv.GetType().Name); return null; }
-            r.Note(NoteKeys.ReadBothThrew, xp.GetType().Name); return null;
-        }
+            return c.Inconclusive(xp.GetType() != xv.GetType() && !(xp is JsonException && xv is JsonException)
+                ? $"read {input}: both refuse, differently: the wrapped type {xp.GetType().Name}, the value object {xv.GetType().Name}"
+                : $"read {input}: both refuse: {xp.GetType().Name}");
         if (xp is null && xv is not null)
         {
-            if (preserveOwn && e.Wrapped == "own-record-class" && xv is NotSupportedException) return null;
-            if (Validated(e) && input == "refused-by-create" && r.Get("json.Converters") != "StoredJsonConverterFactory") return xv is JsonException ? null : $"refusal is {xv.GetType().Name}, not JsonException: {xv.Message}";
-            if (input == "null" && e.Vo.IsValueType) return null; // intended: a struct value object refuses JSON null (not-promised a-struct-refuses-a-json-null)
-            if (e.Kind == "closed-set" && input != "valid") return xv is JsonException ? null : $"closed set refusal is {xv.GetType().Name}"; // a closed set has the members it has
+            if (c.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class" && xv is NotSupportedException) return c.Refused(Cite.NotPromised("preserved-references-over-a-walked-class"), "read");
+            // The text-matching site of the write, at the read: the depth refusal told by its words, no twin in the row showing it.
+            if (c.Is("json.MaxDepth", "3") && xv is JsonException && xv.Message.Contains("maximum allowed depth")) { c.Note(NoteKeys.StjMaxdepth, "read: charges custom converters"); return null; }
+            // The documented refusals, each the JsonException the generated converter throws.
+            if (!(xv is JsonException) && ((Validated(e) && input == "refused-by-create" && !stored) || (input == "null" && e.Vo.IsValueType) || (e.Kind == "closed-set" && input != "valid")))
+                return $"input {input}: the refusal is {xv.GetType().Name}, not JsonException: {Cut(xv.Message)}";
+            if (Validated(e) && input == "refused-by-create" && !stored) return c.Refused(Cite.NotPromised("a-validated-value-object-refuses-what-create-refuses"), $"read {input}");
+            if (input == "null" && e.Vo.IsValueType) return c.Refused(Cite.NotPromised("a-struct-refuses-a-json-null"), $"read {input}");
+            if (e.Kind == "closed-set" && input != "valid") return c.Refused(Cite.Docs("src/CodoMetis.TypeKit.Generators/README.md#matching-parsing-and-binding"), $"read {input}");   // "Unknown names are rejected."
             return $"input {input}: wrapped read it, value object threw {xv.GetType().Name}: {Cut(xv.Message)}\n  text={Cut(text)}";
         }
-        if (xp is not null && xv is null && input == "null" && !e.Vo.IsValueType && e.Plain.IsValueType) return null; // a reference-type value object takes JSON null as null, as any class does (README: "a JSON null for a struct value object")
+        // a reference-type value object takes JSON null as null, as any class does
+        if (xp is not null && xv is null && input == "null" && !e.Vo.IsValueType && e.Plain.IsValueType) return c.Inapplicable(Cite.Docs("docs/json.md#null-and-missing"), "read null");
         if (xp is not null && xv is null) return $"input {input}: value object read what the wrapped type refused ({xp.GetType().Name}: {Cut(xp.Message)})\n  text={Cut(text)}";
-        if (Validated(e) && input == "refused-by-create" && text != jp && r.Get("json.Converters") != "StoredJsonConverterFactory" && position != "dictionary-key")
-            return $"validated value object accepted the refused value: {Cut(text)}";
+        if (Validated(e) && input == "refused-by-create" && text != jp && !stored)
+            return $"validated value object accepted the refused value{(position == "dictionary-key" ? " as a dictionary key" : "")}: {Cut(text)}";
         if (dp != dv) return $"input {input}: read-back differs: wrapped {Cut(dp)} vs value object {Cut(dv)}";
-        r.Note(NoteKeys.Compared); return null;
+        c.Note(NoteKeys.Compared, "read " + input);
+        return null;
+    }
+
+    /// <summary>
+    /// Under an application's converter for the value object, the generated converter does not run: the value object's document is that
+    /// converter's, and it reads back as written under the row's options. Where the value object's document cannot be written, a converter
+    /// the application registers for the wrapped type at the same position is the baseline.
+    /// </summary>
+    static string? OwnVoRead(Check c, Entry e, Held hp, Held hv, JsonSerializerOptions oPlain, JsonSerializerOptions o, string? jv, Exception? ev, Exception? ep)
+    {
+        var oOwn = new JsonSerializerOptions(oPlain);
+        oOwn.Converters.Insert(0, (System.Text.Json.Serialization.JsonConverter)Activator.CreateInstance(typeof(OwnWrappedConverter<>).MakeGenericType(Make.Held(e.Plain)), JsonRow.Inner(e))!);
+        var (jo, eo) = Ser(hp, oOwn);
+        if (ev is not null)
+        {
+            // System.Text.Json refuses any custom converter there (MaxDepth counts its value one level deeper, design note D1), the wrapped
+            // type's under a converter of the application's alike
+            if (ep is not null || (eo is not null && eo.GetType() == ev.GetType())) return c.Inconclusive($"the application's converter cannot write here, for the wrapped type too: {ev.GetType().Name}");
+            return $"own VO converter row: VO serialization threw {ev.GetType().Name}: {ev.Message}";
+        }
+        c.Note(NoteKeys.OwnVo);
+        var (back, eb) = De(jv!, hv, o);
+        if (eb is not null)
+        {
+            // the same converter for the wrapped type, at the same position: its own document does not read back under these options either
+            var ebOwn = jo is null ? eo : De(jo, hp, oOwn).Ex;
+            if (ebOwn is not null && ebOwn.GetType() == eb.GetType()) return c.Inconclusive($"the application's converter's document does not read back under these options, for the wrapped type too: {eb.GetType().Name}");
+            return "own VO converter: read-back threw " + eb.GetType().Name + ": " + eb.Message;
+        }
+        if (back != jv) return $"own VO converter round trip differs: {jv} vs {back}";
+        return null;
     }
     static string Cut(string? s) => s is null ? "(null)" : s.Length > 200 ? s[..200] + "..." : s;
 }

@@ -38,6 +38,7 @@ public static class OffTheWire
         var position = r["shape.position"];
         var containing = position == "root" ? "class" : r["shape.containing"];
         var shape = r["or.shape"]; var op = r["or.operation"];
+        _ = r["input.json"];   // the row's input, which every check of the row runs under; the read applies it
         if (shape == "Result-E" && op is "query-syntax" or "FirstOrNone")
         { r.Substituted("or.operation", "Match", "Result<TError> has no " + op + " (claims.json excludes the pair)"); op = "Match"; }
         var voValue = Make.Vo(e, e.Valid());
@@ -68,63 +69,74 @@ public static class OffTheWire
         // the baseline: the application's own converter for the type wins, in both directions
         var (jOwn, xOwn) = Jx.Ser(ho, oOwn);
         var (jv, xv) = Jx.Ser(hv, o);
-        if (xOwn is not null)
+        var refused = Baseline.Refusal;
+        var fw = r.Check("never-written", refused, c =>
         {
-            if (xv is not null && xv.GetType() == xOwn.GetType()) { r.Note(NoteKeys.BothThrew, "the options refuse the shape itself: " + Jx.Ex(xv)); return null; }
-            return $"write: a converter registered on the options for {name} does not take precedence: {Jx.Ex(xOwn)}";
-        }
-        var ownWritten = Jx.Tokens(jOwn!).Any(t => t.Text == "own-or");
-
-        // writing
-        var (jo, xo) = Jx.Ser(ho, o);
-        var wrote = false;
-        if (xo is null)
-        {
-            if (ownWritten || jo != jOwn) return $"write: {name} was written: {Jx.Cut(jo)}";
-            r.Note(NoteKeys.JsonMemberLeftOutByOptions, "write: " + Jx.Cut(jo));
-        }
-        else { if (Refused(xo, "write") is { } f) return f; wrote = true; }
-
-        // reading: the value object's document with the row's input, where the Option or Result stands
-        var full = Jx.Full(o);
-        var (jf, xf) = Jx.Ser(hv, full);
-        // does the application's converter get called there? Its own document, read under the same options, says so
-        var (jOwnFull, _) = Jx.Ser(ho, Jx.Full(oOwn));
-        string input, text;
-        if (xf is null) { input = r["input.json"]; text = JsonParity.InputFor(input, e, full, jf!, position); }
-        else
-        {
-            // the value object's own shape cannot be written here (a value object over a class under Preserve, a class as a key): the
-            // document with the application's converter has a token where the Option or Result stands, and is read as it is
-            if (jOwnFull is null) { r.Note(NoteKeys.BothThrew, "read: no document has the member: " + Jx.Ex(xf)); return null; }
-            _ = r["input.json"]; r.Substituted("input.json", "valid", "the value object's document cannot be written: " + xf.GetType().Name);
-            input = "valid"; text = jOwnFull;
-        }
-        var (_, xOwnRead) = Jx.De(jOwnFull ?? "null", ho.Declared, oOwn);
-        if (xOwnRead is not null) return $"read: a converter registered on the options for {name} does not take precedence: {Jx.Ex(xOwnRead)}";
-        var memberRead = OwnReads() > 0;
-        var (vr, xr) = Jx.De(text, ho.Declared, o);
-        if (xr is null && input == "null" && position == "in-patch" && Jx.Member(ho.Declared, vr) is { } patch && patch.GetType().GetProperty("State")!.GetValue(patch)!.ToString() == "Null")
-        {
-            // a JSON null is the patch's own null (docs/merge-patches.md): it holds no Option or Result, and none was read
-            r.Note(NoteKeys.Compared, $"read null: the Patch<{name}> is null, nothing of {name} read");
+            if (xOwn is not null)
+            {
+                if (xv is not null && xv.GetType() == xOwn.GetType()) return c.Inconclusive("write: the options refuse the shape itself, with the application's converter alike: " + Jx.Ex(xv));
+                return $"write: a converter registered on the options for {name} does not take precedence: {Jx.Ex(xOwn)}";
+            }
+            var ownWritten = Jx.Tokens(jOwn!).Any(t => t.Text == "own-or");
+            var (jo, xo) = Jx.Ser(ho, o);
+            if (xo is null)
+            {
+                if (ownWritten || jo != jOwn) return $"write: {name} was written: {Jx.Cut(jo)}";
+                // the options leave the member out, the application's converter's document alike: no converter ran
+                c.Note(NoteKeys.JsonMemberLeftOutByOptions, "write: " + Jx.Cut(jo));
+                return c.Inconclusive("write: the options leave the member out, so no converter runs: " + Jx.Cut(jo));
+            }
+            if (Refused(xo, "write") is { } f) return f;
+            c.Note(NoteKeys.Compared, $"{name} by {op}, {position}: write refused");
             return null;
-        }
-        if (xr is null)
+        });
+        var fr = await r.Check("never-read", refused, async c =>
         {
-            if (memberRead) return $"read {input}: {name} was read without an exception\n  text={Jx.Cut(text)}";
-            r.Note(NoteKeys.JsonMemberLeftOutByOptions, "read " + input);   // not-promised a-missing-property-reaches-no-converter
-            if (!wrote) r.Note(NoteKeys.JsonBothDirectionsLeftOutByOptions);
-        }
-        else if (Refused(xr, "read " + input) is { } f)
-        {
-            // the serializer may refuse the document before the member: the value object's shape refuses it with the very same exception
-            var (_, xvr) = Jx.De(text, hv.Declared, o);
-            if (xvr is not null && xvr.GetType() == xr.GetType() && xvr.Message == Jx.Swap(Jx.Swap(xr.Message, ho.Declared, hv.Declared), orType, v)) r.Note(NoteKeys.JsonReadRefusedByStjAlone, input + ": " + Jx.Ex(xr));
-            else return f + $"\n  text={Jx.Cut(text)}";
-        }
-        r.Note(NoteKeys.Compared, $"{name} by {op}, {position}");
-        return null;
+            await Task.CompletedTask;
+            if (xOwn is not null) return c.Inconclusive("read: the options refuse the shape itself, so no document has the member: " + Jx.Ex(xOwn));
+            // reading: the value object's document with the row's input, where the Option or Result stands
+            var full = Jx.Full(o);
+            var (jf, xf) = Jx.Ser(hv, full);
+            // does the application's converter get called there? Its own document, read under the same options, says so
+            var (jOwnFull, _) = Jx.Ser(ho, Jx.Full(oOwn));
+            string input, text;
+            if (xf is null) { input = c["input.json"]; text = JsonParity.InputFor(input, e, full, jf!, position); }
+            else
+            {
+                // the value object's own shape cannot be written here (a value object over a class under Preserve, a class as a key): the
+                // document with the application's converter has a token where the Option or Result stands, and is read as it is
+                if (jOwnFull is null) return c.Inconclusive("read: no document has the member: " + Jx.Ex(xf));
+                _ = c["input.json"]; c.Substituted("input.json", "valid", "the value object's document cannot be written: " + xf.GetType().Name);
+                input = "valid"; text = jOwnFull;
+            }
+            var (_, xOwnRead) = Jx.De(jOwnFull ?? "null", ho.Declared, oOwn);
+            if (xOwnRead is not null) return $"read: a converter registered on the options for {name} does not take precedence: {Jx.Ex(xOwnRead)}";
+            var memberRead = OwnReads() > 0;
+            var (vr, xr) = Jx.De(text, ho.Declared, o);
+            if (xr is null && input == "null" && position == "in-patch" && Jx.Member(ho.Declared, vr) is { } patch && patch.GetType().GetProperty("State")!.GetValue(patch)!.ToString() == "Null")
+                // a JSON null is the patch's own null (docs/merge-patches.md): it holds no Option or Result, and none was read
+                return c.Inapplicable(Cite.Docs("docs/merge-patches.md#tell-absent-null-and-a-value-apart"), $"read null: the Patch<{name}> is null, nothing of {name} read");
+            if (xr is null)
+            {
+                if (memberRead) return $"read {input}: {name} was read without an exception\n  text={Jx.Cut(text)}";
+                c.Note(NoteKeys.JsonMemberLeftOutByOptions, "read " + input);
+                return c.Inapplicable(Cite.NotPromised("a-missing-property-reaches-no-converter"), "read " + input);
+            }
+            if (Refused(xr, "read " + input) is { } f)
+            {
+                // the serializer may refuse the document before the member: the value object's shape refuses it with the very same exception
+                var (_, xvr) = Jx.De(text, hv.Declared, o);
+                if (xvr is not null && xvr.GetType() == xr.GetType() && xvr.Message == Jx.Swap(Jx.Swap(xr.Message, ho.Declared, hv.Declared), orType, v))
+                {
+                    c.Note(NoteKeys.JsonReadRefusedByStjAlone, input + ": " + Jx.Ex(xr));
+                    return c.Inconclusive($"read {input}: the serializer refuses the document before {name}'s converter, the value object's alike: {Jx.Ex(xr)}");
+                }
+                return f + $"\n  text={Jx.Cut(text)}";
+            }
+            c.Note(NoteKeys.Compared, $"{name} by {op}, {position}: read {input} refused");
+            return null;
+        });
+        return fw ?? fr;
     }
 
     static async Task<(Type, object)> Produce<V>(string shape, string op, V v) where V : notnull

@@ -58,23 +58,36 @@ public sealed class C09BaseRecordEqualityProbe
         if (!(bool)eq.Invoke(comparer, [a, same])! || (bool)eq.Invoke(comparer, [a, other])!) { r.Outcome("harness-error", "the samples do not compare as intended under the wrapped type's equality"); return null; }
 
         var va = c.Make(a); var vb = c.Make(same); var vc = c.Make(other);
-        var fails = new List<string>();
-        if (!va.Equals(vb)) fails.Add("Equals(object) is false for equal wrapped values");
-        if (va.Equals(vc)) fails.Add("Equals(object) is true for different wrapped values");
-        if (va.GetHashCode() != vb.GetHashCode()) fails.Add("equal value objects have different hash codes");
-        var op = c.Vo.GetMethod("op_Equality", BindingFlags.Public | BindingFlags.Static, [c.Vo, c.Vo]);
-        if (op is null) fails.Add("no operator ==");
-        else if (!(bool)op.Invoke(null, [va, vb])!) fails.Add("== is false for equal wrapped values");
-
-        foreach (var t in c.Bases.Prepend(c.Vo))
+        var baseline = Probes.Shapes.Baseline.Twin;   // the wrapped type's EqualityComparer, which the samples were checked against
+        var f1 = r.Check("equal-by-the-wrapped-value", baseline, k =>
         {
-            var label = t == c.Vo ? "the value object" : $"the base {t.Name}";
-            var f = (string?)typeof(C09BaseRecordEqualityProbe).GetMethod(nameof(Collect), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(t).Invoke(null, [collection, va, vb, vc]);
-            if (f is not null) fails.Add($"{label}: {f}");
-        }
-        r.Note(NoteKeys.Compared, $"{c.Bases.Length + 1} types, against EqualityComparer<{a.GetType().Name}>");
-        return fails.Count == 0 ? null : string.Join("; ", fails);
+            var fails = new List<string>();
+            if (!va.Equals(vb)) fails.Add("Equals(object) is false for equal wrapped values");
+            if (va.Equals(vc)) fails.Add("Equals(object) is true for different wrapped values");
+            if (va.GetHashCode() != vb.GetHashCode()) fails.Add("equal value objects have different hash codes");
+            var op = c.Vo.GetMethod("op_Equality", BindingFlags.Public | BindingFlags.Static, [c.Vo, c.Vo]);
+            if (op is null) fails.Add("no operator ==");
+            else if (!(bool)op.Invoke(null, [va, vb])!) fails.Add("== is false for equal wrapped values");
+            if (Held(c.Vo, collection, va, vb, vc) is { } f) fails.Add($"the value object: {f}");
+            if (fails.Count > 0) return string.Join("; ", fails);
+            k.Note(NoteKeys.Compared, $"the value object, against EqualityComparer<{a.GetType().Name}>");
+            return null;
+        });
+        var f2 = r.Check("in-a-collection-of-the-base", baseline, k =>
+        {
+            if (c.Bases.Length == 0) return k.Inconclusive("no base record in the chain: claims.json excludes the row's pairs");
+            var fails = new List<string>();
+            foreach (var t in c.Bases)
+                if (Held(t, collection, va, vb, vc) is { } f) fails.Add($"the base {t.Name}: {f}");
+            if (fails.Count > 0) return string.Join("; ", fails);
+            k.Note(NoteKeys.Compared, $"{c.Bases.Length} base type(s), against EqualityComparer<{a.GetType().Name}>");
+            return null;
+        });
+        return f1 ?? f2;
     }
+
+    static string? Held(Type t, string collection, object a, object b, object c) =>
+        (string?)typeof(C09BaseRecordEqualityProbe).GetMethod(nameof(Collect), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(t).Invoke(null, [collection, a, b, c]);
 
     /// <summary>Three values held as <typeparamref name="T"/>, two of them equal: the collection holds two, and IEquatable agrees.</summary>
     static string? Collect<T>(string collection, object a, object b, object c) where T : notnull

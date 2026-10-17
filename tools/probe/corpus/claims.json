@@ -13616,7 +13616,34 @@
     "obligations": [
       {
         "id": "the-underlying-types-json",
-        "sentence": "Its JSON is the underlying type's under your options"
+        "sentence": "Its JSON is the underlying type's under your options",
+        "inapplicable": [
+          {
+            "axes": {
+              "json.Converters": [
+                "own-for-value-object"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says"
+          },
+          {
+            "axes": {
+              "shape.kind": [
+                "record-struct",
+                "sealed-record-class",
+                "validated-struct",
+                "validated-class"
+              ],
+              "shape.wrapped": [
+                "byte"
+              ],
+              "shape.position": [
+                "array-element"
+              ]
+            },
+            "cite": "not-promised:a-byte-array-is-base64"
+          }
+        ]
       },
       {
         "id": "as-a-dictionary-key-too",
@@ -13625,11 +13652,74 @@
           "shape.position": [
             "dictionary-key"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.Converters": [
+                "own-for-value-object"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says"
+          },
+          {
+            "axes": {
+              "shape.kind": [
+                "closed-set"
+              ],
+              "shape.position": [
+                "dictionary-key"
+              ],
+              "json.DictionaryKeyPolicy": [
+                "CamelCase",
+                "SnakeCaseLower",
+                "KebabCaseUpper",
+                "own-upper-case"
+              ]
+            },
+            "cite": "not-promised:a-closed-set-key-is-its-name"
+          }
+        ]
       },
       {
         "id": "read-as-the-underlying-type-reads",
-        "sentence": "**Swapping a primitive for a value object keeps the JSON, the column and the schema.**"
+        "sentence": "**Swapping a primitive for a value object keeps the JSON, the column and the schema.**",
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.kind": [
+                "record-struct",
+                "sealed-record-class",
+                "validated-struct",
+                "validated-class"
+              ],
+              "shape.wrapped": [
+                "byte"
+              ],
+              "shape.position": [
+                "array-element"
+              ]
+            },
+            "cite": "not-promised:a-byte-array-is-base64"
+          },
+          {
+            "axes": {
+              "shape.kind": [
+                "closed-set"
+              ],
+              "shape.position": [
+                "dictionary-key"
+              ],
+              "json.DictionaryKeyPolicy": [
+                "CamelCase",
+                "SnakeCaseLower",
+                "KebabCaseUpper",
+                "own-upper-case"
+              ]
+            },
+            "cite": "not-promised:a-closed-set-key-is-its-name"
+          }
+        ]
       }
     ],
     "not-promised": [
@@ -13751,11 +13841,76 @@
             "ISpanParsable",
             "type-converter"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.kind": [
+                "record-struct",
+                "sealed-record-class",
+                "validated-struct",
+                "validated-class"
+              ],
+              "shape.wrapped": [
+                "Uri",
+                "enum",
+                "flags-enum",
+                "NodaTime.Instant"
+              ],
+              "text.entry": [
+                "ISpanParsable"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#what-is-generated"
+          },
+          {
+            "axes": {
+              "shape.kind": [
+                "closed-set"
+              ],
+              "text.entry": [
+                "ISpanParsable"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#closed-sets"
+          },
+          {
+            "axes": {
+              "shape.kind": [
+                "record-struct",
+                "sealed-record-class",
+                "validated-struct",
+                "validated-class"
+              ],
+              "shape.wrapped": [
+                "own-record-class"
+              ],
+              "text.entry": [
+                "Parse",
+                "TryParse",
+                "IParsable",
+                "ISpanParsable",
+                "type-converter"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#what-is-generated"
+          }
+        ]
       },
       {
         "id": "json-never-repeats",
-        "sentence": "A JSON or parsing rejection names the value object and the rule, or the underlying type it could not read."
+        "sentence": "A JSON or parsing rejection names the value object and the rule, or the underlying type it could not read.",
+        "inapplicable": [
+          {
+            "axes": {
+              "json.Converters": [
+                "own-for-wrapped",
+                "own-for-value-object"
+              ]
+            },
+            "cite": "not-promised:the-applications-own-converter"
+          }
+        ]
       },
       {
         "id": "no-inner-that-quotes",
@@ -13768,7 +13923,61 @@
             "ISpanParsable",
             "type-converter"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.kind": [
+                "record-struct",
+                "sealed-record-class",
+                "validated-struct",
+                "validated-class"
+              ],
+              "shape.wrapped": [
+                "Uri",
+                "enum",
+                "flags-enum",
+                "NodaTime.Instant"
+              ],
+              "text.entry": [
+                "ISpanParsable"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#what-is-generated"
+          },
+          {
+            "axes": {
+              "shape.kind": [
+                "closed-set"
+              ],
+              "text.entry": [
+                "ISpanParsable"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#closed-sets"
+          },
+          {
+            "axes": {
+              "shape.kind": [
+                "record-struct",
+                "sealed-record-class",
+                "validated-struct",
+                "validated-class"
+              ],
+              "shape.wrapped": [
+                "own-record-class"
+              ],
+              "text.entry": [
+                "Parse",
+                "TryParse",
+                "IParsable",
+                "ISpanParsable",
+                "type-converter"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#what-is-generated"
+          }
+        ]
       }
     ],
     "not-promised": [
@@ -13813,7 +14022,20 @@
           "text.entry": [
             "TryFrom"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.kind": [
+                "closed-set"
+              ],
+              "text.entry": [
+                "TryFrom"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#closed-sets"
+          }
+        ]
       },
       {
         "id": "parsing-runs-create",
@@ -13826,7 +14048,61 @@
             "ISpanParsable",
             "type-converter"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.kind": [
+                "record-struct",
+                "sealed-record-class",
+                "validated-struct",
+                "validated-class"
+              ],
+              "shape.wrapped": [
+                "Uri",
+                "enum",
+                "flags-enum",
+                "NodaTime.Instant"
+              ],
+              "text.entry": [
+                "ISpanParsable"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#what-is-generated"
+          },
+          {
+            "axes": {
+              "shape.kind": [
+                "closed-set"
+              ],
+              "text.entry": [
+                "ISpanParsable"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#closed-sets"
+          },
+          {
+            "axes": {
+              "shape.kind": [
+                "record-struct",
+                "sealed-record-class",
+                "validated-struct",
+                "validated-class"
+              ],
+              "shape.wrapped": [
+                "own-record-class"
+              ],
+              "text.entry": [
+                "Parse",
+                "TryParse",
+                "IParsable",
+                "ISpanParsable",
+                "type-converter"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#what-is-generated"
+          }
+        ]
       },
       {
         "id": "json-runs-create",
@@ -13871,11 +14147,120 @@
             "TryFormat-short-span",
             "type-converter"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.kind": [
+                "closed-set"
+              ],
+              "text.entry": [
+                "ToString-format",
+                "TryFormat-short-span"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#closed-sets"
+          },
+          {
+            "axes": {
+              "shape.kind": [
+                "record-struct",
+                "sealed-record-class",
+                "validated-struct",
+                "validated-class"
+              ],
+              "shape.wrapped": [
+                "own-record-class"
+              ],
+              "text.entry": [
+                "type-converter"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#what-is-generated"
+          }
+        ]
       },
       {
         "id": "text-reads-back",
-        "sentence": "That text reads back as the same value wherever the underlying type's own does"
+        "sentence": "That text reads back as the same value wherever the underlying type's own does",
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.kind": [
+                "closed-set"
+              ],
+              "text.entry": [
+                "TryFrom",
+                "ISpanParsable",
+                "ToString-format",
+                "TryFormat-short-span"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#closed-sets"
+          },
+          {
+            "axes": {
+              "shape.kind": [
+                "record-struct",
+                "sealed-record-class",
+                "validated-struct",
+                "validated-class"
+              ],
+              "shape.wrapped": [
+                "own-record-class"
+              ],
+              "text.entry": [
+                "Parse",
+                "TryParse",
+                "IParsable",
+                "ISpanParsable",
+                "type-converter",
+                "ToString-format",
+                "TryFormat-short-span"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#what-is-generated"
+          },
+          {
+            "axes": {
+              "shape.kind": [
+                "record-struct",
+                "sealed-record-class",
+                "validated-struct",
+                "validated-class"
+              ],
+              "shape.wrapped": [
+                "Uri",
+                "enum",
+                "flags-enum",
+                "NodaTime.Instant"
+              ],
+              "text.entry": [
+                "ISpanParsable"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#what-is-generated"
+          },
+          {
+            "axes": {
+              "shape.kind": [
+                "record-struct",
+                "sealed-record-class",
+                "validated-struct",
+                "validated-class"
+              ],
+              "shape.wrapped": [
+                "TimeOnly",
+                "DateTime",
+                "DateTimeOffset"
+              ],
+              "text.entry": [
+                "type-converter"
+              ]
+            },
+            "cite": "not-promised:dates-and-times-lose-detail-as-text"
+          }
+        ]
       },
       {
         "id": "json-refusal-is-a-json-exception",
