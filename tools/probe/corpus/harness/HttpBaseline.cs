@@ -367,7 +367,9 @@ public static class HttpBaseline
             return await Hx.DocRefusedByAspNetAlone(r, e, new HostCfg { FaultControllers = false, MapBlanketMapping = false }, ex);
         }
         // docs/json.md "Describing what a converter writes": ASP.NET drops items/additionalProperties of a converter it cannot see into, the value
-        // object's schema is the underlying type's; and the application's converter for the value object describes it as that converter says
+        // object's schema is the underlying type's; and the application's converter for the value object describes it as that converter says.
+        // C21 declares both on every obligation (claims.json inapplicable), so Row.Check records them before this body runs and no row of
+        // C21 is generated with them; these lines hold for the schema half run under another claim (ShrinkProbe's baseline).
         if (r.Is("json.Converters", "own-for-wrapped")) return c.Inapplicable(Cite.NotPromised("own-converter-for-the-wrapped-type"));
         if (r.Is("json.Converters", "own-for-value-object")) return c.Inapplicable(Cite.NotPromised("own-converter-for-the-value-object"));
         string? Op(string path, string method, out JsonNode? node)

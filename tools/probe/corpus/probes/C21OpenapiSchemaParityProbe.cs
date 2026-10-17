@@ -11,8 +11,8 @@
 // endpoint of the row's http.binding) has the parameters, request body and 200 response of its twin with the wrapped type, every
 // reference resolved, so a component compares by its content. Only the schemas are compared, never whether a parameter is required;
 // a class value object is compared with the wrapped type's Nullable<T>, and where nullability is spelled two ways the markers go
-// (schema:* notes). Not promised, and excluded from the rows: a closed set (a string enum), and a converter of the application's own for
-// the value object or the wrapped type (claims.json not-promised).
+// (schema:* notes). Not promised: a closed set (a string enum), excluded from the rows; and a converter of the application's own for
+// the value object or the wrapped type, declared inapplicable on every obligation (claims.json), so no row is generated with one.
 // Expected: no failure for any row; a document ASP.NET alone refuses the same way has nothing to compare. A difference a not-promised entry
 // names ends its check as that citation (Cite.NotPromised), and a nullable class value object without a nullable twin as inconclusive.
 using Probes.Shapes;
