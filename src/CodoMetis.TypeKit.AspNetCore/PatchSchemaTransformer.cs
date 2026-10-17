@@ -73,6 +73,9 @@ internal sealed class PatchSchemaTransformer : IOpenApiSchemaTransformer
 
     public async Task TransformAsync(OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
     {
+        // A non-abstract polymorphic base's own branch, which ASP.NET hands to no transformer.
+        await PolymorphicBaseBranch.WalkAsync(schema, context, this, cancellationToken);
+
         var info = context.JsonTypeInfo;
 
         // The object holding patch properties: none of them is required, since absent is a state, unless
@@ -99,7 +102,7 @@ internal sealed class PatchSchemaTransformer : IOpenApiSchemaTransformer
             ? await DescribedSchemaTransformer.SchemaAsync(description, argument, context, cancellationToken)
             : DescribedSchemaTransformer.Replaced(argument, info.Options)
                 ? new OpenApiSchema()
-                : await context.GetOrCreateSchemaAsync(ValueObjectTypes.WrappedType(argument) ?? argument, parameterDescription: null, cancellationToken);
+                : await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, ValueObjectTypes.WrappedType(argument) ?? argument, parameterDescription: null, cancellationToken);
 
         schema.Properties?.Clear();
         AdmitNull(schema, inner);
