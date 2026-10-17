@@ -3656,6 +3656,40 @@
           "parse-shape": [
             "ordinary"
           ]
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.wrapped": [
+                "Uri",
+                "enum",
+                "flags-enum",
+                "NodaTime.Instant"
+              ],
+              "text.entry": [
+                "ISpanParsable"
+              ]
+            },
+            "cite": "not-promised:no-span-parsing-without-the-underlying-types"
+          }
+        ]
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "no-span-parsing-without-the-underlying-types",
+        "source": "src/CodoMetis.TypeKit.Generators/README.md#what-is-generated",
+        "sentence": "A `Uri`, an enum and a NodaTime type have neither.",
+        "axes": {
+          "shape.wrapped": [
+            "Uri",
+            "enum",
+            "flags-enum",
+            "NodaTime.Instant"
+          ],
+          "text.entry": [
+            "ISpanParsable"
+          ]
         }
       }
     ],
