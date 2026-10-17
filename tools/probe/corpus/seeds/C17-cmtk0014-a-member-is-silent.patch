@@ -1,13 +1,13 @@
 diff --git a/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs b/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs
-index 7265ea3..4b7d467 100644
+index 7265ea3..1750073 100644
 --- a/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs
 +++ b/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs
-@@ -70,7 +70,7 @@ public sealed class UndefinedEnumValueAnalyzer : DiagnosticAnalyzer
-                 {
-                     if (type.TypeKind != TypeKind.Enum) continue;
+@@ -105,7 +105,7 @@ public sealed class UndefinedEnumValueAnalyzer : DiagnosticAnalyzer
+         if (operation.Type is not INamedTypeSymbol type || !enums.TryGetValue(type, out var known)) return null;
+         if (!operation.ConstantValue.HasValue || operation.ConstantValue.Value is not { } value) return null;
  
--                    var members = new HashSet<object>(type.GetMembers().OfType<IFieldSymbol>().Where(field => field.HasConstantValue).Select(field => field.ConstantValue!));
-+                    var members = new HashSet<object>(type.GetMembers().OfType<IFieldSymbol>().Where(field => field.HasConstantValue).Select(field => (object)field.Name));
-                     enums[type] = (members, consequence);
-                 }
-             }
+-        return known.Members.Contains(value) ? null : (type, known.Consequence);
++        return known.Members.Contains(value) && operation is not IConversionOperation { IsImplicit: false } ? null : (type, known.Consequence);
+     }
+ 
+     /// <summary>Whether <paramref name="operation"/> is an operand of a larger constant of an enum, which is judged in its place.</summary>
