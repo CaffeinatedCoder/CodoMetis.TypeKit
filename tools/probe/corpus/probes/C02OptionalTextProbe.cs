@@ -42,24 +42,34 @@ public sealed class C02OptionalTextProbe
         }
         var optional = entry.StartsWith("AsOptional");
         var text = entry.EndsWith("Text");
-        var invariantMode = gi;
+        string got, want;
+        if (optional)
         {
-            string got;
-            if (optional)
-            {
-                var res = text ? s.AsOptionalText() : s.AsOptionalIdentifier();
-                got = res.Match(o => o.Match(v => "Some:" + v, () => "None"), f => "Error:" + f);
-                var want = expected switch { "ok" => "Some:word", "Blank" => "None", _ => "Error:Hidden" };
-                if (got != want) return $"{entry}({kind}) = {got}; expected {want}";
-            }
-            else
-            {
-                var res = text ? s.AsText() : s.AsIdentifier();
-                got = res.Match(v => "ok:" + v, f => "Error:" + f);
-                var want = expected switch { "ok" => "ok:word", _ => "Error:" + expected };
-                if (got != want) return $"{entry}({kind}) = {got}; expected {want}";
-            }
+            var res = text ? s.AsOptionalText() : s.AsOptionalIdentifier();
+            got = res.Match(o => o.Match(v => "Some:" + v, () => "None"), f => "Error:" + f);
+            want = expected switch { "ok" => "Some:word", "Blank" => "None", _ => "Error:Hidden" };
         }
-        return null;
+        else
+        {
+            var res = text ? s.AsText() : s.AsIdentifier();
+            got = res.Match(v => "ok:" + v, f => "Error:" + f);
+            want = expected switch { "ok" => "ok:word", _ => "Error:" + expected };
+        }
+        // The obligation the input selects: a hidden character is an error in both; a blank is an error for a required field and no value
+        // for an optional one, and a null is a blank too. A word is checked as the blank obligations' control: it is no blank, in either.
+        var obligations = new List<string> { expected == "Hidden" ? "hidden-is-an-error-in-both" : optional ? "optional-blank-is-no-value" : "required-blank-is-an-error" };
+        if (kind == "null") obligations.Add("null-is-blank");
+        string? fail = null;
+        foreach (var obligation in obligations)
+        {
+            var f = r.Check(obligation, Baseline.Docs("docs/text.md#required-and-optional"), c =>
+            {
+                if (got != want) return $"{entry}({kind}) = {got}; expected {want}";
+                c.Note(NoteKeys.Compared, $"{entry}({kind}) = {got}");
+                return null;
+            });
+            fail ??= f;
+        }
+        return fail;
     }
 }

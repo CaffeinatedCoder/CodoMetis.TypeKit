@@ -50,37 +50,73 @@ public sealed class C20ShouldHoldProbe
         var wrong = r["wrong-reason"] == "yes";
         // the held fault: with wrong-reason=yes the carrier holds a fault of ANOTHER type (foreign) and the test asks for TW's reason a
         TC held = wrong ? foreign : make(a);
-        string? fail = null;
         var op = r["or.operation"]; var shape = r["or.shape"];
         TC? got = await Carry(r, held, op, shape);
-        if (got is null) return null; // inapplicable, noted
+        if (got is null) { r.Outcome("harness-error", $"the carrier gave no fault back ({shape}, {op})"); return null; }
         var composed = got.Value;
         Fault<TW>? hand = null; Exception? thrown = null;
         try { hand = holdA(composed); } catch (Exception ex) { thrown = ex; }
+        var docs = Baseline.Docs("src/CodoMetis.TypeKit.Testing/README.md");
         if (op == "default-instance")
-        {
-            if (thrown is not TypeKitAssertionException u || !u.Message.Contains("uninitialized")) return $"default composed fault: ShouldHold gave {thrown?.GetType().Name ?? "no exception"} {thrown?.Message}; expected TypeKitAssertionException 'uninitialized'";
-            return null;
-        }
+            return r.Check("uninitialized-fails", docs, c =>
+            {
+                if (thrown is not TypeKitAssertionException u || !u.Message.Contains("uninitialized")) return $"default composed fault: ShouldHold gave {thrown?.GetType().Name ?? "no exception"} {thrown?.Message}; expected TypeKitAssertionException 'uninitialized'";
+                c.Note(NoteKeys.Compared, "uninitialized: TypeKitAssertionException");
+                return null;
+            });
         if (wrong)
         {
-            if (thrown is not TypeKitAssertionException e) return $"ShouldHold({a}) on a fault of another type gave {(thrown is null ? "a result: " + hand : thrown.GetType().Name)}; expected TypeKitAssertionException";
-            if (!e.Message.Contains("Expected the fault") || e.Message.Contains("UNEXPECTED")) return "message: " + e.Message;
-            // the outcome: the fault the composed fault holds, as ShouldHold of its own reason hands it back
-            var outcome = holdForeignSet(composed).ToString()!;
-            if (!e.Message.Contains(outcome)) return $"the failure does not say what the outcome was ({outcome}): {e.Message}";
-            // same type other value
-            try { holdB(composed); return "ShouldHold(other value) passed on a fault of another type"; } catch (TypeKitAssertionException) { }
-            // and the held reason itself is still reachable by its own type
-            try { holdForeignSet(composed); } catch (Exception ex) { return "ShouldHold(own reason) threw " + ex.GetType().Name + ": " + ex.Message; }
-            return null;
+            // the carrier holds a fault of another type, and the test asks for TW's reason a
+            var w1 = r.Check("fails-unless-it-holds-that-reason", docs, c =>
+            {
+                if (thrown is not TypeKitAssertionException) return $"ShouldHold({a}) on a fault of another type gave {(thrown is null ? "a result: " + hand : thrown.GetType().Name)}; expected TypeKitAssertionException";
+                // same type other value
+                try { holdB(composed); return "ShouldHold(other value) passed on a fault of another type"; } catch (TypeKitAssertionException) { }
+                c.Note(NoteKeys.Compared, "fails for a reason it does not hold");
+                return null;
+            });
+            var w2 = r.Check("a-failure-says-the-outcome", docs, c =>
+            {
+                if (thrown is not TypeKitAssertionException e) return c.Inconclusive("no assertion failed to say anything: judged by fails-unless-it-holds-that-reason");
+                if (!e.Message.Contains("Expected the fault") || e.Message.Contains("UNEXPECTED")) return "message: " + e.Message;
+                // the outcome: the fault the composed fault holds, as ShouldHold of its own reason hands it back
+                string outcome;
+                try { outcome = holdForeignSet(composed).ToString()!; } catch (Exception ex) { return c.Inconclusive("the held fault is not handed back by its own reason, judged by whichever-of-its-types: " + ex.GetType().Name); }
+                if (!e.Message.Contains(outcome)) return $"the failure does not say what the outcome was ({outcome}): {e.Message}";
+                c.Note(NoteKeys.Compared, "the failure names " + outcome);
+                return null;
+            });
+            var w3 = r.Check("whichever-of-its-types", docs, c =>
+            {
+                // the held reason itself is still reachable by its own type
+                try { holdForeignSet(composed); } catch (Exception ex) { return "ShouldHold(own reason) threw " + ex.GetType().Name + ": " + ex.Message; }
+                c.Note(NoteKeys.Compared, "the held fault's own reason, whichever of its types");
+                return null;
+            });
+            return w1 ?? w2 ?? w3;
         }
-        if (thrown is not null) return $"ShouldHold({a}) on a fault holding it threw {thrown.GetType().Name}: {thrown.Message}";
-        if (!EqualityComparer<TW>.Default.Equals(hand!.Value.Reason, a)) return $"returned fault has reason {hand.Value.Reason}, expected {a}";
-        var want = Held(a);
-        if (hand.Value.Detail != want.Detail || hand.Value.Rule != want.Rule) return $"returned fault has detail '{hand.Value.Detail}' and rule '{hand.Value.Rule}', expected '{want.Detail}' and '{want.Rule}'";
-        try { holdB(composed); fail = "ShouldHold(other value of the same type) passed"; } catch (TypeKitAssertionException) { }
-        return fail;
+        var f1 = r.Check("whichever-of-its-types", docs, c =>
+        {
+            if (thrown is not null) return $"ShouldHold({a}) on a fault holding it threw {thrown.GetType().Name}: {thrown.Message}";
+            if (!EqualityComparer<TW>.Default.Equals(hand!.Value.Reason, a)) return $"returned fault has reason {hand.Value.Reason}, expected {a}";
+            c.Note(NoteKeys.Compared, $"the reason of the {r["set"]} of {r["arity"]} types");
+            return null;
+        });
+        var f2 = r.Check("hands-back-detail-and-rule", docs, c =>
+        {
+            if (thrown is not null || hand is null) return c.Inconclusive("nothing handed back: judged by whichever-of-its-types");
+            var want = Held(a);
+            if (hand.Value.Detail != want.Detail || hand.Value.Rule != want.Rule) return $"returned fault has detail '{hand.Value.Detail}' and rule '{hand.Value.Rule}', expected '{want.Detail}' and '{want.Rule}'";
+            c.Note(NoteKeys.Compared, "detail and rule intact");
+            return null;
+        });
+        var f3 = r.Check("fails-unless-it-holds-that-reason", docs, c =>
+        {
+            try { holdB(composed); return "ShouldHold(other value of the same type) passed"; } catch (TypeKitAssertionException) { }
+            c.Note(NoteKeys.Compared, "fails for another value of the reason's type");
+            return null;
+        });
+        return f1 ?? f2 ?? f3;
     }
 
     // Carries the fault through the carrier and the operation, then extracts it with the Testing assertions. null = the combination has no such operation (noted inapplicable).
@@ -122,7 +158,7 @@ public sealed class C20ShouldHoldProbe
                     case "Sequence-Transpose": re = new[] { re }.Sequence(); break;
                     case "Result.Catch": re = Result.Catch((Action)(() => throw new InvalidOperationException())).MapError(_ => fault); break;
                     case "after-await-elsewhere": await Task.Yield(); re = await Task.Run(() => re).ConfigureAwait(false); break;
-                    default: r.Note(NoteKeys.EntryNotApplicable, op + " on Result-E"); return null;
+                    default: throw new ArgumentException(op + " on Result-E: the row's operation is substituted above where the carrier has none");
                 }
                 return re.ShouldBeError();
             }
@@ -137,7 +173,7 @@ public sealed class C20ShouldHoldProbe
                     case "FirstOrNone": opt = new[] { fault }.FirstOrNone(); break;
                     case "Sequence-Transpose": { var back = Option.Some<Result<int, TC>>(Result.Error(fault)).Transpose().ShouldBeError(); opt = Option.Some(back); break; }
                     case "after-await-elsewhere": await Task.Yield(); opt = await Task.Run(() => opt).ConfigureAwait(false); break;
-                    default: r.Note(NoteKeys.EntryNotApplicable, op + " on Option"); return null;
+                    default: throw new ArgumentException(op + " on Option: the row's operation is substituted above where the carrier has none");
                 }
                 return opt.ShouldBeSome();
             }

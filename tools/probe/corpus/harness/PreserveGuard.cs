@@ -27,6 +27,7 @@ public static class PreserveGuard
         var e = kind == "closed-set" ? Registry.Get(kind, "-") : Registry.Get(kind, r["shape.wrapped"]);
         var position = r["shape.position"];
         var containing = position == "root" ? "class" : r["shape.containing"];
+        _ = r["input.json"];   // the row's input, which every check of the row runs under; the reads apply it
         var plain = e.Valid(); var voValue = Make.Vo(e, plain);
         var hp = Pos.Build(position, containing, e, false, plain);
         var hv = Pos.Build(position, containing, e, true, voValue);
@@ -38,10 +39,15 @@ public static class PreserveGuard
         var ownWrapped = row.Is("json.Converters", "own-for-wrapped");
         var ownVo = row.Is("json.Converters", "own-for-value-object");
         var guarded = want == "Preserve" && e.Wrapped == "own-record-class" && !ownWrapped && !ownVo;
-        return guarded ? Guarded(r, e, hp, hv, o) : Unaffected(r, e, hp, hv, op, o, ownVo);
+        // The obligation the row's handler and converters select: a converter of the application's, the guarded class under Preserve,
+        // IgnoreCycles, and otherwise a value the serializer writes with a value converter, under Preserve or with no handler at all.
+        var obligation = ownWrapped || ownVo ? "own-converters-unaffected" : guarded ? "refused-where-references-could-be-written"
+                       : want == "IgnoreCycles" ? "ignore-cycles-unaffected" : "value-converters-unaffected";
+        return guarded ? Guarded(r, obligation, e, hp, hv, o) : Unaffected(r, obligation, e, hp, hv, op, o, ownVo);
     }
 
-    static string? Guarded(Row r, Entry e, Held hp, Held hv, JsonSerializerOptions o)
+    /// <summary>The guarded rows: NotSupportedException naming the wrapped type and Preserve, in both directions, never a document.</summary>
+    static string? Guarded(Row r, string obligation, Entry e, Held hp, Held hv, JsonSerializerOptions o)
     {
         var wrapped = Make.Held(e.Plain);
         string? Refusal(Exception? x, string what)
@@ -52,73 +58,104 @@ public static class PreserveGuard
         }
         var (jv, xv) = Jx.Ser(hv, o);
         var (jp, xp) = Jx.Ser(hp, o);
-        if (jv is not null)
+        var fw = r.Check(obligation, Baseline.Refusal, c =>
         {
-            // the options may leave the member out of the document, for the wrapped type too: then no converter ran
-            if (jp is not null && !Jx.Tokens(jp).Any(t => t.Text == "x") && !Jx.Tokens(jv).Any(t => t.Text == "x")) r.Note(NoteKeys.JsonMemberLeftOutByOptions, "write: " + Jx.Cut(jv));
-            else return Refusal(null, "write") + $"; it wrote {Jx.Cut(jv)}" + (DuplicateId(jv) is { } dup ? $" with {dup} twice" : "");
-        }
-        else if (Refusal(xv, "write") is { } f) return f;
-        if (xp is not null) { r.Note(NoteKeys.BothThrew, "the wrapped type's document under these options: " + Jx.Ex(xp)); return null; }
-        // reading: the wrapped type's own document, with the row's input applied
-        var input = r["input.json"];
-        var text = JsonParity.InputFor(input, e, Jx.Full(o), Jx.Ser(hp, Jx.Full(o)).Json ?? jp!, r["shape.position"]);
-        var (vp, ep) = Jx.De(text, hp.Declared, o);
-        var (vv, ev) = Jx.De(text, hv.Declared, o);
-        if (ev is null)
-        {
-            // no converter ran: the read holds none of the wrapped value (a JSON null for a class, a member the options do not read)
-            if (vv is not null && Jx.Tokens(JsonSerializer.Serialize(vv, hv.Declared, Jx.Plain)).Any(t => t.Text == "x"))
-                return $"read {input}: the value object over {Make.Held(e.Plain).Name} read a document under Preserve: {Jx.Cut(text)}";
-            r.Note(NoteKeys.JsonMemberLeftOutByOptions, "read " + input);
+            if (jv is not null)
+            {
+                // the options may leave the member out of the document, for the wrapped type too: then no converter ran, and nothing was refused
+                if (jp is not null && !Jx.Tokens(jp).Any(t => t.Text == "x") && !Jx.Tokens(jv).Any(t => t.Text == "x"))
+                { c.Note(NoteKeys.JsonMemberLeftOutByOptions, "write: " + Jx.Cut(jv)); return c.Inconclusive("write: the options leave the member out, for the wrapped type too: " + Jx.Cut(jv)); }
+                return Refusal(null, "write") + $"; it wrote {Jx.Cut(jv)}" + (DuplicateId(jv) is { } dup ? $" with {dup} twice" : "");
+            }
+            if (Refusal(xv, "write") is { } f) return f;
+            c.Note(NoteKeys.Compared, "write refused");
             return null;
-        }
-        if (ev is NotSupportedException) return Refusal(ev, "read " + input);
-        if (ep is not null && ev.GetType() == ep.GetType() && ev.Message == ep.Message) { r.Note(NoteKeys.JsonReadRefusedByStjAlone, input + ": " + Jx.Ex(ev)); return null; }
-        if (ev is JsonException && ev.Message.Contains(Make.Held(e.Vo).Name) && ev.InnerException is null) { r.Note(NoteKeys.Compared, "read " + input + ": refused naming the value object before the guard"); return null; }
-        return Refusal(ev, "read " + input) + $"\n  text={Jx.Cut(text)}";
+        });
+        var fr = r.Check(obligation, Baseline.Refusal, c =>
+        {
+            if (xp is not null) return c.Inconclusive("read: the wrapped type's document is refused under these options, so there is none to read: " + Jx.Ex(xp));
+            // reading: the wrapped type's own document, with the row's input applied
+            var input = c["input.json"];
+            var text = JsonParity.InputFor(input, e, Jx.Full(o), Jx.Ser(hp, Jx.Full(o)).Json ?? jp!, c["shape.position"]);
+            var (vp, ep) = Jx.De(text, hp.Declared, o);
+            var (vv, ev) = Jx.De(text, hv.Declared, o);
+            if (ev is null)
+            {
+                // no converter ran: the read holds none of the wrapped value (a JSON null for a class, a member the options do not read)
+                if (vv is not null && Jx.Tokens(JsonSerializer.Serialize(vv, hv.Declared, Jx.Plain)).Any(t => t.Text == "x"))
+                    return $"read {input}: the value object over {Make.Held(e.Plain).Name} read a document under Preserve: {Jx.Cut(text)}";
+                c.Note(NoteKeys.JsonMemberLeftOutByOptions, "read " + input);
+                return c.Inconclusive($"read {input}: no converter ran, the read holds none of the wrapped value");
+            }
+            if (ev is NotSupportedException) { if (Refusal(ev, "read " + input) is { } f) return f; c.Note(NoteKeys.Compared, "read " + input + " refused"); return null; }
+            // the serializer refused the document before any converter ran, the wrapped type's alike
+            if (ep is not null && ev.GetType() == ep.GetType() && ev.Message == ep.Message)
+            { c.Note(NoteKeys.JsonReadRefusedByStjAlone, input + ": " + Jx.Ex(ev)); return null; }   // the framework's refusal, the twin's alike: a pass, as decision 99's document is
+            if (ev is JsonException && ev.Message.Contains(Make.Held(e.Vo).Name) && ev.InnerException is null) { c.Note(NoteKeys.Compared, "read " + input + ": refused naming the value object before the guard"); return null; }
+            return Refusal(ev, "read " + input) + $"\n  text={Jx.Cut(text)}";
+        });
+        return fw ?? fr;
     }
 
-    static string? Unaffected(Row r, Entry e, Held hp, Held hv, JsonSerializerOptions op, JsonSerializerOptions o, bool ownVo)
+    /// <summary>
+    /// The unaffected rows: the value object's document is the wrapped type's under the same options, never an $id twice, and its read
+    /// agrees with the wrapped type's (ReadAlike); under a converter of the application's for the value object, that converter's document
+    /// reads back and reads the row's input alike with and without the reference handler.
+    /// </summary>
+    static string? Unaffected(Row r, string obligation, Entry e, Held hp, Held hv, JsonSerializerOptions op, JsonSerializerOptions o, bool ownVo)
     {
         var (jp, xp) = Jx.Ser(hp, op); var (jv, xv) = Jx.Ser(hv, o);
-        // MaxDepth=3: a converter costs a level of depth, the serializer's or the generated one (design note D1, the catalogue's stj-maxdepth)
-        if (Jx.Depth(r, xv) || Jx.Depth(r, xp)) { r.Note(NoteKeys.StjMaxdepth, "write: " + Jx.Ex((xv ?? xp)!)); return null; }
-        if (xp is not null && xv is not null)
+        // byte[] is base64 by the serializer's own rule (KB-038), an array of value objects a JSON array: unaffected means the value
+        // object's document reads back as written
+        var byteArray = e.Wrapped == "byte" && r.Is("shape.position", "array-element") && jv is not null && jp is not null && jv != jp;
+        var fw = r.Check(obligation, ownVo || byteArray ? Baseline.RoundTrip : Baseline.Twin, c =>
         {
-            if (xp.GetType() == xv.GetType() && xp.Message == xv.Message) { r.Note(NoteKeys.BothThrew, "write: " + Jx.Ex(xp)); return null; }
-            return $"write: both threw, differently: the wrapped type {Jx.Ex(xp)}, the value object {Jx.Ex(xv)}";
-        }
-        if (xv is not null) return $"write: the value object threw {Jx.Ex(xv)} where the wrapped type wrote {Jx.Cut(jp)}";
-        if (xp is not null) return $"write: the value object wrote {Jx.Cut(jv)} where the wrapped type threw {Jx.Ex(xp)}";
-        if (DuplicateId(jv!) is { } dup) return $"write: $id {dup} twice in {Jx.Cut(jv)}";
-        if (ownVo)
-        {
-            r.Note(NoteKeys.OwnVo);   // the application's converter for the value object writes its own document; it reads it back, unaffected
-            var (jf, _) = Jx.Ser(hv, Jx.Full(o));
-            var (_, xr) = Jx.De(jf ?? jv!, hv.Declared, o);
-            if (xr is not null) return "own converter for the value object: its document does not read back: " + Jx.Ex(xr);
-            return OwnReadsInput(r, e, hv, o);
-        }
-        if (jv != jp)
-        {
-            if (e.Wrapped == "byte" && r.Is("shape.position", "array-element"))
+            // MaxDepth=3: a converter costs a level of depth, the serializer's or the generated one (design note D1, the catalogue's stj-maxdepth);
+            // Jx.Depth is a text-matching site (JsonFamily.cs)
+            if (Jx.Depth(r, xv) || Jx.Depth(r, xp)) { c.Note(NoteKeys.StjMaxdepth, "write: " + Jx.Ex((xv ?? xp)!)); return null; }
+            if (xp is not null && xv is not null)
             {
-                // byte[] is base64 by the serializer's own rule, an array of value objects a JSON array: unaffected means the value
-                // object's document reads back as written
+                if (xp.GetType() == xv.GetType() && xp.Message == xv.Message) return c.Inconclusive("write: the options refuse the shape, for the wrapped type alike: " + Jx.Ex(xp));
+                return $"write: both threw, differently: the wrapped type {Jx.Ex(xp)}, the value object {Jx.Ex(xv)}";
+            }
+            if (xv is not null) return $"write: the value object threw {Jx.Ex(xv)} where the wrapped type wrote {Jx.Cut(jp)}";
+            if (xp is not null) return $"write: the value object wrote {Jx.Cut(jv)} where the wrapped type threw {Jx.Ex(xp)}";
+            if (DuplicateId(jv!) is { } dup) return $"write: $id {dup} twice in {Jx.Cut(jv)}";
+            if (ownVo)
+            {
+                c.Note(NoteKeys.OwnVo);   // the application's converter for the value object writes its own document; it reads it back, unaffected
+                var (jf, _) = Jx.Ser(hv, Jx.Full(o));
+                var (_, xr) = Jx.De(jf ?? jv!, hv.Declared, o);
+                if (xr is not null) return "own converter for the value object: its document does not read back: " + Jx.Ex(xr);
+                return null;
+            }
+            if (byteArray)
+            {
                 var (back, xb) = Jx.De(jv!, hv.Declared, o);
                 if (xb is not null) return "write: the array of byte value objects does not read back: " + Jx.Ex(xb);
                 var again = JsonSerializer.Serialize(back, hv.Declared, o);
                 if (again != jv) return $"round trip: {Jx.Cut(jv)} read back as {Jx.Cut(again)}";
-                r.Note(NoteKeys.Compared, "an array of byte value objects round-trips as a JSON array");
+                c.Note(NoteKeys.Compared, "an array of byte value objects round-trips as a JSON array");
                 return null;
             }
-            return $"write: the value object wrote {Jx.Cut(jv)}, the wrapped type {Jx.Cut(jp)}";
-        }
-        var input = r["input.json"];
-        var full = Jx.Ser(hp, Jx.Full(op)).Json ?? jp!;
-        var text = JsonParity.InputFor(input, e, Jx.Full(op), full, r["shape.position"]);
-        return ReadAlike.Check(r, e, input, text, hp, hv, op, ownVo ? null : o);
+            if (jv != jp) return $"write: the value object wrote {Jx.Cut(jv)}, the wrapped type {Jx.Cut(jp)}";
+            c.Note(NoteKeys.Compared, "write");
+            return null;
+        });
+        var fr = r.Check(obligation, ownVo ? Baseline.RoundTrip : Baseline.Twin, c =>
+        {
+            if (ownVo) return OwnReadsInput(r, c, e, hv, o);
+            // the wrapped type's base64 document is no array of value objects (KB-038): the round trip above holds the value object to its own
+            if (byteArray) return c.Inapplicable(Cite.Fact("KB-038"), "read: the wrapped type's document is a base64 string");
+            // the document is refused by depth (Jx.Depth, the text-matching site), so its read is too: the write's refusal, as it is
+            if (Jx.Depth(r, xv) || Jx.Depth(r, xp)) { c.Note(NoteKeys.StjMaxdepth, "read: " + Jx.Ex((xv ?? xp)!)); return null; }
+            var full = Jx.Ser(hp, Jx.Full(op)).Json ?? jp;
+            if (full is null) return c.Inconclusive("read: the wrapped type is not written under these options, so there is no document to read");
+            var input = c["input.json"];
+            var text = JsonParity.InputFor(input, e, Jx.Full(op), full, c["shape.position"]);
+            return ReadAlike.Check(r, c, e, input, text, hp, hv, op, o);
+        });
+        return fw ?? fr;
     }
 
     /// <summary>
@@ -126,9 +163,9 @@ public static class PreserveGuard
     /// type's JSON) alike under the row's reference handler and under none: "anything a converter of your own writes" is unaffected
     /// (Generators README#json). Each side writes its own document, so Preserve's metadata is its own, and only the value is rewritten.
     /// </summary>
-    static string? OwnReadsInput(Row r, Entry e, Held hv, JsonSerializerOptions o)
+    static string? OwnReadsInput(Row r, Check c, Entry e, Held hv, JsonSerializerOptions o)
     {
-        var input = r["input.json"];
+        var input = c["input.json"];
         var inner = JsonRow.Inner(e);
         var wrapped = JsonSerializer.Serialize(Make.Unwrap(e, Make.Vo(e, e.Valid())), Make.Held(e.Plain), inner);
         var value = "vo:" + JsonParity.InputFor(input, e, inner, wrapped, "root");
@@ -144,12 +181,12 @@ public static class PreserveGuard
             return (JsonSerializer.Serialize(v, hv.Declared, bare), null, null);
         }
         var handled = Through(o); var unhandled = Through(bare);
-        if ((handled.Depth ?? unhandled.Depth) is { } depth) { r.Note(NoteKeys.StjMaxdepth, "own converter, read " + input + ": " + Jx.Ex(depth)); return null; }
+        if ((handled.Depth ?? unhandled.Depth) is { } depth) { c.Note(NoteKeys.StjMaxdepth, "own converter, read " + input + ": " + Jx.Ex(depth)); return null; }   // Jx.Depth: a text-matching site
         if (handled.Read is null && handled.Refused is null && unhandled.Read is null && unhandled.Refused is null)
-        { r.Note(NoteKeys.JsonMemberLeftOutByOptions, "own converter: the options write no member"); return null; }
+        { c.Note(NoteKeys.JsonMemberLeftOutByOptions, "own converter: the options write no member"); return c.Inconclusive("own converter: the options write no member to read"); }
         if (handled.Read != unhandled.Read || handled.Refused != unhandled.Refused)
-            return $"read {input} through the application's converter: {handled.Read ?? handled.Refused ?? "no member"} under ReferenceHandler {r["handler"]}, {unhandled.Read ?? unhandled.Refused ?? "no member"} without one";
-        r.Note(NoteKeys.Compared, $"read {input} through the application's converter, alike with and without the reference handler: {Jx.Cut(handled.Read ?? handled.Refused)}");
+            return $"read {input} through the application's converter: {handled.Read ?? handled.Refused ?? "no member"} under ReferenceHandler {c["handler"]}, {unhandled.Read ?? unhandled.Refused ?? "no member"} without one";
+        c.Note(NoteKeys.Compared, $"read {input} through the application's converter, alike with and without the reference handler: {Jx.Cut(handled.Read ?? handled.Refused)}");
         return null;
     }
 
@@ -170,40 +207,40 @@ public static class PreserveGuard
 /// </summary>
 public static class ReadAlike
 {
-    public static string? Check(Row r, Entry e, string input, string text, Held hp, Held hv, JsonSerializerOptions op, JsonSerializerOptions? ov)
+    public static string? Check(Row r, Check c, Entry e, string input, string text, Held hp, Held hv, JsonSerializerOptions op, JsonSerializerOptions ov)
     {
         var (vp, ep) = Jx.De(text, hp.Declared, op);
-        if (ov is null) { if (ep is null) r.Note(NoteKeys.Compared, "read " + input + " (the wrapped type; the value object's converter is the application's)"); else r.Note(NoteKeys.ReadBothThrew, Jx.Ex(ep)); return null; }
         var (vv, ev) = Jx.De(text, hv.Declared, ov);
         var voName = Make.Held(e.Vo).Name;
         string? Named(Exception x) => x is JsonException && x.Message.Contains(voName) && x.InnerException is null ? null
             : $"read {input}: the value object's refusal is {Jx.Ex(x)}{(x.InnerException is null ? "" : " with an inner exception")}, not a JsonException naming {voName}\n  text={Jx.Cut(text)}";
-        var stored = r.Is("json.Converters", "StoredJsonConverterFactory");
-        if (Jx.Depth(r, ev) || Jx.Depth(r, ep)) { r.Note(NoteKeys.StjMaxdepth, "read " + input + ": " + Jx.Ex((ev ?? ep)!)); return null; }
+        var stored = c.Is("json.Converters", "StoredJsonConverterFactory");
+        if (Jx.Depth(r, ev) || Jx.Depth(r, ep)) { c.Note(NoteKeys.StjMaxdepth, "read " + input + ": " + Jx.Ex((ev ?? ep)!)); return null; }   // Jx.Depth: a text-matching site
         if (ep is null && ev is null)
         {
-            if (e.Kind.StartsWith("validated") && input == "refused-by-create" && !stored && e.Refused() is not null && text != Jx.Ser(hp, op).Json && !r.Is("shape.position", "dictionary-key"))
+            if (e.Kind.StartsWith("validated") && input == "refused-by-create" && !stored && e.Refused() is not null && text != Jx.Ser(hp, op).Json && !c.Is("shape.position", "dictionary-key"))
                 return $"read {input}: the validated value object read what Create refuses\n  text={Jx.Cut(text)}";
             var sp = JsonSerializer.Serialize(vp, hp.Declared, op); var sv = JsonSerializer.Serialize(vv, hv.Declared, ov);
             if (sp != sv) return $"read {input}: read back differs: wrapped {Jx.Cut(sp)} vs value object {Jx.Cut(sv)}\n  text={Jx.Cut(text)}";
-            r.Note(NoteKeys.Compared, "read " + input); return null;
+            c.Note(NoteKeys.Compared, "read " + input); return null;
         }
         if (ep is not null && ev is not null)
         {
-            if (ep.GetType() == ev.GetType() && Jx.Swap(ep.Message, Make.Held(e.Plain), Make.Held(e.Vo)) == ev.Message) { r.Note(NoteKeys.JsonReadRefusedByStjAlone, input + ": " + Jx.Ex(ev)); return null; }
+            // refused alike, message for message: the value object is unaffected, as the twin
+            if (ep.GetType() == ev.GetType() && Jx.Swap(ep.Message, Make.Held(e.Plain), Make.Held(e.Vo)) == ev.Message) { c.Note(NoteKeys.JsonReadRefusedByStjAlone, input + ": " + Jx.Ex(ev)); return null; }
             if (Named(ev) is { } f) return f + $"; the wrapped type: {Jx.Ex(ep)}";
-            r.Note(NoteKeys.Compared, "read " + input + ": both refuse, the value object naming itself"); return null;
+            c.Note(NoteKeys.Compared, "read " + input + ": both refuse, the value object naming itself"); return null;
         }
         if (ev is not null)
         {
             var intended = (input == "null" && e.Vo.IsValueType) || (e.Kind.StartsWith("validated") && input == "refused-by-create" && !stored) || (e.Kind == "closed-set" && input != "valid");
             if (!intended) return $"read {input}: the wrapped type read it, the value object threw {Jx.Ex(ev)}\n  text={Jx.Cut(text)}";
             if (Named(ev) is { } f) return f;
-            r.Note(NoteKeys.Compared, "read " + input + ": refused as documented"); return null;
+            c.Note(NoteKeys.Compared, "read " + input + ": refused as documented"); return null;
         }
         // the wrapped type refused and the value object read: only a JSON null for a sealed record, which reads it as any class does
         if (input == "null" && !e.Vo.IsValueType && e.Plain.IsValueType && Jx.Tokens(JsonSerializer.Serialize(vv, hv.Declared, Jx.Plain)).Any(t => t.Type == JsonTokenType.Null))
-        { r.Note(NoteKeys.Compared, "read null: the sealed record reads null, as any class does"); return null; }
+        { c.Note(NoteKeys.Compared, "read null: the sealed record reads null, as any class does"); return null; }
         return $"read {input}: the value object read what the wrapped type refused ({Jx.Ex(ep!)})\n  text={Jx.Cut(text)}";
     }
 }

@@ -70,7 +70,9 @@ public static class Equality
             x1 = Make(v, w, a1); x2 = Make(v, w, a2); y = Make(v, w, b);
             if (!cw.Equals(v.GetProperty("Value")!.GetValue(x1), a1)) return $"Value of {v.Name} is not the value it was made from";
         }
-        var fails = new List<string>();
+        // each failure goes to the obligation it breaks: the value object's own equality and wherever it is held, its ordering, its bases
+        List<string> eqF = [], ordF = [], baseF = [];
+        var fails = eqF;
         void Expect(bool got, bool want, string what) { if (got != want) fails.Add($"{what}: {got}, expected {want}"); }
 
         // the value object's own equality
@@ -86,6 +88,7 @@ public static class Equality
         if (Op(v, "op_Inequality", x1, x2) is { } n12) Expect((bool)n12, !eq12, "!= of equal values");
 
         // ordering: generated where the wrapped type is comparable, ordinal for a string, zero exactly when equal
+        fails = ordF;
         var icv = typeof(IComparable<>).MakeGenericType(v);
         if (!closed)
         {
@@ -113,8 +116,13 @@ public static class Equality
         }
 
         // through every base, and every IEquatable<TBase> it implements
+        var bases = 0;
         for (var t = v.BaseType; t is not null; t = t.BaseType)
         {
+            // object and ValueType are every value object's, a base of none: held as one, it is its own equality
+            var own = t == typeof(object) || t == typeof(ValueType);
+            if (!own) bases++;
+            fails = own ? eqF : baseF;
             var c = Comparer(t);
             Expect(c.Equals(x1, x2), eq12, $"EqualityComparer<{t.Name}> of equal values");
             Expect(c.Equals(x1, y), false, $"EqualityComparer<{t.Name}> of unequal values");
@@ -127,12 +135,14 @@ public static class Equality
         }
         foreach (var i in v.GetInterfaces().Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEquatable<>)))
         {
+            fails = i.GetGenericArguments()[0] == v ? eqF : baseF;   // IEquatable<TSelf> is its own equality, IEquatable<TBase> a base's
             var m = i.GetMethod("Equals")!;
             Expect((bool)m.Invoke(x1, [x2])!, eq12, $"{Jx.Name(i)}.Equals of equal values");
             Expect((bool)m.Invoke(x1, [y])!, false, $"{Jx.Name(i)}.Equals of unequal values");
         }
 
         // wherever it is held
+        fails = eqF;
         var position = r["shape.position"];
         var containing = position == "root" ? "class" : r["shape.containing"];
         var e = new Entry(kind, wrapped, v, v, () => x1, () => null, typeof(L05PolyBase), typeof(L05PolyDerived<>).MakeGenericType(v), typeof(L05PolyBase), typeof(L05PolyDerived<>).MakeGenericType(v));
@@ -175,8 +185,27 @@ public static class Equality
                 break;
             }
         }
-        if (fails.Count > 0) return $"{Jx.Name(v)} ({kind}, {wrapped}, {inh}, {site}, {position} in {containing}): " + string.Join("; ", fails);
-        r.Note(NoteKeys.Compared, $"{v.Name} {position}");
-        return null;
+        string What(List<string> f) => $"{Jx.Name(v)} ({kind}, {wrapped}, {inh}, {site}, {position} in {containing}): " + string.Join("; ", f);
+        var f1 = r.Check("equality-is-the-underlying-values", Baseline.Twin, c =>
+        {
+            if (eqF.Count > 0) return What(eqF);
+            c.Note(NoteKeys.Compared, $"{v.Name} {position}: equality, against EqualityComparer<{(w is null ? v.Name : w.Name)}>");
+            return null;
+        });
+        var f2 = r.Check("ordering-follows-the-underlying-type", Baseline.Twin, c =>
+        {
+            if (ordF.Count > 0) return What(ordF);
+            c.Note(NoteKeys.Compared, $"{v.Name}: ordering{(icv.IsAssignableFrom(v) ? "" : ", none generated where the wrapped type has none")}");
+            return null;
+        });
+        // a value object with a base record: each base compares it as it does (the chain is shape.inheritance's)
+        var f3 = bases == 0 ? null : r.Check("through-every-base", Baseline.Twin, c =>
+        {
+            _ = c["shape.inheritance"];
+            if (baseF.Count > 0) return What(baseF);
+            c.Note(NoteKeys.Compared, $"{v.Name}: {bases} base type(s)");
+            return null;
+        });
+        return f1 ?? f2 ?? f3;
     }
 }
