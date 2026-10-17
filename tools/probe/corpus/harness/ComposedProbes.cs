@@ -94,7 +94,7 @@ public static class ComposedClaims
                 if (!Aspect.Doc.Any(want)) return null;
                 // the document: one ASP.NET alone refuses the same way has nothing to check (noted there)
                 if (docFailed is not null)
-                    return await Hx.DocRefusedByAspNetAlone(r, en, Cfg(r), docFailed) is { } alone
+                    return await Hx.DocRefusedByAspNetAlone(r, en, Cfg(r), docFailed, (Aspect.Answer.Any(want) || want(Rule)) && sides.Count > 0) is { } alone
                         ? alone + " @ " + string.Join(" < ", (docFailed.StackTrace ?? "").Split('\n').Take(4).Select(x => x.Trim().Split('(')[0]))
                         : null;
                 foreach (var path in sides)

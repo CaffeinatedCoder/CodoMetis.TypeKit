@@ -3,8 +3,11 @@ namespace Prober;
 /// <summary>
 /// A greedy pairwise covering array: each row is the best of a few randomized greedy candidates, and the
 /// rows together cover every pair asked for that at least one of the claim's obligations wants. A pair no
-/// obligation wants (declared inapplicable) is never asked for and never put in a row, as an excluded pair is
-/// not: every check of such a row would be inapplicable. Deterministic for a seed.
+/// obligation wants (declared inapplicable) is never asked for, and neither it nor an excluded pair is ever put
+/// in a row, not even to fill an axis: every check of such a row would be inapplicable, and an excluded pair is
+/// one the claim says no row can run. An axis none of whose values can join a row without one is left out of
+/// that row: shape.containing beside shape.position=root, and shape.refused-kind wherever the claim excludes each of
+/// its pairs. Deterministic for a seed.
 /// </summary>
 internal static class Covering
 {
@@ -14,7 +17,7 @@ internal static class Covering
         bool Blocked(Pair pair) => claim.Excluded.Contains(pair) || dead.ContainsKey(pair);
         // The pairs asked for, each once however many obligations want it, so a row's gain counts it once.
         var todo = new HashSet<Pair>(wanted);
-        todo.ExceptWith(dead.Keys);
+        todo.RemoveWhere(Blocked);
         var names = claim.Axes.Keys.ToList();
         var random = new Random(seed);
         var rows = new List<(SortedDictionary<string, string>, List<Pair>)>();
@@ -28,7 +31,7 @@ internal static class Covering
                 foreach (var name in order)
                 {
                     var options = claim.Axes[name].OrderBy(_ => random.Next()).ToList();
-                    string? pick = null; var pickGain = int.MinValue;
+                    string? pick = null; var pickGain = -1;
                     foreach (var v in options)
                     {
                         var gain = 0;
@@ -40,7 +43,8 @@ internal static class Covering
                         }
                         if (gain > pickGain) { pick = v; pickGain = gain; }
                     }
-                    row[name] = pick!;
+                    // Every value of this axis puts a blocked pair in the row: the axis is left out of it.
+                    if (pick is not null) row[name] = pick;
                 }
                 var g = Gained(row, todo).Count;
                 if (g > bestGain) { best = row; bestGain = g; }
@@ -57,16 +61,20 @@ internal static class Covering
         return rows;
     }
 
+    static string Axis(string setting) => setting[..setting.IndexOf('=', StringComparison.Ordinal)];
+
     /// <summary>
-    /// A row seeded from one pair: the pair's two settings, and each other axis at its first value that puts no pair
-    /// no obligation wants (<paramref name="dead"/>) in the row, else at its first value.
+    /// A row seeded from one pair: the pair's two settings, and each other axis at its first value that puts neither an excluded pair
+    /// nor a pair no obligation wants (<paramref name="dead"/>) in the row, or left out where none does.
     /// </summary>
     internal static SortedDictionary<string, string> Seeded(Claim claim, Pair pair, IReadOnlyDictionary<Pair, SortedSet<string>> dead)
     {
+        bool Blocked(Pair p) => claim.Excluded.Contains(p) || dead.ContainsKey(p);
         var row = new SortedDictionary<string, string>(StringComparer.Ordinal);
-        foreach (var item in new[] { pair.A, pair.B }) { var at = item.IndexOf('=', StringComparison.Ordinal); row[item[..at]] = item[(at + 1)..]; }
+        foreach (var item in new[] { pair.A, pair.B }) row[Axis(item)] = item[(item.IndexOf('=', StringComparison.Ordinal) + 1)..];
         foreach (var name in claim.Axes.Keys.Where(n => !row.ContainsKey(n)).ToList())
-            row[name] = claim.Axes[name].FirstOrDefault(v => !row.Any(kv => dead.ContainsKey(new Pair($"{name}={v}", $"{kv.Key}={kv.Value}")))) ?? claim.Axes[name][0];
+            if (claim.Axes[name].FirstOrDefault(v => !row.Any(kv => Blocked(new Pair($"{name}={v}", $"{kv.Key}={kv.Value}")))) is { } value)
+                row[name] = value;
         return row;
     }
 

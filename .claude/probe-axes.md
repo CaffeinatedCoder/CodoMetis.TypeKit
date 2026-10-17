@@ -46,13 +46,17 @@ and `GeneratedHarnessTests` in the conventions tests holds each file to its app'
 - How a row ends: a check returns null or the failure text, and runs through `Rec.Run`, which fails the
   test for a violation or a harness error and skips it, with its reasons, for any other outcome but a
   pass; a check that throws ends as a harness error, never a violation, and no seed counts it caught. A check
-  says what it saw with `r.Note(NoteKeys.Name, detail)`. The key, a member of `NoteKeys` in `harness/Row.cs`,
-  alone decides the outcome. Keys are constants the compiler checks: a new one goes into `NoteKeys` with its
-  outcome on one line, and a string, a misspelled member or a key built from text does not compile (decision
-  103). A probe outside the namespace `Probes.Shapes` writes `using NoteKeys = Probes.Shapes.NoteKeys;`.
+  says how it compared with `r.Note(NoteKeys.Name, detail)`. The key, a member of `NoteKeys` in `harness/Row.cs`,
+  alone decides the note's outcome: every key is a pass key but `framework-refuses`, the three-sided
+  differential's expected refusal, and a check that did not apply, refused or could not tell says so through
+  its scope with a citation (below), never a note key. Keys are constants the compiler checks: a new one goes
+  into `NoteKeys` with its outcome on one line, and a string, a misspelled member or a key built from text does
+  not compile (decision 103). A probe outside the namespace `Probes.Shapes` writes `using NoteKeys = Probes.Shapes.NoteKeys;`.
   Never match a failure's text to excuse it. A difference the framework makes on its own is shown by a
   baseline in the same row (the document as ASP.NET writes it without `AddTypeKit()`,
-  `Hx.DocRefusedByAspNetAlone`), not by a substring. A row that would fail for an open finding calls
+  `Hx.DocRefusedByAspNetAlone`, a refusal compared by exception type and stage as `Sides.Alike` compares one),
+  not by a substring. A document both refuse alike is the framework's refusal for a check that compared nothing
+  else, and leaves a check that compared an answer on the wire first to be judged by that answer. A row that would fail for an open finding calls
   `r.Skip("F7", why)`, the finding as a string literal: `register` and `publish` refuse a skip whose finding
   is built from text or is not open in the ledger, naming the file and line. The gate refuses while any row
   skips, and the replay fails a skip whose finding the ledger has fixed or dismissed.

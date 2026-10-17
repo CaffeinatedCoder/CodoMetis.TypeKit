@@ -307,12 +307,12 @@ public static class Hx
     public static async Task<JsonNode?> Doc(WebApplication app) => JsonNode.Parse(await app.GetTestClient().GetStringAsync("/openapi/v1.json"));
 
     /// <summary>
-    /// The document failed with AddTypeKit(). The same host without it is the baseline: when ASP.NET alone
-    /// refuses the document with the same exception, the document part has nothing to check and the note says
-    /// so; when it writes the document, or fails otherwise, the failure is returned (F2 hid behind a baseline
-    /// that kept AddTypeKit() on both sides).
+    /// The document failed with AddTypeKit(). The same host without it is side (1) of the three (Sides): where ASP.NET alone refuses the
+    /// document alike, by exception type and stage and never by message (<see cref="DocAlike"/>), the document part has nothing to check
+    /// (<see cref="DocRefused"/>); where it writes the document, or refuses it otherwise, the failure is returned (F2 hid behind a baseline
+    /// that kept AddTypeKit() on both sides). <paramref name="comparedBefore"/> says whether the check compared an answer before the document.
     /// </summary>
-    public static async Task<string?> DocRefusedByAspNetAlone(Row r, Entry e, HostCfg c, Exception withTypeKit)
+    public static async Task<string?> DocRefusedByAspNetAlone(Row r, Entry e, HostCfg c, Exception withTypeKit, bool comparedBefore = false)
     {
         static string Say(Exception x) => x.GetType().Name + ": " + (x.Message.Length > 200 ? x.Message[..200] + "..." : x.Message);
         var alone = c.Copy(); alone.TypeKitOpenApi = false;
@@ -321,9 +321,9 @@ public static class Hx
             await using var app = await Start(r, e, alone);
             await Doc(app);
         }
-        catch (Exception ex) when (ex.GetType() == withTypeKit.GetType() && Unplaced(ex.Message) == Unplaced(withTypeKit.Message))
+        catch (Exception ex) when (DocAlike(ex, withTypeKit))
         {
-            r.Note(NoteKeys.DocRefusedByAspnetAlone, ex.GetType().Name);
+            DocRefused(r, ex, comparedBefore);
             return null;
         }
         catch (Exception ex) { return $"document: AddTypeKit() fails ({Say(withTypeKit)}), ASP.NET alone fails otherwise ({Say(ex)})"; }
@@ -331,11 +331,24 @@ public static class Hx
     }
 
     /// <summary>
-    /// A JsonException's message without the line and byte it names: the two documents differ in length by what
-    /// AddTypeKit() wrote, so one refusal is at another byte of each (rows 31 and 140 of C21: "Path: $ | LineNumber: 0 |
-    /// BytePositionInLine: 32." against 41, the same refusal of a char under WriteAsString).
+    /// ASP.NET alone (side (1)) and AddTypeKit() (side (3)) refuse the document alike: the same exception type at the same stage (a
+    /// JsonException's Path), as <see cref="Sides.Alike"/> compares two refusals. No message is compared: the two documents differ in length
+    /// by what AddTypeKit() wrote, so one refusal is at another line and byte of each (rows 31 and 140 of C21), and a refusal's words decide
+    /// no row (decision 99, WS2's three-sided differential).
     /// </summary>
-    public static string Unplaced(string message) => System.Text.RegularExpressions.Regex.Replace(message, @" \| LineNumber: \d+ \| BytePositionInLine: \d+\.$", ".");
+    public static bool DocAlike(Exception one, Exception three) =>
+        Sides.Alike(new Sides.Answer("document", null, one), new Sides.Answer("document", null, three));
+
+    /// <summary>
+    /// The document refused alike by ASP.NET alone: its part has nothing to check. A check that compared nothing before it is the framework's
+    /// refusal, an expected refusal that earns nothing (framework-refuses); one that compared an answer on the wire first is judged by that
+    /// answer (doc:refused-by-aspnet-alone, a pass: decision 99's "judged by its other checks").
+    /// </summary>
+    public static void DocRefused(Row r, Exception one, bool comparedBefore)
+    {
+        if (comparedBefore) r.Note(NoteKeys.DocRefusedByAspnetAlone, one.GetType().Name);
+        else r.Note(NoteKeys.FrameworkRefuses, $"document refused by ASP.NET alone too ({one.GetType().Name}), side (1) measured on the same host without AddTypeKit()");
+    }
 
     public static string BindText(Entry e, object plain) => e.Wrapped switch
     {

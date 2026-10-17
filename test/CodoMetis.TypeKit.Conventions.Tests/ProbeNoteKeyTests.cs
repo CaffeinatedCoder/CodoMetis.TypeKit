@@ -24,7 +24,8 @@ public sealed class ProbeNoteKeyTests
     [Fact]
     public void The_corpus_notes_are_found() =>
         Calls(Sources()).Count(c => c.Method == "Note").ShouldBeGreaterThanOrEqualTo(100,
-            "the corpus made 136 notes when this rule was written, and 127 once the http family's outcome notes became checks' citations (WS2 step 4)");
+            "the corpus made 136 notes when this rule was written, 127 once the http family's outcome notes became checks' citations (WS2 step 4), " +
+            "and 119 at WS2's close, where every note is a pass key or framework-refuses");
 
     [Fact]
     public void Every_note_and_skip_in_the_corpus_names_its_key_as_written() =>

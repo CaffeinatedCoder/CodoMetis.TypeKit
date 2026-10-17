@@ -269,6 +269,7 @@ internal static class Commands
                         .OrderBy(x => x.Key, StringComparer.Ordinal).ThenBy(x => x.Line, StringComparer.Ordinal).Select(x => x.Line));
         Section("pairs no obligation wants (declared inapplicable)",
                 universe.Claims.Select(c => Inapplicable(c) is { } line ? $"{c.Id}: {line}" : null).OfType<string>());
+        Section("pairs no passing check read both axes of (the last replay's evidence)", Unread(l, universe));
         Section("out of reach", (block["out-of-reach"] as JsonObject ?? []).Select(kv => $"{kv.Key}: {Files.Str(kv.Value)}"));
         return 0;
 
@@ -281,6 +282,48 @@ internal static class Commands
 
         static string Concerns(IReadOnlyDictionary<string, List<string>> axes) =>
             axes.Count == 0 ? "the whole claim" : string.Join(" ", axes.Select(kv => $"{kv.Key}={string.Join("|", kv.Value)}"));
+    }
+
+    /// <summary>
+    /// The wanted pairs of each claim with evidence that no passing check could earn: no obligation that wants the pair
+    /// has a passing check, in its probes' last replay, that read both of the pair's axes. More rows cannot cover such a
+    /// pair; a check that reads both axes, an exclusion or a declaration can (#54's four C11 pairs, wanted by obligations
+    /// whose checks never read shape.wrapped). A claim whose probes have no evidence is left out.
+    /// </summary>
+    private static IEnumerable<string> Unread(Ledger l, Universe universe)
+    {
+        var registry = l.Registry();
+        foreach (var claim in universe.Claims.OrderBy(c => c.Id, StringComparer.Ordinal))
+        {
+            // The axes each obligation's passing checks read together, as "a\nb" with a before b.
+            var read = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+            var any = false;
+            foreach (var (probe, entry) in registry)
+            {
+                if (Files.Str(entry["claim"]) != claim.Id || Files.ReadJson(l.EvidencePath(probe)) is not JsonObject evidence) continue;
+                any = true;
+                foreach (var (_, row) in evidence["rows"] as JsonObject ?? [])
+                    if (row is JsonObject r)
+                        foreach (var check in Ledger.ChecksOf(r).Where(c => c.Category == "pass"))
+                        {
+                            if (!read.TryGetValue(check.Obligation, out var axes)) read[check.Obligation] = axes = new(StringComparer.Ordinal);
+                            var names = check.Applied.Keys.Order(StringComparer.Ordinal).ToList();
+                            for (var i = 0; i < names.Count; i++)
+                                for (var j = i + 1; j < names.Count; j++) axes.Add(names[i] + "\n" + names[j]);
+                        }
+            }
+            if (!any) continue;
+            var wantedBy = claim.ObligationIdsBuilt.Concat(read.Keys).Distinct(StringComparer.Ordinal).ToDictionary(o => o, claim.PairsWantedBy, StringComparer.Ordinal);
+            foreach (var pair in claim.PairsWanted().OrderBy(p => p.A, StringComparer.Ordinal).ThenBy(p => p.B, StringComparer.Ordinal))
+            {
+                var (a, b) = (Axis(pair.A), Axis(pair.B));
+                var both = string.CompareOrdinal(a, b) <= 0 ? a + "\n" + b : b + "\n" + a;
+                if (!wantedBy.Any(o => o.Value.Contains(pair) && read.TryGetValue(o.Key, out var axes) && axes.Contains(both)))
+                    yield return $"{claim.Id}: {pair.A} {pair.B}";
+            }
+        }
+
+        static string Axis(string setting) => setting[..setting.IndexOf('=', StringComparison.Ordinal)];
     }
 
     public static int Gate(Ledger l, Args a) => ReleaseGate.Run(l, a.Get("since"), a.Flag("json"));
@@ -504,6 +547,32 @@ internal static class Commands
         Files.AppendLine(Path.Combine(l.StagingDir, "dismissed.jsonl"),
             new JsonObject { ["schemaVersion"] = Files.SchemaVersion, ["id"] = a.Need("id"), ["reason"] = a.Need("reason"), ["date"] = a.Get("date") ?? Today });
         l.Ctx.Out.WriteLine($"{a.Need("id")} dismissed (staged; `publish` puts it in the corpus)");
+        return 0;
+    }
+
+    /// <summary>
+    /// Records an open finding fixed at a commit: the fixed line of findings.jsonl (finding-line.schema.json), with the
+    /// open line's claim and probe and the commit's full id. It refuses an id this ledger does not hold open and a
+    /// commit the repository does not have; a commit outside HEAD's history is recorded and counts once it is in it.
+    /// </summary>
+    public static int Fix(Ledger l, Args a)
+    {
+        var id = a.Positional is [var only] ? only : throw new Refusal("fix takes one finding id: fix F<n> --commit <sha>", 2);
+        var given = a.Need("commit");
+        var resolved = Git.Run(l.Top, "rev-parse", "-q", "--verify", given + "^{commit}");
+        if (resolved.ExitCode != 0) throw new Refusal($"--commit {given} is no commit of this repository");
+        var commit = resolved.Stdout.Trim();
+        if (!l.Findings().TryGetValue(id, out var open)) throw new Refusal($"{id} is no finding of this ledger");
+        if (Files.Str(open["status"]) is var status and not "open") throw new Refusal($"{id} is {status}, not open");
+        var line = new JsonObject
+        {
+            ["schemaVersion"] = Files.SchemaVersion, ["id"] = id, ["claim"] = open["claim"]?.DeepClone(), ["status"] = "fixed", ["commit"] = commit,
+        };
+        if (Files.Str(open["probe"]) is { Length: > 0 } probe) line["probe"] = probe;
+        if (a.Get("reason") is { Length: > 0 } reason) line["reason"] = reason;
+        Files.AppendLine(l.P("findings.jsonl"), line);
+        var inHistory = Git.Run(l.Top, "merge-base", "--is-ancestor", commit, "HEAD").ExitCode == 0;
+        l.Ctx.Out.WriteLine($"{id} fixed at {commit[..7]}" + (inHistory ? "" : "; it counts once that commit is in HEAD's history"));
         return 0;
     }
 

@@ -112,7 +112,12 @@ public sealed class ToolchainTests : IDisposable
             File.WriteAllText(stub, "#!/bin/sh\necho 0.0.1\n");
             if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(stub, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             using var sandbox = new ToolSandbox("Prober", "prober");
-            var environment = new Dictionary<string, string?> { ["TOOLS_DOTNET_FALLBACK_DIR"] = installer };
+            // The prober runs as its own process, so the caller's state settings would reach it: under a PROBE_STATE_DIR it
+            // recorded the run there, not in this repository's state, and status found no claim (#58). None reaches it.
+            var environment = new Dictionary<string, string?>
+            {
+                ["TOOLS_DOTNET_FALLBACK_DIR"] = installer, ["PROBE_STATE_DIR"] = null, ["PROBE_CACHE_DIR"] = null, ["PROBE_HOLDER"] = null,
+            };
             (int, string, string) Prober(params string[] arguments) => ToolSandbox.RunProcess("dotnet", [sandbox.Dll, .. arguments], fx.Root, environment);
 
             var (recorded, _, why) = Prober("record-run", "--probe", "P", "--result", "pass", "--evidence", evidence);
