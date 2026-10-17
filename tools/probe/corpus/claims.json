@@ -11703,7 +11703,7 @@
         ]
       },
       {
-        "reason": "Not promised (a-closed-set-is-a-string-enum): a closed set wraps nothing and is described as the string enum of its names, so it has no underlying type's schema to equal; the probe notes closed-set-differs.",
+        "reason": "Not promised (a-closed-set-is-a-string-enum): a closed set wraps nothing and is described as the string enum of its names, so it has no underlying type's schema to equal.",
         "pairs": [
           [
             "http.binding=route",

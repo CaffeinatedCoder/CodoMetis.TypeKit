@@ -338,15 +338,16 @@ public sealed class Cite
 /// <summary>
 /// Every note a check may make, by exact key, and the outcome it stands for: the catalogue, and each of its
 /// members one key. A check writes <c>r.Note(NoteKeys.Compared, detail)</c>; the constructor is private, so a
-/// key outside the catalogue, a misspelled one or one built from text does not compile (decision 103). A row
-/// whose checks returned no failure is a pass only if none of its notes says a check was skipped
-/// (inapplicable), ended in a refusal (expected refusal) or could not tell (inconclusive): a refusal is
-/// evidence about refusing, not about serializing or binding successfully. "pass" keys only explain how a
-/// check that ran was compared.
+/// key outside the catalogue, a misspelled one or one built from text does not compile (decision 103). "pass"
+/// keys only explain how a check that ran was compared. A check that did not apply, ended in a refusal or could
+/// not tell says so through its scope, citing what makes it so (<c>c.Inapplicable(Cite…)</c>, <c>c.Refused(Cite…)</c>,
+/// <c>c.Inconclusive(reason)</c>); the one other key is <see cref="FrameworkRefuses"/>, the three-sided
+/// differential's expected refusal, against side (1)'s baseline. The outcome keys of the notes those replaced
+/// were removed once no harness or probe source called them (WS2's close).
 /// </summary>
 public sealed class NoteKeys
 {
-    const string Pass = "pass", Inapplicable = "inapplicable", ExpectedRefusal = "expected-refusal", Inconclusive = "inconclusive";
+    const string Pass = "pass", ExpectedRefusal = "expected-refusal";
     /// <summary>The key as a row's notes and reasons spell it.</summary>
     public string Key { get; }
     /// <summary>The outcome a note with this key stands for; a note never makes a violation or a harness error.</summary>
@@ -384,65 +385,17 @@ public sealed class NoteKeys
     // L03's JSON half has nothing to compare: the wrapped type alone refuses under the row's options, the value object alike, in the same row
     public static readonly NoteKeys JsonHalfWrappedAloneRefuses = new("json-half:wrapped-alone-refuses", Pass);   // not called since the three-sided differential (Sides): framework-refuses
     // JSON family (C01, C10, L06): the options leave the member out of one direction for the plain type without TypeKit too, shown by a
-    // baseline in the same row; that direction has nothing to check, and the row is judged by the other one (both left out: inapplicable)
+    // baseline in the same row; that direction has nothing to check, and the row is judged by the other one (both left out: each direction inconclusive)
     public static readonly NoteKeys JsonMemberLeftOutByOptions = new("json:member-left-out-by-options", Pass);
-    public static readonly NoteKeys JsonBothDirectionsLeftOutByOptions = new("json:both-directions-left-out-by-options", Inapplicable);
     // a read the wrapped type's shape refuses with the very same exception and message: the serializer refused the document before any
     // value object ran (the baseline in the same row), so the read has nothing to check; the row is judged by its write and other reads
     public static readonly NoteKeys JsonReadRefusedByStjAlone = new("json:read-refused-by-stj-alone", Pass);   // not called since the three-sided differential (Sides): framework-refuses
     // ASP.NET's OpenAPI 2.0 writer drops the reference of a nullable struct component; a plain struct beside it in the same
     // schema, without a converter, is written the same, so that position has nothing to check (C12)
     public static readonly NoteKeys SchemaNullableReferenceLostForPlainToo = new("schema:nullable-reference-lost-for-plain-too", Pass);
-    // a check that did not apply
-    public static readonly NoteKeys OwnVoConverter = new("own-vo-converter", Inapplicable);
-    public static readonly NoteKeys ClosedSetVsOwnWrappedConverter = new("closed-set-vs-own-wrapped-converter", Inapplicable);
-    public static readonly NoteKeys ClosedSetDiffers = new("closed-set-differs", Inapplicable);
-    public static readonly NoteKeys ByteArrayIsBase64 = new("byte-array-is-base64", Inapplicable);
-    public static readonly NoteKeys OwnSpelling = new("own-spelling", Inapplicable);
-    public static readonly NoteKeys NotBindableFromText = new("not-bindable-from-text", Inapplicable);
-    public static readonly NoteKeys RouteTextUnsafe = new("route-text-unsafe", Inapplicable);
-    public static readonly NoteKeys OwnVoBodyBindingSkipped = new("own-vo:body-binding-skipped", Inapplicable);
-    public static readonly NoteKeys MvcMaxvalidationdepth1IgnoresBindingErrors = new("mvc-maxvalidationdepth1-ignores-binding-errors", Inapplicable);
-    public static readonly NoteKeys StoredFactorySkipsValidation = new("stored-factory-skips-validation", Inapplicable);
-    public static readonly NoteKeys SchemaConverterNotDescribed = new("schema:converter-not-described", Inapplicable);
-    public static readonly NoteKeys SchemaNullabilityNotComparable = new("schema:nullability-not-comparable", Inapplicable);
-    // C21's not-promised entries, made by ASP.NET's OpenAPI 2.0 writer: a nullable property of a component loses its reference (KB-026),
-    // a nullable body of a value type keeps only its null (KB-001)
-    public static readonly NoteKeys SchemaOpenApi2NullableComponentLosesType = new("schema:openapi2-nullable-component-loses-type", Inapplicable);
-    public static readonly NoteKeys SchemaOpenApi2NullableBodyKeepsOnlyNull = new("schema:openapi2-nullable-body-keeps-only-null", Inapplicable);
-    // C21's not-promised enum-component-is-its-first-use, made by ASP.NET: an enum's component is the schema of its first use (KB-027)
-    public static readonly NoteKeys SchemaEnumComponentIsItsFirstUse = new("schema:enum-component-is-its-first-use", Inapplicable);
-    public static readonly NoteKeys ClosedSetKeyUnpoliced = new("closed-set-key-unpoliced", Inapplicable);
-    public static readonly NoteKeys PlainRefused = new("plain-refused", Inapplicable);
-    public static readonly NoteKeys EntryNotApplicable = new("entry-not-applicable", Inapplicable);
-    public static readonly NoteKeys NoText = new("no-text", Inapplicable);
-    public static readonly NoteKeys TextWrappedRoundTripLossyToo = new("text:wrapped-round-trip-lossy-too", Inapplicable);
-    public static readonly NoteKeys NoOperator = new("no-operator", Inapplicable);
-    public static readonly NoteKeys RefusedInputNotPlaceable = new("refused-input-not-placeable", Inapplicable);
-    // a refusal, intended or the framework's own
-    public static readonly NoteKeys DocumentedDiff = new("documented-diff", ExpectedRefusal);
-    public static readonly NoteKeys StjMaxdepth = new("stj-maxdepth", ExpectedRefusal);   // not called since the three-sided differential (Sides): KB-040's side (1)
-    public static readonly NoteKeys ValidatedRefusesTypeLimit = new("validated-refuses-type-limit", ExpectedRefusal);
-    public static readonly NoteKeys ClassVoTakesNull = new("class-vo-takes-null", ExpectedRefusal);
-    public static readonly NoteKeys BindPlainUnbindable = new("bind:plain-unbindable", ExpectedRefusal);
-    public static readonly NoteKeys PreserveDocumented = new("preserve-documented", ExpectedRefusal);
-    public static readonly NoteKeys Mvc400UnwritableUnderSourceGen = new("mvc-400-unwritable-under-source-gen", ExpectedRefusal);   // not called since the three-sided differential (Sides): KB-041's side (1)
-    public static readonly NoteKeys OwnVoReadBackRefused = new("own-vo:read-back-refused", ExpectedRefusal);
-    public static readonly NoteKeys BothThrew = new("both-threw", ExpectedRefusal);
-    public static readonly NoteKeys ReadBothThrew = new("read-both-threw", ExpectedRefusal);
-    public static readonly NoteKeys SerBothThrew = new("ser-both-threw", ExpectedRefusal);
-    public static readonly NoteKeys SerRefused = new("ser-refused", ExpectedRefusal);
-    public static readonly NoteKeys ReadBackRefused = new("read-back-refused", ExpectedRefusal);
-    public static readonly NoteKeys PlainReadBackFailsToo = new("plain-read-back-fails-too", ExpectedRefusal);
-    public static readonly NoteKeys OwnVoConverterThrew = new("own-vo-converter-threw", ExpectedRefusal);
-    public static readonly NoteKeys OwnConverterRefusedForWrappedToo = new("own-converter-refused-for-wrapped-too", ExpectedRefusal);
-    // MVC's validator throws for a nested struct of a body (MaxValidationDepth) for a plain twin on the same side too (C13)
-    public static readonly NoteKeys MvcPlainNestedBodyThrowsToo = new("mvc:plain-nested-body-throws-too", ExpectedRefusal);
     // the three-sided differential (Sides): the wrapped twin without TypeKit and the value object refuse alike, at the same operation and
     // stage with the same exception type and status, so the framework refuses; no message is compared
     public static readonly NoteKeys FrameworkRefuses = new("framework-refuses", ExpectedRefusal);
-    // both sides refused, but not alike
-    public static readonly NoteKeys BothThrewDifferently = new("both-threw-differently", Inconclusive);
 }
 
 public static class Rows

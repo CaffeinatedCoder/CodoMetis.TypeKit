@@ -122,8 +122,8 @@ dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test --project t
 
 - the citation, where the corpus holds one: a `not-promised` entry of the claim whose `source` is the
   fact's file and whose `sentence` is quoted from it (step 3's form), an `exclude` group whose `reason`
-  names `KB-NNN`, or a value in the axes file's `refused` object whose text names `KB-NNN`. Where the
-  check excuses the row by a note key, the key's line in `NoteKeys` names the fact in its comment;
+  names `KB-NNN`, or a value in the axes file's `refused` object whose text names `KB-NNN`, or the check's
+  own `Cite.Fact("KB-NNN")`;
 - with a finding id:
 
   ```bash
