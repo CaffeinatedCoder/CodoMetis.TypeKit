@@ -229,32 +229,15 @@ public static class FaultClaim
         return (eps, cfg);
     }
 
-    const string Listed = "the probes' source-generated context (ProbeContext) lists value objects at root and as a property of a class only";
-
-    /// <summary>
-    /// Under json.TypeInfoResolver=source-generated-context the payload's shape moves to one the context lists (as a property of a class),
-    /// so the strict context applies and its pairs with the fault axes are earned; JsonRow would otherwise fall back to reflection for the
-    /// whole row. NodaTime.Instant is listed nowhere and keeps JsonRow's fallback. The pairs of the strict context with the other positions
-    /// and containers are left uncovered: a limit of this harness, not a refusal of the product, so claims.json excludes none of them.
-    /// </summary>
-    static Row StrictContext(Row r)
-    {
-        if (!r.Is("json.TypeInfoResolver", "source-generated-context") || r["shape.wrapped"] == "NodaTime.Instant") return r;
-        if (r["shape.position"] is not ("root" or "property")) { r = r.With("shape.position", "property"); r.Substituted("shape.position", "property", Listed); }
-        if (r.Get("shape.containing") is not (null or "class")) { r = r.With("shape.containing", "class"); r.Substituted("shape.containing", "class", Listed); }
-        return r;
-    }
-
     public static async Task<string?> Run(Row r, Spec s)
     {
-        r = StrictContext(r);
         var en = Registry.Of(r); Process(r, en);
         var resp = Resp.Of(r);
         var (eps, cfg) = Plan(r, s, resp);
         if (eps.Count == 0) return "harness: the row maps no endpoint of the claim (an excluded pair?)";
         WebApplication? app = null; Exception? down = null;
         try { app = await Hx.Start(r, en, cfg); }
-        catch (Exception ex) { down = ex; }
+        catch (Exception ex) when (ex is not Sides.InputsNotEquivalent) { down = ex; }
         await using var _ = app;
         Baseline Against(string o) => s.Refusals.Contains(o) ? Baseline.Refusal : s.Against;
         string? failed = null;
@@ -342,7 +325,9 @@ public static class FaultClaim
             await using var app = await Hx.Start(r, en, alone);
             await Hx.Doc(app);
         }
-        catch (Exception ex) when (ex.GetType() == withTypeKit.GetType() && ex.Message == withTypeKit.Message)
+        // the same refusal, at another byte of each document (Hx.Unplaced: the two differ in length by what AddTypeKit() wrote; rows 73 and
+        // 157 of C06's regenerated rows, a char under WriteAsString)
+        catch (Exception ex) when (ex.GetType() == withTypeKit.GetType() && Hx.Unplaced(ex.Message) == Hx.Unplaced(withTypeKit.Message))
         {
             r.Note(NoteKeys.DocRefusedByAspnetAlone, ex.GetType().Name);
             return null;

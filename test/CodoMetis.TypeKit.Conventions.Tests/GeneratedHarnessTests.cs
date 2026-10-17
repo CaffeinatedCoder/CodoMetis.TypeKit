@@ -29,14 +29,13 @@ public sealed class GeneratedHarnessTests
     /// </summary>
     private static readonly (string File, string App, string[] Arguments)[] Generators =
     [
-        ("Shapes.g.cs", "shapes.cs", ["--axes", Axes]),
+        ("Shapes.g.cs", "shapes.cs", ["--axes", Axes, "--l06", $"{Rows}/L06OffTheWireProbe.json.gz"]),
         ("Containers.g.cs", "containers.cs", ["--axes", Axes]),
         ("EfShapes.g.cs", "ef.cs", ["catalogue", .. EfCatalogue]),
         ("EfShapes3.g.cs", "ef.cs", ["top-level", .. EfCatalogue]),
         ("EfShapes4.g.cs", "ef.cs", ["nested", .. EfCatalogue]),
         ("KeyShapes.g.cs", "ef.cs", ["keys", "--rows", $"{Rows}/E04IntegerKeyProbe.json.gz"]),
-        ("JsonFamilyShapes.g.cs", "json-family.cs",
-            ["contexts", "--c01", $"{Rows}/C01DecimalSpellingProbe.json.gz", "--c10", $"{Rows}/C10PreserveGuardProbe.json.gz", "--l06", $"{Rows}/L06OffTheWireProbe.json.gz"]),
+        ("JsonFamilyShapes.g.cs", "json-family.cs", ["stand-ins"]),
         ("L05Shapes.g.cs", "json-family.cs", ["l05", "--rows", $"{Rows}/L05EqualityProbe.json.gz"]),
         ("C09Shapes.g.cs", "decls.cs", ["C09", "--rows", $"{Rows}/C09BaseRecordEqualityProbe.json.gz"]),
         ("C11Shapes.g.cs", "decls.cs", ["C11", "--rows", $"{Rows}/C11ParseShapesBuildProbe.json.gz"]),

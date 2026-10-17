@@ -43,10 +43,12 @@ public static class Pos
                 var create = typeof(ImmutableArray).GetMethods().First(x => x.Name == "CreateRange" && x.GetParameters().Length == 1).MakeGenericMethod(t);
                 member = create.Invoke(null, [l])!; m = member.GetType(); break;
             }
-            case "dictionary-key": { var d = (IDictionary)Activator.CreateInstance(typeof(Dictionary<,>).MakeGenericType(t, typeof(int)))!; d.Add(sample, 1); member = d; m = d.GetType(); break; }
+            // a dictionary key is never null: a nullable twin (or, under http.nullability=nullable, a nullable value object) is a key of the type it holds
+            case "dictionary-key": { var d = (IDictionary)Activator.CreateInstance(typeof(Dictionary<,>).MakeGenericType(Make.Held(t), typeof(int)))!; d.Add(sample, 1); member = d; m = d.GetType(); break; }
             case "dictionary-value": { var d = (IDictionary)Activator.CreateInstance(typeof(Dictionary<,>).MakeGenericType(typeof(string), t))!; d.Add("k", sample); member = d; m = d.GetType(); break; }
+            // a Patch<T> holds no null (T : notnull): a nullable twin is patched as the type it holds, as a dictionary key is
             case "in-patch":
-                member = typeof(Patch).GetMethod("Value")!.MakeGenericMethod(t).Invoke(null, [sample])!; m = member.GetType(); break;
+                member = typeof(Patch).GetMethod("Value")!.MakeGenericMethod(Make.Held(t)).Invoke(null, [sample])!; m = member.GetType(); break;
             case "polymorphic-derived-property":
             {
                 var derived = vo ? e.PolyDerived : e.PolyDerivedPlain;
@@ -68,23 +70,27 @@ public static class Pos
 }
 
 /// <summary>
-/// Input equivalence for the differential oracles: the wrapped side and the value-object side must be the same
-/// shape under the same options, differing only where the value object stands in for its wrapped type. A
-/// mismatch is a harness error, never a pass or a product violation.
+/// Input equivalence for the differential oracles: the twin and the value object must hold the same shape under the same options, the
+/// twin standing where the value object stands, at its nullability: both admit null or neither (shapes.cs makes the twin of a class value
+/// object over a struct the struct made nullable). The one difference no plain type can mirror is a struct value object over a class,
+/// which refuses the null its twin reads (not-promised a-struct-refuses-a-json-null), and a dictionary key and what a patch holds, which
+/// are never null on either side. A mismatch is a harness error, never a pass or a product violation (Sides.Twins).
 /// </summary>
 public static class Equivalence
 {
-    public static string? Shapes(Type plain, Type vo, Entry e)
+    public static string? Shapes(Type plain, Type vo, Entry e) => Shapes(plain, vo, e, key: false);
+
+    static string? Shapes(Type plain, Type vo, Entry e, bool key)
     {
         if (plain == vo) return null;
-        if (vo == e.Vo) return plain == e.Plain || Nullable.GetUnderlyingType(plain) == e.Plain ? null : $"{Name(plain)} stands where {Name(vo)} should face {Name(e.Plain)}";
-        // A nullable struct value object faces its wrapped type made nullable, or the wrapped class itself (already nullable).
-        if (Nullable.GetUnderlyingType(vo) == e.Vo) return Nullable.GetUnderlyingType(plain) == e.Plain || (plain == e.Plain && !plain.IsValueType) ? null : $"{Name(plain)} against {Name(vo)}";
-        if (plain.IsArray && vo.IsArray) return Shapes(plain.GetElementType()!, vo.GetElementType()!, e);
+        if (Make.Held(vo) == Make.Held(e.Vo)) return Member(plain, vo, e, key);
+        if (plain.IsArray && vo.IsArray) return Shapes(plain.GetElementType()!, vo.GetElementType()!, e, false);
         if (plain.IsGenericType && vo.IsGenericType && plain.GetGenericTypeDefinition() == vo.GetGenericTypeDefinition())
         {
             var pa = plain.GetGenericArguments(); var va = vo.GetGenericArguments();
-            for (var i = 0; i < pa.Length; i++) if (Shapes(pa[i], va[i], e) is { } why) return why;
+            // a dictionary's key and what a patch holds are never null, on either side
+            var notNull = plain.GetGenericTypeDefinition() == typeof(Dictionary<,>) || plain.GetGenericTypeDefinition() == typeof(Patch<>);
+            for (var i = 0; i < pa.Length; i++) if (Shapes(pa[i], va[i], e, notNull && i == 0) is { } why) return why;
             return null;
         }
         // The generated stand-ins (the polymorphic bases and derived types): one per side by design, equal in
@@ -93,15 +99,25 @@ public static class Equivalence
         {
             var pp = plain.GetProperties().ToDictionary(x => x.Name); var vp = vo.GetProperties().ToDictionary(x => x.Name);
             if (!pp.Keys.Order().SequenceEqual(vp.Keys.Order())) return $"{Name(plain)} and {Name(vo)} have different properties";
-            foreach (var (name, prop) in pp) if (Shapes(prop.PropertyType, vp[name].PropertyType, e) is { } why) return $"{name}: {why}";
+            foreach (var (name, prop) in pp) if (Shapes(prop.PropertyType, vp[name].PropertyType, e, false) is { } why) return $"{name}: {why}";
             var pd = plain.GetCustomAttributes(typeof(System.Text.Json.Serialization.JsonDerivedTypeAttribute), false).Length;
             var vd = vo.GetCustomAttributes(typeof(System.Text.Json.Serialization.JsonDerivedTypeAttribute), false).Length;
             if (pd != vd) return $"{Name(plain)} and {Name(vo)} declare {pd} and {vd} derived types";
             if ((plain.BaseType is { } pb && pb != typeof(object)) || (vo.BaseType is { } vb && vb != typeof(object)))
-                return Shapes(plain.BaseType!, vo.BaseType!, e);
+                return Shapes(plain.BaseType!, vo.BaseType!, e, false);
             return null;
         }
         return $"{Name(plain)} and {Name(vo)} are different shapes";
+    }
+
+    /// <summary>Where the value object stands: its twin, at its nullability.</summary>
+    static string? Member(Type plain, Type vo, Entry e, bool key)
+    {
+        if (Make.Held(plain) != Make.Held(e.Plain)) return $"{Name(plain)} stands where {Name(vo)} should face {Name(e.Plain)}";
+        if (key || Make.AdmitsNull(plain) == Make.AdmitsNull(vo)) return null;
+        // a struct value object over a class refuses the JSON null its twin reads: no plain type mirrors it, the claims cite it
+        if (!Make.AdmitsNull(vo) && !Make.Held(e.Plain).IsValueType) return null;
+        return $"{Name(plain)} and {Name(vo)} differ in nullability: the twin {(Make.AdmitsNull(plain) ? "admits" : "refuses")} null, the value object {(Make.AdmitsNull(vo) ? "admits" : "refuses")} it";
     }
 
     public static string? Options(JsonSerializerOptions plain, JsonSerializerOptions vo, bool allowConverters)
@@ -191,10 +207,8 @@ public static class JsonParity
         oPlain ??= o;
         var plain = e.Valid();
         var voV = Make.Vo(e, plain);
-        var hp = Pos.Build(position, containing, e, false, plain);
-        var hv = Pos.Build(position, containing, e, true, voV);
-        // Input equivalence: the two sides may differ only by the substituted type, not in shape or options.
-        if (Equivalence.Shapes(hp.Declared, hv.Declared, e) is { } whyShape) { r.Outcome("harness-error", "inputs not equivalent: " + whyShape); return null; }
+        var (hp, hv) = Sides.Twins(position, containing, e, plain, voV);
+        // Input equivalence of the options: the two sides may differ only by the substituted type, not in options (the shapes: Sides.Twins).
         if (Equivalence.Options(oPlain, o, allowConverters: e.Kind == "closed-set") is { } whyOptions) { r.Outcome("harness-error", "inputs not equivalent: " + whyOptions); return null; }
         var one = Sides.WithoutTypeKit(oPlain);
         var w1 = Sides.Write(hp, one); var w2 = Sides.Write(hp, oPlain); var w3 = Sides.Write(hv, o);
@@ -267,7 +281,7 @@ public static class JsonParity
             return $"input {input}: wrapped read it, value object threw {xv.GetType().Name}: {Cut(xv.Message)}\n  text={Cut(text)}";
         }
         // a reference-type value object takes JSON null as null, as any class does
-        if (p.Refused && input == "null" && !e.Vo.IsValueType && e.Plain.IsValueType) return c.Inapplicable(Cite.Docs("docs/json.md#null-and-missing"), "read null");
+        if (p.Refused && input == "null" && Make.AdmitsNull(e.Vo) && !Make.AdmitsNull(e.Plain)) return c.Inapplicable(Cite.Docs("docs/json.md#null-and-missing"), "read null");
         if (p.Refused) return $"input {input}: value object read what the wrapped type refused ({p.Thrown?.GetType().Name}: {Cut(p.Thrown?.Message)})\n  text={Cut(text)}";
         if (Validated(e) && input == "refused-by-create" && text != jp && !stored)
             return $"validated value object accepted the refused value{(position == "dictionary-key" ? " as a dictionary key" : "")}: {Cut(text)}";

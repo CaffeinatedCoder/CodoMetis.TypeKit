@@ -73,21 +73,17 @@ public static class Jx
 }
 
 /// <summary>
-/// The row's json.* axes, applied by JsonRow; under json.TypeInfoResolver=source-generated-context the resolver is the claim's own
-/// context (JsonFamilyShapes.g.cs), which lists every shape the claim's rows serialize there, so the setting runs as the row names it.
+/// The row's json.* axes, applied by JsonRow: under json.TypeInfoResolver=source-generated-context the resolver is ProbeContext alone
+/// (Shapes.g.cs), which lists every shape a row holds and its twin, so the setting runs as the row names it. A shape of the claim's own
+/// the context does not list (L06's Option or Result) is the generator's gap: a harness error.
 /// </summary>
 public static class JCtx
 {
-    public static JsonSerializerOptions Apply(Row r, Entry e, System.Text.Json.Serialization.Metadata.IJsonTypeInfoResolver ctx, params Type[] shapes)
+    public static JsonSerializerOptions Apply(Row r, Entry e, params Type[] shapes)
     {
-        var src = r.Is("json.TypeInfoResolver", "source-generated-context");
-        var o = JsonRow.Apply(src ? r.With("json.TypeInfoResolver", "default") : r, e).Options!;
-        if (!src) return o;
-        var probe = new JsonSerializerOptions();
-        var missing = shapes.Where(t => ctx.GetTypeInfo(t, probe) is null).Select(Jx.Name).ToList();
-        if (missing.Count > 0) throw new InvalidOperationException("not in the claim's context (run harness/gen_json_family.py): " + string.Join(", ", missing));
-        if (r.Is("json.TypeInfoResolverChain", "context-then-default")) o.TypeInfoResolverChain.Insert(0, ctx);
-        else o.TypeInfoResolver = ctx;
+        var o = JsonRow.Apply(r, e).Options!;
+        var missing = JsonRow.Unlisted(r, shapes).Select(Jx.Name).ToList();
+        if (missing.Count > 0) throw new InvalidOperationException("ProbeContext does not list (run tools/probe/generators/shapes.cs): " + string.Join(", ", missing));
         return o;
     }
 }

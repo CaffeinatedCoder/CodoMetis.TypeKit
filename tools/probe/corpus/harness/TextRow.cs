@@ -33,7 +33,7 @@ public static class TextOps
         bool gi; try { gi = new CultureInfo("de-DE").NumberFormat.NumberDecimalSeparator == "."; } catch (CultureNotFoundException) { gi = true; }
         if (c == "globalization-invariant" && !gi) r.Substituted("text.culture", "invariant", "the process is not in globalization-invariant mode");
         if (c != "globalization-invariant" && gi) r.Substituted("text.culture", "globalization-invariant", "the process is in globalization-invariant mode");
-        if (r["process.converter-lookup"] == "wrapped-type-converter-looked-up-first") _ = TypeDescriptor.GetConverter(e.Plain);
+        if (r["process.converter-lookup"] == "wrapped-type-converter-looked-up-first") _ = TypeDescriptor.GetConverter(Make.Held(e.Plain));
     }
 
     static Out Unwrap(Func<Out> f)
@@ -118,7 +118,7 @@ public static class TextOps
         if (e.Kind == "closed-set") return Out.NA;
         if (ValidatedKind(e))
         {
-            var m = e.Vo.GetMethod("TryFrom", [e.Plain]); if (m is null) return Out.NA;
+            var m = e.Vo.GetMethod("TryFrom", [Make.Held(e.Plain)]); if (m is null) return Out.NA;
             var opt = m.Invoke(null, [plain])!; var g = opt.GetType().GetMethod("TryGetValue")!;
             var a = new object?[] { null }; var ok = (bool)g.Invoke(opt, a)!; return new(false, ok, a[0], null, null);
         }
@@ -133,7 +133,7 @@ public static class TextClaims
 
     static bool WrappedLosesItToo(Entry e, object plain)
     {
-        var parse = e.Plain.GetMethod("Parse", [typeof(string), typeof(IFormatProvider)]);
+        var parse = Make.Held(e.Plain).GetMethod("Parse", [typeof(string), typeof(IFormatProvider)]);
         if (parse is null) return false;
         try { return !Equals(parse.Invoke(null, [Convert.ToString(plain), null]), plain); }
         catch (TargetInvocationException) { return true; }
@@ -267,7 +267,7 @@ public static class TextClaims
         var one = Sides.WithoutTypeKit(o);
         var pos = r["shape.position"]; var con = r.Get("shape.containing") ?? "class";
         var plain = e.Valid(); var vo = Make.Vo(e, plain);
-        var hv = Pos.Build(pos, con, e, true, vo); var hp = Pos.Build(pos, con, e, false, plain);
+        var (hp, hv) = Sides.Twins(pos, con, e, plain, vo);
         var w3 = Sides.Write(hv, o); var jv = w3.Value;
         bool Guarded(Exception? x, Check c) => c.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class" && x is NotSupportedException;
         var fails = new List<string?>();
@@ -424,7 +424,7 @@ public static class TextClaims
         var opts = JsonRow.Apply(r, e).Options!;
         var one = Sides.WithoutTypeKit(opts);
         var pos = r["shape.position"]; var con = r.Get("shape.containing") ?? "class";
-        var hp = Pos.Build(pos, con, e, false, plain); var hv = Pos.Build(pos, con, e, true, Make.Vo(e, plain));
+        var (hp, hv) = Sides.Twins(pos, con, e, plain, Make.Vo(e, plain));
         var input = r["input.json"];
         fails.Add(r.Check("json-never-repeats", Baseline.Refusal, c =>
         {
@@ -570,7 +570,7 @@ public static class TextClaims
         var o = JsonRow.Apply(r, e).Options!;
         var one = Sides.WithoutTypeKit(o);
         var pos = r["shape.position"]; var con = r.Get("shape.containing") ?? "class"; var plain = e.Valid();
-        var hp = Pos.Build(pos, con, e, false, plain); var hv = Pos.Build(pos, con, e, true, Make.Vo(e, plain));
+        var (hp, hv) = Sides.Twins(pos, con, e, plain, Make.Vo(e, plain));
         bool Guarded(Exception x) => r.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class" && x is NotSupportedException;
         var w2 = Sides.Write(hp, o); var w3 = Sides.Write(hv, o);
         var (jp, xp) = (w2.Value, w2.Thrown); var (jv, xv) = (w3.Value, w3.Thrown);

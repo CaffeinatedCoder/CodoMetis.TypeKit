@@ -50,7 +50,7 @@ public static class OffTheWire
         var eo = e with { Vo = orType, Plain = orType, PolyBase = pb, PolyDerived = pd, PolyBasePlain = pb, PolyDerivedPlain = pd };
         var hv = Pos.Build(position, containing, e, true, voValue);     // the value object's shape: its document is the read's input
         var ho = Pos.Build(position, containing, eo, true, orValue);
-        var o = JCtx.Apply(r, e, L06JsonContext.Default, hv.Declared, ho.Declared);
+        var o = JCtx.Apply(r, e, hv.Declared, ho.Declared);
         var own = (JsonConverter)Activator.CreateInstance(typeof(OwnOrConverter<>).MakeGenericType(orType), orValue)!;
         var oOwn = new JsonSerializerOptions(o); oOwn.Converters.Insert(0, own);
         int OwnReads() => (int)own.GetType().GetField("Reads")!.GetValue(own)!;
