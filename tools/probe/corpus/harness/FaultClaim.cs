@@ -280,13 +280,19 @@ public static class FaultClaim
         {
             var f = await r.Check(o, Against(o), async c =>
             {
-                bool want(string aspect, Mem? m) => s.Of(aspect, m).Contains(o);
+                var wire = false;   // whether the check compared an answer on the wire before the document
+                bool want(string aspect, Mem? m)
+                {
+                    var wanted = s.Of(aspect, m).Contains(o);
+                    if (wanted && !Aspect.Doc.Contains(aspect)) wire = true;
+                    return wanted;
+                }
                 foreach (var ep in eps)
                     foreach (var e in s.Errors)
                         if (Wire(r, ep, FxErr.H[e - 1], wires[(ep.Url, e)], display, want) is { } fail) return fail;
                 if (!Aspect.Doc.Any(a => want(a, null))) return null;
                 // A document ASP.NET alone refuses too has nothing to check (noted there); any other failure is returned.
-                if (docFailed is not null) return await DocRefusedByAspNetAlone(c, r, en, cfg, docFailed);
+                if (docFailed is not null) return await DocRefusedByAspNetAlone(c, r, en, cfg, docFailed, wire);
                 foreach (var ep in eps)
                     if (DocOf(r, doc!, ep, want) is { } fail) return fail;
                 return null;
@@ -314,7 +320,7 @@ public static class FaultClaim
     /// (README "A Result as a response"), so ASP.NET alone writing a document of the same host without any problem response says nothing about
     /// them: under json.MaxDepth=3 System.Text.Json refuses the problem schema of ASP.NET's own ProducesProblem too (decision 99).
     /// </summary>
-    static async Task<string?> DocRefusedByAspNetAlone(Check c, Row r, Entry en, HostCfg cfg, Exception withTypeKit)
+    static async Task<string?> DocRefusedByAspNetAlone(Check c, Row r, Entry en, HostCfg cfg, Exception withTypeKit, bool comparedBefore)
     {
         static string Say(Exception x) => x.GetType().Name + ": " + Cut(x.Message);
         var alone = cfg.Copy(); alone.TypeKitOpenApi = false;
@@ -325,11 +331,10 @@ public static class FaultClaim
             await using var app = await Hx.Start(r, en, alone);
             await Hx.Doc(app);
         }
-        // the same refusal, at another byte of each document (Hx.Unplaced: the two differ in length by what AddTypeKit() wrote; rows 73 and
-        // 157 of C06's regenerated rows, a char under WriteAsString)
-        catch (Exception ex) when (ex.GetType() == withTypeKit.GetType() && Hx.Unplaced(ex.Message) == Hx.Unplaced(withTypeKit.Message))
+        // the same refusal by type and stage, never by its words (Hx.DocAlike)
+        catch (Exception ex) when (Hx.DocAlike(ex, withTypeKit))
         {
-            r.Note(NoteKeys.DocRefusedByAspnetAlone, ex.GetType().Name);
+            Hx.DocRefused(r, ex, comparedBefore);
             return null;
         }
         catch (Exception ex) when (r.Is("json.MaxDepth", "3") && Depth(ex) && Depth(withTypeKit))

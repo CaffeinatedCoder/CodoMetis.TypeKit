@@ -556,6 +556,7 @@ namespace Probes.Schema
             {
                 var f = await r.Check(o, Baseline.Docs("docs/merge-patches.md#required-constructor-parameters"), async c =>
                 {
+                    var compared = false;   // whether the check judged an answer before the document
                     foreach (var (path, kind, body, w, twinThrew) in answers)
                     {
                         // a body without the patch is the listing's premise where the options reject it, else what absent-is-default reads
@@ -566,6 +567,7 @@ namespace Probes.Schema
                             c.Inconclusive($"{path} {body}: MVC's validator throws {twinThrew} for the plain twin's body too");
                             continue;
                         }
+                        compared = true;
                         if (w.Thrown is not null) return $"{path} {body}: request threw {w.Thrown}";
                         switch (kind)
                         {
@@ -581,7 +583,7 @@ namespace Probes.Schema
                     }
                     if (o != listing) return null;
                     // a document ASP.NET alone refuses the same way has nothing to check (noted there)
-                    if (docFailed is not null) return await Hx.DocRefusedByAspNetAlone(r, en, cfg, docFailed);
+                    if (docFailed is not null) return await Hx.DocRefusedByAspNetAlone(r, en, cfg, docFailed, compared);
                     foreach (var path in Sides(r, family))
                     {
                         var op = Op(doc!, path, "post");
