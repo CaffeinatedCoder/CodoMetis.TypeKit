@@ -9,168 +9,166 @@ namespace Probes.Build.C11;
 // row 0
 public static partial class O0
 {
-public interface IMark0 { int Mark(); }
-public sealed partial record V0 : IValue<double>, IMark0 { int IMark0.Mark() => 1; }
+public sealed partial class P0
+{
+public abstract record B0_3 {  }
+public abstract record B0_2 : B0_3 {  }
+public abstract record B0_1 : B0_2 {  }
+public sealed partial record V0 : B0_1, IValidatedValue<V0, long, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V0, global::Probes.Shapes.ShapeFault> Create(long value) => new V0(value);
+}
+}
 }
 
 // row 1
-public sealed partial record V1 : IValidatedValue<V1, global::System.TimeSpan, global::Probes.Shapes.ShapeFault>
+public static partial class O1
 {
-    public static Result<V1, global::Probes.Shapes.ShapeFault> Create(global::System.TimeSpan value) => new V1(value);
+public sealed partial class P1
+{
+public sealed partial record V1 : IValue<global::Probes.Build.C11ConstructedByRef> { }
+public sealed partial record VC1 : IValue<global::Probes.Build.C11ParsesFromIn> { }
+}
 }
 
 // row 2
 public partial struct O2
 {
-public abstract record B2_2 {  }
-public abstract record B2_1 : B2_2 {  }
-public sealed partial record V2 : B2_1, IValue<global::Probes.Build.C11ParsesToInt> { }
-public abstract record BC2_2 {  }
-public abstract record BC2_1 : BC2_2 {  }
-public sealed partial record VC2 : BC2_1, IValue<global::Probes.Build.C11ParsedShape> { }
+public interface IMark2 { int Mark(); }
+public sealed partial record V2 : IValue<global::Probes.Build.C11AbstractText>, IMark2 { int IMark2.Mark() => 1; }
+public sealed partial record VC2 : IValue<global::Probes.Build.C11ConstructedConcrete>, IMark2 { int IMark2.Mark() => 1; }
 }
 
 // row 3
 public static partial class O3
 {
-public sealed partial class P3
+public readonly partial record struct V3 : IValidatedValue<V3, global::System.Guid, global::Probes.Shapes.ShapeFault>
 {
-public readonly partial record struct V3 : IValidatedValue<V3, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V3, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V3(value);
-}
-public readonly partial record struct VC3 : IValidatedValue<VC3, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC3, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC3(value);
-}
+    public static Result<V3, global::Probes.Shapes.ShapeFault> Create(global::System.Guid value) => new V3(value);
 }
 }
 
 // row 4
-public interface IMark4 { int Mark(); }
-public readonly partial record struct V4 : IValue<global::Probes.Build.C11ParsesByRef>, IMark4 { int IMark4.Mark() => 1; }
-public readonly partial record struct VC4 : IValue<global::Probes.Build.C11ParsesFromIn>, IMark4 { int IMark4.Mark() => 1; }
+public abstract record B4_1 : System.IEquatable<B4_1> { bool System.IEquatable<B4_1>.Equals(B4_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V4 : B4_1, IValidatedValue<V4, global::Probes.Shapes.PFlags, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V4, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PFlags value) => new V4(value);
+}
 
 // row 5
-public partial struct O5
+public static partial class O5
 {
-public abstract record B5_1 {  }
-public sealed partial record V5 : B5_1, IValidatedValue<V5, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>
+public interface IMark5 { int Mark(); }
+public readonly partial record struct V5 : IValidatedValue<V5, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>, IMark5
 {
-    public static Result<V5, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V5(value);
+    public static Result<V5, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V5(value); int IMark5.Mark() => 1;
 }
-public abstract record BC5_1 {  }
-public sealed partial record VC5 : BC5_1, IValidatedValue<VC5, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>
+public readonly partial record struct VC5 : IValidatedValue<VC5, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>, IMark5
 {
-    public static Result<VC5, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC5(value);
+    public static Result<VC5, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC5(value); int IMark5.Mark() => 1;
 }
 }
 
 // row 6
-public static partial class O6
-{
-public readonly partial record struct V6 : IValue<global::Probes.Build.C11ParsesToInt> { }
-public readonly partial record struct VC6 : IValue<global::Probes.Build.C11ParsedShape> { }
-}
+public interface IMark6 { int Mark(); }
+public readonly partial record struct V6 : IValue<global::System.DateTime>, IMark6 { int IMark6.Mark() => 1; }
 
 // row 7
-public static partial class O7
-{
-public sealed partial class P7
-{
 public abstract record B7_1 {  }
-public sealed partial record V7 : B7_1, IValue<global::Probes.Build.C11ConstructedByRef> { }
+public sealed partial record V7 : B7_1, IValue<global::Probes.Build.C11ParsesToInt> { }
 public abstract record BC7_1 {  }
-public sealed partial record VC7 : BC7_1, IValue<global::Probes.Build.C11ParsesFromIn> { }
-}
-}
+public sealed partial record VC7 : BC7_1, IValue<global::Probes.Build.C11ParsedShape> { }
 
 // row 8
 public static partial class O8
 {
-public sealed partial class P8
-{
-public abstract record B8_1 : System.IEquatable<B8_1> { bool System.IEquatable<B8_1>.Equals(B8_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V8 : B8_1, IValue<long> { }
-}
+public readonly partial record struct V8 : IValue<global::Probes.Build.C11AbstractText> { }
+public readonly partial record struct VC8 : IValue<global::Probes.Build.C11ConstructedConcrete> { }
 }
 
 // row 9
 public partial struct O9
 {
-public abstract record B9_3 {  }
-public abstract record B9_2 : B9_3 {  }
-public abstract record B9_1 : B9_2 {  }
-public sealed partial record V9 : B9_1, IValidatedValue<V9, global::NodaTime.Instant, global::Probes.Shapes.ShapeFault>
+public abstract record B9_1 {  }
+public sealed partial record V9 : B9_1, IValidatedValue<V9, global::System.TimeSpan, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<V9, global::Probes.Shapes.ShapeFault> Create(global::NodaTime.Instant value) => new V9(value);
+    public static Result<V9, global::Probes.Shapes.ShapeFault> Create(global::System.TimeSpan value) => new V9(value);
 }
 }
 
 // row 10
-public abstract record B10_1 : System.IEquatable<B10_1> { bool System.IEquatable<B10_1>.Equals(B10_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V10 : B10_1, IValidatedValue<V10, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
+public partial struct O10
 {
-    public static Result<V10, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V10(value);
-}
-public abstract record BC10_1 : System.IEquatable<BC10_1> { bool System.IEquatable<BC10_1>.Equals(BC10_1? other) => ReferenceEquals(this, other); }
-public sealed partial record VC10 : BC10_1, IValidatedValue<VC10, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC10, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC10(value);
+public readonly partial record struct V10 : IValue<global::Probes.Build.C11ParsesToInt> { }
+public readonly partial record struct VC10 : IValue<global::Probes.Build.C11ParsedShape> { }
 }
 
 // row 11
-public static partial class O11
+public abstract record B11_2 {  }
+public abstract record B11_1 : B11_2 {  }
+public sealed partial record V11 : B11_1, IValidatedValue<V11, global::Probes.Build.C11ConstructedByRef, global::Probes.Shapes.ShapeFault>
 {
-public interface IMark11 { int Mark(); }
-public readonly partial record struct V11 : IValidatedValue<V11, global::Probes.Build.C11ConstructedByRef, global::Probes.Shapes.ShapeFault>, IMark11
-{
-    public static Result<V11, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedByRef value) => new V11(value); int IMark11.Mark() => 1;
+    public static Result<V11, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedByRef value) => new V11(value);
 }
-public readonly partial record struct VC11 : IValidatedValue<VC11, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>, IMark11
+public abstract record BC11_2 {  }
+public abstract record BC11_1 : BC11_2 {  }
+public sealed partial record VC11 : BC11_1, IValidatedValue<VC11, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<VC11, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC11(value); int IMark11.Mark() => 1;
-}
+    public static Result<VC11, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC11(value);
 }
 
 // row 12
-public abstract record B12_2 {  }
+public partial struct O12
+{
+public abstract record B12_3 {  }
+public abstract record B12_2 : B12_3 {  }
 public abstract record B12_1 : B12_2 {  }
-public sealed partial record V12 : B12_1, IValue<bool> { }
+public sealed partial record V12 : B12_1, IValue<global::Probes.Build.C11ParsesByRef> { }
+public abstract record BC12_3 {  }
+public abstract record BC12_2 : BC12_3 {  }
+public abstract record BC12_1 : BC12_2 {  }
+public sealed partial record VC12 : BC12_1, IValue<global::Probes.Build.C11ParsesFromIn> { }
+}
 
 // row 13
 public static partial class O13
 {
-public abstract record B13_3 {  }
-public abstract record B13_2 : B13_3 {  }
-public abstract record B13_1 : B13_2 {  }
+public sealed partial class P13
+{
+public abstract record B13_1 {  }
 public sealed partial record V13 : B13_1, IValidatedValue<V13, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>
 {
     public static Result<V13, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V13(value);
 }
-public abstract record BC13_3 {  }
-public abstract record BC13_2 : BC13_3 {  }
-public abstract record BC13_1 : BC13_2 {  }
+public abstract record BC13_1 {  }
 public sealed partial record VC13 : BC13_1, IValidatedValue<VC13, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>
 {
     public static Result<VC13, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC13(value);
 }
 }
+}
 
 // row 14
-public partial struct O14
+public static partial class O14
 {
-public readonly partial record struct V14 : IValidatedValue<V14, global::System.DateOnly, global::Probes.Shapes.ShapeFault>
+public sealed partial class P14
 {
-    public static Result<V14, global::Probes.Shapes.ShapeFault> Create(global::System.DateOnly value) => new V14(value);
+public readonly partial record struct V14 : IValue<global::Probes.Build.C11ParsesByRef> { }
+public readonly partial record struct VC14 : IValue<global::Probes.Build.C11ParsesFromIn> { }
 }
 }
 
 // row 15
 public partial struct O15
 {
-public readonly partial record struct V15 : IValue<global::Probes.Build.C11ConstructedByRef> { }
-public readonly partial record struct VC15 : IValue<global::Probes.Build.C11ParsesFromIn> { }
+public readonly partial record struct V15 : IValidatedValue<V15, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V15, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V15(value);
+}
+public readonly partial record struct VC15 : IValidatedValue<VC15, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC15, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC15(value);
+}
 }
 
 // row 16
@@ -178,300 +176,277 @@ public static partial class O16
 {
 public sealed partial class P16
 {
-public interface IMark16 { int Mark(); }
-public readonly partial record struct V16 : IValue<global::Probes.Build.C11AbstractText>, IMark16 { int IMark16.Mark() => 1; }
-public readonly partial record struct VC16 : IValue<global::Probes.Build.C11ConstructedConcrete>, IMark16 { int IMark16.Mark() => 1; }
+public readonly partial record struct V16 : IValidatedValue<V16, global::System.TimeOnly, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V16, global::Probes.Shapes.ShapeFault> Create(global::System.TimeOnly value) => new V16(value);
+}
 }
 }
 
 // row 17
-public readonly partial record struct V17 : IValue<global::System.Uri> { }
+public static partial class O17
+{
+public abstract record B17_1 {  }
+public sealed partial record V17 : B17_1, IValidatedValue<V17, global::Probes.Build.C11ConstructedByRef, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V17, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedByRef value) => new V17(value);
+}
+public abstract record BC17_1 {  }
+public sealed partial record VC17 : BC17_1, IValidatedValue<VC17, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC17, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC17(value);
+}
+}
 
 // row 18
-public static partial class O18
-{
-public sealed partial class P18
-{
-public abstract record B18_2 {  }
+public abstract record B18_3 {  }
+public abstract record B18_2 : B18_3 {  }
 public abstract record B18_1 : B18_2 {  }
-public sealed partial record V18 : B18_1, IValidatedValue<V18, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V18, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V18(value);
-}
-public abstract record BC18_2 {  }
+public sealed partial record V18 : B18_1, IValue<global::Probes.Build.C11AbstractText> { }
+public abstract record BC18_3 {  }
+public abstract record BC18_2 : BC18_3 {  }
 public abstract record BC18_1 : BC18_2 {  }
-public sealed partial record VC18 : BC18_1, IValidatedValue<VC18, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC18, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC18(value);
-}
-}
-}
+public sealed partial record VC18 : BC18_1, IValue<global::Probes.Build.C11ConstructedConcrete> { }
 
 // row 19
 public static partial class O19
 {
 public abstract record B19_1 : System.IEquatable<B19_1> { bool System.IEquatable<B19_1>.Equals(B19_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V19 : B19_1, IValue<global::Probes.Build.C11AbstractText> { }
-public abstract record BC19_1 : System.IEquatable<BC19_1> { bool System.IEquatable<BC19_1>.Equals(BC19_1? other) => ReferenceEquals(this, other); }
-public sealed partial record VC19 : BC19_1, IValue<global::Probes.Build.C11ConstructedConcrete> { }
+public sealed partial record V19 : B19_1, IValue<decimal> { }
 }
 
 // row 20
 public partial struct O20
 {
-public interface IMark20 { int Mark(); }
-public readonly partial record struct V20 : IValidatedValue<V20, global::Probes.Build.C11ParsesByRef, global::Probes.Shapes.ShapeFault>, IMark20
+public abstract record B20_2 {  }
+public abstract record B20_1 : B20_2 {  }
+public sealed partial record V20 : B20_1, IValidatedValue<V20, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<V20, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesByRef value) => new V20(value); int IMark20.Mark() => 1;
+    public static Result<V20, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V20(value);
 }
-public readonly partial record struct VC20 : IValidatedValue<VC20, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>, IMark20
+public abstract record BC20_2 {  }
+public abstract record BC20_1 : BC20_2 {  }
+public sealed partial record VC20 : BC20_1, IValidatedValue<VC20, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<VC20, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC20(value); int IMark20.Mark() => 1;
+    public static Result<VC20, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC20(value);
 }
 }
 
 // row 21
-public static partial class O21
+public interface IMark21 { int Mark(); }
+public readonly partial record struct V21 : IValidatedValue<V21, global::Probes.Build.C11ConstructedByRef, global::Probes.Shapes.ShapeFault>, IMark21
 {
-public readonly partial record struct V21 : IValidatedValue<V21, global::System.DateTimeOffset, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V21, global::Probes.Shapes.ShapeFault> Create(global::System.DateTimeOffset value) => new V21(value);
+    public static Result<V21, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedByRef value) => new V21(value); int IMark21.Mark() => 1;
 }
+public readonly partial record struct VC21 : IValidatedValue<VC21, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>, IMark21
+{
+    public static Result<VC21, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC21(value); int IMark21.Mark() => 1;
 }
 
 // row 22
-public static partial class O22
-{
-public sealed partial class P22
-{
-public interface IMark22 { int Mark(); }
-public readonly partial record struct V22 : IValue<global::Probes.Build.C11ParsesToInt>, IMark22 { int IMark22.Mark() => 1; }
-public readonly partial record struct VC22 : IValue<global::Probes.Build.C11ParsedShape>, IMark22 { int IMark22.Mark() => 1; }
-}
-}
+public readonly partial record struct V22 : IValue<global::Probes.Shapes.PEnum> { }
 
 // row 23
-public static partial class O23
+public partial struct O23
 {
-public sealed partial class P23
-{
-public abstract record B23_3 {  }
-public abstract record B23_2 : B23_3 {  }
-public abstract record B23_1 : B23_2 {  }
-public sealed partial record V23 : B23_1, IValue<byte> { }
-}
+public readonly partial record struct V23 : IValue<global::Probes.Build.C11ParsesToInt> { }
+public readonly partial record struct VC23 : IValue<global::Probes.Build.C11ParsedShape> { }
 }
 
 // row 24
-public static partial class O24
+public sealed partial record V24 : IValidatedValue<V24, bool, global::Probes.Shapes.ShapeFault>
 {
-public readonly partial record struct V24 : IValidatedValue<V24, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V24, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V24(value);
-}
-public readonly partial record struct VC24 : IValidatedValue<VC24, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC24, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC24(value);
-}
+    public static Result<V24, global::Probes.Shapes.ShapeFault> Create(bool value) => new V24(value);
 }
 
 // row 25
-public interface IMark25 { int Mark(); }
-public readonly partial record struct V25 : IValidatedValue<V25, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>, IMark25
+public static partial class O25
 {
-    public static Result<V25, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V25(value); int IMark25.Mark() => 1;
+public sealed partial class P25
+{
+public readonly partial record struct V25 : IValue<global::Probes.Build.C11ParsesToInt> { }
+public readonly partial record struct VC25 : IValue<global::Probes.Build.C11ParsedShape> { }
 }
-public readonly partial record struct VC25 : IValidatedValue<VC25, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>, IMark25
-{
-    public static Result<VC25, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC25(value); int IMark25.Mark() => 1;
 }
 
 // row 26
-public partial struct O26
+public static partial class O26
+{
+public sealed partial class P26
 {
 public abstract record B26_1 : System.IEquatable<B26_1> { bool System.IEquatable<B26_1>.Equals(B26_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V26 : B26_1, IValidatedValue<V26, global::Probes.Build.C11ParsesByRef, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V26, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesByRef value) => new V26(value);
-}
+public sealed partial record V26 : B26_1, IValue<global::Probes.Build.C11ParsesByRef> { }
 public abstract record BC26_1 : System.IEquatable<BC26_1> { bool System.IEquatable<BC26_1>.Equals(BC26_1? other) => ReferenceEquals(this, other); }
-public sealed partial record VC26 : BC26_1, IValidatedValue<VC26, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC26, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC26(value);
+public sealed partial record VC26 : BC26_1, IValue<global::Probes.Build.C11ParsesFromIn> { }
 }
 }
 
 // row 27
-public static partial class O27
-{
-public readonly partial record struct V27 : IValidatedValue<V27, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V27, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V27(value);
-}
-public readonly partial record struct VC27 : IValidatedValue<VC27, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC27, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC27(value);
-}
-}
+public readonly partial record struct V27 : IValue<global::Probes.Build.C11ParsesToInt> { }
+public readonly partial record struct VC27 : IValue<global::Probes.Build.C11ParsedShape> { }
 
 // row 28
-public readonly partial record struct V28 : IValidatedValue<V28, global::Probes.Build.C11ParsesByRef, global::Probes.Shapes.ShapeFault>
+public static partial class O28
 {
-    public static Result<V28, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesByRef value) => new V28(value);
+public abstract record B28_3 {  }
+public abstract record B28_2 : B28_3 {  }
+public abstract record B28_1 : B28_2 {  }
+public sealed partial record V28 : B28_1, IValidatedValue<V28, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V28, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V28(value);
 }
-public readonly partial record struct VC28 : IValidatedValue<VC28, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
+public abstract record BC28_3 {  }
+public abstract record BC28_2 : BC28_3 {  }
+public abstract record BC28_1 : BC28_2 {  }
+public sealed partial record VC28 : BC28_1, IValidatedValue<VC28, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<VC28, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC28(value);
+    public static Result<VC28, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC28(value);
+}
 }
 
 // row 29
-public partial struct O29
+public static partial class O29
+{
+public sealed partial class P29
 {
 public interface IMark29 { int Mark(); }
-public sealed partial record V29 : IValidatedValue<V29, global::Probes.Build.C11ConstructedByRef, global::Probes.Shapes.ShapeFault>, IMark29
+public readonly partial record struct V29 : IValidatedValue<V29, global::System.Uri, global::Probes.Shapes.ShapeFault>, IMark29
 {
-    public static Result<V29, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedByRef value) => new V29(value); int IMark29.Mark() => 1;
+    public static Result<V29, global::Probes.Shapes.ShapeFault> Create(global::System.Uri value) => new V29(value); int IMark29.Mark() => 1;
 }
-public sealed partial record VC29 : IValidatedValue<VC29, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>, IMark29
-{
-    public static Result<VC29, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC29(value); int IMark29.Mark() => 1;
 }
 }
 
 // row 30
-public abstract record B30_2 {  }
-public abstract record B30_1 : B30_2 {  }
-public sealed partial record V30 : B30_1, IValue<global::Probes.Build.C11ParsesByRef> { }
-public abstract record BC30_2 {  }
-public abstract record BC30_1 : BC30_2 {  }
-public sealed partial record VC30 : BC30_1, IValue<global::Probes.Build.C11ParsesFromIn> { }
+public readonly partial record struct V30 : IValidatedValue<V30, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V30, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V30(value);
+}
+public readonly partial record struct VC30 : IValidatedValue<VC30, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC30, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC30(value);
+}
 
 // row 31
 public static partial class O31
 {
-public readonly partial record struct V31 : IValidatedValue<V31, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
+public sealed partial class P31
 {
-    public static Result<V31, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V31(value);
-}
-public readonly partial record struct VC31 : IValidatedValue<VC31, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC31, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC31(value);
+public readonly partial record struct V31 : IValue<global::Probes.Build.C11AbstractText> { }
+public readonly partial record struct VC31 : IValue<global::Probes.Build.C11ConstructedConcrete> { }
 }
 }
 
 // row 32
-public partial struct O32
+public static partial class O32
 {
-public sealed partial record V32 : IValue<global::Probes.Build.C11AbstractText> { }
-public sealed partial record VC32 : IValue<global::Probes.Build.C11ConstructedConcrete> { }
+public sealed partial class P32
+{
+public abstract record B32_2 {  }
+public abstract record B32_1 : B32_2 {  }
+public sealed partial record V32 : B32_1, IValue<global::Probes.Build.C11ParsesToInt> { }
+public abstract record BC32_2 {  }
+public abstract record BC32_1 : BC32_2 {  }
+public sealed partial record VC32 : BC32_1, IValue<global::Probes.Build.C11ParsedShape> { }
+}
 }
 
 // row 33
-public static partial class O33
-{
-public abstract record B33_1 {  }
-public sealed partial record V33 : B33_1, IValidatedValue<V33, long, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V33, global::Probes.Shapes.ShapeFault> Create(long value) => new V33(value);
-}
-}
+public readonly partial record struct V33 : IValue<ulong> { }
 
 // row 34
-public abstract record B34_3 {  }
-public abstract record B34_2 : B34_3 {  }
-public abstract record B34_1 : B34_2 {  }
-public sealed partial record V34 : B34_1, IValue<global::Probes.Build.C11ParsesToInt> { }
-public abstract record BC34_3 {  }
-public abstract record BC34_2 : BC34_3 {  }
-public abstract record BC34_1 : BC34_2 {  }
-public sealed partial record VC34 : BC34_1, IValue<global::Probes.Build.C11ParsedShape> { }
+public partial struct O34
+{
+public interface IMark34 { int Mark(); }
+public readonly partial record struct V34 : IValidatedValue<V34, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>, IMark34
+{
+    public static Result<V34, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V34(value); int IMark34.Mark() => 1;
+}
+public readonly partial record struct VC34 : IValidatedValue<VC34, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>, IMark34
+{
+    public static Result<VC34, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC34(value); int IMark34.Mark() => 1;
+}
+}
 
 // row 35
-public abstract record B35_2 {  }
+public static partial class O35
+{
+public sealed partial class P35
+{
+public abstract record B35_3 {  }
+public abstract record B35_2 : B35_3 {  }
 public abstract record B35_1 : B35_2 {  }
-public sealed partial record V35 : B35_1, IValue<int> { }
+public sealed partial record V35 : B35_1, IValue<global::Probes.Shapes.PFlags> { }
+}
+}
 
 // row 36
-public partial struct O36
+public static partial class O36
 {
-public abstract record B36_2 {  }
-public abstract record B36_1 : B36_2 {  }
-public sealed partial record V36 : B36_1, IValue<global::Probes.Build.C11AbstractText> { }
-public abstract record BC36_2 {  }
-public abstract record BC36_1 : BC36_2 {  }
-public sealed partial record VC36 : BC36_1, IValue<global::Probes.Build.C11ConstructedConcrete> { }
+public abstract record B36_1 {  }
+public sealed partial record V36 : B36_1, IValidatedValue<V36, char, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V36, global::Probes.Shapes.ShapeFault> Create(char value) => new V36(value);
+}
 }
 
 // row 37
 public static partial class O37
 {
-public sealed partial class P37
+public abstract record B37_1 {  }
+public sealed partial record V37 : B37_1, IValidatedValue<V37, string, global::Probes.Shapes.ShapeFault>
 {
-public sealed partial record V37 : IValue<char> { }
+    public static Result<V37, global::Probes.Shapes.ShapeFault> Create(string value) => new V37(value);
 }
 }
 
 // row 38
-public partial struct O38
-{
-public abstract record B38_2 {  }
-public abstract record B38_1 : B38_2 {  }
-public sealed partial record V38 : B38_1, IValidatedValue<V38, global::Probes.Build.C11ParsesByRef, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V38, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesByRef value) => new V38(value);
-}
-public abstract record BC38_2 {  }
-public abstract record BC38_1 : BC38_2 {  }
-public sealed partial record VC38 : BC38_1, IValidatedValue<VC38, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC38, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC38(value);
-}
-}
+public abstract record B38_1 {  }
+public sealed partial record V38 : B38_1, IValue<byte> { }
 
 // row 39
-public partial struct O39
+public static partial class O39
+{
+public sealed partial class P39
 {
 public abstract record B39_3 {  }
 public abstract record B39_2 : B39_3 {  }
 public abstract record B39_1 : B39_2 {  }
-public sealed partial record V39 : B39_1, IValue<global::Probes.Shapes.PEnum> { }
+public sealed partial record V39 : B39_1, IValue<global::Probes.Build.C11AbstractText> { }
+public abstract record BC39_3 {  }
+public abstract record BC39_2 : BC39_3 {  }
+public abstract record BC39_1 : BC39_2 {  }
+public sealed partial record VC39 : BC39_1, IValue<global::Probes.Build.C11ConstructedConcrete> { }
+}
 }
 
 // row 40
 public partial struct O40
 {
-public readonly partial record struct V40 : IValidatedValue<V40, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V40, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V40(value);
-}
-public readonly partial record struct VC40 : IValidatedValue<VC40, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC40, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC40(value);
-}
+public abstract record B40_1 : System.IEquatable<B40_1> { bool System.IEquatable<B40_1>.Equals(B40_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V40 : B40_1, IValue<global::Probes.Build.C11ParsesByRef> { }
+public abstract record BC40_1 : System.IEquatable<BC40_1> { bool System.IEquatable<BC40_1>.Equals(BC40_1? other) => ReferenceEquals(this, other); }
+public sealed partial record VC40 : BC40_1, IValue<global::Probes.Build.C11ParsesFromIn> { }
 }
 
 // row 41
-public partial struct O41
+public static partial class O41
 {
-public abstract record B41_1 : System.IEquatable<B41_1> { bool System.IEquatable<B41_1>.Equals(B41_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V41 : B41_1, IValue<global::Probes.Shapes.PRec> { }
+public readonly partial record struct V41 : IValue<int> { }
 }
 
 // row 42
-public static partial class O42
+public interface IMark42 { int Mark(); }
+public sealed partial record V42 : IValidatedValue<V42, global::NodaTime.Instant, global::Probes.Shapes.ShapeFault>, IMark42
 {
-public sealed partial class P42
-{
-public abstract record B42_1 : System.IEquatable<B42_1> { bool System.IEquatable<B42_1>.Equals(B42_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V42 : B42_1, IValue<global::System.Guid> { }
-}
+    public static Result<V42, global::Probes.Shapes.ShapeFault> Create(global::NodaTime.Instant value) => new V42(value); int IMark42.Mark() => 1;
 }
 
 // row 43
-public partial struct O43
+public interface IMark43 { int Mark(); }
+public readonly partial record struct V43 : IValidatedValue<V43, global::Probes.Shapes.PRec, global::Probes.Shapes.ShapeFault>, IMark43
 {
-public readonly partial record struct V43 : IValue<global::Probes.Build.C11AbstractText> { }
-public readonly partial record struct VC43 : IValue<global::Probes.Build.C11ConstructedConcrete> { }
+    public static Result<V43, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PRec value) => new V43(value); int IMark43.Mark() => 1;
 }
 
 // row 44
@@ -479,124 +454,110 @@ public static partial class O44
 {
 public sealed partial class P44
 {
-public readonly partial record struct V44 : IValue<global::Probes.Build.C11ParsesByRef> { }
-public readonly partial record struct VC44 : IValue<global::Probes.Build.C11ParsesFromIn> { }
+public interface IMark44 { int Mark(); }
+public readonly partial record struct V44 : IValue<decimal>, IMark44 { int IMark44.Mark() => 1; }
 }
 }
 
 // row 45
-public readonly partial record struct V45 : IValidatedValue<V45, global::Probes.Build.C11ConstructedByRef, global::Probes.Shapes.ShapeFault>
+public abstract record B45_1 : System.IEquatable<B45_1> { bool System.IEquatable<B45_1>.Equals(B45_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V45 : B45_1, IValidatedValue<V45, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<V45, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedByRef value) => new V45(value);
+    public static Result<V45, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V45(value);
 }
-public readonly partial record struct VC45 : IValidatedValue<VC45, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
+public abstract record BC45_1 : System.IEquatable<BC45_1> { bool System.IEquatable<BC45_1>.Equals(BC45_1? other) => ReferenceEquals(this, other); }
+public sealed partial record VC45 : BC45_1, IValidatedValue<VC45, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<VC45, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC45(value);
+    public static Result<VC45, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC45(value);
 }
 
 // row 46
 public static partial class O46
 {
-public readonly partial record struct V46 : IValidatedValue<V46, global::Probes.Shapes.PFlags, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V46, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PFlags value) => new V46(value);
-}
+public interface IMark46 { int Mark(); }
+public sealed partial record V46 : IValue<global::System.DateTimeOffset>, IMark46 { int IMark46.Mark() => 1; }
 }
 
 // row 47
-public static partial class O47
-{
-public readonly partial record struct V47 : IValidatedValue<V47, int, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V47, global::Probes.Shapes.ShapeFault> Create(int value) => new V47(value);
-}
-}
+public abstract record B47_1 : System.IEquatable<B47_1> { bool System.IEquatable<B47_1>.Equals(B47_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V47 : B47_1, IValue<global::Probes.Build.C11ConstructedByRef> { }
+public abstract record BC47_1 : System.IEquatable<BC47_1> { bool System.IEquatable<BC47_1>.Equals(BC47_1? other) => ReferenceEquals(this, other); }
+public sealed partial record VC47 : BC47_1, IValue<global::Probes.Build.C11ParsesFromIn> { }
 
 // row 48
 public static partial class O48
 {
-public readonly partial record struct V48 : IValue<global::Probes.Build.C11AbstractText> { }
-public readonly partial record struct VC48 : IValue<global::Probes.Build.C11ConstructedConcrete> { }
+public readonly partial record struct V48 : IValue<long> { }
 }
 
 // row 49
 public static partial class O49
 {
-public abstract record B49_1 : System.IEquatable<B49_1> { bool System.IEquatable<B49_1>.Equals(B49_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V49 : B49_1, IValidatedValue<V49, bool, global::Probes.Shapes.ShapeFault>
+public sealed partial class P49
 {
-    public static Result<V49, global::Probes.Shapes.ShapeFault> Create(bool value) => new V49(value);
+public abstract record B49_1 {  }
+public sealed partial record V49 : B49_1, IValidatedValue<V49, global::System.DateTimeOffset, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V49, global::Probes.Shapes.ShapeFault> Create(global::System.DateTimeOffset value) => new V49(value);
+}
 }
 }
 
 // row 50
-public abstract record B50_1 : System.IEquatable<B50_1> { bool System.IEquatable<B50_1>.Equals(B50_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V50 : B50_1, IValue<global::Probes.Build.C11ParsesByRef> { }
-public abstract record BC50_1 : System.IEquatable<BC50_1> { bool System.IEquatable<BC50_1>.Equals(BC50_1? other) => ReferenceEquals(this, other); }
-public sealed partial record VC50 : BC50_1, IValue<global::Probes.Build.C11ParsesFromIn> { }
+public partial struct O50
+{
+public readonly partial record struct V50 : IValue<global::System.TimeOnly> { }
+}
 
 // row 51
-public static partial class O51
+public partial struct O51
 {
-public abstract record B51_3 {  }
-public abstract record B51_2 : B51_3 {  }
+public abstract record B51_2 {  }
 public abstract record B51_1 : B51_2 {  }
-public sealed partial record V51 : B51_1, IValidatedValue<V51, global::System.DateOnly, global::Probes.Shapes.ShapeFault>
+public sealed partial record V51 : B51_1, IValidatedValue<V51, decimal, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<V51, global::Probes.Shapes.ShapeFault> Create(global::System.DateOnly value) => new V51(value);
+    public static Result<V51, global::Probes.Shapes.ShapeFault> Create(decimal value) => new V51(value);
 }
 }
 
 // row 52
 public partial struct O52
 {
-public sealed partial record V52 : IValue<ulong> { }
+public abstract record B52_2 {  }
+public abstract record B52_1 : B52_2 {  }
+public sealed partial record V52 : B52_1, IValidatedValue<V52, global::Probes.Shapes.PEnum, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V52, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PEnum value) => new V52(value);
+}
 }
 
 // row 53
-public static partial class O53
+public interface IMark53 { int Mark(); }
+public readonly partial record struct V53 : IValidatedValue<V53, global::System.DateOnly, global::Probes.Shapes.ShapeFault>, IMark53
 {
-public sealed partial class P53
-{
-public abstract record B53_3 {  }
-public abstract record B53_2 : B53_3 {  }
-public abstract record B53_1 : B53_2 {  }
-public sealed partial record V53 : B53_1, IValidatedValue<V53, string, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V53, global::Probes.Shapes.ShapeFault> Create(string value) => new V53(value);
-}
-}
+    public static Result<V53, global::Probes.Shapes.ShapeFault> Create(global::System.DateOnly value) => new V53(value); int IMark53.Mark() => 1;
 }
 
 // row 54
-public static partial class O54
+public partial struct O54
 {
-public sealed partial class P54
-{
-public abstract record B54_3 {  }
-public abstract record B54_2 : B54_3 {  }
+public abstract record B54_2 {  }
 public abstract record B54_1 : B54_2 {  }
-public sealed partial record V54 : B54_1, IValidatedValue<V54, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V54, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V54(value);
-}
-public abstract record BC54_3 {  }
-public abstract record BC54_2 : BC54_3 {  }
-public abstract record BC54_1 : BC54_2 {  }
-public sealed partial record VC54 : BC54_1, IValidatedValue<VC54, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC54, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC54(value);
-}
-}
+public sealed partial record V54 : B54_1, IValue<global::System.DateTime> { }
 }
 
 // row 55
-public static partial class O55
+public partial struct O55
 {
-public sealed partial class P55
+public abstract record B55_1 : System.IEquatable<B55_1> { bool System.IEquatable<B55_1>.Equals(B55_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V55 : B55_1, IValidatedValue<V55, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>
 {
-public abstract record B55_1 {  }
-public sealed partial record V55 : B55_1, IValue<global::System.TimeSpan> { }
+    public static Result<V55, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V55(value);
+}
+public abstract record BC55_1 : System.IEquatable<BC55_1> { bool System.IEquatable<BC55_1>.Equals(BC55_1? other) => ReferenceEquals(this, other); }
+public sealed partial record VC55 : BC55_1, IValidatedValue<VC55, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC55, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC55(value);
 }
 }
 
@@ -606,52 +567,40 @@ public static partial class O56
 public sealed partial class P56
 {
 public abstract record B56_1 {  }
-public sealed partial record V56 : B56_1, IValidatedValue<V56, decimal, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V56, global::Probes.Shapes.ShapeFault> Create(decimal value) => new V56(value);
-}
+public sealed partial record V56 : B56_1, IValue<global::System.Guid> { }
 }
 }
 
 // row 57
-public abstract record B57_1 {  }
-public sealed partial record V57 : B57_1, IValidatedValue<V57, global::Probes.Shapes.PEnum, global::Probes.Shapes.ShapeFault>
+public static partial class O57
 {
-    public static Result<V57, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PEnum value) => new V57(value);
+public interface IMark57 { int Mark(); }
+public readonly partial record struct V57 : IValue<double>, IMark57 { int IMark57.Mark() => 1; }
 }
 
 // row 58
-public readonly partial record struct V58 : IValue<byte> { }
+public readonly partial record struct V58 : IValue<global::System.TimeSpan> { }
 
 // row 59
-public static partial class O59
-{
-public sealed partial class P59
-{
 public abstract record B59_3 {  }
 public abstract record B59_2 : B59_3 {  }
 public abstract record B59_1 : B59_2 {  }
-public sealed partial record V59 : B59_1, IValidatedValue<V59, double, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V59, global::Probes.Shapes.ShapeFault> Create(double value) => new V59(value);
-}
-}
-}
+public sealed partial record V59 : B59_1, IValue<char> { }
 
 // row 60
 public static partial class O60
 {
 public interface IMark60 { int Mark(); }
-public sealed partial record V60 : IValue<global::System.TimeOnly>, IMark60 { int IMark60.Mark() => 1; }
+public readonly partial record struct V60 : IValidatedValue<V60, byte, global::Probes.Shapes.ShapeFault>, IMark60
+{
+    public static Result<V60, global::Probes.Shapes.ShapeFault> Create(byte value) => new V60(value); int IMark60.Mark() => 1;
+}
 }
 
 // row 61
-public partial struct O61
+public static partial class O61
 {
-public abstract record B61_1 {  }
-public sealed partial record V61 : B61_1, IValue<global::Probes.Build.C11ParsesToInt> { }
-public abstract record BC61_1 {  }
-public sealed partial record VC61 : BC61_1, IValue<global::Probes.Build.C11ParsedShape> { }
+public readonly partial record struct V61 : IValue<bool> { }
 }
 
 // row 62
@@ -659,73 +608,72 @@ public static partial class O62
 {
 public sealed partial class P62
 {
-public readonly partial record struct V62 : IValidatedValue<V62, global::System.DateTime, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V62, global::Probes.Shapes.ShapeFault> Create(global::System.DateTime value) => new V62(value);
-}
+public abstract record B62_2 {  }
+public abstract record B62_1 : B62_2 {  }
+public sealed partial record V62 : B62_1, IValue<global::System.TimeSpan> { }
 }
 }
 
 // row 63
-public interface IMark63 { int Mark(); }
-public readonly partial record struct V63 : IValue<global::NodaTime.Instant>, IMark63 { int IMark63.Mark() => 1; }
+public partial struct O63
+{
+public readonly partial record struct V63 : IValue<global::Probes.Build.C11ParsesToInt> { }
+public readonly partial record struct VC63 : IValue<global::Probes.Build.C11ParsedShape> { }
+}
 
 // row 64
-public static partial class O64
+public partial struct O64
 {
-public readonly partial record struct V64 : IValidatedValue<V64, global::Probes.Shapes.PEnum, global::Probes.Shapes.ShapeFault>
+public readonly partial record struct V64 : IValidatedValue<V64, double, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<V64, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PEnum value) => new V64(value);
+    public static Result<V64, global::Probes.Shapes.ShapeFault> Create(double value) => new V64(value);
 }
 }
 
 // row 65
-public abstract record B65_2 {  }
-public abstract record B65_1 : B65_2 {  }
-public sealed partial record V65 : B65_1, IValidatedValue<V65, global::System.Guid, global::Probes.Shapes.ShapeFault>
+public partial struct O65
 {
-    public static Result<V65, global::Probes.Shapes.ShapeFault> Create(global::System.Guid value) => new V65(value);
+public readonly partial record struct V65 : IValidatedValue<V65, global::NodaTime.Instant, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V65, global::Probes.Shapes.ShapeFault> Create(global::NodaTime.Instant value) => new V65(value);
+}
 }
 
 // row 66
-public abstract record B66_1 : System.IEquatable<B66_1> { bool System.IEquatable<B66_1>.Equals(B66_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V66 : B66_1, IValidatedValue<V66, global::Probes.Shapes.PRec, global::Probes.Shapes.ShapeFault>
+public static partial class O66
 {
-    public static Result<V66, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PRec value) => new V66(value);
+public abstract record B66_2 {  }
+public abstract record B66_1 : B66_2 {  }
+public sealed partial record V66 : B66_1, IValue<global::NodaTime.Instant> { }
 }
 
 // row 67
 public static partial class O67
 {
-public sealed partial class P67
+public abstract record B67_2 {  }
+public abstract record B67_1 : B67_2 {  }
+public sealed partial record V67 : B67_1, IValidatedValue<V67, global::System.Uri, global::Probes.Shapes.ShapeFault>
 {
-public readonly partial record struct V67 : IValidatedValue<V67, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V67, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V67(value);
-}
-public readonly partial record struct VC67 : IValidatedValue<VC67, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC67, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC67(value);
-}
+    public static Result<V67, global::Probes.Shapes.ShapeFault> Create(global::System.Uri value) => new V67(value);
 }
 }
 
 // row 68
-public static partial class O68
+public partial struct O68
 {
-public sealed partial class P68
-{
-public readonly partial record struct V68 : IValue<global::System.DateOnly> { }
-}
+public readonly partial record struct V68 : IValue<string> { }
 }
 
 // row 69
-public partial struct O69
+public static partial class O69
 {
-public interface IMark69 { int Mark(); }
-public readonly partial record struct V69 : IValidatedValue<V69, long, global::Probes.Shapes.ShapeFault>, IMark69
+public readonly partial record struct V69 : IValidatedValue<V69, global::Probes.Build.C11ConstructedByRef, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<V69, global::Probes.Shapes.ShapeFault> Create(long value) => new V69(value); int IMark69.Mark() => 1;
+    public static Result<V69, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedByRef value) => new V69(value);
+}
+public readonly partial record struct VC69 : IValidatedValue<VC69, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC69, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC69(value);
 }
 }
 
@@ -734,316 +682,359 @@ public static partial class O70
 {
 public sealed partial class P70
 {
-public interface IMark70 { int Mark(); }
-public readonly partial record struct V70 : IValue<global::System.DateTimeOffset>, IMark70 { int IMark70.Mark() => 1; }
+public readonly partial record struct V70 : IValidatedValue<V70, global::Probes.Build.C11ParsesByRef, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V70, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesByRef value) => new V70(value);
+}
+public readonly partial record struct VC70 : IValidatedValue<VC70, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC70, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC70(value);
+}
 }
 }
 
 // row 71
 public static partial class O71
 {
-public sealed partial class P71
+public interface IMark71 { int Mark(); }
+public sealed partial record V71 : IValidatedValue<V71, global::System.TimeOnly, global::Probes.Shapes.ShapeFault>, IMark71
 {
-public readonly partial record struct V71 : IValue<global::Probes.Shapes.PFlags> { }
+    public static Result<V71, global::Probes.Shapes.ShapeFault> Create(global::System.TimeOnly value) => new V71(value); int IMark71.Mark() => 1;
 }
 }
 
 // row 72
-public partial struct O72
+public static partial class O72
 {
-public readonly partial record struct V72 : IValue<double> { }
+public sealed partial class P72
+{
+public abstract record B72_2 {  }
+public abstract record B72_1 : B72_2 {  }
+public sealed partial record V72 : B72_1, IValidatedValue<V72, ulong, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V72, global::Probes.Shapes.ShapeFault> Create(ulong value) => new V72(value);
+}
+}
 }
 
 // row 73
 public static partial class O73
 {
-public interface IMark73 { int Mark(); }
-public readonly partial record struct V73 : IValidatedValue<V73, global::Probes.Build.C11ConstructedByRef, global::Probes.Shapes.ShapeFault>, IMark73
-{
-    public static Result<V73, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedByRef value) => new V73(value); int IMark73.Mark() => 1;
-}
-public readonly partial record struct VC73 : IValidatedValue<VC73, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>, IMark73
-{
-    public static Result<VC73, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC73(value); int IMark73.Mark() => 1;
-}
+public abstract record B73_1 {  }
+public sealed partial record V73 : B73_1, IValue<global::Probes.Shapes.PRec> { }
 }
 
 // row 74
-public static partial class O74
+public partial struct O74
 {
-public readonly partial record struct V74 : IValue<char> { }
+public interface IMark74 { int Mark(); }
+public readonly partial record struct V74 : IValue<global::Probes.Build.C11ParsesByRef>, IMark74 { int IMark74.Mark() => 1; }
+public readonly partial record struct VC74 : IValue<global::Probes.Build.C11ParsesFromIn>, IMark74 { int IMark74.Mark() => 1; }
 }
 
 // row 75
 public partial struct O75
 {
-public abstract record B75_1 {  }
-public sealed partial record V75 : B75_1, IValidatedValue<V75, int, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V75, global::Probes.Shapes.ShapeFault> Create(int value) => new V75(value);
-}
+public readonly partial record struct V75 : IValue<int> { }
 }
 
 // row 76
-public static partial class O76
-{
 public interface IMark76 { int Mark(); }
-public sealed partial record V76 : IValue<global::System.Uri>, IMark76 { int IMark76.Mark() => 1; }
+public readonly partial record struct V76 : IValidatedValue<V76, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>, IMark76
+{
+    public static Result<V76, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V76(value); int IMark76.Mark() => 1;
+}
+public readonly partial record struct VC76 : IValidatedValue<VC76, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>, IMark76
+{
+    public static Result<VC76, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC76(value); int IMark76.Mark() => 1;
 }
 
 // row 77
-public readonly partial record struct V77 : IValue<global::Probes.Build.C11AbstractText> { }
-public readonly partial record struct VC77 : IValue<global::Probes.Build.C11ConstructedConcrete> { }
+public partial struct O77
+{
+public interface IMark77 { int Mark(); }
+public readonly partial record struct V77 : IValidatedValue<V77, global::Probes.Shapes.PFlags, global::Probes.Shapes.ShapeFault>, IMark77
+{
+    public static Result<V77, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PFlags value) => new V77(value); int IMark77.Mark() => 1;
+}
+}
 
 // row 78
 public static partial class O78
 {
 public sealed partial class P78
 {
-public readonly partial record struct V78 : IValue<global::Probes.Build.C11ParsesToInt> { }
-public readonly partial record struct VC78 : IValue<global::Probes.Build.C11ParsedShape> { }
+public sealed partial record V78 : IValue<global::System.DateTime> { }
 }
 }
 
 // row 79
-public abstract record B79_1 : System.IEquatable<B79_1> { bool System.IEquatable<B79_1>.Equals(B79_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V79 : B79_1, IValue<global::Probes.Build.C11ParsesToInt> { }
-public abstract record BC79_1 : System.IEquatable<BC79_1> { bool System.IEquatable<BC79_1>.Equals(BC79_1? other) => ReferenceEquals(this, other); }
-public sealed partial record VC79 : BC79_1, IValue<global::Probes.Build.C11ParsedShape> { }
+public static partial class O79
+{
+public sealed partial class P79
+{
+public abstract record B79_3 {  }
+public abstract record B79_2 : B79_3 {  }
+public abstract record B79_1 : B79_2 {  }
+public sealed partial record V79 : B79_1, IValue<global::Probes.Build.C11AbstractText> { }
+public abstract record BC79_3 {  }
+public abstract record BC79_2 : BC79_3 {  }
+public abstract record BC79_1 : BC79_2 {  }
+public sealed partial record VC79 : BC79_1, IValue<global::Probes.Build.C11ConstructedConcrete> { }
+}
+}
 
 // row 80
 public static partial class O80
 {
-public readonly partial record struct V80 : IValidatedValue<V80, global::NodaTime.Instant, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V80, global::Probes.Shapes.ShapeFault> Create(global::NodaTime.Instant value) => new V80(value);
-}
+public interface IMark80 { int Mark(); }
+public readonly partial record struct V80 : IValue<global::Probes.Shapes.PEnum>, IMark80 { int IMark80.Mark() => 1; }
 }
 
 // row 81
 public static partial class O81
 {
-public abstract record B81_1 : System.IEquatable<B81_1> { bool System.IEquatable<B81_1>.Equals(B81_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V81 : B81_1, IValue<global::Probes.Build.C11AbstractText> { }
-public abstract record BC81_1 : System.IEquatable<BC81_1> { bool System.IEquatable<BC81_1>.Equals(BC81_1? other) => ReferenceEquals(this, other); }
-public sealed partial record VC81 : BC81_1, IValue<global::Probes.Build.C11ConstructedConcrete> { }
+public interface IMark81 { int Mark(); }
+public readonly partial record struct V81 : IValidatedValue<V81, int, global::Probes.Shapes.ShapeFault>, IMark81
+{
+    public static Result<V81, global::Probes.Shapes.ShapeFault> Create(int value) => new V81(value); int IMark81.Mark() => 1;
+}
 }
 
 // row 82
-public static partial class O82
-{
-public sealed partial class P82
-{
-public interface IMark82 { int Mark(); }
-public readonly partial record struct V82 : IValue<global::System.DateTime>, IMark82 { int IMark82.Mark() => 1; }
-}
-}
+public readonly partial record struct V82 : IValue<global::System.DateTimeOffset> { }
 
 // row 83
-public abstract record B83_2 {  }
-public abstract record B83_1 : B83_2 {  }
-public sealed partial record V83 : B83_1, IValidatedValue<V83, string, global::Probes.Shapes.ShapeFault>
+public readonly partial record struct V83 : IValidatedValue<V83, global::Probes.Shapes.PEnum, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<V83, global::Probes.Shapes.ShapeFault> Create(string value) => new V83(value);
+    public static Result<V83, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PEnum value) => new V83(value);
 }
 
 // row 84
 public static partial class O84
 {
-public abstract record B84_2 {  }
-public abstract record B84_1 : B84_2 {  }
-public sealed partial record V84 : B84_1, IValidatedValue<V84, long, global::Probes.Shapes.ShapeFault>
+public sealed partial class P84
 {
-    public static Result<V84, global::Probes.Shapes.ShapeFault> Create(long value) => new V84(value);
+public readonly partial record struct V84 : IValidatedValue<V84, bool, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V84, global::Probes.Shapes.ShapeFault> Create(bool value) => new V84(value);
+}
 }
 }
 
 // row 85
-public partial struct O85
+public static partial class O85
 {
-public abstract record B85_1 : System.IEquatable<B85_1> { bool System.IEquatable<B85_1>.Equals(B85_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V85 : B85_1, IValue<global::System.TimeOnly> { }
+public sealed partial record V85 : IValidatedValue<V85, decimal, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V85, global::Probes.Shapes.ShapeFault> Create(decimal value) => new V85(value);
+}
 }
 
 // row 86
-public static partial class O86
-{
-public sealed partial class P86
-{
-public abstract record B86_2 {  }
+public abstract record B86_3 {  }
+public abstract record B86_2 : B86_3 {  }
 public abstract record B86_1 : B86_2 {  }
-public sealed partial record V86 : B86_1, IValue<global::Probes.Build.C11ParsesToInt> { }
-public abstract record BC86_2 {  }
-public abstract record BC86_1 : BC86_2 {  }
-public sealed partial record VC86 : BC86_1, IValue<global::Probes.Build.C11ParsedShape> { }
+public sealed partial record V86 : B86_1, IValidatedValue<V86, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V86, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V86(value);
 }
+public abstract record BC86_3 {  }
+public abstract record BC86_2 : BC86_3 {  }
+public abstract record BC86_1 : BC86_2 {  }
+public sealed partial record VC86 : BC86_1, IValidatedValue<VC86, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC86, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC86(value);
 }
 
 // row 87
 public static partial class O87
 {
-public sealed partial class P87
+public abstract record B87_1 : System.IEquatable<B87_1> { bool System.IEquatable<B87_1>.Equals(B87_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V87 : B87_1, IValidatedValue<V87, ulong, global::Probes.Shapes.ShapeFault>
 {
-public sealed partial record V87 : IValue<int> { }
+    public static Result<V87, global::Probes.Shapes.ShapeFault> Create(ulong value) => new V87(value);
 }
 }
 
 // row 88
-public sealed partial record V88 : IValue<global::Probes.Build.C11AbstractText> { }
-public sealed partial record VC88 : IValue<global::Probes.Build.C11ConstructedConcrete> { }
+public static partial class O88
+{
+public sealed partial class P88
+{
+public readonly partial record struct V88 : IValidatedValue<V88, global::Probes.Shapes.PFlags, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V88, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PFlags value) => new V88(value);
+}
+}
+}
 
 // row 89
+public static partial class O89
+{
+public sealed partial class P89
+{
 public abstract record B89_2 {  }
 public abstract record B89_1 : B89_2 {  }
-public sealed partial record V89 : B89_1, IValidatedValue<V89, ulong, global::Probes.Shapes.ShapeFault>
+public sealed partial record V89 : B89_1, IValidatedValue<V89, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<V89, global::Probes.Shapes.ShapeFault> Create(ulong value) => new V89(value);
+    public static Result<V89, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V89(value);
+}
+public abstract record BC89_2 {  }
+public abstract record BC89_1 : BC89_2 {  }
+public sealed partial record VC89 : BC89_1, IValidatedValue<VC89, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC89, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC89(value);
+}
+}
 }
 
 // row 90
-public readonly partial record struct V90 : IValue<global::NodaTime.Instant> { }
+public static partial class O90
+{
+public abstract record B90_1 {  }
+public sealed partial record V90 : B90_1, IValue<global::Probes.Build.C11ParsesToInt> { }
+public abstract record BC90_1 {  }
+public sealed partial record VC90 : BC90_1, IValue<global::Probes.Build.C11ParsedShape> { }
+}
 
 // row 91
-public static partial class O91
+public abstract record B91_3 {  }
+public abstract record B91_2 : B91_3 {  }
+public abstract record B91_1 : B91_2 {  }
+public sealed partial record V91 : B91_1, IValidatedValue<V91, string, global::Probes.Shapes.ShapeFault>
 {
-public sealed partial class P91
-{
-public abstract record B91_1 {  }
-public sealed partial record V91 : B91_1, IValue<global::Probes.Build.C11ParsesToInt> { }
-public abstract record BC91_1 {  }
-public sealed partial record VC91 : BC91_1, IValue<global::Probes.Build.C11ParsedShape> { }
-}
+    public static Result<V91, global::Probes.Shapes.ShapeFault> Create(string value) => new V91(value);
 }
 
 // row 92
-public static partial class O92
-{
-public abstract record B92_2 {  }
-public abstract record B92_1 : B92_2 {  }
-public sealed partial record V92 : B92_1, IValidatedValue<V92, global::System.TimeSpan, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V92, global::Probes.Shapes.ShapeFault> Create(global::System.TimeSpan value) => new V92(value);
-}
-}
+public readonly partial record struct V92 : IValue<global::System.Uri> { }
 
 // row 93
-public abstract record B93_3 {  }
-public abstract record B93_2 : B93_3 {  }
-public abstract record B93_1 : B93_2 {  }
-public sealed partial record V93 : B93_1, IValue<decimal> { }
+public abstract record B93_1 : System.IEquatable<B93_1> { bool System.IEquatable<B93_1>.Equals(B93_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V93 : B93_1, IValidatedValue<V93, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V93, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V93(value);
+}
+public abstract record BC93_1 : System.IEquatable<BC93_1> { bool System.IEquatable<BC93_1>.Equals(BC93_1? other) => ReferenceEquals(this, other); }
+public sealed partial record VC93 : BC93_1, IValidatedValue<VC93, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC93, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC93(value);
+}
 
 // row 94
-public partial struct O94
+public static partial class O94
 {
-public abstract record B94_2 {  }
-public abstract record B94_1 : B94_2 {  }
-public sealed partial record V94 : B94_1, IValue<global::System.Uri> { }
+public sealed partial record V94 : IValue<global::Probes.Build.C11ParsesByRef> { }
+public sealed partial record VC94 : IValue<global::Probes.Build.C11ParsesFromIn> { }
 }
 
 // row 95
-public abstract record B95_3 {  }
-public abstract record B95_2 : B95_3 {  }
-public abstract record B95_1 : B95_2 {  }
-public sealed partial record V95 : B95_1, IValidatedValue<V95, char, global::Probes.Shapes.ShapeFault>
+public partial struct O95
 {
-    public static Result<V95, global::Probes.Shapes.ShapeFault> Create(char value) => new V95(value);
+public abstract record B95_1 {  }
+public sealed partial record V95 : B95_1, IValue<global::System.DateOnly> { }
 }
 
 // row 96
-public partial struct O96
+public static partial class O96
 {
-public abstract record B96_3 {  }
-public abstract record B96_2 : B96_3 {  }
+public sealed partial class P96
+{
+public abstract record B96_2 {  }
 public abstract record B96_1 : B96_2 {  }
-public sealed partial record V96 : B96_1, IValidatedValue<V96, global::Probes.Shapes.PRec, global::Probes.Shapes.ShapeFault>
+public sealed partial record V96 : B96_1, IValidatedValue<V96, long, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<V96, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PRec value) => new V96(value);
+    public static Result<V96, global::Probes.Shapes.ShapeFault> Create(long value) => new V96(value);
+}
 }
 }
 
 // row 97
 public abstract record B97_1 {  }
-public sealed partial record V97 : B97_1, IValidatedValue<V97, global::Probes.Shapes.PFlags, global::Probes.Shapes.ShapeFault>
+public sealed partial record V97 : B97_1, IValidatedValue<V97, double, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<V97, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PFlags value) => new V97(value);
+    public static Result<V97, global::Probes.Shapes.ShapeFault> Create(double value) => new V97(value);
 }
 
 // row 98
-public abstract record B98_2 {  }
+public static partial class O98
+{
+public abstract record B98_3 {  }
+public abstract record B98_2 : B98_3 {  }
 public abstract record B98_1 : B98_2 {  }
-public sealed partial record V98 : B98_1, IValue<global::Probes.Shapes.PEnum> { }
+public sealed partial record V98 : B98_1, IValue<global::Probes.Build.C11ParsesByRef> { }
+public abstract record BC98_3 {  }
+public abstract record BC98_2 : BC98_3 {  }
+public abstract record BC98_1 : BC98_2 {  }
+public sealed partial record VC98 : BC98_1, IValue<global::Probes.Build.C11ParsesFromIn> { }
+}
 
 // row 99
 public interface IMark99 { int Mark(); }
-public readonly partial record struct V99 : IValidatedValue<V99, string, global::Probes.Shapes.ShapeFault>, IMark99
-{
-    public static Result<V99, global::Probes.Shapes.ShapeFault> Create(string value) => new V99(value); int IMark99.Mark() => 1;
-}
+public readonly partial record struct V99 : IValue<char>, IMark99 { int IMark99.Mark() => 1; }
 
 // row 100
-public abstract record B100_1 {  }
-public sealed partial record V100 : B100_1, IValidatedValue<V100, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
+public partial struct O100
 {
-    public static Result<V100, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V100(value);
-}
-public abstract record BC100_1 {  }
-public sealed partial record VC100 : BC100_1, IValidatedValue<VC100, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC100, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC100(value);
+public abstract record B100_1 : System.IEquatable<B100_1> { bool System.IEquatable<B100_1>.Equals(B100_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V100 : B100_1, IValue<double> { }
 }
 
 // row 101
-public static partial class O101
-{
-public interface IMark101 { int Mark(); }
-public readonly partial record struct V101 : IValidatedValue<V101, global::System.DateOnly, global::Probes.Shapes.ShapeFault>, IMark101
-{
-    public static Result<V101, global::Probes.Shapes.ShapeFault> Create(global::System.DateOnly value) => new V101(value); int IMark101.Mark() => 1;
-}
-}
+public abstract record B101_3 {  }
+public abstract record B101_2 : B101_3 {  }
+public abstract record B101_1 : B101_2 {  }
+public sealed partial record V101 : B101_1, IValue<global::System.TimeOnly> { }
 
 // row 102
 public static partial class O102
 {
-public sealed partial class P102
-{
-public interface IMark102 { int Mark(); }
-public sealed partial record V102 : IValue<bool>, IMark102 { int IMark102.Mark() => 1; }
-}
+public abstract record B102_1 : System.IEquatable<B102_1> { bool System.IEquatable<B102_1>.Equals(B102_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V102 : B102_1, IValue<global::Probes.Shapes.PRec> { }
 }
 
 // row 103
-public readonly partial record struct V103 : IValidatedValue<V103, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
+public static partial class O103
 {
-    public static Result<V103, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V103(value);
+public sealed partial class P103
+{
+public abstract record B103_2 {  }
+public abstract record B103_1 : B103_2 {  }
+public sealed partial record V103 : B103_1, IValue<int> { }
 }
-public readonly partial record struct VC103 : IValidatedValue<VC103, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC103, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC103(value);
 }
 
 // row 104
-public static partial class O104
+public partial struct O104
 {
-public sealed partial class P104
+public readonly partial record struct V104 : IValidatedValue<V104, global::Probes.Build.C11ParsesByRef, global::Probes.Shapes.ShapeFault>
 {
-public readonly partial record struct V104 : IValue<global::System.TimeSpan> { }
+    public static Result<V104, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesByRef value) => new V104(value);
+}
+public readonly partial record struct VC104 : IValidatedValue<VC104, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC104, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC104(value);
 }
 }
 
 // row 105
-public interface IMark105 { int Mark(); }
-public readonly partial record struct V105 : IValue<global::Probes.Shapes.PRec>, IMark105 { int IMark105.Mark() => 1; }
+public static partial class O105
+{
+public abstract record B105_2 {  }
+public abstract record B105_1 : B105_2 {  }
+public sealed partial record V105 : B105_1, IValue<global::Probes.Build.C11AbstractText> { }
+public abstract record BC105_2 {  }
+public abstract record BC105_1 : BC105_2 {  }
+public sealed partial record VC105 : BC105_1, IValue<global::Probes.Build.C11ConstructedConcrete> { }
+}
 
 // row 106
 public static partial class O106
 {
 public sealed partial class P106
 {
-public abstract record B106_1 : System.IEquatable<B106_1> { bool System.IEquatable<B106_1>.Equals(B106_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V106 : B106_1, IValue<global::Probes.Build.C11ParsesToInt> { }
-public abstract record BC106_1 : System.IEquatable<BC106_1> { bool System.IEquatable<BC106_1>.Equals(BC106_1? other) => ReferenceEquals(this, other); }
-public sealed partial record VC106 : BC106_1, IValue<global::Probes.Build.C11ParsedShape> { }
+public readonly partial record struct V106 : IValue<byte> { }
 }
 }
 
@@ -1052,8 +1043,8 @@ public static partial class O107
 {
 public sealed partial class P107
 {
-public readonly partial record struct V107 : IValue<global::Probes.Build.C11ParsesToInt> { }
-public readonly partial record struct VC107 : IValue<global::Probes.Build.C11ParsedShape> { }
+public abstract record B107_1 {  }
+public sealed partial record V107 : B107_1, IValue<ulong> { }
 }
 }
 
@@ -1062,339 +1053,360 @@ public static partial class O108
 {
 public sealed partial class P108
 {
-public readonly partial record struct V108 : IValidatedValue<V108, bool, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V108, global::Probes.Shapes.ShapeFault> Create(bool value) => new V108(value);
-}
+public abstract record B108_1 : System.IEquatable<B108_1> { bool System.IEquatable<B108_1>.Equals(B108_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V108 : B108_1, IValue<global::Probes.Build.C11ParsesToInt> { }
+public abstract record BC108_1 : System.IEquatable<BC108_1> { bool System.IEquatable<BC108_1>.Equals(BC108_1? other) => ReferenceEquals(this, other); }
+public sealed partial record VC108 : BC108_1, IValue<global::Probes.Build.C11ParsedShape> { }
 }
 }
 
 // row 109
-public static partial class O109
-{
-public abstract record B109_2 {  }
-public abstract record B109_1 : B109_2 {  }
-public sealed partial record V109 : B109_1, IValidatedValue<V109, global::Probes.Build.C11ConstructedByRef, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V109, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedByRef value) => new V109(value);
-}
-public abstract record BC109_2 {  }
-public abstract record BC109_1 : BC109_2 {  }
-public sealed partial record VC109 : BC109_1, IValidatedValue<VC109, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC109, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC109(value);
-}
-}
+public abstract record B109_1 {  }
+public sealed partial record V109 : B109_1, IValue<global::Probes.Shapes.PEnum> { }
 
 // row 110
 public static partial class O110
 {
 public sealed partial class P110
 {
-public abstract record B110_1 : System.IEquatable<B110_1> { bool System.IEquatable<B110_1>.Equals(B110_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V110 : B110_1, IValue<global::System.Uri> { }
+public abstract record B110_2 {  }
+public abstract record B110_1 : B110_2 {  }
+public sealed partial record V110 : B110_1, IValue<global::System.Guid> { }
 }
 }
 
 // row 111
-public static partial class O111
+public abstract record B111_1 : System.IEquatable<B111_1> { bool System.IEquatable<B111_1>.Equals(B111_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V111 : B111_1, IValidatedValue<V111, global::Probes.Build.C11ConstructedByRef, global::Probes.Shapes.ShapeFault>
 {
-public readonly partial record struct V111 : IValue<global::Probes.Build.C11ParsesToInt> { }
-public readonly partial record struct VC111 : IValue<global::Probes.Build.C11ParsedShape> { }
+    public static Result<V111, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedByRef value) => new V111(value);
+}
+public abstract record BC111_1 : System.IEquatable<BC111_1> { bool System.IEquatable<BC111_1>.Equals(BC111_1? other) => ReferenceEquals(this, other); }
+public sealed partial record VC111 : BC111_1, IValidatedValue<VC111, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC111, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC111(value);
 }
 
 // row 112
-public partial struct O112
+public static partial class O112
 {
-public interface IMark112 { int Mark(); }
-public readonly partial record struct V112 : IValidatedValue<V112, int, global::Probes.Shapes.ShapeFault>, IMark112
+public sealed partial class P112
 {
-    public static Result<V112, global::Probes.Shapes.ShapeFault> Create(int value) => new V112(value); int IMark112.Mark() => 1;
+public abstract record B112_1 {  }
+public sealed partial record V112 : B112_1, IValidatedValue<V112, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V112, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V112(value);
+}
+public abstract record BC112_1 {  }
+public sealed partial record VC112 : BC112_1, IValidatedValue<VC112, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC112, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC112(value);
+}
 }
 }
 
 // row 113
-public partial struct O113
+public static partial class O113
 {
-public abstract record B113_3 {  }
-public abstract record B113_2 : B113_3 {  }
+public sealed partial class P113
+{
+public abstract record B113_2 {  }
 public abstract record B113_1 : B113_2 {  }
-public sealed partial record V113 : B113_1, IValue<ulong> { }
+public sealed partial record V113 : B113_1, IValue<global::Probes.Build.C11ConstructedByRef> { }
+public abstract record BC113_2 {  }
+public abstract record BC113_1 : BC113_2 {  }
+public sealed partial record VC113 : BC113_1, IValue<global::Probes.Build.C11ParsesFromIn> { }
+}
 }
 
 // row 114
 public partial struct O114
 {
-public abstract record B114_2 {  }
-public abstract record B114_1 : B114_2 {  }
-public sealed partial record V114 : B114_1, IValidatedValue<V114, double, global::Probes.Shapes.ShapeFault>
+public abstract record B114_1 : System.IEquatable<B114_1> { bool System.IEquatable<B114_1>.Equals(B114_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V114 : B114_1, IValidatedValue<V114, global::System.DateTime, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<V114, global::Probes.Shapes.ShapeFault> Create(double value) => new V114(value);
+    public static Result<V114, global::Probes.Shapes.ShapeFault> Create(global::System.DateTime value) => new V114(value);
 }
 }
 
 // row 115
 public static partial class O115
 {
-public readonly partial record struct V115 : IValidatedValue<V115, global::System.DateTime, global::Probes.Shapes.ShapeFault>
+public sealed partial class P115
 {
-    public static Result<V115, global::Probes.Shapes.ShapeFault> Create(global::System.DateTime value) => new V115(value);
+public readonly partial record struct V115 : IValidatedValue<V115, long, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V115, global::Probes.Shapes.ShapeFault> Create(long value) => new V115(value);
+}
 }
 }
 
 // row 116
 public static partial class O116
 {
+public sealed partial class P116
+{
 public abstract record B116_2 {  }
 public abstract record B116_1 : B116_2 {  }
-public sealed partial record V116 : B116_1, IValue<char> { }
+public sealed partial record V116 : B116_1, IValidatedValue<V116, global::Probes.Build.C11ParsesByRef, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V116, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesByRef value) => new V116(value);
+}
+public abstract record BC116_2 {  }
+public abstract record BC116_1 : BC116_2 {  }
+public sealed partial record VC116 : BC116_1, IValidatedValue<VC116, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC116, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC116(value);
+}
+}
 }
 
 // row 117
 public static partial class O117
 {
-public abstract record B117_1 {  }
-public sealed partial record V117 : B117_1, IValue<global::Probes.Build.C11ParsesToInt> { }
-public abstract record BC117_1 {  }
-public sealed partial record VC117 : BC117_1, IValue<global::Probes.Build.C11ParsedShape> { }
+public abstract record B117_1 : System.IEquatable<B117_1> { bool System.IEquatable<B117_1>.Equals(B117_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V117 : B117_1, IValidatedValue<V117, global::System.Guid, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V117, global::Probes.Shapes.ShapeFault> Create(global::System.Guid value) => new V117(value);
+}
 }
 
 // row 118
-public partial struct O118
-{
 public abstract record B118_1 : System.IEquatable<B118_1> { bool System.IEquatable<B118_1>.Equals(B118_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V118 : B118_1, IValue<char> { }
+public sealed partial record V118 : B118_1, IValidatedValue<V118, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V118, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V118(value);
+}
+public abstract record BC118_1 : System.IEquatable<BC118_1> { bool System.IEquatable<BC118_1>.Equals(BC118_1? other) => ReferenceEquals(this, other); }
+public sealed partial record VC118 : BC118_1, IValidatedValue<VC118, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC118, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC118(value);
 }
 
 // row 119
 public static partial class O119
 {
-public sealed partial class P119
-{
-public abstract record B119_1 {  }
-public sealed partial record V119 : B119_1, IValue<global::System.Guid> { }
-}
+public abstract record B119_3 {  }
+public abstract record B119_2 : B119_3 {  }
+public abstract record B119_1 : B119_2 {  }
+public sealed partial record V119 : B119_1, IValue<global::System.TimeSpan> { }
 }
 
 // row 120
 public partial struct O120
 {
-public abstract record B120_2 {  }
+public abstract record B120_3 {  }
+public abstract record B120_2 : B120_3 {  }
 public abstract record B120_1 : B120_2 {  }
-public sealed partial record V120 : B120_1, IValidatedValue<V120, global::NodaTime.Instant, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V120, global::Probes.Shapes.ShapeFault> Create(global::NodaTime.Instant value) => new V120(value);
-}
+public sealed partial record V120 : B120_1, IValue<global::Probes.Build.C11ParsesToInt> { }
+public abstract record BC120_3 {  }
+public abstract record BC120_2 : BC120_3 {  }
+public abstract record BC120_1 : BC120_2 {  }
+public sealed partial record VC120 : BC120_1, IValue<global::Probes.Build.C11ParsedShape> { }
 }
 
 // row 121
+public static partial class O121
+{
+public sealed partial class P121
+{
 public abstract record B121_3 {  }
 public abstract record B121_2 : B121_3 {  }
 public abstract record B121_1 : B121_2 {  }
-public sealed partial record V121 : B121_1, IValue<global::Probes.Build.C11AbstractText> { }
+public sealed partial record V121 : B121_1, IValidatedValue<V121, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V121, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V121(value);
+}
 public abstract record BC121_3 {  }
 public abstract record BC121_2 : BC121_3 {  }
 public abstract record BC121_1 : BC121_2 {  }
-public sealed partial record VC121 : BC121_1, IValue<global::Probes.Build.C11ConstructedConcrete> { }
+public sealed partial record VC121 : BC121_1, IValidatedValue<VC121, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC121, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC121(value);
+}
+}
+}
 
 // row 122
 public static partial class O122
 {
-public readonly partial record struct V122 : IValue<long> { }
+public abstract record B122_2 {  }
+public abstract record B122_1 : B122_2 {  }
+public sealed partial record V122 : B122_1, IValue<global::System.DateTimeOffset> { }
 }
 
 // row 123
-public partial struct O123
+public static partial class O123
+{
+public sealed partial class P123
 {
 public interface IMark123 { int Mark(); }
-public sealed partial record V123 : IValue<global::Probes.Build.C11ConstructedByRef>, IMark123 { int IMark123.Mark() => 1; }
-public sealed partial record VC123 : IValue<global::Probes.Build.C11ParsesFromIn>, IMark123 { int IMark123.Mark() => 1; }
+public readonly partial record struct V123 : IValue<global::Probes.Shapes.PRec>, IMark123 { int IMark123.Mark() => 1; }
+}
 }
 
 // row 124
-public partial struct O124
-{
-public readonly partial record struct V124 : IValidatedValue<V124, global::Probes.Build.C11ParsesByRef, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V124, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesByRef value) => new V124(value);
-}
-public readonly partial record struct VC124 : IValidatedValue<VC124, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC124, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC124(value);
-}
-}
+public readonly partial record struct V124 : IValue<global::Probes.Build.C11ParsesByRef> { }
+public readonly partial record struct VC124 : IValue<global::Probes.Build.C11ParsesFromIn> { }
 
 // row 125
 public static partial class O125
 {
-public interface IMark125 { int Mark(); }
-public readonly partial record struct V125 : IValidatedValue<V125, global::System.Uri, global::Probes.Shapes.ShapeFault>, IMark125
-{
-    public static Result<V125, global::Probes.Shapes.ShapeFault> Create(global::System.Uri value) => new V125(value); int IMark125.Mark() => 1;
-}
+public abstract record B125_1 : System.IEquatable<B125_1> { bool System.IEquatable<B125_1>.Equals(B125_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V125 : B125_1, IValue<global::Probes.Build.C11ParsesToInt> { }
+public abstract record BC125_1 : System.IEquatable<BC125_1> { bool System.IEquatable<BC125_1>.Equals(BC125_1? other) => ReferenceEquals(this, other); }
+public sealed partial record VC125 : BC125_1, IValue<global::Probes.Build.C11ParsedShape> { }
 }
 
 // row 126
-public static partial class O126
+public abstract record B126_1 {  }
+public sealed partial record V126 : B126_1, IValidatedValue<V126, global::System.DateOnly, global::Probes.Shapes.ShapeFault>
 {
-public sealed partial class P126
-{
-public abstract record B126_1 : System.IEquatable<B126_1> { bool System.IEquatable<B126_1>.Equals(B126_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V126 : B126_1, IValidatedValue<V126, decimal, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V126, global::Probes.Shapes.ShapeFault> Create(decimal value) => new V126(value);
-}
-}
+    public static Result<V126, global::Probes.Shapes.ShapeFault> Create(global::System.DateOnly value) => new V126(value);
 }
 
 // row 127
 public static partial class O127
 {
 public abstract record B127_1 : System.IEquatable<B127_1> { bool System.IEquatable<B127_1>.Equals(B127_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V127 : B127_1, IValue<global::NodaTime.Instant> { }
+public sealed partial record V127 : B127_1, IValue<global::Probes.Build.C11AbstractText> { }
+public abstract record BC127_1 : System.IEquatable<BC127_1> { bool System.IEquatable<BC127_1>.Equals(BC127_1? other) => ReferenceEquals(this, other); }
+public sealed partial record VC127 : BC127_1, IValue<global::Probes.Build.C11ConstructedConcrete> { }
 }
 
 // row 128
 public static partial class O128
 {
-public abstract record B128_1 : System.IEquatable<B128_1> { bool System.IEquatable<B128_1>.Equals(B128_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V128 : B128_1, IValidatedValue<V128, global::System.DateTime, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V128, global::Probes.Shapes.ShapeFault> Create(global::System.DateTime value) => new V128(value);
-}
+public readonly partial record struct V128 : IValue<global::Probes.Shapes.PFlags> { }
 }
 
 // row 129
-public readonly partial record struct V129 : IValidatedValue<V129, global::Probes.Build.C11ConstructedByRef, global::Probes.Shapes.ShapeFault>
+public static partial class O129
 {
-    public static Result<V129, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedByRef value) => new V129(value);
+public sealed partial class P129
+{
+public readonly partial record struct V129 : IValue<byte> { }
 }
-public readonly partial record struct VC129 : IValidatedValue<VC129, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC129, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC129(value);
 }
 
 // row 130
-public static partial class O130
+public abstract record B130_1 : System.IEquatable<B130_1> { bool System.IEquatable<B130_1>.Equals(B130_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V130 : B130_1, IValidatedValue<V130, global::Probes.Build.C11ParsesByRef, global::Probes.Shapes.ShapeFault>
 {
-public interface IMark130 { int Mark(); }
-public readonly partial record struct V130 : IValue<char>, IMark130 { int IMark130.Mark() => 1; }
+    public static Result<V130, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesByRef value) => new V130(value);
+}
+public abstract record BC130_1 : System.IEquatable<BC130_1> { bool System.IEquatable<BC130_1>.Equals(BC130_1? other) => ReferenceEquals(this, other); }
+public sealed partial record VC130 : BC130_1, IValidatedValue<VC130, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC130, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC130(value);
 }
 
 // row 131
-public partial struct O131
+public abstract record B131_1 : System.IEquatable<B131_1> { bool System.IEquatable<B131_1>.Equals(B131_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V131 : B131_1, IValidatedValue<V131, global::System.DateTime, global::Probes.Shapes.ShapeFault>
 {
-public interface IMark131 { int Mark(); }
-public readonly partial record struct V131 : IValue<long>, IMark131 { int IMark131.Mark() => 1; }
+    public static Result<V131, global::Probes.Shapes.ShapeFault> Create(global::System.DateTime value) => new V131(value);
 }
 
 // row 132
-public interface IMark132 { int Mark(); }
-public readonly partial record struct V132 : IValidatedValue<V132, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>, IMark132
-{
-    public static Result<V132, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V132(value); int IMark132.Mark() => 1;
-}
-public readonly partial record struct VC132 : IValidatedValue<VC132, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>, IMark132
-{
-    public static Result<VC132, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC132(value); int IMark132.Mark() => 1;
-}
+public abstract record B132_1 : System.IEquatable<B132_1> { bool System.IEquatable<B132_1>.Equals(B132_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V132 : B132_1, IValue<bool> { }
 
 // row 133
-public static partial class O133
+public abstract record B133_1 : System.IEquatable<B133_1> { bool System.IEquatable<B133_1>.Equals(B133_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V133 : B133_1, IValidatedValue<V133, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>
 {
-public abstract record B133_2 {  }
-public abstract record B133_1 : B133_2 {  }
-public sealed partial record V133 : B133_1, IValue<global::Probes.Shapes.PRec> { }
+    public static Result<V133, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V133(value);
+}
+public abstract record BC133_1 : System.IEquatable<BC133_1> { bool System.IEquatable<BC133_1>.Equals(BC133_1? other) => ReferenceEquals(this, other); }
+public sealed partial record VC133 : BC133_1, IValidatedValue<VC133, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<VC133, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC133(value);
 }
 
 // row 134
+public partial struct O134
+{
 public abstract record B134_2 {  }
 public abstract record B134_1 : B134_2 {  }
-public sealed partial record V134 : B134_1, IValidatedValue<V134, global::Probes.Build.C11ParsesByRef, global::Probes.Shapes.ShapeFault>
+public sealed partial record V134 : B134_1, IValidatedValue<V134, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<V134, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesByRef value) => new V134(value);
+    public static Result<V134, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V134(value);
 }
 public abstract record BC134_2 {  }
 public abstract record BC134_1 : BC134_2 {  }
-public sealed partial record VC134 : BC134_1, IValidatedValue<VC134, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
+public sealed partial record VC134 : BC134_1, IValidatedValue<VC134, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>
 {
-    public static Result<VC134, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC134(value);
+    public static Result<VC134, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC134(value);
+}
 }
 
 // row 135
-public partial struct O135
-{
 public abstract record B135_3 {  }
 public abstract record B135_2 : B135_3 {  }
 public abstract record B135_1 : B135_2 {  }
-public sealed partial record V135 : B135_1, IValue<global::System.TimeSpan> { }
-}
+public sealed partial record V135 : B135_1, IValue<global::System.Uri> { }
 
 // row 136
-public partial struct O136
+public abstract record B136_3 {  }
+public abstract record B136_2 : B136_3 {  }
+public abstract record B136_1 : B136_2 {  }
+public sealed partial record V136 : B136_1, IValidatedValue<V136, string, global::Probes.Shapes.ShapeFault>
 {
-public interface IMark136 { int Mark(); }
-public readonly partial record struct V136 : IValue<global::System.TimeOnly>, IMark136 { int IMark136.Mark() => 1; }
+    public static Result<V136, global::Probes.Shapes.ShapeFault> Create(string value) => new V136(value);
 }
 
 // row 137
-public static partial class O137
-{
-public abstract record B137_1 {  }
-public sealed partial record V137 : B137_1, IValue<global::Probes.Build.C11ParsesToInt> { }
-public abstract record BC137_1 {  }
-public sealed partial record VC137 : BC137_1, IValue<global::Probes.Build.C11ParsedShape> { }
-}
+public sealed partial record V137 : IValue<global::System.DateTimeOffset> { }
 
 // row 138
 public static partial class O138
 {
-public readonly partial record struct V138 : IValue<global::Probes.Build.C11AbstractText> { }
-public readonly partial record struct VC138 : IValue<global::Probes.Build.C11ConstructedConcrete> { }
+public interface IMark138 { int Mark(); }
+public sealed partial record V138 : IValue<decimal>, IMark138 { int IMark138.Mark() => 1; }
 }
 
 // row 139
 public static partial class O139
 {
-public sealed partial class P139
-{
 public abstract record B139_1 : System.IEquatable<B139_1> { bool System.IEquatable<B139_1>.Equals(B139_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V139 : B139_1, IValue<global::Probes.Shapes.PFlags> { }
-}
+public sealed partial record V139 : B139_1, IValue<double> { }
 }
 
 // row 140
-public static partial class O140
-{
-public abstract record B140_2 {  }
-public abstract record B140_1 : B140_2 {  }
-public sealed partial record V140 : B140_1, IValue<bool> { }
-}
+public abstract record B140_1 : System.IEquatable<B140_1> { bool System.IEquatable<B140_1>.Equals(B140_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V140 : B140_1, IValue<global::System.Guid> { }
 
 // row 141
 public static partial class O141
 {
-public interface IMark141 { int Mark(); }
-public readonly partial record struct V141 : IValue<global::Probes.Build.C11AbstractText>, IMark141 { int IMark141.Mark() => 1; }
-public readonly partial record struct VC141 : IValue<global::Probes.Build.C11ConstructedConcrete>, IMark141 { int IMark141.Mark() => 1; }
+public abstract record B141_2 {  }
+public abstract record B141_1 : B141_2 {  }
+public sealed partial record V141 : B141_1, IValue<int> { }
 }
 
 // row 142
-public static partial class O142
+public partial struct O142
 {
-public readonly partial record struct V142 : IValidatedValue<V142, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
+public interface IMark142 { int Mark(); }
+public sealed partial record V142 : IValidatedValue<V142, decimal, global::Probes.Shapes.ShapeFault>, IMark142
 {
-    public static Result<V142, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V142(value);
-}
-public readonly partial record struct VC142 : IValidatedValue<VC142, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC142, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC142(value);
+    public static Result<V142, global::Probes.Shapes.ShapeFault> Create(decimal value) => new V142(value); int IMark142.Mark() => 1;
 }
 }
 
 // row 143
-public sealed partial record V143 : IValue<global::Probes.Build.C11ConstructedByRef> { }
-public sealed partial record VC143 : IValue<global::Probes.Build.C11ParsesFromIn> { }
+public static partial class O143
+{
+public sealed partial class P143
+{
+public interface IMark143 { int Mark(); }
+public readonly partial record struct V143 : IValidatedValue<V143, global::System.DateOnly, global::Probes.Shapes.ShapeFault>, IMark143
+{
+    public static Result<V143, global::Probes.Shapes.ShapeFault> Create(global::System.DateOnly value) => new V143(value); int IMark143.Mark() => 1;
+}
+}
+}
 
 // row 144
 public static partial class O144
@@ -1402,1130 +1414,272 @@ public static partial class O144
 public sealed partial class P144
 {
 public interface IMark144 { int Mark(); }
-public readonly partial record struct V144 : IValue<global::Probes.Build.C11AbstractText>, IMark144 { int IMark144.Mark() => 1; }
-public readonly partial record struct VC144 : IValue<global::Probes.Build.C11ConstructedConcrete>, IMark144 { int IMark144.Mark() => 1; }
+public readonly partial record struct V144 : IValidatedValue<V144, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>, IMark144
+{
+    public static Result<V144, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V144(value); int IMark144.Mark() => 1;
+}
+public readonly partial record struct VC144 : IValidatedValue<VC144, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>, IMark144
+{
+    public static Result<VC144, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC144(value); int IMark144.Mark() => 1;
+}
 }
 }
 
 // row 145
-public static partial class O145
-{
-public sealed partial class P145
-{
-public readonly partial record struct V145 : IValidatedValue<V145, ulong, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V145, global::Probes.Shapes.ShapeFault> Create(ulong value) => new V145(value);
-}
-}
-}
+public readonly partial record struct V145 : IValue<long> { }
 
 // row 146
-public static partial class O146
-{
-public readonly partial record struct V146 : IValidatedValue<V146, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V146, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V146(value);
-}
-public readonly partial record struct VC146 : IValidatedValue<VC146, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC146, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC146(value);
-}
-}
+public sealed partial record V146 : IValue<global::Probes.Build.C11ParsesByRef> { }
+public sealed partial record VC146 : IValue<global::Probes.Build.C11ParsesFromIn> { }
 
 // row 147
 public static partial class O147
 {
 public sealed partial class P147
 {
-public interface IMark147 { int Mark(); }
-public readonly partial record struct V147 : IValidatedValue<V147, global::Probes.Build.C11AbstractText, global::Probes.Shapes.ShapeFault>, IMark147
-{
-    public static Result<V147, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11AbstractText value) => new V147(value); int IMark147.Mark() => 1;
-}
-public readonly partial record struct VC147 : IValidatedValue<VC147, global::Probes.Build.C11ConstructedConcrete, global::Probes.Shapes.ShapeFault>, IMark147
-{
-    public static Result<VC147, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedConcrete value) => new VC147(value); int IMark147.Mark() => 1;
-}
+public readonly partial record struct V147 : IValue<global::Probes.Build.C11ParsesToInt> { }
+public readonly partial record struct VC147 : IValue<global::Probes.Build.C11ParsedShape> { }
 }
 }
 
 // row 148
 public static partial class O148
 {
-public sealed partial record V148 : IValidatedValue<V148, global::Probes.Shapes.PEnum, global::Probes.Shapes.ShapeFault>
+public sealed partial class P148
 {
-    public static Result<V148, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PEnum value) => new V148(value);
+public abstract record B148_1 : System.IEquatable<B148_1> { bool System.IEquatable<B148_1>.Equals(B148_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V148 : B148_1, IValue<char> { }
 }
 }
 
 // row 149
 public partial struct O149
 {
-public interface IMark149 { int Mark(); }
-public sealed partial record V149 : IValue<global::Probes.Build.C11ParsesToInt>, IMark149 { int IMark149.Mark() => 1; }
-public sealed partial record VC149 : IValue<global::Probes.Build.C11ParsedShape>, IMark149 { int IMark149.Mark() => 1; }
+public readonly partial record struct V149 : IValidatedValue<V149, char, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V149, global::Probes.Shapes.ShapeFault> Create(char value) => new V149(value);
+}
 }
 
 // row 150
 public static partial class O150
 {
-public sealed partial class P150
+public interface IMark150 { int Mark(); }
+public sealed partial record V150 : IValidatedValue<V150, global::Probes.Build.C11ParsesByRef, global::Probes.Shapes.ShapeFault>, IMark150
 {
-public abstract record B150_3 {  }
-public abstract record B150_2 : B150_3 {  }
-public abstract record B150_1 : B150_2 {  }
-public sealed partial record V150 : B150_1, IValidatedValue<V150, decimal, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V150, global::Probes.Shapes.ShapeFault> Create(decimal value) => new V150(value);
+    public static Result<V150, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesByRef value) => new V150(value); int IMark150.Mark() => 1;
 }
+public sealed partial record VC150 : IValidatedValue<VC150, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>, IMark150
+{
+    public static Result<VC150, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC150(value); int IMark150.Mark() => 1;
 }
 }
 
 // row 151
 public static partial class O151
 {
-public sealed partial record V151 : IValidatedValue<V151, ulong, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V151, global::Probes.Shapes.ShapeFault> Create(ulong value) => new V151(value);
-}
+public abstract record B151_1 {  }
+public sealed partial record V151 : B151_1, IValue<global::NodaTime.Instant> { }
 }
 
 // row 152
 public static partial class O152
 {
-public interface IMark152 { int Mark(); }
-public sealed partial record V152 : IValue<global::Probes.Build.C11AbstractText>, IMark152 { int IMark152.Mark() => 1; }
-public sealed partial record VC152 : IValue<global::Probes.Build.C11ConstructedConcrete>, IMark152 { int IMark152.Mark() => 1; }
+public readonly partial record struct V152 : IValue<byte> { }
 }
 
 // row 153
-public static partial class O153
+public abstract record B153_1 {  }
+public sealed partial record V153 : B153_1, IValidatedValue<V153, int, global::Probes.Shapes.ShapeFault>
 {
-public sealed partial record V153 : IValue<global::Probes.Build.C11ParsesToInt> { }
-public sealed partial record VC153 : IValue<global::Probes.Build.C11ParsedShape> { }
+    public static Result<V153, global::Probes.Shapes.ShapeFault> Create(int value) => new V153(value);
 }
 
 // row 154
-public static partial class O154
-{
-public sealed partial class P154
-{
-public abstract record B154_1 : System.IEquatable<B154_1> { bool System.IEquatable<B154_1>.Equals(B154_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V154 : B154_1, IValue<global::Probes.Build.C11ParsesToInt> { }
-public abstract record BC154_1 : System.IEquatable<BC154_1> { bool System.IEquatable<BC154_1>.Equals(BC154_1? other) => ReferenceEquals(this, other); }
-public sealed partial record VC154 : BC154_1, IValue<global::Probes.Build.C11ParsedShape> { }
-}
-}
+public abstract record B154_2 {  }
+public abstract record B154_1 : B154_2 {  }
+public sealed partial record V154 : B154_1, IValue<string> { }
 
 // row 155
-public sealed partial record V155 : IValue<global::Probes.Build.C11ConstructedByRef> { }
-public sealed partial record VC155 : IValue<global::Probes.Build.C11ParsesFromIn> { }
+public static partial class O155
+{
+public sealed partial class P155
+{
+public abstract record B155_1 {  }
+public sealed partial record V155 : B155_1, IValue<ulong> { }
+}
+}
 
 // row 156
-public interface IMark156 { int Mark(); }
-public readonly partial record struct V156 : IValidatedValue<V156, global::System.DateTimeOffset, global::Probes.Shapes.ShapeFault>, IMark156
+public partial struct O156
 {
-    public static Result<V156, global::Probes.Shapes.ShapeFault> Create(global::System.DateTimeOffset value) => new V156(value); int IMark156.Mark() => 1;
-}
-
-// row 157
-public static partial class O157
-{
-public sealed partial class P157
-{
-public abstract record B157_1 : System.IEquatable<B157_1> { bool System.IEquatable<B157_1>.Equals(B157_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V157 : B157_1, IValidatedValue<V157, global::Probes.Build.C11ParsesToInt, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V157, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesToInt value) => new V157(value);
-}
-public abstract record BC157_1 : System.IEquatable<BC157_1> { bool System.IEquatable<BC157_1>.Equals(BC157_1? other) => ReferenceEquals(this, other); }
-public sealed partial record VC157 : BC157_1, IValidatedValue<VC157, global::Probes.Build.C11ParsedShape, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC157, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsedShape value) => new VC157(value);
-}
-}
-}
-
-// row 158
-public static partial class O158
-{
-public sealed partial class P158
-{
-public abstract record B158_3 {  }
-public abstract record B158_2 : B158_3 {  }
-public abstract record B158_1 : B158_2 {  }
-public sealed partial record V158 : B158_1, IValidatedValue<V158, string, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V158, global::Probes.Shapes.ShapeFault> Create(string value) => new V158(value);
-}
-}
-}
-
-// row 159
-public static partial class O159
-{
-public sealed partial class P159
-{
-public abstract record B159_2 {  }
-public abstract record B159_1 : B159_2 {  }
-public sealed partial record V159 : B159_1, IValue<global::Probes.Shapes.PFlags> { }
-}
-}
-
-// row 160
-public partial struct O160
-{
-public interface IMark160 { int Mark(); }
-public sealed partial record V160 : IValue<decimal>, IMark160 { int IMark160.Mark() => 1; }
-}
-
-// row 161
-public static partial class O161
-{
-public readonly partial record struct V161 : IValue<global::System.Guid> { }
-}
-
-// row 162
-public partial struct O162
-{
-public abstract record B162_3 {  }
-public abstract record B162_2 : B162_3 {  }
-public abstract record B162_1 : B162_2 {  }
-public sealed partial record V162 : B162_1, IValue<global::System.DateTime> { }
-}
-
-// row 163
-public partial struct O163
-{
-public abstract record B163_1 : System.IEquatable<B163_1> { bool System.IEquatable<B163_1>.Equals(B163_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V163 : B163_1, IValue<global::System.DateTimeOffset> { }
-}
-
-// row 164
-public partial struct O164
-{
-public interface IMark164 { int Mark(); }
-public readonly partial record struct V164 : IValidatedValue<V164, byte, global::Probes.Shapes.ShapeFault>, IMark164
-{
-    public static Result<V164, global::Probes.Shapes.ShapeFault> Create(byte value) => new V164(value); int IMark164.Mark() => 1;
-}
-}
-
-// row 165
-public abstract record B165_1 : System.IEquatable<B165_1> { bool System.IEquatable<B165_1>.Equals(B165_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V165 : B165_1, IValue<global::System.DateOnly> { }
-
-// row 166
-public static partial class O166
-{
-public readonly partial record struct V166 : IValue<decimal> { }
-}
-
-// row 167
-public static partial class O167
-{
-public readonly partial record struct V167 : IValue<string> { }
-}
-
-// row 168
-public static partial class O168
-{
-public readonly partial record struct V168 : IValue<ulong> { }
-}
-
-// row 169
-public partial struct O169
-{
-public interface IMark169 { int Mark(); }
-public readonly partial record struct V169 : IValue<bool>, IMark169 { int IMark169.Mark() => 1; }
-}
-
-// row 170
-public static partial class O170
-{
-public sealed partial class P170
-{
-public readonly partial record struct V170 : IValidatedValue<V170, global::Probes.Shapes.PRec, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V170, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PRec value) => new V170(value);
-}
-}
-}
-
-// row 171
-public static partial class O171
-{
-public sealed partial record V171 : IValidatedValue<V171, byte, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V171, global::Probes.Shapes.ShapeFault> Create(byte value) => new V171(value);
-}
-}
-
-// row 172
-public static partial class O172
-{
-public sealed partial class P172
-{
-public abstract record B172_2 {  }
-public abstract record B172_1 : B172_2 {  }
-public sealed partial record V172 : B172_1, IValue<global::System.TimeOnly> { }
-}
-}
-
-// row 173
-public abstract record B173_3 {  }
-public abstract record B173_2 : B173_3 {  }
-public abstract record B173_1 : B173_2 {  }
-public sealed partial record V173 : B173_1, IValidatedValue<V173, global::System.TimeOnly, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V173, global::Probes.Shapes.ShapeFault> Create(global::System.TimeOnly value) => new V173(value);
-}
-
-// row 174
-public static partial class O174
-{
-public abstract record B174_3 {  }
-public abstract record B174_2 : B174_3 {  }
-public abstract record B174_1 : B174_2 {  }
-public sealed partial record V174 : B174_1, IValidatedValue<V174, global::System.Uri, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V174, global::Probes.Shapes.ShapeFault> Create(global::System.Uri value) => new V174(value);
-}
-}
-
-// row 175
-public partial struct O175
-{
-public readonly partial record struct V175 : IValidatedValue<V175, double, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V175, global::Probes.Shapes.ShapeFault> Create(double value) => new V175(value);
-}
-}
-
-// row 176
-public partial struct O176
-{
-public abstract record B176_1 : System.IEquatable<B176_1> { bool System.IEquatable<B176_1>.Equals(B176_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V176 : B176_1, IValue<string> { }
-}
-
-// row 177
-public static partial class O177
-{
-public abstract record B177_3 {  }
-public abstract record B177_2 : B177_3 {  }
-public abstract record B177_1 : B177_2 {  }
-public sealed partial record V177 : B177_1, IValidatedValue<V177, global::Probes.Build.C11ConstructedByRef, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V177, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ConstructedByRef value) => new V177(value);
-}
-public abstract record BC177_3 {  }
-public abstract record BC177_2 : BC177_3 {  }
-public abstract record BC177_1 : BC177_2 {  }
-public sealed partial record VC177 : BC177_1, IValidatedValue<VC177, global::Probes.Build.C11ParsesFromIn, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<VC177, global::Probes.Shapes.ShapeFault> Create(global::Probes.Build.C11ParsesFromIn value) => new VC177(value);
-}
-}
-
-// row 178
-public partial struct O178
-{
-public interface IMark178 { int Mark(); }
-public readonly partial record struct V178 : IValidatedValue<V178, global::System.Guid, global::Probes.Shapes.ShapeFault>, IMark178
-{
-    public static Result<V178, global::Probes.Shapes.ShapeFault> Create(global::System.Guid value) => new V178(value); int IMark178.Mark() => 1;
-}
-}
-
-// row 179
-public static partial class O179
-{
-public readonly partial record struct V179 : IValidatedValue<V179, global::System.TimeOnly, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V179, global::Probes.Shapes.ShapeFault> Create(global::System.TimeOnly value) => new V179(value);
-}
-}
-
-// row 180
-public static partial class O180
-{
-public sealed partial class P180
-{
-public interface IMark180 { int Mark(); }
-public readonly partial record struct V180 : IValue<global::Probes.Shapes.PEnum>, IMark180 { int IMark180.Mark() => 1; }
-}
-}
-
-// row 181
-public interface IMark181 { int Mark(); }
-public readonly partial record struct V181 : IValidatedValue<V181, global::System.TimeSpan, global::Probes.Shapes.ShapeFault>, IMark181
-{
-    public static Result<V181, global::Probes.Shapes.ShapeFault> Create(global::System.TimeSpan value) => new V181(value); int IMark181.Mark() => 1;
-}
-
-// row 182
-public static partial class O182
-{
-public readonly partial record struct V182 : IValidatedValue<V182, decimal, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V182, global::Probes.Shapes.ShapeFault> Create(decimal value) => new V182(value);
-}
-}
-
-// row 183
-public partial struct O183
-{
-public abstract record B183_3 {  }
-public abstract record B183_2 : B183_3 {  }
-public abstract record B183_1 : B183_2 {  }
-public sealed partial record V183 : B183_1, IValidatedValue<V183, global::Probes.Shapes.PFlags, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V183, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PFlags value) => new V183(value);
-}
-}
-
-// row 184
-public abstract record B184_1 {  }
-public sealed partial record V184 : B184_1, IValidatedValue<V184, global::System.DateTime, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V184, global::Probes.Shapes.ShapeFault> Create(global::System.DateTime value) => new V184(value);
-}
-
-// row 185
-public static partial class O185
-{
-public sealed partial class P185
-{
-public readonly partial record struct V185 : IValue<bool> { }
-}
-}
-
-// row 186
-public abstract record B186_3 {  }
-public abstract record B186_2 : B186_3 {  }
-public abstract record B186_1 : B186_2 {  }
-public sealed partial record V186 : B186_1, IValue<long> { }
-
-// row 187
-public static partial class O187
-{
-public abstract record B187_1 {  }
-public sealed partial record V187 : B187_1, IValidatedValue<V187, global::System.DateOnly, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V187, global::Probes.Shapes.ShapeFault> Create(global::System.DateOnly value) => new V187(value);
-}
-}
-
-// row 188
-public static partial class O188
-{
-public sealed partial class P188
-{
-public interface IMark188 { int Mark(); }
-public readonly partial record struct V188 : IValue<int>, IMark188 { int IMark188.Mark() => 1; }
-}
-}
-
-// row 189
-public static partial class O189
-{
-public sealed partial class P189
-{
-public interface IMark189 { int Mark(); }
-public sealed partial record V189 : IValidatedValue<V189, global::NodaTime.Instant, global::Probes.Shapes.ShapeFault>, IMark189
-{
-    public static Result<V189, global::Probes.Shapes.ShapeFault> Create(global::NodaTime.Instant value) => new V189(value); int IMark189.Mark() => 1;
-}
-}
-}
-
-// row 190
-public partial struct O190
-{
-public abstract record B190_3 {  }
-public abstract record B190_2 : B190_3 {  }
-public abstract record B190_1 : B190_2 {  }
-public sealed partial record V190 : B190_1, IValue<global::System.Guid> { }
-}
-
-// row 191
-public static partial class O191
-{
-public sealed partial class P191
-{
-public interface IMark191 { int Mark(); }
-public sealed partial record V191 : IValue<string>, IMark191 { int IMark191.Mark() => 1; }
-}
-}
-
-// row 192
-public abstract record B192_1 : System.IEquatable<B192_1> { bool System.IEquatable<B192_1>.Equals(B192_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V192 : B192_1, IValidatedValue<V192, ulong, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V192, global::Probes.Shapes.ShapeFault> Create(ulong value) => new V192(value);
-}
-
-// row 193
-public abstract record B193_2 {  }
-public abstract record B193_1 : B193_2 {  }
-public sealed partial record V193 : B193_1, IValue<global::System.DateOnly> { }
-
-// row 194
-public static partial class O194
-{
-public abstract record B194_2 {  }
-public abstract record B194_1 : B194_2 {  }
-public sealed partial record V194 : B194_1, IValidatedValue<V194, byte, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V194, global::Probes.Shapes.ShapeFault> Create(byte value) => new V194(value);
-}
-}
-
-// row 195
-public interface IMark195 { int Mark(); }
-public sealed partial record V195 : IValue<global::Probes.Shapes.PFlags>, IMark195 { int IMark195.Mark() => 1; }
-
-// row 196
-public abstract record B196_1 : System.IEquatable<B196_1> { bool System.IEquatable<B196_1>.Equals(B196_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V196 : B196_1, IValidatedValue<V196, double, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V196, global::Probes.Shapes.ShapeFault> Create(double value) => new V196(value);
-}
-
-// row 197
-public static partial class O197
-{
-public abstract record B197_2 {  }
-public abstract record B197_1 : B197_2 {  }
-public sealed partial record V197 : B197_1, IValue<global::System.DateTime> { }
-}
-
-// row 198
-public partial struct O198
-{
-public readonly partial record struct V198 : IValidatedValue<V198, byte, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V198, global::Probes.Shapes.ShapeFault> Create(byte value) => new V198(value);
-}
-}
-
-// row 199
-public static partial class O199
-{
-public sealed partial class P199
-{
-public interface IMark199 { int Mark(); }
-public readonly partial record struct V199 : IValidatedValue<V199, char, global::Probes.Shapes.ShapeFault>, IMark199
-{
-    public static Result<V199, global::Probes.Shapes.ShapeFault> Create(char value) => new V199(value); int IMark199.Mark() => 1;
-}
-}
-}
-
-// row 200
-public partial struct O200
-{
-public abstract record B200_1 : System.IEquatable<B200_1> { bool System.IEquatable<B200_1>.Equals(B200_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V200 : B200_1, IValue<global::Probes.Shapes.PEnum> { }
-}
-
-// row 201
-public partial struct O201
-{
-public abstract record B201_3 {  }
-public abstract record B201_2 : B201_3 {  }
-public abstract record B201_1 : B201_2 {  }
-public sealed partial record V201 : B201_1, IValue<global::System.Guid> { }
-}
-
-// row 202
-public partial struct O202
-{
-public abstract record B202_2 {  }
-public abstract record B202_1 : B202_2 {  }
-public sealed partial record V202 : B202_1, IValue<global::System.DateTimeOffset> { }
-}
-
-// row 203
-public static partial class O203
-{
-public sealed partial class P203
-{
-public abstract record B203_1 {  }
-public sealed partial record V203 : B203_1, IValue<char> { }
-}
-}
-
-// row 204
-public partial struct O204
-{
-public abstract record B204_1 {  }
-public sealed partial record V204 : B204_1, IValidatedValue<V204, global::System.TimeOnly, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V204, global::Probes.Shapes.ShapeFault> Create(global::System.TimeOnly value) => new V204(value);
-}
-}
-
-// row 205
-public partial struct O205
-{
-public abstract record B205_1 {  }
-public sealed partial record V205 : B205_1, IValue<string> { }
-}
-
-// row 206
-public static partial class O206
-{
-public sealed partial class P206
-{
-public abstract record B206_1 {  }
-public sealed partial record V206 : B206_1, IValidatedValue<V206, global::System.Uri, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V206, global::Probes.Shapes.ShapeFault> Create(global::System.Uri value) => new V206(value);
-}
-}
-}
-
-// row 207
-public abstract record B207_1 {  }
-public sealed partial record V207 : B207_1, IValue<global::System.DateTimeOffset> { }
-
-// row 208
-public abstract record B208_2 {  }
-public abstract record B208_1 : B208_2 {  }
-public sealed partial record V208 : B208_1, IValidatedValue<V208, long, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V208, global::Probes.Shapes.ShapeFault> Create(long value) => new V208(value);
-}
-
-// row 209
-public static partial class O209
-{
-public sealed partial class P209
-{
-public interface IMark209 { int Mark(); }
-public sealed partial record V209 : IValidatedValue<V209, ulong, global::Probes.Shapes.ShapeFault>, IMark209
-{
-    public static Result<V209, global::Probes.Shapes.ShapeFault> Create(ulong value) => new V209(value); int IMark209.Mark() => 1;
-}
-}
-}
-
-// row 210
-public static partial class O210
-{
-public abstract record B210_1 {  }
-public sealed partial record V210 : B210_1, IValidatedValue<V210, bool, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V210, global::Probes.Shapes.ShapeFault> Create(bool value) => new V210(value);
-}
-}
-
-// row 211
-public abstract record B211_1 : System.IEquatable<B211_1> { bool System.IEquatable<B211_1>.Equals(B211_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V211 : B211_1, IValidatedValue<V211, global::System.TimeSpan, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V211, global::Probes.Shapes.ShapeFault> Create(global::System.TimeSpan value) => new V211(value);
-}
-
-// row 212
-public static partial class O212
-{
-public abstract record B212_3 {  }
-public abstract record B212_2 : B212_3 {  }
-public abstract record B212_1 : B212_2 {  }
-public sealed partial record V212 : B212_1, IValidatedValue<V212, int, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V212, global::Probes.Shapes.ShapeFault> Create(int value) => new V212(value);
-}
-}
-
-// row 213
-public static partial class O213
-{
-public abstract record B213_1 : System.IEquatable<B213_1> { bool System.IEquatable<B213_1>.Equals(B213_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V213 : B213_1, IValue<int> { }
-}
-
-// row 214
-public abstract record B214_1 {  }
-public sealed partial record V214 : B214_1, IValidatedValue<V214, decimal, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V214, global::Probes.Shapes.ShapeFault> Create(decimal value) => new V214(value);
-}
-
-// row 215
-public static partial class O215
-{
-public sealed partial class P215
-{
-public abstract record B215_1 : System.IEquatable<B215_1> { bool System.IEquatable<B215_1>.Equals(B215_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V215 : B215_1, IValidatedValue<V215, byte, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V215, global::Probes.Shapes.ShapeFault> Create(byte value) => new V215(value);
-}
-}
-}
-
-// row 216
-public static partial class O216
-{
-public sealed partial class P216
-{
-public abstract record B216_1 {  }
-public sealed partial record V216 : B216_1, IValidatedValue<V216, global::Probes.Shapes.PRec, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V216, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PRec value) => new V216(value);
-}
-}
-}
-
-// row 217
-public partial struct O217
-{
-public readonly partial record struct V217 : IValidatedValue<V217, int, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V217, global::Probes.Shapes.ShapeFault> Create(int value) => new V217(value);
-}
-}
-
-// row 218
-public static partial class O218
-{
-public abstract record B218_1 : System.IEquatable<B218_1> { bool System.IEquatable<B218_1>.Equals(B218_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V218 : B218_1, IValue<string> { }
-}
-
-// row 219
-public static partial class O219
-{
-public sealed partial class P219
-{
-public abstract record B219_2 {  }
-public abstract record B219_1 : B219_2 {  }
-public sealed partial record V219 : B219_1, IValidatedValue<V219, global::System.Guid, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V219, global::Probes.Shapes.ShapeFault> Create(global::System.Guid value) => new V219(value);
-}
-}
-}
-
-// row 220
-public static partial class O220
-{
-public sealed partial class P220
-{
-public abstract record B220_1 {  }
-public sealed partial record V220 : B220_1, IValue<global::Probes.Shapes.PFlags> { }
-}
-}
-
-// row 221
-public partial struct O221
-{
-public sealed partial record V221 : IValue<byte> { }
-}
-
-// row 222
-public partial struct O222
-{
-public abstract record B222_1 {  }
-public sealed partial record V222 : B222_1, IValue<global::System.DateTime> { }
-}
-
-// row 223
-public sealed partial record V223 : IValue<global::Probes.Shapes.PRec> { }
-
-// row 224
-public partial struct O224
-{
-public abstract record B224_1 {  }
-public sealed partial record V224 : B224_1, IValidatedValue<V224, global::NodaTime.Instant, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V224, global::Probes.Shapes.ShapeFault> Create(global::NodaTime.Instant value) => new V224(value);
-}
-}
-
-// row 225
-public static partial class O225
-{
-public sealed partial class P225
-{
-public readonly partial record struct V225 : IValue<global::System.DateOnly> { }
-}
-}
-
-// row 226
-public static partial class O226
-{
-public sealed partial class P226
-{
-public readonly partial record struct V226 : IValidatedValue<V226, global::System.DateTimeOffset, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V226, global::Probes.Shapes.ShapeFault> Create(global::System.DateTimeOffset value) => new V226(value);
-}
-}
-}
-
-// row 227
-public static partial class O227
-{
-public abstract record B227_3 {  }
-public abstract record B227_2 : B227_3 {  }
-public abstract record B227_1 : B227_2 {  }
-public sealed partial record V227 : B227_1, IValue<global::System.TimeOnly> { }
-}
-
-// row 228
-public static partial class O228
-{
-public readonly partial record struct V228 : IValidatedValue<V228, global::System.TimeSpan, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V228, global::Probes.Shapes.ShapeFault> Create(global::System.TimeSpan value) => new V228(value);
-}
-}
-
-// row 229
-public static partial class O229
-{
-public sealed partial class P229
-{
-public abstract record B229_1 : System.IEquatable<B229_1> { bool System.IEquatable<B229_1>.Equals(B229_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V229 : B229_1, IValidatedValue<V229, global::System.DateTime, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V229, global::Probes.Shapes.ShapeFault> Create(global::System.DateTime value) => new V229(value);
-}
-}
-}
-
-// row 230
-public partial struct O230
-{
-public abstract record B230_1 : System.IEquatable<B230_1> { bool System.IEquatable<B230_1>.Equals(B230_1? other) => ReferenceEquals(this, other); }
-public sealed partial record V230 : B230_1, IValidatedValue<V230, double, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V230, global::Probes.Shapes.ShapeFault> Create(double value) => new V230(value);
-}
-}
-
-// row 231
-public static partial class O231
-{
-public interface IMark231 { int Mark(); }
-public readonly partial record struct V231 : IValidatedValue<V231, global::System.Uri, global::Probes.Shapes.ShapeFault>, IMark231
-{
-    public static Result<V231, global::Probes.Shapes.ShapeFault> Create(global::System.Uri value) => new V231(value); int IMark231.Mark() => 1;
-}
-}
-
-// row 232
-public partial struct O232
-{
-public interface IMark232 { int Mark(); }
-public readonly partial record struct V232 : IValue<double>, IMark232 { int IMark232.Mark() => 1; }
-}
-
-// row 233
-public static partial class O233
-{
-public sealed partial class P233
-{
-public readonly partial record struct V233 : IValue<global::System.DateOnly> { }
-}
-}
-
-// row 234
-public readonly partial record struct V234 : IValue<global::Probes.Shapes.PEnum> { }
-
-// row 235
-public abstract record B235_3 {  }
-public abstract record B235_2 : B235_3 {  }
-public abstract record B235_1 : B235_2 {  }
-public sealed partial record V235 : B235_1, IValidatedValue<V235, global::System.DateTimeOffset, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V235, global::Probes.Shapes.ShapeFault> Create(global::System.DateTimeOffset value) => new V235(value);
-}
-
-// row 236
-public abstract record B236_3 {  }
-public abstract record B236_2 : B236_3 {  }
-public abstract record B236_1 : B236_2 {  }
-public sealed partial record V236 : B236_1, IValidatedValue<V236, bool, global::Probes.Shapes.ShapeFault>
-{
-    public static Result<V236, global::Probes.Shapes.ShapeFault> Create(bool value) => new V236(value);
-}
-
-// row 237
-public static partial class O237
-{
-public abstract record B237_2 {  }
-public abstract record B237_1 : B237_2 {  }
-public sealed partial record V237 : B237_1, IValue<decimal> { }
-}
-
-// row 238
-public static partial class O238
-{
-public sealed partial class P238
+public abstract record B156_1 : System.IEquatable<B156_1> { bool System.IEquatable<B156_1>.Equals(B156_1? other) => ReferenceEquals(this, other); }
+public sealed partial record V156 : B156_1, IValidatedValue<V156, ulong, global::Probes.Shapes.ShapeFault>
 {
-public abstract record B238_1 {  }
-public sealed partial record V238 : B238_1, IValue<ulong> { }
+    public static Result<V156, global::Probes.Shapes.ShapeFault> Create(ulong value) => new V156(value);
 }
 }
-
-// row 239
-public abstract record B239_1 {  }
-public sealed partial record V239 : B239_1, IValue<double> { }
-
-// row 240
-public abstract record B240_1 {  }
-public sealed partial record V240 : B240_1, IValue<byte> { }
 
 public static partial class C11Table
 {
     public static readonly C11Case[] Cases =
     [
-        new(0, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=double;text.culture=invariant;text.entry=TryFrom", "sealed-record-class", "nested-in-class", "explicit-interface-member", typeof(O0.V0), typeof(double), null, null, []),
-        new(1, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=TimeSpan;text.culture=de-DE;text.entry=ISpanParsable", "validated-class", "top-level", "none", typeof(V1), typeof(global::System.TimeSpan), null, null, []),
-        new(2, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-struct;shape.wrapped=decimal;text.culture=tr-TR;text.entry=TryFormat-short-span", "sealed-record-class", "nested-in-struct", "base-depth-2", typeof(O2.V2), typeof(global::Probes.Build.C11ParsesToInt), typeof(O2.VC2), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(3, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=TimeOnly;text.culture=tr-TR;text.entry=Parse", "validated-struct", "nested-two-levels", "none", typeof(O3.P3.V3), typeof(global::Probes.Build.C11AbstractText), typeof(O3.P3.VC3), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(4, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=decimal;text.culture=ar-SA;text.entry=ToString-format", "record-struct", "top-level", "explicit-interface-member", typeof(V4), typeof(global::Probes.Build.C11ParsesByRef), typeof(VC4), typeof(global::Probes.Build.C11ParsesFromIn), []),
-        new(5, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=char;text.culture=globalization-invariant;text.entry=IParsable", "validated-class", "nested-in-struct", "base-depth-1", typeof(O5.V5), typeof(global::Probes.Build.C11AbstractText), typeof(O5.VC5), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(6, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=string;text.culture=globalization-invariant;text.entry=TryParse", "record-struct", "nested-in-class", "none", typeof(O6.V6), typeof(global::Probes.Build.C11ParsesToInt), typeof(O6.VC6), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(7, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=NodaTime.Instant;text.culture=invariant;text.entry=type-converter", "sealed-record-class", "nested-two-levels", "base-depth-1", typeof(O7.P7.V7), typeof(global::Probes.Build.C11ConstructedByRef), typeof(O7.P7.VC7), typeof(global::Probes.Build.C11ParsesFromIn), []),
-        new(8, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=long;text.culture=ar-SA;text.entry=IParsable", "sealed-record-class", "nested-two-levels", "base-explicit-IEquatable", typeof(O8.P8.V8), typeof(long), null, null, []),
-        new(9, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=NodaTime.Instant;text.culture=de-DE;text.entry=TryParse", "validated-class", "nested-in-struct", "base-depth-3", typeof(O9.V9), typeof(global::NodaTime.Instant), null, null, []),
-        new(10, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=ulong;text.culture=invariant;text.entry=TryFormat-short-span", "validated-class", "top-level", "base-explicit-IEquatable", typeof(V10), typeof(global::Probes.Build.C11ParsesToInt), typeof(VC10), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(11, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=Guid;text.culture=de-DE;text.entry=Parse", "validated-struct", "nested-in-class", "explicit-interface-member", typeof(O11.V11), typeof(global::Probes.Build.C11ConstructedByRef), typeof(O11.VC11), typeof(global::Probes.Build.C11ParsesFromIn), []),
-        new(12, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=bool;text.culture=globalization-invariant;text.entry=type-converter", "sealed-record-class", "top-level", "base-depth-2", typeof(V12), typeof(bool), null, null, []),
-        new(13, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=DateTime;text.culture=tr-TR;text.entry=ToString-format", "validated-class", "nested-in-class", "base-depth-3", typeof(O13.V13), typeof(global::Probes.Build.C11AbstractText), typeof(O13.VC13), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(14, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=DateOnly;text.culture=ar-SA;text.entry=ISpanParsable", "validated-struct", "nested-in-struct", "none", typeof(O14.V14), typeof(global::System.DateOnly), null, null, [("shape.inheritance", "none")]),
-        new(15, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=int;text.culture=invariant;text.entry=TryFrom", "record-struct", "nested-in-struct", "none", typeof(O15.V15), typeof(global::Probes.Build.C11ConstructedByRef), typeof(O15.VC15), typeof(global::Probes.Build.C11ParsesFromIn), []),
-        new(16, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=enum;text.culture=globalization-invariant;text.entry=TryFormat-short-span", "record-struct", "nested-two-levels", "explicit-interface-member", typeof(O16.P16.V16), typeof(global::Probes.Build.C11AbstractText), typeof(O16.P16.VC16), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(17, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=Uri;text.culture=tr-TR;text.entry=Parse", "record-struct", "top-level", "none", typeof(V17), typeof(global::System.Uri), null, null, [("shape.inheritance", "none")]),
-        new(18, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=TimeOnly;text.culture=ar-SA;text.entry=TryFrom", "validated-class", "nested-two-levels", "base-depth-2", typeof(O18.P18.V18), typeof(global::Probes.Build.C11ParsesToInt), typeof(O18.P18.VC18), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(19, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=string;text.culture=de-DE;text.entry=ISpanParsable", "sealed-record-class", "nested-in-class", "base-explicit-IEquatable", typeof(O19.V19), typeof(global::Probes.Build.C11AbstractText), typeof(O19.VC19), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(20, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=TimeSpan;text.culture=tr-TR;text.entry=IParsable", "validated-struct", "nested-in-struct", "explicit-interface-member", typeof(O20.V20), typeof(global::Probes.Build.C11ParsesByRef), typeof(O20.VC20), typeof(global::Probes.Build.C11ParsesFromIn), []),
-        new(21, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=DateTimeOffset;text.culture=ar-SA;text.entry=TryFormat-short-span", "validated-struct", "nested-in-class", "none", typeof(O21.V21), typeof(global::System.DateTimeOffset), null, null, []),
-        new(22, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=ulong;text.culture=de-DE;text.entry=ISpanParsable", "record-struct", "nested-two-levels", "explicit-interface-member", typeof(O22.P22.V22), typeof(global::Probes.Build.C11ParsesToInt), typeof(O22.P22.VC22), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(23, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=byte;text.culture=invariant;text.entry=ToString-format", "sealed-record-class", "nested-two-levels", "base-depth-3", typeof(O23.P23.V23), typeof(byte), null, null, []),
-        new(24, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=validated-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=own-record-class;text.culture=de-DE;text.entry=ToString-format", "validated-struct", "nested-in-class", "none", typeof(O24.V24), typeof(global::Probes.Build.C11ParsesToInt), typeof(O24.VC24), typeof(global::Probes.Build.C11ParsedShape), [("shape.inheritance", "none")]),
-        new(25, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=char;text.culture=ar-SA;text.entry=TryParse", "validated-struct", "top-level", "explicit-interface-member", typeof(V25), typeof(global::Probes.Build.C11AbstractText), typeof(VC25), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(26, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=byte;text.culture=globalization-invariant;text.entry=Parse", "validated-class", "nested-in-struct", "base-explicit-IEquatable", typeof(O26.V26), typeof(global::Probes.Build.C11ParsesByRef), typeof(O26.VC26), typeof(global::Probes.Build.C11ParsesFromIn), []),
-        new(27, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=ulong;text.culture=ar-SA;text.entry=type-converter", "validated-struct", "nested-in-class", "none", typeof(O27.V27), typeof(global::Probes.Build.C11ParsesToInt), typeof(O27.VC27), typeof(global::Probes.Build.C11ParsedShape), [("shape.inheritance", "none")]),
-        new(28, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=TimeOnly;text.culture=globalization-invariant;text.entry=TryFrom", "validated-struct", "top-level", "none", typeof(V28), typeof(global::Probes.Build.C11ParsesByRef), typeof(VC28), typeof(global::Probes.Build.C11ParsesFromIn), [("shape.inheritance", "none")]),
-        new(29, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=flags-enum;text.culture=de-DE;text.entry=type-converter", "validated-class", "nested-in-struct", "explicit-interface-member", typeof(O29.V29), typeof(global::Probes.Build.C11ConstructedByRef), typeof(O29.VC29), typeof(global::Probes.Build.C11ParsesFromIn), []),
-        new(30, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=DateOnly;text.culture=invariant;text.entry=TryParse", "sealed-record-class", "top-level", "base-depth-2", typeof(V30), typeof(global::Probes.Build.C11ParsesByRef), typeof(VC30), typeof(global::Probes.Build.C11ParsesFromIn), []),
-        new(31, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=decimal;text.culture=invariant;text.entry=IParsable", "validated-struct", "nested-in-class", "none", typeof(O31.V31), typeof(global::Probes.Build.C11ParsesToInt), typeof(O31.VC31), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(32, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=Guid;text.culture=globalization-invariant;text.entry=ToString-format", "sealed-record-class", "nested-in-struct", "none", typeof(O32.V32), typeof(global::Probes.Build.C11AbstractText), typeof(O32.VC32), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(33, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=long;text.culture=de-DE;text.entry=TryFrom", "validated-class", "nested-in-class", "base-depth-1", typeof(O33.V33), typeof(long), null, null, []),
-        new(34, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=flags-enum;text.culture=globalization-invariant;text.entry=Parse", "sealed-record-class", "top-level", "base-depth-3", typeof(V34), typeof(global::Probes.Build.C11ParsesToInt), typeof(VC34), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(35, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=top-level;shape.wrapped=int;text.culture=globalization-invariant;text.entry=IParsable", "sealed-record-class", "top-level", "base-depth-2", typeof(V35), typeof(int), null, null, []),
-        new(36, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=DateTime;text.culture=invariant;text.entry=Parse", "sealed-record-class", "nested-in-struct", "base-depth-2", typeof(O36.V36), typeof(global::Probes.Build.C11AbstractText), typeof(O36.VC36), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(37, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=char;text.culture=tr-TR;text.entry=type-converter", "sealed-record-class", "nested-two-levels", "none", typeof(O37.P37.V37), typeof(char), null, null, []),
-        new(38, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-struct;shape.wrapped=DateTimeOffset;text.culture=globalization-invariant;text.entry=ISpanParsable", "validated-class", "nested-in-struct", "base-depth-2", typeof(O38.V38), typeof(global::Probes.Build.C11ParsesByRef), typeof(O38.VC38), typeof(global::Probes.Build.C11ParsesFromIn), []),
-        new(39, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=enum;text.culture=ar-SA;text.entry=Parse", "sealed-record-class", "nested-in-struct", "base-depth-3", typeof(O39.V39), typeof(global::Probes.Shapes.PEnum), null, null, []),
-        new(40, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=Uri;text.culture=invariant;text.entry=ISpanParsable", "validated-struct", "nested-in-struct", "none", typeof(O40.V40), typeof(global::Probes.Build.C11ParsesToInt), typeof(O40.VC40), typeof(global::Probes.Build.C11ParsedShape), [("shape.inheritance", "none")]),
-        new(41, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=own-record-class;text.culture=tr-TR;text.entry=ISpanParsable", "sealed-record-class", "nested-in-struct", "base-explicit-IEquatable", typeof(O41.V41), typeof(global::Probes.Shapes.PRec), null, null, []),
-        new(42, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=Guid;text.culture=tr-TR;text.entry=TryParse", "sealed-record-class", "nested-two-levels", "base-explicit-IEquatable", typeof(O42.P42.V42), typeof(global::System.Guid), null, null, []),
-        new(43, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-struct;shape.wrapped=bool;text.culture=de-DE;text.entry=IParsable", "record-struct", "nested-in-struct", "none", typeof(O43.V43), typeof(global::Probes.Build.C11AbstractText), typeof(O43.VC43), typeof(global::Probes.Build.C11ConstructedConcrete), [("shape.inheritance", "none")]),
-        new(44, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=record-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=TimeOnly;text.culture=de-DE;text.entry=TryFormat-short-span", "record-struct", "nested-two-levels", "none", typeof(O44.P44.V44), typeof(global::Probes.Build.C11ParsesByRef), typeof(O44.P44.VC44), typeof(global::Probes.Build.C11ParsesFromIn), [("shape.inheritance", "none")]),
-        new(45, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=double;text.culture=ar-SA;text.entry=TryFormat-short-span", "validated-struct", "top-level", "none", typeof(V45), typeof(global::Probes.Build.C11ConstructedByRef), typeof(VC45), typeof(global::Probes.Build.C11ParsesFromIn), []),
-        new(46, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=flags-enum;text.culture=invariant;text.entry=ToString-format", "validated-struct", "nested-in-class", "none", typeof(O46.V46), typeof(global::Probes.Shapes.PFlags), null, null, [("shape.inheritance", "none")]),
-        new(47, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=int;text.culture=de-DE;text.entry=type-converter", "validated-struct", "nested-in-class", "none", typeof(O47.V47), typeof(int), null, null, [("shape.inheritance", "none")]),
-        new(48, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=in-generic-type;shape.wrapped=Guid;text.culture=invariant;text.entry=type-converter", "record-struct", "nested-in-class", "none", typeof(O48.V48), typeof(global::Probes.Build.C11AbstractText), typeof(O48.VC48), typeof(global::Probes.Build.C11ConstructedConcrete), [("shape.site", "nested-in-class"), ("shape.inheritance", "none")]),
-        new(49, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=bool;text.culture=tr-TR;text.entry=TryFrom", "validated-class", "nested-in-class", "base-explicit-IEquatable", typeof(O49.V49), typeof(bool), null, null, []),
-        new(50, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=DateTimeOffset;text.culture=invariant;text.entry=type-converter", "sealed-record-class", "top-level", "base-explicit-IEquatable", typeof(V50), typeof(global::Probes.Build.C11ParsesByRef), typeof(VC50), typeof(global::Probes.Build.C11ParsesFromIn), []),
-        new(51, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=DateOnly;text.culture=globalization-invariant;text.entry=IParsable", "validated-class", "nested-in-class", "base-depth-3", typeof(O51.V51), typeof(global::System.DateOnly), null, null, []),
-        new(52, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=ulong;text.culture=tr-TR;text.entry=TryFrom", "sealed-record-class", "nested-in-struct", "none", typeof(O52.V52), typeof(ulong), null, null, []),
-        new(53, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=string;text.culture=invariant;text.entry=TryFormat-short-span", "validated-class", "nested-two-levels", "base-depth-3", typeof(O53.P53.V53), typeof(string), null, null, []),
-        new(54, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=Uri;text.culture=ar-SA;text.entry=TryFrom", "validated-class", "nested-two-levels", "base-depth-3", typeof(O54.P54.V54), typeof(global::Probes.Build.C11AbstractText), typeof(O54.P54.VC54), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(55, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=TimeSpan;text.culture=ar-SA;text.entry=TryParse", "sealed-record-class", "nested-two-levels", "base-depth-1", typeof(O55.P55.V55), typeof(global::System.TimeSpan), null, null, []),
-        new(56, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=decimal;text.culture=globalization-invariant;text.entry=TryParse", "validated-class", "nested-two-levels", "base-depth-1", typeof(O56.P56.V56), typeof(decimal), null, null, []),
-        new(57, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=enum;text.culture=de-DE;text.entry=ToString-format", "validated-class", "top-level", "base-depth-1", typeof(V57), typeof(global::Probes.Shapes.PEnum), null, null, []),
-        new(58, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=byte;text.culture=tr-TR;text.entry=TryParse", "record-struct", "top-level", "none", typeof(V58), typeof(byte), null, null, []),
-        new(59, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=double;text.culture=tr-TR;text.entry=TryParse", "validated-class", "nested-two-levels", "base-depth-3", typeof(O59.P59.V59), typeof(double), null, null, []),
-        new(60, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=TimeOnly;text.culture=invariant;text.entry=ToString-format", "sealed-record-class", "nested-in-class", "explicit-interface-member", typeof(O60.V60), typeof(global::System.TimeOnly), null, null, []),
-        new(61, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=string;text.culture=tr-TR;text.entry=Parse", "sealed-record-class", "nested-in-struct", "base-depth-1", typeof(O61.V61), typeof(global::Probes.Build.C11ParsesToInt), typeof(O61.VC61), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(62, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=DateTime;text.culture=ar-SA;text.entry=ISpanParsable", "validated-struct", "nested-two-levels", "none", typeof(O62.P62.V62), typeof(global::System.DateTime), null, null, []),
-        new(63, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=NodaTime.Instant;text.culture=tr-TR;text.entry=TryFrom", "record-struct", "top-level", "explicit-interface-member", typeof(V63), typeof(global::NodaTime.Instant), null, null, []),
-        new(64, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=enum;text.culture=tr-TR;text.entry=type-converter", "validated-struct", "nested-in-class", "none", typeof(O64.V64), typeof(global::Probes.Shapes.PEnum), null, null, []),
-        new(65, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=Guid;text.culture=ar-SA;text.entry=TryFormat-short-span", "validated-class", "top-level", "base-depth-2", typeof(V65), typeof(global::System.Guid), null, null, []),
-        new(66, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=own-record-class;text.culture=ar-SA;text.entry=IParsable", "validated-class", "top-level", "base-explicit-IEquatable", typeof(V66), typeof(global::Probes.Shapes.PRec), null, null, []),
-        new(67, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=bool;text.culture=ar-SA;text.entry=ISpanParsable", "validated-struct", "nested-two-levels", "none", typeof(O67.P67.V67), typeof(global::Probes.Build.C11AbstractText), typeof(O67.P67.VC67), typeof(global::Probes.Build.C11ConstructedConcrete), [("shape.inheritance", "none")]),
-        new(68, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=DateOnly;text.culture=tr-TR;text.entry=ToString-format", "record-struct", "nested-two-levels", "none", typeof(O68.P68.V68), typeof(global::System.DateOnly), null, null, [("shape.inheritance", "none")]),
-        new(69, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=long;text.culture=invariant;text.entry=TryParse", "validated-struct", "nested-in-struct", "explicit-interface-member", typeof(O69.V69), typeof(long), null, null, []),
-        new(70, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=DateTimeOffset;text.culture=tr-TR;text.entry=Parse", "record-struct", "nested-two-levels", "explicit-interface-member", typeof(O70.P70.V70), typeof(global::System.DateTimeOffset), null, null, []),
-        new(71, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=flags-enum;text.culture=ar-SA;text.entry=TryFormat-short-span", "record-struct", "nested-two-levels", "none", typeof(O71.P71.V71), typeof(global::Probes.Shapes.PFlags), null, null, []),
-        new(72, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-struct;shape.wrapped=double;text.culture=globalization-invariant;text.entry=ToString-format", "record-struct", "nested-in-struct", "none", typeof(O72.V72), typeof(double), null, null, [("shape.inheritance", "none")]),
-        new(73, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=byte;text.culture=de-DE;text.entry=ISpanParsable", "validated-struct", "nested-in-class", "explicit-interface-member", typeof(O73.V73), typeof(global::Probes.Build.C11ConstructedByRef), typeof(O73.VC73), typeof(global::Probes.Build.C11ParsesFromIn), []),
-        new(74, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=char;text.culture=de-DE;text.entry=TryFormat-short-span", "record-struct", "nested-in-class", "none", typeof(O74.V74), typeof(char), null, null, []),
-        new(75, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=int;text.culture=ar-SA;text.entry=TryFormat-short-span", "validated-class", "nested-in-struct", "base-depth-1", typeof(O75.V75), typeof(int), null, null, []),
-        new(76, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=Uri;text.culture=de-DE;text.entry=TryParse", "sealed-record-class", "nested-in-class", "explicit-interface-member", typeof(O76.V76), typeof(global::System.Uri), null, null, []),
-        new(77, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=long;text.culture=globalization-invariant;text.entry=ToString-format", "record-struct", "top-level", "none", typeof(V77), typeof(global::Probes.Build.C11AbstractText), typeof(VC77), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(78, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=own-record-class;text.culture=invariant;text.entry=TryParse", "record-struct", "nested-two-levels", "none", typeof(O78.P78.V78), typeof(global::Probes.Build.C11ParsesToInt), typeof(O78.P78.VC78), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(79, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=DateTime;text.culture=globalization-invariant;text.entry=TryFrom", "sealed-record-class", "top-level", "base-explicit-IEquatable", typeof(V79), typeof(global::Probes.Build.C11ParsesToInt), typeof(VC79), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(80, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=NodaTime.Instant;text.culture=globalization-invariant;text.entry=IParsable", "validated-struct", "nested-in-class", "none", typeof(O80.V80), typeof(global::NodaTime.Instant), null, null, [("shape.inheritance", "none")]),
-        new(81, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=closed-set;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=TimeSpan;text.culture=ar-SA;text.entry=Parse", "sealed-record-class", "nested-in-class", "base-explicit-IEquatable", typeof(O81.V81), typeof(global::Probes.Build.C11AbstractText), typeof(O81.VC81), typeof(global::Probes.Build.C11ConstructedConcrete), [("shape.kind", "sealed-record-class")]),
-        new(82, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=DateTime;text.culture=de-DE;text.entry=IParsable", "record-struct", "nested-two-levels", "explicit-interface-member", typeof(O82.P82.V82), typeof(global::System.DateTime), null, null, []),
-        new(83, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=string;text.culture=ar-SA;text.entry=ToString-format", "validated-class", "top-level", "base-depth-2", typeof(V83), typeof(string), null, null, []),
-        new(84, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=long;text.culture=tr-TR;text.entry=ISpanParsable", "validated-class", "nested-in-class", "base-depth-2", typeof(O84.V84), typeof(long), null, null, []),
-        new(85, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=TimeOnly;text.culture=invariant;text.entry=type-converter", "sealed-record-class", "nested-in-struct", "base-explicit-IEquatable", typeof(O85.V85), typeof(global::System.TimeOnly), null, null, []),
-        new(86, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=byte;text.culture=ar-SA;text.entry=TryFrom", "sealed-record-class", "nested-two-levels", "base-depth-2", typeof(O86.P86.V86), typeof(global::Probes.Build.C11ParsesToInt), typeof(O86.P86.VC86), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(87, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=int;text.culture=tr-TR;text.entry=ToString-format", "sealed-record-class", "nested-two-levels", "none", typeof(O87.P87.V87), typeof(int), null, null, []),
-        new(88, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=none;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=DateOnly;text.culture=de-DE;text.entry=type-converter", "sealed-record-class", "top-level", "none", typeof(V88), typeof(global::Probes.Build.C11AbstractText), typeof(VC88), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(89, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=top-level;shape.wrapped=ulong;text.culture=globalization-invariant;text.entry=TryParse", "validated-class", "top-level", "base-depth-2", typeof(V89), typeof(ulong), null, null, []),
-        new(90, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=NodaTime.Instant;text.culture=ar-SA;text.entry=TryFormat-short-span", "record-struct", "top-level", "none", typeof(V90), typeof(global::NodaTime.Instant), null, null, []),
-        new(91, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=closed-set;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=DateTimeOffset;text.culture=de-DE;text.entry=ToString-format", "sealed-record-class", "nested-two-levels", "base-depth-1", typeof(O91.P91.V91), typeof(global::Probes.Build.C11ParsesToInt), typeof(O91.P91.VC91), typeof(global::Probes.Build.C11ParsedShape), [("shape.kind", "sealed-record-class")]),
-        new(92, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=in-generic-type;shape.wrapped=TimeSpan;text.culture=invariant;text.entry=type-converter", "validated-class", "nested-in-class", "base-depth-2", typeof(O92.V92), typeof(global::System.TimeSpan), null, null, [("shape.site", "nested-in-class")]),
-        new(93, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=decimal;text.culture=de-DE;text.entry=ISpanParsable", "sealed-record-class", "top-level", "base-depth-3", typeof(V93), typeof(decimal), null, null, []),
-        new(94, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=Uri;text.culture=globalization-invariant;text.entry=IParsable", "sealed-record-class", "nested-in-struct", "base-depth-2", typeof(O94.V94), typeof(global::System.Uri), null, null, []),
-        new(95, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=char;text.culture=invariant;text.entry=TryFrom", "validated-class", "top-level", "base-depth-3", typeof(V95), typeof(char), null, null, []),
-        new(96, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=own-record-class;text.culture=globalization-invariant;text.entry=type-converter", "validated-class", "nested-in-struct", "base-depth-3", typeof(O96.V96), typeof(global::Probes.Shapes.PRec), null, null, []),
-        new(97, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=top-level;shape.wrapped=flags-enum;text.culture=tr-TR;text.entry=TryFrom", "validated-class", "top-level", "base-depth-1", typeof(V97), typeof(global::Probes.Shapes.PFlags), null, null, []),
-        new(98, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=enum;text.culture=invariant;text.entry=TryParse", "sealed-record-class", "top-level", "base-depth-2", typeof(V98), typeof(global::Probes.Shapes.PEnum), null, null, []),
-        new(99, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=string;text.culture=invariant;text.entry=TryFrom", "validated-struct", "top-level", "explicit-interface-member", typeof(V99), typeof(string), null, null, []),
-        new(100, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=double;text.culture=de-DE;text.entry=ISpanParsable", "validated-class", "top-level", "base-depth-1", typeof(V100), typeof(global::Probes.Build.C11ParsesToInt), typeof(VC100), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(101, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=in-generic-type;shape.wrapped=DateOnly;text.culture=tr-TR;text.entry=Parse", "validated-struct", "nested-in-class", "explicit-interface-member", typeof(O101.V101), typeof(global::System.DateOnly), null, null, [("shape.site", "nested-in-class")]),
-        new(102, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=bool;text.culture=invariant;text.entry=TryParse", "sealed-record-class", "nested-two-levels", "explicit-interface-member", typeof(O102.P102.V102), typeof(bool), null, null, []),
-        new(103, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=top-level;shape.wrapped=bool;text.culture=ar-SA;text.entry=ToString-format", "validated-struct", "top-level", "none", typeof(V103), typeof(global::Probes.Build.C11ParsesToInt), typeof(VC103), typeof(global::Probes.Build.C11ParsedShape), [("shape.inheritance", "none")]),
-        new(104, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=TimeSpan;text.culture=globalization-invariant;text.entry=TryFormat-short-span", "record-struct", "nested-two-levels", "none", typeof(O104.P104.V104), typeof(global::System.TimeSpan), null, null, []),
-        new(105, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=own-record-class;text.culture=de-DE;text.entry=TryFormat-short-span", "record-struct", "top-level", "explicit-interface-member", typeof(V105), typeof(global::Probes.Shapes.PRec), null, null, []),
-        new(106, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=enum;text.culture=globalization-invariant;text.entry=ISpanParsable", "sealed-record-class", "nested-two-levels", "base-explicit-IEquatable", typeof(O106.P106.V106), typeof(global::Probes.Build.C11ParsesToInt), typeof(O106.P106.VC106), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(107, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=Uri;text.culture=tr-TR;text.entry=ToString-format", "record-struct", "nested-two-levels", "none", typeof(O107.P107.V107), typeof(global::Probes.Build.C11ParsesToInt), typeof(O107.P107.VC107), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(108, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=bool;text.culture=tr-TR;text.entry=TryFormat-short-span", "validated-struct", "nested-two-levels", "none", typeof(O108.P108.V108), typeof(bool), null, null, []),
-        new(109, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=flags-enum;text.culture=ar-SA;text.entry=ISpanParsable", "validated-class", "nested-in-class", "base-depth-2", typeof(O109.V109), typeof(global::Probes.Build.C11ConstructedByRef), typeof(O109.VC109), typeof(global::Probes.Build.C11ParsesFromIn), []),
-        new(110, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=Uri;text.culture=ar-SA;text.entry=type-converter", "sealed-record-class", "nested-two-levels", "base-explicit-IEquatable", typeof(O110.P110.V110), typeof(global::System.Uri), null, null, []),
-        new(111, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=record-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=int;text.culture=de-DE;text.entry=ISpanParsable", "record-struct", "nested-in-class", "none", typeof(O111.V111), typeof(global::Probes.Build.C11ParsesToInt), typeof(O111.VC111), typeof(global::Probes.Build.C11ParsedShape), [("shape.inheritance", "none")]),
-        new(112, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=int;text.culture=ar-SA;text.entry=TryParse", "validated-struct", "nested-in-struct", "explicit-interface-member", typeof(O112.V112), typeof(int), null, null, []),
-        new(113, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-struct;shape.wrapped=ulong;text.culture=globalization-invariant;text.entry=Parse", "sealed-record-class", "nested-in-struct", "base-depth-3", typeof(O113.V113), typeof(ulong), null, null, []),
-        new(114, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=double;text.culture=de-DE;text.entry=IParsable", "validated-class", "nested-in-struct", "base-depth-2", typeof(O114.V114), typeof(double), null, null, []),
-        new(115, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=DateTime;text.culture=tr-TR;text.entry=TryParse", "validated-struct", "nested-in-class", "none", typeof(O115.V115), typeof(global::System.DateTime), null, null, [("shape.inheritance", "none")]),
-        new(116, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=closed-set;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=in-generic-type;shape.wrapped=char;text.culture=globalization-invariant;text.entry=ISpanParsable", "sealed-record-class", "nested-in-class", "base-depth-2", typeof(O116.V116), typeof(char), null, null, [("shape.kind", "sealed-record-class"), ("shape.site", "nested-in-class")]),
-        new(117, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=byte;text.culture=tr-TR;text.entry=TryFormat-short-span", "sealed-record-class", "nested-in-class", "base-depth-1", typeof(O117.V117), typeof(global::Probes.Build.C11ParsesToInt), typeof(O117.VC117), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(118, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=char;text.culture=ar-SA;text.entry=Parse", "sealed-record-class", "nested-in-struct", "base-explicit-IEquatable", typeof(O118.V118), typeof(char), null, null, []),
-        new(119, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=Guid;text.culture=tr-TR;text.entry=IParsable", "sealed-record-class", "nested-two-levels", "base-depth-1", typeof(O119.P119.V119), typeof(global::System.Guid), null, null, []),
-        new(120, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=NodaTime.Instant;text.culture=invariant;text.entry=ToString-format", "validated-class", "nested-in-struct", "base-depth-2", typeof(O120.V120), typeof(global::NodaTime.Instant), null, null, []),
-        new(121, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=closed-set;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=TimeSpan;text.culture=invariant;text.entry=TryFrom", "sealed-record-class", "top-level", "base-depth-3", typeof(V121), typeof(global::Probes.Build.C11AbstractText), typeof(VC121), typeof(global::Probes.Build.C11ConstructedConcrete), [("shape.kind", "sealed-record-class")]),
-        new(122, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=record-struct;shape.refused-kind=abstract (CMTK1005);shape.site=in-generic-type;shape.wrapped=long;text.culture=globalization-invariant;text.entry=type-converter", "record-struct", "nested-in-class", "none", typeof(O122.V122), typeof(long), null, null, [("shape.site", "nested-in-class"), ("shape.inheritance", "none")]),
-        new(123, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=closed-set;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=DateOnly;text.culture=de-DE;text.entry=TryFrom", "sealed-record-class", "nested-in-struct", "explicit-interface-member", typeof(O123.V123), typeof(global::Probes.Build.C11ConstructedByRef), typeof(O123.VC123), typeof(global::Probes.Build.C11ParsesFromIn), [("shape.kind", "sealed-record-class")]),
-        new(124, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=DateTimeOffset;text.culture=tr-TR;text.entry=TryFrom", "validated-struct", "nested-in-struct", "none", typeof(O124.V124), typeof(global::Probes.Build.C11ParsesByRef), typeof(O124.VC124), typeof(global::Probes.Build.C11ParsesFromIn), [("shape.inheritance", "none")]),
-        new(125, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=Uri;text.culture=tr-TR;text.entry=TryFormat-short-span", "validated-struct", "nested-in-class", "explicit-interface-member", typeof(O125.V125), typeof(global::System.Uri), null, null, []),
-        new(126, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=decimal;text.culture=de-DE;text.entry=Parse", "validated-class", "nested-two-levels", "base-explicit-IEquatable", typeof(O126.P126.V126), typeof(decimal), null, null, []),
-        new(127, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=closed-set;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=NodaTime.Instant;text.culture=ar-SA;text.entry=Parse", "sealed-record-class", "nested-in-class", "base-explicit-IEquatable", typeof(O127.V127), typeof(global::NodaTime.Instant), null, null, [("shape.kind", "sealed-record-class")]),
-        new(128, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=DateTime;text.culture=de-DE;text.entry=type-converter", "validated-class", "nested-in-class", "base-explicit-IEquatable", typeof(O128.V128), typeof(global::System.DateTime), null, null, []),
-        new(129, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=own-record-class;text.culture=ar-SA;text.entry=TryFrom", "validated-struct", "top-level", "none", typeof(V129), typeof(global::Probes.Build.C11ConstructedByRef), typeof(VC129), typeof(global::Probes.Build.C11ParsesFromIn), [("shape.inheritance", "none")]),
-        new(130, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=char;text.culture=globalization-invariant;text.entry=ToString-format", "record-struct", "nested-in-class", "explicit-interface-member", typeof(O130.V130), typeof(char), null, null, []),
-        new(131, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=long;text.culture=globalization-invariant;text.entry=TryFormat-short-span", "record-struct", "nested-in-struct", "explicit-interface-member", typeof(O131.V131), typeof(long), null, null, []),
-        new(132, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=double;text.culture=invariant;text.entry=Parse", "validated-struct", "top-level", "explicit-interface-member", typeof(V132), typeof(global::Probes.Build.C11AbstractText), typeof(VC132), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(133, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=own-record-class;text.culture=de-DE;text.entry=Parse", "sealed-record-class", "nested-in-class", "base-depth-2", typeof(O133.V133), typeof(global::Probes.Shapes.PRec), null, null, []),
-        new(134, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=NodaTime.Instant;text.culture=invariant;text.entry=ISpanParsable", "validated-class", "top-level", "base-depth-2", typeof(V134), typeof(global::Probes.Build.C11ParsesByRef), typeof(VC134), typeof(global::Probes.Build.C11ParsesFromIn), []),
-        new(135, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=closed-set;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=TimeSpan;text.culture=globalization-invariant;text.entry=ToString-format", "sealed-record-class", "nested-in-struct", "base-depth-3", typeof(O135.V135), typeof(global::System.TimeSpan), null, null, [("shape.kind", "sealed-record-class")]),
-        new(136, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-struct;shape.wrapped=TimeOnly;text.culture=de-DE;text.entry=TryParse", "record-struct", "nested-in-struct", "explicit-interface-member", typeof(O136.V136), typeof(global::System.TimeOnly), null, null, []),
-        new(137, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=byte;text.culture=ar-SA;text.entry=IParsable", "sealed-record-class", "nested-in-class", "base-depth-1", typeof(O137.V137), typeof(global::Probes.Build.C11ParsesToInt), typeof(O137.VC137), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(138, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=TimeOnly;text.culture=invariant;text.entry=ISpanParsable", "record-struct", "nested-in-class", "none", typeof(O138.V138), typeof(global::Probes.Build.C11AbstractText), typeof(O138.VC138), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(139, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=closed-set;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=flags-enum;text.culture=de-DE;text.entry=TryParse", "sealed-record-class", "nested-two-levels", "base-explicit-IEquatable", typeof(O139.P139.V139), typeof(global::Probes.Shapes.PFlags), null, null, [("shape.kind", "sealed-record-class")]),
-        new(140, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=bool;text.culture=globalization-invariant;text.entry=Parse", "sealed-record-class", "nested-in-class", "base-depth-2", typeof(O140.V140), typeof(bool), null, null, []),
-        new(141, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=in-generic-type;shape.wrapped=DateTimeOffset;text.culture=de-DE;text.entry=IParsable", "record-struct", "nested-in-class", "explicit-interface-member", typeof(O141.V141), typeof(global::Probes.Build.C11AbstractText), typeof(O141.VC141), typeof(global::Probes.Build.C11ConstructedConcrete), [("shape.site", "nested-in-class")]),
-        new(142, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=in-generic-type;shape.wrapped=TimeOnly;text.culture=invariant;text.entry=IParsable", "validated-struct", "nested-in-class", "none", typeof(O142.V142), typeof(global::Probes.Build.C11ParsesToInt), typeof(O142.VC142), typeof(global::Probes.Build.C11ParsedShape), [("shape.site", "nested-in-class")]),
-        new(143, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=none;shape.kind=closed-set;shape.refused-kind=over-value-object (CMTK1005);shape.site=top-level;shape.wrapped=byte;text.culture=tr-TR;text.entry=type-converter", "sealed-record-class", "top-level", "none", typeof(V143), typeof(global::Probes.Build.C11ConstructedByRef), typeof(VC143), typeof(global::Probes.Build.C11ParsesFromIn), [("shape.kind", "sealed-record-class")]),
-        new(144, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=enum;text.culture=de-DE;text.entry=TryFrom", "record-struct", "nested-two-levels", "explicit-interface-member", typeof(O144.P144.V144), typeof(global::Probes.Build.C11AbstractText), typeof(O144.P144.VC144), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(145, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=ulong;text.culture=de-DE;text.entry=ToString-format", "validated-struct", "nested-two-levels", "none", typeof(O145.P145.V145), typeof(ulong), null, null, []),
-        new(146, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=int;text.culture=de-DE;text.entry=Parse", "validated-struct", "nested-in-class", "none", typeof(O146.V146), typeof(global::Probes.Build.C11ParsesToInt), typeof(O146.VC146), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(147, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=Guid;text.culture=ar-SA;text.entry=ISpanParsable", "validated-struct", "nested-two-levels", "explicit-interface-member", typeof(O147.P147.V147), typeof(global::Probes.Build.C11AbstractText), typeof(O147.P147.VC147), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(148, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=in-generic-type;shape.wrapped=enum;text.culture=globalization-invariant;text.entry=IParsable", "validated-class", "nested-in-class", "none", typeof(O148.V148), typeof(global::Probes.Shapes.PEnum), null, null, [("shape.site", "nested-in-class")]),
-        new(149, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=DateTime;text.culture=invariant;text.entry=TryFormat-short-span", "sealed-record-class", "nested-in-struct", "explicit-interface-member", typeof(O149.V149), typeof(global::Probes.Build.C11ParsesToInt), typeof(O149.VC149), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(150, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=decimal;text.culture=de-DE;text.entry=TryFrom", "validated-class", "nested-two-levels", "base-depth-3", typeof(O150.P150.V150), typeof(decimal), null, null, []),
-        new(151, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=ulong;text.culture=invariant;text.entry=IParsable", "validated-class", "nested-in-class", "none", typeof(O151.V151), typeof(ulong), null, null, []),
-        new(152, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=double;text.culture=ar-SA;text.entry=type-converter", "sealed-record-class", "nested-in-class", "explicit-interface-member", typeof(O152.V152), typeof(global::Probes.Build.C11AbstractText), typeof(O152.VC152), typeof(global::Probes.Build.C11ConstructedConcrete), []),
-        new(153, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=none;shape.kind=closed-set;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=in-generic-type;shape.wrapped=Guid;text.culture=ar-SA;text.entry=TryFrom", "sealed-record-class", "nested-in-class", "none", typeof(O153.V153), typeof(global::Probes.Build.C11ParsesToInt), typeof(O153.VC153), typeof(global::Probes.Build.C11ParsedShape), [("shape.kind", "sealed-record-class"), ("shape.site", "nested-in-class")]),
-        new(154, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=long;text.culture=invariant;text.entry=Parse", "sealed-record-class", "nested-two-levels", "base-explicit-IEquatable", typeof(O154.P154.V154), typeof(global::Probes.Build.C11ParsesToInt), typeof(O154.P154.VC154), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(155, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=closed-set;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=string;text.culture=globalization-invariant;text.entry=type-converter", "sealed-record-class", "top-level", "none", typeof(V155), typeof(global::Probes.Build.C11ConstructedByRef), typeof(VC155), typeof(global::Probes.Build.C11ParsesFromIn), [("shape.kind", "sealed-record-class")]),
-        new(156, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=DateTimeOffset;text.culture=de-DE;text.entry=TryParse", "validated-struct", "top-level", "explicit-interface-member", typeof(V156), typeof(global::System.DateTimeOffset), null, null, []),
-        new(157, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=DateOnly;text.culture=globalization-invariant;text.entry=TryFormat-short-span", "validated-class", "nested-two-levels", "base-explicit-IEquatable", typeof(O157.P157.V157), typeof(global::Probes.Build.C11ParsesToInt), typeof(O157.P157.VC157), typeof(global::Probes.Build.C11ParsedShape), []),
-        new(158, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=string;text.culture=invariant;text.entry=IParsable", "validated-class", "nested-two-levels", "base-depth-3", typeof(O158.P158.V158), typeof(string), null, null, []),
-        new(159, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=flags-enum;text.culture=globalization-invariant;text.entry=IParsable", "sealed-record-class", "nested-two-levels", "base-depth-2", typeof(O159.P159.V159), typeof(global::Probes.Shapes.PFlags), null, null, []),
-        new(160, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=decimal;text.culture=invariant;text.entry=type-converter", "sealed-record-class", "nested-in-struct", "explicit-interface-member", typeof(O160.V160), typeof(decimal), null, null, []),
-        new(161, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=Guid;text.culture=invariant;text.entry=type-converter", "record-struct", "nested-in-class", "none", typeof(O161.V161), typeof(global::System.Guid), null, null, []),
-        new(162, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=DateTime;text.culture=invariant;text.entry=TryFormat-short-span", "sealed-record-class", "nested-in-struct", "base-depth-3", typeof(O162.V162), typeof(global::System.DateTime), null, null, []),
-        new(163, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=DateTimeOffset;text.culture=invariant;text.entry=ToString-format", "sealed-record-class", "nested-in-struct", "base-explicit-IEquatable", typeof(O163.V163), typeof(global::System.DateTimeOffset), null, null, []),
-        new(164, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=byte;text.culture=ar-SA;text.entry=IParsable", "validated-struct", "nested-in-struct", "explicit-interface-member", typeof(O164.V164), typeof(byte), null, null, []),
-        new(165, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=DateOnly;text.culture=de-DE;text.entry=ToString-format", "sealed-record-class", "top-level", "base-explicit-IEquatable", typeof(V165), typeof(global::System.DateOnly), null, null, []),
-        new(166, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=decimal;text.culture=ar-SA;text.entry=ToString-format", "record-struct", "nested-in-class", "none", typeof(O166.V166), typeof(decimal), null, null, []),
-        new(167, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=string;text.culture=de-DE;text.entry=Parse", "record-struct", "nested-in-class", "none", typeof(O167.V167), typeof(string), null, null, []),
-        new(168, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=ulong;text.culture=ar-SA;text.entry=TryFormat-short-span", "record-struct", "nested-in-class", "none", typeof(O168.V168), typeof(ulong), null, null, [("shape.inheritance", "none")]),
-        new(169, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-struct;shape.wrapped=bool;text.culture=de-DE;text.entry=ISpanParsable", "record-struct", "nested-in-struct", "explicit-interface-member", typeof(O169.V169), typeof(bool), null, null, []),
-        new(170, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=own-record-class;text.culture=invariant;text.entry=ToString-format", "validated-struct", "nested-two-levels", "none", typeof(O170.P170.V170), typeof(global::Probes.Shapes.PRec), null, null, []),
-        new(171, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=byte;text.culture=globalization-invariant;text.entry=ISpanParsable", "validated-class", "nested-in-class", "none", typeof(O171.V171), typeof(byte), null, null, []),
-        new(172, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=TimeOnly;text.culture=ar-SA;text.entry=Parse", "sealed-record-class", "nested-two-levels", "base-depth-2", typeof(O172.P172.V172), typeof(global::System.TimeOnly), null, null, []),
-        new(173, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=TimeOnly;text.culture=tr-TR;text.entry=TryFormat-short-span", "validated-class", "top-level", "base-depth-3", typeof(V173), typeof(global::System.TimeOnly), null, null, []),
-        new(174, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=Uri;text.culture=invariant;text.entry=ISpanParsable", "validated-class", "nested-in-class", "base-depth-3", typeof(O174.V174), typeof(global::System.Uri), null, null, []),
-        new(175, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=double;text.culture=ar-SA;text.entry=ISpanParsable", "validated-struct", "nested-in-struct", "none", typeof(O175.V175), typeof(double), null, null, [("shape.inheritance", "none")]),
-        new(176, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=string;text.culture=tr-TR;text.entry=ToString-format", "sealed-record-class", "nested-in-struct", "base-explicit-IEquatable", typeof(O176.V176), typeof(string), null, null, []),
-        new(177, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=DateTimeOffset;text.culture=globalization-invariant;text.entry=TryFrom", "validated-class", "nested-in-class", "base-depth-3", typeof(O177.V177), typeof(global::Probes.Build.C11ConstructedByRef), typeof(O177.VC177), typeof(global::Probes.Build.C11ParsesFromIn), []),
-        new(178, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-struct;shape.wrapped=Guid;text.culture=tr-TR;text.entry=ToString-format", "validated-struct", "nested-in-struct", "explicit-interface-member", typeof(O178.V178), typeof(global::System.Guid), null, null, []),
-        new(179, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=TimeOnly;text.culture=globalization-invariant;text.entry=TryFrom", "validated-struct", "nested-in-class", "none", typeof(O179.V179), typeof(global::System.TimeOnly), null, null, []),
-        new(180, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=enum;text.culture=globalization-invariant;text.entry=ISpanParsable", "record-struct", "nested-two-levels", "explicit-interface-member", typeof(O180.P180.V180), typeof(global::Probes.Shapes.PEnum), null, null, []),
-        new(181, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=TimeSpan;text.culture=tr-TR;text.entry=IParsable", "validated-struct", "top-level", "explicit-interface-member", typeof(V181), typeof(global::System.TimeSpan), null, null, []),
-        new(182, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=validated-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=decimal;text.culture=tr-TR;text.entry=TryFormat-short-span", "validated-struct", "nested-in-class", "none", typeof(O182.V182), typeof(decimal), null, null, [("shape.inheritance", "none")]),
-        new(183, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-struct;shape.wrapped=flags-enum;text.culture=invariant;text.entry=ISpanParsable", "validated-class", "nested-in-struct", "base-depth-3", typeof(O183.V183), typeof(global::Probes.Shapes.PFlags), null, null, []),
-        new(184, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=DateTime;text.culture=globalization-invariant;text.entry=type-converter", "validated-class", "top-level", "base-depth-1", typeof(V184), typeof(global::System.DateTime), null, null, []),
-        new(185, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=bool;text.culture=ar-SA;text.entry=IParsable", "record-struct", "nested-two-levels", "none", typeof(O185.P185.V185), typeof(bool), null, null, [("shape.inheritance", "none")]),
-        new(186, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=top-level;shape.wrapped=long;text.culture=globalization-invariant;text.entry=ToString-format", "sealed-record-class", "top-level", "base-depth-3", typeof(V186), typeof(long), null, null, []),
-        new(187, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=in-generic-type;shape.wrapped=DateOnly;text.culture=invariant;text.entry=TryFrom", "validated-class", "nested-in-class", "base-depth-1", typeof(O187.V187), typeof(global::System.DateOnly), null, null, [("shape.site", "nested-in-class")]),
-        new(188, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=int;text.culture=invariant;text.entry=Parse", "record-struct", "nested-two-levels", "explicit-interface-member", typeof(O188.P188.V188), typeof(int), null, null, []),
-        new(189, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=NodaTime.Instant;text.culture=invariant;text.entry=ISpanParsable", "validated-class", "nested-two-levels", "explicit-interface-member", typeof(O189.P189.V189), typeof(global::NodaTime.Instant), null, null, []),
-        new(190, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=Guid;text.culture=de-DE;text.entry=TryFrom", "sealed-record-class", "nested-in-struct", "base-depth-3", typeof(O190.V190), typeof(global::System.Guid), null, null, []),
-        new(191, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=string;text.culture=globalization-invariant;text.entry=TryParse", "sealed-record-class", "nested-two-levels", "explicit-interface-member", typeof(O191.P191.V191), typeof(string), null, null, []),
-        new(192, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=ulong;text.culture=globalization-invariant;text.entry=type-converter", "validated-class", "top-level", "base-explicit-IEquatable", typeof(V192), typeof(ulong), null, null, []),
-        new(193, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=DateOnly;text.culture=globalization-invariant;text.entry=TryParse", "sealed-record-class", "top-level", "base-depth-2", typeof(V193), typeof(global::System.DateOnly), null, null, []),
-        new(194, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=byte;text.culture=de-DE;text.entry=TryFrom", "validated-class", "nested-in-class", "base-depth-2", typeof(O194.V194), typeof(byte), null, null, []),
-        new(195, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=flags-enum;text.culture=globalization-invariant;text.entry=Parse", "sealed-record-class", "top-level", "explicit-interface-member", typeof(V195), typeof(global::Probes.Shapes.PFlags), null, null, []),
-        new(196, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=double;text.culture=ar-SA;text.entry=type-converter", "validated-class", "top-level", "base-explicit-IEquatable", typeof(V196), typeof(double), null, null, []),
-        new(197, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=DateTime;text.culture=invariant;text.entry=TryFrom", "sealed-record-class", "nested-in-class", "base-depth-2", typeof(O197.V197), typeof(global::System.DateTime), null, null, []),
-        new(198, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=byte;text.culture=invariant;text.entry=type-converter", "validated-struct", "nested-in-struct", "none", typeof(O198.V198), typeof(byte), null, null, [("shape.inheritance", "none")]),
-        new(199, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=char;text.culture=invariant;text.entry=IParsable", "validated-struct", "nested-two-levels", "explicit-interface-member", typeof(O199.P199.V199), typeof(char), null, null, []),
-        new(200, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=enum;text.culture=ar-SA;text.entry=TryFormat-short-span", "sealed-record-class", "nested-in-struct", "base-explicit-IEquatable", typeof(O200.V200), typeof(global::Probes.Shapes.PEnum), null, null, []),
-        new(201, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=Guid;text.culture=globalization-invariant;text.entry=ISpanParsable", "sealed-record-class", "nested-in-struct", "base-depth-3", typeof(O201.V201), typeof(global::System.Guid), null, null, []),
-        new(202, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=DateTimeOffset;text.culture=de-DE;text.entry=IParsable", "sealed-record-class", "nested-in-struct", "base-depth-2", typeof(O202.V202), typeof(global::System.DateTimeOffset), null, null, []),
-        new(203, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=char;text.culture=invariant;text.entry=TryParse", "sealed-record-class", "nested-two-levels", "base-depth-1", typeof(O203.P203.V203), typeof(char), null, null, []),
-        new(204, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=TimeOnly;text.culture=invariant;text.entry=ISpanParsable", "validated-class", "nested-in-struct", "base-depth-1", typeof(O204.V204), typeof(global::System.TimeOnly), null, null, []),
-        new(205, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=string;text.culture=tr-TR;text.entry=ISpanParsable", "sealed-record-class", "nested-in-struct", "base-depth-1", typeof(O205.V205), typeof(string), null, null, []),
-        new(206, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=Uri;text.culture=tr-TR;text.entry=TryFrom", "validated-class", "nested-two-levels", "base-depth-1", typeof(O206.P206.V206), typeof(global::System.Uri), null, null, []),
-        new(207, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=DateTimeOffset;text.culture=ar-SA;text.entry=ISpanParsable", "sealed-record-class", "top-level", "base-depth-1", typeof(V207), typeof(global::System.DateTimeOffset), null, null, []),
-        new(208, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=top-level;shape.wrapped=long;text.culture=ar-SA;text.entry=Parse", "validated-class", "top-level", "base-depth-2", typeof(V208), typeof(long), null, null, []),
-        new(209, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=ulong;text.culture=de-DE;text.entry=ISpanParsable", "validated-class", "nested-two-levels", "explicit-interface-member", typeof(O209.P209.V209), typeof(ulong), null, null, []),
-        new(210, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=bool;text.culture=invariant;text.entry=ToString-format", "validated-class", "nested-in-class", "base-depth-1", typeof(O210.V210), typeof(bool), null, null, []),
-        new(211, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=top-level;shape.wrapped=TimeSpan;text.culture=tr-TR;text.entry=Parse", "validated-class", "top-level", "base-explicit-IEquatable", typeof(V211), typeof(global::System.TimeSpan), null, null, []),
-        new(212, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=int;text.culture=globalization-invariant;text.entry=TryFrom", "validated-class", "nested-in-class", "base-depth-3", typeof(O212.V212), typeof(int), null, null, []),
-        new(213, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=in-generic-type;shape.wrapped=int;text.culture=invariant;text.entry=ToString-format", "sealed-record-class", "nested-in-class", "base-explicit-IEquatable", typeof(O213.V213), typeof(int), null, null, [("shape.site", "nested-in-class")]),
-        new(214, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=decimal;text.culture=tr-TR;text.entry=IParsable", "validated-class", "top-level", "base-depth-1", typeof(V214), typeof(decimal), null, null, []),
-        new(215, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=byte;text.culture=de-DE;text.entry=TryFormat-short-span", "validated-class", "nested-two-levels", "base-explicit-IEquatable", typeof(O215.P215.V215), typeof(byte), null, null, []),
-        new(216, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=own-record-class;text.culture=ar-SA;text.entry=TryParse", "validated-class", "nested-two-levels", "base-depth-1", typeof(O216.P216.V216), typeof(global::Probes.Shapes.PRec), null, null, []),
-        new(217, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=int;text.culture=invariant;text.entry=ISpanParsable", "validated-struct", "nested-in-struct", "none", typeof(O217.V217), typeof(int), null, null, []),
-        new(218, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=in-generic-type;shape.wrapped=string;text.culture=globalization-invariant;text.entry=type-converter", "sealed-record-class", "nested-in-class", "base-explicit-IEquatable", typeof(O218.V218), typeof(string), null, null, [("shape.site", "nested-in-class")]),
-        new(219, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=Guid;text.culture=invariant;text.entry=Parse", "validated-class", "nested-two-levels", "base-depth-2", typeof(O219.P219.V219), typeof(global::System.Guid), null, null, []),
-        new(220, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=flags-enum;text.culture=globalization-invariant;text.entry=type-converter", "sealed-record-class", "nested-two-levels", "base-depth-1", typeof(O220.P220.V220), typeof(global::Probes.Shapes.PFlags), null, null, []),
-        new(221, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=byte;text.culture=invariant;text.entry=Parse", "sealed-record-class", "nested-in-struct", "none", typeof(O221.V221), typeof(byte), null, null, []),
-        new(222, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=DateTime;text.culture=tr-TR;text.entry=Parse", "sealed-record-class", "nested-in-struct", "base-depth-1", typeof(O222.V222), typeof(global::System.DateTime), null, null, []),
-        new(223, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=own-record-class;text.culture=tr-TR;text.entry=TryFrom", "sealed-record-class", "top-level", "none", typeof(V223), typeof(global::Probes.Shapes.PRec), null, null, []),
-        new(224, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-struct;shape.wrapped=NodaTime.Instant;text.culture=tr-TR;text.entry=type-converter", "validated-class", "nested-in-struct", "base-depth-1", typeof(O224.V224), typeof(global::NodaTime.Instant), null, null, []),
-        new(225, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=record-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=DateOnly;text.culture=de-DE;text.entry=type-converter", "record-struct", "nested-two-levels", "none", typeof(O225.P225.V225), typeof(global::System.DateOnly), null, null, [("shape.inheritance", "none")]),
-        new(226, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=DateTimeOffset;text.culture=invariant;text.entry=type-converter", "validated-struct", "nested-two-levels", "none", typeof(O226.P226.V226), typeof(global::System.DateTimeOffset), null, null, [("shape.inheritance", "none")]),
-        new(227, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=TimeOnly;text.culture=ar-SA;text.entry=IParsable", "sealed-record-class", "nested-in-class", "base-depth-3", typeof(O227.V227), typeof(global::System.TimeOnly), null, null, []),
-        new(228, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=TimeSpan;text.culture=globalization-invariant;text.entry=TryFrom", "validated-struct", "nested-in-class", "none", typeof(O228.V228), typeof(global::System.TimeSpan), null, null, [("shape.inheritance", "none")]),
-        new(229, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=DateTime;text.culture=tr-TR;text.entry=ToString-format", "validated-class", "nested-two-levels", "base-explicit-IEquatable", typeof(O229.P229.V229), typeof(global::System.DateTime), null, null, []),
-        new(230, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=double;text.culture=globalization-invariant;text.entry=TryFormat-short-span", "validated-class", "nested-in-struct", "base-explicit-IEquatable", typeof(O230.V230), typeof(double), null, null, []),
-        new(231, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=Uri;text.culture=ar-SA;text.entry=ToString-format", "validated-struct", "nested-in-class", "explicit-interface-member", typeof(O231.V231), typeof(global::System.Uri), null, null, []),
-        new(232, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=double;text.culture=ar-SA;text.entry=Parse", "record-struct", "nested-in-struct", "explicit-interface-member", typeof(O232.V232), typeof(double), null, null, []),
-        new(233, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=DateOnly;text.culture=tr-TR;text.entry=TryFormat-short-span", "record-struct", "nested-two-levels", "none", typeof(O233.P233.V233), typeof(global::System.DateOnly), null, null, [("shape.inheritance", "none")]),
-        new(234, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=enum;text.culture=invariant;text.entry=TryFrom", "record-struct", "top-level", "none", typeof(V234), typeof(global::Probes.Shapes.PEnum), null, null, []),
-        new(235, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=DateTimeOffset;text.culture=globalization-invariant;text.entry=TryFrom", "validated-class", "top-level", "base-depth-3", typeof(V235), typeof(global::System.DateTimeOffset), null, null, []),
-        new(236, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=bool;text.culture=de-DE;text.entry=Parse", "validated-class", "top-level", "base-depth-3", typeof(V236), typeof(bool), null, null, []),
-        new(237, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=decimal;text.culture=tr-TR;text.entry=TryFormat-short-span", "sealed-record-class", "nested-in-class", "base-depth-2", typeof(O237.V237), typeof(decimal), null, null, []),
-        new(238, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=ulong;text.culture=de-DE;text.entry=TryFormat-short-span", "sealed-record-class", "nested-two-levels", "base-depth-1", typeof(O238.P238.V238), typeof(ulong), null, null, []),
-        new(239, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=double;text.culture=de-DE;text.entry=IParsable", "sealed-record-class", "top-level", "base-depth-1", typeof(V239), typeof(double), null, null, []),
-        new(240, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=byte;text.culture=ar-SA;text.entry=TryFrom", "sealed-record-class", "top-level", "base-depth-1", typeof(V240), typeof(byte), null, null, []),
+        new(0, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=nested-two-levels;shape.wrapped=long;text.culture=ar-SA;text.entry=TryParse", "validated-class", "nested-two-levels", "base-depth-3", typeof(O0.P0.V0), typeof(long), null, null, []),
+        new(1, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=sealed-record-class;shape.refused-kind=over-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=enum;text.culture=tr-TR;text.entry=IParsable", "sealed-record-class", "nested-two-levels", "none", typeof(O1.P1.V1), typeof(global::Probes.Build.C11ConstructedByRef), typeof(O1.P1.VC1), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(2, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=sealed-record-class;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=nested-in-struct;shape.wrapped=bool;text.culture=de-DE;text.entry=ISpanParsable", "sealed-record-class", "nested-in-struct", "explicit-interface-member", typeof(O2.V2), typeof(global::Probes.Build.C11AbstractText), typeof(O2.VC2), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(3, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=Guid;text.culture=invariant;text.entry=Parse", "validated-struct", "nested-in-class", "none", typeof(O3.V3), typeof(global::System.Guid), null, null, []),
+        new(4, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=top-level;shape.wrapped=flags-enum;text.culture=de-DE;text.entry=TryFrom", "validated-class", "top-level", "base-explicit-IEquatable", typeof(V4), typeof(global::Probes.Shapes.PFlags), null, null, []),
+        new(5, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=TimeSpan;text.culture=ar-SA;text.entry=TryFormat-short-span", "validated-struct", "nested-in-class", "explicit-interface-member", typeof(O5.V5), typeof(global::Probes.Build.C11ParsesToInt), typeof(O5.VC5), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(6, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=DateTime;text.culture=globalization-invariant;text.entry=TryFormat-short-span", "record-struct", "top-level", "explicit-interface-member", typeof(V6), typeof(global::System.DateTime), null, null, []),
+        new(7, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=TimeOnly;text.culture=invariant;text.entry=type-converter", "sealed-record-class", "top-level", "base-depth-1", typeof(V7), typeof(global::Probes.Build.C11ParsesToInt), typeof(VC7), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(8, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=record-struct;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=nested-in-class;shape.wrapped=flags-enum;text.culture=globalization-invariant;text.entry=ToString-format", "record-struct", "nested-in-class", "none", typeof(O8.V8), typeof(global::Probes.Build.C11AbstractText), typeof(O8.VC8), typeof(global::Probes.Build.C11ConstructedConcrete), [("shape.inheritance", "none")]),
+        new(9, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=nested-in-struct;shape.wrapped=TimeSpan;text.culture=tr-TR;text.entry=ToString-format", "validated-class", "nested-in-struct", "base-depth-1", typeof(O9.V9), typeof(global::System.TimeSpan), null, null, []),
+        new(10, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=nested-in-struct;shape.wrapped=Uri;text.culture=globalization-invariant;text.entry=TryParse", "record-struct", "nested-in-struct", "none", typeof(O10.V10), typeof(global::Probes.Build.C11ParsesToInt), typeof(O10.VC10), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(11, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=top-level;shape.wrapped=double;text.culture=invariant;text.entry=TryFrom", "validated-class", "top-level", "base-depth-2", typeof(V11), typeof(global::Probes.Build.C11ConstructedByRef), typeof(VC11), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(12, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=nested-in-struct;shape.wrapped=ulong;text.culture=ar-SA;text.entry=Parse", "sealed-record-class", "nested-in-struct", "base-depth-3", typeof(O12.V12), typeof(global::Probes.Build.C11ParsesByRef), typeof(O12.VC12), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(13, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=equality-operator (CMTK1011);shape.site=nested-two-levels;shape.wrapped=int;text.culture=globalization-invariant;text.entry=Parse", "validated-class", "nested-two-levels", "base-depth-1", typeof(O13.P13.V13), typeof(global::Probes.Build.C11AbstractText), typeof(O13.P13.VC13), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(14, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=record-struct;shape.refused-kind=over-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=NodaTime.Instant;text.culture=de-DE;text.entry=ToString-format", "record-struct", "nested-two-levels", "none", typeof(O14.P14.V14), typeof(global::Probes.Build.C11ParsesByRef), typeof(O14.P14.VC14), typeof(global::Probes.Build.C11ParsesFromIn), [("shape.inheritance", "none")]),
+        new(15, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=nested-in-struct;shape.wrapped=DateTimeOffset;text.culture=de-DE;text.entry=IParsable", "validated-struct", "nested-in-struct", "none", typeof(O15.V15), typeof(global::Probes.Build.C11AbstractText), typeof(O15.VC15), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(16, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=validated-struct;shape.refused-kind=over-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=TimeOnly;text.culture=ar-SA;text.entry=ISpanParsable", "validated-struct", "nested-two-levels", "none", typeof(O16.P16.V16), typeof(global::System.TimeOnly), null, null, [("shape.inheritance", "none")]),
+        new(17, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=nested-in-class;shape.wrapped=DateTime;text.culture=de-DE;text.entry=type-converter", "validated-class", "nested-in-class", "base-depth-1", typeof(O17.V17), typeof(global::Probes.Build.C11ConstructedByRef), typeof(O17.VC17), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(18, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=int;text.culture=tr-TR;text.entry=TryFrom", "sealed-record-class", "top-level", "base-depth-3", typeof(V18), typeof(global::Probes.Build.C11AbstractText), typeof(VC18), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(19, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=nested-in-class;shape.wrapped=decimal;text.culture=tr-TR;text.entry=TryParse", "sealed-record-class", "nested-in-class", "base-explicit-IEquatable", typeof(O19.V19), typeof(decimal), null, null, []),
+        new(20, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-struct;shape.wrapped=own-record-class;text.culture=de-DE;text.entry=TryFormat-short-span", "validated-class", "nested-in-struct", "base-depth-2", typeof(O20.V20), typeof(global::Probes.Build.C11ParsesToInt), typeof(O20.VC20), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(21, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=top-level;shape.wrapped=string;text.culture=invariant;text.entry=TryParse", "validated-struct", "top-level", "explicit-interface-member", typeof(V21), typeof(global::Probes.Build.C11ConstructedByRef), typeof(VC21), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(22, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=record-struct;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=top-level;shape.wrapped=enum;text.culture=ar-SA;text.entry=Parse", "record-struct", "top-level", "none", typeof(V22), typeof(global::Probes.Shapes.PEnum), null, null, [("shape.inheritance", "none")]),
+        new(23, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=record-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=char;text.culture=invariant;text.entry=type-converter", "record-struct", "nested-in-struct", "none", typeof(O23.V23), typeof(global::Probes.Build.C11ParsesToInt), typeof(O23.VC23), typeof(global::Probes.Build.C11ParsedShape), [("shape.inheritance", "none")]),
+        new(24, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=bool;text.culture=invariant;text.entry=IParsable", "validated-class", "top-level", "none", typeof(V24), typeof(bool), null, null, []),
+        new(25, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=record-struct;shape.refused-kind=over-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=byte;text.culture=globalization-invariant;text.entry=IParsable", "record-struct", "nested-two-levels", "none", typeof(O25.P25.V25), typeof(global::Probes.Build.C11ParsesToInt), typeof(O25.P25.VC25), typeof(global::Probes.Build.C11ParsedShape), [("shape.inheritance", "none")]),
+        new(26, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=DateOnly;text.culture=globalization-invariant;text.entry=TryFormat-short-span", "sealed-record-class", "nested-two-levels", "base-explicit-IEquatable", typeof(O26.P26.V26), typeof(global::Probes.Build.C11ParsesByRef), typeof(O26.P26.VC26), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(27, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=DateTimeOffset;text.culture=tr-TR;text.entry=ISpanParsable", "record-struct", "top-level", "none", typeof(V27), typeof(global::Probes.Build.C11ParsesToInt), typeof(VC27), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(28, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=nested-in-class;shape.wrapped=DateOnly;text.culture=invariant;text.entry=ISpanParsable", "validated-class", "nested-in-class", "base-depth-3", typeof(O28.V28), typeof(global::Probes.Build.C11AbstractText), typeof(O28.VC28), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(29, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=nested-two-levels;shape.wrapped=Uri;text.culture=tr-TR;text.entry=type-converter", "validated-struct", "nested-two-levels", "explicit-interface-member", typeof(O29.P29.V29), typeof(global::System.Uri), null, null, []),
+        new(30, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-struct;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=top-level;shape.wrapped=decimal;text.culture=ar-SA;text.entry=ToString-format", "validated-struct", "top-level", "none", typeof(V30), typeof(global::Probes.Build.C11ParsesToInt), typeof(VC30), typeof(global::Probes.Build.C11ParsedShape), [("shape.inheritance", "none")]),
+        new(31, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=nested-two-levels;shape.wrapped=own-record-class;text.culture=ar-SA;text.entry=TryFrom", "record-struct", "nested-two-levels", "none", typeof(O31.P31.V31), typeof(global::Probes.Build.C11AbstractText), typeof(O31.P31.VC31), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(32, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=string;text.culture=tr-TR;text.entry=Parse", "sealed-record-class", "nested-two-levels", "base-depth-2", typeof(O32.P32.V32), typeof(global::Probes.Build.C11ParsesToInt), typeof(O32.P32.VC32), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(33, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=top-level;shape.wrapped=ulong;text.culture=tr-TR;text.entry=TryFormat-short-span", "record-struct", "top-level", "none", typeof(V33), typeof(ulong), null, null, []),
+        new(34, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=nested-in-struct;shape.wrapped=ulong;text.culture=globalization-invariant;text.entry=TryFrom", "validated-struct", "nested-in-struct", "explicit-interface-member", typeof(O34.V34), typeof(global::Probes.Build.C11ParsesToInt), typeof(O34.VC34), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(35, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=flags-enum;text.culture=invariant;text.entry=TryFormat-short-span", "sealed-record-class", "nested-two-levels", "base-depth-3", typeof(O35.P35.V35), typeof(global::Probes.Shapes.PFlags), null, null, []),
+        new(36, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=char;text.culture=globalization-invariant;text.entry=TryFrom", "validated-class", "nested-in-class", "base-depth-1", typeof(O36.V36), typeof(char), null, null, []),
+        new(37, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=nested-in-class;shape.wrapped=string;text.culture=ar-SA;text.entry=IParsable", "validated-class", "nested-in-class", "base-depth-1", typeof(O37.V37), typeof(string), null, null, []),
+        new(38, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=byte;text.culture=invariant;text.entry=type-converter", "sealed-record-class", "top-level", "base-depth-1", typeof(V38), typeof(byte), null, null, []),
+        new(39, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=double;text.culture=de-DE;text.entry=type-converter", "sealed-record-class", "nested-two-levels", "base-depth-3", typeof(O39.P39.V39), typeof(global::Probes.Build.C11AbstractText), typeof(O39.P39.VC39), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(40, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=long;text.culture=globalization-invariant;text.entry=ISpanParsable", "sealed-record-class", "nested-in-struct", "base-explicit-IEquatable", typeof(O40.V40), typeof(global::Probes.Build.C11ParsesByRef), typeof(O40.VC40), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(41, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=nested-in-class;shape.wrapped=int;text.culture=ar-SA;text.entry=type-converter", "record-struct", "nested-in-class", "none", typeof(O41.V41), typeof(int), null, null, []),
+        new(42, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=NodaTime.Instant;text.culture=globalization-invariant;text.entry=IParsable", "validated-class", "top-level", "explicit-interface-member", typeof(V42), typeof(global::NodaTime.Instant), null, null, []),
+        new(43, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=equality-operator (CMTK1011);shape.site=top-level;shape.wrapped=own-record-class;text.culture=globalization-invariant;text.entry=type-converter", "validated-struct", "top-level", "explicit-interface-member", typeof(V43), typeof(global::Probes.Shapes.PRec), null, null, []),
+        new(44, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=nested-two-levels;shape.wrapped=decimal;text.culture=de-DE;text.entry=Parse", "record-struct", "nested-two-levels", "explicit-interface-member", typeof(O44.P44.V44), typeof(decimal), null, null, []),
+        new(45, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=equality-operator (CMTK1011);shape.site=top-level;shape.wrapped=Guid;text.culture=ar-SA;text.entry=IParsable", "validated-class", "top-level", "base-explicit-IEquatable", typeof(V45), typeof(global::Probes.Build.C11AbstractText), typeof(VC45), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(46, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=sealed-record-class;shape.refused-kind=equality-operator (CMTK1011);shape.site=nested-in-class;shape.wrapped=DateTimeOffset;text.culture=globalization-invariant;text.entry=ToString-format", "sealed-record-class", "nested-in-class", "explicit-interface-member", typeof(O46.V46), typeof(global::System.DateTimeOffset), null, null, []),
+        new(47, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=Uri;text.culture=invariant;text.entry=ToString-format", "sealed-record-class", "top-level", "base-explicit-IEquatable", typeof(V47), typeof(global::Probes.Build.C11ConstructedByRef), typeof(VC47), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(48, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=long;text.culture=de-DE;text.entry=ToString-format", "record-struct", "nested-in-class", "none", typeof(O48.V48), typeof(long), null, null, []),
+        new(49, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=DateTimeOffset;text.culture=invariant;text.entry=TryFormat-short-span", "validated-class", "nested-two-levels", "base-depth-1", typeof(O49.P49.V49), typeof(global::System.DateTimeOffset), null, null, []),
+        new(50, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=nested-in-struct;shape.wrapped=TimeOnly;text.culture=de-DE;text.entry=TryParse", "record-struct", "nested-in-struct", "none", typeof(O50.V50), typeof(global::System.TimeOnly), null, null, []),
+        new(51, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=nested-in-struct;shape.wrapped=decimal;text.culture=invariant;text.entry=IParsable", "validated-class", "nested-in-struct", "base-depth-2", typeof(O51.V51), typeof(decimal), null, null, []),
+        new(52, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=enum;text.culture=invariant;text.entry=type-converter", "validated-class", "nested-in-struct", "base-depth-2", typeof(O52.V52), typeof(global::Probes.Shapes.PEnum), null, null, []),
+        new(53, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=DateOnly;text.culture=tr-TR;text.entry=IParsable", "validated-struct", "top-level", "explicit-interface-member", typeof(V53), typeof(global::System.DateOnly), null, null, []),
+        new(54, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=nested-in-struct;shape.wrapped=DateTime;text.culture=invariant;text.entry=TryParse", "sealed-record-class", "nested-in-struct", "base-depth-2", typeof(O54.V54), typeof(global::System.DateTime), null, null, []),
+        new(55, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=byte;text.culture=ar-SA;text.entry=TryParse", "validated-class", "nested-in-struct", "base-explicit-IEquatable", typeof(O55.V55), typeof(global::Probes.Build.C11AbstractText), typeof(O55.VC55), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(56, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=Guid;text.culture=globalization-invariant;text.entry=ISpanParsable", "sealed-record-class", "nested-two-levels", "base-depth-1", typeof(O56.P56.V56), typeof(global::System.Guid), null, null, []),
+        new(57, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=nested-in-class;shape.wrapped=double;text.culture=tr-TR;text.entry=TryFormat-short-span", "record-struct", "nested-in-class", "explicit-interface-member", typeof(O57.V57), typeof(double), null, null, []),
+        new(58, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=top-level;shape.wrapped=TimeSpan;text.culture=globalization-invariant;text.entry=type-converter", "record-struct", "top-level", "none", typeof(V58), typeof(global::System.TimeSpan), null, null, []),
+        new(59, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=top-level;shape.wrapped=char;text.culture=tr-TR;text.entry=Parse", "sealed-record-class", "top-level", "base-depth-3", typeof(V59), typeof(char), null, null, []),
+        new(60, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=nested-in-class;shape.wrapped=byte;text.culture=de-DE;text.entry=ToString-format", "validated-struct", "nested-in-class", "explicit-interface-member", typeof(O60.V60), typeof(byte), null, null, []),
+        new(61, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=record-struct;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=nested-in-class;shape.wrapped=bool;text.culture=tr-TR;text.entry=TryParse", "record-struct", "nested-in-class", "none", typeof(O61.V61), typeof(bool), null, null, [("shape.inheritance", "none")]),
+        new(62, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=TimeSpan;text.culture=invariant;text.entry=TryFrom", "sealed-record-class", "nested-two-levels", "base-depth-2", typeof(O62.P62.V62), typeof(global::System.TimeSpan), null, null, []),
+        new(63, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=nested-in-struct;shape.wrapped=DateOnly;text.culture=de-DE;text.entry=TryFrom", "record-struct", "nested-in-struct", "none", typeof(O63.V63), typeof(global::Probes.Build.C11ParsesToInt), typeof(O63.VC63), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(64, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=double;text.culture=ar-SA;text.entry=TryParse", "validated-struct", "nested-in-struct", "none", typeof(O64.V64), typeof(double), null, null, []),
+        new(65, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=NodaTime.Instant;text.culture=tr-TR;text.entry=TryFormat-short-span", "validated-struct", "nested-in-struct", "none", typeof(O65.V65), typeof(global::NodaTime.Instant), null, null, []),
+        new(66, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=NodaTime.Instant;text.culture=ar-SA;text.entry=Parse", "sealed-record-class", "nested-in-class", "base-depth-2", typeof(O66.V66), typeof(global::NodaTime.Instant), null, null, []),
+        new(67, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=Uri;text.culture=de-DE;text.entry=IParsable", "validated-class", "nested-in-class", "base-depth-2", typeof(O67.V67), typeof(global::System.Uri), null, null, []),
+        new(68, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=string;text.culture=globalization-invariant;text.entry=ISpanParsable", "record-struct", "nested-in-struct", "none", typeof(O68.V68), typeof(string), null, null, []),
+        new(69, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=DateTime;text.culture=ar-SA;text.entry=ISpanParsable", "validated-struct", "nested-in-class", "none", typeof(O69.V69), typeof(global::Probes.Build.C11ConstructedByRef), typeof(O69.VC69), typeof(global::Probes.Build.C11ParsesFromIn), [("shape.inheritance", "none")]),
+        new(70, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=char;text.culture=ar-SA;text.entry=TryParse", "validated-struct", "nested-two-levels", "none", typeof(O70.P70.V70), typeof(global::Probes.Build.C11ParsesByRef), typeof(O70.P70.VC70), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(71, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=TimeOnly;text.culture=tr-TR;text.entry=TryFrom", "validated-class", "nested-in-class", "explicit-interface-member", typeof(O71.V71), typeof(global::System.TimeOnly), null, null, []),
+        new(72, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=ulong;text.culture=de-DE;text.entry=ISpanParsable", "validated-class", "nested-two-levels", "base-depth-2", typeof(O72.P72.V72), typeof(ulong), null, null, []),
+        new(73, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=own-record-class;text.culture=invariant;text.entry=ToString-format", "sealed-record-class", "nested-in-class", "base-depth-1", typeof(O73.V73), typeof(global::Probes.Shapes.PRec), null, null, []),
+        new(74, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-struct;shape.wrapped=Guid;text.culture=tr-TR;text.entry=ToString-format", "record-struct", "nested-in-struct", "explicit-interface-member", typeof(O74.V74), typeof(global::Probes.Build.C11ParsesByRef), typeof(O74.VC74), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(75, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=record-struct;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=nested-in-struct;shape.wrapped=int;text.culture=de-DE;text.entry=ToString-format", "record-struct", "nested-in-struct", "none", typeof(O75.V75), typeof(int), null, null, [("shape.inheritance", "none")]),
+        new(76, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=long;text.culture=invariant;text.entry=type-converter", "validated-struct", "top-level", "explicit-interface-member", typeof(V76), typeof(global::Probes.Build.C11AbstractText), typeof(VC76), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(77, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=flags-enum;text.culture=ar-SA;text.entry=IParsable", "validated-struct", "nested-in-struct", "explicit-interface-member", typeof(O77.V77), typeof(global::Probes.Shapes.PFlags), null, null, []),
+        new(78, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=DateTime;text.culture=tr-TR;text.entry=Parse", "sealed-record-class", "nested-two-levels", "none", typeof(O78.P78.V78), typeof(global::System.DateTime), null, null, []),
+        new(79, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=over-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=Guid;text.culture=de-DE;text.entry=TryFormat-short-span", "sealed-record-class", "nested-two-levels", "base-depth-3", typeof(O79.P79.V79), typeof(global::Probes.Build.C11AbstractText), typeof(O79.P79.VC79), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(80, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=enum;text.culture=globalization-invariant;text.entry=TryFrom", "record-struct", "nested-in-class", "explicit-interface-member", typeof(O80.V80), typeof(global::Probes.Shapes.PEnum), null, null, []),
+        new(81, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=int;text.culture=invariant;text.entry=TryFrom", "validated-struct", "nested-in-class", "explicit-interface-member", typeof(O81.V81), typeof(int), null, null, []),
+        new(82, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=record-struct;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=top-level;shape.wrapped=DateTimeOffset;text.culture=ar-SA;text.entry=type-converter", "record-struct", "top-level", "none", typeof(V82), typeof(global::System.DateTimeOffset), null, null, [("shape.inheritance", "none")]),
+        new(83, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-struct;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=top-level;shape.wrapped=enum;text.culture=de-DE;text.entry=ToString-format", "validated-struct", "top-level", "none", typeof(V83), typeof(global::Probes.Shapes.PEnum), null, null, [("shape.inheritance", "none")]),
+        new(84, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=over-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=bool;text.culture=globalization-invariant;text.entry=TryFormat-short-span", "validated-struct", "nested-two-levels", "none", typeof(O84.P84.V84), typeof(bool), null, null, []),
+        new(85, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=validated-class;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=nested-in-class;shape.wrapped=decimal;text.culture=globalization-invariant;text.entry=TryFormat-short-span", "validated-class", "nested-in-class", "none", typeof(O85.V85), typeof(decimal), null, null, []),
+        new(86, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=own-record-class;text.culture=tr-TR;text.entry=Parse", "validated-class", "top-level", "base-depth-3", typeof(V86), typeof(global::Probes.Build.C11AbstractText), typeof(VC86), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(87, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=ulong;text.culture=invariant;text.entry=TryParse", "validated-class", "nested-in-class", "base-explicit-IEquatable", typeof(O87.V87), typeof(ulong), null, null, []),
+        new(88, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=validated-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=flags-enum;text.culture=tr-TR;text.entry=type-converter", "validated-struct", "nested-two-levels", "none", typeof(O88.P88.V88), typeof(global::Probes.Shapes.PFlags), null, null, [("shape.inheritance", "none")]),
+        new(89, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=nested-two-levels;shape.wrapped=byte;text.culture=tr-TR;text.entry=TryFormat-short-span", "validated-class", "nested-two-levels", "base-depth-2", typeof(O89.P89.V89), typeof(global::Probes.Build.C11ParsesToInt), typeof(O89.P89.VC89), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(90, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=NodaTime.Instant;text.culture=invariant;text.entry=TryParse", "sealed-record-class", "nested-in-class", "base-depth-1", typeof(O90.V90), typeof(global::Probes.Build.C11ParsesToInt), typeof(O90.VC90), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(91, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=string;text.culture=de-DE;text.entry=ToString-format", "validated-class", "top-level", "base-depth-3", typeof(V91), typeof(string), null, null, []),
+        new(92, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=record-struct;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=top-level;shape.wrapped=Uri;text.culture=ar-SA;text.entry=TryFrom", "record-struct", "top-level", "none", typeof(V92), typeof(global::System.Uri), null, null, [("shape.inheritance", "none")]),
+        new(93, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=bool;text.culture=ar-SA;text.entry=type-converter", "validated-class", "top-level", "base-explicit-IEquatable", typeof(V93), typeof(global::Probes.Build.C11ParsesToInt), typeof(VC93), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(94, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=sealed-record-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=TimeSpan;text.culture=de-DE;text.entry=TryParse", "sealed-record-class", "nested-in-class", "none", typeof(O94.V94), typeof(global::Probes.Build.C11ParsesByRef), typeof(O94.VC94), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(95, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=nested-in-struct;shape.wrapped=DateOnly;text.culture=ar-SA;text.entry=Parse", "sealed-record-class", "nested-in-struct", "base-depth-1", typeof(O95.V95), typeof(global::System.DateOnly), null, null, []),
+        new(96, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=equality-operator (CMTK1011);shape.site=nested-two-levels;shape.wrapped=long;text.culture=tr-TR;text.entry=IParsable", "validated-class", "nested-two-levels", "base-depth-2", typeof(O96.P96.V96), typeof(long), null, null, []),
+        new(97, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=double;text.culture=globalization-invariant;text.entry=ToString-format", "validated-class", "top-level", "base-depth-1", typeof(V97), typeof(double), null, null, []),
+        new(98, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=nested-in-class;shape.wrapped=NodaTime.Instant;text.culture=globalization-invariant;text.entry=TryFrom", "sealed-record-class", "nested-in-class", "base-depth-3", typeof(O98.V98), typeof(global::Probes.Build.C11ParsesByRef), typeof(O98.VC98), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(99, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=top-level;shape.wrapped=char;text.culture=de-DE;text.entry=ToString-format", "record-struct", "top-level", "explicit-interface-member", typeof(V99), typeof(char), null, null, []),
+        new(100, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=equality-operator (CMTK1011);shape.site=nested-in-struct;shape.wrapped=double;text.culture=de-DE;text.entry=Parse", "sealed-record-class", "nested-in-struct", "base-explicit-IEquatable", typeof(O100.V100), typeof(double), null, null, []),
+        new(101, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=top-level;shape.wrapped=TimeOnly;text.culture=globalization-invariant;text.entry=IParsable", "sealed-record-class", "top-level", "base-depth-3", typeof(V101), typeof(global::System.TimeOnly), null, null, []),
+        new(102, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=over-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=own-record-class;text.culture=de-DE;text.entry=ISpanParsable", "sealed-record-class", "nested-in-class", "base-explicit-IEquatable", typeof(O102.V102), typeof(global::Probes.Shapes.PRec), null, null, []),
+        new(103, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=nested-two-levels;shape.wrapped=int;text.culture=globalization-invariant;text.entry=TryFormat-short-span", "sealed-record-class", "nested-two-levels", "base-depth-2", typeof(O103.P103.V103), typeof(int), null, null, []),
+        new(104, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-struct;shape.wrapped=DateTimeOffset;text.culture=globalization-invariant;text.entry=TryFrom", "validated-struct", "nested-in-struct", "none", typeof(O104.V104), typeof(global::Probes.Build.C11ParsesByRef), typeof(O104.VC104), typeof(global::Probes.Build.C11ParsesFromIn), [("shape.inheritance", "none")]),
+        new(105, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=over-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=bool;text.culture=ar-SA;text.entry=Parse", "sealed-record-class", "nested-in-class", "base-depth-2", typeof(O105.V105), typeof(global::Probes.Build.C11AbstractText), typeof(O105.VC105), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(106, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=byte;text.culture=globalization-invariant;text.entry=Parse", "record-struct", "nested-two-levels", "none", typeof(O106.P106.V106), typeof(byte), null, null, []),
+        new(107, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=ulong;text.culture=ar-SA;text.entry=ToString-format", "sealed-record-class", "nested-two-levels", "base-depth-1", typeof(O107.P107.V107), typeof(ulong), null, null, []),
+        new(108, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=nested-two-levels;shape.wrapped=TimeSpan;text.culture=invariant;text.entry=Parse", "sealed-record-class", "nested-two-levels", "base-explicit-IEquatable", typeof(O108.P108.V108), typeof(global::Probes.Build.C11ParsesToInt), typeof(O108.P108.VC108), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(109, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=closed-set;shape.refused-kind=over-value-object (CMTK1005);shape.site=top-level;shape.wrapped=enum;text.culture=tr-TR;text.entry=TryFormat-short-span", "sealed-record-class", "top-level", "base-depth-1", typeof(V109), typeof(global::Probes.Shapes.PEnum), null, null, [("shape.kind", "sealed-record-class")]),
+        new(110, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=equality-operator (CMTK1011);shape.site=nested-two-levels;shape.wrapped=Guid;text.culture=tr-TR;text.entry=TryParse", "sealed-record-class", "nested-two-levels", "base-depth-2", typeof(O110.P110.V110), typeof(global::System.Guid), null, null, []),
+        new(111, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=string;text.culture=invariant;text.entry=TryFrom", "validated-class", "top-level", "base-explicit-IEquatable", typeof(V111), typeof(global::Probes.Build.C11ConstructedByRef), typeof(VC111), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(112, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=equality-operator (CMTK1011);shape.site=nested-two-levels;shape.wrapped=decimal;text.culture=tr-TR;text.entry=type-converter", "validated-class", "nested-two-levels", "base-depth-1", typeof(O112.P112.V112), typeof(global::Probes.Build.C11ParsesToInt), typeof(O112.P112.VC112), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(113, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-two-levels;shape.wrapped=DateOnly;text.culture=invariant;text.entry=TryParse", "sealed-record-class", "nested-two-levels", "base-depth-2", typeof(O113.P113.V113), typeof(global::Probes.Build.C11ConstructedByRef), typeof(O113.P113.VC113), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(114, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=nested-in-struct;shape.wrapped=DateTime;text.culture=ar-SA;text.entry=IParsable", "validated-class", "nested-in-struct", "base-explicit-IEquatable", typeof(O114.V114), typeof(global::System.DateTime), null, null, []),
+        new(115, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-struct;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=nested-two-levels;shape.wrapped=long;text.culture=tr-TR;text.entry=Parse", "validated-struct", "nested-two-levels", "none", typeof(O115.P115.V115), typeof(long), null, null, [("shape.inheritance", "none")]),
+        new(116, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=nested-two-levels;shape.wrapped=char;text.culture=invariant;text.entry=TryFormat-short-span", "validated-class", "nested-two-levels", "base-depth-2", typeof(O116.P116.V116), typeof(global::Probes.Build.C11ParsesByRef), typeof(O116.P116.VC116), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(117, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=Guid;text.culture=ar-SA;text.entry=type-converter", "validated-class", "nested-in-class", "base-explicit-IEquatable", typeof(O117.V117), typeof(global::System.Guid), null, null, []),
+        new(118, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=equality-operator (CMTK1011);shape.site=top-level;shape.wrapped=TimeOnly;text.culture=tr-TR;text.entry=Parse", "validated-class", "top-level", "base-explicit-IEquatable", typeof(V118), typeof(global::Probes.Build.C11ParsesToInt), typeof(VC118), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(119, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=TimeSpan;text.culture=invariant;text.entry=ISpanParsable", "sealed-record-class", "nested-in-class", "base-depth-3", typeof(O119.V119), typeof(global::System.TimeSpan), null, null, []),
+        new(120, "parse-shape=implicit-result;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=closed-set;shape.refused-kind=over-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=bool;text.culture=invariant;text.entry=TryFrom", "sealed-record-class", "nested-in-struct", "base-depth-3", typeof(O120.V120), typeof(global::Probes.Build.C11ParsesToInt), typeof(O120.VC120), typeof(global::Probes.Build.C11ParsedShape), [("shape.kind", "sealed-record-class")]),
+        new(121, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=nested-two-levels;shape.wrapped=Uri;text.culture=de-DE;text.entry=TryFormat-short-span", "validated-class", "nested-two-levels", "base-depth-3", typeof(O121.P121.V121), typeof(global::Probes.Build.C11ParsesToInt), typeof(O121.P121.VC121), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(122, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-class;shape.wrapped=DateTimeOffset;text.culture=invariant;text.entry=TryParse", "sealed-record-class", "nested-in-class", "base-depth-2", typeof(O122.V122), typeof(global::System.DateTimeOffset), null, null, []),
+        new(123, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=nested-two-levels;shape.wrapped=own-record-class;text.culture=ar-SA;text.entry=IParsable", "record-struct", "nested-two-levels", "explicit-interface-member", typeof(O123.P123.V123), typeof(global::Probes.Shapes.PRec), null, null, []),
+        new(124, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=record-struct;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=top-level;shape.wrapped=long;text.culture=tr-TR;text.entry=TryFrom", "record-struct", "top-level", "none", typeof(V124), typeof(global::Probes.Build.C11ParsesByRef), typeof(VC124), typeof(global::Probes.Build.C11ParsesFromIn), [("shape.inheritance", "none")]),
+        new(125, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-class;shape.wrapped=int;text.culture=globalization-invariant;text.entry=TryParse", "sealed-record-class", "nested-in-class", "base-explicit-IEquatable", typeof(O125.V125), typeof(global::Probes.Build.C11ParsesToInt), typeof(O125.VC125), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(126, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=top-level;shape.wrapped=DateOnly;text.culture=de-DE;text.entry=ToString-format", "validated-class", "top-level", "base-depth-1", typeof(V126), typeof(global::System.DateOnly), null, null, []),
+        new(127, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=equality-operator (CMTK1011);shape.site=nested-in-class;shape.wrapped=TimeOnly;text.culture=tr-TR;text.entry=ToString-format", "sealed-record-class", "nested-in-class", "base-explicit-IEquatable", typeof(O127.V127), typeof(global::Probes.Build.C11AbstractText), typeof(O127.VC127), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(128, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=nested-in-class;shape.wrapped=flags-enum;text.culture=de-DE;text.entry=TryParse", "record-struct", "nested-in-class", "none", typeof(O128.V128), typeof(global::Probes.Shapes.PFlags), null, null, []),
+        new(129, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=byte;text.culture=globalization-invariant;text.entry=TryFrom", "record-struct", "nested-two-levels", "none", typeof(O129.P129.V129), typeof(byte), null, null, []),
+        new(130, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=top-level;shape.wrapped=flags-enum;text.culture=invariant;text.entry=Parse", "validated-class", "top-level", "base-explicit-IEquatable", typeof(V130), typeof(global::Probes.Build.C11ParsesByRef), typeof(VC130), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(131, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=top-level;shape.wrapped=DateTime;text.culture=de-DE;text.entry=TryFrom", "validated-class", "top-level", "base-explicit-IEquatable", typeof(V131), typeof(global::System.DateTime), null, null, []),
+        new(132, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=equality-operator (CMTK1011);shape.site=top-level;shape.wrapped=bool;text.culture=ar-SA;text.entry=ToString-format", "sealed-record-class", "top-level", "base-explicit-IEquatable", typeof(V132), typeof(bool), null, null, []),
+        new(133, "parse-shape=abstract-string-ctor;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=top-level;shape.wrapped=enum;text.culture=ar-SA;text.entry=TryParse", "validated-class", "top-level", "base-explicit-IEquatable", typeof(V133), typeof(global::Probes.Build.C11AbstractText), typeof(VC133), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(134, "parse-shape=abstract-string-ctor;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-2;shape.kind=validated-class;shape.refused-kind=generic-wrapped (CMTK1005);shape.site=nested-in-struct;shape.wrapped=TimeOnly;text.culture=invariant;text.entry=TryFormat-short-span", "validated-class", "nested-in-struct", "base-depth-2", typeof(O134.V134), typeof(global::Probes.Build.C11AbstractText), typeof(O134.VC134), typeof(global::Probes.Build.C11ConstructedConcrete), []),
+        new(135, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=equality-operator (CMTK1011);shape.site=top-level;shape.wrapped=Uri;text.culture=globalization-invariant;text.entry=Parse", "sealed-record-class", "top-level", "base-depth-3", typeof(V135), typeof(global::System.Uri), null, null, []),
+        new(136, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=top-level;shape.wrapped=string;text.culture=tr-TR;text.entry=TryFormat-short-span", "validated-class", "top-level", "base-depth-3", typeof(V136), typeof(string), null, null, []),
+        new(137, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=closed-set;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=DateTimeOffset;text.culture=de-DE;text.entry=Parse", "sealed-record-class", "top-level", "none", typeof(V137), typeof(global::System.DateTimeOffset), null, null, [("shape.kind", "sealed-record-class")]),
+        new(138, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=sealed-record-class;shape.refused-kind=equality-operator (CMTK1011);shape.site=nested-in-class;shape.wrapped=decimal;text.culture=ar-SA;text.entry=ISpanParsable", "sealed-record-class", "nested-in-class", "explicit-interface-member", typeof(O138.V138), typeof(decimal), null, null, []),
+        new(139, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=closed-set;shape.refused-kind=equality-operator (CMTK1011);shape.site=nested-in-class;shape.wrapped=double;text.culture=invariant;text.entry=ISpanParsable", "sealed-record-class", "nested-in-class", "base-explicit-IEquatable", typeof(O139.V139), typeof(double), null, null, [("shape.kind", "sealed-record-class")]),
+        new(140, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=Guid;text.culture=ar-SA;text.entry=TryFrom", "sealed-record-class", "top-level", "base-explicit-IEquatable", typeof(V140), typeof(global::System.Guid), null, null, []),
+        new(141, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=closed-set;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=nested-in-class;shape.wrapped=int;text.culture=de-DE;text.entry=ISpanParsable", "sealed-record-class", "nested-in-class", "base-depth-2", typeof(O141.V141), typeof(int), null, null, [("shape.kind", "sealed-record-class")]),
+        new(142, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-class;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=decimal;text.culture=ar-SA;text.entry=TryFrom", "validated-class", "nested-in-struct", "explicit-interface-member", typeof(O142.V142), typeof(decimal), null, null, []),
+        new(143, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=named-as-generated-member (CMTK1005);shape.site=nested-two-levels;shape.wrapped=DateOnly;text.culture=ar-SA;text.entry=type-converter", "validated-struct", "nested-two-levels", "explicit-interface-member", typeof(O143.P143.V143), typeof(global::System.DateOnly), null, null, []),
+        new(144, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=explicit-interface-member;shape.kind=validated-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=TimeSpan;text.culture=tr-TR;text.entry=IParsable", "validated-struct", "nested-two-levels", "explicit-interface-member", typeof(O144.P144.V144), typeof(global::Probes.Build.C11ParsesToInt), typeof(O144.P144.VC144), typeof(global::Probes.Build.C11ParsedShape), []),
+        new(145, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=top-level;shape.wrapped=long;text.culture=globalization-invariant;text.entry=TryFormat-short-span", "record-struct", "top-level", "none", typeof(V145), typeof(long), null, null, []),
+        new(146, "parse-shape=ref-text;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=DateTime;text.culture=invariant;text.entry=ToString-format", "sealed-record-class", "top-level", "none", typeof(V146), typeof(global::Probes.Build.C11ParsesByRef), typeof(VC146), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(147, "parse-shape=implicit-result;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-explicit-IEquatable;shape.kind=record-struct;shape.refused-kind=over-object (CMTK1005);shape.site=nested-two-levels;shape.wrapped=double;text.culture=invariant;text.entry=IParsable", "record-struct", "nested-two-levels", "none", typeof(O147.P147.V147), typeof(global::Probes.Build.C11ParsesToInt), typeof(O147.P147.VC147), typeof(global::Probes.Build.C11ParsedShape), [("shape.inheritance", "none")]),
+        new(148, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-two-levels;shape.wrapped=char;text.culture=invariant;text.entry=ISpanParsable", "sealed-record-class", "nested-two-levels", "base-explicit-IEquatable", typeof(O148.P148.V148), typeof(char), null, null, []),
+        new(149, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=over-value-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=char;text.culture=de-DE;text.entry=IParsable", "validated-struct", "nested-in-struct", "none", typeof(O149.V149), typeof(char), null, null, []),
+        new(150, "parse-shape=ref-text;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-class;shape.refused-kind=over-object (CMTK1005);shape.site=nested-in-class;shape.wrapped=own-record-class;text.culture=globalization-invariant;text.entry=TryParse", "validated-class", "nested-in-class", "explicit-interface-member", typeof(O150.V150), typeof(global::Probes.Build.C11ParsesByRef), typeof(O150.VC150), typeof(global::Probes.Build.C11ParsesFromIn), []),
+        new(151, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=nested-in-class;shape.wrapped=NodaTime.Instant;text.culture=invariant;text.entry=type-converter", "sealed-record-class", "nested-in-class", "base-depth-1", typeof(O151.V151), typeof(global::NodaTime.Instant), null, null, []),
+        new(152, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=record-struct;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=nested-in-class;shape.wrapped=byte;text.culture=globalization-invariant;text.entry=ISpanParsable", "record-struct", "nested-in-class", "none", typeof(O152.V152), typeof(byte), null, null, []),
+        new(153, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=validated-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=int;text.culture=ar-SA;text.entry=IParsable", "validated-class", "top-level", "base-depth-1", typeof(V153), typeof(int), null, null, []),
+        new(154, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-2;shape.kind=sealed-record-class;shape.refused-kind=unsealed-record-class (CMTK1006);shape.site=top-level;shape.wrapped=string;text.culture=tr-TR;text.entry=type-converter", "sealed-record-class", "top-level", "base-depth-2", typeof(V154), typeof(string), null, null, []),
+        new(155, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=ulong;text.culture=tr-TR;text.entry=type-converter", "sealed-record-class", "nested-two-levels", "base-depth-1", typeof(O155.P155.V155), typeof(ulong), null, null, []),
+        new(156, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-explicit-IEquatable;shape.kind=validated-class;shape.refused-kind=over-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=ulong;text.culture=de-DE;text.entry=IParsable", "validated-class", "nested-in-struct", "base-explicit-IEquatable", typeof(O156.V156), typeof(ulong), null, null, []),
     ];
 }

@@ -6366,6 +6366,27 @@
             "text.entry=type-converter"
           ]
         ]
+      },
+      {
+        "reason": "A `Uri`, an enum and a NodaTime type have neither (Generators README, What is generated: no ISpanParsable or IUtf8SpanParsable where the underlying type has none, not-promised no-span-parsing-without-the-underlying-types), so parsing-where-it-can-be-parsed is inapplicable there and no check that reads shape.wrapped can credit them.",
+        "pairs": [
+          [
+            "shape.wrapped=NodaTime.Instant",
+            "text.entry=ISpanParsable"
+          ],
+          [
+            "shape.wrapped=Uri",
+            "text.entry=ISpanParsable"
+          ],
+          [
+            "shape.wrapped=enum",
+            "text.entry=ISpanParsable"
+          ],
+          [
+            "shape.wrapped=flags-enum",
+            "text.entry=ISpanParsable"
+          ]
+        ]
       }
     ]
   },
