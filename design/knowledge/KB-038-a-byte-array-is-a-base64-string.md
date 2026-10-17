@@ -2,7 +2,7 @@
 verified: 2026-10-17
 pins:
   - sdk 10.0.4xx
-source: "Supported types in System.Text.Json" (learn.microsoft.com, dotnet/docs supported-types.md, System.Array namespace): "`byte[]` is handled specially and serializes as a base64 string, not a JSON array."; measured with System.Text.Json of the pinned SDK
+source: the System.Array section of Supported types in System.Text.Json (learn.microsoft.com, dotnet/docs supported-types.md), which says "`byte[]` is handled specially and serializes as a base64 string, not a JSON array."; measured with System.Text.Json of the pinned SDK
 turned-on: row 83 of BaseProbe (claim C07-fault-responses-blanket), where an array of value objects over byte was written [7] and the wrapped twin, a byte[], "Bw=="; docs/json.md "The wrapped type's JSON" and the not-promised entry a-byte-array-is-base64 of claim L01-json-bytes
 test: test/CodoMetis.TypeKit.Facts/KB038.cs
 ---
