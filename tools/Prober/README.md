@@ -17,6 +17,7 @@ dotnet tools/Prober/bin/Release/net10.0/prober.dll help
 | `gate [--since REF]` | none | anywhere, CI included: needs only the tracked corpus and a replay |
 | `status`, `stale`, `universe`, `rows [--claim C \| --probe P]`, … | none | anywhere |
 | `gaps [--base REF]` | none | anywhere: what the corpus leaves out, each with its recorded reason; a report that decides nothing (decision 104) |
+| `fix F --commit SHA [--reason TEXT]` | none | anywhere: records an open finding fixed at a commit, the fixed line of the state's `findings.jsonl` as `finding-line.schema.json` wants it; it counts once the commit is in HEAD's history |
 | `new --claim C [--probe P] [--family F]` | none | anywhere: stages a probe's skeleton, its own rows and its registry entry with no seed yet, and prints what the writer still owes |
 | `try --probe P [--rows i,j,...] [--no-build]` | none | locally: builds once in the replay's worktree and runs that one probe, every row or the rows given; records nothing, and holds the worktree from a replay while it runs |
 | `round explore\|full` | the `prober` agent | locally only, under caps it cannot overrun |

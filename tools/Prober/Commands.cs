@@ -507,6 +507,32 @@ internal static class Commands
         return 0;
     }
 
+    /// <summary>
+    /// Records an open finding fixed at a commit: the fixed line of findings.jsonl (finding-line.schema.json), with the
+    /// open line's claim and probe and the commit's full id. It refuses an id this ledger does not hold open and a
+    /// commit the repository does not have; a commit outside HEAD's history is recorded and counts once it is in it.
+    /// </summary>
+    public static int Fix(Ledger l, Args a)
+    {
+        var id = a.Positional is [var only] ? only : throw new Refusal("fix takes one finding id: fix F<n> --commit <sha>", 2);
+        var given = a.Need("commit");
+        var resolved = Git.Run(l.Top, "rev-parse", "-q", "--verify", given + "^{commit}");
+        if (resolved.ExitCode != 0) throw new Refusal($"--commit {given} is no commit of this repository");
+        var commit = resolved.Stdout.Trim();
+        if (!l.Findings().TryGetValue(id, out var open)) throw new Refusal($"{id} is no finding of this ledger");
+        if (Files.Str(open["status"]) is var status and not "open") throw new Refusal($"{id} is {status}, not open");
+        var line = new JsonObject
+        {
+            ["schemaVersion"] = Files.SchemaVersion, ["id"] = id, ["claim"] = open["claim"]?.DeepClone(), ["status"] = "fixed", ["commit"] = commit,
+        };
+        if (Files.Str(open["probe"]) is { Length: > 0 } probe) line["probe"] = probe;
+        if (a.Get("reason") is { Length: > 0 } reason) line["reason"] = reason;
+        Files.AppendLine(l.P("findings.jsonl"), line);
+        var inHistory = Git.Run(l.Top, "merge-base", "--is-ancestor", commit, "HEAD").ExitCode == 0;
+        l.Ctx.Out.WriteLine($"{id} fixed at {commit[..7]}" + (inHistory ? "" : "; it counts once that commit is in HEAD's history"));
+        return 0;
+    }
+
     public static int Lock(Ledger l, Args a)
     {
         var holder = a.Need("holder"); var mode = a.Need("mode");

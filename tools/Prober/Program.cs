@@ -26,6 +26,8 @@ internal static class Program
                                             --obligation into `seeds`, in place of a seed naming O; refuses an O that
                                             claim C does not list
           publish | dismiss --id F --reason TEXT | mark retired --probe P
+          fix F --commit SHA [--reason TEXT]   records open finding F fixed at the commit (findings.jsonl); refuses
+                                            an id this ledger does not hold open and a commit the repository lacks
           lock --holder H --mode replay|explore|full [--pid N] | unlock --holder H | heartbeat --holder H
           round-start --holder H --minutes M [--claims N] | round-end --holder H | repair | abandon
           merge --from DIR...               joins the states of a replay split by family (one DIR per leg) into
@@ -101,6 +103,7 @@ internal static class Program
                 "register" => Commands.Register(ledger, a),
                 "publish" => Commands.Publish(ledger, a),
                 "dismiss" => Commands.Dismiss(ledger, a),
+                "fix" => Commands.Fix(ledger, a),
                 "mark" => Commands.Mark(ledger, a),
                 "lock" => Commands.Lock(ledger, a),
                 "unlock" => Commands.Unlock(ledger, a),
