@@ -643,7 +643,7 @@ namespace Probes.Schema
                 var f = await r.Check(o, refuse ? Baseline.Refusal : Baseline.Docs("src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says"), async c =>
                 {
                     foreach (var a in mine)
-                        if ((refuse ? await a.Refused(c, r, en, names: o == "error-names-type-and-descriptions") : await a.Built(c, r, en)) is { } fail) return fail;
+                        if ((refuse ? await a.Refusal(c, r, en, names: o == "error-names-type-and-descriptions") : await a.Built(c, r, en)) is { } fail) return fail;
                     return null;
                 });
                 failed ??= f;
@@ -654,7 +654,7 @@ namespace Probes.Schema
         /// <summary>A naming policy no row sets: the minimal-API options' names then differ from MVC's whatever the row says.</summary>
         sealed class PrefixPolicy : JsonNamingPolicy { public override string ConvertName(string name) => "h_" + name; }
 
-        /// <summary>One host of C16: its document or the exception building it threw, judged by <see cref="Refused"/> or <see cref="Built"/>.</summary>
+        /// <summary>One host of C16: its document or the exception building it threw, judged by <see cref="Refusal"/> or <see cref="Built"/>.</summary>
         sealed record AgreeRun(bool Patch, Type Type, HostCfg Cfg, List<string> Sides, string? Down, JsonNode? Doc, Exception? Failed, string? Name)
         {
             string Said => (Patch ? CoordPConverter.Schema() : CoordConverter.Schema()).ToJsonString();
@@ -664,7 +664,7 @@ namespace Probes.Schema
             /// The document refused with an InvalidOperationException naming the type, and with <paramref name="names"/> what the minimal-API
             /// options say of it; a refusal ASP.NET alone makes the same way has nothing to check.
             /// </summary>
-            public async Task<string?> Refused(Check c, Row r, Entry en, bool names)
+            public async Task<string?> Refusal(Check c, Row r, Entry en, bool names)
             {
                 if (Down is not null) return Down;
                 if (Failed is null) return $"{(Patch ? "a type held only inside a patch, " : "")}{Type.Name}: the host has controllers, its minimal-API options alone describe it ({Want!.ToJsonString()}), and the document was built";
