@@ -71,6 +71,7 @@ public sealed class GapsTests : IDisposable
               the whole claim: C1/culture "No culture but the invariant one is promised." (design/adr/0001-limits.md#1-limits)
               x=1|2: C1/order "An ordering of keys is not promised." (design/adr/0001-limits.md#1-limits)
               y: C1 narrows it, "The claim." (README.md#a)
+            pairs no obligation wants (declared inapplicable): none
             out of reach: 1
               postgresql: needs a server
 
@@ -87,6 +88,7 @@ public sealed class GapsTests : IDisposable
             declarations the generators refuse (shape.refused-kind): none
             values the frameworks refuse on their own: none
             not promised, by what it concerns: none
+            pairs no obligation wants (declared inapplicable): none
             out of reach: none
 
             """.ReplaceLineEndings("\n"));

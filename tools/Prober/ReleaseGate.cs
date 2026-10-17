@@ -55,7 +55,7 @@ internal static class ReleaseGate
             .Select(w => Files.Str(w["claim"])).ToHashSet(StringComparer.Ordinal);
 
         var required = new List<string>(); var waived = new List<string>(); var missedByFootprint = new List<string>(); var footprintOnly = new List<string>();
-        var missingTotal = 0;
+        var missingTotal = 0; var inapplicableTotal = 0;
         foreach (var claim in universe.Claims)
         {
             var probes = byClaim.GetValueOrDefault(claim.Id) ?? [];
@@ -66,7 +66,9 @@ internal static class ReleaseGate
             if (footprint && !conservative) footprintOnly.Add(claim.Id);
             if (!(conservative || footprint)) continue;
             if (waivers.Contains(claim.Id)) { waived.Add(claim.Id); continue; }
-            var pairs = claim.Pairs();
+            // The pairs some obligation wants; one no obligation wants is declared inapplicable and left out, as an exclusion is.
+            var pairs = claim.PairsWanted();
+            inapplicableTotal += claim.Pairs().Count - pairs.Count;
             var missing = pairs.Count(p => !done.Contains((claim.Id, p)));
             required.Add(claim.Id); missingTotal += missing;
             if (missing > 0) reasons.Add($"{claim.Id}: {missing} of {pairs.Count} pairs uncovered (touched since {since})");
@@ -76,7 +78,7 @@ internal static class ReleaseGate
         {
             l.Ctx.Out.WriteLine(new JsonObject
             {
-                ["since"] = since, ["touched"] = new JsonArray([.. required.Select(x => (JsonNode)x)]), ["uncovered_pairs"] = missingTotal,
+                ["since"] = since, ["touched"] = new JsonArray([.. required.Select(x => (JsonNode)x)]), ["uncovered_pairs"] = missingTotal, ["inapplicable_pairs"] = inapplicableTotal,
                 ["reasons"] = new JsonArray([.. reasons.Select(x => (JsonNode)x)]),
                 ["selected_by_footprint_only"] = new JsonArray([.. footprintOnly.Select(x => (JsonNode)x)]),
                 ["waived"] = new JsonArray([.. waived.Select(x => (JsonNode)x)]),

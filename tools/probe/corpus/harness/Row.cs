@@ -45,8 +45,10 @@ public sealed class Row
     readonly Dictionary<string, string> d;
     public Evidence Ev { get; }
     public int Index { get; }
-    public Row(int index, Dictionary<string, string> d) : this(index, d, new Evidence()) { }
-    Row(int index, Dictionary<string, string> d, Evidence ev) { Index = index; this.d = d; Ev = ev; }
+    /// <summary>The claim whose rows file holds the row, whose declarations <see cref="Check(string, Baseline?, Func{Check, string?})"/> applies; null for a row in hand.</summary>
+    public string? Claim { get; }
+    public Row(int index, Dictionary<string, string> d, string? claim = null) : this(index, d, new Evidence(), claim) { }
+    Row(int index, Dictionary<string, string> d, Evidence ev, string? claim) { Index = index; this.d = d; Ev = ev; Claim = claim; }
     public string this[string axis] => d.TryGetValue(axis, out var v) ? Mark(axis, v) : throw new KeyNotFoundException($"row has no axis {axis}");
     public string? Get(string axis) => d.TryGetValue(axis, out var v) ? Mark(axis, v) : null;
     public bool Is(string axis, string value) => d.TryGetValue(axis, out var v) && Mark(axis, v) == value;
@@ -104,8 +106,8 @@ public sealed class Row
         Outcome("known-finding", $"{finding}: {why}");
     }
     public System.Text.StringBuilder Log { get; } = new();
-    public Row Fresh() => new Row(Index, new Dictionary<string, string>(d), Ev);
-    public Row With(string axis, string value) { var c = new Dictionary<string, string>(d) { [axis] = value }; return new Row(Index, c, Ev); }
+    public Row Fresh() => new Row(Index, new Dictionary<string, string>(d), Ev, Claim);
+    public Row With(string axis, string value) { var c = new Dictionary<string, string>(d) { [axis] = value }; return new Row(Index, c, Ev, Claim); }
     public override string ToString() => string.Join(" ", d.Where(kv => kv.Value != "default").OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}={kv.Value}"));
 
     /// <summary>The check running in this flow, so a Row whose method is named Check reaches the type's flow by another name.</summary>
@@ -124,13 +126,16 @@ public sealed class Row
     /// baseline is the harness error <c>pass-without-baseline</c>: a pass is a comparison that ran. The row's category
     /// is raised to the check's. Returns the failure, so a probe may stop the row at its first violation or run every
     /// check. A body that only returns null or throws names its form, <c>_ => (string?)null</c>, or the two overloads are ambiguous.
+    /// Before the body, the claim's declarations of where the obligation does not apply are read (claims.json, staged
+    /// beside the rows): where one matches the row's values, the check is inapplicable with the declaration's citation
+    /// and the body does not run.
     /// </summary>
     public async Task<string?> Check(string obligation, Baseline? baseline, Func<Check, Task<string?>> body)
     {
         var c = new Check(this, obligation, baseline);
         var outer = Scope.Enter(c);
         string? fail = null; Exception? thrown = null;
-        try { fail = await body(c); }
+        try { if (!Declared(c)) fail = await body(c); }
         catch (Exception ex) { thrown = ex; }
         finally { Scope.Leave(outer); }
         return Close(c, fail, thrown);
@@ -142,10 +147,25 @@ public sealed class Row
         var c = new Check(this, obligation, baseline);
         var outer = Scope.Enter(c);
         string? fail = null; Exception? thrown = null;
-        try { fail = body(c); }
+        try { if (!Declared(c)) fail = body(c); }
         catch (Exception ex) { thrown = ex; }
         finally { Scope.Leave(outer); }
         return Close(c, fail, thrown);
+    }
+
+    /// <summary>
+    /// Applies the first declaration of the check's obligation whose every axis the row holds at a value it lists: the
+    /// check is inapplicable with the declaration's citation, those axes read for it. True when one matched.
+    /// </summary>
+    bool Declared(Check c)
+    {
+        foreach (var (axes, cite) in Rows.Declarations(Claim, c.Obligation))
+            if (axes.All(kv => d.TryGetValue(kv.Key, out var v) && kv.Value.Contains(v)))
+            {
+                c.Declared(cite, string.Join(" ", axes.Keys.Order(StringComparer.Ordinal).Select(a => $"{a}={c[a]}")));
+                return true;
+            }
+        return false;
     }
 
     string? Close(Check c, string? fail, Exception? thrown)
@@ -213,6 +233,8 @@ public sealed class Check
     public string? Inapplicable(Cite cite, string? detail = null) => Cited("inapplicable", cite, detail);
     /// <summary>The check met the refusal <paramref name="cite"/> says is intended; returns null, no failure.</summary>
     public string? Refused(Cite cite, string? detail = null) => Cited("expected-refusal", cite, detail);
+    /// <summary>The check does not apply where its claim declares so (claims.json): the declaration's cite, read from the file, not a literal.</summary>
+    internal void Declared(Cite cite, string settings) => Cited("inapplicable", cite, "declared " + settings);
     /// <summary>The check could not tell; returns null, no failure.</summary>
     public string? Inconclusive(string reason) { Outcome("inconclusive", reason); return null; }
     public System.Text.StringBuilder Log => row.Log;
@@ -292,6 +314,18 @@ public sealed class Cite
     public static Cite Fact(string id) => new("fact:" + FactForm(id));
     /// <summary>A decision record under design/adr/.</summary>
     public static Cite Record(string id) => new("record:" + Form(id, RecordId, "a decision record's number", "0094"));
+
+    /// <summary>A citation as claims.json spells it (<c>not-promised:id</c>, <c>docs:file#anchor</c>, <c>fact:KB-031</c>, <c>record:0094</c>), by its factory.</summary>
+    internal static Cite Parse(string spelling)
+    {
+        var at = spelling.IndexOf(':');
+        var value = at < 0 ? "" : spelling[(at + 1)..];
+        return (at < 0 ? "" : spelling[..at]) switch
+        {
+            "not-promised" => NotPromised(value), "docs" => Docs(value), "fact" => Fact(value), "record" => Record(value),
+            _ => throw new ArgumentException($"a citation is not-promised:id, docs:file#anchor, fact:KB-NNN or record:NNNN, not '{spelling}'", nameof(spelling)),
+        };
+    }
 
     internal static string DocsForm(string source) => Form(source, Source, "a docs source", "docs/json.md#decimals-in-one-spelling");
     internal static string FactForm(string id) => Form(id, FactId, "a knowledge entry's id", "KB-031");
@@ -408,21 +442,57 @@ public sealed class NoteKeys
 
 public static class Rows
 {
-    public static string Root()
+    public static string Root() => TryRoot() ?? throw new DirectoryNotFoundException("no CodoMetis.TypeKit.Samples.csproj above " + AppContext.BaseDirectory);
+    static string? TryRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "CodoMetis.TypeKit.Samples.csproj"))) dir = dir.Parent;
-        return dir!.FullName;
+        return dir?.FullName;
+    }
+
+    /// <summary>
+    /// The claims the replay stages beside the rows (Probes/claims.json); where none is staged, as for a probe the prober's
+    /// own tests run in-process, no claim declares anything. The prober's tests point it at a file of their own.
+    /// </summary>
+    internal static string? ClaimsFile { get; set; } = TryRoot() is { } root ? Path.Combine(root, "Probes", "claims.json") : null;
+    static readonly Dictionary<string, Dictionary<string, JsonObject>> Claims = new();
+
+    /// <summary>A claim as the staged claims.json holds it, or null where the file or the claim is not there.</summary>
+    public static JsonObject? Claim(string id)
+    {
+        if (ClaimsFile is not { } path) return null;
+        lock (Claims)
+        {
+            if (!Claims.TryGetValue(path, out var claims))
+                Claims[path] = claims = !File.Exists(path) ? new()
+                    : JsonNode.Parse(File.ReadAllText(path))!.AsArray().OfType<JsonObject>().ToDictionary(c => c["id"]!.GetValue<string>());
+            return claims.GetValueOrDefault(id);
+        }
+    }
+
+    /// <summary>The declarations of where <paramref name="obligation"/> of <paramref name="claim"/> does not apply: each its axis values and its citation.</summary>
+    public static IEnumerable<(Dictionary<string, string[]> Axes, Cite Cite)> Declarations(string? claim, string obligation)
+    {
+        var o = (claim is null ? null : Claim(claim))?["obligations"]?.AsArray().OfType<JsonObject>().FirstOrDefault(x => x["id"]?.GetValue<string>() == obligation);
+        foreach (var declared in (o?["inapplicable"]?.AsArray() ?? []).OfType<JsonObject>())
+            yield return (declared["axes"]!.AsObject().ToDictionary(kv => kv.Key, kv => kv.Value!.AsArray().Select(v => v!.GetValue<string>()).ToArray()),
+                          Cite.Parse(declared["cite"]!.GetValue<string>()));
     }
     /// <summary>The rows of one probe, from its own file (rows/<paramref name="probe"/>.json); a sibling probe of the claim reads its own.</summary>
     public static IEnumerable<Row> Load(string probe)
     {
         var path = Path.Combine(Root(), "Probes", "rows", probe + ".json");
         if (!File.Exists(path)) throw new FileNotFoundException($"no rows file for the probe {probe}: {path}", path);
+        return Read(path);
+    }
+    /// <summary>The rows of a rows file, each holding the file's claim, whose declarations its checks apply.</summary>
+    internal static IEnumerable<Row> Read(string path)
+    {
         var doc = JsonNode.Parse(File.ReadAllText(path))!;
+        var claim = doc["claim"]?.GetValue<string>();
         var i = 0;
         foreach (var r in doc["rows"]!.AsArray())
-            yield return new Row(i++, r!["row"]!.AsObject().ToDictionary(kv => kv.Key, kv => kv.Value!.GetValue<string>()));
+            yield return new Row(i++, r!["row"]!.AsObject().ToDictionary(kv => kv.Key, kv => kv.Value!.GetValue<string>()), claim);
     }
     /// <summary>
     /// xunit MemberData: (probe, index), the probe naming its rows file, labelled with the row's settings so a test list or a
@@ -499,7 +569,7 @@ public static class Rec
     public static async Task Run(string label, Row cached, Func<Row, Task<string?>> check)
     {
         var idx = cached.Index;
-        var row = new Row(cached.Index, cached.All.ToDictionary(kv => kv.Key, kv => kv.Value));
+        var row = new Row(cached.Index, cached.All.ToDictionary(kv => kv.Key, kv => kv.Value), cached.Claim);
         string? fail = null, unexpected = null;
         try { fail = await check(row); }
         catch (Exception ex) { unexpected = "UNEXPECTED " + ex.GetType().Name + ": " + ex.Message; row.Outcome("harness-error", unexpected); }
