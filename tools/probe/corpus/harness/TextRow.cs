@@ -242,7 +242,6 @@ public static class TextClaims
                     // Differential: the value object only has to round-trip where its wrapped type does
                     // (TimeOnly.ToString() under the invariant culture prints HH:mm and drops the seconds).
                     if (!WrappedLosesItToo(e, plain)) return $"{readEntry}: '{text}' read back as {back.Value}, expected {vo}";
-                    c.Note(NoteKeys.TextWrappedRoundTripLossyToo);
                     if (TextOps.Lossy(e)) return c.Inapplicable(Cite.NotPromised("dates-and-times-lose-detail-as-text"), $"{readEntry}: the wrapped type's own text does not read back either");
                     return c.Inapplicable(Cite.Docs("src/CodoMetis.TypeKit.Generators/README.md#parsing-and-formatting"), $"{readEntry}: the wrapped type's own text does not read back either");   // "wherever the underlying type's own does"
                 }
@@ -294,7 +293,7 @@ public static class TextClaims
                 // Text-matching site, kept in this step (WS2 step 4), as above: the depth refusal told by its words, no twin showing it.
                 if (c.Is("json.MaxDepth", "3") && ex1.Message.Contains("maximum allowed depth")) { c.Note(NoteKeys.StjMaxdepth, "read back"); return null; }
                 // the wrapped twin does not read its own document back under these options either: nothing to compare
-                if (PlainFails(hp, o) is { } px) { c.Note(NoteKeys.PlainReadBackFailsToo); return c.Inconclusive($"read back: the wrapped type does not read its own document back under these options either: {px.GetType().Name}: {Cut(px.Message)}"); }
+                if (PlainFails(hp, o) is { } px) { return c.Inconclusive($"read back: the wrapped type does not read its own document back under these options either: {px.GetType().Name}: {Cut(px.Message)}"); }
                 return $"own JSON {Cut(jv)} did not read back: {ex1.GetType().Name}: {Cut(ex1.Message)}";
             }
             if (b != jv)
@@ -370,6 +369,8 @@ public static class TextClaims
     internal static string Cut(string? s) => s is null ? "(null)" : s.Length > 160 ? s[..160] + "..." : s;
 
     // ---- L02: a rejection never repeats the input
+    // Text-matching site, kept in this step (WS2 step 4): System.Text.Json's Path, which holds a rejected dictionary key (not-promised
+    // a-rejected-dictionary-key-in-the-path), is cut off by its words. Baseline gap: no twin in the row shows the wrapped type's key in the Path too.
     static string StripPath(Exception x) => x.Message.IndexOf(" Path:", StringComparison.Ordinal) is var i and >= 0 ? x.Message[..i] : x.Message;
 
     /// <summary>

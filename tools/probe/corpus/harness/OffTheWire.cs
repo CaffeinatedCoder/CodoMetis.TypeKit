@@ -62,6 +62,8 @@ public static class OffTheWire
             if (nullableUnderContext)
                 return x is InvalidOperationException ? null : $"{dir}: a source-generated context refuses an {name}? property with the serializer's InvalidOperationException; got {(x is null ? "no exception" : Jx.Ex(x))}";
             if (x is not NotSupportedException) return $"{dir}: expected NotSupportedException naming {name}, got {(x is null ? "no exception" : Jx.Ex(x))}";
+            // Text-matching site, kept in this step (WS2 step 4): the refusal is told TypeKit's by its words ("not a wire type"). Baseline
+            // gap: a NotSupportedException of the serializer's own is the same type, and no twin in the row refuses as the serializer alone does.
             if (!x.Message.Contains(name) || !x.Message.Contains("not a wire type")) return $"{dir}: the NotSupportedException does not name {name} as no wire type: {Jx.Cut(x.Message)}";
             return null;
         }
