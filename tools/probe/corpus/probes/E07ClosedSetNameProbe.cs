@@ -1,4 +1,6 @@
 // Claim E07-closed-set-stored-as-name (README#closed-sets): "A closed set is stored as a text column of the member's name, and read back as the member itself. That holds in a table, in a primitive collection of names and in a JSON column alike ... A name the set no longer has throws when it's read, rather than reading as null. An instance that isn't a member throws when it's written."
+// Obligations (claims.json), against the README's section (Baseline.Docs): stored-as-name (round-trip), in-collections-and-json
+// (round-trip in a primitive collection or a JSON column), unknown-name-throws (unknown-name-on-read), non-member-throws (non-member-on-write).
 // Oracle: claim. Round trip: the stored text is the member's name and the read value is the member itself (reference-equal); an unknown stored name throws on read (never null/default); a non-member instance throws on write.
 using Microsoft.EntityFrameworkCore;
 using Probes.Ef;
@@ -50,6 +52,7 @@ public sealed class E07ClosedSetNameProbe
             _ => ((Own<PSet>)EfX.Get(e, "O")!).P.Name(),
         };
 
+        var docs = Baseline.Docs("src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#closed-sets");
         await using var db = new EfDb(cfg, typeKit: true);
         await db.Context.Database.EnsureCreatedAsync();
         switch (ev)
@@ -60,15 +63,35 @@ public sealed class E07ClosedSetNameProbe
                 db.Context.Add(e); await db.Context.SaveChangesAsync(); db.Context.ChangeTracker.Clear();
                 var stored = await EfX.RawScalar(db, $"SELECT {column} FROM t");
                 var expectStored = site switch { "table" => "Beta", "primitive-collection" => "[\"Beta\",\"Alpha\"]", _ => "{\"P\":\"Beta\"}" };
-                if (stored != expectStored) return $"stored text is {stored}, expected {expectStored}";
-                var back = EfX.Enumerate(Q.SetOf(db.Context, entity)).Single();
-                if (site == "primitive-collection")
+                // stored-as-name: a table's text is the member's name, and every site reads back the member itself
+                var named = r.Check("stored-as-name", docs, c =>
                 {
-                    var l = (List<PSet>)EfX.Get(back, "Items")!;
-                    return l.Count == 2 && ReferenceEquals(l[0], PSet.Beta) && ReferenceEquals(l[1], PSet.Alpha) ? null : "read back " + Members(back);
-                }
-                var got = site == "table" ? (PSet)EfX.Get(back, "P")! : ((Own<PSet>)EfX.Get(back, "O")!).P;
-                return ReferenceEquals(got, PSet.Beta) ? null : "read back is not the member itself: " + got;
+                    if (site == "table" && stored != expectStored) return $"stored text is {stored}, expected {expectStored}";
+                    object back;
+                    try { back = EfX.Enumerate(Q.SetOf(db.Context, entity)).Single(); }
+                    catch (Exception ex) when (ex is not Xunit.Sdk.XunitException) { return $"reading the stored {stored} back threw {ex.GetType().Name}: {ex.Message.Split('\n')[0]}"; }
+                    if (site == "primitive-collection")
+                    {
+                        var l = (List<PSet>)EfX.Get(back, "Items")!;
+                        if (!(l.Count == 2 && ReferenceEquals(l[0], PSet.Beta) && ReferenceEquals(l[1], PSet.Alpha))) return "read back " + Members(back);
+                    }
+                    else
+                    {
+                        var got = site == "table" ? (PSet)EfX.Get(back, "P")! : ((Own<PSet>)EfX.Get(back, "O")!).P;
+                        if (!ReferenceEquals(got, PSet.Beta)) return "read back is not the member itself: " + got;
+                    }
+                    c.Note(NoteKeys.Compared, site == "table" ? "the stored name and the member read back" : "the members read back");
+                    return null;
+                });
+                if (site == "table") return named;
+                // in-collections-and-json: a primitive collection holds the names as a JSON array, a JSON column the name as the property's value
+                var inJson = r.Check("in-collections-and-json", docs, c =>
+                {
+                    if (stored != expectStored) return $"stored text is {stored}, expected {expectStored}";
+                    c.Note(NoteKeys.Compared, stored);
+                    return null;
+                });
+                return named ?? inJson;
             }
             case "unknown-name-on-read":
             {
@@ -76,21 +99,27 @@ public sealed class E07ClosedSetNameProbe
                 db.Context.Add(e); await db.Context.SaveChangesAsync(); db.Context.ChangeTracker.Clear();
                 var bad = site switch { "table" => "'Gamma'", "primitive-collection" => "'[\"Alpha\",\"Gamma\"]'", _ => "'{\"P\":\"Gamma\"}'" };
                 await EfX.Raw(db, $"UPDATE t SET {column} = {bad}");
-                try
+                return r.Check("unknown-name-throws", docs, c =>
                 {
-                    var back = EfX.Enumerate(Q.SetOf(db.Context, entity)).ToList();
-                    return "an unknown stored name read without throwing: " + (back.Count == 1 ? Safe(() => Members(back[0])) : back.Count + " rows");
-                }
-                catch (Exception ex) when (ex is not Xunit.Sdk.XunitException) { return null; }
+                    try
+                    {
+                        var back = EfX.Enumerate(Q.SetOf(db.Context, entity)).ToList();
+                        return "an unknown stored name read without throwing: " + (back.Count == 1 ? Safe(() => Members(back[0])) : back.Count + " rows");
+                    }
+                    catch (Exception ex) when (ex is not Xunit.Sdk.XunitException) { c.Note(NoteKeys.Compared, ex.GetType().Name); return null; }
+                });
             }
             case "non-member-on-write":
             {
                 var e = Entity(NonMember());
                 db.Context.Add(e);
-                try { await db.Context.SaveChangesAsync(); }
-                catch (Exception ex) when (ex is not Xunit.Sdk.XunitException) { return null; }
-                var stored = await EfX.RawScalar(db, $"SELECT {column} FROM t");
-                return "a non-member instance was written without throwing; stored: " + stored;
+                return await r.Check("non-member-throws", docs, async c =>
+                {
+                    try { await db.Context.SaveChangesAsync(); }
+                    catch (Exception ex) when (ex is not Xunit.Sdk.XunitException) { c.Note(NoteKeys.Compared, ex.GetType().Name); return null; }
+                    var stored = await EfX.RawScalar(db, $"SELECT {column} FROM t");
+                    return "a non-member instance was written without throwing; stored: " + stored;
+                });
             }
             default: throw new ArgumentException(ev);
         }
