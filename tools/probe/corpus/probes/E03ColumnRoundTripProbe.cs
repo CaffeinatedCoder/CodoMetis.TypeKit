@@ -1,7 +1,10 @@
 // Claim E03-column-round-trip (src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#what-maps): "Keys, foreign keys, nullable properties, primitive collections and query parameters all map as plain columns of the underlying type."
 // Oracle: metamorphic plus differential. A value object saved in a property / nullable property / key / owned property / complex property and read back by a fresh query equals what was saved (and its Value is the wrapped value);
 // the stored column (SQLite type and quoted content) equals what the wrapped type stored by plain EF holds. A nullable property also round-trips null.
-// Expected: no failure for any row; a model both sides refuse is an expected refusal.
+// Obligations (claims.json), one per row by ef.mapping, against the wrapped twin (Baseline.Twin): stored-as-underlying (property, owned,
+// complex): "Every value object is stored in a plain column of its underlying type"; keys (key) and nullable-properties (nullable):
+// "Keys, foreign keys, nullable properties, primitive collections and query parameters all map as plain columns of the underlying type."
+// Expected: no failure for any row; where a side refuses, EfSides says how the check ends.
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Probes.Ef;
@@ -59,19 +62,21 @@ public sealed class E03ColumnRoundTripProbe
         var original = e.Valid();
         var voSide = await Run(mapping, EfModel.Entity(mapping, e.Vo), () => e.MakeVo(original), vo: true);
         var plainSide = await Run(mapping, EfModel.Entity(mapping, e.Plain), () => original, vo: false);
-        if (voSide.Ex is not null && plainSide.Ex is not null) { r.Note(NoteKeys.BothThrew, voSide.Ex.GetType().Name); return null; }
-        if (plainSide.Ex is not null) { r.Note(NoteKeys.PlainRefused, plainSide.Ex.GetType().Name); return null; }
-        if (voSide.Ex is not null) return $"the value object in a {mapping} failed with {voSide.Ex.GetType().Name}: {voSide.Ex.Message.Split('\n')[0]}; the wrapped type did not";
-        if (voSide.Read.Count != plainSide.Read.Count) return $"read {voSide.Read.Count} rows, the wrapped type read {plainSide.Read.Count}";
-        for (var i = 0; i < voSide.Read.Count; i++)
+        return r.Check(mapping switch { "key" => "keys", "nullable" => "nullable-properties", _ => "stored-as-underlying" }, Baseline.Twin, c =>
         {
-            var v = voSide.Read[i]; var p = plainSide.Read[i];
-            if (p is null != v is null) return $"row {i}: the value object read back {(v is null ? "null" : "a value")}, the wrapped type {(p is null ? "null" : "a value")}";
-            if (v is null) continue;
-            if (!Equals(Plainify(v), p)) return $"row {i}: read back Value {Plainify(v)}, the wrapped type reads {p}";
-            if (!Equals(v, e.MakeVo(p!))) return $"row {i}: the read-back value object does not equal the one built from the stored value";
-        }
-        if (voSide.Raw != plainSide.Raw) return $"stored column differs: value object [{voSide.Raw}] vs wrapped type [{plainSide.Raw}]";
-        return null;
+            if (EfSides.Threw(c, voSide.Ex, plainSide.Ex, $"saving and reading a {mapping}", out var refused)) return refused;
+            if (voSide.Read.Count != plainSide.Read.Count) return $"read {voSide.Read.Count} rows, the wrapped type read {plainSide.Read.Count}";
+            for (var i = 0; i < voSide.Read.Count; i++)
+            {
+                var v = voSide.Read[i]; var p = plainSide.Read[i];
+                if (p is null != v is null) return $"row {i}: the value object read back {(v is null ? "null" : "a value")}, the wrapped type {(p is null ? "null" : "a value")}";
+                if (v is null) continue;
+                if (!Equals(Plainify(v), p)) return $"row {i}: read back Value {Plainify(v)}, the wrapped type reads {p}";
+                if (!Equals(v, e.MakeVo(p!))) return $"row {i}: the read-back value object does not equal the one built from the stored value";
+            }
+            if (voSide.Raw != plainSide.Raw) return $"stored column differs: value object [{voSide.Raw}] vs wrapped type [{plainSide.Raw}]";
+            c.Note(NoteKeys.Compared, $"{voSide.Read.Count} row(s) read back, the stored column {voSide.Raw}");
+            return null;
+        });
     }
 }

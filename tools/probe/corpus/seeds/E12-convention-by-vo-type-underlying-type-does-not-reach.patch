@@ -1,0 +1,35 @@
+diff --git a/src/CodoMetis.TypeKit.EntityFrameworkCore/TypeKitConventionSetPlugin.cs b/src/CodoMetis.TypeKit.EntityFrameworkCore/TypeKitConventionSetPlugin.cs
+index f0ec2c3..05e6d4c 100644
+--- a/src/CodoMetis.TypeKit.EntityFrameworkCore/TypeKitConventionSetPlugin.cs
++++ b/src/CodoMetis.TypeKit.EntityFrameworkCore/TypeKitConventionSetPlugin.cs
+@@ -1,3 +1,4 @@
++using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ using Microsoft.EntityFrameworkCore.Metadata.Conventions;
+ using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
+ 
+@@ -16,6 +17,8 @@ internal sealed class TypeKitConventionSetPlugin : IConventionSetPlugin
+     {
+         var finalizing = conventionSet.ModelFinalizingConventions;
+ 
++        conventionSet.PropertyAddedConventions.Add(new WrappedTypeConfigurationConvention());
++
+         // After the last of EF's finalizing conventions that change what its value-generation convention
+         // re-reads, and so before a provider's value-generation strategy (an identity column on PostgreSQL
+         // and SQL Server), which is chosen for keys already generated on add and comes after them.
+@@ -52,3 +55,16 @@ internal sealed class TypeKitConventionSetPlugin : IConventionSetPlugin
+         return last + 1;
+     }
+ }
++
++/// <summary>A value-object property configured as the type it wraps is: <c>ConfigureConventions</c> by the wrapped type reaches it.</summary>
++internal sealed class WrappedTypeConfigurationConvention : IPropertyAddedConvention
++{
++    public void ProcessPropertyAdded(IConventionPropertyBuilder propertyBuilder, IConventionContext<IConventionPropertyBuilder> context)
++    {
++        var property = propertyBuilder.Metadata;
++        if (ValueObjectTypes.Describe(Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType) is not { WrappedType: var wrapped }) return;
++#pragma warning disable EF1001
++        ((Microsoft.EntityFrameworkCore.Metadata.Internal.Model)property.DeclaringType.Model).Configuration?.FindProperty(wrapped)?.Apply((Microsoft.EntityFrameworkCore.Metadata.IMutableProperty)property);
++#pragma warning restore EF1001
++    }
++}

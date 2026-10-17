@@ -12598,7 +12598,23 @@
           "ef.accessor": [
             "Value"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.wrapped": [
+                "DateTimeOffset",
+                "TimeSpan",
+                "ulong"
+              ],
+              "ef.query": [
+                "where-value-compare",
+                "order-by"
+              ]
+            },
+            "cite": "fact:KB-039"
+          }
+        ]
       },
       {
         "id": "get-value",
@@ -12607,7 +12623,23 @@
           "ef.accessor": [
             "GetValue"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.wrapped": [
+                "DateTimeOffset",
+                "TimeSpan",
+                "ulong"
+              ],
+              "ef.query": [
+                "where-value-compare",
+                "order-by"
+              ]
+            },
+            "cite": "fact:KB-039"
+          }
+        ]
       },
       {
         "id": "value-or-null",
@@ -12616,11 +12648,43 @@
           "ef.accessor": [
             "ValueOrNull"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.wrapped": [
+                "DateTimeOffset",
+                "TimeSpan",
+                "ulong"
+              ],
+              "ef.query": [
+                "where-value-compare",
+                "order-by"
+              ]
+            },
+            "cite": "fact:KB-039"
+          }
+        ]
       },
       {
         "id": "column-not-cast",
-        "sentence": "A table's column is re-typed, not cast, so an index on it still serves the query."
+        "sentence": "A table's column is re-typed, not cast, so an index on it still serves the query.",
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.wrapped": [
+                "DateTimeOffset",
+                "TimeSpan",
+                "ulong"
+              ],
+              "ef.query": [
+                "where-value-compare",
+                "order-by"
+              ]
+            },
+            "cite": "fact:KB-039"
+          }
+        ]
       }
     ],
     "not-promised": [
@@ -12803,6 +12867,33 @@
           ],
           "ef.key-config": [
             "default"
+          ]
+        }
+      },
+      {
+        "id": "not-on-efs-list",
+        "sentence": "That's EF's own list: `int`, `long`, `short`, `sbyte`, `uint`, `ulong` and `ushort`, and not `byte`.",
+        "axes": {
+          "shape.wrapped": [
+            "string"
+          ],
+          "ef.key-config": [
+            "default"
+          ]
+        }
+      },
+      {
+        "id": "own-configuration-wins",
+        "sentence": "A configuration you write yourself always wins over these defaults.",
+        "axes": {
+          "shape.wrapped": [
+            "char",
+            "Guid",
+            "string"
+          ],
+          "ef.key-config": [
+            "ValueGeneratedOnAdd",
+            "ValueGeneratedNever"
           ]
         }
       }
@@ -13349,6 +13440,15 @@
             "value-object"
           ]
         }
+      },
+      {
+        "id": "underlying-type-does-not-reach",
+        "sentence": "So `configurationBuilder.Properties<decimal>().HavePrecision(18, 2)` reaches `decimal` properties, and not an `Amount` that wraps one.",
+        "axes": {
+          "ef.convention-type": [
+            "underlying"
+          ]
+        }
       }
     ],
     "not-promised": [
@@ -13389,6 +13489,15 @@
       "shape.kind": "db.Orders.Where(o => o.Tags.Contains(tag));"
     },
     "obligations": [
+      {
+        "id": "contains",
+        "sentence": "db.Orders.Where(o => o.Tags.Contains(tag));",
+        "axes": {
+          "ef.query": [
+            "contains"
+          ]
+        }
+      },
       {
         "id": "element-value",
         "sentence": "db.Orders.Where(o => o.Tags.Any(t => t.Value == \"x\"));",

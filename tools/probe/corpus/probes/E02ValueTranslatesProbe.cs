@@ -1,6 +1,10 @@
 // Claim E02-value-translates-to-column (src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries): ".Value, GetValue() and ValueOrNull() translate to the column itself" (column parity: same SQL as the query over the wrapped property).
 // Oracle: differential. For each query shape the SQL (ToQueryString) of the query over the value object's accessor equals the SQL of the same query over the wrapped-type property, and both return the same rows.
-// Expected: no failure for any row; both sides refusing is an expected refusal.
+// Obligations (claims.json), each against the wrapped twin (Baseline.Twin):
+//   value, get-value, value-or-null (by ef.accessor): "`.Value`, `GetValue()` and `ValueOrNull()` translate to the column itself.": the rows the query answers
+//   column-not-cast (every row): "A table's column is re-typed, not cast, so an index on it still serves the query.": the SQL
+// Expected: no failure for any row; where a side refuses the query, EfSides says how the check ends. Where SQLite cannot compare or
+// order the wrapped type, every obligation declares itself inapplicable (claims.json, fact KB-039).
 using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
@@ -68,9 +72,11 @@ public sealed class E02ValueTranslatesProbe
             }
         }
 
-        async Task<(string? Sql, List<string>? Rows, Exception? Ex)> Side(Type entity, bool vo)
+        // One side's query: its SQL, or the exception translating it; the rows it answers, or the exception running it.
+        async Task<(string? Sql, Exception? Translating, List<string>? Rows, Exception? Running)> Side(Type entity, bool vo)
         {
             await using var db = new EfDb(EfModel.Configure(mapping, entity, null, false), typeKit: vo);
+            IQueryable query;
             try
             {
                 await db.Context.Database.EnsureCreatedAsync();
@@ -80,22 +86,40 @@ public sealed class E02ValueTranslatesProbe
                 db.Context.Add(row);
                 await db.Context.SaveChangesAsync();
                 db.Context.ChangeTracker.Clear();
-                var query = Build(db.Context, entity, vo);
-                var sql = query.ToQueryString();
+                query = Build(db.Context, entity, vo);
+            }
+            catch (Exception ex) { return (null, ex, null, ex); }
+            string sql;
+            try { sql = query.ToQueryString(); }
+            catch (Exception ex) { return (null, ex, null, ex); }
+            try
+            {
                 var list = new List<string>();
                 foreach (var x in (System.Collections.IEnumerable)query) list.Add(Norm(x));
-                return (sql, list, null);
+                return (sql, null, list, null);
             }
-            catch (Exception ex) { return (null, null, ex); }
+            catch (Exception ex) { return (sql, null, null, ex); }
         }
         var v = await Side(voEntity, true);
         var pl = await Side(plainEntity, false);
-        if (v.Ex is not null && pl.Ex is not null) { r.Note(NoteKeys.BothThrew, v.Ex.GetType().Name); return null; }
-        if (pl.Ex is not null) { r.Note(NoteKeys.PlainRefused, pl.Ex.GetType().Name); return null; }
-        if (v.Ex is not null) return $"the query over the value object threw {v.Ex.GetType().Name}: {Trim(v.Ex.Message)}; the same query over the wrapped type did not";
-        if (v.Sql != pl.Sql) return $"SQL differs.\nVO:\n{v.Sql}\nplain:\n{pl.Sql}";
-        if (!v.Rows!.SequenceEqual(pl.Rows!)) return $"rows differ: VO [{string.Join(",", v.Rows!)}] plain [{string.Join(",", pl.Rows!)}]";
-        return null;
+
+        // The accessor's obligation: the query over it answers what the same query over the wrapped property answers.
+        var answered = r.Check(acc switch { "Value" => "value", "GetValue" => "get-value", _ => "value-or-null" }, Baseline.Twin, c =>
+        {
+            if (EfSides.Threw(c, v.Running, pl.Running, "the query", out var refused)) return refused;
+            if (!v.Rows!.SequenceEqual(pl.Rows!)) return $"rows differ: VO [{string.Join(",", v.Rows!)}] plain [{string.Join(",", pl.Rows!)}]";
+            c.Note(NoteKeys.Compared, $"{v.Rows!.Count} row(s)");
+            return null;
+        });
+        // column-not-cast: the SQL is the wrapped property's, so the column is re-typed and not cast.
+        var sqlOf = r.Check("column-not-cast", Baseline.Twin, c =>
+        {
+            if (EfSides.Threw(c, v.Translating, pl.Translating, "translating the query", out var refused)) return refused;
+            if (v.Sql != pl.Sql) return $"SQL differs.\nVO:\n{v.Sql}\nplain:\n{pl.Sql}";
+            c.Note(NoteKeys.Compared, "the SQL");
+            return null;
+        });
+        return answered ?? sqlOf;
     }
     /// <summary>A result as comparable text: an entity by its P, a value object by the value it wraps.</summary>
     static string Norm(object? x)
@@ -106,5 +130,4 @@ public sealed class E02ValueTranslatesProbe
         if (t.GetProperty("Value") is { } v && v.DeclaringType == t && t.Namespace == "Probes.Ef" || t.Name == "V" || t.Name.StartsWith("E_")) return Norm(t.GetProperty("Value")!.GetValue(x));
         return Convert.ToString(x, System.Globalization.CultureInfo.InvariantCulture) ?? "<null>";
     }
-    static string Trim(string s) => s.Length > 400 ? s[..400] : s;
 }

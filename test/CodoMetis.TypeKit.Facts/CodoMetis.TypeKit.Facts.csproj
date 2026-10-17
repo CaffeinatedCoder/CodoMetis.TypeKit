@@ -24,6 +24,7 @@
         -->
         <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     </ItemGroup>
 
     <!-- A fact's measured answers as data, beside its test (FactFixture, design/adr/0107), read from the test output. -->

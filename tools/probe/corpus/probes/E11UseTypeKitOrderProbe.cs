@@ -1,4 +1,5 @@
 // Claim E11-usetypekit-order (src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#setup): "UseTypeKit() adds plugins ... It replaces nothing. So it works alongside a provider ... and it doesn't matter whether you call it before or after UseNpgsql or UseSqlite."
+// Obligation (claims.json): order-does-not-matter, on every row, held to the README's sentence (Baseline.Docs) by the differential below.
 // Oracle: differential between the two orders (and, where a plain type maps the same way, the wrapped type): the model, the CREATE script, the raw stored row and the values read back are equal in every mapping.
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
@@ -66,49 +67,52 @@ public sealed class E11UseTypeKitOrderProbe
 
     static async Task<string?> Check(Probes.Shapes.Row r)
     {
-        var mapping = r["ef.mapping"]; var order = r["ef.order"];
-        var other = order == "before-provider" ? "after-provider" : "before-provider";
-        string w = mapping switch { "integer-key" => r.Index % 2 == 0 ? "int" : "long", "key" => r.Index % 2 == 0 ? "Guid" : "string", "closed-set" => "-", _ => Ws[r.Index % Ws.Length] };
-        Out a, b; Out? plain = null;
-        if (mapping == "closed-set")
+        return await r.Check("order-does-not-matter", Baseline.Docs("src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#setup"), async c =>
         {
-            var entity = typeof(EntP<PSet>);
-            Action<ModelBuilder> cfg = mb => { var eb = mb.Entity(entity); eb.ToTable("t"); eb.HasKey("Id"); };
-            a = await Run(order, mapping, entity, _ => PSet.Beta, cfg, null);
-            b = await Run(other, mapping, entity, _ => PSet.Beta, cfg, null);
-            if (!a.Raw.Contains("String:Beta")) return "closed set not stored as its name text: " + a.Raw;
-        }
-        else
-        {
-            var kind = EfX.Kinds[r.Index % EfX.Kinds.Length];
-            var e = mapping is "key" or "integer-key" ? KeyRegistry.All.First(x => x.Kind == kind && x.Wrapped == w) : EfX.Top(kind, w);
-            var map = mapping == "integer-key" ? "key" : mapping;
-            var entity = EfModel.Entity(map, e.Vo);
-            var cfg = EfModel.Configure(map, entity, null, false);
-            Func<int, object?> value = i => e.MakeVo(EfX.Sample(w, i));
-            a = await Run(order, mapping, entity, value, cfg, w);
-            b = await Run(other, mapping, entity, value, cfg, w);
-            if (mapping is "property" or "nullable" or "owned" or "complex")
+            var mapping = r["ef.mapping"]; var order = r["ef.order"];
+            var other = order == "before-provider" ? "after-provider" : "before-provider";
+            string w = mapping switch { "integer-key" => r.Index % 2 == 0 ? "int" : "long", "key" => r.Index % 2 == 0 ? "Guid" : "string", "closed-set" => "-", _ => Ws[r.Index % Ws.Length] };
+            Out a, b; Out? plain = null;
+            if (mapping == "closed-set")
             {
-                var pe = EfModel.Entity(map, e.Plain);
-                plain = await Run("none", mapping, pe, i => EfX.Sample(w, i), EfModel.Configure(map, pe, null, false), w);
+                var entity = typeof(EntP<PSet>);
+                Action<ModelBuilder> cfg = mb => { var eb = mb.Entity(entity); eb.ToTable("t"); eb.HasKey("Id"); };
+                a = await Run(order, mapping, entity, _ => PSet.Beta, cfg, null);
+                b = await Run(other, mapping, entity, _ => PSet.Beta, cfg, null);
+                if (!a.Raw.Contains("String:Beta")) return "closed set not stored as its name text: " + a.Raw;
             }
-            else if (mapping == "integer-key")
+            else
             {
-                var ids = a.Read.Split(';');
-                if (ids.Distinct().Count() != 2 || ids.Any(x => x is "0" or "")) return "integer key not generated after " + order + ": " + a.Read;
+                var kind = EfX.Kinds[r.Index % EfX.Kinds.Length];
+                var e = mapping is "key" or "integer-key" ? KeyRegistry.All.First(x => x.Kind == kind && x.Wrapped == w) : EfX.Top(kind, w);
+                var map = mapping == "integer-key" ? "key" : mapping;
+                var entity = EfModel.Entity(map, e.Vo);
+                var cfg = EfModel.Configure(map, entity, null, false);
+                Func<int, object?> value = i => e.MakeVo(EfX.Sample(w, i));
+                a = await Run(order, mapping, entity, value, cfg, w);
+                b = await Run(other, mapping, entity, value, cfg, w);
+                if (mapping is "property" or "nullable" or "owned" or "complex")
+                {
+                    var pe = EfModel.Entity(map, e.Plain);
+                    plain = await Run("none", mapping, pe, i => EfX.Sample(w, i), EfModel.Configure(map, pe, null, false), w);
+                }
+                else if (mapping == "integer-key")
+                {
+                    var ids = a.Read.Split(';');
+                    if (ids.Distinct().Count() != 2 || ids.Any(x => x is "0" or "")) return "integer key not generated after " + order + ": " + a.Read;
+                }
             }
-        }
-        if (a.Model != b.Model) return $"model differs between {order} and {other}: " + EfModel.FirstDiff(a.Model, b.Model);
-        if (a.Model.StartsWith("threw ", StringComparison.Ordinal)) return $"the value object's entity is refused in both orders: {a.Model}";
-        if (a.Script != b.Script) return $"create script differs between {order} and {other}: " + EfModel.FirstDiff(a.Script, b.Script);
-        if (a.Raw != b.Raw) return $"stored row differs between {order} and {other}: {a.Raw} | {b.Raw}";
-        if (a.Read != b.Read) return $"values read differ between {order} and {other}: {a.Read} | {b.Read}";
-        if (plain is not null)
-        {
-            if (a.Model != plain.Model) return "model differs from the wrapped type's: " + EfModel.FirstDiff(a.Model, plain.Model);
-            if (a.Raw != plain.Raw) return $"stored row differs from the wrapped type's: {a.Raw} | {plain.Raw}";
-        }
-        return null;
+            if (a.Model != b.Model) return $"model differs between {order} and {other}: " + EfModel.FirstDiff(a.Model, b.Model);
+            if (a.Model.StartsWith("threw ", StringComparison.Ordinal)) return $"the value object's entity is refused in both orders: {a.Model}";
+            if (a.Script != b.Script) return $"create script differs between {order} and {other}: " + EfModel.FirstDiff(a.Script, b.Script);
+            if (a.Raw != b.Raw) return $"stored row differs between {order} and {other}: {a.Raw} | {b.Raw}";
+            if (a.Read != b.Read) return $"values read differ between {order} and {other}: {a.Read} | {b.Read}";
+            if (plain is not null)
+            {
+                if (a.Model != plain.Model) return "model differs from the wrapped type's: " + EfModel.FirstDiff(a.Model, plain.Model);
+                if (a.Raw != plain.Raw) return $"stored row differs from the wrapped type's: {a.Raw} | {plain.Raw}";
+            }
+            return null;
+        });
     }
 }
