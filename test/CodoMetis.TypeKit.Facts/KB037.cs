@@ -32,11 +32,9 @@ public sealed class KB037
         [HttpGet("kb037/params")] public IActionResult Params([FromQuery] Q q) => Ok(q.V);
     }
 
-    /// <summary>Each binding source of a simple parameter, sent a text no <c>int</c> reads.</summary>
-    public static TheoryData<string> Simple() => ["route", "query", "header", "form", "body"];
+    private static readonly FactFixture Fixture = FactFixture.Beside("KB-037");
 
-    /// <summary>The same, and the property of a class bound from the query.</summary>
-    public static TheoryData<string> Sources() => ["route", "query", "header", "form", "body", "params"];
+    public static TheoryData<string> Answers() => [.. Fixture.Answers.Select(answer => answer.Id)];
 
     private static async Task<(HttpStatusCode Status, string Body)> SendAsync(int? maxValidationDepth, string source, string text = "abc")
     {
@@ -67,38 +65,27 @@ public sealed class KB037
         return (response.StatusCode, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
-    [Theory, MemberData(nameof(Simple))]
-    public async Task Under_MaxValidationDepth_1_an_unbindable_parameter_is_its_default_and_the_action_answers_200(string source)
+    /// <summary>
+    /// Each answer of KB037.fixture.json, sent as its settings say: the binding source (<c>as-parameters</c> is a class
+    /// bound from the query), the text, and <c>MaxValidationDepth</c> 1 or the default.
+    /// </summary>
+    [Theory, MemberData(nameof(Answers))]
+    public async Task MVC_answers_as_the_fixture_holds(string id)
     {
-        var (status, body) = await SendAsync(1, source);
+        var answer = Fixture[id];
+        var depth  = answer.When["mvc.MaxValidationDepth"] == "default" ? (int?)null : int.Parse(answer.When["mvc.MaxValidationDepth"], System.Globalization.CultureInfo.InvariantCulture);
+        var source = answer.When["http.binding"] == "as-parameters" ? "params" : answer.When["http.binding"];
 
-        status.ShouldBe(HttpStatusCode.OK, body);
-        body.ShouldBe("0", "the int is left at its default");
-    }
-
-    [Theory, InlineData("abc"), InlineData("5")]
-    public async Task Under_MaxValidationDepth_1_a_class_from_the_query_makes_the_validator_throw_at_its_property(string text)
-    {
-        var thrown = await Should.ThrowAsync<InvalidOperationException>(() => SendAsync(1, "params", text));
-
-        thrown.Message.ShouldContain("ValidationVisitor exceeded the maximum configured validation depth '1' when validating property 'V'");
-    }
-
-    [Theory, MemberData(nameof(Simple))]
-    public async Task Under_MaxValidationDepth_1_a_text_the_parameter_reads_binds_as_usual(string source)
-    {
-        var (status, body) = await SendAsync(1, source, "5");
-
-        status.ShouldBe(HttpStatusCode.OK, body);
-        body.ShouldBe("5");
-    }
-
-    [Theory, MemberData(nameof(Sources))]
-    public async Task With_the_default_depth_the_same_request_is_a_400(string source)
-    {
-        var (status, body) = await SendAsync(null, source);
-
-        status.ShouldBe(HttpStatusCode.BadRequest, body);
+        if (answer.Kind == FactAnswer.Exception)
+        {
+            var thrown = await Should.ThrowAsync<Exception>(() => SendAsync(depth, source, answer.When["text"]));
+            answer.Mismatch(thrown).ShouldBeNull();
+        }
+        else
+        {
+            var (status, body) = await SendAsync(depth, source, answer.When["text"]);
+            answer.Mismatch((int)status, body).ShouldBeNull();
+        }
     }
 
     private sealed class Only : IApplicationFeatureProvider<ControllerFeature>

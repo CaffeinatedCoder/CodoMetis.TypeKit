@@ -5,6 +5,7 @@ pins:
 source: measured in a host without TypeKit (Microsoft.AspNetCore.App 10.0 of the pinned SDK, an [ApiController] with an int parameter per binding source); the API reference of MvcOptions.MaxValidationDepth says only that "ValidationVisitor will throw if traversing an object exceeds the maximum allowed validation depth" and that "The default value is 32", nothing of binding errors
 turned-on: 28 rows of BaseProbe (claim C07-fault-responses-blanket) under mvc.MaxValidationDepth=1, where a validated value object answered a value its Create refuses with 200 holding its default (WS2 step 4 triage)
 test: test/CodoMetis.TypeKit.Facts/KB037.cs
+fixture: test/CodoMetis.TypeKit.Facts/KB037.fixture.json
 ---
 
 # KB-037. Under `MaxValidationDepth = 1`, MVC runs an action whose parameter it could not bind, with the parameter at its default
