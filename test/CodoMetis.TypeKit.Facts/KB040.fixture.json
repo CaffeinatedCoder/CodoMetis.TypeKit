@@ -1,0 +1,44 @@
+{
+  "fact": "KB-040",
+  "answers": [
+    {
+      "id": "a-converter-at-the-limit",
+      "kind": "exception",
+      "when": {
+        "json.MaxDepth": "3",
+        "written-by": "a-converter",
+        "writer-depth": "3"
+      },
+      "value": {
+        "type": "System.Text.Json.JsonException",
+        "operation": "write",
+        "stage": "the value the converter is handed, before it writes anything"
+      },
+      "note": "a list element at the writer's depth 3, written by a converter of the application's: refused, with the path of the element"
+    },
+    {
+      "id": "the-serializer-at-the-limit",
+      "kind": "document",
+      "when": {
+        "json.MaxDepth": "3",
+        "written-by": "the-serializer",
+        "writer-depth": "3"
+      },
+      "at": "/P/P",
+      "value": [1],
+      "note": "the same element, written by the serializer's own converter for int: written"
+    },
+    {
+      "id": "a-converter-below-the-limit",
+      "kind": "document",
+      "when": {
+        "json.MaxDepth": "3",
+        "written-by": "a-converter",
+        "writer-depth": "2"
+      },
+      "at": "/P",
+      "value": [1],
+      "note": "a list element at the writer's depth 2, written by a converter of the application's: written"
+    }
+  ]
+}
