@@ -90,14 +90,22 @@ public static class Rz
     /// Compares the reports with the marks: every mark in <paramref name="expected"/> reported exactly once at its span, nothing
     /// reported anywhere else. Null when they agree, else what differs.
     /// </summary>
-    public static string? Agree(Analysis a, IReadOnlySet<string> expected, Func<Diagnostic, Mark, string?>? message = null)
+    public static string? Agree(Analysis a, IReadOnlySet<string> expected, Func<Diagnostic, Mark, string?>? message = null) =>
+        Agree(a, expected, _ => true, outside: true, message);
+
+    /// <summary>
+    /// The same over the marks <paramref name="judged"/> selects, one check's share of a compilation: each of them in
+    /// <paramref name="expected"/> reported exactly once at its span, the others silent, and with <paramref name="outside"/>, nothing
+    /// reported outside every mark. A report at a mark the check does not judge is another check's.
+    /// </summary>
+    public static string? Agree(Analysis a, IReadOnlySet<string> expected, Func<Mark, bool> judged, bool outside, Func<Diagnostic, Mark, string?>? message = null)
     {
         var marks = a.Marks.ToList();
         foreach (var label in expected) if (!marks.Any(m => m.Label == label)) throw new InvalidOperationException($"no mark {label}");
         var problems = new List<string>();
-        foreach (var m in marks)
+        foreach (var m in marks.Where(judged))
         {
-            var at = a.Reported.Where(d => d.Location.SourceTree?.FilePath == m.File && d.Location.SourceSpan == m.Span).ToList();
+            var at = At(a, m);
             if (expected.Contains(m.Label))
             {
                 if (at.Count != 1) problems.Add($"{m.Label} '{m.Text}': reported {at.Count} times, expected once");
@@ -105,9 +113,55 @@ public static class Rz
             }
             else if (at.Count != 0) problems.Add($"{m.Label} '{m.Text}': reported, expected silent ({at[0].GetMessage()})");
         }
-        foreach (var d in a.Reported)
-            if (!marks.Any(m => d.Location.SourceTree?.FilePath == m.File && d.Location.SourceSpan == m.Span))
-                problems.Add($"reported outside every mark at {Analysis.Where(d)}: {d.GetMessage()}");
+        if (outside) problems.AddRange(Outside(a).Select(d => $"reported outside every mark at {Analysis.Where(d)}: {d.GetMessage()}"));
+        return problems.Count == 0 ? null : string.Join("; ", problems);
+    }
+
+    /// <summary>The reports exactly at a mark's span.</summary>
+    public static List<Diagnostic> At(Analysis a, Mark m) =>
+        [.. a.Reported.Where(d => d.Location.SourceTree?.FilePath == m.File && d.Location.SourceSpan == m.Span)];
+
+    /// <summary>The reports whose span holds a mark's: at it, or at the syntax around it.</summary>
+    public static List<Diagnostic> Around(Analysis a, Mark m) =>
+        [.. a.Reported.Where(d => d.Location.SourceTree?.FilePath == m.File && d.Location.SourceSpan.Contains(m.Span))];
+
+    /// <summary>The reports whose span holds no mark.</summary>
+    public static List<Diagnostic> Outside(Analysis a) =>
+        [.. a.Reported.Where(d => !a.Marks.Any(m => d.Location.SourceTree?.FilePath == m.File && d.Location.SourceSpan.Contains(m.Span)))];
+
+    /// <summary>
+    /// Whether a value is reported, wherever around it: each mark <paramref name="judged"/> names that is in <paramref name="expected"/>
+    /// has exactly one report at or around it, the others none. Where the report sits is <see cref="WhereWritten"/>'s question, so a
+    /// report moved to the syntax around its value still counts here. Null when they agree, else what differs.
+    /// </summary>
+    public static string? Reported(Analysis a, IEnumerable<string> judged, IReadOnlySet<string> expected, Func<Diagnostic, Mark, string?>? message = null)
+    {
+        var problems = new List<string>();
+        foreach (var label in judged)
+        {
+            var m = a.Marks.SingleOrDefault(x => x.Label == label) ?? throw new InvalidOperationException($"no mark {label}");
+            var around = Around(a, m);
+            if (expected.Contains(label))
+            {
+                if (around.Count != 1) problems.Add($"{m.Label} '{m.Text}': reported {around.Count} times, expected once");
+                else if (message?.Invoke(around[0], m) is { } bad) problems.Add($"{m.Label} '{m.Text}': {bad}");
+            }
+            else if (around.Count != 0) problems.Add($"{m.Label} '{m.Text}': reported, expected silent ({around[0].GetMessage()})");
+        }
+        return problems.Count == 0 ? null : string.Join("; ", problems);
+    }
+
+    /// <summary>
+    /// Where the reports sit: every report at or around a mark in <paramref name="expected"/> is at the mark's own span, the value as
+    /// written, and none is outside every mark. Null when so, else what differs.
+    /// </summary>
+    public static string? WhereWritten(Analysis a, IReadOnlySet<string> expected)
+    {
+        var problems = new List<string>();
+        foreach (var m in a.Marks.Where(m => expected.Contains(m.Label)))
+            foreach (var d in Around(a, m).Where(d => d.Location.SourceSpan != m.Span))
+                problems.Add($"{m.Label} '{m.Text}': reported at {Analysis.Where(d)}, not at the value");
+        problems.AddRange(Outside(a).Select(d => $"reported outside every mark at {Analysis.Where(d)}: {d.GetMessage()}"));
         return problems.Count == 0 ? null : string.Join("; ", problems);
     }
 }

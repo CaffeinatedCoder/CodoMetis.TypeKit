@@ -2,13 +2,23 @@
 // takes its text by `ref`, or an abstract class's string constructor, no longer breaks the build; the value object has no parsing."
 // With Generators README "What you can wrap" ("Parsing where it can be parsed") and "What is generated" (TryFrom for IValidatedValue,
 // the [TypeConverter] when parsing is generated, ToString() the underlying type's own text under the invariant culture).
-// Oracle: claim; for the ordinary shape, differential against the catalogue's top-level value object of the same kind and wrapped type
-// (Probes.Shapes.Registry). Each row's value object (harness/C11Shapes.g.cs, generated from this claim's rows) is of shape.kind at
-// shape.site with shape.inheritance, over the parse shape's own class (implicit-result: Parse returns an int; ref-text: Parse or the
-// string constructor takes the text by ref; abstract-string-ctor) or, for ordinary, over shape.wrapped. That it is in this assembly is
-// the build half. Under text.culture and process.converter-lookup, the row's text.entry is then checked: over a parse shape, no
-// Parse, TryParse, IParsable, ISpanParsable or string type converter, while TryFrom (validated) and formatting work; over the ordinary
-// shape, the entry exists exactly where the catalogue's does, parses where the wrapped type parses, and gives the catalogue's result.
+// Obligations (claims.json), each with a check below and a seed of its own in the registry entry (decision 104), the row's parse-shape
+// selecting one:
+//   implicit-result: "A wrapped type's `Parse` whose result can't be assigned to it"
+//   ref-text: "or that takes its text by `ref`"
+//   abstract-string-constructor: "or an abstract class's string constructor, no longer breaks the build; the value object has no parsing."
+//   parsing-where-it-can-be-parsed (ordinary): "`IParsable`/`ISpanParsable`/`IUtf8SpanParsable`, formatting in the invariant culture"
+//   (the 2.0.0 entry of the same file: what the fix must leave to a type that parses)
+// Each row's value object (harness/C11Shapes.g.cs, generated from this claim's rows) is of shape.kind at shape.site with
+// shape.inheritance, over the parse shape's own class (implicit-result: Parse returns an int; ref-text: Parse or the string constructor
+// takes the text by ref; abstract-string-ctor) or, for ordinary, over shape.wrapped. That it is in this assembly is the build half.
+// Under text.culture and process.converter-lookup, the row's text.entry is then checked:
+//   a parse shape's obligation, against the CHANGELOG's sentence (Baseline.Docs): no Parse, TryParse, IParsable, ISpanParsable or
+//   string type converter, while TryFrom (validated) and formatting work, and the same declaration over the nearest type that parses
+//   (its control) parses;
+//   parsing-where-it-can-be-parsed, against the catalogue's top-level value object of the same kind over the same wrapped type
+//   (Probes.Shapes.Registry, Baseline.Twin): the entry exists exactly where the catalogue's does and wherever the wrapped type parses,
+//   ISpanParsable included, and gives the catalogue's result.
 using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
@@ -49,10 +59,17 @@ public sealed class C11ParseShapesBuildProbe
         if (!c.Wrapped.IsInstanceOfType(sample)) { r.Outcome("harness-error", $"the sample is no {c.Wrapped.Name}"); return null; }
         var e = new Entry(c.Kind, wrapped ?? shape, c.Vo, c.Wrapped, () => sample, () => null, typeof(object), typeof(object), typeof(object), typeof(object));
         TextOps.Prepare(r, e);
-        var vo = Make.Vo(e, sample);
-        if (!Equals(Make.Unwrap(e, vo), sample)) return $"the value object does not hold the value it was made from";
-        if (ordinary) return Ordinary(r, e, entry, wrapped!, sample, vo);
-        return NoParsing(r, e, entry, sample, vo) ?? Control(c);
+        string? Holds(object vo) => Equals(Make.Unwrap(e, vo), sample) ? null : "the value object does not hold the value it was made from";
+        if (ordinary)
+            return r.Check("parsing-where-it-can-be-parsed", Baseline.Twin, _ => { var vo = Make.Vo(e, sample); return Holds(vo) ?? Ordinary(r, e, entry, wrapped!, sample, vo); });
+        var obligation = shape switch
+        {
+            "implicit-result" => "implicit-result",
+            "ref-text" => "ref-text",
+            "abstract-string-ctor" => "abstract-string-constructor",
+            _ => throw new ArgumentException(shape),
+        };
+        return r.Check(obligation, Baseline.Docs("CHANGELOG.md#2.1.0-fixed"), _ => { var vo = Make.Vo(e, sample); return Holds(vo) ?? NoParsing(r, e, entry, sample, vo) ?? Control(c); });
     }
 
     /// <summary>
@@ -153,7 +170,7 @@ public sealed class C11ParseShapesBuildProbe
         {
             var text = TextOps.PlainText(reference, sample);
             var mine = TextOps.Read(e, entry, text);
-            if (mine.NotApplicable && wrapped != "own-record-class" && entry is not "ISpanParsable")
+            if (mine.NotApplicable && wrapped != "own-record-class")
                 return $"{entry}: the value object over {wrapped}, which parses, has no {entry}";
             fail = Same(mine, TextOps.Read(reference, entry, text), e, reference, entry);
         }

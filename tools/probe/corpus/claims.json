@@ -3648,6 +3648,49 @@
             "abstract-string-ctor"
           ]
         }
+      },
+      {
+        "id": "parsing-where-it-can-be-parsed",
+        "sentence": "`IParsable`/`ISpanParsable`/`IUtf8SpanParsable`, formatting in the invariant culture",
+        "axes": {
+          "parse-shape": [
+            "ordinary"
+          ]
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.wrapped": [
+                "Uri",
+                "enum",
+                "flags-enum",
+                "NodaTime.Instant"
+              ],
+              "text.entry": [
+                "ISpanParsable"
+              ]
+            },
+            "cite": "not-promised:no-span-parsing-without-the-underlying-types"
+          }
+        ]
+      }
+    ],
+    "not-promised": [
+      {
+        "id": "no-span-parsing-without-the-underlying-types",
+        "source": "src/CodoMetis.TypeKit.Generators/README.md#what-is-generated",
+        "sentence": "A `Uri`, an enum and a NodaTime type have neither.",
+        "axes": {
+          "shape.wrapped": [
+            "Uri",
+            "enum",
+            "flags-enum",
+            "NodaTime.Instant"
+          ],
+          "text.entry": [
+            "ISpanParsable"
+          ]
+        }
       }
     ],
     "exclude": [
@@ -6323,6 +6366,27 @@
             "text.entry=type-converter"
           ]
         ]
+      },
+      {
+        "reason": "A `Uri`, an enum and a NodaTime type have neither (Generators README, What is generated: no ISpanParsable or IUtf8SpanParsable where the underlying type has none, not-promised no-span-parsing-without-the-underlying-types), so parsing-where-it-can-be-parsed is inapplicable there and no check that reads shape.wrapped can credit them.",
+        "pairs": [
+          [
+            "shape.wrapped=NodaTime.Instant",
+            "text.entry=ISpanParsable"
+          ],
+          [
+            "shape.wrapped=Uri",
+            "text.entry=ISpanParsable"
+          ],
+          [
+            "shape.wrapped=enum",
+            "text.entry=ISpanParsable"
+          ],
+          [
+            "shape.wrapped=flags-enum",
+            "text.entry=ISpanParsable"
+          ]
+        ]
       }
     ]
   },
@@ -6774,6 +6838,15 @@
           "value": [
             "(FaultKind)9",
             "default"
+          ]
+        }
+      },
+      {
+        "id": "a-member-is-silent",
+        "sentence": "public static readonly ImportFault Duplicate = new(FaultKind.Conflict);",
+        "axes": {
+          "value": [
+            "valid"
           ]
         }
       }

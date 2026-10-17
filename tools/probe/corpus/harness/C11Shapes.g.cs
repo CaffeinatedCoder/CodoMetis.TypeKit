@@ -2282,6 +2282,65 @@ public sealed partial record V239 : B239_1, IValue<double> { }
 public abstract record B240_1 {  }
 public sealed partial record V240 : B240_1, IValue<byte> { }
 
+// row 241
+public static partial class O241
+{
+public sealed partial class P241
+{
+public interface IMark241 { int Mark(); }
+public sealed partial record V241 : IValidatedValue<V241, global::Probes.Shapes.PEnum, global::Probes.Shapes.ShapeFault>, IMark241
+{
+    public static Result<V241, global::Probes.Shapes.ShapeFault> Create(global::Probes.Shapes.PEnum value) => new V241(value); int IMark241.Mark() => 1;
+}
+}
+}
+
+// row 242
+public partial struct O242
+{
+public abstract record B242_3 {  }
+public abstract record B242_2 : B242_3 {  }
+public abstract record B242_1 : B242_2 {  }
+public sealed partial record V242 : B242_1, IValue<global::Probes.Shapes.PFlags> { }
+}
+
+// row 243
+public readonly partial record struct V243 : IValue<global::System.Uri> { }
+
+// row 244
+public static partial class O244
+{
+public sealed partial class P244
+{
+public readonly partial record struct V244 : IValidatedValue<V244, global::NodaTime.Instant, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V244, global::Probes.Shapes.ShapeFault> Create(global::NodaTime.Instant value) => new V244(value);
+}
+}
+}
+
+// row 245
+public partial struct O245
+{
+public interface IMark245 { int Mark(); }
+public readonly partial record struct V245 : IValue<global::System.Uri>, IMark245 { int IMark245.Mark() => 1; }
+}
+
+// row 246
+public static partial class O246
+{
+public sealed partial class P246
+{
+public abstract record B246_3 {  }
+public abstract record B246_2 : B246_3 {  }
+public abstract record B246_1 : B246_2 {  }
+public sealed partial record V246 : B246_1, IValidatedValue<V246, global::System.Uri, global::Probes.Shapes.ShapeFault>
+{
+    public static Result<V246, global::Probes.Shapes.ShapeFault> Create(global::System.Uri value) => new V246(value);
+}
+}
+}
+
 public static partial class C11Table
 {
     public static readonly C11Case[] Cases =
@@ -2527,5 +2586,11 @@ public static partial class C11Table
         new(238, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=ulong;text.culture=de-DE;text.entry=TryFormat-short-span", "sealed-record-class", "nested-two-levels", "base-depth-1", typeof(O238.P238.V238), typeof(ulong), null, null, []),
         new(239, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=double;text.culture=de-DE;text.entry=IParsable", "sealed-record-class", "top-level", "base-depth-1", typeof(V239), typeof(double), null, null, []),
         new(240, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-1;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=top-level;shape.wrapped=byte;text.culture=ar-SA;text.entry=TryFrom", "sealed-record-class", "top-level", "base-depth-1", typeof(V240), typeof(byte), null, null, []),
+        new(241, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=validated-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-two-levels;shape.wrapped=enum;text.culture=de-DE;text.entry=IParsable", "validated-class", "nested-two-levels", "explicit-interface-member", typeof(O241.P241.V241), typeof(global::Probes.Shapes.PEnum), null, null, []),
+        new(242, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=sealed-record-class;shape.refused-kind=abstract (CMTK1005);shape.site=nested-in-struct;shape.wrapped=flags-enum;text.culture=ar-SA;text.entry=TryFrom", "sealed-record-class", "nested-in-struct", "base-depth-3", typeof(O242.V242), typeof(global::Probes.Shapes.PFlags), null, null, []),
+        new(243, "parse-shape=ordinary;process.converter-lookup=wrapped-type-converter-looked-up-first;shape.inheritance=base-depth-3;shape.kind=record-struct;shape.refused-kind=closed-set-named-as-generated-member (CMTK1021);shape.site=top-level;shape.wrapped=Uri;text.culture=ar-SA;text.entry=IParsable", "record-struct", "top-level", "none", typeof(V243), typeof(global::System.Uri), null, null, [("shape.inheritance", "none")]),
+        new(244, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=none;shape.kind=validated-struct;shape.refused-kind=equality-operator (CMTK1011);shape.site=nested-two-levels;shape.wrapped=NodaTime.Instant;text.culture=ar-SA;text.entry=TryFormat-short-span", "validated-struct", "nested-two-levels", "none", typeof(O244.P244.V244), typeof(global::NodaTime.Instant), null, null, []),
+        new(245, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=explicit-interface-member;shape.kind=record-struct;shape.refused-kind=over-object (CMTK1005);shape.site=nested-in-struct;shape.wrapped=Uri;text.culture=invariant;text.entry=TryFormat-short-span", "record-struct", "nested-in-struct", "explicit-interface-member", typeof(O245.V245), typeof(global::System.Uri), null, null, []),
+        new(246, "parse-shape=ordinary;process.converter-lookup=none;shape.inheritance=base-depth-3;shape.kind=validated-class;shape.refused-kind=over-System.Enum (CMTK1005);shape.site=nested-two-levels;shape.wrapped=Uri;text.culture=ar-SA;text.entry=TryParse", "validated-class", "nested-two-levels", "base-depth-3", typeof(O246.P246.V246), typeof(global::System.Uri), null, null, []),
     ];
 }
