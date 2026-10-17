@@ -14,6 +14,7 @@
 //   also for a type held only inside a patch; a minimal-API host builds it. The docs name converters and descriptions: a different
 //   naming policy or number handling is not "described differently", so the document builds there (DescribedOptionsAgreement
 //   compares JsonSchemaDescription.For, which neither setting changes).
+// Each claim's obligations are checks of their own (Row.Check), every check of a row on the same host or hosts, the answers fetched once.
 #pragma warning disable xUnit1051
 using System.Globalization;
 using System.Net;
@@ -231,8 +232,6 @@ namespace Probes.Schema
     {
         static string Cut(string? s) => s is null ? "(null)" : s.Length > 300 ? s[..300] + "..." : s;
         static void Process(Row r, Entry en) { if (r.Is("process.converter-lookup", "wrapped-type-converter-looked-up-first")) _ = System.ComponentModel.TypeDescriptor.GetConverter(Make.Held(en.Plain)); }
-        /// <summary>The application's own string converter (json.Converters=own-for-wrapped over string) wraps every string it writes: take it off again.</summary>
-        static string? Un(Row r, string? s) => r.Is("json.Converters", "own-for-wrapped") && s is not null && s.StartsWith("own:") ? s[4..].Trim('"') : s;
 
         /// <summary>The host's minimal-API JSON options, which the document is built from.</summary>
         static JsonSerializerOptions HttpOptions(WebApplication app) => app.Services.GetRequiredService<IOptions<HttpJsonOptions>>().Value.SerializerOptions;
@@ -302,28 +301,88 @@ namespace Probes.Schema
             return t.Contains("\"null\"") || t.Contains("\"nullable\":true") || t.Contains("\"x-nullable\":true");
         }
 
-        /// <summary>Fetches the document; a failure ASP.NET alone shares is noted and leaves nothing to check (doc is null), any other is returned.</summary>
-        static async Task<(JsonNode? Doc, string? Fail)> DocOrBaseline(Row r, Entry en, HostCfg cfg, WebApplication app)
-        {
-            try { return (await Hx.Doc(app), null); }
-            catch (Exception ex) { return (null, await Hx.DocRefusedByAspNetAlone(r, en, cfg, ex)); }
-        }
-
         // ============================================================ C08
+        /// <summary>
+        /// C08, a check per obligation over two hosts (HFault.Clash beside KFault.Clash, and NsA.Twin.Same beside NsB.Twin.Same): each host's
+        /// warning, or none, is checked for the obligation its naming and leave-out select (bare-names-warn, qualified-chain-warns,
+        /// qualified-names-fix, leave-one-out-fixes), with what its endpoints answer; warning-names-both, where a host warns, for the names
+        /// the warning gives.
+        /// </summary>
         public static async Task<string?> C08(Row r)
         {
             var en = Registry.Of(r); Process(r, en);
             var qualified = r["naming"] == "qualified";
             var arity = int.Parse(r["arity"]);
             var leave = r["leave-out"] == "WithoutFaults-one";
-            return await Alike(r, en, twin: false, arity, leave, qualified) ?? await Alike(r, en, twin: true, arity, leave, qualified);
+            var runs = new[] { await Alike(r, en, twin: false, arity, leave, qualified), await Alike(r, en, twin: true, arity, leave, qualified) };
+            string? failed = null;
+            foreach (var o in runs.SelectMany(a => a.Obligations).Distinct().ToList())
+            {
+                var f = r.Check(o, Baseline.Docs("src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types"), c =>
+                {
+                    foreach (var a in runs) if (a.Judge(o) is { } fail) return fail;
+                    c.Note(NoteKeys.Compared, string.Join(", ", runs.Where(a => a.Obligations.Contains(o)).Select(a => a.Action)));
+                    return null;
+                });
+                failed ??= f;
+            }
+            return failed;
+        }
+
+        /// <summary>
+        /// One host of C08: what its endpoints answered and what it logged at startup, judged per obligation by <see cref="Judge"/>. Warns:
+        /// the obligation of whether the host warns (and what it answers); the names the warning gives are warning-names-both's.
+        /// </summary>
+        sealed record AlikeRun(string Action, string? Down, bool Twin, bool Leave, bool Qualified, bool OwnWrapped, List<string> Sides,
+                               List<(string Path, int E, Hx.Wire Wire)> Answers, List<string> Lines)
+        {
+            string First => Twin ? "Twin" : "HFault";
+            string Second => Twin ? "Twin" : "KFault";
+            string Member => Twin ? "Same" : "Clash";
+            string Written(string type) => Qualified ? $"{type}.{Member}" : Member;
+            bool Warn => Written(First) == Written(Second) && !Leave;
+            public string Warns => Leave ? "leave-one-out-fixes" : !Qualified ? "bare-names-warn" : Twin ? "qualified-chain-warns" : "qualified-names-fix";
+            public string[] Obligations => Warn ? [Warns, "warning-names-both"] : [Warns];
+
+            public string? Judge(string o)
+            {
+                if (!Obligations.Contains(o)) return null;
+                if (Down is not null) return Down;
+                if (o == Warns)
+                {
+                    foreach (var (path, e, w) in Answers)
+                    {
+                        if (e == 2 && Leave)
+                        {
+                            // the member left out is not answered (README#leaving-out-what-a-route-cannot-answer): proof that the leave-out applied
+                            if (w.Thrown is null || !w.Thrown.StartsWith(nameof(InvalidOperationException))) return $"{Action} {path} e=2: the member left out was answered: {(int)w.Status} {Cut(w.Body)} {w.Thrown}";
+                            continue;
+                        }
+                        if (w.Thrown is not null) return $"{Action} {path} e={e}: request threw {w.Thrown}";
+                        var want = e == 3 ? (Qualified ? "SFault.First" : "First") : Written(e == 1 ? First : Second);
+                        const int status = 409;   // Conflict for both clashing members, and SFault.First as the host maps it
+                        if ((int)w.Status != status) return $"{Action} {path} e={e}: status {(int)w.Status}, expected {status}: {Cut(w.Body)}";
+                        JsonNode? body; try { body = JsonNode.Parse(w.Body); } catch { return $"{Action} {path} e={e}: body is not JSON: {Cut(w.Body)}"; }
+                        // the application's own string converter (json.Converters=own-for-wrapped over string) wraps every string it writes
+                        var fault = body?["fault"]?.GetValue<string>() is { } f && OwnWrapped && f.StartsWith("own:") ? f[4..].Trim('"') : body?["fault"]?.GetValue<string>();
+                        if (fault != want) return $"{Action} {path} e={e}: fault {fault}, expected {want}";
+                    }
+                    if (!Warn)
+                        return Lines.Count == 0 ? null : $"{Action} ({(Qualified ? "qualified" : "bare")} names, {(Leave ? "one left out" : "none left out")}): the errors are written {Written(First)} and {Written(Second)}, yet the host warned: {Cut(Lines[0])}";
+                    return Lines.Count == Sides.Count ? null : $"{Action}: {Sides.Count} endpoint(s) answer {First}.{Member} and {Second}.{Member} alike as \"{Written(First)}\", {Lines.Count} warning(s) at startup{(Lines.Count > 0 ? ": " + Cut(Lines[0]) : "")}";
+                }
+                var names = Twin ? (Qualified ? new[] { "NsA.Twin.Same", "NsB.Twin.Same" } : ["Twin.Same"]) : ["HFault.Clash", "KFault.Clash"];
+                foreach (var l in Lines)
+                    if (names.FirstOrDefault(n => !l.Contains(n, StringComparison.Ordinal)) is { } missing) return $"{Action}: the warning does not name {missing}: {Cut(l)}";
+                return null;
+            }
         }
 
         /// <summary>
         /// One endpoint per side answering two fault types whose clashing members are HFault.Clash and KFault.Clash (bare names meet,
         /// qualified ones do not) or NsA.Twin.Same and NsB.Twin.Same (one nesting chain in two namespaces: both meet).
         /// </summary>
-        static async Task<string?> Alike(Row r, Entry en, bool twin, int arity, bool leave, bool qualified)
+        static async Task<AlikeRun> Alike(Row r, Entry en, bool twin, int arity, bool leave, bool qualified)
         {
             var logs = new CategoryLogs();
             var action = (twin ? "T" : "K") + arity + (leave ? "Wo" : "None");
@@ -350,51 +409,28 @@ namespace Probes.Schema
                     StrictSourceGen(r, s);
                 },
             };
+            var sides = Sides(r, "alike");
+            var ownWrapped = r.Is("json.Converters", "own-for-wrapped");
+            var answers = new List<(string, int, Hx.Wire)>();
             WebApplication app;
             try { app = await Hx.Start(r, en, cfg); }
-            catch (Exception ex) { return $"{action}: host did not start: {ex.GetType().Name}: {Cut(ex.Message)}"; }
+            catch (Exception ex) { return new(action, $"{action}: host did not start: {ex.GetType().Name}: {Cut(ex.Message)}", twin, leave, qualified, ownWrapped, sides, answers, []); }
             await using var _ = app;
-
             // what each error is written as on the wire: the client's view of the two
-            var (first, second) = twin ? ("Twin", "Twin") : ("HFault", "KFault");
-            var member = twin ? "Same" : "Clash";
-            string Written(string type) => qualified ? $"{type}.{member}" : member;
-            var alike = Written(first) == Written(second);
-            var warn = alike && !leave;
-            var sides = Sides(r, "alike");
             foreach (var path in sides)
-            {
                 foreach (var e in arity == 3 ? new[] { 1, 2, 3 } : [1, 2])
-                {
-                    var w = await Hx.Get(app, $"{path}?e={e}");
-                    if (e == 2 && leave)
-                    {
-                        // the member left out is not answered (README#leaving-out-what-a-route-cannot-answer): proof that the leave-out applied
-                        if (w.Thrown is null || !w.Thrown.StartsWith(nameof(InvalidOperationException))) return $"{action} {path} e=2: the member left out was answered: {(int)w.Status} {Cut(w.Body)} {w.Thrown}";
-                        continue;
-                    }
-                    if (w.Thrown is not null) return $"{action} {path} e={e}: request threw {w.Thrown}";
-                    var want = e == 3 ? (qualified ? "SFault.First" : "First") : Written(e == 1 ? first : second);
-                    const int status = 409;   // Conflict for both clashing members, and SFault.First as the host maps it
-                    if ((int)w.Status != status) return $"{action} {path} e={e}: status {(int)w.Status}, expected {status}: {Cut(w.Body)}";
-                    JsonNode? body; try { body = JsonNode.Parse(w.Body); } catch { return $"{action} {path} e={e}: body is not JSON: {Cut(w.Body)}"; }
-                    var fault = Un(r, body?["fault"]?.GetValue<string>());
-                    if (fault != want) return $"{action} {path} e={e}: fault {fault}, expected {want}";
-                }
-            }
-
+                    answers.Add((path, e, await Hx.Get(app, $"{path}?e={e}")));
             List<string> lines;
             lock (logs.Lines) lines = logs.Lines.Where(l => l.Category == "CodoMetis.TypeKit.AspNetCore.FaultResponses" && l.Level == LogLevel.Warning).Select(l => l.Message).ToList();
-            if (!warn)
-                return lines.Count == 0 ? null : $"{action} ({(qualified ? "qualified" : "bare")} names, {(leave ? "one left out" : "none left out")}): the errors are written {Written(first)} and {Written(second)}, yet the host warned: {Cut(lines[0])}";
-            if (lines.Count != sides.Count) return $"{action}: {sides.Count} endpoint(s) answer {first}.{member} and {second}.{member} alike as \"{Written(first)}\", {lines.Count} warning(s) at startup{(lines.Count > 0 ? ": " + Cut(lines[0]) : "")}";
-            var names = twin ? (qualified ? new[] { "NsA.Twin.Same", "NsB.Twin.Same" } : ["Twin.Same"]) : ["HFault.Clash", "KFault.Clash"];
-            foreach (var l in lines)
-                if (names.FirstOrDefault(n => !l.Contains(n, StringComparison.Ordinal)) is { } missing) return $"{action}: the warning does not name {missing}: {Cut(l)}";
-            return null;
+            return new(action, null, twin, leave, qualified, ownWrapped, sides, answers, lines);
         }
 
         // ============================================================ C12
+        /// <summary>
+        /// C12, a check per obligation on one host: the source's own (own-converter-describes-itself, or options-describe for
+        /// JsonSchemaDescriptions) at a property, every-position at every position the docs name, and for the decimal converter
+        /// parameter-keeps-aspnet, the query parameter against what ASP.NET writes without converters.
+        /// </summary>
         public static async Task<string?> C12(Row r)
         {
             var en = Registry.Of(r); Process(r, en);
@@ -419,57 +455,79 @@ namespace Probes.Schema
             var cfg = Cfg(r, [dec ? "Dec" : "Coord"],
                 b => { if (dec) b.MapPost("/s/dec/m", (DecDto body, decimal q) => body); else b.MapPost("/s/coord/m", (CoordDto body) => body); },
                 s => { s.PostConfigure<HttpJsonOptions>(o => Register(o.SerializerOptions)); s.PostConfigure<MvcJsonOptions>(o => Register(o.JsonSerializerOptions)); });
-            WebApplication app;
+            WebApplication? app = null; string? down = null;
             try { app = await Hx.Start(r, en, cfg); }
-            catch (Exception ex) { return "host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message); }
+            catch (Exception ex) { down = "host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message); }
             await using var _ = app;
-            var (doc, fail) = await DocOrBaseline(r, en, cfg, app);
-            if (fail is not null) return fail;
-            if (doc is null) return null;
-            var http = HttpOptions(app);
-            var want = Norm(dec ? new DecimalStringJsonConverter().DescribeJson(typeof(decimal), http)!.Schema
-                                : source == "IDescribedJsonConverter" ? CoordConverter.Schema() : CoordPlainConverter.Schema());
-            foreach (var path in Sides(r, family))
+            JsonNode? doc = null; Exception? docFailed = null;
+            if (app is not null) { try { doc = await Hx.Doc(app); } catch (Exception ex) { docFailed = ex; } }
+            var described = source == "JsonSchemaDescriptions" ? "options-describe" : "own-converter-describes-itself";
+            string[] obligations = dec ? [described, "every-position", "parameter-keeps-aspnet"] : [described, "every-position"];
+            string? failed = null;
+            foreach (var o in obligations)
             {
-                var op = Op(doc, path, "post");
-                if (op is null) return $"document has no POST {path}";
-                if (BodySchema(doc, op) is not JsonObject body) return $"{path}: no request body schema";
-                var props = body["properties"]?.AsObject();
-                JsonNode? P(string clr) => props?[JsonName(http, dto, clr)];
-                var checks = new (string What, JsonNode? Got, bool Null)[]
+                var against = o == "parameter-keeps-aspnet" ? Baseline.Framework : Baseline.Docs("docs/json.md#describing-what-a-converter-writes");
+                var f = await r.Check(o, against, async c =>
                 {
-                    ("a property", P("At"), false), ("a nullable property", P("Maybe"), true), ("a list's items", P("Route")?["items"], false),
-                    ("a dictionary's additionalProperties", P("ByName")?["additionalProperties"], false), ("inside a value object", P("Vo"), false),
-                    ("inside a patch", P("Patched"), true),
-                };
-                foreach (var (what, got, admitsNull) in checks)
-                {
-                    if (got is null) return $"{path}: {what} is missing from the body schema: {Cut(body.ToJsonString())}";
-                    // ASP.NET's OpenAPI 2.0 writer drops the reference of a nullable struct component ({"allOf":[{"x-nullable":true}]}):
-                    // the plain struct beside it, which has no converter, is written the same, so the position has nothing to check
-                    if (what == "a nullable property" && !dec && P("Twin") is { } twin && JsonNode.DeepEquals(got, twin) && Norm(twin) is JsonObject { Count: 0 })
+                    if (down is not null) return down;
+                    // a document ASP.NET alone refuses the same way has nothing to check (noted there)
+                    if (docFailed is not null) return await Hx.DocRefusedByAspNetAlone(r, en, cfg, docFailed);
+                    var http = HttpOptions(app!);
+                    var want = Norm(dec ? new DecimalStringJsonConverter().DescribeJson(typeof(decimal), http)!.Schema
+                                        : source == "IDescribedJsonConverter" ? CoordConverter.Schema() : CoordPlainConverter.Schema());
+                    foreach (var path in Sides(r, family))
                     {
-                        r.Note(NoteKeys.SchemaNullableReferenceLostForPlainToo, path);
-                        continue;
+                        var op = Op(doc!, path, "post");
+                        if (op is null) return $"document has no POST {path}";
+                        if (o == "parameter-keeps-aspnet")
+                        {
+                            // "Parameters aren't JSON": the query parameter keeps ASP.NET's number, never the converter's string
+                            var q = op["parameters"]?.AsArray().FirstOrDefault(p => p?["name"]?.GetValue<string>() == "q");
+                            if (q is null) return $"{path}: no parameter q";
+                            var qs = Hx.Deep(doc!, q["schema"] ?? q);
+                            if (!(qs?.ToJsonString() ?? "").Contains("\"number\"")) return $"{path}: the query parameter q is described as {Cut(qs?.ToJsonString())}, not ASP.NET's number";
+                            if (JsonNode.DeepEquals(Norm(qs), want)) return $"{path}: the query parameter q is described as the converter's JSON";
+                            continue;
+                        }
+                        if (BodySchema(doc!, op) is not JsonObject body) return $"{path}: no request body schema";
+                        var props = body["properties"]?.AsObject();
+                        JsonNode? P(string clr) => props?[JsonName(http, dto, clr)];
+                        var positions = new (string What, JsonNode? Got, bool Null)[]
+                        {
+                            ("a property", P("At"), false), ("a nullable property", P("Maybe"), true), ("a list's items", P("Route")?["items"], false),
+                            ("a dictionary's additionalProperties", P("ByName")?["additionalProperties"], false), ("inside a value object", P("Vo"), false),
+                            ("inside a patch", P("Patched"), true),
+                        };
+                        foreach (var (what, got, admitsNull) in positions)
+                        {
+                            // the source's own obligation is held at a property; every-position at each position the docs name
+                            if (o != "every-position" && what != "a property") continue;
+                            if (got is null) return $"{path}: {what} is missing from the body schema: {Cut(body.ToJsonString())}";
+                            // ASP.NET's OpenAPI 2.0 writer drops the reference of a nullable struct component ({"allOf":[{"x-nullable":true}]}):
+                            // the plain struct beside it, which has no converter, is written the same, so the position has nothing to check
+                            if (what == "a nullable property" && !dec && P("Twin") is { } twin && JsonNode.DeepEquals(got, twin) && Norm(twin) is JsonObject { Count: 0 })
+                            {
+                                c.Note(NoteKeys.SchemaNullableReferenceLostForPlainToo, path);
+                                continue;
+                            }
+                            if (!JsonNode.DeepEquals(Norm(got), want)) return $"{path}: {what} is {Cut(got.ToJsonString())}, the {source} says {want!.ToJsonString()}";
+                            if (admitsNull && !Admits(got)) return $"{path}: {what} does not admit null: {Cut(got.ToJsonString())}";
+                        }
                     }
-                    if (!JsonNode.DeepEquals(Norm(got), want)) return $"{path}: {what} is {Cut(got.ToJsonString())}, the {source} says {want!.ToJsonString()}";
-                    if (admitsNull && !Admits(got)) return $"{path}: {what} does not admit null: {Cut(got.ToJsonString())}";
-                }
-                if (dec)
-                {
-                    // "Parameters aren't JSON": the query parameter keeps ASP.NET's number, never the converter's string
-                    var q = op["parameters"]?.AsArray().FirstOrDefault(p => p?["name"]?.GetValue<string>() == "q");
-                    if (q is null) return $"{path}: no parameter q";
-                    var qs = Hx.Deep(doc, q["schema"] ?? q);
-                    if (!(qs?.ToJsonString() ?? "").Contains("\"number\"")) return $"{path}: the query parameter q is described as {Cut(qs?.ToJsonString())}, not ASP.NET's number";
-                    if (JsonNode.DeepEquals(Norm(qs), want)) return $"{path}: the query parameter q is described as the converter's JSON";
-                }
+                    c.Note(NoteKeys.Compared, source);
+                    return null;
+                });
+                failed ??= f;
             }
-            r.Note(NoteKeys.Compared, source);
-            return null;
+            return failed;
         }
 
         // ============================================================ C13
+        /// <summary>
+        /// C13, a check per obligation on one host: where the options require the constructor-parameter patch, doc-required-where-rejected
+        /// (a body without it is rejected, and the document lists it in required); elsewhere doc-optional-where-absent (the document leaves it
+        /// out of required); and absent-is-default for what the patch reads where a body leaves it out, sets it null or gives it a value.
+        /// </summary>
         public static async Task<string?> C13(Row r)
         {
             var en = Registry.Of(r); Process(r, en);
@@ -493,62 +551,156 @@ namespace Probes.Schema
             var respect = http.RespectRequiredConstructorParameters;
             // "a patch that is a constructor parameter is required" under the option; an init property "keeps its default, which is Absent"
             var required = ctor && respect;
+            var listing = required ? "doc-required-where-rejected" : "doc-optional-where-absent";
             var floor = JsonName(http, dto, "Floor");
             // 3 as the options read an int: an application's own converter for int (json.Converters=own-for-wrapped) reads its own spelling
             var three = Reads(http, "3") ? "3" : JsonSerializer.Serialize(3, http);
-            var (doc, fail) = await DocOrBaseline(r, en, cfg, app);
-            if (fail is not null) return fail;
+            JsonNode? doc = null; Exception? docFailed = null;
+            try { doc = await Hx.Doc(app); }
+            catch (Exception ex) { docFailed = ex; }
+            // What each side answered to a body that leaves the patch out, sets it null, and gives it a value; where the request threw, MVC's
+            // validator throws for any nested struct of a body under a small MaxValidationDepth, which the plain twin on the same side shows.
+            var bodies = new[] { ("absent", "{}"), ("cleared", $"{{\"{floor}\":null}}"), ("set", $"{{\"{floor}\":{three}}}") };
+            var answers = new List<(string Path, string Kind, string Body, Hx.Wire Wire, string? TwinThrew)>();
             foreach (var path in Sides(r, family))
-            {
-                // MVC's validator throws for any nested struct of a body under a small MaxValidationDepth: the plain twin on the same side shows it
-                async Task<(Hx.Wire? Wire, string? Fail)> Post(string body)
+                foreach (var (kind, body) in bodies)
                 {
                     var w = await Hx.Send(app, HttpMethod.Post, path, body);
-                    if (w.Thrown is null) return (w, null);
-                    var twin = path.EndsWith("/c", StringComparison.Ordinal) ? await Hx.Send(app, HttpMethod.Post, path.Replace($"/s/{family}/c", "/s/box/c"), "{}") : null;
-                    if (twin?.Thrown is { } t && t.Split(':')[0] == w.Thrown.Split(':')[0]) { r.Note(NoteKeys.MvcPlainNestedBodyThrowsToo, t.Split(':')[0]); return (null, null); }
-                    return (null, $"{path} {body}: request threw {w.Thrown}");
+                    var twin = w.Thrown is not null && path.EndsWith("/c", StringComparison.Ordinal) ? await Hx.Send(app, HttpMethod.Post, path.Replace($"/s/{family}/c", "/s/box/c"), "{}") : null;
+                    answers.Add((path, kind, body, w, twin?.Thrown is { } t && t.Split(':')[0] == w.Thrown!.Split(':')[0] ? t.Split(':')[0] : null));
                 }
-                var (absent, f1) = await Post("{}");
-                if (f1 is not null) return f1;
-                if (absent is not null)
-                {
-                    if (required && absent.Status != HttpStatusCode.BadRequest) return $"{path}: a body without the constructor-parameter patch was answered {(int)absent.Status} {Cut(absent.Body)} under RespectRequiredConstructorParameters, not rejected";
-                    if (!required && (absent.Status != HttpStatusCode.OK || absent.Body != "Absent")) return $"{path}: a body without the {(ctor ? "constructor-parameter" : "init")} patch was answered {(int)absent.Status} {Cut(absent.Body)}, not Absent";
-                }
-                var (cleared, f2) = await Post($"{{\"{floor}\":null}}");
-                if (f2 is not null) return f2;
-                if (cleared is not null && (cleared.Status != HttpStatusCode.OK || cleared.Body != "Null")) return $"{path}: a body with {floor}: null was answered {(int)cleared.Status} {Cut(cleared.Body)}, not Null";
-                var (set, f3) = await Post($"{{\"{floor}\":{three}}}");
-                if (f3 is not null) return f3;
-                if (set is not null && (set.Status != HttpStatusCode.OK || set.Body != "Value")) return $"{path}: a body with {floor}: {three} was answered {(int)set.Status} {Cut(set.Body)}, not Value";
-            }
-            if (doc is null) return null;   // ASP.NET alone refuses this document too (noted)
-            foreach (var path in Sides(r, family))
+            string? failed = null;
+            foreach (var o in new[] { listing, "absent-is-default" })
             {
-                var op = Op(doc, path, "post");
-                if (op is null) return $"document has no POST {path}";
-                if (BodySchema(doc, op) is not JsonObject body) return $"{path}: no request body schema";
-                if (body["properties"]?[floor] is null) return $"{path}: the body schema has no property {floor}: {Cut(body.ToJsonString())}";
-                var listed = body["required"]?.AsArray().Any(x => x?.GetValue<string>() == floor) == true;
-                if (listed != required)
-                    return $"{path}: the {(ctor ? "constructor-parameter" : "init")} patch {floor} is {(listed ? "" : "not ")}in required under RespectRequiredConstructorParameters={respect}, the serializer {(required ? "rejects" : "accepts")} a body without it";
+                var f = await r.Check(o, Baseline.Docs("docs/merge-patches.md#required-constructor-parameters"), async c =>
+                {
+                    foreach (var (path, kind, body, w, twinThrew) in answers)
+                    {
+                        // a body without the patch is the listing's premise where the options reject it, else what absent-is-default reads
+                        if ((kind == "absent" && required ? listing : "absent-is-default") != o) continue;
+                        if (twinThrew is not null)
+                        {
+                            // No sentence cites it: MVC's validator throws for the plain twin's nested struct too, so the check cannot tell.
+                            c.Inconclusive($"{path} {body}: MVC's validator throws {twinThrew} for the plain twin's body too");
+                            continue;
+                        }
+                        if (w.Thrown is not null) return $"{path} {body}: request threw {w.Thrown}";
+                        switch (kind)
+                        {
+                            case "absent" when required && w.Status != HttpStatusCode.BadRequest:
+                                return $"{path}: a body without the constructor-parameter patch was answered {(int)w.Status} {Cut(w.Body)} under RespectRequiredConstructorParameters, not rejected";
+                            case "absent" when !required && (w.Status != HttpStatusCode.OK || w.Body != "Absent"):
+                                return $"{path}: a body without the {(ctor ? "constructor-parameter" : "init")} patch was answered {(int)w.Status} {Cut(w.Body)}, not Absent";
+                            case "cleared" when w.Status != HttpStatusCode.OK || w.Body != "Null":
+                                return $"{path}: a body with {floor}: null was answered {(int)w.Status} {Cut(w.Body)}, not Null";
+                            case "set" when w.Status != HttpStatusCode.OK || w.Body != "Value":
+                                return $"{path}: a body with {floor}: {three} was answered {(int)w.Status} {Cut(w.Body)}, not Value";
+                        }
+                    }
+                    if (o != listing) return null;
+                    // a document ASP.NET alone refuses the same way has nothing to check (noted there)
+                    if (docFailed is not null) return await Hx.DocRefusedByAspNetAlone(r, en, cfg, docFailed);
+                    foreach (var path in Sides(r, family))
+                    {
+                        var op = Op(doc!, path, "post");
+                        if (op is null) return $"document has no POST {path}";
+                        if (BodySchema(doc!, op) is not JsonObject body) return $"{path}: no request body schema";
+                        if (body["properties"]?[floor] is null) return $"{path}: the body schema has no property {floor}: {Cut(body.ToJsonString())}";
+                        var listed = body["required"]?.AsArray().Any(x => x?.GetValue<string>() == floor) == true;
+                        if (listed != required)
+                            return $"{path}: the {(ctor ? "constructor-parameter" : "init")} patch {floor} is {(listed ? "" : "not ")}in required under RespectRequiredConstructorParameters={respect}, the serializer {(required ? "rejects" : "accepts")} a body without it";
+                    }
+                    c.Note(NoteKeys.Compared, $"{floor} {(required ? "" : "not ")}required");
+                    return null;
+                });
+                failed ??= f;
             }
-            return null;
+            return failed;
         }
         static bool Reads(JsonSerializerOptions o, string json) { try { return JsonSerializer.Deserialize<int>(json, o) == 3; } catch (Exception ex) when (ex is JsonException or InvalidOperationException) { return false; } }
 
         // ============================================================ C16
+        /// <summary>
+        /// C16, a check per obligation over two hosts (a described type as a property, and one held only inside a patch). Where the host has
+        /// controllers and only the minimal-API options carry the converter: differing-refused and patch-held-refused (the document refused
+        /// with an InvalidOperationException naming the type, for the property's host and the patch's), and error-names-type-and-descriptions
+        /// (the refusal names what the options say of it, for both), against the refusal. Elsewhere the document builds and describes the
+        /// type as the converter says: minimal-host-not-compared for a host of minimal APIs alone, same-converters-build where both option
+        /// sets carry the converter and differ only in naming policy or number handling.
+        /// </summary>
         public static async Task<string?> C16(Row r)
         {
             var en = Registry.Of(r); Process(r, en);
-            return await Agree(r, en, patch: false) ?? await Agree(r, en, patch: true);
+            var refuse = r["difference"] == "converter-only-http" && Hx.HasMvc(r);
+            var runs = new[] { await Agree(r, en, patch: false), await Agree(r, en, patch: true) };
+            var built = r["difference"] == "converter-only-http" ? "minimal-host-not-compared" : "same-converters-build";
+            (string Obligation, AgreeRun[] Runs)[] checks = refuse
+                ? [("differing-refused", [runs[0]]), ("patch-held-refused", [runs[1]]), ("error-names-type-and-descriptions", runs)]
+                : [(built, runs)];
+            string? failed = null;
+            foreach (var (o, mine) in checks)
+            {
+                var f = await r.Check(o, refuse ? Baseline.Refusal : Baseline.Docs("src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says"), async c =>
+                {
+                    foreach (var a in mine)
+                        if ((refuse ? await a.Refusal(c, r, en, names: o == "error-names-type-and-descriptions") : await a.Built(c, r, en)) is { } fail) return fail;
+                    return null;
+                });
+                failed ??= f;
+            }
+            return failed;
         }
 
         /// <summary>A naming policy no row sets: the minimal-API options' names then differ from MVC's whatever the row says.</summary>
         sealed class PrefixPolicy : JsonNamingPolicy { public override string ConvertName(string name) => "h_" + name; }
 
-        static async Task<string?> Agree(Row r, Entry en, bool patch)
+        /// <summary>One host of C16: its document or the exception building it threw, judged by <see cref="Refusal"/> or <see cref="Built"/>.</summary>
+        sealed record AgreeRun(bool Patch, Type Type, HostCfg Cfg, List<string> Sides, string? Down, JsonNode? Doc, Exception? Failed, string? Name)
+        {
+            string Said => (Patch ? CoordPConverter.Schema() : CoordConverter.Schema()).ToJsonString();
+            JsonNode? Want => Norm(Patch ? CoordPConverter.Schema() : CoordConverter.Schema());
+
+            /// <summary>
+            /// The document refused with an InvalidOperationException naming the type, and with <paramref name="names"/> what the minimal-API
+            /// options say of it; a refusal ASP.NET alone makes the same way has nothing to check.
+            /// </summary>
+            public async Task<string?> Refusal(Check c, Row r, Entry en, bool names)
+            {
+                if (Down is not null) return Down;
+                if (Failed is null) return $"{(Patch ? "a type held only inside a patch, " : "")}{Type.Name}: the host has controllers, its minimal-API options alone describe it ({Want!.ToJsonString()}), and the document was built";
+                var named = Failed is InvalidOperationException && Failed.Message.Contains($"'{Type}'", StringComparison.Ordinal);
+                if (named && (!names || Failed.Message.Contains(Said, StringComparison.Ordinal)))
+                {
+                    c.Note(NoteKeys.Compared, names ? "refused naming the type and the minimal-API options' description" : "refused naming the type");
+                    return null;
+                }
+                // not the refusal the claim names: judged against ASP.NET alone
+                return await Hx.DocRefusedByAspNetAlone(r, en, Cfg, Failed) is null ? null
+                    : named ? $"{(Patch ? "patch-held " : "")}{Type.Name}: the refusal names the type but not what the options say ({Said}): {Cut(Failed.Message)}"
+                    : $"{(Patch ? "patch-held " : "")}{Type.Name}: the document was refused otherwise than naming the type and what the options say: {Failed.GetType().Name}: {Cut(Failed.Message)}";
+            }
+
+            /// <summary>The document built, describing the type as the converter on both option sets, or the minimal-API options alone, says.</summary>
+            public async Task<string?> Built(Check c, Row r, Entry en)
+            {
+                if (Down is not null) return Down;
+                // a document ASP.NET alone refuses the same way has nothing to check (noted there)
+                if (Failed is not null) return await Hx.DocRefusedByAspNetAlone(r, en, Cfg, Failed);
+                foreach (var path in Sides)
+                {
+                    var op = Op(Doc!, path, "post");
+                    if (op is null) return $"document has no POST {path}";
+                    if (BodySchema(Doc!, op) is not JsonObject body) return $"{path}: no request body schema";
+                    var got = body["properties"]?[Name!];
+                    if (got is null) return $"{path}: the body schema has no property {Name} (the minimal-API options' name): {Cut(body.ToJsonString())}";
+                    if (!JsonNode.DeepEquals(Norm(got), Want)) return $"{path}: {Name} is {Cut(got.ToJsonString())}, the converter on both option sets says {Want!.ToJsonString()}";
+                }
+                c.Note(NoteKeys.Compared, $"{Type.Name} described as its converter says");
+                return null;
+            }
+        }
+
+        static async Task<AgreeRun> Agree(Row r, Entry en, bool patch)
         {
             var difference = r["difference"];
             var type = patch ? typeof(CoordP) : typeof(Coord);
@@ -572,41 +724,14 @@ namespace Probes.Schema
                     });
                     if (difference != "converter-only-http") s.PostConfigure<MvcJsonOptions>(o => o.JsonSerializerOptions.Converters.Insert(0, Converter()));
                 });
+            var sides = Sides(r, patch ? "agreep" : "agree");
             WebApplication app;
             try { app = await Hx.Start(r, en, cfg); }
-            catch (Exception ex) { return "host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message); }
+            catch (Exception ex) { return new(patch, type, cfg, sides, "host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message), null, null, null); }
             await using var _ = app;
-            var refuse = difference == "converter-only-http" && Hx.HasMvc(r);
-            var said = (patch ? CoordPConverter.Schema() : CoordConverter.Schema()).ToJsonString();
-            var want = Norm(patch ? CoordPConverter.Schema() : CoordConverter.Schema());
-            JsonNode? doc;
-            try { doc = await Hx.Doc(app); }
-            catch (Exception ex)
-            {
-                if (refuse && ex is InvalidOperationException && ex.Message.Contains($"'{type}'", StringComparison.Ordinal) && ex.Message.Contains(said, StringComparison.Ordinal))
-                {
-                    r.Note(NoteKeys.Compared, "refused naming the type and the minimal-API options' description");
-                    return null;
-                }
-                // not the refusal the claim names: judged against ASP.NET alone
-                return await Hx.DocRefusedByAspNetAlone(r, en, cfg, ex) is { } alone
-                    ? (refuse ? $"{(patch ? "patch-held " : "")}{type.Name}: the document was refused otherwise than naming the type and what the options say: {ex.GetType().Name}: {Cut(ex.Message)}" : alone)
-                    : null;
-            }
-            if (refuse) return $"{(patch ? "a type held only inside a patch, " : "")}{type.Name}: the host has controllers, its minimal-API options alone describe it ({want!.ToJsonString()}), and the document was built";
-            if (doc is null) return null;
-            var http = HttpOptions(app);
-            var name = JsonName(http, dto, patch ? "P" : "At");
-            foreach (var path in Sides(r, patch ? "agreep" : "agree"))
-            {
-                var op = Op(doc, path, "post");
-                if (op is null) return $"document has no POST {path}";
-                if (BodySchema(doc, op) is not JsonObject body) return $"{path}: no request body schema";
-                var got = body["properties"]?[name];
-                if (got is null) return $"{path}: the body schema has no property {name} (the minimal-API options' name): {Cut(body.ToJsonString())}";
-                if (!JsonNode.DeepEquals(Norm(got), want)) return $"{path}: {name} is {Cut(got.ToJsonString())}, the converter on both option sets says {want!.ToJsonString()}";
-            }
-            return null;
+            var name = JsonName(HttpOptions(app), dto, patch ? "P" : "At");
+            try { return new(patch, type, cfg, sides, null, await Hx.Doc(app), null, name); }
+            catch (Exception ex) { return new(patch, type, cfg, sides, null, null, ex, name); }
         }
     }
 }

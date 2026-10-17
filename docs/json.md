@@ -84,6 +84,9 @@ of options.
   `InvalidOperationException`, because the attribute is valid only on a number. Set the number handling
   on the options instead, or in a source-generated context's
   `[JsonSourceGenerationOptions(NumberHandling = ...)]`. Both reach the value object.
+- **An array of value objects over `byte` is a JSON array of numbers.** Each element is written as its byte,
+  so you get `[7,255]`, not the base64 string `"B/8="` that a `byte[]` becomes. Keep a `byte[]` where a client
+  expects base64.
 
 ## When a value is rejected
 

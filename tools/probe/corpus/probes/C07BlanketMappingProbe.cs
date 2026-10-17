@@ -9,7 +9,10 @@
 // enum, a set with a member of no kind, or a set the mapping refuses. Under by-kind no mapping for every set throws or gives a non-error
 // status, so there the refusing set's own AddFaultResponses<TSet>() does, which the README names as the same failure.
 // Oracle: FaultClaim (wire and document per member, as mapped), and the refusals as the README states them. BaseProbe runs the HTTP
-// payload calibration over the same rows.
+// payload calibration over the same rows. A check per obligation: by-kind or own-mapping (the row's mapping) for what every member answers
+// and every operation lists; own-set-keeps-mapping (set own-mapped-set) for HFault's answers, mapped on their own, and the operations;
+// enum-needs-own-mapping, member-without-kind-stops-start and mapping-refusal-stops-start (their sets) for the host's refusal, the row's
+// one check, against the refusal.
 using Probes.Faults;
 using Probes.Shapes;
 using CodoMetis.TypeKit.AspNetCore;
@@ -29,6 +32,12 @@ public sealed class C07BlanketMappingProbe
     {
         var own = r["mapping"] == "own-IFault-mapping";
         var set = r["set"];
+        var mapping = own ? "own-mapping" : "by-kind";
+        var refusal = set switch
+        {
+            "enum-unmapped" => "enum-needs-own-mapping", "member-without-kind" => "member-without-kind-stops-start",
+            "mapping-throws" or "status-not-error" => "mapping-refusal-stops-start", _ => null,
+        };
         var s = new Spec
         {
             Minimal = new MGrp("/c7", [], [], [new MEp("k", [])]),
@@ -38,6 +47,12 @@ public sealed class C07BlanketMappingProbe
             Typed = own,
             Extra = b => FxSets.Map(b, set),
             ExtraControllers = FxSets.Controllers(set),
+            Against = Baseline.Docs("src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once"),
+            Refusals = refusal is null ? [] : [refusal],
+            Of = (aspect, m) => aspect == Aspect.Start ? [refusal ?? mapping]
+                : set != "own-mapped-set" ? [mapping]
+                : m is null ? [mapping, "own-set-keeps-mapping"]
+                : m.Type == "HFault" ? ["own-set-keeps-mapping"] : [mapping],
         };
         s.Services = sv =>
         {

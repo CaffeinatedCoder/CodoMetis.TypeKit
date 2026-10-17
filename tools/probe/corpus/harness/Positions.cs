@@ -234,6 +234,8 @@ public static class JsonParity
         }
         if (ep is null && ev is not null)
         {
+            // Text-matching site, kept in this step (WS2 step 4, the http family): the depth refusal is told by the message's words. Baseline
+            // gap: no twin in the row shows System.Text.Json charging a converter a level, and no record or fact cites it (the three-sided differential).
             if (r.Is("json.MaxDepth", "3") && ev is JsonException && ev.Message.Contains("maximum allowed depth")) { r.Note(NoteKeys.StjMaxdepth, "charges custom converters"); return null; } // inherent to STJ: any custom converter costs a level (design note D1)
             if (preserveOwn && e.Wrapped == "own-record-class" && ev is NotSupportedException) { r.Note(NoteKeys.PreserveDocumented); return null; } // documented (Generators README#json; not-promised preserved-references-over-a-walked-class)
             return $"wrapped serialized ({jp}) but the value object threw {ev.GetType().Name}: {ev.Message}";

@@ -5,7 +5,9 @@
 // set there wins over an action's own"; "an action's over its controller's": an action with its own Denied 452 sits beside each scope.
 // Minimal hosts take the equivalent of each setter (README: "Any convention builder that covers several endpoints works the same"):
 // MapControllers()'s builder = a group over every endpoint, an action = the endpoint, a controller = a group beside a sibling endpoint;
-// there "An endpoint's own wins over its group's". Oracle: FaultClaim.
+// there "An endpoint's own wins over its group's". Oracle: FaultClaim. A check per obligation: status-per-scope (kind status-only) or
+// without-faults-leaves-doc (kind WithoutFaults) for what every member answers, the member left out throwing, and every operation; and,
+// where MapControllers()'s builder sets it, builder-reaches-doc for the operations too.
 using Probes.Faults;
 using Probes.Shapes;
 namespace Probes;
@@ -20,7 +22,14 @@ public sealed class C15MvcFaultStatusDocProbe
     {
         var statusOnly = r["kind"] == "status-only";
         var set = statusOnly ? new Decl("HFault", "Denied", 451) : new Decl("HFault", "Down", 0);
-        var s = new Spec { Errors = [FxErr.E("Missing"), FxErr.E("Denied"), FxErr.E("Down")] };
+        var kind = statusOnly ? "status-per-scope" : "without-faults-leaves-doc";
+        var builder = r["setter"] == "MapControllers().WithFaultStatus";
+        var s = new Spec
+        {
+            Errors = [FxErr.E("Missing"), FxErr.E("Denied"), FxErr.E("Down")],
+            Against = Baseline.Docs("CHANGELOG.md#2.1.0-fixed"),
+            Of = (aspect, _) => builder && Aspect.Doc.Contains(aspect) ? [kind, "builder-reaches-doc"] : [kind],
+        };
         switch (r["setter"])
         {
             case "MapControllers().WithFaultStatus":

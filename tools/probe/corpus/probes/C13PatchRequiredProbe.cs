@@ -1,4 +1,4 @@
-// Claim C13-patch-required (docs/merge-patches.md#required-constructor-parameters). The check is SchemaChecks.C13 in harness/SchemaClaim.cs.
+// Claim C13-patch-required (docs/merge-patches.md#required-constructor-parameters). Its checks, one per obligation, are SchemaChecks.C13 in harness/SchemaClaim.cs.
 using Probes.Schema;
 using Probes.Shapes;
 namespace Probes;
