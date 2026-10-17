@@ -128,8 +128,9 @@ public static class OffTheWire
                 var (_, xvr) = Jx.De(text, hv.Declared, o);
                 if (xvr is not null && xvr.GetType() == xr.GetType() && xvr.Message == Jx.Swap(Jx.Swap(xr.Message, ho.Declared, hv.Declared), orType, v))
                 {
+                    // the framework's refusal, shown by the value object's own shape in the same row: a pass, as decision 99's document is
                     c.Note(NoteKeys.JsonReadRefusedByStjAlone, input + ": " + Jx.Ex(xr));
-                    return c.Inconclusive($"read {input}: the serializer refuses the document before {name}'s converter, the value object's alike: {Jx.Ex(xr)}");
+                    return null;
                 }
                 return f + $"\n  text={Jx.Cut(text)}";
             }

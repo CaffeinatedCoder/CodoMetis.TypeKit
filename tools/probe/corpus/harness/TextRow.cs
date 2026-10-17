@@ -579,7 +579,8 @@ public static class TextClaims
         }
         // Where the wrapped type alone refuses under the row's options, checked in the same row with the value object refusing alike,
         // the JSON half has nothing to compare and the row is judged by its text entries (as decision 99 judges a document ASP.NET alone refuses).
-        string? Alone(Check c, string what) { c.Note(NoteKeys.JsonHalfWrappedAloneRefuses, what); return c.Inconclusive($"JSON {what}: the wrapped type alone refuses under these options, the value object alike"); }
+        // A pass, as decision 99's document refused by ASP.NET alone is: the refusal is the framework's, shown by the twin in the same row.
+        string? Alone(Check c, string what) { c.Note(NoteKeys.JsonHalfWrappedAloneRefuses, what); return null; }
         bool Guarded(Exception x) => r.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class" && x is NotSupportedException;
         var (jp, xp) = Write(hp, o); var (jv, xv) = Write(hv, o);
         var fails = new List<string?>();

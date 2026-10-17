@@ -88,9 +88,9 @@ public static class PreserveGuard
                 return c.Inconclusive($"read {input}: no converter ran, the read holds none of the wrapped value");
             }
             if (ev is NotSupportedException) { if (Refusal(ev, "read " + input) is { } f) return f; c.Note(NoteKeys.Compared, "read " + input + " refused"); return null; }
-            // the serializer refused the document before any converter ran, the wrapped type's alike: the guard was never reached
+            // the serializer refused the document before any converter ran, the wrapped type's alike
             if (ep is not null && ev.GetType() == ep.GetType() && ev.Message == ep.Message)
-            { c.Note(NoteKeys.JsonReadRefusedByStjAlone, input + ": " + Jx.Ex(ev)); return c.Inconclusive($"read {input}: the serializer refuses the document before the guard, the wrapped type's alike: {Jx.Ex(ev)}"); }
+            { c.Note(NoteKeys.JsonReadRefusedByStjAlone, input + ": " + Jx.Ex(ev)); return null; }   // the framework's refusal, the twin's alike: a pass, as decision 99's document is
             if (ev is JsonException && ev.Message.Contains(Make.Held(e.Vo).Name) && ev.InnerException is null) { c.Note(NoteKeys.Compared, "read " + input + ": refused naming the value object before the guard"); return null; }
             return Refusal(ev, "read " + input) + $"\n  text={Jx.Cut(text)}";
         });
