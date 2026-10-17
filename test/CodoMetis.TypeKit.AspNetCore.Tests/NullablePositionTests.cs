@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using CodoMetis.TypeKit.CompilerServices;
 using CodoMetis.TypeKit.Generators.Probes;
 using CodoMetis.TypeKit.ValueObjects;
@@ -18,7 +19,7 @@ namespace CodoMetis.TypeKit.AspNetCore.Tests;
 /// <summary>
 /// A nullable value object, or a value object where it is not nullable, publishes in every position of an
 /// operation (body, query, header, form, route, response, a list's elements, a dictionary's values, a query or header
-/// array's items), in MVC
+/// array's items, a property of a non-abstract polymorphic base's derived branch and of its own), in MVC
 /// and in minimal APIs, with enums written by number or by name, and with everything inlined, value objects alone
 /// inlined or components, exactly the schema ASP.NET publishes for the wrapped type in the same position at the same
 /// nullability.
@@ -84,11 +85,19 @@ public sealed class NullablePositionTests
         foreach (var references in new[] { "inline-all", "inline-value-objects", "components" })
         foreach (var enumsByName in new[] { false, true })
         foreach (var host in new[] { "mvc", "minimal" })
-        foreach (var position in new[] { "body", "query", "header", "form", "route", "response", "elements", "values", "query-items", "header-items" })
+        foreach (var position in new[] { "body", "query", "header", "form", "route", "response", "elements", "values", "query-items", "header-items", "polymorphic-derived-property", "polymorphic-base-property" })
         {
             // Where the value object is a component, a nullable element is the component or null, which the
             // README names and SchemaTests holds; inlined, the element's schema is the position's own.
             if (position is "elements" or "values" or "query-items" or "header-items" && references == "components") continue;
+
+            // A nullable property of a component is the component or null (decision 36), which in 2.0 loses the
+            // reference (KB-026); PolymorphicBaseTests holds the base's branch to the derived one's there.
+            if (position is "polymorphic-derived-property" or "polymorphic-base-property" && references == "components") continue;
+
+            // With nothing a component, ASP.NET names every polymorphic base's own branch "Base", one component for all
+            // of them: the first it meets. One document holds one there (PolymorphicBaseTests).
+            if (position == "polymorphic-base-property" && references == "inline-all") continue;
             data.Add(version, references, enumsByName, host, position);
         }
 
@@ -113,8 +122,12 @@ public sealed class NullablePositionTests
                             ? null
                             : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
             },
-            // An enum the host writes by name is a string enum, whose nullable form lists null among its values.
-            json: key.Item3 ? json => json.SerializerOptions.Converters.Add(new JsonStringEnumConverter()) : null,
+            json: json =>
+            {
+                // An enum the host writes by name is a string enum, whose nullable form lists null among its values.
+                if (key.Item3) json.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+                json.SerializerOptions.TypeInfoResolver = json.SerializerOptions.TypeInfoResolver!.WithAddedModifier(Polymorphic);
+            },
             version: key.Item1,
             endpoints: MapMinimal,
             controllers: [.. TypeArguments.Select(type => typeof(PositionController<>).MakeGenericType(type)), typeof(NullableReferenceController)],
@@ -159,6 +172,17 @@ public sealed class NullablePositionTests
 
     private static string Key<T>() => Key(typeof(T));
 
+    /// <summary>Makes each <see cref="PositionBase{T}"/> a non-abstract polymorphic base, which an attribute cannot name a closed type for.</summary>
+    private static void Polymorphic(System.Text.Json.Serialization.Metadata.JsonTypeInfo info)
+    {
+        if (!info.Type.IsGenericType || info.Type.GetGenericTypeDefinition() != typeof(PositionBase<>)) return;
+
+        info.PolymorphismOptions = new System.Text.Json.Serialization.Metadata.JsonPolymorphismOptions
+        {
+            DerivedTypes = { new System.Text.Json.Serialization.Metadata.JsonDerivedType(typeof(PositionDerived<>).MakeGenericType(info.Type.GenericTypeArguments), "derived") },
+        };
+    }
+
     private static string Key(Type type) => Nullable.GetUnderlyingType(type) is { } held ? held.Name + "-nullable" : type.Name;
 
     private static void MapMinimal(WebApplication app)
@@ -180,6 +204,8 @@ public sealed class NullablePositionTests
         app.MapPost("/minimal/String-nullable/form", ([FromForm(Name = "v")] string? v) => 0).DisableAntiforgery();
         app.MapGet("/minimal/String-nullable/route/{v}", (string? v) => 0);
         app.MapGet("/minimal/String-nullable/response", string? () => null);
+        app.MapPost("/minimal/String-nullable/polymorphic-derived-property", ([FromBody] PositionString v) => 0);
+        app.MapPost("/minimal/String-nullable/polymorphic-base-property", ([FromBody] PositionString v) => 0);
         app.MapPost("/minimal/Uri-nullable/body", ([FromBody] Uri? v) => 0);
         app.MapPost("/minimal/Uri-nullable/elements", ([FromBody] List<Uri?> v) => 0);
         app.MapPost("/minimal/Uri-nullable/values", ([FromBody] Dictionary<string, Uri?> v) => 0);
@@ -190,6 +216,8 @@ public sealed class NullablePositionTests
         app.MapPost("/minimal/Uri-nullable/form", ([FromForm(Name = "v")] Uri? v) => 0).DisableAntiforgery();
         app.MapGet("/minimal/Uri-nullable/route/{v}", (Uri? v) => 0);
         app.MapGet("/minimal/Uri-nullable/response", Uri? () => null);
+        app.MapPost("/minimal/Uri-nullable/polymorphic-derived-property", ([FromBody] PositionUri v) => 0);
+        app.MapPost("/minimal/Uri-nullable/polymorphic-base-property", ([FromBody] PositionUri v) => 0);
         app.MapPost("/minimal/ProbeLabel-nullable/body", ([FromBody] ProbeLabel? v) => 0);
         app.MapPost("/minimal/ProbeLabel-nullable/elements", ([FromBody] List<ProbeLabel?> v) => 0);
         app.MapPost("/minimal/ProbeLabel-nullable/values", ([FromBody] Dictionary<string, ProbeLabel?> v) => 0);
@@ -200,6 +228,8 @@ public sealed class NullablePositionTests
         app.MapPost("/minimal/ProbeLabel-nullable/form", ([FromForm(Name = "v")] ProbeLabel? v) => 0).DisableAntiforgery();
         app.MapGet("/minimal/ProbeLabel-nullable/route/{v}", (ProbeLabel? v) => 0);
         app.MapGet("/minimal/ProbeLabel-nullable/response", ProbeLabel? () => null);
+        app.MapPost("/minimal/ProbeLabel-nullable/polymorphic-derived-property", ([FromBody] PositionLabel v) => 0);
+        app.MapPost("/minimal/ProbeLabel-nullable/polymorphic-base-property", ([FromBody] PositionLabel v) => 0);
     }
 
     private static void Map<T>(IEndpointRouteBuilder app)
@@ -215,6 +245,8 @@ public sealed class NullablePositionTests
         app.MapPost(at + "/form", ([FromForm(Name = "v")] T v) => 0).DisableAntiforgery();
         app.MapGet(at + "/route/{v}", (T v) => 0);
         app.MapGet(at + "/response", T () => default!);
+        app.MapPost(at + "/polymorphic-derived-property", ([FromBody] PositionBase<T> v) => 0);
+        app.MapPost(at + "/polymorphic-base-property", ([FromBody] PositionBase<T> v) => 0);
     }
 
     [ApiController]
@@ -230,6 +262,8 @@ public sealed class NullablePositionTests
         [HttpPost("form")] public int Form([FromForm(Name = "v")] T v) => 0;
         [HttpGet("route/{v}")] public int Route(T v) => 0;
         [HttpGet("response")] public T Answer() => default!;
+        [HttpPost("polymorphic-derived-property")] public int Derived([FromBody] PositionBase<T> v) => 0;
+        [HttpPost("polymorphic-base-property")] public int Base([FromBody] PositionBase<T> v) => 0;
     }
 
     [ApiController]
@@ -245,6 +279,8 @@ public sealed class NullablePositionTests
         [HttpPost("mvc/String-nullable/form")] public int StringForm([FromForm(Name = "v")] string? v) => 0;
         [HttpGet("mvc/String-nullable/route/{v}")] public int StringRoute(string? v) => 0;
         [HttpGet("mvc/String-nullable/response")] public string? StringResponse() => null;
+        [HttpPost("mvc/String-nullable/polymorphic-derived-property")] public int StringDerived([FromBody] PositionString v) => 0;
+        [HttpPost("mvc/String-nullable/polymorphic-base-property")] public int StringBase([FromBody] PositionString v) => 0;
         [HttpPost("mvc/Uri-nullable/body")] public int UriBody([FromBody] Uri? v) => 0;
         [HttpPost("mvc/Uri-nullable/elements")] public int UriElements([FromBody] List<Uri?> v) => 0;
         [HttpPost("mvc/Uri-nullable/values")] public int UriValues([FromBody] Dictionary<string, Uri?> v) => 0;
@@ -255,6 +291,8 @@ public sealed class NullablePositionTests
         [HttpPost("mvc/Uri-nullable/form")] public int UriForm([FromForm(Name = "v")] Uri? v) => 0;
         [HttpGet("mvc/Uri-nullable/route/{v}")] public int UriRoute(Uri? v) => 0;
         [HttpGet("mvc/Uri-nullable/response")] public Uri? UriResponse() => null;
+        [HttpPost("mvc/Uri-nullable/polymorphic-derived-property")] public int UriDerived([FromBody] PositionUri v) => 0;
+        [HttpPost("mvc/Uri-nullable/polymorphic-base-property")] public int UriBase([FromBody] PositionUri v) => 0;
         [HttpPost("mvc/ProbeLabel-nullable/body")] public int LabelBody([FromBody] ProbeLabel? v) => 0;
         [HttpPost("mvc/ProbeLabel-nullable/elements")] public int LabelElements([FromBody] List<ProbeLabel?> v) => 0;
         [HttpPost("mvc/ProbeLabel-nullable/values")] public int LabelValues([FromBody] Dictionary<string, ProbeLabel?> v) => 0;
@@ -265,6 +303,8 @@ public sealed class NullablePositionTests
         [HttpPost("mvc/ProbeLabel-nullable/form")] public int LabelForm([FromForm(Name = "v")] ProbeLabel? v) => 0;
         [HttpGet("mvc/ProbeLabel-nullable/route/{v}")] public int LabelRoute(ProbeLabel? v) => 0;
         [HttpGet("mvc/ProbeLabel-nullable/response")] public ProbeLabel? LabelResponse() => null;
+        [HttpPost("mvc/ProbeLabel-nullable/polymorphic-derived-property")] public int LabelDerived([FromBody] PositionLabel v) => 0;
+        [HttpPost("mvc/ProbeLabel-nullable/polymorphic-base-property")] public int LabelBase([FromBody] PositionLabel v) => 0;
     }
 
     /// <summary>Puts each closed <see cref="PositionController{T}"/> under <c>mvc/{its type argument}</c>.</summary>
@@ -283,10 +323,10 @@ public sealed class NullablePositionTests
     }
 
     /// <summary>The schema of the position: the request body's, the parameter's, or the response's.</summary>
-    private static JsonNode? Schema(OpenApiJson document, OpenApiSpecVersion version, string host, string position, string key)
+    internal static JsonNode? Schema(OpenApiJson document, OpenApiSpecVersion version, string host, string position, string key)
     {
         var path = $"/{host}/{key}/{position}" + (position == "route" ? "/{v}" : "");
-        var method = position is "body" or "form" or "elements" or "values" ? "post" : "get";
+        var method = position is "body" or "form" or "elements" or "values" or "polymorphic-derived-property" or "polymorphic-base-property" ? "post" : "get";
         var operation = document.Root["paths"]?[path]?[method] ?? throw new InvalidOperationException($"No operation {method} {path}.");
         var v2 = version == OpenApiSpecVersion.OpenApi2_0;
 
@@ -296,6 +336,7 @@ public sealed class NullablePositionTests
             "response" => v2 ? operation["responses"]!["200"]!["schema"] : operation["responses"]!["200"]!["content"]!.AsObject().First().Value!["schema"],
             "body" or "elements" or "values" when v2 => operation["parameters"]!.AsArray().Single(p => p!["in"]!.GetValue<string>() == "body")!["schema"],
             "body" or "elements" or "values" => operation["requestBody"]!["content"]!["application/json"]!["schema"],
+            "polymorphic-derived-property" or "polymorphic-base-property" => PolymorphicProperty(document, operation, v2, position == "polymorphic-base-property"),
             "form" when !v2 => operation["requestBody"]!["content"]!.AsObject().First().Value!["schema"],
             // A parameter: in 2.0 its keywords are on the parameter itself, so all but its name and description.
             _ => operation["parameters"]!.AsArray().Single(p => p!["name"]!.GetValue<string>() == "v"),
@@ -304,10 +345,27 @@ public sealed class NullablePositionTests
         return schema?.DeepClone();
     }
 
+    /// <summary>
+    /// The property <c>v</c> of a polymorphic body's branch: the derived type's, the first of the root's <c>anyOf</c> (2.0:
+    /// <c>allOf</c>), or the base's own, its component <c>{Root}Base</c>, which 2.0 leaves out of the <c>allOf</c>.
+    /// </summary>
+    private static JsonNode? PolymorphicProperty(OpenApiJson document, JsonNode operation, bool v2, bool ofTheBase)
+    {
+        var body = v2
+            ? operation["parameters"]!.AsArray().Single(p => p!["in"]!.GetValue<string>() == "body")!["schema"]!
+            : operation["requestBody"]!["content"]!["application/json"]!["schema"]!;
+
+        var branch = ofTheBase
+            ? Target(document, body["$ref"]!.GetValue<string>() + "Base")
+            : Inline(document, body)![v2 ? "allOf" : "anyOf"]![0]!;
+
+        return branch["properties"]?["v"] ?? throw new InvalidOperationException($"No property 'v' in {branch.ToJsonString()}.");
+    }
+
     /// <summary>What holds a container's <c>items</c> or <c>additionalProperties</c>: a body's schema, a 3.x parameter's schema, or a 2.0 parameter itself.</summary>
     private static JsonObject? Holder(JsonNode? schema) => schema?["schema"] as JsonObject ?? schema as JsonObject;
 
-    private static JsonNode? Inline(OpenApiJson document, JsonNode? schema) => schema switch
+    internal static JsonNode? Inline(OpenApiJson document, JsonNode? schema) => schema switch
     {
         JsonObject reference when reference["$ref"] is { } id => Inline(document, Target(document, id.GetValue<string>())),
         JsonObject keywords => new JsonObject(keywords
@@ -369,4 +427,49 @@ public readonly partial record struct PositionValidatedWeekday : IValidatedValue
 {
     public static Result<PositionValidatedWeekday, PositionWeekdayFault> Create(DayOfWeek value) =>
         Enum.IsDefined(value) ? new PositionValidatedWeekday(value) : Result.Error(PositionWeekdayFault.Undefined);
+}
+
+/// <summary>A non-abstract polymorphic base over a position's type: polymorphic by the document's resolver (<c>Polymorphic</c>).</summary>
+public class PositionBase<T>
+{
+    public T V { get; set; } = default!;
+}
+
+public sealed class PositionDerived<T> : PositionBase<T>
+{
+    public string Kind { get; set; } = "";
+}
+
+/// <summary>The polymorphic bases over the reference types at their declared nullability, which a type argument does not carry.</summary>
+[JsonPolymorphic, JsonDerivedType(typeof(PositionStringDerived), "derived")]
+public class PositionString
+{
+    public string? V { get; set; }
+}
+
+public sealed class PositionStringDerived : PositionString
+{
+    public string Kind { get; set; } = "";
+}
+
+[JsonPolymorphic, JsonDerivedType(typeof(PositionUriDerived), "derived")]
+public class PositionUri
+{
+    public Uri? V { get; set; }
+}
+
+public sealed class PositionUriDerived : PositionUri
+{
+    public string Kind { get; set; } = "";
+}
+
+[JsonPolymorphic, JsonDerivedType(typeof(PositionLabelDerived), "derived")]
+public class PositionLabel
+{
+    public ProbeLabel? V { get; set; }
+}
+
+public sealed class PositionLabelDerived : PositionLabel
+{
+    public string Kind { get; set; } = "";
 }
