@@ -56,10 +56,6 @@ public static class Jx
 
     public static string Cut(string? s) => s is null ? "(null)" : s.Length > 220 ? s[..220] + "..." : s;
     public static string Name(Type t) => t.IsGenericType ? t.Name[..t.Name.IndexOf('`')] + "<" + string.Join(", ", t.GetGenericArguments().Select(Name)) + ">" : t.Name;
-    // Text-matching site, kept in this step (WS2 step 4): the depth refusal is told by the message's words. Baseline gap: no twin in the
-    // row shows System.Text.Json charging a converter a level, and no record or fact cites it (the three-sided differential).
-    /// <summary>The serializer's depth limit under json.MaxDepth=3, which any converter is charged a level against (design note D1).</summary>
-    public static bool Depth(Row r, Exception? x) => x is JsonException && x.Message.Contains("maximum allowed depth") && r.Is("json.MaxDepth", "3");
     /// <summary>A refusal's message with the type the other side holds named instead: the serializer names the shape it refused.</summary>
     public static string Swap(string message, Type from, Type to) => message.Replace(from.ToString(), to.ToString());
     /// <summary>What a containing type holds: its property P or its field F.</summary>

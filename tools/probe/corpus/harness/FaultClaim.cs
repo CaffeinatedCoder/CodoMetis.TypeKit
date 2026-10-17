@@ -320,8 +320,9 @@ public static class FaultClaim
         var names = s.Refused!;
         var ioe = ex as InvalidOperationException ?? ex.InnerException as InvalidOperationException;
         if (ioe is null) return $"host refused to start, but with {ex.GetType().Name}, not InvalidOperationException: {Cut(ex.Message)}";
-        var missing = names.Where(n => !ioe.Message.Contains(n, StringComparison.Ordinal)).ToList();
-        return missing.Count == 0 ? null : $"host refused to start, but not naming {string.Join(", ", missing)}: {Cut(ioe.Message)}";
+        foreach (var name in names)
+            if (!ioe.Message.Contains(name, StringComparison.Ordinal)) return $"host refused to start, but not naming {name}: {Cut(ioe.Message)}";
+        return null;
     }
 
     /// <summary>

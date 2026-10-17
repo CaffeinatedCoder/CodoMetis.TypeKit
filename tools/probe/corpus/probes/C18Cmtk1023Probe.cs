@@ -211,8 +211,8 @@ public sealed class C18Cmtk1023Probe
         if (!d.Message.StartsWith($"'{Nesting(s, id)}V{id}' inherits ", StringComparison.Ordinal))
             return "CMTK1023 does not name the value object: " + d.Message;
         var named = Named(s, id);
-        var missing = named.Where(n => !d.Message.Contains(n, StringComparison.Ordinal)).ToList();
-        if (missing.Count > 0) return $"CMTK1023 does not name {string.Join(", ", missing)}: {d.Message}";
+        foreach (var name in named)
+            if (!d.Message.Contains(name, StringComparison.Ordinal)) return $"CMTK1023 does not name {name}: {d.Message}";
         var count = System.Text.RegularExpressions.Regex.Matches(d.Message, " in its base type ").Count;
         if (count != named.Count) return $"CMTK1023 names {count} members, the bases declare {named.Count} ({string.Join(", ", named)}): {d.Message}";
         if (d.Message.Contains("Mark", StringComparison.Ordinal)) return "CMTK1023 names the explicit member of another interface: " + d.Message;

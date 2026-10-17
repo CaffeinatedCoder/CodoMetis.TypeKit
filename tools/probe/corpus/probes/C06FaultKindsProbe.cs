@@ -30,7 +30,11 @@ public sealed class C06FaultKindsProbe
     static string? NoKindRefused()
     {
         try { new ServiceCollection().AddFaultResponses<FxNoKind>(); }
-        catch (ArgumentException ex) when (ex.Message.Contains("FxNoKind.Blank", StringComparison.Ordinal)) { return null; }
+        catch (ArgumentException ex)
+        {
+            if (!ex.Message.Contains("FxNoKind.Blank", StringComparison.Ordinal)) return $"AddFaultResponses<FxNoKind>() refused, but not with an ArgumentException naming FxNoKind.Blank: {ex.GetType().Name}: {ex.Message}";
+            return null;
+        }
         catch (Exception ex) { return $"AddFaultResponses<FxNoKind>() refused, but not with an ArgumentException naming FxNoKind.Blank: {ex.GetType().Name}: {ex.Message}"; }
         return "AddFaultResponses<FxNoKind>() took FxNoKind.Blank, a member of no kind";
     }

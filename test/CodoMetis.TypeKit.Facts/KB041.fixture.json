@@ -1,0 +1,33 @@
+{
+  "fact": "KB-041",
+  "answers": [
+    {
+      "id": "source-generated-context-refused-binding",
+      "kind": "exception",
+      "when": {
+        "json.TypeInfoResolver": "source-generated-context",
+        "endpoint": "mvc-api-controller",
+        "binding": "fails"
+      },
+      "value": {
+        "type": "System.NotSupportedException",
+        "operation": "bind",
+        "stage": "writing the automatic 400, a ValidationProblemDetails the context does not list"
+      },
+      "note": "an [ApiController] action whose int parameter is sent abc, under MVC JSON options whose resolver is a source-generated context listing int alone: the 400 is not written, the request fails"
+    },
+    {
+      "id": "default-resolver-refused-binding",
+      "kind": "status",
+      "when": {
+        "json.TypeInfoResolver": "default",
+        "endpoint": "mvc-api-controller",
+        "binding": "fails"
+      },
+      "value": {
+        "status": 400
+      },
+      "note": "the same request under the serializer's default resolver: MVC's automatic 400"
+    }
+  ]
+}

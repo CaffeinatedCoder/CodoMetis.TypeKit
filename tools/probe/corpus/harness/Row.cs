@@ -66,6 +66,8 @@ public sealed class Row
     }
     /// <summary>The value the row holds for an axis, without marking it read: a check marks its own.</summary>
     internal string? Raw(string axis) => d.TryGetValue(axis, out var v) ? v : null;
+    /// <summary>Every axis and its value, none marked read: what a fact's fixture is matched against (Sides.Settings), whose covering answer then reads its own.</summary>
+    internal IReadOnlyDictionary<string, string> Values => d;
     /// <summary>The setting ran as <paramref name="actual"/>, not as the row asked: only the actual value earns credit.</summary>
     public void Substituted(string axis, string actual, string reason)
     {
@@ -380,14 +382,14 @@ public sealed class NoteKeys
     public static readonly NoteKeys DocRefusedByAspnetAlone = new("doc:refused-by-aspnet-alone", Pass);
     public static readonly NoteKeys DocControllerNotInApiExplorer = new("doc:controller-not-in-api-explorer", Pass);
     // L03's JSON half has nothing to compare: the wrapped type alone refuses under the row's options, the value object alike, in the same row
-    public static readonly NoteKeys JsonHalfWrappedAloneRefuses = new("json-half:wrapped-alone-refuses", Pass);
+    public static readonly NoteKeys JsonHalfWrappedAloneRefuses = new("json-half:wrapped-alone-refuses", Pass);   // not called since the three-sided differential (Sides): framework-refuses
     // JSON family (C01, C10, L06): the options leave the member out of one direction for the plain type without TypeKit too, shown by a
     // baseline in the same row; that direction has nothing to check, and the row is judged by the other one (both left out: inapplicable)
     public static readonly NoteKeys JsonMemberLeftOutByOptions = new("json:member-left-out-by-options", Pass);
     public static readonly NoteKeys JsonBothDirectionsLeftOutByOptions = new("json:both-directions-left-out-by-options", Inapplicable);
     // a read the wrapped type's shape refuses with the very same exception and message: the serializer refused the document before any
     // value object ran (the baseline in the same row), so the read has nothing to check; the row is judged by its write and other reads
-    public static readonly NoteKeys JsonReadRefusedByStjAlone = new("json:read-refused-by-stj-alone", Pass);
+    public static readonly NoteKeys JsonReadRefusedByStjAlone = new("json:read-refused-by-stj-alone", Pass);   // not called since the three-sided differential (Sides): framework-refuses
     // ASP.NET's OpenAPI 2.0 writer drops the reference of a nullable struct component; a plain struct beside it in the same
     // schema, without a converter, is written the same, so that position has nothing to check (C12)
     public static readonly NoteKeys SchemaNullableReferenceLostForPlainToo = new("schema:nullable-reference-lost-for-plain-too", Pass);
@@ -419,12 +421,12 @@ public sealed class NoteKeys
     public static readonly NoteKeys RefusedInputNotPlaceable = new("refused-input-not-placeable", Inapplicable);
     // a refusal, intended or the framework's own
     public static readonly NoteKeys DocumentedDiff = new("documented-diff", ExpectedRefusal);
-    public static readonly NoteKeys StjMaxdepth = new("stj-maxdepth", ExpectedRefusal);
+    public static readonly NoteKeys StjMaxdepth = new("stj-maxdepth", ExpectedRefusal);   // not called since the three-sided differential (Sides): KB-040's side (1)
     public static readonly NoteKeys ValidatedRefusesTypeLimit = new("validated-refuses-type-limit", ExpectedRefusal);
     public static readonly NoteKeys ClassVoTakesNull = new("class-vo-takes-null", ExpectedRefusal);
     public static readonly NoteKeys BindPlainUnbindable = new("bind:plain-unbindable", ExpectedRefusal);
     public static readonly NoteKeys PreserveDocumented = new("preserve-documented", ExpectedRefusal);
-    public static readonly NoteKeys Mvc400UnwritableUnderSourceGen = new("mvc-400-unwritable-under-source-gen", ExpectedRefusal);
+    public static readonly NoteKeys Mvc400UnwritableUnderSourceGen = new("mvc-400-unwritable-under-source-gen", ExpectedRefusal);   // not called since the three-sided differential (Sides): KB-041's side (1)
     public static readonly NoteKeys OwnVoReadBackRefused = new("own-vo:read-back-refused", ExpectedRefusal);
     public static readonly NoteKeys BothThrew = new("both-threw", ExpectedRefusal);
     public static readonly NoteKeys ReadBothThrew = new("read-both-threw", ExpectedRefusal);
@@ -436,6 +438,9 @@ public sealed class NoteKeys
     public static readonly NoteKeys OwnConverterRefusedForWrappedToo = new("own-converter-refused-for-wrapped-too", ExpectedRefusal);
     // MVC's validator throws for a nested struct of a body (MaxValidationDepth) for a plain twin on the same side too (C13)
     public static readonly NoteKeys MvcPlainNestedBodyThrowsToo = new("mvc:plain-nested-body-throws-too", ExpectedRefusal);
+    // the three-sided differential (Sides): the wrapped twin without TypeKit and the value object refuse alike, at the same operation and
+    // stage with the same exception type and status, so the framework refuses; no message is compared
+    public static readonly NoteKeys FrameworkRefuses = new("framework-refuses", ExpectedRefusal);
     // both sides refused, but not alike
     public static readonly NoteKeys BothThrewDifferently = new("both-threw-differently", Inconclusive);
 }
