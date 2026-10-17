@@ -60,7 +60,7 @@ internal sealed partial class ValueObjectParsableAspect
     {
         var tag = (ParsableImplementationArguments)meta.Tags.Source!;
 
-        return ExpressionFactory.Parse($"{meta.CompileTime(tag.FromText)}({meta.CompileTime(tag.InnerParse())})", tag.ValueObjectType, false).Value!;
+        return ExpressionFactory.Parse($"{meta.CompileTime(tag.FromText)}({meta.CompileTime(tag.InnerSpanParse())})", tag.ValueObjectType, false).Value!;
     }
 
     [Template]
@@ -70,8 +70,8 @@ internal sealed partial class ValueObjectParsableAspect
 
         result = meta.Default(tag.ValueObjectType);
 
-        // Only generated for the span-parsable strategy, which has a TryParse.
-        return (bool)ExpressionFactory.Parse(tag.InnerTryParse()!, TypeFactory.GetType(SpecialType.Boolean), false).Value!;
+        // Only generated over a span-parsable type, which has a TryParse.
+        return (bool)ExpressionFactory.Parse(tag.InnerSpanTryParse(), TypeFactory.GetType(SpecialType.Boolean), false).Value!;
     }
 
     [Template]

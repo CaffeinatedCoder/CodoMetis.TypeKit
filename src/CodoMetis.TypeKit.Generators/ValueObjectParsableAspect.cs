@@ -61,7 +61,7 @@ internal sealed class ParsableImplementationArguments
         {
             ValueParseStrategy.String => input,
             ValueParseStrategy.Parsable => $"({at}.TryParse<{valueType}>({input}, {Provider}, out var __parsed) ? __parsed : {unreadable})",
-            ValueParseStrategy.SpanParsable => $"({at}.TryParseSpan<{valueType}>({input}, {Provider}, out var __parsed) ? __parsed : {unreadable})",
+            ValueParseStrategy.SpanParsable => InnerSpanParse(input),
             // By name, as Enum.Parse does, but with the exception IParsable.Parse documents.
             ValueParseStrategy.Enum => $"(global::System.Enum.TryParse<{valueType}>({input}, out var __parsed) ? __parsed : {unreadable})",
             // Relative or absolute, as the serializer reads a Uri. The constructor took "/orders/7" for
@@ -89,7 +89,7 @@ internal sealed class ParsableImplementationArguments
         var parsed = Strategy switch
         {
             ValueParseStrategy.Parsable => $"{at}.TryParse<{valueType}>({input}, {Provider}, out var innerValue)",
-            ValueParseStrategy.SpanParsable => $"{at}.TryParseSpan<{valueType}>({input}, {Provider}, out var innerValue)",
+            ValueParseStrategy.SpanParsable => SpanTryParse(input, "innerValue"),
             // Enum.TryParse answers false for null, an unknown name and an empty string.
             ValueParseStrategy.Enum => $"global::System.Enum.TryParse<{valueType}>({input}, out var innerValue)",
             ValueParseStrategy.Uri => $"global::System.Uri.TryCreate({input}, global::System.UriKind.RelativeOrAbsolute, out var innerValue)",
@@ -98,6 +98,22 @@ internal sealed class ParsableImplementationArguments
 
         return parsed is null ? null : $"({parsed} && {TryFromText}(innerValue, out result))";
     }
+
+    /// <summary>
+    /// C# that turns the characters <c>s</c> into the wrapped type through its own
+    /// <c>ISpanParsable.TryParse</c>, or throws <c>GeneratedParsing.Unreadable</c>, as
+    /// <see cref="InnerParse"/> does for text. The span <c>Parse</c> of every value object over a
+    /// span-parsable type, whatever its strategy for text: a <see cref="string"/>'s parses its text as it
+    /// is, and its characters through <c>string</c>'s own span parsing.
+    /// </summary>
+    public string InnerSpanParse(string input = "s") =>
+        $"({SpanTryParse(input, "__parsed")} ? __parsed : throw global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing.Unreadable<{ValueObjectTypes.SourceName(ValueObjectType)}, {ValueObjectTypes.SourceName(ValueType)}>())";
+
+    /// <summary>C# for the span <c>TryParse</c>: the wrapped type's own, then <c>__TryFromText</c>, so nothing throws.</summary>
+    public string InnerSpanTryParse(string input = "s") => $"({SpanTryParse(input, "innerValue")} && {TryFromText}(innerValue, out result))";
+
+    private string SpanTryParse(string input, string parsed) =>
+        $"global::CodoMetis.TypeKit.CompilerServices.GeneratedParsing.TryParseSpan<{ValueObjectTypes.SourceName(ValueType)}>({input}, {Provider}, out var {parsed})";
 }
 
 /// <summary>
@@ -126,6 +142,7 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
             return;
         }
 
+        var supportsSpan = SupportsSpan(valueType);
         var supportsUtf8 = SupportsUtf8(valueType);
 
         builder.Tags = new ParsableImplementationArguments
@@ -142,7 +159,9 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
         IntroduceParse(builder, nameof(ParseTemplate), nameof(IParsable<>.Parse));
         IntroduceTryParse(builder, nameof(TryParseTemplate), nameof(IParsable<>.TryParse));
 
-        if (strategy == ValueParseStrategy.SpanParsable)
+        // By the wrapped type, not the strategy: the string strategy, picked first, dropped string's own
+        // ISpanParsable (found by the prober, claim C11, 2026-10-17).
+        if (supportsSpan)
         {
             builder.ImplementInterface(typeof(ISpanParsable<>).ToNamedType().MakeGenericInstance(builder.Target), OverrideStrategy.Ignore);
             IntroduceParse(builder, nameof(SpanParseTemplate), nameof(ISpanParsable<>.Parse));
@@ -183,6 +202,10 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
                 method.AddAttribute(CodeAnnotations.CompilerGenerated);
             });
 
+    /// <summary>Whether <c>ISpanParsable</c> is generated: the wrapped type implements it, whatever its strategy for text.</summary>
+    internal static bool SupportsSpan(INamedType valueType) =>
+        valueType.IsConvertibleTo(typeof(ISpanParsable<>).ToNamedType().MakeGenericInstance(valueType));
+
     /// <summary>Whether <c>IUtf8SpanParsable</c> is generated: the wrapped type implements it.</summary>
     internal static bool SupportsUtf8(INamedType valueType) =>
         valueType.IsConvertibleTo(typeof(IUtf8SpanParsable<>).ToNamedType().MakeGenericInstance(valueType));
@@ -194,7 +217,7 @@ internal sealed partial class ValueObjectParsableAspect : TypeAspect
             return ValueParseStrategy.String;
 
         // ISpanParsable extends IParsable, so probe for it first.
-        if (valueType.IsConvertibleTo(typeof(ISpanParsable<>).ToNamedType().MakeGenericInstance(valueType)))
+        if (SupportsSpan(valueType))
             return ValueParseStrategy.SpanParsable;
 
         if (valueType.IsConvertibleTo(typeof(IParsable<>).ToNamedType().MakeGenericInstance(valueType)))

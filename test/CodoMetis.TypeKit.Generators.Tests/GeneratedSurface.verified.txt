@@ -72,6 +72,7 @@ ProbeArticle
   implements IEquatable<ProbeArticle>
   implements IFormattable
   implements IParsable<ProbeArticle>
+  implements ISpanParsable<ProbeArticle>
   implements IValidatedValue<ProbeArticle, String, ProbeArticleFault>
   implements IValueObject<ProbeArticle, String>
   implements IValueObjectMaterializer<ProbeArticle, String>
@@ -80,8 +81,10 @@ ProbeArticle
   new()
   static Create(String) : Result<ProbeArticle, ProbeArticleFault>
   static FromKnownGood(String, String) : ProbeArticle
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeArticle
   static Parse(String, IFormatProvider) : ProbeArticle
   static TryFrom(String) : Option<ProbeArticle>
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeArticle) : Boolean
   static TryParse(String, IFormatProvider, out ProbeArticle) : Boolean
   static op_Equality(ProbeArticle, ProbeArticle) : Boolean
   static op_GreaterThan(ProbeArticle, ProbeArticle) : Boolean
@@ -135,6 +138,7 @@ ProbeCode
   implements IEquatable<ProbeCode>
   implements IFormattable
   implements IParsable<ProbeCode>
+  implements ISpanParsable<ProbeCode>
   implements IValidatedValue<ProbeCode, String, ProbeCodeFault>
   implements IValueObject<ProbeCode, String>
   implements IValueObjectMaterializer<ProbeCode, String>
@@ -143,8 +147,10 @@ ProbeCode
   new()
   static Create(String) : Result<ProbeCode, ProbeCodeFault>
   static FromKnownGood(String, String) : ProbeCode
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeCode
   static Parse(String, IFormatProvider) : ProbeCode
   static TryFrom(String) : Option<ProbeCode>
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeCode) : Boolean
   static TryParse(String, IFormatProvider, out ProbeCode) : Boolean
   static op_Equality(ProbeCode, ProbeCode) : Boolean
   static op_GreaterThan(ProbeCode, ProbeCode) : Boolean
@@ -752,13 +758,16 @@ ProbeLabel
   implements IFormattable
   implements IParsable<ProbeLabel>
   implements IPlainValueObject<ProbeLabel, String>
+  implements ISpanParsable<ProbeLabel>
   implements IValue<String>
   implements IValueObject<ProbeLabel, String>
   implements IValueObjectMaterializer<ProbeLabel, String>
   nested ProbeLabelJsonConverter : JsonConverter<ProbeLabel>, IStoredJsonConverterSource
   nested ProbeLabelTypeConverter : TypeConverter
   static From(String) : ProbeLabel
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeLabel
   static Parse(String, IFormatProvider) : ProbeLabel
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeLabel) : Boolean
   static TryParse(String, IFormatProvider, out ProbeLabel) : Boolean
   static op_Equality(ProbeLabel, ProbeLabel) : Boolean
   static op_GreaterThan(ProbeLabel, ProbeLabel) : Boolean
@@ -913,6 +922,7 @@ ProbeName
   implements IFormattable
   implements IParsable<ProbeName>
   implements IPlainValueObject<ProbeName, String>
+  implements ISpanParsable<ProbeName>
   implements IValue<String>
   implements IValueObject<ProbeName, String>
   implements IValueObjectMaterializer<ProbeName, String>
@@ -920,7 +930,9 @@ ProbeName
   nested ProbeNameTypeConverter : TypeConverter
   new()
   static From(String) : ProbeName
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeName
   static Parse(String, IFormatProvider) : ProbeName
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeName) : Boolean
   static TryParse(String, IFormatProvider, out ProbeName) : Boolean
   static op_Equality(ProbeName, ProbeName) : Boolean
   static op_GreaterThan(ProbeName, ProbeName) : Boolean
@@ -992,6 +1004,7 @@ ProbeOverride
   implements IEquatable<ProbeOverride>
   implements IFormattable
   implements IParsable<ProbeOverride>
+  implements ISpanParsable<ProbeOverride>
   implements IValidatedValue<ProbeOverride, String, ProbeOverrideFault>
   implements IValueObject<ProbeOverride, String>
   implements IValueObjectMaterializer<ProbeOverride, String>
@@ -1000,8 +1013,10 @@ ProbeOverride
   new()
   static Create(String) : Result<ProbeOverride, ProbeOverrideFault>
   static FromKnownGood(String, String) : ProbeOverride
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeOverride
   static Parse(String, IFormatProvider) : ProbeOverride
   static TryFrom(String) : Option<ProbeOverride>
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeOverride) : Boolean
   static TryParse(String, IFormatProvider, out ProbeOverride) : Boolean
   static op_Equality(ProbeOverride, ProbeOverride) : Boolean
   static op_GreaterThan(ProbeOverride, ProbeOverride) : Boolean
@@ -1206,13 +1221,16 @@ ProbeReversedLabel
   implements IFormattable
   implements IParsable<ProbeReversedLabel>
   implements IPlainValueObject<ProbeReversedLabel, String>
+  implements ISpanParsable<ProbeReversedLabel>
   implements IValue<String>
   implements IValueObject<ProbeReversedLabel, String>
   implements IValueObjectMaterializer<ProbeReversedLabel, String>
   nested ProbeReversedLabelJsonConverter : JsonConverter<ProbeReversedLabel>, IStoredJsonConverterSource
   nested ProbeReversedLabelTypeConverter : TypeConverter
   static From(String) : ProbeReversedLabel
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeReversedLabel
   static Parse(String, IFormatProvider) : ProbeReversedLabel
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeReversedLabel) : Boolean
   static TryParse(String, IFormatProvider, out ProbeReversedLabel) : Boolean
   static op_Equality(ProbeReversedLabel, ProbeReversedLabel) : Boolean
   static op_GreaterThan(ProbeReversedLabel, ProbeReversedLabel) : Boolean
@@ -1243,13 +1261,16 @@ ProbeSecret
   implements IEquatable<ProbeSecret>
   implements IParsable<ProbeSecret>
   implements IPlainValueObject<ProbeSecret, String>
+  implements ISpanParsable<ProbeSecret>
   implements IValue<String>
   implements IValueObject<ProbeSecret, String>
   implements IValueObjectMaterializer<ProbeSecret, String>
   nested ProbeSecretJsonConverter : JsonConverter<ProbeSecret>, IStoredJsonConverterSource
   nested ProbeSecretTypeConverter : TypeConverter
   static From(String) : ProbeSecret
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeSecret
   static Parse(String, IFormatProvider) : ProbeSecret
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeSecret) : Boolean
   static TryParse(String, IFormatProvider, out ProbeSecret) : Boolean
   static op_Equality(ProbeSecret, ProbeSecret) : Boolean
   static op_GreaterThan(ProbeSecret, ProbeSecret) : Boolean

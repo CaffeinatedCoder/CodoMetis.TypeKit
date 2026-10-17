@@ -50,6 +50,9 @@ public sealed class EntryPointValidationTests
         ["FromKnownGood(String)"] = input => Catching<InvalidOperationException>(() => ProbeCode.FromKnownGood(input)),
         ["Parse(String)"]         = input => Catching<FormatException>(() => ProbeCode.Parse(input, null)),
         ["TryParse(String)"]      = input => FromResult(ProbeCode.TryParse(input, null, out var v), v),
+        // Through the interface, so that this compiles where the span parsing is missing.
+        ["Parse(ReadOnlySpan<Char>)"]    = input => Catching<FormatException>(() => SpanParsing.ParseSpan(typeof(ProbeCode), input)),
+        ["TryParse(ReadOnlySpan<Char>)"] = input => FromResult(SpanParsing.TryParseSpan(typeof(ProbeCode), input)),
         ["JSON value"]            = input => Catching<JsonException>(() => JsonSerializer.Deserialize<ProbeCode>(JsonSerializer.Serialize(input))),
         ["JSON property name"]    = input => Catching<JsonException>(() => JsonSerializer.Deserialize<Dictionary<ProbeCode, int>>($"{{{JsonSerializer.Serialize(input)}:1}}")!.Keys.Single()),
         ["TypeConverter"]         = input => Catching<FormatException>(() => TypeDescriptor.GetConverter(typeof(ProbeCode)).ConvertFromInvariantString(input)),
@@ -62,6 +65,8 @@ public sealed class EntryPointValidationTests
         ["FromKnownGood(String)"] = input => Catching<InvalidOperationException>(() => ProbeArticle.FromKnownGood(input)),
         ["Parse(String)"]         = input => Catching<FormatException>(() => ProbeArticle.Parse(input, null)),
         ["TryParse(String)"]      = input => FromResult(ProbeArticle.TryParse(input, null, out var v), v),
+        ["Parse(ReadOnlySpan<Char>)"]    = input => Catching<FormatException>(() => SpanParsing.ParseSpan(typeof(ProbeArticle), input)),
+        ["TryParse(ReadOnlySpan<Char>)"] = input => FromResult(SpanParsing.TryParseSpan(typeof(ProbeArticle), input)),
         ["JSON value"]            = input => Catching<JsonException>(() => JsonSerializer.Deserialize<ProbeArticle>(JsonSerializer.Serialize(input))),
         ["JSON property name"]    = input => Catching<JsonException>(() => JsonSerializer.Deserialize<Dictionary<ProbeArticle, int>>($"{{{JsonSerializer.Serialize(input)}:1}}")!.Keys.Single()),
         ["TypeConverter"]         = input => Catching<FormatException>(() => TypeDescriptor.GetConverter(typeof(ProbeArticle)).ConvertFromInvariantString(input)),
@@ -182,6 +187,8 @@ public sealed class EntryPointValidationTests
     }
 
     private static (Outcome, object?) FromResult(bool accepted, object? value) => accepted ? (Outcome.Accepted, value) : (Outcome.Refused, null);
+
+    private static (Outcome, object?) FromResult((bool Ok, object? Result) tried) => FromResult(tried.Ok, tried.Result);
 
     private static (Outcome, object?) Catching<TException>(Func<object?> entryPoint) where TException : Exception
     {
