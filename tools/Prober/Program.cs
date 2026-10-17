@@ -15,7 +15,8 @@ internal static class Program
           status [--json]                   coverage from current evidence, open findings, done or not; per claim
                                             its obligations and which have a seed
           gaps [--base REF]                 what the corpus leaves out, each with its reason: unassigned settings,
-                                            refused shapes and values, what claims do not promise, out of reach
+                                            refused shapes and values, what claims do not promise, out of reach, and
+                                            the wanted pairs no passing check of the last replay read both axes of
           gate [--since REF] [--json]       the release gate (needs only the tracked corpus and a replay)
           stale [--json] [--include-retired]   the probes a replay would run
           identity --probe P                what a result of P is bound to

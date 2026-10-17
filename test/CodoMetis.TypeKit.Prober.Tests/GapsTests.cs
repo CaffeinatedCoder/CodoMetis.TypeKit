@@ -72,6 +72,7 @@ public sealed class GapsTests : IDisposable
               x=1|2: C1/order "An ordering of keys is not promised." (design/adr/0001-limits.md#1-limits)
               y: C1 narrows it, "The claim." (README.md#a)
             pairs no obligation wants (declared inapplicable): none
+            pairs no passing check read both axes of (the last replay's evidence): none
             out of reach: 1
               postgresql: needs a server
 
@@ -89,7 +90,71 @@ public sealed class GapsTests : IDisposable
             values the frameworks refuse on their own: none
             not promised, by what it concerns: none
             pairs no obligation wants (declared inapplicable): none
+            pairs no passing check read both axes of (the last replay's evidence): none
             out of reach: none
 
             """.ReplaceLineEndings("\n"));
+
+    /// <summary>
+    /// C1 over x, y and z: shape wants every pair and its passing checks read x and y; parse does not apply where x=1 and
+    /// z=1 and its passing checks read x and z. x=1 z=1 is wanted by shape alone, which never read z, and no passing check
+    /// read y with z: those five pairs are listed. A check that did not pass reads nothing for the listing.
+    /// </summary>
+    [Fact]
+    public void The_pairs_no_obligation_wanting_them_read_both_axes_of_are_listed()
+    {
+        fx.Write(".claude/probe-axes.md", "```json probe-axes\n" + new JsonObject
+        {
+            ["axes"] = new JsonObject { ["x"] = new JsonArray("1", "2"), ["y"] = new JsonArray("1", "2"), ["z"] = new JsonArray("1", "2") },
+            ["surfaces"] = new JsonObject { ["s"] = new JsonObject { ["axes"] = new JsonArray("x", "y", "z"), ["watched"] = new JsonArray("src") } },
+        }.ToJsonString() + "\n```\n");
+        fx.Write("tools/probe/corpus/claims.json", new JsonArray(new JsonObject
+        {
+            ["id"] = "C1", ["source"] = "README.md#a", ["surfaces"] = new JsonArray("s"),
+            ["obligations"] = new JsonArray(
+                new JsonObject { ["id"] = "shape", ["sentence"] = "The claim." },
+                new JsonObject
+                {
+                    ["id"] = "parse", ["sentence"] = "The claim.",
+                    ["inapplicable"] = new JsonArray(new JsonObject { ["axes"] = new JsonObject { ["x"] = new JsonArray("1"), ["z"] = new JsonArray("1") }, ["cite"] = "docs:README.md#a" }),
+                }),
+        }).ToJsonString());
+        fx.Commit("three axes");
+        fx.Ledger("universe", "--base", "HEAD").Exit.ShouldBe(0);
+        Gaps("\n").ShouldContain("pairs no passing check read both axes of (the last replay's evidence): none\n", Case.Sensitive, "no evidence yet: nothing to say");
+
+        static JsonObject Check(string obligation, string category, params (string Axis, string Value)[] read) => new()
+        {
+            ["obligation"] = obligation, ["category"] = category, ["baseline"] = "twin",
+            ["applied"] = new JsonObject(read.Select(r => KeyValuePair.Create(r.Axis, (JsonNode?)r.Value))),
+        };
+        var evidence = Path.Combine(fx.Root, "evidence.json");
+        File.WriteAllText(evidence, new JsonObject
+        {
+            ["variants"] = new JsonArray(new JsonObject { ["env"] = new JsonObject(), ["expected"] = new JsonArray(0), ["executed"] = new JsonArray(0) }),
+            ["rows"] = new JsonObject
+            {
+                ["0"] = new JsonObject
+                {
+                    ["category"] = "pass", ["applied"] = new JsonObject(), ["findings"] = new JsonArray(),
+                    ["checks"] = new JsonArray(
+                        Check("shape", "pass", ("x", "1"), ("y", "1")),
+                        Check("parse", "pass", ("x", "2"), ("z", "1")),
+                        Check("parse", "inapplicable", ("y", "2"), ("z", "2"))),
+                },
+            },
+        }.ToJsonString());
+        fx.Footprint();
+        fx.Ledger("record-run", "--probe", "P", "--result", "pass", "--evidence", evidence).Exit.ShouldBe(0);
+
+        Gaps("\n").ShouldContain("""
+            pairs no passing check read both axes of (the last replay's evidence): 5
+              C1: x=1 z=1
+              C1: y=1 z=1
+              C1: y=1 z=2
+              C1: y=2 z=1
+              C1: y=2 z=2
+
+            """.ReplaceLineEndings("\n"));
+    }
 }
