@@ -445,10 +445,11 @@ public static class HttpBaseline
             if (Op(vp, method, out var vo) is { } m2) return m2;
             if (Inputs(po!) is var ip && Inputs(vo!) is var iv && ip != iv)
             {
-                // No nullable twin of the wrapped type here (the probes' context lists no Nullable of an enum or of Instant): the two
-                // sides are not alike, and no sentence cites it, so the check cannot tell.
+                // No twin of the wrapped type at the value object's nullability here (a struct value object over a class, or under a
+                // source-generated context an enum or Instant, whose Nullable the probes' context does not list): the two sides are not
+                // alike, and no sentence cites it, so the check cannot tell.
                 if (e.Vo.IsValueType != e.Plain.IsValueType && Hx.PlainNull(r, e) is null)
-                    c.Inconclusive($"no nullable twin of {e.Plain.Name} under a source-generated context for {pp} vs {vp}");
+                    c.Inconclusive($"{pp} vs {vp}: no twin of {e.Plain.Name} at the value object's nullability, the inputs differ: wrapped [{ip}] vs value object [{iv}]");
                 else r.Outcome("harness-error", $"inputs not equivalent for {pp} vs {vp}: wrapped [{ip}] vs value object [{iv}]");
                 continue;
             }
