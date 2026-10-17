@@ -257,51 +257,51 @@ public static class TextClaims
     /// L04's JSON half, json-refusal-is-a-json-exception: the value object's own document reads back as written (the round trip the
     /// refusal is measured from), and the row's changed input is read or refused with a JsonException, at the root naming the value object
     /// and carrying no inner exception ("Input it can't read throws a JsonException naming the value object and the underlying type").
+    /// Three-sided (Sides): where the value object (3) refuses, the twin without TypeKit's converters (1) refusing alike is the framework's
+    /// refusal, and so is a converter's value refused under the row's depth limit (KB-040).
     /// </summary>
     static List<string?> JsonRoundTrip(Row r, Entry e)
     {
         const string Obligation = "json-refusal-is-a-json-exception";
         var o = JsonRow.Apply(r, e).Options!;
+        var one = Sides.WithoutTypeKit(o);
         var pos = r["shape.position"]; var con = r.Get("shape.containing") ?? "class";
         var plain = e.Valid(); var vo = Make.Vo(e, plain);
         var hv = Pos.Build(pos, con, e, true, vo); var hp = Pos.Build(pos, con, e, false, plain);
-        string? jv = null; Exception? wx = null;
-        try { jv = JsonSerializer.Serialize(hv.Value, hv.Declared, o); } catch (Exception ex) { wx = ex; }
-        string? Back(Held h, string text, out Exception? ex)
-        {
-            ex = null;
-            try { var v = JsonSerializer.Deserialize(text, h.Declared, o); return v is null ? "null" : JsonSerializer.Serialize(v, h.Declared, o); } catch (Exception x) { ex = x; return null; }
-        }
-        bool Guarded(Exception x, Check c) => c.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class" && x is NotSupportedException;
+        var w3 = Sides.Write(hv, o); var jv = w3.Value;
+        bool Guarded(Exception? x, Check c) => c.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class" && x is NotSupportedException;
         var fails = new List<string?>();
-        fails.Add(r.Check(Obligation, Baseline.RoundTrip, c =>
+        // the round trip: the value object's write, then its own document read back and written again; side (1) where it refuses
+        Sides.Answer w2 = Sides.Write(hp, o), three, two, first;
+        if (w3.Refused) { three = w3; two = w2; first = Sides.Write(hp, one); }
+        else
         {
-            if (wx is not null)
+            three = Sides.Read(jv!, hv, o);
+            two = w2.Value is { } jp ? Sides.Read(jp, hp, o) : w2;
+            first = Sides.Write(hp, one) is { Value: { } j1 } ? Sides.Read(j1, hp, one) : Sides.Write(hp, one);
+        }
+        var lazy = three.Refused || two.Refused;
+        fails.Add(Sides.Check(r, Obligation, Baseline.RoundTrip, lazy ? Sides.Framework(r, e, hp, one, first, three) : null, three, lazy ? first : null, lazy ? two : null, c =>
+        {
+            if (w3.Refused)
             {
-                try { JsonSerializer.Serialize(hp.Value, hp.Declared, o); }
-                catch (Exception px) { return c.Inconclusive("write: the options refuse the shape for the wrapped type too: " + px.GetType().Name); }
-                // Text-matching site, kept in this step (WS2 step 4): the depth refusal is told by the message's words. Baseline gap: no twin in
-                // the row shows System.Text.Json charging a converter a level, and no record or fact cites it (the three-sided differential).
-                if (c.Is("json.MaxDepth", "3") && wx.Message.Contains("maximum allowed depth")) { c.Note(NoteKeys.StjMaxdepth, "write"); return null; }
-                if (Guarded(wx, c)) return c.Refused(Cite.Docs("src/CodoMetis.TypeKit.Generators/README.md#json"), "write");
-                return $"serializing threw {wx.GetType().Name} where the wrapped type did not: {wx.Message}";
+                if (w2.Refused) return c.Inconclusive($"write: both refuse, not alike: the wrapped type {w2}, the value object {w3}");
+                if (Guarded(w3.Thrown, c)) return c.Refused(Cite.Docs("src/CodoMetis.TypeKit.Generators/README.md#json"), "write");
+                return $"serializing threw {w3.Thrown!.GetType().Name} where the wrapped type did not: {w3.Thrown.Message}";
             }
-            var b = Back(hv, jv!, out var ex1);
-            if (ex1 is not null)
+            if (three.Refused)
             {
-                if (Guarded(ex1, c)) return c.Refused(Cite.Docs("src/CodoMetis.TypeKit.Generators/README.md#json"), "read back");
-                // Text-matching site, kept in this step (WS2 step 4), as above: the depth refusal told by its words, no twin showing it.
-                if (c.Is("json.MaxDepth", "3") && ex1.Message.Contains("maximum allowed depth")) { c.Note(NoteKeys.StjMaxdepth, "read back"); return null; }
-                // the wrapped twin does not read its own document back under these options either: nothing to compare
-                if (PlainFails(hp, o) is { } px) { return c.Inconclusive($"read back: the wrapped type does not read its own document back under these options either: {px.GetType().Name}: {Cut(px.Message)}"); }
-                return $"own JSON {Cut(jv)} did not read back: {ex1.GetType().Name}: {Cut(ex1.Message)}";
+                if (Guarded(three.Thrown, c)) return c.Refused(Cite.Docs("src/CodoMetis.TypeKit.Generators/README.md#json"), "read back");
+                // the wrapped twin does not read its own document back under these options either, not alike: nothing to compare
+                if (two.Refused) return c.Inconclusive($"read back: the wrapped type does not read its own document back under these options either, not alike: {two}, the value object {three}");
+                return $"own JSON {Cut(jv)} did not read back: {three.Thrown!.GetType().Name}: {Cut(three.Thrown.Message)}";
             }
-            if (b != jv)
+            if (three.Value != jv)
             {
                 // under Preserve the serializer numbers references per call: the twin's document read back and written again, alike
-                if (c.Is("json.ReferenceHandler", "Preserve") && TwinRoundTrip(hp, o) is { } tw && tw.Back != tw.Json)
-                    return c.Inconclusive($"JSON round trip: written again it differs, for the wrapped type alike ({Cut(tw.Json)} / {Cut(tw.Back)})");
-                return $"JSON round trip differs: wrote {Cut(jv)}, read and wrote {Cut(b)}";
+                if (c.Is("json.ReferenceHandler", "Preserve") && w2.Value is { } tj && two.Value != tj)
+                    return c.Inconclusive($"JSON round trip: written again it differs, for the wrapped type alike ({Cut(tj)} / {Cut(two.Value)})");
+                return $"JSON round trip differs: wrote {Cut(jv)}, read and wrote {Cut(three.Value)}";
             }
             c.Note(NoteKeys.Compared, "JSON round trip");
             return null;
@@ -309,29 +309,34 @@ public static class TextClaims
         // a changed input must be read or refused with a JsonException (never another type)
         var input = r["input.json"];
         if (input != "valid" && jv is not null)
-            fails.Add(r.Check(Obligation, Baseline.Refusal, c =>
+        {
+            var text = JsonParity.InputFor(input, e, o, jv, pos);
+            var i3 = new Sides.Answer("read", null, Thrown(() => JsonSerializer.Deserialize(text, hv.Declared, o)));
+            // side (1) where the value object refuses with another exception than a JsonException: the twin without TypeKit, reading the same text
+            Sides.Answer? i1 = i3.Thrown is not null and not JsonException ? new("read", null, Thrown(() => JsonSerializer.Deserialize(text, hp.Declared, one))) : null;
+            var framework = i1 is not null && Sides.Alike(i1, i3) && !r.Is("json.Converters", "own-for-value-object") ? Sides.Measured(i1, "the twin reading the same text, less TypeKit's converters") : null;
+            fails.Add(Sides.Check(r, Obligation, Baseline.Refusal, framework, i3, null, null, c =>
             {
                 // "Your own converter wins": the application's converter reads the value object, so what it throws is its own. It shares the
                 // obligation with the round trip above, which runs under it, so it is decided here, not declared in claims.json.
                 if (c.Is("json.Converters", "own-for-value-object")) return c.Inapplicable(Cite.Docs("src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says"), "input " + input);
-                var text = JsonParity.InputFor(input, e, o, jv, pos);
                 if (text == jv) return c.Inconclusive($"input {input}: no place for it in {Cut(jv)}");
-                Back(hv, text, out var ex2);
-                if (ex2 is not null and not JsonException)
+                if (i3.Thrown is { } ex2 and not JsonException)
                 {
                     if (Guarded(ex2, c)) return c.Refused(Cite.Docs("src/CodoMetis.TypeKit.Generators/README.md#json"), "input " + input);
-                    // the serializer's own refusal of the document, for the wrapped twin alike
-                    Back(hp, text, out var px);
-                    if (px is not null && px.GetType() == ex2.GetType()) return c.Inconclusive($"input {input}: {ex2.GetType().Name} for the wrapped type alike: {Cut(px.Message)}");
+                    if (i1 is { Refused: true }) return c.Inconclusive($"input {input}: both refuse, not alike: the wrapped type {i1}, the value object {i3}");
                     return $"input {input}: {ex2.GetType().Name} instead of JsonException: {Cut(ex2.Message)}"
                         + (ex2.InnerException is { } inner ? $" / inner {inner.GetType().FullName}: {Cut(inner.Message)} @ {Cut(inner.StackTrace?.Split('\n').FirstOrDefault()?.Trim() ?? "")}" : "");
                 }
                 if (RootRefusal(e, o, input) is { } refusal) return refusal;
-                c.Note(NoteKeys.Compared, $"input {input}: {(ex2 is null ? "read" : "a JsonException")}");
+                c.Note(NoteKeys.Compared, $"input {input}: {(i3.Thrown is null ? "read" : "a JsonException")}");
                 return null;
             }));
+        }
         return fails;
     }
+
+    static Exception? Thrown(Action a) { try { a(); return null; } catch (Exception x) { return x; } }
 
     /// <summary>
     /// The changed input read at the root, where no container stands between the serializer and the generated converter: a
@@ -348,30 +353,22 @@ public static class TextClaims
         try { JsonSerializer.Deserialize(text, vt, o); return null; }
         catch (JsonException x)
         {
-            if (x.InnerException is null && x.Message.Contains(vt.Name, StringComparison.Ordinal)) return null;
-            return $"input {input} at the root: the JsonException {(x.InnerException is { } i ? "carries an inner " + i.GetType().Name : "does not name " + vt.Name)}: {Cut(x.Message)}\n  text={Cut(text)}";
+            if (x.InnerException is { } i) return $"input {input} at the root: the JsonException carries an inner {i.GetType().Name}: {Cut(x.Message)}\n  text={Cut(text)}";
+            if (!x.Message.Contains(vt.Name, StringComparison.Ordinal)) return $"input {input} at the root: the JsonException does not name {vt.Name}: {Cut(x.Message)}\n  text={Cut(text)}";
+            return null;
         }
         catch (Exception) { return null; }   // another exception type is judged above, at the row's position
     }
-    /// <summary>The wrapped twin's refusal to read back its own document under the options, or null where it reads it back.</summary>
-    static Exception? PlainFails(Held hp, JsonSerializerOptions o)
-    {
-        try { var jp = JsonSerializer.Serialize(hp.Value, hp.Declared, o); JsonSerializer.Deserialize(jp, hp.Declared, o); return null; } catch (Exception x) { return x; }
-    }
-    /// <summary>The wrapped twin's document and that document read back and written again, or null where either throws.</summary>
-    static (string Json, string Back)? TwinRoundTrip(Held hp, JsonSerializerOptions o)
-    {
-        try { var jp = JsonSerializer.Serialize(hp.Value, hp.Declared, o); var v = JsonSerializer.Deserialize(jp, hp.Declared, o); return (jp, v is null ? "null" : JsonSerializer.Serialize(v, hp.Declared, o)); }
-        catch { return null; }
-    }
-    static bool PlainHasInner(string text, Held hp, JsonSerializerOptions o)
-    { try { JsonSerializer.Deserialize(text, hp.Declared, o); return false; } catch (Exception x) { return x.InnerException is not null; } } // STJ's own inner (the container, a dictionary value) is not the value object's
     internal static string Cut(string? s) => s is null ? "(null)" : s.Length > 160 ? s[..160] + "..." : s;
 
     // ---- L02: a rejection never repeats the input
-    // Text-matching site, kept in this step (WS2 step 4): System.Text.Json's Path, which holds a rejected dictionary key (not-promised
-    // a-rejected-dictionary-key-in-the-path), is cut off by its words. Baseline gap: no twin in the row shows the wrapped type's key in the Path too.
-    static string StripPath(Exception x) => x.Message.IndexOf(" Path:", StringComparison.Ordinal) is var i and >= 0 ? x.Message[..i] : x.Message;
+    /// <summary>How often a text holds the input: L02's claim is about the text of a refusal, so this is the check, never an excuse.</summary>
+    static int Occurrences(string text, string needle)
+    {
+        var n = 0;
+        for (var i = text.IndexOf(needle, StringComparison.Ordinal); i >= 0; i = text.IndexOf(needle, i + needle.Length, StringComparison.Ordinal)) n++;
+        return n;
+    }
 
     /// <summary>
     /// L02's checks: a parsing entry's refusal of a secret, or of the text Create refuses, neither quotes it (parsing-never-repeats, a
@@ -425,6 +422,7 @@ public static class TextClaims
         }
         // JSON half
         var opts = JsonRow.Apply(r, e).Options!;
+        var one = Sides.WithoutTypeKit(opts);
         var pos = r["shape.position"]; var con = r.Get("shape.containing") ?? "class";
         var hp = Pos.Build(pos, con, e, false, plain); var hv = Pos.Build(pos, con, e, true, Make.Vo(e, plain));
         var input = r["input.json"];
@@ -455,22 +453,26 @@ public static class TextClaims
                 if (x > 0 && text != doc) { var lit = text.Substring(at, x).Trim('"'); if (lit.Length >= 6 && lit.Length < 60 && lit.All(ch => !char.IsPunctuation(ch) || ch is '-' or ':' or '.')) variants.Add((text, lit)); }
             }
             if (variants.Count == 0) return c.Inconclusive($"the wrapped value has no place in {Cut(doc)}: the options leave it out");
-            var rejected = 0;
+            var rejected = 0; var inPaths = new List<string>();
             foreach (var (text, needle) in variants)
             {
                 try { JsonSerializer.Deserialize(text, hv.Declared, opts); }
                 catch (Exception ex)
                 {
                     rejected++;
-                    // the Path is System.Text.Json's (not-promised a-rejected-dictionary-key-in-the-path): a JsonException's message is read without it
-                    var msg = ex is JsonException ? StripPath(ex) : ex.Message;
-                    if (msg.Contains(needle)) return $"JSON read: {ex.GetType().Name} quotes the input: {Cut(ex.Message)}" + (pos == "dictionary-key" ? " [dictionary-key]" : "");
+                    // System.Text.Json puts a rejected dictionary key in the JsonException's Path (not-promised a-rejected-dictionary-key-in-the-path):
+                    // the Path is read as the exception's property, and the message must hold the input no more often than its Path does
+                    var inPath = ex is JsonException { Path: { } path } ? Occurrences(path, needle) : 0;
+                    if (Occurrences(ex.Message, needle) > inPath) return $"JSON read: {ex.GetType().Name} quotes the input: {Cut(ex.Message)}" + (pos == "dictionary-key" ? " [dictionary-key]" : "");
                     if (ex.InnerException is { } inner && inner.Message.Contains(needle)) return $"JSON read: inner {inner.GetType().Name} quotes the input";
-                    if (ex.InnerException is not null && ex is JsonException && !(ex.InnerException is JsonException) && !PlainHasInner(text, hp, opts)) return $"JSON read: refusal carries inner {ex.InnerException.GetType().Name}: {Cut(ex.InnerException.Message)}";
+                    // side (1): the twin without TypeKit's converters, reading the same text, shows the serializer's own inner and Path
+                    var twin = Thrown(() => JsonSerializer.Deserialize(text, hp.Declared, one));
+                    if (ex.InnerException is not null && ex is JsonException && !(ex.InnerException is JsonException) && twin?.InnerException is null) return $"JSON read: refusal carries inner {ex.InnerException.GetType().Name}: {Cut(ex.InnerException.Message)}";
+                    if (inPath > 0) inPaths.Add(twin is JsonException { Path: { } tp } && Occurrences(tp, needle) > 0 ? "the key in the Path, the wrapped type's alike" : "the key in the Path, as not-promised a-rejected-dictionary-key-in-the-path says");
                 }
             }
             if (rejected == 0) return c.Inconclusive("every JSON input read, none refused: nothing to quote");
-            c.Note(NoteKeys.Compared, $"JSON read: {rejected} refused without the input");
+            c.Note(NoteKeys.Compared, $"JSON read: {rejected} refused without the input" + (inPaths.Count > 0 ? ", " + string.Join(", ", inPaths.Distinct()) : ""));
             return null;
         }));
         return fails.FirstOrDefault(f => f is not null);
@@ -559,56 +561,47 @@ public static class TextClaims
     /// validated one refuses the value Create refuses, where the wrapped type reads it, with a JsonException naming the fault. The two
     /// named paths are checked as what they are: an application's own converter for the value object takes precedence (it reads its
     /// own spelling back), and StoredJsonConverterFactory reads the refused value without validation (README, "Only two paths skip
-    /// validation"). A depth limit is the framework's only where a converter the application registers for the wrapped type, at the
-    /// same position, is refused alike (design note D1: System.Text.Json counts a custom converter's value one level deeper).
+    /// validation"). Three-sided (Sides): where the value object (3) refuses, the twin without TypeKit's converters (1) refusing alike is
+    /// the framework's refusal, the check an expected refusal against it, and so is a converter's value under a depth limit (KB-040).
     /// </summary>
     static List<string?> JsonOneRule(Row r, Entry e, bool validated)
     {
         const string Obligation = "json-runs-create";
         var o = JsonRow.Apply(r, e).Options!;
+        var one = Sides.WithoutTypeKit(o);
         var pos = r["shape.position"]; var con = r.Get("shape.containing") ?? "class"; var plain = e.Valid();
         var hp = Pos.Build(pos, con, e, false, plain); var hv = Pos.Build(pos, con, e, true, Make.Vo(e, plain));
-        static (string? Json, Exception? Ex) Write(Held h, JsonSerializerOptions x) { try { return (JsonSerializer.Serialize(h.Value, h.Declared, x), null); } catch (Exception ex) { return (null, ex); } }
-        static (object? Value, Exception? Ex) Read(string text, Held h, JsonSerializerOptions x) { try { return (JsonSerializer.Deserialize(text, h.Declared, x), null); } catch (Exception ex) { return (null, ex); } }
-        bool OwnConverterRefusedToo(Exception voEx)
-        {
-            var own = new JsonSerializerOptions(o);
-            own.Converters.Insert(0, (System.Text.Json.Serialization.JsonConverter)Activator.CreateInstance(typeof(OwnWrappedConverter<>).MakeGenericType(Make.Held(e.Plain)), JsonRow.Inner(e))!);
-            var (text, wex) = Write(hp, own);
-            var ex = wex ?? Read(text!, hp, own).Ex;
-            return ex is not null && ex.GetType() == voEx.GetType();
-        }
-        // Where the wrapped type alone refuses under the row's options, checked in the same row with the value object refusing alike,
-        // the JSON half has nothing to compare and the row is judged by its text entries (as decision 99 judges a document ASP.NET alone refuses).
-        // A pass, as decision 99's document refused by ASP.NET alone is: the refusal is the framework's, shown by the twin in the same row.
-        string? Alone(Check c, string what) { c.Note(NoteKeys.JsonHalfWrappedAloneRefuses, what); return null; }
         bool Guarded(Exception x) => r.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class" && x is NotSupportedException;
-        var (jp, xp) = Write(hp, o); var (jv, xv) = Write(hv, o);
+        var w2 = Sides.Write(hp, o); var w3 = Sides.Write(hv, o);
+        var (jp, xp) = (w2.Value, w2.Thrown); var (jv, xv) = (w3.Value, w3.Thrown);
         var fails = new List<string?>();
+        // 1. the valid value reads back as written: the write, then the value object's own document read back; side (1) where (3) refuses
+        Sides.Answer three = w3, two = w2, first = Sides.Write(hp, one);
+        if (!w3.Refused)
+        {
+            three = Sides.Read(jv!, hv, o);
+            two = jp is null ? w2 : Sides.Read(jp, hp, o);
+            first = first.Value is { } j1 ? Sides.Read(j1, hp, one) : first;
+        }
+        var framework = three.Refused ? Sides.Framework(r, e, hp, one, first, three) : null;
         // Why the value object's own document has nothing to compare under the row's options, or null where it reads back: the refused
         // value is then not told apart from a document the options do not let it read, and step 2 has nothing to check either.
-        string? nothing = null;
-        // 1. the valid value reads back as written
-        fails.Add(r.Check(Obligation, Baseline.RoundTrip, c =>
+        string? nothing = framework is not null && Sides.Alike(framework.Answer, three) ? "the framework refuses it: " + three : null;
+        fails.Add(Sides.Check(r, Obligation, Baseline.RoundTrip, framework, three, three.Refused || two.Refused ? first : null, three.Refused || two.Refused ? two : null, c =>
         {
-            string? None(string why) { nothing = why; return Alone(c, why); }
-            if (xp is not null && xv is not null) return None("write");
+            if (xp is not null && xv is not null) { nothing = "write"; return c.Inconclusive($"JSON write: both refuse, not alike: the wrapped type {w2}, the value object {w3}"); }
             if (xp is not null) { nothing = "the wrapped type is not written"; return c.Inconclusive("JSON write: the wrapped type is not written under these options, the value object is: JSON parity (L01) judges it"); }
             if (xv is not null)
             {
                 if (Guarded(xv)) { nothing = "the Preserve guard refuses the value object"; return c.Refused(Cite.Docs("src/CodoMetis.TypeKit.Generators/README.md#json"), "write"); }
-                if (OwnConverterRefusedToo(xv)) return None("write, with a converter of the application's for the wrapped type");
                 return $"JSON: the value object is not written where the wrapped type is ({xv.GetType().Name}: {Cut(xv.Message)})";
             }
-            var (back, xb) = Read(jv!, hv, o);
-            if (xb is not null)
+            if (three.Refused)
             {
-                if (OwnConverterRefusedToo(xb)) return None("read back, with a converter of the application's for the wrapped type");
-                if (Read(jp!, hp, o).Ex is not null) return None("read back");
-                return $"JSON: the value object does not read back what it writes ({xb.GetType().Name}: {Cut(xb.Message)}): {Cut(jv)}";
+                if (two.Refused) { nothing = "read back"; return c.Inconclusive($"JSON read back: both refuse, not alike: the wrapped type {two}, the value object {three}"); }
+                return $"JSON: the value object does not read back what it writes ({three.Thrown!.GetType().Name}: {Cut(three.Thrown.Message)}): {Cut(jv)}";
             }
-            var again = Write(new Held(hv.Declared, back!), o).Json;
-            if (again != jv) return $"JSON: read back as {Cut(again)}, written as {Cut(jv)}";
+            if (three.Value != jv) return $"JSON: read back as {Cut(three.Value)}, written as {Cut(jv)}";
             if (c.Is("json.Converters", "own-for-value-object")) c.Note(NoteKeys.OwnVo, "the application's converter takes precedence and reads its own spelling");
             else c.Note(NoteKeys.Compared, "JSON read back");
             return null;
@@ -616,21 +609,26 @@ public static class TextClaims
         if (!validated || jp is null) return fails;
         // 2. the value Create refuses, placed where the wrapped value stands in the wrapped type's document
         var text = JsonParity.InputFor("refused-by-create", e, o, jp, pos);
-        var (accepted, xr) = Read(text, hv, o);
-        var twinReads = Read(text, hp, o).Ex is null;   // the wrapped type reads the refused value's document: only then is a refusal Create's
+        var xr = Thrown(() => JsonSerializer.Deserialize(text, hv.Declared, o));
+        var r1 = new Sides.Answer("read", null, Thrown(() => JsonSerializer.Deserialize(text, hp.Declared, one)));
+        var twinReads = Thrown(() => JsonSerializer.Deserialize(text, hp.Declared, o)) is null;   // the wrapped type reads the refused value's document: only then is a refusal Create's
+        var r3 = new Sides.Answer("read", null, xr);
         var stored = r.Is("json.Converters", "StoredJsonConverterFactory");
-        fails.Add(r.Check(Obligation, stored ? Baseline.Docs("README.md#what-typekit-guarantees") : Baseline.Refusal, c =>
+        var ownVo = r.Is("json.Converters", "own-for-value-object");
+        // the twin without TypeKit refuses the refused value's document alike: the serializer's refusal, before Create
+        var refusedAlike = !twinReads && !ownVo && Sides.Alike(r1, r3) ? Sides.Measured(r1, "the twin reading the same text, less TypeKit's converters") : null;
+        fails.Add(Sides.Check(r, Obligation, stored ? Baseline.Docs("README.md#what-typekit-guarantees") : Baseline.Refusal, refusedAlike, r3, null, null, c =>
         {
             // "Your own converter wins": the generated converter does not run, so no Create; the round trip above runs under it, which
             // shares the obligation, so it is decided here, not declared in claims.json
-            if (c.Is("json.Converters", "own-for-value-object")) return c.Inapplicable(Cite.Docs("src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says"), "the refused value");
+            if (ownVo) return c.Inapplicable(Cite.Docs("src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says"), "the refused value");
             if (xr is not null && Guarded(xr)) return c.Refused(Cite.Docs("src/CodoMetis.TypeKit.Generators/README.md#json"), "the refused value");
             if (nothing is not null) return c.Inconclusive($"the refused value: the value object's own document has nothing to compare under these options ({nothing})");
             if (text == jp) return c.Inconclusive($"the refused value has no place in {Cut(jp)} at {pos}");
             if (!twinReads)
             {
                 if (xr is null) return $"JSON read accepted text the wrapped type refuses: {Cut(text)}";
-                return Alone(c, "the refused value's JSON");
+                return c.Inconclusive($"the refused value's JSON: both refuse, not alike: the wrapped type {r1}, the value object {r3}");
             }
             if (stored)
             {
@@ -647,12 +645,12 @@ public static class TextClaims
             c.Note(NoteKeys.Compared, "the refused value refused");
             return null;
         }));
-        if (xr is JsonException && twinReads && !stored && nothing is null && !r.Is("json.Converters", "own-for-value-object") && text != jp)
+        if (xr is JsonException && twinReads && !stored && nothing is null && !ownVo && text != jp)
             fails.Add(r.Check("refusals-name-the-fault", Baseline.Refusal, c =>
             {
-                if (xr.Message.Contains("Refused")) { c.Note(NoteKeys.Compared, "the JsonException names the fault"); return null; }
-                if (OwnConverterRefusedToo(xr)) return Alone(c, "refused read, with a converter of the application's for the wrapped type");
-                return $"JsonException does not name the fault: {Cut(xr.Message)}\n  text={Cut(text)} (the wrapped type reads it; its own document {Cut(jp)})";
+                if (!xr.Message.Contains("Refused")) return $"JsonException does not name the fault: {Cut(xr.Message)}\n  text={Cut(text)} (the wrapped type reads it; its own document {Cut(jp)})";
+                c.Note(NoteKeys.Compared, "the JsonException names the fault");
+                return null;
             }));
         return fails;
     }

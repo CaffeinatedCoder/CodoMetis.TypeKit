@@ -668,16 +668,15 @@ namespace Probes.Schema
             {
                 if (Down is not null) return Down;
                 if (Failed is null) return $"{(Patch ? "a type held only inside a patch, " : "")}{Type.Name}: the host has controllers, its minimal-API options alone describe it ({Want!.ToJsonString()}), and the document was built";
-                var named = Failed is InvalidOperationException && Failed.Message.Contains($"'{Type}'", StringComparison.Ordinal);
-                if (named && (!names || Failed.Message.Contains(Said, StringComparison.Ordinal)))
-                {
-                    c.Note(NoteKeys.Compared, names ? "refused naming the type and the minimal-API options' description" : "refused naming the type");
-                    return null;
-                }
                 // not the refusal the claim names: judged against ASP.NET alone
-                return await Hx.DocRefusedByAspNetAlone(r, en, Cfg, Failed) is null ? null
-                    : named ? $"{(Patch ? "patch-held " : "")}{Type.Name}: the refusal names the type but not what the options say ({Said}): {Cut(Failed.Message)}"
-                    : $"{(Patch ? "patch-held " : "")}{Type.Name}: the document was refused otherwise than naming the type and what the options say: {Failed.GetType().Name}: {Cut(Failed.Message)}";
+                if (Failed is not InvalidOperationException || !Failed.Message.Contains($"'{Type}'", StringComparison.Ordinal))
+                    return await Hx.DocRefusedByAspNetAlone(r, en, Cfg, Failed) is null ? null
+                        : $"{(Patch ? "patch-held " : "")}{Type.Name}: the document was refused otherwise than naming the type and what the options say: {Failed.GetType().Name}: {Cut(Failed.Message)}";
+                if (names && !Failed.Message.Contains(Said, StringComparison.Ordinal))
+                    return await Hx.DocRefusedByAspNetAlone(r, en, Cfg, Failed) is null ? null
+                        : $"{(Patch ? "patch-held " : "")}{Type.Name}: the refusal names the type but not what the options say ({Said}): {Cut(Failed.Message)}";
+                c.Note(NoteKeys.Compared, names ? "refused naming the type and the minimal-API options' description" : "refused naming the type");
+                return null;
             }
 
             /// <summary>The document built, describing the type as the converter on both option sets, or the minimal-API options alone, says.</summary>

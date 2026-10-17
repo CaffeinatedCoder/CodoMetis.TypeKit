@@ -82,7 +82,16 @@ public static class DecimalSpelling
         var (jp, xp) = Jx.Ser(hp, o); var (jv, xv) = Jx.Ser(hv, o); var (jb, xb) = Jx.Ser(hp, ob);
         if (xb is not null && xp is not null && (xv is not null || ownVo) && xp.GetType() == xb.GetType())
         {
-            // the options refuse the shape for the serializer's own decimal too: nothing is written or read to compare
+            // the options refuse the shape for the serializer's own decimal too: nothing is written or read to compare. Where the value
+            // object is refused alike, at the same stage with the same exception type, the decimal without TypeKit's converter is side (1)
+            // of the three-sided differential (Sides), and each check is the framework's refusal; otherwise none can tell.
+            var one = new Sides.Answer("write", null, xb); var three = new Sides.Answer("write", null, xv);
+            if (Sides.Alike(one, three))
+            {
+                var framework = Sides.Measured(one, "the serializer's own decimal, without TypeKit's converter");
+                foreach (var o2 in new[] { Smallest, kindOf, Covers, Reads, Keeps }) r.Check(o2, framework.Baseline, c => Sides.Refuses(c, framework, three));
+                return null;
+            }
             var why = "the options refuse the shape for the serializer's own decimal too: " + Jx.Ex(xb);
             string? None(Check c) => c.Inconclusive(why);
             foreach (var ob2 in new[] { Smallest, kindOf }) r.Check(ob2, docs, None);

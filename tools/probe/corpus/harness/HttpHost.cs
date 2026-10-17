@@ -128,9 +128,14 @@ public sealed class HostCfg
     public Type[]? Controllers;          // null: the fault controllers of the host
     public bool FaultControllers = true;
     public bool Payload = true;          // payload echo / in / binding / schema endpoints
-    public string PayloadOnly = "both";  // "both", "vo" or "plain" (to isolate a document refusal)
+    public string PayloadOnly = "both";  // "both", "vo" or "plain": the endpoints of one side only, minimal and MVC (side (1)'s twin alone, a document refusal isolated)
     public bool MapBlanketMapping = true;
     public bool TypeKitOpenApi = true;   // false: the document as ASP.NET alone writes it, the baseline of a refused one
+    /// <summary>
+    /// The three-sided differential's side (1) (Sides): no AddTypeKit(), none of TypeKit's JSON converters on either set of options, and no
+    /// fault responses; the wrapped twin's endpoints answer as ASP.NET and System.Text.Json have them without TypeKit.
+    /// </summary>
+    public bool WithoutTypeKit;
     public HostCfg Copy() => (HostCfg)MemberwiseClone();
 }
 
@@ -197,11 +202,11 @@ public static class Hx
             Pos.Build(r["shape.position"], (r.Get("shape.containing") ?? "class"), e, true, vo),
             Pos.Build(r["shape.position"], (r.Get("shape.containing") ?? "class"), e, false, plain));
         builder.Services.AddSingleton(payload);
-        builder.Services.ConfigureHttpJsonOptions(o => JsonRow.Apply(r, e, o.SerializerOptions));
-        builder.Services.AddOpenApi(x => { ApplyOpenApi(x, r); if (c.TypeKitOpenApi) x.AddTypeKit(); });
-        builder.Services.Configure<FaultResponseOptions>(x => x.QualifiedFaultNames = c.Qualified);
+        builder.Services.ConfigureHttpJsonOptions(o => { JsonRow.Apply(r, e, o.SerializerOptions); if (c.WithoutTypeKit) Sides.DropTypeKit(o.SerializerOptions); });
+        builder.Services.AddOpenApi(x => { ApplyOpenApi(x, r); if (c.TypeKitOpenApi && !c.WithoutTypeKit) x.AddTypeKit(); });
+        if (!c.WithoutTypeKit) builder.Services.Configure<FaultResponseOptions>(x => x.QualifiedFaultNames = c.Qualified);
         c.Services?.Invoke(builder.Services);
-        if (c.MapBlanketMapping)
+        if (c.MapBlanketMapping && !c.WithoutTypeKit)
         {
             builder.Services.AddFaultResponses<SFault>(f => f switch { SFault.First => 409, SFault.Second => 410, _ => throw new ArgumentOutOfRangeException(nameof(f)) });
             if (c.Mapping == "by-kind") builder.Services.AddFaultResponses();
@@ -216,9 +221,9 @@ public static class Hx
             if (c.Payload)
             {
                 controllers.Add(typeof(MvcPayloadController));
-                controllers.Add(typeof(MvcBind<>).MakeGenericType(e.Vo));
-                controllers.Add(typeof(MvcBind<>).MakeGenericType(e.Plain));
-                if (Hx.PlainNull(r, e) is { } pn) controllers.Add(typeof(MvcBind<>).MakeGenericType(pn));
+                if (c.PayloadOnly != "plain") controllers.Add(typeof(MvcBind<>).MakeGenericType(e.Vo));
+                if (c.PayloadOnly != "vo") controllers.Add(typeof(MvcBind<>).MakeGenericType(e.Plain));
+                if (c.PayloadOnly != "vo" && Hx.PlainNull(r, e) is { } pn) controllers.Add(typeof(MvcBind<>).MakeGenericType(pn));
             }
             var pfx = "";
             builder.Services.AddControllers(o =>
@@ -227,7 +232,7 @@ public static class Hx
                 if (r["http.host"] == "controller-without-ApiController-visible") o.Conventions.Add(new VisibleToApiExplorer());
                 ApplyMvc(o, r);
             })
-            .AddJsonOptions(o => JsonRow.Apply(r, e, o.JsonSerializerOptions))
+            .AddJsonOptions(o => { JsonRow.Apply(r, e, o.JsonSerializerOptions); if (c.WithoutTypeKit) Sides.DropTypeKit(o.JsonSerializerOptions); })
             .ConfigureApplicationPartManager(p => { p.ApplicationParts.Clear(); p.FeatureProviders.Add(new OnlyControllers([.. controllers])); });
         }
         var app = builder.Build();
@@ -303,7 +308,12 @@ public static class Hx
         b.MapPost($"/schema/{which}", ([FromBody] T body) => Results.Ok(body));
 
     // ---- client side
-    public sealed record Wire(HttpStatusCode Status, string Body, string? Thrown = null);
+    /// <summary>An answer on the wire: its status and body, or the exception the server threw (<see cref="Ex"/>, a 500), named in <see cref="Thrown"/>.</summary>
+    public sealed record Wire(HttpStatusCode Status, string Body, string? Thrown = null, Exception? Ex = null)
+    {
+        /// <summary>The answer as the three-sided differential compares it (Sides): the status, the body, and the exception's type and stage.</summary>
+        public Sides.Answer Side(string operation) => new(operation, Ex is null ? Body : null, Ex, (int)Status);
+    }
     public static async Task<Wire> Send(WebApplication app, HttpMethod m, string path, string? body = null, string? contentType = null, (string, string)? header = null)
     {
         var req = new HttpRequestMessage(m, path);
@@ -315,7 +325,7 @@ public static class Hx
             var resp = await app.GetTestClient().SendAsync(req);
             return new(resp.StatusCode, await resp.Content.ReadAsStringAsync());
         }
-        catch (Exception ex) { return new(HttpStatusCode.InternalServerError, "", ex.GetType().Name + ": " + ex.Message); }
+        catch (Exception ex) { return new(HttpStatusCode.InternalServerError, "", ex.GetType().Name + ": " + ex.Message, ex); }
     }
     public static Task<Wire> Get(WebApplication app, string path) => Send(app, HttpMethod.Get, path);
     public static async Task<JsonNode?> Doc(WebApplication app) => JsonNode.Parse(await app.GetTestClient().GetStringAsync("/openapi/v1.json"));

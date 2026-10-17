@@ -11,6 +11,15 @@
           "PROBE_ONLY": "process.converter-lookup=wrapped-type-converter-looked-up-first"
         }
       ],
+      "watched": [
+        "design/knowledge/KB-037-mvc-under-max-validation-depth-1-runs-an-unbound-action.md",
+        "design/knowledge/KB-040-a-converter-is-charged-a-level-of-max-depth.md",
+        "design/knowledge/KB-041-mvc-cannot-write-its-400-under-a-context-without-validation-problem-details.md",
+        "test/CodoMetis.TypeKit.Facts/FactFixture.cs",
+        "test/CodoMetis.TypeKit.Facts/KB037.fixture.json",
+        "test/CodoMetis.TypeKit.Facts/KB040.fixture.json",
+        "test/CodoMetis.TypeKit.Facts/KB041.fixture.json"
+      ],
       "seed": {
         "patch": "seeds/C07-fault-responses-blanket.patch",
         "defect": "TryParse builds a validated value object without Create, so binding a route, query, header or form value takes a value Create refuses."
@@ -344,6 +353,11 @@
     "C10PreserveGuardProbe": {
       "claim": "C10-preserve-guard",
       "filter": "*C10PreserveGuardProbe",
+      "watched": [
+        "design/knowledge/KB-040-a-converter-is-charged-a-level-of-max-depth.md",
+        "test/CodoMetis.TypeKit.Facts/FactFixture.cs",
+        "test/CodoMetis.TypeKit.Facts/KB040.fixture.json"
+      ],
       "seeds": [
         {
           "obligation": "refused-where-references-could-be-written",
@@ -1141,6 +1155,11 @@
     "L01JsonBytesProbe": {
       "claim": "L01-json-bytes",
       "filter": "*L01JsonBytesProbe",
+      "watched": [
+        "design/knowledge/KB-040-a-converter-is-charged-a-level-of-max-depth.md",
+        "test/CodoMetis.TypeKit.Facts/FactFixture.cs",
+        "test/CodoMetis.TypeKit.Facts/KB040.fixture.json"
+      ],
       "seeds": [
         {
           "obligation": "as-a-dictionary-key-too",
@@ -1207,6 +1226,11 @@
           "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
         }
       ],
+      "watched": [
+        "design/knowledge/KB-040-a-converter-is-charged-a-level-of-max-depth.md",
+        "test/CodoMetis.TypeKit.Facts/FactFixture.cs",
+        "test/CodoMetis.TypeKit.Facts/KB040.fixture.json"
+      ],
       "seeds": [
         {
           "obligation": "parsing-runs-create",
@@ -1244,6 +1268,11 @@
           "PROBE_ONLY": "text.culture=globalization-invariant",
           "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
         }
+      ],
+      "watched": [
+        "design/knowledge/KB-040-a-converter-is-charged-a-level-of-max-depth.md",
+        "test/CodoMetis.TypeKit.Facts/FactFixture.cs",
+        "test/CodoMetis.TypeKit.Facts/KB040.fixture.json"
       ],
       "seeds": [
         {

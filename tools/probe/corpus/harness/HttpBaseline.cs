@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using CodoMetis.TypeKit.Facts;
 namespace Probes.Shapes;
 
 public static class HttpBaseline
@@ -25,26 +26,24 @@ public static class HttpBaseline
     }
 
     /// <summary>
-    /// One wire comparison with the twin, inside its check <paramref name="c"/>: the wrapped type's answer <paramref name="p"/> and the
-    /// value object's <paramref name="v"/>. A difference a document makes intended ends the check as that document's citation; BaseProbe
-    /// calibrates the host on C07's rows, whose claim promises nothing of the wire, so these cite the sentence itself, not a not-promised
-    /// entry of C07.
+    /// One wire comparison with the twin, inside its check <paramref name="c"/>: the wrapped type's answer <paramref name="p"/> (side (2)) and the
+    /// value object's <paramref name="v"/> (side (3)); side (1) refusing alike was decided before the check (<see cref="Wire"/>). A difference a
+    /// document makes intended ends the check as that document's citation; BaseProbe calibrates the host on C07's rows, whose claim promises
+    /// nothing of the wire, so these cite the sentence itself, not a not-promised entry of C07.
     /// </summary>
     static string? Same(Check c, Row r, Entry e, string what, Hx.Wire p, Hx.Wire v, string input = "valid")
     {
         r.Log.AppendLine($"{what}: plain {(int)p.Status} {Cut(p.Body)} {p.Thrown} | vo {(int)v.Status} {Cut(v.Body)} {v.Thrown}");
         bool ok(Hx.Wire w) => (int)w.Status is >= 200 and < 300;
-        if (!ok(p) && !ok(v)) { c.Note(NoteKeys.Compared, what + ": both refused"); return null; }
+        // both refused, and not as the twin without TypeKit refuses (Sides.Alike): evidence about refusing, and nothing to compare
+        if (!ok(p) && !ok(v)) return c.Inconclusive($"{what}: both refuse, not alike: wrapped {p.Side(what)}, value object {v.Side(what)}");
         // "Your own converter wins": the application's converter writes the value object instead of the generated one.
-        if (r.Is("json.Converters", "own-for-value-object") && ok(v) && ok(p)) return c.Inapplicable(Cite.Docs("src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says"), what);
+        if (r.Is("json.Converters", "own-for-value-object") && ok(v)) return c.Inapplicable(Cite.Docs("src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says"), what);
         if (ok(p) && !ok(v))
         {
             if (ReadRefusedAsDocumented(c, r, e, input, what)) return null;
             // the same: the value object's array reads a JSON array of numbers, never the base64 string the twin's byte[] wrote and reads
             if (ByteArray(r, e)) return c.Inapplicable(Cite.Docs("docs/json.md#the-wrapped-types-json"), what);
-            // Text-matching site, kept in this step: the depth refusal is told by the message's words. Baseline gap: no twin in the row
-            // shows System.Text.Json charging a converter a level (the three-sided differential, next step), and no record cites it.
-            if (r.Is("json.MaxDepth", "3") && (v.Thrown ?? v.Body).Contains("maximum allowed depth")) { r.Note(NoteKeys.StjMaxdepth, "value-object side"); return null; }
             // A closed set travels as its member's name; the wrapped type under the application's converter is no reference.
             if (e.Kind == "closed-set" && r.Is("json.Converters", "own-for-wrapped")) return c.Inapplicable(Cite.Docs("README.md#what-you-get"), what);
             // The validated shapes' Create refuses the wrapped type's limit on purpose, so the limit input is a refusal.
@@ -56,10 +55,8 @@ public static class HttpBaseline
             // docs/json.md "Null and missing": a struct value object rejects a JSON null; a sealed partial record reads it as null,
             // like any class, where the struct it wraps refuses it.
             if (input == "null" && !e.Vo.IsValueType && e.Plain.IsValueType) return c.Refused(Cite.Docs("docs/json.md#null-and-missing"), what);
-            // Text-matching site, kept in this step: as the value-object side's above. Baseline gap: the same.
-            if (r.Is("json.MaxDepth", "3") && (p.Thrown ?? p.Body).Contains("maximum allowed depth")) { r.Note(NoteKeys.StjMaxdepth, "wrapped side"); return null; }
+            return $"{what}: value object answered {(int)v.Status} {Cut(v.Body)} where wrapped answered {(int)p.Status} {Cut(p.Body)} {p.Thrown}";
         }
-        if (!ok(p) && ok(v)) return $"{what}: value object answered {(int)v.Status} {Cut(v.Body)} where wrapped answered {(int)p.Status} {Cut(p.Body)} {p.Thrown}";
         if (p.Body != v.Body)
         {
             // A closed set travels as its member's name, never as the string or number standing in for it.
@@ -72,6 +69,34 @@ public static class HttpBaseline
         c.Note(NoteKeys.Compared, what);
         return null;
     }
+
+    /// <summary>
+    /// One check of the wire, three-sided (Sides): side (2) <paramref name="p"/> and side (3) <paramref name="v"/> answered on the host with
+    /// TypeKit; side (1) is asked of the host without it (<paramref name="one"/>), lazily, only where they disagree or refuse. Where (1)
+    /// refuses alike with (3), the check is the framework's refusal against Baseline.Framework; where (1) answers and the value object's
+    /// write was refused under a depth limit, side (1) is a converter's value there (KB-040, in process); otherwise <paramref name="body"/>
+    /// compares, once (2) is held to (1).
+    /// </summary>
+    static async Task<string?> Wire(Row r, Entry e, string obligation, Baseline against, string what, Hx.Wire p, Hx.Wire v, Func<Task<Hx.Wire?>> one, Func<Check, Task<string?>> body)
+    {
+        var two = p.Side(what); var three = v.Side(what);
+        Sides.Answer? first = null; Sides.Side? framework = null;
+        if (two.Refused || three.Refused || p.Body != v.Body)
+        {
+            if (await one() is { } w) first = w.Side(what);
+            if (three.Refused && first is { Refused: true } && Sides.Alike(first, three)) framework = Sides.Measured(first, "the twin on a host without TypeKit");
+            else if (three.Refused && v.Ex is { } thrown && first is { Refused: false } && (Sides.Why = null) is null
+                     && Sides.WrittenByAConverter(r, e, Twin(r, e), Sides.WithoutTypeKit(JsonRow.Apply(r, e).Options!), new("write", null, thrown)) is { } converter
+                     && Sides.Alike(converter.Answer, new("write", null, thrown)))
+                return Sides.Check(r, obligation, against, converter, new("write", null, thrown), null, null, _ => (string?)null);
+        }
+        var failed = await Sides.Check(r, obligation, against, framework, three, first, first is null ? null : two, body);
+        // the failure names side (1), for the triage of the row
+        return failed is null || first is null ? failed : failed + $" [side (1), the twin without TypeKit: {first}{(Sides.Why is { } why ? "; " + why : "")}]";
+    }
+
+    /// <summary>The wrapped twin's payload, as the echo writes it: the row's position and containing type around the wrapped value.</summary>
+    static Held Twin(Row r, Entry e) => Pos.Build(r["shape.position"], r.Get("shape.containing") ?? "class", e, false, e.Valid());
 
     /// <summary>An array of value objects over byte, whose twin is a byte[] (KB-038).</summary>
     static bool ByteArray(Row r, Entry e) => e.Wrapped == "byte" && r["shape.position"] == "array-element";
@@ -94,11 +119,12 @@ public static class HttpBaseline
     }
 
     /// <summary>A text the wrapped type does not read, for a twin that shows what MVC does with a binding failure; none where any text binds.</summary>
-    static string? Unreadable(Entry e) => e.Wrapped is "string" or "Uri" or "own-record-class" ? null : "not-a-value";
+    static string? Unreadable(Entry e) => e.Wrapped is "string" or "Uri" or "own-record-class" ? null : "abc";
 
     /// <summary>
-    /// The value object refused a read the wrapped type answered, as a document says it does (JsonParity.ReadMayDiffer's reasons, the JSON
-    /// family's, each cited by its sentence): the check ends as that refusal and true is returned.
+    /// The value object refused a read the wrapped type answered, as a document says it does (the JSON family's documented differences, each
+    /// cited by its sentence; JsonParity.ReadMayDiffer listed them uncited): side (1) answered and (3) refused, which the citation makes
+    /// intended (Sides). The check ends as that refusal and true is returned.
     /// </summary>
     static bool ReadRefusedAsDocumented(Check c, Row r, Entry e, string input, string what)
     {
@@ -111,30 +137,66 @@ public static class HttpBaseline
 
     /// <summary>Where two schemas first differ, and what each side has there: the comparison's 220 characters rarely reach it.</summary>
     static string FirstDifference(JsonNode? p, JsonNode? v, string path) =>
-        Difference(p, v, path) is var (at, wp, wv) ? $"{at}: wrapped {Cut(wp?.ToJsonString() ?? "(absent)")} | value object {Cut(wv?.ToJsonString() ?? "(absent)")}" : "";
+        Difference(p, v, path) is var d ? $"{d.Path}: wrapped {Cut(d.P?.ToJsonString() ?? "(absent)")} | value object {Cut(d.V?.ToJsonString() ?? "(absent)")}" : "";
 
-    /// <summary>The path where two schemas first differ, and each side's node there (null where it is absent).</summary>
-    static (string, JsonNode?, JsonNode?) Difference(JsonNode? p, JsonNode? v, string path)
+    /// <summary>
+    /// Where two schemas first differ: the path as it is shown, the keys that lead there (a property's name, an element's index), each
+    /// side's node there (null where it is absent) and the node holding it, so a difference is told by its structure, never by its path's text.
+    /// </summary>
+    sealed record Diff(string Path, IReadOnlyList<string> Keys, JsonNode? P, JsonNode? V, JsonNode? ParentP, JsonNode? ParentV);
+
+    static Diff Difference(JsonNode? p, JsonNode? v, string path) => Difference(p, v, path, [], null, null);
+
+    static Diff Difference(JsonNode? p, JsonNode? v, string path, List<string> keys, JsonNode? parentP, JsonNode? parentV)
     {
         if (p is JsonObject po && v is JsonObject vo)
         {
             foreach (var k in po.Select(kv => kv.Key).Union(vo.Select(kv => kv.Key)).Order(StringComparer.Ordinal))
-                if (!JsonNode.DeepEquals(po[k], vo[k])) return Difference(po[k], vo[k], path + "." + k);
+                if (!JsonNode.DeepEquals(po[k], vo[k])) return Difference(po[k], vo[k], path + "." + k, [.. keys, k], p, v);
         }
         else if (p is JsonArray pa && v is JsonArray va && pa.Count == va.Count)
         {
             for (var i = 0; i < pa.Count; i++)
-                if (!JsonNode.DeepEquals(pa[i], va[i])) return Difference(pa[i], va[i], $"{path}[{i}]");
+                if (!JsonNode.DeepEquals(pa[i], va[i])) return Difference(pa[i], va[i], $"{path}[{i}]", [.. keys, i.ToString(System.Globalization.CultureInfo.InvariantCulture)], p, v);
         }
-        return (path, p, v);
+        return new(path, keys, p, v, parentP, parentV);
+    }
+
+    /// <summary>The node the keys of a <see cref="Diff"/> lead to in another schema, or null where it has none.</summary>
+    static JsonNode? At(JsonNode? node, IEnumerable<string> keys)
+    {
+        foreach (var k in keys)
+            node = node switch { JsonObject o => o[k], JsonArray a when int.TryParse(k, out var i) && i < a.Count => a[i], _ => null };
+        return node;
+    }
+
+    /// <summary>
+    /// Side (1) of a row's wire and schema comparisons: the same host started without TypeKit (HostCfg.WithoutTypeKit), once, on the first
+    /// comparison that asks for it; null where it does not start, which no comparison then excuses anything by. The twin's side (1) is a
+    /// host with the twin's endpoints alone (<c>plain</c>): ASP.NET alone describing the value object's types beside them names components
+    /// after them and writes the twin's own schemas otherwise. A host with both (<c>both</c>) answers for the value object's position.
+    /// </summary>
+    sealed class SideOne(Row r, Entry e, string only) : IAsyncDisposable
+    {
+        Task<WebApplication?>? started;
+        public string? Down { get; private set; }
+        public Task<WebApplication?> Host() => started ??= Start();
+        async Task<WebApplication?> Start()
+        {
+            try { return await Hx.Start(r, e, new HostCfg { FaultControllers = false, MapBlanketMapping = false, WithoutTypeKit = true, PayloadOnly = only }); }
+            catch (Exception x) { Down = x.GetType().Name + ": " + Cut(x.Message); r.Log.AppendLine("side (1) host did not start: " + Down); return null; }
+        }
+        public async Task<Hx.Wire?> Ask(Func<WebApplication, Task<Hx.Wire>> ask) => await Host() is { } app ? await ask(app) : null;
+        public async ValueTask DisposeAsync() { if (started is not null && await started is { } app) await app.DisposeAsync(); }
     }
 
     /// <summary>
     /// BaseProbe's calibration of the shared host: every wire comparison a check of its own, named <paramref name="obligation"/> (BaseProbe
     /// runs on rows of C07, which promises nothing of the wire, so its checks are the implicit <c>claim</c>). Per side: the echo against the
     /// twin; the request read with the row's input.json, against the twin, or a closed set against its own response read back; the binding of
-    /// the row's http.binding with a valid value against the twin, and with a value Create refuses against the documented 400. With
-    /// <paramref name="schema"/>, the schema parity too (C21's check). Every check runs; the first failure is returned.
+    /// the row's http.binding with a valid value against the twin, and with a value Create refuses against the documented 400. Each is
+    /// three-sided (Sides): side (1), the twin on the same host without TypeKit, is asked where the twin and the value object disagree or
+    /// refuse. With <paramref name="schema"/>, the schema parity too (C21's check). Every check runs; the first failure is returned.
     /// </summary>
     public static async Task<string?> Run(Row r, Entry e, bool schema = true, string obligation = "claim")
     {
@@ -142,6 +204,8 @@ public static class HttpBaseline
         try { app = await Hx.Start(r, e, new HostCfg { FaultControllers = false, MapBlanketMapping = false }); }
         catch (Exception ex) { return "baseline host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message); }
         await using var _ = app;
+        await using var one = new SideOne(r, e, "plain");
+        await using var alone = new SideOne(r, e, "both");
         var jopts = JsonRow.Apply(r, e).Options!;
         var position = r["shape.position"];
         var plainSample = e.Valid();
@@ -156,7 +220,9 @@ public static class HttpBaseline
         {
             // 1. response side
             var ep = await Hx.Get(app, path(echo + "plain")); var ev = await Hx.Get(app, path(echo + "vo"));
-            var f1 = r.Check(obligation, Baseline.Twin, c => Same(c, r, e, name + " echo", ep, ev)); failed ??= f1;
+            var f1 = await Wire(r, e, obligation, Baseline.Twin, name + " echo", ep, ev, () => one.Ask(h => Hx.Get(h, path(echo + "plain"))),
+                c => Task.FromResult(Same(c, r, e, name + " echo", ep, ev)));
+            failed ??= f1;
             // 2. request side, with the row's input.json, where the wrapped type's echo gave a body to change
             if ((int)ep.Status == 200)
             {
@@ -185,12 +251,13 @@ public static class HttpBaseline
                         return null;
                     });
                 else
-                    f2 = await r.Check(obligation, Baseline.Twin, async c =>
-                    {
-                        var text = JsonParity.InputFor(input, e, jopts, ep.Body, position);
-                        var ip = await Hx.Send(app, HttpMethod.Post, path(inn + "plain"), text); var iv = await Hx.Send(app, HttpMethod.Post, path(inn + "vo"), text);
-                        return Same(c, r, e, name + " in(" + input + ")", ip, iv, input);
-                    });
+                {
+                    var text = JsonParity.InputFor(input, e, jopts, ep.Body, position);
+                    var ip = await Hx.Send(app, HttpMethod.Post, path(inn + "plain"), text); var iv = await Hx.Send(app, HttpMethod.Post, path(inn + "vo"), text);
+                    var what = name + " in(" + input + ")";
+                    f2 = await Wire(r, e, obligation, Baseline.Twin, what, ip, iv, () => one.Ask(h => Hx.Send(h, HttpMethod.Post, path(inn + "plain"), text)),
+                        c => Task.FromResult(Same(c, r, e, what, ip, iv, input)));
+                }
                 failed ??= f2;
             }
             // 3. binding, the row's http.binding
@@ -210,18 +277,18 @@ public static class HttpBaseline
             }
             var valid = Hx.BindText(e, plainSample);
             var refused = e.Refused() is { } rf ? Hx.BindText(e, rf) : null;
-            async Task<Hx.Wire> B(string which, string txt, string w)
+            async Task<Hx.Wire> B(WebApplication host, string which, string txt, string w)
             {
                 var enc = Uri.EscapeDataString(txt);
                 return bind switch
                 {
-                    "route" => await Hx.Get(app, path(bindPre + "route/" + w + "/" + enc)),
-                    "query" => await Hx.Get(app, path(bindPre + "query/" + w + "?v=" + enc)),
-                    "as-parameters" => await Hx.Get(app, path(bindPre + "params/" + w + "?v=" + enc)),
-                    "header" => await Hx.Send(app, HttpMethod.Get, path(bindPre + "header/" + w), header: ("v", txt)),
-                    "form" => await Hx.Send(app, HttpMethod.Post, path(bindPre + "form/" + w), "v=" + enc, "application/x-www-form-urlencoded"),
-                    _ => await Hx.Send(app, HttpMethod.Post, path(bindPre + "body/" + w),
-                        which == "valid" ? JsonSerializer.Serialize(plainSample, e.Plain, jopts) : JsonSerializer.Serialize(e.Refused(), e.Plain, jopts)),
+                    "route" => await Hx.Get(host, path(bindPre + "route/" + w + "/" + enc)),
+                    "query" => await Hx.Get(host, path(bindPre + "query/" + w + "?v=" + enc)),
+                    "as-parameters" => await Hx.Get(host, path(bindPre + "params/" + w + "?v=" + enc)),
+                    "header" => await Hx.Send(host, HttpMethod.Get, path(bindPre + "header/" + w), header: ("v", txt)),
+                    "form" => await Hx.Send(host, HttpMethod.Post, path(bindPre + "form/" + w), "v=" + enc, "application/x-www-form-urlencoded"),
+                    _ => await Hx.Send(host, HttpMethod.Post, path(bindPre + "body/" + w),
+                        which == "valid" ? JsonSerializer.Serialize(plainSample, e.Plain, jopts) : which == "refused" ? JsonSerializer.Serialize(e.Refused(), e.Plain, jopts) : JsonSerializer.Serialize(txt)),
                 };
             }
             // Both sides are mapped for every binding they reach here: a 404 is the harness's routing, never a binding result. Counted as
@@ -233,80 +300,85 @@ public static class HttpBaseline
             // bound is not the one sent. A limit of the harness, which no sentence cites: the check cannot tell.
             bool Unsafe(string txt) => bind == "route" && (txt.Contains('/') || txt.Contains(':') || txt.Contains('?') || txt.Contains('#'));
             string? Unplaceable(Check c, string txt) => c.Inconclusive($"{name} bind route: the text {txt} cannot be carried by a route segment as it is");
-            var f3 = await r.Check(obligation, Baseline.Twin, async c =>
+            string? f3;
+            if (Unsafe(valid)) f3 = r.Check(obligation, Baseline.Twin, c => Unplaceable(c, valid));
+            else
             {
-                if (Unsafe(valid)) return Unplaceable(c, valid);
-                var bp = await B("valid", valid, "plain"); var bv = await B("valid", valid, "vo");
-                if (Routed(name, bind, bp, bv) is { } unrouted) return unrouted;
+                var bp = await B(app, "valid", valid, "plain"); var bv = await B(app, "valid", valid, "vo");
                 r.Log.AppendLine($"{name} bind {bind} valid text={valid}: plain {(int)bp.Status} {Cut(bp.Body)} {bp.Thrown} | vo {(int)bv.Status} {Cut(bv.Body)} {bv.Thrown}");
-                // The twin refuses the valid text too: no binding to compare, and no sentence cites it.
-                if ((int)bp.Status is not (>= 200 and < 300) && (int)bv.Status is not (>= 200 and < 300))
-                    return c.Inconclusive($"{name} bind {bind}: the wrapped type refuses the valid text too ({(int)bp.Status}), the value object answered {(int)bv.Status}");
-                return Same(c, r, e, name + " bind " + bind, bp, bv);
-            });
+                f3 = Routed(name, bind, bp, bv) is { } unrouted
+                    ? r.Check(obligation, Baseline.Twin, _ => unrouted)
+                    : await Wire(r, e, obligation, Baseline.Twin, name + " bind " + bind, bp, bv, () => one.Ask(h => B(h, "valid", valid, "plain")),
+                        c => Task.FromResult(Same(c, r, e, name + " bind " + bind, bp, bv)));
+            }
             failed ??= f3;
             if (refused is null) continue;
             // README "Binding" (AspNetCore): a value Create rejects gets a 400, the one set of rules.
-            var f4 = await r.Check(obligation, Baseline.Docs("src/CodoMetis.TypeKit.AspNetCore/README.md#binding"), async c =>
+            var against = Baseline.Docs("src/CodoMetis.TypeKit.AspNetCore/README.md#binding");
+            if (Unsafe(refused)) { failed ??= r.Check(obligation, against, c => Unplaceable(c, refused)); continue; }
+            var rp = await B(app, "refused", refused, "plain"); var rv = await B(app, "refused", refused, "vo");
+            r.Log.AppendLine($"{name} bind {bind} refused text={refused}: plain {(int)rp.Status} {Cut(rp.Body)} {rp.Thrown} | vo {(int)rv.Status} {Cut(rv.Body)} {rv.Thrown}");
+            if (Routed(name, bind, rp, rv) is { } unrouted2) { failed ??= r.Check(obligation, against, _ => unrouted2); continue; }
+            // Side (1) of a refused binding: the twin on the host without TypeKit, refused a binding too, as MVC refuses a text the wrapped
+            // type cannot read. Where the value object's refusal could not be answered (a 500, which MVC's 400 under a source-generated
+            // context that does not list ValidationProblemDetails is, KB-041), the twin's refused binding is side (1): read from KB-041's
+            // fixture where it covers the row, else asked of the host without TypeKit.
+            Sides.Side? framework = null;
+            if (rv.Ex is { } refusal && Unreadable(e) is { } unreadable)
             {
-                if (Unsafe(refused)) return Unplaceable(c, refused);
-                var bp = await B("refused", refused, "plain"); var bv = await B("refused", refused, "vo");
-                if (Routed(name, bind, bp, bv) is { } unrouted) return unrouted;
-                r.Log.AppendLine($"{name} bind {bind} refused text={refused}: plain {(int)bp.Status} {Cut(bp.Body)} {bp.Thrown} | vo {(int)bv.Status} {Cut(bv.Body)} {bv.Thrown}");
-                if ((int)bp.Status is not (>= 200 and < 300)) return c.Inconclusive($"{name} bind {bind}: the wrapped type refuses the value Create refuses too ({(int)bp.Status})");
+                var settings = Sides.Settings(r, ("endpoint", name == "mvc" ? "mvc-api-controller" : "minimal"), ("binding", "fails"));
+                if (Sides.Covered(r, "KB-041", settings) is { Kind: FactAnswer.Exception } answer)
+                    framework = new(new(name + " bind " + bind + " refused", null, Status: 500, FixtureRefusal: (string?)answer.Value["type"]), Baseline.Fact("KB-041"), $"KB-041 {answer.Id}: a binding MVC refuses, under a source-generated context");
+                else if (await one.Ask(h => B(h, "unreadable", unreadable, "plain")) is { } twin)
+                    framework = Sides.Measured(twin.Side(name + " bind " + bind + " refused"), $"the twin on a host without TypeKit, sent {unreadable}");
+            }
+            var f4 = await Sides.Check(r, obligation, against, framework, rv.Side(name + " bind " + bind + " refused"), null, null, async c =>
+            {
+                if ((int)rp.Status is not (>= 200 and < 300)) return c.Inconclusive($"{name} bind {bind}: the wrapped type refuses the value Create refuses too ({(int)rp.Status})");
                 if (r.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class") return c.Refused(Cite.Docs("src/CodoMetis.TypeKit.Generators/README.md#json"), "bind");
                 // README "What TypeKit guarantees": StoredJsonConverterFactory reads JSON the application stored itself, without validation.
                 if (bind == "body" && r.Is("json.Converters", "StoredJsonConverterFactory")) return c.Inapplicable(Cite.Docs("README.md#what-typekit-guarantees"), "bind body");
                 // KB-037: under MaxValidationDepth=1 MVC runs an action whose parameter it could not bind, with the parameter at its default. The
-                // value object must hold its default then, never the refused value; the twin, sent a text it cannot read in the same host, shows
-                // the framework doing the same.
-                if (name == "mvc" && r.Is("mvc.MaxValidationDepth", "1") && (int)bv.Status is >= 200 and < 300)
+                // value object must hold its default then, never the refused value; side (1), the twin sent a text it cannot read, shows the
+                // framework doing the same: read from KB-037's fixture where it covers the row, else asked of the host without TypeKit.
+                if (name == "mvc" && r.Is("mvc.MaxValidationDepth", "1") && (int)rv.Status is >= 200 and < 300)
                 {
-                    if (DefaultBody(app, e.Vo) is var voDefault && !HoldsDefault(bv, voDefault))
-                        return $"{name} bind {bind}: validated value object bound the refused value (status {(int)bv.Status}) {Cut(bv.Body)}, not its default ({(voDefault is null ? "204" : "200 " + Cut(voDefault))})";
+                    if (DefaultBody(app, e.Vo) is var voDefault && !HoldsDefault(rv, voDefault))
+                        return $"{name} bind {bind}: validated value object bound the refused value (status {(int)rv.Status}) {Cut(rv.Body)}, not its default ({(voDefault is null ? "204" : "200 " + Cut(voDefault))})";
                     if (Unreadable(e) is not { } text)
                         return c.Inapplicable(Cite.Fact("KB-037"), $"{name} bind {bind}: the value object holds its default; any text binds the wrapped type, so no twin shows it");
-                    var enc = Uri.EscapeDataString(text);
-                    var bt = bind switch
-                    {
-                        "route" => await Hx.Get(app, path(bindPre + "route/plain/" + enc)),
-                        "query" => await Hx.Get(app, path(bindPre + "query/plain?v=" + enc)),
-                        "as-parameters" => await Hx.Get(app, path(bindPre + "params/plain?v=" + enc)),
-                        "header" => await Hx.Send(app, HttpMethod.Get, path(bindPre + "header/plain"), header: ("v", text)),
-                        "form" => await Hx.Send(app, HttpMethod.Post, path(bindPre + "form/plain"), "v=" + enc, "application/x-www-form-urlencoded"),
-                        _ => await Hx.Send(app, HttpMethod.Post, path(bindPre + "body/plain"), JsonSerializer.Serialize(text)),
-                    };
+                    Hx.Wire? bt;
+                    if (Sides.Covered(r, "KB-037", Sides.Settings(r, ("text", text))) is { Kind: FactAnswer.Status } answer)
+                        bt = new((HttpStatusCode)(int)answer.Value["status"]!, (string?)answer.Value["body"] ?? "");
+                    else bt = await one.Ask(h => B(h, "unreadable", text, "plain"));
+                    if (bt is null) return c.Inconclusive($"{name} bind {bind}: the value object holds its default (KB-037); no host without TypeKit to show the wrapped type's ({one.Down})");
                     r.Log.AppendLine($"{name} bind {bind} unreadable text={text}: plain {(int)bt.Status} {Cut(bt.Body)} {bt.Thrown}");
                     if (HoldsDefault(bt, DefaultBody(app, e.Plain)))
                         return c.Inapplicable(Cite.Fact("KB-037"), $"{name} bind {bind}: both hold their default, the wrapped type for a text it cannot read");
                     if ((int)bt.Status is >= 400 and < 500)
-                        return $"{name} bind {bind}: the value object answered {(int)bv.Status} holding its default, where the wrapped type rejects a text it cannot read ({(int)bt.Status})";
+                        return $"{name} bind {bind}: the value object answered {(int)rv.Status} holding its default, where the wrapped type rejects a text it cannot read ({(int)bt.Status})";
                     // KB-037's class from the query: the validator throws at the twin's property, and the value object, written by a
                     // converter of its own, is no class it walks
                     return c.Inconclusive($"{name} bind {bind}: the value object holds its default (KB-037); the wrapped type answered {(int)bt.Status} {Cut(bt.Body)} {bt.Thrown}");
                 }
                 // a refused value must not bind (the one set of rules), except where the application skips validation on purpose
-                if ((int)bv.Status is >= 200 and < 300) return $"{name} bind {bind}: validated value object bound the refused value (status {(int)bv.Status}) {Cut(bv.Body)}";
-                // Text-matching site, kept in this step: MVC writes its 400 as ValidationProblemDetails, which a source-generated context alone
-                // does not list, so ASP.NET answers 500 for any refused binding under that configuration, the wrapped type's included. Baseline
-                // gap: the message's words tell it, where a wrapped twin refused in the same row should (the three-sided differential).
-                if ((int)bv.Status == 500 && name == "mvc" && r.Is("json.TypeInfoResolver", "source-generated-context")
-                    && (bv.Thrown ?? bv.Body ?? "").Contains("ValidationProblemDetails")) { r.Note(NoteKeys.Mvc400UnwritableUnderSourceGen); return null; }
-                if ((int)bv.Status != 400) return $"{name} bind {bind}: refused value answered {(int)bv.Status}, expected 400: {Cut(bv.Body)} {bv.Thrown}";
+                if ((int)rv.Status is >= 200 and < 300) return $"{name} bind {bind}: validated value object bound the refused value (status {(int)rv.Status}) {Cut(rv.Body)}";
+                if ((int)rv.Status != 400) return $"{name} bind {bind}: refused value answered {(int)rv.Status}, expected 400: {Cut(rv.Body)} {rv.Thrown}";
                 c.Note(NoteKeys.Compared, $"{name} bind {bind}: the refused value answered 400");
                 return null;
             });
             failed ??= f4;
         }
         // 4. schema parity
-        if (schema) { var f5 = await r.Check(obligation, Baseline.Twin, c => SchemaParity(app, r, e, c)); failed ??= f5; }
+        if (schema) { var f5 = await r.Check(obligation, Baseline.Twin, async c => await SchemaParity(app, one, alone, r, e, c)); failed ??= f5; }
         return failed;
     }
 
     /// <summary>
     /// The schema parity alone, on the same host as <see cref="Run"/>: claim C21's check (C21OpenapiSchemaParityProbe), which BaseProbe leaves
-    /// out of its calibration, run once for each of the row's <paramref name="obligations"/> against the twin. Every check runs; the first
-    /// failure is returned.
+    /// out of its calibration, run once for each of the row's <paramref name="obligations"/> against the twin. C21 promises the schema ASP.NET
+    /// Core publishes for the underlying type, so side (1), the same host without TypeKit, is started on every row (Sides.Unconditional).
+    /// Every check runs; the first failure is returned.
     /// </summary>
     public static async Task<string?> Schema(Row r, Entry e, IEnumerable<string> obligations)
     {
@@ -314,10 +386,14 @@ public static class HttpBaseline
         try { app = await Hx.Start(r, e, new HostCfg { FaultControllers = false, MapBlanketMapping = false }); }
         catch (Exception ex) { down = "schema host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message); }
         await using var _ = app;
+        await using var one = new SideOne(r, e, "plain");
+        await using var alone = new SideOne(r, e, "both");
+        var list = obligations.ToList();
+        if (down is null && list.Any(o => Sides.Unconditional(r, o))) await one.Host();
         string? failed = null;
-        foreach (var obligation in obligations)
+        foreach (var obligation in list)
         {
-            var f = await r.Check(obligation, Baseline.Twin, c => down is not null ? Task.FromResult<string?>(down) : SchemaParity(app!, r, e, c));
+            var f = await r.Check(obligation, Baseline.Twin, c => down is not null ? Task.FromResult<string?>(down) : SchemaParity(app!, one, alone, r, e, c));
             failed ??= f;
         }
         return failed;
@@ -334,14 +410,6 @@ public static class HttpBaseline
     /// admits null is kept; everywhere else, inlined schemas included, the comparison stays byte for byte (rows 170,
     /// 196 and 215 of C21). Returns both sides without the marks <see cref="Hx.Deep"/> put on resolved references.
     /// </summary>
-    /// <summary>The node at a path <see cref="Difference"/> names (<c>$.parameters[0].schema</c>), or none.</summary>
-    static JsonNode? At(JsonNode? node, string path)
-    {
-        foreach (System.Text.RegularExpressions.Match step in System.Text.RegularExpressions.Regex.Matches(path, @"\.([^.\[]+)|\[(\d+)\]"))
-            node = step.Groups[1].Success ? (node as JsonObject)?[step.Groups[1].Value] : (node as JsonArray) is { } a && int.Parse(step.Groups[2].Value) is var i && i < a.Count ? a[i] : null;
-        return node;
-    }
-
     static (string, string, bool) NullAroundReferences(string sp, string sv)
     {
         var around = false;
@@ -413,13 +481,47 @@ public static class HttpBaseline
         return (np?.ToJsonString() ?? "null", nv?.ToJsonString() ?? "null", around);
     }
 
-    static async Task<string?> SchemaParity(WebApplication app, Row r, Entry e, Check c)
+    /// <summary>
+    /// The component two operations of one document both refer to at the same place (a parameter's or the body's schema), where one
+    /// substitutes the value object for the twin: two types under one name, told by the references' structure.
+    /// </summary>
+    static string? SharedComponent(JsonNode twin, JsonNode valueObject)
+    {
+        static IEnumerable<(string, string)> References(JsonNode op)
+        {
+            if (op["parameters"] is JsonArray ps)
+                for (var i = 0; i < ps.Count; i++)
+                    if (ps[i]?["schema"]?["$ref"]?.GetValue<string>() is { } p) yield return ($"parameter {i}", p);
+            if (op["requestBody"]?["content"] is JsonObject content)
+                foreach (var (media, body) in content)
+                    if (body?["schema"]?["$ref"]?.GetValue<string>() is { } b) yield return ($"body {media}", b);
+        }
+        var twins = References(twin).ToDictionary(x => x.Item1, x => x.Item2);
+        return References(valueObject).FirstOrDefault(x => twins.TryGetValue(x.Item1, out var t) && t == x.Item2).Item2;
+    }
+
+    /// <summary>A body whose schema is its null alone, <c>{"schema": {"allOf": [{"x-nullable": true}]}}</c>, anywhere in an operation: told by its structure.</summary>
+    static bool OnlyItsNull(JsonNode? n) => n switch
+    {
+        JsonObject o => o["schema"] is JsonObject { Count: 1 } schema && schema["allOf"] is JsonArray { Count: 1 } all && all[0] is JsonObject { Count: 1 } flag
+                        && flag["x-nullable"]?.GetValueKind() == JsonValueKind.True
+                        || o.Any(kv => OnlyItsNull(kv.Value)),
+        JsonArray a => a.Any(OnlyItsNull),
+        _ => false,
+    };
+
+    /// <summary>
+    /// The value object's schema (3) against the wrapped twin's (2) at each endpoint pair, three-sided (Sides): the twin's schema is held to
+    /// the one ASP.NET publishes on the same host without TypeKit (1), where that host writes a document; and where the value object's schema
+    /// differs from the twin's, side (1)'s document at the same path tells whether ASP.NET alone writes that difference.
+    /// </summary>
+    static async Task<string?> SchemaParity(WebApplication app, SideOne one, SideOne alone, Row r, Entry e, Check c)
     {
         JsonNode doc;
         try { doc = (await Hx.Doc(app))!; }
         catch (Exception ex)
         {
-            // The baseline is ASP.NET alone on the same host: a document it refuses too has no schema to compare.
+            // The baseline is ASP.NET alone on the same host: a document it refuses too has no schema to compare (decision 99).
             return await Hx.DocRefusedByAspNetAlone(r, e, new HostCfg { FaultControllers = false, MapBlanketMapping = false }, ex);
         }
         // docs/json.md "Describing what a converter writes": ASP.NET drops items/additionalProperties of a converter it cannot see into, the value
@@ -428,10 +530,16 @@ public static class HttpBaseline
         // C21 is generated with them; these lines hold for the schema half run under another claim (ShrinkProbe's baseline).
         if (r.Is("json.Converters", "own-for-wrapped")) return c.Inapplicable(Cite.NotPromised("own-converter-for-the-wrapped-type"));
         if (r.Is("json.Converters", "own-for-value-object")) return c.Inapplicable(Cite.NotPromised("own-converter-for-the-value-object"));
-        string? Op(string path, string method, out JsonNode? node)
+        // side (1): the document ASP.NET writes for the twin's endpoints without TypeKit, where it writes one; and, asked only where the value
+        // object's schema differs from the twin's, the one it writes for both sides' endpoints, for the value object's position
+        async Task<JsonNode?> Document(SideOne host)
         {
-            node = doc["paths"]?[path]?[method]; return node is null ? "missing " + method + " " + path : null;
+            if (await host.Host() is not { } h) return null;
+            try { return await Hx.Doc(h); }
+            catch (Exception x) { r.Log.AppendLine("side (1) document refused: " + x.GetType().Name + ": " + Cut(x.Message)); return null; }
         }
+        var doc1 = await Document(one);
+        JsonNode? Op(JsonNode d, string path, string method) => d["paths"]?[path]?[method];
         // only the schemas are compared (the claim is about the schema); whether a parameter or body is required follows the .NET type's nullability
         JsonNode? Schemas(JsonNode? n)
         {
@@ -451,12 +559,12 @@ public static class HttpBaseline
                 default: return n?.DeepClone();
             }
         }
-        string Sig(JsonNode op)
+        string Sig(JsonNode d, JsonNode op)
         {
             var o = new JsonObject();
-            o["parameters"] = Schemas(Hx.Deep(doc, op["parameters"], mark: true));
-            o["requestBody"] = Schemas(Hx.Deep(doc, op["requestBody"], mark: true));
-            o["ok"] = Schemas(Hx.Deep(doc, op["responses"]?["200"], mark: true));
+            o["parameters"] = Schemas(Hx.Deep(d, op["parameters"], mark: true));
+            o["requestBody"] = Schemas(Hx.Deep(d, op["requestBody"], mark: true));
+            o["ok"] = Schemas(Hx.Deep(d, op["responses"]?["200"], mark: true));
             return o.ToJsonString();
         }
         var checks = new List<(string, string)>();
@@ -470,7 +578,6 @@ public static class HttpBaseline
         if (Hx.HasMinimal(r))
         {
             var bind = r["http.binding"] switch { "route" => "route", "query" => "query", "header" => "header", "form" => "form", "as-parameters" => "params", _ => "body" };
-            var sfx = bind == "route" ? "/{v}" : "";
             // route: /bind/route/{which}/{v}
             checks.Add((bind == "route" ? Hx.M(r, "/bind/route/plain/{v}") : Hx.M(r, $"/bind/{bind}/plain"), bind == "route" ? Hx.M(r, "/bind/route/vo/{v}") : Hx.M(r, $"/bind/{bind}/vo")));
         }
@@ -494,14 +601,25 @@ public static class HttpBaseline
             var twinned = pp0.Contains("/bind/") || pp0.Contains("/schema/") && r["shape.position"] == "root";
             var pp = e.Vo.IsValueType != e.Plain.IsValueType && Hx.PlainNull(r, e) is not null && twinned ? pp0.Replace("/plain", "/plainnull") : pp0;
             if (pp != pp0) c.Note(NoteKeys.SchemaComparedWithNullableWrapped);
-            if (Op(pp, method, out var po) is { } m1)
+            var po = Op(doc, pp, method); var vo = Op(doc, vp, method);
+            if (po is null)
             {
                 // Mapped for bodies only (a record class, Instant in a minimal API): neither side is there.
-                if (Op(vp, method, out _) is null) return $"harness: the value object's {method} {vp} is documented, its plain twin is not ({m1})";
-                c.Note(NoteKeys.SchemaNeitherSideDocumented, m1); continue;
+                if (vo is not null) return $"harness: the value object's {method} {vp} is documented, its plain twin is not (missing {method} {pp})";
+                c.Note(NoteKeys.SchemaNeitherSideDocumented, $"missing {method} {pp}"); continue;
             }
-            if (Op(vp, method, out var vo) is { } m2) return m2;
-            if (Inputs(po!) is var ip && Inputs(vo!) is var iv && ip != iv)
+            if (vo is null) return $"missing {method} {vp}";
+            // The twin's and the value object's shapes are two .NET types; one component name for both (an id the row's CreateSchemaReferenceId
+            // makes alike for both, such as an array of a generic type) holds one schema for the two, so the document cannot tell them apart.
+            if (SharedComponent(po, vo) is { } shared)
+            { c.Inconclusive($"{pp} vs {vp}: the twin's and the value object's shapes are one component, {shared}, in the document: nothing to compare"); continue; }
+            // (2) held to (1): the twin's schema is the one ASP.NET publishes on the same host without TypeKit, but where the twin itself
+            // holds one of TypeKit's types (a Patch), which no host without TypeKit describes
+            var po1 = doc1 is null ? null : Op(doc1, pp, method);
+            var twinHoldsTypeKit = pp.Contains("/schema/") && Sides.HoldsTypeKit(Twin(r, e).Declared);
+            if (po1 is not null && !twinHoldsTypeKit && Sig(doc1!, po1) is var s1 && Sig(doc, po) is var s2 && s1 != s2)
+                return $"schema of the wrapped type at {pp}: TypeKit changed the wrapped type's schema, at {FirstDifference(JsonNode.Parse(s1), JsonNode.Parse(s2), "$")} (without TypeKit, then with it)";
+            if (Inputs(po) is var ip && Inputs(vo) is var iv && ip != iv)
             {
                 // No twin of the wrapped type at the value object's nullability here (a struct value object over a class, or under a
                 // source-generated context an enum or Instant, whose Nullable the probes' context does not list): the two sides are not
@@ -511,7 +629,7 @@ public static class HttpBaseline
                 else r.Outcome("harness-error", $"inputs not equivalent for {pp} vs {vp}: wrapped [{ip}] vs value object [{iv}]");
                 continue;
             }
-            var sp = Sig(po!); var sv = Sig(vo!); var written = sp;
+            var sp = Sig(doc, po); var sv = Sig(doc, vo);
             if (NullAroundReferences(sp, sv) is var (np, nv, around)) { sp = np; sv = nv; if (around) c.Note(NoteKeys.SchemaNullAroundReferenceNormalised); }
             if (sp != sv && pp != pp0)
             {
@@ -529,34 +647,31 @@ public static class HttpBaseline
             if (sp != sv)
             {
                 if (e.Kind == "closed-set") { c.Inapplicable(Cite.NotPromised("a-closed-set-is-a-string-enum"), "schema"); continue; }
-                var (at, wp, wv) = Difference(JsonNode.Parse(sp), JsonNode.Parse(sv), "$");
+                var d = Difference(JsonNode.Parse(sp), JsonNode.Parse(sv), "$");
                 var openApi2 = r.Is("openapi.OpenApiVersion", "OpenApi2_0");
+                // Side (1) at the same path: the twin's and the value object's operations in the document ASP.NET writes without TypeKit.
+                var twin1 = po1 is null ? null : JsonNode.Parse(Sig(doc1!, po1));
+                var both1 = openApi2 && d.P is null && d.V is not null ? await Document(alone) : null;
+                var vo1 = both1 is null ? null : Op(both1, vp, method) is { } o1 ? JsonNode.Parse(Sig(both1, o1)) : null;
+                var vo3 = JsonNode.Parse(Sig(doc, vo));
                 // KB-026: OpenAPI 2.0 writes a nullable property of any component as allOf [{x-nullable: true}], without the reference, and a
-                // value object keeps a component of its own (not-promised openapi-2-nullable-component-loses-its-type; row 38 of C21).
-                // Text-matching site, kept in this step: the difference is told by its path's suffix and the value object's side spelled out.
-                // Baseline gap: no plain nullable component in the same document shows ASP.NET losing its reference too (the three-sided
-                // differential, next step).
-                if (openApi2 && !r.Is("openapi.CreateSchemaReferenceId", "null-inlines-all") && at.EndsWith(".allOf", StringComparison.Ordinal)
-                    && wp is null && wv?.ToJsonString() == """[{"x-nullable":true}]""")
-                { c.Inapplicable(Cite.NotPromised("openapi-2-nullable-component-loses-its-type"), at); continue; }
+                // value object keeps a component of its own (not-promised openapi-2-nullable-component-loses-its-type; row 38 of C21). Side (1)
+                // shows it: without TypeKit, ASP.NET writes the value object's position at the same path the same, where the twin has nothing.
+                if (openApi2 && d.P is null && d.V is not null && At(vo1, d.Keys) is { } same1 && JsonNode.DeepEquals(same1, At(vo3, d.Keys)))
+                { c.Inapplicable(Cite.NotPromised("openapi-2-nullable-component-loses-its-type"), d.Path); continue; }
                 // KB-001: OpenAPI 2.0 writes a nullable body of the wrapped value type as allOf [{x-nullable: true}] alone, where a class value
-                // object's body in a minimal API is not nullable and keeps its schema (not-promised openapi-2-nullable-body-keeps-only-its-null; row 257).
-                // Text-matching site, kept in this step: the wrapped side's document is searched for the spelling. Baseline gap: the twin's
-                // nullable body is not compared with a plain nullable body ASP.NET writes alone (the three-sided differential).
-                if (openApi2 && !e.Vo.IsValueType && Nullable.GetUnderlyingType(e.Plain) is not null
-                    && written.Contains("""
-                    "schema":{"allOf":[{"x-nullable":true}]}
-                    """, StringComparison.Ordinal))
+                // object's body in a minimal API is not nullable and keeps its schema (not-promised openapi-2-nullable-body-keeps-only-its-null;
+                // row 257). Side (1) shows it: without TypeKit, the twin's schema there is that null alone.
+                if (openApi2 && !e.Vo.IsValueType && Nullable.GetUnderlyingType(e.Plain) is not null && OnlyItsNull(twin1) && OnlyItsNull(JsonNode.Parse(Sig(doc, po))))
                 { c.Inapplicable(Cite.NotPromised("openapi-2-nullable-body-keeps-only-its-null"), pp); continue; }
                 // KB-027: the component ASP.NET makes for an enum written by name is the schema of the first use it meets, so a wrapped E?
                 // parameter lists null through E's component where E was first met nullable; the value object's parameter is the enum's
-                // content without it wherever the enum is a component (not-promised enum-component-is-its-first-use; row 285 of C21).
-                // Text-matching site, kept in this step: told by the path's prefix and suffix. Baseline gap: the enum's first use is not
-                // replayed in a document of its own to show the component it makes (the three-sided differential).
-                if (at.StartsWith("$.parameters", StringComparison.Ordinal) && at.EndsWith(".enum", StringComparison.Ordinal)
-                    && wp is JsonArray we && wv is JsonArray ve && we.Count == ve.Count + 1 && we[^1] is null
+                // content without it wherever the enum is a component (not-promised enum-component-is-its-first-use; row 285 of C21). Side (1)
+                // shows it: without TypeKit, the twin's parameter lists the same null, through the same resolved component.
+                if (d.Keys is ["parameters", .., "enum"] && d.P is JsonArray we && d.V is JsonArray ve && we.Count == ve.Count + 1 && we[^1] is null
                     && JsonNode.DeepEquals(new JsonArray(we.Take(ve.Count).Select(x => x?.DeepClone()).ToArray()), ve)
-                    && At(JsonNode.Parse(written), at[..^".enum".Length]) is JsonObject held && held.ContainsKey(Hx.ResolvedReference))
+                    && At(JsonNode.Parse(Sig(doc, po)), d.Keys.SkipLast(1)) is JsonObject held && held.ContainsKey(Hx.ResolvedReference)
+                    && At(twin1, d.Keys) is { } listed1 && JsonNode.DeepEquals(listed1, d.P))
                 { c.Inapplicable(Cite.NotPromised("enum-component-is-its-first-use"), vp); continue; }
                 return $"schema differs for {pp} vs {vp} at {FirstDifference(JsonNode.Parse(sp), JsonNode.Parse(sv), "$")}:\n  wrapped {Cut(sp)}\n  value object {Cut(sv)}";
             }

@@ -62,9 +62,9 @@ public static class OffTheWire
             if (nullableUnderContext)
                 return x is InvalidOperationException ? null : $"{dir}: a source-generated context refuses an {name}? property with the serializer's InvalidOperationException; got {(x is null ? "no exception" : Jx.Ex(x))}";
             if (x is not NotSupportedException) return $"{dir}: expected NotSupportedException naming {name}, got {(x is null ? "no exception" : Jx.Ex(x))}";
-            // Text-matching site, kept in this step (WS2 step 4): the refusal is told TypeKit's by its words ("not a wire type"). Baseline
-            // gap: a NotSupportedException of the serializer's own is the same type, and no twin in the row refuses as the serializer alone does.
-            if (!x.Message.Contains(name) || !x.Message.Contains("not a wire type")) return $"{dir}: the NotSupportedException does not name {name} as no wire type: {Jx.Cut(x.Message)}";
+            // TypeKit's refusal, told by its type and never by its words: the serializer passes a converter's NotSupportedException on as the
+            // inner exception of its own, so one in the chain is thrown by NotWireTypeJsonConverterFactory's converter, by nameof
+            if (!ThrownBy(x, typeof(NotWireTypeJsonConverterFactory))) return $"{dir}: the NotSupportedException is not {nameof(NotWireTypeJsonConverterFactory)}'s: {Jx.Ex(x)}";
             return null;
         }
 
@@ -92,29 +92,37 @@ public static class OffTheWire
             c.Note(NoteKeys.Compared, $"{name} by {op}, {position}: write refused");
             return null;
         });
-        var fr = await r.Check("never-read", refused, async c =>
+        // reading: the value object's document with the row's input, where the Option or Result stands; measured before the check, so that
+        // a document the serializer refuses before the member (side (1), Sides) decides the check's baseline
+        var full = Jx.Full(o);
+        var (jf, xf) = Jx.Ser(hv, full);
+        // does the application's converter get called there? Its own document, read under the same options, says so
+        var (jOwnFull, _) = Jx.Ser(ho, Jx.Full(oOwn));
+        string input = r["input.json"], text = "";
+        if (xf is null) text = JsonParity.InputFor(input, e, full, jf!, position);
+        else if (jOwnFull is not null) { input = "valid"; text = jOwnFull; }
+        var reads = xOwn is null && (xf is null || jOwnFull is not null);
+        var (_, xOwnRead) = reads ? Jx.De(jOwnFull ?? "null", ho.Declared, oOwn) : (null, null);
+        var memberRead = reads && OwnReads() > 0;
+        var (vr, xr) = reads ? Jx.De(text, ho.Declared, o) : (null, null);
+        // side (1): the same document with the value object where the Option or Result stands, read under the same options; refusing alike
+        // (the same exception type at the same path, no message compared), the serializer refused the document before the member
+        var three = new Sides.Answer("read", null, xr);
+        var one = new Sides.Answer("read", null, reads && xr is not null && !ThrownBy(xr, typeof(NotWireTypeJsonConverterFactory)) ? Jx.De(text, hv.Declared, o).Ex : null);
+        var framework = Sides.Alike(one, three) ? Sides.Measured(one, "the document with the value object where the Option or Result stands") : null;
+        var fr = await Sides.Check(r, "never-read", refused, framework, three, null, null, async c =>
         {
             await Task.CompletedTask;
             if (xOwn is not null) return c.Inconclusive("read: the options refuse the shape itself, so no document has the member: " + Jx.Ex(xOwn));
-            // reading: the value object's document with the row's input, where the Option or Result stands
-            var full = Jx.Full(o);
-            var (jf, xf) = Jx.Ser(hv, full);
-            // does the application's converter get called there? Its own document, read under the same options, says so
-            var (jOwnFull, _) = Jx.Ser(ho, Jx.Full(oOwn));
-            string input, text;
-            if (xf is null) { input = c["input.json"]; text = JsonParity.InputFor(input, e, full, jf!, position); }
-            else
+            _ = c["input.json"];
+            if (xf is not null)
             {
                 // the value object's own shape cannot be written here (a value object over a class under Preserve, a class as a key): the
                 // document with the application's converter has a token where the Option or Result stands, and is read as it is
                 if (jOwnFull is null) return c.Inconclusive("read: no document has the member: " + Jx.Ex(xf));
-                _ = c["input.json"]; c.Substituted("input.json", "valid", "the value object's document cannot be written: " + xf.GetType().Name);
-                input = "valid"; text = jOwnFull;
+                c.Substituted("input.json", "valid", "the value object's document cannot be written: " + xf.GetType().Name);
             }
-            var (_, xOwnRead) = Jx.De(jOwnFull ?? "null", ho.Declared, oOwn);
             if (xOwnRead is not null) return $"read: a converter registered on the options for {name} does not take precedence: {Jx.Ex(xOwnRead)}";
-            var memberRead = OwnReads() > 0;
-            var (vr, xr) = Jx.De(text, ho.Declared, o);
             if (xr is null && input == "null" && position == "in-patch" && Jx.Member(ho.Declared, vr) is { } patch && patch.GetType().GetProperty("State")!.GetValue(patch)!.ToString() == "Null")
                 // a JSON null is the patch's own null (docs/merge-patches.md): it holds no Option or Result, and none was read
                 return c.Inapplicable(Cite.Docs("docs/merge-patches.md#tell-absent-null-and-a-value-apart"), $"read null: the Patch<{name}> is null, nothing of {name} read");
@@ -124,22 +132,23 @@ public static class OffTheWire
                 c.Note(NoteKeys.JsonMemberLeftOutByOptions, "read " + input);
                 return c.Inapplicable(Cite.NotPromised("a-missing-property-reaches-no-converter"), "read " + input);
             }
-            if (Refused(xr, "read " + input) is { } f)
-            {
-                // the serializer may refuse the document before the member: the value object's shape refuses it with the very same exception
-                var (_, xvr) = Jx.De(text, hv.Declared, o);
-                if (xvr is not null && xvr.GetType() == xr.GetType() && xvr.Message == Jx.Swap(Jx.Swap(xr.Message, ho.Declared, hv.Declared), orType, v))
-                {
-                    // the framework's refusal, shown by the value object's own shape in the same row: a pass, as decision 99's document is
-                    c.Note(NoteKeys.JsonReadRefusedByStjAlone, input + ": " + Jx.Ex(xr));
-                    return null;
-                }
-                return f + $"\n  text={Jx.Cut(text)}";
-            }
+            if (Refused(xr, "read " + input) is { } f) return f + $"\n  text={Jx.Cut(text)}";
             c.Note(NoteKeys.Compared, $"{name} by {op}, {position}: read {input} refused");
             return null;
         });
         return fw ?? fr;
+    }
+
+    /// <summary>
+    /// Whether a refusal, or one in its chain of inner exceptions, was thrown by a converter that <paramref name="factory"/> declares: the
+    /// method that threw it (its TargetSite) belongs to the factory's type or to a type nested in it. Told by types, never by a message.
+    /// </summary>
+    static bool ThrownBy(Exception? x, Type factory)
+    {
+        for (; x is not null; x = x.InnerException)
+            for (var t = x.TargetSite?.DeclaringType; t is not null; t = t.DeclaringType)
+                if (t == factory) return true;
+        return false;
     }
 
     static async Task<(Type, object)> Produce<V>(string shape, string op, V v) where V : notnull
