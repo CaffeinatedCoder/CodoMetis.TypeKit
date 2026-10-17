@@ -49,4 +49,13 @@
         <Compile Include="..\CodoMetis.TypeKit.Analyzers.Tests\Variants\TypeArgumentKinds.cs" Link="Variants\TypeArgumentKinds.cs" />
     </ItemGroup>
 
+    <!--
+      The probes' side (1), the framework without TypeKit, is read from a fact's fixture where one covers a row (the harness's Sides,
+      design/adr/0107): the facts' reader is compiled in as it is, BCL only, rather than the Facts project referenced, which is a test
+      project of its own and references no TypeKit project. The fixtures are read from the repository, beside the facts' tests.
+    -->
+    <ItemGroup>
+        <Compile Include="..\CodoMetis.TypeKit.Facts\FactFixture.cs" Link="Facts\FactFixture.cs" />
+    </ItemGroup>
+
 </Project>
