@@ -6,6 +6,7 @@ pins:
 source: the document Microsoft.AspNetCore.OpenApi writes for minimal API header parameters of two enums written by name (JsonStringEnumConverter), each used once nullable and once not, in opposite orders, under OpenApiSpecVersion.OpenApi3_1 and OpenApi3_0, measured in a host without TypeKit
 turned-on: row 285 of C21OpenapiSchemaParityProbe (claim C21-openapi-schema-parity, finding F3), where the wrapped E? header's enum listed null through E's component and the value object's did not
 test: test/CodoMetis.TypeKit.Facts/KB027.cs
+fixture: test/CodoMetis.TypeKit.Facts/KB027.fixture.json
 ---
 
 # KB-027. The component ASP.NET makes for an enum written by name is the schema of the first use it meets

@@ -27,6 +27,11 @@
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     </ItemGroup>
 
+    <!-- A fact's measured answers as data, beside its test (FactFixture, design/adr/0107), read from the test output. -->
+    <ItemGroup>
+        <None Update="KB*.fixture.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
     <ItemGroup>
         <Using Include="System.Text.Json" />
         <Using Include="System.Text.Json.Nodes" />

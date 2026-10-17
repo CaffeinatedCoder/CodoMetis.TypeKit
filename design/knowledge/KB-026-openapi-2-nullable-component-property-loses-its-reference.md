@@ -6,6 +6,7 @@ pins:
 source: the document Microsoft.AspNetCore.OpenApi writes for an MVC [FromBody] record with a property of a record struct and one of its Nullable<T>, under OpenApiSpecVersion.OpenApi2_0 and OpenApi3_1, measured in a host without TypeKit
 turned-on: row 38 of C21OpenapiSchemaParityProbe (claim C21-openapi-schema-parity), where a nullable value-object property that is a component had no type under OpenAPI 2.0
 test: test/CodoMetis.TypeKit.Facts/KB026.cs
+fixture: test/CodoMetis.TypeKit.Facts/KB026.fixture.json
 ---
 
 # KB-026. Under OpenAPI 2.0, ASP.NET writes a nullable property of a component as `allOf: [{x-nullable: true}]`, without the reference

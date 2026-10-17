@@ -152,7 +152,10 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
   declarations and records such a check inapplicable before its body runs; a pair no obligation wants is never
   put in a generated row, and the gate leaves it out as it leaves out an exclusion. A condition only the shape
   instance decides at run time stays in the check's body as `c.Inapplicable(cite)`.
-- `refused` drops a value the framework itself refuses on its own, so no row wastes its pairs on it.
+- `refused` drops a value the framework itself refuses on its own, so no row wastes its pairs on it. A reason that
+  rests on a verified fact names it (`fact:KB-NNN`), and that fact has a test: `docs-query check` fails
+  `fact-not-executable-cited` for a refused entry, a not-promised entry, an applicability condition or a harness
+  citation of a fact without one ([decision 107](../design/adr/0107-a-cited-fact-is-executable-and-seeds-run-by-footprint.md)).
   `shape.refused-kind` holds the declarations the generators refuse; only the generation surface takes
   it, where the refusal is the claim. Each value is a declaration and the id the Generators README's
   "Build errors" table gives it, declared as C22's probe does (`harness/BuildRefusals.cs`): an unsealed

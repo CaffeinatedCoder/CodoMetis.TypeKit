@@ -1,0 +1,61 @@
+{
+  "fact": "KB-026",
+  "answers": [
+    {
+      "id": "openapi-2-0-component-property",
+      "kind": "document",
+      "when": {
+        "openapi.OpenApiVersion": "OpenApi2_0",
+        "http.host": "mvc",
+        "http.binding": "body",
+        "http.nullability": "as-declared"
+      },
+      "at": "/definitions/Holder/properties/always",
+      "value": {
+        "$ref": "#/definitions/Spot"
+      },
+      "note": "the reference"
+    },
+    {
+      "id": "openapi-2-0-nullable-component-property",
+      "kind": "document",
+      "when": {
+        "openapi.OpenApiVersion": "OpenApi2_0",
+        "http.host": "mvc",
+        "http.binding": "body",
+        "http.nullability": "nullable"
+      },
+      "at": "/definitions/Holder/properties/maybe",
+      "value": {
+        "allOf": [
+          {
+            "x-nullable": true
+          }
+        ]
+      },
+      "note": "no reference, no type"
+    },
+    {
+      "id": "openapi-3-1-nullable-component-property",
+      "kind": "document",
+      "when": {
+        "openapi.OpenApiVersion": "OpenApi3_1",
+        "http.host": "mvc",
+        "http.binding": "body",
+        "http.nullability": "nullable"
+      },
+      "at": "/components/schemas/Holder/properties/maybe",
+      "value": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "$ref": "#/components/schemas/Spot"
+          }
+        ]
+      },
+      "note": "null or the reference"
+    }
+  ]
+}

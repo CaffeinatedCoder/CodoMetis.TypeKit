@@ -58,7 +58,7 @@ public sealed class SeedsTests : IDisposable
         var output = new StringWriter(); var error = new StringWriter();
         var context = new Context(fx.Root, new Dictionary<string, string?> { ["PROBE_CACHE_DIR"] = cache }, output, error);
         int exit;
-        try { exit = global::Prober.Seeds.Run(context, new Args(args, new HashSet<string>(StringComparer.Ordinal) { "dry-run" }), adapter); }
+        try { exit = global::Prober.Seeds.Run(context, new Args(args, new HashSet<string>(StringComparer.Ordinal) { "dry-run", "all" }), adapter); }
         catch (Refusal refusal) { error.WriteLine(refusal.Message); exit = refusal.ExitCode; }
         return (exit, output.ToString(), error.ToString());
     }
@@ -168,6 +168,175 @@ public sealed class SeedsTests : IDisposable
         var before = fx.Ledger("identity", "--probe", "P").Out;
         Seed();
         fx.Ledger("identity", "--probe", "P").Out.ShouldBe(before, "a seed proves the probe; adding or changing one must not stale its results");
+    }
+
+    /// <summary>What the replay records for P: the product files it ran, at HEAD.</summary>
+    private void Footprint(params string[] files) =>
+        File.AppendAllText(Path.Combine(fx.BranchDir, "footprints.jsonl"), new JsonObject
+        {
+            ["probe"] = "P",
+            ["footprint"] = new JsonObject(files.Select(f => KeyValuePair.Create(f, (JsonNode?)fx.Sh("git", "rev-parse", "HEAD:" + f).Trim()))),
+            ["compileTime"] = new JsonObject(), ["toolchain"] = new JsonObject(),
+        }.ToJsonString() + "\n");
+
+    /// <summary>P seeded and caught once, with a footprint over src/a.cs and src/b.cs or the files given, so the next run has a record to skip by.</summary>
+    private void CaughtOnce(params string[] footprint)
+    {
+        fx.Write("src/b.cs", "class B {}\n");
+        fx.Commit("a second product file");
+        Seed();
+        Footprint(footprint.Length > 0 ? footprint : ["src/a.cs", "src/b.cs"]);
+        var (exit, output, error) = Seeds();
+        exit.ShouldBe(0, output + error);
+        output.ShouldContain("  runs P: no run caught every seed of it yet");
+        output.ShouldContain("P (C1): caught");
+    }
+
+    private JsonObject Last() => (JsonObject)JsonNode.Parse(File.ReadAllText(Path.Combine(fx.BranchDir, "seeds-last.json")))!;
+
+    [Fact]
+    public void An_unchanged_probe_is_skipped_and_says_why()
+    {
+        CaughtOnce();
+        var builds = adapter.Worktrees.Count;
+
+        var (exit, output, error) = Seeds();
+
+        exit.ShouldBe(0, output + error);
+        output.ShouldContain("  skips P: every seed caught at " + fx.Sh("git", "rev-parse", "--short=7", "HEAD").Trim() + ", and neither its identity nor its product footprint changed since");
+        output.ShouldContain("0 seeds of 0 probes");
+        output.ShouldContain("1 probes skipped");
+        adapter.Worktrees.Count.ShouldBe(builds, "nothing built or ran");
+        Last()["skipped"]!.AsArray().Single()!["probe"]!.GetValue<string>().ShouldBe("P");
+        Last()["probes"]!["P"]!["commit"]!.GetValue<string>().ShouldBe(fx.Sh("git", "rev-parse", "HEAD").Trim(), "a skipped probe's record is carried forward");
+    }
+
+    [Fact]
+    public void A_changed_identity_reruns()
+    {
+        CaughtOnce();
+        fx.Write("tools/probe/corpus/harness/P.cs", "// probe P, changed\n");
+        fx.Commit("the harness changed");
+
+        var (_, output, _) = Seeds();
+
+        output.ShouldContain("  runs P: its identity or its seeds changed since they were caught at ");
+        output.ShouldContain("P (C1): caught");
+    }
+
+    [Fact]
+    public void A_changed_seed_reruns()
+    {
+        CaughtOnce();
+        Seed(edit: "class A { /* DEFECT, another */ }\n");
+
+        Seeds().Out.ShouldContain("  runs P: its identity or its seeds changed since they were caught at ");
+    }
+
+    [Fact]
+    public void A_changed_product_footprint_reruns()
+    {
+        CaughtOnce();
+        fx.Write("src/b.cs", "class B { int changed; }\n");
+        fx.Commit("the product changed where P runs");
+
+        var (_, output, _) = Seeds();
+
+        output.ShouldContain("  runs P: its product footprint changed since ");
+        output.ShouldContain("P (C1): caught");
+    }
+
+    /// <summary>The seed's own file may be outside what the probe ran; a change there may leave the seed behind, so it reruns.</summary>
+    [Fact]
+    public void A_change_to_the_file_the_seed_patches_reruns()
+    {
+        CaughtOnce("src/b.cs");
+        fx.Write("src/a.cs", "class A {}\n// moved on\n");
+        fx.Commit("the seeded file changed");
+
+        Seeds().Out.ShouldContain("  runs P: a file its seeds patch changed since ");
+    }
+
+    [Fact]
+    public void A_change_outside_the_footprint_skips()
+    {
+        CaughtOnce();
+        fx.Write("src/c.cs", "class C {}\n");
+        fx.Commit("the product changed where P does not run");
+
+        Seeds().Out.ShouldContain("  skips P: ");
+    }
+
+    [Fact]
+    public void A_probe_without_a_recorded_footprint_runs()
+    {
+        Seed();
+        Seeds().Exit.ShouldBe(0);
+
+        Seeds().Out.ShouldContain("  runs P: no product footprint recorded for it (a replay records one)");
+    }
+
+    [Fact]
+    public void All_ignores_the_record()
+    {
+        CaughtOnce();
+
+        var (exit, output, _) = Seeds("--all");
+
+        exit.ShouldBe(0);
+        output.ShouldNotContain("skips P");
+        output.ShouldContain("P (C1): caught");
+        Last()["all"]!.GetValue<bool>().ShouldBeTrue();
+    }
+
+    [Fact]
+    public void A_probe_named_runs_whatever_its_record_says()
+    {
+        CaughtOnce();
+
+        Seeds("--probe", "P").Out.ShouldContain("P (C1): caught");
+    }
+
+    [Fact]
+    public void A_missed_seed_is_never_skipped_next_time()
+    {
+        fx.Write("src/b.cs", "class B {}\n");
+        fx.Commit("a second product file");
+        Seed(edit: "class A { /* harmless */ }\n");
+        Footprint("src/a.cs", "src/b.cs");
+        Seeds().Exit.ShouldBe(1);
+        Last()["probes"]!.AsObject().ShouldBeEmpty();
+
+        var (exit, output, _) = Seeds();
+
+        exit.ShouldBe(1);
+        output.ShouldContain("  runs P: no run caught every seed of it yet");
+        output.ShouldContain("P (C1): missed");
+    }
+
+    [Fact]
+    public void A_seed_missed_after_a_catch_drops_the_record()
+    {
+        CaughtOnce();
+        Seed(edit: "class A { /* harmless */ }\n");
+        Seeds().Exit.ShouldBe(1);
+
+        Last()["probes"]!.AsObject().ContainsKey("P").ShouldBeFalse();
+        Seeds().Out.ShouldContain("  runs P: no run caught every seed of it yet");
+    }
+
+    [Fact]
+    public void The_record_is_what_its_schema_says()
+    {
+        CaughtOnce();
+        Seeds();
+        var root = AppContext.BaseDirectory;
+        while (!File.Exists(Path.Combine(root, "CodoMetis.TypeKit.slnx"))) root = Path.GetDirectoryName(root) ?? throw new InvalidOperationException("no CodoMetis.TypeKit.slnx above the test output");
+        var schema = (JsonObject)JsonNode.Parse(File.ReadAllText(Path.Combine(root, "tools", "Prober", "Schemas", "seeds-run.schema.json")))!["properties"]!;
+
+        foreach (var field in new[] { "probes", "skipped", "all" })
+            SchemaCheck.Problems(Last()[field], (JsonObject)schema[field]!, field).ShouldBeEmpty(field);
+        Last()["probes"]!["P"]!["identity"]!.GetValue<string>().ShouldBe(global::Prober.Seeds.SeedsIdentity(new Ledger(new Context(fx.Root, new Dictionary<string, string?>(), TextWriter.Null, TextWriter.Null), null), "P"));
     }
 
     private List<string> Problems() => global::Prober.Seeds.Problems(new Ledger(new Context(fx.Root, new Dictionary<string, string?>(), TextWriter.Null, TextWriter.Null), null));

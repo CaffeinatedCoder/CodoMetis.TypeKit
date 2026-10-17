@@ -15,6 +15,18 @@ falsifiable, checked against a primary source. A competitor's feature is a fact 
 `external {name} {version}`: no check compares it, so it is as fresh as its date. Take the next number, copy an
 entry's frontmatter, write the test first where a test can observe it, and add a row below.
 
+**A fact that prunes or excuses is executable** ([decision 107](../adr/0107-a-cited-fact-is-executable-and-seeds-run-by-footprint.md)).
+A `refused` entry of the axes file, a `not-promised` entry, an obligation's declaration and the probe harness may
+cite only a fact with a test; `docs-query check` fails `fact-not-executable-cited` otherwise. A fact without one
+explains, and decides no row.
+
+**A measured answer that is data is a fixture.** Where the fact's answer is a document, a status or an exception at an
+operation, it is `test/CodoMetis.TypeKit.Facts/KBNNN.fixture.json` beside the test, named by a `fixture:` line after
+`test:`: the fact's id and its `answers`, each an `id`, a `kind` (`document` with `at`, a JSON pointer; `status`;
+`exception`), the settings it was measured under (`when`, axis to value as a row names them), the `value` and a
+`note`. The test is a theory over the fixture's answers, measuring each (`KB001`), and `FactFixture` reads it, for the
+test and later for the harness's `Baseline.Fact`.
+
 | Id | Fact | Pins | Test |
 |---|---|---|---|
 | [KB-001](KB-001-openapi-2-nullable-body-drops-pattern.md) | Under OpenAPI 2.0, ASP.NET writes a nullable request body as `allOf: [{x-nullable: true}]` and drops its `pattern` | OpenApi 10.0.12, SDK 10.0.4xx | `KB001` |

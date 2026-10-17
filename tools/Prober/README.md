@@ -20,7 +20,7 @@ dotnet tools/Prober/bin/Release/net10.0/prober.dll help
 | `new --claim C [--probe P] [--family F]` | none | anywhere: stages a probe's skeleton, its own rows and its registry entry with no seed yet, and prints what the writer still owes |
 | `try --probe P [--rows i,j,...] [--no-build]` | none | locally: builds once in the replay's worktree and runs that one probe, every row or the rows given; records nothing, and holds the worktree from a replay while it runs |
 | `round explore\|full` | the `prober` agent | locally only, under caps it cannot overrun |
-| `seeds [--probe P]` | none | locally only: one build per seed, in a scratch worktree (decision 100) |
+| `seeds [--all] [--probe P]` | none | locally only: one build per seed, in a scratch worktree (decision 100); the probes whose seeds identity or product footprint changed since every seed was caught, or all of them, as a release runs it (decision 107) |
 
 No command in the gate's path needs a login, an API key or a Claude executable. A gate obligation is met
 by a probe in the corpus, written by hand or by a round, or by a reviewed waiver in
@@ -119,6 +119,14 @@ writes `seeds-last.json` (`Schemas/seeds-run.schema.json`), one outcome per seed
 `--seed-env NAME=VALUE...` for a toggle) writes a seed into `seeds`, in place of any seed of the entry that
 names O, `seed` included, and refuses an O that the claim's entry in `claims.json` does not list; without
 `--obligation`, `--seed` and `--seed-env` set the one `seed`. No seed is written into the registry by hand.
+Without `--all`, `seeds` runs only the probes that changed since the run that caught every one of their seeds
+(design/adr/0107), as `replay` runs only the stale ones: a probe runs when its seeds identity (the probe's identity,
+its seeds and the content of their patches) differs from the one recorded, when the product footprint its last
+replay recorded or a file its seeds patch changed since the recorded commit, when no footprint is recorded, and when
+no run caught all its seeds. It prints each probe it runs or skips with the reason. `seeds-last.json` keeps, per probe,
+the identity and the commit of the run that caught them all, carried forward for the probes a run skips; a missed seed
+drops the probe's record, so it is never skipped next time. `--all` runs every probe whatever the record says, and a
+release runs it before the tag; `--probe P` runs P.
 A seed is not part of a probe's identity, neither `seed` nor `seeds`. Without a build,
 `Seeds.Problems`, which the prober tests run over the repository, refuses a probe without a seed, a seed that
 does not apply, a seed naming an obligation its claim does not list, and a listed obligation no seed names.

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://codometis.typekit/probe/schemas/seeds-run.schema.json",
   "title": "Seeds run",
-  "description": "State (seeds-last.json): the last `prober seeds` run on the branch, one outcome per seed (a probe without one has a single outcome, `no seed`). Never evidence: a seeded run proves the probe, not the product.",
+  "description": "State (seeds-last.json): the last `prober seeds` run on the branch, one outcome per seed it ran (a probe without one has a single outcome, `no seed`), the probes it skipped and why, and per probe the run that last caught every one of its seeds, which decides what the next run without --all skips (design/adr/0107). Never evidence: a seeded run proves the probe, not the product.",
   "type": "object",
   "required": [
     "branch",
@@ -23,6 +23,56 @@
     },
     "seconds": {
       "type": "number"
+    },
+    "all": {
+      "type": "boolean",
+      "description": "Whether the run was `--all`, every probe whatever its record says, as a release runs it. Absent in a file written before footprint selection."
+    },
+    "probes": {
+      "type": "object",
+      "description": "Per probe, the run that last caught every seed it owes; a probe with a seed missed, or that never ran, has no entry, so it runs next time. Carried forward for the probes a run skipped.",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "identity",
+          "commit"
+        ],
+        "properties": {
+          "identity": {
+            "type": "string",
+            "description": "The seeds identity it was caught under: the probe's identity, its seeds and the content of their patches."
+          },
+          "commit": {
+            "type": "string",
+            "description": "HEAD of the run that caught them; the product footprint and the patched files are compared with it."
+          },
+          "seeds": {
+            "type": "integer",
+            "description": "How many seeds were caught."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "skipped": {
+      "type": "array",
+      "description": "The probes this run skipped, unchanged since every seed of theirs was caught, each with the reason printed.",
+      "items": {
+        "type": "object",
+        "required": [
+          "probe",
+          "reason"
+        ],
+        "properties": {
+          "probe": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "seeds": {
       "type": "array",
@@ -73,7 +123,8 @@
           }
         },
         "additionalProperties": false
-      }
+      },
+      "description": "One outcome per seed this run ran; the probes it skipped have none."
     }
   },
   "additionalProperties": false

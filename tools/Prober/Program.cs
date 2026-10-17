@@ -47,8 +47,10 @@ internal static class Program
                                             of the replay configuration; N probe processes at a time (default:
                                             the cores); without coverage or footprint, for a state nobody keeps
           round explore|full [--minutes M] [--claims N] [--usd X]   a capped exploration round (local only)
-          seeds [--probe P] [--dry-run]       applies each probe's seeded defect in a scratch worktree, replays the probe
-                                            there and requires a violation it causes (local only, a build per seed)
+          seeds [--all] [--probe P] [--dry-run]   applies each probe's seeded defect in a scratch worktree, replays the
+                                            probe there and requires a violation it causes (local only, a build per
+                                            seed): the probes whose identity or footprint changed since every seed of
+                                            theirs was caught, or all of them, as a release runs it
 
         State goes under PROBE_STATE_DIR when set (CI), else the main checkout's prober memory.
         Exit codes: 0 done, 1 refused or failed, 2 usage, 3 this dll is stale; `try` exits with the probe's own.

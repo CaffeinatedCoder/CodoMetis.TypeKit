@@ -41,8 +41,9 @@ line moves. Its `hash` changes with its content.
 ## Verified facts
 
 A fact (`design/knowledge/KB-NNN-slug.md`, design/adr/0093) has YAML frontmatter, read as fields: `verified:`,
-`pins:` (one field per list item), `source:`, `turned-on:` and `test:`. `list kind=fact` shows each with the date it
-was verified, and `check` holds every fact to these rules:
+`pins:` (one field per list item), `source:`, `turned-on:`, `test:` and, where its measured answer is data, `fixture:`
+(design/adr/0107). `list kind=fact` shows each with the date it was verified, and `check` holds every fact to these
+rules:
 
 | Problem | When |
 |---|---|
@@ -51,8 +52,13 @@ was verified, and `check` holds every fact to these rules:
 | `fact-incomplete`, `fact-frontmatter` | A field is missing, `verified:` is no `YYYY-MM-DD`, or a value is not a plain YAML string (a `: ` or ` #` inside, a quote or backtick first) |
 | `fact-untested` | `test:` is neither `none, ` and a reason nor a file in `test/CodoMetis.TypeKit.Facts/` that declares the class named by the id (`KB007`); a note in parentheses after the path, such as where the test runs, is not part of it |
 | `fact-orphan-test` | A `KBNNN.cs` in the facts project that no fact names |
+| `fact-fixture-missing`, `fact-fixture` | A `fixture:` whose file does not exist; one that is not `KBNNN.fixture.json` beside the test, or belongs to a fact without a test |
+| `fact-orphan-fixture` | A `KBNNN.fixture.json` in the facts project that no fact names |
+| `fact-not-executable-cited` | The probe corpus cites a fact that has no test: a `refused` entry of `.claude/probe-axes.md` whose reason names `KB-NNN`, a `not-promised` entry of `tools/probe/corpus/claims.json` whose `source` is the fact's file or which says `fact:KB-NNN`, an obligation's `inapplicable` declaration citing `fact:KB-NNN`, or a `Cite.Fact("KB-NNN")` or `Baseline.Fact("KB-NNN")` literal in the harness and probe sources (comments blanked out). No test means `none, …`, no file, a file that does not exist or declares no class of the id; a `Baseline.Fact` takes a fixture as well. Reported at the citing place |
 
-The pins are read from the checkout at each `check`, never from the index.
+The pins and the corpus's citations are read from the checkout at each `check`, never from the index. The summary
+counts the citations of each kind (`4 fact citations (0 refused, 2 not-promised, 0 obligation, 2 harness)`), and
+`RepositoryTests` holds floors on them, so a scan that finds nothing cannot pass for a clean one.
 
 ## Freshness
 
