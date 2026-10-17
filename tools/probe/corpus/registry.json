@@ -401,6 +401,11 @@
           "obligation": "abstract-string-constructor",
           "patch": "seeds/C11-parse-shapes-build-abstract-string-constructor.patch",
           "defect": "An abstract wrapped class with a string constructor is parsed through its type converter, so the value object has parsing."
+        },
+        {
+          "obligation": "parsing-where-it-can-be-parsed",
+          "patch": "seeds/C11-parse-shapes-build-parsing-where-it-can-be-parsed.patch",
+          "defect": "The generated [TypeConverter] is attached to a top-level value object only, so a nested one over a type that parses has no converter from text for MVC binding and the configuration binder."
         }
       ]
     },
@@ -592,6 +597,11 @@
           "obligation": "reported-where-written",
           "patch": "seeds/C17-cmtk0014-reported-where-written.patch",
           "defect": "CMTK0014 is reported at the syntax around the value, not at the value."
+        },
+        {
+          "obligation": "a-member-is-silent",
+          "patch": "seeds/C17-cmtk0014-a-member-is-silent.patch",
+          "defect": "CMTK0014 judges an explicit cast by its form, not by the value it names, so a cast that names a member, such as (FaultKind)2, is reported."
         }
       ]
     },

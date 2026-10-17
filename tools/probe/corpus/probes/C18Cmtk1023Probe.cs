@@ -2,15 +2,25 @@
 // generated. A base record declares `Equals(TBase)`, `GetHashCode()` or `IEquatable<TBase>.Equals`, which the generated equality, the
 // underlying value's, doesn't call." With README#equality: "a hand-written `Equals(TBase)`, `GetHashCode()` or `IEquatable<TBase>.Equals`
 // on a base record isn't used, and a warning names it (CMTK1023)".
-// Oracle: claim. One consumer build (Probes.Build.Consumer) holds every row's declaration in a file of its own: a value object of
-// shape.kind over shape.wrapped at shape.site, over a chain of base records (shape.inheritance: the base-member on the topmost of 1, 2 or 3
-// bases, or on the direct base beside an explicit IEquatable of its own or an explicit member of another interface), used at
-// shape.position of a shape.containing type. Each file reports CMTK1023 once, as a warning, for that value object, naming each equality
-// member its bases declare and nothing else; it reports no error; and the value object is generated (its From or TryFrom is in the
-// built assembly).
-// In this process too, the half of the sentence a run can show: over a base that declares the base-member by reference, the generated
-// equality is the underlying value's (one value object per base-member, built by this project's own weaving).
+// Obligations (claims.json), each with a check below and a seed of its own in the registry entry (decision 104); every row runs all three:
+//   names-each-base-member: "So a hand-written `Equals(TBase)`, `GetHashCode()` or `IEquatable<TBase>.Equals` on a base record isn't used, and a warning names it (CMTK1023)."
+//   a-warning-and-generated: "A warning, and the value object is generated."
+//   generated-equality-never-calls-the-base: "Over a base record, the generated `Equals(TSelf)` and `GetHashCode()` compare the underlying value alone, and never call the base's."
+// Oracle: the README's sentences (Baseline.Docs) for what the build reports, the wrapped values (Baseline.Twin) for equality. One
+// consumer build (Probes.Build.Consumer) holds every row's declaration in a file of its own: a value object of shape.kind over
+// shape.wrapped at shape.site, over a chain of base records (shape.inheritance: the base-member on the topmost of 1, 2 or 3 bases, or on
+// the direct base beside an explicit IEquatable of its own or an explicit member of another interface), used at shape.position of a
+// shape.containing type.
+//   names-each-base-member: the file reports CMTK1023 once, for that value object, naming each equality member its bases declare and
+//   nothing else;
+//   a-warning-and-generated: the file reports no error, CMTK1023 is a warning, and the value object is generated (its From or TryFrom
+//   is in the built assembly);
+//   generated-equality-never-calls-the-base: in this process, the half of the sentence a run can show: over a base that declares the
+//   base-member by reference, the generated equality is the underlying value's (one value object per base-member, built by this
+//   project's own weaving). It reads base-member alone, since the row's shape is not what it runs.
+// The row's settings are read inside the checks that run them (the consumer's two), from the rows file's copy of the row.
 using Probes.Build;
+using Baseline = Probes.Shapes.Baseline;
 using NoteKeys = Probes.Shapes.NoteKeys;
 namespace Probes;
 
@@ -143,7 +153,10 @@ public sealed class C18Cmtk1023Probe
         "top-level" => "", "nested-in-class" or "nested-in-struct" => $"O{id}+", "nested-two-levels" => $"O{id}+P{id}+", _ => throw new ArgumentException(s.Site),
     } + $"V{id}";
 
-    /// <summary>Two value objects holding 42 over a base declaring the member by reference: equal, of one hash, and one holding 43 not.</summary>
+    /// <summary>
+    /// Two value objects holding 42 over a base declaring the member by reference, and one holding 43: equal, of one hash, and unequal,
+    /// as the wrapped values 42, 42 and 43 are.
+    /// </summary>
     static string? Twin(string member)
     {
         (object A, object B, object C, object BaseA, object BaseB) v = member switch
@@ -153,9 +166,11 @@ public sealed class C18Cmtk1023Probe
             "IEquatable" => (C18EquatableTwin.FromKnownGood(42), C18EquatableTwin.FromKnownGood(42), C18EquatableTwin.FromKnownGood(43), C18EquatableTwin.FromKnownGood(42), C18EquatableTwin.FromKnownGood(42)),
             _ => throw new ArgumentException(member),
         };
-        if (!v.A.Equals(v.B) || v.A.GetHashCode() != v.B.GetHashCode()) return $"over a base declaring {member} by reference, two value objects holding 42 are unequal or hash apart: the generated equality called the base's";
-        if (v.A.Equals(v.C)) return $"over a base declaring {member}, value objects holding 42 and 43 are equal";
-        if (member == "IEquatable" && !((IEquatable<C18EquatableBase>)v.BaseA).Equals((C18EquatableBase)v.BaseB)) return "the base's explicit IEquatable<TBase> compares two value objects holding 42 by reference";
+        int a = 42, b = 42, c = 43;
+        if (v.A.Equals(v.B) != a.Equals(b) || (v.A.GetHashCode() == v.B.GetHashCode()) != (a.GetHashCode() == b.GetHashCode()))
+            return $"over a base declaring {member} by reference, two value objects holding 42 are unequal or hash apart: the generated equality called the base's";
+        if (v.A.Equals(v.C) != a.Equals(c)) return $"over a base declaring {member}, value objects holding 42 and 43 are equal";
+        if (member == "IEquatable" && ((IEquatable<C18EquatableBase>)v.BaseA).Equals((C18EquatableBase)v.BaseB) != a.Equals(b)) return "the base's explicit IEquatable<TBase> compares two value objects holding 42 by reference";
         return null;
     }
 
@@ -164,8 +179,8 @@ public sealed class C18Cmtk1023Probe
 
     static async Task<string?> Check(Probes.Shapes.Row r)
     {
-        var s = Of(r);
-        foreach (var (axis, value, why) in s.Substituted) r.Substituted(axis, value, why);
+        // The row as the rows file holds it, read without marking the run's row: each check marks what it ran.
+        var s = Of(Probes.Shapes.Rows.Get(RowsFile, r.Index));
         var id = r.Index.ToString();
         var build = await Built();
         var file = $"R{id}.cs";
@@ -173,11 +188,26 @@ public sealed class C18Cmtk1023Probe
         var errors = mine.Where(d => d.Severity == "error").ToList();
         if (errors.Any(e => e.Id.StartsWith("CS")))
         { r.Outcome("harness-error", "the probe's declaration does not compile: " + string.Join("; ", errors.Select(e => $"{e.Id} {e.Message}"))); return null; }
-        if (errors.Count > 0) return "the value object is not generated: " + string.Join("; ", errors.Select(e => $"{e.Id} {e.Message}"));
         var reported = mine.Where(d => d.Id == "CMTK1023").ToList();
+
+        // Every check runs, so a seed that breaks one obligation is seen by its own check whatever the others find.
+        var named = r.Check("names-each-base-member", Baseline.Docs("src/CodoMetis.TypeKit.Generators/README.md#equality"), c => { Ran(c, s); return NamesEach(c, s, id, file, reported); });
+        var generated = r.Check("a-warning-and-generated", Baseline.Docs("src/CodoMetis.TypeKit.Generators/README.md#build-errors"), c => { Ran(c, s); return WarningAndGenerated(c, s, id, build, errors, reported); });
+        var equality = r.Check("generated-equality-never-calls-the-base", Baseline.Twin, c => Equality(c));
+        return named ?? generated ?? equality;
+    }
+
+    /// <summary>Marks the axes the consumer's declaration was written from read for <paramref name="c"/>, at the value that ran.</summary>
+    static void Ran(Probes.Shapes.Check c, Shape s)
+    {
+        foreach (var axis in (string[])["shape.kind", "shape.site", "shape.inheritance", "shape.wrapped", "base-member", "shape.containing", "shape.position"]) _ = c[axis];
+        foreach (var (axis, value, why) in s.Substituted) c.Substituted(axis, value, why);
+    }
+
+    static string? NamesEach(Probes.Shapes.Check c, Shape s, string id, string file, List<BuildDiagnostic> reported)
+    {
         if (reported.Count != 1) return $"CMTK1023 reported {reported.Count} times in {file}, expected once";
         var d = reported[0];
-        if (d.Severity != "warning") return $"CMTK1023 is reported as {d.Severity}, documented a warning";
         if (!d.Message.StartsWith($"'{Nesting(s, id)}V{id}' inherits ", StringComparison.Ordinal))
             return "CMTK1023 does not name the value object: " + d.Message;
         var named = Named(s, id);
@@ -186,14 +216,30 @@ public sealed class C18Cmtk1023Probe
         var count = System.Text.RegularExpressions.Regex.Matches(d.Message, " in its base type ").Count;
         if (count != named.Count) return $"CMTK1023 names {count} members, the bases declare {named.Count} ({string.Join(", ", named)}): {d.Message}";
         if (d.Message.Contains("Mark", StringComparison.Ordinal)) return "CMTK1023 names the explicit member of another interface: " + d.Message;
+        c.Note(NoteKeys.Compared, $"{named.Count} members named");
+        return null;
+    }
+
+    static string? WarningAndGenerated(Probes.Shapes.Check c, Shape s, string id, ConsumerOutcome build, List<BuildDiagnostic> errors, List<BuildDiagnostic> reported)
+    {
+        if (errors.Count > 0) return "the value object is not generated: " + string.Join("; ", errors.Select(e => $"{e.Id} {e.Message}"));
+        if (reported.Count == 0) return "no CMTK1023 warning: the build reports none for the value object";
+        if (reported.FirstOrDefault(d => d.Severity != "warning") is { } other) return $"CMTK1023 is reported as {other.Severity}, documented a warning";
         if (build.Methods.Count == 0)
-        { r.Outcome("harness-error", $"the consumer built no assembly (exit {build.ExitCode}): " + string.Join("; ", build.Diagnostics.Where(x => x.Severity == "error").Take(3).Select(x => $"{Path.GetFileName(x.File)} {x.Id} {x.Message}"))); return null; }
+        { c.Outcome("harness-error", $"the consumer built no assembly (exit {build.ExitCode}): " + string.Join("; ", build.Diagnostics.Where(x => x.Severity == "error").Take(3).Select(x => $"{Path.GetFileName(x.File)} {x.Id} {x.Message}"))); return null; }
         var type = MetadataName(s, id);
-        if (!build.Methods.TryGetValue(type, out var methods)) { r.Outcome("harness-error", $"no type {type} in the consumer"); return null; }
+        if (!build.Methods.TryGetValue(type, out var methods)) { c.Outcome("harness-error", $"no type {type} in the consumer"); return null; }
         var entry = s.Kind == "validated-class" ? "TryFrom" : "From";
         if (!methods.Contains(entry)) return $"the value object is not generated: {type} has no {entry} ({string.Join(", ", methods.Order())})";
-        if (Twin(s.Member) is { } twin) return twin;
-        r.Note(NoteKeys.Compared, $"{named.Count} members named");
+        c.Note(NoteKeys.Compared, $"a warning, and {type} has {entry}");
+        return null;
+    }
+
+    static string? Equality(Probes.Shapes.Check c)
+    {
+        var member = c["base-member"];
+        if (Twin(member) is { } twin) return twin;
+        c.Note(NoteKeys.Compared, $"over a base declaring {member}, equality is the wrapped value's");
         return null;
     }
 }
