@@ -21,28 +21,20 @@ public sealed class KB026
         public IActionResult Post([FromBody] Holder holder) => Ok();
     }
 
-    private static async Task<JsonNode> PropertiesAsync(OpenApiSpecVersion version)
+    private static readonly FactFixture Fixture = FactFixture.Beside("KB-026");
+
+    public static TheoryData<string> Answers() => [.. Fixture.Answers.Select(answer => answer.Id)];
+
+    /// <summary>
+    /// Each answer of KB026.fixture.json: under OpenAPI 2.0 the nullable property is <c>allOf: [{x-nullable: true}]</c>
+    /// where its non-nullable twin is the reference; under 3.1 it is null or the reference.
+    /// </summary>
+    [Theory, MemberData(nameof(Answers))]
+    public async Task The_framework_writes_the_property_the_fixture_holds(string id)
     {
-        var document = await FactHost.DocumentAsync(version, [typeof(HolderController)]);
-        var schemas  = version == OpenApiSpecVersion.OpenApi2_0 ? document["definitions"]! : document["components"]!["schemas"]!;
+        var answer   = Fixture[id];
+        var document = await FactHost.DocumentAsync(Enum.Parse<OpenApiSpecVersion>(answer.When["openapi.OpenApiVersion"]), [typeof(HolderController)]);
 
-        return schemas["Holder"]!["properties"]!;
-    }
-
-    [Fact]
-    public async Task Under_OpenApi_2_0_a_nullable_property_of_a_component_loses_its_reference()
-    {
-        var properties = await PropertiesAsync(OpenApiSpecVersion.OpenApi2_0);
-
-        properties["always"]!.ToJsonString().ShouldBe("""{"$ref":"#/definitions/Spot"}""");
-        properties["maybe"]!.ToJsonString().ShouldBe("""{"allOf":[{"x-nullable":true}]}""", "no reference, no type");
-    }
-
-    [Fact]
-    public async Task Under_OpenApi_3_1_the_nullable_property_is_null_or_the_reference()
-    {
-        var properties = await PropertiesAsync(OpenApiSpecVersion.OpenApi3_1);
-
-        properties["maybe"]!.ToJsonString().ShouldBe("""{"oneOf":[{"type":"null"},{"$ref":"#/components/schemas/Spot"}]}""");
+        answer.Mismatch(document).ShouldBeNull();
     }
 }
