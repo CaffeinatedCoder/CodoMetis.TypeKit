@@ -30,6 +30,9 @@ internal sealed class ClosedSetSchemaTransformer : IOpenApiSchemaTransformer
 
     public async Task TransformAsync(OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
     {
+        // A non-abstract polymorphic base's own branch, which ASP.NET hands to no transformer.
+        await PolymorphicBaseBranch.WalkAsync(schema, context, this, cancellationToken);
+
         var info = context.JsonTypeInfo;
 
         if (Describe(info.Type) is { } set)
@@ -57,9 +60,9 @@ internal sealed class ClosedSetSchemaTransformer : IOpenApiSchemaTransformer
 
         // Only what ASP.NET left out: a schema it did build is its own description of the elements.
         if (info.Kind == JsonTypeInfoKind.Enumerable && schema.Items is null)
-            schema.Items = await context.GetOrCreateSchemaAsync(element, parameterDescription: null, cancellationToken);
+            schema.Items = await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, element, parameterDescription: null, cancellationToken);
         else if (info.Kind == JsonTypeInfoKind.Dictionary && schema.AdditionalProperties is null)
-            schema.AdditionalProperties = await context.GetOrCreateSchemaAsync(element, parameterDescription: null, cancellationToken);
+            schema.AdditionalProperties = await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, element, parameterDescription: null, cancellationToken);
     }
 
     private static void Fill(OpenApiSchema schema, GeneratedClosedSetAttribute set, bool admitsNull)

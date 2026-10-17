@@ -220,7 +220,7 @@ internal static class ValueObjectDeclaration
             found.AddRange(MembersNamed(target, $"{target.Name}TypeConverter"));
             generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IParsable<>)));
 
-            if (parse == ValueParseStrategy.SpanParsable)
+            if (ValueObjectParsableAspect.SupportsSpan(valueType))
             {
                 generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(ISpanParsable<>)));
 

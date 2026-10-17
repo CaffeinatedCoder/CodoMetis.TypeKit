@@ -695,6 +695,63 @@ public sealed class DescribedSchemaTests
         }
     }
 
+    /// <summary>Nullable elements of a described decimal and of a value object over one, in a list and a dictionary.</summary>
+    public sealed record Optionals(List<decimal?> Lines, Dictionary<string, decimal?> Taxes, List<ProbeAmount?> Amounts, Dictionary<string, ProbeAmount?> Named);
+
+    public static TheoryData<string, bool, OpenApiSpecVersion> NullableElementHosts()
+    {
+        var data = new TheoryData<string, bool, OpenApiSpecVersion>();
+        foreach (var how in new[] { "a decimal converter", "a resolver's nullable decimal converter", "a converter replacing the value object's", "a resolver's converter replacing the value object's" })
+        foreach (var components in new[] { true, false })
+        foreach (var version in new[] { OpenApiSpecVersion.OpenApi3_1, OpenApiSpecVersion.OpenApi3_0 })
+            data.Add(how, components, version);
+        return data;
+    }
+
+    /// <summary>
+    /// ASP.NET drops the element of a list or a dictionary of a nullable type whose converter is one's own, a
+    /// <c>decimal?</c> under a decimal converter or a resolver's, and a <c>ProbeAmount?</c> under a converter that replaces
+    /// the generated one; the element put back is the description or null, as the options write it, judged by a
+    /// validator, with everything inlined and with components. Closes the analyst's seed S9 (2026-10-16): the null of the
+    /// element put back was held by no test. Where the value object is a component, ASP.NET visited the element put back
+    /// again as <c>ProbeAmount?</c>, which then read as the component, and the null was taken out (found by this test).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(NullableElementHosts))]
+    public async Task A_nullable_element_put_back_admits_null_as_the_options_write_it(string how, bool components, OpenApiSpecVersion version)
+    {
+        await using var host = await ProbeHost.StartAsync(openApi =>
+            {
+                if (!components) openApi.CreateSchemaReferenceId = _ => null;
+                openApi.AddTypeKit();
+            }, json =>
+            {
+                switch (how)
+                {
+                    case "a decimal converter": json.SerializerOptions.Converters.Add(new DecimalStringJsonConverter()); break;
+                    case "a resolver's nullable decimal converter": json.SerializerOptions.TypeInfoResolverChain.Insert(0, new ResolverOf<decimal?>(new NullableDecimalCents())); break;
+                    case "a converter replacing the value object's": json.SerializerOptions.Converters.Add(new CentsConverter()); break;
+                    default: json.SerializerOptions.TypeInfoResolverChain.Insert(0, new ResolverOf<ProbeAmount>(new CentsConverter())); break;
+                }
+            }, version, app => app.MapPost("/optionals", int (Optionals optionals) => 0));
+        var document = await host.DocumentAsync();
+        var body = Inline(document, document.Request("/optionals", "post"));
+        var options = host.Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions;
+
+        var amount = ProbeAmount.From(7.80m);
+        var written = System.Text.Json.JsonSerializer.SerializeToNode(
+            new Optionals([7.80m, null], new() { ["k"] = 7.80m, ["n"] = null }, [amount, null], new() { ["k"] = amount, ["n"] = null }), options)!.AsObject();
+
+        foreach (var (property, value) in written)
+        {
+            var schema = body["properties"]![property]!;
+            var element = Inline(document, (schema["items"] ?? schema["additionalProperties"]).ShouldNotBeNull($"{how}, {version}: '{property}' has no element: {schema.ToJsonString()}"));
+            element.AsObject().Count.ShouldBeGreaterThan(0, $"{how}, {version}: '{property}' has the empty element");
+            PatchSchemaTests.Validator(document, schema, version)(value!.ToJsonString())
+                .ShouldBeTrue($"{how}, {version}: '{property}' is written as {value.ToJsonString()}, which {schema.ToJsonString()} refuses");
+        }
+    }
+
     /// <summary>
     /// An <c>if</c> and its branches judge the whole value, so a conditional description admits null only in
     /// a branch beside it: in a nullable property and in a patch, judged by a validator.
