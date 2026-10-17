@@ -12598,7 +12598,23 @@
           "ef.accessor": [
             "Value"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.wrapped": [
+                "DateTimeOffset",
+                "TimeSpan",
+                "ulong"
+              ],
+              "ef.query": [
+                "where-value-compare",
+                "order-by"
+              ]
+            },
+            "cite": "fact:KB-039"
+          }
+        ]
       },
       {
         "id": "get-value",
@@ -12607,7 +12623,23 @@
           "ef.accessor": [
             "GetValue"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.wrapped": [
+                "DateTimeOffset",
+                "TimeSpan",
+                "ulong"
+              ],
+              "ef.query": [
+                "where-value-compare",
+                "order-by"
+              ]
+            },
+            "cite": "fact:KB-039"
+          }
+        ]
       },
       {
         "id": "value-or-null",
@@ -12616,11 +12648,43 @@
           "ef.accessor": [
             "ValueOrNull"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.wrapped": [
+                "DateTimeOffset",
+                "TimeSpan",
+                "ulong"
+              ],
+              "ef.query": [
+                "where-value-compare",
+                "order-by"
+              ]
+            },
+            "cite": "fact:KB-039"
+          }
+        ]
       },
       {
         "id": "column-not-cast",
-        "sentence": "A table's column is re-typed, not cast, so an index on it still serves the query."
+        "sentence": "A table's column is re-typed, not cast, so an index on it still serves the query.",
+        "inapplicable": [
+          {
+            "axes": {
+              "shape.wrapped": [
+                "DateTimeOffset",
+                "TimeSpan",
+                "ulong"
+              ],
+              "ef.query": [
+                "where-value-compare",
+                "order-by"
+              ]
+            },
+            "cite": "fact:KB-039"
+          }
+        ]
       }
     ],
     "not-promised": [
