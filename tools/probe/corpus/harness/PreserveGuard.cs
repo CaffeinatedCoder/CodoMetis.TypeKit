@@ -29,12 +29,11 @@ public static class PreserveGuard
         var containing = position == "root" ? "class" : r["shape.containing"];
         _ = r["input.json"];   // the row's input, which every check of the row runs under; the reads apply it
         var plain = e.Valid(); var voValue = Make.Vo(e, plain);
-        var hp = Pos.Build(position, containing, e, false, plain);
-        var hv = Pos.Build(position, containing, e, true, voValue);
-        var o = JCtx.Apply(row, e, C10JsonContext.Default, hp.Declared, hv.Declared);
+        var (hp, hv) = Sides.Twins(position, containing, e, plain, voValue);
+        var o = JCtx.Apply(row, e, hp.Declared, hv.Declared);
         // A closed set travels as its name, which no naming policy renames and no converter for strings writes (docs/closed-sets.md).
         var op = kind == "closed-set" && (row.Get("json.DictionaryKeyPolicy") is not (null or "default") || row.Is("json.Converters", "own-for-wrapped"))
-            ? JCtx.Apply(row.With("json.DictionaryKeyPolicy", "default").With("json.Converters", row.Is("json.Converters", "own-for-wrapped") ? "default" : row["json.Converters"]), e, C10JsonContext.Default, hp.Declared, hv.Declared)
+            ? JCtx.Apply(row.With("json.DictionaryKeyPolicy", "default").With("json.Converters", row.Is("json.Converters", "own-for-wrapped") ? "default" : row["json.Converters"]), e, hp.Declared, hv.Declared)
             : o;
         var ownWrapped = row.Is("json.Converters", "own-for-wrapped");
         var ownVo = row.Is("json.Converters", "own-for-value-object");
@@ -245,7 +244,7 @@ public static class ReadAlike
             c.Note(NoteKeys.Compared, "read " + input + ": refused as documented"); return null;
         }
         // the wrapped type refused and the value object read: only a JSON null for a sealed record, which reads it as any class does
-        if (input == "null" && !e.Vo.IsValueType && e.Plain.IsValueType && Jx.De(text, hv.Declared, ov).Value is { } read
+        if (input == "null" && Make.AdmitsNull(e.Vo) && !Make.AdmitsNull(e.Plain) && Jx.De(text, hv.Declared, ov).Value is { } read
             && Jx.Tokens(JsonSerializer.Serialize(read, hv.Declared, Jx.Plain)).Any(t => t.Type == JsonTokenType.Null))
         { c.Note(NoteKeys.Compared, "read null: the sealed record reads null, as any class does"); return null; }
         return $"read {input}: the value object read what the wrapped type refused ({p})\n  text={Jx.Cut(text)}";

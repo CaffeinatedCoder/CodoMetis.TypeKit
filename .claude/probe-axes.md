@@ -69,6 +69,13 @@ and `GeneratedHarnessTests` in the conventions tests holds each file to its app'
   and one passed, so a check that did not apply voids no other; the ledger credits each passing check with the
   axes it read and the row's, never a pair put together from two checks. A seed naming an obligation is caught
   only by a check naming it.
+- Two-sided checks: the twin is `Entry.Plain`, the wrapped type at the value object's nullability (a class value object over a
+  struct faces the struct made nullable; the closed set faces a string), written by `shapes.cs` beside the value object. Build both
+  sides with `Sides.Twins(position, containing, entry, plain, vo)`, which puts the row's position and containing type around each and
+  throws, a harness error, where the two do not hold the same shape. Under `json.TypeInfoResolver=source-generated-context` the options
+  resolve through `ProbeContext` alone, which lists every shape, position and containing type and each twin, with no reflection behind
+  it; `json.TypeInfoResolverChain=context-then-default` puts the reflection fallback after it. A shape the context does not list is a
+  harness error, never a fallback (tools/probe/generators/README.md, "The twin and the context").
 - EF probes: SQLite in memory (`Data Source=:memory:` with the connection held open). PostgreSQL needs
   a server and is out of reach.
 - Analyzer probes (what compiles and what CMTK reports): in `test/CodoMetis.TypeKit.Analyzers.Tests`,

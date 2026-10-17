@@ -725,15 +725,6 @@
             "json.ReferenceHandler=IgnoreCycles"
           ]
         ]
-      },
-      {
-        "reason": "System.Text.Json refuses adding resolvers to TypeInfoResolverChain once a JsonSerializerContext is the TypeInfoResolver (JsonRow notes it as substituted, STJ refused it), so the strict context never runs with the chain.",
-        "pairs": [
-          [
-            "json.TypeInfoResolver=source-generated-context",
-            "json.TypeInfoResolverChain=context-then-default"
-          ]
-        ]
       }
     ]
   },
@@ -855,15 +846,6 @@
             "json.ReferenceHandler=IgnoreCycles"
           ]
         ]
-      },
-      {
-        "reason": "System.Text.Json refuses adding resolvers to TypeInfoResolverChain once a JsonSerializerContext is the TypeInfoResolver (JsonRow notes it as substituted, STJ refused it), so the strict context never runs with the chain.",
-        "pairs": [
-          [
-            "json.TypeInfoResolver=source-generated-context",
-            "json.TypeInfoResolverChain=context-then-default"
-          ]
-        ]
       }
     ]
   },
@@ -955,15 +937,6 @@
           [
             "json.PreferredObjectCreationHandling=Populate",
             "json.ReferenceHandler=IgnoreCycles"
-          ]
-        ]
-      },
-      {
-        "reason": "System.Text.Json refuses adding resolvers to TypeInfoResolverChain once a JsonSerializerContext is the TypeInfoResolver (JsonRow notes it as substituted, STJ refused it), so the strict context never runs with the chain.",
-        "pairs": [
-          [
-            "json.TypeInfoResolver=source-generated-context",
-            "json.TypeInfoResolverChain=context-then-default"
           ]
         ]
       }
@@ -6591,15 +6564,6 @@
             "json.ReferenceHandler=IgnoreCycles"
           ]
         ]
-      },
-      {
-        "reason": "System.Text.Json refuses adding resolvers to TypeInfoResolverChain once a JsonSerializerContext is the TypeInfoResolver (JsonRow notes it as substituted, STJ refused it), so the strict context never runs with the chain.",
-        "pairs": [
-          [
-            "json.TypeInfoResolver=source-generated-context",
-            "json.TypeInfoResolverChain=context-then-default"
-          ]
-        ]
       }
     ]
   },
@@ -6652,15 +6616,6 @@
           [
             "json.PreferredObjectCreationHandling=Populate",
             "json.ReferenceHandler=IgnoreCycles"
-          ]
-        ]
-      },
-      {
-        "reason": "System.Text.Json refuses adding resolvers to TypeInfoResolverChain once a JsonSerializerContext is the TypeInfoResolver (JsonRow notes it as substituted, STJ refused it), so the strict context never runs with the chain.",
-        "pairs": [
-          [
-            "json.TypeInfoResolver=source-generated-context",
-            "json.TypeInfoResolverChain=context-then-default"
           ]
         ]
       }
@@ -11744,15 +11699,6 @@
           [
             "json.PreferredObjectCreationHandling=Populate",
             "json.ReferenceHandler=IgnoreCycles"
-          ]
-        ]
-      },
-      {
-        "reason": "System.Text.Json refuses adding resolvers to TypeInfoResolverChain once a JsonSerializerContext is the TypeInfoResolver (JsonRow notes it as substituted, STJ refused it), so the strict context never runs with the chain.",
-        "pairs": [
-          [
-            "json.TypeInfoResolver=source-generated-context",
-            "json.TypeInfoResolverChain=context-then-default"
           ]
         ]
       },

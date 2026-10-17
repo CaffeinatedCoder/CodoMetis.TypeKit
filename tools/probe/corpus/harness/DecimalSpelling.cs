@@ -67,9 +67,8 @@ public static class DecimalSpelling
         JsonConverter conv = number ? new DecimalNumberJsonConverter() : new DecimalStringJsonConverter();
         var position = r["shape.position"];
         var containing = position == "root" ? "class" : r["shape.containing"];
-        var hp = Pos.Build(position, containing, e, false, d);
-        var hv = Pos.Build(position, containing, e, true, Make.Vo(e, d));
-        var o = JCtx.Apply(r, e, C01JsonContext.Default, hp.Declared, hv.Declared);
+        var (hp, hv) = Sides.Twins(position, containing, e, d, Make.Vo(e, d));
+        var o = JCtx.Apply(r, e, hp.Declared, hv.Declared);
         var ob = new JsonSerializerOptions(o);      // the baseline: the same options, the serializer's own decimal
         foreach (var c in ob.Converters.Where(c => c.CanConvert(typeof(decimal))).ToList()) ob.Converters.Remove(c);
         o.Converters.Insert(0, conv);               // registered first: an application converter for decimals (own-for-wrapped) comes after it

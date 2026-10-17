@@ -141,7 +141,8 @@ namespace Probes.Schema
 
     /// <summary>
     /// The application lists its own types for json.TypeInfoResolver=source-generated-context: appended to the resolver chain, it
-    /// answers only where the row's resolver does not (a reflection resolver always does).
+    /// answers only where the row's resolver does not (a reflection resolver always does). Under the strict context the chain is
+    /// ProbeContext then this, with no reflection behind them.
     /// </summary>
     [JsonSerializable(typeof(CoordDto)), JsonSerializable(typeof(DecDto)), JsonSerializable(typeof(InitPatchDto)), JsonSerializable(typeof(CtorPatchDto))]
     [JsonSerializable(typeof(AgreeDto)), JsonSerializable(typeof(AgreePatchDto)), JsonSerializable(typeof(Coord)), JsonSerializable(typeof(CoordP))]
@@ -240,26 +241,6 @@ namespace Probes.Schema
             o.GetTypeInfo(t).Properties.First(p => (p.AttributeProvider as MemberInfo)?.Name == clr).Name;
         static void ListOwnTypes(JsonSerializerOptions o) => o.TypeInfoResolverChain.Add(SchemaJson.Default);
 
-        /// <summary>
-        /// json.TypeInfoResolver=source-generated-context, strictly: JsonRow falls back to reflection where the context does not list
-        /// the row's payload shape, but these hosts map no payload, so the context and this claim's own (SchemaJson) answer for every
-        /// type they serialize, without reflection, and the setting runs as the row asks. Registered last, on both option sets.
-        /// </summary>
-        static void StrictSourceGen(Row r, IServiceCollection s)
-        {
-            if (!r.Is("json.TypeInfoResolver", "source-generated-context")) return;
-            void Strict(JsonSerializerOptions o)
-            {
-                o.TypeInfoResolver = JsonTypeInfoResolver.Combine(ProbeContext.Default, SchemaJson.Default);
-                if (r.Is("json.TypeInfoResolverChain", "context-then-default")) { o.TypeInfoResolverChain.Add(ProbeContext.Default); o.TypeInfoResolverChain.Add(new DefaultJsonTypeInfoResolver()); }
-                // after JsonRow.Apply, which ran in Configure and may have recorded the reflection fallback for the unmapped payload
-                lock (r.Ev) r.Ev.Applied.Remove("json.TypeInfoResolver");
-            }
-            s.PostConfigure<HttpJsonOptions>(o => Strict(o.SerializerOptions));
-            s.PostConfigure<MvcJsonOptions>(o => Strict(o.JsonSerializerOptions));
-            r.Note(NoteKeys.CtxStrict, "the payload is not mapped; the context and SchemaJson list every type the host serializes");
-        }
-
         static HostCfg Cfg(Row r, string[] actions, Action<IEndpointRouteBuilder> minimal, Action<IServiceCollection>? services = null) => new()
         {
             Payload = false, FaultControllers = true,
@@ -271,7 +252,6 @@ namespace Probes.Schema
                 s.PostConfigure<HttpJsonOptions>(o => ListOwnTypes(o.SerializerOptions));
                 s.PostConfigure<MvcJsonOptions>(o => ListOwnTypes(o.JsonSerializerOptions));
                 services?.Invoke(s);
-                StrictSourceGen(r, s);
             },
         };
 
@@ -406,7 +386,9 @@ namespace Probes.Schema
                 {
                     s.AddSingleton<ILoggerProvider>(logs);
                     s.Configure<MvcOptions>(o => o.Conventions.Add(new KeepOnly(typeof(AlikeCtlBase), action)));
-                    StrictSourceGen(r, s);
+                    // the application lists its own types (ProblemDetails, what a fault is answered as) beside the row's resolver
+                    s.PostConfigure<HttpJsonOptions>(o => ListOwnTypes(o.SerializerOptions));
+                    s.PostConfigure<MvcJsonOptions>(o => ListOwnTypes(o.JsonSerializerOptions));
                 },
             };
             var sides = Sides(r, "alike");
@@ -414,7 +396,7 @@ namespace Probes.Schema
             var answers = new List<(string, int, Hx.Wire)>();
             WebApplication app;
             try { app = await Hx.Start(r, en, cfg); }
-            catch (Exception ex) { return new(action, $"{action}: host did not start: {ex.GetType().Name}: {Cut(ex.Message)}", twin, leave, qualified, ownWrapped, sides, answers, []); }
+            catch (Exception ex) when (ex is not Probes.Shapes.Sides.InputsNotEquivalent) { return new(action, $"{action}: host did not start: {ex.GetType().Name}: {Cut(ex.Message)}", twin, leave, qualified, ownWrapped, sides, answers, []); }
             await using var _ = app;
             // what each error is written as on the wire: the client's view of the two
             foreach (var path in sides)
@@ -457,7 +439,7 @@ namespace Probes.Schema
                 s => { s.PostConfigure<HttpJsonOptions>(o => Register(o.SerializerOptions)); s.PostConfigure<MvcJsonOptions>(o => Register(o.JsonSerializerOptions)); });
             WebApplication? app = null; string? down = null;
             try { app = await Hx.Start(r, en, cfg); }
-            catch (Exception ex) { down = "host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message); }
+            catch (Exception ex) when (ex is not Probes.Shapes.Sides.InputsNotEquivalent) { down = "host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message); }
             await using var _ = app;
             JsonNode? doc = null; Exception? docFailed = null;
             if (app is not null) { try { doc = await Hx.Doc(app); } catch (Exception ex) { docFailed = ex; } }
@@ -545,7 +527,7 @@ namespace Probes.Schema
             s => s.Configure<ApiBehaviorOptions>(o => { o.SuppressModelStateInvalidFilter = true; o.SuppressMapClientErrors = true; }));
             WebApplication app;
             try { app = await Hx.Start(r, en, cfg); }
-            catch (Exception ex) { return "host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message); }
+            catch (Exception ex) when (ex is not Probes.Shapes.Sides.InputsNotEquivalent) { return "host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message); }
             await using var _ = app;
             var http = HttpOptions(app);
             var respect = http.RespectRequiredConstructorParameters;
@@ -726,7 +708,7 @@ namespace Probes.Schema
             var sides = Sides(r, patch ? "agreep" : "agree");
             WebApplication app;
             try { app = await Hx.Start(r, en, cfg); }
-            catch (Exception ex) { return new(patch, type, cfg, sides, "host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message), null, null, null); }
+            catch (Exception ex) when (ex is not Probes.Shapes.Sides.InputsNotEquivalent) { return new(patch, type, cfg, sides, "host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message), null, null, null); }
             await using var _ = app;
             var name = JsonName(HttpOptions(app), dto, patch ? "P" : "At");
             try { return new(patch, type, cfg, sides, null, await Hx.Doc(app), null, name); }

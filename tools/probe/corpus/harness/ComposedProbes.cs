@@ -49,7 +49,7 @@ public static class ComposedClaims
         var obligations = Aspect.Answer.Append(Rule).Concat(Aspect.Doc).SelectMany(of).Distinct().ToList();
         WebApplication? app = null; Exception? down = null;
         try { app = await Hx.Start(r, en, Cfg(r)); }
-        catch (Exception ex) { down = ex; }
+        catch (Exception ex) when (ex is not Sides.InputsNotEquivalent) { down = ex; }
         await using var _ = app;
         string? failed = null;
         if (down is not null)
@@ -144,7 +144,7 @@ public static class ComposedClaims
         };
         WebApplication? app = null;
         try { app = await Hx.Start(r, en, cfg); }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not Sides.InputsNotEquivalent)
         {
             return ex.ToString().Contains(unmapped) ? null : $"host refused to start but not naming {unmapped}: {ex.GetType().Name}: {Cut(ex.Message)}";
         }

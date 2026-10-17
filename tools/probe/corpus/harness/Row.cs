@@ -359,13 +359,13 @@ public sealed class NoteKeys
     public static readonly NoteKeys Substituted = new("substituted", Pass);
     public static readonly NoteKeys Dropped = new("dropped", Pass);
     public static readonly NoteKeys CtxStrict = new("ctx-strict", Pass);
-    public static readonly NoteKeys CtxFallback = new("ctx-fallback", Pass);
+    public static readonly NoteKeys CtxFallback = new("ctx-fallback", Pass);   // not called since the one ProbeContext lists every shape (shapes.cs): no fallback under the context
     public static readonly NoteKeys BindingNullable = new("binding:nullable", Pass);
     public static readonly NoteKeys OwnVo = new("own-vo", Pass);
     public static readonly NoteKeys ConverterWrapsInner = new("converter-wraps-inner", Pass);
     public static readonly NoteKeys DocumentedCharGuidKeyNeverGeneratedChecked = new("documented-char-guid-key-never-generated-checked", Pass);
     public static readonly NoteKeys DocumentedCharGuidNotGeneratedChecked = new("documented-char-guid-not-generated-checked", Pass);
-    public static readonly NoteKeys SchemaComparedWithNullableWrapped = new("schema:compared-with-nullable-wrapped", Pass);
+    public static readonly NoteKeys SchemaComparedWithNullableWrapped = new("schema:compared-with-nullable-wrapped", Pass);   // not called since the twin is at the value object's nullability (shapes.cs)
     public static readonly NoteKeys SchemaNullableSpellingsNormalised = new("schema:nullable-spellings-normalised", Pass);
     public static readonly NoteKeys SchemaClassVoNullabilityNormalised = new("schema:class-vo-nullability-normalised", Pass);
     public static readonly NoteKeys SchemaNeitherSideDocumented = new("schema:neither-side-documented", Pass);

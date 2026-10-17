@@ -108,6 +108,25 @@ public static class Sides
     /// <summary>Side (1) measured: the framework without TypeKit, run in the same row.</summary>
     public static Side Measured(Answer a, string how) => new(a, Baseline.Framework, "measured: " + how);
 
+    // ---- the twin
+
+    /// <summary>
+    /// The twin and the value object at the row's position in its containing type, each around its sample: the one place where both sides
+    /// of a two-sided comparison are built, and where the precondition of every such comparison is held, that the twin and the value object
+    /// hold the same shape (Equivalence.Shapes: the twin stands where the value object stands, at its nullability). A mismatch is a harness
+    /// error, never a pass: it throws, and the check or row that asked ends as one.
+    /// </summary>
+    public static (Held Twin, Held Vo) Twins(string position, string containing, Entry e, object plain, object vo)
+    {
+        var hp = Pos.Build(position, containing, e, false, plain);
+        var hv = Pos.Build(position, containing, e, true, vo);
+        if (Equivalence.Shapes(hp.Declared, hv.Declared, e) is { } why) throw new InputsNotEquivalent(why);
+        return (hp, hv);
+    }
+
+    /// <summary>The twin and the value object do not hold the same shape: the harness built a comparison that compares nothing.</summary>
+    public sealed class InputsNotEquivalent(string why) : Exception("inputs not equivalent: " + why);
+
     // ---- which obligations promise non-interference
 
     /// <summary>

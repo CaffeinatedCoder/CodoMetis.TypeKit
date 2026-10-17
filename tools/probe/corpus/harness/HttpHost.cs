@@ -82,8 +82,8 @@ public sealed class BindConvention(Type vo, Type plain, string prefix) : IContro
     {
         if (!c.ControllerType.IsGenericType || c.ControllerType.GetGenericTypeDefinition() != typeof(MvcBind<>)) return;
         var arg = c.ControllerType.GenericTypeArguments[0];
-        // By the entry's own types: under http.nullability=nullable the plain side is already T?, and is "plain".
-        var which = arg == vo ? "vo" : arg == plain ? "plain" : "plainnull";
+        // By the entry's own types: the plain side is the twin, at the value object's nullability.
+        var which = arg == vo ? "vo" : arg == plain ? "plain" : throw new InvalidOperationException($"MvcBind<{arg.Name}> is neither side's");
         foreach (var a in c.Actions)
         {
             var (kind, post) = a.ActionName switch { "RouteA" => ("route", false), "QueryA" => ("query", false), "HeaderA" => ("header", false), "BodyA" => ("body", true), "FormA" => ("form", true), _ => ("params", false) };
@@ -198,9 +198,8 @@ public static class Hx
         builder.Logging.ClearProviders();
         if (c.Logs is not null) builder.Logging.AddProvider(c.Logs);
         var plain = e.Valid(); var vo = Make.Vo(e, plain);
-        var payload = new Payload(
-            Pos.Build(r["shape.position"], (r.Get("shape.containing") ?? "class"), e, true, vo),
-            Pos.Build(r["shape.position"], (r.Get("shape.containing") ?? "class"), e, false, plain));
+        var (twin, held) = Sides.Twins(r["shape.position"], r.Get("shape.containing") ?? "class", e, plain, vo);
+        var payload = new Payload(held, twin);
         builder.Services.AddSingleton(payload);
         builder.Services.ConfigureHttpJsonOptions(o => { JsonRow.Apply(r, e, o.SerializerOptions); if (c.WithoutTypeKit) Sides.DropTypeKit(o.SerializerOptions); });
         builder.Services.AddOpenApi(x => { ApplyOpenApi(x, r); if (c.TypeKitOpenApi && !c.WithoutTypeKit) x.AddTypeKit(); });
@@ -223,7 +222,6 @@ public static class Hx
                 controllers.Add(typeof(MvcPayloadController));
                 if (c.PayloadOnly != "plain") controllers.Add(typeof(MvcBind<>).MakeGenericType(e.Vo));
                 if (c.PayloadOnly != "vo") controllers.Add(typeof(MvcBind<>).MakeGenericType(e.Plain));
-                if (c.PayloadOnly != "vo" && Hx.PlainNull(r, e) is { } pn) controllers.Add(typeof(MvcBind<>).MakeGenericType(pn));
             }
             var pfx = "";
             builder.Services.AddControllers(o =>
@@ -268,29 +266,7 @@ public static class Hx
                 .Invoke(null, [b, which, e.Wrapped is "own-record-class" or "NodaTime.Instant"]);
             typeof(Hx).GetMethod(nameof(MapSchema), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(h.Declared).Invoke(null, [b, which]);
         }
-        if (only is "both" or "plain" && PlainNull(r, e) is { } pn)
-        {
-            typeof(Hx).GetMethod(nameof(MapBind), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(pn)
-                .Invoke(null, [b, "plainnull", e.Wrapped is "own-record-class" or "NodaTime.Instant"]);
-            // At the root the schema endpoint's body is the entry's own type, so it needs the same twin: a class
-            // value object's body is optional, as a reference type's is, and a wrapped struct's required.
-            if (r["shape.position"] == "root")
-                typeof(Hx).GetMethod(nameof(MapSchema), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(pn).Invoke(null, [b, "plainnull"]);
-        }
     }
-
-    /// <summary>
-    /// The wrapped type at the value object's nullability: a class value object's `T v` parameter is
-    /// maybe-null, so ASP.NET makes it optional and nullable, and it must be compared with
-    /// `Nullable&lt;wrapped&gt;`, not with the required wrapped value type. (G1, dismissed 2026-10-15: under
-    /// OpenAPI 2.0 ASP.NET writes any nullable body without `pattern`, `int?` included.)
-    /// </summary>
-    /// The probe's source-generated context lists `Nullable&lt;wrapped&gt;` for every wrapped value type but the
-    /// enums and Instant; for those the comparison falls back to stripping nullability markers (noted on the row).
-    public static Type? PlainNull(Row r, Entry e) =>
-        !e.Vo.IsValueType && e.Plain.IsValueType && Nullable.GetUnderlyingType(e.Plain) is null
-        && !(r.Is("json.TypeInfoResolver", "source-generated-context") && (e.Plain.IsEnum || e.Wrapped == "NodaTime.Instant"))
-            ? typeof(Nullable<>).MakeGenericType(e.Plain) : null;
 
     sealed record AsP<T>([FromQuery(Name = "v")] T V);
     static void MapBind<T>(IEndpointRouteBuilder b, string which, bool bodyOnly)
@@ -359,7 +335,7 @@ public static class Hx
     /// AddTypeKit() wrote, so one refusal is at another byte of each (rows 31 and 140 of C21: "Path: $ | LineNumber: 0 |
     /// BytePositionInLine: 32." against 41, the same refusal of a char under WriteAsString).
     /// </summary>
-    static string Unplaced(string message) => System.Text.RegularExpressions.Regex.Replace(message, @" \| LineNumber: \d+ \| BytePositionInLine: \d+\.$", ".");
+    public static string Unplaced(string message) => System.Text.RegularExpressions.Regex.Replace(message, @" \| LineNumber: \d+ \| BytePositionInLine: \d+\.$", ".");
 
     public static string BindText(Entry e, object plain) => e.Wrapped switch
     {

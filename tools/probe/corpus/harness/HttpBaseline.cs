@@ -54,7 +54,7 @@ public static class HttpBaseline
         {
             // docs/json.md "Null and missing": a struct value object rejects a JSON null; a sealed partial record reads it as null,
             // like any class, where the struct it wraps refuses it.
-            if (input == "null" && !e.Vo.IsValueType && e.Plain.IsValueType) return c.Refused(Cite.Docs("docs/json.md#null-and-missing"), what);
+            if (input == "null" && Make.AdmitsNull(e.Vo) && !Make.AdmitsNull(e.Plain)) return c.Refused(Cite.Docs("docs/json.md#null-and-missing"), what);
             return $"{what}: value object answered {(int)v.Status} {Cut(v.Body)} where wrapped answered {(int)p.Status} {Cut(p.Body)} {p.Thrown}";
         }
         if (p.Body != v.Body)
@@ -130,7 +130,7 @@ public static class HttpBaseline
     {
         if (r.Is("json.ReferenceHandler", "Preserve") && e.Wrapped == "own-record-class") { c.Refused(Cite.Docs("src/CodoMetis.TypeKit.Generators/README.md#json"), what); return true; }
         if (e.Kind.StartsWith("validated") && input == "refused-by-create" && r.Get("json.Converters") != "StoredJsonConverterFactory") { c.Refused(Cite.Docs("docs/json.md#when-a-value-is-rejected"), what); return true; }
-        if (input == "null" && (e.Vo.IsValueType || e.Plain.IsValueType)) { c.Refused(Cite.Docs("docs/json.md#null-and-missing"), what); return true; }
+        if (input == "null" && !Make.AdmitsNull(e.Vo)) { c.Refused(Cite.Docs("docs/json.md#null-and-missing"), what); return true; }
         if (e.Kind == "closed-set" && input != "valid") { c.Refused(Cite.Docs("README.md#what-you-get"), what); return true; }
         return false;
     }
@@ -184,7 +184,7 @@ public static class HttpBaseline
         async Task<WebApplication?> Start()
         {
             try { return await Hx.Start(r, e, new HostCfg { FaultControllers = false, MapBlanketMapping = false, WithoutTypeKit = true, PayloadOnly = only }); }
-            catch (Exception x) { Down = x.GetType().Name + ": " + Cut(x.Message); r.Log.AppendLine("side (1) host did not start: " + Down); return null; }
+            catch (Exception x) when (x is not Sides.InputsNotEquivalent) { Down = x.GetType().Name + ": " + Cut(x.Message); r.Log.AppendLine("side (1) host did not start: " + Down); return null; }
         }
         public async Task<Hx.Wire?> Ask(Func<WebApplication, Task<Hx.Wire>> ask) => await Host() is { } app ? await ask(app) : null;
         public async ValueTask DisposeAsync() { if (started is not null && await started is { } app) await app.DisposeAsync(); }
@@ -202,7 +202,7 @@ public static class HttpBaseline
     {
         WebApplication app;
         try { app = await Hx.Start(r, e, new HostCfg { FaultControllers = false, MapBlanketMapping = false }); }
-        catch (Exception ex) { return "baseline host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message); }
+        catch (Exception ex) when (ex is not Sides.InputsNotEquivalent) { return "baseline host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message); }
         await using var _ = app;
         await using var one = new SideOne(r, e, "plain");
         await using var alone = new SideOne(r, e, "both");
@@ -384,7 +384,7 @@ public static class HttpBaseline
     {
         WebApplication? app = null; string? down = null;
         try { app = await Hx.Start(r, e, new HostCfg { FaultControllers = false, MapBlanketMapping = false }); }
-        catch (Exception ex) { down = "schema host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message); }
+        catch (Exception ex) when (ex is not Sides.InputsNotEquivalent) { down = "schema host did not start: " + ex.GetType().Name + ": " + Cut(ex.Message); }
         await using var _ = app;
         await using var one = new SideOne(r, e, "plain");
         await using var alone = new SideOne(r, e, "both");
@@ -501,6 +501,10 @@ public static class HttpBaseline
     }
 
     /// <summary>A body whose schema is its null alone, <c>{"schema": {"allOf": [{"x-nullable": true}]}}</c>, anywhere in an operation: told by its structure.</summary>
+    /// <summary>A schema that is the OpenAPI 2.0 null flag and nothing else: <c>{"allOf":[{"x-nullable":true}]}</c>.</summary>
+    static bool OnlyTheNullFlag(JsonObject o) =>
+        o.Count == 1 && o["allOf"] is JsonArray { Count: 1 } all && all[0] is JsonObject { Count: 1 } flag && flag["x-nullable"]?.GetValueKind() == JsonValueKind.True;
+
     static bool OnlyItsNull(JsonNode? n) => n switch
     {
         JsonObject o => o["schema"] is JsonObject { Count: 1 } schema && schema["allOf"] is JsonArray { Count: 1 } all && all[0] is JsonObject { Count: 1 } flag
@@ -595,12 +599,10 @@ public static class HttpBaseline
         foreach (var (pp0, vp) in checks)
         {
             var method = pp0.Contains("/schema/") || pp0.Contains("/body/") || pp0.Contains("/form/") ? "post" : "get";
-            // Like with like from the start: a class value object against the wrapped type at its nullability.
-            // The schema endpoint has the twin at the root only, where its body is the entry's own type (row 384 of C07:
-            // a record class over TimeOnly, optional, against a required TimeOnly).
-            var twinned = pp0.Contains("/bind/") || pp0.Contains("/schema/") && r["shape.position"] == "root";
-            var pp = e.Vo.IsValueType != e.Plain.IsValueType && Hx.PlainNull(r, e) is not null && twinned ? pp0.Replace("/plain", "/plainnull") : pp0;
-            if (pp != pp0) c.Note(NoteKeys.SchemaComparedWithNullableWrapped);
+            // Like with like from the start: the twin is the wrapped type at the value object's nullability (shapes.cs), so a class
+            // value object over a struct faces the struct made nullable, at every endpoint (row 384 of C07: a record class over TimeOnly,
+            // optional, against TimeOnly?).
+            var pp = pp0;
             var po = Op(doc, pp, method); var vo = Op(doc, vp, method);
             if (po is null)
             {
@@ -621,26 +623,29 @@ public static class HttpBaseline
                 return $"schema of the wrapped type at {pp}: TypeKit changed the wrapped type's schema, at {FirstDifference(JsonNode.Parse(s1), JsonNode.Parse(s2), "$")} (without TypeKit, then with it)";
             if (Inputs(po) is var ip && Inputs(vo) is var iv && ip != iv)
             {
-                // No twin of the wrapped type at the value object's nullability here (a struct value object over a class, or under a
-                // source-generated context an enum or Instant, whose Nullable the probes' context does not list): the two sides are not
-                // alike, and no sentence cites it, so the check cannot tell.
-                if (e.Vo.IsValueType != e.Plain.IsValueType && Hx.PlainNull(r, e) is null)
+                // No twin of the wrapped type at the value object's nullability here (a struct value object over a class, which no plain
+                // type mirrors), or a wrapped record class, which ASP.NET binds by its properties where the value object is one value: the
+                // two sides are not alike, and no sentence cites it, so the check cannot tell.
+                if (Make.AdmitsNull(e.Vo) != Make.AdmitsNull(e.Plain))
                     c.Inconclusive($"{pp} vs {vp}: no twin of {e.Plain.Name} at the value object's nullability, the inputs differ: wrapped [{ip}] vs value object [{iv}]");
+                else if (e.Wrapped == "own-record-class")
+                    c.Inconclusive($"{pp} vs {vp}: the wrapped record class is bound by its properties, the value object as one value, the inputs differ: wrapped [{ip}] vs value object [{iv}]");
                 else r.Outcome("harness-error", $"inputs not equivalent for {pp} vs {vp}: wrapped [{ip}] vs value object [{iv}]");
                 continue;
             }
             var sp = Sig(doc, po); var sv = Sig(doc, vo);
             if (NullAroundReferences(sp, sv) is var (np, nv, around)) { sp = np; sv = nv; if (around) c.Note(NoteKeys.SchemaNullAroundReferenceNormalised); }
-            if (sp != sv && pp != pp0)
+            if (sp != sv && Make.AdmitsNull(e.Vo) && Make.AdmitsNull(e.Plain) && e.Vo.IsValueType != e.Plain.IsValueType)
             {
-                // Both sides nullable alike; OpenAPI 3.x spells nullability two ways (oneOf [null, X] or type [null, X]).
+                // Both sides nullable alike, one a class and the other a struct made nullable (a class value object and its nullable twin, or
+                // a nullable struct value object and a wrapped class); OpenAPI 3.x spells nullability two ways (oneOf [null, X] or type [null, X]).
                 sp = Hx.NoNull(JsonNode.Parse(sp))!.ToJsonString(); sv = Hx.NoNull(JsonNode.Parse(sv))!.ToJsonString();
                 c.Note(NoteKeys.SchemaNullableSpellingsNormalised);
             }
-            if (sp != sv && e.Vo.IsValueType != e.Plain.IsValueType && pp == pp0)
+            if (sp != sv && Make.AdmitsNull(e.Vo) != Make.AdmitsNull(e.Plain))
             {
-                // A class value object inside a declared shape is nullable by being a class (ADR 0036: a nullable
-                // value object admits null in OpenAPI); the markers go, the rest of the schema must agree.
+                // A struct value object over a class, whose twin is nullable by being a class where the value object is not (no plain
+                // type mirrors it); the markers go, the rest of the schema must agree.
                 sp = Hx.NoNull(JsonNode.Parse(sp))!.ToJsonString(); sv = Hx.NoNull(JsonNode.Parse(sv))!.ToJsonString();
                 c.Note(NoteKeys.SchemaClassVoNullabilityNormalised);
             }
@@ -662,6 +667,11 @@ public static class HttpBaseline
                 // KB-001: OpenAPI 2.0 writes a nullable body of the wrapped value type as allOf [{x-nullable: true}] alone, where a class value
                 // object's body in a minimal API is not nullable and keeps its schema (not-promised openapi-2-nullable-body-keeps-only-its-null;
                 // row 257). Side (1) shows it: without TypeKit, the twin's schema there is that null alone.
+                // AspNetCore README "What the document says" (KB-026), seen from the twin: OpenAPI 2.0 writes a nullable property of any component,
+                // the twin's nullable enum among them, as allOf [{x-nullable: true}] without the reference, where the value object keeps its type.
+                // Side (1) shows it: without TypeKit, the twin's property there is that null alone.
+                if (openApi2 && d.P is null && d.V is not null && Make.AdmitsNull(e.Plain) && At(twin1, d.Keys.SkipLast(1)) is JsonObject t1 && OnlyTheNullFlag(t1))
+                { c.Inapplicable(Cite.Docs("src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says"), d.Path); continue; }
                 if (openApi2 && !e.Vo.IsValueType && Nullable.GetUnderlyingType(e.Plain) is not null && OnlyItsNull(twin1) && OnlyItsNull(JsonNode.Parse(Sig(doc, po))))
                 { c.Inapplicable(Cite.NotPromised("openapi-2-nullable-body-keeps-only-its-null"), pp); continue; }
                 // KB-027: the component ASP.NET makes for an enum written by name is the schema of the first use it meets, so a wrapped E?
