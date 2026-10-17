@@ -58,6 +58,25 @@ public sealed class RepositoryTests
         answer.Rows.ShouldBeEmpty(answer.Text());
     }
 
+    /// <summary>
+    /// Floors on the places the citation rule reads and on the citations it finds there (design/adr/0107), so that a
+    /// scan that found nothing cannot let the check above pass. On 2026-10-17: 3 refused entries, 41 not-promised
+    /// entries, 11 obligation declarations and 87 harness and probe sources were read, and KB-001 and KB-027 were
+    /// cited by not-promised entries, KB-037 twice by the harness.
+    /// </summary>
+    [Theory]
+    [InlineData(FactCitations.Refused, 3, 0)]
+    [InlineData(FactCitations.NotPromised, 30, 2)]
+    [InlineData(FactCitations.Obligation, 10, 0)]
+    [InlineData(FactCitations.Harness, 40, 2)]
+    public void The_corpus_s_citations_of_facts_are_found(string kind, int read, int cited)
+    {
+        var scan = FactCitations.Find(RepositoryRoot.Path);
+
+        scan.Read[kind].ShouldBeGreaterThanOrEqualTo(read);
+        scan.Of(kind).ShouldBeGreaterThanOrEqualTo(cited);
+    }
+
     [Fact]
     public void Every_record_is_listed_with_its_status_and_date() =>
         Queries.List(["kind=adr"]).Rows.ShouldAllBe(row => row.Fields.Single(f => f.Name == "status").Value.Length > 0 && row.Fields.Single(f => f.Name == "date").Value.Length == 10);

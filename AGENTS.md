@@ -78,7 +78,9 @@ dotnet tools/Prober/bin/Release/net10.0/prober.dll gate      # the release gate,
 ```
 
 Proving that each probe can fail needs no model either, but builds once per seed, so it runs locally
-only ([decision 100](design/adr/0100-every-probe-is-shown-to-fail-against-a-seeded-defect.md)):
+only ([decision 100](design/adr/0100-every-probe-is-shown-to-fail-against-a-seeded-defect.md)), and only for the
+probes changed since their seeds were last caught; a release runs `--all`
+([decision 107](design/adr/0107-a-cited-fact-is-executable-and-seeds-run-by-footprint.md)):
 
 ```bash
 dotnet tools/Prober/bin/Release/net10.0/prober.dll seeds     # each probe's seeded defect, applied in a scratch worktree, must fail it
@@ -268,11 +270,13 @@ the whole page. A ranked miss proves nothing.
 
 ## Releasing
 
-Before `git tag`, replay the whole probe corpus and run the gate:
+Before `git tag`, replay the whole probe corpus and run the gate, and show every probe's seeds caught (locally, a
+build per seed; without `--all` it runs only the probes changed since their seeds were last caught, decision 107):
 
 ```bash
 dotnet tools/Prober/bin/Release/net10.0/prober.dll replay --all
 dotnet tools/Prober/bin/Release/net10.0/prober.dll gate
+dotnet tools/Prober/bin/Release/net10.0/prober.dll seeds --all
 ```
 
 The gate never starts a model and needs nothing but the tracked corpus and a replay, so the release

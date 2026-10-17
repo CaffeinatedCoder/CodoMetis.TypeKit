@@ -14,7 +14,9 @@ namespace Prober;
 /// Nothing it runs is recorded as evidence: a seeded run proves the probe,
 /// not the product. Never in the checkout and never in the replay's worktree; one build per seed, so it runs
 /// locally, not in CI. A missed seed, a probe without one, a seed that no longer applies and a seeded build
-/// that fails all fail the command.
+/// that fails all fail the command. Without <c>--all</c> it runs only the probes whose seeds identity or product
+/// footprint changed since the run that last caught every seed of the probe (design/adr/0107), and says why it skips
+/// each of the others; the release runs <c>--all</c>.
 /// </summary>
 internal static class Seeds
 {
@@ -51,6 +53,26 @@ internal static class Seeds
         var head = ledger.Head;
         var home = Replay.Home(ctx, ledger);
         var worktree = Path.Combine(home, "seeds");
+        var include = Files.Strings(config["include"]).ToArray() is { Length: > 0 } inc ? inc : ["src"];
+        // The probes whose every seed the last runs caught, each at the commit and the identity it was caught at; a probe
+        // named by --probe, and every probe under --all, runs whatever its record says.
+        var last = Files.ReadJson(ledger.P(LastFile)) as JsonObject;
+        var record = (last?["probes"] as JsonObject ?? []).Where(kv => kv.Value is JsonObject).ToDictionary(kv => kv.Key, kv => (JsonObject)kv.Value!.DeepClone(), StringComparer.Ordinal);
+        var identities = states.ToDictionary(s => s.Probe, s => SeedsIdentity(ledger, s.Probe), StringComparer.Ordinal);
+        var skipped = new List<(string Probe, string Why)>();
+        if (!a.Flag("all") && a.Get("probe") is null)
+        {
+            var footprints = ledger.Footprints();
+            var runs = new List<Ledger.ProbeState>();
+            foreach (var s in states)
+            {
+                var why = Stale(ledger, s.Probe, registry[s.Probe], record.GetValueOrDefault(s.Probe), identities[s.Probe], footprints);
+                if (why.Run) runs.Add(s);
+                else skipped.Add((s.Probe, why.Reason));
+                ctx.Out.WriteLine($"  {(why.Run ? "runs" : "skips")} {s.Probe}: {why.Reason}");
+            }
+            states = runs;
+        }
         var seedsOf = states.ToDictionary(s => s.Probe, s => SeedsOf(registry[s.Probe]), StringComparer.Ordinal);
         // A probe without a seed owes one per obligation its claim lists (decision 104), each an outcome of its own;
         // under a claim without obligations, one.
@@ -59,7 +81,8 @@ internal static class Seeds
             seedsOf[s.Probe].Count > 0 ? [.. seedsOf[s.Probe].Select(x => (x.Obligation, (JsonNode?)x.Seed))]
             : listed.GetValueOrDefault(s.Claim) is { } ids && ids is not [Claim.ImplicitObligation] ? [.. ids.Select(id => ((string?)id, (JsonNode?)null))]
             : [(null, null)];
-        ctx.Out.WriteLine($"prober seeds: {ledger.Branch} at {head[..7]}: {seedsOf.Values.Sum(x => x.Count)} seeds of {states.Count} probes, in {worktree}");
+        ctx.Out.WriteLine($"prober seeds: {ledger.Branch} at {head[..7]}: {seedsOf.Values.Sum(x => x.Count)} seeds of {states.Count} probes, in {worktree}" +
+                          (skipped.Count > 0 ? $"; {skipped.Count} probes skipped, unchanged since every seed of theirs was caught (--all runs them)" : ""));
         if (a.Flag("dry-run"))
         {
             foreach (var s in states)
@@ -70,69 +93,85 @@ internal static class Seeds
         }
 
         var clock = Stopwatch.StartNew();
-        Directory.CreateDirectory(home);
-        if (!Directory.Exists(worktree))
-        {
-            var added = Git.Run(ledger.Root, "worktree", "add", "--detach", worktree, head);
-            if (added.ExitCode != 0) throw new Refusal("could not add the scratch worktree: " + added.Stderr.Trim());
-        }
-        var include = Files.Strings(config["include"]).ToArray() is { Length: > 0 } inc ? inc : ["src"];
-        var environment = ProbeRun.Environment(ctx, adapter, home);
-        var results = Directory.CreateTempSubdirectory("prober-seeds-").FullName;
         var outcomes = new List<Outcome>();
-        try
+        // Nothing to run: no worktree and no build, only the record carried forward.
+        if (states.Count > 0)
         {
-            // The baseline: the checks each probe already fails without a seed, by row and obligation. From the ledger
-            // where its evidence is current, else from an unseeded run here, so a seed is credited only with violations
-            // of its own.
-            var baseline = new Dictionary<string, HashSet<(int Row, string Obligation)>>(StringComparer.Ordinal);
-            var unseeded = new List<Ledger.ProbeState>();
-            foreach (var s in states)
+            Directory.CreateDirectory(home);
+            if (!Directory.Exists(worktree))
             {
-                if (!s.Stale && Files.ReadJson(ledger.EvidencePath(s.Probe)) is JsonObject evidence)
-                    baseline[s.Probe] = [.. (evidence["rows"] as JsonObject ?? []).Where(kv => kv.Value is JsonObject)
-                        .SelectMany(kv => Ledger.ChecksOf((JsonObject)kv.Value!).Where(c => c.Category == "violation")
-                                                .Select(c => (int.Parse(kv.Key, CultureInfo.InvariantCulture), c.Obligation)))];
-                else unseeded.Add(s);
+                var added = Git.Run(ledger.Root, "worktree", "add", "--detach", worktree, head);
+                if (added.ExitCode != 0) throw new Refusal("could not add the scratch worktree: " + added.Stderr.Trim());
             }
-            ctx.Out.WriteLine($"  baseline: {states.Count - unseeded.Count} from the ledger, {unseeded.Count} to run unseeded");
-            if (unseeded.Count > 0)
+            var environment = ProbeRun.Environment(ctx, adapter, home);
+            var results = Directory.CreateTempSubdirectory("prober-seeds-").FullName;
+            try
             {
+                // The baseline: the checks each probe already fails without a seed, by row and obligation. From the ledger
+                // where its evidence is current, else from an unseeded run here, so a seed is credited only with violations
+                // of its own.
+                var baseline = new Dictionary<string, HashSet<(int Row, string Obligation)>>(StringComparer.Ordinal);
+                var unseeded = new List<Ledger.ProbeState>();
+                foreach (var s in states)
+                {
+                    if (!s.Stale && Files.ReadJson(ledger.EvidencePath(s.Probe)) is JsonObject evidence)
+                        baseline[s.Probe] = [.. (evidence["rows"] as JsonObject ?? []).Where(kv => kv.Value is JsonObject)
+                            .SelectMany(kv => Ledger.ChecksOf((JsonObject)kv.Value!).Where(c => c.Category == "violation")
+                                                    .Select(c => (int.Parse(kv.Key, CultureInfo.InvariantCulture), c.Obligation)))];
+                    else unseeded.Add(s);
+                }
+                ctx.Out.WriteLine($"  baseline: {states.Count - unseeded.Count} from the ledger, {unseeded.Count} to run unseeded");
+                if (unseeded.Count > 0)
+                {
+                    Reset(worktree, head);
+                    Replay.Overlay(ledger, config, worktree);
+                    var build = Timed(() => adapter.Build(worktree, environment), out var seconds);
+                    ctx.Out.WriteLine($"  unseeded build: {Seconds(seconds)}, {FirstLine(build)}");
+                    if (build.ExitCode != 0) { ctx.Out.WriteLine(build.Stdout); throw new Refusal("the unseeded build failed; no seed can be judged"); }
+                    foreach (var s in unseeded)
+                    {
+                        var rows = RunProbe(adapter, worktree, s, environment, null, results, "base");
+                        baseline[s.Probe] = Violating(rows);
+                        ctx.Out.WriteLine($"    {s.Probe}: {rows.Count} rows, {baseline[s.Probe].Select(x => x.Row).Distinct().Count()} violations unseeded");
+                    }
+                }
+
+                foreach (var s in states)
+                {
+                    // A seed missing is an outcome "no seed"; a probe with several runs each under its obligation.
+                    foreach (var (obligation, seed) in Owed(s))
+                    {
+                        var outcome = One(ledger, config, adapter, worktree, head, include, environment, results, s, obligation, seed, baseline[s.Probe]);
+                        outcomes.Add(outcome);
+                        ctx.Out.WriteLine($"  {Named(s.Probe, obligation)} ({s.Claim}): {outcome.Result}{(outcome.Detail.Length > 0 ? ", " + outcome.Detail : "")}");
+                    }
+                }
+            }
+            finally
+            {
+                // The worktree is left at HEAD, every seed undone, for the next run to build incrementally.
                 Reset(worktree, head);
-                Replay.Overlay(ledger, config, worktree);
-                var build = Timed(() => adapter.Build(worktree, environment), out var seconds);
-                ctx.Out.WriteLine($"  unseeded build: {Seconds(seconds)}, {FirstLine(build)}");
-                if (build.ExitCode != 0) { ctx.Out.WriteLine(build.Stdout); throw new Refusal("the unseeded build failed; no seed can be judged"); }
-                foreach (var s in unseeded)
-                {
-                    var rows = RunProbe(adapter, worktree, s, environment, null, results, "base");
-                    baseline[s.Probe] = Violating(rows);
-                    ctx.Out.WriteLine($"    {s.Probe}: {rows.Count} rows, {baseline[s.Probe].Select(x => x.Row).Distinct().Count()} violations unseeded");
-                }
-            }
-
-            foreach (var s in states)
-            {
-                // A seed missing is an outcome "no seed"; a probe with several runs each under its obligation.
-                foreach (var (obligation, seed) in Owed(s))
-                {
-                    var outcome = One(ledger, config, adapter, worktree, head, include, environment, results, s, obligation, seed, baseline[s.Probe]);
-                    outcomes.Add(outcome);
-                    ctx.Out.WriteLine($"  {Named(s.Probe, obligation)} ({s.Claim}): {outcome.Result}{(outcome.Detail.Length > 0 ? ", " + outcome.Detail : "")}");
-                }
+                try { Directory.Delete(results, recursive: true); } catch (IOException) { }
             }
         }
-        finally
+
+        // A probe is recorded only where every seed it owes was caught, so a missed one runs again next time, whatever changed.
+        foreach (var s in states)
         {
-            // The worktree is left at HEAD, every seed undone, for the next run to build incrementally.
-            Reset(worktree, head);
-            try { Directory.Delete(results, recursive: true); } catch (IOException) { }
+            var own = outcomes.Where(o => o.Probe == s.Probe).ToList();
+            if (own.Count > 0 && own.All(o => o.Result == "caught"))
+                record[s.Probe] = new JsonObject { ["identity"] = identities[s.Probe], ["commit"] = head, ["seeds"] = own.Count };
+            else record.Remove(s.Probe);
         }
+        foreach (var gone in record.Keys.Where(probe => !registry.ContainsKey(probe)).ToList()) record.Remove(gone);
 
-        Files.WriteJson(ledger.P("seeds-last.json"), new JsonObject
+        Files.WriteJson(ledger.P(LastFile), new JsonObject
         {
             ["schemaVersion"] = Files.SchemaVersion, ["branch"] = ledger.Branch, ["commit"] = head,
             ["seconds"] = Math.Round(clock.Elapsed.TotalSeconds, 1),
+            ["all"] = a.Flag("all"),
+            ["probes"] = new JsonObject(record.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))),
+            ["skipped"] = new JsonArray([.. skipped.Select(x => (JsonNode)new JsonObject { ["probe"] = x.Probe, ["reason"] = x.Why })]),
             ["seeds"] = new JsonArray([.. outcomes.Select(o => (JsonNode)new JsonObject
             {
                 ["probe"] = o.Probe, ["claim"] = o.Claim, ["obligation"] = o.Obligation, ["seed"] = o.Seed, ["result"] = o.Result,
@@ -144,6 +183,52 @@ internal static class Seeds
         ctx.Out.WriteLine($"prober seeds: {string.Join(", ", counts)}, {Seconds(clock.Elapsed.TotalSeconds)} in all");
         return caught == outcomes.Count ? 0 : 1;
     }
+
+    public const string LastFile = "seeds-last.json";
+
+    /// <summary>
+    /// What a probe's seeded runs depend on besides the product: the probe's identity (<see cref="Ledger.Identity"/>:
+    /// its registry entry, the harness and probe sources, its rows, the axes file, the build environment, the tool),
+    /// its seeds, which that identity leaves out, and the content of each patch they apply.
+    /// </summary>
+    internal static string SeedsIdentity(Ledger ledger, string probe)
+    {
+        using var sha = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
+        void Add(string text) => sha.AppendData(System.Text.Encoding.UTF8.GetBytes(text + "\0"));
+        Add(ledger.Identity(probe));
+        foreach (var (obligation, seed) in SeedsOf(ledger.Registry().GetValueOrDefault(probe) ?? []))
+        {
+            Add(obligation ?? "-");
+            Add(Files.Canonical(seed));
+            var patch = Files.Str(seed["patch"]);
+            if (patch.Length > 0 && File.Exists(ledger.CorpusPath(patch))) sha.AppendData(File.ReadAllBytes(ledger.CorpusPath(patch)));
+        }
+        return Convert.ToHexStringLower(sha.GetHashAndReset())[..16];
+    }
+
+    /// <summary>
+    /// Whether a probe's seeds run without <c>--all</c>, and why: they run unless every seed was caught at a recorded
+    /// commit, under the seeds identity the probe has now, and neither the product footprint the last replay recorded for
+    /// it nor a file its seeds patch changed since that commit. A probe without a recorded footprint runs.
+    /// </summary>
+    internal static (bool Run, string Reason) Stale(Ledger ledger, string probe, JsonObject entry, JsonObject? caught, string identity, Dictionary<string, JsonObject> footprints)
+    {
+        if (caught is null) return (true, "no run caught every seed of it yet");
+        var commit = Files.Str(caught["commit"]);
+        var at = commit.Length >= 7 ? commit[..7] : commit;
+        if (Files.Str(caught["identity"]) != identity) return (true, $"its identity or its seeds changed since they were caught at {at}");
+        if (!footprints.ContainsKey(probe)) return (true, "no product footprint recorded for it (a replay records one)");
+        if (ledger.FootprintChangedSince(probe, commit, footprints)) return (true, $"its product footprint changed since {at}");
+        var patched = SeedsOf(entry).Select(x => Files.Str(x.Seed["patch"])).Where(p => p.Length > 0 && File.Exists(ledger.CorpusPath(p)))
+                                    .SelectMany(p => Patched(File.ReadAllText(ledger.CorpusPath(p)))).Distinct(StringComparer.Ordinal).ToArray();
+        if (patched.Length > 0 && Git.Run(ledger.Top, ["diff", "--quiet", commit, "HEAD", "--", .. patched]).ExitCode != 0)
+            return (true, $"a file its seeds patch changed since {at}");
+        return (false, $"every seed caught at {at}, and neither its identity nor its product footprint changed since");
+    }
+
+    /// <summary>The files a patch changes, as its <c>+++ b/</c> lines name them.</summary>
+    private static IEnumerable<string> Patched(string patch) =>
+        patch.Split('\n').Where(line => line.StartsWith("+++ b/", StringComparison.Ordinal)).Select(line => line["+++ b/".Length..].TrimEnd('\r'));
 
     /// <summary>Applies one probe's seed, builds, runs the probe, and undoes the seed.</summary>
     private static Outcome One(Ledger ledger, JsonObject config, IProbeAdapter adapter, string worktree, string head, string[] include,
