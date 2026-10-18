@@ -12868,6 +12868,25 @@
           ]
         }
       }
+    ],
+    "exclude": [
+      {
+        "reason": "C# defines no `>=` for a `string`, a `bool` or a `Uri`, so no query compares their `.Value` with it; E02ValueTranslatesProbe writes where-equals in its place there, so no row holds the pair.",
+        "pairs": [
+          [
+            "ef.query=where-value-compare",
+            "shape.wrapped=string"
+          ],
+          [
+            "ef.query=where-value-compare",
+            "shape.wrapped=bool"
+          ],
+          [
+            "ef.query=where-value-compare",
+            "shape.wrapped=Uri"
+          ]
+        ]
+      }
     ]
   },
   {
