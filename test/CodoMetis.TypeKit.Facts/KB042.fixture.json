@@ -1,0 +1,54 @@
+{
+  "fact": "KB-042",
+  "answers": [
+    {
+      "id": "char-under-write-as-string",
+      "kind": "exception",
+      "when": {
+        "json.NumberHandling": "WriteAsString",
+        "shape.wrapped": "char"
+      },
+      "value": {
+        "type": "System.Text.Json.JsonException",
+        "operation": "document",
+        "stage": "reading the char's schema back as ASP.NET's OpenApiJsonSchema",
+        "message": "could not be converted to OpenApiJsonSchema"
+      },
+      "note": "a minimal API's body holding a char, under NumberHandling WriteAsString: the document is refused"
+    },
+    {
+      "id": "char-by-default",
+      "kind": "document",
+      "when": {
+        "json.NumberHandling": "default",
+        "shape.wrapped": "char"
+      },
+      "at": "/components/schemas/HolderOfchar/properties/p",
+      "value": {
+        "maxLength": 1,
+        "minLength": 1,
+        "type": "string",
+        "format": "char"
+      },
+      "note": "the same body under the default number handling: written"
+    },
+    {
+      "id": "int-under-write-as-string",
+      "kind": "document",
+      "when": {
+        "json.NumberHandling": "WriteAsString",
+        "shape.wrapped": "int"
+      },
+      "at": "/components/schemas/HolderOfint/properties/p",
+      "value": {
+        "pattern": "^-?(?:0|[1-9]\\d*)$",
+        "type": [
+          "integer",
+          "string"
+        ],
+        "format": "int32"
+      },
+      "note": "a body holding an int under NumberHandling WriteAsString: written"
+    }
+  ]
+}

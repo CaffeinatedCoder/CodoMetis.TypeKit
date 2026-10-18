@@ -11689,6 +11689,17 @@
               ]
             },
             "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.NumberHandling": [
+                "WriteAsString"
+              ],
+              "shape.wrapped": [
+                "char"
+              ]
+            },
+            "cite": "fact:KB-042"
           }
         ]
       },
@@ -11724,6 +11735,17 @@
               ]
             },
             "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.NumberHandling": [
+                "WriteAsString"
+              ],
+              "shape.wrapped": [
+                "char"
+              ]
+            },
+            "cite": "fact:KB-042"
           }
         ]
       },
@@ -11763,6 +11785,17 @@
               ]
             },
             "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.NumberHandling": [
+                "WriteAsString"
+              ],
+              "shape.wrapped": [
+                "char"
+              ]
+            },
+            "cite": "fact:KB-042"
           }
         ]
       },
@@ -11798,6 +11831,17 @@
               ]
             },
             "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.NumberHandling": [
+                "WriteAsString"
+              ],
+              "shape.wrapped": [
+                "char"
+              ]
+            },
+            "cite": "fact:KB-042"
           }
         ]
       },
@@ -11834,6 +11878,17 @@
               ]
             },
             "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.NumberHandling": [
+                "WriteAsString"
+              ],
+              "shape.wrapped": [
+                "char"
+              ]
+            },
+            "cite": "fact:KB-042"
           }
         ]
       }
