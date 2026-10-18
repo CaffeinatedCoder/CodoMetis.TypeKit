@@ -582,6 +582,21 @@
           ]
         }
       }
+    ],
+    "exclude": [
+      {
+        "reason": "Not promised (as-text-refused-in-globalization-invariant-mode): `AsText()` throws `PlatformNotSupportedException` in globalization-invariant mode (docs/text.md#globalization-invariant-mode), and `AsOptionalText()`, which calls it, throws with it, so C02OptionalTextProbe checks that refusal without credit and runs the row on the identifier counterpart; no row holds the pair.",
+        "pairs": [
+          [
+            "entry=AsText",
+            "text.culture=globalization-invariant"
+          ],
+          [
+            "entry=AsOptionalText",
+            "text.culture=globalization-invariant"
+          ]
+        ]
+      }
     ]
   },
   {
@@ -628,6 +643,21 @@
       {
         "id": "unmapped-set-stops-start",
         "sentence": "The host doesn't start while either set is unmapped."
+      }
+    ],
+    "exclude": [
+      {
+        "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
+        "pairs": [
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=Preserve"
+          ],
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=IgnoreCycles"
+          ]
+        ]
       }
     ]
   },
@@ -798,6 +828,21 @@
             "nested-enum"
           ]
         }
+      }
+    ],
+    "exclude": [
+      {
+        "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
+        "pairs": [
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=Preserve"
+          ],
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=IgnoreCycles"
+          ]
+        ]
       }
     ]
   },
@@ -14101,6 +14146,21 @@
           ]
         }
       }
+    ],
+    "exclude": [
+      {
+        "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
+        "pairs": [
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=Preserve"
+          ],
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=IgnoreCycles"
+          ]
+        ]
+      }
     ]
   },
   {
@@ -14450,6 +14510,21 @@
           ]
         }
       }
+    ],
+    "exclude": [
+      {
+        "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
+        "pairs": [
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=Preserve"
+          ],
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=IgnoreCycles"
+          ]
+        ]
+      }
     ]
   },
   {
@@ -14605,6 +14680,21 @@
             "DateTimeOffset"
           ]
         }
+      }
+    ],
+    "exclude": [
+      {
+        "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
+        "pairs": [
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=Preserve"
+          ],
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=IgnoreCycles"
+          ]
+        ]
       }
     ]
   },

@@ -9555,4 +9555,5 @@ public static partial class Registry
 [JsonSerializable(typeof(Cn_record_struct_F<Option<V_record_struct_int>>), TypeInfoPropertyName = "T8870")]
 [JsonSerializable(typeof(Cn_struct_P<IReadOnlyList<Result<V_record_struct_DateTime, ShapeFault>>>), TypeInfoPropertyName = "T8871")]
 [JsonSerializable(typeof(Cn_generic_type_P<Patch<Result<V_record_struct_double, ShapeFault>>, int>), TypeInfoPropertyName = "T8872")]
+[JsonSerializable(typeof(Cn_record_struct_F<Result<V_record_struct_string, ShapeFault>>), TypeInfoPropertyName = "T8873")]
 public partial class ProbeContext : JsonSerializerContext { }
