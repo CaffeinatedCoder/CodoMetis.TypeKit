@@ -728,7 +728,11 @@ public static class HttpBaseline
                 // property is the null flag, alone or beside the wrapped type's format, and the twin's, which admits null, has that format.
                 if (openApi2 && PropertyAt(d.Keys) is { } property
                     && At(vo3, property) is JsonObject flagged3 && (TheNullFlagBeside(flagged3) || OnlyTheNullFlag(flagged3))
-                    && At(JsonNode.Parse(Sig(doc, po)), property) is JsonObject typed2 && typed2["x-nullable"]?.GetValueKind() == JsonValueKind.True
+                    && At(JsonNode.Parse(Sig(doc, po)), property) is JsonObject typed2
+                    && (typed2["x-nullable"]?.GetValueKind() == JsonValueKind.True
+                        // or the twin is a component itself (a wrapped record class, row 444 of C21), whose reference ASP.NET's own rule
+                        // leaves without the null the value object admits (decision 36: a-nullable-value-object-admits-null)
+                        || typed2.ContainsKey(Hx.ResolvedReference) && Make.AdmitsNull(e.Vo))
                     && JsonNode.DeepEquals(typed2["format"], flagged3["format"]))
                 { c.Inapplicable(Cite.NotPromised("openapi-2-nullable-component-loses-its-type"), d.Path); continue; }
                 // AspNetCore README "What the document says": a nullable element is the component or null, as a nullable property is, which
