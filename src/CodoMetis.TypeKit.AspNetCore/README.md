@@ -250,7 +250,10 @@ app.MapDelete("/orders/{id}", (OrderId id) => orders.Cancel(id).ToHttpResult());
 - **The document shows it too.** The endpoint's return type is ASP.NET's own
   `Results<Ok<OrderDto>, FaultProblem<OrderFault>>`, so the operation describes the value.
   `AddTypeKit()` adds a problem response for every status the error type is mapped to, as
-  `ProducesProblem` would. An MVC action returning the same type is described the same way.
+  `ProducesProblem` would. An MVC action returning the same type is described the same way. A
+  response you declare yourself at one of those statuses, with `Produces(404)` or
+  `[ProducesResponseType(404)]`, is kept as you declared it: the document doesn't add the problem
+  schema there, though the wire still answers a problem.
 - **It's not a wire format.** The `Result` is matched to a response, not serialized. Returning the
   `Result` itself from a handler is still rejected, and the document would promise a `Result`.
 - **It changes every error response of the host, not only these.** `AddFaultResponses` calls

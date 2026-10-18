@@ -3,6 +3,8 @@
 Date: 2026-10-17
 Status: accepted
 
+The gate passed on release/2.2.0 on 2026-10-18 (#62: declarations citing this record and KB-042, exclusions with reasons and rows for the 17 refusals; #63: the fix for F4, a nullable value object as a component losing its null, which C21's regenerated rows raised and the code-analyst confirmed).
+
 Context: 2026-10-16 and 2026-10-17, the second workstream (WS2, the harness) of the concept for finding issues with
 agents, which set out to make the probe corpus (`tools/probe/corpus`) and the prober (`tools/Prober`) find defects
 mechanically. The gate round of 2026-10-16 that preceded it had written 18 probes and found two product defects and about
