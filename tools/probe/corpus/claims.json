@@ -14157,6 +14157,16 @@
               ]
             },
             "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#what-is-generated"
+          },
+          {
+            "axes": {
+              "text.entry": [
+                "TryFrom",
+                "ToString-format",
+                "TryFormat-short-span"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#when-text-is-rejected"
           }
         ]
       },
@@ -14239,6 +14249,16 @@
               ]
             },
             "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#what-is-generated"
+          },
+          {
+            "axes": {
+              "text.entry": [
+                "TryFrom",
+                "ToString-format",
+                "TryFormat-short-span"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#when-text-is-rejected"
           }
         ]
       }
@@ -14264,6 +14284,30 @@
             "own-for-value-object"
           ]
         }
+      }
+    ],
+    "exclude": [
+      {
+        "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
+        "pairs": [
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=Preserve"
+          ],
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=IgnoreCycles"
+          ]
+        ]
+      },
+      {
+        "reason": "System.Text.Json writes no dictionary key of a record class but through a converter of the application's (NotSupportedException for the wrapped type alike, L01's rows), where the JSON half is not promised (not-promised the-applications-own-converter), and a value object over a record class has no parsing (Generators README#what-is-generated), so no check of the claim can read the pair.",
+        "pairs": [
+          [
+            "shape.position=dictionary-key",
+            "shape.wrapped=own-record-class"
+          ]
+        ]
       }
     ]
   },
