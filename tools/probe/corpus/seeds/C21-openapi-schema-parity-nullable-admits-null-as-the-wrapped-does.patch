@@ -1,21 +1,21 @@
 diff --git a/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs b/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
-index f83ec7e..c7b2a33 100644
+index 6078f79..2493ef9 100644
 --- a/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
 +++ b/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaTransformer.cs
-@@ -98,10 +98,8 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
-             }
+@@ -108,10 +108,8 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
+             if (component && nullableProperty) MarkNullableProperty(schema);
  
-             var position = !inline && SchemaReferenceId(info, context) is not null ? NullablePosition.None
--                : context.JsonPropertyInfo is { IsGetNullable: true } or { IsSetNullable: true } ? NullablePosition.Property
+             var position = component ? NullablePosition.None
+-                : nullableProperty ? NullablePosition.Property
 -                : Nullable.GetUnderlyingType(info.Type) is null || !wrapped.IsValueType ? NullablePosition.None
 -                : IsParameterOutsideTheBody(context) ? NullablePosition.ParameterOutsideTheBody
 -                : NullablePosition.Root;
-+                : Nullable.GetUnderlyingType(info.Type) is not null || context.JsonPropertyInfo is { IsGetNullable: true } or { IsSetNullable: true } ? NullablePosition.Property
++                : Nullable.GetUnderlyingType(info.Type) is not null || nullableProperty ? NullablePosition.Property
 +                : NullablePosition.None;
  
              await DescribeAsync(schema, info.Type, wrapped, outside, position, context, cancellationToken);
              return;
-@@ -119,9 +117,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
+@@ -129,9 +127,7 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
              // MVC hands a value object bound from the body here too, as the string it would parse. There
              // ASP.NET's exporter admits null in the schema of the Nullable<T> of a wrapped value type, inside
              // the null-or ASP.NET puts around a nullable body, and outside the body among its values alone.

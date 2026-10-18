@@ -383,7 +383,7 @@ public sealed class NullablePositionTests
     }
 
     /// <summary>The schema without the null it admits: <c>null</c> out of its type and its values, <c>nullable</c> and a null branch gone.</summary>
-    private static JsonNode WithoutNull(JsonNode schema)
+    internal static JsonNode WithoutNull(JsonNode schema)
     {
         var copy = schema.DeepClone().AsObject();
         copy.Remove("nullable");
