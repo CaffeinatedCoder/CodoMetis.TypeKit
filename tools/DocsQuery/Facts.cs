@@ -124,7 +124,10 @@ internal static partial class Pins
 /// <summary>
 /// The rules a verified fact is held to (design/adr/0093): its frontmatter is complete and plain, each pin
 /// matches what is installed, and its <c>test:</c> names the characterization test that observes it, or says
-/// <c>none</c> and why. A test of the facts project that no fact names is a problem too.
+/// <c>none</c> and why. A test of the facts project that no fact names is a problem too. A <c>fixture:</c>, the
+/// measured answer of the fact's test as data, sits beside that test and exists (design/adr/0107). A fact the probe
+/// corpus cites to prune or excuse a row (<see cref="FactCitations"/>) is executable: its test exists, and where the
+/// harness reads it as a baseline, its fixture too.
 /// </summary>
 internal static partial class FactRules
 {
@@ -134,11 +137,19 @@ internal static partial class FactRules
 
     internal sealed record Problem(string At, string Kind, string Target, string Detail);
 
-    public static IReadOnlyList<Problem> Check(DocIndex index, string root, out int facts)
+    public const string FixtureSuffix = ".fixture.json";
+
+    public static IReadOnlyList<Problem> Check(DocIndex index, string root, out int facts) => Check(index, root, out facts, out _);
+
+    public static IReadOnlyList<Problem> Check(DocIndex index, string root, out int facts, out FactCitations.Scan cited)
     {
         var problems  = new List<Problem>();
         var installed = Installed.Read(root);
         var named     = new HashSet<string>(StringComparer.Ordinal);
+        var fixtures  = new HashSet<string>(StringComparer.Ordinal);
+        // Why each fact cannot settle a pruning or an excuse, or null where its test exists; and its fixture, where one exists.
+        var notExecutable = new Dictionary<string, string?>(StringComparer.Ordinal);
+        var fixtureOf     = new Dictionary<string, string?>(StringComparer.Ordinal);
         facts = 0;
 
         for (var d = 0; d < index.Docs.Count; d++)
@@ -174,26 +185,71 @@ internal static partial class FactRules
                 }, pin.Value, detail));
             }
 
+            var className = doc.Id!.Replace("-", "", StringComparison.Ordinal);
+            notExecutable[doc.Id!] = "it has no test: line";
+
             if (doc.Meta.FirstOrDefault(field => field.Key == "test") is { } test)
             {
-                var className = doc.Id!.Replace("-", "", StringComparison.Ordinal);
-
-                if (test.Value.StartsWith("none, ", StringComparison.Ordinal) && test.Value.Length > "none, ".Length) continue;
-
-                if (!test.Value.StartsWith(FactsProject + "/", StringComparison.Ordinal))
+                if (test.Value.StartsWith("none, ", StringComparison.Ordinal) && test.Value.Length > "none, ".Length)
+                {
+                    notExecutable[doc.Id!] = $"its test: is '{test.Value}'";
+                }
+                else if (TestPath(test.Value) is var path && !path.StartsWith(FactsProject + "/", StringComparison.Ordinal))
                 {
                     problems.Add(new Problem(At(test.Line), "fact-untested", test.Value, $"write the path of its test in {FactsProject}/, or 'none, ' and why no test can observe it"));
-                    continue;
+                    notExecutable[doc.Id!] = $"its test: '{test.Value}' is no test of {FactsProject}/";
                 }
+                else
+                {
+                    named.Add(path);
+                    var file = Path.Combine(root, path);
 
-                named.Add(test.Value);
-                var file = Path.Combine(root, test.Value);
-
-                if (!File.Exists(file))
-                    problems.Add(new Problem(At(test.Line), "fact-untested", test.Value, "the file does not exist"));
-                else if (!Regex.IsMatch(File.ReadAllText(file), $@"\bclass\s+{className}\b"))
-                    problems.Add(new Problem(At(test.Line), "fact-untested", test.Value, $"declares no class {className}, the test named by the fact's id"));
+                    if (!File.Exists(file))
+                    {
+                        problems.Add(new Problem(At(test.Line), "fact-untested", path, "the file does not exist"));
+                        notExecutable[doc.Id!] = $"its test {path} does not exist";
+                    }
+                    else if (!Regex.IsMatch(File.ReadAllText(file), $@"\bclass\s+{className}\b"))
+                    {
+                        problems.Add(new Problem(At(test.Line), "fact-untested", path, $"declares no class {className}, the test named by the fact's id"));
+                        notExecutable[doc.Id!] = $"its test {path} declares no class {className}";
+                    }
+                    else
+                    {
+                        notExecutable[doc.Id!] = null;
+                    }
+                }
             }
+
+            fixtureOf[doc.Id!] = null;
+            if (doc.Meta.FirstOrDefault(field => field.Key == "fixture") is { } fixture)
+            {
+                var expected = $"{FactsProject}/{className}{FixtureSuffix}";
+                fixtures.Add(fixture.Value);
+
+                if (NotPlain(fixture.Value) is { } why)
+                    problems.Add(new Problem(At(fixture.Line), "fact-frontmatter", fixture.Key, why));
+                else if (notExecutable[doc.Id!] is { } untested)
+                    problems.Add(new Problem(At(fixture.Line), "fact-fixture", fixture.Value, $"a fixture is the measured answer of the fact's test, and {untested}"));
+                else if (fixture.Value != expected)
+                    problems.Add(new Problem(At(fixture.Line), "fact-fixture", fixture.Value, $"write it beside the test, as {expected}"));
+                else if (!File.Exists(Path.Combine(root, fixture.Value)))
+                    problems.Add(new Problem(At(fixture.Line), "fact-fixture-missing", fixture.Value, "the file does not exist"));
+                else
+                    fixtureOf[doc.Id!] = fixture.Value;
+            }
+        }
+
+        cited = FactCitations.Find(root);
+        foreach (var citation in cited.Citations)
+        {
+            var why = !notExecutable.TryGetValue(citation.Fact, out var reason) ? "there is no such fact under design/knowledge/"
+                    : reason is not null ? reason
+                    : citation.Baseline && fixtureOf[citation.Fact] is null ? "the harness reads its fixture as a baseline, and it names no fixture: that exists"
+                    : null;
+            if (why is not null)
+                problems.Add(new Problem(citation.At, "fact-not-executable-cited", citation.Fact,
+                    $"{citation.Place} cites {citation.Fact}, and {why}: a fact without its test explains only, never prunes or excuses a row; write its test in {FactsProject}/, or cite a docs sentence"));
         }
 
         var project = Path.Combine(root, FactsProject);
@@ -204,10 +260,23 @@ internal static partial class FactRules
                 if (TestFile().IsMatch(Path.GetFileName(path)) && !named.Contains(path))
                     problems.Add(new Problem($"{path}:1", "fact-orphan-test", path, "no fact in design/knowledge/ names this test"));
             }
+
+            foreach (var path in Directory.EnumerateFiles(project, "KB*" + FixtureSuffix, SearchOption.TopDirectoryOnly).Select(path => Corpus.Relative(root, path)).Order(StringComparer.Ordinal))
+            {
+                if (!fixtures.Contains(path))
+                    problems.Add(new Problem($"{path}:1", "fact-orphan-fixture", path, "no fact in design/knowledge/ names this fixture"));
+            }
         }
 
         return problems;
     }
+
+    /// <summary>
+    /// The test's path, without a note in parentheses after it, such as where the test runs:
+    /// <c>test/CodoMetis.TypeKit.Facts/KB028.cs (runs only with TYPEKIT_PG set, until WS6's CI service)</c>.
+    /// </summary>
+    private static string TestPath(string value) =>
+        value.EndsWith(')') && value.IndexOf(" (", StringComparison.Ordinal) is > 0 and var note ? value[..note] : value;
 
     /// <summary>Why a frontmatter value would not read back as the plain YAML string it is meant to be, or null.</summary>
     private static string? NotPlain(string value) =>

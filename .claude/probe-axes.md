@@ -12,9 +12,16 @@ scratch copy, one file per claim, class name ending in `Probe`, rows fed through
 the covering array (`prober rows`), read from a JSON file beside the probe. That project is the
 closest thing to a consumer: it references every package, weaves value objects through the real
 fabric, and loads the analyzer as an analyzer. A probe file may declare its own value objects
-(`readonly partial record struct ProbeId : IValue<Guid>;`); generate the declarations of the
-type-shape catalogue with a script into a `Probes/Shapes.g.cs`, not by hand.
+(`readonly partial record struct ProbeId : IValue<Guid>;`); the declarations of the type-shape
+catalogue, `tools/probe/corpus/harness/*.g.cs`, are written by the file-based apps of
+`tools/probe/generators/` (`dotnet run tools/probe/generators/<app>.cs -- ...`, its README), never by hand,
+and `GeneratedHarnessTests` in the conventions tests holds each file to its app's output.
 
+- Start a probe with `prober new --claim <id>` and iterate with `prober try --probe <P> [--rows i,j,...]`
+  (tools/Prober/README.md, "Writing a probe"): `new` stages the skeleton in this harness's form, with the
+  claim's obligations quoted and a throwing check each, the probe's own rows and the registry entry; `try`
+  builds the corpus and the staging in the replay's worktree and runs that one probe, printing each row's
+  outcome and recording nothing. Never copy the corpus into a worktree or write a build or sync script.
 - Build and run only through the verdict tool, which pins English output, builds before it tests,
   names the exit codes and prints failing tests by name with their assertion:
   `dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll build test/CodoMetis.TypeKit.Samples`
@@ -36,6 +43,43 @@ type-shape catalogue with a script into a `Probes/Shapes.g.cs`, not by hand.
   every other host in the project. A host with controllers must put its own converters and resolvers
   on MVC's `JsonOptions` too, or the document is refused on purpose (`DescribedOptionsAgreement`).
   `test/CodoMetis.TypeKit.AspNetCore.Tests/ProbeHost.cs` is a working example to copy from.
+- How a row ends: a check returns null or the failure text, and runs through `Rec.Run`, which fails the
+  test for a violation or a harness error and skips it, with its reasons, for any other outcome but a
+  pass; a check that throws ends as a harness error, never a violation, and no seed counts it caught. A check
+  says how it compared with `r.Note(NoteKeys.Name, detail)`. The key, a member of `NoteKeys` in `harness/Row.cs`,
+  alone decides the note's outcome: every key is a pass key but `framework-refuses`, the three-sided
+  differential's expected refusal, and a check that did not apply, refused or could not tell says so through
+  its scope with a citation (below), never a note key. Keys are constants the compiler checks: a new one goes
+  into `NoteKeys` with its outcome on one line, and a string, a misspelled member or a key built from text does
+  not compile (decision 103). A probe outside the namespace `Probes.Shapes` writes `using NoteKeys = Probes.Shapes.NoteKeys;`.
+  Never match a failure's text to excuse it. A difference the framework makes on its own is shown by a
+  baseline in the same row (the document as ASP.NET writes it without `AddTypeKit()`,
+  `Hx.DocRefusedByAspNetAlone`, a refusal compared by exception type and stage as `Sides.Alike` compares one),
+  not by a substring. A document both refuse alike is the framework's refusal for a check that compared nothing
+  else, and leaves a check that compared an answer on the wire first to be judged by that answer. A row that would fail for an open finding calls
+  `r.Skip("F7", why)`, the finding as a string literal: `register` and `publish` refuse a skip whose finding
+  is built from text or is not open in the ledger, naming the file and line. The gate refuses while any row
+  skips, and the replay fails a skip whose finding the ledger has fixed or dismissed.
+- Checks: a comparison is `r.Check("obligation", Baseline.Twin, c => ...)` (or the `async` form), one per
+  obligation of the claim (`claim` for a claim without them), against one baseline of `Baseline` (`Twin`,
+  `Framework`, `RoundTrip`, `Model`, `Refusal`, `Cost`, `Fact("KB-031")`, `Docs("file#anchor")`). The check reads
+  through `c["axis"]` (or the row, inside the body: both read for the check), notes how it compared with
+  `c.Note(NoteKeys.Compared, ...)`, and says why it did not compare with `c.Inapplicable(Cite...)`,
+  `c.Refused(Cite...)` or `c.Inconclusive(reason)`, each returning null. A citation is `Cite.NotPromised("id")` (an
+  entry of the claim's `not-promised`), `Cite.Docs("file#anchor")`, `Cite.Fact("KB-031")` or `Cite.Record("0094")`,
+  written with a string literal; `register`, `publish` and the conventions tests refuse anything else and a
+  citation that names nothing. A failure returned is the check's violation, an exception its harness error (the
+  row's other checks still run), and a pass with no baseline a harness error. A row passes when no check failed
+  and one passed, so a check that did not apply voids no other; the ledger credits each passing check with the
+  axes it read and the row's, never a pair put together from two checks. A seed naming an obligation is caught
+  only by a check naming it.
+- Two-sided checks: the twin is `Entry.Plain`, the wrapped type at the value object's nullability (a class value object over a
+  struct faces the struct made nullable; the closed set faces a string), written by `shapes.cs` beside the value object. Build both
+  sides with `Sides.Twins(position, containing, entry, plain, vo)`, which puts the row's position and containing type around each and
+  throws, a harness error, where the two do not hold the same shape. Under `json.TypeInfoResolver=source-generated-context` the options
+  resolve through `ProbeContext` alone, which lists every shape, position and containing type and each twin, with no reflection behind
+  it; `json.TypeInfoResolverChain=context-then-default` puts the reflection fallback after it. A shape the context does not list is a
+  harness error, never a fallback (tools/probe/generators/README.md, "The twin and the context").
 - EF probes: SQLite in memory (`Data Source=:memory:` with the connection held open). PostgreSQL needs
   a server and is out of reach.
 - Analyzer probes (what compiles and what CMTK reports): in `test/CodoMetis.TypeKit.Analyzers.Tests`,
@@ -43,6 +87,45 @@ type-shape catalogue with a script into a `Probes/Shapes.g.cs`, not by hand.
   asserting the diagnostics. The type-shape catalogue is the row there, as source text.
 - Native AOT is measured only by `./test/consumer-smoke-test.sh` (minutes, needs clang). Probe it only
   when the caller asks for it.
+
+## Seeds: every probe shows it can fail
+
+A probe that passes proves something only if it can fail. Every registered probe names one seeded
+product defect ([decision 100](../design/adr/0100-every-probe-is-shown-to-fail-against-a-seeded-defect.md)):
+a patch against `src/` that breaks what its claim promises, in `tools/probe/corpus/seeds/<claim>.patch`,
+and a sentence saying what it breaks, in its registry entry:
+
+```json
+"seed": { "patch": "seeds/L01-json-bytes.patch", "defect": "A dictionary key is written with ToString(), not the wrapped type's key converter and DictionaryKeyPolicy." }
+```
+
+- Write the seed with the probe. Make the defect in `src/` of the scratch copy, take `git diff -- <file>`
+  as the patch, undo it by inverse edit (`git apply -R <patch>`), and register with `prober register ...
+  --seed seeds/<claim>.patch --defect "<sentence>"`. An environment toggle (`"env": {...}`, set for the
+  build and every run) is a seed too, where the product reads one; none does today.
+- Seed the defect the claim is about, the one a consumer would meet: a facet dropped, a refusal that
+  quotes its input, a rule skipped, a key no longer generated. A seed whose build fails proves nothing,
+  and the command counts it as a failure.
+- `prober seeds [--probe P]` applies each seed in a scratch worktree of its own (`replay --where` names
+  it), builds, replays the probe there and requires a row that ends as a violation the unseeded probe
+  does not have; a missed seed fails it. It records no evidence and takes no lock. The worktree is per
+  checkout, so runs in two checkouts (a linked worktree each) never meet, but two runs at once in one
+  checkout share it. One build per seed, so it runs locally, never in CI: after writing a probe or
+  changing its harness, and before a release.
+- Without a build, the prober tests hold the rest on every run (`SeedsTests`): every registered probe
+  has a seed, and its patch touches only `src/` and still applies. A product change that moves the
+  patched lines fails there; make the seed again against the new code.
+- A seed per obligation ([decision 104](../design/adr/0104-a-claim-states-its-obligations-and-each-has-a-seed.md)).
+  A seed that breaks some assertion of a probe shows the probe can fail, not that the claim is checked, so
+  a probe whose claim lists `obligations` carries `seeds`, one per obligation it checks, each a seed as
+  above with an `obligation` naming it; `seed` may name one too. A seed that names none counts only for a
+  claim without `obligations`. Register each with `prober register --probe P --claim C --filter "*P"
+  --obligation <id> --seed seeds/<claim>-<id>.patch --defect "<sentence>"`, the command `prober new` prints
+  for each obligation: it replaces a seed of the entry that names the same obligation and refuses an id the
+  claim does not list. Never edit the staged registry by hand. `prober seeds` runs each seed of a probe on its own and reports it as
+  `P/<obligation>`, in its output and in `seeds-last.json`; `prober status` shows per claim its obligations
+  and the ones no seed names; and `SeedsTests` refuses, without a build, a seed naming an obligation its
+  claim does not list and a listed obligation of a claim with probes that no seed of them names.
 
 ## Claim sources
 
@@ -65,11 +148,50 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
   reason. The script reports any other as **unassigned**: a setting a new framework version added,
   which needs a decision here.
 - `shape.*` is the type-shape catalogue: the forms a consumer's own type takes. Generate the
-  declarations a round needs with a script, once per round, as one pairwise set shared by every claim.
+  declarations a round needs with an app of `tools/probe/generators/` (extend one, or add one and its row
+  in `GeneratedHarnessTests`), once per round, as one pairwise set shared by every claim.
 - A claim may drop a surface axis only by quoting the document sentence that limits it (`narrow`).
-- `refused` drops a value the framework itself refuses on its own, so no row wastes its pairs on it.
+- A claim may drop pairs no row can hold, or that the documents do not promise, only with the reason
+  (`exclude`: a list of `{"reason": "...", "pairs": [["a=1", "b=2"], ...]}`): one sentence, citing the docs
+  sentence, the record or the KB fact where one applies. Nothing checks a reason mechanically, so
+  `prober universe` prints each one beside the claim's narrowings for a reviewer, and the prober refuses a
+  claims.json with any field its schema (`tools/Prober/Schemas/claims.schema.json`) does not have
+  ([decision 102](../design/adr/0102-an-exclusion-carries-its-reason.md)).
+- An obligation may say where it does not apply, by the claim's own axis values and a citation
+  (`inapplicable`: a list of `{"axes": {"shape.kind": ["closed-set"]}, "cite": "not-promised:closed-set-has-no-scale"}`,
+  the cite `not-promised:id`, `docs:file#anchor`, `fact:KB-NNN` or `record:NNNN`). `Row.Check` reads the same
+  declarations and records such a check inapplicable before its body runs; a pair no obligation wants is never
+  put in a generated row, and the gate leaves it out as it leaves out an exclusion. A condition only the shape
+  instance decides at run time stays in the check's body as `c.Inapplicable(cite)`.
+- `refused` drops a value the framework itself refuses on its own, so no row wastes its pairs on it. A reason that
+  rests on a verified fact names it (`fact:KB-NNN`), and that fact has a test: `docs-query check` fails
+  `fact-not-executable-cited` for a refused entry, a not-promised entry, an applicability condition or a harness
+  citation of a fact without one ([decision 107](../design/adr/0107-a-cited-fact-is-executable-and-seeds-run-by-footprint.md)).
   `shape.refused-kind` holds the declarations the generators refuse; only the generation surface takes
-  it, where the refusal is the claim.
+  it, where the refusal is the claim. Each value is a declaration and the id the Generators README's
+  "Build errors" table gives it, declared as C22's probe does (`harness/BuildRefusals.cs`): an unsealed
+  record class; a value object over another value object; over `List<T>`; an abstract record or class with
+  a marker (CMTK1022 since `1ef30be`: the label keeps the id it had when C09's and C11's rows were
+  generated, which carry it); over `object`; over `System.Enum`; a value object named as a member the
+  generators add (`From`, `Parse`, `MinValue`, ...); a closed set named as one of its generated members
+  (`Name`, `All`, `Match`, ...); a value object with a hand-written `operator ==` and `!=` between two of
+  the type. The last five are the refusals of the fixes `53188ed` and `e4b751c`, which no probe reached
+  until C22 (design/finder-benchmark-2026-10-16.md).
+- A claim lists what it promises in `obligations`, one entry per promise a probe can check on its own: an
+  `id`, the `sentence` quoted verbatim from the claim's source and checked as a narrowing is, and the `axes`
+  values it concerns where it is not the whole claim. A claim without the field has one obligation, the
+  claim itself, under the id `claim`. Each obligation of a claim with probes has a seed that names it
+  ([decision 104](../design/adr/0104-a-claim-states-its-obligations-and-each-has-a-seed.md)).
+- What a claim does not promise goes in `not-promised`: an `id`, the `source` (`file#heading`) of the
+  document or record that makes the difference intended, its `sentence`, quoted verbatim and checked against
+  that source, and the `axes` values it concerns. A note of outcome expected-refusal, a narrowing or an
+  applicability condition cites the entry by its id. `prober universe` refuses an obligation or an entry
+  whose sentence its document does not hold, and an id listed twice, naming the claim and the id.
+- `out-of-reach` names a surface no probe reaches, with the reason: one that needs a server, a toolchain
+  or minutes a replay does not have. `prober gaps` prints it beside the settings no surface reaches, the
+  settings without values, the refused shapes and values, and every not-promised entry and narrowing, each
+  with its recorded reason. It is a report for the release checklist and a feature-research round; it
+  decides nothing and runs no model.
 - `http.host` has two values without `[ApiController]`, where MVC infers no `[FromBody]` and answers no
   automatic 400. `controller-without-ApiController` is for **runtime claims only**: ASP.NET's API explorer
   leaves such a controller out of the document (docs/aspnet-core.md, "Bind value objects in MVC"), so a
@@ -350,7 +472,12 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
       "unsealed-record-class (CMTK1006)",
       "over-value-object (CMTK1005)",
       "generic-wrapped (CMTK1005)",
-      "abstract (CMTK1005)"
+      "abstract (CMTK1005)",
+      "over-object (CMTK1005)",
+      "over-System.Enum (CMTK1005)",
+      "named-as-generated-member (CMTK1005)",
+      "closed-set-named-as-generated-member (CMTK1021)",
+      "equality-operator (CMTK1011)"
     ],
     "process.converter-lookup": [
       "none",
@@ -468,7 +595,14 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
       ]
     }
   },
+  "out-of-reach": {
+    "postgresql": "needs a server; the EF probes run SQLite in memory, and the EF translation claims are checked by translation alone",
+    "native-aot": "measured only by the consumer smoke test (tools/ConsumerSmokeTest), minutes and a platform linker; no probe publishes with Native AOT"
+  },
   "refused": {
+    "shape.site": {
+      "in-generic-type": "CMTK1005: the generators refuse a value object nested in a generic type at build (Generators README, Build errors)"
+    },
     "json.ReadCommentHandling": {
       "Allow": "System.Text.Json refuses it on the options object"
     },
@@ -500,19 +634,42 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
       "dotnet",
       "tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll",
       "test",
+      "--no-build",
       "--project",
       "{project}",
       "--filter-class",
       "{filter}",
       "--",
+      "--results-directory",
+      "{results}"
+    ],
+    "coverage": [
       "--coverage",
       "--coverage-output-format",
       "cobertura",
       "--coverage-output",
-      "{cobertura}",
-      "--results-directory",
-      "{results}"
+      "{cobertura}"
     ],
+    "families": {
+      "http": [
+        "http"
+      ],
+      "ef": [
+        "ef"
+      ],
+      "json": [
+        "json"
+      ],
+      "text": [
+        "text",
+        "logging"
+      ],
+      "build": [
+        "generation",
+        "analyzers",
+        "option-result"
+      ]
+    },
     "include": [
       "src"
     ],
@@ -578,8 +735,8 @@ axes from its surfaces. The prober assigns surfaces to a claim; it does not choo
 - A struct value object refuses a JSON `null`.
 - A rejected dictionary key appears in `JsonException.Path`, and so in MVC's 400.
 - Under a source-generated context, a value object over an enum needs the enum listed in the context.
-- A validated value object has no `From`; an abstract value object and a generic wrapped type fail
-  with CMTK1005.
+- A validated value object has no `From`; an abstract value object fails with CMTK1022, and a generic
+  wrapped type with CMTK1005.
 - A missing `Option` property, and an empty collection or dictionary of `Option` or `Result`, pass
   through System.Text.Json without an exception, since no converter runs (a wording question for the
   README, raised 2026-10-15, not a finding).

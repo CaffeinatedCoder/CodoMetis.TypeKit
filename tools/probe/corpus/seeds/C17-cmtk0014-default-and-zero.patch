@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs b/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs
+index 7265ea3..cf1a34a 100644
+--- a/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs
++++ b/src/CodoMetis.TypeKit.Analyzers/UndefinedEnumValueAnalyzer.cs
+@@ -105,7 +105,7 @@ public sealed class UndefinedEnumValueAnalyzer : DiagnosticAnalyzer
+         if (operation.Type is not INamedTypeSymbol type || !enums.TryGetValue(type, out var known)) return null;
+         if (!operation.ConstantValue.HasValue || operation.ConstantValue.Value is not { } value) return null;
+ 
+-        return known.Members.Contains(value) ? null : (type, known.Consequence);
++        return known.Members.Contains(value) || value is 0 ? null : (type, known.Consequence);
+     }
+ 
+     /// <summary>Whether <paramref name="operation"/> is an operand of a larger constant of an enum, which is judged in its place.</summary>

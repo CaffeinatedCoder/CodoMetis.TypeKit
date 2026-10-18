@@ -62,7 +62,8 @@ holds nothing: the prober's Python and the smoke test's bash are C# (`tools/Prob
 
 **Hooks are one-line shims.** A git hook or a Claude Code hook execs `dotnet` and holds no logic; Git
 for Windows runs a git hook through its bundled `sh`, so a one-line shim works on every platform.
-Claude Code's hooks build the tool projects they run in a SessionStart hook, before any tool call.
+Claude Code's hooks build the tool projects they run in a SessionStart hook, before any tool call
+(where, and with which `dotnet`: [decision 105](0105-every-tool-is-built-in-the-session-s-checkout.md)).
 
 **Prerequisites.** A contributor needs git and the SDK that `global.json` pins. A task that needs more
 names it as its own prerequisite, and no other task needs it: the platform linker for the smoke

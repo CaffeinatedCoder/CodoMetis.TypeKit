@@ -1,0 +1,79 @@
+{
+  "fact": "KB-027",
+  "answers": [
+    {
+      "id": "openapi-3-1-met-nullable-first",
+      "kind": "document",
+      "when": {
+        "openapi.OpenApiVersion": "OpenApi3_1",
+        "http.host": "minimal",
+        "http.binding": "header",
+        "json.Converters": "JsonStringEnumConverter",
+        "shape.wrapped": "enum",
+        "first-use": "nullable"
+      },
+      "at": "/components/schemas/MetNullableFirst/enum",
+      "value": [
+        "X",
+        "Y",
+        null
+      ],
+      "note": "met first as nullable: null among its values, for the plain use too"
+    },
+    {
+      "id": "openapi-3-1-met-plain-first",
+      "kind": "document",
+      "when": {
+        "openapi.OpenApiVersion": "OpenApi3_1",
+        "http.host": "minimal",
+        "http.binding": "header",
+        "json.Converters": "JsonStringEnumConverter",
+        "shape.wrapped": "enum",
+        "first-use": "as-declared"
+      },
+      "at": "/components/schemas/MetPlainFirst/enum",
+      "value": [
+        "X",
+        "Y"
+      ],
+      "note": "met first as itself: no null, for the nullable use too"
+    },
+    {
+      "id": "openapi-3-0-met-nullable-first",
+      "kind": "document",
+      "when": {
+        "openapi.OpenApiVersion": "OpenApi3_0",
+        "http.host": "minimal",
+        "http.binding": "header",
+        "json.Converters": "JsonStringEnumConverter",
+        "shape.wrapped": "enum",
+        "first-use": "nullable"
+      },
+      "at": "/components/schemas/MetNullableFirst/enum",
+      "value": [
+        "X",
+        "Y",
+        null
+      ],
+      "note": "met first as nullable: null among its values, for the plain use too"
+    },
+    {
+      "id": "openapi-3-0-met-plain-first",
+      "kind": "document",
+      "when": {
+        "openapi.OpenApiVersion": "OpenApi3_0",
+        "http.host": "minimal",
+        "http.binding": "header",
+        "json.Converters": "JsonStringEnumConverter",
+        "shape.wrapped": "enum",
+        "first-use": "as-declared"
+      },
+      "at": "/components/schemas/MetPlainFirst/enum",
+      "value": [
+        "X",
+        "Y"
+      ],
+      "note": "met first as itself: no null, for the nullable use too"
+    }
+  ]
+}

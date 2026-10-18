@@ -76,6 +76,14 @@ public sealed class GuardTests(GuardTests.Sandbox sandbox) : IClassFixture<Guard
     [InlineData("the verdict piped into tail", "dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test | tail -5")]
     [InlineData("the verdict piped into head, redirected", "dotnet ./tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll build 2>&1 | head")]
     [InlineData("the verdict by dotnet's path, piped into less", "/usr/local/share/dotnet/dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test |& less")]
+    [InlineData("a query that runs a target", "dotnet msbuild src/A/A.csproj -getProperty:TargetPath -t:Build")]
+    [InlineData("a query that runs a target, spelled out", "dotnet msbuild src/A/A.csproj --target:Pack -getItem:Compile")]
+    [InlineData("a query that runs a target, Windows-style", "dotnet msbuild src/A/A.csproj /t:Build /getProperty:TargetPath")]
+    [InlineData("a target result, which builds", "dotnet msbuild src/A/A.csproj -getTargetResult:Build")]
+    [InlineData("a query that restores", "dotnet msbuild src/A/A.csproj -restore -getProperty:Version")]
+    [InlineData("a query that restores, short", "dotnet msbuild src/A/A.csproj -r -getItem:PackageReference")]
+    [InlineData("a property set, not queried", "dotnet msbuild src/A/A.csproj -property:Configuration=Release")]
+    [InlineData("a build that queries", "dotnet build src/A/A.csproj -getProperty:TargetPath")]
     public void Refused(string name, string command) => Guard(Payload(command)).Code.ShouldBe(2, name);
 
     // ---- what passes ----------------------------------------------------------------------------------
@@ -95,6 +103,11 @@ public sealed class GuardTests(GuardTests.Sandbox sandbox) : IClassFixture<Guard
     [InlineData("the verdict tool redirected to a file", "dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll build > /tmp/v.txt 2>&1")]
     [InlineData("the verdict tool into grep", "dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test | grep FAIL")]
     [InlineData("the smoke test", "dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll dist")]
+    [InlineData("a property query", "dotnet msbuild src/A/A.csproj -getProperty:IsRoslynComponent -getItem:ProjectReference -nodeReuse:false")]
+    [InlineData("an item query, spelled out", "dotnet msbuild src/A/A.csproj --getItem:Compile")]
+    [InlineData("a property query, Windows-style and any case", "dotnet msbuild src/A/A.csproj /GetProperty:Version")]
+    [InlineData("a property query with a property set", "dotnet msbuild src/A/A.csproj -p:Configuration=Release -getProperty:OutputPath")]
+    [InlineData("a property query in a loop", "for p in A B; do dotnet msbuild src/$p/$p.csproj -getItem:ProjectReference -getProperty:IsRoslynComponent; done")]
     [InlineData("dotnet as an argument", "echo dotnet build")]
     [InlineData("inside double quotes", "git commit -m \"dotnet build is refused\"")]
     [InlineData("inside double quotes with operators", "echo \"x && dotnet build && y\"")]

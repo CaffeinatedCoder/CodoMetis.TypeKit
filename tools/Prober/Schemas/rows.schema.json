@@ -2,9 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://codometis.typekit/probe/schemas/rows.schema.json",
   "title": "Rows",
-  "description": "Tracked (corpus/rows/<claim>.json, gzipped): the rows a claim's probe runs, a pairwise covering array over its axes.",
+  "description": "Tracked (corpus/rows/<probe>.json.gz, gzipped; rows/<probe>.json in the staging): the rows one probe runs, a pairwise covering array over its claim's axes. One file per registered probe, written whole by `prober rows --probe P`, never appended; no two rows of a file have the same axis map (ProbeRowsTests).",
   "type": "object",
   "required": [
+    "claim",
     "rows"
   ],
   "properties": {
@@ -14,7 +15,8 @@
       "description": "The schema version. A file or line without it is version 1 (the Python baseline)."
     },
     "claim": {
-      "type": "string"
+      "type": "string",
+      "description": "The id of the probe's claim in claims.json; the file is named for the probe, so the claim is kept inside."
     },
     "rows": {
       "type": "array",

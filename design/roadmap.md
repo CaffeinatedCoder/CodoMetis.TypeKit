@@ -5,9 +5,22 @@ item names the decision that scoped it, or the review that found it. A Warning m
 refusal may relax in any minor version; an Error that reports more waits for a major
 ([decision 34](adr/0034-errors-fixed-within-major-version-warnings.md)).
 
-## 2.2.0, additive
+## 2.2.0, consolidation
 
-Decided, and moved here when 2.1.0 shipped without them ([decision 88](adr/0088-2-1-0-ships-without-its-open-roadmap-items.md)).
+2.2.0 adds no public API. The probe gate binds from this release
+([decision 97](adr/0097-2-2-0-is-a-consolidation-release-and-the-gate-binds.md)). Any gap below that is a
+defect, a cost or a missing guard may land here; one that adds surface waits for 2.3.0.
+
+- The probing harness (WS2 of the agentic issue-finding concept) is done
+  ([decision 108](adr/0108-a-probe-check-earns-credit-against-a-baseline-and-ws2-closes.md)).
+  WS3 (beyond pairs), WS4 (the mutation nightly), the second half of WS5 (the finder benchmark at equal budgets) and
+  WS6 (PostgreSQL in CI) were dropped on 2026-10-17 by the maintainer's decision, and are not scheduled.
+- The generated-surface snapshot under "Generators" below.
+
+## 2.3.0, additive
+
+Decided, moved to 2.2 when 2.1.0 shipped without them ([decision 88](adr/0088-2-1-0-ships-without-its-open-roadmap-items.md)),
+and then to 2.3 when 2.2.0 became a consolidation release ([decision 97](adr/0097-2-2-0-is-a-consolidation-release-and-the-gate-binds.md)).
 
 - An optional `Cause` on `Fault<TFault>`, an exception kept beside the reason and the detail for the
   log and the fault feature, never written to the problem; `Fault.Of(reason, detail, cause)`, and a
@@ -17,10 +30,12 @@ Decided, and moved here when 2.1.0 shipped without them ([decision 88](adr/0088-
   ([decision 64](adr/0064-fault-name-reaches-client-causes-not-told-apart-one-fault.md)).
 - A default value-object key over `ulong` generated as a plain one is, which needs a per-key value
   generator a compiled model can write ([decision 63](adr/0063-char-keys-application-assigned-ulong-documented.md)).
+- Testing: async assertions.
+- `CatchAsync` over a `ValueTask`, and `TraverseAsync` on `Option` and `Patch`.
 
 ## Gaps, in any 2.x
 
-Small and additive, each closable in a minor version. Found by the reviews named.
+Small, each closable in a minor version. Found by the reviews named.
 
 **Analyzers**
 - CMTK0009, a Warning, reports `FirstOrNone`, `SingleOrNone` and `FirstOrError` on an `IQueryable<T>`
@@ -42,11 +57,9 @@ Small and additive, each closable in a minor version. Found by the reviews named
 
 **Run time**
 - The Serilog policy ignores `ToMaximumStringLength`.
-- Testing: an exception error prints its whole `ToString()` in a message, and there are no async
-  assertions.
+- Testing: an exception error prints its whole `ToString()` in a message.
 - EF Core: a closed set's `.Name` in a query is not translated (it throws).
 - A closed set's JSON read allocates a string per token.
-- `CatchAsync` over a `ValueTask`, and `TraverseAsync` on `Option` and `Patch`.
 
 ## 2.x, with a spike first
 
@@ -73,6 +86,9 @@ Small and additive, each closable in a minor version. Found by the reviews named
 
 - CMTK0010 checks `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` at a method the compiler binds by
   pattern too, as it checks the kinds 2.1.0 added ([decision 89](adr/0089-cmtk0010-at-methods-bound-by-pattern.md)).
+- CMTK0010 refuses `Enum`, `Delegate`, `MulticastDelegate`, `ValueType` and `Array` under `[Unsealed]`: abstract
+  classes nothing can derive from, which 2.x accepts since refusing them reports more under an Error
+  ([decision 34](adr/0034-errors-fixed-within-major-version-warnings.md); found by `TypeArgumentKinds`, 2026-10-15).
 - An endpoint whose fault types write one name for two members stops the host, where 2.x logs a
   warning ([decision 90](adr/0090-faults-alike-are-a-warning-until-3-0.md)).
 - CMTK1023, a base record's equality that the generated one does not call, becomes an Error

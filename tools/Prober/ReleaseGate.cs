@@ -5,10 +5,10 @@ namespace Prober;
 
 /// <summary>
 /// The release gate. It needs nothing but the tracked corpus and a replay: no model, no login, no local
-/// memory of a developer's machine. It refuses while the staging is unpublished, a finding is open, a probe
-/// has not passed at its current identity and footprint, an expected row did not run, or a claim touched
+/// memory of a developer's machine. It refuses while the staging is unpublished, a finding is open or a row
+/// skips for one, a probe has not passed at its current identity and footprint, an expected row did not run, or a claim touched
 /// since the release has pairs no probe covers and no reviewed waiver. Touched is chosen conservatively: the
-/// claim's source document, its surfaces' source areas or the build inputs changed; footprints only add.
+/// claim's source document, its surfaces' source areas, the paths its probes watch or the build inputs changed; footprints only add.
 /// </summary>
 internal static class ReleaseGate
 {
@@ -39,6 +39,9 @@ internal static class ReleaseGate
             }
             expected.ExceptWith(executed);
             if (expected.Count > 0) reasons.Add($"{s.Probe}: {expected.Count} expected row(s) did not run");
+            // A skip is an open finding the corpus itself records, so it binds where the ledger has none (CI).
+            foreach (var (finding, rows) in Ledger.FindingSkips(evidence))
+                reasons.Add($"{s.Probe}: {rows} row(s) skip for finding {finding}; fix it and remove the skip, or dismiss it");
         }
 
         var done = l.Covered(universe);
@@ -52,17 +55,20 @@ internal static class ReleaseGate
             .Select(w => Files.Str(w["claim"])).ToHashSet(StringComparer.Ordinal);
 
         var required = new List<string>(); var waived = new List<string>(); var missedByFootprint = new List<string>(); var footprintOnly = new List<string>();
-        var missingTotal = 0;
+        var missingTotal = 0; var inapplicableTotal = 0;
         foreach (var claim in universe.Claims)
         {
-            var conservative = Under([claim.Source.Split('#')[0]]) || Under(claim.Watched) || Under(BuildInputs);
             var probes = byClaim.GetValueOrDefault(claim.Id) ?? [];
+            // What the claim's surfaces watch, and what its probes' registry entries watch beyond their footprints.
+            var conservative = Under([claim.Source.Split('#')[0]]) || Under(claim.Watched) || Under(probes.SelectMany(l.Watched)) || Under(BuildInputs);
             var footprint = probes.Count > 0 && probes.Any(p => l.FootprintChangedSince(p, since, footprints));
             if (probes.Count > 0 && conservative && !footprint) missedByFootprint.Add(claim.Id);
             if (footprint && !conservative) footprintOnly.Add(claim.Id);
             if (!(conservative || footprint)) continue;
             if (waivers.Contains(claim.Id)) { waived.Add(claim.Id); continue; }
-            var pairs = claim.Pairs();
+            // The pairs some obligation wants; one no obligation wants is declared inapplicable and left out, as an exclusion is.
+            var pairs = claim.PairsWanted();
+            inapplicableTotal += claim.Pairs().Count - pairs.Count;
             var missing = pairs.Count(p => !done.Contains((claim.Id, p)));
             required.Add(claim.Id); missingTotal += missing;
             if (missing > 0) reasons.Add($"{claim.Id}: {missing} of {pairs.Count} pairs uncovered (touched since {since})");
@@ -72,7 +78,7 @@ internal static class ReleaseGate
         {
             l.Ctx.Out.WriteLine(new JsonObject
             {
-                ["since"] = since, ["touched"] = new JsonArray([.. required.Select(x => (JsonNode)x)]), ["uncovered_pairs"] = missingTotal,
+                ["since"] = since, ["touched"] = new JsonArray([.. required.Select(x => (JsonNode)x)]), ["uncovered_pairs"] = missingTotal, ["inapplicable_pairs"] = inapplicableTotal,
                 ["reasons"] = new JsonArray([.. reasons.Select(x => (JsonNode)x)]),
                 ["selected_by_footprint_only"] = new JsonArray([.. footprintOnly.Select(x => (JsonNode)x)]),
                 ["waived"] = new JsonArray([.. waived.Select(x => (JsonNode)x)]),

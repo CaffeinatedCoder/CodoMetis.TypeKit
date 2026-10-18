@@ -15,6 +15,18 @@ falsifiable, checked against a primary source. A competitor's feature is a fact 
 `external {name} {version}`: no check compares it, so it is as fresh as its date. Take the next number, copy an
 entry's frontmatter, write the test first where a test can observe it, and add a row below.
 
+**A fact that prunes or excuses is executable** ([decision 107](../adr/0107-a-cited-fact-is-executable-and-seeds-run-by-footprint.md)).
+A `refused` entry of the axes file, a `not-promised` entry, an obligation's declaration and the probe harness may
+cite only a fact with a test; `docs-query check` fails `fact-not-executable-cited` otherwise. A fact without one
+explains, and decides no row.
+
+**A measured answer that is data is a fixture.** Where the fact's answer is a document, a status or an exception at an
+operation, it is `test/CodoMetis.TypeKit.Facts/KBNNN.fixture.json` beside the test, named by a `fixture:` line after
+`test:`: the fact's id and its `answers`, each an `id`, a `kind` (`document` with `at`, a JSON pointer; `status`;
+`exception`), the settings it was measured under (`when`, axis to value as a row names them), the `value` and a
+`note`. The test is a theory over the fixture's answers, measuring each (`KB001`), and `FactFixture` reads it, for the
+test and later for the harness's `Baseline.Fact`.
+
 | Id | Fact | Pins | Test |
 |---|---|---|---|
 | [KB-001](KB-001-openapi-2-nullable-body-drops-pattern.md) | Under OpenAPI 2.0, ASP.NET writes a nullable request body as `allOf: [{x-nullable: true}]` and drops its `pattern` | OpenApi 10.0.12, SDK 10.0.4xx | `KB001` |
@@ -41,3 +53,21 @@ entry's frontmatter, write the test first where a test can observe it, and add a
 | [KB-022](KB-022-thinktecture-smart-enums.md) | Thinktecture.Runtime.Extensions 10.5.1 smart enums have a key apart from the identifier, a `Switch` over every member, and look keys up ignoring case | Thinktecture 10.5.1 | prose |
 | [KB-023](KB-023-a-converter-cannot-describe-its-schema.md) | A JSON converter of one's own cannot say what it writes: the schema exporter writes the empty schema, ASP.NET only a format | OpenApi 10.0.12, SDK 10.0.4xx | `KB023` |
 | [KB-024](KB-024-no-library-constrains-type-arguments-by-kind.md) | No .NET library constrains a type argument to be abstract, sealed, a record or concrete, or two arguments to differ | AdvancedGenericTypeConstraints 0.4.1, RossLean.GenericsAnalyzer 1.4.0 | prose |
+| [KB-025](KB-025-the-coverage-collector-rewrites-assemblies-on-disk.md) | The code coverage collector instruments the assemblies on disk, so test hosts started together from one output directory corrupt each other, and its in-memory mode records no coverage on macOS arm64 | Microsoft.Testing.Extensions.CodeCoverage 18.12.0, SDK 10.0.4xx | prose |
+| [KB-026](KB-026-openapi-2-nullable-component-property-loses-its-reference.md) | Under OpenAPI 2.0, ASP.NET writes a nullable property of a component as `allOf: [{x-nullable: true}]`, without the reference | OpenApi 10.0.12, SDK 10.0.4xx | `KB026` |
+| [KB-027](KB-027-an-enum-component-is-its-first-use.md) | The component ASP.NET makes for an enum written by name is the schema of the first use it meets, null included | OpenApi 10.0.12, SDK 10.0.4xx | `KB027` |
+| [KB-028](KB-028-postgresql-nan-is-greater-than-every-number.md) | PostgreSQL treats NaN as greater than every number, so `> 5` keeps a NaN row and NaN sorts after Infinity | PostgreSQL 17.11, Npgsql EF 10.0.3, EF Core 10.0.12 | `KB028`, with `TYPEKIT_PG` |
+| [KB-029](KB-029-npgsql-truncates-ticks-below-a-microsecond.md) | Npgsql truncates ticks below a microsecond, for every date and time type, and does not round them | PostgreSQL 17.11, Npgsql EF 10.0.3, EF Core 10.0.12 | `KB029`, with `TYPEKIT_PG` |
+| [KB-030](KB-030-datetime-maxvalue-reads-back-unspecified.md) | `DateTime.MaxValue` written to `timestamptz` as UTC reads back with `Kind` Unspecified | PostgreSQL 17.11, Npgsql EF 10.0.3, EF Core 10.0.12 | `KB030`, with `TYPEKIT_PG` |
+| [KB-031](KB-031-a-space-in-character-1-disappears-as-text.md) | A space in `character(1)` disappears when SQL converts it to text | PostgreSQL 17.11, Npgsql EF 10.0.3, EF Core 10.0.12 | `KB031`, with `TYPEKIT_PG` |
+| [KB-032](KB-032-postgresql-sorts-null-last-ascending.md) | PostgreSQL sorts NULL last ascending and first descending, and EF adds no `NULLS FIRST` | PostgreSQL 17.11, Npgsql EF 10.0.3, EF Core 10.0.12 | `KB032`, with `TYPEKIT_PG` |
+| [KB-033](KB-033-startswith-is-case-sensitive-and-order-follows-the-collation.md) | On PostgreSQL `StartsWith` is case-sensitive, and ordering follows the database collation, not ordinal order | PostgreSQL 17.11, Npgsql EF 10.0.3, EF Core 10.0.12 | `KB033`, with `TYPEKIT_PG` |
+| [KB-034](KB-034-numeric-p-s-rounds-on-write.md) | `numeric(p,s)` rounds a value with more fractional digits on write | PostgreSQL 17.11, Npgsql EF 10.0.3, EF Core 10.0.12 | `KB034`, with `TYPEKIT_PG` |
+| [KB-035](KB-035-npgsql-refuses-non-utc-for-timestamptz.md) | Npgsql refuses a non-UTC `DateTime` and a non-zero-offset `DateTimeOffset` for `timestamptz` | PostgreSQL 17.11, Npgsql EF 10.0.3, EF Core 10.0.12 | `KB035`, with `TYPEKIT_PG` |
+| [KB-036](KB-036-a-char-key-gets-an-identity-postgresql-refuses.md) | A plain `char` key gets an identity column on Npgsql, which PostgreSQL refuses | PostgreSQL 17.11, Npgsql EF 10.0.3, EF Core 10.0.12 | `KB036`, with `TYPEKIT_PG` |
+| [KB-037](KB-037-mvc-under-max-validation-depth-1-runs-an-unbound-action.md) | Under `MaxValidationDepth = 1`, MVC runs an action whose parameter it could not bind, with the parameter at its default | SDK 10.0.4xx | `KB037` |
+| [KB-038](KB-038-a-byte-array-is-a-base64-string.md) | System.Text.Json writes a `byte[]` as one base64 string, and every other collection as a JSON array | SDK 10.0.4xx | `KB038` |
+| [KB-039](KB-039-sqlite-neither-compares-nor-orders-datetimeoffset-timespan-or-ulong.md) | EF Core's SQLite provider neither compares nor orders a `DateTimeOffset`, a `TimeSpan` or a `ulong`, and does both for a `decimal` | EF Core 10.0.12, its SQLite provider 10.0.12 | `KB039` |
+| [KB-040](KB-040-a-converter-is-charged-a-level-of-max-depth.md) | Under `MaxDepth`, System.Text.Json refuses a value a converter of one's own writes at the limit, where its own converter writes it | SDK 10.0.4xx | `KB040` |
+| [KB-041](KB-041-mvc-cannot-write-its-400-under-a-context-without-validation-problem-details.md) | MVC cannot write its automatic 400 under a source-generated context that does not list `ValidationProblemDetails` | SDK 10.0.4xx | `KB041` |
+| [KB-042](KB-042-a-char-schema-is-refused-under-write-as-string.md) | Under `NumberHandling` with `WriteAsString`, ASP.NET refuses the OpenAPI document of an endpoint whose schema holds a `char` | OpenApi 10.0.12, SDK 10.0.4xx | `KB042` |

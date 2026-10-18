@@ -1,0 +1,14 @@
+diff --git a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs
+index 934f884..feb0d14 100644
+--- a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs
++++ b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs
+@@ -110,8 +110,7 @@ internal sealed class ValueObjectTpcKeyValueGenerationConvention : IModelFinaliz
+             if (property.GetValueGeneratedConfigurationSource() != ConfigurationSource.Convention) continue;
+ 
+             var table = property.GetMappedStoreObjects(StoreObjectType.Table).FirstOrDefault();
+-            if (table.Name is null || RelationalValueGenerationConvention.GetValueGenerated(property, table) is null)
+-                property.Builder.ValueGenerated(null);
++            _ = table;
+         }
+     }
+ }

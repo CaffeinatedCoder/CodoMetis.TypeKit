@@ -82,8 +82,8 @@ public sealed class BindConvention(Type vo, Type plain, string prefix) : IContro
     {
         if (!c.ControllerType.IsGenericType || c.ControllerType.GetGenericTypeDefinition() != typeof(MvcBind<>)) return;
         var arg = c.ControllerType.GenericTypeArguments[0];
-        // By the entry's own types: under http.nullability=nullable the plain side is already T?, and is "plain".
-        var which = arg == vo ? "vo" : arg == plain ? "plain" : "plainnull";
+        // By the entry's own types: the plain side is the twin, at the value object's nullability.
+        var which = arg == vo ? "vo" : arg == plain ? "plain" : throw new InvalidOperationException($"MvcBind<{arg.Name}> is neither side's");
         foreach (var a in c.Actions)
         {
             var (kind, post) = a.ActionName switch { "RouteA" => ("route", false), "QueryA" => ("query", false), "HeaderA" => ("header", false), "BodyA" => ("body", true), "FormA" => ("form", true), _ => ("params", false) };
@@ -128,8 +128,15 @@ public sealed class HostCfg
     public Type[]? Controllers;          // null: the fault controllers of the host
     public bool FaultControllers = true;
     public bool Payload = true;          // payload echo / in / binding / schema endpoints
-    public string PayloadOnly = "both";  // "both", "vo" or "plain" (to isolate a document refusal)
+    public string PayloadOnly = "both";  // "both", "vo" or "plain": the endpoints of one side only, minimal and MVC (side (1)'s twin alone, a document refusal isolated)
     public bool MapBlanketMapping = true;
+    public bool TypeKitOpenApi = true;   // false: the document as ASP.NET alone writes it, the baseline of a refused one
+    /// <summary>
+    /// The three-sided differential's side (1) (Sides): no AddTypeKit(), none of TypeKit's JSON converters on either set of options, and no
+    /// fault responses; the wrapped twin's endpoints answer as ASP.NET and System.Text.Json have them without TypeKit.
+    /// </summary>
+    public bool WithoutTypeKit;
+    public HostCfg Copy() => (HostCfg)MemberwiseClone();
 }
 
 public static class Hx
@@ -191,15 +198,14 @@ public static class Hx
         builder.Logging.ClearProviders();
         if (c.Logs is not null) builder.Logging.AddProvider(c.Logs);
         var plain = e.Valid(); var vo = Make.Vo(e, plain);
-        var payload = new Payload(
-            Pos.Build(r["shape.position"], (r.Get("shape.containing") ?? "class"), e, true, vo),
-            Pos.Build(r["shape.position"], (r.Get("shape.containing") ?? "class"), e, false, plain));
+        var (twin, held) = Sides.Twins(r["shape.position"], r.Get("shape.containing") ?? "class", e, plain, vo);
+        var payload = new Payload(held, twin);
         builder.Services.AddSingleton(payload);
-        builder.Services.ConfigureHttpJsonOptions(o => JsonRow.Apply(r, e, o.SerializerOptions));
-        builder.Services.AddOpenApi(x => { ApplyOpenApi(x, r); x.AddTypeKit(); });
-        builder.Services.Configure<FaultResponseOptions>(x => x.QualifiedFaultNames = c.Qualified);
+        builder.Services.ConfigureHttpJsonOptions(o => { JsonRow.Apply(r, e, o.SerializerOptions); if (c.WithoutTypeKit) Sides.DropTypeKit(o.SerializerOptions); });
+        builder.Services.AddOpenApi(x => { ApplyOpenApi(x, r); if (c.TypeKitOpenApi && !c.WithoutTypeKit) x.AddTypeKit(); });
+        if (!c.WithoutTypeKit) builder.Services.Configure<FaultResponseOptions>(x => x.QualifiedFaultNames = c.Qualified);
         c.Services?.Invoke(builder.Services);
-        if (c.MapBlanketMapping)
+        if (c.MapBlanketMapping && !c.WithoutTypeKit)
         {
             builder.Services.AddFaultResponses<SFault>(f => f switch { SFault.First => 409, SFault.Second => 410, _ => throw new ArgumentOutOfRangeException(nameof(f)) });
             if (c.Mapping == "by-kind") builder.Services.AddFaultResponses();
@@ -214,9 +220,8 @@ public static class Hx
             if (c.Payload)
             {
                 controllers.Add(typeof(MvcPayloadController));
-                controllers.Add(typeof(MvcBind<>).MakeGenericType(e.Vo));
-                controllers.Add(typeof(MvcBind<>).MakeGenericType(e.Plain));
-                if (Hx.PlainNull(r, e) is { } pn) controllers.Add(typeof(MvcBind<>).MakeGenericType(pn));
+                if (c.PayloadOnly != "plain") controllers.Add(typeof(MvcBind<>).MakeGenericType(e.Vo));
+                if (c.PayloadOnly != "vo") controllers.Add(typeof(MvcBind<>).MakeGenericType(e.Plain));
             }
             var pfx = "";
             builder.Services.AddControllers(o =>
@@ -225,7 +230,7 @@ public static class Hx
                 if (r["http.host"] == "controller-without-ApiController-visible") o.Conventions.Add(new VisibleToApiExplorer());
                 ApplyMvc(o, r);
             })
-            .AddJsonOptions(o => JsonRow.Apply(r, e, o.JsonSerializerOptions))
+            .AddJsonOptions(o => { JsonRow.Apply(r, e, o.JsonSerializerOptions); if (c.WithoutTypeKit) Sides.DropTypeKit(o.JsonSerializerOptions); })
             .ConfigureApplicationPartManager(p => { p.ApplicationParts.Clear(); p.FeatureProviders.Add(new OnlyControllers([.. controllers])); });
         }
         var app = builder.Build();
@@ -261,23 +266,7 @@ public static class Hx
                 .Invoke(null, [b, which, e.Wrapped is "own-record-class" or "NodaTime.Instant"]);
             typeof(Hx).GetMethod(nameof(MapSchema), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(h.Declared).Invoke(null, [b, which]);
         }
-        if (only is "both" or "plain" && PlainNull(r, e) is { } pn)
-            typeof(Hx).GetMethod(nameof(MapBind), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(pn)
-                .Invoke(null, [b, "plainnull", e.Wrapped is "own-record-class" or "NodaTime.Instant"]);
     }
-
-    /// <summary>
-    /// The wrapped type at the value object's nullability: a class value object's `T v` parameter is
-    /// maybe-null, so ASP.NET makes it optional and nullable, and it must be compared with
-    /// `Nullable&lt;wrapped&gt;`, not with the required wrapped value type. (G1, dismissed 2026-10-15: under
-    /// OpenAPI 2.0 ASP.NET writes any nullable body without `pattern`, `int?` included.)
-    /// </summary>
-    /// The probe's source-generated context lists `Nullable&lt;wrapped&gt;` for every wrapped value type but the
-    /// enums and Instant; for those the comparison falls back to stripping nullability markers (noted on the row).
-    public static Type? PlainNull(Row r, Entry e) =>
-        !e.Vo.IsValueType && e.Plain.IsValueType && Nullable.GetUnderlyingType(e.Plain) is null
-        && !(r.Is("json.TypeInfoResolver", "source-generated-context") && (e.Plain.IsEnum || e.Wrapped == "NodaTime.Instant"))
-            ? typeof(Nullable<>).MakeGenericType(e.Plain) : null;
 
     sealed record AsP<T>([FromQuery(Name = "v")] T V);
     static void MapBind<T>(IEndpointRouteBuilder b, string which, bool bodyOnly)
@@ -295,7 +284,12 @@ public static class Hx
         b.MapPost($"/schema/{which}", ([FromBody] T body) => Results.Ok(body));
 
     // ---- client side
-    public sealed record Wire(HttpStatusCode Status, string Body, string? Thrown = null);
+    /// <summary>An answer on the wire: its status and body, or the exception the server threw (<see cref="Ex"/>, a 500), named in <see cref="Thrown"/>.</summary>
+    public sealed record Wire(HttpStatusCode Status, string Body, string? Thrown = null, Exception? Ex = null)
+    {
+        /// <summary>The answer as the three-sided differential compares it (Sides): the status, the body, and the exception's type and stage.</summary>
+        public Sides.Answer Side(string operation) => new(operation, Ex is null ? Body : null, Ex, (int)Status);
+    }
     public static async Task<Wire> Send(WebApplication app, HttpMethod m, string path, string? body = null, string? contentType = null, (string, string)? header = null)
     {
         var req = new HttpRequestMessage(m, path);
@@ -307,10 +301,54 @@ public static class Hx
             var resp = await app.GetTestClient().SendAsync(req);
             return new(resp.StatusCode, await resp.Content.ReadAsStringAsync());
         }
-        catch (Exception ex) { return new(HttpStatusCode.InternalServerError, "", ex.GetType().Name + ": " + ex.Message); }
+        catch (Exception ex) { return new(HttpStatusCode.InternalServerError, "", ex.GetType().Name + ": " + ex.Message, ex); }
     }
     public static Task<Wire> Get(WebApplication app, string path) => Send(app, HttpMethod.Get, path);
     public static async Task<JsonNode?> Doc(WebApplication app) => JsonNode.Parse(await app.GetTestClient().GetStringAsync("/openapi/v1.json"));
+
+    /// <summary>
+    /// The document failed with AddTypeKit(). The same host without it is side (1) of the three (Sides): where ASP.NET alone refuses the
+    /// document alike, by exception type and stage and never by message (<see cref="DocAlike"/>), the document part has nothing to check
+    /// (<see cref="DocRefused"/>); where it writes the document, or refuses it otherwise, the failure is returned (F2 hid behind a baseline
+    /// that kept AddTypeKit() on both sides). <paramref name="comparedBefore"/> says whether the check compared an answer before the document.
+    /// </summary>
+    public static async Task<string?> DocRefusedByAspNetAlone(Row r, Entry e, HostCfg c, Exception withTypeKit, bool comparedBefore = false)
+    {
+        static string Say(Exception x) => x.GetType().Name + ": " + (x.Message.Length > 200 ? x.Message[..200] + "..." : x.Message);
+        var alone = c.Copy(); alone.TypeKitOpenApi = false;
+        try
+        {
+            await using var app = await Start(r, e, alone);
+            await Doc(app);
+        }
+        catch (Exception ex) when (DocAlike(ex, withTypeKit))
+        {
+            DocRefused(r, ex, comparedBefore);
+            return null;
+        }
+        catch (Exception ex) { return $"document: AddTypeKit() fails ({Say(withTypeKit)}), ASP.NET alone fails otherwise ({Say(ex)})"; }
+        return $"document: AddTypeKit() fails ({Say(withTypeKit)}), ASP.NET alone writes it";
+    }
+
+    /// <summary>
+    /// ASP.NET alone (side (1)) and AddTypeKit() (side (3)) refuse the document alike: the same exception type at the same stage (a
+    /// JsonException's Path), as <see cref="Sides.Alike"/> compares two refusals. No message is compared: the two documents differ in length
+    /// by what AddTypeKit() wrote, so one refusal is at another line and byte of each (rows 31 and 140 of C21), and a refusal's words decide
+    /// no row (decision 99, WS2's three-sided differential).
+    /// </summary>
+    public static bool DocAlike(Exception one, Exception three) =>
+        Sides.Alike(new Sides.Answer("document", null, one), new Sides.Answer("document", null, three));
+
+    /// <summary>
+    /// The document refused alike by ASP.NET alone: its part has nothing to check. A check that compared nothing before it is the framework's
+    /// refusal, an expected refusal that earns nothing (framework-refuses); one that compared an answer on the wire first is judged by that
+    /// answer (doc:refused-by-aspnet-alone, a pass: decision 99's "judged by its other checks").
+    /// </summary>
+    public static void DocRefused(Row r, Exception one, bool comparedBefore)
+    {
+        if (comparedBefore) r.Note(NoteKeys.DocRefusedByAspnetAlone, one.GetType().Name);
+        else r.Note(NoteKeys.FrameworkRefuses, $"document refused by ASP.NET alone too ({one.GetType().Name}), side (1) measured on the same host without AddTypeKit()");
+    }
 
     public static string BindText(Entry e, object plain) => e.Wrapped switch
     {
@@ -333,9 +371,12 @@ public static class Hx
                 var c = new JsonObject();
                 foreach (var kv in o)
                 {
-                    if (kv.Key is "nullable" or "x-nullable" or "required") continue;
+                    if (kv.Key is "nullable" or "x-nullable" or "x-null" or "required") continue;
                     if (kv.Key == "type" && kv.Value is JsonArray ta) { var f = ta.Where(x => x?.GetValue<string>() != "null").ToList(); c["type"] = f.Count == 1 ? f[0]!.DeepClone() : new JsonArray(f.Select(x => x!.DeepClone()).ToArray()); continue; }
                     if (kv.Key == "allOf" && kv.Value is JsonArray aa && aa.Count == 1 && aa[0] is JsonObject a0 && a0.Count == 1 && a0.ContainsKey("x-nullable")) continue;
+                    // OpenAPI 3.0 writes a type of several with null as anyOf [{type: integer}, {type: string}, {enum: [null]}] (row 260 of C21)
+                    if (kv.Key == "anyOf" && kv.Value is JsonArray any && any.Any(IsNull)) { c["anyOf"] = new JsonArray(any.Where(x => !IsNull(x)).Select(NoNull).ToArray()); continue; }
+                    if (kv.Key == "enum" && kv.Value is JsonArray en && en.Any(x => x is null)) { c["enum"] = new JsonArray(en.Where(x => x is not null).Select(x => x!.DeepClone()).ToArray()); continue; }
                     c[kv.Key] = NoNull(kv.Value);
                 }
                 return c;
@@ -344,7 +385,10 @@ public static class Hx
         }
     }
 
-    public static JsonNode? Deep(JsonNode doc, JsonNode? n, HashSet<string>? seen = null)
+    /// <summary>The key <see cref="Deep"/> puts on a schema it resolved from a reference, when asked to mark them.</summary>
+    public const string ResolvedReference = "x-probe-resolved-reference";
+
+    public static JsonNode? Deep(JsonNode doc, JsonNode? n, HashSet<string>? seen = null, bool mark = false)
     {
         seen ??= [];
         switch (n)
@@ -355,14 +399,40 @@ public static class Hx
                     var key = rf.GetValue<string>();
                     if (!seen.Add(key)) return JsonValue.Create("<cycle>");
                     var target = doc; foreach (var seg in key.TrimStart('#', '/').Split('/')) target = target?[seg];
-                    var res = Deep(doc, target, seen); seen.Remove(key); return res;
+                    var res = Deep(doc, target, seen, mark); seen.Remove(key);
+                    if (mark && res is JsonObject resolved) resolved[ResolvedReference] = true;
+                    return res;
                 }
                 var c = new JsonObject();
                 foreach (var kv in o.OrderBy(k => k.Key, StringComparer.Ordinal))
-                    if (kv.Key is not ("title" or "description" or "example" or "examples")) c[kv.Key] = Deep(doc, kv.Value, seen);
+                    if (kv.Key is not ("title" or "description" or "example" or "examples"))
+                        c[kv.Key] = kv.Key == "discriminator" ? Discriminator(o, kv.Value) : Deep(doc, kv.Value, seen, mark);
                 return c;
-            case JsonArray a: var ca = new JsonArray(); foreach (var x in a) ca.Add(Deep(doc, x, seen)); return ca;
+            case JsonArray a: var ca = new JsonArray(); foreach (var x in a) ca.Add(Deep(doc, x, seen, mark)); return ca;
             default: return n?.DeepClone();
         }
+    }
+
+    /// <summary>
+    /// A discriminator's mapping names a component per value, and a component's name is made of the type's, which
+    /// differs between the two sides by construction (row 347 of C07: <c>PB&lt;TimeSpan&gt;</c> against
+    /// <c>PB&lt;V&gt;</c>). Each value names instead the branch of the same schema's anyOf or oneOf it maps to, whose
+    /// content <see cref="Deep"/> compares; a target that is no branch stays as it is, and so still differs.
+    /// </summary>
+    static JsonNode? Discriminator(JsonObject schema, JsonNode? discriminator)
+    {
+        if (discriminator is not JsonObject d || d["mapping"] is not JsonObject mapping) return discriminator?.DeepClone();
+        var branches = (schema["anyOf"] ?? schema["oneOf"]) as JsonArray;
+        var c = (JsonObject)d.DeepClone();
+        var named = new JsonObject();
+        foreach (var (value, target) in mapping.OrderBy(m => m.Key, StringComparer.Ordinal))
+        {
+            var index = -1;
+            for (var i = 0; target is JsonValue && i < (branches?.Count ?? 0); i++)
+                if (branches![i]?["$ref"]?.GetValue<string>() == target.GetValue<string>()) { index = i; break; }
+            named[value] = index >= 0 ? $"branch {index}" : target?.DeepClone();
+        }
+        c["mapping"] = named;
+        return c;
     }
 }

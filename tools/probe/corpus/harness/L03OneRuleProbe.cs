@@ -4,7 +4,7 @@ using Probes.Shapes;
 namespace Probes;
 public sealed class L03OneRuleProbe
 {
-    public static TheoryData<string, int> Data() => Rows.Data("L03-one-rule");
+    public static TheoryData<string, int> Data() => Rows.Data("L03OneRuleProbe");
     [Theory, MemberData(nameof(Data))]
-    public Task Row(string claim, int idx) => Rec.Run(claim, idx, r => Task.FromResult(TextClaims.OneRule(r, Registry.Of(r))));
+    public Task Row(string probe, int idx) => Rec.Run(probe, idx, r => Task.FromResult(TextClaims.OneRule(r, Registry.Of(r))));
 }

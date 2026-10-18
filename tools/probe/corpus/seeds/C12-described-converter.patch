@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.AspNetCore/DescribedSchemaTransformer.cs b/src/CodoMetis.TypeKit.AspNetCore/DescribedSchemaTransformer.cs
+index d873ba6..a014cab 100644
+--- a/src/CodoMetis.TypeKit.AspNetCore/DescribedSchemaTransformer.cs
++++ b/src/CodoMetis.TypeKit.AspNetCore/DescribedSchemaTransformer.cs
+@@ -94,7 +94,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
+         if (Description(element, options, property: null) is not { } elementDescription) return;
+ 
+         // Only what ASP.NET left out: a schema it did build is its own description of the elements.
+-        var missing = info.Kind == JsonTypeInfoKind.Enumerable ? schema.Items is null : schema.AdditionalProperties is null;
++        var missing = info.Kind == JsonTypeInfoKind.Enumerable ? schema.Items is not null : schema.AdditionalProperties is not null;
+         if (!missing) return;
+ 
+         var elementSchema = new OpenApiSchema();

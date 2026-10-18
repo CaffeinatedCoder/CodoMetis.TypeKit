@@ -129,6 +129,19 @@ public sealed class QueryOptionTests : IDisposable
         (await db.Shipments.Where(s => s.Carrier == "delta").SingleOrNoneAsync(TestContext.Current.CancellationToken)).TryGetValue(out _).ShouldBeFalse();
     }
 
+    /// <summary>
+    /// With a condition two rows match, as without one: a query asked for one row would find one and answer
+    /// it, where the condition has two answers.
+    /// </summary>
+    [Fact]
+    public async Task SingleOrNone_with_a_condition_two_rows_match_refuses_them()
+    {
+        await using var db = Db();
+
+        Should.Throw<InvalidOperationException>(() => db.Shipments.SingleOrNone(s => s.Carrier != "alpha"));
+        await Should.ThrowAsync<InvalidOperationException>(() => db.Shipments.SingleOrNoneAsync(s => s.Carrier != "alpha", TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     public void ElementAtOrNone_skips_to_the_row_in_the_query()
     {

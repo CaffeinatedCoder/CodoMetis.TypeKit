@@ -18,6 +18,8 @@ public static class Make
     /// endpoints declare, while the value object is still made by <c>From(T)</c> and read through its <c>Value</c>.
     /// </summary>
     public static Type Held(Type t) => Nullable.GetUnderlyingType(t) ?? t;
+    /// <summary>Whether a type admits null: a class, or a struct made nullable. A value object and its twin admit it alike (Equivalence).</summary>
+    public static bool AdmitsNull(Type t) => !t.IsValueType || Nullable.GetUnderlyingType(t) is not null;
 
     /// <summary>Creates the value object over a plain sample (From / FromKnownGood), with optional parameters filled.</summary>
     public static object Vo(Entry e, object plain)
@@ -101,7 +103,7 @@ public static class JsonRow
                 r.Substituted(kv.Key, "default", "STJ refused it: " + ex.GetType().Name);
             }
         }
-        r.Note("dropped[" + string.Join(",", dropped) + "]");
+        r.Note(NoteKeys.Dropped, string.Join(",", dropped));
         return new(o, dropped.Count == 0 ? null : string.Join(",", dropped));
     }
 
@@ -112,19 +114,35 @@ public static class JsonRow
         _ => throw new ArgumentException("unknown policy " + v)
     };
 
-    static bool ListedInContext(Row r, Entry e)
+    /// <summary>
+    /// json.TypeInfoResolver=source-generated-context is strict: the options resolve through ProbeContext alone, which lists every shape a row
+    /// holds and its twin (shapes.cs), with no reflection behind it; json.TypeInfoResolverChain=context-then-default is the configuration with
+    /// the reflection fallback, the context then reflection, beside it or on its own. A row's shape the context does not list is the generator's gap, a harness error: the serializer's refusal of
+    /// an unlisted type would read as the framework's.
+    /// </summary>
+    static void Listed(Row r, Entry e)
     {
-        try
-        {
-            var plain = e.Valid(); var vo = Make.Vo(e, plain);
-            var pos = r["shape.position"]; var con = (r.Get("shape.containing") ?? "class");
-            var hp = Pos.Build(pos, con, e, false, plain); var hv = Pos.Build(pos, con, e, true, vo);
-            var ok = ProbeContext.Default.GetTypeInfo(hp.Declared) is not null && ProbeContext.Default.GetTypeInfo(hv.Declared) is not null;
-            r.Note(ok ? "ctx-strict" : "ctx-fallback");
-            if (!ok) r.Substituted("json.TypeInfoResolver", "source-generated-context+reflection-fallback", "the shape is not listed in the context");
-            return ok;
-        }
-        catch { return false; }
+        var plain = e.Valid(); var vo = Make.Vo(e, plain);
+        var pos = r["shape.position"]; var con = (r.Get("shape.containing") ?? "class");
+        var (hp, hv) = Sides.Twins(pos, con, e, plain, vo);
+        var missing = Missing(hp.Declared, hv.Declared).Select(t => t.ToString()).ToList();
+        if (missing.Count > 0) { r.Outcome("harness-error", $"ProbeContext does not list {string.Join(", ", missing)}: run tools/probe/generators/shapes.cs"); return; }
+        r.Note(NoteKeys.CtxStrict);
+    }
+
+    /// <summary>The <paramref name="shapes"/> ProbeContext does not list, under json.TypeInfoResolver=source-generated-context: the generator's gap, which the caller reports as a harness error.</summary>
+    public static IEnumerable<Type> Unlisted(Row r, params Type[] shapes) =>
+        r.Is("json.TypeInfoResolver", "source-generated-context") ? Missing(shapes) : [];
+
+    /// <summary>
+    /// The types ProbeContext has no metadata for, asked through the resolver's interface, which builds no contract: building one is the
+    /// serializer's step, where a context refuses an Option or Result made nullable (L06's not-promised entry), not the listing's.
+    /// </summary>
+    static IEnumerable<Type> Missing(params Type[] shapes)
+    {
+        // the context answers what a type's metadata asks the options for (the struct a Nullable holds) too
+        var probe = new JsonSerializerOptions { TypeInfoResolver = ProbeContext.Default };
+        return shapes.Where(t => ((IJsonTypeInfoResolver)ProbeContext.Default).GetTypeInfo(t, probe) is null).ToList();
     }
 
     static void Set(Row row, JsonSerializerOptions o, string name, string v, Entry e)
@@ -147,11 +165,15 @@ public static class JsonRow
                 }
                 return;
             case "TypeInfoResolver":
-                if (v == "source-generated-context") o.TypeInfoResolver = ListedInContext(row, e) ? ProbeContext.Default : JsonTypeInfoResolver.Combine(ProbeContext.Default, new DefaultJsonTypeInfoResolver());
+                if (v == "source-generated-context") { o.TypeInfoResolver = ProbeContext.Default; Listed(row, e); }
                 else o.TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { ti => { foreach (var p in ti.Properties) p.Name += "_x"; } } };
                 return;
             case "TypeInfoResolverChain":
-                o.TypeInfoResolverChain.Add(ProbeContext.Default); o.TypeInfoResolverChain.Add(new DefaultJsonTypeInfoResolver()); return;
+                // The context, then reflection for what it does not list: under json.TypeInfoResolver=source-generated-context the chain
+                // already starts with the context, which System.Text.Json refuses to insert a second time (the resolver into its own
+                // chain), so the reflection fallback follows it. That pair is the context with the fallback, the strict context's other side.
+                if (!o.TypeInfoResolverChain.Contains(ProbeContext.Default)) o.TypeInfoResolverChain.Add(ProbeContext.Default);
+                o.TypeInfoResolverChain.Add(new DefaultJsonTypeInfoResolver()); return;
         }
         var prop = typeof(JsonSerializerOptions).GetProperty(name) ?? throw new ArgumentException("no json option " + name);
         object value = prop.PropertyType == typeof(bool) ? bool.Parse(v) : prop.PropertyType.IsEnum ? Enum.Parse(prop.PropertyType, v) : throw new ArgumentException($"no hand value for {name}");

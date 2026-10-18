@@ -65,12 +65,25 @@ dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--project 
 ```
 
 The probing tool, prober (`tools/Prober`, started as its built dll like docs-query). These need no
-model, no login and no API key, and run in CI as anywhere:
+model, no login and no API key, and run in CI as anywhere: the `probes` legs of `dotnet.yml` replay
+the corpus by family, every probe on a push and the probes the branch stales on a pull request, judged
+against the base branch's saved state, and `probe-status` merges the legs and reports
+([decision 101](design/adr/0101-ci-replays-by-family-and-footprint.md)); `release.yml` runs `replay --all`
+and `gate` before it packs ([decision 96](design/adr/0096-ci-replays-every-probe-and-the-release-runs-the-gate.md)):
 
 ```bash
 dotnet tools/Prober/bin/Release/net10.0/prober.dll status    # coverage of the branch's documented claims, open findings
 dotnet tools/Prober/bin/Release/net10.0/prober.dll replay    # re-run the probes whose identity or footprint changed
 dotnet tools/Prober/bin/Release/net10.0/prober.dll gate      # the release gate, from the tracked corpus and a replay
+```
+
+Proving that each probe can fail needs no model either, but builds once per seed, so it runs locally
+only ([decision 100](design/adr/0100-every-probe-is-shown-to-fail-against-a-seeded-defect.md)), and only for the
+probes changed since their seeds were last caught; a release runs `--all`
+([decision 107](design/adr/0107-a-cited-fact-is-executable-and-seeds-run-by-footprint.md)):
+
+```bash
+dotnet tools/Prober/bin/Release/net10.0/prober.dll seeds     # each probe's seeded defect, applied in a scratch worktree, must fail it
 ```
 
 Exploration needs a model and runs locally only, never in CI:
@@ -84,19 +97,24 @@ An agent runs builds and tests through `tools/BuildVerdict`, run as its built dl
 from `tools/BuildVerdict/build-verdict-remedies.tsv`, and the failing tests with their assertion; the
 full log is `$GIT_DIR/build-verdict-last.log`. A code it prints as UNMAPPED gets a row once its fix is
 known. In an agent's Bash tool, `tools/BashGuard` (registered in `.claude/settings.json`) refuses
-`dotnet build` of anything but a tool, `dotnet test` and `dotnet msbuild`, and the verdict piped into
+`dotnet build` of anything but a tool, `dotnet test` and `dotnet msbuild` (a `-getProperty`/`-getItem` query
+without a target excepted), and the verdict piped into
 `head` or `tail`, and prints the verdict's form of the command. The raw commands above are for a
 terminal.
 
 Both are tool projects under `tools/` (design/adr/0092): BCL only, in the solution, each with its
 tests (`tools/BuildVerdict.Tests`, `tools/BashGuard.Tests`), and run from `bin/Release`, which
-`.claude/settings.json` builds at session start. Each records the sources it was built from and
-refuses to run from others, naming the command that rebuilds it: `dotnet build tools/<Name> -c
-Release`, which the guard lets through.
+`.claude/settings.json` builds at session start: the guard in the main checkout, every other tool
+(`tools/AgentTools.slnf`) in the session's own, a worktree included, with the SDK installer's `dotnet`
+when the one on PATH lacks the pinned SDK; a session start that builds nothing says so in your context
+(design/adr/0105). Each records the sources it was built from and refuses to run from others, naming
+the command that rebuilds it: `dotnet build tools/<Name> -c Release`, which the guard lets through.
 
 The SDK is pinned in `global.json` (10.0.4xx band, `latestPatch`). Tests run on Microsoft Testing
 Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TRX output is
-`--report-xunit-trx`. The build treats warnings as errors, including CS1591 on shipping projects.
+`--report-xunit-trx`. The build treats warnings as errors, including CS1591 on shipping projects, and
+runs the CMTK analyzers on the shipping projects' own code (`src/Directory.Build.targets`), so a library
+generic that breaks its own constraint attributes fails here, not in a consumer.
 
 ## Finding code
 
@@ -209,17 +227,29 @@ the whole page. A ranked miss proves nothing.
 2. Run `dotnet test` after each change.
 3. **Prove every fix by reverting it.** See `.claude/skills/verify-the-guard`. The same applies to a
    new analyzer test or a convention test: seed the defect it claims to catch.
-4. A change to an aspect, the fabric, the analyzer or a satellite gets a generation review
+4. **Test every fix across its input class.** Before a fix is done, name the input class its defect
+   lives in and run the fix's test over that class's variant catalogue: `TypeArgumentSites` and
+   `TypeArgumentKinds` (`test/CodoMetis.TypeKit.Analyzers.Tests/Variants/`) for a type argument, where
+   it is written and what it is, `KeyShapes` and `QueryShapes`
+   (`test/CodoMetis.TypeKit.EntityFrameworkCore.Tests/Variants/`) for an EF key or query, the `shape.*`
+   axes for a generated type, the settings axes for a framework option. Fix the siblings it finds, add a missing
+   shape to the catalogue, and say so in the commit body; a sibling found this way is `Found-By: VA`
+   ([decision 95](design/adr/0095-a-fix-is-tested-across-its-input-class.md), the skill's "The variants").
+5. A change to an aspect, the fabric, the analyzer or a satellite gets a generation review
    (`.claude/skills/weaving-review`).
-5. Commit with conventional format: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `build:`,
-   `spike:`.
-6. **Probes replay themselves; exploring is a separate, capped, local job.** Consumer probes check the
+6. Commit with conventional format: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `build:`,
+   `spike:`. A `fix:` ends with the trailers `Defect-Class:` and `Found-By:`, one of each, from the
+   tables of [decision 94](design/adr/0094-topic-branches-into-a-release-branch-and-fix-trailers.md)
+   (`CommitTrailerTests`). Work happens on a `<type>/<slug>` branch from `release/<version>`, reaches it
+   by a PR, and every merge is a merge commit: never squash or rebase a pushed branch.
+7. **Probes replay themselves; exploring is a separate, capped, local job.** Consumer probes check the
    claims in `docs/` and the READMEs, pairwise over the axes in
    [.claude/probe-axes.md](.claude/probe-axes.md); they, their rows, the claims and the waivers are the
    corpus in `tools/probe/corpus/`, tracked like tests.
-   - **Replay** runs after every commit from a git `post-commit` hook, in the background and with no
-     model: `prober replay` re-runs only the probes whose identity or coverage footprint the commit
-     changed, and blocks nothing. Read `prober status` before your next change. A probe that passed with
+   - **Replay** runs in CI on every push and pull request, every probe from an empty state, and a probe
+     that fails fails the job. Locally it runs after every commit from a git `post-commit` hook, in the
+     background and with no model: `prober replay` re-runs only the probes whose identity or coverage
+     footprint the commit changed, and blocks nothing. Read `prober status` before your next change. A probe that passed with
      the same identity and fails now is an open finding `R-<probe>-<sha>`, fixed like any failing test.
      The hook is opt-in, per clone and untracked: put this in `$(git rev-parse --git-common-dir)/hooks/post-commit`
      and make it executable (Git for Windows runs it through its own `sh`):
@@ -234,27 +264,31 @@ the whole page. A ranked miss proves nothing.
      probes land in its staging; `prober publish` moves them into the corpus, committed as `test:`.
    - **Full sweep** on request (`/probe full`) or nightly, locally: the whole corpus replayed, the axes
      derived again, then exploration up to the cap. A report, not a gate.
-   - A probe that found a bug becomes a test in the suite (step 3); a dismissed finding is recorded with
+   - A probe that found a bug becomes a test in the suite (steps 3 and 4); a dismissed finding is recorded with
      `prober dismiss` and the reason. An intended difference a probe accepts cites the sentence of the
      docs, the record, or the verified fact (`KB-NNN`, `design/knowledge/`) that makes it intended.
 
 ## Releasing
 
-Before `git tag`, replay the whole probe corpus and run the gate:
+Before `git tag`, replay the whole probe corpus and run the gate, and show every probe's seeds caught (locally, a
+build per seed; without `--all` it runs only the probes changed since their seeds were last caught, decision 107):
 
 ```bash
 dotnet tools/Prober/bin/Release/net10.0/prober.dll replay --all
 dotnet tools/Prober/bin/Release/net10.0/prober.dll gate
+dotnet tools/Prober/bin/Release/net10.0/prober.dll seeds --all
 ```
 
-The gate never starts a model and needs nothing but the tracked corpus and a replay, so CI runs it
-with `PROBE_STATE_DIR` in its own workspace. It refuses while a finding is open, a probe has not
+The gate never starts a model and needs nothing but the tracked corpus and a replay, so the release
+workflow runs it after `replay --all`, with `PROBE_STATE_DIR` in the job's temporary directory and
+`--since` the previous release's tag, reports its verdict in the job summary, and fails the release on a
+refusal. It refuses while a finding is open, a probe has not
 passed at its current identity, or a claim touched since the last tag has pairwise combinations no
 probe covers; it lists what is missing. Every obligation is met by a probe in the corpus, written by
 hand or by a round, or by a reviewed waiver in `tools/probe/corpus/waivers.json` (claim, reason,
 reviewer).
 
-**The gate is advisory until the user names the first release it binds.** Until then, run it, report
-its result with the release, and tag regardless; a refusal is a list of work, not a stop. The binding
-release, once named, is written here. From that release on, never tag over a refusal without the
-user's word.
+**The gate binds from 2.2.0**
+([decision 97](design/adr/0097-2-2-0-is-a-consolidation-release-and-the-gate-binds.md)). Never tag
+2.2.0 or a later version over a refusal without the user's word, which is a waiver naming them as its
+reviewer. Answer a refusal with a probe, a fix or such a waiver, never by editing the workflow's step.

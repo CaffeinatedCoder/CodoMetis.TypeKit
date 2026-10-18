@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.AspNetCore/DescribedSchemaTransformer.cs b/src/CodoMetis.TypeKit.AspNetCore/DescribedSchemaTransformer.cs
+index 072f8a9..2e2c406 100644
+--- a/src/CodoMetis.TypeKit.AspNetCore/DescribedSchemaTransformer.cs
++++ b/src/CodoMetis.TypeKit.AspNetCore/DescribedSchemaTransformer.cs
+@@ -66,7 +66,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
+ 
+         // A body is a parameter too, and so is every schema inside one: only a parameter bound from the
+         // route, the query, a header or a form field is text TryParse reads.
+-        if (context is { JsonPropertyInfo: null, ParameterDescription: { } parameter } && parameter.Source != BindingSource.Body)
++        if (context is { JsonPropertyInfo: null, ParameterDescription: { } parameter } && parameter.Source == BindingSource.Special)
+         {
+             if (Description(info.Type, options, property: null) is not null)
+             {

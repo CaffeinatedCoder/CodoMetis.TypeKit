@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://codometis.typekit/probe/schemas/evidence.schema.json",
   "title": "Evidence",
-  "description": "State (branches/<branch>/evidence/<probe>.json): what one replay of a probe did. Only rows expected, executed and ending as a pass earn credit, for the settings that applied, while the identity holds.",
+  "description": "State (branches/<branch>/evidence/<probe>.json): what one replay of a probe did. Only checks that ended as a pass, in rows expected and executed, earn credit, for the settings that applied (the row's, the check's laid over them), while the identity holds. A row without checks is one check of the obligation `claim` with the row's category.",
   "type": "object",
   "required": [
     "identity",
@@ -12,8 +12,11 @@
   "properties": {
     "schemaVersion": {
       "type": "integer",
-      "const": 1,
-      "description": "The schema version. A file or line without it is version 1 (the Python baseline)."
+      "enum": [
+        1,
+        2
+      ],
+      "description": "The schema version: 2 records each row's checks. A file without it is version 1, whose rows have no checks."
     },
     "probe": {
       "type": "string"
@@ -80,20 +83,84 @@
               "expected-refusal",
               "inapplicable",
               "harness-error",
-              "inconclusive"
-            ]
+              "inconclusive",
+              "known-finding"
+            ],
+            "description": "The highest of the row's own outcome and its checks'."
           },
           "applied": {
             "type": "object",
             "additionalProperties": {
               "type": "string"
             },
-            "description": "Axis name to value, both compared ordinally."
+            "description": "Axis name to value, both compared ordinally: the axes the row read outside any check, which every check of it ran under."
           },
           "reasons": {
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The open findings the row stepped around (Row.Skip in the harness); the row ends as known-finding."
+          },
+          "checks": {
+            "type": "array",
+            "description": "Version 2: one entry per check the row ran (Row.Check in the harness), in the order they ended. Absent for a row that ran none.",
+            "items": {
+              "type": "object",
+              "required": [
+                "obligation",
+                "category",
+                "applied"
+              ],
+              "properties": {
+                "obligation": {
+                  "type": "string",
+                  "description": "An id of the claim's obligations, or `claim` for a claim without them."
+                },
+                "baseline": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "What the check compared against: twin, framework, round-trip, model, refusal, cost, fact:KB-NNN or docs:file#anchor. A pass always has one."
+                },
+                "category": {
+                  "enum": [
+                    "pass",
+                    "violation",
+                    "expected-refusal",
+                    "inapplicable",
+                    "harness-error",
+                    "inconclusive",
+                    "known-finding"
+                  ]
+                },
+                "applied": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "The axes this check read, at the value that applied, and none another check read."
+                },
+                "reasons": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Six at most, as the row's."
+                },
+                "notes": {
+                  "type": "string",
+                  "description": "How the check was compared, and the citations of what did not apply or was refused, separated by ;."
+                }
+              },
+              "additionalProperties": false
             }
           }
         }

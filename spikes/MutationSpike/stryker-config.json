@@ -1,0 +1,13 @@
+{
+  "stryker-config": {
+    "test-runner": "mtp",
+    "project": "CodoMetis.TypeKit.Serilog.csproj",
+    "test-projects": [
+      "../../test/CodoMetis.TypeKit.Serilog.Tests/CodoMetis.TypeKit.Serilog.Tests.csproj"
+    ],
+    "mutation-level": "Complete",
+    "coverage-analysis": "perTest",
+    "reporters": [ "progress", "cleartext", "html", "json" ],
+    "thresholds": { "high": 80, "low": 60, "break": 0 }
+  }
+}

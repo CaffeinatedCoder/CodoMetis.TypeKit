@@ -1,0 +1,12 @@
+diff --git a/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs b/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs
+index 5c1fd7e..c297b6a 100644
+--- a/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs
++++ b/src/CodoMetis.TypeKit.Analyzers/TypeArgumentConstraintAnalyzer.cs
+@@ -161,7 +161,6 @@ public sealed class TypeArgumentConstraintAnalyzer : DiagnosticAnalyzer
+ 
+                 if (construct.MethodKind == MethodKind.Ordinary)
+                 {
+-                    yield return (construct, collection);
+                     break;
+                 }
+ 

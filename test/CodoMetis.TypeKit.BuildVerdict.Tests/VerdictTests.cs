@@ -270,6 +270,29 @@ public sealed class VerdictTests(VerdictTests.Sandbox sandbox) : IClassFixture<V
         Holds();
     }
 
+    // The same passing run as GitHub Actions prints it: the test platform colours redirected output there, and
+    // an escape sequence opens the summary's lines. Measured 2026-10-15 on the first CI replay of the probes.
+    [Fact]
+    public void A_passing_run_in_colour()
+    {
+        var esc = (char)27;
+        var f = $"""
+            Running tests from test/A.Tests/bin/Debug/net10.0/A.Tests.dll (net10.0|x64)
+            {esc}[m{R}/test/A.Tests/bin/Debug/net10.0/A.Tests.dll (net10.0|x64) {esc}[32mpassed{esc}[m {esc}[90m(17s 005ms){esc}[m
+
+            {esc}[32mTest run summary: Passed!
+            {esc}[m  total: 177
+              failed: 0
+            {esc}[32m  succeeded: 177
+            {esc}[m  skipped: 0
+              duration: 17s 005ms
+
+            """;
+        Exited("a passing run in colour exits 0", 0, Verdict(0, f, "test", "--project", "test/A.Tests"));
+        First("a passing run in colour reads its summary", "TESTS OK: 177 passed, 0 skipped, A.Tests, 17s 005ms");
+        Holds();
+    }
+
     // A solution-wide filter that matched one test, which passed: every other assembly exits 8, and so does the run.
     [Fact]
     public void A_solution_filter_that_matched_and_passed()
@@ -334,16 +357,21 @@ public sealed class VerdictTests(VerdictTests.Sandbox sandbox) : IClassFixture<V
               Actual:   15
                 at CodoMetis.TypeKit.Tests.ParsingTests.Rounds_trip(String text, String culture) in {R}/test/A.Tests/ParsingTests.cs:40
               Standard output: noise from the test
-            {R}/test/A.Tests/bin/Debug/net10.0/A.Tests.dll (net10.0|arm64) failed with 3 error(s) (1s 147ms)
+            failed Probes.L01JsonBytesProbe.Row [#6 shape.kind=record-struct shape.wrapped=int] (5ms)
+              from {R}/test/A.Tests/bin/Debug/net10.0/A.Tests.dll (net10.0|arm64)
+              Assert.Fail() Failure: [L01 #6] bytes differ
+                at Probes.Rec.Run(String claim, Int32 idx) in {R}/test/A.Tests/Probes/Row.cs:12
+            {R}/test/A.Tests/bin/Debug/net10.0/A.Tests.dll (net10.0|arm64) failed with 4 error(s) (1s 147ms)
             Exit code: 2
 
-            """ + Summary(850, 3, 846, 1);
+            """ + Summary(850, 4, 845, 1);
         Exited("a failing run exits 1", 1, Verdict(2, f, "test"));
-        First("the failed count leads", "TESTS FAILED: 3 failed of 850 (846 passed, 1 skipped), solution, 1s 261ms");
+        First("the failed count leads", "TESTS FAILED: 4 failed of 850 (845 passed, 1 skipped), solution, 1s 261ms");
         Has("a block is headed Class.Method and file:line", "## ZzzVerdictProbeTests.Fails_on_a_value  test/A.Tests/ZzzVerdictProbeTests.cs:6");
         Has("a multi-line assertion is one line", "   ShouldAssertException: public void Fails_on_a_valueOption.Some(2).Match(x => x, 0) should be 1 but was 2");
         Has("an exception loses xUnit's wrapper and namespaces", "   InvalidOperationException: probe threw");
         Has("a theory keeps its arguments, dots and all", "## ParsingTests.Rounds_trip(text: \"1.5\", culture: \"de-DE\")  test/A.Tests/ParsingTests.cs:40");
+        Has("a data row keeps its label, dots and all", "## L01JsonBytesProbe.Row [#6 shape.kind=record-struct shape.wrapped=int]  test/A.Tests/Probes/Row.cs:12");
         Has("an Assert.Equal keeps expected and actual", "Assert.Equal() Failure: Values differ Expected: 1.5 Actual:   15");
         Hasnt("from lines are dropped", "  from ");
         Hasnt("frames outside the tree are dropped", "MethodBaseInvoker");
@@ -509,6 +537,7 @@ public sealed class VerdictTests(VerdictTests.Sandbox sandbox) : IClassFixture<V
                 Console.WriteLine(en ? "Build succeeded.\nTime Elapsed 00:00:01.00" : "Der Buildvorgang wurde erfolgreich ausgeführt.");
                 break;
             case "test":
+                if (Environment.GetEnvironmentVariable("STUB_SHARED_LOG") is { } shared) File.AppendAllText(calls, $"shared-log-exists={File.Exists(shared)}\n");
                 Console.Write(en ? "  total: 3\n  failed: 0\n  succeeded: 3\n  skipped: 0\n  duration: 1s\n" : "  gesamt: 3\n  fehlgeschlagen: 0\n  erfolgreich: 3\n");
                 break;
         }
@@ -529,14 +558,18 @@ public sealed class VerdictTests(VerdictTests.Sandbox sandbox) : IClassFixture<V
     private string Call(int n) => RecordedCalls().ElementAtOrDefault(n - 1) ?? "";
     private string LogFile => Path.Combine(ToolSandbox.RunProcess("git", ["-C", R, "rev-parse", "--absolute-git-dir"], sandbox.Tool.Work).Output.Trim(), "build-verdict-last.log");
 
-    private int RunStub(string? build, params string[] arguments)
+    private int RunStub(string? build, params string[] arguments) => RunStubWith(new Dictionary<string, string?>(), build, arguments);
+
+    private int RunStubWith(IReadOnlyDictionary<string, string?> extra, string? build, params string[] arguments)
     {
         File.Exists(Stub.Value).ShouldBeTrue($"the stub dotnet did not build: {Stub.Value}");
         File.WriteAllText(Calls, "");
-        return Run(new Dictionary<string, string?>
+        var environment = new Dictionary<string, string?>
         {
             ["BUILD_VERDICT_DOTNET"] = Stub.Value, ["STUB_CALLS"] = Calls, ["STUB_ROOT"] = R, ["STUB_BUILD"] = build,
-        }, arguments);
+        };
+        foreach (var (name, value) in extra) environment[name] = value;
+        return Run(environment, arguments);
     }
 
     [Fact]
@@ -566,6 +599,58 @@ public sealed class VerdictTests(VerdictTests.Sandbox sandbox) : IClassFixture<V
 
         Exited("a bare test run passes", 0, RunStub(null, "test"));
         Check(Call(3) == $"en|test --no-build --solution {Path.Combine(R, "CodoMetis.TypeKit.slnx")}", "a bare test run runs the solution", Call(3));
+        Holds();
+    }
+
+    /// <summary>
+    /// The probe replay builds the probes once and runs many at a time; a build per run would race in the
+    /// project's obj directory. So --no-build runs the test step alone, and the verdict reads as it does after
+    /// a build.
+    /// </summary>
+    [Fact]
+    public void A_pinned_test_run_without_a_build()
+    {
+        var project = Path.GetFullPath(Path.Combine(R, "test", "A.Tests"));
+        Exited("a test run without a build passes", 0, RunStub(null, "test", "--no-build", "--project", Path.Combine("repo", "test", "A.Tests"), "--filter-class", "*A*"));
+        First("a test run without a build reads its summary", "TESTS OK: 3 passed, 0 skipped, A.Tests, --filter-class *A*, 1s");
+        Check(RecordedCalls().Length == 2, "no build runs: the SDK check and the test step only", string.Join("; ", RecordedCalls()));
+        Check(Call(2) == $"en|test --no-build --project {project} --filter-class *A*", "the test step is --no-build with the filters", Call(2));
+        var log = File.Exists(LogFile) ? File.ReadAllText(LogFile) : "";
+        Check(log.Split('\n').Any(l => l.StartsWith("==== build-verdict: dotnet test", StringComparison.Ordinal)) && !log.Contains("Build succeeded", StringComparison.Ordinal),
+              "the log holds the test step and no build", log);
+
+        Exited("a failing build is still reported when --no-build is not given", 1, RunStub("fail", "test", "--project", Path.Combine("repo", "test", "A.Tests")));
+        Holds();
+    }
+
+    /// <summary>
+    /// The probe replay runs several of these at once. Each reads the log it wrote, and the shared log is
+    /// replaced only when the process is done: the stub sees no shared log during the test step, and the
+    /// verdict is read all the same. Measured 2026-10-16 before this: six at once reported one duration, the
+    /// last one's.
+    /// </summary>
+    [Fact]
+    public void A_process_reads_its_own_log_and_publishes_it_when_done()
+    {
+        if (File.Exists(LogFile)) File.Delete(LogFile);
+        Exited("a run passes", 0, RunStubWith(new Dictionary<string, string?> { ["STUB_SHARED_LOG"] = LogFile }, null, "test", "--no-build", "--project", Path.Combine("repo", "test", "A.Tests")));
+        First("the verdict is read from the process's own log", "TESTS OK: 3 passed, 0 skipped, A.Tests, 1s");
+        Check(RecordedCalls().Contains("shared-log-exists=False"), "the shared log is untouched while the process runs", string.Join("; ", RecordedCalls()));
+        Check(File.Exists(LogFile), "the shared log is published when the process is done", LogFile);
+        Check(!Directory.EnumerateFiles(Path.GetDirectoryName(LogFile)!).Any(f => f.EndsWith(".tmp", StringComparison.Ordinal)), "no log of the process is left beside the shared one", "a .tmp remains");
+        Holds();
+    }
+
+    [Fact]
+    public void A_log_directory_keeps_each_process_s_log_and_leaves_the_shared_one_alone()
+    {
+        if (File.Exists(LogFile)) File.Delete(LogFile);
+        var logs = Path.Combine(sandbox.Tool.Work, "logs-" + Guid.NewGuid().ToString("N"));
+        Exited("a run passes", 0, RunStubWith(new Dictionary<string, string?> { ["BUILD_VERDICT_LOG_DIR"] = logs }, null, "test", "--no-build", "--project", Path.Combine("repo", "test", "A.Tests")));
+        var kept = Directory.Exists(logs) ? Directory.GetFiles(logs) : [];
+        Check(kept.Length == 1 && System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(kept[0]), @"^build-verdict-\d+\.log$"), "one log, named by the process id, is kept in the directory", string.Join("; ", kept));
+        Check(kept.Length == 1 && File.ReadAllText(kept[0]).Contains("==== build-verdict: dotnet test", StringComparison.Ordinal), "the kept log is the run's", kept.Length == 1 ? File.ReadAllText(kept[0]) : "no log");
+        Check(!File.Exists(LogFile), "the shared log is left alone", LogFile);
         Holds();
     }
 

@@ -81,6 +81,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "HandWrittenFrom")]
     [InlineData("CMTK1011", "HandWrittenValue")]
     [InlineData("CMTK1011", "HandWrittenParse")]
+    [InlineData("CMTK1011", "HandWrittenSpanParseOverString")]
     [InlineData("CMTK1011", "HandWrittenParseOverASet")]
     [InlineData("CMTK1011", "HandWrittenFormat")]
     [InlineData("CMTK1011", "HandWrittenMinValue")]
@@ -868,6 +869,12 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public readonly partial record struct HandWrittenParse : IValue<int>
             {
                 public static HandWrittenParse Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            // string is ISpanParsable, so the span Parse is generated over it too, and a hand-written one is refused.
+            public readonly partial record struct HandWrittenSpanParseOverString : IValue<string>
+            {
+                public static HandWrittenSpanParseOverString Parse(System.ReadOnlySpan<char> s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
             }
 
             public readonly partial record struct HandWrittenFormat : IValue<int>

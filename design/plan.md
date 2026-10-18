@@ -21,6 +21,9 @@ you touch; the rest is reference.
 | [Analyzer package and rule set](analyzers.md) | Packaging, the rule table with severities, and the limits of each rule | with the area |
 | [Native AOT](native-aot.md) | What is measured, how, and what each package asks of a consumer | with the area |
 | [Fix history](fix-history.md) | Every `fix:` to 2026-10-15 by defect class, finder, sibling chain and release escape: the baseline for reviewing | when the classification is run again |
+| [Mutation survivors, 2026-10-16](mutation-2026-10-16.md) | The first Stryker.NET run, on the Serilog satellite: counts per package, each survivor read as a missing assertion or an equivalent mutant, and the valid mutants the compile lost | one dated page per run |
+| [Finder benchmark, 2026-10-16](finder-benchmark-2026-10-16.md) | The 24 release escapes put back as seeds: which test, probe row or nothing detects each, totals per finder as applied, reached and detected, and the accounting every probe round and analyst run reports | one dated page per run |
+| [Probing without the tooling](probing-without-tooling.md) | How BLite applied the probing concept by hand, with no prober, covering array or ledger: what each tool function became, the process as it ran, the issues and PRs it produced, and an adoption guide for trying the same here without the tooling | copied 2026-10-18; as the method is tried here |
 
 The spikes that decided something are in [spikes/](../spikes/), each with a README stating the
 question, the answer and the evidence. A spike's README names the decision it led to.

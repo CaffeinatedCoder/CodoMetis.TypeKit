@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesStartupCheck.cs b/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesStartupCheck.cs
+index c537edf..707ddd2 100644
+--- a/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesStartupCheck.cs
++++ b/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesStartupCheck.cs
+@@ -88,7 +88,7 @@ internal sealed class FaultResponsesStartupCheck : IStartupFilter
+                 .Select(left => (left.Status, left.Member, left.Message, Endpoint: endpoint)))
+             .GroupBy(left => left.Status, DeclarationComparer)
+             .SelectMany(status => status.GroupBy(left => left.Member, StringComparer.Ordinal)
+-                .Where(member => scopes[status.Key].All(endpoint => member.Any(left => left.Endpoint == endpoint)))
++                .Where(member => scopes[status.Key].All(endpoint => member.Any(left => left.Endpoint == endpoint)) && scopes[status.Key].Count == 0)
+                 .Select(member => $"{member.First().Message}, on {string.Join(", ", member.Select(left => Name(left.Endpoint)).Distinct())}."));
+ 
+         // Two fault types an endpoint answers with should not write one name: the client reads two faults

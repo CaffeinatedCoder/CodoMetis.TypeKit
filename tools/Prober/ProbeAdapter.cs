@@ -63,8 +63,23 @@ internal sealed class DotNetAdapter(JsonObject config) : IProbeAdapter
         return Start(worktree, Expand(config["build"], new() { ["project"] = Project }), environment);
     }
 
-    public Ran RunProbe(string worktree, string filter, string results, string coverageFile, IReadOnlyDictionary<string, string?> environment) =>
-        Start(worktree, Expand(config["test"], new() { ["project"] = Project, ["filter"] = filter, ["results"] = results, ["cobertura"] = coverageFile }), environment);
+    /// <summary>
+    /// The "test" template, then the "coverage" arguments when a coverage file is asked for. A replay without a
+    /// footprint asks for none, so a template that carries the coverage arguments itself is refused rather than
+    /// run with an empty file name.
+    /// </summary>
+    public Ran RunProbe(string worktree, string filter, string results, string coverageFile, IReadOnlyDictionary<string, string?> environment)
+    {
+        var values = new Dictionary<string, string> { ["project"] = Project, ["filter"] = filter, ["results"] = results, ["cobertura"] = coverageFile };
+        if (coverageFile.Length == 0 && Files.Strings(config["test"]).Any(arg => arg.Contains("{cobertura}", StringComparison.Ordinal)))
+            throw new Refusal("the replay's test template carries the coverage arguments itself; move them to a \"coverage\" array of the replay configuration, so a run without a footprint can leave them out");
+        string[] argv = coverageFile.Length > 0 ? [.. Expand(config["test"], values), .. Expand(config["coverage"], values)] : Expand(config["test"], values);
+        // The template runs the verdict tool, which keeps its full log where BUILD_VERDICT_LOG_DIR says: the
+        // directory the replay offers as PROBE_LOG_DIR, whose files it keeps for a failed run.
+        if (environment.TryGetValue("PROBE_LOG_DIR", out var logDir) && logDir is { Length: > 0 })
+            environment = new Dictionary<string, string?>(environment, StringComparer.Ordinal) { ["BUILD_VERDICT_LOG_DIR"] = logDir };
+        return Start(worktree, argv, environment);
+    }
 
     public IReadOnlyDictionary<string, string?> Environment(string cacheDirectory)
     {

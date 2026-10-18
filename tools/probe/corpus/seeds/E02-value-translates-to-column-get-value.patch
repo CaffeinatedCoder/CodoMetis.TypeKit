@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTranslators.cs b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTranslators.cs
+index 4cbf797..b3f43b0 100644
+--- a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTranslators.cs
++++ b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTranslators.cs
+@@ -73,7 +73,7 @@ internal sealed class ValueObjectMethodCallTranslatorPlugin(
+         )
+         {
+             if (instance is not null || arguments.Count != 1) return null;
+-            if (method.GetCustomAttribute<TranslatedAsWrappedValueAttribute>() is null) return null;
++            if (method.GetCustomAttribute<TranslatedAsWrappedValueAttribute>() is null || method.Name == "GetValue") return null;
+ 
+             var parameterType = method.GetParameters()[0].ParameterType;
+             var valueType     = Nullable.GetUnderlyingType(method.ReturnType) ?? method.ReturnType;

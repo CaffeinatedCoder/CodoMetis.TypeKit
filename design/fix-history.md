@@ -2,6 +2,8 @@
 
 Read-only analysis of the 133 `fix:` commits on `feat/2.1.0` (`git log --grep='^fix' -E feat/2.1.0`, head `dc459b0`). Nothing in the repository was changed. This note is the baseline for the review approach (variant analysis, shape catalogues, redesign reviews, lens reviews, defect tracking). Consumers are called "downstream".
 
+From the 2.2.0 cycle on, each `fix:` commit records its class and finder itself, in the trailers `Defect-Class:` and `Found-By:` with the codes below ([decision 94](adr/0094-topic-branches-into-a-release-branch-and-fix-trailers.md)), so the next classification reads them from `git log` instead of reconstructing them.
+
 ## How to read this
 
 - **Class** is the primary cause of the defect. A commit that fixes several defects (16 of 133, flagged **B**) is counted once, under the class of its main defect. **S** marks a defect whose symptom was silent (compiled or ran and did less or something else); it is a flag, not a class, so a defect can be class `GTS` and still silent. 58 of 133 carry S. Class `SDL` is kept for the three commits where nothing more specific than "silent" could be said.
@@ -80,7 +82,7 @@ The 24 confirmed escapes, by earliest tag with the defect:
 
 The 6 `P`: `37317de`, `780353b`, `e269ec8`, `71a4565`, `a7003bf`, `2e68a70`. CMTK0003 was a Warning in 1.x with the same false positives (`await held.ConfigureAwait(false)` read as a dropped result, a tap on a held result) and the same missed forms; 2.0.0 made it an Error and widened it as decision 50. They are counted separately because a Warning false positive is not the same harm as a wrong EF query.
 
-Finder and escape (post-1.0.0 fixes only):
+Finder and escape (post-1.0.0 fixes only). Which of today's finders detect these escapes when each is put back as a seed is measured in the [finder benchmark of 2026-10-16](finder-benchmark-2026-10-16.md).
 
 | Found by | Fixes after v1.0.0 | Y | P |
 |---|---|---|---|
@@ -148,6 +150,16 @@ Twelve fixes repair a regression an earlier fix introduced or finish an earlier 
 - `a7003bf` finishes `780353b`/`71a4565` (a tap through `WaitAsync` still reported).
 - `8d1ebd8` finishes `66a5cec` (the transformer sorted only the statuses it added).
 - `27c59d0` follows `564a51e` (found while fixing it).
+
+Two more, measured after this note was written by running the variant catalogue at each commit of chain A
+([decision 95](adr/0095-a-fix-is-tested-across-its-input-class.md)); the counts above are this note's reading
+and leave them out:
+
+- `7c30840` repairs `e4361e9`, which moved CMTK0010's reporting to `context.ReportDiagnostic`, so a breach in
+  generated code was reported from `e4361e9` on (the catalogue's four generated-code sites fail at `e4361e9`,
+  `a0ddf61` and `370414a`, and pass at `a77bdda` and `37317de`).
+- `cdab810` repairs `e4361e9`: a default interface method called through a derived interface overflows the stack
+  from `e4361e9` on (the test host aborts at `e4361e9`, `a0ddf61`, `370414a` and `7c30840`; `37317de` completes).
 
 ## Source files with the most fixes
 

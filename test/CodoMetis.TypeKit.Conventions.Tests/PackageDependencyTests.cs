@@ -72,6 +72,19 @@ public sealed class PackageDependencyTests(AnalyzerPackagingTests.Packs packs)
                                           .ShouldNotContain(GeneratorPackage,
                                               $"{package} depends on {GeneratorPackage}. The satellites work at run time against the interfaces, and taking Metalama on is the consumer's named choice.");
 
+    /// <summary>
+    /// The analyzers run on every shipping project's own code through an analyzer-only reference
+    /// (<c>src/Directory.Build.targets</c>). That reference is for this build, not for consumers, who get the
+    /// analyzers once, through the base package.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(DependentPackages))]
+    public void A_dependent_package_brings_the_analyzers_only_through_the_base_package(string package) =>
+        Dependencies(packs.Nuspec(package)).Select(element => (string?)element.Attribute("id"))
+                                          .ShouldNotContain(AnalyzerPackage,
+                                              $"{package} depends on {AnalyzerPackage} directly. The reference in src/Directory.Build.targets runs the analyzers on " +
+                                              "this package's own code and must not reach its consumers: keep ReferenceOutputAssembly=\"false\" and PrivateAssets=\"all\" on it.");
+
     private static string Version(XDocument nuspec) =>
         nuspec.Descendants().Single(element => element.Name.LocalName == "version" && element.Parent?.Name.LocalName == "metadata").Value;
 

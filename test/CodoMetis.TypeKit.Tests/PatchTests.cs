@@ -247,6 +247,31 @@ public sealed class PatchTests
         refusal.Message.ShouldContain(nameof(WithoutAddressJson));
     }
 
+    /// <summary>
+    /// A primitive the source-generated context never saw is read and written with the serializer's
+    /// own converter, for every type that has one: byte for byte what the reflection resolver writes,
+    /// and read back to the same JSON.
+    /// </summary>
+    [Fact]
+    public void Every_built_in_type_the_context_never_saw_is_the_serializers_own()
+    {
+        var generated = new JsonSerializerOptions(JsonSerializerDefaults.Web) { TypeInfoResolver = BuiltInsJson.Default };
+        var value = new EveryBuiltIn(
+            Patch.Value("Ada"), Patch.Value(1), Patch.Value(2L), Patch.Value(true), Patch.Value(3.5m), Patch.Value(4.5d),
+            Patch.Value(5.5f), Patch.Value(new Guid("8d1c4c8e-2f0a-4b36-9a43-6f6f0b6c1a2e")),
+            Patch.Value(new DateTime(2026, 10, 16, 7, 19, 3, DateTimeKind.Utc)),
+            Patch.Value(new DateTimeOffset(2026, 10, 16, 7, 19, 3, TimeSpan.FromHours(2))),
+            Patch.Value(new DateOnly(2026, 10, 16)), Patch.Value(new TimeOnly(7, 19, 3)), Patch.Value(TimeSpan.FromMinutes(90)),
+            Patch.Value((short)-6), Patch.Value((ushort)7), Patch.Value(8u), Patch.Value(9UL), Patch.Value((byte)10),
+            Patch.Value((sbyte)-11), Patch.Value('c'), Patch.Value((Half)12.5), Patch.Value((Int128)13), Patch.Value((UInt128)14),
+            Patch.Value(new Uri("https://example.org/a")), Patch.Value(new Version(1, 2, 3)), Patch.Value(new byte[] { 1, 2, 3 }));
+
+        var json = JsonSerializer.Serialize(value, generated);
+
+        json.ShouldBe(JsonSerializer.Serialize(value, Reflection));
+        JsonSerializer.Serialize(JsonSerializer.Deserialize<EveryBuiltIn>(json, generated), generated).ShouldBe(json);
+    }
+
     public sealed record Address(string City);
 
     /// <summary>A value object's shape: a struct with a converter of its own that refuses, naming the type and never the input.</summary>
@@ -276,6 +301,15 @@ public sealed class PatchTests
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] Patch<int> Quantity);
 
     public sealed record BareOutgoing(Patch<string> Name);
+
+    /// <summary>A patch of every type <c>BuiltInConverters</c> knows, none of them listed in its context.</summary>
+    public sealed record EveryBuiltIn(
+        Patch<string> String, Patch<int> Int32, Patch<long> Int64, Patch<bool> Boolean, Patch<decimal> Decimal,
+        Patch<double> Double, Patch<float> Single, Patch<Guid> Guid, Patch<DateTime> DateTime,
+        Patch<DateTimeOffset> DateTimeOffset, Patch<DateOnly> DateOnly, Patch<TimeOnly> TimeOnly, Patch<TimeSpan> TimeSpan,
+        Patch<short> Int16, Patch<ushort> UInt16, Patch<uint> UInt32, Patch<ulong> UInt64, Patch<byte> Byte,
+        Patch<sbyte> SByte, Patch<char> Char, Patch<Half> Half, Patch<Int128> Int128, Patch<UInt128> UInt128,
+        Patch<Uri> Uri, Patch<Version> Version, Patch<byte[]> Bytes);
 }
 
 // A class a patch wraps is listed, since the patch's converter hides it from the generator; a primitive
@@ -290,3 +324,6 @@ internal partial class PatchJson : JsonSerializerContext;
 
 [JsonSerializable(typeof(PatchTests.UpdateWithoutAddress))]
 internal partial class WithoutAddressJson : JsonSerializerContext;
+
+[JsonSerializable(typeof(PatchTests.EveryBuiltIn))]
+internal partial class BuiltInsJson : JsonSerializerContext;

@@ -1,0 +1,105 @@
+{
+  "fact": "KB-001",
+  "answers": [
+    {
+      "id": "openapi-2-0-mvc-int-body",
+      "kind": "document",
+      "when": {
+        "openapi.OpenApiVersion": "OpenApi2_0",
+        "http.host": "mvc",
+        "http.binding": "body",
+        "http.nullability": "as-declared",
+        "shape.wrapped": "int"
+      },
+      "at": "/paths/~1kb001~1plain/post/parameters/0",
+      "value": {
+        "in": "body",
+        "name": "body",
+        "required": true,
+        "schema": {
+          "format": "int32",
+          "pattern": "^-?(?:0|[1-9]\\d*)$"
+        }
+      },
+      "note": "required, with its pattern"
+    },
+    {
+      "id": "openapi-2-0-mvc-nullable-int-body",
+      "kind": "document",
+      "when": {
+        "openapi.OpenApiVersion": "OpenApi2_0",
+        "http.host": "mvc",
+        "http.binding": "body",
+        "http.nullability": "nullable",
+        "shape.wrapped": "int"
+      },
+      "at": "/paths/~1kb001~1nullable/post/parameters/0",
+      "value": {
+        "in": "body",
+        "name": "body",
+        "schema": {
+          "format": "int32",
+          "allOf": [
+            {
+              "x-nullable": true
+            }
+          ]
+        }
+      },
+      "note": "optional, and no pattern"
+    },
+    {
+      "id": "openapi-2-0-minimal-nullable-enum-body",
+      "kind": "document",
+      "when": {
+        "openapi.OpenApiVersion": "OpenApi2_0",
+        "http.host": "minimal",
+        "http.binding": "body",
+        "http.nullability": "nullable",
+        "shape.wrapped": "enum"
+      },
+      "at": "/paths/~1kb001~1minimal/post/parameters/0",
+      "value": {
+        "in": "body",
+        "name": "body",
+        "schema": {
+          "allOf": [
+            {
+              "x-nullable": true
+            }
+          ]
+        }
+      },
+      "note": "no type, nothing but the null"
+    },
+    {
+      "id": "openapi-3-1-mvc-nullable-int-body",
+      "kind": "document",
+      "when": {
+        "openapi.OpenApiVersion": "OpenApi3_1",
+        "http.host": "mvc",
+        "http.binding": "body",
+        "http.nullability": "nullable",
+        "shape.wrapped": "int"
+      },
+      "at": "/paths/~1kb001~1nullable/post/requestBody/content/application~1json/schema",
+      "value": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        ]
+      },
+      "note": "3.1 keeps the pattern inside oneOf"
+    }
+  ]
+}

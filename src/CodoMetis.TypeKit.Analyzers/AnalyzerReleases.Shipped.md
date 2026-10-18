@@ -61,3 +61,5 @@ CMTK0003 | Usage | Error | Usage | Warning | IgnoredOutcomeAnalyzer, raised in a
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------------------------------------------------------------
 CMTK0014 | Usage | Warning | UndefinedEnumValueAnalyzer, a FaultKind or ConstructorAccessibility that names no member
+
+## Release 2.2.0

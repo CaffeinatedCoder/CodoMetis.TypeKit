@@ -22,14 +22,15 @@ public static class TypeKitServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(serviceCollection);
 
-        // Plugins and an interceptor, which EF collects from every registration: nothing of EF's or of
+        // Plugins and interceptors, which EF collects from every registration: nothing of EF's or of
         // another library's is replaced, and an application's own interceptors still run.
         new EntityFrameworkRelationalServicesBuilder(serviceCollection)
             .TryAdd<IRelationalTypeMappingSourcePlugin, ValueObjectTypeMappingSourcePlugin>()
             .TryAdd<IMemberTranslatorPlugin, ValueObjectMemberTranslatorPlugin>()
             .TryAdd<IMethodCallTranslatorPlugin, ValueObjectMethodCallTranslatorPlugin>()
             .TryAdd<IConventionSetPlugin, TypeKitConventionSetPlugin>()
-            .TryAdd<IInterceptor, HandWrittenOrderingInterceptor>();
+            .TryAdd<IInterceptor, HandWrittenOrderingInterceptor>()
+            .TryAdd<IInterceptor, ValueThroughInterfaceInterceptor>();
 
         return serviceCollection;
     }

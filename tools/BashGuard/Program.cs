@@ -7,9 +7,11 @@
 // verdict, and a failing solution test run 8,404 bytes against 609.
 //
 // Refused, as a command anywhere in the line:
-//   - `dotnet build`, `dotnet test`, `dotnet msbuild`, by any path to dotnet, except with --help and
+//   - `dotnet build`, `dotnet test`, `dotnet msbuild`, by any path to dotnet, except with --help,
 //     except `dotnet build` of a project under tools/: a tool is built on its own, never through the
-//     verdict tool, which would overwrite itself while it runs;
+//     verdict tool, which would overwrite itself while it runs, and except `dotnet msbuild` that only
+//     reads a project: -getProperty or -getItem with no target, -getTargetResult or restore. MSBuild then
+//     stops after evaluation and writes nothing (measured 2026-10-17), and the verdict has no such form;
 //   - the verdict tool piped into head, tail, less or more: the verdict is already the short form, and
 //     the pipe hides the tool's exit code.
 //
@@ -343,6 +345,24 @@ static class Guard
         words.Count > 2 && Program(words[0]) == "dotnet" && words[1] == "build" &&
         words.Skip(2).FirstOrDefault(w => !w.StartsWith('-')) is { } target && IsToolPath(target);
 
+    // An MSBuild switch's name: -name, --name or /name, up to its : or =, lower-cased; null for a word that is none.
+    static string? Switch(string word)
+    {
+        var body = word.StartsWith("--", StringComparison.Ordinal) ? word[2..] : word.StartsWith('-') || word.StartsWith('/') ? word[1..] : null;
+        if (string.IsNullOrEmpty(body)) return null;
+        var end = body.IndexOfAny([':', '=']);
+        return (end < 0 ? body : body[..end]).ToLowerInvariant();
+    }
+
+    static readonly HashSet<string> Queries = ["getproperty", "getitem"];
+    static readonly HashSet<string> Runs = ["t", "target", "gettargetresult", "r", "restore"];
+
+    // `dotnet msbuild` that reads a project without building it: a property or item query and no target.
+    static bool IsQuery(List<string> words) =>
+        words.Count > 2 && words[1] == "msbuild" &&
+        words.Skip(2).Select(Switch).Any(s => s is not null && Queries.Contains(s)) &&
+        !words.Skip(2).Select(Switch).Any(s => s is not null && Runs.Contains(s));
+
     // Whether any command in the text builds a tool project: what a stale guard still lets through.
     public static bool BuildsATool(string text) =>
         new Scanner(text).Scan().Segments.Any(s => IsToolBuild(CommandWords(s.Words)));
@@ -412,7 +432,7 @@ static class Guard
                 foreach (var f in Findings(words[2], depth + 1)) yield return f;
                 continue;
             }
-            if (program == "dotnet" && words.Count > 1 && RefusedVerbs.Contains(words[1]) && !IsToolBuild(words))
+            if (program == "dotnet" && words.Count > 1 && RefusedVerbs.Contains(words[1]) && !IsToolBuild(words) && !IsQuery(words))
             {
                 if (!words.Skip(2).Any(a => a is "--help" or "-h" or "-?" or "/?"))
                     yield return ("toolchain", (words[1], words.Skip(2).ToList()));

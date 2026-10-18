@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -16,7 +17,20 @@ internal static class Files
     /// <summary>The schema version this tool writes. A file or line without one is version 1.</summary>
     public const int SchemaVersion = 1;
 
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    /// <summary>
+    /// The version of evidence/&lt;probe&gt;.json this tool writes: 2 records each row's checks, one entry per check
+    /// with its own obligation, baseline, outcome and settings. A version-1 file reads as rows without checks, each one
+    /// check of the obligation <c>claim</c>.
+    /// </summary>
+    public const int EvidenceSchemaVersion = 2;
+
+    /// <summary>
+    /// Indented, and with only what JSON itself requires escaped: the tracked corpus is read in a diff, where
+    /// the default encoder's six-character escapes for <c>+</c>, a backtick and <c>&lt;</c> made every publish a
+    /// rewrite (decision 102). No reader here or in the harness parses these files as
+    /// anything but JSON, and an identity hashes <see cref="Canonical"/>, not the file's text.
+    /// </summary>
+    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true, NewLine = "\n", Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     public static JsonNode? ReadJson(string path)
     {
@@ -27,7 +41,10 @@ internal static class Files
         catch (UnauthorizedAccessException) { return null; }   // Windows: a file being replaced this instant
     }
 
-    public static void WriteJson(string path, JsonNode value) => WriteAtomically(path, value.ToJsonString(Indented) + "\n");
+    public static void WriteJson(string path, JsonNode value) => WriteAtomically(path, Format(value));
+
+    /// <summary>The text <see cref="WriteJson"/> writes: a tracked file in this form is unchanged by a publish that changes nothing in it.</summary>
+    public static string Format(JsonNode value) => value.ToJsonString(Indented) + "\n";
 
     public static List<JsonObject> ReadLines(string path)
     {

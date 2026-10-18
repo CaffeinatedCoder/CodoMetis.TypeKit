@@ -47,3 +47,44 @@
    pin behind. Seeded: a pin behind read as current, `Microsoft.AspNetCore.OpenApi` raised to 10.0.13 alone
    (KB-001 and KB-002 reported), a TypeKit project referenced from the facts, and KB-003's calls in the
    other order each fail their test.
+9. **Variant catalogues** (2026-10-15, [decision 95](adr/0095-a-fix-is-tested-across-its-input-class.md)).
+   A fix is tested across the class of input its defect lives in, not only on the input a review named.
+   For a rule over type arguments the class is `TypeArgumentSites`
+   (`test/CodoMetis.TypeKit.Analyzers.Tests/Variants/`): 62 shapes through which an argument reaches a
+   parameter, written and inferred, method groups, null-conditional calls, extension blocks, generic
+   attributes, implementations reached through another declaration, methods bound by pattern, crefs and
+   `nameof`, and generated code, each run with an argument that breaks the rule's constraint and one that
+   meets it. CMTK0010 runs it under three constraints (`TypeArgumentConstraintVariantTests`). For a
+   generated type the class is the `shape.*` axes of `.claude/probe-axes.md`, for a framework option the
+   settings axes. Measured: at the origin of CMTK0010's chain of fourteen fixes the catalogue fails on 20
+   sites, each fixed by a later member of the chain; seeded, without the rule's method-group and property
+   registrations, 15 cases fail.
+   What the argument is, the second axis, is `TypeArgumentKinds` beside it: 79 kinds (classes, records and
+   structs in each modifier, enums, delegates, arrays, `dynamic`, interfaces and the value-object marker,
+   the abstract bases, types built from a parameter, a parameter under each constraint, bound and
+   attribute) and 37 pairs. `TypeArgumentConstraintKindTests` runs every CMTK0010 attribute against each,
+   864 cases, with an oracle per attribute written from `docs/type-constraints.md`'s tables. Measured
+   2026-10-15 at each of chain A's commits: six of its seven fixes about what an argument is (`0d6ba1a`,
+   `2f8a854`, `7792801`, `d27cf2d`, `75fb3aa`, `6368c1c`) turn 35 cases green that fail at their parent;
+   `1a9d7f2` fixed the library's own declarations, which no analyzer test reads. It found one gap still
+   open, `[Unsealed]` taking the abstract bases nothing derives from, which waits for 3.0.0 (decision 34).
+   For the EF satellite, whose translation defects escaped most (7 of 10 in the fix history, all silent),
+   the catalogue is `KeyShapes`, `QueryShapes` and `WrappedKinds` in
+   `test/CodoMetis.TypeKit.EntityFrameworkCore.Tests/Variants/`, each case a differential against the same
+   entity over the wrapped type. `KeyGenerationVariantTests` builds 13 key shapes (alone, the root of each
+   mapping strategy, abstract or not, three dependents whose key is a foreign key, composite, configured)
+   keyed by 13 wrapped types on SQLite, Npgsql and SQL Server, 507 cases, and has SQLite fill the keys in.
+   `QueryTranslationVariantTests` runs 5,200 queries over 22 wrapped types (three with their own
+   `CompareTo`) by accessor, site (column, nullable column, collection element, captured list, navigation,
+   JSON, query filter, named or not), converter (TypeKit's, named, and three of the application's own) and
+   operation, on SQLite against the wrapped type's rows and SQL and against memory, and translated for
+   PostgreSQL. The README's departures from parity are its oracle: a `char` or `Guid` key and a TPC root
+   without a sequence are not generated, `.Value` on a foreign converter's column and an own `CompareTo`
+   in an ordering are refused. Measured 2026-10-15 at each fix of chains H and I, the catalogue replayed at
+   the fix and at its parent: all nine turn cases green (`7732936` 272, `63471e7` 579, `717de54` 111,
+   `719ee82` 12, `8f6af8b` 12, `92dfe16` 12, `e644a8a` 67, `3bddba7` 13, `84e9776` 17), and three of them
+   turn cases red that the chain's next fix repaired: `92dfe16` the abstract TPC root on Npgsql and SQL
+   Server (6), `e644a8a` and `3bddba7` the `char` key (16 and 1). Seeded: without the TPC convention 16 key
+   cases fail, without the foreign-converter check 579 queries, with element columns re-typed 272. It
+   found one divergence still open: a nullable record-class value object compared with `<` keeps its null
+   rows in memory, where the generated operators sort null first, and SQL drops them.

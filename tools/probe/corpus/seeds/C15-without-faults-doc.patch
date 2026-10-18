@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs b/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs
+index 45c20b0..60bc81e 100644
+--- a/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs
++++ b/src/CodoMetis.TypeKit.AspNetCore/FaultResponses.cs
+@@ -157,7 +157,7 @@ internal sealed class FaultResponses<TFault> where TFault : notnull
+ 
+     /// <summary>The members an endpoint answers with: every member, but those its metadata leaves out.</summary>
+     public IEnumerable<TFault> AnsweredBy(IReadOnlyList<object> endpointMetadata) =>
+-        Type.Members.Where(fault => FaultExclusions.Excluding(endpointMetadata, fault, Type) is null);
++        Type.Members;
+ 
+     private int StatusOf(TFault fault, IReadOnlyList<object> endpointMetadata) =>
+         FaultStatuses.Override(endpointMetadata, fault, Type) ?? _answers[fault].Status;

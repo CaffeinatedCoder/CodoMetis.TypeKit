@@ -9,6 +9,14 @@
         <ProjectReference Include="..\..\tools\Prober\Prober.csproj" />
     </ItemGroup>
 
+    <!--
+      The probe corpus's row harness, compiled in as the replay compiles it into the Samples, so HarnessErrorTests
+      runs the real Rec.Run and feeds the lines it writes to `seeds` (decision 103).
+    -->
+    <ItemGroup>
+        <Compile Include="../../tools/probe/corpus/harness/Row.cs" Link="Harness/Row.cs" />
+    </ItemGroup>
+
     <!-- The stale-tool test runs the built prober.dll from a throwaway repository (ToolSandbox.cs); ToolOutput says where the output is. -->
     <ItemGroup>
         <Compile Include="../CodoMetis.TypeKit.BuildVerdict.Tests/ToolSandbox.cs" Link="ToolSandbox.cs" />

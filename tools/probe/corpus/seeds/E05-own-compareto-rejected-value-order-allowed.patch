@@ -1,0 +1,12 @@
+diff --git a/src/CodoMetis.TypeKit.EntityFrameworkCore/HandWrittenOrderingInterceptor.cs b/src/CodoMetis.TypeKit.EntityFrameworkCore/HandWrittenOrderingInterceptor.cs
+index 09a9e8c..3d10963 100644
+--- a/src/CodoMetis.TypeKit.EntityFrameworkCore/HandWrittenOrderingInterceptor.cs
++++ b/src/CodoMetis.TypeKit.EntityFrameworkCore/HandWrittenOrderingInterceptor.cs
+@@ -117,6 +117,7 @@ internal static class HandWrittenOrdering
+                 // A key the selector converts (to object, IComparable) is still ordered in memory by the
+                 // value object's CompareTo, while EF drops the conversion and orders by the column.
+                 if (KeySelector(node) is { } key) Refuse(Unconverted(key.Body).Type, $"ordered by {method.Name}");
++                if (KeySelector(node) is { Body: MemberExpression { Expression: { } owner } }) Refuse(owner.Type, $"ordered by {method.Name}");
+             }
+             else if (IsDbFunction(method) && !RunsInMemory(node))
+             {

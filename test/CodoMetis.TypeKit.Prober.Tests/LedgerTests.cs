@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Prober;
 
 namespace CodoMetis.TypeKit.Prober.Tests;
 
@@ -91,6 +92,82 @@ public sealed class AccountingTests : IDisposable
     }
 }
 
+/// <summary>
+/// What earned nothing is counted where the coverage is read, and a row that steps around a finding binds: the
+/// gate refuses while one does, and the ledger names a skip whose finding is fixed or dismissed.
+/// </summary>
+public sealed class OutcomeTests : IDisposable
+{
+    private readonly Fixture fx = new();
+    public void Dispose() => fx.Dispose();
+
+    private static Dictionary<string, string> R(string x, string y) => new(StringComparer.Ordinal) { ["x"] = x, ["y"] = y };
+
+    private string Record(params (string Category, string? Finding)[] outcomes)
+    {
+        fx.Footprint();
+        var evidence = fx.Evidence([R("1", "1"), R("2", "2")], outcomes: outcomes);
+        fx.Ledger("record-run", "--probe", "P", "--result", "pass", "--evidence", evidence).Exit.ShouldBe(0);
+        return evidence;
+    }
+
+    private List<string> StaleSkips(string evidence) =>
+        new Ledger(new Context(fx.Root, new Dictionary<string, string?>(), TextWriter.Null, TextWriter.Null), null)
+            .StaleSkips(JsonNode.Parse(File.ReadAllText(evidence)) as JsonObject);
+
+    private void Finding(string status, string commit) =>
+        File.AppendAllText(Path.Combine(fx.BranchDir, "findings.jsonl"),
+            new JsonObject { ["id"] = "F9", ["claim"] = "C1", ["status"] = status, ["commit"] = commit }.ToJsonString() + "\n");
+
+    [Fact]
+    public void Status_counts_how_the_rows_of_a_claim_ended()
+    {
+        Record(("pass", null), ("expected-refusal", null));
+        var outcomes = JsonNode.Parse(fx.Ledger("status", "--json").Out)!["claims"]!["C1"]!["outcomes"]!;
+        outcomes["pass"]!.GetValue<double>().ShouldBe(1);
+        outcomes["expected-refusal"]!.GetValue<double>().ShouldBe(1);
+        fx.Ledger("status").Out.ShouldContain("C1: 1/4  (rows: expected-refusal 1, pass 1; checks: expected-refusal 1, pass 1)");
+    }
+
+    [Fact]
+    public void A_skip_for_a_finding_is_shown_and_refused_by_the_gate_without_any_ledger_of_findings()
+    {
+        fx.Sh("git", "tag", "v1");
+        Record(("pass", null), ("known-finding", "F9"));
+        fx.Ledger("status").Out.ShouldContain("1 row(s) skip for finding F9");
+        var (exit, output, _) = fx.Ledger("gate", "--since", "v1", "--json");
+        exit.ShouldNotBe(0);
+        JsonNode.Parse(output)!["reasons"]!.AsArray().Select(r => r!.GetValue<string>()).ShouldContain("P: 1 row(s) skip for finding F9; fix it and remove the skip, or dismiss it");
+    }
+
+    [Fact]
+    public void A_skip_for_an_open_finding_stands()
+    {
+        var evidence = Record(("known-finding", "F9"), ("pass", null));
+        Finding("open", "");
+        StaleSkips(evidence).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void A_skip_for_a_fixed_finding_is_stale()
+    {
+        var evidence = Record(("known-finding", "F9"), ("pass", null));
+        var head = fx.Sh("git", "rev-parse", "HEAD").Trim();
+        Finding("open", "");
+        Finding("fixed", head);
+        StaleSkips(evidence).ShouldBe([$"1 row(s) skip for F9, which is fixed at {head[..7]}: remove the skip"]);
+    }
+
+    [Fact]
+    public void A_skip_for_a_dismissed_finding_is_stale()
+    {
+        var evidence = Record(("known-finding", "F9"), ("pass", null));
+        Finding("open", "");
+        fx.Write("tools/probe/corpus/dismissed.jsonl", new JsonObject { ["id"] = "F9", ["reason"] = "intended", ["date"] = "2026-10-15" }.ToJsonString() + "\n");
+        StaleSkips(evidence).ShouldBe(["1 row(s) skip for F9, which is dismissed: remove the skip"]);
+    }
+}
+
 /// <summary>One round at a time, on every OS: an exclusive create, liveness by heartbeat, a mutex for takeovers.</summary>
 public sealed class LockTests : IDisposable
 {
@@ -152,7 +229,7 @@ public sealed class LockTests : IDisposable
             threads.ForEach(t => t.Start());
             threads.ForEach(t => t.Join());
             exits.Count(e => e == 0).ShouldBe(1, $"round {round}");
-            File.Delete(Path.Combine(fx.Memory, "round.lock"));
+            File.Delete(fx.LockFile());
         }
     }
 
@@ -166,10 +243,11 @@ public sealed class LockTests : IDisposable
     [Fact]
     public void A_mutex_the_OS_refuses_to_create_is_waited_for_and_refused_not_thrown()
     {
-        Directory.CreateDirectory(fx.Memory);
-        var mutex = Path.Combine(fx.Memory, "round.lock.mutex");
+        var directory = Path.GetDirectoryName(fx.LockFile())!;
+        Directory.CreateDirectory(directory);
+        var mutex = fx.LockFile() + ".mutex";
         if (OperatingSystem.IsWindows()) Directory.CreateDirectory(mutex);
-        else File.SetUnixFileMode(fx.Memory, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        else File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserExecute);
         try
         {
             var (exit, _, error) = fx.Ledger("lock", "--holder", "a", "--mode", "explore");
@@ -180,8 +258,30 @@ public sealed class LockTests : IDisposable
         finally
         {
             if (OperatingSystem.IsWindows()) Directory.Delete(mutex);
-            else File.SetUnixFileMode(fx.Memory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            else File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         }
+    }
+
+    [Fact]
+    public void A_lock_of_one_branch_leaves_another_branchs_lock_free()
+    {
+        var other = fx.Linked("other");
+        fx.Ledger("lock", "--holder", "a", "--mode", "explore").Exit.ShouldBe(0);
+
+        var (exit, output, error) = fx.LedgerIn(other, "lock", "--holder", "b", "--mode", "explore");
+
+        exit.ShouldBe(0, error + output);
+        File.Exists(fx.LockFile("other")).ShouldBeTrue();
+        File.Exists(fx.LockFile("main")).ShouldBeTrue("a's lock is still held");
+    }
+
+    [Fact]
+    public void A_second_lock_of_one_branch_is_refused_from_another_checkout()
+    {
+        var other = fx.Linked("other");
+        fx.Ledger("lock", "--holder", "a", "--mode", "explore").Exit.ShouldBe(0);
+
+        fx.LedgerIn(other, "lock", "--branch", "main", "--holder", "b", "--mode", "replay").Exit.ShouldNotBe(0);
     }
 
     private int RaceOf(int takers)
@@ -242,8 +342,8 @@ public sealed class GateTests : IDisposable
         try
         {
             fx.LedgerWith(new() { ["PROBE_STATE_DIR"] = state }, "lock", "--holder", "ci", "--mode", "replay").Exit.ShouldBe(0);
-            File.Exists(Path.Combine(state, "round.lock")).ShouldBeTrue();
-            File.Exists(Path.Combine(fx.Memory, "round.lock")).ShouldBeFalse();
+            Directory.EnumerateFiles(state, "round.lock", SearchOption.AllDirectories).ShouldNotBeEmpty();
+            File.Exists(fx.LockFile()).ShouldBeFalse();
         }
         finally { if (Directory.Exists(state)) Directory.Delete(state, recursive: true); }
     }

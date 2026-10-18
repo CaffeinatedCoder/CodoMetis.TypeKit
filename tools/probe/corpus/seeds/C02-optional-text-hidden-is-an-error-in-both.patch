@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit/StringTextExtensions.cs b/src/CodoMetis.TypeKit/StringTextExtensions.cs
+index 29681aa..62ab884 100644
+--- a/src/CodoMetis.TypeKit/StringTextExtensions.cs
++++ b/src/CodoMetis.TypeKit/StringTextExtensions.cs
+@@ -163,7 +163,7 @@ public static class StringTextExtensions
+     /// <summary>A guard's answer for an optional field: <see cref="TextFault.Blank"/> is absence, every other fault a refusal.</summary>
+     private static Result<Option<string>, TextFault> Optional(Result<string, TextFault> guarded) =>
+         guarded.Map(Option.Some)
+-               .Recover(fault => fault == TextFault.Blank ? Option.None<string>() : Result.Error(fault));
++               .Recover(fault => fault is TextFault.Blank or TextFault.Hidden ? Option.None<string>() : Result.Error(fault));
+ 
+     private static Result<string, TextFault> Clean(string? text, bool tolerateJoiners, bool canonicalize)
+     {

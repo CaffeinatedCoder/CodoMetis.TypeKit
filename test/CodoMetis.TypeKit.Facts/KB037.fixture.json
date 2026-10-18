@@ -1,0 +1,291 @@
+{
+  "fact": "KB-037",
+  "answers": [
+    {
+      "id": "depth-1-route-unreadable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "1",
+        "http.host": "mvc",
+        "http.binding": "route",
+        "shape.wrapped": "int",
+        "text": "abc"
+      },
+      "value": {
+        "status": 200,
+        "body": "0"
+      },
+      "note": "the action runs, the int left at its default"
+    },
+    {
+      "id": "depth-1-query-unreadable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "1",
+        "http.host": "mvc",
+        "http.binding": "query",
+        "shape.wrapped": "int",
+        "text": "abc"
+      },
+      "value": {
+        "status": 200,
+        "body": "0"
+      },
+      "note": "the action runs, the int left at its default"
+    },
+    {
+      "id": "depth-1-header-unreadable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "1",
+        "http.host": "mvc",
+        "http.binding": "header",
+        "shape.wrapped": "int",
+        "text": "abc"
+      },
+      "value": {
+        "status": 200,
+        "body": "0"
+      },
+      "note": "the action runs, the int left at its default"
+    },
+    {
+      "id": "depth-1-form-unreadable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "1",
+        "http.host": "mvc",
+        "http.binding": "form",
+        "shape.wrapped": "int",
+        "text": "abc"
+      },
+      "value": {
+        "status": 200,
+        "body": "0"
+      },
+      "note": "the action runs, the int left at its default"
+    },
+    {
+      "id": "depth-1-body-unreadable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "1",
+        "http.host": "mvc",
+        "http.binding": "body",
+        "shape.wrapped": "int",
+        "text": "abc"
+      },
+      "value": {
+        "status": 200,
+        "body": "0"
+      },
+      "note": "the action runs, the int left at its default"
+    },
+    {
+      "id": "depth-1-route-readable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "1",
+        "http.host": "mvc",
+        "http.binding": "route",
+        "shape.wrapped": "int",
+        "text": "5"
+      },
+      "value": {
+        "status": 200,
+        "body": "5"
+      },
+      "note": "a text the int reads binds as usual"
+    },
+    {
+      "id": "depth-1-query-readable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "1",
+        "http.host": "mvc",
+        "http.binding": "query",
+        "shape.wrapped": "int",
+        "text": "5"
+      },
+      "value": {
+        "status": 200,
+        "body": "5"
+      },
+      "note": "a text the int reads binds as usual"
+    },
+    {
+      "id": "depth-1-header-readable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "1",
+        "http.host": "mvc",
+        "http.binding": "header",
+        "shape.wrapped": "int",
+        "text": "5"
+      },
+      "value": {
+        "status": 200,
+        "body": "5"
+      },
+      "note": "a text the int reads binds as usual"
+    },
+    {
+      "id": "depth-1-form-readable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "1",
+        "http.host": "mvc",
+        "http.binding": "form",
+        "shape.wrapped": "int",
+        "text": "5"
+      },
+      "value": {
+        "status": 200,
+        "body": "5"
+      },
+      "note": "a text the int reads binds as usual"
+    },
+    {
+      "id": "depth-1-body-readable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "1",
+        "http.host": "mvc",
+        "http.binding": "body",
+        "shape.wrapped": "int",
+        "text": "5"
+      },
+      "value": {
+        "status": 200,
+        "body": "5"
+      },
+      "note": "a text the int reads binds as usual"
+    },
+    {
+      "id": "depth-1-as-parameters-unreadable",
+      "kind": "exception",
+      "when": {
+        "mvc.MaxValidationDepth": "1",
+        "http.host": "mvc",
+        "http.binding": "as-parameters",
+        "shape.wrapped": "int",
+        "text": "abc"
+      },
+      "value": {
+        "type": "System.InvalidOperationException",
+        "operation": "GET /kb037/params?V=abc",
+        "stage": "model validation, at the class's property V",
+        "message": "ValidationVisitor exceeded the maximum configured validation depth '1' when validating property 'V'"
+      },
+      "note": "a class bound from the query: the validator throws at its property, bound or not"
+    },
+    {
+      "id": "depth-1-as-parameters-readable",
+      "kind": "exception",
+      "when": {
+        "mvc.MaxValidationDepth": "1",
+        "http.host": "mvc",
+        "http.binding": "as-parameters",
+        "shape.wrapped": "int",
+        "text": "5"
+      },
+      "value": {
+        "type": "System.InvalidOperationException",
+        "operation": "GET /kb037/params?V=5",
+        "stage": "model validation, at the class's property V",
+        "message": "ValidationVisitor exceeded the maximum configured validation depth '1' when validating property 'V'"
+      },
+      "note": "a class bound from the query: the validator throws at its property, bound or not"
+    },
+    {
+      "id": "default-depth-route-unreadable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "default",
+        "http.host": "mvc",
+        "http.binding": "route",
+        "shape.wrapped": "int",
+        "text": "abc"
+      },
+      "value": {
+        "status": 400
+      },
+      "note": "with the default depth every unbindable request is a 400"
+    },
+    {
+      "id": "default-depth-query-unreadable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "default",
+        "http.host": "mvc",
+        "http.binding": "query",
+        "shape.wrapped": "int",
+        "text": "abc"
+      },
+      "value": {
+        "status": 400
+      },
+      "note": "with the default depth every unbindable request is a 400"
+    },
+    {
+      "id": "default-depth-header-unreadable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "default",
+        "http.host": "mvc",
+        "http.binding": "header",
+        "shape.wrapped": "int",
+        "text": "abc"
+      },
+      "value": {
+        "status": 400
+      },
+      "note": "with the default depth every unbindable request is a 400"
+    },
+    {
+      "id": "default-depth-form-unreadable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "default",
+        "http.host": "mvc",
+        "http.binding": "form",
+        "shape.wrapped": "int",
+        "text": "abc"
+      },
+      "value": {
+        "status": 400
+      },
+      "note": "with the default depth every unbindable request is a 400"
+    },
+    {
+      "id": "default-depth-body-unreadable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "default",
+        "http.host": "mvc",
+        "http.binding": "body",
+        "shape.wrapped": "int",
+        "text": "abc"
+      },
+      "value": {
+        "status": 400
+      },
+      "note": "with the default depth every unbindable request is a 400"
+    },
+    {
+      "id": "default-depth-as-parameters-unreadable",
+      "kind": "status",
+      "when": {
+        "mvc.MaxValidationDepth": "default",
+        "http.host": "mvc",
+        "http.binding": "as-parameters",
+        "shape.wrapped": "int",
+        "text": "abc"
+      },
+      "value": {
+        "status": 400
+      },
+      "note": "with the default depth every unbindable request is a 400"
+    }
+  ]
+}

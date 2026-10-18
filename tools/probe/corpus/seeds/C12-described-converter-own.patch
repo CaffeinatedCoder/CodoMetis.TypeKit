@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit/JsonSchemaDescription.cs b/src/CodoMetis.TypeKit/JsonSchemaDescription.cs
+index 246ba41..9c9ad6b 100644
+--- a/src/CodoMetis.TypeKit/JsonSchemaDescription.cs
++++ b/src/CodoMetis.TypeKit/JsonSchemaDescription.cs
+@@ -168,7 +168,7 @@ public sealed class JsonSchemaDescription
+     /// </summary>
+     private static JsonSchemaDescription? Describe(JsonConverter? converter, Type value, JsonSerializerOptions options) => converter switch
+     {
+-        IDescribedJsonConverter described => described.DescribeJson(converter.Type ?? value, options),
++        IDescribedJsonConverter described when value.GetCustomAttribute<JsonConverterAttribute>(inherit: false) is not null => described.DescribeJson(converter.Type ?? value, options),
+         not null when value.GetCustomAttribute<JsonConverterAttribute>(inherit: false)?.ConverterType == converter.GetType() => Generated.GetOrAdd(value, Generate),
+         _ => null,
+     };

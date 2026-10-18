@@ -6,7 +6,9 @@ namespace CodoMetis.TypeKit.EntityFrameworkCore;
 /// <summary>
 /// Adds TypeKit's conventions to every model <c>UseTypeKit()</c> builds: the key generation of
 /// <see cref="ValueObjectKeyValueGenerationConvention"/> and <see cref="ValueObjectTpcKeyValueGenerationConvention"/>,
-/// and the refusal of <see cref="HandWrittenOrderingQueryFilterConvention"/>.
+/// the rewrite of <see cref="ValueThroughInterfaceQueryFilterConvention"/>,
+/// the generator of <see cref="ValueObjectValueGeneratorConvention"/>, and the refusal of
+/// <see cref="HandWrittenOrderingQueryFilterConvention"/>.
 /// </summary>
 internal sealed class TypeKitConventionSetPlugin : IConventionSetPlugin
 {
@@ -21,6 +23,12 @@ internal sealed class TypeKitConventionSetPlugin : IConventionSetPlugin
 
         // Last of all: a TPC key is generated only where the provider gave it a sequence.
         finalizing.Add(new ValueObjectTpcKeyValueGenerationConvention());
+
+        // A query filter's .Value read through the value-object interface, before the model is final.
+        finalizing.Add(new ValueThroughInterfaceQueryFilterConvention());
+
+        // Last, once whether a property is generated is final: the provider's generator for the wrapped type.
+        finalizing.Add(new ValueObjectValueGeneratorConvention());
 
         // On the finished model, whose query filters are final.
         conventionSet.ModelFinalizedConventions.Add(new HandWrittenOrderingQueryFilterConvention());

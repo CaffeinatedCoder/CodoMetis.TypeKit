@@ -42,8 +42,9 @@ internal sealed class Fixture : IDisposable
         File.WriteAllText(path, text);
     }
 
+    /// <summary>P's rows: each probe has a rows file of its own, its claim inside.</summary>
     public void Rows(IEnumerable<(string X, string Y)> rows) =>
-        Write("tools/probe/corpus/rows/C1.json", new JsonObject
+        Write("tools/probe/corpus/rows/P.json", new JsonObject
         {
             ["claim"] = "C1",
             ["rows"] = new JsonArray([.. rows.Select(r => (JsonNode)new JsonObject { ["row"] = new JsonObject { ["x"] = r.X, ["y"] = r.Y } })]),
@@ -69,12 +70,38 @@ internal sealed class Fixture : IDisposable
     /// <summary>Runs a prober command in-process, in this repository, with the environment given.</summary>
     public (int Exit, string Out, string Err) Ledger(params string[] args) => LedgerWith(new Dictionary<string, string?>(), args);
 
-    public (int Exit, string Out, string Err) LedgerWith(Dictionary<string, string?> env, params string[] args)
+    public (int Exit, string Out, string Err) LedgerWith(Dictionary<string, string?> env, params string[] args) => LedgerEnding(env, Environment.NewLine, args);
+
+    /// <summary>As <see cref="LedgerWith"/>, with the line end the output writers use, so a test sees Windows' output on any OS.</summary>
+    public (int Exit, string Out, string Err) LedgerEnding(Dictionary<string, string?> env, string newLine, params string[] args)
     {
-        var output = new StringWriter(); var error = new StringWriter();
+        var output = new StringWriter { NewLine = newLine }; var error = new StringWriter { NewLine = newLine };
         var exit = Program.Run(new Context(Root, env, output, error), args);
         return (exit, output.ToString(), error.ToString());
     }
+
+    /// <summary>Runs a prober command in-process in another checkout of this repository (a linked worktree).</summary>
+    public (int Exit, string Out, string Err) LedgerIn(string checkout, params string[] args)
+    {
+        var output = new StringWriter(); var error = new StringWriter();
+        var exit = Program.Run(new Context(checkout, new Dictionary<string, string?>(), output, error), args);
+        return (exit, output.ToString(), error.ToString());
+    }
+
+    /// <summary>A linked worktree of this repository (<c>git worktree add</c>) on a new branch, beside it; removed with the fixture.</summary>
+    public string Linked(string branch)
+    {
+        var path = Root + "-" + branch;
+        Sh("git", "worktree", "add", "-q", "-b", branch, path);
+        linked.Add(path);
+        return path;
+    }
+
+    private readonly List<string> linked = [];
+
+    /// <summary>The lock file of a branch's state, wherever the tool puts it.</summary>
+    public string LockFile(string branch = "main") =>
+        RoundLock.LockPath(new Ledger(new Context(Root, new Dictionary<string, string?>(), TextWriter.Null, TextWriter.Null), branch));
 
     /// <summary>Runs the built dll as its own process: for the tests that race several takers.</summary>
     public Process Spawn(params string[] args)
@@ -92,8 +119,12 @@ internal sealed class Fixture : IDisposable
             new JsonObject { ["probe"] = "P", ["footprint"] = new JsonObject { ["src/a.cs"] = blob }, ["compileTime"] = new JsonObject(), ["toolchain"] = new JsonObject() }.ToJsonString() + "\n");
     }
 
-    /// <summary>What a replay of P records: the rows it ran, how each ended and the settings that applied.</summary>
-    public string Evidence(IReadOnlyList<Dictionary<string, string>> applied, string category = "pass", int[]? executed = null)
+    /// <summary>
+    /// What a replay of P records: the rows it ran, how each ended and the settings that applied; outcomes, when
+    /// given, sets each row's category and the finding it skips for.
+    /// </summary>
+    public string Evidence(IReadOnlyList<Dictionary<string, string>> applied, string category = "pass", int[]? executed = null,
+                           IReadOnlyList<(string Category, string? Finding)>? outcomes = null)
     {
         var idx = Enumerable.Range(0, applied.Count).ToArray();
         var path = Path.Combine(Root, "evidence.json");
@@ -106,7 +137,8 @@ internal sealed class Fixture : IDisposable
             }),
             ["rows"] = new JsonObject(idx.Select(i => KeyValuePair.Create(i.ToString(System.Globalization.CultureInfo.InvariantCulture), (JsonNode?)new JsonObject
             {
-                ["category"] = category, ["applied"] = new JsonObject(applied[i].Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))),
+                ["category"] = outcomes?[i].Category ?? category, ["applied"] = new JsonObject(applied[i].Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)kv.Value))),
+                ["findings"] = outcomes?[i].Finding is { } finding ? new JsonArray(finding) : new JsonArray(),
             }))),
         }.ToJsonString());
         return path;
@@ -121,7 +153,7 @@ internal sealed class Fixture : IDisposable
 
     public void AgeTheLock()
     {
-        var path = Path.Combine(Memory, "round.lock");
+        var path = LockFile();
         var held = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
         held["heartbeat"] = held["heartbeat"]!.GetValue<double>() - 21 * 60;
         File.WriteAllText(path, held.ToJsonString());
@@ -129,6 +161,7 @@ internal sealed class Fixture : IDisposable
 
     public void Dispose()
     {
-        try { Directory.Delete(Root, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+        foreach (var dir in linked.Append(Root))
+            try { Directory.Delete(dir, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 }

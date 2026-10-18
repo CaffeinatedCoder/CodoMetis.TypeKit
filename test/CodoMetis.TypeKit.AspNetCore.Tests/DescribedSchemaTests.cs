@@ -198,6 +198,75 @@ public sealed class DescribedSchemaTests
         described.Parameter("/probes/kinds", "get", "amount").ShouldDescribeTheSameAs(plain.Parameter("/probes/kinds", "get", "amount"), "a value object over a decimal");
     }
 
+    /// <summary>
+    /// The input class of a parameter of a described type: where it binds from, the type, the document's
+    /// version, the number handling, and the describing converter or none. Each builds the document, and the
+    /// parameter is what ASP.NET writes, without <c>AddTypeKit()</c> or the converter, for the same version and
+    /// number handling. Found by the probe gate: the 2.0 refusal meant for a description refused ASP.NET's own
+    /// <c>["number","string"]</c> of a decimal read from a string.
+    /// </summary>
+    public static TheoryData<string, OpenApiSpecVersion, bool, bool> ParameterVariants()
+    {
+        var data = new TheoryData<string, OpenApiSpecVersion, bool, bool>();
+        foreach (var path in ParameterPaths.Keys)
+        foreach (var version in new[] { OpenApiSpecVersion.OpenApi3_1, OpenApiSpecVersion.OpenApi3_0, OpenApiSpecVersion.OpenApi2_0 })
+        foreach (var strict in new[] { false, true })
+        foreach (var converter in new[] { true, false })
+            data.Add(path, version, strict, converter);
+        return data;
+    }
+
+    /// <summary>The parameter <c>q</c> of each source and type, by path.</summary>
+    private static readonly Dictionary<string, string> ParameterPaths = new()
+    {
+        ["/parameters/route/{q}"] = "route, decimal",
+        ["/parameters/route-nullable/{q}"] = "route, decimal?",
+        ["/parameters/query"] = "query, decimal",
+        ["/parameters/query-nullable"] = "query, decimal?",
+        ["/parameters/header"] = "header, decimal",
+        ["/parameters/header-nullable"] = "header, decimal?",
+    };
+
+    private static void ParameterEndpoints(WebApplication app)
+    {
+        app.MapGet("/parameters/route/{q}", int (decimal q) => 0);
+        app.MapGet("/parameters/route-nullable/{q}", int (decimal? q) => 0);
+        app.MapGet("/parameters/query", int (decimal q) => 0);
+        app.MapGet("/parameters/query-nullable", int (decimal? q) => 0);
+        app.MapGet("/parameters/header", int ([Microsoft.AspNetCore.Mvc.FromHeader(Name = "q")] decimal q) => 0);
+        app.MapGet("/parameters/header-nullable", int ([Microsoft.AspNetCore.Mvc.FromHeader(Name = "q")] decimal? q) => 0);
+    }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(OpenApiSpecVersion, bool Strict, bool Converter, bool TypeKit), Task<OpenApiJson>> ParameterDocuments = new();
+
+    private static Task<OpenApiJson> ParameterDocumentAsync(OpenApiSpecVersion version, bool strict, bool converter, bool typeKit) =>
+        ParameterDocuments.GetOrAdd((version, strict, converter, typeKit), key => ProbeHost.DocumentAsync(
+            openApi: key.TypeKit ? openApi => openApi.AddTypeKit() : null,
+            json: json =>
+            {
+                if (key.Strict) json.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+                if (key.Converter) json.SerializerOptions.Converters.Add(new DecimalStringJsonConverter());
+            },
+            version: key.Item1,
+            endpoints: ParameterEndpoints));
+
+    /// <summary>The parameter object whole: 2.0 writes a parameter's keywords on it, 3.x in its schema.</summary>
+    private static JsonNode ParameterObject(OpenApiJson document, string path) =>
+        document.Root["paths"]?[path]?["get"]?["parameters"]?.AsArray().SingleOrDefault(p => p!["name"]!.GetValue<string>() == "q")
+     ?? throw new InvalidOperationException($"GET {path} has no parameter 'q'.");
+
+    [Theory]
+    [MemberData(nameof(ParameterVariants))]
+    public async Task A_parameter_of_a_described_type_is_what_ASP_NET_writes_without_the_converter(string path, OpenApiSpecVersion version, bool strict, bool converter)
+    {
+        var context = $"{ParameterPaths[path]}, {version}, {(strict ? "Strict" : "AllowReadingFromString")}, {(converter ? "described converter" : "no converter")}";
+
+        var described = await ParameterDocumentAsync(version, strict, converter, typeKit: true);
+        var aspNet = await ParameterDocumentAsync(version, strict, converter: false, typeKit: false);
+
+        ParameterObject(described, path).ShouldDescribeTheSameAs(ParameterObject(aspNet, path), context);
+    }
+
     [Theory]
     [MemberData(nameof(Versions))]
     public async Task A_property_s_own_described_converter_is_described_and_its_neighbour_left_alone(OpenApiSpecVersion version)
@@ -623,6 +692,63 @@ public sealed class DescribedSchemaTests
         {
             PatchSchemaTests.Validator(document, document.Property(nameof(Gapped), property), version)(foreign)
                 .ShouldBeFalse($"{version}: '{property}' accepts {foreign}, the wrapped decimal, which the resolver's converter does not write");
+        }
+    }
+
+    /// <summary>Nullable elements of a described decimal and of a value object over one, in a list and a dictionary.</summary>
+    public sealed record Optionals(List<decimal?> Lines, Dictionary<string, decimal?> Taxes, List<ProbeAmount?> Amounts, Dictionary<string, ProbeAmount?> Named);
+
+    public static TheoryData<string, bool, OpenApiSpecVersion> NullableElementHosts()
+    {
+        var data = new TheoryData<string, bool, OpenApiSpecVersion>();
+        foreach (var how in new[] { "a decimal converter", "a resolver's nullable decimal converter", "a converter replacing the value object's", "a resolver's converter replacing the value object's" })
+        foreach (var components in new[] { true, false })
+        foreach (var version in new[] { OpenApiSpecVersion.OpenApi3_1, OpenApiSpecVersion.OpenApi3_0 })
+            data.Add(how, components, version);
+        return data;
+    }
+
+    /// <summary>
+    /// ASP.NET drops the element of a list or a dictionary of a nullable type whose converter is one's own, a
+    /// <c>decimal?</c> under a decimal converter or a resolver's, and a <c>ProbeAmount?</c> under a converter that replaces
+    /// the generated one; the element put back is the description or null, as the options write it, judged by a
+    /// validator, with everything inlined and with components. Closes the analyst's seed S9 (2026-10-16): the null of the
+    /// element put back was held by no test. Where the value object is a component, ASP.NET visited the element put back
+    /// again as <c>ProbeAmount?</c>, which then read as the component, and the null was taken out (found by this test).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(NullableElementHosts))]
+    public async Task A_nullable_element_put_back_admits_null_as_the_options_write_it(string how, bool components, OpenApiSpecVersion version)
+    {
+        await using var host = await ProbeHost.StartAsync(openApi =>
+            {
+                if (!components) openApi.CreateSchemaReferenceId = _ => null;
+                openApi.AddTypeKit();
+            }, json =>
+            {
+                switch (how)
+                {
+                    case "a decimal converter": json.SerializerOptions.Converters.Add(new DecimalStringJsonConverter()); break;
+                    case "a resolver's nullable decimal converter": json.SerializerOptions.TypeInfoResolverChain.Insert(0, new ResolverOf<decimal?>(new NullableDecimalCents())); break;
+                    case "a converter replacing the value object's": json.SerializerOptions.Converters.Add(new CentsConverter()); break;
+                    default: json.SerializerOptions.TypeInfoResolverChain.Insert(0, new ResolverOf<ProbeAmount>(new CentsConverter())); break;
+                }
+            }, version, app => app.MapPost("/optionals", int (Optionals optionals) => 0));
+        var document = await host.DocumentAsync();
+        var body = Inline(document, document.Request("/optionals", "post"));
+        var options = host.Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions;
+
+        var amount = ProbeAmount.From(7.80m);
+        var written = System.Text.Json.JsonSerializer.SerializeToNode(
+            new Optionals([7.80m, null], new() { ["k"] = 7.80m, ["n"] = null }, [amount, null], new() { ["k"] = amount, ["n"] = null }), options)!.AsObject();
+
+        foreach (var (property, value) in written)
+        {
+            var schema = body["properties"]![property]!;
+            var element = Inline(document, (schema["items"] ?? schema["additionalProperties"]).ShouldNotBeNull($"{how}, {version}: '{property}' has no element: {schema.ToJsonString()}"));
+            element.AsObject().Count.ShouldBeGreaterThan(0, $"{how}, {version}: '{property}' has the empty element");
+            PatchSchemaTests.Validator(document, schema, version)(value!.ToJsonString())
+                .ShouldBeTrue($"{how}, {version}: '{property}' is written as {value.ToJsonString()}, which {schema.ToJsonString()} refuses");
         }
     }
 

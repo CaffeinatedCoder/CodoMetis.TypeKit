@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.AspNetCore/FaultResponse.cs b/src/CodoMetis.TypeKit.AspNetCore/FaultResponse.cs
+index fac2b51..2733f4a 100644
+--- a/src/CodoMetis.TypeKit.AspNetCore/FaultResponse.cs
++++ b/src/CodoMetis.TypeKit.AspNetCore/FaultResponse.cs
+@@ -61,7 +61,7 @@ public sealed class FaultResponse
+         FaultKind.Forbidden          => 403,
+         FaultKind.Unavailable        => 503,
+         FaultKind.PreconditionFailed => 412,
+-        FaultKind.Malformed          => 400,
++        FaultKind.Malformed          => 422,
+         _ => throw new ArgumentOutOfRangeException(nameof(kind), $"{(int)kind} is no FaultKind: a fault set's member declares one of its members, and a default kind is none." + FaultRefusals.Mapping),
+     });
+ 

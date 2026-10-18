@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs
+index c64d73e..afedaa5 100644
+--- a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs
++++ b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectKeyValueGenerationConvention.cs
+@@ -77,7 +77,7 @@ internal sealed class ValueObjectKeyValueGenerationConvention : IModelFinalizing
+     /// </summary>
+     private static bool IsGeneratedByTheDatabase(Type wrapped) =>
+         wrapped == typeof(int) || wrapped == typeof(long) || wrapped == typeof(short) || wrapped == typeof(sbyte)
+-     || wrapped == typeof(uint) || wrapped == typeof(ulong) || wrapped == typeof(ushort);
++     || wrapped == typeof(uint) || wrapped == typeof(ulong) || wrapped == typeof(ushort) || wrapped == typeof(string);
+ }
+ 
+ /// <summary>

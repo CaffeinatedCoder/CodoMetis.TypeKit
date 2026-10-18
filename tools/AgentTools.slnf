@@ -1,0 +1,11 @@
+{
+  "solution": {
+    "path": "../CodoMetis.TypeKit.slnx",
+    "projects": [
+      "tools/BuildVerdict/BuildVerdict.csproj",
+      "tools/ConsumerSmokeTest/ConsumerSmokeTest.csproj",
+      "tools/DocsQuery/DocsQuery.csproj",
+      "tools/Prober/Prober.csproj"
+    ]
+  }
+}

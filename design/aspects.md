@@ -219,6 +219,12 @@
   process to a +05:30 zone, since CI runs in UTC.
 - **`From(null)` throws** `ArgumentNullException` for a reference-type wrapped value, as
   `Option.Some(null)` does. It wrapped a null that `Value` promises it never holds.
+- **Span parsing follows the wrapped type, not the strategy (2026-10-17).** `ISpanParsable` is
+  generated wherever the wrapped type implements it (`SupportsSpan`), as `IUtf8SpanParsable` already
+  was, and parses through the wrapped type's own span `TryParse`. The string strategy, picked before
+  the span check, implemented `IParsable` alone, so a value object over `string` had no span parsing
+  although `string` has it (the prober, claim C11). The string strategy still parses text as it is.
+  Span parsing is not added over a type without it (`Uri`, enums, NodaTime): that would be a feature.
 - **Enums** parse by name through `Enum.TryParse`, with a `FormatException` for an unknown name.
   `Convert.ChangeType` cannot make an enum from a string, so the former `IConvertible` strategy
   threw for every input while the type advertised `IParsable`. Nothing else that is convertible

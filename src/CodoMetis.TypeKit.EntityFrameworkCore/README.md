@@ -104,8 +104,9 @@ column's type, not by the underlying type:
 
 A key over a `Guid` is yours to assign, `Id = OrderId.New()` (a version 7 Guid, which sorts by
 creation time), and EF inserts it as given. To have EF generate it instead, configure
-`ValueGeneratedOnAdd()` on the property. EF then also treats an entity whose key is already set,
-reached through a navigation, as an existing one.
+`ValueGeneratedOnAdd()` on the property. It's then generated as a plain `Guid` key is: a version 7
+Guid on PostgreSQL, one that's sequential in SQL Server's order on SQL Server. EF then also treats
+an entity whose key is already set, reached through a navigation, as an existing one.
 
 The root of an inheritance hierarchy follows the same rules under TPH and TPT. Under TPC, as for an
 `int` key, the key is generated only where the provider numbers the whole hierarchy from a sequence
@@ -183,17 +184,27 @@ instead, which works everywhere and may add a cast:
   converter stores it: the one `UseTypeKit()` applies, or `ValueObjectConverter<,>` named in
   `HasConversion`. A property your application converts itself
   (`HasConversion(c => "C:" + c.Value, ...)`, a converter type, a conversion in
-  `ConfigureConventions`) doesn't hold `.Value`. So a query that reads `.Value` there fails with EF's
-  "could not be translated", rather than comparing against what the column really holds. Comparing
+  `ConfigureConventions`) doesn't hold `.Value`. So a filter, a sort, a grouping or an aggregate that
+  reads `.Value` there fails with EF's "could not be translated", rather than comparing against what
+  the column really holds. Selecting `.Value` as the query's last step still works, `Distinct`
+  included: EF reads the value object through your converter and takes `.Value` in memory. Comparing
   the value object itself (`o.Code == code`) goes through that converter and still works.
 - **Ordering in SQL follows the database's collation** for the column. The generated comparison in
   memory is ordinal for a string, as it is for any string column.
+- **A null passes no `<`, `<=`, `>` or `>=` in the database.** SQL leaves out a row whose column is
+  NULL, as it does for an `int?` column. A value object that's a record class puts null first in
+  memory, so there `null < rank` is true. For a nullable `Rank` record class, `o.Rank < rank` keeps
+  an order without a rank in a list, and leaves it out of the query. Write
+  `o.Rank == null || o.Rank < rank` to keep it in the query too. A struct value object answers the
+  same both ways.
 - **Your own `CompareTo(TSelf)` can't run in the database.** A value object that declares one orders
   in memory by that method. The column orders by the underlying value, which could be the opposite of
   a descending `CompareTo`. So these queries throw an `InvalidOperationException` naming the value
   object:
   - a comparison (`<`, `>`, `<=`, `>=`, `CompareTo`);
   - an ordering (`OrderBy`, `ThenBy`, their descending forms, `Order`);
+  - the database's own orderings: `EF.Functions.Greatest` and `Least`, and a row-value comparison
+    such as Npgsql's `EF.Functions.GreaterThan((o.Priority, o.Id), (priority, id))`;
   - `Min` or `Max`.
 
   Compare or order by `.Value` where the underlying value's order is what you mean

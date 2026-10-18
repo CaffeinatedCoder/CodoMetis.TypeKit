@@ -36,6 +36,16 @@
         ]
       }
     },
+    "watched": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "description": "The paths the probe's registry entry watches, each with its object id at the commit the run built (null where it does not exist). A footprint line without one of the entry's watched paths is not current."
+    },
     "toolchain": {
       "type": "object",
       "additionalProperties": {

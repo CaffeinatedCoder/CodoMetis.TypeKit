@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
@@ -37,7 +38,8 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// A route, query or header parameter binds through <c>TryParse</c>, not JSON, so a described converter
 /// says nothing of it. ASP.NET describes a parameter of a primitive, a date, a <see cref="decimal"/> or a
 /// <see cref="Guid"/> by the type's JSON schema, which the converter emptied; the parameter gets back the
-/// schema the type has without converters of one's own, beside the <c>format</c> ASP.NET kept.
+/// schema the type has without converters of one's own, beside the <c>format</c> ASP.NET kept. A query or header
+/// array of it, whose <c>items</c> ASP.NET dropped for the converter, gets them back the same way.
 /// </para>
 /// </remarks>
 internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
@@ -45,8 +47,20 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
     /// <summary>The types described as another on this call path, to refuse a description that never ends.</summary>
     private static readonly AsyncLocal<ImmutableStack<Type>?> SameAsPath = new();
 
+    /// <summary>
+    /// The elements put back into a container ASP.NET left without one, with their type. ASP.NET goes on to visit each
+    /// as that type, where a nullable one of a type with a component reads as the component, which admits no null.
+    /// </summary>
+    private static readonly ConditionalWeakTable<OpenApiSchema, Type> PutBack = new();
+
     public async Task TransformAsync(OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
     {
+        // A non-abstract polymorphic base's own branch, which ASP.NET hands to no transformer.
+        await PolymorphicBaseBranch.WalkAsync(schema, context, this, cancellationToken);
+
+        // Already complete: visited again as a nullable type with a component, it would lose its null.
+        if (PutBack.TryGetValue(schema, out _)) return;
+
         var info = context.JsonTypeInfo;
         var options = info.Options;
 
@@ -54,7 +68,22 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
         // route, the query, a header or a form field is text TryParse reads.
         if (context is { JsonPropertyInfo: null, ParameterDescription: { } parameter } && parameter.Source != BindingSource.Body)
         {
-            if (Description(info.Type, options, property: null) is not null) Parameter(schema, info.Type, options, Version(context));
+            if (Description(info.Type, options, property: null) is not null)
+            {
+                Parameter(schema, info.Type, options, itself: ValueObjectSchemaTransformer.IsParameterItself(parameter, info.Type));
+                return;
+            }
+
+            // A query or header array of a described type: ASP.NET dropped the items for the converter, as it does in JSON.
+            // The element is ASP.NET's own, asked for as a parameter's element, which this transformer then describes as above.
+            if (info.ElementType is not { } item || info.Kind is not (JsonTypeInfoKind.Enumerable or JsonTypeInfoKind.Dictionary)) return;
+            if (Description(item, options, property: null) is null) return;
+
+            if (info.Kind == JsonTypeInfoKind.Enumerable && schema.Items is null)
+                schema.Items = await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, item, ValueObjectSchemaTransformer.Detached(parameter), cancellationToken);
+            else if (info.Kind == JsonTypeInfoKind.Dictionary && schema.AdditionalProperties is null)
+                schema.AdditionalProperties = await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, item, ValueObjectSchemaTransformer.Detached(parameter), cancellationToken);
+
             return;
         }
 
@@ -101,6 +130,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
         var elementDescribed = await SchemaAsync(elementDescription, element, context, cancellationToken);
         if (Nullable.GetUnderlyingType(element) is not null) PatchSchemaTransformer.AdmitNull(elementSchema, elementDescribed);
         else elementSchema.FillFrom(elementDescribed);
+        PutBack.AddOrUpdate(elementSchema, element);
 
         if (info.Kind == JsonTypeInfoKind.Enumerable) schema.Items = elementSchema;
         else schema.AdditionalProperties = elementSchema;
@@ -174,7 +204,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
         SameAsPath.Value = path.Push(sameAs);
         try
         {
-            var other = await context.GetOrCreateSchemaAsync(sameAs, parameterDescription: null, cancellationToken);
+            var other = await PolymorphicBaseBranch.GetOrCreateSchemaAsync(context, sameAs, parameterDescription: null, cancellationToken);
             var copy = new OpenApiSchema();
             copy.FillFrom(other is OpenApiSchema concrete ? concrete : new OpenApiSchema());
             return copy;
@@ -195,12 +225,7 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
     /// </summary>
     internal static OpenApiSchema Parse(JsonObject schema, Type type, OpenApiSpecVersion version = OpenApiSpecVersion.OpenApi3_1)
     {
-        var parsed = OpenApiModelFactory.Parse<OpenApiSchema>(schema.ToJsonString(), OpenApiSpecVersion.OpenApi3_1, new OpenApiDocument(), out var diagnostic, "json");
-
-        if (parsed is null || diagnostic is { Errors.Count: > 0 })
-            throw new InvalidOperationException(
-                $"The JSON schema described for '{type}' is not one an OpenAPI document can hold: " +
-                string.Join("; ", diagnostic?.Errors.Select(error => error.Message) ?? ["it did not parse"]) + ".");
+        var parsed = Read(schema, type);
 
         if (FirstChanged(schema, Written(parsed, OpenApiSpecVersion.OpenApi3_1), "") is { } changed)
             throw new InvalidOperationException(
@@ -211,6 +236,19 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
             throw new InvalidOperationException(
                 $"The JSON schema described for '{type}' does not survive into an OpenAPI {Name(version)} document: '{lost}' is written aside as an extension or left out, " +
                 $"where no validator reads it. Describe it with the keywords OpenAPI {Name(version)} models, or write the document in 3.1.");
+
+        return parsed;
+    }
+
+    /// <summary>A JSON Schema as Microsoft.OpenApi reads one, refused only where it does not read.</summary>
+    private static OpenApiSchema Read(JsonObject schema, Type type)
+    {
+        var parsed = OpenApiModelFactory.Parse<OpenApiSchema>(schema.ToJsonString(), OpenApiSpecVersion.OpenApi3_1, new OpenApiDocument(), out var diagnostic, "json");
+
+        if (parsed is null || diagnostic is { Errors.Count: > 0 })
+            throw new InvalidOperationException(
+                $"The JSON schema described for '{type}' is not one an OpenAPI document can hold: " +
+                string.Join("; ", diagnostic?.Errors.Select(error => error.Message) ?? ["it did not parse"]) + ".");
 
         return parsed;
     }
@@ -356,21 +394,48 @@ internal sealed class DescribedSchemaTransformer : IOpenApiSchemaTransformer
 
     /// <summary>
     /// A parameter of <paramref name="type"/> as ASP.NET describes it without converters of one's own: the
-    /// schema the options' resolver gives the type with none registered, beside the format ASP.NET kept.
+    /// schema the options' resolver gives the type with none registered, beside the format ASP.NET kept. A
+    /// nullable parameter is its underlying type, as ASP.NET writes it: an absent parameter is its null. A
+    /// nullable element of a parameter array (<c>decimal?[]</c>), and anything else below the parameter, keeps
+    /// its null, as ASP.NET writes it there. The
+    /// schema is ASP.NET's, not a description, so it is not held to what a description must survive into: a
+    /// 2.0 document writes a decimal read from a string, <c>["number","string"]</c>, as it writes ASP.NET's own.
     /// </summary>
-    private static void Parameter(OpenApiSchema schema, Type type, JsonSerializerOptions options, OpenApiSpecVersion version)
+    private static void Parameter(OpenApiSchema schema, Type type, JsonSerializerOptions options, bool itself)
     {
-        var plain = new JsonSerializerOptions(options);
-        plain.Converters.Clear();
+        var plain = Plain(options);
 
-        if (!plain.TryGetTypeInfo(type, out var info)) return;
+        if (!plain.TryGetTypeInfo(itself ? Nullable.GetUnderlyingType(type) ?? type : type, out var info)) return;
         if (info.GetJsonSchemaAsNode() is not JsonObject native) return;
 
         var format = schema.Format;
         var description = schema.Description;
         Reshape(schema);
-        schema.FillFrom(Parse(native, type, version));
+        schema.FillFrom(Read(native, type));
         schema.Format ??= format;
         schema.Description ??= description;
+        ParameterDefault(schema, type, options);
+    }
+
+    /// <summary>The options without converters of one's own: what ASP.NET writes a parameter with where there are none.</summary>
+    private static JsonSerializerOptions Plain(JsonSerializerOptions options)
+    {
+        var plain = new JsonSerializerOptions(options);
+        plain.Converters.Clear();
+        return plain;
+    }
+
+    /// <summary>
+    /// A parameter's default as ASP.NET writes it without converters of one's own. ASP.NET writes the default of a
+    /// parameter of <paramref name="type"/> with the JSON options, a described converter included (a decimal's
+    /// <c>"1.5"</c> under <c>DecimalStringJsonConverter</c>), where the parameter binds through <c>TryParse</c> and its
+    /// schema is the type's without the converter (<c>1.5</c>). Read back as the options wrote it, the value is written
+    /// again without them; for a value object, its generated converter writes the type it wraps the same way.
+    /// </summary>
+    internal static void ParameterDefault(OpenApiSchema schema, Type type, JsonSerializerOptions options)
+    {
+        if (schema.Default is not { } written || !Plain(options).TryGetTypeInfo(type, out var plain)) return;
+
+        schema.Default = JsonSerializer.SerializeToNode(JsonSerializer.Deserialize(written, options.GetTypeInfo(type)), plain);
     }
 }

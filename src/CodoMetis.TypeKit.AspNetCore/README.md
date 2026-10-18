@@ -116,6 +116,12 @@ element schema, so `Quantity` gets no component at all, and both parameters are 
   referenced one allows it around its reference. A closed set's property is then the enum of its
   names plus null.
 
+  OpenAPI 2.0 can't put null around a reference. ASP.NET writes a nullable property of any component as
+  `{"allOf":[{"x-nullable":true}]}` there, without the reference. So under 2.0 a nullable value-object
+  property loses its type, where the underlying type's nullable property keeps it. A nullable element of
+  a list or a dictionary loses its type the same way, since it's the component or null too. Inline value
+  objects if your 2.0 document needs it.
+
 - **Put rules in `Create`, not on the property.** A validation attribute on a value-object property
   (`[MaxLength]`, `[Range]`) ends up in the value object's shared component, as ASP.NET does for any
   referenced schema. From there it applies to every other use too. `Create` is where every way of
@@ -155,7 +161,8 @@ source-generated JSON can do, because the patch's converter hides the value obje
 
 **A described type.** ASP.NET can't see through a JSON converter you write yourself. It writes the
 type as `{}`, or with only the `format` its CLR type maps to. It also drops a list's `items` and a
-dictionary's `additionalProperties` of that type.
+dictionary's `additionalProperties` of that type. The same goes for a converter a library registers for
+its own type, such as NodaTime's for `Instant`.
 
 Two things fix that, and the document then describes the type as they say:
 
@@ -171,8 +178,11 @@ value, and inside a value object or a patch.
   which then writes it instead of the generated converter. Both hold in a patch of it too.
 - **The converter asked is the one the serializer runs.** For a factory, that's the converter it
   makes. For the nullable positions, it's a converter registered for `Nullable<T>`.
-- **Parameters aren't JSON.** A route, query or header parameter binds through `TryParse`, not JSON.
-  It keeps what ASP.NET writes for the type without custom converters.
+- **Parameters aren't JSON.** A route, query, header or form parameter binds through `TryParse`, not
+  JSON. It keeps what ASP.NET writes for the type without custom converters, and so do the items of a
+  query or header array (`decimal[]`). The same goes for a value object over the type, such as
+  `Money : IValue<decimal>`. Where value objects are components, such a parameter is written in place
+  rather than as a reference to `Money`, because the `Money` component says what its JSON is.
 - **Register the same on both option sets.** ASP.NET builds the document from the minimal-API JSON
   options (`ConfigureHttpJsonOptions`), while controllers write with MVC's (`AddJsonOptions`). A host
   with controllers registers the same converters and descriptions on both, in the same order.
@@ -240,7 +250,10 @@ app.MapDelete("/orders/{id}", (OrderId id) => orders.Cancel(id).ToHttpResult());
 - **The document shows it too.** The endpoint's return type is ASP.NET's own
   `Results<Ok<OrderDto>, FaultProblem<OrderFault>>`, so the operation describes the value.
   `AddTypeKit()` adds a problem response for every status the error type is mapped to, as
-  `ProducesProblem` would. An MVC action returning the same type is described the same way.
+  `ProducesProblem` would. An MVC action returning the same type is described the same way. A
+  response you declare yourself at one of those statuses, with `Produces(404)` or
+  `[ProducesResponseType(404)]`, is kept as you declared it: the document doesn't add the problem
+  schema there, though the wire still answers a problem.
 - **It's not a wire format.** The `Result` is matched to a response, not serialized. Returning the
   `Result` itself from a handler is still rejected, and the document would promise a `Result`.
 - **It changes every error response of the host, not only these.** `AddFaultResponses` calls

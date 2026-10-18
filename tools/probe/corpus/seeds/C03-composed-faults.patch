@@ -1,0 +1,13 @@
+diff --git a/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesOperationTransformer.cs b/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesOperationTransformer.cs
+index 475e121..90b855b 100644
+--- a/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesOperationTransformer.cs
++++ b/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesOperationTransformer.cs
+@@ -148,7 +148,7 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
+     /// </summary>
+     private static void Ascending(OpenApiResponses responses)
+     {
+-        var ordered = responses.OrderBy(response => Rank(response.Key)).ToList();
++        var ordered = responses.OrderByDescending(response => Rank(response.Key)).ToList();
+         if (ordered.Select(response => response.Key).SequenceEqual(responses.Keys, StringComparer.Ordinal)) return;
+ 
+         // A dictionary cleared and filled again enumerates in the order it was filled, as the writer reads it.

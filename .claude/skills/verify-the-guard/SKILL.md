@@ -1,6 +1,6 @@
 ---
 name: verify-the-guard
-description: Prove a guard actually fails without the thing it guards — revert the source fix, or seed the defect for a convention test where there is no source fix to revert. Use whenever adding a test alongside a bug fix or a new validation in this repo, whenever a check's subject is packaging or release wiring rather than code, and before reporting the work as done.
+description: Prove a guard actually fails without the thing it guards — revert the source fix, or seed the defect for a convention test where there is no source fix to revert — and test a fix across its input class from a variant catalogue, so it covers the defect's siblings. Use whenever adding a test alongside a bug fix or a new validation in this repo, whenever a check's subject is packaging or release wiring rather than code, and before reporting the work as done.
 ---
 
 # Verify the guard
@@ -31,6 +31,46 @@ applied and the test compares a stub against itself.
 
 Step 1 is often skipped when the fix is already written. Step 3 recovers the same guarantee after
 the fact, so do step 3 always, even when you did step 1.
+
+## The variants: the defect's neighbours
+
+The loop proves the guard catches the input the review named. It says nothing about the next shape of
+the same input, and that is where most of this repository's fixes came from: 64 of 133 were a later
+member of a chain on the same file and rule, found by the next review one shape at a time. CMTK0010
+took fourteen fixes in two days that way ([the fix history](../../../design/fix-history.md), chain A).
+So every fix also runs this step ([decision 95](../../../design/adr/0095-a-fix-is-tested-across-its-input-class.md)),
+before it is reported done:
+
+1. **Name the input class.** The `Defect-Class` trailer's code, and one sentence for the input inside
+   it: "a type argument reaching a constrained type parameter", not "the method-group case".
+2. **Run the fix's test across that class's catalogue.**
+
+   | Class | Catalogue | How |
+   |---|---|---|
+   | `AIS`, a type argument | `TypeArgumentSites` in `test/CodoMetis.TypeKit.Analyzers.Tests/Variants/` | A `TypeArgumentSubject` per constraint the rule reads (the constraint, an argument that breaks it, one that meets it), run as `TypeArgumentConstraintVariantTests` runs CMTK0010 |
+   | `AIS`, what a type argument is | `TypeArgumentKinds`, beside it, 79 kinds and 37 pairs: classes to delegates, arrays, `dynamic`, interfaces, the abstract bases, a type built from a parameter, a parameter under each constraint and attribute, and pairs | An oracle per constraint over what each kind is, from the rule's docs, run as `TypeArgumentConstraintKindTests` runs CMTK0010 |
+   | `AIS`, any other input | The kinds the rule registers (`Register*Action`), plus method groups, crefs, extension blocks (method, property, static member, operator, the lowered call), generic attributes, `nameof`, null-conditional access, lambdas, local functions and generated code (`GeneratedCodeTests`) | No catalogue yet: build it in `Variants/` on `TypeArgumentSites`' pattern, the subject from the rule and the shapes from the catalogue |
+   | `EFT`, a key or a query of the EF satellite | `KeyShapes`, `QueryShapes` and `WrappedKinds` in `test/CodoMetis.TypeKit.EntityFrameworkCore.Tests/Variants/`: 13 key shapes (alone, each mapping's root, abstract or not, the dependents whose key is a foreign key, composite, configured) by 13 wrapped types on three providers; 22 wrapped types, own orderings included, by accessor, site (column, nullable, collection element, captured list, navigation, JSON, query filter), converter (TypeKit's, named, three foreign forms) and operation | A differential against the same entity over the wrapped type, with the docs' departures as the oracle, run as `KeyGenerationVariantTests` and `QueryTranslationVariantTests` do; a new case is a new value of an axis |
+   | `GTS` | The `shape.*` axes of `.claude/probe-axes.md` and the Samples' value objects | One declaration per value of each axis the fixed code reads (kind, site, inheritance at least), or the rows of the claim that covers it: `prober rows --claim C --full` |
+   | `FCI` | The settings of the API the fix touches: the `json.*`, `openapi.*`, `mvc.*` axes | The claim's pairwise rows, `prober rows --claim C`, as a theory or as the claim's probe |
+
+   Run every shape both ways where the catalogue has two: the breaking input reported (or refused)
+   once, the meeting one never. A false report is a sibling as much as a silence is.
+3. **Fix what fails.** Same cause, same commit. Another cause, its own `fix:` commit on the same
+   branch with `Found-By: VA`. A shape the rule leaves alone on purpose is named in the rule's test
+   with the decision that says so (`SilentAt`), never dropped from the catalogue.
+4. **Teach the catalogue.** A shape the catalogue lacked, found by you or by a later review, goes into
+   it in the commit that fixes it. The next rule over the same input is then held to it for free.
+5. **Say it in the commit body**: the input class, the catalogue and its size, and the siblings found.
+
+A catalogue that is new is held to the same standard as a guard: seed a defect it should catch, and
+when a past chain exists, check out the chain's origin fix and run the catalogue there. Decision 95
+records that run for `TypeArgumentSites`: at chain A's origin it fails on 20 sites, each green at
+the later fix that repaired it.
+
+A catalogue of sites proves breadth, not semantics. What an input *is* (an enum, an array, `dynamic`, a
+type built from a type parameter) is a second axis, `TypeArgumentKinds` for a type argument; for another
+input, where the fix's defect lives on it, enumerate it in the test as well.
 
 ## Reverting cleanly
 
@@ -119,6 +159,9 @@ when reporting.
 State the counterfactual result explicitly, with the failure output. "Added a test" says nothing
 about whether the bug is caught; "reverting the fix makes these three tests fail, with this output"
 is the claim that matters.
+
+State the variant run too: "`TypeArgumentSites`, 62 sites under `[Sealed]`, `[Concrete]` and
+`[ReadOnlyStruct]`, green; two siblings found and fixed" is the claim that the fix covers its class.
 
 When several fixes land together, revert them all at once and confirm the failure count matches the
 number of guards — a fix whose test still passes stands out immediately.
