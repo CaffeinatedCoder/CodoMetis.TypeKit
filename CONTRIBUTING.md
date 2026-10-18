@@ -88,6 +88,56 @@ string, an assembly-name prefix or a type-name list will be asked to replace it.
 **Prefer a loud failure to a silent one.** Where the package cannot do something correctly, it
 should fail the build or throw with an actionable message.
 
+## Issues and labels
+
+Use the **Bug** or **Enhancement** form. The bug form asks whether the failure is silent or loud, because a
+silent one, code that compiles and does less than it appears to, is the failure this repository exists to
+prevent.
+
+Each release is an `epic` issue with a milestone of its version (`2.3.0`), and its work is attached as
+sub-issues with the same milestone; a theme that spans releases is an `epic` without one. The plan stays in
+[design/roadmap.md](design/roadmap.md), which an epic links rather than copies
+([decision 109](design/adr/0109-work-is-tracked-as-labelled-issues-and-ci-checks-each-pull-request.md)).
+A maintainer sets the labels when triaging, and a pull request gets the same labels and milestone as the
+issue it closes:
+
+| Label | Means |
+|---|---|
+| `bug`, `enhancement`, `documentation`, `tests`, `chore` | The type. Exactly one |
+| `severity/critical` | Data loss, or silently wrong results, in common use |
+| `severity/high` | Wrong results, a crash or a failed build in a realistic scenario |
+| `severity/medium` | An inconsistency or a failure in a narrow scenario |
+| `severity/low` | A cosmetic, message or documentation-level difference |
+| `silent` | A bug that compiles or answers and does less than it appears to |
+| `breaking` | Changes a signature, a generated member, a wire form or a diagnostic's severity: needs a major |
+| `found-by/prober` | Found by the prober; the fix's commit carries `Found-By: PR` |
+| `stacked` | Based on another open pull request: merge in order |
+| `epic` | A release or a theme; its sub-issues are the work |
+| `package/core`, `package/analyzers`, `package/generators`, `package/efcore`, `package/aspnetcore`, `package/serilog`, `package/testing` | The package it affects |
+| `area/option-result` | `Option`, `Result` and their extensions |
+| `area/value-objects` | The value-object contracts and what the aspects generate for them |
+| `area/json` | System.Text.Json wire forms, values and dictionary keys |
+| `area/aot` | Native AOT and trimming |
+| `area/parsing` | `Parse`, `TryParse`, formatting and the type converter |
+| `area/release` | Versioning, changelogs, packaging and release wiring |
+| `area/tooling` | The repository's tools: the prober, the verdict, the guard, docs-query, the smoke test |
+
+A bug carries exactly one severity. CI's "PR hygiene" check reads each pull request into `main` or a release
+branch and fails it with no type label, a bug with no severity, `silent` on anything but a bug, no closing
+reference, a branch whose `<type>/` disagrees with its type label (`feat` is `enhancement`, `fix` is `bug`,
+`docs` is `documentation`, `test` is `tests`, the rest `chore`), a pull request into `release/<version>`
+without that milestone, or `breaking` on a release that is not a major. It turns green when you add what is
+missing, without a new commit. To run it on a saved payload:
+
+```bash
+dotnet build tools/PrHygiene -c Release
+dotnet tools/PrHygiene/bin/Release/net10.0/pr-hygiene.dll path/to/event.json
+```
+
+`Closes #12` closes an issue only when the pull request merges into `main`, and topics merge into a release
+branch, so close the issue by hand when your topic merges, with a comment linking the pull request. The
+release's pull request into `main` closes its epic.
+
 ## Pull requests
 
 Work for the next version goes into its release branch, `release/<version>` (`release/2.2.0`), not
@@ -96,7 +146,9 @@ Branch from it as `<type>/<slug>`, where the type is your main commit's (`feat/�
 `build/…`), and open the PR against it. PRs are merged with a merge commit, never squashed or rebased:
 the design records cite commits by hash.
 
-- One concern per PR, with the reasoning in the description rather than only in the diff.
+- One concern per PR, closing one issue, with its labels and milestone ([above](#issues-and-labels)).
+  The description follows the template: `Closes #n`, then Problem, Change and Tests, with the reasoning
+  there rather than only in the diff.
 - Full suite green.
 - User-visible changes get a changelog entry.
 - Match the surrounding style. Comments explain *why*, especially where behaviour is load-bearing
@@ -121,7 +173,8 @@ The packages share one version and are released together, only through
 2. Move the rules in `src/CodoMetis.TypeKit.Analyzers/AnalyzerReleases.Unshipped.md` to
    `AnalyzerReleases.Shipped.md`, under `## Release <version>`. Their ids and severities are public
    contract from then on. `ChangelogTests` fails until steps 1 and 2 agree.
-3. Commit on the release branch, open its PR into `main`, and merge it with a merge commit. Tag that
+3. Commit on the release branch, open its PR into `main` (`chore` and `area/release`, the version's
+   milestone, `Closes #<epic>`), and merge it with a merge commit. Tag that
    merge commit and push the tag: `git tag v1.0.0 && git push origin v1.0.0`. The workflow checks the tag
    against `Version` and the dated heading, runs the suite and the smoke test, and waits for approval
    in the `nuget` environment before pushing. Delete the release branch once the tag is pushed.
@@ -129,7 +182,7 @@ The packages share one version and are released together, only through
    the version just released, so ApiCompat guards the public surface from then on, and open a new
    `## <version> — Unreleased` section. `ChangelogTests` fails while the baseline trails the last
    version the changelog dates. Once that is on `main`, cut the next `release/<version>` from it and
-   push it.
+   push it, and open the version's milestone and its `epic` issue.
 
 `workflow_dispatch` with `dry_run` (the default) rehearses everything but the push.
 
