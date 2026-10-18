@@ -236,6 +236,47 @@ public sealed class WatchedTests : IDisposable
         ledger.FootprintChangedSince("P", "v1", ledger.Footprints()).ShouldBeTrue();
     }
 
+    /// <summary>A replay's record of a probe that runs nothing under src/ in its own process, as C22, which builds its consumer in a child process.</summary>
+    private (int Exit, string Output, string Error) RanNothingUnderSrc()
+    {
+        var report = Path.Combine(fx.Root, "coverage.cobertura.xml");
+        File.WriteAllText(report, $"""<coverage><sources><source>{fx.Root}</source></sources><packages><package><classes><class filename="test/Harness.cs"><lines><line number="1" hits="1" /></lines></class></classes></package></packages></coverage>""");
+        var result = fx.Ledger("footprint", "--probe", "P", "--root", fx.Root, "--cobertura", report);
+        File.Delete(report);
+        return result;
+    }
+
+    [Fact]
+    public void A_probe_that_ran_nothing_under_src_is_recorded_by_what_it_watches()
+    {
+        Registry(watched: true);
+        fx.Write(Catalogue, "class Catalogue {}\n");
+        fx.Commit("a probe watching a catalogue, building in a child process");
+        var (exit, output, error) = RanNothingUnderSrc();
+        exit.ShouldBe(0, output + error);
+        var line = JsonNode.Parse(File.ReadLines(Path.Combine(fx.BranchDir, "footprints.jsonl")).Last())!;
+        line["footprint"]!.AsObject().Count.ShouldBe(0);
+        line["watched"]![Catalogue]!.GetValue<string>().ShouldBe(fx.Sh("git", "rev-parse", $"HEAD:{Catalogue}").Trim());
+        fx.Ledger("record-run", "--probe", "P", "--result", "pass", "--evidence", fx.Evidence([R("1", "1"), R("2", "2")])).Exit.ShouldBe(0);
+        Stale().ShouldBeFalse("what P watches is unchanged");
+        fx.Covered().ShouldBe(2);
+        ChangeTheCatalogue();
+        Stale().ShouldBeTrue("the catalogue P watches changed");
+        fx.Covered().ShouldBe(0);
+    }
+
+    [Fact]
+    public void A_probe_that_ran_nothing_under_src_and_watches_nothing_is_refused()
+    {
+        Registry(watched: false);
+        fx.Write(Catalogue, "class Catalogue {}\n");
+        fx.Commit("a probe watching nothing, building in a child process");
+        var (exit, output, error) = RanNothingUnderSrc();
+        exit.ShouldBe(1, output + error);
+        (output + error).ShouldContain("refusing to record an empty footprint");
+        File.Exists(Path.Combine(fx.BranchDir, "footprints.jsonl")).ShouldBeFalse();
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

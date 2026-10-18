@@ -57,7 +57,9 @@ footprint cannot see, since the footprint is what ran in the probe's own process
 over the analyzer tests' `TypeArgumentSites` and `TypeArgumentKinds`), a build input a child process reads is
 another (C18's consumer build compiles against the base package and evaluates `src/Directory.Build.*`). The
 replay records each with its object id in the footprint line, a change to one stales the footprint like a path
-the probe ran, and the gate counts it as touching the probe's claim.
+the probe ran, and the gate counts it as touching the probe's claim. A probe whose own process runs nothing under `src/`
+(C22 builds its consumer in a child process) is recorded by what its entry watches alone; where nothing ran and nothing
+is watched, `footprint` refuses to record an empty footprint, which would never go stale.
 
 The round lock, `round.lock` and its mutex, sits in the branch's directory (`branches/<branch>/`), beside
 everything a round or a replay writes, so rounds and replays of two branches run at once and two of one branch
