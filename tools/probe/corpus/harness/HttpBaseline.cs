@@ -505,6 +505,14 @@ public static class HttpBaseline
     static bool OnlyTheNullFlag(JsonObject o) =>
         o.Count == 1 && o["allOf"] is JsonArray { Count: 1 } all && all[0] is JsonObject { Count: 1 } flag && flag["x-nullable"]?.GetValueKind() == JsonValueKind.True;
 
+    /// <summary>
+    /// OpenAPI 2.0's nullable property of a component (KB-026): <c>allOf: [{x-nullable: true}]</c>, without the reference and so without a
+    /// type, beside what TypeKit kept of the wrapped type (a <c>format</c>).
+    /// </summary>
+    static bool TheNullFlagWithoutItsReference(JsonObject o) =>
+        o["allOf"] is JsonArray { Count: 1 } all && all[0] is JsonObject { Count: 1 } flag && flag["x-nullable"]?.GetValueKind() == JsonValueKind.True
+        && !o.ContainsKey("$ref") && !o.ContainsKey(Hx.ResolvedReference) && !o.ContainsKey("type");
+
     static bool OnlyItsNull(JsonNode? n) => n switch
     {
         JsonObject o => o["schema"] is JsonObject { Count: 1 } schema && schema["allOf"] is JsonArray { Count: 1 } all && all[0] is JsonObject { Count: 1 } flag
@@ -663,6 +671,14 @@ public static class HttpBaseline
                 // value object keeps a component of its own (not-promised openapi-2-nullable-component-loses-its-type; row 38 of C21). Side (1)
                 // shows it: without TypeKit, ASP.NET writes the value object's position at the same path the same, where the twin has nothing.
                 if (openApi2 && d.P is null && d.V is not null && At(vo1, d.Keys) is { } same1 && JsonNode.DeepEquals(same1, At(vo3, d.Keys)))
+                { c.Inapplicable(Cite.NotPromised("openapi-2-nullable-component-loses-its-type"), d.Path); continue; }
+                // The same loss told by the row's axes, where side (1) cannot show it: a nullable value object that is a component is a
+                // nullable property wherever the serializer's contract says so (a get-only or a type parameter's property among them), where
+                // ASP.NET alone adds the null only for a settable annotated one. Its property is then the null flag without the reference,
+                // where the twin's keeps its type beside x-nullable.
+                if (openApi2 && Make.AdmitsNull(e.Vo) && !r.Is("openapi.CreateSchemaReferenceId", "null-inlines-all") && d.V is null
+                    && At(vo3, d.Keys.SkipLast(1)) is JsonObject lost && TheNullFlagWithoutItsReference(lost)
+                    && At(JsonNode.Parse(Sig(doc, po)), d.Keys.SkipLast(1)) is JsonObject kept && kept["x-nullable"]?.GetValueKind() == JsonValueKind.True)
                 { c.Inapplicable(Cite.NotPromised("openapi-2-nullable-component-loses-its-type"), d.Path); continue; }
                 // KB-001: OpenAPI 2.0 writes a nullable body of the wrapped value type as allOf [{x-nullable: true}] alone, where a class value
                 // object's body in a minimal API is not nullable and keeps its schema (not-promised openapi-2-nullable-body-keeps-only-its-null;
