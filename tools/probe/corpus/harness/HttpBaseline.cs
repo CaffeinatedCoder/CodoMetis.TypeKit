@@ -500,14 +500,18 @@ public static class HttpBaseline
         return References(valueObject).FirstOrDefault(x => twins.TryGetValue(x.Item1, out var t) && t == x.Item2).Item2;
     }
 
-    /// <summary>A body whose schema is its null alone, <c>{"schema": {"allOf": [{"x-nullable": true}]}}</c>, anywhere in an operation: told by its structure.</summary>
     /// <summary>A schema that is the OpenAPI 2.0 null flag and nothing else: <c>{"allOf":[{"x-nullable":true}]}</c>.</summary>
     static bool OnlyTheNullFlag(JsonObject o) =>
         o.Count == 1 && o["allOf"] is JsonArray { Count: 1 } all && all[0] is JsonObject { Count: 1 } flag && flag["x-nullable"]?.GetValueKind() == JsonValueKind.True;
 
+    /// <summary>
+    /// A body whose schema is its format and its null alone, <c>{"schema": {"format": "int32", "allOf": [{"x-nullable": true}]}}</c>, or its null
+    /// alone where the type has no format, anywhere in an operation: told by its structure (KB-001).
+    /// </summary>
     static bool OnlyItsNull(JsonNode? n) => n switch
     {
-        JsonObject o => o["schema"] is JsonObject { Count: 1 } schema && schema["allOf"] is JsonArray { Count: 1 } all && all[0] is JsonObject { Count: 1 } flag
+        JsonObject o => o["schema"] is JsonObject schema && schema.All(kv => kv.Key is "allOf" or "format")
+                        && schema["allOf"] is JsonArray { Count: 1 } all && all[0] is JsonObject { Count: 1 } flag
                         && flag["x-nullable"]?.GetValueKind() == JsonValueKind.True
                         || o.Any(kv => OnlyItsNull(kv.Value)),
         JsonArray a => a.Any(OnlyItsNull),
@@ -652,7 +656,17 @@ public static class HttpBaseline
             if (sp != sv)
             {
                 if (e.Kind == "closed-set") { c.Inapplicable(Cite.NotPromised("a-closed-set-is-a-string-enum"), "schema"); continue; }
+                // A form binds the wrapped record class by its properties and the value object otherwise, as the parameters above: the two
+                // sides' fields are not alike, and no sentence cites it, so the check cannot tell (row 62 of C21).
+                if (e.Wrapped == "own-record-class" && pp.Contains("/form/") && method == "post")
+                { c.Inconclusive($"{pp} vs {vp}: the wrapped record class is bound from a form by its properties, the value object otherwise: the fields differ"); continue; }
                 var d = Difference(JsonNode.Parse(sp), JsonNode.Parse(sv), "$");
+                // Decision 36: a nullable value object admits null wherever it appears, where ASP.NET may write the twin's nullable type without
+                // it (the items of a list of double? under AllowNamedFloatingPointLiterals, row 216 of C21; the twin is held to side (1) above).
+                // Only that null differs: the value object admits it where the twin does not, and the schemas are otherwise the same.
+                if (Make.AdmitsNull(e.Vo) && d.Keys is [.., "x-null"] && d.P is null && d.V?.GetValueKind() == JsonValueKind.True
+                    && JsonNode.DeepEquals(Hx.NoNull(JsonNode.Parse(sp)), Hx.NoNull(JsonNode.Parse(sv))))
+                { c.Inapplicable(Cite.NotPromised("a-nullable-value-object-admits-null"), d.Path); continue; }
                 var openApi2 = r.Is("openapi.OpenApiVersion", "OpenApi2_0");
                 // Side (1) at the same path: the twin's and the value object's operations in the document ASP.NET writes without TypeKit.
                 var twin1 = po1 is null ? null : JsonNode.Parse(Sig(doc1!, po1));
@@ -664,9 +678,10 @@ public static class HttpBaseline
                 // shows it: without TypeKit, ASP.NET writes the value object's position at the same path the same, where the twin has nothing.
                 if (openApi2 && d.P is null && d.V is not null && At(vo1, d.Keys) is { } same1 && JsonNode.DeepEquals(same1, At(vo3, d.Keys)))
                 { c.Inapplicable(Cite.NotPromised("openapi-2-nullable-component-loses-its-type"), d.Path); continue; }
-                // KB-001: OpenAPI 2.0 writes a nullable body of the wrapped value type as allOf [{x-nullable: true}] alone, where a class value
-                // object's body in a minimal API is not nullable and keeps its schema (not-promised openapi-2-nullable-body-keeps-only-its-null;
-                // row 257). Side (1) shows it: without TypeKit, the twin's schema there is that null alone.
+                // KB-001: OpenAPI 2.0 writes a nullable body of the wrapped value type as its format and allOf [{x-nullable: true}] alone (the
+                // null alone where it has no format, an enum), where a class value object's body in a minimal API is not nullable and keeps its
+                // schema (not-promised openapi-2-nullable-body-keeps-only-its-null; row 257, and rows 113 and 282 over TimeOnly and char). Side (1)
+                // shows it: without TypeKit, the twin's schema there is that format and that null alone.
                 // AspNetCore README "What the document says" (KB-026), seen from the twin: OpenAPI 2.0 writes a nullable property of any component,
                 // the twin's nullable enum among them, as allOf [{x-nullable: true}] without the reference, where the value object keeps its type.
                 // Side (1) shows it: without TypeKit, the twin's property there is that null alone.

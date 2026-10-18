@@ -454,7 +454,7 @@ public static class TextClaims
             }
             if (variants.Count == 0) return c.Inconclusive($"the wrapped value has no place in {Cut(doc)}: the options leave it out");
             var rejected = 0; var inPaths = new List<string>();
-            foreach (var (text, needle) in variants)
+            string? Read(string text, string needle)
             {
                 try { JsonSerializer.Deserialize(text, hv.Declared, opts); }
                 catch (Exception ex)
@@ -470,7 +470,14 @@ public static class TextClaims
                     if (ex.InnerException is not null && ex is JsonException && !(ex.InnerException is JsonException) && twin?.InnerException is null) return $"JSON read: refusal carries inner {ex.InnerException.GetType().Name}: {Cut(ex.InnerException.Message)}";
                     if (inPath > 0) inPaths.Add(twin is JsonException { Path: { } tp } && Occurrences(tp, needle) > 0 ? "the key in the Path, the wrapped type's alike" : "the key in the Path, as not-promised a-rejected-dictionary-key-in-the-path says");
                 }
+                return null;
             }
+            foreach (var (text, needle) in variants)
+                if (Read(text, needle) is { } quoted) return quoted;
+            // A wrapped type that reads every string (a string, a Uri) refuses none of these: what a client sends that it cannot read is a value
+            // of another kind, and an array holding the secret where the wrapped value stands is one (a key is a property name, never an array).
+            if (rejected == 0 && at >= 0 && pos != "dictionary-key"
+                && Read(doc[..at] + "[\"" + TextOps.Secret + "\"]" + doc[(at + sample.Length)..], TextOps.Secret) is { } quotedInArray) return quotedInArray;
             if (rejected == 0) return c.Inconclusive("every JSON input read, none refused: nothing to quote");
             c.Note(NoteKeys.Compared, $"JSON read: {rejected} refused without the input" + (inPaths.Count > 0 ? ", " + string.Join(", ", inPaths.Distinct()) : ""));
             return null;

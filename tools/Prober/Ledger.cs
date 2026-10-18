@@ -209,13 +209,13 @@ internal sealed class Ledger
     /// <summary>
     /// A probe's footprint is current when every path it ran, every compile-time path, every path its registry entry
     /// watches and the toolchain are unchanged at HEAD. A watched path the footprint did not record (one added to the
-    /// entry since) is not current.
+    /// entry since) is not current. A footprint that ran nothing under <c>src/</c> is current only by watched paths it recorded.
     /// </summary>
     public bool FootprintCurrent(string probe, Dictionary<string, JsonObject> footprints)
     {
         if (currentCache.TryGetValue(probe, out var cached)) return cached;
         var ok = false;
-        if (footprints.TryGetValue(probe, out var r) && r["footprint"] is JsonObject fp && fp.Count > 0)
+        if (footprints.TryGetValue(probe, out var r) && r["footprint"] is JsonObject fp && (fp.Count > 0 || r["watched"] is JsonObject { Count: > 0 }))
         {
             var watched = r["watched"] as JsonObject ?? [];
             ok = Watched(probe).All(watched.ContainsKey)
