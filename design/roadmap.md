@@ -11,12 +11,8 @@ refusal may relax in any minor version; an Error that reports more waits for a m
 ([decision 97](adr/0097-2-2-0-is-a-consolidation-release-and-the-gate-binds.md)). Any gap below that is a
 defect, a cost or a missing guard may land here; one that adds surface waits for 2.3.0.
 
-- Grow the probe corpus until `prober gate` passes on probes and reviewed waivers alone. Every claim
-  touched since v2.1.0 is covered pairwise, and no finding is open.
 - The probing harness (WS2 of the agentic issue-finding concept) is done
-  ([decision 108](adr/0108-a-probe-check-earns-credit-against-a-baseline-and-ws2-closes.md)). What it leaves the gate: the pairs of C12, C13, C16 and C21 that only a document
-  ASP.NET alone refuses had credited (a declaration of the document obligations' inapplicability under
-  `json.ReferenceHandler=Preserve` and `json.MaxDepth=3`, and rows for the rest), and C22's empty footprint.
+  ([decision 108](adr/0108-a-probe-check-earns-credit-against-a-baseline-and-ws2-closes.md)).
   WS3 (beyond pairs), WS4 (the mutation nightly), the second half of WS5 (the finder benchmark at equal budgets) and
   WS6 (PostgreSQL in CI) were dropped on 2026-10-17 by the maintainer's decision, and are not scheduled.
 - The generated-surface snapshot under "Generators" below.
