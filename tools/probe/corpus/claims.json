@@ -11836,6 +11836,16 @@
         }
       },
       {
+        "id": "a-nullable-value-object-admits-null",
+        "source": "design/adr/0036-nullable-value-object-admits-null-openapi.md#0036-a-nullable-value-object-admits-null-in-the-openapi-document-wherever-it-appears",
+        "sentence": "A nullable value object admits null in the OpenAPI document wherever it appears",
+        "axes": {
+          "http.nullability": [
+            "nullable"
+          ]
+        }
+      },
+      {
         "id": "openapi-2-nullable-component-loses-its-type",
         "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
         "sentence": "So under 2.0 a nullable value-object property loses its type, where the underlying type's nullable property keeps it.",
