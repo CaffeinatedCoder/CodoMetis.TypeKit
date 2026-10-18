@@ -505,6 +505,17 @@ public static class HttpBaseline
         o.Count == 1 && o["allOf"] is JsonArray { Count: 1 } all && all[0] is JsonObject { Count: 1 } flag && flag["x-nullable"]?.GetValueKind() == JsonValueKind.True;
 
     /// <summary>
+    /// The OpenAPI 2.0 null flag with the wrapped type's <c>format</c> beside it and nothing else, <c>{"format":"uri","allOf":[{"x-nullable":true}]}</c>:
+    /// a nullable component's property, which TypeKit gives the wrapped type's format (KB-026).
+    /// </summary>
+    static bool TheNullFlagBeside(JsonObject o) =>
+        o.ContainsKey("format") && o.Count == 2 && OnlyTheNullFlag(new JsonObject { ["allOf"] = o["allOf"]?.DeepClone() });
+
+    /// <summary>A copy of the object without the key.</summary>
+    static JsonObject Without(JsonObject o, string key) =>
+        new(o.Where(kv => kv.Key != key).Select(kv => KeyValuePair.Create(kv.Key, kv.Value?.DeepClone())));
+
+    /// <summary>
     /// A body whose schema is its format and its null alone, <c>{"schema": {"format": "int32", "allOf": [{"x-nullable": true}]}}</c>, or its null
     /// alone where the type has no format, anywhere in an operation: told by its structure (KB-001).
     /// </summary>
@@ -678,6 +689,23 @@ public static class HttpBaseline
                 // shows it: without TypeKit, ASP.NET writes the value object's position at the same path the same, where the twin has nothing.
                 if (openApi2 && d.P is null && d.V is not null && At(vo1, d.Keys) is { } same1 && JsonNode.DeepEquals(same1, At(vo3, d.Keys)))
                 { c.Inapplicable(Cite.NotPromised("openapi-2-nullable-component-loses-its-type"), d.Path); continue; }
+                // The same, where the spellings of the null were normalised above, which takes the null flag out of the value object's
+                // schema and leaves it without the type the 2.0 writer dropped with the reference (row 386 of C21, a nullable struct value
+                // object over Uri as a required-init property): told by its structure, the value object's schema there is the wrapped type's
+                // format beside the null flag alone, and the twin's is the same with its type.
+                if (openApi2 && d.Keys is [.., "properties", _, "type"] && d.P is not null && d.V is null
+                    && At(vo3, d.Keys.SkipLast(1)) is JsonObject flagged3 && TheNullFlagBeside(flagged3)
+                    && At(JsonNode.Parse(Sig(doc, po)), d.Keys.SkipLast(1)) is JsonObject typed2
+                    && JsonNode.DeepEquals(Hx.NoNull(Without(typed2, "type")), Hx.NoNull(flagged3)))
+                { c.Inapplicable(Cite.NotPromised("openapi-2-nullable-component-loses-its-type"), d.Path); continue; }
+                // AspNetCore README "What the document says": a nullable element is the component or null, as a nullable property is, which
+                // OpenAPI 2.0 writes as allOf [{x-nullable: true}] without the reference (not-promised openapi-2-nullable-element-loses-its-type;
+                // row 358 of C21, a dictionary's value). ASP.NET alone drops a converter-backed element, so side (1) has nothing there; told by
+                // its structure, the value object's element is the null flag alone where the twin's admits null.
+                if (openApi2 && d.Keys is [.., "items" or "additionalProperties", "allOf"] && d.P is null
+                    && At(vo3, d.Keys.SkipLast(1)) is JsonObject element3 && OnlyTheNullFlag(element3)
+                    && At(JsonNode.Parse(Sig(doc, po)), d.Keys.SkipLast(1)) is JsonObject element2 && element2["x-nullable"]?.GetValueKind() == JsonValueKind.True)
+                { c.Inapplicable(Cite.NotPromised("openapi-2-nullable-element-loses-its-type"), d.Path); continue; }
                 // KB-001: OpenAPI 2.0 writes a nullable body of the wrapped value type as its format and allOf [{x-nullable: true}] alone (the
                 // null alone where it has no format, an enum), where a class value object's body in a minimal API is not nullable and keeps its
                 // schema (not-promised openapi-2-nullable-body-keeps-only-its-null; row 257, and rows 113 and 282 over TimeOnly and char). Side (1)
@@ -693,11 +721,24 @@ public static class HttpBaseline
                 // parameter lists null through E's component where E was first met nullable; the value object's parameter is the enum's
                 // content without it wherever the enum is a component (not-promised enum-component-is-its-first-use; row 285 of C21). Side (1)
                 // shows it: without TypeKit, the twin's parameter lists the same null, through the same resolved component.
-                if (d.Keys is ["parameters", .., "enum"] && d.P is JsonArray we && d.V is JsonArray ve && we.Count == ve.Count + 1 && we[^1] is null
+                // The same component met first as a nullable use lists that null for a property too, the twin's non-nullable one included
+                // (not-promised enum-component-lists-the-null-of-its-first-use; row 196 of C21, a polymorphic derived type's property).
+                if (d.Keys is [.., "enum"] && d.P is JsonArray we && d.V is JsonArray ve && we.Count == ve.Count + 1 && we[^1] is null
                     && JsonNode.DeepEquals(new JsonArray(we.Take(ve.Count).Select(x => x?.DeepClone()).ToArray()), ve)
                     && At(JsonNode.Parse(Sig(doc, po)), d.Keys.SkipLast(1)) is JsonObject held && held.ContainsKey(Hx.ResolvedReference)
                     && At(twin1, d.Keys) is { } listed1 && JsonNode.DeepEquals(listed1, d.P))
-                { c.Inapplicable(Cite.NotPromised("enum-component-is-its-first-use"), vp); continue; }
+                {
+                    if (d.Keys is ["parameters", ..]) c.Inapplicable(Cite.NotPromised("enum-component-is-its-first-use"), vp);
+                    else c.Inapplicable(Cite.NotPromised("enum-component-lists-the-null-of-its-first-use"), vp);
+                    continue;
+                }
+                // AspNetCore README "A described type": ASP.NET cannot see through a converter it did not write, one a library registers for
+                // its own type among them, and drops a list's items and a dictionary's additionalProperties of that type, where the value
+                // object's element is put back (not-promised a-librarys-converter-for-the-wrapped-type; row 422 of C21, a list of Instant?).
+                // Side (1) shows it: without TypeKit, the twin's container has no element schema either.
+                if (e.Wrapped == "NodaTime.Instant" && d.Keys is [.., "items" or "additionalProperties"] && d.P is null && d.V is not null
+                    && twin1 is not null && At(twin1, d.Keys.SkipLast(1)) is JsonObject container1 && !container1.ContainsKey(d.Keys[^1]))
+                { c.Inapplicable(Cite.NotPromised("a-librarys-converter-for-the-wrapped-type"), d.Path); continue; }
                 return $"schema differs for {pp} vs {vp} at {FirstDifference(JsonNode.Parse(sp), JsonNode.Parse(sv), "$")}:\n  wrapped {Cut(sp)}\n  value object {Cut(sv)}";
             }
         }
