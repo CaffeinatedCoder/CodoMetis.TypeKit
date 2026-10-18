@@ -11700,6 +11700,17 @@
               ]
             },
             "cite": "fact:KB-042"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "shape.wrapped": [
+                "own-record-class"
+              ]
+            },
+            "cite": "record:0099"
           }
         ]
       },
@@ -11746,6 +11757,17 @@
               ]
             },
             "cite": "fact:KB-042"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "shape.wrapped": [
+                "own-record-class"
+              ]
+            },
+            "cite": "record:0099"
           }
         ]
       },
@@ -11796,6 +11818,17 @@
               ]
             },
             "cite": "fact:KB-042"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "shape.wrapped": [
+                "own-record-class"
+              ]
+            },
+            "cite": "record:0099"
           }
         ]
       },
@@ -11842,6 +11875,17 @@
               ]
             },
             "cite": "fact:KB-042"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "shape.wrapped": [
+                "own-record-class"
+              ]
+            },
+            "cite": "record:0099"
           }
         ]
       },
@@ -11889,6 +11933,17 @@
               ]
             },
             "cite": "fact:KB-042"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "shape.wrapped": [
+                "own-record-class"
+              ]
+            },
+            "cite": "record:0099"
           }
         ]
       }
