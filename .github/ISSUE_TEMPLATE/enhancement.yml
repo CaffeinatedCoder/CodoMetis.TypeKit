@@ -1,0 +1,28 @@
+name: Enhancement
+description: A new member, generated feature, analyzer rule, satellite or option.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you're trying to do
+      description: The task, not the API. What do you write today, and why doesn't it work?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you'd like
+      description: A sketch of the code you'd write with it.
+      render: csharp
+  - type: dropdown
+    id: breaking
+    attributes:
+      label: Does it change something that compiles or works today?
+      description: A change to an existing signature, a generated member, a wire form or a diagnostic's severity needs a major version, even if the new behaviour is better.
+      options:
+        - No, it only adds
+        - Yes, existing code would compile or behave differently
+        - I'm not sure
+    validations:
+      required: true
