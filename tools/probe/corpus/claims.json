@@ -6392,7 +6392,29 @@
             "IDescribedJsonConverter",
             "decimal-converter"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "source": [
+                "IDescribedJsonConverter",
+                "JsonSchemaDescriptions"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "options-describe",
@@ -6401,11 +6423,55 @@
           "source": [
             "JsonSchemaDescriptions"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "source": [
+                "IDescribedJsonConverter",
+                "JsonSchemaDescriptions"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "every-position",
-        "sentence": "With CodoMetis.TypeKit.AspNetCore, `AddTypeKit()` writes the same descriptions into the OpenAPI document, in every position, a list's elements and a dictionary's values included."
+        "sentence": "With CodoMetis.TypeKit.AspNetCore, `AddTypeKit()` writes the same descriptions into the OpenAPI document, in every position, a list's elements and a dictionary's values included.",
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "source": [
+                "IDescribedJsonConverter",
+                "JsonSchemaDescriptions"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "parameter-keeps-aspnet",
@@ -6414,7 +6480,29 @@
           "source": [
             "decimal-converter"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "source": [
+                "IDescribedJsonConverter",
+                "JsonSchemaDescriptions"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       }
     ],
     "exclude": [
@@ -6463,11 +6551,31 @@
           "json.RespectRequiredConstructorParameters": [
             "true"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "doc-optional-where-absent",
-        "sentence": "`AddTypeKit()` leaves a patch out of `required` where the serializer lets it be absent, and keeps it there where the options reject a body without it."
+        "sentence": "`AddTypeKit()` leaves a patch out of `required` where the serializer lets it be absent, and keeps it there where the options reject a body without it.",
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "absent-is-default",
@@ -6654,7 +6762,17 @@
             "both",
             "controller-without-ApiController-visible"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "error-names-type-and-descriptions",
@@ -6668,7 +6786,17 @@
             "both",
             "controller-without-ApiController-visible"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "patch-held-refused",
@@ -6682,7 +6810,17 @@
             "both",
             "controller-without-ApiController-visible"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "same-converters-build",
@@ -6692,7 +6830,17 @@
             "naming-policy",
             "number-handling"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "minimal-host-not-compared",
@@ -6705,7 +6853,17 @@
             "minimal",
             "route-group"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       }
     ],
     "not-promised": [
@@ -11478,6 +11636,14 @@
               ]
             },
             "cite": "not-promised:own-converter-for-the-wrapped-type"
+          },
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
           }
         ]
       },
@@ -11505,6 +11671,14 @@
               ]
             },
             "cite": "not-promised:own-converter-for-the-wrapped-type"
+          },
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
           }
         ]
       },
@@ -11536,6 +11710,14 @@
               ]
             },
             "cite": "not-promised:own-converter-for-the-wrapped-type"
+          },
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
           }
         ]
       },
@@ -11563,6 +11745,14 @@
               ]
             },
             "cite": "not-promised:own-converter-for-the-wrapped-type"
+          },
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
           }
         ]
       },
@@ -11591,6 +11781,14 @@
               ]
             },
             "cite": "not-promised:own-converter-for-the-wrapped-type"
+          },
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
           }
         ]
       }
