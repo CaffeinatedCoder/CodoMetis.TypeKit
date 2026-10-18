@@ -79,7 +79,8 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
             // Written by a converter the options put in charge, not the generated one: not the wrapped type's.
             if (DescribedSchemaTransformer.Replaced(info.Type, info.Options)) return;
 
-            // Where ASP.NET makes the value object a component, it adds the null around the reference itself.
+            // Where ASP.NET makes the value object a component, it adds the null around the reference itself (marked below where
+            // it would not).
             // Inlined, the schema is this position's own, and the null goes in it where ASP.NET's exporter puts
             // it into the wrapped type's schema in the same position: for a nullable property of that type, and
             // elsewhere for the Nullable<T> of a wrapped value type, a parameter outside the body included. Not at
@@ -97,8 +98,17 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
                 DescribedSchemaTransformer.ParameterDefault(schema, info.Type, info.Options);
             }
 
-            var position = !inline && SchemaReferenceId(info, context) is not null ? NullablePosition.None
-                : context.JsonPropertyInfo is { IsGetNullable: true } or { IsSetNullable: true } ? NullablePosition.Property
+            var component = !inline && SchemaReferenceId(info, context) is not null;
+            var nullableProperty = context.JsonPropertyInfo is { IsGetNullable: true } or { IsSetNullable: true };
+
+            // ASP.NET puts its null around the reference only for a property it reads as nullable through NullabilityInfoContext,
+            // a settable one annotated: not for a get-only property, a field or an oblivious reference type, whose JSON admits null
+            // as the serializer's contract says, and whose wrapped type's property keeps its null. So the property is marked as ASP.NET
+            // marks the others, under its own key (OpenApiConstants.NullableProperty, internal, as decision 106 reads x-schema-id).
+            if (component && nullableProperty) MarkNullableProperty(schema);
+
+            var position = component ? NullablePosition.None
+                : nullableProperty ? NullablePosition.Property
                 : Nullable.GetUnderlyingType(info.Type) is null || !wrapped.IsValueType ? NullablePosition.None
                 : IsParameterOutsideTheBody(context) ? NullablePosition.ParameterOutsideTheBody
                 : NullablePosition.Root;
@@ -272,6 +282,16 @@ internal sealed class ValueObjectSchemaTransformer : IOpenApiSchemaTransformer
 
         if (metadata.TryGetValue("x-ref-default", out var value) && metadata.Remove("x-ref-default") && value is JsonNode defaultValue) schema.Default ??= defaultValue;
     }
+
+    /// <summary>
+    /// Has ASP.NET write the property as null or the reference to the value object's component, as it writes a property it
+    /// reads as nullable itself. It reads the mark from the schema's metadata, under a key of its own
+    /// (<c>OpenApiConstants.NullableProperty</c>, internal, set by <c>ApplyNullabilityContextInfo</c> and read by
+    /// <c>ResolveReferenceForSchema</c>; measured with Microsoft.AspNetCore.OpenApi 10.0.12). OpenAPI 2.0 writes it as its
+    /// <c>allOf: [{x-nullable: true}]</c>, without the reference, as for every nullable property of a component (KB-026).
+    /// </summary>
+    private static void MarkNullableProperty(OpenApiSchema schema) =>
+        (schema.Metadata ??= new Dictionary<string, object>())["x-is-nullable-property"] = true;
 
     /// <summary>
     /// Whether a schema of <paramref name="type"/> visited with <paramref name="parameter"/> is the parameter's own,

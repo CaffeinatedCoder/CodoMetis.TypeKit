@@ -133,6 +133,9 @@ public class PolyAnimal
 
     public ProbeAmount? MaybeMoney { get; set; }
 
+    // Get-only: ASP.NET's own null around a component's reference needs a setter, so the null is TypeKit's here.
+    public ProbeCount? Computed => null;
+
     public PolyInner Inner { get; set; } = new();
 }
 
@@ -165,6 +168,8 @@ public class PlainAnimal
     public decimal Amount { get; set; }
 
     public List<decimal> Amounts { get; set; } = [];
+
+    public int? Computed => null;
 
     public PlainInner Inner { get; set; } = new();
 }
