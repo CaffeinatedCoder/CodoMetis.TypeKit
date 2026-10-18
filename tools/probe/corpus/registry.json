@@ -755,6 +755,8 @@
       "filter": "*C22GeneratorRefusalsProbe",
       "watched": [
         "src/CodoMetis.TypeKit",
+        "src/CodoMetis.TypeKit.Analyzers",
+        "src/CodoMetis.TypeKit.Generators",
         "src/Directory.Build.props",
         "src/Directory.Build.targets"
       ],

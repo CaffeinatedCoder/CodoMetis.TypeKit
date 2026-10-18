@@ -4,7 +4,8 @@
 //   value, get-value, value-or-null (by ef.accessor): "`.Value`, `GetValue()` and `ValueOrNull()` translate to the column itself.": the rows the query answers
 //   column-not-cast (every row): "A table's column is re-typed, not cast, so an index on it still serves the query.": the SQL
 // Expected: no failure for any row; where a side refuses the query, EfSides says how the check ends. Where SQLite cannot compare or
-// order the wrapped type, every obligation declares itself inapplicable (claims.json, fact KB-039).
+// order the wrapped type, every obligation declares itself inapplicable (claims.json, fact KB-039). where-value-compare is >= as C# writes
+// it, over the underlying type for an enum; a string, a bool and a Uri have none, and claims.json excludes the pair.
 using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,10 @@ public sealed class E02ValueTranslatesProbe
 
     static MethodInfo? Unwrap(Type vo, string name) =>
         vo.GetMethods(BindingFlags.Public | BindingFlags.Static).FirstOrDefault(m => m.Name == name && m.GetParameters().Length == 1);
+
+    /// <summary>The type C# compares an enum (or a nullable enum) over: its underlying type, nullable where it is; null for any other type.</summary>
+    static Type? Underlying(Type t) => Nullable.GetUnderlyingType(t) is { IsEnum: true } e ? typeof(Nullable<>).MakeGenericType(Enum.GetUnderlyingType(e))
+                                      : t.IsEnum ? Enum.GetUnderlyingType(t) : null;
 
     static async Task<string?> Check(Probes.Shapes.Row r)
     {
@@ -53,6 +58,10 @@ public sealed class E02ValueTranslatesProbe
                 case "where-value-compare":
                     BinaryExpression cmp;
                     try { cmp = Expression.GreaterThanOrEqual(access, param); }
+                    // C# compares two values of an enum with >= over its underlying type, and an expression tree it compiles says so
+                    // with a conversion on each side; Expression.GreaterThanOrEqual defines no >= for the enum itself.
+                    catch (InvalidOperationException) when (Underlying(at) is { } u) { cmp = Expression.GreaterThanOrEqual(Expression.Convert(access, u), Expression.Convert(param, u)); }
+                    // string, bool and Uri have no >= in C# (excluded in claims.json): no row asks for one
                     catch (InvalidOperationException) { r.Substituted("ef.query", "where-equals", "the wrapped type has no >= operator"); cmp = Expression.Equal(access, param); }
                     return Q.Call("Where", [entity], src, Lam(cmp));
                 case "order-by": return Q.Call("OrderBy", [entity, at], src, Lam(access));

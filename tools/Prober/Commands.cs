@@ -352,13 +352,17 @@ internal static class Commands
                 }
             }
         }
-        if (hit.Count == 0)
-            throw new Refusal("the coverage report shows no executed file under " + string.Join(", ", include) + "; refusing to record an empty footprint (it would never go stale)");
+        // A probe whose own process runs nothing under the include paths (one that builds a consumer in a child process, as C22
+        // does) is recorded by what its registry entry watches; with nothing watched either, the footprint would never go stale.
+        var watchedPaths = l.Watched(a.Need("probe"));
+        if (hit.Count == 0 && watchedPaths.Count == 0)
+            throw new Refusal("the coverage report shows no executed file under " + string.Join(", ", include) +
+                              " and the registry entry watches nothing; refusing to record an empty footprint (it would never go stale): name what the probe depends on in its entry's watched");
         var rev = Git.Out(worktree, "rev-parse", "HEAD");
         var footprint = new JsonObject(hit.Select(p => KeyValuePair.Create(p, (JsonNode?)Git.ObjectId(worktree, p))));
         var compileTime = new JsonObject(a.All("compile-time").Select(p => KeyValuePair.Create(p, (JsonNode?)Git.ObjectId(worktree, p))));
         // What the probe's registry entry watches beyond what ran: recorded with the ids it ran at, so a change stales it.
-        var watched = new JsonObject(l.Watched(a.Need("probe")).Select(p => KeyValuePair.Create(p, (JsonNode?)Git.ObjectId(worktree, p))));
+        var watched = new JsonObject(watchedPaths.Select(p => KeyValuePair.Create(p, (JsonNode?)Git.ObjectId(worktree, p))));
         Files.AppendLine(l.P("footprints.jsonl"), new JsonObject
         {
             ["schemaVersion"] = Files.SchemaVersion, ["probe"] = a.Need("probe"), ["commit"] = rev, ["footprint"] = footprint,

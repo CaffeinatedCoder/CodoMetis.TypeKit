@@ -582,6 +582,21 @@
           ]
         }
       }
+    ],
+    "exclude": [
+      {
+        "reason": "Not promised (as-text-refused-in-globalization-invariant-mode): `AsText()` throws `PlatformNotSupportedException` in globalization-invariant mode (docs/text.md#globalization-invariant-mode), and `AsOptionalText()`, which calls it, throws with it, so C02OptionalTextProbe checks that refusal without credit and runs the row on the identifier counterpart; no row holds the pair.",
+        "pairs": [
+          [
+            "entry=AsText",
+            "text.culture=globalization-invariant"
+          ],
+          [
+            "entry=AsOptionalText",
+            "text.culture=globalization-invariant"
+          ]
+        ]
+      }
     ]
   },
   {
@@ -628,6 +643,21 @@
       {
         "id": "unmapped-set-stops-start",
         "sentence": "The host doesn't start while either set is unmapped."
+      }
+    ],
+    "exclude": [
+      {
+        "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
+        "pairs": [
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=Preserve"
+          ],
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=IgnoreCycles"
+          ]
+        ]
       }
     ]
   },
@@ -798,6 +828,21 @@
             "nested-enum"
           ]
         }
+      }
+    ],
+    "exclude": [
+      {
+        "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
+        "pairs": [
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=Preserve"
+          ],
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=IgnoreCycles"
+          ]
+        ]
       }
     ]
   },
@@ -6392,7 +6437,29 @@
             "IDescribedJsonConverter",
             "decimal-converter"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "source": [
+                "IDescribedJsonConverter",
+                "JsonSchemaDescriptions"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "options-describe",
@@ -6401,11 +6468,55 @@
           "source": [
             "JsonSchemaDescriptions"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "source": [
+                "IDescribedJsonConverter",
+                "JsonSchemaDescriptions"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "every-position",
-        "sentence": "With CodoMetis.TypeKit.AspNetCore, `AddTypeKit()` writes the same descriptions into the OpenAPI document, in every position, a list's elements and a dictionary's values included."
+        "sentence": "With CodoMetis.TypeKit.AspNetCore, `AddTypeKit()` writes the same descriptions into the OpenAPI document, in every position, a list's elements and a dictionary's values included.",
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "source": [
+                "IDescribedJsonConverter",
+                "JsonSchemaDescriptions"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "parameter-keeps-aspnet",
@@ -6414,7 +6525,29 @@
           "source": [
             "decimal-converter"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "source": [
+                "IDescribedJsonConverter",
+                "JsonSchemaDescriptions"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       }
     ],
     "exclude": [
@@ -6463,11 +6596,31 @@
           "json.RespectRequiredConstructorParameters": [
             "true"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "doc-optional-where-absent",
-        "sentence": "`AddTypeKit()` leaves a patch out of `required` where the serializer lets it be absent, and keeps it there where the options reject a body without it."
+        "sentence": "`AddTypeKit()` leaves a patch out of `required` where the serializer lets it be absent, and keeps it there where the options reject a body without it.",
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "absent-is-default",
@@ -6654,7 +6807,17 @@
             "both",
             "controller-without-ApiController-visible"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "error-names-type-and-descriptions",
@@ -6668,7 +6831,17 @@
             "both",
             "controller-without-ApiController-visible"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "patch-held-refused",
@@ -6682,7 +6855,17 @@
             "both",
             "controller-without-ApiController-visible"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "same-converters-build",
@@ -6692,7 +6875,17 @@
             "naming-policy",
             "number-handling"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       },
       {
         "id": "minimal-host-not-compared",
@@ -6705,7 +6898,17 @@
             "minimal",
             "route-group"
           ]
-        }
+        },
+        "inapplicable": [
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          }
+        ]
       }
     ],
     "not-promised": [
@@ -11478,6 +11681,36 @@
               ]
             },
             "cite": "not-promised:own-converter-for-the-wrapped-type"
+          },
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.NumberHandling": [
+                "WriteAsString"
+              ],
+              "shape.wrapped": [
+                "char"
+              ]
+            },
+            "cite": "fact:KB-042"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "shape.wrapped": [
+                "own-record-class"
+              ]
+            },
+            "cite": "record:0099"
           }
         ]
       },
@@ -11505,6 +11738,36 @@
               ]
             },
             "cite": "not-promised:own-converter-for-the-wrapped-type"
+          },
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.NumberHandling": [
+                "WriteAsString"
+              ],
+              "shape.wrapped": [
+                "char"
+              ]
+            },
+            "cite": "fact:KB-042"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "shape.wrapped": [
+                "own-record-class"
+              ]
+            },
+            "cite": "record:0099"
           }
         ]
       },
@@ -11536,6 +11799,36 @@
               ]
             },
             "cite": "not-promised:own-converter-for-the-wrapped-type"
+          },
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.NumberHandling": [
+                "WriteAsString"
+              ],
+              "shape.wrapped": [
+                "char"
+              ]
+            },
+            "cite": "fact:KB-042"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "shape.wrapped": [
+                "own-record-class"
+              ]
+            },
+            "cite": "record:0099"
           }
         ]
       },
@@ -11563,6 +11856,36 @@
               ]
             },
             "cite": "not-promised:own-converter-for-the-wrapped-type"
+          },
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.NumberHandling": [
+                "WriteAsString"
+              ],
+              "shape.wrapped": [
+                "char"
+              ]
+            },
+            "cite": "fact:KB-042"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "shape.wrapped": [
+                "own-record-class"
+              ]
+            },
+            "cite": "record:0099"
           }
         ]
       },
@@ -11591,6 +11914,36 @@
               ]
             },
             "cite": "not-promised:own-converter-for-the-wrapped-type"
+          },
+          {
+            "axes": {
+              "json.ReferenceHandler": [
+                "Preserve"
+              ]
+            },
+            "cite": "record:0099"
+          },
+          {
+            "axes": {
+              "json.NumberHandling": [
+                "WriteAsString"
+              ],
+              "shape.wrapped": [
+                "char"
+              ]
+            },
+            "cite": "fact:KB-042"
+          },
+          {
+            "axes": {
+              "json.MaxDepth": [
+                "3"
+              ],
+              "shape.wrapped": [
+                "own-record-class"
+              ]
+            },
+            "cite": "record:0099"
           }
         ]
       }
@@ -11634,6 +11987,16 @@
           "shape.kind": [
             "sealed-record-class",
             "validated-class"
+          ]
+        }
+      },
+      {
+        "id": "a-nullable-value-object-admits-null",
+        "source": "design/adr/0036-nullable-value-object-admits-null-openapi.md#0036-a-nullable-value-object-admits-null-in-the-openapi-document-wherever-it-appears",
+        "sentence": "A nullable value object admits null in the OpenAPI document wherever it appears",
+        "axes": {
+          "http.nullability": [
+            "nullable"
           ]
         }
       },
@@ -11684,6 +12047,50 @@
           "shape.kind": [
             "sealed-record-class",
             "validated-class"
+          ]
+        }
+      },
+      {
+        "id": "enum-component-lists-the-null-of-its-first-use",
+        "source": "design/knowledge/KB-027-an-enum-component-is-its-first-use.md#kb-027-the-component-aspnet-makes-for-an-enum-written-by-name-is-the-schema-of-the-first-use-it-meets",
+        "sentence": "What the component says is whatever schema ASP.NET built for the first use it met: met first as a nullable parameter, the component lists null among its values, for its non-nullable uses too; met first as itself, it does not, for its nullable uses too.",
+        "axes": {
+          "json.Converters": [
+            "JsonStringEnumConverter"
+          ],
+          "shape.wrapped": [
+            "enum"
+          ]
+        }
+      },
+      {
+        "id": "openapi-2-nullable-element-loses-its-type",
+        "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+        "sentence": "A nullable element of a list or a dictionary loses its type the same way, since it's the component or null too.",
+        "axes": {
+          "openapi.OpenApiVersion": [
+            "OpenApi2_0"
+          ],
+          "openapi.CreateSchemaReferenceId": [
+            "default",
+            "own-prefixing"
+          ],
+          "shape.position": [
+            "list-element",
+            "array-element",
+            "immutable-array-element",
+            "read-only-list-element",
+            "dictionary-value"
+          ]
+        }
+      },
+      {
+        "id": "a-librarys-converter-for-the-wrapped-type",
+        "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+        "sentence": "The same goes for a converter a library registers for its own type, such as NodaTime's for `Instant`.",
+        "axes": {
+          "shape.wrapped": [
+            "NodaTime.Instant"
           ]
         }
       }
@@ -12659,6 +13066,25 @@
             "string"
           ]
         }
+      }
+    ],
+    "exclude": [
+      {
+        "reason": "C# defines no `>=` for a `string`, a `bool` or a `Uri`, so no query compares their `.Value` with it; E02ValueTranslatesProbe writes where-equals in its place there, so no row holds the pair.",
+        "pairs": [
+          [
+            "ef.query=where-value-compare",
+            "shape.wrapped=string"
+          ],
+          [
+            "ef.query=where-value-compare",
+            "shape.wrapped=bool"
+          ],
+          [
+            "ef.query=where-value-compare",
+            "shape.wrapped=Uri"
+          ]
+        ]
       }
     ]
   },
@@ -13874,6 +14300,21 @@
           ]
         }
       }
+    ],
+    "exclude": [
+      {
+        "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
+        "pairs": [
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=Preserve"
+          ],
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=IgnoreCycles"
+          ]
+        ]
+      }
     ]
   },
   {
@@ -13949,6 +14390,16 @@
               ]
             },
             "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#what-is-generated"
+          },
+          {
+            "axes": {
+              "text.entry": [
+                "TryFrom",
+                "ToString-format",
+                "TryFormat-short-span"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#when-text-is-rejected"
           }
         ]
       },
@@ -14031,6 +14482,16 @@
               ]
             },
             "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#what-is-generated"
+          },
+          {
+            "axes": {
+              "text.entry": [
+                "TryFrom",
+                "ToString-format",
+                "TryFormat-short-span"
+              ]
+            },
+            "cite": "docs:src/CodoMetis.TypeKit.Generators/README.md#when-text-is-rejected"
           }
         ]
       }
@@ -14056,6 +14517,30 @@
             "own-for-value-object"
           ]
         }
+      }
+    ],
+    "exclude": [
+      {
+        "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
+        "pairs": [
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=Preserve"
+          ],
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=IgnoreCycles"
+          ]
+        ]
+      },
+      {
+        "reason": "System.Text.Json writes no dictionary key of a record class but through a converter of the application's (NotSupportedException for the wrapped type alike, L01's rows), where the JSON half is not promised (not-promised the-applications-own-converter), and a value object over a record class has no parsing (Generators README#what-is-generated), so no check of the claim can read the pair.",
+        "pairs": [
+          [
+            "shape.position=dictionary-key",
+            "shape.wrapped=own-record-class"
+          ]
+        ]
       }
     ]
   },
@@ -14178,6 +14663,21 @@
             "StoredJsonConverterFactory"
           ]
         }
+      }
+    ],
+    "exclude": [
+      {
+        "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
+        "pairs": [
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=Preserve"
+          ],
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=IgnoreCycles"
+          ]
+        ]
       }
     ]
   },
@@ -14334,6 +14834,21 @@
             "DateTimeOffset"
           ]
         }
+      }
+    ],
+    "exclude": [
+      {
+        "reason": "System.Text.Json refuses PreferredObjectCreationHandling.Populate together with a ReferenceHandler on the options object; JsonRow substitutes the default, so the pair never applies.",
+        "pairs": [
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=Preserve"
+          ],
+          [
+            "json.PreferredObjectCreationHandling=Populate",
+            "json.ReferenceHandler=IgnoreCycles"
+          ]
+        ]
       }
     ]
   },

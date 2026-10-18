@@ -118,8 +118,9 @@ element schema, so `Quantity` gets no component at all, and both parameters are 
 
   OpenAPI 2.0 can't put null around a reference. ASP.NET writes a nullable property of any component as
   `{"allOf":[{"x-nullable":true}]}` there, without the reference. So under 2.0 a nullable value-object
-  property loses its type, where the underlying type's nullable property keeps it. Inline value objects
-  if your 2.0 document needs it.
+  property loses its type, where the underlying type's nullable property keeps it. A nullable element of
+  a list or a dictionary loses its type the same way, since it's the component or null too. Inline value
+  objects if your 2.0 document needs it.
 
 - **Put rules in `Create`, not on the property.** A validation attribute on a value-object property
   (`[MaxLength]`, `[Range]`) ends up in the value object's shared component, as ASP.NET does for any
@@ -160,7 +161,8 @@ source-generated JSON can do, because the patch's converter hides the value obje
 
 **A described type.** ASP.NET can't see through a JSON converter you write yourself. It writes the
 type as `{}`, or with only the `format` its CLR type maps to. It also drops a list's `items` and a
-dictionary's `additionalProperties` of that type.
+dictionary's `additionalProperties` of that type. The same goes for a converter a library registers for
+its own type, such as NodaTime's for `Instant`.
 
 Two things fix that, and the document then describes the type as they say:
 
