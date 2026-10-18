@@ -63,6 +63,10 @@ release a pull request belongs to, which here are visible in the payload. Its ru
 has no counterpart, since this repository ships no "changed answers" section; its rule that a breaking change
 waits for a major is the one above. Dependabot's pull requests are not checked.
 
+Its job, "Labels and issue link", is a required status check: on `main` in its branch protection, beside
+the test, pack and smoke-test jobs, and on `release/**` through the ruleset "Release branches: PR hygiene",
+which does not apply to creating a branch, so a release branch is still cut by a push.
+
 ## Consequences
 
 - What is open, and in which release, is a GitHub query rather than a reading of the roadmap.
