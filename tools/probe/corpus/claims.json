@@ -11994,6 +11994,50 @@
             "validated-class"
           ]
         }
+      },
+      {
+        "id": "enum-component-lists-the-null-of-its-first-use",
+        "source": "design/knowledge/KB-027-an-enum-component-is-its-first-use.md#kb-027-the-component-aspnet-makes-for-an-enum-written-by-name-is-the-schema-of-the-first-use-it-meets",
+        "sentence": "What the component says is whatever schema ASP.NET built for the first use it met: met first as a nullable parameter, the component lists null among its values, for its non-nullable uses too; met first as itself, it does not, for its nullable uses too.",
+        "axes": {
+          "json.Converters": [
+            "JsonStringEnumConverter"
+          ],
+          "shape.wrapped": [
+            "enum"
+          ]
+        }
+      },
+      {
+        "id": "openapi-2-nullable-element-loses-its-type",
+        "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+        "sentence": "A nullable element of a list or a dictionary loses its type the same way, since it's the component or null too.",
+        "axes": {
+          "openapi.OpenApiVersion": [
+            "OpenApi2_0"
+          ],
+          "openapi.CreateSchemaReferenceId": [
+            "default",
+            "own-prefixing"
+          ],
+          "shape.position": [
+            "list-element",
+            "array-element",
+            "immutable-array-element",
+            "read-only-list-element",
+            "dictionary-value"
+          ]
+        }
+      },
+      {
+        "id": "a-librarys-converter-for-the-wrapped-type",
+        "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+        "sentence": "The same goes for a converter a library registers for its own type, such as NodaTime's for `Instant`.",
+        "axes": {
+          "shape.wrapped": [
+            "NodaTime.Instant"
+          ]
+        }
       }
     ],
     "exclude": [
