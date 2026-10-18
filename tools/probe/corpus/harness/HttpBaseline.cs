@@ -511,9 +511,13 @@ public static class HttpBaseline
     static bool TheNullFlagBeside(JsonObject o) =>
         o.ContainsKey("format") && o.Count == 2 && OnlyTheNullFlag(new JsonObject { ["allOf"] = o["allOf"]?.DeepClone() });
 
-    /// <summary>A copy of the object without the key.</summary>
-    static JsonObject Without(JsonObject o, string key) =>
-        new(o.Where(kv => kv.Key != key).Select(kv => KeyValuePair.Create(kv.Key, kv.Value?.DeepClone())));
+    /// <summary>The keys of a difference up to the property it lies in (<c>…, properties, P</c>), or null where it lies in none.</summary>
+    static IReadOnlyList<string>? PropertyAt(IReadOnlyList<string> keys)
+    {
+        for (var i = keys.Count - 2; i >= 0; i--)
+            if (keys[i] == "properties") return [.. keys.Take(i + 2)];
+        return null;
+    }
 
     /// <summary>
     /// A body whose schema is its format and its null alone, <c>{"schema": {"format": "int32", "allOf": [{"x-nullable": true}]}}</c>, or its null
@@ -586,6 +590,23 @@ public static class HttpBaseline
             o["ok"] = Schemas(Hx.Deep(d, op["responses"]?["200"], mark: true));
             return o.ToJsonString();
         }
+        // The media types of an operation's request body and 200 response, each named by where it is
+        static HashSet<string> MediaTypes(JsonNode op) =>
+        [
+            .. (op["requestBody"]?["content"] as JsonObject ?? []).Select(kv => "requestBody:" + kv.Key),
+            .. (op["responses"]?["200"]?["content"] as JsonObject ?? []).Select(kv => "ok:" + kv.Key),
+        ];
+        // A signature with only the request body's and the 200 response's media types given
+        static string UnderMediaTypes(string sig, IEnumerable<string> media)
+        {
+            var keep = media.ToHashSet();
+            var o = JsonNode.Parse(sig)!.AsObject();
+            foreach (var (part, name) in new[] { ("requestBody", "requestBody"), ("ok", "ok") })
+                if (o[part]?["content"] is JsonObject content)
+                    foreach (var key in content.Select(kv => kv.Key).ToList())
+                        if (!keep.Contains(name + ":" + key)) content.Remove(key);
+            return o.ToJsonString();
+        }
         var checks = new List<(string, string)>();
         if (Hx.HasMinimal(r)) { checks.Add((Hx.M(r, "/schema/plain"), Hx.M(r, "/schema/vo"))); }
         if (Hx.HasMvc(r))
@@ -649,6 +670,17 @@ public static class HttpBaseline
                 continue;
             }
             var sp = Sig(doc, po); var sv = Sig(doc, vo);
+            // MVC lists a body's and a response's media types by what its formatters can read and write of the .NET type, and the twin
+            // and the value object are two types (row 38 of C21: XmlSerializerInputFormatter reads a record class value object, not the
+            // Uri it wraps). Where the lists differ and side (1), ASP.NET alone with both sides' endpoints, lists each side's the same,
+            // the formatters decided it, not TypeKit: the schemas are compared under the media types both list. Otherwise as they are.
+            if (MediaTypes(po) is var mp && MediaTypes(vo) is var mv && !mp.SetEquals(mv)
+                && await Document(alone) is { } both0 && Op(both0, pp, method) is { } pAlone && Op(both0, vp, method) is { } vAlone
+                && MediaTypes(pAlone).SetEquals(mp) && MediaTypes(vAlone).SetEquals(mv))
+            {
+                r.Log.AppendLine($"{pp} vs {vp}: media types the formatters list differ alike without TypeKit, compared under [{string.Join(", ", mp.Intersect(mv))}]");
+                sp = UnderMediaTypes(sp, mp.Intersect(mv)); sv = UnderMediaTypes(sv, mp.Intersect(mv));
+            }
             if (NullAroundReferences(sp, sv) is var (np, nv, around)) { sp = np; sv = nv; if (around) c.Note(NoteKeys.SchemaNullAroundReferenceNormalised); }
             if (sp != sv && Make.AdmitsNull(e.Vo) && Make.AdmitsNull(e.Plain) && e.Vo.IsValueType != e.Plain.IsValueType)
             {
@@ -690,13 +722,14 @@ public static class HttpBaseline
                 if (openApi2 && d.P is null && d.V is not null && At(vo1, d.Keys) is { } same1 && JsonNode.DeepEquals(same1, At(vo3, d.Keys)))
                 { c.Inapplicable(Cite.NotPromised("openapi-2-nullable-component-loses-its-type"), d.Path); continue; }
                 // The same, where the spellings of the null were normalised above, which takes the null flag out of the value object's
-                // schema and leaves it without the type the 2.0 writer dropped with the reference (row 386 of C21, a nullable struct value
-                // object over Uri as a required-init property): told by its structure, the value object's schema there is the wrapped type's
-                // format beside the null flag alone, and the twin's is the same with its type.
-                if (openApi2 && d.Keys is [.., "properties", _, "type"] && d.P is not null && d.V is null
-                    && At(vo3, d.Keys.SkipLast(1)) is JsonObject flagged3 && TheNullFlagBeside(flagged3)
-                    && At(JsonNode.Parse(Sig(doc, po)), d.Keys.SkipLast(1)) is JsonObject typed2
-                    && JsonNode.DeepEquals(Hx.NoNull(Without(typed2, "type")), Hx.NoNull(flagged3)))
+                // schema and leaves it without what the 2.0 writer dropped with the reference: its type, its pattern (rows 386, 178, 181
+                // and 243 of C21: a nullable struct value object over Uri as a required-init property, and class value objects whose
+                // property admits null as a type parameter's or set through the constructor). Told by its structure: the value object's
+                // property is the null flag, alone or beside the wrapped type's format, and the twin's, which admits null, has that format.
+                if (openApi2 && PropertyAt(d.Keys) is { } property
+                    && At(vo3, property) is JsonObject flagged3 && (TheNullFlagBeside(flagged3) || OnlyTheNullFlag(flagged3))
+                    && At(JsonNode.Parse(Sig(doc, po)), property) is JsonObject typed2 && typed2["x-nullable"]?.GetValueKind() == JsonValueKind.True
+                    && JsonNode.DeepEquals(typed2["format"], flagged3["format"]))
                 { c.Inapplicable(Cite.NotPromised("openapi-2-nullable-component-loses-its-type"), d.Path); continue; }
                 // AspNetCore README "What the document says": a nullable element is the component or null, as a nullable property is, which
                 // OpenAPI 2.0 writes as allOf [{x-nullable: true}] without the reference (not-promised openapi-2-nullable-element-loses-its-type;
