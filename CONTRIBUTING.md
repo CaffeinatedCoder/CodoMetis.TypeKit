@@ -117,7 +117,9 @@ The packages share one version and are released together, only through
 `.github/workflows/release.yml` (see [SECURITY.md](SECURITY.md)).
 
 1. In `CHANGELOG.md`, replace `Unreleased` in the version's heading with today's date
-   (`## 1.0.0 — 2026-10-01`). The section becomes the GitHub release's notes.
+   (`## 1.0.0 — 2026-10-01`). The section becomes the GitHub release's notes, and every package's
+   release notes on nuget.org: pack writes it into each nuspec as plain text, and fails while the
+   section is missing, empty or over nuget.org's 35,000 characters (`PackageReleaseNotesTests`).
 2. Move the rules in `src/CodoMetis.TypeKit.Analyzers/AnalyzerReleases.Unshipped.md` to
    `AnalyzerReleases.Shipped.md`, under `## Release <version>`. Their ids and severities are public
    contract from then on. `ChangelogTests` fails until steps 1 and 2 agree.
@@ -128,7 +130,8 @@ The packages share one version and are released together, only through
 4. Afterwards: raise `Version` in `Directory.Build.props`, set `PackageValidationBaselineVersion` to
    the version just released, so ApiCompat guards the public surface from then on, and open a new
    `## <version> — Unreleased` section. `ChangelogTests` fails while the baseline trails the last
-   version the changelog dates. Once that is on `main`, cut the next `release/<version>` from it and
+   version the changelog dates, and pack while the new section is empty, so open it with its first
+   line. Once that is on `main`, cut the next `release/<version>` from it and
    push it.
 
 `workflow_dispatch` with `dry_run` (the default) rehearses everything but the push.
