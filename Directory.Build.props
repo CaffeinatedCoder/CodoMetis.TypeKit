@@ -4,7 +4,6 @@
         <Authors>CaffeinatedCoder</Authors>
         <Copyright>Copyright (c) 2026 CaffeinatedCoder</Copyright>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <PackageReleaseNotes>https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/CHANGELOG.md</PackageReleaseNotes>
         <PackageProjectUrl>https://github.com/CaffeinatedCoder/CodoMetis.TypeKit</PackageProjectUrl>
         <RepositoryUrl>https://github.com/CaffeinatedCoder/CodoMetis.TypeKit</RepositoryUrl>
         <RepositoryType>git</RepositoryType>

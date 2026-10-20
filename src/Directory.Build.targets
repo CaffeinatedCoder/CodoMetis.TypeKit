@@ -17,4 +17,63 @@
         <ProjectReference Include="$(MSBuildThisFileDirectory)CodoMetis.TypeKit.Analyzers/CodoMetis.TypeKit.Analyzers.csproj"
                           OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
     </ItemGroup>
+
+    <!--
+      Release notes: the version's section of CHANGELOG.md, which nuget.org shows on its Release Notes
+      tab and Visual Studio on its Updates tab, followed by one line linking the whole changelog (#75).
+
+      Every package carries the whole section. The packages share one version and one changelog, every
+      satellite depends on the base package and through it on the analyzers, and a line's area names a
+      topic ("OpenAPI", "JSON"), not a package, so filtering by area would hide from a satellite's
+      reader a change that reaches them through the base package.
+
+      Plain text, because nuget.org shows release notes as plain text: measured 2026-10-20, it escapes
+      them, turns each line break into <br />, and links a bare URL, leaving the brackets of [text](url)
+      and every # * and backtick on the page (Bogus 35.6.5, Asp.Versioning.Http 10.2.3), and a URL in
+      parentheses linked without its closing one (RazorEngine 3.10.0). So [text](url) is written
+      text (url), and backticks, ** and the ### of a subheading are dropped.
+
+      Fails closed: a missing or empty section, a relative link (nothing on nuget.org resolves it), or
+      notes over nuget.org's 35,000 characters fail the pack, naming the file. The section of an
+      Unreleased version is read too, so a CI pack carries the notes of the commit it was built from.
+      PackageReleaseNotesTests holds every packed nuspec to this, and runs the target on a sample
+      changelog of every shape (ReleaseNotesChangelog) whatever the current section holds.
+    -->
+    <Target Name="ReleaseNotesFromChangelog" BeforeTargets="GenerateNuspec">
+        <PropertyGroup>
+            <ReleaseNotesChangelog Condition="'$(ReleaseNotesChangelog)' == ''">$([MSBuild]::GetDirectoryNameOfFileAbove('$(MSBuildThisFileDirectory)', 'CodoMetis.TypeKit.slnx'))/CHANGELOG.md</ReleaseNotesChangelog>
+        </PropertyGroup>
+
+        <Error Condition="!Exists('$(ReleaseNotesChangelog)')" Text="There is no $(ReleaseNotesChangelog) to take $(PackageId)'s release notes from." />
+
+        <PropertyGroup>
+            <_TypeKitChangelogText>$([System.Text.RegularExpressions.Regex]::Replace($([System.IO.File]::ReadAllText('$(ReleaseNotesChangelog)')), '\r', ''))</_TypeKitChangelogText>
+            <_TypeKitHeading>^## $([System.Text.RegularExpressions.Regex]::Escape('$(Version)'))(?: [^\n]*)?\n</_TypeKitHeading>
+            <_TypeKitHasSection>$([System.Text.RegularExpressions.Regex]::IsMatch('$(_TypeKitChangelogText)', '(?m)$(_TypeKitHeading)'))</_TypeKitHasSection>
+        </PropertyGroup>
+
+        <Error Condition="'$(_TypeKitHasSection)' != 'True'" File="$(ReleaseNotesChangelog)"
+               Text="CHANGELOG.md has no '## $(Version)' section, so $(PackageId) $(Version) would have no release notes. Add the section (CONTRIBUTING.md, Releasing)." />
+
+        <PropertyGroup>
+            <_TypeKitSection>$([System.Text.RegularExpressions.Regex]::Replace('$(_TypeKitChangelogText)', '(?sm)\A.*?$(_TypeKitHeading)(.*?)(?=^## |\z).*\z', '$1').Trim())</_TypeKitSection>
+            <_TypeKitRelativeLink>$([System.Text.RegularExpressions.Regex]::IsMatch('$(_TypeKitSection)', '\]\((?!https?://)'))</_TypeKitRelativeLink>
+        </PropertyGroup>
+
+        <Error Condition="'$(_TypeKitSection)' == ''" File="$(ReleaseNotesChangelog)"
+               Text="CHANGELOG.md's '## $(Version)' section is empty, so $(PackageId) $(Version) would have no release notes. Write the version's changes under it." />
+        <Error Condition="'$(_TypeKitRelativeLink)' == 'True'" File="$(ReleaseNotesChangelog)"
+               Text="CHANGELOG.md's '## $(Version)' section has a relative link, which nuget.org cannot resolve in the release notes. Link the absolute URL on GitHub." />
+
+        <PropertyGroup>
+            <_TypeKitNotes>$([System.Text.RegularExpressions.Regex]::Replace('$(_TypeKitSection)', '\[([^\]\n]+)\]\(([^)\s]+)\)', '$1 ($2)'))</_TypeKitNotes>
+            <_TypeKitNotes>$([System.Text.RegularExpressions.Regex]::Replace('$(_TypeKitNotes)', '(?m)^#{3,6} +', ''))</_TypeKitNotes>
+            <_TypeKitNotes>$(_TypeKitNotes.Replace('`', '').Replace('**', ''))</_TypeKitNotes>
+            <PackageReleaseNotes>$(_TypeKitNotes)%0A%0AFull changelog: $(PackageProjectUrl)/blob/main/CHANGELOG.md</PackageReleaseNotes>
+            <_TypeKitNotesLength>$([MSBuild]::Unescape('$(PackageReleaseNotes)').Length)</_TypeKitNotesLength>
+        </PropertyGroup>
+
+        <Error Condition="$(_TypeKitNotesLength) &gt; 35000" File="$(ReleaseNotesChangelog)"
+               Text="$(PackageId) $(Version)'s release notes, from CHANGELOG.md's '## $(Version)' section, are $(_TypeKitNotesLength) characters, over nuget.org's 35,000. Shorten the section's lines: their details belong in the docs they link." />
+    </Target>
 </Project>

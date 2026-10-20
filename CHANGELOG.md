@@ -12,6 +12,10 @@ section is the GitHub release's notes.
 
 ## 2.3.0 — Unreleased
 
+### Changed
+
+- Packages: nuget.org's Release Notes tab and Visual Studio's Updates tab show the version's section of this changelog, as plain text, where they showed a link to the file.
+
 ## 2.2.0 — 2026-10-18
 
 ### Fixed
