@@ -54,11 +54,25 @@ public readonly record struct Fault<[Distinct] T1, [Distinct] T2> where T1 : not
     /// <returns>The fault.</returns>
     public static Fault<T1, T2> Of(T1 reason, string? detail = null) => Fault.Of(reason, detail);
 
+    /// <summary>A fault of the first type, with the exception that caused it.</summary>
+    /// <param name="reason">Which fault. Never null.</param>
+    /// <param name="detail">A sentence about this occurrence, or <see langword="null"/> for none. Never blank.</param>
+    /// <param name="cause">The exception underneath, kept as the fault's <c>Cause</c>. Never null.</param>
+    /// <returns>The fault.</returns>
+    public static Fault<T1, T2> Of(T1 reason, string? detail, Exception cause) => Fault.Of(reason, detail, cause);
+
     /// <summary>A fault of the second type, with a sentence about this occurrence or none.</summary>
     /// <param name="reason">Which fault. Never null.</param>
     /// <param name="detail">A sentence about this occurrence, or <see langword="null"/> for none. Never blank.</param>
     /// <returns>The fault.</returns>
     public static Fault<T1, T2> Of(T2 reason, string? detail = null) => Fault.Of(reason, detail);
+
+    /// <summary>A fault of the second type, with the exception that caused it.</summary>
+    /// <param name="reason">Which fault. Never null.</param>
+    /// <param name="detail">A sentence about this occurrence, or <see langword="null"/> for none. Never blank.</param>
+    /// <param name="cause">The exception underneath, kept as the fault's <c>Cause</c>. Never null.</param>
+    /// <returns>The fault.</returns>
+    public static Fault<T1, T2> Of(T2 reason, string? detail, Exception cause) => Fault.Of(reason, detail, cause);
 
     /// <summary>The fault <paramref name="fault"/> is, of the first type: what the conversion does, by name.</summary>
     /// <param name="fault">The fault.</param>
@@ -163,17 +177,38 @@ public readonly record struct Fault<[Distinct] T1, [Distinct] T2, [Distinct] T3>
     /// <returns>The fault.</returns>
     public static Fault<T1, T2, T3> Of(T1 reason, string? detail = null) => Fault.Of(reason, detail);
 
+    /// <summary>A fault of the first type, with the exception that caused it.</summary>
+    /// <param name="reason">Which fault. Never null.</param>
+    /// <param name="detail">A sentence about this occurrence, or <see langword="null"/> for none. Never blank.</param>
+    /// <param name="cause">The exception underneath, kept as the fault's <c>Cause</c>. Never null.</param>
+    /// <returns>The fault.</returns>
+    public static Fault<T1, T2, T3> Of(T1 reason, string? detail, Exception cause) => Fault.Of(reason, detail, cause);
+
     /// <summary>A fault of the second type, with a sentence about this occurrence or none.</summary>
     /// <param name="reason">Which fault. Never null.</param>
     /// <param name="detail">A sentence about this occurrence, or <see langword="null"/> for none. Never blank.</param>
     /// <returns>The fault.</returns>
     public static Fault<T1, T2, T3> Of(T2 reason, string? detail = null) => Fault.Of(reason, detail);
 
+    /// <summary>A fault of the second type, with the exception that caused it.</summary>
+    /// <param name="reason">Which fault. Never null.</param>
+    /// <param name="detail">A sentence about this occurrence, or <see langword="null"/> for none. Never blank.</param>
+    /// <param name="cause">The exception underneath, kept as the fault's <c>Cause</c>. Never null.</param>
+    /// <returns>The fault.</returns>
+    public static Fault<T1, T2, T3> Of(T2 reason, string? detail, Exception cause) => Fault.Of(reason, detail, cause);
+
     /// <summary>A fault of the third type, with a sentence about this occurrence or none.</summary>
     /// <param name="reason">Which fault. Never null.</param>
     /// <param name="detail">A sentence about this occurrence, or <see langword="null"/> for none. Never blank.</param>
     /// <returns>The fault.</returns>
     public static Fault<T1, T2, T3> Of(T3 reason, string? detail = null) => Fault.Of(reason, detail);
+
+    /// <summary>A fault of the third type, with the exception that caused it.</summary>
+    /// <param name="reason">Which fault. Never null.</param>
+    /// <param name="detail">A sentence about this occurrence, or <see langword="null"/> for none. Never blank.</param>
+    /// <param name="cause">The exception underneath, kept as the fault's <c>Cause</c>. Never null.</param>
+    /// <returns>The fault.</returns>
+    public static Fault<T1, T2, T3> Of(T3 reason, string? detail, Exception cause) => Fault.Of(reason, detail, cause);
 
     /// <summary>The fault <paramref name="fault"/> is, of the first type: what the conversion does, by name.</summary>
     /// <param name="fault">The fault.</param>

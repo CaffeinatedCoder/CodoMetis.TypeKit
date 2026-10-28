@@ -53,8 +53,9 @@ is the value-less shape. Anything that turns this into a second LanguageExt is o
   occurrence. It is made by `Fault.Of` alone, and comparing it with a bare reason is refused, since a
   fault with a detail never equals one
   ([decision 53](adr/0053-fault-made-by-fault-of-alone.md)); `Reason` is what a caller compares.
-  A `Cause` beside them joins 2.1 ([decision 52](adr/0052-cause-on-fault-joins-2-1.md)), and so does
-  `Rule`, the qualified name of the enum or closed-set member that refused, which the problem carries
+  A `Cause` beside them (2.3.0) is an exception for the log, which equality and printing leave out
+  and no problem carries ([decision 52](adr/0052-cause-on-fault-joins-2-1.md)). `Rule` (2.1.0) is the
+  qualified name of the enum or closed-set member that refused, which the problem carries
   as `rule` ([decision 67](adr/0067-rule-that-refused-on-fault.md)); equality compares the rule's type,
   since two types' rules can read alike ([decision 72](adr/0072-rule-identity-is-its-type.md)).
 - **`Fault<T1, T2>` and `Fault<T1, T2, T3>` (2.1.0)** hold one fault of one of several types, so a

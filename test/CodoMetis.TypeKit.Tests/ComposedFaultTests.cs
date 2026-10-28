@@ -67,6 +67,31 @@ public sealed class ComposedFaultTests
         thirdFault.ShouldBe(Fault.Of(RemovalFault.StillReferenced));
     }
 
+    /// <summary>
+    /// A fault of several types holds the fault intact, its cause included, whether it converts or is made
+    /// by <c>Of</c>; and a cause takes no part in its equality, as in the fault's own (decision 52).
+    /// </summary>
+    [Fact]
+    public void The_cause_is_kept_and_takes_no_part_in_equality()
+    {
+        var timeout = new TimeoutException();
+
+        Fault<OrderFault, ConcurrencyFault> converted = Fault.Of(ConcurrencyFault.Stale, null, timeout);
+        var first = Fault<OrderFault, ConcurrencyFault>.Of(OrderFault.NotFound, "Order 7 is gone.", timeout);
+        var second = Fault<OrderFault, ConcurrencyFault>.Of(ConcurrencyFault.Conflict, null, timeout);
+        var third = Fault<OrderFault, ConcurrencyFault, RemovalFault>.Of(RemovalFault.StillReferenced, null, timeout);
+
+        converted.Match(f => f.Cause, f => f.Cause).ShouldBeSameAs(timeout);
+        first.Match(f => f.Cause, f => f.Cause).ShouldBeSameAs(timeout);
+        second.Match(f => f.Cause, f => f.Cause).ShouldBeSameAs(timeout);
+        third.Match(f => f.Cause, f => f.Cause, f => f.Cause).ShouldBeSameAs(timeout);
+        Fault<OrderFault, ConcurrencyFault, RemovalFault>.Of(OrderFault.NameTaken, null, timeout).Match(f => f.Cause, f => null, f => null).ShouldBeSameAs(timeout);
+        Fault<OrderFault, ConcurrencyFault, RemovalFault>.Of(ConcurrencyFault.Stale, null, timeout).Match(f => null, f => f.Cause, f => null).ShouldBeSameAs(timeout);
+        first.ShouldBe(Fault<OrderFault, ConcurrencyFault>.Of(OrderFault.NotFound, "Order 7 is gone."));
+        first.GetHashCode().ShouldBe(Fault<OrderFault, ConcurrencyFault>.Of(OrderFault.NotFound, "Order 7 is gone.").GetHashCode());
+        first.ToString().ShouldBe(Fault<OrderFault, ConcurrencyFault>.Of(OrderFault.NotFound, "Order 7 is gone.").ToString());
+    }
+
     [Fact]
     public void Two_faults_are_equal_when_they_hold_the_same_type_s_equal_fault()
     {

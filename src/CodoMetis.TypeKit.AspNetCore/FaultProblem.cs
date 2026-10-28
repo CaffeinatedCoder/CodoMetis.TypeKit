@@ -31,11 +31,12 @@ namespace CodoMetis.TypeKit.AspNetCore;
 public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
     where TFault : notnull
 {
-    internal FaultProblem(TFault fault, string? detail = null, string? rule = null)
+    internal FaultProblem(TFault fault, string? detail = null, string? rule = null, Exception? cause = null)
     {
         Fault = fault;
         Detail = detail;
         Rule = rule;
+        Cause = cause;
     }
 
     /// <summary>The fault this response reports.</summary>
@@ -46,6 +47,12 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
 
     /// <summary>The rule that refused, <c>EmailFault.NoAt</c>, where the result carried a <see cref="Fault{TFault}"/> naming one.</summary>
     public string? Rule { get; }
+
+    /// <summary>
+    /// The exception that caused the fault, where the result carried a <see cref="Fault{TFault}"/> with one
+    /// (<see cref="Fault{TFault}.Cause"/>): for the log, and never written into the problem.
+    /// </summary>
+    public Exception? Cause { get; }
 
     /// <inheritdoc />
     public async Task ExecuteAsync(HttpContext httpContext)
@@ -71,7 +78,7 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
         // for this problem and for no other the request writes.
         var features = httpContext.Features;
         var previous = features.Get<IFaultFeature>();
-        features.Set<IFaultFeature>(new FaultFeature(typeof(TFault), Fault, name, detail, Rule, !answer.Named));
+        features.Set<IFaultFeature>(new FaultFeature(typeof(TFault), Fault, name, detail, Rule, !answer.Named, Cause));
         var extensions = new Dictionary<string, object?>();
         if (answer.Named) extensions[FaultResponsesOperationTransformer.FaultMember] = name;
         if (answer.Named && Rule is not null) extensions[FaultResponsesOperationTransformer.RuleMember] = Rule;
@@ -105,7 +112,7 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
         builder.Metadata.Add(FaultResponsesMetadata<TFault>.Instance);
     }
 
-    private sealed record FaultFeature(Type FaultType, object Fault, string Name, string? Detail, string? Rule, bool NameWithheld) : IFaultFeature;
+    private sealed record FaultFeature(Type FaultType, object Fault, string Name, string? Detail, string? Rule, bool NameWithheld, Exception? Cause) : IFaultFeature;
 }
 
 /// <summary>
@@ -142,6 +149,14 @@ public interface IFaultFeature
     /// </summary>
     /// <remarks>Implemented by default as <see langword="false"/>, so an implementation of the host's own still builds.</remarks>
     bool NameWithheld => false;
+
+    /// <summary>
+    /// The exception that caused the fault (<see cref="Fault{TFault}.Cause"/>), or <see langword="null"/>: for
+    /// the host's log. The problem never carries it, and a <c>CustomizeProblemDetails</c> that copies it into
+    /// one tells the client what failed underneath.
+    /// </summary>
+    /// <remarks>Implemented by default as <see langword="null"/>, so an implementation of the host's own, a test's, still builds.</remarks>
+    Exception? Cause => null;
 }
 
 /// <summary>How <c>ToHttpResult()</c> writes a problem: <c>services.Configure&lt;FaultResponseOptions&gt;(options =&gt; …)</c>.</summary>

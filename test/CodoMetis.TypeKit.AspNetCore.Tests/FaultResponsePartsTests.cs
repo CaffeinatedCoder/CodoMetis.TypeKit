@@ -50,6 +50,18 @@ public sealed class FaultResponsePartsTests
     private static Result<Fault<OrderFault>> ArchiveWithDetail(int id) =>
         id == 1 ? Result.Success() : Result.Error(Fault.Of(OrderFault.NameTaken, "Order 7 is called that."));
 
+    /// <summary>What failed underneath a refusal, which names a host the client must not learn of.</summary>
+    private static readonly TimeoutException Underneath = new("db-host-7 timed out after 30 s");
+
+    private static Result<Order, Fault<OrderFault>> RenameWithCause(int id) =>
+        id == 1 ? new Order(1, "renamed") : Result.Error(Fault.Of(OrderFault.NameTaken, "Order 7 is called that.", Underneath));
+
+    private static Result<Fault<OrderFault>> ArchiveWithCause(int id) =>
+        id == 1 ? Result.Success() : Result.Error(Fault.Of(OrderFault.NameTaken, "Order 7 is called that.", Underneath));
+
+    private static Result<Order, Fault<OrderFault, ProbeOrderFault>> RenameComposedWithCause(int id) =>
+        id == 1 ? new Order(1, "renamed") : Result.Error(Fault<OrderFault, ProbeOrderFault>.Of(OrderFault.NameTaken, "Order 7 is called that.", Underneath));
+
     private static Result<Order, ProbeOrderFault> Find(int id) => id switch
     {
         1 => new Order(1, "book"),
@@ -412,10 +424,66 @@ public sealed class FaultResponsePartsTests
         (await ProblemAsync(app, "/detailed/orders/2", HttpStatusCode.Conflict))["code"]!.GetValue<string>().ShouldBe("-");
     }
 
+    /// <summary>
+    /// A fault's cause reaches the host through the feature, for its log, through every overload over a
+    /// <see cref="Fault{TFault}"/> and over a fault of several types, and never the client: the problem
+    /// has the members the same fault without a cause writes, and names neither the exception's type nor
+    /// its message (decision 52).
+    /// </summary>
+    [Theory]
+    [InlineData("PUT", "/caused/orders/2")]              // Result<T, Fault<TFault>>
+    [InlineData("DELETE", "/caused/orders/2")]           // Result<Fault<TFault>>
+    [InlineData("POST", "/caused/orders/2/copies")]      // Result<T, Fault<TFault>>, with the endpoint's success
+    [InlineData("POST", "/caused/orders/2/archive")]     // Result<Fault<TFault>>, with the endpoint's success
+    [InlineData("PATCH", "/caused/orders/2")]            // Result<T, Fault<T1, T2>>
+    public async Task A_cause_reaches_the_host_through_the_feature_and_never_the_problem(string method, string path)
+    {
+        var causes = new List<Exception?>();
+        await using var app = await StartAsync(
+            services: services =>
+            {
+                Responses(services);
+                services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+                    causes.Add(context.HttpContext.Features.Get<IFaultFeature>()?.Cause));
+            },
+            endpoints: app =>
+            {
+                app.MapPut("/caused/orders/{id:int}", (int id) => RenameWithCause(id).ToHttpResult());
+                app.MapDelete("/caused/orders/{id:int}", (int id) => ArchiveWithCause(id).ToHttpResult());
+                app.MapPost("/caused/orders/{id:int}/copies", (int id) => RenameWithCause(id).ToHttpResult(order => TypedResults.Created($"/orders/{order.Id}", order)));
+                app.MapPost("/caused/orders/{id:int}/archive", (int id) => ArchiveWithCause(id).ToHttpResult(() => TypedResults.Accepted("/jobs/7")));
+                app.MapPatch("/caused/orders/{id:int}", (int id) => RenameComposedWithCause(id).ToHttpResult());
+            });
+
+        using var request = new HttpRequestMessage(new HttpMethod(method), path);
+        using var response = await app.GetTestClient().SendAsync(request, TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict, $"{method} {path}");
+        causes.ShouldHaveSingleItem().ShouldBeSameAs(Underneath, $"{method} {path}");
+        JsonNode.Parse(body)!.AsObject().Select(member => member.Key).Order().ToArray().ShouldBe(["detail", "fault", "status", "title", "traceId", "type"], customMessage: body);
+        body.ShouldNotContain(nameof(TimeoutException), Case.Insensitive);
+        body.ShouldNotContain("db-host-7", Case.Insensitive);
+    }
+
+    /// <summary>The response an endpoint returns carries the cause as well, for a test or a filter that reads it before it is written.</summary>
+    [Fact]
+    public void The_problem_carries_the_cause_and_a_fault_without_one_none()
+    {
+        RenameWithCause(2).ToHttpResult().Result.ShouldBeOfType<FaultProblem<OrderFault>>().Cause.ShouldBeSameAs(Underneath);
+        RenameWithDetail(2).ToHttpResult().Result.ShouldBeOfType<FaultProblem<OrderFault>>().Cause.ShouldBeNull();
+        RenameWithCause(2).Map(order => order).ToHttpResult().Result.ShouldBeOfType<FaultProblem<OrderFault>>().Rule.ShouldBeNull();
+    }
+
     /// <summary>The rule joined the feature with a default, so a host's or a test's own implementation still builds, and names none.</summary>
     [Fact]
     public void A_fault_feature_of_the_host_s_own_names_no_rule() =>
         ((IFaultFeature)new HostFeature()).Rule.ShouldBeNull();
+
+    /// <summary>The cause joined the feature with a default too.</summary>
+    [Fact]
+    public void A_fault_feature_of_the_host_s_own_has_no_cause() =>
+        ((IFaultFeature)new HostFeature()).Cause.ShouldBeNull();
 
     private sealed class HostFeature : IFaultFeature
     {

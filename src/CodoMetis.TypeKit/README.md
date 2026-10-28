@@ -281,6 +281,7 @@ Result<byte[], Exception> fetched = await Result.CatchAsync(() => client.GetByte
   propagates.
 - **An exception is for the code that called, not for a client.** `ToHttpResult()` doesn't accept a
   `Result<T, Exception>`. Use `MapError` to turn the exception into a fault that it does accept.
+  `MapError(e => Fault.Of(reason, detail, e))` keeps the exception as the fault's cause, for your log.
 
 ### A fault with a sentence
 
@@ -290,6 +291,9 @@ beside it, in a `Fault<TFault>`: the fault as its `Reason`, and an optional `Det
 - **`Fault.Of(OrderFault.NotAmendable, "The order shipped on 3 May.")`** infers the type.
   `Fault.Of(OrderFault.NotFound)` makes one without a detail. A blank detail throws
   `ArgumentException`. Leave the detail out instead, and it is `null`.
+- **`Fault.Of(reason, detail, exception)` keeps what failed underneath** as the fault's `Cause`.
+  It's for your log. A fault with a cause equals the same fault without one, and prints the same.
+  CodoMetis.TypeKit.AspNetCore hands it to your host and never writes it into a response.
 - **A bare fault doesn't convert to one**, so comparing the two doesn't compile. Write
   `fault.Reason == OrderFault.NotFound`.
 - **`WithRule` names the rule that failed**, where the reason covers several rules. The rule is an

@@ -39,6 +39,14 @@ public sealed record Account(int Id, string Email);
 
 public sealed record NewAccount(string Email);
 
+/// <summary>What a store throws when a unique index rejects a row.</summary>
+public sealed class UniqueViolationException(string message) : Exception(message);
+
+public interface IAccountStore
+{
+    Account Save(Account account);
+}
+
 public interface IAccounts
 {
     Result<Account, AccountFault> Open(NewAccount body);
@@ -161,6 +169,28 @@ public static class Faults
         return reserved;
     }
 
+    public static Result<Account, Fault<AccountFault>> Saved(IAccountStore store, Account account)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-cause-domain
+        Result<Account, Fault<AccountFault>> saved = Result.Catch<Account, UniqueViolationException>(() => store.Save(account))
+            .MapError(e => Fault.Of(AccountFault.EmailTaken, "Another account took the address a moment ago.", e));
+        // end sample
+
+        return saved;
+    }
+
+    public static void Logged(WebApplicationBuilder builder)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-cause-log
+        builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+        {
+            if (context.HttpContext.Features.Get<IFaultFeature>() is { Cause: { } cause } fault)
+                context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Faults")
+                    .LogWarning(cause, "Answered {Fault} for an exception", fault.Name);   // your log gets the exception, the client doesn't
+        });
+        // end sample
+    }
+
     public static void Shaped(WebApplicationBuilder builder)
     {
         // sample: CodoMetis.TypeKit.AspNetCore/fault-feature
@@ -239,6 +269,25 @@ public sealed class FaultResponseSampleTests
         Faults.Endpoints(app, new FixedAccounts(Result.Error(AccountFault.EmailTaken)));
         await app.StartAsync(TestContext.Current.CancellationToken);
         return app;
+    }
+
+    private sealed class TakenStore(Exception thrown) : IAccountStore
+    {
+        public Account Save(Account account) => throw thrown;
+    }
+
+    /// <summary>The README's cause: the store's exception is kept on the fault, and the fault is still the one the client sees.</summary>
+    [Fact]
+    public void A_caught_exception_is_kept_as_the_cause()
+    {
+        var thrown = new UniqueViolationException("duplicate key value violates unique constraint \"ix_accounts_email\"");
+
+        var saved = Faults.Saved(new TakenStore(thrown), new Account(7, "ada@example.com"));
+
+        saved.TryGetValue(out _, out var fault).ShouldBeFalse();
+        fault.Reason.ShouldBe(AccountFault.EmailTaken);
+        fault.Cause.ShouldBeSameAs(thrown);
+        fault.ShouldBe(Fault.Of(AccountFault.EmailTaken, "Another account took the address a moment ago."));
     }
 
     /// <summary>The README's one call for every fault set: AccountFault answered by its kind with no mapping of its own.</summary>
