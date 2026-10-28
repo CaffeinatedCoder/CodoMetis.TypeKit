@@ -16,6 +16,11 @@
       The samples' namespaces are outside CodoMetis.TypeKit on purpose: inside it, the enclosing
       namespace would supply Option, Result and OrderId.New() to a sample whose README forgot the using.
     -->
+    <PropertyGroup>
+        <!-- The woven code, written to obj/…/metalama: GeneratedCodeBlockTests holds the READMEs' generated-code blocks to it. -->
+        <MetalamaEmitCompilerTransformedFiles>true</MetalamaEmitCompilerTransformedFiles>
+    </PropertyGroup>
+
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
