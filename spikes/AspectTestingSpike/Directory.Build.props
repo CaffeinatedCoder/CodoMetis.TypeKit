@@ -1,0 +1,13 @@
+<Project>
+    <!--
+      Self-contained spike: nothing above this folder is inherited. The root props would make warnings
+      errors and demand XML documentation of the test inputs. The generators project referenced below
+      keeps its own props, so it builds exactly as in the solution.
+    -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>14</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+</Project>

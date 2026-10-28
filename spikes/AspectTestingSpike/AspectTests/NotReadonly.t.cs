@@ -1,0 +1,1 @@
+// Error CMTK1002 on `Draft`: `'Draft' is a value object and must be declared readonly. See https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#build-errors`
