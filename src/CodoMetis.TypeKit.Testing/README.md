@@ -43,6 +43,15 @@ Fault<EditFault> stale = refusal.ShouldHold(EditFault.Stale);   // this fault, o
 string? detail = stale.Detail;                                  // for the test's own assertions
 ```
 
+Every assertion also works on a `Task` or a `ValueTask` of what it checks. Put `await` in front, and
+it waits for the task, then checks what the task returned:
+
+```csharp
+Email email = await signups.RegisterAsync("ops@example.com").ShouldBeSuccess();   // awaited, then asserted
+await signups.RegisterAsync("nobody").ShouldBeError(EmailFault.NoAt);
+await signups.FindAsync("ops@example.com").ShouldBeNone();                         // a ValueTask too
+```
+
 - **The content comes back.** `ShouldBeSome()`, `ShouldBeSuccess()`, `ShouldBeError()` and
   `ShouldBeValue()` return the value or the error. Compare it with whatever assertions your tests
   already use: xUnit's `Assert`, Shouldly, or another.
@@ -54,3 +63,8 @@ string? detail = stale.Detail;                                  // for the test'
   `Option`, `Result` and `Patch<T>` themselves never do.
 - **An uninitialized result fails every assertion.** The message says it is a default instance,
   neither a success nor an error.
+- **Await an assertion on a task.** It fails your test only through the task it returns, so without
+  `await` the test passes whatever the task holds. The analyzer reports that line (CMTK0003), in a
+  test method that isn't `async` too, where C# itself says nothing.
+- **A task that throws fails your test with its own exception**, as it was thrown, and not as an
+  assertion failure. The assertion never sees an outcome.

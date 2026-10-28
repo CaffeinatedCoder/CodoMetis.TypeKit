@@ -24,7 +24,6 @@ and then to 2.3 when 2.2.0 became a consolidation release ([decision 97](adr/009
 
 - A default value-object key over `ulong` generated as a plain one is, which needs a per-key value
   generator a compiled model can write ([decision 63](adr/0063-char-keys-application-assigned-ulong-documented.md)).
-- Testing: async assertions.
 
 ## Gaps, in any 2.x
 

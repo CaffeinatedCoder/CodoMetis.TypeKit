@@ -18,6 +18,7 @@ section is the GitHub release's notes.
 - `Result.CatchAsync` takes a call that returns a `ValueTask`, `stream.ReadAsync(buffer)` without `.AsTask()`; an `async` lambda binds as before ([An exception as an outcome](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/result.md#an-exception-as-an-outcome)).
 - `TraverseAsync` on `Option<T>` and `Patch<T>`: an asynchronous check of an optional input or a patch field, with a token form; nothing is called without a value ([Collect many results](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/result.md#collect-many-results)).
 - `Fault<TFault>.Cause`: `Fault.Of(reason, detail, exception)` keeps the exception underneath for your log; equality and `ToString()` leave it out, and `ToHttpResult()` hands it to the host as `IFaultFeature.Cause` and `FaultProblem<TFault>.Cause`, never into the problem ([What failed underneath](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#what-failed-underneath)).
+- Testing: every assertion works on a `Task` or `ValueTask` of what it checks, `await service.FindAsync(id).ShouldBeSome()`; a task that throws fails the test with its own exception, and an assertion left without `await` is reported (CMTK0003) ([CodoMetis.TypeKit.Testing](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Testing/README.md)).
 
 ## 2.2.0 — 2026-10-18
 

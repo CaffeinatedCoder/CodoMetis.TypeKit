@@ -83,4 +83,100 @@ public static class ResultAssertions
     /// <exception cref="TypeKitAssertionException">The result is a success, another error, or uninitialized.</exception>
     public static void ShouldBeError<TError>(this Result<TError> result, TError expected) where TError : notnull =>
         Outcomes.ThrowIfOtherError<Result<TError>, TError>(result.ShouldBeError(), expected);
+
+    /// <inheritdoc cref="ShouldBeSuccess{T, TError}(Result{T, TError})"/>
+    /// <remarks>Awaits <paramref name="result"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<T> ShouldBeSuccess<T, TError>(this Task<Result<T, TError>> result)
+        where T : notnull
+        where TError : notnull
+    {
+        return (await Outcomes.Pending(result, nameof(result)).ConfigureAwait(false)).ShouldBeSuccess();
+    }
+
+    /// <inheritdoc cref="ShouldBeSuccess{T, TError}(Result{T, TError})"/>
+    /// <remarks>Awaits <paramref name="result"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<T> ShouldBeSuccess<T, TError>(this ValueTask<Result<T, TError>> result)
+        where T : notnull
+        where TError : notnull
+    {
+        return (await result.ConfigureAwait(false)).ShouldBeSuccess();
+    }
+
+    /// <inheritdoc cref="ShouldBeError{T, TError}(Result{T, TError})"/>
+    /// <remarks>Awaits <paramref name="result"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<TError> ShouldBeError<T, TError>(this Task<Result<T, TError>> result)
+        where T : notnull
+        where TError : notnull
+    {
+        return (await Outcomes.Pending(result, nameof(result)).ConfigureAwait(false)).ShouldBeError();
+    }
+
+    /// <inheritdoc cref="ShouldBeError{T, TError}(Result{T, TError})"/>
+    /// <remarks>Awaits <paramref name="result"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<TError> ShouldBeError<T, TError>(this ValueTask<Result<T, TError>> result)
+        where T : notnull
+        where TError : notnull
+    {
+        return (await result.ConfigureAwait(false)).ShouldBeError();
+    }
+
+    /// <inheritdoc cref="ShouldBeError{T, TError}(Result{T, TError}, TError)"/>
+    /// <remarks>Awaits <paramref name="result"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task ShouldBeError<T, TError>(this Task<Result<T, TError>> result, TError expected)
+        where T : notnull
+        where TError : notnull
+    {
+        (await Outcomes.Pending(result, nameof(result)).ConfigureAwait(false)).ShouldBeError(expected);
+    }
+
+    /// <inheritdoc cref="ShouldBeError{T, TError}(Result{T, TError}, TError)"/>
+    /// <remarks>Awaits <paramref name="result"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task ShouldBeError<T, TError>(this ValueTask<Result<T, TError>> result, TError expected)
+        where T : notnull
+        where TError : notnull
+    {
+        (await result.ConfigureAwait(false)).ShouldBeError(expected);
+    }
+
+    /// <inheritdoc cref="ShouldBeSuccess{TError}(Result{TError})"/>
+    /// <remarks>Awaits <paramref name="result"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task ShouldBeSuccess<TError>(this Task<Result<TError>> result) where TError : notnull
+    {
+        (await Outcomes.Pending(result, nameof(result)).ConfigureAwait(false)).ShouldBeSuccess();
+    }
+
+    /// <inheritdoc cref="ShouldBeSuccess{TError}(Result{TError})"/>
+    /// <remarks>Awaits <paramref name="result"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task ShouldBeSuccess<TError>(this ValueTask<Result<TError>> result) where TError : notnull
+    {
+        (await result.ConfigureAwait(false)).ShouldBeSuccess();
+    }
+
+    /// <inheritdoc cref="ShouldBeError{TError}(Result{TError})"/>
+    /// <remarks>Awaits <paramref name="result"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<TError> ShouldBeError<TError>(this Task<Result<TError>> result) where TError : notnull
+    {
+        return (await Outcomes.Pending(result, nameof(result)).ConfigureAwait(false)).ShouldBeError();
+    }
+
+    /// <inheritdoc cref="ShouldBeError{TError}(Result{TError})"/>
+    /// <remarks>Awaits <paramref name="result"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<TError> ShouldBeError<TError>(this ValueTask<Result<TError>> result) where TError : notnull
+    {
+        return (await result.ConfigureAwait(false)).ShouldBeError();
+    }
+
+    /// <inheritdoc cref="ShouldBeError{TError}(Result{TError}, TError)"/>
+    /// <remarks>Awaits <paramref name="result"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task ShouldBeError<TError>(this Task<Result<TError>> result, TError expected) where TError : notnull
+    {
+        (await Outcomes.Pending(result, nameof(result)).ConfigureAwait(false)).ShouldBeError(expected);
+    }
+
+    /// <inheritdoc cref="ShouldBeError{TError}(Result{TError}, TError)"/>
+    /// <remarks>Awaits <paramref name="result"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task ShouldBeError<TError>(this ValueTask<Result<TError>> result, TError expected) where TError : notnull
+    {
+        (await result.ConfigureAwait(false)).ShouldBeError(expected);
+    }
 }

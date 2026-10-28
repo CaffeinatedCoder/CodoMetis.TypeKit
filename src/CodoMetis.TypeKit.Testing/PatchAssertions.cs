@@ -34,6 +34,48 @@ public static class PatchAssertions
             throw new TypeKitAssertionException($"Expected Absent, but the {Outcomes.Name<Patch<T>>()} {Was(patch.State)}.");
     }
 
+    /// <inheritdoc cref="ShouldBeValue{T}(Patch{T})"/>
+    /// <remarks>Awaits <paramref name="patch"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<T> ShouldBeValue<T>(this Task<Patch<T>> patch) where T : notnull
+    {
+        return (await Outcomes.Pending(patch, nameof(patch)).ConfigureAwait(false)).ShouldBeValue();
+    }
+
+    /// <inheritdoc cref="ShouldBeValue{T}(Patch{T})"/>
+    /// <remarks>Awaits <paramref name="patch"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<T> ShouldBeValue<T>(this ValueTask<Patch<T>> patch) where T : notnull
+    {
+        return (await patch.ConfigureAwait(false)).ShouldBeValue();
+    }
+
+    /// <inheritdoc cref="ShouldBeNull{T}(Patch{T})"/>
+    /// <remarks>Awaits <paramref name="patch"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task ShouldBeNull<T>(this Task<Patch<T>> patch) where T : notnull
+    {
+        (await Outcomes.Pending(patch, nameof(patch)).ConfigureAwait(false)).ShouldBeNull();
+    }
+
+    /// <inheritdoc cref="ShouldBeNull{T}(Patch{T})"/>
+    /// <remarks>Awaits <paramref name="patch"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task ShouldBeNull<T>(this ValueTask<Patch<T>> patch) where T : notnull
+    {
+        (await patch.ConfigureAwait(false)).ShouldBeNull();
+    }
+
+    /// <inheritdoc cref="ShouldBeAbsent{T}(Patch{T})"/>
+    /// <remarks>Awaits <paramref name="patch"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task ShouldBeAbsent<T>(this Task<Patch<T>> patch) where T : notnull
+    {
+        (await Outcomes.Pending(patch, nameof(patch)).ConfigureAwait(false)).ShouldBeAbsent();
+    }
+
+    /// <inheritdoc cref="ShouldBeAbsent{T}(Patch{T})"/>
+    /// <remarks>Awaits <paramref name="patch"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task ShouldBeAbsent<T>(this ValueTask<Patch<T>> patch) where T : notnull
+    {
+        (await patch.ConfigureAwait(false)).ShouldBeAbsent();
+    }
+
     private static string Was(PatchState state) => state == PatchState.Value ? "holds a value (not printed)" : $"is {Describe(state)}";
 
     private static string Describe(PatchState state) => state switch

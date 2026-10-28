@@ -22,6 +22,18 @@ public sealed class Orders
         Fault<OrderFault, EditFault>.Of(EditFault.Stale, $"Order {id} is at version {version + 1}, not {version}.");
 }
 
+/// <summary>A service answering through tasks, for the asynchronous block.</summary>
+public sealed class Signups
+{
+    public async Task<Result<Email, EmailFault>> RegisterAsync(string address)
+    {
+        await Task.Yield();
+        return Email.Create(address);
+    }
+
+    public ValueTask<Option<Email>> FindAsync(string address) => new(Option.None<Email>());
+}
+
 public sealed partial class TestingSamples
 {
     private const string Readme = "src/CodoMetis.TypeKit.Testing/README.md";
@@ -72,6 +84,21 @@ public sealed partial class TestingSamples
 
         detail.ShouldBe("Order 7 is at version 4, not 3.");
         Should.Throw<TypeKitAssertionException>(() => refusal.ShouldHold(OrderFault.NotFound));
+    }
+
+    /// <summary>The README's asynchronous block, run: each line awaits and passes, or this test fails with its assertion.</summary>
+    [Fact]
+    public async Task The_assertions_on_a_task_pass_as_the_README_shows()
+    {
+        var signups = new Signups();
+
+        // sample: CodoMetis.TypeKit.Testing/async
+        Email email = await signups.RegisterAsync("ops@example.com").ShouldBeSuccess();   // awaited, then asserted
+        await signups.RegisterAsync("nobody").ShouldBeError(EmailFault.NoAt);
+        await signups.FindAsync("ops@example.com").ShouldBeNone();                         // a ValueTask too
+        // end sample
+
+        email.Value.ShouldBe("ops@example.com");
     }
 
     /// <summary>The failure message the README quotes, read from the README, is the one the assertion throws.</summary>

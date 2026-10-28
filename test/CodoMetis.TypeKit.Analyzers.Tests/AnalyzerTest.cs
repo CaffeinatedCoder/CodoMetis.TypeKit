@@ -57,6 +57,13 @@ internal static class RealEntityFrameworkCore
     ];
 }
 
+/// <summary>The real test assertions, whose assertions on a pending value CMTK0003 knows by the assembly's identity.</summary>
+internal static class RealTesting
+{
+    public static MetadataReference Reference { get; } =
+        MetadataReference.CreateFromFile(typeof(global::CodoMetis.TypeKit.Testing.TypeKitAssertionException).Assembly.Location);
+}
+
 internal static class RealTypeKit
 {
     public static Assembly Assembly { get; } = typeof(Option<>).Assembly;

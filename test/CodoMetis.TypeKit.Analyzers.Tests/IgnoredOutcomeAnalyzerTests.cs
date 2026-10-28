@@ -94,6 +94,103 @@ public sealed class IgnoredOutcomeAnalyzerTests
         return test;
     }
 
+    /// <summary>The subjects, with the real test assertions referenced and imported.</summary>
+    private static AnalyzerTest<IgnoredOutcomeAnalyzer> TestWithAssertions(string code, params DiagnosticResult[] expected)
+    {
+        var test = Test("", expected);
+        test.TestState.AdditionalReferences.Add(RealTesting.Reference);
+        test.TestState.Sources.Add(("Caller.cs", "using System;\nusing System.Threading.Tasks;\nusing CodoMetis.TypeKit;\nusing CodoMetis.TypeKit.Testing;\n\n" + code));
+        return test;
+    }
+
+    /// <summary>
+    /// An assertion on a pending value fails the test only through the task it returns: dropped
+    /// unawaited, in a test method that is not <c>async</c> (where C# warns of nothing) or in one that is,
+    /// it passes whatever the value is.
+    /// </summary>
+    [Fact]
+    public Task A_dropped_assertion_on_a_pending_value_reports() =>
+        TestWithAssertions(
+            """
+            public static class Caller
+            {
+                public static void Run(Service service)
+                {
+                    {|#0:service.LoadAsync().ShouldBeSuccess()|};
+                    {|#1:service.FindAsync().ShouldBeNone()|};
+                    {|#2:service.SaveAsync().ShouldBeError(Fault.Refused)|};
+                    {|#3:service.LoadAsync().ShouldBeSuccess().ConfigureAwait(false)|};
+                    Action check = () => {|#4:service.FindAsync().ShouldBeSome()|};
+                }
+
+                public static async Task RunAsync(Service service)
+                {
+                    #pragma warning disable CS4014
+                    {|#5:service.LoadAsync().ShouldBeError()|};
+                    #pragma warning restore CS4014
+                    await Task.Yield();
+                }
+            }
+            """,
+            new DiagnosticResult("CMTK0003", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithMessage("The Task that 'ShouldBeSuccess' returns is ignored, so its outcome is never seen. Handle it, or discard it with '_ =' if nothing depends on it."),
+            Cmtk0003(1, "Task", "ShouldBeNone"),
+            Cmtk0003(2, "Task", "ShouldBeError"),
+            Cmtk0003(3, "Task", "ShouldBeSuccess"),
+            Cmtk0003(4, "Task", "ShouldBeSome"),
+            Cmtk0003(5, "Task", "ShouldBeError"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    [Fact]
+    public Task An_awaited_held_or_discarded_assertion_is_silent() =>
+        TestWithAssertions(
+            """
+            public static class Caller
+            {
+                public static async Task RunAsync(Service service)
+                {
+                    await service.LoadAsync().ShouldBeSuccess();
+                    await service.FindAsync().ShouldBeNone().ConfigureAwait(false);
+                    var pending = service.LoadAsync().ShouldBeSuccess();
+                    await pending;
+                    _ = service.SaveAsync().ShouldBeSuccess();
+                    service.Load().ShouldBeSuccess();
+                }
+
+                public static Task Returned(Service service) => service.FindAsync().ShouldBeNone();
+
+                public static Func<Task> Deferred(Service service) => () => service.FindAsync().ShouldBeNone();
+            }
+            """)
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// Only the package's own assertions are reported: the same shape from any other assembly, a
+    /// consumer's own extension on a pending result among them, built before 2.3 and builds still.
+    /// </summary>
+    [Fact]
+    public Task A_task_of_another_assembly_s_extension_on_a_pending_value_is_silent() =>
+        TestWithAssertions(
+            """
+            public static class Logging
+            {
+                public static Task LogAsync<T>(this Task<Result<T, Fault>> pending) where T : notnull => pending;
+
+                public static Task ShouldBeSuccess<T>(this Task<Option<T>> pending) where T : notnull => pending;
+            }
+
+            public static class Caller
+            {
+                public static void Run(Service service)
+                {
+                    service.LoadAsync().LogAsync();
+                    Logging.ShouldBeSuccess(service.FindAsync());
+                }
+            }
+            """)
+            .RunAsync(TestContext.Current.CancellationToken);
+
     [Fact]
     public void The_descriptor_is_the_published_contract()
     {
