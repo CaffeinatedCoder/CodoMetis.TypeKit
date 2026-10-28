@@ -70,7 +70,7 @@ test that passes both with and without the fix is not a regression test. See
 
 **A bug fix covers its siblings.** Name the class of input the defect lives in, and run the fix's test
 across that class's variant catalogue: every shape through which a type argument reaches a parameter
-(`test/CodoMetis.TypeKit.Analyzers.Tests/Variants/`), every declaration shape of `.claude/probe-axes.md`,
+(`test/CodoMetis.TypeKit.Analyzers.Tests/Variants/`), every declaration shape the generation tests vary (`test/oracles/axes.md`),
 every setting of the framework option the fix touches. Fix what fails there too, rather than leave it
 for the next review ([decision 95](design/adr/0095-a-fix-is-tested-across-its-input-class.md)).
 
@@ -110,7 +110,7 @@ issue it closes:
 | `severity/low` | A cosmetic, message or documentation-level difference |
 | `silent` | A bug that compiles or answers and does less than it appears to |
 | `breaking` | Changes a signature, a generated member, a wire form or a diagnostic's severity: needs a major |
-| `found-by/prober` | Found by the prober; the fix's commit carries `Found-By: PR` |
+| `found-by/prober` | Found by the prober, before it was retired (decision 112); kept for the issues it labels |
 | `stacked` | Based on another open pull request: merge in order |
 | `epic` | A release or a theme; its sub-issues are the work |
 | `package/core`, `package/analyzers`, `package/generators`, `package/efcore`, `package/aspnetcore`, `package/serilog`, `package/testing` | The package it affects |
@@ -120,7 +120,7 @@ issue it closes:
 | `area/aot` | Native AOT and trimming |
 | `area/parsing` | `Parse`, `TryParse`, formatting and the type converter |
 | `area/release` | Versioning, changelogs, packaging and release wiring |
-| `area/tooling` | The repository's tools: the prober, the verdict, the guard, docs-query, the smoke test |
+| `area/tooling` | The repository's tools: the verdict, the guard, docs-query, the oracle kit, the smoke test |
 
 A bug carries exactly one severity. CI's "PR hygiene" check reads each pull request into `main` or a release
 branch and fails it with no type label, a bug with no severity, `silent` on anything but a bug, no closing
@@ -168,17 +168,19 @@ the design records cite commits by hash.
 The packages share one version and are released together, only through
 `.github/workflows/release.yml` (see [SECURITY.md](SECURITY.md)).
 
-1. In `CHANGELOG.md`, replace `Unreleased` in the version's heading with today's date
+1. Show every oracle seed caught: `dotnet tools/Oracles/bin/Release/net10.0/oracles.dll seeds` (a build of one
+   project per seed, locally; [test/oracles/README.md](test/oracles/README.md)).
+2. In `CHANGELOG.md`, replace `Unreleased` in the version's heading with today's date
    (`## 1.0.0 — 2026-10-01`). The section becomes the GitHub release's notes.
-2. Move the rules in `src/CodoMetis.TypeKit.Analyzers/AnalyzerReleases.Unshipped.md` to
+3. Move the rules in `src/CodoMetis.TypeKit.Analyzers/AnalyzerReleases.Unshipped.md` to
    `AnalyzerReleases.Shipped.md`, under `## Release <version>`. Their ids and severities are public
-   contract from then on. `ChangelogTests` fails until steps 1 and 2 agree.
-3. Commit on the release branch, open its PR into `main` (`chore` and `area/release`, the version's
+   contract from then on. `ChangelogTests` fails until steps 2 and 3 agree.
+4. Commit on the release branch, open its PR into `main` (`chore` and `area/release`, the version's
    milestone, `Closes #<epic>`), and merge it with a merge commit. Tag that
    merge commit and push the tag: `git tag v1.0.0 && git push origin v1.0.0`. The workflow checks the tag
    against `Version` and the dated heading, runs the suite and the smoke test, and waits for approval
    in the `nuget` environment before pushing. Delete the release branch once the tag is pushed.
-4. Afterwards: raise `Version` in `Directory.Build.props`, set `PackageValidationBaselineVersion` to
+5. Afterwards: raise `Version` in `Directory.Build.props`, set `PackageValidationBaselineVersion` to
    the version just released, so ApiCompat guards the public surface from then on, and open a new
    `## <version> — Unreleased` section. `ChangelogTests` fails while the baseline trails the last
    version the changelog dates. Once that is on `main`, cut the next `release/<version>` from it and

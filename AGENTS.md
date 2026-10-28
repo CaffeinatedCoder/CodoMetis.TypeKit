@@ -65,32 +65,14 @@ dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--project 
 dotnet tools/PrHygiene/bin/Release/net10.0/pr-hygiene.dll event.json   # a PR's labels, milestone, branch and issue link, as CI's PR hygiene check reads them from the payload
 ```
 
-The probing tool, prober (`tools/Prober`, started as its built dll like docs-query). These need no
-model, no login and no API key, and run in CI as anywhere: the `probes` legs of `dotnet.yml` replay
-the corpus by family, every probe on a push and the probes the branch stales on a pull request, judged
-against the base branch's saved state, and `probe-status` merges the legs and reports
-([decision 101](design/adr/0101-ci-replays-by-family-and-footprint.md)); `release.yml` runs `replay --all`
-and `gate` before it packs ([decision 96](design/adr/0096-ci-replays-every-probe-and-the-release-runs-the-gate.md)):
+The oracle kit's local tool, oracles (`tools/Oracles`, started as its built dll like docs-query), which needs no
+model and never runs in CI: `test/CodoMetis.TypeKit.Oracles.Tests` holds the catalogue there without building
+anything else ([decision 112](design/adr/0112-the-prober-gives-way-to-valueranges-oracle-kit.md),
+[test/oracles/README.md](test/oracles/README.md)):
 
 ```bash
-dotnet tools/Prober/bin/Release/net10.0/prober.dll status    # coverage of the branch's documented claims, open findings
-dotnet tools/Prober/bin/Release/net10.0/prober.dll replay    # re-run the probes whose identity or footprint changed
-dotnet tools/Prober/bin/Release/net10.0/prober.dll gate      # the release gate, from the tracked corpus and a replay
-```
-
-Proving that each probe can fail needs no model either, but builds once per seed, so it runs locally
-only ([decision 100](design/adr/0100-every-probe-is-shown-to-fail-against-a-seeded-defect.md)), and only for the
-probes changed since their seeds were last caught; a release runs `--all`
-([decision 107](design/adr/0107-a-cited-fact-is-executable-and-seeds-run-by-footprint.md)):
-
-```bash
-dotnet tools/Prober/bin/Release/net10.0/prober.dll seeds     # each probe's seeded defect, applied in a scratch worktree, must fail it
-```
-
-Exploration needs a model and runs locally only, never in CI:
-
-```bash
-dotnet tools/Prober/bin/Release/net10.0/prober.dll round explore --minutes 10 --claims 2
+dotnet tools/Oracles/bin/Release/net10.0/oracles.dll status          # the worklist: unheld claims, unread waivers, unseeded oracles, candidates
+dotnet tools/Oracles/bin/Release/net10.0/oracles.dll seeds [filter]  # each seed: a copy of the tree, the patch, one project built, one class run
 ```
 
 An agent runs builds and tests through `tools/BuildVerdict`, run as its built dll (`build
@@ -265,53 +247,30 @@ probe.
    tables of [decision 94](design/adr/0094-topic-branches-into-a-release-branch-and-fix-trailers.md)
    (`CommitTrailerTests`). Work happens on a `<type>/<slug>` branch from `release/<version>`, reaches it
    by a PR, and every merge is a merge commit: never squash or rebase a pushed branch.
-7. **Probes replay themselves; exploring is a separate, capped, local job.** Consumer probes check the
-   claims in `docs/` and the READMEs, pairwise over the axes in
-   [.claude/probe-axes.md](.claude/probe-axes.md); they, their rows, the claims and the waivers are the
-   corpus in `tools/probe/corpus/`, tracked like tests.
-   - **Replay** runs in CI on every push and pull request, every probe from an empty state, and a probe
-     that fails fails the job. Locally it runs after every commit from a git `post-commit` hook, in the
-     background and with no model: `prober replay` re-runs only the probes whose identity or coverage
-     footprint the commit changed, and blocks nothing. Read `prober status` before your next change. A probe that passed with
-     the same identity and fails now is an open finding `R-<probe>-<sha>`, fixed like any failing test.
-     The hook is opt-in, per clone and untracked: put this in `$(git rev-parse --git-common-dir)/hooks/post-commit`
-     and make it executable (Git for Windows runs it through its own `sh`):
-
-     ```sh
-     #!/bin/sh
-     [ -f tools/Prober/Prober.csproj ] && nohup dotnet tools/Prober/bin/Release/net10.0/prober.dll replay > "$(git rev-parse --git-dir)/prober-replay-last.log" 2>&1 < /dev/null &
-     exit 0
-     ```
-   - **Explore** when a feature lands or `status` shows a claim without probes: `/probe explore`, the
-     `prober` agent under `prober round`, whose time and claim cap the tool enforces. Never in CI. Its
-     probes land in its staging; `prober publish` moves them into the corpus, committed as `test:`.
-   - **Full sweep** on request (`/probe full`) or nightly, locally: the whole corpus replayed, the axes
-     derived again, then exploration up to the cap. A report, not a gate.
-   - A probe that found a bug becomes a test in the suite (steps 3 and 4); a dismissed finding is recorded with
-     `prober dismiss` and the reason. An intended difference a probe accepts cites the sentence of the
-     docs, the record, or the verified fact (`KB-NNN`, `design/knowledge/`) that makes it intended.
+7. **Hold what the documents promise.** `test/oracles/` is the catalogue
+   ([decision 112](design/adr/0112-the-prober-gives-way-to-valueranges-oracle-kit.md)): each sentence a consumer
+   document promises is a claim in `claims.json`, quoted verbatim and naming the test classes that hold it, and
+   every public member of the run-time libraries is claimed or waived in `surface-waivers.json`.
+   - A new public member, or a new promise in `docs/` or a README, gets its claim, with the test that holds it,
+     or a waiver that says why it needs none. `OracleSurfaceCoverageTests` fails on a member neither names, and
+     `OracleCatalogueTests` on a quote its document no longer holds: reword the claim with the document.
+   - An oracle is an ordinary test class that checks the library against an independent answer over many cases:
+     a differential, a sweep over a variant catalogue, a completeness test by reflection. Register it in
+     `oracles.json` with a seed, a defect in `src/` kept as `seeds/<defect>.patch` (`git diff` of the edit, then
+     undo it by the inverse edit), and show it caught with `oracles seeds <defect>`.
+   - A disagreement an oracle finds and nobody fixes yet goes to `candidates.json` with its issue, never into an
+     assertion that hides it.
+   - `axes.md` lists what a consumer varies and the pairs no test varies yet; a combination a finding names
+     joins it.
 
 ## Releasing
 
-Before `git tag`, replay the whole probe corpus and run the gate, and show every probe's seeds caught (locally, a
-build per seed; without `--all` it runs only the probes changed since their seeds were last caught, decision 107):
+Before `git tag`, show every seed caught, locally, a build of one project per seed:
 
 ```bash
-dotnet tools/Prober/bin/Release/net10.0/prober.dll replay --all
-dotnet tools/Prober/bin/Release/net10.0/prober.dll gate
-dotnet tools/Prober/bin/Release/net10.0/prober.dll seeds --all
+dotnet tools/Oracles/bin/Release/net10.0/oracles.dll seeds
 ```
 
-The gate never starts a model and needs nothing but the tracked corpus and a replay, so the release
-workflow runs it after `replay --all`, with `PROBE_STATE_DIR` in the job's temporary directory and
-`--since` the previous release's tag, reports its verdict in the job summary, and fails the release on a
-refusal. It refuses while a finding is open, a probe has not
-passed at its current identity, or a claim touched since the last tag has pairwise combinations no
-probe covers; it lists what is missing. Every obligation is met by a probe in the corpus, written by
-hand or by a round, or by a reviewed waiver in `tools/probe/corpus/waivers.json` (claim, reason,
-reviewer).
-
-**The gate binds from 2.2.0**
-([decision 97](design/adr/0097-2-2-0-is-a-consolidation-release-and-the-gate-binds.md)). Never tag
-2.2.0 or a later version over a refusal without the user's word, which is a waiver naming them as its
-reviewer. Answer a refusal with a probe, a fix or such a waiver, never by editing the workflow's step.
+The release workflow runs the suite, which holds the catalogue, before it packs; there is no gate beside it
+(decision 112 withdrew decision 97's). A seed that is not caught is answered by a stronger oracle or a better
+seed, never by deleting the seed.

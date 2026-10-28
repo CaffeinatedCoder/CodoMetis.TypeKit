@@ -1,0 +1,13 @@
+{
+  "//": [
+    "The repository's SDK pin, without its test key: Metalama.Testing.AspectTesting runs on xunit v2",
+    "through VSTest, which dotnet test refuses once global.json selects Microsoft.Testing.Platform.",
+    "dotnet reads the global.json nearest the current directory, so this one applies only to a",
+    "command run from this folder or below."
+  ],
+  "sdk": {
+    "version": "10.0.402",
+    "rollForward": "latestPatch",
+    "allowPrerelease": false
+  }
+}

@@ -8,31 +8,36 @@ using Metalama.Framework.Code.DeclarationBuilders;
 namespace CodoMetis.TypeKit.Generators;
 
 /// <summary>The attributes the aspects put on what they generate.</summary>
+/// <remarks>
+/// Each is built where it is used, never kept in a static field: an <see cref="AttributeConstruction"/>
+/// belongs to one compilation, and a static field would keep every compilation the IDE ever made alive
+/// (<c>CompileTimeStaticStateTests</c>).
+/// </remarks>
 [CompileTime]
 internal static class CodeAnnotations
 {
-    public static readonly AttributeConstruction AggressiveInlining =
+    public static AttributeConstruction AggressiveInlining =>
         AttributeConstruction.Create(typeof(MethodImplAttribute), [MethodImplOptions.AggressiveInlining]);
 
     /// <summary>
     /// On the <c>source</c> parameter of the generated <c>FromKnownGood</c>, whose first parameter is
     /// always named <c>value</c>.
     /// </summary>
-    public static readonly AttributeConstruction CallerArgumentExpressionOfValue =
+    public static AttributeConstruction CallerArgumentExpressionOfValue =>
         AttributeConstruction.Create(typeof(CallerArgumentExpressionAttribute), ["value"]);
 
-    public static readonly AttributeConstruction CompilerGenerated =
+    public static AttributeConstruction CompilerGenerated =>
         AttributeConstruction.Create(typeof(CompilerGeneratedAttribute));
 
-    public static readonly AttributeConstruction DebuggerHidden =
+    public static AttributeConstruction DebuggerHidden =>
         AttributeConstruction.Create(typeof(DebuggerHiddenAttribute));
 
-    public static readonly AttributeConstruction DebuggerStepThrough =
+    public static AttributeConstruction DebuggerStepThrough =>
         AttributeConstruction.Create(typeof(DebuggerStepThroughAttribute));
 
-    public static readonly AttributeConstruction EditorNonBrowsable =
+    public static AttributeConstruction EditorNonBrowsable =>
         AttributeConstruction.Create(typeof(EditorBrowsableAttribute), [EditorBrowsableState.Never]);
 
-    public static readonly AttributeConstruction TranslatedAsWrappedValue =
+    public static AttributeConstruction TranslatedAsWrappedValue =>
         AttributeConstruction.Create(typeof(TranslatedAsWrappedValueAttribute));
 }

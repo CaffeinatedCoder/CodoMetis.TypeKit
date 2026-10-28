@@ -55,7 +55,7 @@
    attributes, implementations reached through another declaration, methods bound by pattern, crefs and
    `nameof`, and generated code, each run with an argument that breaks the rule's constraint and one that
    meets it. CMTK0010 runs it under three constraints (`TypeArgumentConstraintVariantTests`). For a
-   generated type the class is the `shape.*` axes of `.claude/probe-axes.md`, for a framework option the
+   generated type the class is the declaration shapes of `test/oracles/axes.md`, for a framework option the
    settings axes. Measured: at the origin of CMTK0010's chain of fourteen fixes the catalogue fails on 20
    sites, each fixed by a later member of the chain; seeded, without the rule's method-group and property
    registrations, 15 cases fail.

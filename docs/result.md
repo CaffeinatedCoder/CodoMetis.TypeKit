@@ -230,10 +230,15 @@ token before each operation and hands it on. A cancellation propagates as an exc
 become an error. When the operations may all run at once, use `Task.WhenAll` over their tasks and
 `Sequence()` over what it returns.
 
+On an `Option` or a `Patch`, `TraverseAsync` runs the operation once, when there is a value. `None`,
+a clear and an absent field call nothing and pass through.
+
 ```csharp
 Result<IReadOnlyList<Reservation>, CheckoutFault> reserved = await carts.TraverseAsync(checkout.ReserveAsync);     // one at a time, in order; nothing starts after a fault
 Result<CheckoutFault> charged = await totals.TraverseAsync(checkout.ChargeAsync);                                   // a command per element, likewise
 Result<IReadOnlyList<Cart>, CheckoutFault> found = await ids.TraverseAsync(checkout.LoadCartAsync, cancellationToken);   // the token checked before each, and handed to it
+Result<Option<Cart>, CheckoutFault> saved = await savedCart.TraverseAsync(checkout.FindCartAsync);           // None calls nothing; a value is looked up
+Result<Patch<Cart>, CheckoutFault> moved = await movedTo.TraverseAsync(checkout.FindCartAsync);              // a clear or an absence passes through
 ```
 
 ## An exception as an outcome
@@ -257,7 +262,7 @@ An exception is for the code that called, not for a client. `ToHttpResult()` doe
 - **Name both type arguments to narrow.** `Catch<T, TException>` spells both, since C# infers all
   type arguments or none.
 - **Use `CatchAsync` for a task.** It awaits the task, so an exception thrown after the task's first
-  `await` is the error too. Passing a delegate that returns a `Task` to `Catch` fails to compile, and
+  `await` is the error too. A `ValueTask` works the same way: `Result.CatchAsync(() => stream.ReadAsync(buffer))`. Passing a delegate that returns a `Task` to `Catch` fails to compile, and
   the error names `CatchAsync`. The task's exception would otherwise be thrown after `Catch` had
   returned.
 - **A cancellation is not an outcome.** An `OperationCanceledException` passes through every
@@ -311,13 +316,14 @@ throughout.
 | implicit from `T`, `Success<T>`, `Error<TError>` | `Result<T, TError>` | a bare value is a success; a bare error is not, since it could be either |
 | implicit from `TError`, `Success`, `Error<TError>` | `Result<TError>` | a bare error converts, and so does the marker |
 | `Catch(action)`, `Catch<T, TException>(action)`, `Catch<TException>(action)` | `Result` | `Result<T, Exception>` or `Result<Exception>`; narrowed to one exception type |
-| `CatchAsync(action)` and the same type-argument forms | `Result` | the same, awaiting the task |
+| `CatchAsync(action)` and the same type-argument forms | `Result` | the same, awaiting the `Task` or `ValueTask` |
 | `ToResult(error)` | `Option<T>` | `Result<T, TError>` |
 | `FirstOrError(predicate, error)`, `LastOrError(predicate, error)` | `IEnumerable<T>`; `FirstOrError` on `IQueryable<T>` too | the first or last match, or the error; on a query the provider runs the predicate, and `LastOrError` is a compile error |
 | `Traverse(selector)` | `IEnumerable<T>` | `Result<IReadOnlyList<TResult>, TError>`, or `Result<TError>` for a command selector; stops at the first error |
 | `Traverse(selector)` | `Option<T>` | `Result<Option<TResult>, TError>`: an optional input validated when present |
 | `Traverse(selector)` | `Patch<T>` | `Result<Patch<TResult>, TError>`: a patch field validated when it carries a value; a clear or an absence passes through |
 | `TraverseAsync(selector)`, `TraverseAsync(selector, cancellationToken)` | `IEnumerable<T>` | as `Traverse`, one operation awaited at a time; nothing starts after an error, or once the token is cancelled |
+| `TraverseAsync(selector)`, `TraverseAsync(selector, cancellationToken)` | `Option<T>`, `Patch<T>` | as `Traverse`, the operation awaited; nothing is called without a value |
 | `Transpose()` | `Option<Result<T, TError>>`, `Result<Option<T>, TError>` | the one turned inside out: `None` is a success without a value, an error stays the error |
 | `Sequence()` | `IEnumerable<Result<T, TError>>`, `IEnumerable<Result<TError>>` | the list of values, or the first error |
 

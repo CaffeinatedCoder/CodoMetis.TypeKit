@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      A Metalama snapshot-test project: every .cs file is a test input, its .t.cs the expected woven
+      output. Metalama.Testing.AspectTesting sets MetalamaEnabled=false here and runs the pipeline
+      itself, per file, inside an xunit v2 test framework of its own. Versions are pinned inline:
+      spikes/Directory.Packages.props switches central management off.
+    -->
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+
+    <!--
+      The package switches Metalama off for this project, so its own compilation sees the inputs
+      unwoven: a closed set then fails with CS0535 (All, Name, QualifiedName, TryParse missing). The
+      inputs are test data, compiled only by the test framework, with the pipeline on.
+    -->
+    <ItemGroup>
+        <Compile Remove="**/*.cs" />
+        <None Include="**/*.cs" Exclude="bin/**;obj/**" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+        <PackageReference Include="xunit" Version="2.9.3" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Metalama.Framework" Version="2026.1.30" />
+        <PackageReference Include="Metalama.Testing.AspectTesting" Version="2026.1.30" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The real generators: the internal aspects and the TransitiveProjectFabric that applies them. -->
+        <ProjectReference Include="../../../src/CodoMetis.TypeKit.Generators/CodoMetis.TypeKit.Generators.csproj" />
+    </ItemGroup>
+
+</Project>
