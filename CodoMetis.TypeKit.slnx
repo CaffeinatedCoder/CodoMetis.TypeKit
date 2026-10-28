@@ -20,8 +20,8 @@
     <Project Path="test/CodoMetis.TypeKit.Facts/CodoMetis.TypeKit.Facts.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Generators.Probes/CodoMetis.TypeKit.Generators.Probes.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Generators.Tests/CodoMetis.TypeKit.Generators.Tests.csproj" />
+    <Project Path="test/CodoMetis.TypeKit.Oracles.Tests/CodoMetis.TypeKit.Oracles.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.PrHygiene.Tests/CodoMetis.TypeKit.PrHygiene.Tests.csproj" />
-    <Project Path="test/CodoMetis.TypeKit.Prober.Tests/CodoMetis.TypeKit.Prober.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Samples/CodoMetis.TypeKit.Samples.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Serilog.Tests/CodoMetis.TypeKit.Serilog.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Testing.Tests/CodoMetis.TypeKit.Testing.Tests.csproj" />
@@ -32,8 +32,8 @@
     <Project Path="tools/BuildVerdict/BuildVerdict.csproj" />
     <Project Path="tools/ConsumerSmokeTest/ConsumerSmokeTest.csproj" />
     <Project Path="tools/DocsQuery/DocsQuery.csproj" />
+    <Project Path="tools/Oracles/Oracles.csproj" />
     <Project Path="tools/PrHygiene/PrHygiene.csproj" />
-    <Project Path="tools/Prober/Prober.csproj" />
   </Folder>
   <Folder Name="/benchmarks/">
     <Project Path="benchmarks/CodoMetis.TypeKit.Benchmarks/CodoMetis.TypeKit.Benchmarks.csproj" />

@@ -125,9 +125,7 @@ internal static partial class Pins
 /// The rules a verified fact is held to (design/adr/0093): its frontmatter is complete and plain, each pin
 /// matches what is installed, and its <c>test:</c> names the characterization test that observes it, or says
 /// <c>none</c> and why. A test of the facts project that no fact names is a problem too. A <c>fixture:</c>, the
-/// measured answer of the fact's test as data, sits beside that test and exists (design/adr/0107). A fact the probe
-/// corpus cites to prune or excuse a row (<see cref="FactCitations"/>) is executable: its test exists, and where the
-/// harness reads it as a baseline, its fixture too.
+/// measured answer of the fact's test as data, sits beside that test and exists (design/adr/0107).
 /// </summary>
 internal static partial class FactRules
 {
@@ -139,9 +137,7 @@ internal static partial class FactRules
 
     public const string FixtureSuffix = ".fixture.json";
 
-    public static IReadOnlyList<Problem> Check(DocIndex index, string root, out int facts) => Check(index, root, out facts, out _);
-
-    public static IReadOnlyList<Problem> Check(DocIndex index, string root, out int facts, out FactCitations.Scan cited)
+    public static IReadOnlyList<Problem> Check(DocIndex index, string root, out int facts)
     {
         var problems  = new List<Problem>();
         var installed = Installed.Read(root);
@@ -149,7 +145,6 @@ internal static partial class FactRules
         var fixtures  = new HashSet<string>(StringComparer.Ordinal);
         // Why each fact cannot settle a pruning or an excuse, or null where its test exists; and its fixture, where one exists.
         var notExecutable = new Dictionary<string, string?>(StringComparer.Ordinal);
-        var fixtureOf     = new Dictionary<string, string?>(StringComparer.Ordinal);
         facts = 0;
 
         for (var d = 0; d < index.Docs.Count; d++)
@@ -221,7 +216,6 @@ internal static partial class FactRules
                 }
             }
 
-            fixtureOf[doc.Id!] = null;
             if (doc.Meta.FirstOrDefault(field => field.Key == "fixture") is { } fixture)
             {
                 var expected = $"{FactsProject}/{className}{FixtureSuffix}";
@@ -235,21 +229,7 @@ internal static partial class FactRules
                     problems.Add(new Problem(At(fixture.Line), "fact-fixture", fixture.Value, $"write it beside the test, as {expected}"));
                 else if (!File.Exists(Path.Combine(root, fixture.Value)))
                     problems.Add(new Problem(At(fixture.Line), "fact-fixture-missing", fixture.Value, "the file does not exist"));
-                else
-                    fixtureOf[doc.Id!] = fixture.Value;
             }
-        }
-
-        cited = FactCitations.Find(root);
-        foreach (var citation in cited.Citations)
-        {
-            var why = !notExecutable.TryGetValue(citation.Fact, out var reason) ? "there is no such fact under design/knowledge/"
-                    : reason is not null ? reason
-                    : citation.Baseline && fixtureOf[citation.Fact] is null ? "the harness reads its fixture as a baseline, and it names no fixture: that exists"
-                    : null;
-            if (why is not null)
-                problems.Add(new Problem(citation.At, "fact-not-executable-cited", citation.Fact,
-                    $"{citation.Place} cites {citation.Fact}, and {why}: a fact without its test explains only, never prunes or excuses a row; write its test in {FactsProject}/, or cite a docs sentence"));
         }
 
         var project = Path.Combine(root, FactsProject);

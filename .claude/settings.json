@@ -11,7 +11,7 @@
           },
           {
             "type": "command",
-            "command": "dotnet build tools/AgentTools.slnf -c Release -nologo -v q -tl:off -clp:NoSummary >/dev/null 2>&1 || PATH=\"/usr/local/share/dotnet:$PATH\" dotnet build tools/AgentTools.slnf -c Release -nologo -v q -tl:off -clp:NoSummary || echo \"Session start: the tools in $PWD (build-verdict, prober, docs-query, consumer-smoke-test) did not build with the dotnet on PATH, nor with the installer's in /usr/local/share/dotnet; a dotnet without the SDK global.json pins is the usual cause. Run dotnet build tools/AgentTools.slnf -c Release to see why, and before using them.\"",
+            "command": "dotnet build tools/AgentTools.slnf -c Release -nologo -v q -tl:off -clp:NoSummary >/dev/null 2>&1 || PATH=\"/usr/local/share/dotnet:$PATH\" dotnet build tools/AgentTools.slnf -c Release -nologo -v q -tl:off -clp:NoSummary || echo \"Session start: the tools in $PWD (build-verdict, docs-query, consumer-smoke-test, pr-hygiene) did not build with the dotnet on PATH, nor with the installer's in /usr/local/share/dotnet; a dotnet without the SDK global.json pins is the usual cause. Run dotnet build tools/AgentTools.slnf -c Release to see why, and before using them.\"",
             "timeout": 300
           }
         ]
