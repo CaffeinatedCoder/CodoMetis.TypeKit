@@ -1,13 +1,13 @@
 diff --git a/src/CodoMetis.TypeKit.AspNetCore/FaultProblem.cs b/src/CodoMetis.TypeKit.AspNetCore/FaultProblem.cs
-index f9919a2..8975c02 100644
+index 1558afb..a82b43a 100644
 --- a/src/CodoMetis.TypeKit.AspNetCore/FaultProblem.cs
 +++ b/src/CodoMetis.TypeKit.AspNetCore/FaultProblem.cs
-@@ -64,7 +64,7 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
- 
+@@ -65,7 +65,7 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
          var status = endpoint is not null ? FaultStatuses.Override(endpoint.Metadata, Fault, responses.Type) ?? answer.Status : answer.Status;
          var name = httpContext.RequestServices.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true ? answer.QualifiedName : answer.Name;
--        var detail = Detail ?? answer.Description;
-+        var detail = Detail ?? answer.Description ?? answer.Name;
+         // A withheld name takes the member's description with it, which names the member as surely.
+-        var detail = answer.Named ? Detail ?? answer.Description : Detail;
++        var detail = answer.Named ? Detail ?? answer.Description ?? answer.Name : Detail;
  
          // Present only while this problem is written, so a CustomizeProblemDetails that reads it sees it
          // for this problem and for no other the request writes.

@@ -14,6 +14,7 @@ section is the GitHub release's notes.
 
 ### Added
 
+- AspNetCore: `FaultResponse.WithoutFaultName()` answers a member without naming it: no `fault`, no `rule` and no member description in the problem, so two causes on one status look alike; the document says that status names no fault, and `IFaultFeature.NameWithheld` tells the host ([Faults a client must not tell apart](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#faults-a-client-must-not-tell-apart)).
 - `Result.CatchAsync` takes a call that returns a `ValueTask`, `stream.ReadAsync(buffer)` without `.AsTask()`; an `async` lambda binds as before ([An exception as an outcome](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/result.md#an-exception-as-an-outcome)).
 - `TraverseAsync` on `Option<T>` and `Patch<T>`: an asynchronous check of an optional input or a patch field, with a token form; nothing is called without a value ([Collect many results](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/result.md#collect-many-results)).
 

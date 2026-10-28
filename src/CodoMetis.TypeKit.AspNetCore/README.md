@@ -655,6 +655,24 @@ Both causes then get the same answer: status, `type`, `title`, `fault` and `deta
 its two errors for its own use, such as a log or a lockout count. A `Fault<TFault>`'s detail stays
 behind with them.
 
+Or keep the domain's errors all the way, and leave their name out of the response.
+`WithoutFaultName()` in the mapping does that, for the members you choose or for every one:
+
+```csharp
+builder.Services.AddFaultResponses<SignInFault>(_ => FaultResponse.Status(StatusCodes.Status401Unauthorized).WithoutFaultName());
+
+app.MapPost("/login", (Credentials credentials) => accounts.SignIn(credentials).ToHttpResult());   // no fault, no rule
+```
+
+- **The problem says nothing of the member**: no `fault`, no `rule`, and no fault set member's
+  description as its `detail`. A detail you write on the `Fault<TFault>` still goes out, so keep it
+  the same for both.
+- **Give them the same `type` and `title`**, or those tell them apart instead.
+- **Your host still sees the fault.** `IFaultFeature` carries its name, and `NameWithheld` says the
+  mapping keeps it from the client, so don't copy it into the problem in `CustomizeProblemDetails`.
+- **The document says it.** A response whose every fault withholds its name ends its description with
+  "The problem names no fault."
+
 ## NodaTime
 
 ASP.NET can't see through NodaTime's JSON converters. Once they're on the host's JSON options, it

@@ -1,5 +1,5 @@
 diff --git a/src/CodoMetis.TypeKit.AspNetCore/FaultProblem.cs b/src/CodoMetis.TypeKit.AspNetCore/FaultProblem.cs
-index f9919a2..d8a9e52 100644
+index 1558afb..35601b3 100644
 --- a/src/CodoMetis.TypeKit.AspNetCore/FaultProblem.cs
 +++ b/src/CodoMetis.TypeKit.AspNetCore/FaultProblem.cs
 @@ -62,7 +62,7 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
@@ -9,5 +9,5 @@ index f9919a2..d8a9e52 100644
 -        var status = endpoint is not null ? FaultStatuses.Override(endpoint.Metadata, Fault, responses.Type) ?? answer.Status : answer.Status;
 +        var status = Rule is not null ? 400 : endpoint is not null ? FaultStatuses.Override(endpoint.Metadata, Fault, responses.Type) ?? answer.Status : answer.Status;
          var name = httpContext.RequestServices.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true ? answer.QualifiedName : answer.Name;
-         var detail = Detail ?? answer.Description;
- 
+         // A withheld name takes the member's description with it, which names the member as surely.
+         var detail = answer.Named ? Detail ?? answer.Description : Detail;

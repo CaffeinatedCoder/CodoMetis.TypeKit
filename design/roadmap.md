@@ -25,9 +25,6 @@ and then to 2.3 when 2.2.0 became a consolidation release ([decision 97](adr/009
 - An optional `Cause` on `Fault<TFault>`, an exception kept beside the reason and the detail for the
   log and the fault feature, never written to the problem; `Fault.Of(reason, detail, cause)`, and a
   `MapError` from a `Result<T, Exception>` that keeps the exception ([decision 52](adr/0052-cause-on-fault-joins-2-1.md)).
-- An opt-in that withholds the `fault` name from the response for chosen members or a whole fault
-  type, so two causes can share a status without a mapping at the boundary
-  ([decision 64](adr/0064-fault-name-reaches-client-causes-not-told-apart-one-fault.md)).
 - A default value-object key over `ulong` generated as a plain one is, which needs a per-key value
   generator a compiled model can write ([decision 63](adr/0063-char-keys-application-assigned-ulong-documented.md)).
 - Testing: async assertions.
