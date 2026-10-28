@@ -1,0 +1,69 @@
+name: Bug
+description: Something compiles but does less than it should, throws when it shouldn't, or doesn't refuse when it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The bugs that matter most here don't crash. A value object builds but was never generated, a
+        failed `Result` goes unnoticed, an analyzer stops reporting, a column reads back a value the
+        type would have refused. If that's what you found, please say so below. It decides how soon
+        the fix ships.
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      multiple: true
+      options:
+        - CodoMetis.TypeKit
+        - CodoMetis.TypeKit.Analyzers
+        - CodoMetis.TypeKit.Generators
+        - CodoMetis.TypeKit.EntityFrameworkCore
+        - CodoMetis.TypeKit.AspNetCore
+        - CodoMetis.TypeKit.Serilog
+        - CodoMetis.TypeKit.Testing
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: "2.2.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: failure
+    attributes:
+      label: How does it fail?
+      options:
+        - Silently. It compiles or answers, and does less than it appears to
+        - Loudly. It throws, fails the build or reports a diagnostic where it should work
+        - I'm not sure
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: What you ran
+      description: The smallest code that shows it. For EF Core, include the query and the SQL it translated to; for JSON or OpenAPI, the payload or the schema.
+      render: csharp
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What you got
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: If a docs page or a README says what should happen, link it.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: .NET SDK version, OS, whether you publish with Native AOT, and the database provider if EF Core is involved.
