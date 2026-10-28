@@ -12,6 +12,11 @@ section is the GitHub release's notes.
 
 ## 2.3.0 — Unreleased
 
+### Added
+
+- `Result.CatchAsync` takes a call that returns a `ValueTask`, `stream.ReadAsync(buffer)` without `.AsTask()`; an `async` lambda binds as before ([An exception as an outcome](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/result.md#an-exception-as-an-outcome)).
+- `TraverseAsync` on `Option<T>` and `Patch<T>`: an asynchronous check of an optional input or a patch field, with a token form; nothing is called without a value ([Collect many results](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/result.md#collect-many-results)).
+
 ## 2.2.0 — 2026-10-18
 
 ### Fixed

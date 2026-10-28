@@ -95,6 +95,7 @@ runs the condition in memory. Hold an `Expression<Func<T, bool>>` instead.
 - **`ToResult(error)`** turns absence into an error.
 - **`Traverse`** validates an optional input when it is present.
   `dto.Phone.ToOption().Traverse(Phone.Create)` is a `Result<Option<Phone>, PhoneFault>`.
+  `TraverseAsync` does the same with a check you await, such as a lookup.
 - **`Transpose()`** turns an `Option<Result<...>>` inside out, and a `Result<Option<...>>` back.
 
 `ToString()` never prints the content, so an option is safe to log. The debugger shows it.
@@ -271,9 +272,10 @@ Result<byte[], Exception> fetched = await Result.CatchAsync(() => client.GetByte
 - **A task goes to `CatchAsync`.** A delegate that returns a `Task`, an `async` lambda among them,
   given to `Catch` or its command form doesn't compile, and the error names `CatchAsync`. The task's
   exception would be thrown after `Catch` had returned.
-- **A `ValueTask`, or a task spelled as the type argument** (`Catch<Task<int>, ...>`), is rejected
-  when called, before the delegate runs. `CatchAsync` takes a `ValueTask` through `.AsTask()` or an
-  `async` lambda, as above.
+- **`CatchAsync` takes a `ValueTask` too**, as in `Result.CatchAsync(() => stream.ReadAsync(buffer))`.
+  An `async` lambda still goes to the `Task` form.
+- **A `ValueTask` given to `Catch`, or a task spelled as the type argument** (`Catch<Task<int>, ...>`),
+  is rejected when called, before the delegate runs. Use `CatchAsync`.
 - **A delegate that returns null throws**, as `Result.Success(null)` does.
 - **The other members don't catch.** `Map`, `Bind` and the rest are unchanged: a selector that throws
   propagates.
@@ -582,7 +584,8 @@ A value object inside a patch keeps its own rule. `Patch<Email>` given a value t
 is rejected as anywhere else, without quoting the input. Where the rejection should be the
 endpoint's own fault, the request carries a `Patch<string>`, and `Traverse` validates it:
 `request.Email.Traverse(Email.Create)` is a `Result<Patch<Email>, EmailFault>`, with a clear and an
-absence passed through. `Map` changes a value the same way.
+absence passed through. `TraverseAsync` does the same with a check you await, and `Map` changes a
+value the same way.
 
 **Good to know**
 
@@ -830,13 +833,13 @@ In a field initializer, refer to a member by its field, `Open`, not by its name.
 Nothing has run: the delegate is rejected before it is called.
 
 **Why:** the task's exception is thrown after `Catch` has returned, so the result would be a success
-whatever the call does. A delegate that returns a `Task` is rejected at compile time. A `ValueTask`
-can't be: it converts to no task type that an overload could name without making every `async`
-lambda ambiguous. And a spelled type argument chooses its overload itself.
+whatever the call does. A delegate that returns a `Task` is rejected at compile time. One that
+returns a `ValueTask` is rejected when called, since a compile error there would break a build that
+works today. And a spelled type argument chooses its overload itself.
 
-**Instead:** use `CatchAsync`, which awaits the task:
-`await Result.CatchAsync(() => stream.ReadAsync(buffer).AsTask())`, or an `async` lambda. In
-`CatchAsync`, await the inner task in the delegate.
+**Instead:** use `CatchAsync`, which awaits the task, a `ValueTask` too:
+`await Result.CatchAsync(() => stream.ReadAsync(buffer))`. In `CatchAsync`, await the inner task in
+the delegate.
 
 ### AsText in globalization-invariant mode
 

@@ -77,6 +77,10 @@ public sealed class AsynchronousContextTests
         ["Result.CatchAsync(Func<Task>)"]                   = p => Result.CatchAsync(() => (Task)p.Later(p.Seen(1))),
         ["Result.CatchAsync<T, TException>(Func<Task<T>>)"] = p => Result.CatchAsync<int, InvalidOperationException>(() => p.Later(p.Seen(1))),
         ["Result.CatchAsync<TException>(Func<Task>)"]       = p => Result.CatchAsync<InvalidOperationException>(() => (Task)p.Later(p.Seen(1))),
+        ["Result.CatchAsync<T>(Func<ValueTask<T>>)"]             = p => Result.CatchAsync(() => new ValueTask<int>(p.Later(p.Seen(1)))),
+        ["Result.CatchAsync(Func<ValueTask>)"]                   = p => Result.CatchAsync(() => new ValueTask(p.Later(p.Seen(1)))),
+        ["Result.CatchAsync<T, TException>(Func<ValueTask<T>>)"] = p => Result.CatchAsync<int, InvalidOperationException>(() => new ValueTask<int>(p.Later(p.Seen(1)))),
+        ["Result.CatchAsync<TException>(Func<ValueTask>)"]       = p => Result.CatchAsync<InvalidOperationException>(() => new ValueTask(p.Later(p.Seen(1)))),
 
         ["Option.MapAsync(Task<Option<T>>, Func<T, TResult>)"]               = p => p.First(Some).MapAsync(x => p.Seen(x)),
         ["Option.MapAsync(Task<Option<T>>, Func<T, Task<TResult>>)"]         = p => p.First(Some).MapAsync(x => p.Later(p.Seen(x))),
@@ -91,6 +95,12 @@ public sealed class AsynchronousContextTests
         ["Option<T>.MapAsync(Func<T, Task<TResult>>)"]          = p => Some.MapAsync(x => p.Later(p.Seen(x))),
         ["Option<T>.BindAsync(Func<T, Task<Option<TResult>>>)"] = p => Some.BindAsync(x => p.Later(p.Seen(Some))),
         ["Option<T>.TapAsync(Func<T, Task>)"]                   = p => Some.TapAsync(x => p.Later(p.Seen(x))),
+        ["Result.TraverseAsync(Option<T>, Func<T, Task<Result<TResult, TError>>>)"] = p => Some.TraverseAsync(x => p.Later(p.Seen(Value))),
+        ["Result.TraverseAsync(Option<T>, Func<T, CancellationToken, Task<Result<TResult, TError>>>, CancellationToken)"] =
+            p => Some.TraverseAsync((x, _) => p.Later(p.Seen(Value)), CancellationToken.None),
+        ["Result.TraverseAsync(Patch<T>, Func<T, Task<Result<TResult, TError>>>)"] = p => Patch.Value(1).TraverseAsync(x => p.Later(p.Seen(Value))),
+        ["Result.TraverseAsync(Patch<T>, Func<T, CancellationToken, Task<Result<TResult, TError>>>, CancellationToken)"] =
+            p => Patch.Value(1).TraverseAsync((x, _) => p.Later(p.Seen(Value)), CancellationToken.None),
 
         ["Result<TError>.TapAsync(Func<Task>)"]                          = p => Ok.TapAsync(() => p.Later(p.Seen(0))),
         ["Result<TError>.TapErrorAsync(Func<TError, Task>)"]             = p => Failed.TapErrorAsync(e => p.Later(p.Seen(e))),
