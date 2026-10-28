@@ -64,15 +64,17 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
 
         var status = endpoint is not null ? FaultStatuses.Override(endpoint.Metadata, Fault, responses.Type) ?? answer.Status : answer.Status;
         var name = httpContext.RequestServices.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true ? answer.QualifiedName : answer.Name;
-        var detail = Detail ?? answer.Description;
+        // A withheld name takes the member's description with it, which names the member as surely.
+        var detail = answer.Named ? Detail ?? answer.Description : Detail;
 
         // Present only while this problem is written, so a CustomizeProblemDetails that reads it sees it
         // for this problem and for no other the request writes.
         var features = httpContext.Features;
         var previous = features.Get<IFaultFeature>();
-        features.Set<IFaultFeature>(new FaultFeature(typeof(TFault), Fault, name, detail, Rule));
-        var extensions = new Dictionary<string, object?> { [FaultResponsesOperationTransformer.FaultMember] = name };
-        if (Rule is not null) extensions[FaultResponsesOperationTransformer.RuleMember] = Rule;
+        features.Set<IFaultFeature>(new FaultFeature(typeof(TFault), Fault, name, detail, Rule, !answer.Named));
+        var extensions = new Dictionary<string, object?>();
+        if (answer.Named) extensions[FaultResponsesOperationTransformer.FaultMember] = name;
+        if (answer.Named && Rule is not null) extensions[FaultResponsesOperationTransformer.RuleMember] = Rule;
         try
         {
             await TypedResults.Problem(
@@ -103,7 +105,7 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
         builder.Metadata.Add(FaultResponsesMetadata<TFault>.Instance);
     }
 
-    private sealed record FaultFeature(Type FaultType, object Fault, string Name, string? Detail, string? Rule) : IFaultFeature;
+    private sealed record FaultFeature(Type FaultType, object Fault, string Name, string? Detail, string? Rule, bool NameWithheld) : IFaultFeature;
 }
 
 /// <summary>
@@ -120,7 +122,10 @@ public interface IFaultFeature
     /// <summary>The fault: the enum member or the closed set's member.</summary>
     object Fault { get; }
 
-    /// <summary>The name the problem's <c>fault</c> member carries, qualified where the host asks for it.</summary>
+    /// <summary>
+    /// The name the problem's <c>fault</c> member carries, qualified where the host asks for it, or would carry
+    /// where the mapping withholds it (<see cref="NameWithheld"/>).
+    /// </summary>
     string Name { get; }
 
     /// <summary>The problem's <c>detail</c>, or <see langword="null"/>.</summary>
@@ -129,6 +134,14 @@ public interface IFaultFeature
     /// <summary>The problem's <c>rule</c>, the rule that refused (<see cref="Fault{TFault}.Rule"/>), or <see langword="null"/>.</summary>
     /// <remarks>Implemented by default as <see langword="null"/>, so an implementation of the host's own, a test's, still builds.</remarks>
     string? Rule => null;
+
+    /// <summary>
+    /// Whether the mapping withholds the fault's name from the problem (<c>FaultResponse.WithoutFaultName()</c>):
+    /// the problem then has no <c>fault</c> and no <c>rule</c>, and a <c>CustomizeProblemDetails</c> that writes
+    /// <see cref="Name"/> or <see cref="Rule"/> into it tells the client what the mapping keeps from it.
+    /// </summary>
+    /// <remarks>Implemented by default as <see langword="false"/>, so an implementation of the host's own still builds.</remarks>
+    bool NameWithheld => false;
 }
 
 /// <summary>How <c>ToHttpResult()</c> writes a problem: <c>services.Configure&lt;FaultResponseOptions&gt;(options =&gt; …)</c>.</summary>

@@ -124,7 +124,7 @@ internal sealed class FaultResponses<TFault> where TFault : notnull
                     "A fault is answered as problem details; a success is the value of the Result." + FaultRefusals.Mapping,
                     parameter);
 
-            answers[fault] = new Answer(response.StatusCode, response.Type is { } problemType ? FaultResponse.Written(problemType) : null, response.Title, type.NameOf(fault), type.QualifiedNameOf(fault), FaultType<TFault>.DescriptionOf(fault));
+            answers[fault] = new Answer(response.StatusCode, response.Type is { } problemType ? FaultResponse.Written(problemType) : null, response.Title, type.NameOf(fault), type.QualifiedNameOf(fault), FaultType<TFault>.DescriptionOf(fault), response.NamesFault);
         }
 
         return new FaultResponses<TFault>(type, answers);
@@ -155,6 +155,14 @@ internal sealed class FaultResponses<TFault> where TFault : notnull
                                         .OfType<string>()
                                         .Distinct()];
 
+    /// <summary>
+    /// Whether a member the endpoint answers with <paramref name="status"/> names its fault: <see langword="true"/>
+    /// where one does, <see langword="false"/> where every one withholds it, <see langword="null"/> where none
+    /// is answered with it.
+    /// </summary>
+    public bool? NamesAt(int status, IReadOnlyList<object> endpointMetadata) =>
+        AnsweredBy(endpointMetadata).Where(fault => StatusOf(fault, endpointMetadata) == status).Select(fault => (bool?)_answers[fault].Named).Max();
+
     /// <summary>The members an endpoint answers with: every member, but those its metadata leaves out.</summary>
     public IEnumerable<TFault> AnsweredBy(IReadOnlyList<object> endpointMetadata) =>
         Type.Members.Where(fault => FaultExclusions.Excluding(endpointMetadata, fault, Type) is null);
@@ -178,7 +186,7 @@ internal sealed class FaultResponses<TFault> where TFault : notnull
     /// The mapped answer for one member: what the problem says, before an endpoint changes its status. Its
     /// <c>Type</c> is the problem's <c>type</c> as the response and the document write it (<see cref="FaultResponse.Written"/>).
     /// </summary>
-    internal sealed record Answer(int Status, string? Type, string? Title, string Name, string QualifiedName, string? Description);
+    internal sealed record Answer(int Status, string? Type, string? Title, string Name, string QualifiedName, string? Description, bool Named);
 }
 
 /// <summary>
@@ -197,6 +205,9 @@ internal abstract class FaultResponsesMetadata
     /// <summary>The problem types listed for <paramref name="status"/>.</summary>
     public abstract IReadOnlyList<string> Types(IServiceProvider services, int status, IReadOnlyList<object> endpointMetadata);
 
+    /// <summary>Whether a member answered with <paramref name="status"/> names its fault (<see cref="FaultResponses{TFault}.NamesAt"/>).</summary>
+    public abstract bool? NamesAt(IServiceProvider services, int status, IReadOnlyList<object> endpointMetadata);
+
     /// <summary>
     /// What is wrong with the endpoint's declarations for this fault type: a status or a member left out that
     /// names no member.
@@ -211,8 +222,8 @@ internal abstract class FaultResponsesMetadata
     public abstract IEnumerable<(IFaultDeclaration Status, string Member, string Message)> StatusesLeftOut(IServiceProvider services, IReadOnlyList<object> endpointMetadata);
 
     /// <summary>
-    /// The name and the qualified name of each member the endpoint answers with, those it leaves out aside, or
-    /// none where the host mapped no status.
+    /// The name and the qualified name of each member the endpoint answers with and names in the problem, those it
+    /// leaves out and those whose name it withholds aside, or none where the host mapped no status.
     /// </summary>
     public abstract IEnumerable<(string Name, string QualifiedName)> Names(IServiceProvider services, IReadOnlyList<object> endpointMetadata);
 }
@@ -232,6 +243,9 @@ internal sealed class FaultResponsesMetadata<TFault> : FaultResponsesMetadata wh
 
     public override IReadOnlyList<string> Types(IServiceProvider services, int status, IReadOnlyList<object> endpointMetadata) =>
         Responses(services)?.TypesOf(status, endpointMetadata) ?? [];
+
+    public override bool? NamesAt(IServiceProvider services, int status, IReadOnlyList<object> endpointMetadata) =>
+        Responses(services)?.NamesAt(status, endpointMetadata);
 
     public override IEnumerable<string> Problems(IServiceProvider services, IReadOnlyList<object> endpointMetadata)
     {
@@ -264,7 +278,7 @@ internal sealed class FaultResponsesMetadata<TFault> : FaultResponsesMetadata wh
 
     public override IEnumerable<(string Name, string QualifiedName)> Names(IServiceProvider services, IReadOnlyList<object> endpointMetadata) =>
         Responses(services) is { } responses
-            ? responses.AnsweredBy(endpointMetadata).Select(fault => (responses.Type.NameOf(fault), responses.Type.QualifiedNameOf(fault)))
+            ? responses.AnsweredBy(endpointMetadata).Where(fault => responses.Of(fault).Named).Select(fault => (responses.Type.NameOf(fault), responses.Type.QualifiedNameOf(fault)))
             : [];
 
     private static FaultResponses<TFault>? Responses(IServiceProvider services) => FaultResponses<TFault>.Of(services);

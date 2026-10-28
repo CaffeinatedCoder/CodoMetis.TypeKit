@@ -224,6 +224,21 @@ public sealed class ComposedFaultResponseTests
         logs.Warnings.ShouldHaveSingleItem().ShouldContain("HTTP: PUT /orders/{id:int} answers ComposedFaultResponseTests.OrderFault.NameTaken and ComposedFaultResponseTests.ClashingFault.NameTaken alike, as the fault \"NameTaken\"");
     }
 
+    /// <summary>A member whose name the mapping withholds writes no name, so it shares none with another type's (decision 111).</summary>
+    [Fact]
+    public async Task A_shared_name_one_type_withholds_is_no_warning()
+    {
+        var logs = new ListedLogs();
+        await using var app = await StartAsync(
+            logs: logs,
+            clashWithheld: true,
+            endpoints: app => app.MapPut("/orders/{id:int}", Results<NoContent, FaultProblem<OrderFault>, FaultProblem<ClashingFault>> (int id) =>
+                id == 1 ? TypedResults.NoContent() : NameTakenAsIn20()));
+
+        (await ProblemAsync(app, "PUT", "/orders/2", HttpStatusCode.Conflict))["fault"]!.GetValue<string>().ShouldBe("NameTaken");
+        logs.Warnings.ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task Qualified_names_keep_a_shared_member_name_apart()
     {
@@ -313,7 +328,8 @@ public sealed class ComposedFaultResponseTests
         Action<IServiceCollection>? services = null,
         ILoggerProvider? logs = null,
         bool typeKit = true,
-        Action<Microsoft.AspNetCore.OpenApi.OpenApiOptions>? openApi = null)
+        Action<Microsoft.AspNetCore.OpenApi.OpenApiOptions>? openApi = null,
+        bool clashWithheld = false)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
         builder.WebHost.UseTestServer();
@@ -350,7 +366,7 @@ public sealed class ComposedFaultResponseTests
         }
         builder.Services.AddFaultResponses<ClashingFault>(fault => fault switch
         {
-            ClashingFault.NameTaken => StatusCodes.Status409Conflict,
+            ClashingFault.NameTaken => clashWithheld ? FaultResponse.Status(StatusCodes.Status409Conflict).WithoutFaultName() : StatusCodes.Status409Conflict,
             ClashingFault.Other => StatusCodes.Status422UnprocessableEntity,
             _ => throw new ArgumentOutOfRangeException(nameof(fault)),
         });

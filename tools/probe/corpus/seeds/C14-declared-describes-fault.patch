@@ -1,13 +1,13 @@
 diff --git a/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesOperationTransformer.cs b/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesOperationTransformer.cs
-index 8e936ee..6bd7f14 100644
+index 50f033f..6c39568 100644
 --- a/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesOperationTransformer.cs
 +++ b/src/CodoMetis.TypeKit.AspNetCore/FaultResponsesOperationTransformer.cs
-@@ -120,7 +120,7 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
+@@ -122,7 +122,7 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
                  {
                      problem ??= await ProblemSchemaAsync(context, cancellationToken);
                      touched = true;
 -                    foreach (var schema in schemas) WithFault(schema, Qualified(context));
 +                    foreach (var schema in schemas.Take(0)) WithFault(schema, Qualified(context));
                      if (string.IsNullOrEmpty(response.Description) || response.Description == ReasonPhrases.GetReasonPhrase(status))
-                         response.Description = Description(status, types);
+                         response.Description = Description(status, types, named.Contains(status));
                  }
