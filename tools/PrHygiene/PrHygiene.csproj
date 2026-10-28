@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Checks a pull request's labels, milestone, branch and closing reference against CONTRIBUTING's
+      "Issues and labels" (Program.cs). Run as its built dll, on the event payload GitHub writes:
+      `dotnet tools/PrHygiene/bin/Release/net10.0/pr-hygiene.dll <event.json>`. .github/workflows/pr-hygiene.yml
+      runs it on every pull request into main or a release branch.
+    -->
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <AssemblyName>pr-hygiene</AssemblyName>
+        <RootNamespace>PrHygiene</RootNamespace>
+    </PropertyGroup>
+
+</Project>

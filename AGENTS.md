@@ -62,6 +62,7 @@ dotnet test --project test/CodoMetis.TypeKit.Conventions.Tests --filter-method "
 dotnet build spikes/FabricSpike/FabricSpike.slnx      # the fabric spike, standalone
 dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll   # the packages, installed into throwaway consumers, one published with Native AOT (needs the platform linker); build it with -c Release first
 dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--project P] [--filter-class C] [--filter-method M] [-- flags]   # an agent's build and test: a verdict, not the transcript
+dotnet tools/PrHygiene/bin/Release/net10.0/pr-hygiene.dll event.json   # a PR's labels, milestone, branch and issue link, as CI's PR hygiene check reads them from the payload
 ```
 
 The probing tool, prober (`tools/Prober`, started as its built dll like docs-query). These need no
@@ -220,6 +221,28 @@ the whole page. A ranked miss proves nothing.
 - **Silent is worse than broken.** A value object that compiles without being generated, an
   analyzer that stops firing, or a converter that materialises `default` are this repo's
   characteristic failures. Prefer a diagnostic or an exception to a plausible result.
+
+## Issues
+Work is tracked as GitHub issues, not as lists in docs or memory
+([decision 109](design/adr/0109-work-is-tracked-as-labelled-issues-and-ci-checks-each-pull-request.md)).
+Open the issue before starting the work: a bug, an enhancement, a follow-up, a finding from a review or a
+probe.
+- **Labels, on issues and PRs alike** (ValueRanges' scheme; the legend is CONTRIBUTING's "Issues and
+  labels", and `gh label list` the source): exactly one type (`bug`, `enhancement`, `documentation`,
+  `tests`, `chore`), exactly one `severity/*` on a bug, the `package/*` and `area/*` it touches, and
+  `silent` (a bug that does less than it appears to), `breaking`, `found-by/prober` or `stacked` where they
+  apply. Never invent a label; if none fits, say so.
+- **Epics:** a release is an `epic` issue with a milestone of its version (`2.3.0`), its work attached as
+  native sub-issues with the same milestone (`gh issue create --parent N --milestone M`). A theme that spans
+  releases is an `epic` without a milestone; a finding belongs to the release it ships in. The plan stays in
+  `design/roadmap.md`; there is no roadmap issue.
+- **PRs** carry their issue's labels and milestone, open with `Closes #n`, and follow
+  `.github/pull_request_template.md` (Problem, Change, Tests). `pr-hygiene.yml` runs `tools/PrHygiene` on
+  every PR into `main` or a release branch and fails a missing type, severity or closing reference, a branch
+  whose `<type>/` disagrees with its type label, a PR into `release/<version>` without that milestone, and
+  `breaking` into anything but a major. A topic merges into its release branch, where `Closes` closes
+  nothing: close its issue by hand on merge, with a comment linking the PR.
+- When the work changes what an issue says (its scope, its state, a measured fact), edit the issue.
 
 ## Workflow
 1. Read `design/plan.md`, the roadmap, the decision records and the design note for the area you
