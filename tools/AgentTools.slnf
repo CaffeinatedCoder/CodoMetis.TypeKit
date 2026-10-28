@@ -5,8 +5,8 @@
       "tools/BuildVerdict/BuildVerdict.csproj",
       "tools/ConsumerSmokeTest/ConsumerSmokeTest.csproj",
       "tools/DocsQuery/DocsQuery.csproj",
-      "tools/PrHygiene/PrHygiene.csproj",
-      "tools/Prober/Prober.csproj"
+      "tools/Oracles/Oracles.csproj",
+      "tools/PrHygiene/PrHygiene.csproj"
     ]
   }
 }

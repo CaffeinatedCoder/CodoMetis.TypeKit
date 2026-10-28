@@ -36,7 +36,7 @@ public sealed class SessionStartHookTests
     ];
 
     [Fact]
-    public void The_tools_are_found() => Tools.Select(row => row.Data).ShouldContain("Prober");
+    public void The_tools_are_found() => Tools.Select(row => row.Data).ShouldContain("Oracles");
 
     [Theory, MemberData(nameof(Tools))]
     public void Every_tool_is_in_the_session_start_filter(string tool)

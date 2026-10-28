@@ -87,6 +87,25 @@ public static class SignIns
     }
 }
 
+/// <summary>The README's sign-in with the name withheld: the domain's faults answered as they are, and alike.</summary>
+public static class WithheldSignIns
+{
+    public static void Responses(WebApplicationBuilder builder)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/withheld-fault-name
+        builder.Services.AddFaultResponses<SignInFault>(_ => FaultResponse.Status(StatusCodes.Status401Unauthorized).WithoutFaultName());
+
+        // end sample
+    }
+
+    public static void Endpoints(WebApplication app, ISignIn accounts)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/withheld-fault-name
+        app.MapPost("/login", (Credentials credentials) => accounts.SignIn(credentials).ToHttpResult());   // no fault, no rule
+        // end sample
+    }
+}
+
 public static class Faults
 {
     public static void Responses(WebApplicationBuilder builder)
@@ -455,6 +474,28 @@ public sealed class SignInSampleTests
 
         (await AnswerAsync(app, "/login-telling", "nobody")).Body["fault"]!.GetValue<string>().ShouldBe("UnknownUser");
         (await AnswerAsync(app, "/login-telling", "ann")).Body["fault"]!.GetValue<string>().ShouldBe("WrongPassword");
+    }
+
+    /// <summary>The README's second way: the domain's two faults answered as they are, the name withheld, and alike.</summary>
+    [Fact]
+    public async Task Two_causes_whose_name_the_mapping_withholds_answer_alike_without_a_fault()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        WithheldSignIns.Responses(builder);
+
+        await using var app = builder.Build();
+        WithheldSignIns.Endpoints(app, new Refusing());
+        await app.StartAsync(TestContext.Current.CancellationToken);
+
+        var unknownUser = await AnswerAsync(app, "/login", "nobody");
+        var wrongPassword = await AnswerAsync(app, "/login", "ann");
+        unknownUser.Status.ShouldBe(HttpStatusCode.Unauthorized);
+        unknownUser.Body.ContainsKey("fault").ShouldBeFalse(unknownUser.Body.ToJsonString());
+        wrongPassword.Status.ShouldBe(unknownUser.Status);
+        JsonNode.DeepEquals(wrongPassword.Body, unknownUser.Body)
+            .ShouldBeTrue($"{wrongPassword.Body.ToJsonString()} tells itself apart from {unknownUser.Body.ToJsonString()}");
     }
 
     private static async Task<(HttpStatusCode Status, JsonObject Body)> AnswerAsync(WebApplication app, string path, string user)

@@ -89,6 +89,7 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
         // Every fault type the endpoint answers with, a Fault<T1, T2>'s each: a status two of them share is one
         // response, which lists the problem types of both, and the statuses come in ascending order.
         var answered = new SortedDictionary<int, List<string>>();
+        var named = new HashSet<int>();
         foreach (var metadata in endpointMetadata.OfType<FaultResponsesMetadata>().Distinct())
         {
             var statuses = metadata.Statuses(context.ApplicationServices, endpointMetadata)
@@ -100,6 +101,7 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
             {
                 if (!answered.TryGetValue(status, out var types)) answered[status] = types = [];
                 types.AddRange(metadata.Types(context.ApplicationServices, status, endpointMetadata).Except(types, StringComparer.Ordinal).ToList());
+                if (metadata.NamesAt(context.ApplicationServices, status, endpointMetadata) == true) named.Add(status);
             }
         }
 
@@ -122,7 +124,7 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
                     touched = true;
                     foreach (var schema in schemas) WithFault(schema, Qualified(context));
                     if (string.IsNullOrEmpty(response.Description) || response.Description == ReasonPhrases.GetReasonPhrase(status))
-                        response.Description = Description(status, types);
+                        response.Description = Description(status, types, named.Contains(status));
                 }
 
                 continue;
@@ -131,7 +133,7 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
             problem ??= await ProblemSchemaAsync(context, cancellationToken);
             operation.Responses[key] = new OpenApiResponse
             {
-                Description = Description(status, types),
+                Description = Description(status, types, named.Contains(status)),
                 Content = new Dictionary<string, OpenApiMediaType> { ["application/problem+json"] = new() { Schema = problem } },
             };
             touched = true;
@@ -195,10 +197,19 @@ internal sealed class FaultResponsesOperationTransformer : IOpenApiOperationTran
         return schemas;
     }
 
-    private static string Description(int status, List<string> types) =>
-        types.Count == 0
+    /// <summary>
+    /// The status's reason phrase, the problem types where the mapping gives any, and, where every fault
+    /// answered with the status withholds its name, that the problem names none: the shared schema's
+    /// <c>fault</c> is optional, and the description says which responses never carry it.
+    /// </summary>
+    private static string Description(int status, List<string> types, bool named) =>
+        (types.Count == 0
             ? ReasonPhrases.GetReasonPhrase(status)
-            : $"{ReasonPhrases.GetReasonPhrase(status)}. Problem types: {string.Join(", ", types)}";
+            : $"{ReasonPhrases.GetReasonPhrase(status)}. Problem types: {string.Join(", ", types)}")
+      + (named ? "" : $". {WithheldDescription}");
+
+    /// <summary>What a response's description says where every fault answered with its status withholds its name.</summary>
+    internal const string WithheldDescription = "The problem names no fault.";
 
     private static bool Qualified(OpenApiOperationTransformerContext context) =>
         context.ApplicationServices.GetService<IOptions<FaultResponseOptions>>()?.Value.QualifiedFaultNames == true;

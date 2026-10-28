@@ -1,0 +1,2029 @@
+[
+  {
+    "id": "C01-covers-every-decimal",
+    "source": "docs/json.md#decimals-in-one-spelling",
+    "quote": "Register either one once, and it covers every decimal: nullable ones, dictionary keys, and every value object over a decimal, since its JSON is the underlying type's.",
+    "claim": "Register either one once, and it covers every decimal: nullable ones, dictionary keys, and every value object over a decimal, since its JSON is the underlying type's.",
+    "oracle": "claim",
+    "surfaces": [
+      "DecimalNumberJsonConverter.*",
+      "DecimalStringJsonConverter.*"
+    ],
+    "heldBy": [
+      "DecimalJsonConvertersTests"
+    ]
+  },
+  {
+    "id": "C01-number-is-a-number",
+    "source": "docs/json.md#decimals-in-one-spelling",
+    "quote": "**`DecimalNumberJsonConverter`** writes it as a number.",
+    "claim": "**`DecimalNumberJsonConverter`** writes it as a number.",
+    "oracle": "claim",
+    "surfaces": [
+      "DecimalNumberJsonConverter.*",
+      "DecimalStringJsonConverter.*"
+    ],
+    "heldBy": [
+      "DecimalJsonConvertersTests"
+    ]
+  },
+  {
+    "id": "C01-reads-a-number-or-a-string",
+    "source": "docs/json.md#decimals-in-one-spelling",
+    "quote": "Both read a number, or a string holding one, and keep the scale they read.",
+    "claim": "Both read a number, or a string holding one, and keep the scale they read.",
+    "oracle": "claim",
+    "surfaces": [
+      "DecimalNumberJsonConverter.*",
+      "DecimalStringJsonConverter.*"
+    ],
+    "heldBy": [
+      "DecimalJsonConvertersTests"
+    ]
+  },
+  {
+    "id": "C01-smallest-scale",
+    "source": "docs/json.md#decimals-in-one-spelling",
+    "quote": "Two converters write the smallest scale instead:",
+    "claim": "Two converters write the smallest scale instead:",
+    "oracle": "claim",
+    "surfaces": [
+      "DecimalNumberJsonConverter.*",
+      "DecimalStringJsonConverter.*"
+    ],
+    "heldBy": [
+      "DecimalJsonConvertersTests"
+    ]
+  },
+  {
+    "id": "C01-string-is-a-string",
+    "source": "docs/json.md#decimals-in-one-spelling",
+    "quote": "**`DecimalStringJsonConverter`** writes it as a string.",
+    "claim": "**`DecimalStringJsonConverter`** writes it as a string.",
+    "oracle": "claim",
+    "surfaces": [
+      "DecimalNumberJsonConverter.*",
+      "DecimalStringJsonConverter.*"
+    ],
+    "heldBy": [
+      "DecimalJsonConvertersTests"
+    ]
+  },
+  {
+    "id": "C02-hidden-is-an-error-in-both",
+    "source": "docs/text.md#required-and-optional",
+    "quote": "`Hidden` is an error in both cases.",
+    "claim": "`Hidden` is an error in both cases.",
+    "oracle": "claim",
+    "surfaces": [
+      "StringTextExtensions.*",
+      "TextFault.*"
+    ],
+    "heldBy": [
+      "StringTextExtensionsTests"
+    ]
+  },
+  {
+    "id": "C02-null-is-blank",
+    "source": "docs/text.md#required-and-optional",
+    "quote": "A null string is `Blank`.",
+    "claim": "A null string is `Blank`.",
+    "oracle": "claim",
+    "surfaces": [
+      "StringTextExtensions.*",
+      "TextFault.*"
+    ],
+    "heldBy": [
+      "StringTextExtensionsTests"
+    ]
+  },
+  {
+    "id": "C02-optional-blank-is-no-value",
+    "source": "docs/text.md#required-and-optional",
+    "quote": "For an optional one, a blank means \"no value\", and `AsOptionalText()` and `AsOptionalIdentifier()` return a `Result<Option<string>, TextFault>`.",
+    "claim": "For an optional one, a blank means \"no value\", and `AsOptionalText()` and `AsOptionalIdentifier()` return a `Result<Option<string>, TextFault>`.",
+    "oracle": "claim",
+    "surfaces": [
+      "StringTextExtensions.*",
+      "TextFault.*"
+    ],
+    "heldBy": [
+      "StringTextExtensionsTests"
+    ]
+  },
+  {
+    "id": "C02-required-blank-is-an-error",
+    "source": "docs/text.md#required-and-optional",
+    "quote": "For a required field, `Blank` is an error.",
+    "claim": "For a required field, `Blank` is an error.",
+    "oracle": "claim",
+    "surfaces": [
+      "StringTextExtensions.*",
+      "TextFault.*"
+    ],
+    "heldBy": [
+      "StringTextExtensionsTests"
+    ]
+  },
+  {
+    "id": "C03-detail-and-rule-intact",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "`Fault<AccountFault, EditFault>` (from CodoMetis.TypeKit) holds one error of either set, with its detail and rule intact.",
+    "claim": "`Fault<AccountFault, EditFault>` (from CodoMetis.TypeKit) holds one error of either set, with its detail and rule intact.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitHttpResultExtensions.ToHttpResult",
+      "Fault.*"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C03-each-error-own-set",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "Each error is answered as its own set maps it.",
+    "claim": "Each error is answered as its own set maps it.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitHttpResultExtensions.ToHttpResult",
+      "Fault.*"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C03-statuses-ascending",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "So its operation lists the statuses of both sets, in ascending order, with the problem types of both where they share a status.",
+    "claim": "So its operation lists the statuses of both sets, in ascending order, with the problem types of both where they share a status.",
+    "oracle": "claim",
+    "surfaces": [
+      "Fault.*",
+      "TypeKitHttpResultExtensions.ToHttpResult"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C03-unmapped-set-stops-start",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "The host doesn't start while either set is unmapped.",
+    "claim": "The host doesn't start while either set is unmapped.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitHttpResultExtensions.ToHttpResult",
+      "Fault.*"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C04-doc-omits-left-out",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer",
+    "quote": "The operation then lists no status and no problem type for a member left out.",
+    "claim": "The operation then lists no status and no problem type for a member left out.",
+    "oracle": "exception",
+    "surfaces": [
+      "WithoutFaultsAttribute.*",
+      "TypeKitWithoutFaultsEndpointConventionBuilderExtensions.*"
+    ],
+    "heldBy": [
+      "FaultExclusionTests"
+    ]
+  },
+  {
+    "id": "C04-left-out-everywhere-stops-start",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer",
+    "quote": "**These stop the host from starting**, as for a status: a value or a name no member has, a status that every endpoint it's set on leaves out (on the endpoint itself, or on a group whose endpoints all leave the member out), and a group or a controller none of whose endpoints answers with the type.",
+    "claim": "**These stop the host from starting**, as for a status: a value or a name no member has, a status that every endpoint it's set on leaves out (on the endpoint itself, or on a group whose endpoints all leave the member out), and a group or a controller none of whose endpoints answers with the type.",
+    "oracle": "exception",
+    "surfaces": [
+      "WithoutFaultsAttribute.*",
+      "TypeKitWithoutFaultsEndpointConventionBuilderExtensions.*"
+    ],
+    "heldBy": [
+      "FaultExclusionTests"
+    ]
+  },
+  {
+    "id": "C04-narrows-wider-status",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer",
+    "quote": "If a group gives `NotFound` a status and one endpoint inside leaves `NotFound` out, that endpoint drops it, and the group's other endpoints keep the status.",
+    "claim": "If a group gives `NotFound` a status and one endpoint inside leaves `NotFound` out, that endpoint drops it, and the group's other endpoints keep the status.",
+    "oracle": "exception",
+    "surfaces": [
+      "WithoutFaultsAttribute.*",
+      "TypeKitWithoutFaultsEndpointConventionBuilderExtensions.*"
+    ],
+    "heldBy": [
+      "FaultExclusionTests"
+    ]
+  },
+  {
+    "id": "C04-reporting-left-out-throws",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer",
+    "quote": "Reporting a member left out anyway throws an `InvalidOperationException` naming the endpoint and the member, rather than answering with a status the document doesn't list.",
+    "claim": "Reporting a member left out anyway throws an `InvalidOperationException` naming the endpoint and the member, rather than answering with a status the document doesn't list.",
+    "oracle": "exception",
+    "surfaces": [
+      "WithoutFaultsAttribute.*",
+      "TypeKitWithoutFaultsEndpointConventionBuilderExtensions.*"
+    ],
+    "heldBy": [
+      "FaultExclusionTests"
+    ]
+  },
+  {
+    "id": "C05-nested-chain",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#the-rule-that-refused",
+    "quote": "A rule of a nested type is named after its nesting chain, whatever `QualifiedFaultNames` says.",
+    "claim": "A rule of a nested type is named after its nesting chain, whatever `QualifiedFaultNames` says.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultRuleExtensions.*",
+      "FaultClosedSetRuleExtensions.*"
+    ],
+    "heldBy": [
+      "FaultResponsePartsTests"
+    ]
+  },
+  {
+    "id": "C05-no-namespace",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#the-rule-that-refused",
+    "quote": "**The name carries no namespace**, which would publish your application's structure to every client.",
+    "claim": "**The name carries no namespace**, which would publish your application's structure to every client.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultRuleExtensions.*",
+      "FaultClosedSetRuleExtensions.*"
+    ],
+    "heldBy": [
+      "FaultResponsePartsTests"
+    ]
+  },
+  {
+    "id": "C05-rule-qualified",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#the-rule-that-refused",
+    "quote": "The problem carries it as `rule`, qualified with its type's name, so two types' `Blank` can be told apart:",
+    "claim": "The problem carries it as `rule`, qualified with its type's name, so two types' `Blank` can be told apart:",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultRuleExtensions.*",
+      "FaultClosedSetRuleExtensions.*"
+    ],
+    "heldBy": [
+      "FaultResponsePartsTests"
+    ]
+  },
+  {
+    "id": "C05-stays-the-errors",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#the-rule-that-refused",
+    "quote": "The status, the mapping and the document stay the error's.",
+    "claim": "The status, the mapping and the document stay the error's.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultRuleExtensions.*",
+      "FaultClosedSetRuleExtensions.*"
+    ],
+    "heldBy": [
+      "FaultResponsePartsTests"
+    ]
+  },
+  {
+    "id": "C05-unnamed-value-throws",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#the-rule-that-refused",
+    "quote": "A value no member names, such as a combination of flags or a cast number, throws where it's given.",
+    "claim": "A value no member names, such as a combination of flags or a cast number, throws where it's given.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultRuleExtensions.*",
+      "FaultClosedSetRuleExtensions.*"
+    ],
+    "heldBy": [
+      "FaultResponsePartsTests"
+    ]
+  },
+  {
+    "id": "C06-description-as-detail",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type",
+    "quote": "The description becomes the problem's `detail`, so a client can show it.",
+    "claim": "The description becomes the problem's `detail`, so a client can show it.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultKind.*",
+      "IFault.*",
+      "FaultResponse.For"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C06-kind-gives-status",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type",
+    "quote": "The kind gives the status:",
+    "claim": "The kind gives the status:",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultKind.*",
+      "IFault.*",
+      "FaultResponse.For"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C06-member-must-have-kind",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type",
+    "quote": "**A member must have a kind.** A member whose kind is `default`, which is no kind, fails this call.",
+    "claim": "**A member must have a kind.** A member whose kind is `default`, which is no kind, fails this call.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultKind.*",
+      "IFault.*",
+      "FaultResponse.For"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C06-no-description-no-detail",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type",
+    "quote": "A member without one has no `detail`.",
+    "claim": "A member without one has no `detail`.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultKind.*",
+      "IFault.*",
+      "FaultResponse.For"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C07-by-kind",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once",
+    "quote": "every fault set an endpoint answers with, by its kind",
+    "claim": "every fault set an endpoint answers with, by its kind",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitFaultResponsesServiceCollectionExtensions.*",
+      "TypeKitClosedSetFaultResponsesServiceCollectionExtensions.*"
+    ],
+    "heldBy": [
+      "FaultSetDefaultTests"
+    ]
+  },
+  {
+    "id": "C07-enum-needs-own-mapping",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once",
+    "quote": "Neither has a kind, and the host doesn't start while an endpoint answers with one that's unmapped.",
+    "claim": "Neither has a kind, and the host doesn't start while an endpoint answers with one that's unmapped.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitFaultResponsesServiceCollectionExtensions.*",
+      "TypeKitClosedSetFaultResponsesServiceCollectionExtensions.*"
+    ],
+    "heldBy": [
+      "FaultSetDefaultTests"
+    ]
+  },
+  {
+    "id": "C07-member-without-kind-stops-start",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once",
+    "quote": "A member with no kind stops the start, and so does one the mapping throws for or gives a status that isn't an error.",
+    "claim": "A member with no kind stops the start, and so does one the mapping throws for or gives a status that isn't an error.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitClosedSetFaultResponsesServiceCollectionExtensions.*",
+      "TypeKitFaultResponsesServiceCollectionExtensions.*"
+    ],
+    "heldBy": [
+      "FaultSetDefaultTests"
+    ]
+  },
+  {
+    "id": "C07-own-mapping",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once",
+    "quote": "The mapping can be your own. It reads each member's kind and description through `IFault`:",
+    "claim": "The mapping can be your own. It reads each member's kind and description through `IFault`:",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitFaultResponsesServiceCollectionExtensions.*",
+      "TypeKitClosedSetFaultResponsesServiceCollectionExtensions.*"
+    ],
+    "heldBy": [
+      "FaultSetDefaultTests"
+    ]
+  },
+  {
+    "id": "C07-own-set-keeps-mapping",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once",
+    "quote": "A set mapped on its own keeps its mapping.",
+    "claim": "A set mapped on its own keeps its mapping.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitFaultResponsesServiceCollectionExtensions.*",
+      "TypeKitClosedSetFaultResponsesServiceCollectionExtensions.*"
+    ],
+    "heldBy": [
+      "FaultSetDefaultTests"
+    ]
+  },
+  {
+    "id": "C08-bare-names-warn",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "With bare names, the default, that's `AccountFault.NotFound` beside an `EditFault.NotFound`.",
+    "claim": "With bare names, the default, that's `AccountFault.NotFound` beside an `EditFault.NotFound`.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultResponseOptions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C08-qualified-chain-warns",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "With qualified names, it's two sets with one nesting chain in two namespaces, since the name carries no namespace.",
+    "claim": "With qualified names, it's two sets with one nesting chain in two namespaces, since the name carries no namespace.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultResponseOptions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C08-qualified-names-fix",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "Fix it with `QualifiedFaultNames`, a rename, or by leaving one out of the route",
+    "claim": "Fix it with `QualifiedFaultNames`, a rename, or by leaving one out of the route",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultResponseOptions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C08-warning-names-both",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "A client reads the two errors as one, so the host logs a warning at startup naming both.",
+    "claim": "A client reads the two errors as one, so the host logs a warning at startup naming both.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultResponseOptions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C09-equal-by-the-wrapped-value",
+    "source": "CHANGELOG.md",
+    "quote": "Over a base record, a value object's equality is its wrapped value's",
+    "claim": "Over a base record, a value object's equality is its wrapped value's",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "IValueObject.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C09-in-a-collection-of-the-base",
+    "source": "CHANGELOG.md",
+    "quote": "in a collection of the base too, whatever equality the base declares.",
+    "claim": "in a collection of the base too, whatever equality the base declares.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "IValueObject.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C10-ignore-cycles-unaffected",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#json",
+    "quote": "a struct of such values, and `ReferenceHandler.IgnoreCycles`.",
+    "claim": "a struct of such values, and `ReferenceHandler.IgnoreCycles`.",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedJson.*"
+    ],
+    "heldBy": [
+      "ReferenceHandlingTests"
+    ]
+  },
+  {
+    "id": "C10-own-converters-unaffected",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#json",
+    "quote": "anything a converter of your own writes, on the options or on one property",
+    "claim": "anything a converter of your own writes, on the options or on one property",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedJson.*"
+    ],
+    "heldBy": [
+      "ReferenceHandlingTests"
+    ]
+  },
+  {
+    "id": "C10-refused-where-references-could-be-written",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#json",
+    "quote": "**Preserved references** (`ReferenceHandler.Preserve`) throw a `NotSupportedException` where the serializer could write `$id` or `$ref` inside the underlying value.",
+    "claim": "**Preserved references** (`ReferenceHandler.Preserve`) throw a `NotSupportedException` where the serializer could write `$id` or `$ref` inside the underlying value.",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedJson.*"
+    ],
+    "heldBy": [
+      "ReferenceHandlingTests"
+    ]
+  },
+  {
+    "id": "C10-value-converters-unaffected",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#json",
+    "quote": "These are unaffected: a value the serializer writes with a value converter (a number, a string, a `Guid`, a `Uri`)",
+    "claim": "These are unaffected: a value the serializer writes with a value converter (a number, a string, a `Guid`, a `Uri`)",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedJson.*"
+    ],
+    "heldBy": [
+      "ReferenceHandlingTests"
+    ]
+  },
+  {
+    "id": "C11-abstract-string-constructor",
+    "source": "CHANGELOG.md",
+    "quote": "or an abstract class's string constructor, no longer breaks the build; the value object has no parsing.",
+    "claim": "or an abstract class's string constructor, no longer breaks the build; the value object has no parsing.",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C11-implicit-result",
+    "source": "CHANGELOG.md",
+    "quote": "A wrapped type's `Parse` whose result can't be assigned to it",
+    "claim": "A wrapped type's `Parse` whose result can't be assigned to it",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C11-parsing-where-it-can-be-parsed",
+    "source": "CHANGELOG.md",
+    "quote": "`IParsable`/`ISpanParsable`/`IUtf8SpanParsable`, formatting in the invariant culture",
+    "claim": "`IParsable`/`ISpanParsable`/`IUtf8SpanParsable`, formatting in the invariant culture",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C11-ref-text",
+    "source": "CHANGELOG.md",
+    "quote": "or that takes its text by `ref`",
+    "claim": "or that takes its text by `ref`",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C12-every-position",
+    "source": "docs/json.md#describing-what-a-converter-writes",
+    "quote": "With CodoMetis.TypeKit.AspNetCore, `AddTypeKit()` writes the same descriptions into the OpenAPI document, in every position, a list's elements and a dictionary's values included.",
+    "claim": "With CodoMetis.TypeKit.AspNetCore, `AddTypeKit()` writes the same descriptions into the OpenAPI document, in every position, a list's elements and a dictionary's values included.",
+    "oracle": "claim",
+    "surfaces": [
+      "IDescribedJsonConverter.*",
+      "JsonSchemaDescriptions.*",
+      "JsonSchemaDescription.*"
+    ],
+    "heldBy": [
+      "DescribedSchemaTests"
+    ]
+  },
+  {
+    "id": "C12-options-describe",
+    "source": "docs/json.md#describing-what-a-converter-writes",
+    "quote": "**A converter someone else wrote**, or the serializer's own enum converter, is described in the options by `JsonSchemaDescriptions`.",
+    "claim": "**A converter someone else wrote**, or the serializer's own enum converter, is described in the options by `JsonSchemaDescriptions`.",
+    "oracle": "claim",
+    "surfaces": [
+      "IDescribedJsonConverter.*",
+      "JsonSchemaDescriptions.*",
+      "JsonSchemaDescription.*"
+    ],
+    "heldBy": [
+      "DescribedSchemaTests"
+    ]
+  },
+  {
+    "id": "C12-own-converter-describes-itself",
+    "source": "docs/json.md#describing-what-a-converter-writes",
+    "quote": "**Your own converter** implements `IDescribedJsonConverter` and describes itself, as both decimal converters do.",
+    "claim": "**Your own converter** implements `IDescribedJsonConverter` and describes itself, as both decimal converters do.",
+    "oracle": "claim",
+    "surfaces": [
+      "IDescribedJsonConverter.*",
+      "JsonSchemaDescriptions.*",
+      "JsonSchemaDescription.*"
+    ],
+    "heldBy": [
+      "DescribedSchemaTests"
+    ]
+  },
+  {
+    "id": "C12-parameter-keeps-aspnet",
+    "source": "docs/json.md#describing-what-a-converter-writes",
+    "quote": "So it keeps the description ASP.NET gives the type without your converters",
+    "claim": "So it keeps the description ASP.NET gives the type without your converters",
+    "oracle": "claim",
+    "surfaces": [
+      "IDescribedJsonConverter.*",
+      "JsonSchemaDescriptions.*",
+      "JsonSchemaDescription.*"
+    ],
+    "heldBy": [
+      "DescribedSchemaTests"
+    ]
+  },
+  {
+    "id": "C13-absent-is-default",
+    "source": "docs/merge-patches.md#required-constructor-parameters",
+    "quote": "a property the request leaves out keeps its default, which is `Absent`.",
+    "claim": "a property the request leaves out keeps its default, which is `Absent`.",
+    "oracle": "claim",
+    "surfaces": [
+      "PatchJsonConverterFactory.*",
+      "PatchState.*"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "C13-doc-optional-where-absent",
+    "source": "docs/merge-patches.md#required-constructor-parameters",
+    "quote": "`AddTypeKit()` leaves a patch out of `required` where the serializer lets it be absent, and keeps it there where the options reject a body without it.",
+    "claim": "`AddTypeKit()` leaves a patch out of `required` where the serializer lets it be absent, and keeps it there where the options reject a body without it.",
+    "oracle": "claim",
+    "surfaces": [
+      "PatchJsonConverterFactory.*",
+      "PatchState.*"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "C13-doc-required-where-rejected",
+    "source": "docs/merge-patches.md#required-constructor-parameters",
+    "quote": "So the document never calls a field optional when the endpoint rejects a request without it.",
+    "claim": "So the document never calls a field optional when the endpoint rejects a request without it.",
+    "oracle": "claim",
+    "surfaces": [
+      "PatchJsonConverterFactory.*",
+      "PatchState.*"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "C14-application-json-declared",
+    "source": "CHANGELOG.md",
+    "quote": "OpenAPI: a problem response an endpoint declares as `application/json`, such as `Produces<ProblemDetails>(404)` or `[ProducesResponseType<ProblemDetails>(404)]`, describes `fault` and `rule` and names its problem types, and keeps its media type",
+    "claim": "OpenAPI: a problem response an endpoint declares as `application/json`, such as `Produces<ProblemDetails>(404)` or `[ProducesResponseType<ProblemDetails>(404)]`, describes `fault` and `rule` and names its problem types, and keeps its media type",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultProblem.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "FaultResponseTests"
+    ]
+  },
+  {
+    "id": "C14-ascending-with-declared",
+    "source": "CHANGELOG.md",
+    "quote": "OpenAPI: an operation with fault responses lists every status ascending, the ones its endpoint declares itself among them",
+    "claim": "OpenAPI: an operation with fault responses lists every status ascending, the ones its endpoint declares itself among them",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultProblem.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "FaultResponseTests"
+    ]
+  },
+  {
+    "id": "C14-declared-describes-fault",
+    "source": "CHANGELOG.md",
+    "quote": "OpenAPI: a problem response an endpoint declares itself (`ProducesProblem`, `[ProducesResponseType]`) describes `fault`, and names its problem types.",
+    "claim": "OpenAPI: a problem response an endpoint declares itself (`ProducesProblem`, `[ProducesResponseType]`) describes `fault`, and names its problem types.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultProblem.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "FaultResponseTests"
+    ]
+  },
+  {
+    "id": "C15-builder-reaches-doc",
+    "source": "CHANGELOG.md",
+    "quote": "OpenAPI: a `WithFaultStatus` on the builder `MapControllers()` returns reaches the document, as it reached the response.",
+    "claim": "OpenAPI: a `WithFaultStatus` on the builder `MapControllers()` returns reaches the document, as it reached the response.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultStatusAttribute.*",
+      "TypeKitFaultStatusEndpointConventionBuilderExtensions.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C15-status-per-scope",
+    "source": "CHANGELOG.md",
+    "quote": "`WithFaultStatus`/`[FaultStatus<T>]` per endpoint, group or controller",
+    "claim": "`WithFaultStatus`/`[FaultStatus<T>]` per endpoint, group or controller",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultStatusAttribute.*",
+      "TypeKitFaultStatusEndpointConventionBuilderExtensions.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C15-without-faults-leaves-doc",
+    "source": "CHANGELOG.md",
+    "quote": "**`WithoutFaults`** and `[WithoutFaults<T>]`: a route leaves out of its document the members it never answers with, and reporting one throws",
+    "claim": "**`WithoutFaults`** and `[WithoutFaults<T>]`: a route leaves out of its document the members it never answers with, and reporting one throws",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultStatusAttribute.*",
+      "TypeKitFaultStatusEndpointConventionBuilderExtensions.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C16-differing-refused",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+    "quote": "Otherwise building the document fails rather than describe JSON the controllers don't write.",
+    "claim": "Otherwise building the document fails rather than describe JSON the controllers don't write.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C16-error-names-type-and-descriptions",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+    "quote": "The error names the type and what each set of options says of it, also for a type held only inside a patch.",
+    "claim": "The error names the type and what each set of options says of it, also for a type held only inside a patch.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C16-same-converters-build",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+    "quote": "A host with controllers registers the same converters and descriptions on both, in the same order.",
+    "claim": "A host with controllers registers the same converters and descriptions on both, in the same order.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C17-a-cast-naming-no-member",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014",
+    "quote": "A `FaultKind` or a `ConstructorAccessibility` that names no member: a cast",
+    "claim": "A `FaultKind` or a `ConstructorAccessibility` that names no member: a cast",
+    "oracle": "exception",
+    "surfaces": [
+      "FaultKind.*",
+      "ConstructorAccessibility.*",
+      "RequireParameterlessConstructorAttribute.*"
+    ],
+    "heldBy": [
+      "UndefinedEnumValueAnalyzerTests"
+    ]
+  },
+  {
+    "id": "C17-a-member-is-silent",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014",
+    "quote": "public static readonly ImportFault Duplicate = new(FaultKind.Conflict);",
+    "claim": "public static readonly ImportFault Duplicate = new(FaultKind.Conflict);",
+    "oracle": "exception",
+    "surfaces": [
+      "FaultKind.*",
+      "ConstructorAccessibility.*",
+      "RequireParameterlessConstructorAttribute.*"
+    ],
+    "heldBy": [
+      "UndefinedEnumValueAnalyzerTests"
+    ]
+  },
+  {
+    "id": "C17-constructor-accessibility-too",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014",
+    "quote": "[RequireParameterlessConstructor((ConstructorAccessibility)7)] // CMTK0014: no member, read as public",
+    "claim": "[RequireParameterlessConstructor((ConstructorAccessibility)7)] // CMTK0014: no member, read as public",
+    "oracle": "exception",
+    "surfaces": [
+      "FaultKind.*",
+      "ConstructorAccessibility.*",
+      "RequireParameterlessConstructorAttribute.*"
+    ],
+    "heldBy": [
+      "UndefinedEnumValueAnalyzerTests"
+    ]
+  },
+  {
+    "id": "C17-default-and-zero",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014",
+    "quote": "`default(FaultKind)`, a zero",
+    "claim": "`default(FaultKind)`, a zero",
+    "oracle": "exception",
+    "surfaces": [
+      "FaultKind.*",
+      "ConstructorAccessibility.*",
+      "RequireParameterlessConstructorAttribute.*"
+    ],
+    "heldBy": [
+      "UndefinedEnumValueAnalyzerTests"
+    ]
+  },
+  {
+    "id": "C17-reported-where-written",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014",
+    "quote": "Both are reported where the value is written:",
+    "claim": "Both are reported where the value is written:",
+    "oracle": "exception",
+    "surfaces": [
+      "FaultKind.*",
+      "ConstructorAccessibility.*",
+      "RequireParameterlessConstructorAttribute.*"
+    ],
+    "heldBy": [
+      "UndefinedEnumValueAnalyzerTests"
+    ]
+  },
+  {
+    "id": "C18-a-warning-and-generated",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "A warning, and the value object is generated.",
+    "claim": "A warning, and the value object is generated.",
+    "oracle": "exception",
+    "surfaces": [
+      "IValueObject.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C18-generated-equality-never-calls-the-base",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "Over a base record, the generated `Equals(TSelf)` and `GetHashCode()` compare the underlying value alone, and never call the base's.",
+    "claim": "Over a base record, the generated `Equals(TSelf)` and `GetHashCode()` compare the underlying value alone, and never call the base's.",
+    "oracle": "exception",
+    "surfaces": [
+      "IValueObject.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C18-names-each-base-member",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "So a hand-written `Equals(TBase)`, `GetHashCode()` or `IEquatable<TBase>.Equals` on a base record isn't used, and a warning names it (CMTK1023).",
+    "claim": "So a hand-written `Equals(TBase)`, `GetHashCode()` or `IEquatable<TBase>.Equals` on a base record isn't used, and a warning names it (CMTK1023).",
+    "oracle": "exception",
+    "surfaces": [
+      "IValueObject.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C19-a-pair-once-at-the-later-argument",
+    "source": "docs/type-constraints.md#the-kind-of-a-type-argument",
+    "quote": "A breach is reported once, at the later argument.",
+    "claim": "A breach is reported once, at the later argument.",
+    "oracle": "exception",
+    "surfaces": [
+      "InterfaceAttribute.*",
+      "UnsealedAttribute.*",
+      "ValueObjectAttribute.*",
+      "FlagsEnumAttribute.*",
+      "ReadOnlyStructAttribute.*",
+      "SealedAttribute.*",
+      "RecordAttribute.*",
+      "UnrelatedAttribute.*"
+    ],
+    "heldBy": [
+      "TypeArgumentConstraintKindTests"
+    ]
+  },
+  {
+    "id": "C19-flags-enum-and-read-only-struct",
+    "source": "docs/type-constraints.md#the-kind-of-a-type-argument",
+    "quote": "**`[FlagsEnum]` and `[ReadOnlyStruct]`** narrow what `where T : Enum` and `where T : struct` admit.",
+    "claim": "**`[FlagsEnum]` and `[ReadOnlyStruct]`** narrow what `where T : Enum` and `where T : struct` admit.",
+    "oracle": "exception",
+    "surfaces": [
+      "InterfaceAttribute.*",
+      "UnsealedAttribute.*",
+      "ValueObjectAttribute.*",
+      "FlagsEnumAttribute.*",
+      "ReadOnlyStructAttribute.*",
+      "SealedAttribute.*",
+      "RecordAttribute.*",
+      "UnrelatedAttribute.*"
+    ],
+    "heldBy": [
+      "TypeArgumentConstraintKindTests"
+    ]
+  },
+  {
+    "id": "C19-interface-and-unsealed",
+    "source": "docs/type-constraints.md#the-kind-of-a-type-argument",
+    "quote": "**`[Interface]` and `[Unsealed]`** are what a proxy needs: a contract to implement, or a class to derive from.",
+    "claim": "**`[Interface]` and `[Unsealed]`** are what a proxy needs: a contract to implement, or a class to derive from.",
+    "oracle": "exception",
+    "surfaces": [
+      "InterfaceAttribute.*",
+      "UnsealedAttribute.*",
+      "ValueObjectAttribute.*",
+      "FlagsEnumAttribute.*",
+      "ReadOnlyStructAttribute.*",
+      "SealedAttribute.*",
+      "RecordAttribute.*",
+      "UnrelatedAttribute.*"
+    ],
+    "heldBy": [
+      "TypeArgumentConstraintKindTests"
+    ]
+  },
+  {
+    "id": "C19-methods-the-compiler-calls",
+    "source": "docs/type-constraints.md#the-kind-of-a-type-argument",
+    "quote": "**Methods the compiler calls for you:** a `foreach`'s `GetEnumerator`, an `await`'s `GetAwaiter`, a `Deconstruct` (in `var (a, b) = x`, a `foreach`, or a pattern like `x is (1, 2)`), and a collection expression's `Add` or builder method.",
+    "claim": "**Methods the compiler calls for you:** a `foreach`'s `GetEnumerator`, an `await`'s `GetAwaiter`, a `Deconstruct` (in `var (a, b) = x`, a `foreach`, or a pattern like `x is (1, 2)`), and a collection expression's `Add` or builder method.",
+    "oracle": "exception",
+    "surfaces": [
+      "InterfaceAttribute.*",
+      "UnsealedAttribute.*",
+      "ValueObjectAttribute.*",
+      "FlagsEnumAttribute.*",
+      "ReadOnlyStructAttribute.*",
+      "SealedAttribute.*",
+      "RecordAttribute.*",
+      "UnrelatedAttribute.*"
+    ],
+    "heldBy": [
+      "TypeArgumentConstraintKindTests"
+    ]
+  },
+  {
+    "id": "C19-value-object-and-closed-set",
+    "source": "docs/type-constraints.md#the-kind-of-a-type-argument",
+    "quote": "**`[ValueObject]` and `[ClosedSet]`** accept their marker interface with any type argument.",
+    "claim": "**`[ValueObject]` and `[ClosedSet]`** accept their marker interface with any type argument.",
+    "oracle": "exception",
+    "surfaces": [
+      "InterfaceAttribute.*",
+      "UnsealedAttribute.*",
+      "ValueObjectAttribute.*",
+      "FlagsEnumAttribute.*",
+      "ReadOnlyStructAttribute.*",
+      "SealedAttribute.*",
+      "RecordAttribute.*",
+      "UnrelatedAttribute.*"
+    ],
+    "heldBy": [
+      "TypeArgumentConstraintKindTests"
+    ]
+  },
+  {
+    "id": "C20-a-failure-says-the-outcome",
+    "source": "src/CodoMetis.TypeKit.Testing/README.md",
+    "quote": "**A failure says what the outcome was**",
+    "claim": "**A failure says what the outcome was**",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultAssertionTests"
+    ]
+  },
+  {
+    "id": "C20-fails-unless-it-holds-that-reason",
+    "source": "src/CodoMetis.TypeKit.Testing/README.md",
+    "quote": "`ShouldHold(reason)` fails unless the fault holds that reason, whichever of its types the reason belongs to.",
+    "claim": "`ShouldHold(reason)` fails unless the fault holds that reason, whichever of its types the reason belongs to.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultAssertionTests"
+    ]
+  },
+  {
+    "id": "C20-hands-back-detail-and-rule",
+    "source": "src/CodoMetis.TypeKit.Testing/README.md",
+    "quote": "It hands back the `Fault<TFault>` with its detail and rule intact.",
+    "claim": "It hands back the `Fault<TFault>` with its detail and rule intact.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultAssertionTests"
+    ]
+  },
+  {
+    "id": "C20-uninitialized-fails",
+    "source": "src/CodoMetis.TypeKit.Testing/README.md",
+    "quote": "**An uninitialized result fails every assertion.**",
+    "claim": "**An uninitialized result fails every assertion.**",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultAssertionTests"
+    ]
+  },
+  {
+    "id": "C20-whichever-of-its-types",
+    "source": "src/CodoMetis.TypeKit.Testing/README.md",
+    "quote": "whichever of its types the reason belongs to",
+    "claim": "whichever of its types the reason belongs to",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultAssertionTests"
+    ]
+  },
+  {
+    "id": "C21-nullable-admits-null-as-the-wrapped-does",
+    "source": "README.md#what-you-get",
+    "quote": "Its OpenAPI schema is the one ASP.NET Core publishes for the underlying type.",
+    "claim": "Its OpenAPI schema is the one ASP.NET Core publishes for the underlying type.",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedJsonPlan.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C21-the-underlying-types-schema",
+    "source": "README.md#what-you-get",
+    "quote": "The JSON, the database column and the OpenAPI schema are the same as the underlying type's.",
+    "claim": "The JSON, the database column and the OpenAPI schema are the same as the underlying type's.",
+    "oracle": "differential",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit",
+      "GeneratedJsonPlan.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C22-abstract",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "An abstract type with a value-object marker. It would get no member, and a value held as it, of a type derived from it, would have no `Value` and be written as `{}`.",
+    "claim": "An abstract type with a value-object marker. It would get no member, and a value held as it, of a type derived from it, would have no `Value` and be written as `{}`.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-closed-set-named-as-generated-member",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "a set itself named as one of them (a member can't have the name of its type)",
+    "claim": "a set itself named as one of them (a member can't have the name of its type)",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-equality-operator",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "So a hand-written `Equals(TSelf)`, `GetHashCode()`, `IEquatable<TSelf>.Equals`, or `operator ==` or `!=` between two of the type, fails the build (CMTK1011).",
+    "claim": "So a hand-written `Equals(TSelf)`, `GetHashCode()`, `IEquatable<TSelf>.Equals`, or `operator ==` or `!=` between two of the type, fails the build (CMTK1011).",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-every-error-links-the-table",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "Every error ends with a link to this table.",
+    "claim": "Every error ends with a link to this table.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-generic-wrapped",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "A generic underlying type, a tuple included, fails the build (CMTK1005).",
+    "claim": "A generic underlying type, a tuple included, fails the build (CMTK1005).",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-named-as-generated-member",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "named `Value` or as another member the generators add (`From`, `TryFrom`, `FromKnownGood`, `Revalidate`, `Parse`, `TryParse`, `TryFormat`, `MinValue`, `MaxValue`, `CompareTo`)",
+    "claim": "named `Value` or as another member the generators add (`From`, `TryFrom`, `FromKnownGood`, `Revalidate`, `Parse`, `TryParse`, `TryFormat`, `MinValue`, `MaxValue`, `CompareTo`)",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-no-type-half-generated",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "A declaration that can't be generated fails the build, so no type is left half-generated.",
+    "claim": "A declaration that can't be generated fails the build, so no type is left half-generated.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-over-object",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "or wrapping `object`, `System.Enum`, an array, a pointer, a nullable type, a generic type (a tuple included) or a value object (itself included).",
+    "claim": "or wrapping `object`, `System.Enum`, an array, a pointer, a nullable type, a generic type (a tuple included) or a value object (itself included).",
+    "oracle": "exception",
+    "surfaces": [
+      "IClosedSet.*",
+      "IPlainValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-over-value-object",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "or a value object (itself included). Wrap what the other value object wraps instead.",
+    "claim": "or a value object (itself included). Wrap what the other value object wraps instead.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-unsealed-record-class",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "A record class not declared `sealed`.",
+    "claim": "A record class not declared `sealed`.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C23-withheld-host-sees",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-a-client-must-not-tell-apart",
+    "quote": "**Your host still sees the fault.** `IFaultFeature` carries its name, and `NameWithheld` says the mapping keeps it from the client",
+    "claim": "**Your host still sees the fault.** `IFaultFeature` carries its name, and `NameWithheld` says the mapping keeps it from the client",
+    "oracle": "claim",
+    "surfaces": [
+      "IFaultFeature.*"
+    ],
+    "heldBy": [
+      "WithheldFaultNameTests"
+    ]
+  },
+  {
+    "id": "C23-withheld-says-nothing",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-a-client-must-not-tell-apart",
+    "quote": "**The problem says nothing of the member**: no `fault`, no `rule`, and no fault set member's description as its `detail`.",
+    "claim": "**The problem says nothing of the member**: no `fault`, no `rule`, and no fault set member's description as its `detail`.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultResponse.*"
+    ],
+    "heldBy": [
+      "WithheldFaultNameTests"
+    ]
+  },
+  {
+    "id": "C24-content-comes-back",
+    "source": "src/CodoMetis.TypeKit.Testing/README.md",
+    "quote": "**The content comes back.** `ShouldBeSome()`, `ShouldBeSuccess()`, `ShouldBeError()` and `ShouldBeValue()` return the value or the error.",
+    "claim": "**The content comes back.** `ShouldBeSome()`, `ShouldBeSuccess()`, `ShouldBeError()` and `ShouldBeValue()` return the value or the error.",
+    "oracle": "claim",
+    "surfaces": [
+      "OptionAssertions.*",
+      "ResultAssertions.*",
+      "PatchAssertions.*"
+    ],
+    "heldBy": [
+      "AssertionTests",
+      "PatchAssertionTests"
+    ]
+  },
+  {
+    "id": "E01-column-type",
+    "source": "docs/ef-core.md#the-model",
+    "quote": "Every property maps as a column of the underlying type, nullable where the property is.",
+    "claim": "Every property maps as a column of the underlying type, nullable where the property is.",
+    "oracle": "differential",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit",
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "MappingTests"
+    ]
+  },
+  {
+    "id": "E01-facet-kept",
+    "source": "docs/ef-core.md#the-model",
+    "quote": "A facet you configure on it is kept: a precision, a length, a column type.",
+    "claim": "A facet you configure on it is kept: a precision, a length, a column type.",
+    "oracle": "differential",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit",
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "MappingTests"
+    ]
+  },
+  {
+    "id": "E01-nullable",
+    "source": "docs/ef-core.md#the-model",
+    "quote": "nullable where the property is",
+    "claim": "nullable where the property is",
+    "oracle": "differential",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit",
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "MappingTests"
+    ]
+  },
+  {
+    "id": "E02-column-not-cast",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "A table's column is re-typed, not cast, so an index on it still serves the query.",
+    "claim": "A table's column is re-typed, not cast, so an index on it still serves the query.",
+    "oracle": "differential",
+    "surfaces": [
+      "TranslatedAsWrappedValueAttribute.*",
+      "IValueObject.Value"
+    ],
+    "heldBy": [
+      "SqlTranslationTests"
+    ]
+  },
+  {
+    "id": "E02-get-value",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "db.Orders.Where(o => o.Total.GetValue() > 100m);",
+    "claim": "db.Orders.Where(o => o.Total.GetValue() > 100m);",
+    "oracle": "differential",
+    "surfaces": [
+      "TranslatedAsWrappedValueAttribute.*",
+      "IValueObject.Value"
+    ],
+    "heldBy": [
+      "SqlTranslationTests"
+    ]
+  },
+  {
+    "id": "E02-value",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "`.Value`, `GetValue()` and `ValueOrNull()` translate to the column itself.",
+    "claim": "`.Value`, `GetValue()` and `ValueOrNull()` translate to the column itself.",
+    "oracle": "differential",
+    "surfaces": [
+      "TranslatedAsWrappedValueAttribute.*",
+      "IValueObject.Value"
+    ],
+    "heldBy": [
+      "SqlTranslationTests"
+    ]
+  },
+  {
+    "id": "E02-value-or-null",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "Use `ValueOrNull()` for an optional value object, where `.Value` would first unwrap the `Nullable`.",
+    "claim": "Use `ValueOrNull()` for an optional value object, where `.Value` would first unwrap the `Nullable`.",
+    "oracle": "differential",
+    "surfaces": [
+      "TranslatedAsWrappedValueAttribute.*",
+      "IValueObject.Value"
+    ],
+    "heldBy": [
+      "SqlTranslationTests"
+    ]
+  },
+  {
+    "id": "E03-keys",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#what-maps",
+    "quote": "Keys, foreign keys, nullable properties, primitive collections and query parameters all map as plain columns of the underlying type.",
+    "claim": "Keys, foreign keys, nullable properties, primitive collections and query parameters all map as plain columns of the underlying type.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "PostgreSqlRoundTripTests"
+    ]
+  },
+  {
+    "id": "E03-stored-as-underlying",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#what-maps",
+    "quote": "Every value object is stored in a plain column of its underlying type",
+    "claim": "Every value object is stored in a plain column of its underlying type",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "PostgreSqlRoundTripTests"
+    ]
+  },
+  {
+    "id": "E04-byte-not-generated",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "That's EF's own list: `int`, `long`, `short`, `sbyte`, `uint`, `ulong` and `ushort`, and not `byte`.",
+    "claim": "That's EF's own list: `int`, `long`, `short`, `sbyte`, `uint`, `ulong` and `ushort`, and not `byte`.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E04-char-key-yours",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "A key over `char` is yours to assign.",
+    "claim": "A key over `char` is yours to assign.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E04-generated-on-add",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "A single-column key over an integer is generated on add, like a key of that integer type.",
+    "claim": "A single-column key over an integer is generated on add, like a key of that integer type.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E04-guid-key-yours",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "A key over a `Guid` is yours to assign",
+    "claim": "A key over a `Guid` is yours to assign",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E04-own-configuration-wins",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "A configuration you write yourself always wins over these defaults.",
+    "claim": "A configuration you write yourself always wins over these defaults.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E05-comparison",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "a comparison (`<`, `>`, `<=`, `>=`, `CompareTo`);",
+    "claim": "a comparison (`<`, `>`, `<=`, `>=`, `CompareTo`);",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests"
+    ]
+  },
+  {
+    "id": "E05-equality-allowed",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "Equality isn't ordering, and stays allowed.",
+    "claim": "Equality isn't ordering, and stays allowed.",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests"
+    ]
+  },
+  {
+    "id": "E05-ordering",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "an ordering (`OrderBy`, `ThenBy`, their descending forms, `Order`);",
+    "claim": "an ordering (`OrderBy`, `ThenBy`, their descending forms, `Order`);",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests"
+    ]
+  },
+  {
+    "id": "E05-query-filter",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "A query filter (`HasQueryFilter`, named or not) that does the same fails when the model is built, naming the entity type, since it applies to every query of that type.",
+    "claim": "A query filter (`HasQueryFilter`, named or not) that does the same fails when the model is built, naming the entity type, since it applies to every query of that type.",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests"
+    ]
+  },
+  {
+    "id": "E05-value-order-allowed",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "Compare or order by `.Value` where the underlying value's order is what you mean",
+    "claim": "Compare or order by `.Value` where the underlying value's order is what you mean",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests"
+    ]
+  },
+  {
+    "id": "E06-value-not-translated",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "So a filter, a sort, a grouping or an aggregate that reads `.Value` there fails with EF's \"could not be translated\", rather than comparing against what the column really holds.",
+    "claim": "So a filter, a sort, a grouping or an aggregate that reads `.Value` there fails with EF's \"could not be translated\", rather than comparing against what the column really holds.",
+    "oracle": "exception",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "ForeignConverterTests"
+    ]
+  },
+  {
+    "id": "E06-value-object-comparison",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "Comparing the value object itself (`o.Code == code`) goes through that converter and still works.",
+    "claim": "Comparing the value object itself (`o.Code == code`) goes through that converter and still works.",
+    "oracle": "exception",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "ForeignConverterTests"
+    ]
+  },
+  {
+    "id": "E07-in-collections-and-json",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#closed-sets",
+    "quote": "That holds in a table, in a primitive collection of names (`text[]` on PostgreSQL, a JSON array elsewhere) and in a JSON column alike, with nothing registered per set.",
+    "claim": "That holds in a table, in a primitive collection of names (`text[]` on PostgreSQL, a JSON array elsewhere) and in a JSON column alike, with nothing registered per set.",
+    "oracle": "claim",
+    "surfaces": [
+      "ClosedSetConverter.*"
+    ],
+    "heldBy": [
+      "ClosedSetMappingTests"
+    ]
+  },
+  {
+    "id": "E07-non-member-throws",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#closed-sets",
+    "quote": "An instance that isn't a member throws when it's written.",
+    "claim": "An instance that isn't a member throws when it's written.",
+    "oracle": "claim",
+    "surfaces": [
+      "ClosedSetConverter.*"
+    ],
+    "heldBy": [
+      "ClosedSetMappingTests"
+    ]
+  },
+  {
+    "id": "E07-stored-as-name",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#closed-sets",
+    "quote": "A closed set (`IClosedSet<TSelf>`) is stored as a text column of the member's name, and read back as the member itself.",
+    "claim": "A closed set (`IClosedSet<TSelf>`) is stored as a text column of the member's name, and read back as the member itself.",
+    "oracle": "claim",
+    "surfaces": [
+      "ClosedSetConverter.*"
+    ],
+    "heldBy": [
+      "ClosedSetMappingTests"
+    ]
+  },
+  {
+    "id": "E07-unknown-name-throws",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#closed-sets",
+    "quote": "A name the set no longer has throws when it's read, rather than reading as null.",
+    "claim": "A name the set no longer has throws when it's read, rather than reading as null.",
+    "oracle": "claim",
+    "surfaces": [
+      "ClosedSetConverter.*"
+    ],
+    "heldBy": [
+      "ClosedSetMappingTests"
+    ]
+  },
+  {
+    "id": "E08-error-says-so",
+    "source": "docs/ef-core.md#option-and-result",
+    "quote": "building the model fails with an error that says so",
+    "claim": "building the model fails with an error that says so",
+    "oracle": "exception",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E08-model-fails",
+    "source": "docs/ef-core.md#option-and-result",
+    "quote": "EF can't map an `Option` or a `Result` property",
+    "claim": "EF can't map an `Option` or a `Result` property",
+    "oracle": "exception",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E09-element-at-skips",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found",
+    "quote": "skips to its row: `OFFSET @p`.",
+    "claim": "skips to its row: `OFFSET @p`.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitQueryableExtensions.*",
+      "Option.FirstOrNone",
+      "Option.SingleOrNone"
+    ],
+    "heldBy": [
+      "QueryOptionTests"
+    ]
+  },
+  {
+    "id": "E09-first-reads-one-row",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found",
+    "quote": "read one row: `WHERE ... LIMIT @p`.",
+    "claim": "read one row: `WHERE ... LIMIT @p`.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitQueryableExtensions.*",
+      "Option.FirstOrNone",
+      "Option.SingleOrNone"
+    ],
+    "heldBy": [
+      "QueryOptionTests"
+    ]
+  },
+  {
+    "id": "E09-single-asks-for-two",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found",
+    "quote": "ask for two rows, and throw for more than one.",
+    "claim": "ask for two rows, and throw for more than one.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitQueryableExtensions.*",
+      "Option.FirstOrNone",
+      "Option.SingleOrNone"
+    ],
+    "heldBy": [
+      "QueryOptionTests"
+    ]
+  },
+  {
+    "id": "E10-reads-without-create",
+    "source": "docs/ef-core.md#reading-back-without-validation",
+    "quote": "EF reads a column back without validation, through the value object's `Materialize` rather than `Create`.",
+    "claim": "EF reads a column back without validation, through the value object's `Materialize` rather than `Create`.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObjectMaterializer.*",
+      "ValueObjectConverter.Materialize"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E10-revalidate-finds",
+    "source": "docs/ef-core.md#reading-back-without-validation",
+    "quote": "`Revalidate()` finds the rows that today's rules reject, as above.",
+    "claim": "`Revalidate()` finds the rows that today's rules reject, as above.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObjectMaterializer.*",
+      "ValueObjectConverter.Materialize"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E11-order-does-not-matter",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#setup",
+    "quote": "it doesn't matter whether you call it before or after `UseNpgsql` or `UseSqlite`",
+    "claim": "it doesn't matter whether you call it before or after `UseNpgsql` or `UseSqlite`",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E12-underlying-type-does-not-reach",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#model-wide-conventions-follow-the-propertys-type",
+    "quote": "So `configurationBuilder.Properties<decimal>().HavePrecision(18, 2)` reaches `decimal` properties, and not an `Amount` that wraps one.",
+    "claim": "So `configurationBuilder.Properties<decimal>().HavePrecision(18, 2)` reaches `decimal` properties, and not an `Amount` that wraps one.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E12-value-object-type-reaches",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#model-wide-conventions-follow-the-propertys-type",
+    "quote": "Configure the value object instead: `configurationBuilder.Properties<Amount>().HavePrecision(18, 2)`.",
+    "claim": "Configure the value object instead: `configurationBuilder.Properties<Amount>().HavePrecision(18, 2)`.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E13-contains",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "db.Orders.Where(o => o.Tags.Contains(tag));",
+    "claim": "db.Orders.Where(o => o.Tags.Contains(tag));",
+    "oracle": "claim",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E13-element-value",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "db.Orders.Where(o => o.Tags.Any(t => t.Value == \"x\"));",
+    "claim": "db.Orders.Where(o => o.Tags.Any(t => t.Value == \"x\"));",
+    "oracle": "claim",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E14-tpc-assign-on-sqlite",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "SQLite has no such sequence, so there you assign it.",
+    "claim": "SQLite has no such sequence, so there you assign it.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E14-tph-tpt-root",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "The root of an inheritance hierarchy follows the same rules under TPH and TPT.",
+    "claim": "The root of an inheritance hierarchy follows the same rules under TPH and TPT.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E15-as-for-primitives",
+    "source": "docs/ef-core.md#keys",
+    "quote": "A composite key of value objects is `HasKey(x => new { x.Order, x.Line })`, as for primitives.",
+    "claim": "A composite key of value objects is `HasKey(x => new { x.Order, x.Line })`, as for primitives.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E16-column-type",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "A facet you configure on the property, such as a maximum length or a column type, is kept.",
+    "claim": "A facet you configure on the property, such as a maximum length or a column type, is kept.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "L01-read-as-the-underlying-type-reads",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "**Swapping a primitive for a value object keeps the JSON, the column and the schema.**",
+    "claim": "**Swapping a primitive for a value object keeps the JSON, the column and the schema.**",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedJson.*",
+      "GeneratedJsonPlan.*",
+      "StoredJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "JsonParityTests"
+    ]
+  },
+  {
+    "id": "L01-the-underlying-types-json",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "Its JSON is the underlying type's under your options",
+    "claim": "Its JSON is the underlying type's under your options",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedJson.*",
+      "GeneratedJsonPlan.*",
+      "StoredJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "JsonParityTests"
+    ]
+  },
+  {
+    "id": "L02-json-never-repeats",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "A JSON or parsing rejection names the value object and the rule, or the underlying type it could not read.",
+    "claim": "A JSON or parsing rejection names the value object and the rule, or the underlying type it could not read.",
+    "oracle": "exception",
+    "surfaces": [
+      "GeneratedParsing.*",
+      "GeneratedFactories.*"
+    ],
+    "heldBy": [
+      "UnreadableInputTests"
+    ]
+  },
+  {
+    "id": "L02-no-inner-that-quotes",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "It carries no inner exception that quotes the text.",
+    "claim": "It carries no inner exception that quotes the text.",
+    "oracle": "exception",
+    "surfaces": [
+      "GeneratedParsing.*",
+      "GeneratedFactories.*"
+    ],
+    "heldBy": [
+      "UnreadableInputTests"
+    ]
+  },
+  {
+    "id": "L02-parsing-never-repeats",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "**Rejections never repeat the input.**",
+    "claim": "**Rejections never repeat the input.**",
+    "oracle": "exception",
+    "surfaces": [
+      "GeneratedParsing.*",
+      "GeneratedFactories.*"
+    ],
+    "heldBy": [
+      "UnreadableInputTests"
+    ]
+  },
+  {
+    "id": "L03-refusals-name-the-fault",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "the `JsonException`, the `FormatException` and the `FromKnownGood` exception all name your `EmailFault.NoAt`",
+    "claim": "the `JsonException`, the `FormatException` and the `FromKnownGood` exception all name your `EmailFault.NoAt`",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create",
+      "GeneratedFactories.*"
+    ],
+    "heldBy": [
+      "EntryPointValidationTests"
+    ]
+  },
+  {
+    "id": "L03-tryfrom-runs-create",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "The generated `TryFrom`, `FromKnownGood`, JSON converter, parsing and type converter all run it",
+    "claim": "The generated `TryFrom`, `FromKnownGood`, JSON converter, parsing and type converter all run it",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedFactories.*",
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "EntryPointValidationTests"
+    ]
+  },
+  {
+    "id": "L04-invariant-whatever-the-culture",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#parsing-and-formatting",
+    "quote": "A null `IFormatProvider` means the invariant culture in every generated `Parse`, `TryParse`, `ToString` and `TryFormat`, so the text doesn't depend on the culture the process runs in.",
+    "claim": "A null `IFormatProvider` means the invariant culture in every generated `Parse`, `TryParse`, `ToString` and `TryFormat`, so the text doesn't depend on the culture the process runs in.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "GeneratedFormatting.*",
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "L04-json-refusal-is-a-json-exception",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#parsing-and-formatting",
+    "quote": "Input it can't read throws a `JsonException` naming the value object and the underlying type",
+    "claim": "Input it can't read throws a `JsonException` naming the value object and the underlying type",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "GeneratedFormatting.*",
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "L04-text-reads-back",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#parsing-and-formatting",
+    "quote": "That text reads back as the same value wherever the underlying type's own does",
+    "claim": "That text reads back as the same value wherever the underlying type's own does",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "GeneratedFormatting.*",
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "L04-the-type-converter-writes-the-same",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#parsing-and-formatting",
+    "quote": "`ToString()` is the underlying type's own default text under the invariant culture, and the type converter and `$\"{x}\"` write the same.",
+    "claim": "`ToString()` is the underlying type's own default text under the invariant culture, and the type converter and `$\"{x}\"` write the same.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "GeneratedFormatting.*",
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "L05-equality-is-the-underlying-values",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#equality",
+    "quote": "Equality is the underlying value's, like the ordering, the JSON and the column.",
+    "claim": "Equality is the underlying value's, like the ordering, the JSON and the column.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "IValueObject.op_Equality",
+      "IValueObject.op_Inequality"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "L05-ordering-follows-the-underlying-type",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#equality",
+    "quote": "`CompareTo` and the operators follow the underlying type's ordering, ordinal for a string.",
+    "claim": "`CompareTo` and the operators follow the underlying type's ordering, ordinal for a string.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "IValueObject.op_Equality",
+      "IValueObject.op_Inequality"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "L05-through-every-base",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#equality",
+    "quote": "The value object implements each base's `IEquatable<TBase>` again (`IReimplementedEquatable<TBase>`), so a collection of the base compares it the way the value object does.",
+    "claim": "The value object implements each base's `IEquatable<TBase>` again (`IReimplementedEquatable<TBase>`), so a collection of the base compares it the way the value object does.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "IValueObject.op_Equality",
+      "IValueObject.op_Inequality"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "L06-never-written",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "System.Text.Json throws `NotSupportedException` for either, in both directions, instead of writing `{}` that reads back as `None`.",
+    "claim": "System.Text.Json throws `NotSupportedException` for either, in both directions, instead of writing `{}` that reads back as `None`.",
+    "oracle": "exception",
+    "surfaces": [
+      "NotWireTypeJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "NotWireTypeTests"
+    ]
+  }
+]

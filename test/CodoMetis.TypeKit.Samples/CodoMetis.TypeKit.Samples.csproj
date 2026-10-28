@@ -16,6 +16,11 @@
       The samples' namespaces are outside CodoMetis.TypeKit on purpose: inside it, the enclosing
       namespace would supply Option, Result and OrderId.New() to a sample whose README forgot the using.
     -->
+    <PropertyGroup>
+        <!-- The woven code, written to obj/…/metalama: GeneratedCodeBlockTests holds the READMEs' generated-code blocks to it. -->
+        <MetalamaEmitCompilerTransformedFiles>true</MetalamaEmitCompilerTransformedFiles>
+    </PropertyGroup>
+
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
@@ -33,29 +38,6 @@
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Testing\CodoMetis.TypeKit.Testing.csproj" />
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Serilog\CodoMetis.TypeKit.Serilog.csproj" />
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Analyzers\CodoMetis.TypeKit.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    </ItemGroup>
-
-    <!--
-      For the analyzer probes of tools/probe/corpus (CMTK0010, CMTK0014): they run the CMTK analyzers
-      in-process over a CSharpCompilation, as the analyzer tests do, so the analyzer assembly is also
-      referenced as a library, with the compiler it runs on. The type-argument variant catalogues are
-      the analyzer tests' own, compiled in rather than copied, so a site the catalogue gains reaches
-      the probes too.
-    -->
-    <ItemGroup>
-        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Analyzers\CodoMetis.TypeKit.Analyzers.csproj" />
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
-        <Compile Include="..\CodoMetis.TypeKit.Analyzers.Tests\Variants\TypeArgumentSites.cs" Link="Variants\TypeArgumentSites.cs" />
-        <Compile Include="..\CodoMetis.TypeKit.Analyzers.Tests\Variants\TypeArgumentKinds.cs" Link="Variants\TypeArgumentKinds.cs" />
-    </ItemGroup>
-
-    <!--
-      The probes' side (1), the framework without TypeKit, is read from a fact's fixture where one covers a row (the harness's Sides,
-      design/adr/0107): the facts' reader is compiled in as it is, BCL only, rather than the Facts project referenced, which is a test
-      project of its own and references no TypeKit project. The fixtures are read from the repository, beside the facts' tests.
-    -->
-    <ItemGroup>
-        <Compile Include="..\CodoMetis.TypeKit.Facts\FactFixture.cs" Link="Facts\FactFixture.cs" />
     </ItemGroup>
 
 </Project>

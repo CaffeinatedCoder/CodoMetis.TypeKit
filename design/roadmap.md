@@ -22,13 +22,9 @@ defect, a cost or a missing guard may land here; one that adds surface waits for
 Decided, moved to 2.2 when 2.1.0 shipped without them ([decision 88](adr/0088-2-1-0-ships-without-its-open-roadmap-items.md)),
 and then to 2.3 when 2.2.0 became a consolidation release ([decision 97](adr/0097-2-2-0-is-a-consolidation-release-and-the-gate-binds.md)).
 
-- An opt-in that withholds the `fault` name from the response for chosen members or a whole fault
-  type, so two causes can share a status without a mapping at the boundary
-  ([decision 64](adr/0064-fault-name-reaches-client-causes-not-told-apart-one-fault.md)).
 - A default value-object key over `ulong` generated as a plain one is, which needs a per-key value
   generator a compiled model can write ([decision 63](adr/0063-char-keys-application-assigned-ulong-documented.md)).
 - Testing: async assertions.
-- `CatchAsync` over a `ValueTask`, and `TraverseAsync` on `Option` and `Patch`.
 
 ## Gaps, in any 2.x
 

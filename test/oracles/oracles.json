@@ -1,0 +1,32 @@
+[
+  {
+    "class": "AsynchronousContextTests",
+    "project": "CodoMetis.TypeKit.Tests",
+    "kind": "completeness",
+    "against": "every public member of the base package that returns a task, by reflection: a callback runs where the task it waited for completed, and nothing resumes on the caller's context"
+  },
+  {
+    "class": "JsonParityTests",
+    "project": "CodoMetis.TypeKit.Generators.Tests",
+    "kind": "differential",
+    "against": "the wrapped type's own JSON under the same options, as a value, a property and a dictionary key"
+  },
+  {
+    "class": "KeyGenerationVariantTests",
+    "project": "CodoMetis.TypeKit.EntityFrameworkCore.Tests",
+    "kind": "differential",
+    "against": "the same key shape keyed by the wrapped type, on SQLite, Npgsql and SQL Server"
+  },
+  {
+    "class": "NotWireTypeTests",
+    "project": "CodoMetis.TypeKit.Tests",
+    "kind": "completeness",
+    "against": "every exported struct of the base package, by reflection: System.Text.Json refuses it in both directions"
+  },
+  {
+    "class": "NullDelegateTests",
+    "project": "CodoMetis.TypeKit.Tests",
+    "kind": "completeness",
+    "against": "every delegate parameter of the base package, by reflection, on every branch of its receiver"
+  }
+]
