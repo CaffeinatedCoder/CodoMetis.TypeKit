@@ -354,7 +354,7 @@ public static class Hx
     {
         "DateTime" => ((DateTime)plain).ToString("O"), "DateTimeOffset" => ((DateTimeOffset)plain).ToString("O"),
         "DateOnly" => ((DateOnly)plain).ToString("yyyy-MM-dd"), "TimeOnly" => ((TimeOnly)plain).ToString("HH:mm:ss"),
-        "TimeSpan" => ((TimeSpan)plain).ToString("c"), "bool" => (bool)plain ? "true" : "false", "enum" or "flags-enum" => plain.ToString()!,
+        "TimeSpan" => ((TimeSpan)plain).ToString("c"), "bool" => (bool)plain ? "true" : "false", "enum" or "flags-enum" => ((Enum)plain).ToString(),
         _ => Convert.ToString(plain, System.Globalization.CultureInfo.InvariantCulture)!
     };
 
