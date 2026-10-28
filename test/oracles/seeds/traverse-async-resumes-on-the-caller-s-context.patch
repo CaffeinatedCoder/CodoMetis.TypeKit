@@ -1,0 +1,17 @@
+Seed: The sequence's TraverseAsync awaits each operation without ConfigureAwait(false), so it resumes on the caller's SynchronizationContext
+Oracles: AsynchronousContextTests
+Fails: Result.TraverseAsync(IEnumerable<T>, Func<T, Task<Result<TResult, TError>>>), with the first operation pending
+
+diff --git a/src/CodoMetis.TypeKit/ResultExtensions.cs b/src/CodoMetis.TypeKit/ResultExtensions.cs
+index a4394be..b2eae14 100644
+--- a/src/CodoMetis.TypeKit/ResultExtensions.cs
++++ b/src/CodoMetis.TypeKit/ResultExtensions.cs
+@@ -1286,7 +1286,7 @@ public static class Result
+ 
+             foreach (var element in source)
+             {
+-                var result = await ThrowHelper.Awaitable(selector(element), nameof(TraverseAsync), nameof(selector)).ConfigureAwait(false);
++                var result = await ThrowHelper.Awaitable(selector(element), nameof(TraverseAsync), nameof(selector));
+                 if (!result.TryGetValue(out var value, out var error)) return Result<IReadOnlyList<TResult>, TError>.Error(error);
+ 
+                 values.Add(value);

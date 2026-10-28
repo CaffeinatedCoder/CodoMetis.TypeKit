@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      The oracle kit's local tool (design/adr/0112, test/oracles/README.md): `seeds [filter]` shows each seed caught by
+      the oracles it names, a copy of the working tree, the patch, one project built and one class run per oracle;
+      `status` prints the catalogue's worklist. Never part of CI: CodoMetis.TypeKit.Oracles.Tests holds the catalogue
+      there without building anything. Run as its built dll: `dotnet tools/Oracles/bin/Release/net10.0/oracles.dll`.
+      The seed verdict is test/oracles/SeedVerdict.cs, compiled in here and into the oracle tests, which hold the
+      rule, so the two cannot disagree; it is one of the sources the tool's fingerprint covers.
+    -->
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <AssemblyName>oracles</AssemblyName>
+        <RootNamespace>Oracles</RootNamespace>
+        <ToolSourcePatterns>**/*.cs;../../test/oracles/SeedVerdict.cs</ToolSourcePatterns>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="..\..\test\oracles\SeedVerdict.cs" Link="SeedVerdict.cs" />
+    </ItemGroup>
+
+</Project>

@@ -28,7 +28,7 @@ project. The two packages share a version and move together.
 |---|---|---|
 | CMTK0001 | Error | `default`, `default(T)`, `new T()`, `new()` and `new T { }` of a value object, an `Option`, a `Result`, or a struct marked `[RequireCustomInitialization]`. Also through a type parameter whose constraints make it one of those. Not reported: a default that is only compared (`id == default`, `id.Equals(default)`, `ThrowIfEqual(id, default)`, `Assert.NotEqual(default, id)`), which is a guard, and one assigned to an `out` parameter of a Try method that returns `bool`. |
 | CMTK0002 | Error | A type implements `IValue<T>`, `IValidatedValue<,,>` or `IClosedSet<TSelf>`, but the compilation doesn't reference `CodoMetis.TypeKit.Generators`. So nothing is generated for it: no field, no `Value`, no factory, or for a closed set no name and no `Match`. |
-| CMTK0003 | Error | A `Result` or `Option` that a call returns, or a collection or a tuple of them that the statement made, dropped. It counts as dropped as a statement, awaited or not; when its `Task` is converted to a plain `Task`, also where a method group is the conversion; through `Wait`; in a loop that never reads it; and in a branch of a conditional, a `switch` expression or a `??` that picked the call. `_` says you mean the drop. |
+| CMTK0003 | Error | A `Result` or `Option` that a call returns, or a collection or a tuple of them that the statement made, dropped. It counts as dropped as a statement, awaited or not; when its `Task` is converted to a plain `Task`, also where a method group is the conversion; through `Wait`; in a loop that never reads it; and in a branch of a conditional, a `switch` expression or a `??` that picked the call. Also an assertion of `CodoMetis.TypeKit.Testing` on a task, left without `await`. `_` says you mean the drop. |
 | CMTK0004 | Error | `Materialize`, which rebuilds a value object without its rules, called or referenced anywhere but the EF Core package. |
 | CMTK0005 | Warning | An array or span of a value object, `Option`, `Result` or `[RequireCustomInitialization]` struct created with a length, so every slot starts as `default`. A constant length of zero isn't reported. |
 | CMTK0006 | Warning | A field or auto-property of such a type, in a class, that no initializer, `required` or constructor sets. Also a `required` one that a `[SetsRequiredMembers]` constructor doesn't set. |
@@ -181,6 +181,12 @@ A task you still hold isn't dropped, whether you await it as it is or through `C
 call's: `await orders.CancelAsync(id).ConfigureAwait(false);` is reported, naming `CancelAsync`. An
 explicit cast, to `Task` or to the delegate type, says you mean the drop. A `ValueTask<T>` has no
 conversion to `ValueTask`.
+
+**Assertions on a task.** An assertion of `CodoMetis.TypeKit.Testing` on a `Task` or `ValueTask`,
+such as `service.FindAsync(id).ShouldBeSome()`, fails the test only through the task it returns.
+Left without `await`, the test passes whatever the task holds, and C# warns only in an `async`
+method. CMTK0003 reports the line, naming the assertion. The rule knows these assertions by the
+package's own assembly, so an extension of yours on a pending result is left alone.
 
 **Collections.** A collection of results is dropped as silently as one result:
 

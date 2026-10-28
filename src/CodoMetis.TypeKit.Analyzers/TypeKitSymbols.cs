@@ -52,6 +52,12 @@ internal sealed class TypeKitSymbols
     /// </summary>
     private const string GeneratorsAssembly = "CodoMetis.TypeKit.Generators";
 
+    /// <summary>
+    /// The assembly of the test assertions, whose assertions on a pending value fail a test only through
+    /// the task they return. This is the package's own identity, which a consumer cannot rename.
+    /// </summary>
+    private const string TestingAssembly = "CodoMetis.TypeKit.Testing";
+
     private const string Materialize = "Materialize";
 
     private readonly ImmutableArray<INamedTypeSymbol> _valueMarkers;
@@ -107,6 +113,10 @@ internal sealed class TypeKitSymbols
         ReferencesGenerators         = referencesGenerators;
         _computeRestriction          = ComputeRestriction;
     }
+
+    /// <summary>Whether <paramref name="assembly"/> is CodoMetis.TypeKit.Testing.</summary>
+    public static bool IsTestingAssembly(IAssemblySymbol? assembly) =>
+        assembly is not null && string.Equals(assembly.Name, TestingAssembly, StringComparison.Ordinal);
 
     /// <summary>Whether the compilation references CodoMetis.TypeKit.Generators.</summary>
     public bool ReferencesGenerators { get; }

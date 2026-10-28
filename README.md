@@ -68,6 +68,50 @@ factories, value equality, a JSON converter, `IParsable`, `IFormattable`, `IComp
 A value object can wrap a primitive, a `Guid`, a date, an enum, a `Uri`, a NodaTime type or a type of
 your own, and it can be declared inside another type.
 
+<details>
+<summary>What the generators write for <code>OrderId</code>, trimmed</summary>
+
+<!-- not compiled: generated code for Root/IntroSamples.cs, trimmed (GeneratedCodeBlockTests) -->
+```csharp
+public readonly partial record struct OrderId : IValue<Guid>, IValueObject<OrderId, Guid>, IParsable<OrderId>, IComparable<OrderId>
+{
+    private readonly Guid _value;
+
+    private OrderId(Guid value)
+    {
+        _value = value;
+    }
+
+    public Guid Value
+    {
+        get { return _value; }
+    }
+
+    public static OrderId From(Guid value)
+    {
+        return new OrderId(value);
+    }
+
+    public int CompareTo(OrderId other)
+    {
+        return Comparer<Guid>.Default.Compare(Value, other.Value);
+    }
+
+    public override readonly string ToString()
+    {
+        return ToString(null, CultureInfo.InvariantCulture);
+    }
+
+    // Also: Parse and TryParse, the formatting interfaces, the comparison operators,
+    // a JSON converter and a type converter, each nested in the type.
+}
+```
+
+The [Generators README](src/CodoMetis.TypeKit.Generators/README.md#what-is-generated) lists every
+member, and says how to read the full generated code of your own types.
+
+</details>
+
 A closed set, the smart enum, is declared the same way, one line per member:
 
 ```csharp

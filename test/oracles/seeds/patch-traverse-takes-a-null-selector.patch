@@ -1,0 +1,17 @@
+Seed: Patch<T>.Traverse checks its selector only where it calls it, so a null passes on a clear and an absent field
+Oracles: NullDelegateTests
+Fails: Result.Traverse(Patch<T>, ...): selector, on the Null and Absent branches
+
+diff --git a/src/CodoMetis.TypeKit/ResultExtensions.cs b/src/CodoMetis.TypeKit/ResultExtensions.cs
+index a4394be..1568b0a 100644
+--- a/src/CodoMetis.TypeKit/ResultExtensions.cs
++++ b/src/CodoMetis.TypeKit/ResultExtensions.cs
+@@ -1568,8 +1568,6 @@ public static class Result
+             where TResult : notnull
+             where TError : notnull
+         {
+-            ArgumentNullException.ThrowIfNull(selector);
+-
+             if (!patch.TryGetValue(out var value))
+                 return Result<Patch<TResult>, TError>.Success(patch.State == PatchState.Null ? Patch.Null<TResult>() : Patch.Absent<TResult>());
+ 

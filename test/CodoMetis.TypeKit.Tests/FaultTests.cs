@@ -104,6 +104,77 @@ public sealed class FaultTests
         Fault.Of(OrderFault.NotFound, "Order 7 is gone.").Reason.ShouldBe(OrderFault.NotFound);
     }
 
+    /// <summary>A cause is kept for the log beside the reason and the detail (decision 52).</summary>
+    [Fact]
+    public void A_fault_keeps_the_exception_that_caused_it()
+    {
+        var timeout = new TimeoutException("db-host-7 timed out");
+
+        var fault = Fault.Of(OrderFault.NotFound, "Order 7 could not be read.", timeout);
+
+        fault.Cause.ShouldBeSameAs(timeout);
+        fault.Reason.ShouldBe(OrderFault.NotFound);
+        fault.Detail.ShouldBe("Order 7 could not be read.");
+        Fault.Of(OrderFault.NotFound, null, timeout).Detail.ShouldBeNull();
+        new Fault<OrderFault>(OrderFault.NotFound, null, timeout).Cause.ShouldBeSameAs(timeout);
+        Fault.Of(OrderFault.NotFound, "Order 7 is gone.").Cause.ShouldBeNull();
+    }
+
+    /// <summary>The pattern the docs show: a caught exception mapped to a fault keeps the exception as its cause.</summary>
+    [Fact]
+    public void MapError_from_a_caught_exception_keeps_it_as_the_cause()
+    {
+        var thrown = new InvalidOperationException("the file is locked");
+
+        var mapped = Result.Catch(() => Read(thrown))
+            .MapError(e => Fault.Of(OrderFault.NotFound, "The order could not be read.", e));
+
+        mapped.TryGetValue(out _, out var fault).ShouldBeFalse();
+        fault.Cause.ShouldBeSameAs(thrown);
+
+        static int Read(Exception thrown) => throw thrown;
+    }
+
+    /// <summary>
+    /// The cause is for the log: a fault with one equals the same fault without one and hashes alike, so a
+    /// test that compares faults, or a set of them, is unchanged by where the fault came from; and it
+    /// prints as 2.2 printed it, since assertion messages quote it.
+    /// </summary>
+    [Fact]
+    public void A_cause_takes_no_part_in_equality_or_printing()
+    {
+        var caused = Fault.Of(OrderFault.NotFound, "Order 7 is gone.", new TimeoutException("db-host-7"));
+        var plain = Fault.Of(OrderFault.NotFound, "Order 7 is gone.");
+
+        caused.ShouldBe(plain);
+        (caused == plain).ShouldBeTrue();
+        caused.GetHashCode().ShouldBe(plain.GetHashCode());
+        caused.ToString().ShouldBe(plain.ToString());
+        caused.ToString().ShouldNotContain("db-host-7");
+        caused.ShouldNotBe(Fault.Of(OrderFault.NotFound, "Order 8 is gone.", new TimeoutException()));
+        caused.WithRule(Access.Read).ShouldNotBe(plain);
+    }
+
+    [Fact]
+    public void A_rule_and_a_copy_keep_the_cause()
+    {
+        var timeout = new TimeoutException();
+        var fault = Fault.Of(OrderFault.NotFound, null, timeout);
+
+        fault.WithRule(Access.Read).Cause.ShouldBeSameAs(timeout);
+        fault.WithRule(EmailRule.NoAt).Cause.ShouldBeSameAs(timeout);
+        (fault with { }).Cause.ShouldBeSameAs(timeout);
+    }
+
+    /// <summary>A null cause is a mistake where one is given: leave it out for none.</summary>
+    [Fact]
+    public void A_null_cause_is_refused()
+    {
+        Should.Throw<ArgumentNullException>(() => Fault.Of(OrderFault.NotFound, "Order 7 is gone.", null!)).ParamName.ShouldBe("cause");
+        Should.Throw<ArgumentNullException>(() => new Fault<OrderFault>(OrderFault.NotFound, null, null!)).ParamName.ShouldBe("cause");
+        Should.Throw<ArgumentException>(() => Fault.Of(OrderFault.NotFound, " ", new TimeoutException())).ParamName.ShouldBe("detail");
+    }
+
     [Flags]
     private enum Access { Read = 1, Write = 2 }
 

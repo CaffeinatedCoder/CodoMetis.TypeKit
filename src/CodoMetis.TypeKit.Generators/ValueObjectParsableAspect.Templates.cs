@@ -34,25 +34,31 @@ internal sealed partial class ValueObjectParsableAspect
 
         result = meta.Default(tag.ValueObjectType);
 
+        // The branches are an if-else chain, not ifs that return: a return in a compile-time branch ends
+        // the run-time body, but the compile-time calls after it still run, and the InsertStatements
+        // below wrote an unreachable tail into every other TryParse (WovenReachabilityTests).
         if (meta.CompileTime(tag.InnerTryParse() is not null))
+        {
             return (bool)ExpressionFactory.Parse(tag.InnerTryParse()!, TypeFactory.GetType(SpecialType.Boolean), false).Value!;
-
-        if (meta.CompileTime(tag.Strategy == ValueParseStrategy.String))
+        }
+        else if (meta.CompileTime(tag.Strategy == ValueParseStrategy.String))
         {
             return (bool)ExpressionFactory.Parse($"(s is not null && {tag.TryFromText}(s, out result))", TypeFactory.GetType(SpecialType.Boolean), false).Value!;
         }
+        else
+        {
+            // The remaining strategies have no TryParse of their own: their inner parse throws, and what it
+            // throws for text the wrapped type cannot read is GeneratedParsing.Unreadable, a FormatException.
+            // Only that is caught, around the inner parse alone: a bare catch around the wrapping as well
+            // made an exception from Create a false, where Parse, and TryParse over a type with a TryParse
+            // of its own, let it through.
+            if (s is null) return false;
 
-        // The remaining strategies have no TryParse of their own: their inner parse throws, and what it
-        // throws for text the wrapped type cannot read is GeneratedParsing.Unreadable, a FormatException.
-        // Only that is caught, around the inner parse alone: a bare catch around the wrapping as well
-        // made an exception from Create a false, where Parse, and TryParse over a type with a TryParse
-        // of its own, let it through.
-        if (s is null) return false;
+            meta.InsertStatement($"{ValueObjectTypes.SourceName(tag.ValueType)} __inner;");
+            meta.InsertStatement($"try {{ __inner = {tag.InnerParse()}; }} catch (global::System.FormatException) {{ return false; }}");
 
-        meta.InsertStatement($"{ValueObjectTypes.SourceName(tag.ValueType)} __inner;");
-        meta.InsertStatement($"try {{ __inner = {tag.InnerParse()}; }} catch (global::System.FormatException) {{ return false; }}");
-
-        return (bool)ExpressionFactory.Parse($"{tag.TryFromText}(__inner, out result)", TypeFactory.GetType(SpecialType.Boolean), false).Value!;
+            return (bool)ExpressionFactory.Parse($"{tag.TryFromText}(__inner, out result)", TypeFactory.GetType(SpecialType.Boolean), false).Value!;
+        }
     }
 
     [Template]
