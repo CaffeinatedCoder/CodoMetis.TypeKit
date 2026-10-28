@@ -1,17 +1,17 @@
 diff --git a/src/CodoMetis.TypeKit.AspNetCore/FaultProblem.cs b/src/CodoMetis.TypeKit.AspNetCore/FaultProblem.cs
-index f9919a2..1e4ed87 100644
+index 822adc3..0c131de 100644
 --- a/src/CodoMetis.TypeKit.AspNetCore/FaultProblem.cs
 +++ b/src/CodoMetis.TypeKit.AspNetCore/FaultProblem.cs
-@@ -47,6 +47,8 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
-     /// <summary>The rule that refused, <c>EmailFault.NoAt</c>, where the result carried a <see cref="Fault{TFault}"/> naming one.</summary>
-     public string? Rule { get; }
+@@ -54,6 +54,8 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
+     /// </summary>
+     public Exception? Cause { get; }
  
 +    internal bool Composed { get; init; }
 +
      /// <inheritdoc />
      public async Task ExecuteAsync(HttpContext httpContext)
      {
-@@ -77,7 +79,7 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
+@@ -84,7 +86,7 @@ public sealed class FaultProblem<TFault> : IResult, IEndpointMetadataProvider
          {
              await TypedResults.Problem(
                      statusCode: status,
@@ -21,15 +21,15 @@ index f9919a2..1e4ed87 100644
                      detail: detail,
                      extensions: extensions)
 diff --git a/src/CodoMetis.TypeKit.AspNetCore/TypeKitHttpResultExtensions.cs b/src/CodoMetis.TypeKit.AspNetCore/TypeKitHttpResultExtensions.cs
-index 6df36fb..83ae661 100644
+index efbe6b0..e5e89d7 100644
 --- a/src/CodoMetis.TypeKit.AspNetCore/TypeKitHttpResultExtensions.cs
 +++ b/src/CodoMetis.TypeKit.AspNetCore/TypeKitHttpResultExtensions.cs
 @@ -249,7 +249,7 @@ public static class TypeKitHttpResultExtensions
              static fault => fault.Match<Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>>>(static f => Problem(f), static f => Problem(f), static f => Problem(f)));
      }
  
--    private static FaultProblem<TFault> Problem<TFault>(Fault<TFault> fault) where TFault : notnull => new(fault.Reason, fault.Detail, fault.Rule);
-+    private static FaultProblem<TFault> Problem<TFault>(Fault<TFault> fault) where TFault : notnull => new(fault.Reason, fault.Detail, fault.Rule) { Composed = true };
+-    private static FaultProblem<TFault> Problem<TFault>(Fault<TFault> fault) where TFault : notnull => new(fault.Reason, fault.Detail, fault.Rule, fault.Cause);
++    private static FaultProblem<TFault> Problem<TFault>(Fault<TFault> fault) where TFault : notnull => new(fault.Reason, fault.Detail, fault.Rule, fault.Cause) { Composed = true };
  }
  
  /// <summary>Turns a <c>Result</c> whose fault is a closed set into the HTTP response an endpoint returns, as <see cref="TypeKitHttpResultExtensions"/> does for an enum.</summary>

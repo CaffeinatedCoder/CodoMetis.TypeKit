@@ -439,6 +439,35 @@ document stay the error's.
   error's name, the rule is your application's vocabulary. So give rule types distinct names, for
   instance by nesting a rule in its value object: `Email.Rule.Blank`.
 
+### What failed underneath
+
+When an exception causes the error, keep it in the `Fault<TFault>` as its cause. Your log gets the
+exception, and the client gets the same problem as before:
+
+```csharp
+Result<Account, Fault<AccountFault>> saved = Result.Catch<Account, UniqueViolationException>(() => store.Save(account))
+    .MapError(e => Fault.Of(AccountFault.EmailTaken, "Another account took the address a moment ago.", e));
+```
+
+`IFaultFeature.Cause` hands the exception to your `CustomizeProblemDetails`, so you can log it with
+the response it led to:
+
+```csharp
+builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+{
+    if (context.HttpContext.Features.Get<IFaultFeature>() is { Cause: { } cause } fault)
+        context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Faults")
+            .LogWarning(cause, "Answered {Fault} for an exception", fault.Name);   // your log gets the exception, the client doesn't
+});
+```
+
+- **The cause stays out of the response.** The problem has the same members with a cause as without
+  one, and names neither the exception's type nor its message. If your `CustomizeProblemDetails`
+  copies it into the problem, the client learns what failed underneath.
+- **`FaultProblem<TFault>.Cause`** holds it too, for a test or a filter that reads the result before
+  it's written.
+- **It's one exception, not a chain.** An `AggregateException` is fine as the cause.
+
 ### Faults of several types
 
 Some rejections mean the same on every route: a change that raced the request, or a version that
@@ -601,7 +630,7 @@ works in the same place. A `Result<TError>` takes a factory without a value:
 ### What the host adds to a problem
 
 While `ToHttpResult()` writes a problem, the request carries an `IFaultFeature`. It holds the error
-type, the error, the name the problem gives it, its detail and its rule. Your
+type, the error, the name the problem gives it, its detail, its rule and its cause. Your
 `CustomizeProblemDetails` reads it to add what the package doesn't name. No other problem the request
 writes has it.
 
