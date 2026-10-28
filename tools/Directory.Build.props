@@ -9,7 +9,7 @@
     <PropertyGroup>
         <IsPackable>false</IsPackable>
         <EnablePackageValidation>false</EnablePackageValidation>
-        <!-- The sources a tool's fingerprint covers, relative to its project; a tool adds its own (Prober: Schemas/*.json). -->
+        <!-- The sources a tool's fingerprint covers, relative to its project; a tool adds its own. -->
         <ToolSourcePatterns>**/*.cs</ToolSourcePatterns>
     </PropertyGroup>
 

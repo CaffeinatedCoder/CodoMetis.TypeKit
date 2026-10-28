@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      The oracle kit's tests (design/adr/0112): the claim catalogue, the public surface it must cover, the oracle
+      registry and its seeds, the candidates, and the seed verdict tools/Oracles applies. They reference every
+      shipping library but the generators and the analyzers, whose public surface is diagnostics, not members, so
+      the surface is enumerated by reflection over what a consumer calls.
+    -->
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit\CodoMetis.TypeKit.csproj" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.AspNetCore\CodoMetis.TypeKit.AspNetCore.csproj" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.EntityFrameworkCore\CodoMetis.TypeKit.EntityFrameworkCore.csproj" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Serilog\CodoMetis.TypeKit.Serilog.csproj" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Testing\CodoMetis.TypeKit.Testing.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Include="..\oracles\Candidates.cs" Link="Oracles\Candidates.cs" />
+        <Compile Include="..\oracles\SeedVerdict.cs" Link="Oracles\SeedVerdict.cs" />
+    </ItemGroup>
+
+</Project>

@@ -54,11 +54,8 @@ rules:
 | `fact-orphan-test` | A `KBNNN.cs` in the facts project that no fact names |
 | `fact-fixture-missing`, `fact-fixture` | A `fixture:` whose file does not exist; one that is not `KBNNN.fixture.json` beside the test, or belongs to a fact without a test |
 | `fact-orphan-fixture` | A `KBNNN.fixture.json` in the facts project that no fact names |
-| `fact-not-executable-cited` | The probe corpus cites a fact that has no test: a `refused` entry of `.claude/probe-axes.md` whose reason names `KB-NNN`, a `not-promised` entry of `tools/probe/corpus/claims.json` whose `source` is the fact's file or which says `fact:KB-NNN`, an obligation's `inapplicable` declaration citing `fact:KB-NNN`, or a `Cite.Fact("KB-NNN")` or `Baseline.Fact("KB-NNN")` literal in the harness and probe sources (comments blanked out). No test means `none, …`, no file, a file that does not exist or declares no class of the id; a `Baseline.Fact` takes a fixture as well. Reported at the citing place |
 
-The pins and the corpus's citations are read from the checkout at each `check`, never from the index. The summary
-counts the citations of each kind (`4 fact citations (0 refused, 2 not-promised, 0 obligation, 2 harness)`), and
-`RepositoryTests` holds floors on them, so a scan that finds nothing cannot pass for a clean one.
+The pins are read from the checkout at each `check`, never from the index.
 
 ## Freshness
 

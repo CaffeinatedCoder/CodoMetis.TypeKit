@@ -206,8 +206,7 @@ internal sealed class Queries(DocIndex index, string root)
     /// <summary>
     /// Links whose file or anchor does not exist, ids that name no record, diagnostic or fact, and the facts'
     /// rules (<see cref="FactRules"/>): a pin behind or ahead of what is installed, or naming nothing installed,
-    /// a fact without its test, a test without its fact, a fixture missing, and a fact the probe corpus cites to prune
-    /// or excuse a row that has no test.
+    /// a fact without its test, a test without its fact, and a fixture missing.
     /// </summary>
     public Answer Check()
     {
@@ -239,12 +238,9 @@ internal sealed class Queries(DocIndex index, string root)
             }
         }
 
-        rows.AddRange(FactRules.Check(index, root, out var facts, out var cited).Select(problem => Row.Of(("at", problem.At), ("kind", problem.Kind), ("target", problem.Target), ("detail", problem.Detail))));
+        rows.AddRange(FactRules.Check(index, root, out var facts).Select(problem => Row.Of(("at", problem.At), ("kind", problem.Kind), ("target", problem.Target), ("detail", problem.Detail))));
 
-        // Each kind of citation counted, so a scan that found none of a kind it should have is seen in the summary.
-        var citations = string.Join(", ", FactCitations.Kinds.Select(kind => $"{cited.Of(kind).ToString(CultureInfo.InvariantCulture)} {kind}"));
-
-        return new Answer(Answer.Exact, "check", "", $"{Count(rows.Count, "problem")} in {links} links, {ids} ids, {Count(cited.Citations.Count, "fact citation")} ({citations}) and {Count(facts, "fact")}", rows, rows.Count == 0 ? 0 : 1);
+        return new Answer(Answer.Exact, "check", "", $"{Count(rows.Count, "problem")} in {links} links, {ids} ids and {Count(facts, "fact")}", rows, rows.Count == 0 ? 0 : 1);
 
         Row Problem(Edge edge, string kind, string detail) => Row.Of(("at", At(edge.Doc, edge.Line)), ("kind", kind), ("target", edge.Written), ("detail", detail));
 

@@ -1,3 +1,0 @@
-<Project>
-    <!-- Here so that tools/Directory.Build.targets, the tool projects' source stamp, is not imported (see Directory.Build.props). -->
-</Project>

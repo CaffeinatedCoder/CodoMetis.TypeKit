@@ -57,7 +57,7 @@ violates (L01's row #242 ends inconclusive, seeded and unseeded alike). A probe 
 `prober seeds` counts a catch ([decision 103](adr/0103-a-harness-error-is-never-a-catch-and-note-keys-are-constants.md)):
 a row that ends as a violation, raised no harness error, and does not violate unseeded. A seed was run
 against the probes of the surfaces its fix touched (the surfaces in `claims.json`, matched to the files
-the fix changed by the `watched` paths of [.claude/probe-axes.md](../.claude/probe-axes.md); a
+the fix changed by the `watched` paths of `.claude/probe-axes.md` (retired by [decision 112](adr/0112-the-prober-gives-way-to-valueranges-oracle-kit.md)); a
 Generators fix took the generation, text and JSON probes): HTTP 12 probes, EF 16, generators 13,
 Option/Result 8. To save builds, the seeds of one surface ran together first and each probe that failed
 was then run on each seed alone; every catch attributed this way is a single seed's, and a probe that
