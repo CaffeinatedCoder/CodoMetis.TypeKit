@@ -167,3 +167,5 @@ The analyzers run in test projects as they do everywhere else.
   Neither is a `default` assigned to the `out` parameter of a `Try` method.
 - **A dropped `Result` is reported (CMTK0003)**, in a test too. Write `_ = ProductCode.Create(input);`
   to show the drop is meant.
+- **So is an assertion on a task you don't await (CMTK0003).** `service.FindAsync(id).ShouldBeSome();`
+  without `await` passes whatever the task holds.

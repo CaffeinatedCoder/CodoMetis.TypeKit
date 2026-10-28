@@ -24,4 +24,32 @@ public static class OptionAssertions
         if (option.IsSome())
             throw new TypeKitAssertionException($"Expected None, but the {Outcomes.Name<Option<T>>()} holds a value (not printed).");
     }
+
+    /// <inheritdoc cref="ShouldBeSome{T}(Option{T})"/>
+    /// <remarks>Awaits <paramref name="option"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<T> ShouldBeSome<T>(this Task<Option<T>> option) where T : notnull
+    {
+        return (await Outcomes.Pending(option, nameof(option)).ConfigureAwait(false)).ShouldBeSome();
+    }
+
+    /// <inheritdoc cref="ShouldBeSome{T}(Option{T})"/>
+    /// <remarks>Awaits <paramref name="option"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<T> ShouldBeSome<T>(this ValueTask<Option<T>> option) where T : notnull
+    {
+        return (await option.ConfigureAwait(false)).ShouldBeSome();
+    }
+
+    /// <inheritdoc cref="ShouldBeNone{T}(Option{T})"/>
+    /// <remarks>Awaits <paramref name="option"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task ShouldBeNone<T>(this Task<Option<T>> option) where T : notnull
+    {
+        (await Outcomes.Pending(option, nameof(option)).ConfigureAwait(false)).ShouldBeNone();
+    }
+
+    /// <inheritdoc cref="ShouldBeNone{T}(Option{T})"/>
+    /// <remarks>Awaits <paramref name="option"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task ShouldBeNone<T>(this ValueTask<Option<T>> option) where T : notnull
+    {
+        (await option.ConfigureAwait(false)).ShouldBeNone();
+    }
 }

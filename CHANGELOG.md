@@ -12,6 +12,10 @@ section is the GitHub release's notes.
 
 ## 2.3.0 — Unreleased
 
+### Added
+
+- Testing: every assertion works on a `Task` or `ValueTask` of what it checks, `await service.FindAsync(id).ShouldBeSome()`; a task that throws fails the test with its own exception, and an assertion left without `await` is reported (CMTK0003) ([CodoMetis.TypeKit.Testing](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Testing/README.md)).
+
 ## 2.2.0 — 2026-10-18
 
 ### Fixed

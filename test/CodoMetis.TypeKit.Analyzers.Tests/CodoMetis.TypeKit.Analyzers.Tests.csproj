@@ -12,6 +12,7 @@
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Analyzers\CodeFixes\CodoMetis.TypeKit.Analyzers.CodeFixes.csproj" />
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit\CodoMetis.TypeKit.csproj" />
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.EntityFrameworkCore\CodoMetis.TypeKit.EntityFrameworkCore.csproj" />
+        <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Testing\CodoMetis.TypeKit.Testing.csproj" />
     </ItemGroup>
 
     <ItemGroup>
