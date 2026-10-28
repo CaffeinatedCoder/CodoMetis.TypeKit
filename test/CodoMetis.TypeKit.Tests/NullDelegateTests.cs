@@ -115,6 +115,14 @@ public sealed class NullDelegateTests
             [() => new[] { 1 }.TraverseAsync(Null<Func<int, Task<Result<string>>>>()), () => Array.Empty<int>().TraverseAsync(Null<Func<int, Task<Result<string>>>>())],
         ["Result.TraverseAsync(IEnumerable<T>, Func<T, CancellationToken, Task<Result<TError>>>, CancellationToken): selector"] =
             [() => new[] { 1 }.TraverseAsync(Null<Func<int, CancellationToken, Task<Result<string>>>>(), CancellationToken.None), () => Array.Empty<int>().TraverseAsync(Null<Func<int, CancellationToken, Task<Result<string>>>>(), CancellationToken.None)],
+        ["Result.TraverseAsync(Option<T>, Func<T, Task<Result<TResult, TError>>>): selector"] =
+            [() => Some.TraverseAsync(Null<Func<int, Task<Result<int, string>>>>()), () => None.TraverseAsync(Null<Func<int, Task<Result<int, string>>>>())],
+        ["Result.TraverseAsync(Option<T>, Func<T, CancellationToken, Task<Result<TResult, TError>>>, CancellationToken): selector"] =
+            [() => Some.TraverseAsync(Null<Func<int, CancellationToken, Task<Result<int, string>>>>(), CancellationToken.None), () => None.TraverseAsync(Null<Func<int, CancellationToken, Task<Result<int, string>>>>(), CancellationToken.None)],
+        ["Result.TraverseAsync(Patch<T>, Func<T, Task<Result<TResult, TError>>>): selector"] =
+            [() => Patch.Value(1).TraverseAsync(Null<Func<int, Task<Result<int, string>>>>()), () => Patch.Null<int>().TraverseAsync(Null<Func<int, Task<Result<int, string>>>>()), () => Patch.Absent<int>().TraverseAsync(Null<Func<int, Task<Result<int, string>>>>())],
+        ["Result.TraverseAsync(Patch<T>, Func<T, CancellationToken, Task<Result<TResult, TError>>>, CancellationToken): selector"] =
+            [() => Patch.Value(1).TraverseAsync(Null<Func<int, CancellationToken, Task<Result<int, string>>>>(), CancellationToken.None), () => Patch.Null<int>().TraverseAsync(Null<Func<int, CancellationToken, Task<Result<int, string>>>>(), CancellationToken.None), () => Patch.Absent<int>().TraverseAsync(Null<Func<int, CancellationToken, Task<Result<int, string>>>>(), CancellationToken.None)],
         ["Patch.IfPresent(Patch<T>, Action<Nullable<T>>): action"] = [() => { Patch.Value(1).IfPresent(Null<Action<int?>>()); return null; }, () => { Patch.Null<int>().IfPresent(Null<Action<int?>>()); return null; }, () => { Patch.Absent<int>().IfPresent(Null<Action<int?>>()); return null; }],
 
         // Catch has no branches: the delegate is checked before anything runs. Overloads that differ
@@ -127,6 +135,10 @@ public sealed class NullDelegateTests
         ["Result.CatchAsync(Func<Task>): action"]                        = [() => Result.CatchAsync(Null<Func<Task>>())],
         ["Result.CatchAsync<T, TException>(Func<Task<T>>): action"]      = [() => Result.CatchAsync<int, FormatException>(Null<Func<Task<int>>>())],
         ["Result.CatchAsync<TException>(Func<Task>): action"]            = [() => Result.CatchAsync<FormatException>(Null<Func<Task>>())],
+        ["Result.CatchAsync<T>(Func<ValueTask<T>>): action"]             = [() => Result.CatchAsync(Null<Func<ValueTask<int>>>())],
+        ["Result.CatchAsync(Func<ValueTask>): action"]                   = [() => Result.CatchAsync(Null<Func<ValueTask>>())],
+        ["Result.CatchAsync<T, TException>(Func<ValueTask<T>>): action"] = [() => Result.CatchAsync<int, FormatException>(Null<Func<ValueTask<int>>>())],
+        ["Result.CatchAsync<TException>(Func<ValueTask>): action"]       = [() => Result.CatchAsync<FormatException>(Null<Func<ValueTask>>())],
 
         ["Result<TError>.Match(Func<TResult>, Func<TError, TResult>): onSuccess"] = [() => Ok.Match(Null<Func<int>>(), _ => 0), () => Failed.Match(Null<Func<int>>(), _ => 0)],
         ["Result<TError>.Match(Func<TResult>, Func<TError, TResult>): onError"]   = [() => Ok.Match(() => 0, Null<Func<string, int>>()), () => Failed.Match(() => 0, Null<Func<string, int>>())],

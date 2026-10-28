@@ -75,7 +75,8 @@ is the value-less shape. Anything that turns this into a second LanguageExt is o
   non-goals exclude. A zip still inspects every argument, so an uninitialized one after an error
   throws. Callbacks return `Task` ([decision 30](adr/0030-asynchronous-callbacks-return-task.md)): `TapAsync` and `TapErrorAsync` take a
   `Func<…, Task>` beside the `Action`, so an `async` lambda is awaited; a `ValueTask` one needs
-  `.AsTask()`.
+  `.AsTask()`. `CatchAsync` is no callback and takes a `ValueTask` too, at a lower overload priority,
+  so an `async` lambda still binds to its `Task` form ([decision 110](adr/0110-catchasync-takes-a-valuetask-at-a-lower-priority.md)).
 - **A callback runs where the task it waited for completed (decided 2026-10-13,
   [decision 62](adr/0062-asynchronous-callbacks-run-where-awaited-task-completed.md)).** Every `await`
   in the package is `ConfigureAwait(false)`, so nothing resumes on the caller's

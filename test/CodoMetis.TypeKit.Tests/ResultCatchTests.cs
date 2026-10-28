@@ -425,9 +425,9 @@ public sealed class ResultCatchTests
     /// nothing it throws, and given to the command form <c>Catch&lt;TException&gt;</c> would be
     /// discarded, an <c>async</c> lambda as <c>async void</c>. The overloads over a task-returning
     /// delegate are more specific, so the compiler picks them, and they are errors that name
-    /// <c>CatchAsync</c>. A <c>ValueTask</c> has no such overload (it would make every <c>async</c> lambda
-    /// ambiguous): the command form's refusal of any value covers it, and the valued form refuses it at
-    /// run time.
+    /// <c>CatchAsync</c>. A <c>ValueTask</c> has no such overload, since it would break a build that works
+    /// today (decision 110): the command form's refusal of any value covers it, and the valued form
+    /// refuses it at run time.
     /// </summary>
     [Theory]
     [InlineData("Result.Catch(() => FetchAsync())")]
