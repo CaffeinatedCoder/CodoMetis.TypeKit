@@ -20,6 +20,10 @@ section is the GitHub release's notes.
 - `Fault<TFault>.Cause`: `Fault.Of(reason, detail, exception)` keeps the exception underneath for your log; equality and `ToString()` leave it out, and `ToHttpResult()` hands it to the host as `IFaultFeature.Cause` and `FaultProblem<TFault>.Cause`, never into the problem ([What failed underneath](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#what-failed-underneath)).
 - Testing: every assertion works on a `Task` or `ValueTask` of what it checks, `await service.FindAsync(id).ShouldBeSome()`; a task that throws fails the test with its own exception, and an assertion left without `await` is reported (CMTK0003) ([CodoMetis.TypeKit.Testing](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Testing/README.md)).
 
+### Changed
+
+- Packages: nuget.org's Release Notes tab and Visual Studio's Updates tab show the version's section of this changelog, as plain text, where they showed a link to the file.
+
 ## 2.2.0 — 2026-10-18
 
 ### Fixed
