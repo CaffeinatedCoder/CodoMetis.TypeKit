@@ -75,6 +75,48 @@ vouch for the value, and its exception names the call site, never the value.
 The error `Create` returns (TypeKit calls it a fault) is what every rejection reports: in that
 exception, in the JSON converter's `JsonException`, and in `Parse`'s `FormatException`.
 
+<details>
+<summary>What the generators write for <code>Email</code>, trimmed</summary>
+
+Every factory below calls the `Create` you wrote:
+
+<!-- not compiled: generated code for Generators/DeclaringSamples.cs, trimmed (GeneratedCodeBlockTests) -->
+```csharp
+public readonly partial record struct Email : IValidatedValue<Email, string, EmailFault>, IValueObject<Email, string>
+{
+    private readonly string _value;
+
+    private Email(string value)
+    {
+        _value = value;
+    }
+
+    public string Value
+    {
+        get { return _value; }
+    }
+
+    public static Option<Email> TryFrom(string value)
+    {
+        return Result.ToOption(Email.Create(value));
+    }
+
+    public static Email FromKnownGood(string value, [CallerArgumentExpression("value")] string? source = null)
+    {
+        return GeneratedFactories.OrInvalidOperationException(Email.Create(value), source);
+    }
+
+    public Result<Email, EmailFault> Revalidate()
+    {
+        return Email.Create(Value);
+    }
+
+    // Also: Parse and TryParse, formatting, comparison, a JSON converter and a type converter.
+}
+```
+
+</details>
+
 You can declare a value object inside another type. `Order.Id` is generated like any other. Its
 companion class is `OrderIdExtensions`, named after the whole nesting chain, so `Order.Id` and
 `Customer.Id` don't collide.
@@ -296,6 +338,52 @@ The generators add:
 
 Members are singletons, so equality is reference equality. A member added later fails every `Match`
 until it's handled.
+
+<details>
+<summary>What the generators write for <code>OrderStatus</code>, trimmed</summary>
+
+<!-- not compiled: generated code for Generators/ClosedSetSamples.cs, trimmed (GeneratedCodeBlockTests) -->
+```csharp
+public sealed partial class OrderStatus : IClosedSet<OrderStatus>, IParsable<OrderStatus>
+{
+    private static readonly IReadOnlyList<OrderStatus> _all = null!;
+
+    private string _name = null!;
+
+    static OrderStatus()
+    {
+        OrderStatus.Open._name = "Open";
+        OrderStatus.Shipped._name = "Shipped";
+        OrderStatus.Cancelled._name = "Cancelled";
+        OrderStatus._all = Array.AsReadOnly(new OrderStatus[] { OrderStatus.Open, OrderStatus.Shipped, OrderStatus.Cancelled });
+    }
+
+    private OrderStatus() { }
+
+    public string Name
+    {
+        get { return _name ?? throw GeneratedClosedSets.NotAMember("OrderStatus"); }
+    }
+
+    public TResult Match<TResult>(Func<TResult> open, Func<TResult> shipped, Func<TResult> cancelled)
+    {
+        ArgumentNullException.ThrowIfNull(open, "open");
+        ArgumentNullException.ThrowIfNull(shipped, "shipped");
+        ArgumentNullException.ThrowIfNull(cancelled, "cancelled");
+        if (object.ReferenceEquals(this, OrderStatus.Open))
+            return open.Invoke();
+        if (object.ReferenceEquals(this, OrderStatus.Shipped))
+            return shipped.Invoke();
+        if (object.ReferenceEquals(this, OrderStatus.Cancelled))
+            return cancelled.Invoke();
+        throw GeneratedClosedSets.NotAMember("OrderStatus");
+    }
+
+    // Also: All, QualifiedName, Parse and TryParse, ToString and a JSON converter.
+}
+```
+
+</details>
 
 ### Matching, parsing and binding
 
