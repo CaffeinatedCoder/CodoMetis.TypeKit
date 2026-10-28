@@ -11,6 +11,13 @@ namespace CodoMetis.TypeKit.Generators.Tests;
 public readonly partial record struct TestLocalId : IValue<int>;
 
 /// <summary>
+/// Reaches its marker through <see cref="IProbeIdentifier"/>, an interface of another assembly: the
+/// fabric finds it in this compilation's index of derived types, whose chain runs through a type it
+/// did not compile.
+/// </summary>
+public readonly partial record struct TestForeignIdentifier : IProbeIdentifier;
+
+/// <summary>
 /// The fabric reaches every value object it should. A type it skips compiles cleanly, and the
 /// analyzer stays quiet because the generators are referenced, so only a test like this notices.
 /// </summary>
@@ -47,6 +54,7 @@ public sealed class FabricTests
     /// </summary>
     [Theory]
     [InlineData(typeof(ProbeCustomerId), "a marker reached through another interface")]
+    [InlineData(typeof(TestForeignIdentifier), "a marker reached through an interface of another assembly")]
     [InlineData(typeof(ProbeContainer.NestedId), "a nested type")]
     [InlineData(typeof(ProbeLabel), "a record class")]
     [InlineData(typeof(ProbeInternalId), "an internal type")]
