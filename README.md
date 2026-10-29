@@ -21,19 +21,19 @@ type.
 
 ### Value objects
 
-You write this:
+An order id is one line:
 
 ```csharp
 public readonly partial record struct OrderId : IValue<Guid>;
 ```
 
-You get, generated at compile time:
+When you build, the generators fill in everything an `OrderId` needs to stand in for a `Guid`:
 
-- **Creating and reading:** `From`, `Value` and value equality.
-- **Comparing:** `IComparable` and the `<`, `<=`, `>` and `>=` operators.
-- **Parsing and formatting:** `Parse`, `TryParse`, `ToString` and their span forms, so an `OrderId`
-  binds as a route or query parameter.
-- **Converting:** a JSON converter and a type converter.
+- **Make one and read it back** with `From` and `Value`. Two ids are equal when their `Guid`s are.
+- **Sort and compare them** through `IComparable` and the `<`, `<=`, `>` and `>=` operators.
+- **Bind one from a route or a query string,** because `Parse`, `TryParse` and `ToString` are there,
+  span forms included.
+- **Send it and store it** through its JSON converter and its type converter.
 
 The JSON, the database column and the OpenAPI schema are the same as the underlying type's. So you
 can change a `Guid` property to an `OrderId` without changing your API or your tables.
@@ -394,12 +394,11 @@ Much of the code was written with AI assistance, under the maintainer's directio
 
 ## Acknowledgements
 
-TypeKit builds on the work of others:
+TypeKit's value objects owe a great deal to [Vogen](https://github.com/SteveDunn/Vogen) by Steve
+Dunn. Much of how they are generated started as an idea from Vogen. Thank you, Steve.
 
-- **[Vogen](https://github.com/SteveDunn/Vogen) by Steve Dunn.** Much of how TypeKit generates value
-  objects was inspired by Vogen. Thank you for the ideas and the groundwork.
-- **[Metalama](https://postsharp.net/metalama)**, which the generators are built on
-  ([Built with Metalama](#built-with-metalama)).
+The generators themselves run on [Metalama](https://postsharp.net/metalama), and
+[Built with Metalama](#built-with-metalama) says what that makes possible.
 
 ## License
 
