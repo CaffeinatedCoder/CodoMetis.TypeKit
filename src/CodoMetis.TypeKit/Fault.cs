@@ -243,3 +243,5 @@ public static class Fault
     /// <exception cref="ArgumentException"><paramref name="detail"/> is empty or white space.</exception>
     public static Fault<TFault> Of<TFault>(TFault reason, string? detail, Exception cause) where TFault : notnull => new(reason, detail, cause);
 }
+
+// CI lanes demo (#123): a src/ change, never merged.
