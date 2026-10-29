@@ -63,11 +63,12 @@ Small, each closable in a minor version. Found by the reviews named.
   the packed generators still build and weave, measured as the fabric spike measured 2026.1 against the
   2027.0 preview, and a major otherwise; `[Durable]` returns to the `_value` placeholder with it.
 - A `net11.0` target beside `net10.0`, in a 2.x minor when a feature needs it ([decision 44](adr/0044-2-0-0-net10-0-metalama.md)),
-  on the terms of [decision 120](adr/0120-a-net11-0-target-keeps-every-build-and-csharp-15-waits-for-3-0-0.md): the
+  on the terms of [decision 120](adr/0120-a-net11-0-target-keeps-every-build-and-may-add-unions.md): the
   `net10.0` group's dependency floors kept, since a higher floor on `net11.0` fails an application that holds the
   lower version (NU1605); the satellites tested against EF Core 11 and Microsoft.AspNetCore.OpenApi 11, not
-  compiled against them; the same generated members on every target; `LangVersion` 14 until an implementation
-  needs C# 15; the tests, a Native AOT smoke run and package validation per target. First the spike on an SDK 11
+  compiled against them; the same generated members on every target; `LangVersion` 14 for `net10.0` and 15 for
+  `net11.0` once it uses a C# 15 feature, a union a new `net11.0`-only member among them; the tests, a Native AOT
+  smoke run and package validation per target. First the spike on an SDK 11
   compiler, no release attached (#170): `global.json` pins SDK 10.0.4xx because the Roslyn band changes what
   Metalama emits, and the SDK is generally available in November 2026.
 
@@ -89,11 +90,11 @@ Small, each closable in a minor version. Found by the reviews named.
   warning ([decision 90](adr/0090-faults-alike-are-a-warning-until-3-0.md)).
 - CMTK1023, a base record's equality that the generated one does not call, becomes an Error
   ([decision 75](adr/0075-equality-over-base-record-generated.md)).
-- C# 15 unions and the `net10.0` drop, timed to .NET 12 LTS (November 2027) or to the end of .NET
-  10's life, whichever its consumers need ([decision 44](adr/0044-2-0-0-net10-0-metalama.md), kept for .NET 11
-  by [decision 120](adr/0120-a-net11-0-target-keeps-every-build-and-csharp-15-waits-for-3-0-0.md): .NET 11 is not a
-  reason for a major, and a floor an update would raise, a public C# 15 form or a member on one target only is).
-  The compiler-made union types have a public
+- The `net10.0` drop, and a change of `Option` or `Result` into C# 15 unions, timed to .NET 12 LTS (November
+  2027) or to the end of .NET 10's life, whichever its consumers need ([decision 44](adr/0044-2-0-0-net10-0-metalama.md),
+  kept for .NET 11 by [decision 120](adr/0120-a-net11-0-target-keeps-every-build-and-may-add-unions.md): .NET 11
+  is not a reason for a major, and a change to a member both targets have is). A union that is new on `net11.0`
+  is an addition, and may join a 2.x minor. The compiler-made union types have a public
   `object? Value` and are serialized by System.Text.Json, so `Option` and `Result` take part in their
-  pattern matching only after a spike shows neither returns, on a branch of its own with no release
-  attached.
+  pattern matching, in either release, only after a spike shows neither returns, on a branch of its own with no
+  release attached.
