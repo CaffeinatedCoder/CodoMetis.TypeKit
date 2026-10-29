@@ -15,7 +15,6 @@ defect, a cost or a missing guard may land here; one that adds surface waits for
   ([decision 108](adr/0108-a-probe-check-earns-credit-against-a-baseline-and-ws2-closes.md)).
   WS3 (beyond pairs), WS4 (the mutation nightly), the second half of WS5 (the finder benchmark at equal budgets) and
   WS6 (PostgreSQL in CI) were dropped on 2026-10-17 by the maintainer's decision, and are not scheduled.
-- The generated-surface snapshot under "Generators" below.
 
 ## 2.3.0, additive
 
@@ -41,11 +40,6 @@ Small, each closable in a minor version. Found by the reviews named.
 
 **Generators**
 - A C# keyword in a namespace or a member name fails with LAMA0041, not a CMTK error.
-- Package validation compares the packages' own public surface, not what the generators write into a
-  consumer: a `Parse` that 2.1.0's prerelease stopped generating (a wrapped `Parse` returning a type with
-  an implicit conversion) broke a consumer's call with CS0117 and passed ApiCompat. Snapshot the
-  generated public members of the test corpus' value objects, and fail a change that removes one
-  without a decision (review of 2026-10-14).
 
 **Run time**
 - The Serilog policy ignores `ToMaximumStringLength`.
