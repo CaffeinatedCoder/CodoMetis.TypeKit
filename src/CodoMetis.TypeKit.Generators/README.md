@@ -2,8 +2,9 @@
 
 Declare a value object in one line, and get a complete type at compile time. This package generates
 value objects and closed sets (smart enums) for
-[CodoMetis.TypeKit](https://www.nuget.org/packages/CodoMetis.TypeKit), built on
-[Metalama](https://www.postsharp.net/metalama). Each one comes with its JSON converter, parsing,
+[CodoMetis.TypeKit](https://www.nuget.org/packages/CodoMetis.TypeKit). It is built on
+[Metalama](https://postsharp.net/metalama), a framework that generates C# code at compile time from
+templates written in C#. Each value object comes with its JSON converter, parsing,
 formatting, comparison, type converter and query helpers, and every one of them runs the one
 `Create` you wrote.
 
@@ -25,7 +26,7 @@ one of them is the better choice, read
 
 ## Built with Metalama
 
-This package exists in this form because of [Metalama](https://www.postsharp.net/metalama). A
+This package exists in this form because of [Metalama](https://postsharp.net/metalama). A
 transitive fabric finds every type that implements a TypeKit interface, in the project that
 references this package and in every project that references that one. So you declare a value object
 by its interface and nothing else.
