@@ -10,7 +10,7 @@ the suite.
 | File | What it holds | Held by |
 |---|---|---|
 | `claims.json` | One entry per sentence a consumer-facing document promises: its `source` heading, the `quote` verbatim, the `oracle` kind, the `surfaces` (public members, `TypeName.Member`, `*` a wildcard) and `heldBy`, the test classes that assert it. An empty `heldBy` is the worklist. | `OracleCatalogueTests` |
-| `surface-waivers.json` | The public members no claim names, each with why it needs no oracle. A reason that starts `unread:` names a document not yet read for claims (#98). | `OracleSurfaceCoverageTests` |
+| `surface-waivers.json` | The public members no claim names, each with why it needs no oracle. A reason that starts `unread:` names a document not yet read for claims, and the issue that reads it. | `OracleSurfaceCoverageTests` |
 | `oracles.json` | The test classes that are oracles: checks against an independent answer over many cases, not worked examples. | `OracleSeedTests` |
 | `seeds/*.patch` | A defect in `src/` with a `Seed:` line, the `Oracles:` it fails and what `Fails:`. Every oracle has one. | `OracleSeedTests`, and `oracles seeds` |
 | `candidates.json` | Disagreements an oracle found that are not fixed yet, each tied to an issue (`Candidates.Verdict`). | `OracleCandidateTests` |

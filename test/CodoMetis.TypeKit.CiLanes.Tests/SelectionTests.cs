@@ -34,6 +34,9 @@ public sealed class SelectionTests : IDisposable
         { "README.md", "prose", "linux" },
         { "test/oracles/README.md", "prose", "linux" },
         { ".github/ISSUE_TEMPLATE/bug.yml", "prose", "linux" },
+        { "site/docfx.json", "prose", "linux" },
+        { "site/toc.yml", "prose", "linux" },
+        { "site/template/conceptual.extension.js", "prose", "linux" },
         { "CHANGELOG.md", "changelog", "linux, pack" },
         { "src/CodoMetis.TypeKit.Analyzers/CodeFixes/AddCreateCodeFix.cs", "source text", "linux, windows, pack" },
         { "src/CodoMetis.TypeKit.Analyzers/AnalyzerReleases.Unshipped.md", "source text", "linux, windows, pack" },
@@ -56,6 +59,7 @@ public sealed class SelectionTests : IDisposable
         { "Directory.Packages.props", "unlisted", "linux, windows, pack" },
         { ".config/dotnet-tools.json", "unlisted", "linux, windows, pack" },
         { ".github/workflows/dotnet.yml", "unlisted", "linux, windows, pack" },
+        { ".github/workflows/docs.yml", "unlisted", "linux, windows, pack" },
         { "benchmarks/CodoMetis.TypeKit.Benchmarks/Program.cs", "unlisted", "linux, windows, pack" },
         { "a-file-nobody-listed", "unlisted", "linux, windows, pack" },
     };
