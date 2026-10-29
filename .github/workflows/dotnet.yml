@@ -1,5 +1,6 @@
 # Build, test and pack on every push to main or a release branch and every PR into one, in lanes: the Linux
-# test leg always, the Windows and macOS legs and the pack (Pack and Consumer) when the change can affect them.
+# test leg always, the Windows leg and the pack (Pack and Consumer) when the change can affect them, and the
+# macOS leg only in a run that selects nothing.
 # tools/CiLanes selects them from the changed paths in the changes job, and the CI job judges the run: every
 # selected job passed and every other was skipped (design/adr/0113-ci-runs-the-lanes-a-change-can-affect.md).
 # A PR into main, a push to main, a dispatch, the nightly run (nightly.yml) and the release (release.yml calls
@@ -63,6 +64,7 @@ jobs:
     outputs:
       legs: ${{ steps.select.outputs.legs }}
       pack: ${{ steps.select.outputs.pack }}
+      suite: ${{ steps.select.outputs.suite }}
 
     steps:
       # The whole history: the diff is against the base branch, which a shallow clone has not fetched.
@@ -89,11 +91,15 @@ jobs:
           --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF" --base "$BASE_REF" --before "$BEFORE"
           --output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
 
-  # The legs the changes job selected: Linux in every run, Windows and macOS when the change can affect them.
+  # The legs the changes job selected: Linux in every run, Windows when the change can affect it, macOS only in a
+  # run that selects nothing. A prose-only change builds and runs test/Prose.slnf alone, the test projects that
+  # read prose (ProseReaderTests holds the set); anything else, the whole solution.
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     needs: changes
+    env:
+      SOLUTION: ${{ needs.changes.outputs.suite == 'prose' && 'test/Prose.slnf' || 'CodoMetis.TypeKit.slnx' }}
     strategy:
       fail-fast: false
       matrix:
@@ -112,17 +118,17 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore CodoMetis.TypeKit.slnx
+        run: dotnet restore "$SOLUTION"
 
       - name: Build
-        run: dotnet build CodoMetis.TypeKit.slnx -c Release --no-restore
+        run: dotnet build "$SOLUTION" -c Release --no-restore
 
       # The EF Core round trips start a PostgreSQL container. Ubuntu runners have Docker; macOS
       # runners have none and Windows runners run only Windows containers, so those legs leave the
       # one class that needs it out.
       - name: Test
         run: >
-          dotnet test --solution CodoMetis.TypeKit.slnx -c Release --no-build
+          dotnet test --solution "$SOLUTION" -c Release --no-build
           --report-xunit-trx --results-directory TestResults
           ${{ runner.os != 'Linux' && '--filter-not-class "*PostgreSqlRoundTripTests"' || '' }}
 

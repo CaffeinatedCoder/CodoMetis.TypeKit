@@ -1,13 +1,16 @@
 // Which lanes of .github/workflows/dotnet.yml a run needs, and whether the run did what was selected
-// (design/adr/0113-ci-runs-the-lanes-a-change-can-affect.md). Three lanes: the Linux test leg, in every run;
-// `os`, the Windows and macOS test legs; `pack`, the Pack and Consumer jobs. Each changed path selects lanes by
-// the first class of Table whose pattern matches it, and a path no class names selects every lane.
+// (design/adr/0113-ci-runs-the-lanes-a-change-can-affect.md). Four lanes: the Linux test leg, in every run;
+// `windows` and `macos`, those test legs; `pack`, the Pack and Consumer jobs. Each changed path selects lanes by
+// the first class of Table whose pattern matches it, and a path no class names selects every lane a selection
+// can: all but macOS, which only the runs that are not selected get.
 //
 // Usage:
 //   ci-lanes select --event <name> --ref <ref> [--base <branch>] [--before <sha>] [--output <file>] [--summary <file>]
 //       A pull request into release/** is selected by `git diff origin/<base>...HEAD`, a push to release/** by
-//       `git diff <before> HEAD`; every other run gets every lane. Appends `legs=<json array>` and `pack=true|false`
-//       to --output (the step's GITHUB_OUTPUT), or prints them, and each path's class to --summary.
+//       `git diff <before> HEAD`; every other run gets every lane, macOS included. Appends `legs=<json array>`,
+//       `pack=true|false` and `suite=prose|full` to --output (the step's GITHUB_OUTPUT), or prints them, and each path's
+//       class to --summary. The suite is prose when every changed path is: the Linux leg then builds and runs only the
+//       test projects of test/Prose.slnf, the ones that read prose.
 //   ci-lanes classify <path>...
 //       One line per path: the path, its class and its lanes, tab-separated.
 //   ci-lanes gate <needs.json> [--summary <file>]
@@ -65,9 +68,13 @@ static int Usage()
 enum Lane
 {
     Linux = 1,
-    Os = 2,
-    Pack = 4,
-    All = Linux | Os | Pack,
+    Windows = 2,
+    MacOs = 4,
+    Pack = 8,
+
+    // The most a changed path can select: macOS runs only on the release's pull request, main, the nightly and the release.
+    Selectable = Linux | Windows | Pack,
+    All = Selectable | MacOs,
 }
 
 static class Options
@@ -90,35 +97,41 @@ static partial class Table
 {
     public sealed record Class(string Name, Lane Lanes, string[] Patterns, string Why);
 
+    // Read by the test projects of test/Prose.slnf alone, which ProseReaderTests holds; built into nothing.
+    public static readonly Class Prose = new("prose", Lane.Linux, ["docs/**", "design/**", ".github/ISSUE_TEMPLATE/**", "**/*.md"],
+        "read by the prose suite, built into nothing");
+
     // The first class whose pattern matches a path decides its lanes. `**` matches any number of directories,
-    // `*` and `?` stay within one. Decision 113 holds this table; ReleaseWiringTests holds it to the files MSBuild
+    // `*` and `?` stay within one. Decision 113 holds this table; CiLaneTests holds it to the files MSBuild
     // evaluates for the packages and the smoke test.
     public static readonly Class[] Classes =
     [
         new("changelog", Lane.Linux | Lane.Pack, ["CHANGELOG.md"],
             "the packages' release notes are its section, read by a property function no evaluation lists"),
-        new("package", Lane.All, ["src/**"], "a shipping project"),
-        new("smoke test", Lane.All, ["tools/ConsumerSmokeTest/**", "tools/Shared/**", "tools/Directory.Build.*", "tools/CiLanes/**"],
+        new("source text", Lane.Selectable, ["src/CodoMetis.TypeKit.Analyzers/**", "src/CodoMetis.TypeKit.Generators/**"],
+            "a package that writes or edits source text, whose line endings a Windows checkout changes"),
+        new("package", Lane.Linux | Lane.Pack, ["src/**"], "a shipping project"),
+        new("smoke test", Lane.Selectable, ["tools/ConsumerSmokeTest/**", "tools/Shared/**", "tools/Directory.Build.*", "tools/CiLanes/**"],
             "the smoke test, what it compiles in, or this selection"),
-        new("prose", Lane.Linux, ["docs/**", "design/**", ".github/ISSUE_TEMPLATE/**", "**/*.md"],
-            "read by the Linux suite, built into nothing"),
-        new("code no package reads", Lane.Linux | Lane.Os, ["test/**", "spikes/**", "tools/**"], "built and tested, never packed"),
+        Prose,
+        new("code no package reads", Lane.Linux | Lane.Windows, ["test/**", "spikes/**", "tools/**"],
+            "built and tested, never packed, and handling paths, line endings and child processes itself"),
     ];
 
-    public static readonly Class Unlisted = new("unlisted", Lane.All, [], "no class names it");
+    public static readonly Class Unlisted = new("unlisted", Lane.Selectable, [], "no class names it");
 
     static readonly Dictionary<string, Regex> Globs = [];
 
     public static Class Of(string path) => Classes.FirstOrDefault(c => c.Patterns.Any(p => Glob(p).IsMatch(path))) ?? Unlisted;
 
     public static string Describe(Lane lanes) =>
-        string.Join(", ", new[] { (Lane.Linux, "linux"), (Lane.Os, "os"), (Lane.Pack, "pack") }.Where(l => lanes.HasFlag(l.Item1)).Select(l => l.Item2));
+        string.Join(", ", new[] { (Lane.Linux, "linux"), (Lane.Windows, "windows"), (Lane.MacOs, "macos"), (Lane.Pack, "pack") }.Where(l => lanes.HasFlag(l.Item1)).Select(l => l.Item2));
 
-    // The test matrix a selection runs: the Linux leg alone, or the three.
-    public static readonly string[] LinuxLeg = ["ubuntu-latest"];
-    public static readonly string[] EveryLeg = ["ubuntu-latest", "windows-latest", "macos-latest"];
+    // The test legs and the lane that selects each, in the order the matrix lists them.
+    public static readonly (Lane Lane, string Runner)[] Runners = [(Lane.Linux, "ubuntu-latest"), (Lane.Windows, "windows-latest"), (Lane.MacOs, "macos-latest")];
 
-    public static string[] Legs(Lane lanes) => lanes.HasFlag(Lane.Os) ? EveryLeg : LinuxLeg;
+    // The test matrix: one leg per selected test lane. Linux is in every selection.
+    public static string[] Legs(Lane lanes) => [.. Runners.Where(r => lanes.HasFlag(r.Lane)).Select(r => r.Runner)];
 
     static Regex Glob(string pattern)
     {
@@ -193,12 +206,13 @@ static class Selection
 
         var legs = JsonSerializer.Serialize(Table.Legs(lanes));
         var pack = lanes.HasFlag(Lane.Pack) ? "true" : "false";
+        var suite = classified.Count > 0 && classified.All(row => row.Class == Table.Prose) ? "prose" : "full";
 
         Console.WriteLine($"{char.ToUpperInvariant(why[0])}{why[1..]}.");
         foreach (var (path, @class) in classified) Console.WriteLine($"  {path}: {@class.Name} ({Table.Describe(@class.Lanes)})");
-        Console.WriteLine($"Lanes: {Table.Describe(lanes)}. Test legs: {string.Join(", ", Table.Legs(lanes))}. Pack and Consumer: {(pack == "true" ? "run" : "skipped")}.");
+        Console.WriteLine($"Lanes: {Table.Describe(lanes)}. Test legs: {string.Join(", ", Table.Legs(lanes))}. Pack and Consumer: {(pack == "true" ? "run" : "skipped")}. Suite: {suite}.");
 
-        var answers = $"legs={legs}\npack={pack}\n";
+        var answers = $"legs={legs}\npack={pack}\nsuite={suite}\n";
         if (options.TryGetValue("output", out var file)) File.AppendAllText(file, answers);
         else Console.Write(answers);
 
@@ -278,10 +292,15 @@ static class Gate
             {
                 var legs = Legs(changes.Outputs.GetValueOrDefault("legs"));
                 var pack = changes.Outputs.GetValueOrDefault("pack");
+                var suite = changes.Outputs.GetValueOrDefault("suite");
                 if (legs is null)
-                    problems.Add($"The changes job's legs output is {Quote(changes.Outputs.GetValueOrDefault("legs"))}, not one of the two matrices ci-lanes writes.");
+                    problems.Add($"The changes job's legs output is {Quote(changes.Outputs.GetValueOrDefault("legs"))}, not one of the three matrices ci-lanes writes.");
                 if (pack is not ("true" or "false"))
                     problems.Add($"The changes job's pack output is {Quote(pack)}, not 'true' or 'false'.");
+                if (suite is not ("prose" or "full"))
+                    problems.Add($"The changes job's suite output is {Quote(suite)}, not 'prose' or 'full'.");
+                else if (suite == "prose" && (legs != Lane.Linux || pack != "false"))
+                    problems.Add("The changes job chose the prose suite for a run with more than the Linux leg: only a prose-only change runs it.");
                 if (legs is not null && pack is ("true" or "false"))
                     lanes = legs.Value | (pack == "true" ? Lane.Pack : 0);
             }
@@ -320,6 +339,9 @@ static class Gate
         return 1;
     }
 
+    // The test lanes of every matrix Selection writes: Linux alone, with Windows, and every leg on a run that is not selected.
+    static readonly Lane[] Matrices = [Lane.Linux, Lane.Linux | Lane.Windows, Lane.Linux | Lane.Windows | Lane.MacOs];
+
     // The lanes a legs output selects, when it is exactly one of the matrices Selection writes; null otherwise.
     static Lane? Legs(string? legs)
     {
@@ -328,8 +350,8 @@ static class Gate
         catch (JsonException) { return null; }
 
         if (parsed is null) return null;
-        if (parsed.SequenceEqual(Table.EveryLeg)) return Lane.Linux | Lane.Os;
-        if (parsed.SequenceEqual(Table.LinuxLeg)) return Lane.Linux;
+        foreach (var lanes in Matrices)
+            if (parsed.SequenceEqual(Table.Legs(lanes))) return lanes;
         return null;
     }
 

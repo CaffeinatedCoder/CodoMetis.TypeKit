@@ -167,7 +167,7 @@ public sealed partial class ReleaseWiringTests
     {
         var changes = Job(BuildWorkflow, "changes");
 
-        foreach (var output in new[] { "legs", "pack" })
+        foreach (var output in new[] { "legs", "pack", "suite" })
             changes.ShouldMatch($@"(?m)^      {output}:\s*\$\{{\{{ steps\.select\.outputs\.{output} \}}\}}\s*$",
                 $"dotnet.yml:changes has no `{output}` output taken from the select step's, so the jobs it selects have nothing to read.");
 
@@ -191,6 +191,12 @@ public sealed partial class ReleaseWiringTests
         test.ShouldMatch(JobKey("needs", @"(?:changes|\[\s*changes\s*\])"), "dotnet.yml:test does not need changes, so it cannot read the selected legs.");
         test.ShouldMatch(@"(?m)^\s+os:\s*\$\{\{ fromJSON\(needs\.changes\.outputs\.legs\) \}\}\s*$",
             "dotnet.yml:test's matrix is not the changes job's legs, so the selection no longer decides which legs run.");
+
+        // A prose-only change runs test/Prose.slnf; any other answer, a missing one included, the whole solution.
+        test.ShouldMatch(@"(?m)^      SOLUTION:\s*\$\{\{ needs\.changes\.outputs\.suite == 'prose' && 'test/Prose\.slnf' \|\| 'CodoMetis\.TypeKit\.slnx' \}\}\s*$",
+            "dotnet.yml:test does not choose its solution from the changes job's suite, falling back to the whole solution.");
+        foreach (var command in new[] { @"dotnet restore ""$SOLUTION""", @"dotnet build ""$SOLUTION"" -c Release", @"dotnet test --solution ""$SOLUTION"" -c Release" })
+            test.ShouldContain(command, Case.Sensitive, $"dotnet.yml:test does not run `{command}`, so the suite the changes job chose is not what it builds or tests.");
     }
 
     /// <summary>Pack and Consumer start beside the test legs (#117) and run when the pack lane is selected.</summary>

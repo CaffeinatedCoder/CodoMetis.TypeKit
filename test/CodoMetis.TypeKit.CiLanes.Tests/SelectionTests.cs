@@ -8,6 +8,7 @@ namespace CodoMetis.TypeKit.CiLanes.Tests;
 public sealed class SelectionTests : IDisposable
 {
     private const string LinuxOnly = """legs=["ubuntu-latest"]""";
+    private const string LinuxAndWindows = """legs=["ubuntu-latest","windows-latest"]""";
     private const string EveryLeg = """legs=["ubuntu-latest","windows-latest","macos-latest"]""";
 
     private readonly ToolSandbox _tool = new("CiLanes", "ci-lanes");
@@ -15,6 +16,7 @@ public sealed class SelectionTests : IDisposable
     public SelectionTests()
     {
         Write("src/CodoMetis.TypeKit/Option.cs", "// a package's source\n");
+        Write("src/CodoMetis.TypeKit.Analyzers/CodeFixes/AddCreate.cs", "// a code fix's source\n");
         Write("docs/guide.md", "# A guide\n");
         Git("init", "-q", "-b", "release/9.9.0");
         Git("add", "-A");
@@ -33,24 +35,29 @@ public sealed class SelectionTests : IDisposable
         { "test/oracles/README.md", "prose", "linux" },
         { ".github/ISSUE_TEMPLATE/bug.yml", "prose", "linux" },
         { "CHANGELOG.md", "changelog", "linux, pack" },
-        { "src/CodoMetis.TypeKit/README.md", "package", "linux, os, pack" },
-        { "src/Directory.Build.targets", "package", "linux, os, pack" },
-        { "tools/ConsumerSmokeTest/Consumers/Aot/Program.cs", "smoke test", "linux, os, pack" },
-        { "tools/ConsumerSmokeTest/README.md", "smoke test", "linux, os, pack" },
-        { "tools/Shared/SharedFile.cs", "smoke test", "linux, os, pack" },
-        { "tools/Directory.Build.props", "smoke test", "linux, os, pack" },
-        { "tools/CiLanes/Program.cs", "smoke test", "linux, os, pack" },
-        { "tools/PrHygiene/Program.cs", "code no package reads", "linux, os" },
-        { "test/CodoMetis.TypeKit.Tests/OptionTests.cs", "code no package reads", "linux, os" },
-        { "test/Directory.Build.props", "code no package reads", "linux, os" },
-        { "spikes/FabricSpike/Program.cs", "code no package reads", "linux, os" },
-        { "global.json", "unlisted", "linux, os, pack" },
-        { "Directory.Build.props", "unlisted", "linux, os, pack" },
-        { "Directory.Packages.props", "unlisted", "linux, os, pack" },
-        { ".config/dotnet-tools.json", "unlisted", "linux, os, pack" },
-        { ".github/workflows/dotnet.yml", "unlisted", "linux, os, pack" },
-        { "benchmarks/CodoMetis.TypeKit.Benchmarks/Program.cs", "unlisted", "linux, os, pack" },
-        { "a-file-nobody-listed", "unlisted", "linux, os, pack" },
+        { "src/CodoMetis.TypeKit.Analyzers/CodeFixes/AddCreateCodeFix.cs", "source text", "linux, windows, pack" },
+        { "src/CodoMetis.TypeKit.Analyzers/AnalyzerReleases.Unshipped.md", "source text", "linux, windows, pack" },
+        { "src/CodoMetis.TypeKit.Generators/README.md", "source text", "linux, windows, pack" },
+        { "src/CodoMetis.TypeKit/README.md", "package", "linux, pack" },
+        { "src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectConverter.cs", "package", "linux, pack" },
+        { "src/CodoMetis.TypeKit.AnalyzersAndMore/X.cs", "package", "linux, pack" },
+        { "src/Directory.Build.targets", "package", "linux, pack" },
+        { "tools/ConsumerSmokeTest/Consumers/Aot/Program.cs", "smoke test", "linux, windows, pack" },
+        { "tools/ConsumerSmokeTest/README.md", "smoke test", "linux, windows, pack" },
+        { "tools/Shared/SharedFile.cs", "smoke test", "linux, windows, pack" },
+        { "tools/Directory.Build.props", "smoke test", "linux, windows, pack" },
+        { "tools/CiLanes/Program.cs", "smoke test", "linux, windows, pack" },
+        { "tools/PrHygiene/Program.cs", "code no package reads", "linux, windows" },
+        { "test/CodoMetis.TypeKit.Tests/OptionTests.cs", "code no package reads", "linux, windows" },
+        { "test/Directory.Build.props", "code no package reads", "linux, windows" },
+        { "spikes/FabricSpike/Program.cs", "code no package reads", "linux, windows" },
+        { "global.json", "unlisted", "linux, windows, pack" },
+        { "Directory.Build.props", "unlisted", "linux, windows, pack" },
+        { "Directory.Packages.props", "unlisted", "linux, windows, pack" },
+        { ".config/dotnet-tools.json", "unlisted", "linux, windows, pack" },
+        { ".github/workflows/dotnet.yml", "unlisted", "linux, windows, pack" },
+        { "benchmarks/CodoMetis.TypeKit.Benchmarks/Program.cs", "unlisted", "linux, windows, pack" },
+        { "a-file-nobody-listed", "unlisted", "linux, windows, pack" },
     };
 
     [Theory, MemberData(nameof(Paths))]
@@ -67,24 +74,61 @@ public sealed class SelectionTests : IDisposable
     {
         Commit("docs/guide.md", "# A guide, reworded\n");
 
-        Answers(PullRequestInto("release/9.9.0")).ShouldBe([LinuxOnly, "pack=false"]);
+        Answers(PullRequestInto("release/9.9.0")).ShouldBe([LinuxOnly, "pack=false", "suite=prose"]);
+    }
+
+    /// <summary>The prose suite runs only for a change that is prose throughout.</summary>
+    [Fact]
+    public void Prose_beside_any_other_change_runs_the_whole_suite()
+    {
+        Commit("docs/guide.md", "# A guide, reworded\n");
+        Commit("test/CodoMetis.TypeKit.Tests/OptionTests.cs", "// a test\n");
+
+        Answers(PullRequestInto("release/9.9.0")).ShouldBe([LinuxAndWindows, "pack=false", "suite=full"]);
     }
 
     [Fact]
-    public void A_package_change_runs_every_lane()
+    public void A_changelog_change_runs_the_whole_suite()
+    {
+        Commit("CHANGELOG.md", "## 9.9.0\n");
+
+        Answers(PullRequestInto("release/9.9.0")).ShouldBe([LinuxOnly, "pack=true", "suite=full"]);
+    }
+
+    [Fact]
+    public void A_package_change_runs_Linux_and_the_pack()
     {
         Commit("docs/guide.md", "# A guide, reworded\n");
         Commit("src/CodoMetis.TypeKit/Option.cs", "// changed\n");
 
-        Answers(PullRequestInto("release/9.9.0")).ShouldBe([EveryLeg, "pack=true"]);
+        Answers(PullRequestInto("release/9.9.0")).ShouldBe([LinuxOnly, "pack=true", "suite=full"]);
+    }
+
+    /// <summary>The one src/ defect a Windows leg alone caught in 150 runs was a code fix's line endings (f9f64e5).</summary>
+    [Fact]
+    public void An_analyzer_change_adds_the_Windows_leg()
+    {
+        Commit("src/CodoMetis.TypeKit/Option.cs", "// changed\n");
+        Commit("src/CodoMetis.TypeKit.Analyzers/CodeFixes/AddCreate.cs", "// changed\n");
+
+        Answers(PullRequestInto("release/9.9.0")).ShouldBe([LinuxAndWindows, "pack=true", "suite=full"]);
     }
 
     [Fact]
-    public void A_test_change_skips_the_pack_only()
+    public void A_test_change_runs_Linux_and_Windows_without_the_pack()
     {
         Commit("test/CodoMetis.TypeKit.Tests/OptionTests.cs", "// a test\n");
 
-        Answers(PullRequestInto("release/9.9.0")).ShouldBe([EveryLeg, "pack=false"]);
+        Answers(PullRequestInto("release/9.9.0")).ShouldBe([LinuxAndWindows, "pack=false", "suite=full"]);
+    }
+
+    /// <summary>A selection never runs macOS: a path no class names gets every lane but that one.</summary>
+    [Fact]
+    public void An_unlisted_change_runs_every_lane_but_macOS()
+    {
+        Commit("global.json", "{}\n");
+
+        Answers(PullRequestInto("release/9.9.0")).ShouldBe([LinuxAndWindows, "pack=true", "suite=full"]);
     }
 
     /// <summary>Without <c>--no-renames</c>, git lists a rename's new path alone, and a move out of src/ reads as prose (#70).</summary>
@@ -94,7 +138,7 @@ public sealed class SelectionTests : IDisposable
         Git("mv", "src/CodoMetis.TypeKit/Option.cs", "docs/Option.cs.md");
         Git("commit", "-q", "-m", "move");
 
-        Answers(PullRequestInto("release/9.9.0")).ShouldBe([EveryLeg, "pack=true"]);
+        Answers(PullRequestInto("release/9.9.0")).ShouldBe([LinuxOnly, "pack=true", "suite=full"]);
     }
 
     [Fact]
@@ -102,7 +146,7 @@ public sealed class SelectionTests : IDisposable
     {
         Commit("docs/guide.md", "# A guide, reworded\n");
 
-        Answers(PullRequestInto("main")).ShouldBe([EveryLeg, "pack=true"]);
+        Answers(PullRequestInto("main")).ShouldBe([EveryLeg, "pack=true", "suite=full"]);
     }
 
     [Fact]
@@ -111,7 +155,7 @@ public sealed class SelectionTests : IDisposable
         var before = Git("rev-parse", "HEAD").Trim();
         Commit("docs/guide.md", "# A guide, reworded\n");
 
-        Answers("--event", "push", "--ref", "refs/heads/release/9.9.0", "--before", before).ShouldBe([LinuxOnly, "pack=false"]);
+        Answers("--event", "push", "--ref", "refs/heads/release/9.9.0", "--before", before).ShouldBe([LinuxOnly, "pack=false", "suite=prose"]);
     }
 
     [Theory]
@@ -122,7 +166,7 @@ public sealed class SelectionTests : IDisposable
     {
         Commit("docs/guide.md", "# A guide, reworded\n");
 
-        Answers("--event", "push", "--ref", "refs/heads/release/9.9.0", "--before", before).ShouldBe([EveryLeg, "pack=true"]);
+        Answers("--event", "push", "--ref", "refs/heads/release/9.9.0", "--before", before).ShouldBe([EveryLeg, "pack=true", "suite=full"]);
     }
 
     [Theory]
@@ -134,12 +178,12 @@ public sealed class SelectionTests : IDisposable
     {
         Commit("docs/guide.md", "# A guide, reworded\n");
 
-        Answers("--event", @event, "--ref", @ref, "--before", Git("rev-parse", "HEAD~1").Trim()).ShouldBe([EveryLeg, "pack=true"]);
+        Answers("--event", @event, "--ref", @ref, "--before", Git("rev-parse", "HEAD~1").Trim()).ShouldBe([EveryLeg, "pack=true", "suite=full"]);
     }
 
     [Fact]
     public void A_diff_that_names_no_path_runs_every_lane() =>
-        Answers(PullRequestInto("release/9.9.0")).ShouldBe([EveryLeg, "pack=true"]);
+        Answers(PullRequestInto("release/9.9.0")).ShouldBe([EveryLeg, "pack=true", "suite=full"]);
 
     /// <summary>A diff that cannot be taken fails the job, never answers "nothing changed" (#70).</summary>
     [Fact]

@@ -10,6 +10,7 @@ namespace CodoMetis.TypeKit.CiLanes.Tests;
 public sealed class GateTests : IDisposable
 {
     private const string LinuxOnly = """["ubuntu-latest"]""";
+    private const string LinuxAndWindows = """["ubuntu-latest","windows-latest"]""";
     private const string EveryLeg = """["ubuntu-latest","windows-latest","macos-latest"]""";
 
     private readonly ToolSandbox _tool = new("CiLanes", "ci-lanes");
@@ -20,19 +21,23 @@ public sealed class GateTests : IDisposable
         string Changes = "success",
         string? Legs = LinuxOnly,
         string? Pack = "false",
+        string? Suite = "prose",
         string Test = "success",
         string PackJob = "skipped",
         string Consumer = "skipped");
 
     private static readonly Run Prose = new();
 
-    private static readonly Run Package = new(Legs: EveryLeg, Pack: "true", PackJob: "success", Consumer: "success");
+    private static readonly Run Package = new(Pack: "true", Suite: "full", PackJob: "success", Consumer: "success");
+
+    private static readonly Run Full = Package with { Legs = EveryLeg };
 
     private (int Code, string Output) Judge(Run run, Action<Dictionary<string, object>>? edit = null)
     {
         var outputs = new Dictionary<string, string>();
         if (run.Legs is not null) outputs["legs"] = run.Legs;
         if (run.Pack is not null) outputs["pack"] = run.Pack;
+        if (run.Suite is not null) outputs["suite"] = run.Suite;
 
         var needs = new Dictionary<string, object>
         {
@@ -67,17 +72,38 @@ public sealed class GateTests : IDisposable
     public void A_prose_run_passes_with_the_pack_skipped() => Passes(Prose);
 
     [Fact]
-    public void A_package_run_passes_with_every_job_run() => Passes(Package);
+    public void A_package_run_passes_with_the_pack_run() => Passes(Package);
 
     [Fact]
-    public void A_test_run_passes_with_every_leg_and_no_pack() => Passes(Prose with { Legs = EveryLeg });
+    public void An_analyzer_run_passes_with_Windows_and_the_pack() => Passes(Package with { Legs = LinuxAndWindows });
+
+    [Fact]
+    public void A_test_run_passes_with_Windows_and_no_pack() => Passes(Prose with { Legs = LinuxAndWindows, Suite = "full" });
+
+    [Theory]
+    [InlineData("Prose")]
+    [InlineData("all")]
+    [InlineData("")]
+    public void A_suite_answer_the_selection_does_not_write_fails(string suite) =>
+        Fails(Prose with { Suite = suite }, $"The changes job's suite output is '{suite}'");
+
+    [Fact]
+    public void The_prose_suite_beside_another_leg_fails() =>
+        Fails(Prose with { Legs = LinuxAndWindows }, "The changes job chose the prose suite for a run with more than the Linux leg");
+
+    [Fact]
+    public void The_prose_suite_beside_the_pack_fails() =>
+        Fails(Package with { Suite = "prose" }, "The changes job chose the prose suite for a run with more than the Linux leg");
+
+    [Fact]
+    public void A_run_that_is_not_selected_passes_with_every_leg() => Passes(Full);
 
     [Theory]
     [InlineData("failure")]
     [InlineData("cancelled")]
     [InlineData("skipped")]
     public void A_selection_that_did_not_succeed_fails(string result) =>
-        Fails(Prose with { Changes = result, Legs = null, Pack = null }, $"The changes job ended '{result}'");
+        Fails(Prose with { Changes = result, Legs = null, Pack = null, Suite = null }, $"The changes job ended '{result}'");
 
     [Theory]
     [InlineData("cancelled")]
@@ -109,7 +135,8 @@ public sealed class GateTests : IDisposable
     public void A_missing_answer_fails() => Fails(Prose with { Pack = null }, "The changes job's pack output is missing");
 
     [Theory]
-    [InlineData("""["ubuntu-latest","windows-latest"]""")]
+    [InlineData("""["ubuntu-latest","macos-latest"]""")]
+    [InlineData("""["windows-latest","ubuntu-latest"]""")]
     [InlineData("""["ubuntu"]""")]
     [InlineData("ubuntu-latest")]
     [InlineData("[]")]
@@ -130,7 +157,7 @@ public sealed class GateTests : IDisposable
         var file = Path.Combine(_tool.Work, "needs.json");
         File.WriteAllText(file, JsonSerializer.Serialize(new Dictionary<string, object>
         {
-            ["changes"] = new { result = "success", outputs = new { legs = LinuxOnly, pack = "false" } },
+            ["changes"] = new { result = "success", outputs = new { legs = LinuxOnly, pack = "false", suite = "prose" } },
             ["test"] = new { result = "success" },
             ["pack"] = new { result = "skipped" },
             ["consumer"] = new { result = "skipped" },
