@@ -195,6 +195,47 @@ The packages share one version and are released together, only through
 
 `workflow_dispatch` with `dry_run` (the default) rehearses everything but the push.
 
+## The docs site
+
+The guides in `docs/`, the root README, the package READMEs, the changelog and the API pages of the
+run-time packages are published to GitHub Pages, at
+[caffeinatedcoder.github.io/CodoMetis.TypeKit](https://caffeinatedcoder.github.io/CodoMetis.TypeKit/), by
+`.github/workflows/docs.yml` with DocFX
+([decision 115](design/adr/0115-the-docs-site-is-docfx-built-from-main.md)).
+
+- **Only `main` is published**, on every push to it, so the site always shows the latest release: the
+  release's PR into `main` publishes it. A release branch is never published.
+- **The pages are the files as they are.** Nothing copies or edits them for the site. The menu is
+  `site/toc.yml`: a new guide goes into the README's Documentation table and into the menu's Guides, in
+  the same order, and `DocsSiteTests` fails until both list it. A new run-time package goes into
+  `site/docfx.json`'s `metadata`, or into `DocsSiteTests.WithoutApiPages` with the reason it has no API
+  pages.
+- **Links are checked on every pull request** that touches what a page is built from. DocFX runs with
+  `--warningsAsErrors`, so a link to a missing page, heading or file fails the PR. A link to a file that
+  is not a page (`design/`, this file) becomes a GitHub address at the built commit, at build time
+  (`site/template/conceptual.extension.js`).
+- **Pages needs one setting**, made once by a maintainer: Settings > Pages > Source, "GitHub Actions".
+
+To build the site locally (`jq` reads the packages from `site/docfx.json`) and serve it at
+http://localhost:8080:
+
+```bash
+for assembly in $(jq -r '.metadata[].src[].files[]' site/docfx.json); do dotnet publish "src/${assembly%.dll}" -c Release -o site/obj/pub; done
+dotnet tool restore
+dotnet docfx site/docfx.json --warningsAsErrors --metadata _commit="$(git rev-parse HEAD)" --serve
+```
+
+**A second line**, such as `3.x` beside `2.x`, waits until two lines are supported at once. GitHub Pages
+serves one artifact per repository, so each deployment then carries every line:
+
+1. Build each line from its own branch into its own folder (`/2.x/`, `/3.x/`), with `main`'s
+   `site/` config, as a matrix in the build job; DocFX's `_appTitle` names the line.
+2. Assemble the folders into one artifact with a root `index.html` that redirects to the default line,
+   the latest release, and deploy that.
+3. Start the workflow from both branches. A push to the older line's branch cannot run a workflow that
+   branch lacks, so run on `workflow_run` of the build workflow there, and check that line out by name,
+   never by the triggering run's SHA. CodoMetis.ValueRanges' `docs.yml` does this for its two lines.
+
 ## AI-assisted development
 
 A substantial portion of this codebase was written with AI assistance, using
