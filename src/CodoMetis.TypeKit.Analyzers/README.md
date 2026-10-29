@@ -34,7 +34,7 @@ project. The two packages share a version and move together.
 | CMTK0006 | Warning | A field or auto-property of such a type, in a class, that no initializer, `required` or constructor sets. Also a `required` one that a `[SetsRequiredMembers]` constructor doesn't set. |
 | CMTK0007 | Info | `FromKnownGood` given a value that comes straight from a parameter. |
 | CMTK0008 | Warning | The values inside two different value objects compared, `order.CustomerId.Value == product.Id.Value`, or the two value objects themselves compared through `Equals(object)`. |
-| CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. |
+| CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. Also `FirstOrNone`, `SingleOrNone` or `FirstOrError` on a query given a delegate, which reads every row. |
 | CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute: `[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]`, `[Interface]`, `[Unsealed]`, `[ValueObject]`, `[ClosedSet]`, `[FlagsEnum]` or `[ReadOnlyStruct]`. Also a pair of arguments for two parameters marked `[Distinct]` or `[Unrelated]` that are one type, or related by inheritance, implementation or boxing, reported once at the later argument. Checked at any closed use, written or inferred: a base type, a member, a parameter, a local, a `typeof`, an attribute, a call or a method group, a member of a generic extension block, whose arguments the receiver gives, and a method the compiler calls for a `foreach`, an `await`, a deconstruction, a positional pattern or a collection expression (there, `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` join in 3.0.0). A type parameter passed on without the attribute is a breach too. A method that implements an interface's method, or overrides one, carries the constraint of what it implements, a static one and one a base class declares included. |
 | CMTK0011 | Error | A concrete class that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. A struct is never reported: its parameterless constructor is public and can be nothing else. The code fix writes or changes the constructor. |
 | CMTK0012 | Error | A closed set's `Match` given an argument by position. It binds to whichever member is declared at that place, so reordering the members swaps the branches. The code fix names every argument. |
@@ -408,6 +408,44 @@ ordinary value. EF Core's forms are recognised in any project that references EF
 
 It's a warning, because code that checks the sequence isn't empty first is correct, and the rule
 can't tell.
+
+### A condition that reads every row
+
+CMTK0009 also warns when a lookup on a query would read the whole table:
+
+```csharp
+Func<Order, bool> isOpen = o => o.Open;
+var first = db.Orders.FirstOrNone(isOpen);           // CMTK0009: binds to the IEnumerable<T> overload and reads every row
+var found = db.Orders.FirstOrNone(o => o.Open);      // the database runs the condition and returns one row
+```
+
+`FirstOrNone`, `SingleOrNone` and `FirstOrError` on an `IQueryable<T>` take the condition as an
+`Expression<Func<T, bool>>`, which the database runs. A delegate is no expression. So the call binds to
+the overload on `IEnumerable<T>`, which reads every row and runs the condition in memory. The rule
+reports that call, and its message names the overload it fell to.
+
+Reported, on any receiver that is a query (`IQueryable<T>`, a `DbSet<T>`, a type parameter constrained
+to one), when the condition is:
+
+- a `Func<T, bool>` in a variable, a parameter, a field or a property;
+- a method group, such as `IsOpen`;
+- an anonymous method, `delegate (Order o) { ... }`;
+- a call that returns a `Func`, or a lambda cast to one.
+
+`LastOrNone` and `LastOrError` are reported as well. On a query they don't compile with a lambda, and a
+delegate there reads every row in the same way.
+
+To fix it, write the condition as a lambda at the call, or hold it as an `Expression<Func<T, bool>>`.
+To read every row on purpose, call `AsEnumerable()` first, and the rule stays silent.
+
+**Good to know**
+
+- **A query held as an `IEnumerable<T>` is a sequence to the rule.** Once your code converts it, the
+  rule can't tell that a query is underneath, so `IEnumerable<Order> all = db.Orders;` followed by
+  `all.FirstOrNone(isOpen)` isn't reported.
+- **There is no code fix.** The fix depends on your condition. A method group wrapped in a lambda
+  binds to the query's overload, but the database can't run your method, so EF Core throws when the
+  query runs.
 
 ## CMTK0010
 
