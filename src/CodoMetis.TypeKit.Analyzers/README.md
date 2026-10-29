@@ -756,11 +756,16 @@ but a suppression to say so:
 - a sequence known not to be empty (CMTK0009);
 - a comparison of two identities that really are shared (CMTK0008).
 
-**What a new version may change.** Within a major version, an Error never reports more than it did.
-A new Error rule, or an Error that reports more, waits for the next major version. A Warning or an
-Info may learn more forms in a minor version, such as another method that returns a default instance
-for CMTK0009. In a build that treats warnings as errors, such an update can report code that built
-before, as a newer compiler's warnings can.
+**What a new version may change.** Within a major version, an update never makes an Error report code
+that built before. A new Error rule, or an Error that reports more of the code you could already write,
+waits for the next major version. A minor version may teach an Error a form that only its own new API can
+write. In 2.3.0, CMTK0003 reports a `CodoMetis.TypeKit.Testing` assertion on a `Task` or `ValueTask` left
+without `await`, and those assertions are new in 2.3.0. Your code from before the update can't contain
+one, so it builds as before.
+
+A Warning or an Info may learn more forms in a minor version, such as another method that returns a
+default instance for CMTK0009. In a build that treats warnings as errors, such an update can report code
+that built before, as a newer compiler's warnings can.
 
 ## Generated code and Razor
 

@@ -4744,6 +4744,21 @@
     ]
   },
   {
+    "id": "T01-an-error-learns-only-new-api-forms",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#configuration",
+    "quote": "A minor version may teach an Error a form that only its own new API can write.",
+    "claim": "Within a major version an Error reports nothing more of the code a consumer could already write; a minor version's Error reports only forms that call that version's new API, such as 2.3.0's CMTK0003 on an unawaited Testing assertion over a Task or ValueTask, recognised by the Testing assembly so that a consumer's own extension of the same name stays silent.",
+    "oracle": "claim",
+    "surfaces": [
+      "OptionAssertions.*",
+      "ResultAssertions.*",
+      "PatchAssertions.*"
+    ],
+    "heldBy": [
+      "IgnoredOutcomeAnalyzerTests"
+    ]
+  },
+  {
     "id": "W01-answers-are-real",
     "source": "docs/walkthrough.md#walkthrough-one-orders-service",
     "quote": "CI runs it on every change, and builds it from the packed packages too, so every answer below is one it really gives",
