@@ -9,6 +9,7 @@ namespace CodoMetis.TypeKit.EntityFrameworkCore.Tests;
 /// A real PostgreSQL: every wrapped-type family survives a round trip, stored values are read back
 /// without the rules, and the translated queries return the rows they should.
 /// </summary>
+[Trait("Needs", "Docker")]
 public sealed class PostgreSqlRoundTripTests(PostgreSqlRoundTripTests.Database database) : IClassFixture<PostgreSqlRoundTripTests.Database>
 {
     [Fact]

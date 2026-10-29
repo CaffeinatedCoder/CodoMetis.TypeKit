@@ -24,6 +24,7 @@ section is the GitHub release's notes.
 - Analyzers: CMTK0009 warns at `FirstOrNone`, `SingleOrNone` or `FirstOrError` on a query given a `Func` variable or a method group, which binds to the `IEnumerable<T>` overload and reads every row; a lambda at the call or an `Expression` stays silent ([A condition that reads every row](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#a-condition-that-reads-every-row)).
 - Docs: the guides, the package READMEs, the changelog and the API of every run-time package as one site with a menu and search, built from the latest release ([caffeinatedcoder.github.io/CodoMetis.TypeKit](https://caffeinatedcoder.github.io/CodoMetis.TypeKit/)).
 - Analyzers: a validated value object without `Create` gets a code fix, **Add Create**, that writes a `Create` accepting every value, ready for your rules ([Add Create](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#add-create)).
+- EF Core: queries, keys and round trips are tested on a real SQL Server, and the README says what differs there from memory: text compared ignoring case, Guids sorted by their last group, `decimal(18,2)` by default, a `TimeSpan` under a day, `Greatest` from compatibility level 160 ([On SQL Server](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server)).
 
 ### Changed
 

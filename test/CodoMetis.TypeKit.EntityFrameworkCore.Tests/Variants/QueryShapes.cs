@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using CodoMetis.TypeKit.ValueObjects;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
@@ -657,8 +658,11 @@ public static class Seed
     private static void Set(object target, string property, object? value) => target.GetType().GetProperty(property)!.SetValue(target, value);
 }
 
-/// <summary>A model of one kind's entities for the catalogue, cached by <see cref="Key"/>.</summary>
-public sealed record QueryModel(string Key, QueryCase Case, bool ValueObject);
+/// <summary>
+/// A model of one kind's entities for the catalogue, cached by <see cref="Key"/>, in a schema of its own where
+/// many models share one database.
+/// </summary>
+public sealed record QueryModel(string Key, QueryCase Case, bool ValueObject, string? Schema = null);
 
 public sealed class QueryDb(DbContextOptions<QueryDb> options, QueryModel model) : DbContext(options)
 {
@@ -673,6 +677,7 @@ public sealed class QueryDb(DbContextOptions<QueryDb> options, QueryModel model)
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var builder = new QueryBuilder(model.Case, model.ValueObject);
+        if (model.Schema is { } schema) modelBuilder.HasDefaultSchema(schema);
 
         if (builder.Source == builder.ElementRow)
         {
@@ -724,6 +729,16 @@ public sealed class QueryDb(DbContextOptions<QueryDb> options, QueryModel model)
     /// <summary>For SQL text only: <c>ToQueryString</c> translates without opening the connection.</summary>
     public static QueryDb OnPostgreSql(QueryModel model) =>
         Create(model, new DbContextOptionsBuilder<QueryDb>().UseNpgsql("Host=localhost;Database=none"));
+
+    /// <summary>
+    /// On SQL Server, at EF's default compatibility level or at <paramref name="compatibilityLevel"/>. The suite's
+    /// models need more than the twenty internal service providers EF warns about, all in one process.
+    /// </summary>
+    public static QueryDb OnSqlServer(QueryModel model, string connectionString, int? compatibilityLevel = null) =>
+        Create(model, new DbContextOptionsBuilder<QueryDb>().UseSqlServer(connectionString, sql =>
+        {
+            if (compatibilityLevel is { } level) sql.UseCompatibilityLevel(level);
+        }).ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)));
 
     private static QueryDb Create(QueryModel model, DbContextOptionsBuilder<QueryDb> provider)
     {

@@ -20,9 +20,13 @@ a file-based app (`dotnet run tools/x.cs`) or a tool project under `tools/`, nev
 ([decision 92](design/adr/0092-repository-tooling-is-dotnet-and-ci-needs-no-ai.md)). Two tasks need one
 thing more each:
 
-- **Docker, running** (Docker Desktop, OrbStack, Colima), for the PostgreSQL round-trip tests, which
-  start a Linux container through Testcontainers. Without it those fail with
-  `DockerUnavailableException`, and every other test passes.
+- **Docker, running** (Docker Desktop, OrbStack, Colima), for the EF Core tests on PostgreSQL and SQL
+  Server and the SQL Server facts, which start a Linux container through Testcontainers and carry the
+  trait `Needs=Docker`. Without it those fail with `DockerUnavailableException`, and every other test
+  passes; `--filter-not-trait "Needs=Docker"` leaves them out. SQL Server's image is amd64 only: on an
+  arm64 Mac it starts under Rosetta, not under QEMU (OrbStack's default without Rosetta), so set
+  `TYPEKIT_MSSQL_IMAGE=mcr.microsoft.com/azure-sql-edge:latest` there, whose older engine runs natively;
+  CI runs SQL Server 2022.
 - **The platform's native toolchain** for the smoke test, which publishes two consumers with Native
   AOT, a web host and a console application with EF Core: Xcode's command-line tools on macOS
   (`xcode-select --install`), `clang` and `zlib1g-dev` on Debian and Ubuntu, MSVC's C++ build tools

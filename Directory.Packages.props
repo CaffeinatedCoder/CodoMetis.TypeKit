@@ -50,14 +50,15 @@
     <PackageVersion Include="NodaTime.Serialization.SystemTextJson" Version="1.4.0" />
     <!--
             The EF satellite's tests: SQLite for the model, Npgsql for SQL and the round trips, SQL Server
-            for its model alone (key generation, built without a server), and EF's design-time services
-            to write the migration snapshot a model is compared with.
+            for its model, the round trips and the query catalogue, PostgreSQL and SQL Server each in a
+            container, and EF's design-time services to write the migration snapshot a model is compared with.
         -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers" Version="4.16.0" />
     <!-- The Serilog README's sample writes to the console, as a reader's setup would. -->
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
     <!-- The ASP.NET Core satellite's tests: a probe host whose OpenAPI document they read. -->

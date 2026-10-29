@@ -2,8 +2,8 @@
 
     <!--
       The EF satellite against value objects the real generators wove: the probes, and the model's own
-      identifiers, which this project gets through the probes' transitive fabric. The PostgreSQL round
-      trips start a container, so these tests need Docker.
+      identifiers, which this project gets through the probes' transitive fabric. The PostgreSQL and SQL
+      Server tests start a container, so they need Docker.
     -->
     <ItemGroup>
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.EntityFrameworkCore\CodoMetis.TypeKit.EntityFrameworkCore.csproj" />
@@ -20,6 +20,8 @@
         <!-- Past the advisories of the 9.0.11 Microsoft.Data.SqlClient brings; see Directory.Packages.props. -->
         <PackageReference Include="System.Security.Cryptography.Pkcs" />
         <PackageReference Include="Testcontainers.PostgreSql" />
+        <!-- SQL Server as a plain container (SqlServer.cs): the module waits through sqlcmd, which Azure SQL Edge has not. -->
+        <PackageReference Include="Testcontainers" />
     </ItemGroup>
 
 </Project>
