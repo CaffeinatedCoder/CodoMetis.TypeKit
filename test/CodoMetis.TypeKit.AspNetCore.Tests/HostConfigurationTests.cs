@@ -239,12 +239,15 @@ public sealed class HostConfigurationTests
     /// <summary>
     /// What the README's "Binding" says of a minimal API refusing a body: an empty 400 with
     /// <c>AddProblemDetails()</c> too, a generic problem only with <c>UseStatusCodePages()</c>, and the
-    /// input in neither (spikes/ValidationFaults).
+    /// input in neither (spikes/ValidationFaults). A value object inside a <see cref="Patch{T}"/> refuses alike, as
+    /// the merge-patches page says.
     /// </summary>
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task A_minimal_API_answers_a_refused_body_with_a_bare_400(bool statusCodePages)
+    [InlineData(false, "/codes")]
+    [InlineData(true, "/codes")]
+    [InlineData(false, "/patches")]
+    [InlineData(true, "/patches")]
+    public async Task A_minimal_API_answers_a_refused_body_with_a_bare_400(bool statusCodePages, string path)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
         builder.WebHost.UseTestServer();
@@ -254,10 +257,11 @@ public sealed class HostConfigurationTests
         await using var app = builder.Build();
         if (statusCodePages) app.UseStatusCodePages();
         app.MapPost("/codes", (CodeHolder holder) => holder.Code.Value);
+        app.MapPost("/patches", (CodePatch patch) => patch.Code.State.ToString());   // the merge-patches page: a patch refuses as the value object does
         await app.StartAsync(TestContext.Current.CancellationToken);
 
         using var response = await app.GetTestClient().PostAsync(
-            "/codes", new StringContent("""{"code":"lower"}""", System.Text.Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
+            path, new StringContent("""{"code":"lower"}""", System.Text.Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -275,6 +279,8 @@ public sealed class HostConfigurationTests
     }
 
     private sealed record CodeHolder(ProbeCode Code);
+
+    private sealed record CodePatch(Patch<ProbeCode> Code);
 
     private sealed class InstantSchemaTransformer : IOpenApiSchemaTransformer
     {

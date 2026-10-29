@@ -281,6 +281,52 @@ public sealed class ResultWithValueTests
     }
 
     /// <summary>
+    /// A result has no <c>where</c>: a value filtered out would need an error the query cannot name.
+    /// <c>Ensure(predicate, error)</c> is the filter, and the query pattern finds no <c>Where</c>.
+    /// </summary>
+    [Fact]
+    public void Query_syntax_has_no_where()
+    {
+        var compilation = ConsumerCompilation.Of("""
+            using CodoMetis.TypeKit;
+
+            static class Consumer
+            {
+                static object Call(Result<int, string> result) => from x in result where x > 1 select x;
+            }
+            """);
+
+        compilation.ErrorIds().ShouldBe(["CS1936"], compilation.Problems());
+        compilation.Problems().ShouldContain("'Where'");
+    }
+
+    /// <summary>
+    /// A bare value converts to a success, and a bare error does not: in a <c>Result&lt;long, int&gt;</c> a
+    /// bare <c>5</c> could be either, so only <c>Result.Error(...)</c> makes an error.
+    /// </summary>
+    [Theory]
+    [InlineData("Result<int, string> result = \"boom\";", "CS0029")]
+    [InlineData("Result<int, string> result = Result.Error(\"boom\");", "")]
+    [InlineData("Result<long, int> result = 5;", "")]
+    public void A_bare_error_does_not_convert(string statement, string error)
+    {
+        var compilation = ConsumerCompilation.Of($$"""
+            using CodoMetis.TypeKit;
+
+            static class Consumer
+            {
+                static object Call()
+                {
+                    {{statement}}
+                    return result;
+                }
+            }
+            """);
+
+        compilation.ErrorIds().ShouldBe(error.Length == 0 ? [] : [error], compilation.Problems());
+    }
+
+    /// <summary>
     /// A second <c>from</c> needs the two-selector <c>SelectMany</c>: each step can use every earlier
     /// value, and the first error ends the query.
     /// </summary>
