@@ -162,15 +162,17 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     /// Nor does <c>Task.WhenAll(first.ShouldBeNone(), second.ShouldBeNone());</c> or <c>Task.Run(() =&gt;
     /// pending.ShouldBeNone());</c>, whose task faults when an assertion fails, or <c>Task.WhenAny</c> of them,
     /// awaited or not, whose task completes with the first to finish and leaves every failure unobserved, when
-    /// the statement made an assertion it hands on (<see cref="Tasks.PassesOnFailure"/>).
+    /// the statement made an assertion it hands on (<see cref="Tasks.PassesOnFailure"/>). Awaited, a <c>WhenAll</c>
+    /// or a <c>Run</c> observes only a failure it was handed as a fault: <c>await Task.WhenAll(Task.WhenAny(…))</c>
+    /// completes with the faulted assertion as its value (<see cref="HandsOn"/>'s depth).
     /// </summary>
     private static string? DroppedAssertion(IInvocationOperation invocation, bool awaited, Tasks tasks)
     {
         var method = invocation.TargetMethod;
 
         var dropped = IsPendingAssertion(method, tasks) ? !awaited
-                    : tasks.PassesOnFailure(method) is { } faults && (!awaited || !faults)
-                   && invocation.Arguments.Any(argument => MadeAssertions(argument.Value, tasks).Any());
+                    : tasks.PassesOnFailure(method) is { } faults
+                   && invocation.Arguments.Any(argument => MadeAssertions(argument.Value, tasks).Any(made => !awaited || !faults || made.Depth > 0));
 
         if (!dropped) return null;
 
@@ -184,9 +186,10 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     /// given: <c>new[] { a.ShouldBeNone(), b.ShouldBeNone() }</c>, <c>ids.Select(id =&gt; Find(id).ShouldBeNone())</c>,
     /// <c>pending.Select(OptionAssertions.ShouldBeNone)</c>, <c>ids.Select(async id =&gt; await Find(id).ShouldBeNone())</c>.
     /// An assertion assigned or discarded in it keeps its own task, and one awaited fails only the
-    /// <c>async</c> lambda it is in, which is handed on in its place.
+    /// <c>async</c> lambda it is in, which is handed on in its place. Each comes with the depth
+    /// <see cref="HandsOn"/> finds it at.
     /// </summary>
-    private static IEnumerable<(IOperation Assertion, string Name)> MadeAssertions(IOperation value, Tasks tasks)
+    private static IEnumerable<(IOperation Assertion, string Name, int Depth)> MadeAssertions(IOperation value, Tasks tasks)
     {
         foreach (var operation in value.DescendantsAndSelf())
         {
@@ -197,25 +200,42 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
                 _                                   => null,
             };
 
-            if (method is not null && IsPendingAssertion(method, tasks) && HandsOn(operation, value, tasks)) yield return (operation, method.Name);
+            if (method is not null && IsPendingAssertion(method, tasks) && HandsOn(operation, value, method, tasks) is { } depth) yield return (operation, method.Name, depth);
         }
     }
 
-    private static bool HandsOn(IOperation operation, IOperation root, Tasks tasks)
+    /// <summary>
+    /// How deep <paramref name="root"/> holds the failure of <paramref name="operation"/>'s assertion, or
+    /// <see langword="null"/> where it is not handed on, or observed on the way: 0 where root's task faults with
+    /// it, as a <c>WhenAll</c>'s or a <c>Run</c>'s does; one more for each task that completes with it as a value
+    /// instead, a <c>WhenAny</c>'s or a <c>WhenEach</c>'s, or an <c>async</c> lambda's that returns it; one fewer
+    /// for each <c>await</c> on the way that unwraps such a task. An <c>await</c> of the faulting task fails the
+    /// <c>async</c> lambda it is in, which is followed in its place.
+    /// </summary>
+    private static int? HandsOn(IOperation operation, IOperation root, IMethodSymbol assertion, Tasks tasks)
     {
-        for (var current = operation; !ReferenceEquals(current, root); current = current.Parent!)
-        {
-            // await pending.ShouldBeNone() in an async lambda fails the lambda's task: follow that instead,
-            // unless a catch on the way can swallow the failure.
-            if (current.Parent is IAwaitOperation)
-            {
-                if (EnclosingAsyncFunction(current, root) is not { } function) return false;
+        var depth = 0;
 
-                current = function;
-                if (ReferenceEquals(current, root)) return true;
+        for (var current = operation; !ReferenceEquals(current, root);)
+        {
+            var parent = current.Parent!;
+
+            // await Task.WhenAny(pending.ShouldBeNone(), …) completes with the assertion's task, still unobserved;
+            // await pending.ShouldBeNone() fails the async lambda it is in, unless a catch on the way keeps the failure.
+            if (parent is IAwaitOperation)
+            {
+                if (depth > 0)
+                {
+                    depth--;
+                    current = parent;
+                }
+                else if (EnclosingAsyncFunction(current, root, assertion) is { } function) current = function;
+                else return null;
+
+                continue;
             }
 
-            var handsOn = current.Parent switch
+            var handsOn = parent switch
             {
                 IConversionOperation or IConditionalOperation or ICoalesceOperation or ISwitchExpressionArmOperation or ISwitchExpressionOperation => true,
                 IArrayInitializerOperation or IArrayCreationOperation or ICollectionExpressionOperation or IArgumentOperation                     => true,
@@ -225,20 +245,31 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
                 _                                                                                                                                   => false,
             };
 
-            if (!handsOn) return false;
+            if (!handsOn) return null;
+
+            // async () => Task.WhenAny(…) and Task.WhenAny(…) complete with the tasks they were given.
+            if (parent is IAnonymousFunctionOperation { Symbol.IsAsync: true }
+             || parent is IInvocationOperation combinator && !ReferenceEquals(combinator.Instance, current) && tasks.PassesOnFailure(combinator.TargetMethod) == false)
+                depth++;
+
+            current = parent;
         }
 
-        return true;
+        return depth;
     }
 
-    /// <summary>The <c>async</c> lambda or anonymous method inside <paramref name="root"/> that <paramref name="operation"/> fails, with no <c>catch</c> between them.</summary>
-    private static IOperation? EnclosingAsyncFunction(IOperation operation, IOperation root)
+    /// <summary>
+    /// The <c>async</c> lambda or anonymous method inside <paramref name="root"/> that <paramref name="operation"/>
+    /// fails, with no <c>catch</c> between them that keeps the failure of <paramref name="assertion"/> (<see cref="Keeps"/>).
+    /// A <c>catch</c> keeps only what its <c>try</c> block throws, not what its handlers or its <c>finally</c> do.
+    /// </summary>
+    private static IOperation? EnclosingAsyncFunction(IOperation operation, IOperation root, IMethodSymbol assertion)
     {
-        for (var current = operation.Parent; current is not null && !ReferenceEquals(current, root); current = current.Parent)
+        for (IOperation? child = operation, current = operation.Parent; current is not null && !ReferenceEquals(current, root); child = current, current = current.Parent)
         {
             switch (current)
             {
-                case ITryOperation { Catches.Length: > 0 }:
+                case ITryOperation attempt when ReferenceEquals(child, attempt.Body) && attempt.Catches.Any(clause => Keeps(clause, assertion)):
                     return null;
                 case IAnonymousFunctionOperation function:
                     return function.Symbol.IsAsync ? function : null;
@@ -246,6 +277,32 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="clause"/> takes the failure of <paramref name="assertion"/> and keeps it: its type can
+    /// hold the <c>TypeKitAssertionException</c> the assertion throws, and its handler can complete, where
+    /// <c>catch { throw; }</c>, a log and <c>throw;</c>, or a <c>throw new …</c> hand the failure on. A constant
+    /// <c>false</c> filter leaves the handler unreachable, so it never completes either. A filter that is no
+    /// constant, <c>when (Expected(e))</c>, may take it and counts as taking it: an Error reports only a failure that
+    /// is lost whatever the filter answers.
+    /// </summary>
+    private static bool Keeps(ICatchClauseOperation clause, IMethodSymbol assertion)
+    {
+        if (TypeKitSymbols.AssertionException(assertion.ContainingAssembly) is { } thrown && !IsOrDerivesFrom(thrown, clause.ExceptionType)) return false;
+
+        return clause.Handler is not { Syntax: BlockSyntax handler, SemanticModel: { } model }
+            || model.AnalyzeControlFlow(handler) is not { Succeeded: true, EndPointIsReachable: false, ExitPoints.IsEmpty: true };
+    }
+
+    private static bool IsOrDerivesFrom(ITypeSymbol? type, ITypeSymbol? ancestor)
+    {
+        for (; type is not null; type = type.BaseType)
+        {
+            if (SymbolEqualityComparer.Default.Equals(type, ancestor)) return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -421,7 +478,7 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
             if (method.Name != "WaitAny") return;
 
             foreach (var argument in wait.Arguments.Where(argument => argument.Parameter?.Ordinal == 0))
-            foreach (var (assertion, name) in MadeAssertions(argument.Value, tasks))
+            foreach (var (assertion, name, _) in MadeAssertions(argument.Value, tasks))
                 context.Report(Diagnostic.Create(Rule, assertion.Syntax.GetLocation(), "Task", name));
 
             return;

@@ -45,7 +45,10 @@ public sealed record TaskPassThrough(string Name, string Suffix, bool KeepsTask 
 /// <param name="Silent">Whether nothing is dropped in any use: the statement combines no task it made.</param>
 /// <param name="Value">What the expression is: a task, or what <c>Task.WaitAny</c> and <c>Task.WaitAll</c> return, which loses the tasks in every use.</param>
 /// <param name="AssertionsObserved">Whether an assertion's failure is seen all the same: <c>Task.WaitAll</c> throws it.</param>
-/// <param name="AssertionsOnly">Whether only an assertion is written in the form, where a <c>Result</c>'s would be a statement of its own.</param>
+/// <param name="AssertionsOnly">
+/// Whether only an assertion is written in the form: where a <c>Result</c>'s would be a statement of its own, or a
+/// combinator inside another, which only an assertion's failure passes through (#165).
+/// </param>
 /// <param name="Lazy">Whether the sequence runs nothing until a loop reads it, so that dropping it drops nothing.</param>
 public sealed record DropForm(
     string Name,
@@ -118,7 +121,8 @@ public sealed record TaskUse(string Name, string Statement, bool? Drops, bool As
 /// <para>
 /// Both calls go through the one path, so they agree on every form: #152 found the assertions alone silent
 /// through the pass-throughs of a plain <c>Task</c> and through the branches, #157 through the combinators,
-/// and #159 a <c>WhenAny</c> of results dropped unawaited.
+/// #159 a <c>WhenAny</c> of results dropped unawaited, #165 a <c>WhenAny</c> inside a <c>WhenAll</c> or a <c>Run</c>,
+/// awaited, and #166 a <c>catch</c> that throws again, of another exception or filtered by <c>false</c>.
 /// </para>
 /// </remarks>
 public static class DroppedTaskShapes
@@ -208,11 +212,61 @@ public static class DroppedTaskShapes
         new("Task.Run of a lambda", "Task.Run(() => {call}){w}", Combinator: "Run", AwaitDrops: false),
         new("Task.Run of an async lambda", "Task.Run(async () => await {call}){w}", Combinator: "Run", AwaitDrops: false),
 
+        // A combinator inside another (#165): WhenAll and Run fault with a task that faults, WhenAny completes with
+        // it as its value, at any depth, and each await unwraps one such task.
+        new("Task.WhenAll of a Task.WhenAll", "Task.WhenAll(Task.WhenAll({call}, {call})){w}", Combinator: "WhenAll", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.WhenAll of a Task.WhenAny", "Task.WhenAll(Task.WhenAny({call}, {call})){w}", Combinator: "WhenAll", AwaitDrops: true, AssertionsOnly: true),
+        new("Task.WhenAll of a Task.Run", "Task.WhenAll(Task.Run(() => {call})){w}", Combinator: "WhenAll", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.WhenAny of a Task.WhenAll", "Task.WhenAny(Task.WhenAll({call}, {call})){w}", Combinator: "WhenAny", AwaitDrops: true, AssertionsOnly: true),
+        new("Task.WhenAny of a Task.WhenAny", "Task.WhenAny(Task.WhenAny({call}, {call})){w}", Combinator: "WhenAny", AwaitDrops: true, AssertionsOnly: true),
+        new("Task.WhenAny of a Task.Run", "Task.WhenAny(Task.Run(() => {call})){w}", Combinator: "WhenAny", AwaitDrops: true, AssertionsOnly: true),
+        new("Task.Run of a Task.WhenAll", "Task.Run(() => Task.WhenAll({call}, {call})){w}", Combinator: "Run", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.Run of a Task.WhenAny", "Task.Run(() => Task.WhenAny({call}, {call})){w}", Combinator: "Run", AwaitDrops: true, AssertionsOnly: true),
+        new("Task.Run of a Task.Run", "Task.Run(() => Task.Run(() => {call})){w}", Combinator: "Run", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.WhenAll of a Task.Run of a Task.WhenAll of a Task.WhenAll", "Task.WhenAll(Task.Run(() => Task.WhenAll(Task.WhenAll({call}, {call})))){w}", Combinator: "WhenAll", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.WhenAll of a Task.Run of a Task.WhenAll of a Task.WhenAny", "Task.WhenAll(Task.Run(() => Task.WhenAll(Task.WhenAny({call}, {call})))){w}", Combinator: "WhenAll", AwaitDrops: true, AssertionsOnly: true),
+        new("Task.WhenAll of an array of Task.WhenAny", "Task.WhenAll(new[] { Task.WhenAny({call}, {call}), Task.WhenAny({call}, {call}) }){w}", Combinator: "WhenAll", AwaitDrops: true, AssertionsOnly: true),
+        new("Task.WhenAll of a Select of Task.WhenAny", "Task.WhenAll(Enumerable.Range(0, 2).Select(i => Task.WhenAny({call}, {call}))){w}", Combinator: "WhenAll", AwaitDrops: true, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that return a Task.WhenAny", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => Task.WhenAny({call}, {call}))){w}", Combinator: "WhenAll", AwaitDrops: true, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that await a Task.WhenAny once", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => await Task.WhenAny({call}, {call}))){w}", Combinator: "WhenAll", AwaitDrops: true, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that await a Task.WhenAny twice", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => await await Task.WhenAny({call}, {call}))){w}", Combinator: "WhenAll", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that await a Task.WhenAny of a Task.WhenAny twice", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => await await Task.WhenAny(Task.WhenAny({call}, {call})))){w}", Combinator: "WhenAll", AwaitDrops: true, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that await a Task.WhenAny of a Task.WhenAny three times", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => await await await Task.WhenAny(Task.WhenAny({call}, {call})))){w}", Combinator: "WhenAll", AwaitDrops: false, AssertionsOnly: true),
+
+        // A catch around the awaited assertion in an async lambda (#166) keeps the failure only when its type can
+        // hold a TypeKitAssertionException, no constant false filter refuses it and its handler can complete. A
+        // filter that is no constant may take it, and counts as taking it.
+        new("Task.WhenAll of async lambdas that try with only a finally", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { await {call}; } finally { GC.KeepAlive(i); } })){w}", Combinator: "WhenAll", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that catch and rethrow", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { await {call}; } catch { throw; } })){w}", Combinator: "WhenAll", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that log and rethrow", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { await {call}; } catch (Exception exception) { GC.KeepAlive(exception); throw; } })){w}", Combinator: "WhenAll", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that throw another exception", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { await {call}; } catch (Exception exception) { throw new InvalidOperationException(\"wrapped\", exception); } })){w}", Combinator: "WhenAll", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that catch an unrelated exception", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { await {call}; } catch (OperationCanceledException) { } })){w}", Combinator: "WhenAll", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that catch with a false filter", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { await {call}; } catch (Exception) when (false) { } })){w}", Combinator: "WhenAll", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that rethrow inside a try that rethrows", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { try { await {call}; } catch { throw; } } catch (OperationCanceledException) { } })){w}", Combinator: "WhenAll", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that await in a catch's handler", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { GC.KeepAlive(i); } catch (Exception) { await {call}; } })){w}", Combinator: "WhenAll", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that await in a finally", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { GC.KeepAlive(i); } catch (Exception) { } finally { await {call}; } })){w}", Combinator: "WhenAll", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.Run of an async lambda that catches and rethrows", "Task.Run(async () => { try { await {call}; } catch { throw; } }){w}", Combinator: "Run", AwaitDrops: false, AssertionsOnly: true),
+        new("Task.WhenAny of async lambdas that catch and rethrow", "Task.WhenAny(Enumerable.Range(0, 2).Select(async i => { try { await {call}; } catch { throw; } })){w}", Combinator: "WhenAny", AwaitDrops: true, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that catch everything", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { await {call}; } catch { } })){w}", Combinator: "WhenAll", Silent: true, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that catch the assertion's exception", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { await {call}; } catch (TypeKitAssertionException) { } })){w}", Combinator: "WhenAll", Silent: true, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that catch with a true filter", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { await {call}; } catch (Exception) when (true) { } })){w}", Combinator: "WhenAll", Silent: true, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that catch with a filter that is no constant", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { await {call}; } catch (Exception exception) when (exception.Data.Count == 0) { } })){w}", Combinator: "WhenAll", Silent: true, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that rethrow only sometimes", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { await {call}; } catch (Exception) { if (choose) throw; } })){w}", Combinator: "WhenAll", Silent: true, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that return from the catch", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { await {call}; } catch (Exception) { if (choose) return; throw; } })){w}", Combinator: "WhenAll", Silent: true, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that catch in a later clause", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { await {call}; } catch (OperationCanceledException) { throw; } catch (Exception) { } })){w}", Combinator: "WhenAll", Silent: true, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that rethrow inside a try that catches", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { try { await {call}; } catch { throw; } } catch (Exception) { } })){w}", Combinator: "WhenAll", Silent: true, AssertionsOnly: true),
+        new("Task.WhenAll of async lambdas that catch inside a try that rethrows", "Task.WhenAll(Enumerable.Range(0, 2).Select(async i => { try { try { await {call}; } catch (Exception) { } } catch { throw; } })){w}", Combinator: "WhenAll", Silent: true, AssertionsOnly: true),
+        new("Task.Run of an async lambda that catches", "Task.Run(async () => { try { await {call}; } catch (Exception) { } }){w}", Combinator: "Run", Silent: true, AssertionsOnly: true),
+
         new("Task.WaitAny of two calls", "Task.WaitAny([[{call}]], [[{call}]])", Value: FormValue.Index),
         new("Task.WaitAny of held tasks", "Task.WaitAny(held!, held!)", Value: FormValue.Index, Silent: true),
         new("Task.WaitAll of two calls", "Task.WaitAll([[{call}]], [[{call}]])", Value: FormValue.Nothing, AssertionsObserved: true),
         new("Task.WaitAny of an array", "Task.WaitAny(new[] { [[{call}]], [[{call}]] })", Value: FormValue.Index),
         new("Task.WaitAll of an array", "Task.WaitAll(new[] { [[{call}]], [[{call}]] })", Value: FormValue.Nothing, AssertionsObserved: true),
+        new("Task.WaitAll of a Task.WhenAll", "Task.WaitAll(Task.WhenAll([[{call}]], [[{call}]]))", Value: FormValue.Nothing, AssertionsObserved: true, AssertionsOnly: true),
+        // Task.WaitAll waits for the WhenAny as a plain Task, a task that never faults, reported where it converts.
+        new("Task.WaitAll of a Task.WhenAny", "Task.WaitAll([[Task.WhenAny({call}, {call})]])", Combinator: "WhenAny", Value: FormValue.Nothing, AssertionsOnly: true),
+        new("Task.WaitAny of a Task.WhenAll", "Task.WaitAny(Task.WhenAll([[{call}]], [[{call}]]))", Value: FormValue.Index, AssertionsOnly: true),
 
         new("Task.WhenAll of a query", "Task.WhenAll(from i in Enumerable.Range(0, 2) select {call}){w}", Combinator: "WhenAll", AwaitDrops: false),
         new("Task.WhenAll of a list", "Task.WhenAll(Enumerable.Range(0, 2).Select(i => {call}).ToList()){w}", Combinator: "WhenAll", AwaitDrops: false),

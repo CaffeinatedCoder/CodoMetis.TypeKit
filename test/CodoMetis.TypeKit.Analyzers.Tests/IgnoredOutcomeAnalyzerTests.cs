@@ -191,6 +191,69 @@ public sealed class IgnoredOutcomeAnalyzerTests
             """)
             .RunAsync(TestContext.Current.CancellationToken);
 
+    /// <summary>
+    /// A <c>Task.WhenAny</c> inside a <c>Task.WhenAll</c> or a <c>Task.Run</c> completes with the faulted assertion
+    /// as its value, so awaiting the outer task sees no failure (#165). Awaiting what the <c>WhenAny</c> completes
+    /// with sees it.
+    /// </summary>
+    [Fact]
+    public Task An_assertion_a_nested_WhenAny_completes_with_reports_and_awaited_twice_is_silent() =>
+        TestWithAssertions(
+            """
+            public static class Caller
+            {
+                public static async Task Check(Task<Option<int>> first, Task<Option<int>> second)
+                {
+                    {|#0:await Task.WhenAll(Task.WhenAny(first.ShouldBeNone(), second.ShouldBeNone()))|};
+                    {|#1:await Task.Run(() => Task.WhenAny(first.ShouldBeNone(), second.ShouldBeNone()))|};
+                    {|#2:Task.WhenAll(Task.WhenAny(first.ShouldBeNone(), second.ShouldBeNone())).Wait()|};
+                    Func<Task> check = () => {|#3:Task.WhenAll(Task.WhenAny(first.ShouldBeNone(), second.ShouldBeNone()))|};
+                    await await Task.WhenAny(first.ShouldBeNone(), second.ShouldBeNone());
+                    await Task.WhenAll(Task.WhenAll(first.ShouldBeNone(), second.ShouldBeNone()));
+                }
+            }
+            """,
+            Cmtk0003(0, "Task", "WhenAll"),
+            Cmtk0003(1, "Task", "Run"),
+            Cmtk0003(2, "Task", "WhenAll"),
+            Cmtk0003(3, "Task", "WhenAll"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A <c>catch</c> around an awaited assertion in an <c>async</c> lambda keeps its failure only when it can: a
+    /// <c>catch</c> that throws again, one of a type that cannot hold a <c>TypeKitAssertionException</c>, a look-alike
+    /// of that name among them, or one whose filter is a constant <c>false</c> hands it on to the dropped task (#166).
+    /// </summary>
+    [Fact]
+    public Task An_assertion_a_catch_cannot_keep_reports_and_one_it_keeps_is_silent() =>
+        TestWithAssertions(
+            """
+            using System.Linq;
+
+            public static class Lookalike
+            {
+                public sealed class TypeKitAssertionException : Exception { }
+            }
+
+            public static class Caller
+            {
+                public static void Check(Task<Option<int>> pending)
+                {
+                    {|#0:Task.WhenAll(new[] { pending }.Select(async item => { try { await item.ShouldBeNone(); } catch { throw; } }))|};
+                    {|#1:Task.WhenAll(new[] { pending }.Select(async item => { try { await item.ShouldBeNone(); } catch (OperationCanceledException) { } }))|};
+                    {|#2:Task.WhenAll(new[] { pending }.Select(async item => { try { await item.ShouldBeNone(); } catch (Exception) when (false) { } }))|};
+                    {|#3:Task.WhenAll(new[] { pending }.Select(async item => { try { await item.ShouldBeNone(); } catch (Lookalike.TypeKitAssertionException) { } }))|};
+                    Task.WhenAll(new[] { pending }.Select(async item => { try { await item.ShouldBeNone(); } catch (TypeKitAssertionException) { } }));
+                    Task.WhenAll(new[] { pending }.Select(async item => { try { await item.ShouldBeNone(); } catch (Exception exception) when (exception.Data.Count == 0) { } }));
+                }
+            }
+            """,
+            Cmtk0003(0, "Task", "WhenAll"),
+            Cmtk0003(1, "Task", "WhenAll"),
+            Cmtk0003(2, "Task", "WhenAll"),
+            Cmtk0003(3, "Task", "WhenAll"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
     [Fact]
     public void The_descriptor_is_the_published_contract()
     {
