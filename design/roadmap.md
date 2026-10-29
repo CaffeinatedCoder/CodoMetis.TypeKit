@@ -58,10 +58,15 @@ Small, each closable in a minor version. Found by the reviews named.
   converters' trimming warnings decide whether it is a package ([decision 71](adr/0071-converters-say-what-they-write.md)).
 - A stable external name for a closed-set member, apart from its C# identifier: parsing, JSON, EF,
   OpenAPI and the fault identifiers at once (proposed in the review of 2026-10-13).
-- The Metalama 2027.0 upgrade, once it is stable (`2027.0.4-preview` on 2026-10-14;
-  [decision 4](adr/0004-metalama-2026-1-x-latest-stable.md)): a minor if a consumer's own aspects beside
-  the packed generators still build and weave, measured as the fabric spike measured 2026.1 against the
-  2027.0 preview, and a major otherwise; `[Durable]` returns to the `_value` placeholder with it.
+- The Metalama 2027.0 upgrade, in 2.5.0 (#173), once 2027.0 is stable (`2027.0.4-preview` on 2026-10-14;
+  [decision 4](adr/0004-metalama-2026-1-x-latest-stable.md)), for both targets at once and with 2.3 and 2.4 on
+  2026.1 ([decision 120](adr/0120-a-net11-0-target-keeps-every-build-and-may-add-unions.md)). It raises a floor in
+  a minor, which is Metalama's standing rule alone: a project that references `Metalama.Framework` 2026.1
+  directly gets NU1605 and stays on TypeKit 2.4.x or raises its reference, and a woven `net11.0` project moves
+  from C# 14 to 15. Its conditions: a build with no Metalama license passes in CI and a clean container on 2027
+  (#170), the weaving review and the smoke test run on it, the changelog and the Generators README name the
+  ceiling, the language-version change, the supported IDEs and what Metalama 2027 drops, and the release notes
+  say whether 2.4.x is patched. `[Durable]` returns to the `_value` placeholder with it.
 - A `net11.0` target beside `net10.0`, in a 2.x minor when a feature needs it ([decision 44](adr/0044-2-0-0-net10-0-metalama.md)),
   on the terms of [decision 120](adr/0120-a-net11-0-target-keeps-every-build-and-may-add-unions.md): the
   `net10.0` group's dependency floors kept, since a higher floor on `net11.0` fails an application that holds the
