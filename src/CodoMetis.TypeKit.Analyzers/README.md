@@ -139,7 +139,8 @@ it as they treat a value object.
 A value object in a project without the generators would compile with nothing in it. This rule turns
 that into an error.
 
-The generators apply through a transitive project fabric, not an attribute on the interfaces, which
+The generators are built on [Metalama](https://postsharp.net/metalama), which generates C# code at
+compile time from templates written in C#. They apply through a transitive project fabric, not an attribute on the interfaces, which
 keeps the base package free of Metalama. The price is that a project that sees the interfaces but
 not the generators compiles a value object with nothing in it, silently. A closed set fails to
 compile there anyway, on the interface members nobody implemented, and the rule says why.

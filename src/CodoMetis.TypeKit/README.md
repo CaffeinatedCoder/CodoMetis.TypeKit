@@ -2,7 +2,10 @@
 
 The base package of TypeKit. It gives you `Option<T>` and `Result<T, TError>` that you can't misuse,
 and the interfaces that value objects and closed sets (smart enums) are generated from. It brings no
-code generator and no Metalama, only the types and the analyzers that check them.
+code generator, only the types and the analyzers that check them. TypeKit's generators are built on
+[Metalama](https://postsharp.net/metalama), which generates C# code at compile time from templates
+written in C#. They live in `CodoMetis.TypeKit.Generators`, so this package never brings Metalama into
+your project.
 
 What it does for you:
 

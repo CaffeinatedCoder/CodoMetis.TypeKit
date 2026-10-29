@@ -246,6 +246,10 @@ READMEs is compiled, and the outputs it states are tested.
 
 ## Packages
 
+One package uses [Metalama](https://postsharp.net/metalama), a framework that generates C# code at
+compile time from templates written in C#. TypeKit's generators are built on it. The last column
+shows which package brings it.
+
 | Package | What it does | Metalama |
 |---|---|---|
 | [CodoMetis.TypeKit](src/CodoMetis.TypeKit/README.md) | `Option<T>`, `Result<T, TError>` and `Result<TError>`, the interfaces value objects are built on, `Patch<T>`, and the text guards `AsText()` and `AsIdentifier()`. Brings the analyzers that check them | no |
