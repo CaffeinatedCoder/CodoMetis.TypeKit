@@ -191,7 +191,8 @@ public sealed partial class ReleaseWiringTests
         {
             var job = Job(BuildWorkflow, name);
 
-            job.ShouldMatch(JobKey("needs", @"\[\s*test,\s*changes\s*\]"), $"dotnet.yml:{name} does not need [ test, changes ], so it cannot read the changes job's output.");
+            job.ShouldMatch(JobKey("needs", @"\[\s*changes\s*\]"),
+                $"dotnet.yml:{name} does not need [ changes ] alone: without changes it cannot read its output, and with test it waits for the slowest test leg, which it does not use (#72).");
             job.ShouldMatch(JobKey("if", Regex.Escape("needs.changes.outputs.product == 'true'")),
                 $"dotnet.yml:{name} is not conditioned on `needs.changes.outputs.product == 'true'`, so it runs on every pull request again.");
         }
