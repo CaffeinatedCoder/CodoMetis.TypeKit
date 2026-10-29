@@ -4,7 +4,7 @@ What is open, and nothing else. Done work is in the [changelog](../CHANGELOG.md)
 item names the decision that scoped it, or the review that found it. A Warning may learn and a
 refusal may relax in any minor version; an Error that reports more waits for a major
 ([decision 34](adr/0034-errors-fixed-within-major-version-warnings.md)), unless only that minor version's
-new API can write the form ([decision 117](adr/0117-an-error-may-learn-a-form-only-new-api-can-write.md)).
+new API can write the form ([decision 118](adr/0118-an-error-may-learn-a-form-only-new-api-can-write.md)).
 
 ## 2.2.0, consolidation
 

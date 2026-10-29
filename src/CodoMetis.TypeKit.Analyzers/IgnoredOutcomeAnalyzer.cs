@@ -164,7 +164,7 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     /// It is judged as every dropped call is, through <see cref="Producers"/>: passed through
     /// <c>ConfigureAwait</c> or <c>WaitAsync</c>, or reached through a branch of a conditional, a
     /// <c>??</c> or a <c>switch</c> expression. Every such assertion is new in 2.3, so reporting its drop
-    /// breaks no build that worked before (design/adr/0117).
+    /// breaks no build that worked before (design/adr/0118).
     /// </summary>
     private static bool IsPendingAssertion(IMethodSymbol method, Tasks tasks) =>
         TypeKitSymbols.IsTestingAssembly(method.ContainingAssembly)

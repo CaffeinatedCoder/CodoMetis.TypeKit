@@ -1,4 +1,4 @@
-# 0117. An Error may learn, in a minor version, a form only that version's new API can write
+# 0118. An Error may learn, in a minor version, a form only that version's new API can write
 
 Date: 2026-10-29
 Status: accepted
