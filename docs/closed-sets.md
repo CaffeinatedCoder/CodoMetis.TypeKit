@@ -252,3 +252,5 @@ text of each.
 - **Data that varies per occurrence.** A member's data is constant, declared once. An error that
   carries what was rejected (`OutsidePeriod(date)`) is a job for a discriminated union. C# 15 unions
   cover that, and whether TypeKit builds on them is a question for 3.0.0.
+
+<!-- CI lanes demo (#123): a docs-only change, never merged. -->
