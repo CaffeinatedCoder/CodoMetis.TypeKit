@@ -1,4 +1,4 @@
-# 0120. A `net11.0` target joins a 2.x minor only if it keeps every build, and may add C# 15 unions; 3.0.0 stays the change of an existing contract
+# 0120. A `net11.0` target and a documented dependency-floor raise join a 2.x minor, and so may a C# 15 union; 3.0.0 stays the change of an existing contract
 
 Date: 2026-10-29
 Status: accepted
@@ -7,8 +7,8 @@ Context: 2026-10-29, issue #169; refines [decision 44](0044-2-0-0-net10-0-metala
 `net11.0` target is additive and joins a 2.x minor when a feature needs it, and that unions and the `net10.0`
 drop are 3.0.0, timed to .NET 12 LTS. The maintainer asked what making 3.0.0 the .NET 11 release would
 change, and decided, in these words: "stick to the original plans regarding 3.0.0, add details to new 2.x
-minors and .NET 11 related specifics". On Metalama 2027 the maintainer decided the same day (see the
-Metalama paragraph). .NET 11 is a release candidate (SDK 11.0.100-rc.1 measured here, RC2
+minors and .NET 11 related specifics". On Metalama 2027, and on floor raises in general, the maintainer decided
+the same day (see the first rule and the Metalama paragraph). .NET 11 is a release candidate (SDK 11.0.100-rc.1 measured here, RC2
 named in [KB-046](../knowledge/KB-046-csharp-15-unions-ship-with-the-net-11-sdk.md)), with general
 availability expected in November 2026.
 
@@ -29,18 +29,24 @@ and their pattern matching would differ between two versions of the same member.
 exists on `net11.0` only, is an addition like any other, and may join a 2.x minor (second rule below). A minor
 that fixes bugs for every consumer and adds to `net11.0` alone is a plain 2.x minor.
 
-**A `net11.0` asset joins a 2.x minor when a feature needs it, and only if it keeps every consumer's build.**
-No patch adds a target. The next minor after the one in flight carries it; the number is not reserved here.
-It holds when:
+**A `net11.0` asset joins a 2.x minor when a feature needs it, on these rules.** No patch adds a target. The next
+minor after the one in flight carries it; the number is not reserved here.
 
-1. **Its dependency groups keep the `net10.0` group's floors.** An application on `net11.0` may hold the lower
-   version of a satellite's dependency (EF Core 10 and Microsoft.AspNetCore.OpenApi 10 are `net10.0` packages,
-   which a `net11.0` project may reference).
-   NuGet picks the `net11.0` group for it, and a floor that group raises is a downgrade error, NU1605,
-   on update (measured below). The satellites compile against the floors they have and are *tested* against
-   EF Core 11 and OpenAPI 11. A feature that needs an API only EF Core 11 or OpenAPI 11 has waits for 3.0.0,
-   unless it lives in a package no consumer has installed yet. Raising a floor is a release decision, and in
-   a 2.x minor it is refused, except for Metalama, which has a rule of its own below.
+1. **A dependency floor may rise in a minor, documented, on every target or on `net11.0` alone.** It is a
+   dependency update with an unchanged public API, which the Semantic Versioning FAQ calls compatible, leaving the
+   conflict to whoever references the dependency at a lower version. The conflict is real, and measured: an
+   application on `net11.0` that holds EF Core 10 (or Microsoft.AspNetCore.OpenApi 10) while the `net11.0` group
+   requires 11 fails restore with NU1605, an error by default (below). So a raise:
+   - has a reason, a feature, a fix or a supported version, and is the lowest floor that does the work;
+   - is a release decision named in the changelog "Changed": the dependency, the old and the new floor, the
+     targets it covers, who it reaches (a project that references the dependency at a lower version) and both
+     ways out (raise that reference, or stay on the previous minor);
+   - changes no public API and no generated member; a consequence beyond the restore (a compiler, a language
+     version, a supported IDE, a translation, a schema) is assessed on its own and documented, as Metalama's is
+     below;
+   - is shown by the smoke test: a consumer that holds the lower version gets the NU1605 the changelog
+     describes. The satellites may compile against EF Core 11 and OpenAPI 11 and require them in the `net11.0`
+     group.
 2. **Its public surface is a superset of `net10.0`'s, and a shared member behaves the same on both.** A member
    only `net11.0` has is available on that target alone, and the changelog says so. That includes members that
    use C# 15 unions or `closed` types: the `net10.0` asset has none of them, and a `net11.0` consumer who does
@@ -76,11 +82,12 @@ the compiler either, Metalama's does, so what such a project compiles with follo
 
 **Metalama is one version for every target of a release, and TypeKit follows the maintained Metalama year in a
 minor.** The Generators package stays on Metalama 2026.1 in 2.3 and 2.4, and 2.5.0 moves both targets to 2027.0
-once it is stable. The version never differs between the `net10.0` and `net11.0` assets: NuGet resolves one
+once it is stable. Other floors may differ between targets (first rule); this one never does: NuGet resolves one
 `Metalama.Framework` per project, that version brings the engine and Metalama's compiler, and different floors
 per target would give a consumer that multi-targets two compilers for its two inner builds (LAMA0054 refuses a
-project whose `Metalama.Framework` is newer than its engine). This is a standing rule for Metalama alone, not
-a general permission: every other dependency keeps the first rule.
+project whose `Metalama.Framework` is newer than its engine). The raise itself is the first rule applied to the
+dependency with the widest reach: Metalama is also the compiler of the consumer's woven projects, so it carries
+the extra consequences below.
 
 It is not new. 1.5.0, a minor, raised the floor from 2026.1.28 to 2026.1.29 (`CHANGELOG.md`, 1.5.0 "Changed"),
 the same restore mechanism in a smaller step, because ADR 4 follows the only line Metalama's MIT maintenance
@@ -177,8 +184,9 @@ the machine), and so did the review's run in a clean `mcr.microsoft.com/dotnet/s
 file; the same with 2026.1.30. Not established: the general-availability build, the IDEs, and
 `Metalama.Patterns` beside it.
 
-Adding a target is not additive by itself, though. The roadmap's "EF Core 11 and Microsoft.AspNetCore.OpenApi
-11 in the satellites" is that case, and reads as the test lane in the first rule above from now on.
+Adding a target is not additive for a consumer on a lower version of a dependency, though. The roadmap's "EF Core
+11 and Microsoft.AspNetCore.OpenApi 11 in the satellites" is that case. It is allowed and documented under the
+first rule, and the test lane of that rule shows it.
 
 ## Consequences
 
