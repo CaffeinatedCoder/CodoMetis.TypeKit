@@ -1,0 +1,56 @@
+- name: Home
+  href: ../README.md
+- name: Guides
+  items:
+    - name: Value objects
+      href: ../docs/value-objects.md
+    - name: Closed sets
+      href: ../docs/closed-sets.md
+    - name: Option
+      href: ../docs/option.md
+    - name: Result
+      href: ../docs/result.md
+    - name: Written text
+      href: ../docs/text.md
+    - name: Type constraints
+      href: ../docs/type-constraints.md
+    - name: Merge patches
+      href: ../docs/merge-patches.md
+    - name: JSON
+      href: ../docs/json.md
+    - name: EF Core
+      href: ../docs/ef-core.md
+    - name: ASP.NET Core
+      href: ../docs/aspnet-core.md
+    - name: Native AOT
+      href: ../docs/native-aot.md
+    - name: Logging and secrets
+      href: ../docs/logging-and-secrets.md
+    - name: Testing
+      href: ../docs/testing.md
+    - name: Migrating from 2.0 to 2.1
+      href: ../docs/migrating-to-2-1.md
+    - name: Migrating from 1.5 to 2.0
+      href: ../docs/migrating-to-2.md
+    - name: How it compares
+      href: ../docs/comparison.md
+- name: Reference
+  items:
+    - name: CodoMetis.TypeKit
+      href: ../src/CodoMetis.TypeKit/README.md
+    - name: CodoMetis.TypeKit.Analyzers
+      href: ../src/CodoMetis.TypeKit.Analyzers/README.md
+    - name: CodoMetis.TypeKit.Generators
+      href: ../src/CodoMetis.TypeKit.Generators/README.md
+    - name: CodoMetis.TypeKit.EntityFrameworkCore
+      href: ../src/CodoMetis.TypeKit.EntityFrameworkCore/README.md
+    - name: CodoMetis.TypeKit.AspNetCore
+      href: ../src/CodoMetis.TypeKit.AspNetCore/README.md
+    - name: CodoMetis.TypeKit.Serilog
+      href: ../src/CodoMetis.TypeKit.Serilog/README.md
+    - name: CodoMetis.TypeKit.Testing
+      href: ../src/CodoMetis.TypeKit.Testing/README.md
+- name: API
+  href: obj/api/
+- name: Changelog
+  href: ../CHANGELOG.md
