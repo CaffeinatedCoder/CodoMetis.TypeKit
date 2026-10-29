@@ -172,6 +172,25 @@ public sealed class QueryTranslationVariantTests
         all.Count(@case => Expect(@case) is NullsLeftOut).ShouldBeGreaterThan(5);
     }
 
+    /// <summary>
+    /// A guard on the harness: one seeded database read by many cases at once, as this class and
+    /// <see cref="SqlServerQueryVariantTests"/> read it from two collections, answers each the same rows, never
+    /// "database is locked" (#148).
+    /// </summary>
+    [Fact]
+    public void A_seeded_database_read_by_many_cases_at_once_answers_each_alike()
+    {
+        var @case = QueryShapes.All().First(@case => @case is { Op: Op.OrderBy, Site: Site.Nullable } && Run(@case, valueObject: true).Rows is not null);
+        var first = Run(@case, valueObject: true);
+
+        var answers = new ConcurrentBag<Answer>();
+        Parallel.For(0, 400, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(8, Environment.ProcessorCount * 2) },
+                     _ => answers.Add(Run(@case, valueObject: true)));
+
+        answers.ShouldAllBe(answer => answer.Refusal == null && answer.Rows!.SequenceEqual(first.Rows!),
+                            answers.FirstOrDefault(answer => answer.Refusal != null) is { } refused ? Shown(refused) : null);
+    }
+
     internal abstract record Expectation;
 
     /// <summary>Answers as the same query over the wrapped type.</summary>
@@ -249,7 +268,11 @@ public sealed class QueryTranslationVariantTests
 
     internal sealed record Answer(string[]? Rows, string? Sql, Exception? Refusal);
 
-    /// <summary>One in-memory SQLite database per model, seeded once and only read.</summary>
+    /// <summary>
+    /// One in-memory SQLite database per model, seeded once and only read, one query at a time: a connection is not
+    /// thread-safe, and <see cref="SqlServerQueryVariantTests"/> reads the same databases from its own collection, in
+    /// parallel with this one, where two commands at once are "database is locked" (#148).
+    /// </summary>
     private static readonly ConcurrentDictionary<string, Lazy<(SqliteConnection Connection, Exception? Refusal)>> Databases = new();
 
     internal static Answer Run(QueryCase @case, bool valueObject)
@@ -262,16 +285,19 @@ public sealed class QueryTranslationVariantTests
         var (connection, refusal) = Databases.GetOrAdd(key, _ => new Lazy<(SqliteConnection, Exception?)>(() => Seeded(model, builder))).Value;
         if (refusal is not null) return new Answer(null, null, refusal);
 
-        using var db = QueryDb.Create(model, connection);
-        try
+        lock (connection)
         {
-            var set = (IQueryable)typeof(DbContext).GetMethod(nameof(DbContext.Set), Type.EmptyTypes)!.MakeGenericMethod(builder.Source).Invoke(db, null)!;
-            var (query, ordered) = builder.Build(set.Expression);
-            return Execute(set.Provider, query, ordered, sql: true);
-        }
-        catch (Exception exception) when (exception is not ShouldAssertException)
-        {
-            return new Answer(null, null, Unwrapped(exception));
+            using var db = QueryDb.Create(model, connection);
+            try
+            {
+                var set = (IQueryable)typeof(DbContext).GetMethod(nameof(DbContext.Set), Type.EmptyTypes)!.MakeGenericMethod(builder.Source).Invoke(db, null)!;
+                var (query, ordered) = builder.Build(set.Expression);
+                return Execute(set.Provider, query, ordered, sql: true);
+            }
+            catch (Exception exception) when (exception is not ShouldAssertException)
+            {
+                return new Answer(null, null, Unwrapped(exception));
+            }
         }
     }
 
