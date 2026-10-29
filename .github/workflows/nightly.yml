@@ -1,0 +1,48 @@
+# Runs the build workflow with every lane, once a night, on main and on every release branch
+# (design/adr/0113-ci-runs-the-lanes-a-change-can-affect.md). Pull requests into a release branch run only the
+# lanes their changes can affect, so this is where the runner images, the SDK band global.json admits, the
+# PostgreSQL image and nuget.org's packages in the smoke consumers are met when nothing is pushed.
+#
+# It dispatches dotnet.yml rather than running it: a schedule runs only from the default branch, and a dispatch
+# runs on the branch it names. Events the GITHUB_TOKEN raises start no run, except a dispatch (KB-043), which is
+# why the job needs actions: write and nothing more. GitHub turns a public repository's schedule off after 60
+# days without activity, so nothing depends on this: the release calls dotnet.yml itself.
+
+name: Nightly
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  dispatch:
+    name: Dispatch the build workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      actions: write   # dispatch dotnet.yml; nothing else
+
+    steps:
+      - name: Dispatch dotnet.yml on main and every release branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          branches="$(gh api "repos/$GH_REPO/branches" --paginate --jq '.[].name | select(. == "main" or startswith("release/"))')"
+          if [[ -z "$branches" ]]; then
+            echo "::error::No main or release/* branch to dispatch the build workflow on."
+            exit 1
+          fi
+          while IFS= read -r branch; do
+            echo "==> dotnet.yml on $branch"
+            gh workflow run dotnet.yml --ref "$branch"
+          done <<< "$branches"

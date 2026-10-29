@@ -12,7 +12,10 @@
 # validates it against a policy configured there, and issues an API key valid for one hour. A
 # compromise of this repository's secrets yields nothing that can publish.
 #
-# Three jobs on purpose: everything that can fail runs unattended, only the push waits behind the
+# First the build workflow, called with every lane (dotnet.yml under workflow_call; design/adr/0113): the
+# Windows and macOS legs and both smoke-test modes, which a pull request may have skipped.
+#
+# Then three jobs on purpose: everything that can fail runs unattended, only the push waits behind the
 # environment's approval gate, and the GitHub release is created afterwards. A reviewer is asked
 # once the full suite has already passed, and no OIDC token is minted until they approve. The job
 # that can mint a token cannot write to the repository, and the job that can write to the repository
@@ -66,9 +69,17 @@ env:
   NUGET_SOURCE: https://api.nuget.org/v3/index.json
 
 jobs:
+  # Every lane of the build workflow, on the commit this run publishes. Its jobs show as "CI / ...".
+  ci:
+    name: CI
+    uses: ./.github/workflows/dotnet.yml
+    permissions:
+      contents: read
+
   verify:
     name: Verify and pack
     runs-on: ubuntu-latest
+    needs: ci
 
     permissions:
       contents: read   # deliberately nothing more: this job runs unattended and must not mint a token

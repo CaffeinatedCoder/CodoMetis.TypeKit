@@ -179,9 +179,10 @@ The packages share one version and are released together, only through
    contract from then on. `ChangelogTests` fails until steps 2 and 3 agree.
 4. Commit on the release branch, open its PR into `main` (`chore` and `area/release`, the version's
    milestone, `Closes #<epic>`), and merge it with a merge commit. Tag that
-   merge commit and push the tag: `git tag v1.0.0 && git push origin v1.0.0`. The workflow checks the tag
-   against `Version` and the dated heading, runs the suite and the smoke test, and waits for approval
-   in the `nuget` environment before pushing. Delete the release branch once the tag is pushed.
+   merge commit and push the tag: `git tag v1.0.0 && git push origin v1.0.0`. The workflow runs every
+   lane of the build workflow (Linux, Windows and macOS, the pack and both smoke tests), checks the tag
+   against `Version` and the dated heading, runs the suite and the smoke test on what it packs, and waits
+   for approval in the `nuget` environment before pushing. Delete the release branch once the tag is pushed.
 5. Afterwards: raise `Version` in `Directory.Build.props`, set `PackageValidationBaselineVersion` to
    the version just released, so ApiCompat guards the public surface from then on, and open a new
    `## <version> — Unreleased` section. `ChangelogTests` fails while the baseline trails the last
