@@ -2200,5 +2200,175 @@
     "heldBy": [
       "NotWireTypeTests"
     ]
+  },
+  {
+    "id": "W01-answers-are-real",
+    "source": "docs/walkthrough.md#walkthrough-one-orders-service",
+    "quote": "CI runs it on every change, and builds it from the packed packages too, so every answer below is one it really gives",
+    "claim": "CI runs it on every change, and builds it from the packed packages too, so every answer below is one it really gives",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit",
+      "TypeKitHttpResultExtensions.ToHttpResult",
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit",
+      "TypeKitSerilogExtensions.WithTypeKit"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W02-a-column-of-the-underlying-type",
+    "source": "docs/walkthrough.md#store-them",
+    "quote": "The id is a `TEXT` key, as a `Guid` is on SQLite, and the quantity an `INTEGER`. The status is its member's name.",
+    "claim": "The id is a `TEXT` key, as a `Guid` is on SQLite, and the quantity an `INTEGER`. The status is its member's name.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit",
+      "ClosedSetConverter.*",
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W03-json-reads-through-create",
+    "source": "docs/walkthrough.md#place-an-order",
+    "quote": "So the handler receives `ann@example.com`, trimmed, and never sees the spaces.",
+    "claim": "So the handler receives `ann@example.com`, trimmed, and never sees the spaces.",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedJson.*",
+      "StringTextExtensions.*",
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W04-json-writes-the-string",
+    "source": "docs/walkthrough.md#place-an-order",
+    "quote": "the JSON is the underlying type's: `\"email\":\"ann@example.com\"`, a plain string, and the closed set is its name",
+    "claim": "the JSON is the underlying type's: `\"email\":\"ann@example.com\"`, a plain string, and the closed set is its name",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedJson.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W05-log-masks",
+    "source": "docs/walkthrough.md#place-an-order",
+    "quote": "`Destructure.WithTypeKit()` logs each value object as what its `ToString()` prints.",
+    "claim": "`Destructure.WithTypeKit()` logs each value object as what its `ToString()` prints.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitSerilogExtensions.WithTypeKit"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W06-rejections-never-quote",
+    "source": "docs/walkthrough.md#reject-what-doesnt-fit",
+    "quote": "Each of these is a 400 with problem details, and none of them quotes what the client sent",
+    "claim": "Each of these is a 400 with problem details, and none of them quotes what the client sent",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedJson.*",
+      "GeneratedParsing.*"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W07-none-is-a-404",
+    "source": "docs/walkthrough.md#find-an-order",
+    "quote": "`ToResult` turns a missing order into the error `NotFound`, and `ToHttpResult()` answers it with the status the setup maps it to, as problem details.",
+    "claim": "`ToResult` turns a missing order into the error `NotFound`, and `ToHttpResult()` answers it with the status the setup maps it to, as problem details.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitQueryableExtensions.*",
+      "TypeKitHttpResultExtensions.ToHttpResult"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W08-left-out-errors-leave-the-document",
+    "source": "docs/walkthrough.md#find-an-order",
+    "quote": "The OpenAPI document then shows only the 404 for it, where it would otherwise list every status `OrderFault` maps to.",
+    "claim": "The OpenAPI document then shows only the 404 for it, where it would otherwise list every status `OrderFault` maps to.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitWithoutFaultsEndpointConventionBuilderExtensions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W09-value-is-the-column",
+    "source": "docs/walkthrough.md#query-on-value",
+    "quote": "In the query, `order.Quantity.Value` is the `Quantity` column itself, so the comparison runs in the database.",
+    "claim": "In the query, `order.Quantity.Value` is the `Quantity` column itself, so the comparison runs in the database.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.Value",
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W10-patch-reads-through-create",
+    "source": "docs/walkthrough.md#change-an-order",
+    "quote": "Each field reads its value through its own `Create`, so `{\"quantity\":0}` is a 400 like any other body.",
+    "claim": "Each field reads its value through its own `Create`, so `{\"quantity\":0}` is a 400 like any other body.",
+    "oracle": "claim",
+    "surfaces": [
+      "PatchJsonConverterFactory.*",
+      "GeneratedJson.*"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W11-document-describes-the-underlying-type",
+    "source": "docs/walkthrough.md#read-the-openapi-document",
+    "quote": "`AddTypeKit()` describes every value object as the schema of the type inside it",
+    "claim": "`AddTypeKit()` describes every value object as the schema of the type inside it",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W12-closed-set-is-a-string-enum",
+    "source": "docs/walkthrough.md#read-the-openapi-document",
+    "quote": "**The closed set** is a string enum of its names.",
+    "claim": "**The closed set** is a string enum of its names.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
   }
 ]

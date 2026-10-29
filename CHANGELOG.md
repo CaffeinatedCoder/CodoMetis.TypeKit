@@ -20,6 +20,7 @@ section is the GitHub release's notes.
 - `Fault<TFault>.Cause`: `Fault.Of(reason, detail, exception)` keeps the exception underneath for your log; equality and `ToString()` leave it out, and `ToHttpResult()` hands it to the host as `IFaultFeature.Cause` and `FaultProblem<TFault>.Cause`, never into the problem ([What failed underneath](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.AspNetCore/README.md#what-failed-underneath)).
 - Testing: every assertion works on a `Task` or `ValueTask` of what it checks, `await service.FindAsync(id).ShouldBeSome()`; a task that throws fails the test with its own exception, and an assertion left without `await` is reported (CMTK0003) ([CodoMetis.TypeKit.Testing](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Testing/README.md)).
 - Analyzers: a validated value object without `Create` gets a code fix, **Add Create**, that writes a `Create` accepting every value, ready for your rules ([Add Create](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#add-create)).
+- Docs: a walkthrough follows one orders service from request to response, saying what changes at each boundary; the service is a sample that CI builds from the packages and runs, and the answers the page states are checked against it ([Walkthrough](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/walkthrough.md)).
 
 ### Changed
 

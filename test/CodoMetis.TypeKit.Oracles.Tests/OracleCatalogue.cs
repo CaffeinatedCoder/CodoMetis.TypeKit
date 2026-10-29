@@ -47,6 +47,7 @@ internal static partial class OracleCatalogue
         "docs/merge-patches.md",
         "docs/ef-core.md",
         "docs/type-constraints.md",
+        "docs/walkthrough.md",
         "src/CodoMetis.TypeKit.AspNetCore/README.md",
         "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md",
         "src/CodoMetis.TypeKit.Generators/README.md",

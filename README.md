@@ -227,6 +227,7 @@ READMEs is compiled, and the outputs it states are tested.
 
 | Page | Covers |
 |---|---|
+| [Walkthrough](docs/walkthrough.md) | One orders service from request to response: value objects bound, validated, stored, queried, patched, logged and described, and what changes at each boundary |
 | [Value objects](docs/value-objects.md) | Declare one, pick a struct or a class, validate input, design its errors, pick the right factory, write your own members, generic code |
 | [Closed sets](docs/closed-sets.md) | Smart enums that carry data: declare one, handle every member with `Match`, send it as JSON, store it as a text column, read it from configuration, use one as an error type, and when an enum is still the right choice |
 | [Option](docs/option.md) | A value or nothing: create one, get the value out, combine options, convert at the boundary, and every public member |

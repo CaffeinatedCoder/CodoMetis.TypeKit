@@ -31,6 +31,17 @@
         <PackageReference Include="NodaTime.Serialization.SystemTextJson" />
     </ItemGroup>
 
+    <!--
+      docs/walkthrough.md shows a sample application, whose sources are the consumer smoke test's walkthrough
+      consumer, so that the packed packages build it too. Its regions are read there; this project compiles them
+      for WalkthroughTests, which runs the service in memory and reads the page with the smoke test's own reader.
+      Program.cs, the host, stays the consumer's.
+    -->
+    <ItemGroup>
+        <Compile Include="..\..\tools\ConsumerSmokeTest\Consumers\walkthrough\*.cs" Exclude="..\..\tools\ConsumerSmokeTest\Consumers\walkthrough\Program.cs" LinkBase="Walkthrough" />
+        <Compile Include="..\..\tools\ConsumerSmokeTest\WalkthroughPage.cs" LinkBase="Walkthrough" />
+    </ItemGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.Generators\CodoMetis.TypeKit.Generators.csproj" />
         <ProjectReference Include="..\..\src\CodoMetis.TypeKit.EntityFrameworkCore\CodoMetis.TypeKit.EntityFrameworkCore.csproj" />
