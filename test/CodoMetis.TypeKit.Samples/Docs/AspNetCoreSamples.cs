@@ -89,6 +89,13 @@ public static class Host
         // end sample
     }
 
+    public static void Inline(WebApplicationBuilder builder)
+    {
+        // sample: aspnet-core/inline
+        builder.Services.AddOpenApi(options => options.AddTypeKit(typeKit => typeKit.InlineValueObjects = true));
+        // end sample
+    }
+
     public static void Map(WebApplication app, ICustomers customers)
     {
 #pragma warning disable ASP0020 // the value objects are declared in this project, as the page says
@@ -136,7 +143,7 @@ public sealed partial class AspNetCoreTests
 {
     private const string Readme = "docs/aspnet-core.md";
 
-    private static async Task<(WebApplication App, InMemoryCustomers Customers)> StartAsync(bool customize = false)
+    private static async Task<(WebApplication App, InMemoryCustomers Customers)> StartAsync(bool customize = false, bool inline = false)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
         builder.WebHost.UseTestServer();
@@ -146,6 +153,7 @@ public sealed partial class AspNetCoreTests
         builder.Services.AddControllers().AddApplicationPart(typeof(CustomersController).Assembly);
         Host.Configure(builder);
         if (customize) Host.Customize(builder);
+        if (inline) Host.Inline(builder);   // a second AddTypeKit on the same document: the setting's names come first
 
         var app = builder.Build();
         app.MapOpenApi();
@@ -246,6 +254,24 @@ public sealed partial class AspNetCoreTests
         document.Component("ProblemDetails")["properties"].ShouldContainSchema(JsonNode.Parse("""{"fault":{"type":"string"}}""")!, "ProblemDetails, which the page says describes fault");
         var page = document["paths"]!["/customers"]!["get"]!["parameters"]!.AsArray().Single(parameter => parameter!["name"]!.GetValue<string>() == "page");
         page!["schema"]!["type"]!.ToJsonString().ShouldContain("integer", Case.Sensitive, "a query parameter is described as a parameter of the wrapped type, inline");
+    }
+
+    /// <summary>The component the page shows under "Describe value objects as plain types", read from its third JSON block.</summary>
+    [Fact]
+    public async Task With_InlineValueObjects_the_document_says_what_the_page_shows()
+    {
+        var (app, _) = await StartAsync(inline: true);
+        await using var _ = app;
+
+        var json = await app.GetTestClient().GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+        var document = JsonNode.Parse(json)!;
+        var shown = JsonBlocks()[2].AsObject();
+
+        foreach (var (name, schema) in shown) document.Component(name).ShouldContainSchema(schema!, name);
+        document["components"]!["schemas"]!.AsObject().Select(component => component.Key).ShouldNotContain("CustomerId");
+        document["components"]!["schemas"]!.AsObject().Select(component => component.Key).ShouldNotContain("Email");
+        var page = document["paths"]!["/customers"]!["get"]!["parameters"]!.AsArray().Single(parameter => parameter!["name"]!.GetValue<string>() == "page");
+        page!["schema"]!["type"]!.ToJsonString().ShouldContain("integer", Case.Sensitive, "a query parameter is still a parameter of the underlying type");
     }
 
     private static List<JsonNode> JsonBlocks() =>

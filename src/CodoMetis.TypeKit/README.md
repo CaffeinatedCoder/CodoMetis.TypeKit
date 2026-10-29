@@ -87,7 +87,8 @@ no last element until it is ordered.
 
 Write the predicate as a lambda at the call, which makes it an expression. A `Func<T, bool>` variable
 or a method group is no expression. It binds to the sequence's overload, which reads every row and
-runs the condition in memory. Hold an `Expression<Func<T, bool>>` instead.
+runs the condition in memory, and the analyzer warns at the call (CMTK0009). Hold an
+`Expression<Func<T, bool>>` instead.
 
 ### Get the value out
 

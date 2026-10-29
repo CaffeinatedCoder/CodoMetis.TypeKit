@@ -172,8 +172,16 @@ the design records cite commits by hash.
 The packages share one version and are released together, only through
 `.github/workflows/release.yml` (see [SECURITY.md](SECURITY.md)).
 
-1. Show every oracle seed caught: `dotnet tools/Oracles/bin/Release/net10.0/oracles.dll seeds` (a build of one
-   project per seed, locally; [test/oracles/README.md](test/oracles/README.md)).
+1. Check what the documents rest on, locally:
+   - Show every oracle seed caught: `dotnet tools/Oracles/bin/Release/net10.0/oracles.dll seeds` (a build of one
+     project per seed; [test/oracles/README.md](test/oracles/README.md)).
+   - Re-read the competitor facts that are due: `dotnet tools/DocsQuery/bin/Release/net10.0/docs-query.dll due --nuget`
+     lists each `design/knowledge/` entry pinned `external` whose `verified:` date is more than six months old, or
+     whose pinned package NuGet has a later release of. Read each again at the latest release, from its source and
+     release notes, then move its pins and `verified:` date, or correct it, and correct `docs/comparison.md` with it:
+     the version a table names, the cells, and the page's list of dates. Check every TypeKit cell of the page
+     against the release branch, and name the version being released in TypeKit's columns and the root README's
+     Status. The listing runs by hand and never in CI, because a build mustn't fail just because time passed.
 2. In `CHANGELOG.md`, replace `Unreleased` in the version's heading with today's date
    (`## 1.0.0 — 2026-10-01`). The section becomes the GitHub release's notes, and every package's
    release notes on nuget.org: pack writes it into each nuspec as plain text, and fails while the

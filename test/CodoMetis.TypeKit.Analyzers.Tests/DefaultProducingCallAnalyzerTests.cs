@@ -80,15 +80,17 @@ public sealed class DefaultProducingCallAnalyzerTests
     private static DiagnosticResult Cmtk0009(int location, string method, string type, string circumstance, string advice) =>
         new DiagnosticResult("CMTK0009", DiagnosticSeverity.Warning).WithLocation(location).WithArguments(method, type, circumstance, advice);
 
+    /// <summary>Both descriptors, the default instance's and the query condition's, are the one shipped rule.</summary>
     [Fact]
     public void The_descriptor_is_the_published_contract()
     {
-        var rule = new DefaultProducingCallAnalyzer().SupportedDiagnostics.ShouldHaveSingleItem();
+        var rules = new DefaultProducingCallAnalyzer().SupportedDiagnostics;
 
-        rule.Id.ShouldBe("CMTK0009");
-        rule.DefaultSeverity.ShouldBe(DiagnosticSeverity.Warning);
-        rule.Category.ShouldBe("Usage");
-        rule.IsEnabledByDefault.ShouldBeTrue();
+        rules.Length.ShouldBe(2);
+        rules.ShouldAllBe(rule => rule.Id == "CMTK0009"
+                               && rule.DefaultSeverity == DiagnosticSeverity.Warning
+                               && rule.Category == "Usage"
+                               && rule.IsEnabledByDefault);
     }
 
     [Fact]

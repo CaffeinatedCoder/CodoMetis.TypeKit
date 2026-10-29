@@ -45,11 +45,29 @@ public static class TypeKitOpenApiOptionsExtensions
     /// </remarks>
     /// <param name="options">The options of one OpenAPI document.</param>
     /// <returns>The same options.</returns>
-    public static OpenApiOptions AddTypeKit(this OpenApiOptions options)
+    public static OpenApiOptions AddTypeKit(this OpenApiOptions options) => AddTypeKit(options, static _ => { });
+
+    /// <summary>
+    /// Describes every value object in the document with the schema of the type it wraps, as
+    /// <see cref="AddTypeKit(OpenApiOptions)"/> does, with the settings <paramref name="configure"/> chooses.
+    /// </summary>
+    /// <remarks>
+    /// With <see cref="TypeKitOpenApiOptions.InlineValueObjects"/>, a value object is written in place wherever it
+    /// appears, and no component is named after one. Without a setting, the document is the one
+    /// <see cref="AddTypeKit(OpenApiOptions)"/> writes.
+    /// </remarks>
+    /// <param name="options">The options of one OpenAPI document.</param>
+    /// <param name="configure">Chooses the settings.</param>
+    /// <returns>The same options.</returns>
+    public static OpenApiOptions AddTypeKit(this OpenApiOptions options, Action<TypeKitOpenApiOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(configure);
 
-        ValueObjectSchemaReferenceIds.Apply(options);
+        var settings = new TypeKitOpenApiOptions();
+        configure(settings);
+
+        ValueObjectSchemaReferenceIds.Apply(options, settings.InlineValueObjects);
         PatchSchemaTransformer.Apply(options);
 
         return options.AddSchemaTransformer<ValueObjectSchemaTransformer>()

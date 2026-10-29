@@ -40,5 +40,11 @@
     "project": "CodoMetis.TypeKit.Tests",
     "kind": "completeness",
     "against": "every delegate parameter of the base package, by reflection, on every branch of its receiver"
+  },
+  {
+    "class": "SchemaTests",
+    "project": "CodoMetis.TypeKit.AspNetCore.Tests",
+    "kind": "differential",
+    "against": "the wrapped type's schema in the same document, property by property, with each value object a component and inlined, in OpenAPI 3.1, 3.0 and 2.0"
   }
 ]

@@ -34,8 +34,6 @@ Small, each closable in a minor version. Found by the reviews named.
   ([decision 114](adr/0114-a-value-object-s-temporary-number-is-its-wrapped-type-s.md)).
 
 **Analyzers**
-- CMTK0009, a Warning, reports `FirstOrNone`, `SingleOrNone` and `FirstOrError` on an `IQueryable<T>`
-  given a `Func<T, bool>` or a method group, which binds to the sequence overload and reads every row.
 - CMTK0003: `WhenAny` over held tasks; an async expression-bodied member in the IDE, where Metalama
   has not run; and decide whether a tap on a property or an indexer, and a result a cache's
   `GetOrAdd` still holds, are drops, which it reports today.
