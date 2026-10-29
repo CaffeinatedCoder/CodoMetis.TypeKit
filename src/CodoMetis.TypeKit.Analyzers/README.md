@@ -763,6 +763,10 @@ write. In 2.3.0, CMTK0003 reports a `CodoMetis.TypeKit.Testing` assertion on a `
 without `await`, and those assertions are new in 2.3.0. Your code from before the update can't contain
 one, so it builds as before.
 
+2.3.0 makes one exception. CMTK0003 now also reports `Task.WhenAny` over tasks of results left without
+`await`, which code from before 2.3.0 can contain. Such a line loses every result, so the build points at
+a real bug. Handle the results, or discard the task with `_ =`.
+
 A Warning or an Info may learn more forms in a minor version, such as another method that returns a
 default instance for CMTK0009. In a build that treats warnings as errors, such an update can report code
 that built before, as a newer compiler's warnings can.
