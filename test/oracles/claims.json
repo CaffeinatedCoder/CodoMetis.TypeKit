@@ -4759,6 +4759,22 @@
     ]
   },
   {
+    "id": "T02-a-wrapped-assertion-is-reported",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0003",
+    "quote": "It also reports an assertion passed through `ConfigureAwait` or `WaitAsync`, and one in a branch of a `?:`, `??` or `switch` expression, as it does for a dropped result.",
+    "claim": "It also reports an assertion passed through `ConfigureAwait` or `WaitAsync`, and one in a branch of a `?:`, `??` or `switch` expression, as it does for a dropped result.",
+    "oracle": "claim",
+    "surfaces": [
+      "OptionAssertions.*",
+      "ResultAssertions.*",
+      "PatchAssertions.*",
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "DroppedTaskVariantTests"
+    ]
+  },
+  {
     "id": "W01-answers-are-real",
     "source": "docs/walkthrough.md#walkthrough-one-orders-service",
     "quote": "CI runs it on every change, and builds it from the packed packages too, so every answer below is one it really gives",

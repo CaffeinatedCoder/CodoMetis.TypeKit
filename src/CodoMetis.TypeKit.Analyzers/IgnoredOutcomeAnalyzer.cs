@@ -141,29 +141,30 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         // task still held, await held.WaitAsync(t), nothing is dropped.
         var passedOn = tasks.PassedOn(dropped);
 
-        var reported = false;
         foreach (var invocation in Producers(dropped, tasks))
         {
             // The statement's own call keeps the statement's location, and its type unless a
             // pass-through stands between them; a branch's call keeps its own.
             var own  = ReferenceEquals(invocation, passedOn);
             var type = own && ReferenceEquals(invocation, dropped) ? expression.Type : awaited is null ? invocation.Type : tasks.Awaited(invocation.Type);
-            if (DroppedOutcome(type, invocation, symbols, tasks) is not { } outcome) continue;
+
+            // pending.ShouldBeSuccess(); asserts nothing: the assertion fails the test only through its task.
+            var outcome = DroppedOutcome(type, invocation, symbols, tasks)
+                       ?? (awaited is null && IsPendingAssertion(invocation.TargetMethod, tasks) ? invocation.Type?.Name ?? "Task" : null);
+            if (outcome is null) continue;
 
             context.Report(Diagnostic.Create(Rule, (own ? expression : invocation).Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
-            reported |= own;
         }
-
-        // pending.ShouldBeSuccess(); asserts nothing: the assertion fails the test only through its task.
-        if (!reported && awaited is null && passedOn is IInvocationOperation assertion && IsPendingAssertion(assertion.TargetMethod, tasks))
-            context.Report(Diagnostic.Create(Rule, expression.Syntax.GetLocation(), assertion.Type?.Name ?? "Task", assertion.TargetMethod.Name));
     }
 
     /// <summary>
     /// An assertion of CodoMetis.TypeKit.Testing on a <c>Task</c> or <c>ValueTask</c> of the value it
     /// asserts on, <c>await service.FindAsync(id).ShouldBeSome()</c>: it awaits the value and fails the
     /// test through the task it returns, so that task dropped unawaited passes whatever the value is.
-    /// Every such assertion is new in 2.3, so reporting its drop breaks no build that worked before.
+    /// It is judged as every dropped call is, through <see cref="Producers"/>: passed through
+    /// <c>ConfigureAwait</c> or <c>WaitAsync</c>, or reached through a branch of a conditional, a
+    /// <c>??</c> or a <c>switch</c> expression. Every such assertion is new in 2.3, so reporting its drop
+    /// breaks no build that worked before (design/adr/0117).
     /// </summary>
     private static bool IsPendingAssertion(IMethodSymbol method, Tasks tasks) =>
         TypeKitSymbols.IsTestingAssembly(method.ContainingAssembly)
@@ -446,13 +447,16 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         }
 
         /// <summary>
-        /// <c>ConfigureAwait</c> and <c>WaitAsync</c> of <c>Task&lt;T&gt;</c> or <c>ValueTask&lt;T&gt;</c>,
-        /// every overload: each completes with the task's own result and makes none.
+        /// <c>ConfigureAwait</c> and <c>WaitAsync</c> of <c>Task</c>, <c>Task&lt;T&gt;</c> or
+        /// <c>ValueTask&lt;T&gt;</c>, every overload: each completes as the task does, with its own result,
+        /// and makes none. A plain <c>Task</c> carries no result, but it can be the one an assertion of
+        /// CodoMetis.TypeKit.Testing returns (<see cref="IsPendingAssertion"/>).
         /// </summary>
         public bool PassesOn(IInvocationOperation call) =>
             call.TargetMethod is { IsStatic: false, Name: "ConfigureAwait" or "WaitAsync" } method
          && (SymbolEqualityComparer.Default.Equals(method.ContainingType.OriginalDefinition, generic)
-          || SymbolEqualityComparer.Default.Equals(method.ContainingType.OriginalDefinition, genericValueTask));
+          || SymbolEqualityComparer.Default.Equals(method.ContainingType.OriginalDefinition, genericValueTask)
+          || SymbolEqualityComparer.Default.Equals(method.ContainingType, Plain));
 
         /// <summary>A <c>Task</c> or <c>ValueTask</c> of a result, not awaited: the result is dropped with it.</summary>
         public string? PendingOutcome(ITypeSymbol? type, TypeKitSymbols symbols) => symbols.OutcomeName(Awaited(type));

@@ -189,8 +189,10 @@ conversion to `ValueTask`.
 **Assertions on a task.** An assertion of `CodoMetis.TypeKit.Testing` on a `Task` or `ValueTask`,
 such as `service.FindAsync(id).ShouldBeSome()`, fails the test only through the task it returns.
 Left without `await`, the test passes whatever the task holds, and C# warns only in an `async`
-method. CMTK0003 reports the line, naming the assertion. The rule knows these assertions by the
-package's own assembly, so an extension of yours on a pending result is left alone.
+method. CMTK0003 reports the line, naming the assertion. It also reports an assertion passed through
+`ConfigureAwait` or `WaitAsync`, and one in a branch of a `?:`, `??` or `switch` expression, as it does
+for a dropped result. The rule knows these assertions by the package's own assembly, so an extension of
+yours on a pending result is left alone.
 
 **Collections.** A collection of results is dropped as silently as one result:
 
