@@ -18,6 +18,9 @@ internal static class Program
           find <words>           ranked (BM25); --top N, --kind K. A miss proves nothing
           claims [page]          every C# block, stated output and shown block of the README and
                                  docs pages; --kind csharp|stated|block
+          due [days]             the facts to re-read before a release: an external pin verified more than
+                                 days ago (default 183); --nuget also lists a pin NuGet has a later release
+                                 of, read from api.nuget.org. By hand, never in CI
           check                  broken links, missing anchors, ids defined nowhere, and the verified
                                  facts' rules: a pin behind, ahead or naming nothing installed, a
                                  fact without its test, a test without its fact
@@ -36,13 +39,14 @@ internal static class Program
         var positional = new List<string>();
         string? root = null, kind = null;
         int top = 10, depth = 1;
-        var json = false;
+        bool json = false, nuget = false;
 
         for (var i = 0; i < args.Length; i++)
         {
             switch (args[i])
             {
                 case "--json": json = true; break;
+                case "--nuget": nuget = true; break;
                 case "--root" when i + 1 < args.Length: root = args[++i]; break;
                 case "--kind" when i + 1 < args.Length: kind = args[++i]; break;
                 case "--top" when i + 1 < args.Length && int.TryParse(args[i + 1], CultureInfo.InvariantCulture, out var n) && n > 0: top = n; i++; break;
@@ -68,7 +72,25 @@ internal static class Program
         var queries    = new Queries(index, root);
         var query      = string.Join(' ', positional.Skip(1));
 
-        Answer? answer = positional[0] switch
+        Answer? answer;
+        try
+        {
+            answer = Run(queries, positional, query, top, kind, depth, nuget);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            Console.Error.WriteLine($"docs-query: nuget.org could not be read ({exception.Message}).");
+            return 1;
+        }
+
+        if (answer is null) return Fail($"'{string.Join(' ', positional)}' is no command; run `help`.");
+
+        Console.Write(json ? answer.Json() : answer.Text());
+        return answer.ExitCode;
+    }
+
+    private static Answer? Run(Queries queries, List<string> positional, string query, int top, string? kind, int depth, bool nuget) =>
+        positional[0] switch
         {
             "entry" when query.Length > 0    => queries.Entry(query),
             "outline" when query.Length > 0  => queries.Outline(query),
@@ -77,14 +99,17 @@ internal static class Program
             "list"                           => queries.List([.. positional.Skip(1)]),
             "find" when query.Length > 0     => queries.Find(query, top, kind),
             "claims"                         => queries.Claims(query.Length > 0 ? query : null, kind),
+            "due"                            => Due(queries, positional, nuget),
             "check"                          => queries.Check(),
             _                                => null,
         };
 
-        if (answer is null) return Fail($"'{string.Join(' ', positional)}' is no command; run `help`.");
+    private static Answer? Due(Queries queries, List<string> positional, bool nuget)
+    {
+        var days = FactReview.DefaultDays;
+        if (positional.Count > 2 || positional.Count == 2 && !(int.TryParse(positional[1], NumberStyles.None, CultureInfo.InvariantCulture, out days) && days >= 0)) return null;
 
-        Console.Write(json ? answer.Json() : answer.Text());
-        return answer.ExitCode;
+        return queries.Due(days, DateOnly.FromDateTime(DateTime.UtcNow), nuget ? NuGetFeed.Versions : null);
     }
 
     private static int Fail(string message)
