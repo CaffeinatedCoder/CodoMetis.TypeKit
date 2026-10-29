@@ -94,6 +94,28 @@ public sealed class UnassignedNoDefaultMemberAnalyzerTests
     /// on a member or setter less visible than the class (CS9032), so the message names it only where
     /// it does.
     /// </summary>
+    /// <summary>
+    /// A struct made of value objects is no value object itself, so its unset member is silent until the struct is
+    /// marked; marked, it reports as a value object does (the Analyzers README's "Mark your own struct").
+    /// </summary>
+    [Fact]
+    public Task A_struct_marked_RequireCustomInitialization_reports_and_an_unmarked_one_does_not() =>
+        Test(
+            """
+            [RequireCustomInitialization("Use OrderLine.Of(order, quantity)")]
+            public readonly record struct OrderLine(Plain Order, Plain Quantity);
+
+            public readonly record struct Unmarked(Plain Order, Plain Quantity);
+
+            public sealed class Cart
+            {
+                public OrderLine {|#0:Line|} { get; set; }
+                public Unmarked Loose { get; set; }
+            }
+            """,
+            Cmtk0006(0, "Line", "OrderLine", "the implicit constructor"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
     [Fact]
     public Task The_advice_names_required_only_where_it_compiles() =>
         Test(

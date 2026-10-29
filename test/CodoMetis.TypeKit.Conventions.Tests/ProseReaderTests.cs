@@ -5,14 +5,14 @@ namespace CodoMetis.TypeKit.Conventions.Tests;
 
 /// <summary>
 /// A prose-only change builds and runs only the test projects of <c>test/Prose.slnf</c> (design/adr/0113). So no test
-/// project outside it may read prose: a file under <c>docs/</c>, <c>design/</c> or <c>.github/</c>, or a Markdown file
-/// outside <c>src/</c>. One that did would go untested by the very change that breaks it, silently.
+/// project outside it may read prose: a file under <c>docs/</c>, <c>design/</c>, <c>site/</c> or <c>.github/</c>, or a
+/// Markdown file outside <c>src/</c>. One that did would go untested by the very change that breaks it, silently.
 /// </summary>
 /// <remarks>
 /// Read from the sources, by the string literals that name such a path: <c>"docs"</c>, <c>"design"</c>,
-/// <c>".github"</c>, a literal starting with one of them and a slash, and one ending in <c>.md</c>. A package's README is
-/// not prose (the selection classes it with its package), so <c>"README.md"</c> passes in a file that also names
-/// <c>"src"</c>, as <c>Path.Combine(root, "src", package, "README.md")</c> does, and a literal holding <c>src/</c> passes.
+/// <c>"site"</c>, <c>".github"</c>, a literal starting with one of them and a slash, and one ending in <c>.md</c>. A
+/// package's README is not prose (the selection classes it with its package), so <c>"README.md"</c> passes in a file
+/// that also names <c>"src"</c>, as <c>Path.Combine(root, "src", package, "README.md")</c> does, and a literal holding <c>src/</c> passes.
 /// A literal that names such a path without reading it is waived below, with the reason.
 /// </remarks>
 public sealed partial class ProseReaderTests
@@ -79,6 +79,7 @@ public sealed partial class ProseReaderTests
     [InlineData("""File.ReadAllText(Path.Combine(root, "docs", "json.md"));""", true)]
     [InlineData("""var page = "design/adr/README.md";""", true)]
     [InlineData("""Path.Combine(root, ".github", "workflows", "dotnet.yml")""", true)]
+    [InlineData("""Path.Combine(root, "site", "toc.yml")""", true)]
     [InlineData("""Path.Combine(root, "CHANGELOG.md")""", true)]
     [InlineData("""Path.Combine(root, "README.md")""", true)]
     [InlineData("""Path.Combine(root, "src", "CodoMetis.TypeKit", "README.md")""", false)]
@@ -95,9 +96,10 @@ public sealed partial class ProseReaderTests
 
         foreach (var literal in literals)
         {
-            var directory = literal is "docs" or "design" or ".github"
+            var directory = literal is "docs" or "design" or "site" or ".github"
                          || literal.StartsWith("docs/", StringComparison.Ordinal)
                          || literal.StartsWith("design/", StringComparison.Ordinal)
+                         || literal.StartsWith("site/", StringComparison.Ordinal)
                          || literal.StartsWith(".github/", StringComparison.Ordinal);
             var markdown = literal.EndsWith(".md", StringComparison.OrdinalIgnoreCase)
                         && !literal.Contains("src/", StringComparison.Ordinal)

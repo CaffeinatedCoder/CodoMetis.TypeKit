@@ -99,6 +99,24 @@ public sealed class FaultSetDefaultTests
         refusal.Message.ShouldStartWith("No HTTP status is mapped for the fault type ProbeStatus, which these endpoints answer with: HTTP: DELETE /status.");
     }
 
+    /// <summary>
+    /// The README's "Any closed set can be an error type": a set that is no fault set, mapped on its own, is answered
+    /// through <c>ToHttpResult()</c> with the status its mapping gives and its member's qualified name as the fault.
+    /// </summary>
+    [Fact]
+    public async Task A_closed_set_that_is_no_fault_set_is_answered_with_a_mapping_of_its_own()
+    {
+        await using var app = await StartAsync(
+            services =>
+            {
+                services.AddFaultResponses();   // the fault sets the other endpoints answer with
+                services.AddFaultResponses<ProbeStatus>(status => status == ProbeStatus.Open ? StatusCodes.Status409Conflict : StatusCodes.Status422UnprocessableEntity);
+            },
+            app => app.MapPut("/status", () => Opened().ToHttpResult()));
+
+        (await ProblemAsync(app, "/status", HttpStatusCode.Conflict))["fault"]!.GetValue<string>().ShouldBe("ProbeStatus.Open");
+    }
+
     [Fact]
     public async Task A_member_of_no_kind_stops_the_host()
     {
