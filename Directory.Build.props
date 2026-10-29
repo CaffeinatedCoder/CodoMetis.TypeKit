@@ -1,6 +1,6 @@
 <Project>
     <PropertyGroup>
-        <Version>2.3.0</Version>
+        <Version>2.4.0</Version>
         <Authors>CaffeinatedCoder</Authors>
         <Copyright>Copyright (c) 2026 CaffeinatedCoder</Copyright>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -42,7 +42,7 @@
     -->
     <PropertyGroup>
         <EnablePackageValidation>true</EnablePackageValidation>
-        <PackageValidationBaselineVersion>2.2.0</PackageValidationBaselineVersion>
+        <PackageValidationBaselineVersion>2.3.0</PackageValidationBaselineVersion>
     </PropertyGroup>
 
     <!-- Provenance: a consumer stepping into this code gets the exact source it is running. -->
