@@ -37,7 +37,19 @@ internal static class TypeLayout
         return end == position ? text.ToString(TextSpan.FromBounds(line.Start, end)) : null;
     }
 
-    /// <summary>The file's line ending: CRLF where it has one, otherwise LF.</summary>
-    public static string LineEnding(SourceText text) =>
-        text.Lines.Select(line => line.EndIncludingLineBreak - line.End).FirstOrDefault(length => length > 0) == 2 ? "\r\n" : "\n";
+    /// <summary>
+    /// The line ending of the line holding <paramref name="position"/>, or of the nearest line before it
+    /// that has one, so lines added there end as their neighbours do in a file whose endings are mixed;
+    /// LF in a file of one line.
+    /// </summary>
+    public static string LineEndingAt(SourceText text, int position)
+    {
+        for (var number = text.Lines.GetLineFromPosition(position).LineNumber; number >= 0; number--)
+        {
+            var line = text.Lines[number];
+            if (line.EndIncludingLineBreak > line.End) return text.ToString(TextSpan.FromBounds(line.End, line.EndIncludingLineBreak));
+        }
+
+        return "\n";
+    }
 }

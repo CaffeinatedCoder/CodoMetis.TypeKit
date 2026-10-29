@@ -167,7 +167,8 @@ public sealed class MissingCreateCodeFixProvider : CodeFixProvider
     /// The type with <c>Create</c> as its first member. In a body of several lines it goes on lines of
     /// its own, indented as the members are and ending as the brace's line does, a blank line before the
     /// next member. A declaration ending in <c>;</c>, or an empty body on one line, gets a body on lines of
-    /// its own at the type's indentation, the <c>;</c>'s trivia, a comment included, kept after it.
+    /// its own at the type's indentation, ending as the line of the <c>;</c> or the brace does, or the
+    /// nearest line before it, the <c>;</c>'s trivia, a comment included, kept after it.
     /// </summary>
     private static TypeDeclarationSyntax WithCreate(TypeDeclarationSyntax type, Parts parts, SourceText text)
     {
@@ -187,8 +188,9 @@ public sealed class MissingCreateCodeFixProvider : CodeFixProvider
         // A body opened here: the brace on a line of its own at the type's indentation.
         var typeIndent = TypeLayout.Indentation(text, type.SpanStart) ?? "";
         var unitHere   = TypeLayout.Unit(typeIndent, text);
-        var lineEnd    = TypeLayout.LineEnding(text);
-        var closing    = HasBody(type) ? type.CloseBraceToken.TrailingTrivia : type.SemicolonToken.TrailingTrivia;
+        var ending     = HasBody(type) ? type.CloseBraceToken : type.SemicolonToken;
+        var lineEnd    = TypeLayout.LineEndingAt(text, ending.SpanStart);
+        var closing    = ending.TrailingTrivia;
         var last       = (HasBody(type) ? type.OpenBraceToken : type.SemicolonToken).GetPreviousToken();
 
         var opened = type.ReplaceToken(last, last.WithTrailingTrivia(last.TrailingTrivia.Where(trivia => !trivia.IsKind(SyntaxKind.WhitespaceTrivia))));

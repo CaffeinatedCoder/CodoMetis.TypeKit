@@ -267,6 +267,20 @@ public sealed class MissingCreateCodeFixTests
                + "\t\t\treturn new Name(value);\n\t\t}\n\t}\n}\n"),
             "namespace Shop { public readonly partial record struct Name { private Name(string value) { } } }");
 
+    /// <summary>
+    /// A file whose line endings are mixed, as one with CRLF usings and LF code is on a Windows checkout:
+    /// the lines added end as the declaration's do, not as the file's first line.
+    /// </summary>
+    [Fact]
+    public Task In_a_file_of_mixed_line_endings_the_body_ends_as_the_declaration_s_lines_do() =>
+        Fix("using CodoMetis.TypeKit;\r\nusing CodoMetis.TypeKit.ValueObjects;\r\n\r\npublic enum NameFault { Blank }\n\n"
+          + "public readonly partial record struct Name : {|CS0535:IValidatedValue<Name, string, NameFault>|};",
+            "using CodoMetis.TypeKit;\r\nusing CodoMetis.TypeKit.ValueObjects;\r\n\r\npublic enum NameFault { Blank }\n\n"
+          + "public readonly partial record struct Name : IValidatedValue<Name, string, NameFault>\n{\n"
+          + "    public static Result<Name, NameFault> Create(string value)\n    {\n"
+          + "        // Add your rules: if (...) return Result.Error(NameFault.Blank);\n        return new Name(value);\n    }\n}",
+            Constructor("public readonly partial record struct Name", "string"));
+
     [Fact]
     public Task The_interface_brought_by_an_interface_of_the_application_is_fixed_too() =>
         Fix(Usings + """
