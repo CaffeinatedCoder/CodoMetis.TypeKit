@@ -70,6 +70,10 @@ Email.Parse("ops@example.com", null);                     // IParsable, so it bi
 - **`TryFrom`** when yes or no is enough.
 - **`FromKnownGood`** for a value you vouch for, such as a literal. It throws if you were wrong.
 
+A struct always has a public parameterless constructor, and C# won't let you take it away. So the
+analyzers make `new OrderId()` and `default(OrderId)` build errors (CMTK0001). An array created with
+a length, whose slots all start out as `default`, gets a warning (CMTK0005).
+
 <details>
 <summary>What the generators write for <code>OrderId</code>, trimmed</summary>
 
