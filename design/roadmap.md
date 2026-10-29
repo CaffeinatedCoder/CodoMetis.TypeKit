@@ -58,12 +58,24 @@ Small, each closable in a minor version. Found by the reviews named.
   converters' trimming warnings decide whether it is a package ([decision 71](adr/0071-converters-say-what-they-write.md)).
 - A stable external name for a closed-set member, apart from its C# identifier: parsing, JSON, EF,
   OpenAPI and the fault identifiers at once (proposed in the review of 2026-10-13).
-- The Metalama 2027.0 upgrade, once it is stable (`2027.0.4-preview` on 2026-10-14;
-  [decision 4](adr/0004-metalama-2026-1-x-latest-stable.md)): a minor if a consumer's own aspects beside
-  the packed generators still build and weave, measured as the fabric spike measured 2026.1 against the
-  2027.0 preview, and a major otherwise; `[Durable]` returns to the `_value` placeholder with it.
-- A `net11.0` target beside `net10.0`, in a 2.x minor when a feature needs it ([decision 44](adr/0044-2-0-0-net10-0-metalama.md)): EF Core 11
-  and Microsoft.AspNetCore.OpenApi 11 in the satellites, and a Native AOT smoke run per target.
+- The Metalama 2027.0 upgrade, in 2.5.0 (#173), once 2027.0 is stable (`2027.0.4-preview` on 2026-10-14;
+  [decision 4](adr/0004-metalama-2026-1-x-latest-stable.md)), for both targets at once and with 2.3 and 2.4 on
+  2026.1 ([decision 120](adr/0120-a-net11-0-target-and-documented-floor-raises-join-a-minor.md)). It raises a floor in
+  a minor, which decision 120 allows when documented: a project that references `Metalama.Framework` 2026.1
+  directly gets NU1605 and stays on TypeKit 2.4.x or raises its reference, and a woven `net11.0` project moves
+  from C# 14 to 15. Its conditions: a build with no Metalama license passes in CI and a clean container on 2027
+  (#170), the weaving review and the smoke test run on it, the changelog and the Generators README name the
+  ceiling, the language-version change, the supported IDEs and what Metalama 2027 drops, and the release notes
+  say whether 2.4.x is patched. `[Durable]` returns to the `_value` placeholder with it.
+- A `net11.0` target beside `net10.0`, in a 2.x minor when a feature needs it ([decision 44](adr/0044-2-0-0-net10-0-metalama.md)),
+  on the terms of [decision 120](adr/0120-a-net11-0-target-and-documented-floor-raises-join-a-minor.md): a higher
+  floor in the `net11.0` group (EF Core 11 and Microsoft.AspNetCore.OpenApi 11 in the satellites) allowed when the
+  changelog names it, who it reaches (an application that holds the lower version gets NU1605) and both ways out,
+  and the smoke test shows it; the same generated members on every target; `LangVersion` 14 for `net10.0` and 15 for
+  `net11.0` once it uses a C# 15 feature, a union a new `net11.0`-only member among them; the tests, a Native AOT
+  smoke run and package validation per target. First the spike on an SDK 11
+  compiler, no release attached (#170): `global.json` pins SDK 10.0.4xx because the Roslyn band changes what
+  Metalama emits, and the SDK is generally available in November 2026.
 
 ## Blocked upstream
 
@@ -83,8 +95,11 @@ Small, each closable in a minor version. Found by the reviews named.
   warning ([decision 90](adr/0090-faults-alike-are-a-warning-until-3-0.md)).
 - CMTK1023, a base record's equality that the generated one does not call, becomes an Error
   ([decision 75](adr/0075-equality-over-base-record-generated.md)).
-- C# 15 unions and the `net10.0` drop, timed to .NET 12 LTS (November 2027) or to the end of .NET
-  10's life, whichever its consumers need ([decision 44](adr/0044-2-0-0-net10-0-metalama.md)). The compiler-made union types have a public
+- The `net10.0` drop, and a change of `Option` or `Result` into C# 15 unions, timed to .NET 12 LTS (November
+  2027) or to the end of .NET 10's life, whichever its consumers need ([decision 44](adr/0044-2-0-0-net10-0-metalama.md),
+  kept for .NET 11 by [decision 120](adr/0120-a-net11-0-target-and-documented-floor-raises-join-a-minor.md): .NET 11
+  is not a reason for a major, and a change to a member both targets have is). A union that is new on `net11.0`
+  is an addition, and may join a 2.x minor. The compiler-made union types have a public
   `object? Value` and are serialized by System.Text.Json, so `Option` and `Result` take part in their
-  pattern matching only after a spike shows neither returns, on a branch of its own with no release
-  attached.
+  pattern matching, in either release, only after a spike shows neither returns, on a branch of its own with no
+  release attached.
