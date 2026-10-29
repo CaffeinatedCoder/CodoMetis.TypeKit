@@ -10,46 +10,61 @@ namespace CodoMetis.TypeKit.Analyzers.Tests;
 /// </summary>
 /// <remarks>
 /// The oracle is the rule's own statement, which each shape holds to: the statement's own call is reported
-/// whole, a branch's call at the branch, and an awaited task only where what it completes with is a result.
+/// whole, a branch's call at the branch, a combination of assertions at the combinator, and an awaited task
+/// only where what it completes with is a result, or a <c>WhenAny</c> that leaves every failure unobserved.
 /// An assertion of CodoMetis.TypeKit.Testing and a call that returns a task of a <c>Result</c> run through
 /// the same shapes, so the two forms of the rule agree on each (#152).
 /// </remarks>
 public sealed class DroppedTaskVariantTests
 {
-    public static TheoryData<string> Calls() => [.. DroppedTaskShapes.Calls.Select(call => call.Name)];
+    public static TheoryData<string, string> Cases()
+    {
+        var cases = new TheoryData<string, string>();
+        foreach (var call in DroppedTaskShapes.Calls)
+        foreach (var form in DroppedTaskShapes.Forms.Where(form => DroppedTaskShapes.Applies(form, call)))
+            cases.Add(call.Name, form.Name);
+
+        return cases;
+    }
 
     [Theory]
-    [MemberData(nameof(Calls))]
-    public Task A_dropped_task_is_reported_in_every_form_and_a_kept_one_never(string name)
+    [MemberData(nameof(Cases))]
+    public Task A_dropped_task_is_reported_in_every_form_and_a_kept_one_never(string name, string shape)
     {
         var call = DroppedTaskShapes.Calls.Single(candidate => candidate.Name == name);
-        var (source, expected) = DroppedTaskShapes.Use(call);
+        var form = DroppedTaskShapes.Forms.Single(candidate => candidate.Name == shape);
+        var (source, expected) = DroppedTaskShapes.Use(call, form);
 
         var test = new AnalyzerTest<IgnoredOutcomeAnalyzer>(source);
         test.TestState.Sources.Add(("Declarations.cs", DroppedTaskShapes.Declarations));
         test.TestState.AdditionalReferences.Add(RealTesting.Reference);
         test.ExpectedDiagnostics.AddRange(
-            Enumerable.Range(0, expected).Select(location =>
-                new DiagnosticResult("CMTK0003", DiagnosticSeverity.Error).WithLocation(location).WithArguments(call.Outcome, call.Method)));
+            expected.Select((message, location) =>
+                new DiagnosticResult("CMTK0003", DiagnosticSeverity.Error).WithLocation(location).WithArguments(message.Outcome, message.Method)));
 
         return test.RunAsync(TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Every axis of the catalogue reaches the sweep: a shape that compiles to no case would pass as silent.</summary>
+    /// <summary>
+    /// Every axis of the catalogue reaches the sweep, and each call has a form that reports and one that keeps:
+    /// a shape that compiles to no case would pass as silent.
+    /// </summary>
     [Fact]
     public void Every_shape_makes_a_case()
     {
         foreach (var call in DroppedTaskShapes.Calls)
         {
-            var (source, expected) = DroppedTaskShapes.Use(call);
+            var uses = DroppedTaskShapes.Forms.Where(form => DroppedTaskShapes.Applies(form, call)).Select(form => DroppedTaskShapes.Use(call, form)).ToList();
+            var source = string.Concat(uses.Select(use => use.Source));
 
             foreach (var passThrough in DroppedTaskShapes.PassThroughs.Where(passThrough => passThrough.Suffix.Length > 0))
                 source.ShouldContain(passThrough.Suffix, customMessage: $"{call}: no case passes through {passThrough}.");
 
-            foreach (var form in DroppedTaskShapes.Forms.Where(form => DroppedTaskShapes.Applies(form, call)))
-                source.ShouldContain($"// {form.Name}, ", customMessage: $"{call}: no case of {form}.");
+            foreach (var use in DroppedTaskShapes.Uses)
+                source.ShouldContain($", {use.Name}\n", customMessage: $"{call}: no case is {use}.");
 
-            expected.ShouldBeGreaterThan(0, $"{call}: nothing is expected to be reported.");
+            uses.ShouldContain(use => use.Expected.Count > 0, $"{call}: nothing is expected to be reported.");
+            uses.Where(use => use.Source.Contains("{|#", StringComparison.Ordinal)).Count().ShouldBeLessThan(uses.Count, $"{call}: every form reports, so no form keeps the task.");
         }
     }
 }

@@ -194,6 +194,13 @@ method. CMTK0003 reports the line, naming the assertion. It also reports an asse
 for a dropped result. The rule knows these assertions by the package's own assembly, so an extension of
 yours on a pending result is left alone.
 
+Handing assertions on doesn't hide them either. You get the report when you hand assertions to
+`Task.WhenAll`, `Task.Run` or `Task.WhenEach` and drop what it returns. You get it for `Task.WhenAny` and
+`Task.WaitAny` of them even when you wait, because those finish with the first task and never show a
+failure. It covers an array of them, a `Select`, a query, an `async` lambda that awaits one, and a method
+group such as `pending.Select(OptionAssertions.ShouldBeNone)`. `Task.WaitAll` throws the failures, so it is
+silent. So is a loop over assertions that reads each one.
+
 **Collections.** A collection of results is dropped as silently as one result:
 
 ```csharp
@@ -238,10 +245,16 @@ await foreach (var _ in orders.CancelEachAsync(ids)) { }         // a variable n
 ```
 
 - **`Wait`** is reported on a task the expression made, whether the statement drops the `bool` a
-  timeout overload returns or an `if` reads it.
+  timeout overload returns or an `if` reads it. On a `?:`, `??` or `switch` expression, each branch's
+  call is reported, as when you drop it.
 - **`Task.WaitAll` and `Task.WaitAny`** take plain tasks. So tasks of results that the statement made
-  are converted and their results dropped, as one task's conversion is. An explicit cast to the plain
-  tasks' type says you mean that drop.
+  are converted and their results dropped, as one task's conversion is. That includes an array you
+  write in the call, `Task.WaitAll(new[] { orders.CancelAsync(first), orders.CancelAsync(second) })`. An
+  explicit cast to the plain tasks' type says you mean that drop.
+- **`Task.WhenAny`** finishes with one of the tasks you give it, so every other result is lost. A
+  `WhenAny` of tasks the statement made is reported whether you drop it, await it, wait for it or return
+  it as a plain `Task`. Of tasks you still hold, it hands back one of yours, and is silent.
+- **`Task.WhenEach`** of tasks the statement made, dropped, is reported as a sequence of results.
 - **A `foreach` or `await foreach`** is reported when its header made the results, by the rule above,
   and its body never reads the iteration variable.
 

@@ -4775,6 +4775,52 @@
     ]
   },
   {
+    "id": "T02-combined-assertions-are-reported",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0003",
+    "quote": "You get the report when you hand assertions to `Task.WhenAll`, `Task.Run` or `Task.WhenEach` and drop what it returns.",
+    "claim": "You get the report when you hand assertions to `Task.WhenAll`, `Task.Run` or `Task.WhenEach` and drop what it returns.",
+    "oracle": "claim",
+    "surfaces": [
+      "OptionAssertions.*",
+      "ResultAssertions.*",
+      "PatchAssertions.*",
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "DroppedTaskVariantTests"
+    ]
+  },
+  {
+    "id": "T02-wait-all-observes-assertions",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0003",
+    "quote": "`Task.WaitAll` throws the failures, so it is silent.",
+    "claim": "`Task.WaitAll` throws the failures, so it is silent.",
+    "oracle": "claim",
+    "surfaces": [
+      "OptionAssertions.*",
+      "ResultAssertions.*",
+      "PatchAssertions.*",
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "DroppedTaskVariantTests"
+    ]
+  },
+  {
+    "id": "T02-when-any-of-results-is-reported",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0003",
+    "quote": "A `WhenAny` of tasks the statement made is reported whether you drop it, await it, wait for it or return it as a plain `Task`.",
+    "claim": "A `WhenAny` of tasks the statement made is reported whether you drop it, await it, wait for it or return it as a plain `Task`.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.*"
+    ],
+    "heldBy": [
+      "IgnoredOutcomeAnalyzerTests",
+      "DroppedTaskVariantTests"
+    ]
+  },
+  {
     "id": "W01-answers-are-real",
     "source": "docs/walkthrough.md#walkthrough-one-orders-service",
     "quote": "CI runs it on every change, and builds it from the packed packages too, so every answer below is one it really gives",
