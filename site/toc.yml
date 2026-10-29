@@ -2,6 +2,8 @@
   href: ../README.md
 - name: Guides
   items:
+    - name: Walkthrough
+      href: ../docs/walkthrough.md
     - name: Value objects
       href: ../docs/value-objects.md
     - name: Closed sets
