@@ -193,7 +193,9 @@ The packages share one version and are released together, only through
    anything but its tag or a full commit id.
 3. Move the rules in `src/CodoMetis.TypeKit.Analyzers/AnalyzerReleases.Unshipped.md` to
    `AnalyzerReleases.Shipped.md`, under `## Release <version>`. Their ids and severities are public
-   contract from then on. `ChangelogTests` fails until steps 2 and 3 agree.
+   contract from then on. `ChangelogTests` fails until steps 2 and 3 agree. A release that ships no
+   rule gets the header alone, and loses it when the next release adds its own: the analyzer build
+   refuses any header after an empty release (RS2007).
 4. Commit on the release branch, open its PR into `main` (`chore` and `area/release`, the version's
    milestone, `Closes #<epic>`), and merge it with a merge commit. Tag that
    merge commit and push the tag: `git tag v1.0.0 && git push origin v1.0.0`. The workflow runs every
