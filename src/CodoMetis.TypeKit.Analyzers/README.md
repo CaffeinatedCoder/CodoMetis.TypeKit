@@ -201,6 +201,14 @@ failure. It covers an array of them, a `Select`, a query, an `async` lambda that
 group such as `pending.Select(OptionAssertions.ShouldBeNone)`. `Task.WaitAll` throws the failures, so it is
 silent. So is a loop over assertions that reads each one.
 
+Nesting doesn't hide them. A `Task.WhenAny` inside a `Task.WhenAll` or a `Task.Run` is reported even when you
+await the outer task, because that task succeeds with the failed assertion as its value:
+`await Task.WhenAll(Task.WhenAny(first.ShouldBeNone(), second.ShouldBeNone()))` passes while both assertions
+fail. `await await Task.WhenAny(…)` throws the first failure, so it is silent. A `catch` around an awaited
+assertion in an `async` lambda hides the failure only when it can keep it. A `catch` that throws again, one for
+another exception, such as `catch (OperationCanceledException)`, and one with a `when (false)` filter are
+reported. A filter the rule can't work out, such as `when (Expected(e))`, counts as catching the failure.
+
 **Collections.** A collection of results is dropped as silently as one result:
 
 ```csharp

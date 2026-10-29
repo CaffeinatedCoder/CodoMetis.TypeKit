@@ -114,9 +114,15 @@ internal sealed class TypeKitSymbols
         _computeRestriction          = ComputeRestriction;
     }
 
+    /// <summary>The exception every assertion of CodoMetis.TypeKit.Testing fails with, by its metadata name in that assembly.</summary>
+    private const string AssertionExceptionName = "CodoMetis.TypeKit.Testing.TypeKitAssertionException";
+
     /// <summary>Whether <paramref name="assembly"/> is CodoMetis.TypeKit.Testing.</summary>
     public static bool IsTestingAssembly(IAssemblySymbol? assembly) =>
         assembly is not null && string.Equals(assembly.Name, TestingAssembly, StringComparison.Ordinal);
+
+    /// <summary>The exception the assertions of <paramref name="testing"/>, CodoMetis.TypeKit.Testing, fail with.</summary>
+    public static INamedTypeSymbol? AssertionException(IAssemblySymbol testing) => testing.GetTypeByMetadataName(AssertionExceptionName);
 
     /// <summary>Whether the compilation references CodoMetis.TypeKit.Generators.</summary>
     public bool ReferencesGenerators { get; }
