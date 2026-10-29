@@ -22,10 +22,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: pr-hygiene-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
@@ -49,3 +45,8 @@ jobs:
 
       - name: Check labels, milestone, branch and issue link
         run: dotnet tools/PrHygiene/bin/Release/net10.0/pr-hygiene.dll "$GITHUB_EVENT_PATH"
+        if: always()
+
+      - name: Finish last when opened
+        if: always() && github.event.action == 'opened'
+        run: sleep 75
