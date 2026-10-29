@@ -12,7 +12,9 @@ re-verified; `docs-query check` lists the stale ones.
 
 **Adding one.** Only what something here turned on (a decision, a fix, a probe's verdict), pinned and
 falsifiable, checked against a primary source. A competitor's feature is a fact too, pinned
-`external {name} {version}`: no check compares it, so it is as fresh as its date. Take the next number, copy an
+`external {name} {version}`: `check` never compares it, so it is as fresh as its date, and `docs-query due --nuget`
+lists the ones to re-read before a release (CONTRIBUTING, "Releasing"): verified more than six months ago, or pinned
+to a package NuGet has a later release of. Take the next number, copy an
 entry's frontmatter, write the test first where a test can observe it, and add a row below.
 
 **A fact that prunes or excuses is executable** ([decision 107](../adr/0107-a-cited-fact-is-executable-and-seeds-run-by-footprint.md)).
