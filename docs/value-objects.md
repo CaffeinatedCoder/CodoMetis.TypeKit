@@ -8,7 +8,9 @@ This page helps you design them: pick a struct or a class, write the validation,
 error carries, and call the right factory. The
 [Generators README](../src/CodoMetis.TypeKit.Generators/README.md) lists everything that is
 generated, member by member, and every build error. The interfaces themselves are in the
-[base README](../src/CodoMetis.TypeKit/README.md#value-objects).
+[base README](../src/CodoMetis.TypeKit/README.md#value-objects). To see value objects cross every
+boundary of one service, from the request to the database, the log and back, read the
+[Walkthrough](walkthrough.md).
 
 Reference `CodoMetis.TypeKit.Generators` in the project that declares value objects. The examples
 import `CodoMetis.TypeKit` and `CodoMetis.TypeKit.ValueObjects`.

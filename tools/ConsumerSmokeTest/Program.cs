@@ -12,7 +12,7 @@
 // consumer builds), compiles real code against them, runs it, and asserts on what it prints, on the
 // diagnostics the build reports, and on the resolved package graph. Never on the exit code alone.
 //
-// Four consumers, their sources under Consumers/:
+// Five consumers, their sources under Consumers/:
 //   core     references only CodoMetis.TypeKit: Option and Result work, no Metalama arrives, and
 //            CMTK0001 and CMTK0002 fire (design/analyzers.md).
 //   layered  a domain library references CodoMetis.TypeKit.Generators, and an app reaches everything
@@ -25,13 +25,17 @@
 //   aot      the same ground published with Native AOT (design/native-aot.md): no trim or AOT warning
 //            from a package or from the code woven into the consumer, and the native binary does
 //            what the JIT build does.
+//   walkthrough  the orders service docs/walkthrough.md follows, on all four packages a web service uses: every
+//            answer, log line and SQL statement the page states in a comment is what it gives, read from the page
+//            (WalkthroughPage.cs).
 //
 // Native AOT needs the platform linker: clang (and zlib on Linux), which the workflows install, or
 // MSVC's C++ build tools on Windows.
 //
-// Usage: dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll [feed-directory]
+// Usage: dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll [feed-directory] [--only <consumer>]
 //   With no argument the packages are packed fresh. Pass a directory of existing .nupkg files (the
-//   release workflow passes its pack output) to test exactly the artifacts being shipped.
+//   release workflow passes its pack output) to test exactly the artifacts being shipped. --only runs one
+//   consumer, for a local check: CI runs them all.
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -43,19 +47,22 @@ if (SourceFingerprint.Difference(root) is { } stale)
     Console.Error.WriteLine($"consumer-smoke-test: this dll was built from other sources than the checkout holds ({stale}). Run `{SourceFingerprint.RebuildCommand}`.");
     return SourceFingerprint.StaleExitCode;
 }
-if (args.Length > 1)
+var at = Array.IndexOf(args, "--only");
+var only = at >= 0 && at + 1 < args.Length ? args[at + 1] : null;
+string[] positional = at >= 0 ? [.. args[..at], .. args[Math.Min(at + 2, args.Length)..]] : args;
+if (positional.Length > 1 || (at >= 0 && only is not ("core" or "layered" or "host" or "aot" or "walkthrough")))
 {
-    Console.Error.WriteLine("Usage: consumer-smoke-test.dll [feed-directory]");
+    Console.Error.WriteLine("Usage: consumer-smoke-test.dll [feed-directory] [--only core|layered|host|aot|walkthrough]");
     return 2;
 }
-return new ConsumerSmokeTest.Smoke(root!, args.FirstOrDefault()).Run();
+return new ConsumerSmokeTest.Smoke(root!, positional.FirstOrDefault(), only).Run();
 
 namespace ConsumerSmokeTest
 {
     /// <summary>A command that failed where it had to succeed, or the reverse: the run stops, as the script's <c>set -e</c> did.</summary>
     internal sealed class Stop : Exception;
 
-    internal sealed partial class Smoke(string repoRoot, string? givenFeed)
+    internal sealed partial class Smoke(string repoRoot, string? givenFeed, string? only)
     {
         private readonly DirectoryInfo _created = Directory.CreateTempSubdirectory("consumer-smoke-test-");
         private string Work => _created.FullName;
@@ -184,10 +191,12 @@ namespace ConsumerSmokeTest
                 """);
             File.Copy(Path.Combine(repoRoot, "global.json"), Path.Combine(Work, "global.json"));
 
-            Core();
-            Layered();
-            Host();
-            Aot();
+            // host builds on layered's Domain project, so it brings layered along.
+            if (only is null or "core") Core();
+            if (only is null or "layered" or "host") Layered();
+            if (only is null or "host") Host();
+            if (only is null or "aot") Aot();
+            if (only is null or "walkthrough") Walkthrough();
         }
 
         // ── core: the base package alone ───────────────────────────────────────────────────────────────
@@ -490,6 +499,87 @@ namespace ConsumerSmokeTest
             }
             File.AppendAllText(Path.Combine(Work, "aot.out"), Run(native) + "\n");
         }
+
+        // ── walkthrough: the orders service of docs/walkthrough.md ─────────────────────────────────────
+        //
+        // One web project on the four packages a service uses, as a reader would set it up: what the page shows is
+        // what it compiles. It prints each answer as name=value, the SQL EF Core runs and its log lines, and every
+        // expectation is read from the page's comments (WalkthroughPage), never written here: a changed answer fails
+        // until the page says it. ReadmeSampleTests holds the page's blocks to these sources, so an edit to a stated
+        // answer is an edit here too, which selects the pack lane; WalkthroughTests runs the same service in memory
+        // on every test leg.
+
+        private void Walkthrough()
+        {
+            Console.WriteLine("==> walkthrough: the orders service docs/walkthrough.md follows");
+            NewProject("web", "walkthrough", "CodoMetis.TypeKit.Generators", "CodoMetis.TypeKit.EntityFrameworkCore", "CodoMetis.TypeKit.AspNetCore", "CodoMetis.TypeKit.Serilog");
+            Run("dotnet", "add", "package", "Microsoft.EntityFrameworkCore.Sqlite", "--version", CentralVersion("Microsoft.EntityFrameworkCore.Relational"));
+            Run("dotnet", "add", "package", "Microsoft.AspNetCore.OpenApi", "--version", CentralVersion("Microsoft.AspNetCore.OpenApi"));
+            Run("dotnet", "add", "package", "Serilog.Sinks.Console", "--version", CentralVersion("Serilog.Sinks.Console"));
+            foreach (var source in (string[])["Orders.cs", "OrderEndpoints.cs", "Tour.cs", "Program.cs"]) Write(source, $"walkthrough/{source}");
+
+            Run("dotnet", "build");
+            ListPackages("walkthrough.packages");
+            Save("walkthrough.out", Run("dotnet", "run", "--no-build", "--no-launch-profile"));
+            Print("walkthrough.out");
+
+            Console.WriteLine("==> walkthrough: asserting against docs/walkthrough.md");
+            AssertContains("> CodoMetis.TypeKit.Generators ", "walkthrough.packages", "the generators resolved from the feed");
+            AssertContains("> CodoMetis.TypeKit.Serilog ", "walkthrough.packages", "the Serilog package resolved from the feed");
+            AssertVersions("walkthrough.packages");
+
+            var page = File.ReadAllText(Path.Combine(repoRoot, WalkthroughPage.Path));
+            var lines = SplitLines(Read("walkthrough.out")).ToList();
+            var answers = lines.Select(line => AnswerLine().Match(line)).Where(match => match.Success)
+                               .ToDictionary(match => match.Groups["name"].Value, match => match.Groups["value"].Value, StringComparer.Ordinal);
+
+            foreach (var name in WalkthroughPage.Declarations(page).Union(answers.Keys, StringComparer.Ordinal))
+            {
+                var value = answers.GetValueOrDefault(name);
+                AssertStated(page, WalkthroughPage.Answer(name), stated => value is not null && WalkthroughPage.Is(stated, value),
+                             value is null ? $"{name} is stated, and the service never answered it" : $"{name} is what the page states");
+            }
+            var logged = lines.Where(line => line.StartsWith("[INF] ", StringComparison.Ordinal)).ToList();
+            AssertStated(page, "log.Information(\"Placed", stated => WalkthroughPage.Within(stated, logged), "the log line is what the page states: the address masked");
+            AssertStated(page, "order.Quantity.Value >= minimum.Value", stated => WalkthroughPage.Within(stated, lines), ".Value in the query is the column in the SQL EF Core logs");
+            AssertStated(page, "Database.EnsureCreated()", stated => WalkthroughPage.Within(stated, lines), "each value object is a column of its underlying type");
+            if (logged.Count == 0 || logged.Any(line => line.Contains("ann@example.com", StringComparison.Ordinal)))
+            {
+                Console.WriteLine("  FAIL: the e-mail address is masked in every log line, and there is one");
+                foreach (var line in logged) Console.WriteLine("      " + line);
+                _failed = true;
+            }
+            else
+            {
+                Console.WriteLine("  ok: the e-mail address is masked in every log line");
+            }
+        }
+
+        // What the page states for the fragment holds; a page that no longer states it fails too.
+        private void AssertStated(string page, string fragment, Func<IReadOnlyList<string>, bool> holds, string message)
+        {
+            IReadOnlyList<string> stated;
+            try
+            {
+                stated = WalkthroughPage.Stated(page, fragment);
+            }
+            catch (InvalidOperationException e)
+            {
+                Console.WriteLine($"  FAIL: {message} ({e.Message})");
+                _failed = true;
+                return;
+            }
+            if (holds(stated))
+            {
+                Console.WriteLine($"  ok: {message}");
+                return;
+            }
+            Console.WriteLine($"  FAIL: {message} (the page states '{string.Join(" / ", stated)}' for '{fragment.Trim()}')");
+            _failed = true;
+        }
+
+        [GeneratedRegex(@"^(?<name>[a-z]\w*)=(?<value>.*)$")]
+        private static partial Regex AnswerLine();
 
         // ── the steps ──────────────────────────────────────────────────────────────────────────────────
 

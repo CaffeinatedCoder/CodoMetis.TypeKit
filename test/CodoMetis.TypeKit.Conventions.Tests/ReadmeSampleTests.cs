@@ -2,8 +2,9 @@ namespace CodoMetis.TypeKit.Conventions.Tests;
 
 /// <summary>
 /// Every C# block in the READMEs and the topic pages under <c>docs/</c> is compiled code: it equals,
-/// after indentation, exactly one sample region in <c>test/CodoMetis.TypeKit.Samples</c>, and every
-/// region there is shown in the page its name starts with. A README edit that is not mirrored in the samples fails here, and a sample that
+/// after indentation, exactly one sample region in <c>test/CodoMetis.TypeKit.Samples</c>, or in the sources a
+/// page names for itself (<see cref="ReadmeSamples.RegionSources"/>: the walkthrough's sample application),
+/// and every region is shown in the page its name starts with. A README edit that is not mirrored in the samples fails here, and a sample that
 /// stops compiling fails the build.
 /// </summary>
 /// <remarks>
@@ -44,6 +45,7 @@ public sealed class ReadmeSampleTests
     [InlineData("README.md", "README")]
     [InlineData("src/CodoMetis.TypeKit.EntityFrameworkCore/README.md", "CodoMetis.TypeKit.EntityFrameworkCore")]
     [InlineData("docs/ef-core.md", "ef-core")]
+    [InlineData("docs/walkthrough.md", "walkthrough")]
     public void A_page_s_samples_are_named_after_it(string page, string prefix) => ReadmeSamples.Prefix(page).ShouldBe(prefix);
 
     /// <summary>
@@ -92,6 +94,36 @@ public sealed class ReadmeSampleTests
         Samples.Value.Count.ShouldBeGreaterThanOrEqualTo(30);
     }
 
+    /// <summary>
+    /// The walkthrough's sample application is found: a directory renamed would leave its page's blocks matching
+    /// nothing, which the theories report, but a page that lost its blocks with it would pass.
+    /// </summary>
+    [Fact]
+    public void Each_page_s_own_sources_hold_its_samples()
+    {
+        foreach (var (prefix, directory) in ReadmeSamples.RegionSources)
+        {
+            Directory.Exists(Path.Combine(Repository.Root, directory)).ShouldBeTrue($"{directory}, where the '{prefix}' samples live, does not exist.");
+            Samples.Value.Count(sample => sample.ReadmePrefix == prefix).ShouldBeGreaterThanOrEqualTo(10, $"{directory} holds too few '{prefix}/' samples.");
+        }
+    }
+
+    /// <summary>
+    /// A page's region lives in the sources its prefix names, and nowhere else: a walkthrough region in the samples
+    /// project would be compiled where the packed packages never build it, and a samples region among the
+    /// walkthrough's sources would be shipped to its consumer.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(SampleNames))]
+    public void A_sample_lives_in_the_sources_of_its_page(string name)
+    {
+        var sample = Samples.Value.Single(candidate => candidate.Name == name);
+        var expected = ReadmeSamples.SourcesOf(sample.ReadmePrefix);
+
+        sample.File.ShouldStartWith(expected + "/", Case.Sensitive,
+            $"'{name}' ({sample.Location}) belongs to the page '{sample.ReadmePrefix}', whose samples live in {expected}.");
+    }
+
     [Theory]
     [MemberData(nameof(CompiledBlocks))]
     public void A_csharp_block_in_a_README_is_a_compiled_sample(string location)
@@ -102,7 +134,7 @@ public sealed class ReadmeSampleTests
         if (sample is null)
         {
             throw new ShouldAssertException(
-                $"{location} is not compiled: no sample in {ReadmeSamples.SamplesProject} holds this code. Mirror the change in the sample region, " +
+                $"{location} is not compiled: no sample in {ReadmeSamples.SourcesOf(ReadmeSamples.Prefix(block.Readme))} holds this code. Mirror the change in the sample region, " +
                 $"or mark a block that cannot compile on purpose with <!-- not compiled: {{reason}} --> above its fence.{Environment.NewLine}" +
                 Closest(block.Code, Samples.Value.Select(candidate => (candidate.Name + " at " + candidate.Location, candidate.Code)), "sample", "README"));
         }

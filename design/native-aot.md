@@ -39,6 +39,7 @@ host, EF Core through `dotnet ef dbcontext optimize --precompile-queries --nativ
   unchanged (measured with `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`, which leaves the
   `System.Globalization.Invariant` switch unset). `AsText()` asks once whether a decomposed letter
   composes, and throws `PlatformNotSupportedException` where it does not; `InvariantGlobalizationTests`
-  runs the test assembly again in that mode. The smoke test's consumers do not call `AsText()`.
+  runs the test assembly again in that mode. The smoke test's `aot` consumers do not call `AsText()`; its
+  `walkthrough` consumer does, on the JIT, without that mode.
 - **Third-party packages** report their own warnings (NodaTime.Serialization.SystemTextJson 1.4.0,
   EF Core). The smoke test asserts only that none names a CodoMetis package or a woven value object.
