@@ -174,6 +174,9 @@ The packages share one version and are released together, only through
    (`## 1.0.0 — 2026-10-01`). The section becomes the GitHub release's notes, and every package's
    release notes on nuget.org: pack writes it into each nuspec as plain text, and fails while the
    section is missing, empty or over nuget.org's 35,000 characters (`PackageReleaseNotesTests`).
+   Point the section's links at the version's tag, `blob/v<version>/` in place of `blob/main/`, so
+   they open the pages as they were released; `ChangelogTests` fails on a dated section that links
+   anything but its tag or a full commit id.
 3. Move the rules in `src/CodoMetis.TypeKit.Analyzers/AnalyzerReleases.Unshipped.md` to
    `AnalyzerReleases.Shipped.md`, under `## Release <version>`. Their ids and severities are public
    contract from then on. `ChangelogTests` fails until steps 2 and 3 agree.
