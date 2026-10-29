@@ -91,6 +91,32 @@ public sealed class ResultCatchTests
     }
 
     /// <summary>
+    /// A delegate that returns a <c>Task</c>, an <c>async</c> lambda among them, is a compile error whose message
+    /// names <c>CatchAsync</c>: its exception would be thrown after <c>Catch</c> had returned a success.
+    /// </summary>
+    [Theory]
+    [InlineData("Result.Catch(() => Task.FromResult(1))")]
+    [InlineData("Result.Catch(() => Task.CompletedTask)")]
+    [InlineData("Result.Catch(async () => await Task.Yield())")]
+    [InlineData("Result.Catch<InvalidOperationException>(() => Task.CompletedTask)")]
+    public void Catch_over_a_task_is_a_compile_error_naming_CatchAsync(string call)
+    {
+        var compilation = ConsumerCompilation.Of($$"""
+            using System;
+            using System.Threading.Tasks;
+            using CodoMetis.TypeKit;
+
+            static class Consumer
+            {
+                static object Call() => {{call}};
+            }
+            """);
+
+        compilation.ErrorIds().ShouldBe(["CS0619"], compilation.Problems());
+        compilation.Problems().ShouldContain("Use CatchAsync.");
+    }
+
+    /// <summary>
     /// A task's type spelled as the value, or inferred where no overload can name it (a
     /// <c>ValueTask</c>), would make the task's exception arrive after a success was returned. It is
     /// refused before the delegate runs, and the message names <c>CatchAsync</c>; <c>CatchAsync</c>

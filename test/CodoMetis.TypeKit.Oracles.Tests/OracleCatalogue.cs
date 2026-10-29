@@ -45,6 +45,8 @@ internal static partial class OracleCatalogue
         "docs/json.md",
         "docs/text.md",
         "docs/merge-patches.md",
+        "docs/option.md",
+        "docs/result.md",
         "docs/ef-core.md",
         "docs/type-constraints.md",
         "docs/walkthrough.md",
@@ -53,6 +55,7 @@ internal static partial class OracleCatalogue
         "src/CodoMetis.TypeKit.Generators/README.md",
         "src/CodoMetis.TypeKit.Analyzers/README.md",
         "src/CodoMetis.TypeKit.Testing/README.md",
+        "src/CodoMetis.TypeKit.Serilog/README.md",
     ];
 
     /// <summary>Every test class under <c>test/</c>, a class whose file holds a <c>[Fact]</c> or a <c>[Theory]</c>, with its project.</summary>

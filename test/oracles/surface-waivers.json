@@ -15,13 +15,5 @@
   "IStoredJsonConverterSource.CreateStoredJsonConverter": "plumbing StoredJsonConverterFactory calls on a generated converter",
   "DescribedJsonSchema.ExporterOptions": "the exporter options the schema descriptions are read with, plumbing",
   "TypeKitServiceCollectionExtensions.AddEntityFrameworkTypeKit": "the internal-service-provider form of UseTypeKit, whose claims hold it",
-  "TypeKitAssertionException..ctor": "the exception the assertions throw; its messages are claimed through the assertions",
-  "Option.*": "unread: the document that promises its behaviour has not been read for claims yet (#98); the core tests hold it meanwhile",
-  "Result.*": "unread: the document that promises its behaviour has not been read for claims yet (#98); the core tests hold it meanwhile",
-  "Patch.*": "unread: the document that promises its behaviour has not been read for claims yet (#98); the core tests hold it meanwhile",
-  "SequenceOptionExtensions.Choose": "unread: the document that promises its behaviour has not been read for claims yet (#98); the core tests hold it meanwhile",
-  "ValueTypeOptionExtensions.OrNull": "unread: the document that promises its behaviour has not been read for claims yet (#98); the core tests hold it meanwhile",
-  "GuidValueExtensions.New": "unread: the document that promises its behaviour has not been read for claims yet (#98); the core tests hold it meanwhile",
-  "TypeKitClosedSetHttpResultExtensions.ToHttpResult": "unread: the document that promises its behaviour has not been read for claims yet (#98); the core tests hold it meanwhile",
-  "RequireCustomInitializationAttribute.*": "unread: the document that promises its behaviour has not been read for claims yet (#98); the core tests hold it meanwhile"
+  "TypeKitAssertionException..ctor": "the exception the assertions throw; its messages are claimed through the assertions"
 }
