@@ -63,6 +63,7 @@ dotnet build spikes/FabricSpike/FabricSpike.slnx      # the fabric spike, standa
 dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll   # the packages, installed into throwaway consumers, one published with Native AOT (needs the platform linker); build it with -c Release first
 dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--project P] [--filter-class C] [--filter-method M] [-- flags]   # an agent's build and test: a verdict, not the transcript
 dotnet tools/PrHygiene/bin/Release/net10.0/pr-hygiene.dll event.json   # a PR's labels, milestone, branch and issue link, as CI's PR hygiene check reads them from the payload
+dotnet tools/CiLanes/bin/Release/net10.0/ci-lanes.dll classify <path>...   # the CI lanes a changed path selects (Linux, Windows, the pack; macOS only on the release's runs), as CI's changes job decides them
 ```
 
 The oracle kit's local tool, oracles (`tools/Oracles`, started as its built dll like docs-query), which needs no

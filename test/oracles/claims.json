@@ -1409,6 +1409,34 @@
     ]
   },
   {
+    "id": "C26-sized-array-warns",
+    "source": "README.md#value-objects",
+    "quote": "An array created with a length, whose slots all start out as `default`, gets a warning (CMTK0005).",
+    "claim": "An array created with a length, whose slots all start out as `default`, gets a warning (CMTK0005).",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "DefaultFilledCollectionAnalyzerTests"
+    ]
+  },
+  {
+    "id": "C26-struct-default-fails-the-build",
+    "source": "README.md#value-objects",
+    "quote": "So the analyzers make `new OrderId()` and `default(OrderId)` build errors (CMTK0001).",
+    "claim": "So the analyzers make `new OrderId()` and `default(OrderId)` build errors (CMTK0001).",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "ForbiddenDefaultInitializationAnalyzerTests"
+    ]
+  },
+  {
     "id": "E01-column-type",
     "source": "docs/ef-core.md#the-model",
     "quote": "Every property maps as a column of the underlying type, nullable where the property is.",

@@ -1,8 +1,5 @@
-// sample: README/quick-start-declaration
 using CodoMetis.TypeKit;
 using CodoMetis.TypeKit.ValueObjects;
-
-// end sample
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using CodoMetis.TypeKit.AspNetCore;
@@ -14,7 +11,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace ReadmeSamples.Root.QuickStart;
 
-// sample: README/quick-start-declaration
 public enum EmailFault { Blank, NoAt }
 
 public readonly partial record struct Email : IValidatedValue<Email, string, EmailFault>
@@ -27,7 +23,6 @@ public readonly partial record struct Email : IValidatedValue<Email, string, Ema
         return new Email(value.Trim());
     }
 }
-// end sample
 
 public readonly partial record struct OrderId : IValue<Guid>;
 
@@ -49,16 +44,12 @@ public static class QuickStart
 {
     public static void Use(string input)
     {
-        // sample: README/quick-start-use
+        // sample: README/factories
         var id = OrderId.New();                                   // a version 7 Guid
 
         Result<Email, EmailFault> created = Email.Create(input);  // the fault says which rule refused it
         Option<Email> maybe = Email.TryFrom(input);               // is it valid?
         Email known = Email.FromKnownGood("ops@example.com");     // a literal you vouch for; throws otherwise
-
-        string reply = created.Match(
-            email => $"Welcome, {email}",
-            fault => $"Please check the address ({fault})");
 
         JsonSerializer.Serialize(known);                          // "ops@example.com"
         JsonSerializer.Deserialize<Email>("\"nobody\"");          // JsonException naming Email and NoAt, never the text
@@ -68,7 +59,7 @@ public static class QuickStart
 
     public static void UseTheSatellites(IServiceCollection services, string connectionString, ShopDb db)
     {
-        // sample: README/quick-start-satellites
+        // sample: README/setup
         services.AddDbContext<ShopDb>(options => options.UseNpgsql(connectionString).UseTypeKit());
 
         db.Customers.Where(c => c.Email.Value.EndsWith("@example.com"));        // WHERE c."Email" LIKE '%@example.com'

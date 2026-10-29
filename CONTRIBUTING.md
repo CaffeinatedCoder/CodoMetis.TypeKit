@@ -174,14 +174,18 @@ The packages share one version and are released together, only through
    (`## 1.0.0 — 2026-10-01`). The section becomes the GitHub release's notes, and every package's
    release notes on nuget.org: pack writes it into each nuspec as plain text, and fails while the
    section is missing, empty or over nuget.org's 35,000 characters (`PackageReleaseNotesTests`).
+   Point the section's links at the version's tag, `blob/v<version>/` in place of `blob/main/`, so
+   they open the pages as they were released; `ChangelogTests` fails on a dated section that links
+   anything but its tag or a full commit id.
 3. Move the rules in `src/CodoMetis.TypeKit.Analyzers/AnalyzerReleases.Unshipped.md` to
    `AnalyzerReleases.Shipped.md`, under `## Release <version>`. Their ids and severities are public
    contract from then on. `ChangelogTests` fails until steps 2 and 3 agree.
 4. Commit on the release branch, open its PR into `main` (`chore` and `area/release`, the version's
    milestone, `Closes #<epic>`), and merge it with a merge commit. Tag that
-   merge commit and push the tag: `git tag v1.0.0 && git push origin v1.0.0`. The workflow checks the tag
-   against `Version` and the dated heading, runs the suite and the smoke test, and waits for approval
-   in the `nuget` environment before pushing. Delete the release branch once the tag is pushed.
+   merge commit and push the tag: `git tag v1.0.0 && git push origin v1.0.0`. The workflow runs every
+   lane of the build workflow (Linux, Windows and macOS, the pack and both smoke tests), checks the tag
+   against `Version` and the dated heading, runs the suite and the smoke test on what it packs, and waits
+   for approval in the `nuget` environment before pushing. Delete the release branch once the tag is pushed.
 5. Afterwards: raise `Version` in `Directory.Build.props`, set `PackageValidationBaselineVersion` to
    the version just released, so ApiCompat guards the public surface from then on, and open a new
    `## <version> — Unreleased` section. `ChangelogTests` fails while the baseline trails the last

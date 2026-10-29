@@ -1,0 +1,12 @@
+{
+  "solution": {
+    "path": "../CodoMetis.TypeKit.slnx",
+    "projects": [
+      "test/CodoMetis.TypeKit.Conventions.Tests/CodoMetis.TypeKit.Conventions.Tests.csproj",
+      "test/CodoMetis.TypeKit.DocsQuery.Tests/CodoMetis.TypeKit.DocsQuery.Tests.csproj",
+      "test/CodoMetis.TypeKit.Generators.Probes/CodoMetis.TypeKit.Generators.Probes.csproj",
+      "test/CodoMetis.TypeKit.Oracles.Tests/CodoMetis.TypeKit.Oracles.Tests.csproj",
+      "test/CodoMetis.TypeKit.Samples/CodoMetis.TypeKit.Samples.csproj"
+    ]
+  }
+}
