@@ -4821,10 +4821,24 @@
     ]
   },
   {
-    "id": "T03-a-nested-when-any-is-reported",
+    "id": "T02-when-any-of-results-is-reported",
     "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0003",
-    "quote": "A `Task.WhenAny` inside a `Task.WhenAll` or a `Task.Run` is reported even when you await the outer task, because that task succeeds with the failed assertion as its value",
-    "claim": "A `Task.WhenAny` inside a `Task.WhenAll` or a `Task.Run` is reported even when you await the outer task, because that task succeeds with the failed assertion as its value",
+    "quote": "A `WhenAny` of tasks the statement made is reported whether you drop it, await it, wait for it or return it as a plain `Task`.",
+    "claim": "A `WhenAny` of tasks the statement made is reported whether you drop it, await it, wait for it or return it as a plain `Task`.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.*"
+    ],
+    "heldBy": [
+      "IgnoredOutcomeAnalyzerTests",
+      "DroppedTaskVariantTests"
+    ]
+  },
+  {
+    "id": "T03-a-catch-that-cannot-keep-the-failure-is-reported",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0003",
+    "quote": "A `catch` that throws again, one for another exception, such as `catch (OperationCanceledException)`, and one with a `when (false)` filter are reported.",
+    "claim": "A `catch` that throws again, one for another exception, such as `catch (OperationCanceledException)`, and one with a `when (false)` filter are reported.",
     "oracle": "claim",
     "surfaces": [
       "OptionAssertions.*",
@@ -4838,10 +4852,10 @@
     ]
   },
   {
-    "id": "T03-a-catch-that-cannot-keep-the-failure-is-reported",
+    "id": "T03-a-nested-when-any-is-reported",
     "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0003",
-    "quote": "A `catch` that throws again, one for another exception, such as `catch (OperationCanceledException)`, and one with a `when (false)` filter are reported.",
-    "claim": "A `catch` that throws again, one for another exception, such as `catch (OperationCanceledException)`, and one with a `when (false)` filter are reported.",
+    "quote": "A `Task.WhenAny` inside a `Task.WhenAll` or a `Task.Run` is reported even when you await the outer task, because that task succeeds with the failed assertion as its value",
+    "claim": "A `Task.WhenAny` inside a `Task.WhenAll` or a `Task.Run` is reported even when you await the outer task, because that task succeeds with the failed assertion as its value",
     "oracle": "claim",
     "surfaces": [
       "OptionAssertions.*",
@@ -4869,20 +4883,6 @@
     "heldBy": [
       "DroppedTaskVariantTests",
       "IgnoredOutcomeAnalyzerTests"
-    ]
-  },
-  {
-    "id": "T02-when-any-of-results-is-reported",
-    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0003",
-    "quote": "A `WhenAny` of tasks the statement made is reported whether you drop it, await it, wait for it or return it as a plain `Task`.",
-    "claim": "A `WhenAny` of tasks the statement made is reported whether you drop it, await it, wait for it or return it as a plain `Task`.",
-    "oracle": "claim",
-    "surfaces": [
-      "Result.*"
-    ],
-    "heldBy": [
-      "IgnoredOutcomeAnalyzerTests",
-      "DroppedTaskVariantTests"
     ]
   },
   {
