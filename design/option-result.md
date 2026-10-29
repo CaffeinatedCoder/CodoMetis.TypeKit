@@ -86,7 +86,19 @@ is the value-less shape. Anything that turns this into a second LanguageExt is o
   once on it, so in a UI or a Blazor component a callback that touches dispatcher-bound state works or
   fails by timing. That is documented rather than changed: await the task and call the synchronous
   combinator, or marshal inside the callback. `AsynchronousContextTests` holds every public member
-  that returns a task to it.
+  that returns a task or an async stream to it.
+- **Async streams (2.3.0, #128).** `Choose()` and `Choose(selector)` over an `IAsyncEnumerable<T>`
+  return one, lazily, the caller's token reaching the source through `[EnumeratorCancellation]`.
+  `SequenceAsync(cancellationToken)` and `TraverseAsync` over one read the next element only after the
+  one before it succeeded, check a token they are given before each read and each operation, and
+  dispose the enumerator on every exit. Measured 2026-10-29 against .NET 10's
+  `System.Linq.AsyncEnumerable` and EF Core 10.0.12: no name binds ambiguously beside its operators,
+  and a `T[]` or a `DbSet<T>` (which EF Core 10 does not convert to `IAsyncEnumerable<T>`) still binds
+  to the sequence members. A type that implements both `IEnumerable<T>` and `IAsyncEnumerable<T>` is
+  ambiguous (CS0121) for `Choose(selector)` and `TraverseAsync`, as it is for the BCL's own `Where`. That
+  is left as the BCL leaves it, not settled by an overload priority: a silent pick of either reading is
+  worse than a compile error. CMTK0003 reports a dropped `SequenceAsync` by its type, as it does
+  `TraverseAsync`, with no change to the analyzer.
 
 **Decided 2026-09-27: an uninitialized `Result` throws.**
 - A `default` result is `State == Uninitialized`. If the branching members tested only

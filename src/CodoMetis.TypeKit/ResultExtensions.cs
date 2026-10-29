@@ -1385,6 +1385,138 @@ public static class Result
         }
     }
 
+    /// <param name="source">The stream.</param>
+    /// <typeparam name="T">The type of the elements.</typeparam>
+    extension<T>(IAsyncEnumerable<T> source)
+    {
+        /// <summary>
+        /// Applies an asynchronous operation that may fail to every element of a stream, one at a time
+        /// and in order, stopping at the first error: the next element is not read, nor its operation
+        /// started, after one failed, and the stream's enumerator is disposed.
+        /// </summary>
+        /// <param name="selector">Called with each element and awaited, until one fails.</param>
+        /// <typeparam name="TResult">The type of each produced value.</typeparam>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success with every produced value, in order, or the first error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="selector"/> returned no task.</exception>
+        public async Task<Result<IReadOnlyList<TResult>, TError>> TraverseAsync<TResult, TError>(Func<T, Task<Result<TResult, TError>>> selector)
+            where TResult : notnull
+            where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            var values = new List<TResult>();
+
+            await foreach (var element in source.ConfigureAwait(false))
+            {
+                var result = await ThrowHelper.Awaitable(selector(element), nameof(TraverseAsync), nameof(selector)).ConfigureAwait(false);
+                if (!result.TryGetValue(out var value, out var error)) return Result<IReadOnlyList<TResult>, TError>.Error(error);
+
+                values.Add(value);
+            }
+
+            return Result<IReadOnlyList<TResult>, TError>.Success(values);
+        }
+
+        /// <summary>
+        /// Applies an asynchronous operation that may fail to every element of a stream, one at a time
+        /// and in order, stopping at the first error, with a cancellation token handed to the stream and
+        /// to each operation, and checked before each element is read and before each operation: once
+        /// cancelled, nothing more is read or started and the <see cref="OperationCanceledException"/>
+        /// propagates, since a cancellation is not an error.
+        /// </summary>
+        /// <param name="selector">Called with each element and the token, and awaited, until one fails.</param>
+        /// <param name="cancellationToken">Handed to the stream's enumerator and to each operation, and checked before each.</param>
+        /// <typeparam name="TResult">The type of each produced value.</typeparam>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success with every produced value, in order, or the first error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="selector"/> returned no task.</exception>
+        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled before an element was read or an operation started.</exception>
+        public async Task<Result<IReadOnlyList<TResult>, TError>> TraverseAsync<TResult, TError>(Func<T, CancellationToken, Task<Result<TResult, TError>>> selector, CancellationToken cancellationToken)
+            where TResult : notnull
+            where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            var values = new List<TResult>();
+
+            cancellationToken.ThrowIfCancellationRequested();
+            await foreach (var element in source.WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var result = await ThrowHelper.Awaitable(selector(element, cancellationToken), nameof(TraverseAsync), nameof(selector)).ConfigureAwait(false);
+                if (!result.TryGetValue(out var value, out var error)) return Result<IReadOnlyList<TResult>, TError>.Error(error);
+
+                values.Add(value);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            return Result<IReadOnlyList<TResult>, TError>.Success(values);
+        }
+
+        /// <summary>
+        /// Applies an asynchronous command that may fail to every element of a stream, one at a time and
+        /// in order, stopping at the first error: the next element is not read, nor its command started,
+        /// after one failed, and the stream's enumerator is disposed.
+        /// </summary>
+        /// <param name="selector">Called with each element and awaited, until one fails.</param>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success if every command succeeded, or the first error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="selector"/> returned no task.</exception>
+        public async Task<Result<TError>> TraverseAsync<TError>(Func<T, Task<Result<TError>>> selector) where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            await foreach (var element in source.ConfigureAwait(false))
+            {
+                var result = await ThrowHelper.Awaitable(selector(element), nameof(TraverseAsync), nameof(selector)).ConfigureAwait(false);
+                if (result.TryGetError(out var error)) return Result<TError>.Error(error);
+            }
+
+            return Result<TError>.Success();
+        }
+
+        /// <summary>
+        /// Applies an asynchronous command that may fail to every element of a stream, one at a time and
+        /// in order, stopping at the first error, with a cancellation token handed to the stream and to
+        /// each command, and checked before each element is read and before each command: once
+        /// cancelled, nothing more is read or started and the <see cref="OperationCanceledException"/>
+        /// propagates, since a cancellation is not an error.
+        /// </summary>
+        /// <param name="selector">Called with each element and the token, and awaited, until one fails.</param>
+        /// <param name="cancellationToken">Handed to the stream's enumerator and to each command, and checked before each.</param>
+        /// <typeparam name="TError">The type of the error.</typeparam>
+        /// <returns>A success if every command succeeded, or the first error.</returns>
+        /// <exception cref="InvalidOperationException"><paramref name="selector"/> returned an uninitialized result.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="selector"/> returned no task.</exception>
+        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled before an element was read or a command started.</exception>
+        public async Task<Result<TError>> TraverseAsync<TError>(Func<T, CancellationToken, Task<Result<TError>>> selector, CancellationToken cancellationToken) where TError : notnull
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            cancellationToken.ThrowIfCancellationRequested();
+            await foreach (var element in source.WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var result = await ThrowHelper.Awaitable(selector(element, cancellationToken), nameof(TraverseAsync), nameof(selector)).ConfigureAwait(false);
+                if (result.TryGetError(out var error)) return Result<TError>.Error(error);
+
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            return Result<TError>.Success();
+        }
+    }
+
     /// <param name="results">The results.</param>
     /// <typeparam name="T">The type of the values.</typeparam>
     /// <typeparam name="TError">The type of the error.</typeparam>
@@ -1429,6 +1561,66 @@ public static class Result
             foreach (var result in results)
             {
                 if (result.TryGetError(out var error)) return Result<TError>.Error(error);
+            }
+
+            return Result<TError>.Success();
+        }
+    }
+
+    /// <param name="results">The stream of results.</param>
+    /// <typeparam name="T">The type of the values.</typeparam>
+    /// <typeparam name="TError">The type of the error.</typeparam>
+    extension<T, TError>(IAsyncEnumerable<Result<T, TError>> results) where T : notnull where TError : notnull
+    {
+        /// <summary>Every value of a stream, if every result in it is a success.</summary>
+        /// <param name="cancellationToken">Handed to the stream's enumerator, and checked before each result is read.</param>
+        /// <returns>
+        /// A success with every value, in order, or the first error. After an error nothing more is read
+        /// and the stream's enumerator is disposed.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">A result up to the first error is uninitialized.</exception>
+        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled before a result was read.</exception>
+        public async Task<Result<IReadOnlyList<T>, TError>> SequenceAsync(CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(results);
+
+            var values = new List<T>();
+
+            cancellationToken.ThrowIfCancellationRequested();
+            await foreach (var result in results.WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                if (!result.TryGetValue(out var value, out var error)) return Result<IReadOnlyList<T>, TError>.Error(error);
+
+                values.Add(value);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            return Result<IReadOnlyList<T>, TError>.Success(values);
+        }
+    }
+
+    /// <param name="results">The stream of results.</param>
+    /// <typeparam name="TError">The type of the error.</typeparam>
+    extension<TError>(IAsyncEnumerable<Result<TError>> results) where TError : notnull
+    {
+        /// <summary>A success if every result of a stream is one.</summary>
+        /// <param name="cancellationToken">Handed to the stream's enumerator, and checked before each result is read.</param>
+        /// <returns>
+        /// A success, or the first error. After an error nothing more is read and the stream's enumerator
+        /// is disposed.
+        /// </returns>
+        /// <exception cref="InvalidOperationException">A result up to the first error is uninitialized.</exception>
+        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled before a result was read.</exception>
+        public async Task<Result<TError>> SequenceAsync(CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(results);
+
+            cancellationToken.ThrowIfCancellationRequested();
+            await foreach (var result in results.WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                if (result.TryGetError(out var error)) return Result<TError>.Error(error);
+
+                cancellationToken.ThrowIfCancellationRequested();
             }
 
             return Result<TError>.Success();

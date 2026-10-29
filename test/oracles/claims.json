@@ -1,5 +1,77 @@
 [
   {
+    "id": "A01-choose-reads-a-stream",
+    "source": "src/CodoMetis.TypeKit/README.md#find-one-in-a-collection",
+    "quote": "Both read an async stream too, as its elements arrive.",
+    "claim": "Both read an async stream too, as its elements arrive.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Choose",
+      "SequenceOptionExtensions.Choose"
+    ],
+    "heldBy": [
+      "AsyncStreamTests"
+    ]
+  },
+  {
+    "id": "A01-dispose-however-they-stop",
+    "source": "src/CodoMetis.TypeKit/README.md#chain-steps",
+    "quote": "All three read the stream in order, and dispose its enumerator however they stop: at an error, at a `break`, or when your selector throws.",
+    "claim": "All three read the stream in order, and dispose its enumerator however they stop: at an error, at a `break`, or when your selector throws.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Choose",
+      "SequenceOptionExtensions.Choose",
+      "Result.SequenceAsync",
+      "Result.TraverseAsync"
+    ],
+    "heldBy": [
+      "AsyncStreamTests"
+    ]
+  },
+  {
+    "id": "A01-stop-at-the-first-error",
+    "source": "src/CodoMetis.TypeKit/README.md#chain-steps",
+    "quote": "`SequenceAsync` and `TraverseAsync` stop at the first error and read nothing after it.",
+    "claim": "`SequenceAsync` and `TraverseAsync` stop at the first error and read nothing after it.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.SequenceAsync",
+      "Result.TraverseAsync"
+    ],
+    "heldBy": [
+      "AsyncStreamTests"
+    ]
+  },
+  {
+    "id": "A01-token-reaches-the-stream",
+    "source": "src/CodoMetis.TypeKit/README.md#chain-steps",
+    "quote": "The token you give `SequenceAsync` or `TraverseAsync` reaches the stream.",
+    "claim": "The token you give `SequenceAsync` or `TraverseAsync` reaches the stream.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.SequenceAsync",
+      "Result.TraverseAsync"
+    ],
+    "heldBy": [
+      "AsyncStreamTests"
+    ]
+  },
+  {
+    "id": "A01-with-cancellation-for-choose",
+    "source": "src/CodoMetis.TypeKit/README.md#chain-steps",
+    "quote": "For `Choose`, pass yours to `WithCancellation` on what it returns.",
+    "claim": "For `Choose`, pass yours to `WithCancellation` on what it returns.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Choose",
+      "SequenceOptionExtensions.Choose"
+    ],
+    "heldBy": [
+      "AsyncStreamTests"
+    ]
+  },
+  {
     "id": "C01-covers-every-decimal",
     "source": "docs/json.md#decimals-in-one-spelling",
     "quote": "Register either one once, and it covers every decimal: nullable ones, dictionary keys, and every value object over a decimal, since its JSON is the underlying type's.",
