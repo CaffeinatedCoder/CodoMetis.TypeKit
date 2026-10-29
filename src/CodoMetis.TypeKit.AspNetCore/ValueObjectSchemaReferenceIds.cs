@@ -7,7 +7,7 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// Names a nested value object's or closed set's component after its whole nesting chain:
 /// <c>Shop.Id</c> is <c>ShopId</c>, as its generated companion class is <c>ShopIdExtensions</c>, and
 /// <c>Order.Status</c> is <c>OrderStatus</c>. Refuses a document in which such a name is also another
-/// type's.
+/// type's. With <see cref="TypeKitOpenApiOptions.InlineValueObjects"/>, gives a value object no component.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -33,19 +33,27 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// documents are two sets of components. A type's name is the same on every call, so a document
 /// generated again, or two generated at once, claim the same names.
 /// </para>
+/// <para>
+/// Inlined, a value object, or the <see cref="Nullable{T}"/> of one, has no name whatever the host's own delegate
+/// says, so it claims none: two value objects of one name can no longer share a component, and a closed set or any
+/// other type keeps its name and its claim as before
+/// ([decision 115](design/adr/0115-value-objects-can-be-inlined-everywhere.md)).
+/// </para>
 /// </remarks>
 internal static class ValueObjectSchemaReferenceIds
 {
-    public static void Apply(OpenApiOptions options)
+    public static void Apply(OpenApiOptions options, bool inlineValueObjects)
     {
         var inner = options.CreateSchemaReferenceId;
         var claims = new ConcurrentDictionary<string, Claim>(StringComparer.Ordinal);
 
         options.CreateSchemaReferenceId = type =>
         {
+            var claimant = Nullable.GetUnderlyingType(type.Type) ?? type.Type;
+            if (inlineValueObjects && ValueObjectTypes.IsValueObject(claimant)) return null;
+
             if (inner(type) is not { } id) return null;
 
-            var claimant = Nullable.GetUnderlyingType(type.Type) ?? type.Type;
             var renamed = claimant.IsNested
                        && (ValueObjectTypes.IsValueObject(claimant) || ClosedSetSchemaTransformer.Describe(claimant) is not null)
                        && id == OpenApiOptions.CreateDefaultSchemaReferenceId(type);

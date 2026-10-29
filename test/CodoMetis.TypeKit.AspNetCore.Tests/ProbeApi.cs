@@ -39,7 +39,8 @@ public sealed record ProbeDocument(
     ProbeName Name,
     ProbeName? MaybeName,
     ProbeId? MaybeId,
-    ProbeWeekday? MaybeWeekday);
+    ProbeWeekday? MaybeWeekday,
+    Dictionary<ProbeId, int> CountsById);
 
 /// <summary>The same names as <see cref="ProbeDocument"/>, with the wrapped types.</summary>
 public sealed record ControlDocument(
@@ -68,7 +69,13 @@ public sealed record ControlDocument(
     string Name,
     string? MaybeName,
     Guid? MaybeId,
-    DayOfWeek? MaybeWeekday);
+    DayOfWeek? MaybeWeekday,
+    Dictionary<Guid, int> CountsById,
+    Guid[] IdArray,
+    IReadOnlyList<Guid> ReadOnlyIds,
+    HashSet<Guid> IdSet,
+    Dictionary<string, List<Guid>> NestedIds,
+    List<List<Guid>> ListOfLists);
 
 public sealed record ProbeSearch(ProbeId Customer, ProbeCount? Limit);
 

@@ -1,8 +1,6 @@
 using System.Collections.Concurrent;
-using System.Reflection;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
-using CodoMetis.TypeKit.CompilerServices;
 using CodoMetis.TypeKit.Generators.Probes;
 using CodoMetis.TypeKit.ValueObjects;
 using Microsoft.AspNetCore.Builder;
@@ -21,7 +19,7 @@ namespace CodoMetis.TypeKit.AspNetCore.Tests;
 /// operation (body, query, header, form, route, response, a list's elements, a dictionary's values, a query or header
 /// array's items, a property of a non-abstract polymorphic base's derived branch and of its own), in MVC
 /// and in minimal APIs, with enums written by number or by name, and with everything inlined, value objects alone
-/// inlined or components, exactly the schema ASP.NET publishes for the wrapped type in the same position at the same
+/// inlined (<see cref="TypeKitOpenApiOptions.InlineValueObjects"/>) or components, in OpenAPI 3.1, 3.0 and 2.0, exactly the schema ASP.NET publishes for the wrapped type in the same position at the same
 /// nullability.
 /// </summary>
 /// <remarks>
@@ -113,14 +111,9 @@ public sealed class NullablePositionTests
             openApi =>
             {
                 if (key.Item2 == "inline-all") openApi.CreateSchemaReferenceId = _ => null;
-                openApi.AddTypeKit();
 
-                // The README's way to inline value objects alone: the wrapped enum stays ASP.NET's component.
-                if (key.Item2 == "inline-value-objects")
-                    openApi.CreateSchemaReferenceId = type =>
-                        (Nullable.GetUnderlyingType(type.Type) ?? type.Type).GetCustomAttribute<GeneratedValueObjectAttribute>() is not null
-                            ? null
-                            : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
+                // The setting that inlines value objects alone (decision 115): the wrapped enum stays ASP.NET's component.
+                openApi.AddTypeKit(typeKit => typeKit.InlineValueObjects = key.Item2 == "inline-value-objects");
             },
             json: json =>
             {

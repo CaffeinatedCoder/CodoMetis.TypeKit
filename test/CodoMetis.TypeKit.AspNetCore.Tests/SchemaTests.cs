@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
 
@@ -5,35 +6,69 @@ namespace CodoMetis.TypeKit.AspNetCore.Tests;
 
 /// <summary>
 /// A value object in a JSON position (property, body, element) publishes the schema of the type it
-/// wraps, under a component of its own.
+/// wraps, under a component of its own, or in place with <see cref="TypeKitOpenApiOptions.InlineValueObjects"/>.
 /// </summary>
 public sealed class SchemaTests
 {
-    public static TheoryData<string, OpenApiSpecVersion> WrappedTypeFamilies()
+    private static readonly ConcurrentDictionary<OpenApiSpecVersion, Task<OpenApiJson>> InlineDocuments = new();
+
+    /// <summary>The properties held to their control in both settings: each a value object beside the wrapped type.</summary>
+    private static readonly string[] Properties =
+    [
+        "id", "count", "amount", "flag", "timestamp", "date", "moment", "time", "uri", "weekday",
+        "label", "code", "percentage", "customerId", "nested", "name", "countsById",
+    ];
+
+    /// <summary>
+    /// Held in place only, where the schema is the position's own: a component cannot admit null (decision 36), so
+    /// the components document holds these to the component or null (the tests below, and KB-026 for 2.0).
+    /// </summary>
+    private static readonly string[] InlineOnlyProperties =
+    [
+        "maybeCount", "maybeLabel", "maybeName", "maybeId", "maybeWeekday",
+        "ids", "idArray", "readOnlyIds", "idSet", "counts", "nestedIds", "listOfLists",
+        "maybeCounts", "maybeCountArray", "maybeCountsByKey",
+    ];
+
+    public static TheoryData<string, OpenApiSpecVersion, bool> WrappedTypeFamilies()
     {
-        var data = new TheoryData<string, OpenApiSpecVersion>();
-        foreach (var version in new[] { OpenApiSpecVersion.OpenApi3_1, OpenApiSpecVersion.OpenApi3_0 })
-        foreach (var property in new[]
-                 {
-                     "id", "count", "amount", "flag", "timestamp", "date", "moment", "time", "uri", "weekday",
-                     "label", "code", "percentage", "customerId", "nested",
-                 })
-            data.Add(property, version);
+        var data = new TheoryData<string, OpenApiSpecVersion, bool>();
+        foreach (var version in new[] { OpenApiSpecVersion.OpenApi3_1, OpenApiSpecVersion.OpenApi3_0, OpenApiSpecVersion.OpenApi2_0 })
+        foreach (var inline in new[] { false, true })
+        foreach (var property in inline ? [.. Properties, .. InlineOnlyProperties] : Properties)
+            data.Add(property, version, inline);
 
         return data;
     }
 
     [Theory]
     [MemberData(nameof(WrappedTypeFamilies))]
-    public async Task A_value_object_publishes_the_schema_of_the_type_it_wraps(string property, OpenApiSpecVersion version)
+    public async Task A_value_object_publishes_the_schema_of_the_type_it_wraps(string property, OpenApiSpecVersion version, bool inline)
     {
-        var document = await ProbeHost.DefaultDocumentAsync(version);
+        var document = inline
+            ? await InlineDocuments.GetOrAdd(version, static v => ProbeHost.DocumentAsync(openApi => openApi.AddTypeKit(typeKit => typeKit.InlineValueObjects = true), version: v))
+            : await ProbeHost.DefaultDocumentAsync(version);
 
         var valueObject = document.Property("ProbeDocument", property);
         var control = document.Property("ControlDocument", property);
 
-        valueObject["$ref"].ShouldNotBeNull($"'{property}' should refer to the value object's own component, but was {valueObject.ToJsonString()}");
-        document.Resolve(valueObject).ShouldDescribeTheSameAs(document.Resolve(control), property);
+        if (inline)
+        {
+            // In place, the value object holds what the wrapped type refers to (an enum's component), byte for byte.
+            valueObject.ToJsonString().ShouldNotContain("Probe", customMessage: $"'{property}' refers to a value object's component: {valueObject.ToJsonString()}");
+            document.Expand(valueObject)!.ShouldDescribeTheSameAs(document.Expand(control)!, property);
+        }
+        else if (property == "countsById")
+        {
+            // ASP.NET describes no key, of a Guid or of a value object over one: the two dictionaries are one object.
+            valueObject["propertyNames"].ShouldBeNull();
+            valueObject.ShouldDescribeTheSameAs(control, property);
+        }
+        else
+        {
+            valueObject["$ref"].ShouldNotBeNull($"'{property}' should refer to the value object's own component, but was {valueObject.ToJsonString()}");
+            document.Resolve(valueObject).ShouldDescribeTheSameAs(document.Resolve(control), property);
+        }
     }
 
     [Fact]

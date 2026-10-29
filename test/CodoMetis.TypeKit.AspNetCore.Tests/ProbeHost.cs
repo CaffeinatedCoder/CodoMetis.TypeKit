@@ -145,7 +145,8 @@ internal sealed class OpenApiJson(JsonNode root)
 {
     public JsonNode Root => root;
 
-    public JsonObject Components => root["components"]?["schemas"]?.AsObject() ?? [];
+    /// <summary>The components, or under OpenAPI 2.0 the definitions.</summary>
+    public JsonObject Components => (root["components"]?["schemas"] ?? root["definitions"])?.AsObject() ?? [];
 
     public JsonNode Component(string name) =>
         Components[name] ?? throw new InvalidOperationException($"No component '{name}'. Components: {string.Join(", ", Components.Select(c => c.Key))}");
@@ -156,6 +157,15 @@ internal sealed class OpenApiJson(JsonNode root)
     /// <summary>The schema a reference points at, or the schema itself.</summary>
     public JsonNode Resolve(JsonNode schema) =>
         schema["$ref"] is { } reference ? Component(reference.GetValue<string>().Split('/')[^1]) : schema;
+
+    /// <summary>The schema with every reference replaced by what it refers to.</summary>
+    public JsonNode? Expand(JsonNode? schema) => schema switch
+    {
+        JsonObject reference when reference["$ref"] is { } id => Expand(Component(id.GetValue<string>().Split('/')[^1])),
+        JsonObject keywords => new JsonObject(keywords.Select(keyword => KeyValuePair.Create(keyword.Key, Expand(keyword.Value)))),
+        JsonArray items => new JsonArray([.. items.Select(Expand)]),
+        _ => schema?.DeepClone(),
+    };
 
     public JsonNode Parameter(string path, string method, string name) =>
         Operation(path, method)["parameters"]?.AsArray().SingleOrDefault(p => p!["name"]!.GetValue<string>() == name)?["schema"]
