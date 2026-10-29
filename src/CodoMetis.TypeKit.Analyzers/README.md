@@ -778,9 +778,17 @@ write. In 2.3.0, CMTK0003 reports a `CodoMetis.TypeKit.Testing` assertion on a `
 without `await`, and those assertions are new in 2.3.0. Your code from before the update can't contain
 one, so it builds as before.
 
-2.3.0 makes one exception. CMTK0003 now also reports `Task.WhenAny` over tasks of results left without
-`await`, which code from before 2.3.0 can contain. Such a line loses every result, so the build points at
-a real bug. Handle the results, or discard the task with `_ =`.
+2.3.0 makes an exception for a few forms that code from before 2.3.0 can contain. Each one loses every
+result, so the build points at a real bug. CMTK0003 now also reports these, for tasks of results:
+
+- `Task.WhenAny` of tasks you don't hold, dropped, awaited, waited for or returned as a plain `Task`;
+- a `Task.WhenEach` of them that you drop;
+- `Wait()` on a `?:`, `??` or `switch` expression of them;
+- an array of them that you write in a `Task.WaitAll` or `Task.WaitAny` call.
+
+Handle the results, or discard what you mean to drop with `_ =`. Only a gap found before a version's tag
+is closed this way. After the tag, an Error that reports more of the code you could already write waits
+for the next major version.
 
 A Warning or an Info may learn more forms in a minor version, such as another method that returns a
 default instance for CMTK0009. In a build that treats warnings as errors, such an update can report code
