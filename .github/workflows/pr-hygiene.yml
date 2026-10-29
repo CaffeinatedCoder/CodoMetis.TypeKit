@@ -10,6 +10,19 @@
 # fork runs with a read-only token and never sees a secret, and builds the tool from its own checkout,
 # which can only weaken the check on that pull request's own run, where a reviewer reads the diff.
 #
+# No concurrency group: every event's run completes (#144). The check takes seconds and reads only its
+# payload, so cancelling a superseded run saves nothing, and a run cancelled while its job was going leaves
+# a cancelled check run, which blocks a required check (#141, #142). Measured on 2026-10-29 on two draft
+# pull requests whose labels, milestone and body were set within seconds of opening them, five events each:
+#   - a group with cancel-in-progress: false still cancels: a newer pending run replaces the older pending
+#     one, and three of four runs were cancelled. Nothing was blocked, since a run cancelled before its job
+#     started leaves no check run, but the runs the check is meant to have are missing;
+#   - no group: all five ran, none was cancelled. Earlier runs failed (their payload had no labels yet) and
+#     the pull request was CLEAN once CI passed: the newest run decides the required check, not the last to
+#     finish. With the first run held back 75 s to finish after the one that succeeded, it was CLEAN too.
+# A run reads the payload of its own event, so a pull request that fails here is fixed by an event after the
+# fix, or by re-running the newest run.
+#
 # Actions are pinned to commit SHAs, as in dotnet.yml.
 
 name: PR hygiene
@@ -21,10 +34,6 @@ on:
 
 permissions:
   contents: read
-
-concurrency:
-  group: pr-hygiene-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
 
 env:
   DOTNET_NOLOGO: true
