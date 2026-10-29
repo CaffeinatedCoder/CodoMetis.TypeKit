@@ -173,8 +173,10 @@ The packages share one version and are released together, only through
 `.github/workflows/release.yml` (see [SECURITY.md](SECURITY.md)).
 
 1. Check what the documents rest on, locally:
-   - Show every oracle seed caught: `dotnet tools/Oracles/bin/Release/net10.0/oracles.dll seeds` (a build of one
-     project per seed; [test/oracles/README.md](test/oracles/README.md)).
+   - Show every oracle seed caught: `dotnet tools/Oracles/bin/Release/net10.0/oracles.dll seeds` (a baseline with
+     no seed, then a build of one project per seed; [test/oracles/README.md](test/oracles/README.md)). It exits 0
+     only when every oracle passes without its seed and fails with it. An `ERROR` (exit 4) is an environment or a
+     baseline to fix, such as a SQL Server container that never started, never a seed to accept.
    - Re-read the competitor facts that are due: `dotnet tools/DocsQuery/bin/Release/net10.0/docs-query.dll due --nuget`
      lists each `design/knowledge/` entry pinned `external` whose `verified:` date is more than six months old, or
      whose pinned package NuGet has a later release of. Read each again at the latest release, from its source and

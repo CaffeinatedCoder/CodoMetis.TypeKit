@@ -36,6 +36,13 @@ the same new API, so their reach widens before the tag under this decision.
 assertions, or of any other 2.3.0 API, that CMTK0003 learns afterwards waits for a major version, as
 decision 34 says. A Warning or an Info may still learn more forms in any minor version.
 
+**One exception in 2.3.0, taken by the maintainer.** #159: CMTK0003 also reports a `Task.WhenAny` of tasks
+of results dropped without `await`, converted to a plain `Task` or waited for with `Wait`, which code built
+on 2.2.0 can contain. The maintainer took it into 2.3.0 on 2026-10-29, before the tag: such a statement
+loses every result in any build, so the report finds a defect, never correct code. A `WhenAny` of tasks the
+caller holds completes with one of them and stays silent. The Analyzers README names the exception beside
+the rule.
+
 **Decision 34 stands otherwise.** A new rule ships at Warning or Info in a minor version, and an Error
 that reports more of the code a consumer could already write waits for a major. The Analyzers README's
 "What a new version may change" states both, and claim `T01-an-error-learns-only-new-api-forms` in

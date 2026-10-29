@@ -25,6 +25,7 @@ section is the GitHub release's notes.
 - Docs: the guides, the package READMEs, the changelog and the API of every run-time package as one site with a menu and search, built from the latest release ([caffeinatedcoder.github.io/CodoMetis.TypeKit](https://caffeinatedcoder.github.io/CodoMetis.TypeKit/)).
 - Analyzers: a validated value object without `Create` gets a code fix, **Add Create**, that writes a `Create` accepting every value, ready for your rules ([Add Create](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#add-create)).
 - Docs: a walkthrough follows one orders service from request to response, saying what changes at each boundary; the service is a sample that CI builds from the packages and runs, and the answers the page states are checked against it ([Walkthrough](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/walkthrough.md)).
+- Docs: the root README and the Generators README show, folded, the code the generators write for `OrderId`, `Email` and a closed set; a test holds each block to what the build emits ([Declare a value object](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#declare-a-value-object)).
 - EF Core: queries, keys and round trips are tested on a real SQL Server, and the README says what differs there from memory: text compared ignoring case, Guids sorted by their last group, `decimal(18,2)` by default, a `TimeSpan` under a day, `Greatest` from compatibility level 160 ([On SQL Server](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server)).
 
 ### Changed
@@ -32,7 +33,13 @@ section is the GitHub release's notes.
 - EF Core: a default value-object key over `ulong` gets a temporary value at `Add`, as a plain `ulong` key does, where it threw `OverflowException` on SQL Server and PostgreSQL; a `char` key configured `ValueGeneratedOnAdd()` gets a temporary `char` on SQL Server, not a character of a GUID string. HiLo and your own generator still come first. A compiled model made with `--nativeaot`, and a key you configure with `ValueObjectConverter` yourself, still throw ([Keys](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys)).
 - Packages: nuget.org's Release Notes tab and Visual Studio's Updates tab show the version's section of this changelog, as plain text, where they showed a link to the file.
 - Changelog: a released version's links name its tag, `blob/v2.2.0/`, so its notes open the pages as they were released, not as they read on `main` today.
-- Comparison: Thinktecture.Runtime.Extensions is compared at 10.6.0 and LanguageExt at 5.0.0-beta-78, and the page's facts are re-read before every release ([How it compares](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/comparison.md)).
+- Comparison: SuperStrong.Types 1.0.0 joins the value-object table, Thinktecture.Runtime.Extensions is compared at 10.6.0 and LanguageExt at 5.0.0-beta-78, and the page's facts are re-read before every release ([How it compares](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/comparison.md)).
+- README: introduces TypeKit by example, a one-line `OrderId`, a validated `Email`, an `Option` lookup and a `Result` chain, and thanks Vogen, which inspired the value objects; every README says what Metalama is where it first names it ([CodoMetis.TypeKit](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/README.md#what-you-get)).
+
+### Fixed
+
+- Generators: the aspects keep no compilation objects in static fields, which in an IDE that keeps Metalama's process across edits held every earlier compilation in memory.
+- Generators: a generated `TryParse(string?, IFormatProvider?, out)` ends at its `return`; the unreachable statements after it are gone from the woven code ([Reading the generated code](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#reading-the-generated-code)).
 
 ## 2.2.0 — 2026-10-18
 

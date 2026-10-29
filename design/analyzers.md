@@ -79,5 +79,6 @@ still runs on the source, where the name-based forms above remain the reach.
 ships at Warning or Info in a minor version and is raised to Error only in a major. Consumers
 build with warnings as errors, so a new Error rule in a minor version would break their builds on
 update. Within a major version an Error never reports more than it did, unless the form is one only
-that minor version's new API can write ([decision 118](adr/0118-an-error-may-learn-a-form-only-new-api-can-write.md));
+that minor version's new API can write ([decision 118](adr/0118-an-error-may-learn-a-form-only-new-api-can-write.md),
+which also records 2.3.0's one exception, #159);
 a Warning or Info may learn more forms in a minor version ([decision 34](adr/0034-errors-fixed-within-major-version-warnings.md), stated in the analyzer README).
