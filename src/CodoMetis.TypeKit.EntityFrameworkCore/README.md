@@ -241,8 +241,10 @@ These ask the database for one row and let it run the condition:
 - **The condition must be an expression.** A lambda written at the call is one. A
   `Func<Order, bool>` held in a variable, or a method group, binds `FirstOrNone`, `SingleOrNone` and
   `FirstOrError` to their overloads on a sequence. Then every row is read and the condition runs in
-  memory, without a warning. Hold an `Expression<Func<Order, bool>>` instead. `FirstOrNoneAsync`
-  takes only an expression, so a `Func` there doesn't compile.
+  memory, and the analyzer warns at the call
+  ([CMTK0009](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#a-condition-that-reads-every-row)).
+  Hold an `Expression<Func<Order, bool>>` instead. `FirstOrNoneAsync` takes only an expression, so a
+  `Func` there doesn't compile.
 - **`LastOrNone` and `LastOrError` on a query don't compile.** A query has no last row until it's
   ordered. So order it the other way and take the first, or call `AsEnumerable()` to read every row
   on purpose.

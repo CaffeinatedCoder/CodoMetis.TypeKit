@@ -246,6 +246,43 @@ string. A client generated from the document then has the member it matches on.
   ends up in the value object's shared component, and from there it applies to every other use of
   that value object.
 
+## Describe value objects as plain types
+
+Some clients work better without a type per value object. A generator that turns each component into a
+class gives you a `CustomerId` wrapper where you wanted a `string`. Turn on `InlineValueObjects`, and
+every value object is described in place by the schema of the type inside it:
+
+```csharp
+builder.Services.AddOpenApi(options => options.AddTypeKit(typeKit => typeKit.InlineValueObjects = true));
+```
+
+The `CustomerDto` from above then has plain properties, and the document has no `CustomerId` or `Email`
+component:
+
+```json
+"CustomerDto": { "type": "object", "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "email": { "type": "string" },
+    "name": { "type": "string" } } }
+```
+
+The same goes for every place a value object appears: a body, a response, a list's elements, a
+dictionary's values, a route, query or header parameter, and anything nested in those. Each one gets
+exactly the schema the underlying type gets in that place.
+
+**Good to know**
+
+- **Without the setting, nothing changes.** `AddTypeKit()` writes the same document as before, with a
+  component per value object.
+- **A nullable value object allows null in its own schema**, as a nullable property of the underlying
+  type does. That holds under OpenAPI 2.0 too, where a nullable property of a component loses its type.
+- **Closed sets keep their components**, and so does an enum inside a value object. The value object's
+  schema holds the enum's content in place.
+- **Two value objects with one name no longer clash.** Neither has a component, so neither needs a
+  name of its own.
+- **Your own `CreateSchemaReferenceId` still names your other types** when you set it before
+  `AddTypeKit`. One set after `AddTypeKit` replaces TypeKit's naming, and this setting with it.
+
 ## Native AOT
 
 The transformer and `ToHttpResult()` are trim- and AOT-safe, and the smoke test publishes a host

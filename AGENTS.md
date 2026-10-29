@@ -272,6 +272,15 @@ Before `git tag`, show every seed caught, locally, a build of one project per se
 dotnet tools/Oracles/bin/Release/net10.0/oracles.dll seeds
 ```
 
+Then re-read the competitor facts that are due, and correct `docs/comparison.md` with them (CONTRIBUTING,
+"Releasing", step 1):
+
+```bash
+dotnet tools/DocsQuery/bin/Release/net10.0/docs-query.dll due --nuget   # external facts over six months old, or behind NuGet
+```
+
+It reads api.nuget.org, needs no model, and is never a CI check: time passing fails no build.
+
 The release workflow runs the suite, which holds the catalogue, before it packs; there is no gate beside it
 (decision 112 withdrew decision 97's). A seed that is not caught is answered by a stronger oracle or a better
 seed, never by deleting the seed.
