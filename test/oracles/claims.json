@@ -2005,6 +2005,104 @@
     ]
   },
   {
+    "id": "E17-as-the-underlying-type",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server",
+    "quote": "A value object behaves on SQL Server as the type inside it does there.",
+    "claim": "A value object behaves on SQL Server as the type inside it does there.",
+    "oracle": "differential",
+    "surfaces": [
+      "TranslatedAsWrappedValueAttribute.*",
+      "IValueObject.Value"
+    ],
+    "heldBy": [
+      "SqlServerQueryVariantTests",
+      "SqlServerKeyVariantTests",
+      "SqlServerRoundTripTests"
+    ]
+  },
+  {
+    "id": "E17-datetime-kind",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server",
+    "quote": "`datetime2` keeps every tick, and a UTC value reads back with `Kind` `Unspecified`.",
+    "claim": "`datetime2` keeps every tick, and a UTC value reads back with `Kind` `Unspecified`.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "SqlServerRoundTripTests"
+    ]
+  },
+  {
+    "id": "E17-decimal-scale",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server",
+    "quote": "`10m` comes back as `10.00m`, which is equal but prints `10.00`.",
+    "claim": "`10m` comes back as `10.00m`, which is equal but prints `10.00`.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "SqlServerRoundTripTests",
+      "SqlServerQueryVariantTests",
+      "SqlServerKeyVariantTests"
+    ]
+  },
+  {
+    "id": "E17-greatest-level-160",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server",
+    "quote": "`EF.Functions.Greatest` and `Least` need compatibility level 160.",
+    "claim": "`EF.Functions.Greatest` and `Least` need compatibility level 160.",
+    "oracle": "differential",
+    "surfaces": [
+      "TranslatedAsWrappedValueAttribute.*",
+      "IValueObject.Value"
+    ],
+    "heldBy": [
+      "SqlServerQueryVariantTests"
+    ]
+  },
+  {
+    "id": "E17-guid-order",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server",
+    "quote": "SQL Server orders a `uniqueidentifier` by its last six bytes first.",
+    "claim": "SQL Server orders a `uniqueidentifier` by its last six bytes first.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "SqlServerQueryVariantTests"
+    ]
+  },
+  {
+    "id": "E17-text-ignores-case",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server",
+    "quote": "Under SQL Server's default collation, `o.Note == note`, `notes.Contains(o.Note)` and `StartsWith` also match text that differs in case or in trailing spaces.",
+    "claim": "Under SQL Server's default collation, `o.Note == note`, `notes.Contains(o.Note)` and `StartsWith` also match text that differs in case or in trailing spaces.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "SqlServerRoundTripTests",
+      "SqlServerQueryVariantTests"
+    ]
+  },
+  {
+    "id": "E17-timespan-under-a-day",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server",
+    "quote": "A longer one fails `SaveChanges` in a column.",
+    "claim": "A longer one fails `SaveChanges` in a column.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "SqlServerQueryVariantTests"
+    ]
+  },
+  {
     "id": "L01-read-as-the-underlying-type-reads",
     "source": "README.md#what-typekit-guarantees",
     "quote": "**Swapping a primitive for a value object keeps the JSON, the column and the schema.**",

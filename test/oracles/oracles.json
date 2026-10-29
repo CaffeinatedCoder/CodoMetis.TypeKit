@@ -18,6 +18,18 @@
     "against": "the same key shape keyed by the wrapped type, on SQLite, Npgsql and SQL Server"
   },
   {
+    "class": "SqlServerKeyVariantTests",
+    "project": "CodoMetis.TypeKit.EntityFrameworkCore.Tests",
+    "kind": "differential",
+    "against": "the same key shape keyed by the wrapped type, inserted into a real SQL Server and read back"
+  },
+  {
+    "class": "SqlServerQueryVariantTests",
+    "project": "CodoMetis.TypeKit.EntityFrameworkCore.Tests",
+    "kind": "differential",
+    "against": "the same query over the wrapped type on a real SQL Server, the objects in memory and SQLite, each difference from memory that is SQL Server's own a pinned fact"
+  },
+  {
     "class": "NotWireTypeTests",
     "project": "CodoMetis.TypeKit.Tests",
     "kind": "completeness",
