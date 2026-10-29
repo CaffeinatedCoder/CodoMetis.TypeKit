@@ -21,12 +21,17 @@ defect, a cost or a missing guard may land here; one that adds surface waits for
 Decided, moved to 2.2 when 2.1.0 shipped without them ([decision 88](adr/0088-2-1-0-ships-without-its-open-roadmap-items.md)),
 and then to 2.3 when 2.2.0 became a consolidation release ([decision 97](adr/0097-2-2-0-is-a-consolidation-release-and-the-gate-binds.md)).
 
-- A default value-object key over `ulong` generated as a plain one is, which needs a per-key value
-  generator a compiled model can write ([decision 63](adr/0063-char-keys-application-assigned-ulong-documented.md)).
+Its one item, a default `ulong` key, landed ([decision 114](adr/0114-a-value-object-s-temporary-number-is-its-wrapped-type-s.md));
+what else 2.3.0 ships is tracked in its epic.
 
 ## Gaps, in any 2.x
 
 Small, each closable in a minor version. Found by the reviews named.
+
+- A default `ulong` value-object key in a compiled model made with `--nativeaot`, which writes the type mappings out as
+  code without the factory their converters' hints carry, or configured with `ValueObjectConverter` by hand, whose
+  mapping has none: both still throw at `Add` where the column is a `decimal`
+  ([decision 114](adr/0114-a-value-object-s-temporary-number-is-its-wrapped-type-s.md)).
 
 **Analyzers**
 - CMTK0009, a Warning, reports `FirstOrNone`, `SingleOrNone` and `FirstOrError` on an `IQueryable<T>`

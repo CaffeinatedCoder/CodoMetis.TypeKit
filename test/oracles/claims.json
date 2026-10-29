@@ -1613,10 +1613,50 @@
     ]
   },
   {
+    "id": "E04-hilo-and-own-generator-first",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "HiLo and a value generator of your own still come first.",
+    "claim": "HiLo and a value generator of your own still come first.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
     "id": "E04-own-configuration-wins",
     "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
     "quote": "A configuration you write yourself always wins over these defaults.",
     "claim": "A configuration you write yourself always wins over these defaults.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E04-temporary-as-plain",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "At `Add`, a key that is generated gets the same temporary value a plain key of the underlying type gets, also where the column is of another type, such as the `decimal` that holds a `ulong`.",
+    "claim": "At `Add`, a key that is generated gets the same temporary value a plain key of the underlying type gets, also where the column is of another type, such as the `decimal` that holds a `ulong`.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests",
+      "KeyGenerationVariantTests"
+    ]
+  },
+  {
+    "id": "E04-ulong-key-native-aot",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "Otherwise the key gets a temporary `ulong`, as a plain one does.",
+    "claim": "A default key over `ulong` throws at `Add` where the column is a `decimal` in a compiled model made with `--nativeaot` and where `ValueObjectConverter` is configured by hand; otherwise it gets a temporary `ulong`, as a plain one does.",
     "oracle": "claim",
     "surfaces": [
       "WrappedTypeValueGeneratorFactory.*"

@@ -41,7 +41,9 @@ public sealed class WrappedTypeValueGeneratorFactory : ValueGeneratorFactory
 
         return ValueObjectTypes.Describe(Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType) is { } valueObject
             && WrappedTypeValueGenerator.Generates(valueObject.WrappedType)
-                   ? new WrappedTypeValueGenerator(ValueObjectMapping.For(valueObject).Converter, valueObject.WrappedType)
+                   ? new WrappedTypeValueGenerator(
+                         ValueObjectMapping.For(valueObject).Converter,
+                         valueObject.WrappedType == typeof(Guid) ? WrappedTypeValueGenerator.ProviderGenerator<Guid> : WrappedTypeValueGenerator.ProviderGenerator<string>)
                    : throw new InvalidOperationException(
                          $"{property.DeclaringType.DisplayName()}.{property.Name} is no value object over a Guid or a string, so it has no generator of its wrapped type's.");
     }
@@ -52,9 +54,14 @@ public sealed class WrappedTypeValueGeneratorFactory : ValueGeneratorFactory
 /// The provider is asked once, at the first value, about a key of the wrapped type in a model of its own,
 /// built with the context's conventions.
 /// </summary>
-internal sealed class WrappedTypeValueGenerator(ValueConverter converter, Type wrapped) : ValueGenerator
+internal sealed class WrappedTypeValueGenerator(ValueConverter converter, Func<DbContext, ValueGenerator> providerGenerator) : ValueGenerator
 {
     private ValueGenerator? _provider;
+
+    /// <summary>A generator of the wrapped type's values already chosen, its values converted to the value object.</summary>
+    public WrappedTypeValueGenerator(ValueConverter converter, ValueGenerator provider)
+        : this(converter, _ => provider) =>
+        _provider = provider;
 
     /// <summary>The wrapped types whose generator the providers choose by the property's CLR type.</summary>
     public static bool Generates(Type wrapped) => wrapped == typeof(Guid) || wrapped == typeof(string);
@@ -64,35 +71,28 @@ internal sealed class WrappedTypeValueGenerator(ValueConverter converter, Type w
         _provider?.GeneratesTemporaryValues
      ?? throw new InvalidOperationException("Whether a value object's generated value is temporary is known only once one is generated.");
 
-    /// <remarks>None of EF's or the providers' generators of a Guid or a string makes stable values.</remarks>
+    /// <remarks>None of EF's or the providers' generators of a Guid, a string or a temporary number makes stable values.</remarks>
     public override bool GeneratesStableValues => false;
 
     protected override object? NextValue(EntityEntry entry) =>
-        converter.ConvertFromProvider((_provider ??= ProviderGenerator(entry.Context, wrapped)).Next(entry));
+        converter.ConvertFromProvider((_provider ??= providerGenerator(entry.Context)).Next(entry));
 
-    private static ValueGenerator ProviderGenerator(DbContext context, Type wrapped)
+    /// <summary>The generator the provider gives a key of <typeparamref name="T"/> generated on add.</summary>
+    public static ValueGenerator ProviderGenerator<T>(DbContext context)
     {
         var modelBuilder = new ModelBuilder(context.GetService<IConventionSetBuilder>().CreateConventionSet(), context.GetService<ModelDependencies>());
-        if (wrapped == typeof(Guid))
-            modelBuilder.Entity<GuidKey>().Property(key => key.Id).ValueGeneratedOnAdd();
-        else
-            modelBuilder.Entity<StringKey>().Property(key => key.Id).ValueGeneratedOnAdd();
+        modelBuilder.Entity<Key<T>>().Property(key => key.Id).ValueGeneratedOnAdd();
 
         var model = context.GetService<IModelRuntimeInitializer>().Initialize(modelBuilder.FinalizeModel(), designTime: false, validationLogger: null);
-        var entityType = model.FindEntityType(wrapped == typeof(Guid) ? typeof(GuidKey) : typeof(StringKey))!;
+        var entityType = model.FindEntityType(typeof(Key<T>))!;
 
         return context.GetService<IValueGeneratorSelector>().TrySelect(entityType.FindPrimaryKey()!.Properties[0], entityType, out var generator) && generator is not null
                    ? generator
-                   : throw new InvalidOperationException($"The provider has no generator for a key of {wrapped.Name} generated on add.");
+                   : throw new InvalidOperationException($"The provider has no generator for a key of {typeof(T).Name} generated on add.");
     }
 
-    private sealed class GuidKey
+    private sealed class Key<T>
     {
-        public Guid Id { get; set; }
-    }
-
-    private sealed class StringKey
-    {
-        public string Id { get; set; } = "";
+        public T Id { get; set; } = default!;
     }
 }

@@ -130,9 +130,11 @@ A composite key of value objects is `HasKey(x => new { x.Order, x.Line })`, as f
 
 - **A key over `char` is always yours to assign**, on every provider, since none generates one. A
   default `'\0'` is stored as it is, so assign a meaningful character.
-- **A key over `ulong` needs `ValueGeneratedNever()` on SQL Server and PostgreSQL.** Their column is a
-  `decimal`, so adding the entity with the key's default value throws `OverflowException` at `Add`.
-  Configure `ValueGeneratedNever()` and assign the key.
+- **Under Native AOT, a key over `ulong` needs `ValueGeneratedNever()` on SQL Server and PostgreSQL.**
+  Their column is a `decimal`, and in a compiled model made with `--nativeaot`, adding the entity with
+  the key's default value throws `OverflowException` at `Add`. The same goes for a key you configure
+  with `ValueObjectConverter` yourself. Configure `ValueGeneratedNever()` and assign the key.
+  Otherwise it gets a temporary value, as a plain `ulong` key does.
 - **Inheritance hierarchies.** The root of a TPH or TPT hierarchy is generated too. Under TPC, as for
   an `int` key, it's generated only where the provider has a sequence for the hierarchy (PostgreSQL,
   SQL Server), not on SQLite.

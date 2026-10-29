@@ -30,8 +30,11 @@ internal static class DesignTime
         return services.BuildServiceProvider();
     }
 
-    /// <summary>The context's compiled model, as <c>dotnet ef dbcontext optimize</c> writes it, compiled and loaded.</summary>
-    public static IModel CompiledModel(DbContext db)
+    /// <summary>
+    /// The context's compiled model, as <c>dotnet ef dbcontext optimize</c> writes it, compiled and loaded; with
+    /// <paramref name="nativeAot"/>, as <c>--nativeaot</c> writes it, type mappings included.
+    /// </summary>
+    public static IModel CompiledModel(DbContext db, bool nativeAot = false)
     {
         using var designTime = Services(db);
         var options = new CompiledModelCodeGenerationOptions
@@ -40,6 +43,7 @@ internal static class DesignTime
             ModelNamespace            = $"CompiledModel{Guid.NewGuid():N}",
             Language                  = "C#",
             UseNullableReferenceTypes = true,
+            ForNativeAot              = nativeAot,
         };
         var files = designTime.GetRequiredService<ICompiledModelCodeGeneratorSelector>().Select(options)
                               .GenerateModel(db.GetService<IDesignTimeModel>().Model, options);

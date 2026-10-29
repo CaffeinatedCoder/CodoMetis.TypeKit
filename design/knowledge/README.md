@@ -75,3 +75,4 @@ test and later for the harness's `Baseline.Fact`.
 | [KB-044](KB-044-superstrong-types.md) | SuperStrong.Types 1.0.0 is an attribute on a partial class, validated everywhere it creates a value, with no Native AOT declaration | SuperStrong.Types 1.0.0 | prose |
 | [KB-045](KB-045-first-releases-of-the-compared-libraries.md) | The compared libraries were first published on NuGet between 2015 and 2026 | NuGet, 2026-10-29 | prose |
 | [KB-046](KB-046-csharp-15-unions-ship-with-the-net-11-sdk.md) | C# 15's union types and closed hierarchies need no preview flag in the .NET 11 SDK, which is still prerelease | .NET 11 SDK RC 2 | prose |
+| [KB-047](KB-047-a-converter-s-hints-factory-comes-after-hilo.md) | EF Core consults a converter's mapping-hints value generator after a property's generator and after HiLo, and gives a key that is no number the temporary number of its column | EF Core 10.0.12, Npgsql 10.0.3 | `KB047` |
