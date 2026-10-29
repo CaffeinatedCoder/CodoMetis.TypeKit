@@ -47,6 +47,9 @@ them.
 
 Every rule also runs in `.razor` and `.cshtml` files (see [Generated code](#generated-code-and-razor)).
 
+One code fix answers the compiler instead of a rule: [Add Create](#add-create) writes the `Create` a
+validated value object is missing.
+
 ## CMTK0001
 
 A `default` value object wraps `default(T)` and passed no rule. A `default` result is neither a
@@ -666,6 +669,23 @@ compared, `kind == default`, a pattern or a `case`, is a guard and isn't reporte
 The members are read from the enum itself, so a member that a newer base package adds is a member
 here too. An enum of your application's own isn't this rule's job. A fault that no member names is
 rejected where `ToHttpResult()` turns it into a response, and `WithRule` throws for one.
+
+## Add Create
+
+A type that declares `IValidatedValue<TSelf, T, TFault>` and has no `Create` fails to build with CS0535.
+The package's fix for that error, **Add Create**, writes the method for you, as the [Generators
+README](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#declare-a-value-object)
+shows. It accepts every value until you add your rules. The types are spelled as your file names them,
+so a type from a namespace the file doesn't import is qualified. `Create` goes in as the type's first
+member, indented as the other members are. A declaration that ends in `;` gets a body.
+
+The fix isn't offered in these cases:
+
+- **`TSelf` is another type.** The value to return isn't this type's to build.
+- **The type already has a `Create` that takes a `T`**, static or not. A second one wouldn't compile, so
+  correct the one that's there.
+- **The type's body is on one line and already holds members.** Put the body on lines of its own, and the
+  fix is offered.
 
 ## Configuration
 

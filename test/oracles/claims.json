@@ -1302,6 +1302,113 @@
     ]
   },
   {
+    "id": "C25-add-create-accepts-every-value",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#declare-a-value-object",
+    "quote": "It writes a `Create` that accepts every value, ready for your rules:",
+    "claim": "It writes a `Create` that accepts every value, ready for your rules:",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests",
+      "AddCreateTests"
+    ]
+  },
+  {
+    "id": "C25-add-create-offered",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#declare-a-value-object",
+    "quote": "The build then fails because `Create` is missing (CS0535), and your editor offers a fix for that error: **Add Create**.",
+    "claim": "The build then fails because `Create` is missing (CS0535), and your editor offers a fix for that error: **Add Create**.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests"
+    ]
+  },
+  {
+    "id": "C25-create-taking-t",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#add-create",
+    "quote": "**The type already has a `Create` that takes a `T`**, static or not.",
+    "claim": "**The type already has a `Create` that takes a `T`**, static or not.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests"
+    ]
+  },
+  {
+    "id": "C25-first-member",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#add-create",
+    "quote": "`Create` goes in as the type's first member, indented as the other members are.",
+    "claim": "`Create` goes in as the type's first member, indented as the other members are.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests"
+    ]
+  },
+  {
+    "id": "C25-one-line-body",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#add-create",
+    "quote": "**The type's body is on one line and already holds members.**",
+    "claim": "**The type's body is on one line and already holds members.**",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests"
+    ]
+  },
+  {
+    "id": "C25-semicolon-gets-a-body",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#add-create",
+    "quote": "A declaration that ends in `;` gets a body.",
+    "claim": "A declaration that ends in `;` gets a body.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests",
+      "MissingCreateVariantTests"
+    ]
+  },
+  {
+    "id": "C25-tself-another-type",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#add-create",
+    "quote": "**`TSelf` is another type.** The value to return isn't this type's to build.",
+    "claim": "**`TSelf` is another type.** The value to return isn't this type's to build.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests"
+    ]
+  },
+  {
+    "id": "C25-types-spelled-as-the-file-names-them",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#add-create",
+    "quote": "The types are spelled as your file names them, so a type from a namespace the file doesn't import is qualified.",
+    "claim": "The types are spelled as your file names them, so a type from a namespace the file doesn't import is qualified.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests",
+      "MissingCreateVariantTests"
+    ]
+  },
+  {
     "id": "E01-column-type",
     "source": "docs/ef-core.md#the-model",
     "quote": "Every property maps as a column of the underlying type, nullable where the property is.",

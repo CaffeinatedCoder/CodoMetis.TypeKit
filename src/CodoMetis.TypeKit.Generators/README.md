@@ -68,6 +68,23 @@ to be a reference type. There are two interfaces:
 - **`IValidatedValue<TSelf, T, TFault>`** adds `Create`, the one method you write. Every way a value
   gets created runs it.
 
+You don't have to type `Create` out. Declare the interface first. The build then fails because
+`Create` is missing (CS0535), and your editor offers a fix for that error: **Add Create**. It writes
+a `Create` that accepts every value, ready for your rules:
+
+```csharp
+public enum NameFault { Blank, TooLong }
+
+public readonly partial record struct Name : IValidatedValue<Name, string, NameFault>
+{
+    public static Result<Name, NameFault> Create(string value)
+    {
+        // Add your rules: if (...) return Result.Error(NameFault.Blank);
+        return new Name(value);
+    }
+}
+```
+
 A validated value object has no `From`. You create one with `Create`, `TryFrom` or `FromKnownGood`,
 so nothing harmless-looking throws on input. The one factory that throws says in its name that you
 vouch for the value, and its exception names the call site, never the value.

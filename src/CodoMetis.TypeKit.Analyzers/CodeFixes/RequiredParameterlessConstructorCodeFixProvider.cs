@@ -191,7 +191,7 @@ public sealed class RequiredParameterlessConstructorCodeFixProvider : CodeFixPro
 
         // The line ending of the brace the constructor follows, so a CRLF file stays CRLF.
         var eol      = end.ToString();
-        var indent   = MemberIndentation(type, text);
+        var indent   = TypeLayout.MemberIndentation(type, text);
         var leading  = indent.Length == 0 ? SyntaxFactory.TriviaList() : SyntaxFactory.TriviaList(SyntaxFactory.Whitespace(indent));
         var trailing = type.Members.Count > 0
             ? SyntaxFactory.TriviaList(SyntaxFactory.EndOfLine(eol), SyntaxFactory.EndOfLine(eol))
@@ -208,31 +208,6 @@ public sealed class RequiredParameterlessConstructorCodeFixProvider : CodeFixPro
         (SyntaxFactory.ParseMemberDeclaration(source) ?? throw new System.InvalidOperationException($"'{source}' does not parse as a constructor."))
             .WithLeadingTrivia(leading)
             .WithTrailingTrivia(trailing);
-
-    /// <summary>
-    /// The indentation of the first member's line; without a member, the closing brace's, or the
-    /// type's, one level deeper, a tab where the file indents with tabs.
-    /// </summary>
-    private static string MemberIndentation(TypeDeclarationSyntax type, SourceText text)
-    {
-        if (type.Members.Count > 0 && Indentation(text, type.Members[0].SpanStart) is { } member) return member;
-
-        var outer = Indentation(text, type.CloseBraceToken.SpanStart) ?? Indentation(text, type.SpanStart) ?? "";
-        var tabs  = outer.IndexOf('\t') >= 0 || text.Lines.Any(line => line.Span.Length > 0 && text[line.Start] == '\t');
-
-        return outer + (tabs ? "\t" : "    ");
-    }
-
-    /// <summary>The whitespace that starts the line of <paramref name="position"/>, or <see langword="null"/> when anything else stands before it.</summary>
-    private static string? Indentation(SourceText text, int position)
-    {
-        var line = text.Lines.GetLineFromPosition(position);
-        var end  = line.Start;
-
-        while (end < position && text[end] is ' ' or '\t') end++;
-
-        return end == position ? text.ToString(TextSpan.FromBounds(line.Start, end)) : null;
-    }
 
     /// <summary>The accessibility's keywords, the first led by <paramref name="leading"/>, the last followed by <paramref name="trailing"/>.</summary>
     private static IEnumerable<SyntaxToken> Keywords(Accessibility accessibility, SyntaxTriviaList leading, SyntaxTriviaList trailing)
