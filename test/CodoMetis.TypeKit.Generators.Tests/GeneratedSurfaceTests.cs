@@ -7,13 +7,17 @@ using CodoMetis.TypeKit.ValueObjects;
 namespace CodoMetis.TypeKit.Generators.Tests;
 
 /// <summary>
-/// The public surface the generators give each probe, compared with <c>GeneratedSurface.verified.txt</c>.
+/// The public surface the generators give each probe, and each value object these tests declare for
+/// themselves, compared with <c>GeneratedSurface.verified.txt</c>.
 /// </summary>
 /// <remarks>
 /// <para>
 /// The behaviour tests check what they know to look for. This catches the rest: an aspect change
 /// that adds, drops or renames a member, an interface or an attribute shows up as a diff in review
-/// instead of shipping unnoticed.
+/// instead of shipping unnoticed. The tests' own value objects are in it because the shapes a fix was
+/// found for live there: 2.1.0's prerelease stopped generating <c>Parse</c> for a wrapped <c>Parse</c>
+/// whose result converts implicitly (<c>OverParsedShape</c>), which ApiCompat, seeing only the packages'
+/// own surface, let through.
 /// </para>
 /// <para>
 /// On a mismatch the actual surface is written next to the snapshot as
@@ -29,7 +33,7 @@ public sealed class GeneratedSurfaceTests
     public void The_generated_surface_matches_the_snapshot()
     {
         var directory = Path.Combine(RepositoryRoot(), "test", "CodoMetis.TypeKit.Generators.Tests");
-        var actual    = Render(typeof(ProbeId).Assembly);
+        var actual    = Render(typeof(ProbeId).Assembly, 19) + Render(typeof(GeneratedSurfaceTests).Assembly, 70);
         var expected  = File.Exists(Path.Combine(directory, Verified)) ? File.ReadAllText(Path.Combine(directory, Verified)) : "";
 
         if (actual == expected.ReplaceLineEndings("\n"))
@@ -42,16 +46,16 @@ public sealed class GeneratedSurfaceTests
         actual.ShouldBe(expected, $"The generated surface changed. Review {Received} and, if the change is intended, replace {Verified} with it.");
     }
 
-    private static string Render(Assembly assembly)
+    private static string Render(Assembly assembly, int floor)
     {
         var valueObjects = assembly.GetTypes()
                                    .Where(type => type.GetInterfaces().Any(i => i.IsGenericType && (i.GetGenericTypeDefinition() == typeof(IValueObject<,>) || i.GetGenericTypeDefinition() == typeof(CodoMetis.TypeKit.ClosedSets.IClosedSet<>))))
                                    .OrderBy(type => type.FullName, StringComparer.Ordinal)
                                    .ToList();
 
-        valueObjects.Count.ShouldBeGreaterThanOrEqualTo(19);
+        valueObjects.Count.ShouldBeGreaterThanOrEqualTo(floor, assembly.GetName().Name);
 
-        var text = new StringBuilder();
+        var text = new StringBuilder().Append("# ").Append(assembly.GetName().Name).Append('\n');
 
         foreach (var type in valueObjects)
         {
