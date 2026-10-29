@@ -108,11 +108,13 @@
       leaves out (read from the model; no SQL Server here). On SQL Server the value object's key, declared generated, got a permanent
       character of a GUID string at `Add`, which was stored. It is `Never`, as in 1.5.1; an explicit
       `ValueGeneratedOnAdd()` or value generator still applies. A default `'\0'` is stored as it is.
-    - **A default key over `ulong` throws `OverflowException` at `Add`** on SQL Server and PostgreSQL,
-      whose column is a `decimal`: EF's temporary `decimal` is negative. A plain `ulong` key gets a
-      temporary `ulong`. It stays declared generated, since it fails loudly and a fix needs a value
-      generator per key that a compiled model can write and that leaves HiLo alone; the workaround is
-      `ValueGeneratedNever()` and an assigned key, which a test pins with the exception.
+    - **A default key over `ulong` threw `OverflowException` at `Add`** on SQL Server and PostgreSQL,
+      whose column is a `decimal`: EF's temporary `decimal` is negative. Since 2.3.0 ([decision 114](adr/0114-a-value-object-s-temporary-number-is-its-wrapped-type-s.md))
+      a value object over a number gets the temporary values of its wrapped type, from a factory in its
+      converter's mapping hints, which EF consults after a generator on the property and after HiLo
+      ([KB-047](knowledge/KB-047-a-converter-s-hints-factory-comes-after-hilo.md)). The same reaches a `char`
+      key configured on add, which got a character of a GUID string on SQL Server. `--nativeaot` writes the
+      mappings out as code without the factory, so there a default `ulong` key still throws, and a test pins it.
 - **Conventions for the wrapped type do not reach a value object.** `ConfigureConventions`
   (`Properties<decimal>()`) matches the property's CLR type; the README says to configure the value
   object (`Properties<Amount>()`). Measured 2026-09-28 for precision, maximum length, column type and

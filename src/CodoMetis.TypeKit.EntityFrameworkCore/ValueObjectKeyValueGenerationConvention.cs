@@ -30,10 +30,10 @@ namespace CodoMetis.TypeKit.EntityFrameworkCore;
 /// it is: nothing checks that the application set a meaningful character.
 /// </description></item>
 /// <item><description>
-/// A key over <see cref="ulong"/> stays declared generated, as a plain one is, and fails loudly where the
-/// column is a <c>decimal</c> (SQL Server, PostgreSQL): a default key throws <see cref="OverflowException"/>
-/// at <c>Add</c>, from EF's negative temporary <c>decimal</c>. <c>ValueGeneratedNever()</c> and an
-/// assigned key are the workaround.
+/// A key over <see cref="ulong"/> stays declared generated, as a plain one is. Where the column is a
+/// <c>decimal</c> (SQL Server, PostgreSQL), its temporary value at <c>Add</c> is a <see cref="ulong"/>,
+/// from the factory its converter's mapping hints carry (<see cref="ValueObjectMapping"/>, decision
+/// 114), except in a <c>--nativeaot</c> compiled model, where it still throws <see cref="OverflowException"/>.
 /// </description></item>
 /// </list>
 /// <para>

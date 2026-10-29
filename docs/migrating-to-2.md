@@ -159,8 +159,9 @@ key column.
 - **On SQL Server**, the migrations generator rejects the change for all four types ("To change the
   IDENTITY property of a column, the column needs to be dropped and recreated").
 - **A key over `ulong`** isn't generated on PostgreSQL, because `numeric(20,0)` has no identity.
-  Adding an entity with a default `ulong` key throws `OverflowException` at `Add`, on PostgreSQL and
-  SQL Server alike, where 1.5 stored 0.
+  From 2.0.0 to 2.2.0, adding an entity with a default `ulong` key threw `OverflowException` at
+  `Add`, on PostgreSQL and SQL Server alike, where 1.5 stored 0. From 2.3.0 it gets a temporary value,
+  as a plain `ulong` key does, except in a compiled model made with `--nativeaot`.
 
 To keep 1.5's behaviour for any of these keys, configure `ValueGeneratedNever()` on it and assign the
 key yourself.

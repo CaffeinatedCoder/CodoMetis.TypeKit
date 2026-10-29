@@ -87,8 +87,9 @@ Server it's an identity column, so switching an `int` key to a value object chan
 Where the provider has no identity for the type, the key isn't generated, just as a plain one isn't.
 On PostgreSQL, for example, a `ulong` is a `numeric(20,0)`, which can't be an identity.
 
-There are two exceptions. EF picks the generator that fills a value object's key at `Add` by the
-column's type, not by the underlying type:
+At `Add`, a key that is generated gets the same temporary value a plain key of the underlying type
+gets, also where the column is of another type, such as the `decimal` that holds a `ulong`. HiLo and a
+value generator of your own still come first. There are two exceptions:
 
 - **A key over `char` is yours to assign.** It's never generated, on any provider, because none
   generates a `char` key. PostgreSQL rejects an identity on `character(1)`, SQLite an `AUTOINCREMENT`
@@ -97,10 +98,13 @@ column's type, not by the underlying type:
   value, but it doesn't check that you set a meaningful one. A default key, `'\0'`, is stored as it
   is, and a second such row fails on the primary key. `ValueGeneratedOnAdd()` or a value generator of
   your own on the property still applies.
-- **A default key over `ulong` throws at `Add` where the column is a `decimal`** (SQL Server,
-  PostgreSQL). EF's temporary value for the column is a negative `decimal`, and converting it back
-  throws `OverflowException`. A plain `ulong` key gets a temporary `ulong` instead. Configure
-  `ValueGeneratedNever()` on such a key and assign it.
+- **A default key over `ulong` can still throw at `Add`** where the column is a `decimal` (SQL
+  Server, PostgreSQL), in two cases. One is a compiled model made with `dotnet ef dbcontext optimize
+  --nativeaot`, which writes each column's mapping out as code and loses what gives the key a
+  temporary `ulong`. The other is a key you configure with `ValueObjectConverter` yourself. EF's
+  temporary value for the column is then a negative `decimal`, and converting it back throws
+  `OverflowException`. Otherwise the key gets a temporary `ulong`, as a plain one does. In those two
+  cases, configure `ValueGeneratedNever()` on the key and assign it.
 
 A key over a `Guid` is yours to assign, `Id = OrderId.New()` (a version 7 Guid, which sorts by
 creation time), and EF inserts it as given. To have EF generate it instead, configure

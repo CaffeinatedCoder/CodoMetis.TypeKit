@@ -88,21 +88,8 @@ public sealed partial class KeyGenerationVariantTests : IDisposable
         var plain = Added(provider, wrapped.Wrapped, typeKit: false);
         if (plain is null) Assert.Skip("the wrapped type's key is not generated at Add");
 
-        Added(provider, wrapped.ValueObject, typeKit: true).ShouldBe(AddedExpected(provider, wrapped, plain), $"{kind} configured OnAdd on {provider}");
+        Added(provider, wrapped.ValueObject, typeKit: true).ShouldBe(plain, $"{kind} configured OnAdd on {provider}");
     }
-
-    /// <summary>
-    /// The README's departures at <c>Add</c>: "A default key over <c>ulong</c> throws at <c>Add</c> where the column
-    /// is a <c>decimal</c> (SQL Server, PostgreSQL)", and on SQL Server a key over <c>char</c> configured
-    /// <c>ValueGeneratedOnAdd()</c> gets "one character of a GUID string", since EF reaches the generator through the
-    /// column's <c>nvarchar(1)</c>, so sixteen of them collide.
-    /// </summary>
-    private static string? AddedExpected(string provider, WrappedKind kind, string plain) => (provider, kind.Name) switch
-    {
-        ("npgsql" or "sqlserver", "ulong") => null,
-        ("sqlserver", "char")              => null,
-        _                                  => plain,
-    };
 
     /// <summary>What the values generated at <c>Add</c> are, or null where <c>Add</c> generates none or refuses.</summary>
     private string? Added(string provider, Type key, bool typeKit)
