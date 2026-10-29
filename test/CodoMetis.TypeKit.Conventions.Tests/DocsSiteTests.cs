@@ -5,7 +5,7 @@ namespace CodoMetis.TypeKit.Conventions.Tests;
 
 /// <summary>
 /// The docs site's menu and API pages follow the repository, so a new guide, package README or run-time package
-/// reaches the site without anyone remembering it (design/adr/0115). DocFX builds every page whether the menu lists
+/// reaches the site without anyone remembering it (design/adr/0116). DocFX builds every page whether the menu lists
 /// it or not, so a page the menu forgets is reached only by search, and its build passes.
 /// </summary>
 /// <remarks>

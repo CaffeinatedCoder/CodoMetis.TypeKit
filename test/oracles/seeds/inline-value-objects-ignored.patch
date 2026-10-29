@@ -1,0 +1,16 @@
+Seed: InlineValueObjects is ignored, so every value object keeps its component
+Oracles: SchemaTests
+Fails: every inline row but the dictionary keyed by a value object, in 3.1, 3.0 and 2.0
+
+diff --git a/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaReferenceIds.cs b/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaReferenceIds.cs
+--- a/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaReferenceIds.cs
++++ b/src/CodoMetis.TypeKit.AspNetCore/ValueObjectSchemaReferenceIds.cs
+@@ -50,7 +50,7 @@
+         options.CreateSchemaReferenceId = type =>
+         {
+             var claimant = Nullable.GetUnderlyingType(type.Type) ?? type.Type;
+-            if (inlineValueObjects && ValueObjectTypes.IsValueObject(claimant)) return null;
++            if (inlineValueObjects && false) return null;
+ 
+             if (inner(type) is not { } id) return null;
+ 

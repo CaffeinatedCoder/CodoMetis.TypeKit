@@ -201,7 +201,7 @@ The guides in `docs/`, the root README, the package READMEs, the changelog and t
 run-time packages are published to GitHub Pages, at
 [caffeinatedcoder.github.io/CodoMetis.TypeKit](https://caffeinatedcoder.github.io/CodoMetis.TypeKit/), by
 `.github/workflows/docs.yml` with DocFX
-([decision 115](design/adr/0115-the-docs-site-is-docfx-built-from-main.md)).
+([decision 116](design/adr/0116-the-docs-site-is-docfx-built-from-main.md)).
 
 - **Only `main` is published**, on every push to it, so the site always shows the latest release: the
   release's PR into `main` publishes it. A release branch is never published.

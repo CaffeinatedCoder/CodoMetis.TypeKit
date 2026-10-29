@@ -1437,6 +1437,79 @@
     ]
   },
   {
+    "id": "C27-inline-every-position",
+    "source": "docs/aspnet-core.md#describe-value-objects-as-plain-types",
+    "quote": "Each one gets exactly the schema the underlying type gets in that place.",
+    "claim": "Each one gets exactly the schema the underlying type gets in that place.",
+    "oracle": "differential",
+    "surfaces": [
+      "TypeKitOpenApiOptions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "SchemaTests",
+      "NullablePositionTests"
+    ]
+  },
+  {
+    "id": "C27-inline-no-component",
+    "source": "docs/aspnet-core.md#describe-value-objects-as-plain-types",
+    "quote": "Turn on `InlineValueObjects`, and every value object is described in place by the schema of the type inside it:",
+    "claim": "Turn on `InlineValueObjects`, and every value object is described in place by the schema of the type inside it:",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "InlineValueObjectsSettingTests",
+      "AspNetCoreTests"
+    ]
+  },
+  {
+    "id": "C27-inline-nullable-in-2-0",
+    "source": "docs/aspnet-core.md#describe-value-objects-as-plain-types",
+    "quote": "That holds under OpenAPI 2.0 too, where a nullable property of a component loses its type.",
+    "claim": "That holds under OpenAPI 2.0 too, where a nullable property of a component loses its type.",
+    "oracle": "differential",
+    "surfaces": [
+      "TypeKitOpenApiOptions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "SchemaTests",
+      "NullablePositionTests"
+    ]
+  },
+  {
+    "id": "C27-inline-off-unchanged",
+    "source": "docs/aspnet-core.md#describe-value-objects-as-plain-types",
+    "quote": "`AddTypeKit()` writes the same document as before, with a component per value object.",
+    "claim": "`AddTypeKit()` writes the same document as before, with a component per value object.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "InlineValueObjectsSettingTests"
+    ]
+  },
+  {
+    "id": "C27-inline-same-name",
+    "source": "docs/aspnet-core.md#describe-value-objects-as-plain-types",
+    "quote": "Neither has a component, so neither needs a name of its own.",
+    "claim": "Neither has a component, so neither needs a name of its own.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "InlineValueObjectsSettingTests"
+    ]
+  },
+  {
     "id": "E01-column-type",
     "source": "docs/ef-core.md#the-model",
     "quote": "Every property maps as a column of the underlying type, nullable where the property is.",

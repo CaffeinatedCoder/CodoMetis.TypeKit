@@ -98,7 +98,7 @@ static partial class Table
     public sealed record Class(string Name, Lane Lanes, string[] Patterns, string Why);
 
     // Read by the test projects of test/Prose.slnf alone, which ProseReaderTests holds; built into nothing. The docs
-    // site's config (site/) is read by the docs workflow and the conventions tests (decision 115).
+    // site's config (site/) is read by the docs workflow and the conventions tests (decision 116).
     public static readonly Class Prose = new("prose", Lane.Linux, ["docs/**", "design/**", "site/**", ".github/ISSUE_TEMPLATE/**", "**/*.md"],
         "read by the prose suite, built into nothing");
 

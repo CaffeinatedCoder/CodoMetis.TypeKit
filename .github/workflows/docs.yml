@@ -1,5 +1,5 @@
 # Builds the docs site from the guides in docs/, the root README, the package READMEs, the changelog and the API of
-# the run-time packages, and publishes it to GitHub Pages from main (#115, design/adr/0115-the-docs-site-is-docfx-built-from-main.md):
+# the run-time packages, and publishes it to GitHub Pages from main (#115, design/adr/0116-the-docs-site-is-docfx-built-from-main.md):
 #
 #   https://caffeinatedcoder.github.io/CodoMetis.TypeKit/
 #
@@ -103,7 +103,7 @@ jobs:
           dotnet docfx site/docfx.json --warningsAsErrors --metadata _commit="$GITHUB_SHA"
 
       # The members of C# 14 extension blocks are listed as extension methods, on their static class and on the type
-      # they extend: measured with DocFX 2.81.0 (decision 115). A DocFX that stops listing them fails here, not on
+      # they extend: measured with DocFX 2.81.0 (decision 116). A DocFX that stops listing them fails here, not on
       # a reader who finds Option<T>'s page without its combinators.
       - name: The extension-block members are listed
         run: |
