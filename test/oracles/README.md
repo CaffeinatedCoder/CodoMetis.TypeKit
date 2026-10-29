@@ -28,10 +28,26 @@ dotnet tools/Oracles/bin/Release/net10.0/oracles.dll seeds [name filter]   # eac
 dotnet tools/Oracles/bin/Release/net10.0/oracles.dll status                # the worklist: unheld claims, unread waivers, unseeded oracles, candidates
 ```
 
-`seeds` copies the working tree (without `bin/`, `obj/` and `.git/`, so uncommitted work is included), applies the
-patch, builds each named oracle's project and runs that one class. A seed is caught when one of the class's tests
-fails with a row that is not a known candidate (`SeedVerdict`). One line per seed and oracle, `CAUGHT`, `MISSED` or
-`ERROR`, and exit code 1 unless every pair is caught.
+`seeds` copies the working tree (without `bin/`, `obj/` and `.git/`, so uncommitted work is included), builds each
+oracle the selected seeds name and runs that one class: the baseline, with no seed. Then, for each seed, it copies
+the tree again, applies the patch, and builds and runs the same classes with the same filter. A seed is caught when
+its oracle passes without it and fails with it, in a test of its own: a failed test with a row that is not a known
+candidate (`SeedVerdict`, design/adr/0117). It prints one `BASELINE` line per oracle, then one line per seed and
+oracle:
+
+| Verdict | Meaning | Exit code |
+|---|---|---|
+| `CAUGHT` | The baseline passes, and with the seed a test fails on its own assertion or on what the code it calls throws. | 0 when every pair is caught |
+| `MISSED` | The baseline passes, and with the seed every test passes, or fails only on known candidates. | 1 |
+| `ERROR` | A run never reached the tests' own code, or the baseline fails. | 4 |
+
+The TRX decides what reached the tests. A fixture that fails to construct or initialize fails every test with
+xunit's own message (`Collection fixture type 'SqlServer' threw in InitializeAsync`). A fixture that throws in
+`Dispose` shows up only as an `error` in the TRX's counters. A crashed host writes no TRX and exits with something
+other than 0 or 2. A run whose every test was skipped ran nothing. Each of these is `ERROR`, with or without the
+seed: a dead fixture fails every test either way, so its failures prove nothing about the seed. On an arm64 Mac,
+run it with `TYPEKIT_MSSQL_IMAGE=mcr.microsoft.com/azure-sql-edge:latest`, as the suite runs (CONTRIBUTING's Docker
+bullet), or the SQL Server oracles are `ERROR`.
 
 To add an oracle: write the test class, register it in `oracles.json`, write a seed by planting the defect it
 guards against, `git diff` it into `seeds/<defect>.patch` under its header lines, undo the edit, and run
