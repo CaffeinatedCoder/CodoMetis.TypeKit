@@ -98,29 +98,20 @@ element schema, so `Quantity` gets no component at all, and both parameters are 
   name, and describes both as the first it meets. A name your own `CreateSchemaReferenceId` gives,
   set before `AddTypeKit()`, is kept. So give one of them its own name there, or rename one.
 
-  To have value objects inlined instead, return `null` for them, the nullable ones included, after
-  `AddTypeKit()`:
+  To have value objects described in place instead, with no component of their own, turn on
+  `InlineValueObjects`: `options.AddTypeKit(typeKit => typeKit.InlineValueObjects = true)`.
+  [Describe value objects as plain types](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/aspnet-core.md#describe-value-objects-as-plain-types)
+  shows the document you get.
 
-  ```csharp
-  using System.Reflection;
-  using CodoMetis.TypeKit.CompilerServices;   // GeneratedValueObjectAttribute, on every value object
-
-  options.AddTypeKit();
-  options.CreateSchemaReferenceId = type =>
-      (Nullable.GetUnderlyingType(type.Type) ?? type.Type).GetCustomAttribute<GeneratedValueObjectAttribute>() is not null
-          ? null
-          : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
-  ```
-
-  Inlined, a nullable value object or closed set allows null in its own schema, wherever a
-  referenced one allows it around its reference. A closed set's property is then the enum of its
-  names plus null.
+  Inlined, a nullable value object allows null in its own schema, wherever a referenced one allows it
+  around its reference. Closed sets keep their components with the setting. A host that inlines them
+  with its own `CreateSchemaReferenceId` gets a closed set's property as the enum of its names plus null.
 
   OpenAPI 2.0 can't put null around a reference. ASP.NET writes a nullable property of any component as
   `{"allOf":[{"x-nullable":true}]}` there, without the reference. So under 2.0 a nullable value-object
   property loses its type, where the underlying type's nullable property keeps it. A nullable element of
-  a list or a dictionary loses its type the same way, since it's the component or null too. Inline value
-  objects if your 2.0 document needs it.
+  a list or a dictionary loses its type the same way, since it's the component or null too. Turn on
+  `InlineValueObjects` if your 2.0 document needs it.
 
 - **Put rules in `Create`, not on the property.** A validation attribute on a value-object property
   (`[MaxLength]`, `[Range]`) ends up in the value object's shared component, as ASP.NET does for any
