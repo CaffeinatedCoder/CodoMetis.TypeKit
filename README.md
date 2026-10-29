@@ -52,6 +52,24 @@ JSON, route binding, parsing and the generated `TryFrom` all run your `Create`. 
 breaks your rules can't get in through any of them. A value object can wrap a string, a number, a
 `Guid`, a date, an enum, a `Uri`, a NodaTime type or a type of your own.
 
+Then you create one in the way that fits the input:
+
+```csharp
+var id = OrderId.New();                                   // a version 7 Guid
+
+Result<Email, EmailFault> created = Email.Create(input);  // the fault says which rule refused it
+Option<Email> maybe = Email.TryFrom(input);               // is it valid?
+Email known = Email.FromKnownGood("ops@example.com");     // a literal you vouch for; throws otherwise
+
+JsonSerializer.Serialize(known);                          // "ops@example.com"
+JsonSerializer.Deserialize<Email>("\"nobody\"");          // JsonException naming Email and NoAt, never the text
+Email.Parse("ops@example.com", null);                     // IParsable, so it binds as a route or query parameter
+```
+
+- **`Create`** when you want to know which rule failed.
+- **`TryFrom`** when yes or no is enough.
+- **`FromKnownGood`** for a value you vouch for, such as a literal. It throws if you were wrong.
+
 <details>
 <summary>What the generators write for <code>OrderId</code>, trimmed</summary>
 
@@ -163,12 +181,24 @@ You get `All`, parsing by name, JSON as the name, an OpenAPI string enum and a t
 Core. `Match` takes one required delegate per member, so a member added later fails every call until
 you handle it ([Closed sets](docs/closed-sets.md)).
 
+### EF Core and ASP.NET Core
+
+You set them up once, for every value object:
+
+```csharp
+services.AddDbContext<ShopDb>(options => options.UseNpgsql(connectionString).UseTypeKit());
+
+db.Customers.Where(c => c.Email.Value.EndsWith("@example.com"));        // WHERE c."Email" LIKE '%@example.com'
+
+services.AddOpenApi(options => options.AddTypeKit());                    // OrderId: {"type":"string","format":"uuid"}
+```
+
+Value objects map to plain columns and keys, identity keys included, and `.Value` in a LINQ query
+becomes plain SQL ([EF Core](docs/ef-core.md)). The OpenAPI document shows each value object as its
+underlying type, plus the error responses an endpoint can return ([ASP.NET Core](docs/aspnet-core.md)).
+
 ### And also
 
-- **EF Core.** Value objects map to plain columns and keys, identity keys included, and `.Value` in a
-  LINQ query becomes plain SQL ([EF Core](docs/ef-core.md)).
-- **ASP.NET Core.** The OpenAPI document shows each value object as its underlying type, plus the
-  error responses an endpoint can return ([ASP.NET Core](docs/aspnet-core.md)).
 - **JSON Merge Patch.** `Patch<T>` tells "absent", "null" and "a value" apart
   ([Merge patches](docs/merge-patches.md)).
 - **Checks for written text.** `AsText()` and `AsIdentifier()` check text a person typed and an id
@@ -183,89 +213,11 @@ you handle it ([Closed sets](docs/closed-sets.md)).
   as it prints itself ([Logging and secrets](docs/logging-and-secrets.md)).
 - **Test assertions** for `Option`, `Result` and `Patch<T>`, with no dependency on a test framework
   ([Testing](docs/testing.md)).
-- **Take only what you need.** The `Option` and `Result` package brings no code generator with it.
-
-## Packages
-
-| Package | What it does | Metalama |
-|---|---|---|
-| [CodoMetis.TypeKit](src/CodoMetis.TypeKit/README.md) | `Option<T>`, `Result<T, TError>` and `Result<TError>`, the interfaces value objects are built on, `Patch<T>`, and the text guards `AsText()` and `AsIdentifier()`. Brings the analyzers that check them | no |
-| [CodoMetis.TypeKit.Analyzers](src/CodoMetis.TypeKit.Analyzers/README.md) | Build-time checks, CMTK0001 to CMTK0014. They arrive with the base package and run in Razor components too. They flag:<br>- a `default` value object, `Option` or `Result`, written in your code or handed out by `FirstOrDefault` and its kind<br>- a value object nothing generates<br>- an ignored result<br>- skipped validation<br>- a comparison of two value objects' values<br>- a type argument that breaks `[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]`, `[Interface]`, `[Unsealed]`, `[ValueObject]`, `[ClosedSet]`, `[FlagsEnum]` or `[ReadOnlyStruct]` on its parameter, or two that `[Distinct]` or `[Unrelated]` keep apart<br>- a type without the constructor its host will look for<br>- a closed-set `Match` bound by position, and a closed-set member written after it was named<br>- a `FaultKind` or `ConstructorAccessibility` that names no member | no |
-| [CodoMetis.TypeKit.Generators](src/CodoMetis.TypeKit.Generators/README.md) | Generates your value objects at compile time. Add it to the project that declares them | yes |
-| [CodoMetis.TypeKit.EntityFrameworkCore](src/CodoMetis.TypeKit.EntityFrameworkCore/README.md) | Maps value objects to columns with nothing to register per type, and makes `.Value` work in LINQ | no |
-| [CodoMetis.TypeKit.AspNetCore](src/CodoMetis.TypeKit.AspNetCore/README.md) | Shows value objects in the OpenAPI document with the schema of their underlying type. Returns a `Result` as the response, and a fault as problem details | no |
-| [CodoMetis.TypeKit.Serilog](src/CodoMetis.TypeKit.Serilog/README.md) | Logs value objects as what they print, also where Serilog destructures them, so a value masked by its `ToString()` stays masked | no |
-| [CodoMetis.TypeKit.Testing](src/CodoMetis.TypeKit.Testing/README.md) | Test assertions for `Option`, `Result` and `Patch<T>`. They hand back the value or the error, and fail saying what the outcome was. No test framework needed | no |
-
-Take only what you need. If you only want `Option` and `Result`, the base package brings no code
-generator with it. You take Metalama on once, on purpose, by adding `CodoMetis.TypeKit.Generators` to
-your domain project.
-
-The EF Core and ASP.NET Core packages work at run time through the interfaces. So a host that maps
-value objects from a referenced domain assembly needs no generator itself.
-
-## Quick start
-
-Add the generators to your domain project, which brings the base package along. Add the EF Core
-package to your data project, if you have one.
-
-```bash
-dotnet add package CodoMetis.TypeKit.Generators      # the domain project: brings CodoMetis.TypeKit along
-dotnet add package CodoMetis.TypeKit.EntityFrameworkCore   # the data project, if there is one
-```
-
-Declare a value object with its validation:
-
-```csharp
-using CodoMetis.TypeKit;
-using CodoMetis.TypeKit.ValueObjects;
-
-public enum EmailFault { Blank, NoAt }
-
-public readonly partial record struct Email : IValidatedValue<Email, string, EmailFault>
-{
-    public static Result<Email, EmailFault> Create(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return Result.Error(EmailFault.Blank);
-        if (!value.Contains('@')) return Result.Error(EmailFault.NoAt);
-
-        return new Email(value.Trim());
-    }
-}
-```
-
-Then use it:
-
-```csharp
-var id = OrderId.New();                                   // a version 7 Guid
-
-Result<Email, EmailFault> created = Email.Create(input);  // the fault says which rule refused it
-Option<Email> maybe = Email.TryFrom(input);               // is it valid?
-Email known = Email.FromKnownGood("ops@example.com");     // a literal you vouch for; throws otherwise
-
-string reply = created.Match(
-    email => $"Welcome, {email}",
-    fault => $"Please check the address ({fault})");
-
-JsonSerializer.Serialize(known);                          // "ops@example.com"
-JsonSerializer.Deserialize<Email>("\"nobody\"");          // JsonException naming Email and NoAt, never the text
-Email.Parse("ops@example.com", null);                     // IParsable, so it binds as a route or query parameter
-```
-
-Set up EF Core and OpenAPI once, for every value object:
-
-```csharp
-services.AddDbContext<ShopDb>(options => options.UseNpgsql(connectionString).UseTypeKit());
-
-db.Customers.Where(c => c.Email.Value.EndsWith("@example.com"));        // WHERE c."Email" LIKE '%@example.com'
-
-services.AddOpenApi(options => options.AddTypeKit());                    // OrderId: {"type":"string","format":"uuid"}
-```
 
 ## Documentation
 
-The pages below are guides, one topic each, built around examples. The package READMEs above are
-the reference for each package: what it adds, how to set it up, and the rules it follows. Every
+The pages below are guides, one topic each, built around examples. The package READMEs, listed
+under [Packages](#packages), are the reference for each package: what it adds, how to set it up, and the rules it follows. Every
 exception message and analyzer help link points into them. Every C# block in the guides and the
 READMEs is compiled, and the outputs it states are tested.
 
@@ -287,6 +239,30 @@ READMEs is compiled, and the outputs it states are tested.
 | [Migrating from 2.0 to 2.1](docs/migrating-to-2-1.md) | Move a project from 2.0 to 2.1: two new warnings, value equality over a base record, preserved references, the same converters for controllers and minimal APIs, a changed OpenAPI document, names 2.1 adds |
 | [Migrating from 1.5 to 2.0](docs/migrating-to-2.md) | Move a project from 1.5 to 2.0: dropped results as build errors, queries that now run in the database or throw, names 2.0 adds, fault responses, Native AOT |
 | [How it compares](docs/comparison.md) | When another library fits better, and feature tables against the value-object, result and smart-enum libraries, versioned and dated |
+
+## Packages
+
+| Package | What it does | Metalama |
+|---|---|---|
+| [CodoMetis.TypeKit](src/CodoMetis.TypeKit/README.md) | `Option<T>`, `Result<T, TError>` and `Result<TError>`, the interfaces value objects are built on, `Patch<T>`, and the text guards `AsText()` and `AsIdentifier()`. Brings the analyzers that check them | no |
+| [CodoMetis.TypeKit.Analyzers](src/CodoMetis.TypeKit.Analyzers/README.md) | Build-time checks, CMTK0001 to CMTK0014. They arrive with the base package and run in Razor components too. They flag:<br>- a `default` value object, `Option` or `Result`, written in your code or handed out by `FirstOrDefault` and its kind<br>- a value object nothing generates<br>- an ignored result<br>- skipped validation<br>- a comparison of two value objects' values<br>- a type argument that breaks `[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]`, `[Interface]`, `[Unsealed]`, `[ValueObject]`, `[ClosedSet]`, `[FlagsEnum]` or `[ReadOnlyStruct]` on its parameter, or two that `[Distinct]` or `[Unrelated]` keep apart<br>- a type without the constructor its host will look for<br>- a closed-set `Match` bound by position, and a closed-set member written after it was named<br>- a `FaultKind` or `ConstructorAccessibility` that names no member | no |
+| [CodoMetis.TypeKit.Generators](src/CodoMetis.TypeKit.Generators/README.md) | Generates your value objects at compile time. Add it to the project that declares them | yes |
+| [CodoMetis.TypeKit.EntityFrameworkCore](src/CodoMetis.TypeKit.EntityFrameworkCore/README.md) | Maps value objects to columns with nothing to register per type, and makes `.Value` work in LINQ | no |
+| [CodoMetis.TypeKit.AspNetCore](src/CodoMetis.TypeKit.AspNetCore/README.md) | Shows value objects in the OpenAPI document with the schema of their underlying type. Returns a `Result` as the response, and a fault as problem details | no |
+| [CodoMetis.TypeKit.Serilog](src/CodoMetis.TypeKit.Serilog/README.md) | Logs value objects as what they print, also where Serilog destructures them, so a value masked by its `ToString()` stays masked | no |
+| [CodoMetis.TypeKit.Testing](src/CodoMetis.TypeKit.Testing/README.md) | Test assertions for `Option`, `Result` and `Patch<T>`. They hand back the value or the error, and fail saying what the outcome was. No test framework needed | no |
+
+Take only what you need. If you only want `Option` and `Result`, the base package brings no code
+generator with it. You take Metalama on once, on purpose, by adding `CodoMetis.TypeKit.Generators` to
+your domain project:
+
+```bash
+dotnet add package CodoMetis.TypeKit.Generators      # the domain project: brings CodoMetis.TypeKit along
+dotnet add package CodoMetis.TypeKit.EntityFrameworkCore   # the data project, if there is one
+```
+
+The EF Core and ASP.NET Core packages work at run time through the interfaces. So a host that maps
+value objects from a referenced domain assembly needs no generator itself.
 
 ## What TypeKit guarantees
 
