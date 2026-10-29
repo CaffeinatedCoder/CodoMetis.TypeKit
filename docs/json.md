@@ -393,3 +393,5 @@ an enum the context doesn't list, so list the enum as well, as `NamedShipmentJso
 
 What a context must list for the OpenAPI document is a different question.
 [Native AOT](native-aot.md#json-contexts) answers it.
+
+Seed for #115: [a missing page](no-such-page.md).
