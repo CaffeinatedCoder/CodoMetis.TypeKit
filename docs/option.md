@@ -52,8 +52,8 @@ compile, because a query has no last row until you order it.
 
 The predicate runs in the database only when it is an expression, which a lambda written at the call
 is. A `Func<T, bool>` held in a variable, or a method group, binds to the sequence overload instead.
-That reads every row and checks the condition in memory, with no warning. Pass an
-`Expression<Func<T, bool>>` there.
+That reads every row and checks the condition in memory, and the analyzer warns at the call
+(CMTK0009). Pass an `Expression<Func<T, bool>>` there.
 
 **Good to know**
 

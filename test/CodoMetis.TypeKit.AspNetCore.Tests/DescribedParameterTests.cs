@@ -148,7 +148,7 @@ public sealed class DescribedParameterTests
                 if (key.Item2 == "inline-all") openApi.CreateSchemaReferenceId = _ => null;
                 if (key.Described) openApi.AddTypeKit();
 
-                // The README's way to inline value objects alone.
+                // A host's own way to inline value objects alone, which needs no AddTypeKit().
                 if (key.Item2 == "inline-value-objects")
                     openApi.CreateSchemaReferenceId = type =>
                         (Nullable.GetUnderlyingType(type.Type) ?? type.Type).GetCustomAttribute<GeneratedValueObjectAttribute>() is not null

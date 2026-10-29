@@ -132,6 +132,22 @@ internal sealed class Queries(DocIndex index, string root)
     }
 
     /// <summary>
+    /// The facts due for a re-read (<see cref="FactReview"/>): an external fact verified more than
+    /// <paramref name="days"/> days before <paramref name="today"/>, and, given a feed, one pinning a package NuGet has
+    /// a later release of. Exit code 0 when one is due, 1 when none is.
+    /// </summary>
+    public Answer Due(int days, DateOnly today, FactReview.Feed? feed)
+    {
+        var due  = FactReview.List(index, today, days, feed, out var facts, out var compared);
+        var rows = due.Select(item => Row.Of(("at", item.At), ("kind", item.Kind), ("id", item.Id), ("target", item.Target), ("detail", item.Detail))).ToList();
+
+        var summary = $"{Count(due.Select(item => item.Id).Distinct().Count(), "fact")} due of {Count(facts, "fact")} pinned external, by a verified: date more than {days.ToString(CultureInfo.InvariantCulture)} days before {today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}"
+                    + (feed is null ? "; --nuget also compares each pin with NuGet's latest release" : $" or a later release on NuGet, against which {Count(compared, "pin")} compared");
+
+        return new Answer(Answer.Exact, "due", feed is null ? days.ToString(CultureInfo.InvariantCulture) : $"{days.ToString(CultureInfo.InvariantCulture)} --nuget", summary, rows, rows.Count == 0 ? 1 : 0);
+    }
+
+    /// <summary>
     /// BM25 over the sections of the ranked documents, the heading weighted above the headings over
     /// it, the prose above the code. A section that defines an id the query names (a record's title, a
     /// <c>## CMTK0004</c> heading) is put first.

@@ -13,7 +13,8 @@ Every fact here was read from each library's source, at the release named in the
   where one is in preview.
 - **13 October 2026** for closed sets.
 - **14 October 2026**, again, for OpenAPI and Native AOT.
-- **29 October 2026** for SuperStrong.Types, and again for TypeKit's own columns, at 2.3.0.
+- **29 October 2026** for SuperStrong.Types. Again for Thinktecture.Runtime.Extensions, at 10.6.0, and
+  LanguageExt, at 5.0.0-beta-78. And again for TypeKit's own columns, at 2.3.0.
 
 What was read for each library, and when, is kept in the repository's
 [verified facts](../design/knowledge/README.md). Each table below lists the entries it rests on.
@@ -42,16 +43,16 @@ Sources: FluentResults [KB-018](../design/knowledge/KB-018-fluentresults.md), On
 
 ## Value objects in detail
 
-| | TypeKit 2.3.0 | Vogen 8.0.7 (the 9.0.0-beta.2 tag the same; not on NuGet) | Thinktecture.Runtime.Extensions 10.5.0 (OpenAPI and AOT: 10.5.1) | StronglyTypedId 1.0.0-beta08 | SuperStrong.Types 1.0.0 |
+| | TypeKit 2.3.0 | Vogen 8.0.7 (the 9.0.0-beta.2 tag the same; not on NuGet) | Thinktecture.Runtime.Extensions 10.6.0 | StronglyTypedId 1.0.0-beta08 | SuperStrong.Types 1.0.0 |
 |---|---|---|---|---|---|
 | Declared by | Implementing `IValue<T>` or `IValidatedValue<...>` on a `partial record` | `[ValueObject<T>]` on a partial type | `[ValueObject<T>]`, `[ComplexValueObject]` or `[SmartEnum<T>]` on a partial type | `[StronglyTypedId]` on a partial struct | `[StrongType<T>]` on a partial class, not a record or a struct |
 | Validation | `Create` returns a `Result`, and every generated way of creating a value runs it | `Validate` returns a `Validation`. `From` throws | A `ValidateFactoryArguments` partial method | None | A `Define()` method built from validators such as `IsPositive()`. `From` throws, `TryFrom` returns `false`, and JSON, parsing, the type converter and EF Core reads run it |
 | EF Core | `UseTypeKit()` maps every value object, nothing per type. `.Value` in a query translates to the column | A generated converter per value object, which you register. Comparing with a primitive in a query is an error (VOG034) | Packages per EF Core version (8, 9, 10) | Through a template of your own | `UseStrongTypes()` maps every strong type, nothing per type. `AsPrimitive()` in a query translates to the column |
 | OpenAPI | Microsoft.AspNetCore.OpenApi: the schema ASP.NET publishes for the underlying type, under the host's JSON options | Opt-in, off by default: a generated schema transformer, with type and format from a built-in table. Swashbuckle support | Swashbuckle filters only, with type and format from Swashbuckle's table | None built in | Microsoft.AspNetCore.OpenApi, opt-in: the schema ASP.NET publishes for the underlying type, inline or as a named component |
-| A JSON converter the host registers, such as a decimal written as a string | Described as it writes, wherever it applies. Either the converter says what it writes (`IDescribedJsonConverter`), or the options say it for that converter (`JsonSchemaDescriptions`). A document that would describe different JSON from what the controllers write is rejected | Not reflected: the table's type and format stay | Not reflected for type and format. A smart enum's listed values are written with the host's options | None built in | Nothing of its own describes it: the schema is the one ASP.NET publishes for the underlying type. Read from its code, not run |
+| A JSON converter the host registers, such as a decimal written as a string | Described as it writes, wherever it applies. Either the converter says what it writes (`IDescribedJsonConverter`), or the options say it for that converter (`JsonSchemaDescriptions`). A document that would describe different JSON from what the controllers write is rejected | Not reflected: the table's type and format stay | Not reflected for type and format. A smart enum's listed values are written with the host's MVC or Minimal API JSON options | None built in | Nothing of its own describes it: the schema is the one ASP.NET publishes for the underlying type. Read from its code, not run |
 | Native AOT | Declared (`IsAotCompatible`). On every CI build, a consumer with value objects, JSON, OpenAPI and EF Core is published with Native AOT | Not declared. Its docs say the Swashbuckle schema filter needs reflection that Native AOT lacks | Not declared | Not declared | Not declared |
 | JSON | System.Text.Json, byte for byte the underlying type's JSON | System.Text.Json by default. Newtonsoft.Json and more, opt-in | System.Text.Json, Newtonsoft.Json, MessagePack | System.Text.Json (more through templates) | System.Text.Json, the underlying type's JSON. Newtonsoft.Json, opt-in |
-| Other integrations | Serilog, and test assertions. Nothing for another serializer, ORM or GraphQL | Opt-in packages for Newtonsoft.Json, Dapper, LINQ to DB, MongoDB, Orleans, ServiceStack and protobuf-net | Packages for ASP.NET Core, Swashbuckle, Newtonsoft.Json and MessagePack | Templates for EF Core, Newtonsoft.Json and others | Packages for Hot Chocolate (GraphQL) and Newtonsoft.Json |
+| Other integrations | Serilog, and test assertions. Nothing for another serializer, ORM or GraphQL | Opt-in packages for Newtonsoft.Json, Dapper, LINQ to DB, MongoDB, Orleans, ServiceStack and protobuf-net | Packages for ASP.NET Core, Swashbuckle, Newtonsoft.Json, MessagePack and Serilog | Templates for EF Core, Newtonsoft.Json and others | Packages for Hot Chocolate (GraphQL) and Newtonsoft.Json |
 | Targets | `net10.0` | `netstandard2.0`, .NET Framework projects included | `net8.0`, `net9.0`. The ASP.NET Core and Swashbuckle packages `net8.0` only | `netstandard2.0` | `net10.0` |
 | Generated by | Metalama, in the declaring project | A Roslyn source generator | Roslyn source generators | A Roslyn source generator | A Roslyn source generator |
 | License | MIT | Apache-2.0 | BSD-3-Clause | MIT | MIT |
@@ -69,7 +70,7 @@ register means describing it in the document by hand, type by type.
 
 ## Option and Result in detail
 
-| | TypeKit 2.3.0 | LanguageExt 4.4.9 (5.0.0-beta-77) | CSharpFunctionalExtensions 3.7.0 | ErrorOr 2.1.1 |
+| | TypeKit 2.3.0 | LanguageExt 4.4.9 (5.0.0-beta-78) | CSharpFunctionalExtensions 3.7.0 | ErrorOr 2.1.1 |
 |---|---|---|---|---|
 | Reaching the value | `Match`, `TryGetValue` and the combinators. No `.Value` | `Match`, `IfNone` and the like. No public `.Value` on `Option` | `.Value`, which throws on a failure | `.Value`, which returns `default` on an error |
 | A `default` instance | `Option`: `None`. `Result`: throws when used, and fails the build when written in code (CMTK0001) | `Option`: `None` | `Maybe`: none. `Result<T>`: a success holding `default(T)` | A success holding `default(T)` |
@@ -81,11 +82,11 @@ Sources: LanguageExt [KB-015](../design/knowledge/KB-015-languageext-option.md),
 
 ## Closed sets in detail
 
-| | TypeKit 2.3.0 | Ardalis.SmartEnum 8.2.0 | Intellenum 2.0.1 | Thinktecture.Runtime.Extensions 10.5.1 |
+| | TypeKit 2.3.0 | Ardalis.SmartEnum 8.2.0 | Intellenum 2.0.1 | Thinktecture.Runtime.Extensions 10.6.0 |
 |---|---|---|---|---|
 | Declared by | Implementing `IClosedSet<TSelf>` on a `sealed partial class`, one `public static readonly` field per member | Deriving from `SmartEnum<TEnum>`, each member `new("Name", value)` | `[Intellenum]` on a partial class. Members as fields, `[Member]` attributes or a static constructor | `[SmartEnum<TKey>]` on a partial class, each member `new("KEY")` |
 | Data on a member | Properties, set through the private constructor | The subclass's own fields | One underlying value. Richer data through a custom underlying type | Declared properties, which become constructor parameters |
-| Deciding by member | `Match`, one required delegate per member, every argument named (CMTK0012) | `When(...).Then(...)`. Nothing requires every member | A `switch` over `.Value` with generated constants. Nothing requires every member | Generated `Switch` and `Map`, every member a required argument |
+| Deciding by member | `Match`, one required delegate per member, every argument named (CMTK0012) | `When(...).Then(...)`. Nothing requires every member | A `switch` over `.Value` with generated constants. Nothing requires every member | Generated `Switch` and `Map`, every member a required argument. Overloads that leave members to a default, on request |
 | Parsing by name | `Parse` and `TryParse`, ordinal. `ignoreCase: true` on request, and two members differing only in case fail the build (CMTK1021) | `FromName` and `TryFromName`, ordinal. `ignoreCase` on request. A case clash throws at the first such lookup | `FromName` and `TryFromName`, ordinal. `ignoreCase` on request, and the first declared member answers | `Get` and `TryGet`, ignoring case by default. A case clash throws at the first lookup |
 | JSON | System.Text.Json, the name, nothing registered | A separate package per serializer, a converter attribute per type. The name or the value | Generated into your assembly. The value, as an `enum` writes it | A separate package per serializer. The key |
 | EF Core | `UseTypeKit()`, a text column of the name, nothing per set | A separate package, a convention or per model. The value | An opt-in generated converter, registered per property. The value | A separate package per EF version, `UseThinktectureValueConverters()`. The key |
