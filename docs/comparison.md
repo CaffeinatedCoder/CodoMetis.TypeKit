@@ -35,10 +35,10 @@ If something here is wrong or has changed, please open an issue.
 | Unions of arbitrary types | OneOf | `OneOf<T0, T1, ...>` is general-purpose. TypeKit has only `Option` and `Result` |
 | A `Result` on the wire | CSharpFunctionalExtensions | It ships opt-in System.Text.Json converters for its `Result`. TypeKit rejects serializing `Option` and `Result`, by design |
 | A smart enum whose JSON or column is a number, or whose wire name differs from its C# identifier | Ardalis.SmartEnum, Intellenum or Thinktecture.Runtime.Extensions | A TypeKit closed set is its member's name everywhere, and the name is the field's |
-| Only your own closed set of outcomes, on .NET 11 | C#'s union types | They arrive with .NET 11 |
-| Years of production use behind the library | Any of the above but SuperStrong.Types | TypeKit is new: 1.0.0 shipped in September 2026. SuperStrong.Types 1.0.0 shipped in July 2026 |
+| Only your own closed set of outcomes, on .NET 11 | C# 15's union types or closed hierarchies | They need no preview flag in the .NET 11 SDK, which was still a release candidate on 29 October 2026 |
+| A long release history behind the library | LanguageExt, OneOf, CSharpFunctionalExtensions, FluentResults, Ardalis.SmartEnum, Thinktecture.Runtime.Extensions or Vogen | Each was first published on NuGet between 2015 and 2021. TypeKit is new: 1.0.0 shipped in September 2026, and SuperStrong.Types 1.0.0 in July 2026 |
 
-Sources: FluentResults [KB-018](../design/knowledge/KB-018-fluentresults.md), OneOf [KB-019](../design/knowledge/KB-019-oneof.md), and the entries under each table below.
+Sources: FluentResults [KB-018](../design/knowledge/KB-018-fluentresults.md), OneOf [KB-019](../design/knowledge/KB-019-oneof.md), first releases [KB-044](../design/knowledge/KB-044-first-releases-of-the-compared-libraries.md), C# 15 [KB-045](../design/knowledge/KB-045-csharp-15-unions-ship-with-the-net-11-sdk.md), and the entries under each table below.
 
 ## Value objects in detail
 
@@ -48,9 +48,10 @@ Sources: FluentResults [KB-018](../design/knowledge/KB-018-fluentresults.md), On
 | Validation | `Create` returns a `Result`, and every generated way of creating a value runs it | `Validate` returns a `Validation`. `From` throws | A `ValidateFactoryArguments` partial method | None | A `Define()` method built from validators such as `IsPositive()`. `From` throws, `TryFrom` returns `false`, and JSON, parsing, the type converter and EF Core reads run it |
 | EF Core | `UseTypeKit()` maps every value object, nothing per type. `.Value` in a query translates to the column | A generated converter per value object, which you register. Comparing with a primitive in a query is an error (VOG034) | Packages per EF Core version (8, 9, 10) | Through a template of your own | `UseStrongTypes()` maps every strong type, nothing per type. `AsPrimitive()` in a query translates to the column |
 | OpenAPI | Microsoft.AspNetCore.OpenApi: the schema ASP.NET publishes for the underlying type, under the host's JSON options | Opt-in, off by default: a generated schema transformer, with type and format from a built-in table. Swashbuckle support | Swashbuckle filters only, with type and format from Swashbuckle's table | None built in | Microsoft.AspNetCore.OpenApi, opt-in: the schema ASP.NET publishes for the underlying type, inline or as a named component |
-| A JSON converter the host registers, such as a decimal written as a string | Described as it writes, wherever it applies. Either the converter says what it writes (`IDescribedJsonConverter`), or the options say it for that converter (`JsonSchemaDescriptions`). A document that would describe different JSON from what the controllers write is rejected | Not reflected: the table's type and format stay | Not reflected for type and format. A smart enum's listed values are written with the host's options | None built in | Not reflected: the schema is the one ASP.NET publishes for the underlying type |
+| A JSON converter the host registers, such as a decimal written as a string | Described as it writes, wherever it applies. Either the converter says what it writes (`IDescribedJsonConverter`), or the options say it for that converter (`JsonSchemaDescriptions`). A document that would describe different JSON from what the controllers write is rejected | Not reflected: the table's type and format stay | Not reflected for type and format. A smart enum's listed values are written with the host's options | None built in | Nothing of its own describes it: the schema is the one ASP.NET publishes for the underlying type. Read from its code, not run |
 | Native AOT | Declared (`IsAotCompatible`). On every CI build, a consumer with value objects, JSON, OpenAPI and EF Core is published with Native AOT | Not declared. Its docs say the Swashbuckle schema filter needs reflection that Native AOT lacks | Not declared | Not declared | Not declared |
 | JSON | System.Text.Json, byte for byte the underlying type's JSON | System.Text.Json by default. Newtonsoft.Json and more, opt-in | System.Text.Json, Newtonsoft.Json, MessagePack | System.Text.Json (more through templates) | System.Text.Json, the underlying type's JSON. Newtonsoft.Json, opt-in |
+| Other integrations | Serilog, and test assertions. Nothing for another serializer, ORM or GraphQL | Opt-in packages for Newtonsoft.Json, Dapper, LINQ to DB, MongoDB, Orleans, ServiceStack and protobuf-net | Packages for ASP.NET Core, Swashbuckle, Newtonsoft.Json and MessagePack | Templates for EF Core, Newtonsoft.Json and others | Packages for Hot Chocolate (GraphQL) and Newtonsoft.Json |
 | Targets | `net10.0` | `netstandard2.0`, .NET Framework projects included | `net8.0`, `net9.0`. The ASP.NET Core and Swashbuckle packages `net8.0` only | `netstandard2.0` | `net10.0` |
 | Generated by | Metalama, in the declaring project | A Roslyn source generator | Roslyn source generators | A Roslyn source generator | A Roslyn source generator |
 | License | MIT | Apache-2.0 | BSD-3-Clause | MIT | MIT |
@@ -62,8 +63,9 @@ StronglyTypedId [KB-014](../design/knowledge/KB-014-stronglytypedid.md), SuperSt
 a JSON converter you write yourself ([KB-023](../design/knowledge/KB-023-a-converter-cannot-describe-its-schema.md)). They write it as the empty schema, or with only the `format` its
 CLR type maps to. The serializer has a hook for a converter to describe itself, but it is internal.
 The proposal to make it public ([dotnet/runtime#105769](https://github.com/dotnet/runtime/issues/105769))
-is open, without a release. None of the libraries above fills that gap, so with any of them, a
-converter you register means describing it in the document by hand, type by type.
+is open, without a release. None of the value-object libraries in the table above, at the versions
+named, has code of its own that describes such a converter. So with any of them, a converter you
+register means describing it in the document by hand, type by type.
 
 ## Option and Result in detail
 
