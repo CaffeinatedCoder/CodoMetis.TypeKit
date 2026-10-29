@@ -66,33 +66,23 @@ dotnet tools/PrHygiene/bin/Release/net10.0/pr-hygiene.dll event.json   # a PR's 
 dotnet tools/CiLanes/bin/Release/net10.0/ci-lanes.dll classify <path>...   # the CI lanes a changed path selects (Linux, Windows, the pack; macOS only on the release's runs), as CI's changes job decides them
 ```
 
-The oracle kit's local tool, oracles (`tools/Oracles`, started as its built dll like docs-query), which needs no
-model and never runs in CI: `test/CodoMetis.TypeKit.Oracles.Tests` holds the catalogue there without building
-anything else ([decision 112](design/adr/0112-the-prober-gives-way-to-valueranges-oracle-kit.md),
-[test/oracles/README.md](test/oracles/README.md)):
+The oracle kit's local tool, which needs no model and never runs in CI
+([test/oracles/README.md](test/oracles/README.md)):
 
 ```bash
 dotnet tools/Oracles/bin/Release/net10.0/oracles.dll status          # the worklist: unheld claims, unread waivers, unseeded oracles, candidates
 dotnet tools/Oracles/bin/Release/net10.0/oracles.dll seeds [filter]  # each seed: a copy of the tree, the patch, one project built, one class run
 ```
 
-An agent runs builds and tests through `tools/BuildVerdict`, run as its built dll (`build
-[<project|slnx>]` or `test`). It prints the exit code named, each diagnostic code once with its remedy
-from `tools/BuildVerdict/build-verdict-remedies.tsv`, and the failing tests with their assertion; the
-full log is `$GIT_DIR/build-verdict-last.log`. A code it prints as UNMAPPED gets a row once its fix is
-known. In an agent's Bash tool, `tools/BashGuard` (registered in `.claude/settings.json`) refuses
-`dotnet build` of anything but a tool, `dotnet test` and `dotnet msbuild` (a `-getProperty`/`-getItem` query
-without a target excepted), and the verdict piped into
-`head` or `tail`, and prints the verdict's form of the command. The raw commands above are for a
-terminal.
-
-Both are tool projects under `tools/` (design/adr/0092): BCL only, in the solution, each with its
-tests (`tools/BuildVerdict.Tests`, `tools/BashGuard.Tests`), and run from `bin/Release`, which
-`.claude/settings.json` builds at session start: the guard in the main checkout, every other tool
-(`tools/AgentTools.slnf`) in the session's own, a worktree included, with the SDK installer's `dotnet`
-when the one on PATH lacks the pinned SDK; a session start that builds nothing says so in your context
-(design/adr/0105). Each records the sources it was built from and refuses to run from others, naming
-the command that rebuilds it: `dotnet build tools/<Name> -c Release`, which the guard lets through.
+An agent builds and tests through `tools/BuildVerdict` (`build [<project|slnx>]` or `test`). It prints a
+verdict: the exit code named, each diagnostic once with its remedy from
+`tools/BuildVerdict/build-verdict-remedies.tsv` (give an UNMAPPED code a row once its fix is known), and the
+failing tests; the full log is `$GIT_DIR/build-verdict-last.log`. In an agent's Bash tool, `tools/BashGuard`
+refuses the raw `dotnet build`, `dotnet test` and `dotnet msbuild` and prints the verdict's form of the command;
+the raw commands above are for a terminal. The tools run from `bin/Release`, built at session start in the
+session's own checkout ([decision 105](design/adr/0105-every-tool-is-built-in-the-session-s-checkout.md)).
+A tool built from other sources refuses to run and names the command that rebuilds it,
+`dotnet build tools/<Name> -c Release`.
 
 The SDK is pinned in `global.json` (10.0.4xx band, `latestPatch`). Tests run on Microsoft Testing
 Platform (xunit.v3 4.x), so `dotnet test` takes `--solution`/`--project`, and TRX output is
@@ -115,33 +105,16 @@ here, so it leads and the source decides.
   before researching what ASP.NET, System.Text.Json, EF Core, the runtime or the platform do, and a new
   `design/knowledge/` entry when research settles one that something here turned on
   ([decision 93](design/adr/0093-verified-facts-are-pinned-dated-and-executable-where-they-can-be.md)).
-- **An empty result proves nothing.** Fall back to text search when the graph is unavailable, stale
-  or silent, and never conclude "unused", "no other caller" or "safe to change" from it alone.
-  Measured on 2026-10-13, the graph:
-  - finds types, interfaces, enums and ordinary methods, a type's implementers through generic
-    interfaces (84 of the Samples' 88 value objects), and the callers of an ordinary method across
-    files;
-  - has no node for a member of a C# 14 `extension(...)` block, which holds most of the `Option` and
-    `Result` extensions (`Choose`, `FirstOrNone`, `Transpose`, `Sequence`, the continuations of a
-    `Task<Result<...>>`) and `AsText`, and puts the calls inside one on the file;
-  - has nothing Metalama generates: none of the tests' 222 `.From(` calls has an edge, nor has a call
-    to `TryFrom`, `FromKnownGood`, `Parse` or a converter, and a template an aspect introduces by
-    `nameof` looks unreferenced. Read woven code as the Generators README's "Reading the generated
-    code" says;
-  - misses a reference that is not a call: a DI registration, a type argument, `typeof`, an attribute;
-  - resolves a call on a generic instance poorly (`Option<T>.Match` has one resolved caller, where
-    the repository writes `.Match(` about 200 times across its types) and guesses wrong callers: a low-confidence `suffix_match` edge, or a same-named method of another API
-    (Metalama's `Diagnostics.Report` listed as calling `GeneratedCode.Report`). Overloads share one
-    node.
-- **Refresh it**, since it does not follow the working tree: `index_repository` with the repository
-  root as `repo_path` and `name: "CodoMetis.TypeKit"`, at the start of a session and after a branch
-  switch, a rebase, a merge or a pull (about 6 s). Without `name` it starts a second project under a
-  derived name. `index_status` reports the checkout's HEAD, not the commit the graph was built from,
-  so refresh rather than check.
-- It indexes `spikes/` and leaves out `.claude/`, `bin` and `obj`, so an agent in a worktree under
-  `.claude/worktrees/` reads the main checkout's graph, not its own: index the worktree under a name
-  of its own and delete that project when done, or search the source. `.codebase-memory/`, the
-  tool's local artifact, is ignored by git.
+- **An empty result proves nothing.** The graph has no node for a member of a C# 14 `extension(...)`
+  block (most of the `Option` and `Result` extensions), nothing Metalama generates (no `.From(` or
+  `TryFrom` call has an edge), and no reference that is not a call; it resolves calls on a generic
+  instance poorly and guesses wrong callers ([design/code-graph.md](design/code-graph.md) has the
+  measurements). Fall back to text search, and never conclude "unused", "no other caller" or "safe to
+  change" from it alone.
+- **Refresh it**, since it does not follow the working tree: `index_repository` with the repository root
+  as `repo_path` and `name: "CodoMetis.TypeKit"`, at the start of a session and after a branch switch, a
+  rebase, a merge or a pull. A worktree under `.claude/worktrees/` isn't indexed: index it under a name of
+  its own and delete that project when done, or search the source.
 
 The way into the docs is docs-query (`dotnet tools/DocsQuery/bin/Release/net10.0/docs-query.dll`,
 [its README](tools/DocsQuery/README.md)): `entry`, `cites`, `cited-by`, `list`, `claims` and `check`
@@ -207,24 +180,16 @@ the whole page. A ranked miss proves nothing.
 
 ## Issues
 Work is tracked as GitHub issues, not as lists in docs or memory
-([decision 109](design/adr/0109-work-is-tracked-as-labelled-issues-and-ci-checks-each-pull-request.md)).
-Open the issue before starting the work: a bug, an enhancement, a follow-up, a finding from a review or a
-probe.
-- **Labels, on issues and PRs alike** (ValueRanges' scheme; the legend is CONTRIBUTING's "Issues and
-  labels", and `gh label list` the source): exactly one type (`bug`, `enhancement`, `documentation`,
-  `tests`, `chore`), exactly one `severity/*` on a bug, the `package/*` and `area/*` it touches, and
-  `silent` (a bug that does less than it appears to), `breaking`, `found-by/prober` or `stacked` where they
-  apply. Never invent a label; if none fits, say so.
-- **Epics:** a release is an `epic` issue with a milestone of its version (`2.3.0`), its work attached as
-  native sub-issues with the same milestone (`gh issue create --parent N --milestone M`). A theme that spans
-  releases is an `epic` without a milestone; a finding belongs to the release it ships in. The plan stays in
-  `design/roadmap.md`; there is no roadmap issue.
-- **PRs** carry their issue's labels and milestone, open with `Closes #n`, and follow
-  `.github/pull_request_template.md` (Problem, Change, Tests). `pr-hygiene.yml` runs `tools/PrHygiene` on
-  every PR into `main` or a release branch and fails a missing type, severity or closing reference, a branch
-  whose `<type>/` disagrees with its type label, a PR into `release/<version>` without that milestone, and
-  `breaking` into anything but a major. A topic merges into its release branch, where `Closes` closes
-  nothing: close its issue by hand on merge, with a comment linking the PR.
+([decision 109](design/adr/0109-work-is-tracked-as-labelled-issues-and-ci-checks-each-pull-request.md)):
+open the issue before starting the work. The labels, the epics and what a PR carries are CONTRIBUTING's
+"Issues and labels" and "Pull requests"; `gh label list` is the source, and a label is never invented.
+What trips agents here:
+- A release's work is a native sub-issue of its `epic`, with the version's milestone:
+  `gh issue create --parent N --milestone M`. A finding belongs to the release it ships in.
+- Name the branch from the type label before the first push (`feat/`, `fix/`, `docs/`, `test/`, `build/`,
+  never `chore/`): PR hygiene fails a `<type>/` that disagrees, and renaming a pushed head closes its PR.
+- A topic merges into its release branch, where `Closes` closes nothing: close its issue by hand on merge,
+  with a comment linking the PR.
 - When the work changes what an issue says (its scope, its state, a measured fact), edit the issue.
 
 ## Workflow
@@ -248,43 +213,19 @@ probe.
    tables of [decision 94](design/adr/0094-topic-branches-into-a-release-branch-and-fix-trailers.md)
    (`CommitTrailerTests`). Work happens on a `<type>/<slug>` branch from `release/<version>`, reaches it
    by a PR, and every merge is a merge commit: never squash or rebase a pushed branch.
-7. **Hold what the documents promise.** `test/oracles/` is the catalogue
-   ([decision 112](design/adr/0112-the-prober-gives-way-to-valueranges-oracle-kit.md)): each sentence a consumer
-   document promises is a claim in `claims.json`, quoted verbatim and naming the test classes that hold it, and
-   every public member of the run-time libraries is claimed or waived in `surface-waivers.json`.
-   - A new public member, or a new promise in `docs/` or a README, gets its claim, with the test that holds it,
-     or a waiver that says why it needs none. `OracleSurfaceCoverageTests` fails on a member neither names, and
-     `OracleCatalogueTests` on a quote its document no longer holds: reword the claim with the document.
-   - An oracle is an ordinary test class that checks the library against an independent answer over many cases:
-     a differential, a sweep over a variant catalogue, a completeness test by reflection. Register it in
-     `oracles.json` with a seed, a defect in `src/` kept as `seeds/<defect>.patch` (`git diff` of the edit, then
-     undo it by the inverse edit), and show it caught with `oracles seeds <defect>`.
-   - A disagreement an oracle finds and nobody fixes yet goes to `candidates.json` with its issue, never into an
-     assertion that hides it.
-   - `axes.md` lists what a consumer varies and the pairs no test varies yet; a combination a finding names
-     joins it.
+7. **Hold what the documents promise** ([decision 112](design/adr/0112-the-prober-gives-way-to-valueranges-oracle-kit.md),
+   [test/oracles/README.md](test/oracles/README.md) for the files and how to add an oracle). A new public member,
+   or a new promise in `docs/` or a README, gets a claim in `test/oracles/claims.json`, quoted verbatim and naming
+   the test that holds it, or a waiver in `surface-waivers.json` that says why it needs none; a claim is reworded
+   with its document. A new oracle is registered in `oracles.json` with a seed, shown caught by
+   `oracles seeds <defect>`. A disagreement nobody fixes yet goes to `candidates.json` with its issue, never into
+   an assertion that hides it, and a combination a finding names joins `axes.md`.
 
 ## Releasing
 
-Before `git tag`, show every seed caught, locally: a baseline with no seed, then a build of one project per seed.
-A seed counts only where its oracle passes without it and fails with it in a test of its own; a fixture that never
-started, a crashed host or a failing baseline is `ERROR`, exit 4 (decision 117). On an arm64 Mac set
-`TYPEKIT_MSSQL_IMAGE=mcr.microsoft.com/azure-sql-edge:latest`, or the SQL Server oracles are `ERROR`:
-
-```bash
-dotnet tools/Oracles/bin/Release/net10.0/oracles.dll seeds
-```
-
-Then re-read the competitor facts that are due, and correct `docs/comparison.md` with them (CONTRIBUTING,
-"Releasing", step 1):
-
-```bash
-dotnet tools/DocsQuery/bin/Release/net10.0/docs-query.dll due --nuget   # external facts over six months old, or behind NuGet
-```
-
-It reads api.nuget.org, needs no model, and is never a CI check: time passing fails no build.
-
-The release workflow runs the suite, which holds the catalogue, before it packs; there is no gate beside it
-(decision 112 withdrew decision 97's). A seed that is not caught is answered by a stronger oracle or a better
-seed, never by deleting the seed, and an `ERROR` by fixing the environment or the baseline, never by reading it as
-caught.
+Follow CONTRIBUTING's "Releasing". Its step 1 runs locally, before `git tag`, and is the one easy to skip:
+`oracles seeds` shows every seed caught, and `docs-query due --nuget` lists the competitor facts to re-read. On an
+arm64 Mac set `TYPEKIT_MSSQL_IMAGE=mcr.microsoft.com/azure-sql-edge:latest`, or the SQL Server oracles are `ERROR`
+([decision 117](design/adr/0117-a-seed-is-caught-against-a-passing-baseline.md)). A seed that is not caught is
+answered by a stronger oracle or a better seed, never by deleting it, and an `ERROR` by fixing the environment or
+the baseline, never by reading it as caught.
