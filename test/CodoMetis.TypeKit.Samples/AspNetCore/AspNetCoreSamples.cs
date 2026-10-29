@@ -1,8 +1,3 @@
-// sample: CodoMetis.TypeKit.AspNetCore/inline
-using System.Reflection;
-using CodoMetis.TypeKit.CompilerServices;   // GeneratedValueObjectAttribute, on every value object
-
-// end sample
 // sample: CodoMetis.TypeKit.AspNetCore/every-document
 using Microsoft.AspNetCore.OpenApi;   // OpenApiOptions
 
@@ -12,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;   // BindRequired
 
 // end sample
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -98,20 +94,6 @@ public static class SourceGeneratedJson
     {
         // sample: CodoMetis.TypeKit.AspNetCore/source-generated-json
         builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJson.Default));
-        // end sample
-    }
-}
-
-public static class Inlining
-{
-    public static void Use(OpenApiOptions options)
-    {
-        // sample: CodoMetis.TypeKit.AspNetCore/inline
-        options.AddTypeKit();
-        options.CreateSchemaReferenceId = type =>
-            (Nullable.GetUnderlyingType(type.Type) ?? type.Type).GetCustomAttribute<GeneratedValueObjectAttribute>() is not null
-                ? null
-                : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
         // end sample
     }
 }

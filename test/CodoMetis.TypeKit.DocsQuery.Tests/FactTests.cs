@@ -168,4 +168,82 @@ public sealed class FactTests : IDisposable
         installed.Packages.ShouldContainKeyAndValue("Microsoft.AspNetCore.OpenApi", "10.0.12");
         installed.Packages.Count.ShouldBe(2);
     }
+
+    /// <summary>
+    /// A fact with an external pin is due once its verified: date is more than the given days old, and not a day
+    /// before; one pinning only what is installed never is, however old, since <c>check</c> compares its pins.
+    /// </summary>
+    [Fact]
+    public void Due_lists_an_external_fact_verified_more_than_the_given_days_ago()
+    {
+        _repo.With("design/knowledge/KB-002-installed-only.md", Fact(2, "  - sdk 10.0.4xx", "none, prose").Replace("2026-10-15", "2025-01-01", StringComparison.Ordinal));
+
+        var today = new DateOnly(2026, 10, 29);
+        var due   = _repo.Queries().Due(13, today, feed: null);
+
+        due.ExitCode.ShouldBe(0);
+        due.Rows.Select(row => row.ToString()).ShouldBe(["at=design/knowledge/KB-001-a-fact.md:2  kind=fact-old  id=KB-001  target=2026-10-15  detail=verified 14 days ago, more than 13: re-read it at its latest release"]);
+        due.Summary.ShouldStartWith("1 fact due of 1 fact pinned external");
+
+        var notYet = _repo.Queries().Due(14, today, feed: null);
+        notYet.Rows.ShouldBeEmpty(notYet.Text());
+        notYet.ExitCode.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Given a feed, a pin is due when NuGet lists a later release on its track: stable for a stable pin, any for a
+    /// pre-release, labels ordered as SemVer orders them (beta.10 after beta.2). A pin of a release still the latest, of
+    /// a name NuGet has no package of, or with no version (even where NuGet has a package of the name), is not.
+    /// </summary>
+    [Fact]
+    public void Due_with_a_feed_lists_a_pin_nuget_has_a_later_release_of()
+    {
+        _repo.With("design/knowledge/KB-002-competitors.md", Fact(2,
+            "  - external Vogen 8.0.7\n  - external Vogen 9.0.0-beta.2\n  - external OneOf 3.0.271\n  - external PostgreSQL 17.11\n  - external NuGet registration data, 2026-10-29",
+            "none, prose"));
+
+        var asked = new List<string>();
+        IReadOnlyList<string>? Feed(string id)
+        {
+            asked.Add(id);
+            return id switch
+            {
+                "Vogen" => ["8.0.7", "9.0.0-beta.2", "9.0.0-beta.10"],
+                "OneOf" => ["3.0.255", "3.0.271"],
+                "NuGet" => ["0.0.1"],
+                _       => null,
+            };
+        }
+
+        var due = _repo.Queries().Due(1000, new DateOnly(2026, 10, 29), Feed);
+
+        due.Rows.Select(row => $"{row.Fields[0].Value} {row.Fields[1].Value} {row.Fields[3].Value}: {row.Fields[4].Value}").ShouldBe(
+        [
+            "design/knowledge/KB-002-competitors.md:5 fact-released external Vogen 9.0.0-beta.2: NuGet's latest Vogen is 9.0.0-beta.10: re-read it there",
+        ], due.Text());
+        asked.ShouldBe(["Vogen", "Vogen", "Vogen", "OneOf", "PostgreSQL"], "KB-001's Vogen pin, then KB-002's; the pin with no version is never looked up");
+        due.Summary.ShouldEndWith("or a later release on NuGet, against which 4 pins compared");
+
+        var released = _repo.Queries().Due(1000, new DateOnly(2026, 10, 29), id => id == "Vogen" ? ["8.0.7", "8.0.8", "9.0.0-beta.2"] : null);
+        released.Rows.Select(row => $"{row.Fields[0].Value} {row.Fields[4].Value}").ShouldBe(
+        [
+            "design/knowledge/KB-001-a-fact.md:6 NuGet's latest stable Vogen is 8.0.8: re-read it there",
+            "design/knowledge/KB-002-competitors.md:4 NuGet's latest stable Vogen is 8.0.8: re-read it there",
+        ], released.Text());
+    }
+
+    [Theory]
+    [InlineData("1.0.0-beta.2", "1.0.0-beta.10", -1)]
+    [InlineData("1.0.0-beta-77", "1.0.0-beta-78", -1)]
+    [InlineData("1.0.0-beta", "1.0.0-beta.1", -1)]
+    [InlineData("1.0.0-alpha.9", "1.0.0-beta", -1)]
+    [InlineData("1.0.0-1", "1.0.0-alpha", -1)]
+    [InlineData("1.0.0-Beta08", "1.0.0-beta08", 0)]
+    [InlineData("1.0.0-rc.1", "1.0.0", -1)]
+    [InlineData("10.6.0", "10.5.1", 1)]
+    public void Versions_are_ordered_as_nuget_orders_them(string left, string right, int expected)
+    {
+        Pins.CompareVersions(left, right).ShouldBe(expected);
+        Pins.CompareVersions(right, left).ShouldBe(-expected);
+    }
 }

@@ -120,7 +120,7 @@ public sealed class HostConfigurationTests
         }
     }
 
-    /// <summary>The predicate the package README shows, a nullable value object included.</summary>
+    /// <summary>A host's own predicate, a nullable value object included.</summary>
     [Fact]
     public async Task A_host_that_inlines_value_objects_gets_the_wrapped_types_schema_in_place()
     {

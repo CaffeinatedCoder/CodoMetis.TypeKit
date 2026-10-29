@@ -75,7 +75,9 @@ position, and the change lands in the hoisted component.
   default name is named after its nesting chain (`ShopId`, as its companion class is `ShopIdExtensions`);
   a name the host's own delegate chose, or `null` for an inlined value object, is kept. A name that
   is also another type's, `Order.Status` beside a top-level `OrderStatus`, refuses the document
-  ([decision 55](adr/0055-component-name-claimed-twice-refused.md)).
+  ([decision 55](adr/0055-component-name-claimed-twice-refused.md)). With `InlineValueObjects`, the wrapper answers
+  `null` for every value object before the host's delegate, so no value object is a component or claims a name, and
+  closed sets keep theirs ([decision 115](adr/0115-value-objects-can-be-inlined-everywhere.md)).
 - **Fault responses** ([decision 49](adr/0049-fault-responses-client-can-act.md)): an operation
   transformer adds a problem response per status an endpoint answers its fault type with, referring to
   the problem schema the host's `CreateSchemaReferenceId` names (the shared `ProblemDetails`

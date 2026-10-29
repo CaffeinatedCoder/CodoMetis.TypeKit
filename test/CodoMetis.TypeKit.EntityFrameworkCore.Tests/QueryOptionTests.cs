@@ -76,8 +76,8 @@ public sealed class QueryOptionTests : IDisposable
     /// <summary>
     /// What the documentation says of a condition EF cannot read. A lambda written at the call is an
     /// expression and binds to the query's overload; a <c>Func</c> held in a variable, or a method group,
-    /// binds to the sequence's, which reads every row and runs the condition in memory. No analyzer
-    /// tells it yet, so this pins the behaviour the pages describe.
+    /// binds to the sequence's, which reads every row and runs the condition in memory. CMTK0009 reports
+    /// such a call (<c>QueryDelegateConditionTests</c>); this pins the behaviour it warns of.
     /// </summary>
     [Fact]
     public void A_Func_or_a_method_group_reads_every_row_and_runs_the_condition_in_memory()

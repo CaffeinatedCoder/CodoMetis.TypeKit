@@ -9,7 +9,7 @@ using Microsoft.OpenApi;
 namespace CodoMetis.TypeKit.AspNetCore.Tests;
 
 /// <summary>
-/// A host that inlines value objects (the README's <c>CreateSchemaReferenceId</c> returning <see langword="null"/>)
+/// A host that inlines value objects (its own <c>CreateSchemaReferenceId</c> returning <see langword="null"/>)
 /// gets, in every position, exactly what ASP.NET publishes for the wrapped type there: a nullable value object
 /// admits null as a nullable <c>int</c>, <c>string</c>, <c>Guid</c> or enum does, and a non-nullable one does not.
 /// </summary>
@@ -119,7 +119,7 @@ public sealed class InlinedValueObjectTests
         _ => schema?.DeepClone(),
     };
 
-    /// <summary>The README's predicate.</summary>
+    /// <summary>A host's own predicate, as TypeKitOpenApiOptions.InlineValueObjects does (NullablePositionTests holds the setting).</summary>
     private static void InlineValueObjects(OpenApiOptions openApi)
     {
         openApi.AddTypeKit();

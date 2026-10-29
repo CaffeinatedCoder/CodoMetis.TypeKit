@@ -266,10 +266,15 @@ internal sealed class TypeKitSymbols
     /// declares, in both forms a call can bind to: the extension block's member, which
     /// <c>option.OrDefault()</c> binds to, and its implementation, which <c>Option.OrDefault(option)</c> binds to.
     /// </summary>
-    public IEnumerable<IMethodSymbol> OptionClassMethods(string name) =>
-        _optionClasses.SelectMany(type => type.GetMembers(name)
-                                              .Concat(type.GetTypeMembers().Where(nested => nested.IsExtension).SelectMany(block => block.GetMembers(name))))
-                      .OfType<IMethodSymbol>();
+    public IEnumerable<IMethodSymbol> OptionClassMethods(string name) => ClassMethods(_optionClasses, name);
+
+    /// <summary>The methods named <paramref name="name"/> that the package's <c>Result</c> static class declares, as <see cref="OptionClassMethods"/> finds them.</summary>
+    public IEnumerable<IMethodSymbol> ResultClassMethods(string name) => ClassMethods(_resultClasses, name);
+
+    private static IEnumerable<IMethodSymbol> ClassMethods(ImmutableArray<INamedTypeSymbol> classes, string name) =>
+        classes.SelectMany(type => type.GetMembers(name)
+                                       .Concat(type.GetTypeMembers().Where(nested => nested.IsExtension).SelectMany(block => block.GetMembers(name))))
+               .OfType<IMethodSymbol>();
 
     private static bool IsDeclaredBy(IMethodSymbol method, ImmutableArray<INamedTypeSymbol> classes)
     {

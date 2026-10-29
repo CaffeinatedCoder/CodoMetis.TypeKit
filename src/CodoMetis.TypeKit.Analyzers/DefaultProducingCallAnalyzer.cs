@@ -41,6 +41,15 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// where the generated <c>TryFrom</c> does not bind and neither does <c>OrDefault</c> on it;
 /// <c>X.TryFrom(…).OrDefault()</c> is recognised there by name.
 /// </para>
+/// <para>
+/// With a message of its own, the rule also reports <c>FirstOrNone</c>, <c>SingleOrNone</c>,
+/// <c>LastOrNone</c>, <c>FirstOrError</c> and <c>LastOrError</c> called on a query with a delegate for
+/// a condition: a <c>Func</c> variable, a field, a method group, an anonymous method, a call that
+/// returns one. The query's overloads take an expression, so the call binds to the sequence's, which
+/// reads the whole query and runs the condition in memory. A lambda written at the call and an
+/// <c>Expression</c> bind to the query's, and a receiver typed as a sequence (<c>AsEnumerable()</c>,
+/// a cast) reads the query in full on purpose.
+/// </para>
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
@@ -56,10 +65,22 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
         helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.DefaultProducingCall)
     );
 
+    /// <summary>A delegate condition on a query, which binds the call to its sequence overload.</summary>
+    private static readonly DiagnosticDescriptor QueryDelegateRule = new(
+        DiagnosticIds.DefaultProducingCall,
+        title: "A delegate condition reads the whole query",
+        messageFormat: "'{0}' on the query binds to its IEnumerable<T> overload, since the condition is a '{1}' and not an expression: it reads every row and runs the condition in memory. {2}.",
+        category: "Usage",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "FirstOrNone, SingleOrNone and FirstOrError on an IQueryable<T> take the condition as an Expression<Func<T, bool>>, which the query provider runs. A Func held in a variable, a field, a method group or a call that returns one is no expression, so the call binds to the overload on IEnumerable<T>: the query is read in full and the condition runs in memory, on every row.",
+        helpLinkUri: DiagnosticIds.HelpLink(DiagnosticIds.DefaultProducingCall)
+    );
+
     private const string TryFrom = "TryFrom";
 
     /// <inheritdoc/>
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule, QueryDelegateRule];
 
     /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
@@ -71,6 +92,11 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
         {
             if (TypeKitSymbols.Resolve(start.Compilation) is not { } symbols) return;
 
+            var queryable = start.Compilation.GetTypeByMetadataName("System.Linq.IQueryable`1");
+            var func      = start.Compilation.GetTypeByMetadataName("System.Func`2");
+            if (queryable is not null && func is not null && QueryDelegateForms(symbols, func) is { Count: > 0 } delegates)
+                start.RegisterOperationAction(operation => AnalyzeQueryDelegate(operation, delegates, queryable, func), OperationKind.Invocation);
+
             var forms = Forms(start.Compilation, symbols);
             if (forms.Count == 0) return;
 
@@ -79,6 +105,77 @@ public sealed class DefaultProducingCallAnalyzer : DiagnosticAnalyzer
             var orDefault = forms.FirstOrDefault(form => form.Value.Kind == Kind.OrDefault).Key;
             if (orDefault is not null) start.RegisterSyntaxNodeAction(node => AnalyzeUnbound(node, symbols, orDefault, forms[orDefault]), SyntaxKind.InvocationExpression);
         });
+    }
+
+    /// <summary>
+    /// <c>query.FirstOrNone(isBeta)</c>: a sequence overload that takes a <c>Func</c>, called on a
+    /// receiver that is a query before the implicit conversion to <c>IEnumerable&lt;T&gt;</c>.
+    /// </summary>
+    private static void AnalyzeQueryDelegate(OperationAnalysisContext context, Dictionary<IMethodSymbol, string> forms, INamedTypeSymbol queryable, INamedTypeSymbol func)
+    {
+        var invocation = (IInvocationOperation)context.Operation;
+        var method     = invocation.TargetMethod;
+
+        if (!forms.TryGetValue(method.OriginalDefinition, out var advice)) return;
+
+        // An extension block's member has its receiver as the instance; the static form, Option.FirstOrNone(query, f),
+        // and the block's implementation have it as the first argument.
+        var receiver = invocation.Instance ?? invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == 0)?.Value;
+
+        // Only the conversion the compiler wrote: a cast to IEnumerable<T> reads the query in full on purpose.
+        while (receiver is IConversionOperation { IsImplicit: true } conversion) receiver = conversion.Operand;
+
+        if (receiver?.Type is not { } type || !IsQuery(type, queryable)) return;
+
+        var condition = method.Parameters.First(parameter => IsFunc(parameter.Type, func)).Type;
+        var element   = ((INamedTypeSymbol)condition).TypeArguments[0].ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+
+        context.Report(Diagnostic.Create(
+            QueryDelegateRule,
+            invocation.Syntax.GetLocation(),
+            method.Name,
+            condition.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+            string.Format(advice, element)));
+    }
+
+    /// <summary>Whether <paramref name="type"/> is an <c>IQueryable&lt;T&gt;</c>, implements one, or is a type parameter constrained to one.</summary>
+    private static bool IsQuery(ITypeSymbol type, INamedTypeSymbol queryable) =>
+        type switch
+        {
+            ITypeParameterSymbol parameter => parameter.ConstraintTypes.Any(constraint => IsQuery(constraint, queryable)),
+            _ => SymbolEqualityComparer.Default.Equals(type.OriginalDefinition, queryable)
+              || type.AllInterfaces.Any(candidate => SymbolEqualityComparer.Default.Equals(candidate.OriginalDefinition, queryable))
+        };
+
+    private static bool IsFunc(ITypeSymbol type, INamedTypeSymbol func) => SymbolEqualityComparer.Default.Equals(type.OriginalDefinition, func);
+
+    /// <summary>
+    /// The sequence overloads that take a <c>Func</c> condition and have a query twin that takes an
+    /// expression, by original definition, with the advice for each, <c>{0}</c> for the element type. The
+    /// Last forms' twins on a query refuse to compile, so their advice is to take the first instead.
+    /// </summary>
+    private static Dictionary<IMethodSymbol, string> QueryDelegateForms(TypeKitSymbols symbols, INamedTypeSymbol func)
+    {
+        var forms = new Dictionary<IMethodSymbol, string>(SymbolEqualityComparer.Default);
+
+        const string asExpression = "Write the condition as a lambda at the call, or hold it as an Expression<Func<{0}, bool>>, so that the query runs it, or call AsEnumerable() first to read every row on purpose";
+
+        foreach (var (methods, advice) in new[]
+                 {
+                     (symbols.OptionClassMethods("FirstOrNone"), asExpression),
+                     (symbols.OptionClassMethods("SingleOrNone"), asExpression),
+                     (symbols.ResultClassMethods("FirstOrError"), asExpression),
+                     (symbols.OptionClassMethods("LastOrNone"), "A query has no last element until it is ordered: order it the other way and use FirstOrNone with the condition as a lambda, or call AsEnumerable() first to read every row on purpose"),
+                     (symbols.ResultClassMethods("LastOrError"), "A query has no last element until it is ordered: order it the other way and use FirstOrError with the condition as a lambda, or call AsEnumerable() first to read every row on purpose"),
+                 })
+        {
+            foreach (var method in methods)
+            {
+                if (method.Parameters.Any(parameter => IsFunc(parameter.Type, func))) forms[method] = advice;
+            }
+        }
+
+        return forms;
     }
 
     private static void Analyze(OperationAnalysisContext context, TypeKitSymbols symbols, Dictionary<IMethodSymbol, Form> forms)

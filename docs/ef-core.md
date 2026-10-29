@@ -223,7 +223,7 @@ To get one element of a query as an option, use `FirstOrNone`, `SingleOrNone` or
 - **Write the condition as a lambda at the call**, or hold it as an `Expression<Func<T, bool>>`. Only
   then does it run in the database. A `Func<T, bool>` variable or a method group binds the synchronous
   methods to their overloads on a sequence. Those read every row of the table and run the condition
-  in memory, without a warning.
+  in memory, and the analyzer warns at the call (CMTK0009).
 
 ## Compiled models
 

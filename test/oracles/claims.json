@@ -1451,6 +1451,79 @@
     ]
   },
   {
+    "id": "C27-inline-every-position",
+    "source": "docs/aspnet-core.md#describe-value-objects-as-plain-types",
+    "quote": "Each one gets exactly the schema the underlying type gets in that place.",
+    "claim": "Each one gets exactly the schema the underlying type gets in that place.",
+    "oracle": "differential",
+    "surfaces": [
+      "TypeKitOpenApiOptions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "SchemaTests",
+      "NullablePositionTests"
+    ]
+  },
+  {
+    "id": "C27-inline-no-component",
+    "source": "docs/aspnet-core.md#describe-value-objects-as-plain-types",
+    "quote": "Turn on `InlineValueObjects`, and every value object is described in place by the schema of the type inside it:",
+    "claim": "Turn on `InlineValueObjects`, and every value object is described in place by the schema of the type inside it:",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "InlineValueObjectsSettingTests",
+      "AspNetCoreTests"
+    ]
+  },
+  {
+    "id": "C27-inline-nullable-in-2-0",
+    "source": "docs/aspnet-core.md#describe-value-objects-as-plain-types",
+    "quote": "That holds under OpenAPI 2.0 too, where a nullable property of a component loses its type.",
+    "claim": "That holds under OpenAPI 2.0 too, where a nullable property of a component loses its type.",
+    "oracle": "differential",
+    "surfaces": [
+      "TypeKitOpenApiOptions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "SchemaTests",
+      "NullablePositionTests"
+    ]
+  },
+  {
+    "id": "C27-inline-off-unchanged",
+    "source": "docs/aspnet-core.md#describe-value-objects-as-plain-types",
+    "quote": "`AddTypeKit()` writes the same document as before, with a component per value object.",
+    "claim": "`AddTypeKit()` writes the same document as before, with a component per value object.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "InlineValueObjectsSettingTests"
+    ]
+  },
+  {
+    "id": "C27-inline-same-name",
+    "source": "docs/aspnet-core.md#describe-value-objects-as-plain-types",
+    "quote": "Neither has a component, so neither needs a name of its own.",
+    "claim": "Neither has a component, so neither needs a name of its own.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "InlineValueObjectsSettingTests"
+    ]
+  },
+  {
     "id": "E01-column-type",
     "source": "docs/ef-core.md#the-model",
     "quote": "Every property maps as a column of the underlying type, nullable where the property is.",
@@ -2399,9 +2472,9 @@
   {
     "id": "O03-a-func-reads-every-row",
     "source": "docs/option.md#in-a-database-query",
-    "quote": "A `Func<T, bool>` held in a variable, or a method group, binds to the sequence overload instead. That reads every row and checks the condition in memory, with no warning.",
-    "claim": "A `Func<T, bool>` held in a variable, or a method group, binds to the sequence overload instead. That reads every row and checks the condition in memory, with no warning.",
-    "oracle": "silent-default",
+    "quote": "A `Func<T, bool>` held in a variable, or a method group, binds to the sequence overload instead. That reads every row and checks the condition in memory",
+    "claim": "A `Func<T, bool>` held in a variable, or a method group, binds to the sequence overload instead. That reads every row and checks the condition in memory",
+    "oracle": "claim",
     "surfaces": [
       "Option.FirstOrNone"
     ],
@@ -3394,6 +3467,91 @@
     "heldBy": [
       "PatchTests",
       "MergePatchesTests"
+    ]
+  },
+  {
+    "id": "Q01-delegate-condition-reported",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#a-condition-that-reads-every-row",
+    "quote": "The rule reports that call, and its message names the overload it fell to.",
+    "claim": "The rule reports that call, and its message names the overload it fell to.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.FirstOrNone",
+      "Option.SingleOrNone",
+      "Option.LastOrNone",
+      "Result.FirstOrError",
+      "Result.LastOrError"
+    ],
+    "heldBy": [
+      "QueryDelegateConditionTests"
+    ]
+  },
+  {
+    "id": "Q02-last-forms-too",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#a-condition-that-reads-every-row",
+    "quote": "`LastOrNone` and `LastOrError` are reported as well.",
+    "claim": "`LastOrNone` and `LastOrError` are reported as well.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.FirstOrNone",
+      "Option.SingleOrNone",
+      "Option.LastOrNone",
+      "Result.FirstOrError",
+      "Result.LastOrError"
+    ],
+    "heldBy": [
+      "QueryDelegateConditionTests"
+    ]
+  },
+  {
+    "id": "Q03-as-enumerable-silent",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#a-condition-that-reads-every-row",
+    "quote": "To read every row on purpose, call `AsEnumerable()` first, and the rule stays silent.",
+    "claim": "To read every row on purpose, call `AsEnumerable()` first, and the rule stays silent.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.FirstOrNone",
+      "Option.SingleOrNone",
+      "Option.LastOrNone",
+      "Result.FirstOrError",
+      "Result.LastOrError"
+    ],
+    "heldBy": [
+      "QueryDelegateConditionTests"
+    ]
+  },
+  {
+    "id": "Q04-sequence-held-query-silent",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#a-condition-that-reads-every-row",
+    "quote": "A query held as an `IEnumerable<T>` is a sequence to the rule.",
+    "claim": "A query held as an `IEnumerable<T>` is a sequence to the rule.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.FirstOrNone",
+      "Option.SingleOrNone",
+      "Option.LastOrNone",
+      "Result.FirstOrError",
+      "Result.LastOrError"
+    ],
+    "heldBy": [
+      "QueryDelegateConditionTests"
+    ]
+  },
+  {
+    "id": "Q05-ef-readme-warns",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found",
+    "quote": "Then every row is read and the condition runs in memory, and the analyzer warns at the call",
+    "claim": "Then every row is read and the condition runs in memory, and the analyzer warns at the call",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.FirstOrNone",
+      "Option.SingleOrNone",
+      "Option.LastOrNone",
+      "Result.FirstOrError",
+      "Result.LastOrError"
+    ],
+    "heldBy": [
+      "QueryDelegateConditionTests"
     ]
   },
   {
