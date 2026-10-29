@@ -28,6 +28,9 @@ public sealed class PatchSchemaTests
 
     public sealed record Control(string? Name, int Quantity, ProbeCode Code, ProbeId Id, Lines? Lines);
 
+    /// <summary>A patch parameter with <c>= default</c>, which the merge-patches page says breaks the document.</summary>
+    public sealed record DefaultedPatch(Patch<int> Quantity = default);
+
     [JsonConverter(typeof(JsonStringEnumConverter<Colour>))]
     public enum Colour { Red, Green }
 
@@ -232,6 +235,20 @@ public sealed class PatchSchemaTests
 
         static IEnumerable<string> Required(OpenApiJson document) =>
             document.Component(nameof(StrictPatch))["required"]?.AsArray().Select(node => node!.GetValue<string>()) ?? [];
+    }
+
+    /// <summary>
+    /// The merge-patches page's warning: <c>= default</c> on a patch parameter satisfies the serializer, but
+    /// System.Text.Json's schema exporter throws on a struct parameter whose default is <c>default</c>, so the
+    /// endpoint's document fails. Pinned, so the page is corrected when the exporter learns to describe it.
+    /// </summary>
+    [Fact]
+    public async Task A_patch_parameter_defaulted_with_default_breaks_the_document()
+    {
+        var refusal = await Should.ThrowAsync<JsonException>(() => ProbeHost.DocumentAsync(
+            openApi => openApi.AddTypeKit(), endpoints: app => app.MapPatch("/defaulted", int (DefaultedPatch patch) => 0)));
+
+        refusal.StackTrace.ShouldNotBeNull().ShouldContain(nameof(System.Text.Json.Schema.JsonSchemaExporter), customMessage: "the exporter throws, not the converter");
     }
 
     private static bool AdmitsNull(JsonNode schema, OpenApiSpecVersion version) =>

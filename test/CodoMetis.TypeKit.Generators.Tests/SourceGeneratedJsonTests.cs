@@ -131,7 +131,32 @@ public sealed class SourceGeneratedJsonTests
     public void Stored_JSON_is_read_without_the_rules() =>
         JsonSerializer.Deserialize<ProbePercentage>("101", new JsonSerializerOptions(ContextOnly) { Converters = { new StoredJsonConverterFactory() } })
                       .Value.ShouldBe(101);
+
+    /// <summary>
+    /// The merge-patches page: a source-generated context never sees through a patch, and a value object inside one
+    /// is read with its own converter, so it keeps its rule where neither it nor its wrapped type is listed.
+    /// </summary>
+    [Fact]
+    public void A_value_object_inside_a_patch_is_read_with_its_own_converter()
+    {
+        var options = new JsonSerializerOptions { TypeInfoResolver = PatchesOnly.Default };
+        PatchesOnly.Default.GetTypeInfo(typeof(ProbeCode)).ShouldBeNull("the control: the context never saw the value object");
+
+        var read = JsonSerializer.Deserialize<CodePatch>("""{"Code":"ABC","Amount":1.5}""", options).ShouldNotBeNull();
+        read.Code.Match(code => code.Value, () => "cleared", () => "absent").ShouldBe("ABC");
+        read.Amount.Match(amount => amount.Value, () => -1m, () => -2m).ShouldBe(1.5m);
+
+        var refusal = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<CodePatch>("""{"Code":"lower"}""", options));
+        refusal.Path.ShouldBe("$.Code");
+        refusal.Message.ShouldContain(nameof(ProbeCodeFault.NotUpperCase));
+        refusal.Message.ShouldNotContain("lower");
+    }
 }
+
+public sealed record CodePatch(Patch<ProbeCode> Code, Patch<ProbeAmount> Amount);
+
+[JsonSerializable(typeof(CodePatch))]
+internal sealed partial class PatchesOnly : JsonSerializerContext;
 
 /// <summary>A wrapped type with a converter of its own, which writes it in lower case.</summary>
 [JsonConverter(typeof(CodeAsLowerConverter))]

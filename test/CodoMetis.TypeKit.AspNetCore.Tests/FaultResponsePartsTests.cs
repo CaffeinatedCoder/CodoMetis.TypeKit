@@ -195,6 +195,45 @@ public sealed class FaultResponsePartsTests
         Rename(1).ToHttpResult(order => TypedResults.Created($"/orders/{order.Id}", order)).Result.ShouldBeOfType<Created<Order>>();
     }
 
+    /// <summary>
+    /// The Result page: <c>ToHttpResult()</c> accepts an enum, a closed set and a fault of one or several types,
+    /// never a <c>Result&lt;T, Exception&gt;</c>, whose exception is for the code that called. Every overload's
+    /// error is a <c>Fault</c>, or a type parameter whose constraints an exception does not meet.
+    /// </summary>
+    [Fact]
+    public void ToHttpResult_accepts_no_result_whose_error_is_an_exception()
+    {
+        var overloads = new[] { typeof(TypeKitHttpResultExtensions), typeof(TypeKitClosedSetHttpResultExtensions) }
+            .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            .Where(method => method.Name == nameof(TypeKitHttpResultExtensions.ToHttpResult))
+            .ToList();
+
+        overloads.Count.ShouldBeGreaterThanOrEqualTo(20);
+        overloads.Where(method => Admits(method.GetParameters()[0].ParameterType.GetGenericArguments()[^1], typeof(Exception)))
+                 .Select(method => method.ToString())
+                 .ShouldBeEmpty();
+
+        static bool Admits(Type error, Type candidate)
+        {
+            if (!error.IsGenericParameter) return error.IsAssignableFrom(candidate);
+            if (error.GenericParameterAttributes.HasFlag(GenericParameterAttributes.NotNullableValueTypeConstraint) && !candidate.IsValueType) return false;
+
+            try
+            {
+                return error.GetGenericParameterConstraints().All(constraint => Substituted(constraint, error, candidate).IsAssignableFrom(candidate));
+            }
+            catch (ArgumentException)
+            {
+                return false; // the constraint cannot even be formed over the candidate
+            }
+        }
+
+        static Type Substituted(Type constraint, Type parameter, Type candidate) =>
+            constraint.IsGenericType && constraint.ContainsGenericParameters
+                ? constraint.GetGenericTypeDefinition().MakeGenericType([.. constraint.GetGenericArguments().Select(argument => argument == parameter ? candidate : argument)])
+                : constraint;
+    }
+
     // 4: a detail reaches the body only when set, and the default response is unchanged.
     [Fact]
     public async Task A_detail_reaches_the_problem_only_when_there_is_one()
