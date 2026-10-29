@@ -83,6 +83,21 @@ public static class Pipelines
         Result<IReadOnlyList<Sku>, SkuFault> all = parsed.Sequence();
         // end sample
     }
+
+    public static async Task<(List<Sku>, Result<IReadOnlyList<Sku>, SkuFault>, Result<IReadOnlyList<Order>, OrderFault>)> Streams(
+        IOrders orders,
+        IAsyncEnumerable<string> lines,
+        IAsyncEnumerable<Result<Sku, SkuFault>> rows,
+        IAsyncEnumerable<OrderId> ids,
+        CancellationToken cancellationToken)
+    {
+        // sample: CodoMetis.TypeKit/streams
+        IAsyncEnumerable<Sku> known = lines.Choose(line => Sku.TryFrom(line));                        // the lines that are SKUs, as they arrive
+        Result<IReadOnlyList<Sku>, SkuFault> imported = await rows.SequenceAsync(cancellationToken);   // every SKU, or the first fault
+        Result<IReadOnlyList<Order>, OrderFault> found = await ids.TraverseAsync(orders.FindAsync);    // one lookup at a time, in order
+        // end sample
+        return (await known.ToListAsync(cancellationToken), imported, found);
+    }
 }
 
 public readonly partial record struct OrderId : IValue<Guid>;

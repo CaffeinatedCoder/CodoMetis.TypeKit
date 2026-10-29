@@ -651,6 +651,50 @@ public sealed class IgnoredOutcomeAnalyzerTests
             Cmtk0003(3, "Result", "LoadAsync"))
             .RunAsync(TestContext.Current.CancellationToken);
 
+    /// <summary>
+    /// <c>SequenceAsync</c> and <c>TraverseAsync</c> over an async stream answer a <c>Task</c> of a result,
+    /// so dropping one reports as dropping <c>TraverseAsync</c> over a sequence does: awaited or not, and
+    /// converted to a plain <c>Task</c>. Kept or discarded with <c>_ =</c>, it is silent.
+    /// </summary>
+    [Fact]
+    public Task A_dropped_SequenceAsync_or_TraverseAsync_over_a_stream_reports_as_over_a_sequence() =>
+        Test(
+            """
+            public static class Caller
+            {
+                public static async Task Run(Service service, int[] ids, IAsyncEnumerable<int> stream, IAsyncEnumerable<Result<int, Fault>> values)
+                {
+                    {|#0:await ids.TraverseAsync(service.CancelAsync)|};
+                    {|#1:await stream.TraverseAsync(service.CancelAsync)|};
+                    {|#2:await stream.TraverseAsync((id, token) => service.LoadAsync(), default)|};
+                    {|#3:await service.SaveEachAsync(ids).SequenceAsync()|};
+                    {|#4:await values.SequenceAsync(default)|};
+                    #pragma warning disable CS4014
+                    {|#5:service.SaveEachAsync(ids).SequenceAsync()|};
+                    {|#6:stream.TraverseAsync(service.CancelAsync)|};
+                    #pragma warning restore CS4014
+
+                    _ = await values.SequenceAsync();
+                    var all = await stream.TraverseAsync(id => service.LoadAsync());
+                    if (await service.SaveEachAsync(ids).SequenceAsync()) { }
+                }
+
+                public static Task Drop(Service service, int[] ids) => {|#7:service.SaveEachAsync(ids).SequenceAsync()|};
+
+                public static Task DropEach(Service service, IAsyncEnumerable<int> stream) => {|#8:stream.TraverseAsync(service.CancelAsync)|};
+            }
+            """,
+            Cmtk0003(0, "Result", "TraverseAsync"),
+            Cmtk0003(1, "Result", "TraverseAsync"),
+            Cmtk0003(2, "Result", "TraverseAsync"),
+            Cmtk0003(3, "Result", "SequenceAsync"),
+            Cmtk0003(4, "Result", "SequenceAsync"),
+            Cmtk0003(5, "Result", "SequenceAsync"),
+            Cmtk0003(6, "Result", "TraverseAsync"),
+            Cmtk0003(7, "Result", "SequenceAsync"),
+            Cmtk0003(8, "Result", "TraverseAsync"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
     /// <summary>A task that keeps its result type, an explicit cast, and a task the caller holds are not dropped by the conversion.</summary>
     [Fact]
     public Task A_task_of_a_result_that_keeps_its_type_is_cast_or_is_held_stays_silent() =>

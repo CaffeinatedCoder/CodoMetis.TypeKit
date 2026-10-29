@@ -25,6 +25,13 @@
         <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+        <!--
+          The SQL Server facts, in a container (SqlServerFactHost), with the trait Needs=Docker; SqlClient's advisories
+          are answered as in the EF tests (Directory.Packages.props).
+        -->
+        <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+        <PackageReference Include="System.Security.Cryptography.Pkcs" />
+        <PackageReference Include="Testcontainers" />
     </ItemGroup>
 
     <!-- A fact's measured answers as data, beside its test (FactFixture, design/adr/0107), read from the test output. -->

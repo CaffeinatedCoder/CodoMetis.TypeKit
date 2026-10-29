@@ -137,6 +137,12 @@ public sealed class UninitializedResultTests
         ["TraverseAsync(IEnumerable<T>, Func<T, CancellationToken, Task<Result<TError>>>, CancellationToken)"] = () => new[] { 1 }.TraverseAsync((_, _) => Task.FromResult(default(Result<string>)), CancellationToken.None),
         ["Sequence(IEnumerable<Result<T, TError>>)"]                   = () => Task.FromResult(new[] { Value, default }.Sequence()),
         ["Sequence(IEnumerable<Result<TError>>)"]                      = () => Task.FromResult(new[] { Result<string>.Success(), default }.Sequence()),
+        ["TraverseAsync(IAsyncEnumerable<T>, Func<T, Task<Result<TResult, TError>>>)"] = () => new[] { 1 }.ToAsyncEnumerable().TraverseAsync(_ => Task.FromResult(default(Result<int, string>))),
+        ["TraverseAsync(IAsyncEnumerable<T>, Func<T, CancellationToken, Task<Result<TResult, TError>>>, CancellationToken)"] = () => new[] { 1 }.ToAsyncEnumerable().TraverseAsync((_, _) => Task.FromResult(default(Result<int, string>)), CancellationToken.None),
+        ["TraverseAsync(IAsyncEnumerable<T>, Func<T, Task<Result<TError>>>)"]          = () => new[] { 1 }.ToAsyncEnumerable().TraverseAsync(_ => Task.FromResult(default(Result<string>))),
+        ["TraverseAsync(IAsyncEnumerable<T>, Func<T, CancellationToken, Task<Result<TError>>>, CancellationToken)"] = () => new[] { 1 }.ToAsyncEnumerable().TraverseAsync((_, _) => Task.FromResult(default(Result<string>)), CancellationToken.None),
+        ["SequenceAsync(IAsyncEnumerable<Result<T, TError>>, CancellationToken)"] = () => new[] { Value, default }.ToAsyncEnumerable().SequenceAsync(),
+        ["SequenceAsync(IAsyncEnumerable<Result<TError>>, CancellationToken)"]    = () => new[] { Result<string>.Success(), default }.ToAsyncEnumerable().SequenceAsync(),
     };
 
     public static TheoryData<string> ExtensionMemberNames => [.. ExtensionMembers.Keys];

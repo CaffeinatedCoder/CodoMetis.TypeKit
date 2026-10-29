@@ -98,7 +98,7 @@ public sealed class KB047
     {
         var converter = new ValueConverter<Number, long>(
             number => number.Value, value => new Number(value), new ConverterMappingHints(valueGeneratorFactory: (_, _) => new Fixed<Number>(new Number(7))));
-        using var db = Create(model => model.Entity<ByNumber>().Property(e => e.Id).HasConversion(converter).UseHiLo());
+        using var db = Create(model => NpgsqlPropertyBuilderExtensions.UseHiLo(model.Entity<ByNumber>().Property(e => e.Id).HasConversion(converter)));
 
         var entityType = db.Model.FindEntityType(typeof(ByNumber))!;
         db.GetService<IValueGeneratorSelector>().TrySelect(entityType.FindPrimaryKey()!.Properties[0], entityType, out var generator).ShouldBeTrue();

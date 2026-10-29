@@ -123,14 +123,14 @@ jobs:
       - name: Build
         run: dotnet build "$SOLUTION" -c Release --no-restore
 
-      # The EF Core round trips start a PostgreSQL container. Ubuntu runners have Docker; macOS
-      # runners have none and Windows runners run only Windows containers, so those legs leave the
-      # one class that needs it out.
+      # The EF Core tests on PostgreSQL and SQL Server, and the SQL Server facts, start a Linux container.
+      # Ubuntu runners have Docker; macOS runners have none and Windows runners run only Windows
+      # containers, so those legs leave out the classes that need it, the trait Needs=Docker.
       - name: Test
         run: >
           dotnet test --solution "$SOLUTION" -c Release --no-build
           --report-xunit-trx --results-directory TestResults
-          ${{ runner.os != 'Linux' && '--filter-not-class "*PostgreSqlRoundTripTests"' || '' }}
+          ${{ runner.os != 'Linux' && '--filter-not-trait "Needs=Docker"' || '' }}
 
       - name: Upload test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0

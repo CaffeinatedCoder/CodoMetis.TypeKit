@@ -266,8 +266,8 @@ The block under [Keys](#keys) is the whole setup:
 
 EF's in-memory provider won't work. It has no relational type mapping, so nothing is mapped there.
 
-This repository tests the mapping on SQLite and PostgreSQL, and every family of underlying types makes
-a round trip through a real PostgreSQL.
+This repository tests the mapping on SQLite, PostgreSQL and SQL Server, and every family of underlying
+types makes a round trip through a real PostgreSQL and a real SQL Server.
 
 ## If something does not map
 

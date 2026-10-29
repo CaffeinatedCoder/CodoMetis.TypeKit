@@ -115,6 +115,16 @@ public sealed class NullDelegateTests
             [() => new[] { 1 }.TraverseAsync(Null<Func<int, Task<Result<string>>>>()), () => Array.Empty<int>().TraverseAsync(Null<Func<int, Task<Result<string>>>>())],
         ["Result.TraverseAsync(IEnumerable<T>, Func<T, CancellationToken, Task<Result<TError>>>, CancellationToken): selector"] =
             [() => new[] { 1 }.TraverseAsync(Null<Func<int, CancellationToken, Task<Result<string>>>>(), CancellationToken.None), () => Array.Empty<int>().TraverseAsync(Null<Func<int, CancellationToken, Task<Result<string>>>>(), CancellationToken.None)],
+        ["SequenceOptionExtensions.Choose(IAsyncEnumerable<T>, Func<T, Option<TResult>>): selector"] =
+            [() => new[] { 1 }.ToAsyncEnumerable().Choose(Null<Func<int, Option<int>>>()), () => Array.Empty<int>().ToAsyncEnumerable().Choose(Null<Func<int, Option<int>>>())],
+        ["Result.TraverseAsync(IAsyncEnumerable<T>, Func<T, Task<Result<TResult, TError>>>): selector"] =
+            [() => new[] { 1 }.ToAsyncEnumerable().TraverseAsync(Null<Func<int, Task<Result<int, string>>>>()), () => Array.Empty<int>().ToAsyncEnumerable().TraverseAsync(Null<Func<int, Task<Result<int, string>>>>())],
+        ["Result.TraverseAsync(IAsyncEnumerable<T>, Func<T, CancellationToken, Task<Result<TResult, TError>>>, CancellationToken): selector"] =
+            [() => new[] { 1 }.ToAsyncEnumerable().TraverseAsync(Null<Func<int, CancellationToken, Task<Result<int, string>>>>(), CancellationToken.None), () => Array.Empty<int>().ToAsyncEnumerable().TraverseAsync(Null<Func<int, CancellationToken, Task<Result<int, string>>>>(), CancellationToken.None)],
+        ["Result.TraverseAsync(IAsyncEnumerable<T>, Func<T, Task<Result<TError>>>): selector"] =
+            [() => new[] { 1 }.ToAsyncEnumerable().TraverseAsync(Null<Func<int, Task<Result<string>>>>()), () => Array.Empty<int>().ToAsyncEnumerable().TraverseAsync(Null<Func<int, Task<Result<string>>>>())],
+        ["Result.TraverseAsync(IAsyncEnumerable<T>, Func<T, CancellationToken, Task<Result<TError>>>, CancellationToken): selector"] =
+            [() => new[] { 1 }.ToAsyncEnumerable().TraverseAsync(Null<Func<int, CancellationToken, Task<Result<string>>>>(), CancellationToken.None), () => Array.Empty<int>().ToAsyncEnumerable().TraverseAsync(Null<Func<int, CancellationToken, Task<Result<string>>>>(), CancellationToken.None)],
         ["Result.TraverseAsync(Option<T>, Func<T, Task<Result<TResult, TError>>>): selector"] =
             [() => Some.TraverseAsync(Null<Func<int, Task<Result<int, string>>>>()), () => None.TraverseAsync(Null<Func<int, Task<Result<int, string>>>>())],
         ["Result.TraverseAsync(Option<T>, Func<T, CancellationToken, Task<Result<TResult, TError>>>, CancellationToken): selector"] =

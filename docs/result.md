@@ -323,9 +323,11 @@ throughout.
 | `Traverse(selector)` | `Option<T>` | `Result<Option<TResult>, TError>`: an optional input validated when present |
 | `Traverse(selector)` | `Patch<T>` | `Result<Patch<TResult>, TError>`: a patch field validated when it carries a value; a clear or an absence passes through |
 | `TraverseAsync(selector)`, `TraverseAsync(selector, cancellationToken)` | `IEnumerable<T>` | as `Traverse`, one operation awaited at a time; nothing starts after an error, or once the token is cancelled |
+| `TraverseAsync(selector)`, `TraverseAsync(selector, cancellationToken)` | `IAsyncEnumerable<T>` | as over `IEnumerable<T>`; nothing more is read after an error, and the token reaches the stream too |
 | `TraverseAsync(selector)`, `TraverseAsync(selector, cancellationToken)` | `Option<T>`, `Patch<T>` | as `Traverse`, the operation awaited; nothing is called without a value |
 | `Transpose()` | `Option<Result<T, TError>>`, `Result<Option<T>, TError>` | the one turned inside out: `None` is a success without a value, an error stays the error |
 | `Sequence()` | `IEnumerable<Result<T, TError>>`, `IEnumerable<Result<TError>>` | the list of values, or the first error |
+| `SequenceAsync()`, `SequenceAsync(cancellationToken)` | `IAsyncEnumerable<Result<T, TError>>`, `IAsyncEnumerable<Result<TError>>` | the same, awaited; nothing more is read after the first error, and the token reaches the stream |
 
 **Reaching the outcome**
 
