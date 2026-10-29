@@ -26,6 +26,7 @@ section is the GitHub release's notes.
 - EF Core: a default value-object key over `ulong` gets a temporary value at `Add`, as a plain `ulong` key does, where it threw `OverflowException` on SQL Server and PostgreSQL; a `char` key configured `ValueGeneratedOnAdd()` gets a temporary `char` on SQL Server, not a character of a GUID string. HiLo and your own generator still come first. A compiled model made with `--nativeaot`, and a key you configure with `ValueObjectConverter` yourself, still throw ([Keys](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys)).
 - Packages: nuget.org's Release Notes tab and Visual Studio's Updates tab show the version's section of this changelog, as plain text, where they showed a link to the file.
 - Changelog: a released version's links name its tag, `blob/v2.2.0/`, so its notes open the pages as they were released, not as they read on `main` today.
+- Comparison: Thinktecture.Runtime.Extensions is compared at 10.6.0 and LanguageExt at 5.0.0-beta-78, and the page's facts are re-read before every release ([How it compares](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/comparison.md)).
 
 ## 2.2.0 — 2026-10-18
 
