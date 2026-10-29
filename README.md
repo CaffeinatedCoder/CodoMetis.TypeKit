@@ -225,6 +225,10 @@ under [Packages](#packages), are the reference for each package: what it adds, h
 exception message and analyzer help link points into them. Every C# block in the guides and the
 READMEs is compiled, and the outputs it states are tested.
 
+You can also read all of it as one website, with a menu, search and the API of every run-time
+package: [caffeinatedcoder.github.io/CodoMetis.TypeKit](https://caffeinatedcoder.github.io/CodoMetis.TypeKit/).
+It shows the latest release.
+
 | Page | Covers |
 |---|---|
 | [Walkthrough](docs/walkthrough.md) | One orders service from request to response: value objects bound, validated, stored, queried, patched, logged and described, and what changes at each boundary |
@@ -382,7 +386,7 @@ one.
 
 [CHANGELOG.md](CHANGELOG.md) lists what each version changed. The design notes, the decision records
 and the roadmap are under [design/](design/plan.md). The measurements that decided the design are in
-[spikes/](spikes/).
+[spikes/](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/tree/main/spikes).
 
 ## Building
 
