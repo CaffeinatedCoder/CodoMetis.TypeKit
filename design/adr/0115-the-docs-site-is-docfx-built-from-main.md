@@ -62,5 +62,6 @@ Measured with DocFX 2.81.0 on the published assemblies:
 So the API pages ship. The workflow fails if `Option<T>`'s or `Result<T, TError>`'s page stops listing its
 extension-block `Select`, so a DocFX update that loses them fails there, not on a reader.
 
-**Needed once from the maintainer:** Settings > Pages > Source set to "GitHub Actions". No workflow can set it,
-and until it is set, the first deployment from `main` fails at `configure-pages`.
+**Pages is configured** to deploy from GitHub Actions (Settings > Pages > Source), the one setting no workflow can
+make: on 2026-10-29 the API reports `build_type: workflow` at `https://caffeinatedcoder.github.io/CodoMetis.TypeKit/`.
+The first deployment follows the 2.3.0 release's merge into `main`.

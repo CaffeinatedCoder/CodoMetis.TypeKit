@@ -214,7 +214,8 @@ run-time packages are published to GitHub Pages, at
   `--warningsAsErrors`, so a link to a missing page, heading or file fails the PR. A link to a file that
   is not a page (`design/`, this file) becomes a GitHub address at the built commit, at build time
   (`site/template/conceptual.extension.js`).
-- **Pages needs one setting**, made once by a maintainer: Settings > Pages > Source, "GitHub Actions".
+- **Pages is configured** to deploy from GitHub Actions (Settings > Pages > Source), the one setting a
+  workflow cannot make.
 
 To build the site locally (`jq` reads the packages from `site/docfx.json`) and serve it at
 http://localhost:8080:
