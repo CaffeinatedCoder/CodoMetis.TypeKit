@@ -141,29 +141,121 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         // task still held, await held.WaitAsync(t), nothing is dropped.
         var passedOn = tasks.PassedOn(dropped);
 
-        var reported = false;
         foreach (var invocation in Producers(dropped, tasks))
         {
             // The statement's own call keeps the statement's location, and its type unless a
             // pass-through stands between them; a branch's call keeps its own.
             var own  = ReferenceEquals(invocation, passedOn);
             var type = own && ReferenceEquals(invocation, dropped) ? expression.Type : awaited is null ? invocation.Type : tasks.Awaited(invocation.Type);
-            if (DroppedOutcome(type, invocation, symbols, tasks) is not { } outcome) continue;
+
+            var outcome = DroppedOutcome(type, invocation, symbols, tasks) ?? DroppedAssertion(invocation, awaited is not null, tasks);
+            if (outcome is null) continue;
 
             context.Report(Diagnostic.Create(Rule, (own ? expression : invocation).Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
-            reported |= own;
+        }
+    }
+
+    /// <summary>
+    /// The task that fails a test, dropped, or awaited where <paramref name="awaited"/> says so (the caller
+    /// of a conversion to a plain <c>Task</c> and <c>Wait</c> wait for it too): <c>pending.ShouldBeSuccess();</c>
+    /// asserts nothing, since the assertion fails the test only through its task (<see cref="IsPendingAssertion"/>).
+    /// Nor does <c>Task.WhenAll(first.ShouldBeNone(), second.ShouldBeNone());</c> or <c>Task.Run(() =&gt;
+    /// pending.ShouldBeNone());</c>, whose task faults when an assertion fails, or <c>Task.WhenAny</c> of them,
+    /// awaited or not, whose task completes with the first to finish and leaves every failure unobserved, when
+    /// the statement made an assertion it hands on (<see cref="Tasks.PassesOnFailure"/>).
+    /// </summary>
+    private static string? DroppedAssertion(IInvocationOperation invocation, bool awaited, Tasks tasks)
+    {
+        var method = invocation.TargetMethod;
+
+        var dropped = IsPendingAssertion(method, tasks) ? !awaited
+                    : tasks.PassesOnFailure(method) is { } faults && (!awaited || !faults)
+                   && invocation.Arguments.Any(argument => MadeAssertions(argument.Value, tasks).Any());
+
+        if (!dropped) return null;
+
+        // Task.WhenEach(first.ShouldBeNone(), second.ShouldBeNone()) yields them unobserved.
+        return tasks.ElementOfSequence(invocation.Type) is { } element ? $"sequence of {element.Name}s" : invocation.Type?.Name ?? "Task";
+    }
+
+    /// <summary>
+    /// The assertions <paramref name="value"/> makes and hands on the task of, <see cref="Producers"/>' way, as
+    /// an element of an array or a collection, or from a lambda or a method group a call that returns tasks was
+    /// given: <c>new[] { a.ShouldBeNone(), b.ShouldBeNone() }</c>, <c>ids.Select(id =&gt; Find(id).ShouldBeNone())</c>,
+    /// <c>pending.Select(OptionAssertions.ShouldBeNone)</c>, <c>ids.Select(async id =&gt; await Find(id).ShouldBeNone())</c>.
+    /// An assertion assigned or discarded in it keeps its own task, and one awaited fails only the
+    /// <c>async</c> lambda it is in, which is handed on in its place.
+    /// </summary>
+    private static IEnumerable<(IOperation Assertion, string Name)> MadeAssertions(IOperation value, Tasks tasks)
+    {
+        foreach (var operation in value.DescendantsAndSelf())
+        {
+            var method = operation switch
+            {
+                IInvocationOperation call            => call.TargetMethod,
+                IMethodReferenceOperation reference => reference.Method,
+                _                                   => null,
+            };
+
+            if (method is not null && IsPendingAssertion(method, tasks) && HandsOn(operation, value, tasks)) yield return (operation, method.Name);
+        }
+    }
+
+    private static bool HandsOn(IOperation operation, IOperation root, Tasks tasks)
+    {
+        for (var current = operation; !ReferenceEquals(current, root); current = current.Parent!)
+        {
+            // await pending.ShouldBeNone() in an async lambda fails the lambda's task: follow that instead,
+            // unless a catch on the way can swallow the failure.
+            if (current.Parent is IAwaitOperation)
+            {
+                if (EnclosingAsyncFunction(current, root) is not { } function) return false;
+
+                current = function;
+                if (ReferenceEquals(current, root)) return true;
+            }
+
+            var handsOn = current.Parent switch
+            {
+                IConversionOperation or IConditionalOperation or ICoalesceOperation or ISwitchExpressionArmOperation or ISwitchExpressionOperation => true,
+                IArrayInitializerOperation or IArrayCreationOperation or ICollectionExpressionOperation or IArgumentOperation                     => true,
+                IReturnOperation or IBlockOperation or IAnonymousFunctionOperation or IDelegateCreationOperation or ITranslatedQueryOperation     => true,
+                IInvocationOperation call when ReferenceEquals(call.Instance, current)                                                              => tasks.PassesOn(call),
+                IInvocationOperation call                                                                                                           => tasks.HoldsTasks(call.Type),
+                _                                                                                                                                   => false,
+            };
+
+            if (!handsOn) return false;
         }
 
-        // pending.ShouldBeSuccess(); asserts nothing: the assertion fails the test only through its task.
-        if (!reported && awaited is null && passedOn is IInvocationOperation assertion && IsPendingAssertion(assertion.TargetMethod, tasks))
-            context.Report(Diagnostic.Create(Rule, expression.Syntax.GetLocation(), assertion.Type?.Name ?? "Task", assertion.TargetMethod.Name));
+        return true;
+    }
+
+    /// <summary>The <c>async</c> lambda or anonymous method inside <paramref name="root"/> that <paramref name="operation"/> fails, with no <c>catch</c> between them.</summary>
+    private static IOperation? EnclosingAsyncFunction(IOperation operation, IOperation root)
+    {
+        for (var current = operation.Parent; current is not null && !ReferenceEquals(current, root); current = current.Parent)
+        {
+            switch (current)
+            {
+                case ITryOperation { Catches.Length: > 0 }:
+                    return null;
+                case IAnonymousFunctionOperation function:
+                    return function.Symbol.IsAsync ? function : null;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
     /// An assertion of CodoMetis.TypeKit.Testing on a <c>Task</c> or <c>ValueTask</c> of the value it
     /// asserts on, <c>await service.FindAsync(id).ShouldBeSome()</c>: it awaits the value and fails the
     /// test through the task it returns, so that task dropped unawaited passes whatever the value is.
-    /// Every such assertion is new in 2.3, so reporting its drop breaks no build that worked before.
+    /// It is judged as every dropped call is, through <see cref="Producers"/>: passed through
+    /// <c>ConfigureAwait</c> or <c>WaitAsync</c>, or reached through a branch of a conditional, a
+    /// <c>??</c> or a <c>switch</c> expression. Every such assertion is new in 2.3, so reporting its drop
+    /// breaks no build that worked before (design/adr/0118).
     /// </summary>
     private static bool IsPendingAssertion(IMethodSymbol method, Tasks tasks) =>
         TypeKitSymbols.IsTestingAssembly(method.ContainingAssembly)
@@ -211,6 +303,10 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     {
         if ((symbols.OutcomeName(type) ?? tasks.PendingOutcome(type, symbols)) is { } outcome)
             return ReturnsItsStoredReceiver(invocation, symbols, tasks) ? null : outcome;
+
+        // Task.WhenEach(first.CancelAsync(), second.CancelAsync()) yields the tasks it was given, results and all.
+        if (tasks.PassesOnFailure(invocation.TargetMethod) == false && tasks.SequenceOutcome(type, symbols) is { } element)
+            return DroppedHolder($"sequence of {element}s", invocation, symbols, tasks);
 
         return DroppedHolder(tasks.HolderOutcome(type, symbols) ?? tasks.HolderOutcome(tasks.Awaited(type), symbols), invocation, symbols, tasks);
     }
@@ -268,6 +364,21 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         var toPlainTask = SymbolEqualityComparer.Default.Equals(conversion.Type, tasks.Plain);
         if (!toPlainTask && !tasks.HoldsPlainTasks(conversion.Type)) return;
 
+        // Task.WaitAll(new[] { first.CancelAsync(), second.CancelAsync() }) converts the array of tasks whole:
+        // each element's call is converted as if alone.
+        if (!toPlainTask && Unwrap(conversion.Operand) is IArrayCreationOperation { Initializer.ElementValues: var elements })
+        {
+            foreach (var element in elements)
+            foreach (var invocation in Producers(element, tasks))
+            {
+                if (ReturnsItsStoredReceiver(invocation, symbols, tasks) || tasks.PendingOutcome(invocation.Type, symbols) is not { } pending) continue;
+
+                context.Report(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), pending, invocation.TargetMethod.Name));
+            }
+
+            return;
+        }
+
         // The call, or each branch's call where a conditional or a switch expression was converted whole.
         // A pass-through between the conversion and the call, LoadAsync().WaitAsync(t), is reported whole.
         var passedOn = tasks.PassedOn(conversion.Operand);
@@ -275,9 +386,11 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         foreach (var invocation in Producers(conversion.Operand, tasks))
         {
             // held.TapAsync(log) returns the task of a result the caller still holds.
+            // Task Check() => Task.WhenAny(a.ShouldBeNone(), b.ShouldBeNone()); is awaited as a task that never faults.
             var outcome = toPlainTask
                 ? (ReturnsItsStoredReceiver(invocation, symbols, tasks) ? null : tasks.PendingOutcome(invocation.Type, symbols))
                ?? DroppedHolder(tasks.HolderOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks)
+               ?? DroppedAssertion(invocation, awaited: true, tasks)
                 : DroppedCollection(tasks.PendingOutcome(tasks.ElementOfSequence(invocation.Type), symbols), invocation, symbols, tasks);
 
             if (outcome is null) continue;
@@ -291,40 +404,70 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     /// <c>Wait</c> on a task of a result, or of a collection of results, that the expression made:
     /// <c>orders.CancelAsync(id).Wait()</c> blocks until the result exists and hands it to nobody,
     /// whether the statement drops what <c>Wait</c> returns or an <c>if</c> reads it. A task still held,
-    /// or a tap on one, keeps its result.
+    /// or a tap on one, keeps its result. Each branch of a conditional, a <c>??</c> or a <c>switch</c>
+    /// expression is its own call, as in a dropped statement. <c>Wait</c> on a <c>Task.WhenAny</c> of
+    /// assertions waits for the first and never sees a failure, and so does <c>Task.WaitAny</c>.
     /// </summary>
     private static void AnalyzeWait(OperationAnalysisContext context, TypeKitSymbols symbols, Tasks tasks)
     {
         var wait = (IInvocationOperation)context.Operation;
 
-        if (wait.TargetMethod is not { Name: "Wait", IsStatic: false } method || !SymbolEqualityComparer.Default.Equals(method.ContainingType, tasks.Plain)) return;
-        if (wait.Instance is null || tasks.PassedOn(wait.Instance) is not IInvocationOperation invocation) return;
+        if (wait.TargetMethod is not { Name: "Wait" or "WaitAny" } method || !SymbolEqualityComparer.Default.Equals(method.ContainingType, tasks.Plain)) return;
 
-        if (ReturnsItsStoredReceiver(invocation, symbols, tasks)) return;
+        // Task.WaitAny(a.ShouldBeNone(), b.ShouldBeNone()) returns an index and leaves every failure
+        // unobserved; Task.WaitAll throws them. Tasks of results are its conversions' (AnalyzeConversion).
+        if (method.IsStatic)
+        {
+            if (method.Name != "WaitAny") return;
 
-        var outcome = tasks.PendingOutcome(invocation.Type, symbols)
-                   ?? DroppedHolder(tasks.HolderOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks);
-        if (outcome is null) return;
+            foreach (var argument in wait.Arguments.Where(argument => argument.Parameter?.Ordinal == 0))
+            foreach (var (assertion, name) in MadeAssertions(argument.Value, tasks))
+                context.Report(Diagnostic.Create(Rule, assertion.Syntax.GetLocation(), "Task", name));
 
-        context.Report(Diagnostic.Create(Rule, wait.Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+            return;
+        }
+
+        if (method.Name != "Wait" || wait.Instance is null) return;
+
+        // The task's own call is reported at the Wait, each branch's call at the branch.
+        var passedOn = tasks.PassedOn(wait.Instance);
+
+        foreach (var invocation in Producers(wait.Instance, tasks))
+        {
+            if (ReturnsItsStoredReceiver(invocation, symbols, tasks)) continue;
+
+            var outcome = tasks.PendingOutcome(invocation.Type, symbols)
+                       ?? DroppedHolder(tasks.HolderOutcome(tasks.Awaited(invocation.Type), symbols), invocation, symbols, tasks)
+                       ?? DroppedAssertion(invocation, awaited: true, tasks);
+            if (outcome is null) continue;
+
+            context.Report(Diagnostic.Create(Rule, (ReferenceEquals(invocation, passedOn) ? wait : invocation).Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
+        }
     }
 
     /// <summary>
     /// A <c>foreach</c> or <c>await foreach</c> over results, or tasks of them, that its header made,
     /// whose body never reads the iteration variable: <c>await foreach (var outcome in
-    /// orders.CancelEachAsync(ids)) { }</c> runs every cancellation and drops every result. A variable
+    /// orders.CancelEachAsync(ids)) { }</c> runs every cancellation and drops every result. So does one
+    /// over assertions the header made, <c>Task.WhenEach</c> of them or a <c>Select</c>, whose failures nobody
+    /// sees. A variable
     /// named <c>_</c> says the drop is intended; a collection held in a variable, a parameter or a field
     /// keeps its results.
     /// </summary>
     private static void AnalyzeLoop(OperationAnalysisContext context, TypeKitSymbols symbols, Tasks tasks)
     {
         if (context.Operation is not IForEachLoopOperation { LoopControlVariable: IVariableDeclaratorOperation { Symbol: { Name: not "_" } variable } } loop) return;
-        if ((symbols.OutcomeName(variable.Type) ?? tasks.PendingOutcome(variable.Type, symbols)) is not { } outcome) return;
-        if (Unwrap(loop.Collection) is not IInvocationOperation invocation || !MadeResults(invocation, symbols, tasks)) return;
+        if (Unwrap(loop.Collection) is not IInvocationOperation invocation) return;
+
+        // foreach (var check in pending.Select(p => p.ShouldBeNone())) { } makes every assertion and observes none.
+        var outcome = (symbols.OutcomeName(variable.Type) ?? tasks.PendingOutcome(variable.Type, symbols)) is { } element
+            ? MadeResults(invocation, symbols, tasks) ? $"sequence of {element}s" : null
+            : tasks.IsTask(variable.Type) && MadeAssertions(invocation, tasks).Any() ? $"sequence of {variable.Type.Name}s" : null;
+        if (outcome is null) return;
 
         if (loop.Body.Descendants().OfType<ILocalReferenceOperation>().Any(reference => SymbolEqualityComparer.Default.Equals(reference.Local, variable))) return;
 
-        context.Report(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), $"sequence of {outcome}s", invocation.TargetMethod.Name));
+        context.Report(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), outcome, invocation.TargetMethod.Name));
     }
 
     /// <summary>
@@ -385,7 +528,8 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
     /// <summary>
     /// A call that returns its receiver unchanged, on a receiver the caller still holds: the
     /// outcome's own <c>Tap</c>, <c>TapAsync</c>, <c>TapError</c> and <c>TapErrorAsync</c>, and the
-    /// <c>Task</c> continuations <c>TapAsync</c> and <c>TapErrorAsync</c>, which return the task's result as it was.
+    /// <c>Task</c> continuations <c>TapAsync</c> and <c>TapErrorAsync</c>, which return the task's result as it was;
+    /// and <c>Task.WhenAny</c> of tasks the caller still holds, which completes with one of them.
     /// </summary>
     private static bool ReturnsItsStoredReceiver(IInvocationOperation invocation, TypeKitSymbols symbols, Tasks tasks)
     {
@@ -399,8 +543,21 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         if (method.Name is "TapAsync" or "TapErrorAsync" && symbols.IsDeclaredByResultClass(method))
             return IsStored(invocation.Instance ?? invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == 0)?.Value, symbols, tasks);
 
+        // Task.WhenAny(first, second) completes with one of the tasks it was given, results and all.
+        if (tasks.PassesOnFailure(method) == false)
+            return invocation.Arguments.All(argument => Elements(argument.Value).All(element => IsStored(element, symbols, tasks)));
+
         return false;
     }
+
+    /// <summary>The elements of an array or a collection written out, such as a <c>params</c> argument's, or the value itself.</summary>
+    private static IEnumerable<IOperation> Elements(IOperation value) =>
+        Unwrap(value) switch
+        {
+            IArrayCreationOperation { Initializer.ElementValues: var elements } => elements,
+            ICollectionExpressionOperation { Elements: var elements }           => elements,
+            var other                                                           => [other],
+        };
 
     /// <summary>
     /// Whether the caller still holds <paramref name="receiver"/>: a local, a parameter or a field; a
@@ -446,16 +603,40 @@ public sealed class IgnoredOutcomeAnalyzer : DiagnosticAnalyzer
         }
 
         /// <summary>
-        /// <c>ConfigureAwait</c> and <c>WaitAsync</c> of <c>Task&lt;T&gt;</c> or <c>ValueTask&lt;T&gt;</c>,
-        /// every overload: each completes with the task's own result and makes none.
+        /// <c>ConfigureAwait</c> and <c>WaitAsync</c> of <c>Task</c>, <c>Task&lt;T&gt;</c> or
+        /// <c>ValueTask&lt;T&gt;</c>, every overload: each completes as the task does, with its own result,
+        /// and makes none. A plain <c>Task</c> carries no result, but it can be the one an assertion of
+        /// CodoMetis.TypeKit.Testing returns (<see cref="IsPendingAssertion"/>).
         /// </summary>
         public bool PassesOn(IInvocationOperation call) =>
             call.TargetMethod is { IsStatic: false, Name: "ConfigureAwait" or "WaitAsync" } method
          && (SymbolEqualityComparer.Default.Equals(method.ContainingType.OriginalDefinition, generic)
-          || SymbolEqualityComparer.Default.Equals(method.ContainingType.OriginalDefinition, genericValueTask));
+          || SymbolEqualityComparer.Default.Equals(method.ContainingType.OriginalDefinition, genericValueTask)
+          || SymbolEqualityComparer.Default.Equals(method.ContainingType, Plain));
 
-        /// <summary>A <c>Task</c> or <c>ValueTask</c> of a result, not awaited: the result is dropped with it.</summary>
-        public string? PendingOutcome(ITypeSymbol? type, TypeKitSymbols symbols) => symbols.OutcomeName(Awaited(type));
+        /// <summary>
+        /// For a method that hands on the tasks it is given: <see langword="true"/> for <c>Task.WhenAll</c> and
+        /// <c>Task.Run</c>, whose task faults when one of them has; <see langword="false"/> for
+        /// <c>Task.WhenAny</c>, whose task completes with the first and never faults, and <c>Task.WhenEach</c>,
+        /// which yields them as they complete, faulted or not; <see langword="null"/> for any other method.
+        /// </summary>
+        public bool? PassesOnFailure(IMethodSymbol method) =>
+            method is { IsStatic: true, Name: "WhenAll" or "WhenAny" or "WhenEach" or "Run" } && SymbolEqualityComparer.Default.Equals(method.ContainingType, Plain)
+                ? method.Name is "WhenAll" or "Run"
+                : null;
+
+        /// <summary>Whether a value of <paramref name="type"/> is a task, or a collection or a sequence of them.</summary>
+        public bool HoldsTasks(ITypeSymbol? type) =>
+            IsTask(type) || IsTask(ElementOfSequence(type));
+
+        public bool IsTask(ITypeSymbol? type) => SymbolEqualityComparer.Default.Equals(type, Plain) || Awaited(type) is not null;
+
+        /// <summary>
+        /// A <c>Task</c> or <c>ValueTask</c> of a result, not awaited: the result is dropped with it. So is a task
+        /// of one, such as the <c>Task&lt;Task&lt;Result&lt;…&gt;&gt;&gt;</c> of <c>Task.WhenAny</c>, which completes
+        /// with a task of a result.
+        /// </summary>
+        public string? PendingOutcome(ITypeSymbol? type, TypeKitSymbols symbols) => symbols.OutcomeName(Awaited(type)) ?? symbols.OutcomeName(Awaited(Awaited(type)));
 
         /// <summary>What a <c>Task&lt;T&gt;</c> or <c>ValueTask&lt;T&gt;</c> completes with, or <see langword="null"/> for any other type.</summary>
         public ITypeSymbol? Awaited(ITypeSymbol? type) =>

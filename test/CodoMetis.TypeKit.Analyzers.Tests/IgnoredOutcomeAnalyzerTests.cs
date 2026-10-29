@@ -268,6 +268,39 @@ public sealed class IgnoredOutcomeAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
+    /// <c>Task.WhenAny</c> completes with a task of a result: dropped, awaited or not, converted to a plain
+    /// <c>Task</c> or waited for, the result of every task the statement made is gone (#159). Of tasks the
+    /// caller holds it completes with one of them, and drops nothing.
+    /// </summary>
+    [Fact]
+    public Task A_WhenAny_of_results_the_statement_made_reports_and_of_held_ones_is_silent() =>
+        Test(
+            """
+            public static class Caller
+            {
+                public static async Task Run(Service service, Task<Result<int, Fault>> held, Task<Result<int, Fault>> other, Task<Result<int, Fault>>[] all)
+                {
+                    {|#0:Task.WhenAny(service.LoadAsync(), service.LoadAsync())|};
+                    {|#1:await Task.WhenAny(held, service.LoadAsync())|};
+                    {|#2:Task.WhenAny(service.LoadAsync(), held).Wait()|};
+                    await Task.WhenAny(held, other);
+                    Task.WhenAny(held, other);
+                    await Task.WhenAny(all).ConfigureAwait(false);
+                    _ = Task.WhenAny(service.LoadAsync(), service.LoadAsync());
+                }
+
+                public static Task Converted(Service service) => {|#3:Task.WhenAny(service.LoadAsync(), service.LoadAsync())|};
+
+                public static Task Held(Task<Result<int, Fault>> held, Task<Result<int, Fault>> other) => Task.WhenAny(held, other);
+            }
+            """,
+            Cmtk0003(0, "Result", "WhenAny"),
+            Cmtk0003(1, "Result", "WhenAny"),
+            Cmtk0003(2, "Result", "WhenAny"),
+            Cmtk0003(3, "Result", "WhenAny"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
     /// <c>ConfigureAwait</c> and <c>WaitAsync</c> hand on the task they are called on: a task the caller
     /// still holds keeps its result through them, as it does through <c>await held;</c>. They were
     /// reported as the producers of the result, at Error.
