@@ -7,7 +7,7 @@ turned-on: the SuperStrong.Types column of the value-object table in docs/compar
 test: none, a competitor's feature, read from its source and package
 ---
 
-# KB-043. SuperStrong.Types 1.0.0 is an attribute on a partial class, validated everywhere it creates a value, with no Native AOT declaration
+# KB-044. SuperStrong.Types 1.0.0 is an attribute on a partial class, validated everywhere it creates a value, with no Native AOT declaration
 
 - Released 2026-07-21 (1.0.0-alpha.1 on 2026-06-14). Packages: `SuperStrong.Types` (the generator, analyzers and code
   fixes ship inside it), `.EntityFrameworkCore`, `.AspNetCore.OpenApi`, `.HotChocolate` and `.NewtonsoftJson`, all 1.0.0.

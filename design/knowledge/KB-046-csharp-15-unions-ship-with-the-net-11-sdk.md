@@ -7,7 +7,7 @@ turned-on: the C# union types row of "Choose something else when" in docs/compar
 test: none, a language feature's release status, read from Microsoft's documentation
 ---
 
-# KB-045. C# 15's union types and closed hierarchies need no preview flag in the .NET 11 SDK, which is still prerelease
+# KB-046. C# 15's union types and closed hierarchies need no preview flag in the .NET 11 SDK, which is still prerelease
 
 - Union types (`public union Pet(Cat, Dog, Bird);`) and closed hierarchies (`closed` on a class) are C# 15 features,
   with exhaustive `switch` checking.

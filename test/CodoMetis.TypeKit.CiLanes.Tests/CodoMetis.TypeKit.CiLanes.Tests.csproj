@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Runs the built ci-lanes.dll as a process, from a throwaway repository that holds its sources and its
+      output (ToolSandbox.cs). The reference only orders the build; ToolOutput says where the output is.
+    -->
+    <ItemGroup>
+        <ProjectReference Include="../../tools/CiLanes/CiLanes.csproj" ReferenceOutputAssembly="false" />
+        <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+            <_Parameter1>ToolOutput</_Parameter1>
+            <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../tools/CiLanes/bin/$(Configuration)/$(TargetFramework)/'))</_Parameter2>
+        </AssemblyAttribute>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Include="../CodoMetis.TypeKit.BuildVerdict.Tests/ToolSandbox.cs" Link="ToolSandbox.cs" />
+    </ItemGroup>
+</Project>

@@ -13,6 +13,7 @@
     <Project Path="test/CodoMetis.TypeKit.Analyzers.Tests/CodoMetis.TypeKit.Analyzers.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.BashGuard.Tests/CodoMetis.TypeKit.BashGuard.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.BuildVerdict.Tests/CodoMetis.TypeKit.BuildVerdict.Tests.csproj" />
+    <Project Path="test/CodoMetis.TypeKit.CiLanes.Tests/CodoMetis.TypeKit.CiLanes.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.AspNetCore.Tests/CodoMetis.TypeKit.AspNetCore.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.Conventions.Tests/CodoMetis.TypeKit.Conventions.Tests.csproj" />
     <Project Path="test/CodoMetis.TypeKit.DocsQuery.Tests/CodoMetis.TypeKit.DocsQuery.Tests.csproj" />
@@ -30,6 +31,7 @@
   <Folder Name="/tools/">
     <Project Path="tools/BashGuard/BashGuard.csproj" />
     <Project Path="tools/BuildVerdict/BuildVerdict.csproj" />
+    <Project Path="tools/CiLanes/CiLanes.csproj" />
     <Project Path="tools/ConsumerSmokeTest/ConsumerSmokeTest.csproj" />
     <Project Path="tools/DocsQuery/DocsQuery.csproj" />
     <Project Path="tools/Oracles/Oracles.csproj" />

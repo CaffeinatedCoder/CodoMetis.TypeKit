@@ -38,7 +38,7 @@ If something here is wrong or has changed, please open an issue.
 | Only your own closed set of outcomes, on .NET 11 | C# 15's union types or closed hierarchies | They need no preview flag in the .NET 11 SDK, which was still a release candidate on 29 October 2026 |
 | A long release history behind the library | LanguageExt, OneOf, CSharpFunctionalExtensions, FluentResults, Ardalis.SmartEnum, Thinktecture.Runtime.Extensions or Vogen | Each was first published on NuGet between 2015 and 2021. TypeKit is new: 1.0.0 shipped in September 2026, and SuperStrong.Types 1.0.0 in July 2026 |
 
-Sources: FluentResults [KB-018](../design/knowledge/KB-018-fluentresults.md), OneOf [KB-019](../design/knowledge/KB-019-oneof.md), first releases [KB-044](../design/knowledge/KB-044-first-releases-of-the-compared-libraries.md), C# 15 [KB-045](../design/knowledge/KB-045-csharp-15-unions-ship-with-the-net-11-sdk.md), and the entries under each table below.
+Sources: FluentResults [KB-018](../design/knowledge/KB-018-fluentresults.md), OneOf [KB-019](../design/knowledge/KB-019-oneof.md), first releases [KB-045](../design/knowledge/KB-045-first-releases-of-the-compared-libraries.md), C# 15 [KB-046](../design/knowledge/KB-046-csharp-15-unions-ship-with-the-net-11-sdk.md), and the entries under each table below.
 
 ## Value objects in detail
 
@@ -57,7 +57,7 @@ Sources: FluentResults [KB-018](../design/knowledge/KB-018-fluentresults.md), On
 | License | MIT | Apache-2.0 | BSD-3-Clause | MIT | MIT |
 
 Sources: Vogen [KB-010](../design/knowledge/KB-010-vogen-declaring-validating-storing.md) and [KB-011](../design/knowledge/KB-011-vogen-openapi-and-native-aot.md), Thinktecture.Runtime.Extensions [KB-012](../design/knowledge/KB-012-thinktecture-value-objects.md) and [KB-013](../design/knowledge/KB-013-thinktecture-openapi-and-native-aot.md),
-StronglyTypedId [KB-014](../design/knowledge/KB-014-stronglytypedid.md), SuperStrong.Types [KB-043](../design/knowledge/KB-043-superstrong-types.md).
+StronglyTypedId [KB-014](../design/knowledge/KB-014-stronglytypedid.md), SuperStrong.Types [KB-044](../design/knowledge/KB-044-superstrong-types.md).
 
 **A gap none of them fills.** ASP.NET Core and System.Text.Json's schema exporter can't see through
 a JSON converter you write yourself ([KB-023](../design/knowledge/KB-023-a-converter-cannot-describe-its-schema.md)). They write it as the empty schema, or with only the `format` its

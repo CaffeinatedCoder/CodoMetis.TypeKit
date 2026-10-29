@@ -11,6 +11,18 @@
     </ItemGroup>
 
     <!--
+      CiLaneTests runs the built ci-lanes.dll's `classify` over the files MSBuild evaluates for the packages. The
+      reference only orders the build; CiLanesOutput says where the output is.
+    -->
+    <ItemGroup>
+        <ProjectReference Include="../../tools/CiLanes/CiLanes.csproj" ReferenceOutputAssembly="false" />
+        <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+            <_Parameter1>CiLanesOutput</_Parameter1>
+            <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../tools/CiLanes/bin/$(Configuration)/$(TargetFramework)/'))</_Parameter2>
+        </AssemblyAttribute>
+    </ItemGroup>
+
+    <!--
       So the build restores the shipping projects itself. Referencing none of them, this project
       restores nothing they need, and a `dotnet test` of this project alone on a fresh checkout ran against no
       src/*/obj/project.assets.json: measured 2026-10-14, 92 of 1144 tests failed in a second (every

@@ -7,7 +7,7 @@ turned-on: the "long release history" row of "Choose something else when" in doc
 test: none, a competitor's release history, read from NuGet
 ---
 
-# KB-044. The compared libraries were first published on NuGet between 2015 and 2026
+# KB-045. The compared libraries were first published on NuGet between 2015 and 2026
 
 First listed version and its date, and the latest listed version, on 2026-10-29:
 
