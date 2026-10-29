@@ -359,8 +359,8 @@ Good libraries exist for both halves of TypeKit. TypeKit fits when you want:
 
 [How it compares](docs/comparison.md) says what to choose instead when TypeKit doesn't meet your
 need. It also has detailed tables against Vogen, Thinktecture.Runtime.Extensions, StronglyTypedId,
-LanguageExt, CSharpFunctionalExtensions, ErrorOr, Ardalis.SmartEnum and Intellenum, with versions
-and dates.
+SuperStrong.Types, LanguageExt, CSharpFunctionalExtensions, ErrorOr, Ardalis.SmartEnum and
+Intellenum, with versions and dates.
 
 ## Built with Metalama
 
