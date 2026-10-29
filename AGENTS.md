@@ -266,7 +266,10 @@ probe.
 
 ## Releasing
 
-Before `git tag`, show every seed caught, locally, a build of one project per seed:
+Before `git tag`, show every seed caught, locally: a baseline with no seed, then a build of one project per seed.
+A seed counts only where its oracle passes without it and fails with it in a test of its own; a fixture that never
+started, a crashed host or a failing baseline is `ERROR`, exit 4 (decision 117). On an arm64 Mac set
+`TYPEKIT_MSSQL_IMAGE=mcr.microsoft.com/azure-sql-edge:latest`, or the SQL Server oracles are `ERROR`:
 
 ```bash
 dotnet tools/Oracles/bin/Release/net10.0/oracles.dll seeds
@@ -283,4 +286,5 @@ It reads api.nuget.org, needs no model, and is never a CI check: time passing fa
 
 The release workflow runs the suite, which holds the catalogue, before it packs; there is no gate beside it
 (decision 112 withdrew decision 97's). A seed that is not caught is answered by a stronger oracle or a better
-seed, never by deleting the seed.
+seed, never by deleting the seed, and an `ERROR` by fixing the environment or the baseline, never by reading it as
+caught.

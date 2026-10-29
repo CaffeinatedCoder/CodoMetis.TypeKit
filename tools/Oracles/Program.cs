@@ -3,14 +3,18 @@
 //   dotnet tools/Oracles/bin/Release/net10.0/oracles.dll seeds [name filter]   show that every seed is caught
 //   dotnet tools/Oracles/bin/Release/net10.0/oracles.dll status                the catalogue's worklist
 //
-// `seeds`: for each test/oracles/seeds/<defect>.patch whose file name holds the filter, a copy of the working tree
-// (bin/, obj/, .git/ and the agents' worktrees left out, so uncommitted work is included) under the temp directory,
-// the patch applied, each oracle project its `Oracles:` line names built once in Release, and each named class run
-// alone. An oracle catches a seed when one of its tests fails with a row that is not a known candidate
-// (SeedVerdict). One line per (seed, oracle), CAUGHT, MISSED or ERROR, and exit code 1 unless every pair is caught.
+// `seeds`: first a baseline, a copy of the working tree with no seed (bin/, obj/, .git/ and the agents' worktrees left
+// out, so uncommitted work is included) under the temp directory, each oracle the selected seeds name built in Release
+// and run alone; then, for each test/oracles/seeds/<defect>.patch whose file name holds the filter, another copy, the
+// patch applied, each oracle project its `Oracles:` line names built once and each named class run alone, with the
+// same filter. An oracle catches a seed when it passes without it and fails with it in a test of its own: a test
+// that fails with a row that is not a known candidate, never one xunit could not set up, a test host that crashed or
+// a run that wrote no results, which are ERROR (SeedVerdict, design/adr/0117). One line per baseline and one per
+// (seed, oracle), CAUGHT, MISSED or ERROR.
 //
 // Exit 0 is a pass, 1 a seed not caught (or a status that could not read the catalogue), 2 a usage error, 3 a tool
-// built from other sources than the checkout holds, which names the command that rebuilds it.
+// built from other sources than the checkout holds, which names the command that rebuilds it, 4 an oracle that could
+// not be judged: its baseline does not pass, or a run with the seed did not reach the tests' own code.
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -51,6 +55,7 @@ int Seeds(string filter)
     var seeds = Directory.GetFiles(Path.Combine(oraclesDirectory, "seeds"), "*.patch")
                          .Where(seed => Path.GetFileName(seed).Contains(filter, StringComparison.OrdinalIgnoreCase))
                          .Order(StringComparer.Ordinal)
+                         .Select(seed => (Path: seed, Name: Path.GetFileName(seed), Named: Header(File.ReadAllText(seed), "Oracles").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)))
                          .ToList();
     if (seeds.Count == 0)
     {
@@ -58,66 +63,88 @@ int Seeds(string filter)
         return 1;
     }
 
-    var allCaught = true;
-    foreach (var seed in seeds)
+    // The baseline: every registered oracle a seed names, run once on a copy with no seed, built and filtered as the
+    // seeded runs are. A seed is judged against it (SeedVerdict.Judge), so an oracle that cannot pass here, a dead
+    // fixture or a failing test, makes its pairs ERROR instead of crediting every seed with its failures.
+    var started = Stopwatch.StartNew();
+    var baselines = RunOracles(seed: null, [.. seeds.SelectMany(seed => seed.Named).Distinct(StringComparer.Ordinal).Where(oracles.ContainsKey).Select(oracle => oracles[oracle])]);
+    foreach (var (oracle, run) in baselines.OrderBy(pair => pair.Key, StringComparer.Ordinal))
     {
-        var name = Path.GetFileName(seed);
-        var named = Header(File.ReadAllText(seed), "Oracles").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        var scratch = Path.Combine(Path.GetTempPath(), $"typekit-seed-{Guid.NewGuid():N}");
-        var started = Stopwatch.StartNew();
+        Console.WriteLine(run.Error is null && run.Caught == 0
+            ? $"BASELINE {oracle}: passes without a seed, {run.Executed} tests ({started.Elapsed.TotalSeconds:F0} s)"
+            : $"BASELINE {oracle}: DOES NOT PASS without a seed, {run.Error ?? $"{run.Caught} of {run.Executed} tests fail, e.g. {run.Example}"}");
+    }
+
+    var notRun = new SeedVerdict.Run(0, 0, 0, "", "not run, since it does not pass without the seed");
+    var missed = false;
+    var errors = false;
+    foreach (var (seed, name, named) in seeds)
+    {
+        started.Restart();
         try
         {
-            CopyTree(root!, scratch);
-            Require(RunProcess(scratch, "git", null, ["apply", "--whitespace=nowarn", seed]), "apply the patch");
-
-            foreach (var group in named.Select(oracle => oracles.TryGetValue(oracle, out var registered) ? registered : throw new SeedError($"'{oracle}' is not in oracles.json"))
-                                       .GroupBy(oracle => oracle.Project))
+            var registered = named.Select(oracle => oracles.TryGetValue(oracle, out var found) ? found : throw new SeedError($"'{oracle}' is not in oracles.json")).ToList();
+            var seeded = RunOracles(seed, [.. registered.Where(oracle => baselines[oracle.Class] is { Error: null, Caught: 0 })]);
+            foreach (var oracle in registered)
             {
-                var project = Path.Combine("test", group.Key);
-                Require(RunDotnet(scratch, "build", project, "-c", "Release", "-nologo", "-v", "q"), $"build {group.Key}");
-                foreach (var oracle in group)
-                {
-                    var results = Path.Combine(scratch, "SeedResults", oracle.Class);
-                    RunDotnet(scratch, "test", "--project", project, "-c", "Release", "--no-build",
-                              "--filter-class", $"*.{oracle.Class}", "--report-xunit-trx", "--report-xunit-trx-filename", $"{oracle.Class}.trx",
-                              "--results-directory", results);
-                    var verdict = Verdict(Path.Combine(results, $"{oracle.Class}.trx"), oracle.Class);
-                    allCaught &= verdict.StartsWith("CAUGHT", StringComparison.Ordinal);
-                    Console.WriteLine($"{verdict[..8]}{name} -> {oracle.Class}: {verdict[8..]} ({started.Elapsed.TotalSeconds:F0} s)");
-                }
+                var verdict = SeedVerdict.Judge(baselines[oracle.Class], seeded.GetValueOrDefault(oracle.Class) ?? notRun);
+                missed |= verdict.StartsWith("MISSED", StringComparison.Ordinal);
+                errors |= verdict.StartsWith("ERROR", StringComparison.Ordinal);
+                Console.WriteLine($"{verdict[..8]}{name} -> {oracle.Class}: {verdict[8..]} ({started.Elapsed.TotalSeconds:F0} s)");
             }
         }
         catch (SeedError error)
         {
-            allCaught = false;
+            errors = true;
             Console.WriteLine($"ERROR   {name}: {error.Message}");
-        }
-        finally
-        {
-            try { Directory.Delete(scratch, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         }
     }
 
-    Console.WriteLine(allCaught ? "every seed is caught" : "A SEED IS NOT CAUGHT: the oracle it names cannot fail for that defect");
-    return allCaught ? 0 : 1;
+    if (missed) Console.WriteLine("A SEED IS NOT CAUGHT: the oracle it names cannot fail for that defect");
+    if (errors) Console.WriteLine("AN ORACLE COULD NOT BE JUDGED: its baseline or its run did not reach the tests' own code; fix that and run again");
+    if (!missed && !errors) Console.WriteLine("every seed is caught");
+    return errors ? 4 : missed ? 1 : 0;
 }
 
-string Verdict(string trx, string oracle)
+// A copy of the working tree with the seed applied, or none, each oracle's project built once in Release and each
+// class run alone. A project that does not build is an error run for each of its oracles.
+Dictionary<string, SeedVerdict.Run> RunOracles(string? seed, IReadOnlyList<Oracle> selected)
 {
-    if (!File.Exists(trx)) return "ERROR   no test results written (did the class run?)";
+    var runs = new Dictionary<string, SeedVerdict.Run>(StringComparer.Ordinal);
+    if (selected.Count == 0) return runs;
 
-    XNamespace ns = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010";
-    var results = XDocument.Load(trx).Descendants(ns + "UnitTestResult").ToList();
-    if (results.Count == 0) return $"ERROR   no test of {oracle} ran";
+    var scratch = Path.Combine(Path.GetTempPath(), $"typekit-seed-{Guid.NewGuid():N}");
+    try
+    {
+        CopyTree(root!, scratch);
+        if (seed is not null) Require(RunProcess(scratch, "git", null, ["apply", "--whitespace=nowarn", seed]), "apply the patch");
 
-    var failed = results.Where(result => (string?)result.Attribute("outcome") == "Failed")
-                        .Select(result => (Test: (string?)result.Attribute("testName") ?? "?", Message: result.Descendants(ns + "Message").FirstOrDefault()?.Value ?? ""))
-                        .ToList();
-    var caught = failed.Where(failure => SeedVerdict.Catches(failure.Message)).ToList();
-    if (caught.Count > 0) return $"CAUGHT  {caught.Count} of {results.Count} tests fail, e.g. {caught[0].Test}";
-    return failed.Count == 0
-        ? $"MISSED  all {results.Count} tests pass with the defect planted"
-        : $"MISSED  {failed.Count} of {results.Count} tests fail, every row a known candidate";
+        foreach (var group in selected.GroupBy(oracle => oracle.Project))
+        {
+            var project = Path.Combine("test", group.Key);
+            if (Failure(RunDotnet(scratch, "build", project, "-c", "Release", "-nologo", "-v", "q"), $"build {group.Key}") is { } failure)
+            {
+                foreach (var oracle in group) runs[oracle.Class] = new SeedVerdict.Run(0, 0, 0, "", failure);
+                continue;
+            }
+
+            foreach (var oracle in group)
+            {
+                var results = Path.Combine(scratch, "SeedResults", oracle.Class);
+                var (exit, _) = RunDotnet(scratch, "test", "--project", project, "-c", "Release", "--no-build",
+                                          "--filter-class", $"*.{oracle.Class}", "--report-xunit-trx", "--report-xunit-trx-filename", $"{oracle.Class}.trx",
+                                          "--results-directory", results);
+                var trx = Path.Combine(results, $"{oracle.Class}.trx");
+                runs[oracle.Class] = SeedVerdict.Read(exit, File.Exists(trx) ? XDocument.Load(trx) : null, oracle.Class);
+            }
+        }
+
+        return runs;
+    }
+    finally
+    {
+        try { Directory.Delete(scratch, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+    }
 }
 
 int Status()
@@ -203,8 +230,11 @@ static (int Exit, string Output) RunProcess(string directory, string file, strin
 
 static void Require((int Exit, string Output) result, string step)
 {
-    if (result.Exit != 0) throw new SeedError($"{step} failed (exit {result.Exit}): {string.Join(" | ", result.Output.Split('\n').Where(line => line.Contains("error", StringComparison.OrdinalIgnoreCase)).Take(3).Select(line => line.Trim()))}");
+    if (Failure(result, step) is { } failure) throw new SeedError(failure);
 }
+
+static string? Failure((int Exit, string Output) result, string step) =>
+    result.Exit == 0 ? null : $"{step} failed (exit {result.Exit}): {string.Join(" | ", result.Output.Split('\n').Where(line => line.Contains("error", StringComparison.OrdinalIgnoreCase)).Take(3).Select(line => line.Trim()))}";
 
 internal sealed record Claim(string Id, string Source, IReadOnlyList<string>? HeldBy);
 
