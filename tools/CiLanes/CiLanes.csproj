@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Decides which lanes of .github/workflows/dotnet.yml a run needs, from the paths it changes, and judges
+      afterwards whether every selected job passed and every other was skipped (Program.cs, design/adr/0113).
+      Run as its built dll: `dotnet tools/CiLanes/bin/Release/net10.0/ci-lanes.dll select|classify|gate ...`.
+    -->
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <AssemblyName>ci-lanes</AssemblyName>
+        <RootNamespace>CiLanes</RootNamespace>
+    </PropertyGroup>
+
+</Project>
