@@ -1,7 +1,7 @@
 namespace CodoMetis.TypeKit;
 
 /// <summary>
-/// <c>Choose(selector)</c> over a sequence whose elements may be null: only what the selector finds
+/// <c>Choose(selector)</c> over a sequence or a stream whose elements may be null: only what the selector finds
 /// must be non-null, so a sequence of <c>string?</c> or <c>int?</c> is chosen from without a warning,
 /// its nulls the selector's to answer. The other sequence members, <c>Choose()</c> over options among
 /// them, are on <see cref="Option"/>.
@@ -28,6 +28,28 @@ public static class SequenceOptionExtensions
         /// <typeparam name="TResult">The type of the values.</typeparam>
         /// <returns>The values found, in order.</returns>
         public IEnumerable<TResult> Choose<TResult>(Func<T, Option<TResult>> selector) where TResult : notnull
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(selector);
+
+            return Option.Chosen(source, selector);
+        }
+    }
+
+    /// <param name="source">The stream, whose elements may be null.</param>
+    /// <typeparam name="T">The type of the elements, nullable or not.</typeparam>
+    extension<T>(IAsyncEnumerable<T> source)
+    {
+        /// <summary>
+        /// The values <paramref name="selector"/> finds in a stream, as they arrive: for each element it
+        /// answers with <c>Some</c>, that value, in order, and nothing for a <c>None</c>. Lazy, as an async
+        /// LINQ operator is, and the token given to <c>WithCancellation</c> or <c>GetAsyncEnumerator</c>
+        /// reaches the stream it reads.
+        /// </summary>
+        /// <param name="selector">Called with each element as the stream is read.</param>
+        /// <typeparam name="TResult">The type of the values.</typeparam>
+        /// <returns>The values found, in order.</returns>
+        public IAsyncEnumerable<TResult> Choose<TResult>(Func<T, Option<TResult>> selector) where TResult : notnull
         {
             ArgumentNullException.ThrowIfNull(source);
             ArgumentNullException.ThrowIfNull(selector);

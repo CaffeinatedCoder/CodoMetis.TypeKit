@@ -39,6 +39,14 @@ public sealed record Account(int Id, string Email);
 
 public sealed record NewAccount(string Email);
 
+/// <summary>What a store throws when a unique index rejects a row.</summary>
+public sealed class UniqueViolationException(string message) : Exception(message);
+
+public interface IAccountStore
+{
+    Account Save(Account account);
+}
+
 public interface IAccounts
 {
     Result<Account, AccountFault> Open(NewAccount body);
@@ -75,6 +83,25 @@ public static class SignIns
     {
         // sample: CodoMetis.TypeKit.AspNetCore/one-fault-for-two-causes
         app.MapPost("/login", (Credentials credentials) => accounts.SignIn(credentials).MapError(_ => LoginFault.InvalidCredentials).ToHttpResult());
+        // end sample
+    }
+}
+
+/// <summary>The README's sign-in with the name withheld: the domain's faults answered as they are, and alike.</summary>
+public static class WithheldSignIns
+{
+    public static void Responses(WebApplicationBuilder builder)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/withheld-fault-name
+        builder.Services.AddFaultResponses<SignInFault>(_ => FaultResponse.Status(StatusCodes.Status401Unauthorized).WithoutFaultName());
+
+        // end sample
+    }
+
+    public static void Endpoints(WebApplication app, ISignIn accounts)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/withheld-fault-name
+        app.MapPost("/login", (Credentials credentials) => accounts.SignIn(credentials).ToHttpResult());   // no fault, no rule
         // end sample
     }
 }
@@ -140,6 +167,28 @@ public static class Faults
         // end sample
 
         return reserved;
+    }
+
+    public static Result<Account, Fault<AccountFault>> Saved(IAccountStore store, Account account)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-cause-domain
+        Result<Account, Fault<AccountFault>> saved = Result.Catch<Account, UniqueViolationException>(() => store.Save(account))
+            .MapError(e => Fault.Of(AccountFault.EmailTaken, "Another account took the address a moment ago.", e));
+        // end sample
+
+        return saved;
+    }
+
+    public static void Logged(WebApplicationBuilder builder)
+    {
+        // sample: CodoMetis.TypeKit.AspNetCore/fault-cause-log
+        builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+        {
+            if (context.HttpContext.Features.Get<IFaultFeature>() is { Cause: { } cause } fault)
+                context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Faults")
+                    .LogWarning(cause, "Answered {Fault} for an exception", fault.Name);   // your log gets the exception, the client doesn't
+        });
+        // end sample
     }
 
     public static void Shaped(WebApplicationBuilder builder)
@@ -220,6 +269,25 @@ public sealed class FaultResponseSampleTests
         Faults.Endpoints(app, new FixedAccounts(Result.Error(AccountFault.EmailTaken)));
         await app.StartAsync(TestContext.Current.CancellationToken);
         return app;
+    }
+
+    private sealed class TakenStore(Exception thrown) : IAccountStore
+    {
+        public Account Save(Account account) => throw thrown;
+    }
+
+    /// <summary>The README's cause: the store's exception is kept on the fault, and the fault is still the one the client sees.</summary>
+    [Fact]
+    public void A_caught_exception_is_kept_as_the_cause()
+    {
+        var thrown = new UniqueViolationException("duplicate key value violates unique constraint \"ix_accounts_email\"");
+
+        var saved = Faults.Saved(new TakenStore(thrown), new Account(7, "ada@example.com"));
+
+        saved.TryGetValue(out _, out var fault).ShouldBeFalse();
+        fault.Reason.ShouldBe(AccountFault.EmailTaken);
+        fault.Cause.ShouldBeSameAs(thrown);
+        fault.ShouldBe(Fault.Of(AccountFault.EmailTaken, "Another account took the address a moment ago."));
     }
 
     /// <summary>The README's one call for every fault set: AccountFault answered by its kind with no mapping of its own.</summary>
@@ -406,6 +474,28 @@ public sealed class SignInSampleTests
 
         (await AnswerAsync(app, "/login-telling", "nobody")).Body["fault"]!.GetValue<string>().ShouldBe("UnknownUser");
         (await AnswerAsync(app, "/login-telling", "ann")).Body["fault"]!.GetValue<string>().ShouldBe("WrongPassword");
+    }
+
+    /// <summary>The README's second way: the domain's two faults answered as they are, the name withheld, and alike.</summary>
+    [Fact]
+    public async Task Two_causes_whose_name_the_mapping_withholds_answer_alike_without_a_fault()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        WithheldSignIns.Responses(builder);
+
+        await using var app = builder.Build();
+        WithheldSignIns.Endpoints(app, new Refusing());
+        await app.StartAsync(TestContext.Current.CancellationToken);
+
+        var unknownUser = await AnswerAsync(app, "/login", "nobody");
+        var wrongPassword = await AnswerAsync(app, "/login", "ann");
+        unknownUser.Status.ShouldBe(HttpStatusCode.Unauthorized);
+        unknownUser.Body.ContainsKey("fault").ShouldBeFalse(unknownUser.Body.ToJsonString());
+        wrongPassword.Status.ShouldBe(unknownUser.Status);
+        JsonNode.DeepEquals(wrongPassword.Body, unknownUser.Body)
+            .ShouldBeTrue($"{wrongPassword.Body.ToJsonString()} tells itself apart from {unknownUser.Body.ToJsonString()}");
     }
 
     private static async Task<(HttpStatusCode Status, JsonObject Body)> AnswerAsync(WebApplication app, string path, string user)

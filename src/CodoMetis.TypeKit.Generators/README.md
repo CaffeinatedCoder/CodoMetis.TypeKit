@@ -2,8 +2,9 @@
 
 Declare a value object in one line, and get a complete type at compile time. This package generates
 value objects and closed sets (smart enums) for
-[CodoMetis.TypeKit](https://www.nuget.org/packages/CodoMetis.TypeKit), built on
-[Metalama](https://www.postsharp.net/metalama). Each one comes with its JSON converter, parsing,
+[CodoMetis.TypeKit](https://www.nuget.org/packages/CodoMetis.TypeKit). It is built on
+[Metalama](https://postsharp.net/metalama), a framework that generates C# code at compile time from
+templates written in C#. Each value object comes with its JSON converter, parsing,
 formatting, comparison, type converter and query helpers, and every one of them runs the one
 `Create` you wrote.
 
@@ -25,7 +26,7 @@ one of them is the better choice, read
 
 ## Built with Metalama
 
-This package exists in this form because of [Metalama](https://www.postsharp.net/metalama). A
+This package exists in this form because of [Metalama](https://postsharp.net/metalama). A
 transitive fabric finds every type that implements a TypeKit interface, in the project that
 references this package and in every project that references that one. So you declare a value object
 by its interface and nothing else.
@@ -68,12 +69,71 @@ to be a reference type. There are two interfaces:
 - **`IValidatedValue<TSelf, T, TFault>`** adds `Create`, the one method you write. Every way a value
   gets created runs it.
 
+You don't have to type `Create` out. Declare the interface first. The build then fails because
+`Create` is missing (CS0535), and your editor offers a fix for that error: **Add Create**. It writes
+a `Create` that accepts every value, ready for your rules:
+
+```csharp
+public enum NameFault { Blank, TooLong }
+
+public readonly partial record struct Name : IValidatedValue<Name, string, NameFault>
+{
+    public static Result<Name, NameFault> Create(string value)
+    {
+        // Add your rules: if (...) return Result.Error(NameFault.Blank);
+        return new Name(value);
+    }
+}
+```
+
 A validated value object has no `From`. You create one with `Create`, `TryFrom` or `FromKnownGood`,
 so nothing harmless-looking throws on input. The one factory that throws says in its name that you
 vouch for the value, and its exception names the call site, never the value.
 
 The error `Create` returns (TypeKit calls it a fault) is what every rejection reports: in that
 exception, in the JSON converter's `JsonException`, and in `Parse`'s `FormatException`.
+
+<details>
+<summary>What the generators write for <code>Email</code>, trimmed</summary>
+
+Every factory below calls the `Create` you wrote:
+
+<!-- not compiled: generated code for Generators/DeclaringSamples.cs, trimmed (GeneratedCodeBlockTests) -->
+```csharp
+public readonly partial record struct Email : IValidatedValue<Email, string, EmailFault>, IValueObject<Email, string>
+{
+    private readonly string _value;
+
+    private Email(string value)
+    {
+        _value = value;
+    }
+
+    public string Value
+    {
+        get { return _value; }
+    }
+
+    public static Option<Email> TryFrom(string value)
+    {
+        return Result.ToOption(Email.Create(value));
+    }
+
+    public static Email FromKnownGood(string value, [CallerArgumentExpression("value")] string? source = null)
+    {
+        return GeneratedFactories.OrInvalidOperationException(Email.Create(value), source);
+    }
+
+    public Result<Email, EmailFault> Revalidate()
+    {
+        return Email.Create(Value);
+    }
+
+    // Also: Parse and TryParse, formatting, comparison, a JSON converter and a type converter.
+}
+```
+
+</details>
 
 You can declare a value object inside another type. `Order.Id` is generated like any other. Its
 companion class is `OrderIdExtensions`, named after the whole nesting chain, so `Order.Id` and
@@ -296,6 +356,52 @@ The generators add:
 
 Members are singletons, so equality is reference equality. A member added later fails every `Match`
 until it's handled.
+
+<details>
+<summary>What the generators write for <code>OrderStatus</code>, trimmed</summary>
+
+<!-- not compiled: generated code for Generators/ClosedSetSamples.cs, trimmed (GeneratedCodeBlockTests) -->
+```csharp
+public sealed partial class OrderStatus : IClosedSet<OrderStatus>, IParsable<OrderStatus>
+{
+    private static readonly IReadOnlyList<OrderStatus> _all = null!;
+
+    private string _name = null!;
+
+    static OrderStatus()
+    {
+        OrderStatus.Open._name = "Open";
+        OrderStatus.Shipped._name = "Shipped";
+        OrderStatus.Cancelled._name = "Cancelled";
+        OrderStatus._all = Array.AsReadOnly(new OrderStatus[] { OrderStatus.Open, OrderStatus.Shipped, OrderStatus.Cancelled });
+    }
+
+    private OrderStatus() { }
+
+    public string Name
+    {
+        get { return _name ?? throw GeneratedClosedSets.NotAMember("OrderStatus"); }
+    }
+
+    public TResult Match<TResult>(Func<TResult> open, Func<TResult> shipped, Func<TResult> cancelled)
+    {
+        ArgumentNullException.ThrowIfNull(open, "open");
+        ArgumentNullException.ThrowIfNull(shipped, "shipped");
+        ArgumentNullException.ThrowIfNull(cancelled, "cancelled");
+        if (object.ReferenceEquals(this, OrderStatus.Open))
+            return open.Invoke();
+        if (object.ReferenceEquals(this, OrderStatus.Shipped))
+            return shipped.Invoke();
+        if (object.ReferenceEquals(this, OrderStatus.Cancelled))
+            return cancelled.Invoke();
+        throw GeneratedClosedSets.NotAMember("OrderStatus");
+    }
+
+    // Also: All, QualifiedName, Parse and TryParse, ToString and a JSON converter.
+}
+```
+
+</details>
 
 ### Matching, parsing and binding
 

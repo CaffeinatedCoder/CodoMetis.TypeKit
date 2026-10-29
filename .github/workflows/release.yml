@@ -12,7 +12,10 @@
 # validates it against a policy configured there, and issues an API key valid for one hour. A
 # compromise of this repository's secrets yields nothing that can publish.
 #
-# Three jobs on purpose: everything that can fail runs unattended, only the push waits behind the
+# First the build workflow, called with every lane (dotnet.yml under workflow_call; design/adr/0113): the
+# Windows and macOS legs and both smoke-test modes, which a pull request may have skipped.
+#
+# Then three jobs on purpose: everything that can fail runs unattended, only the push waits behind the
 # environment's approval gate, and the GitHub release is created afterwards. A reviewer is asked
 # once the full suite has already passed, and no OIDC token is minted until they approve. The job
 # that can mint a token cannot write to the repository, and the job that can write to the repository
@@ -66,9 +69,17 @@ env:
   NUGET_SOURCE: https://api.nuget.org/v3/index.json
 
 jobs:
+  # Every lane of the build workflow, on the commit this run publishes. Its jobs show as "CI / ...".
+  ci:
+    name: CI
+    uses: ./.github/workflows/dotnet.yml
+    permissions:
+      contents: read
+
   verify:
     name: Verify and pack
     runs-on: ubuntu-latest
+    needs: ci
 
     permissions:
       contents: read   # deliberately nothing more: this job runs unattended and must not mint a token
@@ -131,46 +142,10 @@ jobs:
         run: dotnet build CodoMetis.TypeKit.slnx -c Release
 
       # The full suite gates the release, the conventions project included: it holds the analyzer
-      # release tracking to the changelog, and this workflow to the names above.
+      # release tracking to the changelog, this workflow to the names above, and the oracle catalogue
+      # (test/oracles) to the documents, the public surface and its seeds (design/adr/0112).
       - name: Test
         run: dotnet test --solution CodoMetis.TypeKit.slnx -c Release --no-build
-
-      # The prober's state and its replay worktree, in this job's own temporary directory, never a
-      # developer's (the default without PROBE_STATE_DIR).
-      - name: Prober state directory
-        run: |
-          echo "PROBE_STATE_DIR=$RUNNER_TEMP/probe-state" >> "$GITHUB_ENV"
-          echo "PROBE_CACHE_DIR=$RUNNER_TEMP/probe-cache" >> "$GITHUB_ENV"
-
-      # Every probe of the corpus, with no model, as CI replays it on every push (design/adr/0096). A probe
-      # that fails fails the release, like a test. The Build above built the prober. Every probe's seeds are
-      # shown caught before the tag, locally, by `prober seeds --all` (AGENTS.md, Releasing): a build per seed,
-      # which this job does not pay (design/adr/0100), and --all because a run without it skips the probes
-      # unchanged since their seeds were caught (design/adr/0107).
-      - name: Replay every probe
-        run: dotnet tools/Prober/bin/Release/net10.0/prober.dll replay --all
-
-      # The release gate, against the previous release: on a tag push `git describe` alone would name the
-      # tag being released and compare the commit with itself. It binds from 2.2.0 (design/adr/0097): a
-      # refusal fails the release, as any other exit does. A refusal is answered by a probe, a fix or a
-      # reviewed waiver in tools/probe/corpus/waivers.json, never by editing this step.
-      - name: Probe gate
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          since="$(git describe --tags --abbrev=0 --exclude "v$VERSION")"
-          code=0
-          dotnet tools/Prober/bin/Release/net10.0/prober.dll gate --since "$since" > gate.txt 2>&1 || code=$?
-          cat gate.txt
-          case "$code" in
-            0) verdict="passes" ;;
-            1) verdict="refused"
-               echo "::error::The probe gate refused $VERSION since $since; see the job summary." ;;
-            *) verdict="did not run (exit $code)"
-               echo "::error::The probe gate did not run (exit $code)." ;;
-          esac
-          { echo "### Probe gate since $since: $verdict"; echo; echo '```text'; cat gate.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-          exit "$code"
 
       - name: Pack
         run: dotnet pack CodoMetis.TypeKit.slnx -c Release --no-build -o dist

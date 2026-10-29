@@ -130,9 +130,11 @@ A composite key of value objects is `HasKey(x => new { x.Order, x.Line })`, as f
 
 - **A key over `char` is always yours to assign**, on every provider, since none generates one. A
   default `'\0'` is stored as it is, so assign a meaningful character.
-- **A key over `ulong` needs `ValueGeneratedNever()` on SQL Server and PostgreSQL.** Their column is a
-  `decimal`, so adding the entity with the key's default value throws `OverflowException` at `Add`.
-  Configure `ValueGeneratedNever()` and assign the key.
+- **Under Native AOT, a key over `ulong` needs `ValueGeneratedNever()` on SQL Server and PostgreSQL.**
+  Their column is a `decimal`, and in a compiled model made with `--nativeaot`, adding the entity with
+  the key's default value throws `OverflowException` at `Add`. The same goes for a key you configure
+  with `ValueObjectConverter` yourself. Configure `ValueGeneratedNever()` and assign the key.
+  Otherwise it gets a temporary value, as a plain `ulong` key does.
 - **Inheritance hierarchies.** The root of a TPH or TPT hierarchy is generated too. Under TPC, as for
   an `int` key, it's generated only where the provider has a sequence for the hierarchy (PostgreSQL,
   SQL Server), not on SQLite.
@@ -221,7 +223,7 @@ To get one element of a query as an option, use `FirstOrNone`, `SingleOrNone` or
 - **Write the condition as a lambda at the call**, or hold it as an `Expression<Func<T, bool>>`. Only
   then does it run in the database. A `Func<T, bool>` variable or a method group binds the synchronous
   methods to their overloads on a sequence. Those read every row of the table and run the condition
-  in memory, without a warning.
+  in memory, and the analyzer warns at the call (CMTK0009).
 
 ## Compiled models
 
@@ -264,8 +266,8 @@ The block under [Keys](#keys) is the whole setup:
 
 EF's in-memory provider won't work. It has no relational type mapping, so nothing is mapped there.
 
-This repository tests the mapping on SQLite and PostgreSQL, and every family of underlying types makes
-a round trip through a real PostgreSQL.
+This repository tests the mapping on SQLite, PostgreSQL and SQL Server, and every family of underlying
+types makes a round trip through a real PostgreSQL and a real SQL Server.
 
 ## If something does not map
 

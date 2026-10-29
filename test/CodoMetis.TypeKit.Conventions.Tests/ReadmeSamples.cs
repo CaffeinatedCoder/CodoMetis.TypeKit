@@ -43,6 +43,19 @@ internal static partial class ReadmeSamples
     public const string DocsDirectory = "docs";
 
     /// <summary>
+    /// The pages whose regions live outside the samples project, each with the directory that holds them. The
+    /// walkthrough's are the sources of the smoke test's <c>walkthrough</c> consumer: a sample application that
+    /// the packed packages build and run, and whose answers the page states.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string> RegionSources = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["walkthrough"] = "tools/ConsumerSmokeTest/Consumers/walkthrough",
+    };
+
+    /// <summary>Where the regions of the page with this prefix live: its own sources, or the samples project.</summary>
+    public static string SourcesOf(string prefix) => RegionSources.GetValueOrDefault(prefix, SamplesProject);
+
+    /// <summary>
     /// Every page whose C# is compiled: the root README, every shipping package's, discovered from
     /// <c>src/</c>, and every topic page in <c>docs/</c> (<see cref="DocsPages"/>).
     /// </summary>
@@ -93,12 +106,13 @@ internal static partial class ReadmeSamples
     public static IReadOnlyList<CodeBlock> CodeBlocks() =>
         [.. Readmes().SelectMany(readme => CodeBlocks(readme, File.ReadAllText(Path.Combine(Repository.Root, readme))))];
 
+    /// <summary>Every region of the samples project and of each page's own sources (<see cref="RegionSources"/>).</summary>
     public static IReadOnlyList<SampleRegion> Regions()
     {
-        var project = Path.Combine(Repository.Root, SamplesProject);
-
-        var regions = Directory.EnumerateFiles(project, "*.cs", SearchOption.AllDirectories)
-                               .Where(path => !Path.GetRelativePath(project, path).Split(Path.DirectorySeparatorChar).Any(part => part is "bin" or "obj"))
+        var regions = new[] { SamplesProject }.Concat(RegionSources.Values)
+                               .Select(directory => Path.Combine(Repository.Root, directory))
+                               .SelectMany(directory => Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories)
+                                                                 .Where(path => !Path.GetRelativePath(directory, path).Split(Path.DirectorySeparatorChar).Any(part => part is "bin" or "obj")))
                                .Order(StringComparer.Ordinal)
                                .SelectMany(path => Regions(Path.GetRelativePath(Repository.Root, path).Replace('\\', '/'), File.ReadAllText(path)))
                                .ToArray();

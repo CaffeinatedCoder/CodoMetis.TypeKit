@@ -3,7 +3,9 @@ using System.Linq.Expressions;
 using System.Reflection;
 using CodoMetis.TypeKit.CompilerServices;
 using CodoMetis.TypeKit.ValueObjects;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
+using Microsoft.EntityFrameworkCore.ValueGeneration;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Storage.Json;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -68,8 +70,35 @@ internal abstract class ValueObjectMapping
         where TValueObject : IValueObject<TValueObject, T>, IValueObjectMaterializer<TValueObject, T>
         where T : notnull
     {
-        public override ValueConverter Converter { get; } =
-            new ValueConverter<TValueObject, T>(ValueObjectConverter<TValueObject, T>.ToProvider, ValueObjectConverter<TValueObject, T>.FromProvider);
+        public Of() =>
+            Converter = new ValueConverter<TValueObject, T>(
+                ValueObjectConverter<TValueObject, T>.ToProvider,
+                ValueObjectConverter<TValueObject, T>.FromProvider,
+                IsTemporaryNumber ? new ConverterMappingHints(valueGeneratorFactory: TemporaryNumber) : null);
+
+        public override ValueConverter Converter { get; }
+
+        /// <summary>
+        /// The types EF gives a generated property a temporary number of (<c>RelationalValueGeneratorSelector.FindForType</c>
+        /// in EF Core 10), chosen by the property's type mapping: for a value object that is its own, so EF fell back to
+        /// the column's type, and a key over <see cref="ulong"/> got a negative temporary <see cref="decimal"/> where the
+        /// column is one, which threw <see cref="OverflowException"/> converted back.
+        /// </summary>
+        private static readonly bool IsTemporaryNumber =
+            typeof(T) == typeof(int) || typeof(T) == typeof(long) || typeof(T) == typeof(short) || typeof(T) == typeof(byte)
+         || typeof(T) == typeof(char) || typeof(T) == typeof(ulong) || typeof(T) == typeof(uint) || typeof(T) == typeof(ushort)
+         || typeof(T) == typeof(sbyte) || typeof(T) == typeof(decimal) || typeof(T) == typeof(float) || typeof(T) == typeof(double);
+
+        /// <summary>
+        /// The temporary values a property of the wrapped type gets, as the value object: EF's own where the column is of
+        /// the wrapped type, as before, and the provider's for a key of the wrapped type where it is stored as another.
+        /// A type mapping's factory, which EF consults after a generator configured on the property and after the
+        /// providers' HiLo, and which a mapping built on the converter takes from its hints (decision 114).
+        /// </summary>
+        private ValueGenerator TemporaryNumber(IProperty property, IEntityType entityType) =>
+            property.GetTypeMapping().Converter?.ProviderClrType == typeof(T)
+                ? new WrappedTypeValueGenerator(Converter, new TemporaryNumberValueGeneratorFactory().Create(property, entityType))
+                : new WrappedTypeValueGenerator(Converter, WrappedTypeValueGenerator.ProviderGenerator<T>);
 
         private static readonly MethodInfo ProviderValue = ((MethodCallExpression)ValueObjectConverter<TValueObject, T>.ToProvider.Body).Method;
 

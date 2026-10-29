@@ -98,29 +98,20 @@ element schema, so `Quantity` gets no component at all, and both parameters are 
   name, and describes both as the first it meets. A name your own `CreateSchemaReferenceId` gives,
   set before `AddTypeKit()`, is kept. So give one of them its own name there, or rename one.
 
-  To have value objects inlined instead, return `null` for them, the nullable ones included, after
-  `AddTypeKit()`:
+  To have value objects described in place instead, with no component of their own, turn on
+  `InlineValueObjects`: `options.AddTypeKit(typeKit => typeKit.InlineValueObjects = true)`.
+  [Describe value objects as plain types](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/aspnet-core.md#describe-value-objects-as-plain-types)
+  shows the document you get.
 
-  ```csharp
-  using System.Reflection;
-  using CodoMetis.TypeKit.CompilerServices;   // GeneratedValueObjectAttribute, on every value object
-
-  options.AddTypeKit();
-  options.CreateSchemaReferenceId = type =>
-      (Nullable.GetUnderlyingType(type.Type) ?? type.Type).GetCustomAttribute<GeneratedValueObjectAttribute>() is not null
-          ? null
-          : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
-  ```
-
-  Inlined, a nullable value object or closed set allows null in its own schema, wherever a
-  referenced one allows it around its reference. A closed set's property is then the enum of its
-  names plus null.
+  Inlined, a nullable value object allows null in its own schema, wherever a referenced one allows it
+  around its reference. Closed sets keep their components with the setting. A host that inlines them
+  with its own `CreateSchemaReferenceId` gets a closed set's property as the enum of its names plus null.
 
   OpenAPI 2.0 can't put null around a reference. ASP.NET writes a nullable property of any component as
   `{"allOf":[{"x-nullable":true}]}` there, without the reference. So under 2.0 a nullable value-object
   property loses its type, where the underlying type's nullable property keeps it. A nullable element of
-  a list or a dictionary loses its type the same way, since it's the component or null too. Inline value
-  objects if your 2.0 document needs it.
+  a list or a dictionary loses its type the same way, since it's the component or null too. Turn on
+  `InlineValueObjects` if your 2.0 document needs it.
 
 - **Put rules in `Create`, not on the property.** A validation attribute on a value-object property
   (`[MaxLength]`, `[Range]`) ends up in the value object's shared component, as ASP.NET does for any
@@ -439,6 +430,35 @@ document stay the error's.
   error's name, the rule is your application's vocabulary. So give rule types distinct names, for
   instance by nesting a rule in its value object: `Email.Rule.Blank`.
 
+### What failed underneath
+
+When an exception causes the error, keep it in the `Fault<TFault>` as its cause. Your log gets the
+exception, and the client gets the same problem as before:
+
+```csharp
+Result<Account, Fault<AccountFault>> saved = Result.Catch<Account, UniqueViolationException>(() => store.Save(account))
+    .MapError(e => Fault.Of(AccountFault.EmailTaken, "Another account took the address a moment ago.", e));
+```
+
+`IFaultFeature.Cause` hands the exception to your `CustomizeProblemDetails`, so you can log it with
+the response it led to:
+
+```csharp
+builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+{
+    if (context.HttpContext.Features.Get<IFaultFeature>() is { Cause: { } cause } fault)
+        context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Faults")
+            .LogWarning(cause, "Answered {Fault} for an exception", fault.Name);   // your log gets the exception, the client doesn't
+});
+```
+
+- **The cause stays out of the response.** The problem has the same members with a cause as without
+  one, and names neither the exception's type nor its message. If your `CustomizeProblemDetails`
+  copies it into the problem, the client learns what failed underneath.
+- **`FaultProblem<TFault>.Cause`** holds it too, for a test or a filter that reads the result before
+  it's written.
+- **It's one exception, not a chain.** An `AggregateException` is fine as the cause.
+
 ### Faults of several types
 
 Some rejections mean the same on every route: a change that raced the request, or a version that
@@ -601,7 +621,7 @@ works in the same place. A `Result<TError>` takes a factory without a value:
 ### What the host adds to a problem
 
 While `ToHttpResult()` writes a problem, the request carries an `IFaultFeature`. It holds the error
-type, the error, the name the problem gives it, its detail and its rule. Your
+type, the error, the name the problem gives it, its detail, its rule and its cause. Your
 `CustomizeProblemDetails` reads it to add what the package doesn't name. No other problem the request
 writes has it.
 
@@ -654,6 +674,24 @@ app.MapPost("/login", (Credentials credentials) => accounts.SignIn(credentials).
 Both causes then get the same answer: status, `type`, `title`, `fault` and `detail`. The domain keeps
 its two errors for its own use, such as a log or a lockout count. A `Fault<TFault>`'s detail stays
 behind with them.
+
+Or keep the domain's errors all the way, and leave their name out of the response.
+`WithoutFaultName()` in the mapping does that, for the members you choose or for every one:
+
+```csharp
+builder.Services.AddFaultResponses<SignInFault>(_ => FaultResponse.Status(StatusCodes.Status401Unauthorized).WithoutFaultName());
+
+app.MapPost("/login", (Credentials credentials) => accounts.SignIn(credentials).ToHttpResult());   // no fault, no rule
+```
+
+- **The problem says nothing of the member**: no `fault`, no `rule`, and no fault set member's
+  description as its `detail`. A detail you write on the `Fault<TFault>` still goes out, so keep it
+  the same for both.
+- **Give them the same `type` and `title`**, or those tell them apart instead.
+- **Your host still sees the fault.** `IFaultFeature` carries its name, and `NameWithheld` says the
+  mapping keeps it from the client, so don't copy it into the problem in `CustomizeProblemDetails`.
+- **The document says it.** A response whose every fault withholds its name ends its description with
+  "The problem names no fault."
 
 ## NodaTime
 

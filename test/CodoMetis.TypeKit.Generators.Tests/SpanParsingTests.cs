@@ -30,7 +30,7 @@ public readonly partial record struct OverAccess : IValue<ProbeAccess>;
 /// <summary>
 /// Span and UTF-8 parsing are generated exactly where the wrapped type has them, and read and refuse
 /// what <c>Parse(string)</c> reads and refuses, one row per wrapped type of the shape catalogue
-/// (<c>shape.wrapped</c> in <c>.claude/probe-axes.md</c>) and per parse strategy.
+/// (the wrapped types of the generation shapes, <c>test/oracles/axes.md</c>) and per parse strategy.
 /// </summary>
 /// <remarks>
 /// A value object over <see cref="string"/> got no <c>ISpanParsable</c>, although <see cref="string"/>

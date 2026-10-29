@@ -52,8 +52,8 @@ compile, because a query has no last row until you order it.
 
 The predicate runs in the database only when it is an expression, which a lambda written at the call
 is. A `Func<T, bool>` held in a variable, or a method group, binds to the sequence overload instead.
-That reads every row and checks the condition in memory, with no warning. Pass an
-`Expression<Func<T, bool>>` there.
+That reads every row and checks the condition in memory, and the analyzer warns at the call
+(CMTK0009). Pass an `Expression<Func<T, bool>>` there.
 
 **Good to know**
 
@@ -189,6 +189,7 @@ elements `Choose(selector)` reads may be null, and only what the selector finds 
 | `GetValueOrNone(key)` | `IReadOnlyDictionary<TKey, TValue>` | `Option<TValue>` |
 | `Choose(selector)` | `IEnumerable<T>`, its elements nullable or not | the values the selector answers `Some` for, in order and lazily: a filter and a map in one |
 | `Choose()` | `IEnumerable<Option<T>>` | the values of the options that hold one, in order and lazily |
+| `Choose(selector)`, `Choose()` | `IAsyncEnumerable<T>`, `IAsyncEnumerable<Option<T>>` | the same, as an `IAsyncEnumerable` of the values as they arrive; the token given to `WithCancellation` reaches the stream |
 | `IsSome()`, `IsNone()` | `Option<T>` | `bool` |
 | `Match(onSome, onNone)` | `Option<T>` | what the branch returns |
 | `TryGetValue(out value)` | `Option<T>` | `bool`; `value` is non-null when true |

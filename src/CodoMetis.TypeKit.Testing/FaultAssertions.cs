@@ -49,6 +49,76 @@ public static class FaultAssertions
     public static Fault<T3> ShouldHold<[Distinct] T1, [Distinct] T2, [Distinct] T3>(this Fault<T1, T2, T3> fault, T3 reason) where T1 : notnull where T2 : notnull where T3 : notnull =>
         HeldFaults.Expect<Fault<T1, T2, T3>, T3>(reason, Uninitialized(fault), () => fault.Match<object>(held => held, held => held, held => held));
 
+    /// <inheritdoc cref="ShouldHold{T1, T2}(Fault{T1, T2}, T1)"/>
+    /// <remarks>Awaits <paramref name="fault"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<Fault<T1>> ShouldHold<[Distinct] T1, [Distinct] T2>(this Task<Fault<T1, T2>> fault, T1 reason) where T1 : notnull where T2 : notnull
+    {
+        return (await Outcomes.Pending(fault, nameof(fault)).ConfigureAwait(false)).ShouldHold(reason);
+    }
+
+    /// <inheritdoc cref="ShouldHold{T1, T2}(Fault{T1, T2}, T1)"/>
+    /// <remarks>Awaits <paramref name="fault"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<Fault<T1>> ShouldHold<[Distinct] T1, [Distinct] T2>(this ValueTask<Fault<T1, T2>> fault, T1 reason) where T1 : notnull where T2 : notnull
+    {
+        return (await fault.ConfigureAwait(false)).ShouldHold(reason);
+    }
+
+    /// <inheritdoc cref="ShouldHold{T1, T2}(Fault{T1, T2}, T2)"/>
+    /// <remarks>Awaits <paramref name="fault"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<Fault<T2>> ShouldHold<[Distinct] T1, [Distinct] T2>(this Task<Fault<T1, T2>> fault, T2 reason) where T1 : notnull where T2 : notnull
+    {
+        return (await Outcomes.Pending(fault, nameof(fault)).ConfigureAwait(false)).ShouldHold(reason);
+    }
+
+    /// <inheritdoc cref="ShouldHold{T1, T2}(Fault{T1, T2}, T2)"/>
+    /// <remarks>Awaits <paramref name="fault"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<Fault<T2>> ShouldHold<[Distinct] T1, [Distinct] T2>(this ValueTask<Fault<T1, T2>> fault, T2 reason) where T1 : notnull where T2 : notnull
+    {
+        return (await fault.ConfigureAwait(false)).ShouldHold(reason);
+    }
+
+    /// <inheritdoc cref="ShouldHold{T1, T2, T3}(Fault{T1, T2, T3}, T1)"/>
+    /// <remarks>Awaits <paramref name="fault"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<Fault<T1>> ShouldHold<[Distinct] T1, [Distinct] T2, [Distinct] T3>(this Task<Fault<T1, T2, T3>> fault, T1 reason) where T1 : notnull where T2 : notnull where T3 : notnull
+    {
+        return (await Outcomes.Pending(fault, nameof(fault)).ConfigureAwait(false)).ShouldHold(reason);
+    }
+
+    /// <inheritdoc cref="ShouldHold{T1, T2, T3}(Fault{T1, T2, T3}, T1)"/>
+    /// <remarks>Awaits <paramref name="fault"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<Fault<T1>> ShouldHold<[Distinct] T1, [Distinct] T2, [Distinct] T3>(this ValueTask<Fault<T1, T2, T3>> fault, T1 reason) where T1 : notnull where T2 : notnull where T3 : notnull
+    {
+        return (await fault.ConfigureAwait(false)).ShouldHold(reason);
+    }
+
+    /// <inheritdoc cref="ShouldHold{T1, T2, T3}(Fault{T1, T2, T3}, T2)"/>
+    /// <remarks>Awaits <paramref name="fault"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<Fault<T2>> ShouldHold<[Distinct] T1, [Distinct] T2, [Distinct] T3>(this Task<Fault<T1, T2, T3>> fault, T2 reason) where T1 : notnull where T2 : notnull where T3 : notnull
+    {
+        return (await Outcomes.Pending(fault, nameof(fault)).ConfigureAwait(false)).ShouldHold(reason);
+    }
+
+    /// <inheritdoc cref="ShouldHold{T1, T2, T3}(Fault{T1, T2, T3}, T2)"/>
+    /// <remarks>Awaits <paramref name="fault"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<Fault<T2>> ShouldHold<[Distinct] T1, [Distinct] T2, [Distinct] T3>(this ValueTask<Fault<T1, T2, T3>> fault, T2 reason) where T1 : notnull where T2 : notnull where T3 : notnull
+    {
+        return (await fault.ConfigureAwait(false)).ShouldHold(reason);
+    }
+
+    /// <inheritdoc cref="ShouldHold{T1, T2, T3}(Fault{T1, T2, T3}, T3)"/>
+    /// <remarks>Awaits <paramref name="fault"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<Fault<T3>> ShouldHold<[Distinct] T1, [Distinct] T2, [Distinct] T3>(this Task<Fault<T1, T2, T3>> fault, T3 reason) where T1 : notnull where T2 : notnull where T3 : notnull
+    {
+        return (await Outcomes.Pending(fault, nameof(fault)).ConfigureAwait(false)).ShouldHold(reason);
+    }
+
+    /// <inheritdoc cref="ShouldHold{T1, T2, T3}(Fault{T1, T2, T3}, T3)"/>
+    /// <remarks>Awaits <paramref name="fault"/> first: an exception the task ends with propagates as it is.</remarks>
+    public static async Task<Fault<T3>> ShouldHold<[Distinct] T1, [Distinct] T2, [Distinct] T3>(this ValueTask<Fault<T1, T2, T3>> fault, T3 reason) where T1 : notnull where T2 : notnull where T3 : notnull
+    {
+        return (await fault.ConfigureAwait(false)).ShouldHold(reason);
+    }
+
     private static bool Uninitialized<TComposed>(TComposed fault) where TComposed : struct =>
         EqualityComparer<TComposed>.Default.Equals(fault, default);
 }

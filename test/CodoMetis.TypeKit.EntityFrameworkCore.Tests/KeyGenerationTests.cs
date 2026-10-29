@@ -1,6 +1,7 @@
 using CodoMetis.TypeKit.ValueObjects;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace CodoMetis.TypeKit.EntityFrameworkCore.Tests;
@@ -180,19 +181,26 @@ public sealed class KeyGenerationTests : IDisposable
     }
 
     /// <summary>
-    /// Pinned as documented, not as wanted: where the provider stores a <c>ulong</c> as a <c>decimal</c>
-    /// (SQL Server, PostgreSQL), EF gives a value object's default key a temporary <c>decimal</c>, which is
-    /// negative, and converting it back throws at <c>Add</c>; a plain <c>ulong</c> key gets a temporary
-    /// <c>ulong</c>. Configured <c>ValueGeneratedNever()</c>, the key the application assigns is added.
+    /// A default key over <c>ulong</c> gets a temporary <c>ulong</c> at <c>Add</c>, as a plain key does, also where the
+    /// provider stores it as a <c>decimal</c> (SQL Server, PostgreSQL). EF chooses a temporary number by the property's
+    /// type mapping, which for a value object is its own, so it fell back to the column's type, and the negative
+    /// temporary <c>decimal</c> threw <see cref="OverflowException"/> converted back (decision 63, now 114).
+    /// Configured <c>ValueGeneratedNever()</c>, the key the application assigns is added.
     /// </summary>
     [Theory]
-    [InlineData("sqlserver")]
-    [InlineData("npgsql")]
-    public void A_default_key_over_ulong_throws_at_Add_where_the_column_is_a_decimal(string provider)
+    [MemberData(nameof(AllProviders))]
+    public void A_default_key_over_ulong_gets_a_temporary_value_at_Add_as_a_plain_one_does(string provider)
     {
         using var db = new CharAndULongKeysDb(Options<CharAndULongKeysDb>(provider));
 
-        Should.Throw<OverflowException>(() => db.Add(new KeyedByUInt64()));
+        KeyedByUInt64[] keyed = [new(), new()];
+        KeyedByUlong[] plain  = [new(), new()];
+        db.AddRange([.. keyed, .. plain]);
+
+        keyed.Select(e => db.Entry(e).Property(p => p.Id).IsTemporary)
+             .ShouldBe(plain.Select(e => db.Entry(e).Property(p => p.Id).IsTemporary), $"on {provider}");
+        keyed.Select(e => db.Entry(e).Property(p => p.Id).CurrentValue.Value)
+             .ShouldBe(plain.Select(e => db.Entry(e).Property(p => p.Id).CurrentValue), $"on {provider}");
 
         var assigned = new AssignedUInt64Key { Id = UInt64Key.From(42) };
         db.Add(assigned);
@@ -200,6 +208,106 @@ public sealed class KeyGenerationTests : IDisposable
         assigned.Id.Value.ShouldBe(42ul);
         db.Entry(assigned).Property(e => e.Id).IsTemporary.ShouldBeFalse();
         Key(db, typeof(AssignedUInt64Key)).ValueGenerated.ShouldBe(ValueGenerated.Never);
+    }
+
+    public static TheoryData<string> DecimalColumnProviders => ["sqlserver", "npgsql"];
+
+    /// <summary>
+    /// SQL Server's HiLo still comes before a temporary value, for a <c>ulong</c> key as for a plain one, and hands out
+    /// values that are not temporary. A generator configured on the property would have come before HiLo, so the
+    /// temporary value is the type mapping's (decision 114). No database is opened: this is the generator EF chooses,
+    /// not its values. PostgreSQL's provider refuses HiLo on a <c>ulong</c> key, plain or value object, when it validates the model.
+    /// </summary>
+    [Fact]
+    public void SQL_Server_s_HiLo_still_comes_first_for_a_key_over_ulong()
+    {
+        using var db = new ULongHiLoKeysDb(Options<ULongHiLoKeysDb>("sqlserver"));
+        var selector = db.GetService<Microsoft.EntityFrameworkCore.ValueGeneration.IValueGeneratorSelector>();
+
+        bool Temporary(Type entity)
+        {
+            var entityType = db.Model.FindEntityType(entity)!;
+            selector.TrySelect(entityType.FindPrimaryKey()!.Properties.Single(), entityType, out var generator).ShouldBeTrue(entity.Name);
+            return generator!.GeneratesTemporaryValues;
+        }
+
+        Temporary(typeof(HiLoUlongKey)).ShouldBeFalse();
+        Temporary(typeof(HiLoUInt64Key)).ShouldBeFalse("HiLo was not chosen");
+    }
+
+    /// <summary>A generator the application configures on a <c>ulong</c> key still comes before a temporary value.</summary>
+    [Theory]
+    [MemberData(nameof(DecimalColumnProviders))]
+    public void The_application_s_own_generator_still_comes_first_for_a_key_over_ulong(string provider)
+    {
+        using var db = new ULongHiLoKeysDb(Options<ULongHiLoKeysDb>(provider));
+
+        var own = new OwnGeneratorUInt64Key();
+        db.Add(own);
+
+        own.Id.Value.ShouldBe(7ul, $"on {provider}");
+    }
+
+    /// <summary>
+    /// A compiled model gives a default <c>ulong</c> key the same temporary value: <c>dbcontext optimize</c> leaves the
+    /// type mappings to be found when the model is first used, where <c>UseTypeKit()</c> composes them.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(DecimalColumnProviders))]
+    public void In_a_compiled_model_a_default_key_over_ulong_gets_a_temporary_value(string provider)
+    {
+        using var db = Compiled(provider, nativeAot: false);
+
+        KeyedByUInt64[] keyed = [new(), new()];
+        KeyedByUlong[] plain  = [new(), new()];
+        db.AddRange([.. keyed, .. plain]);
+
+        keyed.Select(e => db.Entry(e).Property(p => p.Id).IsTemporary).ShouldBe([true, true], $"on {provider}");
+        keyed.Select(e => db.Entry(e).Property(p => p.Id).CurrentValue.Value)
+             .ShouldBe(plain.Select(e => db.Entry(e).Property(p => p.Id).CurrentValue), $"on {provider}");
+    }
+
+    /// <summary>
+    /// Pinned as documented, not as wanted: <c>--nativeaot</c> writes each type mapping out as code, and the factory a
+    /// value object's mapping carries is a delegate it cannot write, so a default <c>ulong</c> key still throws at
+    /// <c>Add</c> where the column is a <c>decimal</c> (decision 114). <c>ValueGeneratedNever()</c> is the workaround.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(DecimalColumnProviders))]
+    public void In_a_Native_AOT_compiled_model_a_default_key_over_ulong_still_throws_at_Add(string provider)
+    {
+        using var db = Compiled(provider, nativeAot: true);
+
+        Should.Throw<OverflowException>(() => db.Add(new KeyedByUInt64()));
+    }
+
+    /// <summary>
+    /// Pinned as documented, not as wanted: a key configured with <see cref="ValueObjectConverter{TValueObject,T}"/> by hand
+    /// is mapped on that converter, which carries no hints, so a default <c>ulong</c> key still throws at <c>Add</c> where
+    /// the column is a <c>decimal</c> (decision 114).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(DecimalColumnProviders))]
+    public void A_default_key_over_ulong_with_the_converter_named_by_hand_still_throws_at_Add(string provider)
+    {
+        using var db = new NamedConverterULongKeyDb(Options<NamedConverterULongKeyDb>(provider));
+
+        Should.Throw<OverflowException>(() => db.Add(new KeyedByUInt64()));
+    }
+
+    /// <summary>
+    /// A context on the compiled model, with an internal service provider of its own: EF caches a property's generator
+    /// by the model's id, which a compiled model keeps from the model it was written from.
+    /// </summary>
+    private CompiledULongKeysDb Compiled(string provider, bool nativeAot)
+    {
+        using var design = new CompiledULongKeysDb(Options<CompiledULongKeysDb>(provider));
+        var compiled = DesignTime.CompiledModel(design, nativeAot);
+        var db = new CompiledULongKeysDb(
+            new DbContextOptionsBuilder<CompiledULongKeysDb>(Options<CompiledULongKeysDb>(provider)).UseModel(compiled).EnableServiceProviderCaching(false).Options);
+
+        db.Model.ShouldBeSameAs(compiled);
+        return db;
     }
 
     /// <summary>
@@ -549,7 +657,54 @@ public sealed class CharAndULongKeysDb(DbContextOptions<CharAndULongKeysDb> opti
         modelBuilder.Entity<GeneratedOnAddCharKey>().Property(e => e.Id).ValueGeneratedOnAdd();
         modelBuilder.Entity<OwnGeneratorCharKey>().Property(e => e.Id).HasValueGenerator<LetterKeyGenerator>();
         modelBuilder.Entity<KeyedByUInt64>();
+        modelBuilder.Entity<KeyedByUlong>();
         modelBuilder.Entity<AssignedUInt64Key>().Property(e => e.Id).ValueGeneratedNever();
+    }
+}
+
+public class HiLoUInt64Key { public UInt64Key Id { get; set; } }
+
+public class HiLoUlongKey { public ulong Id { get; set; } }
+
+public class OwnGeneratorUInt64Key { public UInt64Key Id { get; set; } }
+
+public sealed class SevenGenerator : Microsoft.EntityFrameworkCore.ValueGeneration.ValueGenerator<UInt64Key>
+{
+    public override bool GeneratesTemporaryValues => false;
+
+    public override UInt64Key Next(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry) => UInt64Key.From(7);
+}
+
+/// <summary>A key over <c>ulong</c> configured with the public converter by hand.</summary>
+public sealed class NamedConverterULongKeyDb(DbContextOptions<NamedConverterULongKeyDb> options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.Entity<KeyedByUInt64>().Property(e => e.Id).HasConversion<ValueObjectConverter<UInt64Key, ulong>>();
+}
+
+/// <summary>A default key over <c>ulong</c> and a plain one, for a compiled model, which refuses a generator type.</summary>
+public sealed class CompiledULongKeysDb(DbContextOptions<CompiledULongKeysDb> options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<KeyedByUInt64>();
+        modelBuilder.Entity<KeyedByUlong>();
+    }
+}
+
+/// <summary>Keys over <c>ulong</c> numbered by SQL Server's HiLo, and one numbered by the application's own generator.</summary>
+public sealed class ULongHiLoKeysDb(DbContextOptions<ULongHiLoKeysDb> options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // Npgsql refuses HiLo on a ulong key, plain or value object: "Sequences can only be used with integer properties".
+        if (Database.IsSqlServer())
+        {
+            SqlServerPropertyBuilderExtensions.UseHiLo(modelBuilder.Entity<HiLoUInt64Key>().Property(e => e.Id));
+            SqlServerPropertyBuilderExtensions.UseHiLo(modelBuilder.Entity<HiLoUlongKey>().Property(e => e.Id));
+        }
+
+        modelBuilder.Entity<OwnGeneratorUInt64Key>().Property(e => e.Id).HasValueGenerator<SevenGenerator>();
     }
 }
 

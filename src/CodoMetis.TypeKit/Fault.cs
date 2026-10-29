@@ -15,7 +15,7 @@ namespace CodoMetis.TypeKit;
 /// it can say anything, so whether it quotes the request is the application's to decide.
 /// </para>
 /// <para>
-/// <see cref="Fault.Of{TFault}"/> makes one and infers the type, with a detail or without:
+/// <see cref="Fault.Of{TFault}(TFault, string?)"/> makes one and infers the type, with a detail or without:
 /// <c>Result.Error(Fault.Of(OrderFault.NotAmendable, "The order shipped on 3 May."))</c>. Where the reason
 /// answers for several rules, <c>WithRule</c> names the one that refused, an enum's or a closed set's
 /// member, as a key a client branches on: <c>Fault.Of(AccountFault.InvalidEmail).WithRule(EmailFault.NoAt)</c>. A bare reason
@@ -42,6 +42,16 @@ public readonly record struct Fault<TFault> where TFault : notnull
             : detail;
     }
 
+    /// <summary>Creates the fault, keeping the exception that caused it.</summary>
+    /// <param name="reason">Which fault. Never null.</param>
+    /// <param name="detail">A sentence about this occurrence, or <see langword="null"/> for none. Never blank.</param>
+    /// <param name="cause">The exception underneath, kept for the log as <see cref="Cause"/>. Never null.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="reason"/> or <paramref name="cause"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="detail"/> is empty or white space: say <see langword="null"/> for no detail.</exception>
+    public Fault(TFault reason, string? detail, Exception cause)
+        : this(reason, detail) =>
+        Cause = cause ?? throw new ArgumentNullException(nameof(cause), "A fault's cause is the exception underneath; leave it out for none.");
+
     /// <summary>Which fault.</summary>
     public TFault Reason { get; }
 
@@ -63,6 +73,27 @@ public readonly record struct Fault<TFault> where TFault : notnull
 
     /// <summary>The rule's type, which equality compares beside <see cref="Rule"/>: two types' rules can read alike.</summary>
     private Type? RuleType { get; init; }
+
+    /// <summary>The exception that caused this occurrence, or <see langword="null"/>: for the log, never for the client.</summary>
+    /// <remarks>
+    /// Set by <see cref="Fault.Of{TFault}(TFault, string?, Exception)"/>, kept by <c>WithRule</c> and by a fault of
+    /// several types. CodoMetis.TypeKit.AspNetCore hands it to the host beside the problem and never writes it into
+    /// one. Equality leaves it out, so a fault with a cause equals the same fault without one, and the fault prints
+    /// without it: log it as the exception it is.
+    /// </remarks>
+    public Exception? Cause { get; }
+
+    /// <summary>Equal where the reason, the detail and the rule are; the <see cref="Cause"/> takes no part.</summary>
+    /// <param name="other">The other fault.</param>
+    /// <returns>Whether the two are the same fault.</returns>
+    public bool Equals(Fault<TFault> other) =>
+        EqualityComparer<TFault>.Default.Equals(Reason, other.Reason)
+        && string.Equals(Detail, other.Detail, StringComparison.Ordinal)
+        && string.Equals(Rule, other.Rule, StringComparison.Ordinal)
+        && RuleType == other.RuleType;
+
+    /// <inheritdoc />
+    public override int GetHashCode() => HashCode.Combine(Reason, Detail, Rule, RuleType);
 
     /// <summary>The same fault with <paramref name="rule"/>, a member of <paramref name="type"/>, as its <see cref="Rule"/>.</summary>
     internal Fault<TFault> Naming(string rule, Type type) => this with { Rule = rule, RuleType = type };
@@ -197,4 +228,18 @@ public static class Fault
     /// <exception cref="ArgumentNullException"><paramref name="reason"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="detail"/> is empty or white space.</exception>
     public static Fault<TFault> Of<TFault>(TFault reason, string? detail = null) where TFault : notnull => new(reason, detail);
+
+    /// <summary>A fault and the exception that caused it, kept for the log and never written to a response.</summary>
+    /// <remarks>
+    /// The pattern is a <c>MapError</c> from a caught exception:
+    /// <c>Result.Catch(read).MapError(e =&gt; Fault.Of(ImportFault.Unreadable, "The file could not be read.", e))</c>.
+    /// </remarks>
+    /// <param name="reason">Which fault. Never null.</param>
+    /// <param name="detail">A sentence about this occurrence, or <see langword="null"/> for none. Never blank.</param>
+    /// <param name="cause">The exception underneath. Never null.</param>
+    /// <typeparam name="TFault">The reason's type, inferred.</typeparam>
+    /// <returns>The fault, with <paramref name="cause"/> as its <see cref="Fault{TFault}.Cause"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="reason"/> or <paramref name="cause"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="detail"/> is empty or white space.</exception>
+    public static Fault<TFault> Of<TFault>(TFault reason, string? detail, Exception cause) where TFault : notnull => new(reason, detail, cause);
 }

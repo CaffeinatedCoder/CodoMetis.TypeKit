@@ -84,8 +84,24 @@ internal static partial class Pins
     }
 
     /// <summary>
+    /// An <c>external {name} {version}</c> pin's name and version, where the version is one (<c>10.6.0</c>,
+    /// <c>5.0.0-beta-78</c>), or null: another kind of pin, or an external one dated or described rather than
+    /// versioned (<c>external NuGet registration data</c>). A dated pin, <c>external GitHub-Actions 2026-10-29</c>,
+    /// reads as a version: that NuGet has no package of the name is what keeps it from being compared.
+    /// </summary>
+    public static (string Name, string Version)? External(string pin)
+    {
+        var parts = pin.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts is ["external", var name, var version, ..] && VersionText().IsMatch(version) ? (name, version) : null;
+    }
+
+    /// <summary>Whether a version is a pre-release: a label after a dash.</summary>
+    public static bool IsPreRelease(string version) => version.Contains('-', StringComparison.Ordinal);
+
+    /// <summary>
     /// Orders two versions: numeric parts numerically, then a release after any of its pre-releases, and
-    /// pre-release labels ordinally. Enough for the versions <c>Directory.Packages.props</c> holds.
+    /// pre-release labels as SemVer 2 and NuGet order them. Enough for the versions <c>Directory.Packages.props</c>
+    /// holds and the ones NuGet lists.
     /// </summary>
     public static int CompareVersions(string left, string right)
     {
@@ -107,8 +123,29 @@ internal static partial class Pins
             (null, null) => 0,
             (null, _)    => 1,
             (_, null)    => -1,
-            _            => Math.Sign(string.CompareOrdinal(leftLabel, rightLabel)),
+            _            => Labels(leftLabel, rightLabel),
         };
+
+        // Dot-separated identifiers: numeric ones numerically and before an alphanumeric one, alphanumeric ones
+        // ignoring case, and a label before a longer one it starts (beta.2 before beta.10, beta before beta.1).
+        static int Labels(string left, string right)
+        {
+            var (a, b) = (left.Split('.'), right.Split('.'));
+
+            for (var i = 0; i < Math.Min(a.Length, b.Length); i++)
+            {
+                var order = (long.TryParse(a[i], NumberStyles.None, CultureInfo.InvariantCulture, out var x), long.TryParse(b[i], NumberStyles.None, CultureInfo.InvariantCulture, out var y)) switch
+                {
+                    (true, true)  => x.CompareTo(y),
+                    (true, false) => -1,
+                    (false, true) => 1,
+                    _             => string.Compare(a[i], b[i], StringComparison.OrdinalIgnoreCase),
+                };
+                if (order != 0) return Math.Sign(order);
+            }
+
+            return a.Length.CompareTo(b.Length);
+        }
 
         static (string[] Core, string? Label) Split(string version)
         {
@@ -119,15 +156,73 @@ internal static partial class Pins
 
     [GeneratedRegex(@"^(?<major>\d+)\.(?<minor>\d+)\.(?<band>\d)xx$")]
     private static partial Regex Band();
+
+    [GeneratedRegex(@"^\d+(\.\d+)*(-[0-9A-Za-z.-]+)?$")]
+    private static partial Regex VersionText();
+}
+
+/// <summary>
+/// The facts due for a re-read before a release (CONTRIBUTING's "Releasing"). An <c>external</c> pin names what this
+/// checkout never installs, a competitor's release among them, so <c>check</c> never compares it and the fact is as
+/// fresh as its date. A fact with one is due when it was verified more than a number of days ago and, when a feed is
+/// given, when NuGet has a later release of a package it pins: a later stable release for a stable pin, a later one
+/// of any kind for a pre-release. Run by hand, never in CI: a build must not fail because time passed or someone
+/// else released.
+/// </summary>
+internal static class FactReview
+{
+    /// <summary>Six months: a fact read longer ago than this is due, whatever its pins.</summary>
+    public const int DefaultDays = 183;
+
+    internal sealed record Due(string At, string Kind, string Id, string Target, string Detail);
+
+    /// <summary>The versions NuGet lists for a package id, or null where it has no package of that id.</summary>
+    internal delegate IReadOnlyList<string>? Feed(string packageId);
+
+    public static IReadOnlyList<Due> List(DocIndex index, DateOnly today, int days, Feed? feed, out int facts, out int compared)
+    {
+        var due   = new List<Due>();
+        var order = Comparer<string>.Create(Pins.CompareVersions);
+        (facts, compared) = (0, 0);
+
+        foreach (var doc in index.Docs.Where(doc => doc.Kind == Kind.Fact))
+        {
+            var pins = doc.Meta.Where(field => field.Key == "pins" && field.Value.StartsWith("external ", StringComparison.Ordinal)).ToList();
+            if (pins.Count == 0) continue;
+            facts++;
+
+            string At(int line) => $"{doc.Path}:{line.ToString(CultureInfo.InvariantCulture)}";
+
+            if (doc.Meta.FirstOrDefault(field => field.Key == "verified") is { } verified
+             && DateOnly.TryParseExact(verified.Value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+             && today.DayNumber - date.DayNumber is var age && age > days)
+                due.Add(new Due(At(verified.Line), "fact-old", doc.Id!, verified.Value, $"verified {age.ToString(CultureInfo.InvariantCulture)} days ago, more than {days.ToString(CultureInfo.InvariantCulture)}: re-read it at its latest release"));
+
+            if (feed is null) continue;
+
+            foreach (var pin in pins)
+            {
+                if (Pins.External(pin.Value) is not { } external || feed(external.Name) is not { Count: > 0 } versions) continue;
+                var (name, version) = external;
+                compared++;
+
+                var track  = Pins.IsPreRelease(version) ? versions : [.. versions.Where(listed => !Pins.IsPreRelease(listed))];
+                var latest = track.Count == 0 ? null : track.Max(order);
+
+                if (latest is not null && Pins.CompareVersions(version, latest) < 0)
+                    due.Add(new Due(At(pin.Line), "fact-released", doc.Id!, pin.Value, $"NuGet's latest{(Pins.IsPreRelease(version) ? "" : " stable")} {name} is {latest}: re-read it there"));
+            }
+        }
+
+        return due;
+    }
 }
 
 /// <summary>
 /// The rules a verified fact is held to (design/adr/0093): its frontmatter is complete and plain, each pin
 /// matches what is installed, and its <c>test:</c> names the characterization test that observes it, or says
 /// <c>none</c> and why. A test of the facts project that no fact names is a problem too. A <c>fixture:</c>, the
-/// measured answer of the fact's test as data, sits beside that test and exists (design/adr/0107). A fact the probe
-/// corpus cites to prune or excuse a row (<see cref="FactCitations"/>) is executable: its test exists, and where the
-/// harness reads it as a baseline, its fixture too.
+/// measured answer of the fact's test as data, sits beside that test and exists (design/adr/0107).
 /// </summary>
 internal static partial class FactRules
 {
@@ -139,9 +234,7 @@ internal static partial class FactRules
 
     public const string FixtureSuffix = ".fixture.json";
 
-    public static IReadOnlyList<Problem> Check(DocIndex index, string root, out int facts) => Check(index, root, out facts, out _);
-
-    public static IReadOnlyList<Problem> Check(DocIndex index, string root, out int facts, out FactCitations.Scan cited)
+    public static IReadOnlyList<Problem> Check(DocIndex index, string root, out int facts)
     {
         var problems  = new List<Problem>();
         var installed = Installed.Read(root);
@@ -149,7 +242,6 @@ internal static partial class FactRules
         var fixtures  = new HashSet<string>(StringComparer.Ordinal);
         // Why each fact cannot settle a pruning or an excuse, or null where its test exists; and its fixture, where one exists.
         var notExecutable = new Dictionary<string, string?>(StringComparer.Ordinal);
-        var fixtureOf     = new Dictionary<string, string?>(StringComparer.Ordinal);
         facts = 0;
 
         for (var d = 0; d < index.Docs.Count; d++)
@@ -221,7 +313,6 @@ internal static partial class FactRules
                 }
             }
 
-            fixtureOf[doc.Id!] = null;
             if (doc.Meta.FirstOrDefault(field => field.Key == "fixture") is { } fixture)
             {
                 var expected = $"{FactsProject}/{className}{FixtureSuffix}";
@@ -235,21 +326,7 @@ internal static partial class FactRules
                     problems.Add(new Problem(At(fixture.Line), "fact-fixture", fixture.Value, $"write it beside the test, as {expected}"));
                 else if (!File.Exists(Path.Combine(root, fixture.Value)))
                     problems.Add(new Problem(At(fixture.Line), "fact-fixture-missing", fixture.Value, "the file does not exist"));
-                else
-                    fixtureOf[doc.Id!] = fixture.Value;
             }
-        }
-
-        cited = FactCitations.Find(root);
-        foreach (var citation in cited.Citations)
-        {
-            var why = !notExecutable.TryGetValue(citation.Fact, out var reason) ? "there is no such fact under design/knowledge/"
-                    : reason is not null ? reason
-                    : citation.Baseline && fixtureOf[citation.Fact] is null ? "the harness reads its fixture as a baseline, and it names no fixture: that exists"
-                    : null;
-            if (why is not null)
-                problems.Add(new Problem(citation.At, "fact-not-executable-cited", citation.Fact,
-                    $"{citation.Place} cites {citation.Fact}, and {why}: a fact without its test explains only, never prunes or excuses a row; write its test in {FactsProject}/, or cite a docs sentence"));
         }
 
         var project = Path.Combine(root, FactsProject);

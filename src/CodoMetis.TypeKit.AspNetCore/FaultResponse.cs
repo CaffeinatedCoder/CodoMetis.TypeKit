@@ -20,11 +20,12 @@ namespace CodoMetis.TypeKit.AspNetCore;
 /// </remarks>
 public sealed class FaultResponse
 {
-    private FaultResponse(int statusCode, Uri? type, string? title)
+    private FaultResponse(int statusCode, Uri? type, string? title, bool namesFault = true)
     {
         StatusCode = statusCode;
         Type = type;
         Title = title;
+        NamesFault = namesFault;
     }
 
     /// <summary>The HTTP status.</summary>
@@ -35,6 +36,12 @@ public sealed class FaultResponse
 
     /// <summary>The problem's <c>title</c>, or <see langword="null"/> for the status's own.</summary>
     public string? Title { get; }
+
+    /// <summary>
+    /// Whether the problem names the fault in its <c>fault</c> member, and the rule that refused in its
+    /// <c>rule</c>. True unless <see cref="WithoutFaultName"/> withholds them.
+    /// </summary>
+    public bool NamesFault { get; }
 
     /// <summary>A response with <paramref name="statusCode"/>, and the status's own <c>type</c> and <c>title</c>.</summary>
     /// <param name="statusCode">The HTTP status, 400 to 599, checked where the faults are mapped.</param>
@@ -76,7 +83,7 @@ public sealed class FaultResponse
     public FaultResponse WithType(Uri type)
     {
         ArgumentNullException.ThrowIfNull(type);
-        return new(StatusCode, type, Title);
+        return new(StatusCode, type, Title, NamesFault);
     }
 
     /// <summary>
@@ -93,8 +100,28 @@ public sealed class FaultResponse
     public FaultResponse WithTitle(string title)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
-        return new(StatusCode, Type, title);
+        return new(StatusCode, Type, title, NamesFault);
     }
+
+    /// <summary>
+    /// The same response without the fault's name, for faults a client must not tell apart: a sign-in's
+    /// <c>fault => FaultResponse.Status(401).WithoutFaultName()</c> answers an unknown user and a wrong
+    /// password alike.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The problem has no <c>fault</c> and no <c>rule</c> member, and its <c>detail</c> is only what the
+    /// occurrence says (<see cref="Fault{TFault}.Detail"/>): a fault set member's description, which
+    /// otherwise stands in for it, names the member as surely as its name does. Two members answered so,
+    /// with the same status, <c>type</c> and <c>title</c>, write the same problem but for the detail the
+    /// application wrote. The host still sees the fault, through <c>IFaultFeature</c>, to log it.
+    /// </para>
+    /// <para>
+    /// The document says it: a response whose every fault withholds its name is described as naming none.
+    /// </para>
+    /// </remarks>
+    /// <returns>A new response.</returns>
+    public FaultResponse WithoutFaultName() => new(StatusCode, Type, Title, namesFault: false);
 
     /// <summary>A bare status as a response, so a mapping can return <c>404</c> where it needs nothing else.</summary>
     /// <param name="statusCode">The HTTP status.</param>

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 
@@ -118,14 +119,30 @@ public static class KeyShapes
         db.GetService<IDesignTimeModel>().Model.FindEntityType(Subject(shape, key))!.FindPrimaryKey()!.Properties;
 }
 
-/// <summary>A model of one key shape, cached per shape, key type and side.</summary>
-public sealed class KeyShapeDb(DbContextOptions<KeyShapeDb> options, KeyShape shape, Type key) : DbContext(options)
+/// <summary>A model of one key shape, cached per shape, key type and side, in a schema of its own where many share one database.</summary>
+public sealed class KeyShapeDb(DbContextOptions<KeyShapeDb> options, KeyShape shape, Type key, string? schema = null) : DbContext(options)
 {
     public KeyShape Shape => shape;
 
     public Type Key => key;
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder) => KeyShapes.Configure(modelBuilder, shape, key);
+    public string? Schema => schema;
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        if (schema is not null) modelBuilder.HasDefaultSchema(schema);
+        KeyShapes.Configure(modelBuilder, shape, key);
+    }
+
+    /// <summary>On a real SQL Server, the shape's tables in <paramref name="schema"/>.</summary>
+    public static KeyShapeDb OnSqlServer(KeyShape shape, Type key, bool typeKit, string connectionString, string schema)
+    {
+        var builder = new DbContextOptionsBuilder<KeyShapeDb>().ReplaceService<IModelCacheKeyFactory, KeyShapeModelCacheKey>().UseSqlServer(connectionString)
+                                                               .ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning));
+        if (typeKit) builder = builder.UseTypeKit();
+
+        return new KeyShapeDb(builder.Options, shape, key, schema);
+    }
 
     public static KeyShapeDb Create(string provider, KeyShape shape, Type key, bool typeKit, Microsoft.Data.Sqlite.SqliteConnection connection)
     {
@@ -146,7 +163,7 @@ public sealed class KeyShapeDb(DbContextOptions<KeyShapeDb> options, KeyShape sh
 public sealed class KeyShapeModelCacheKey : IModelCacheKeyFactory
 {
     public object Create(DbContext context, bool designTime) =>
-        context is KeyShapeDb db ? (db.GetType(), db.Shape, db.Key, designTime) : (context.GetType(), designTime);
+        context is KeyShapeDb db ? (db.GetType(), db.Shape, db.Key, db.Schema, designTime) : (context.GetType(), designTime);
 }
 
 public class Alone<TKey>

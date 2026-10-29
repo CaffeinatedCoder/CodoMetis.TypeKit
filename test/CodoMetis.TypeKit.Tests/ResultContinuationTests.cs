@@ -1,4 +1,7 @@
 using System.Reflection;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace CodoMetis.TypeKit.Tests;
 
@@ -226,6 +229,40 @@ public sealed class ResultContinuationTests
 
         Result<Order, Fault> order = await Task.FromResult(Result<int, Fault>.Success(4)).BindAsync(Find);
         order.Match(o => o.Id, _ => -1).ShouldBe(4);
+    }
+
+    /// <summary>
+    /// What the Result page warns of: a callback that returns a <c>ValueTask</c> is no <c>Func&lt;T, Task&gt;</c>, so
+    /// <c>TapAsync</c> and <c>TapErrorAsync</c> on a pending result bind to the overload that takes an action and
+    /// waits for nothing, and <c>MapAsync</c> to the one that takes a value, which keeps the <c>ValueTask</c> as the
+    /// value. <c>.AsTask()</c> or an <c>async</c> lambda binds to the overload that waits.
+    /// </summary>
+    [Theory]
+    [InlineData("pending.TapAsync(x => new ValueTask())", "System.Action<int>", "int")]
+    [InlineData("pending.TapErrorAsync(e => new ValueTask())", "System.Action<string>", "int")]
+    [InlineData("pending.MapAsync(x => new ValueTask<int>(x))", "System.Func<int, System.Threading.Tasks.ValueTask<int>>", "System.Threading.Tasks.ValueTask<int>")]
+    [InlineData("pending.TapAsync(x => new ValueTask().AsTask())", "System.Func<int, System.Threading.Tasks.Task>", "int")]
+    [InlineData("pending.TapErrorAsync(async e => await new ValueTask())", "System.Func<string, System.Threading.Tasks.Task>", "int")]
+    [InlineData("pending.MapAsync(async x => await new ValueTask<int>(x))", "System.Func<int, System.Threading.Tasks.Task<int>>", "int")]
+    public void A_callback_that_returns_a_ValueTask_binds_to_the_overload_that_does_not_wait(string call, string parameter, string value)
+    {
+        var compilation = ConsumerCompilation.Of($$"""
+            using System.Threading.Tasks;
+            using CodoMetis.TypeKit;
+
+            static class Consumer
+            {
+                static object Call(Task<Result<int, string>> pending) => {{call}};
+            }
+            """);
+        compilation.ErrorIds().ShouldBeEmpty(compilation.Problems());
+
+        var tree = compilation.SyntaxTrees.Single();
+        var outermost = tree.GetRoot(TestContext.Current.CancellationToken).DescendantNodes().OfType<InvocationExpressionSyntax>().First();
+        var called = compilation.GetSemanticModel(tree).GetSymbolInfo(outermost, TestContext.Current.CancellationToken).Symbol.ShouldBeAssignableTo<IMethodSymbol>()!;
+
+        called.Parameters.ShouldHaveSingleItem().Type.ToDisplayString().ShouldBe(parameter);
+        called.ReturnType.ToDisplayString().ShouldBe($"System.Threading.Tasks.Task<CodoMetis.TypeKit.Result<{value}, string>>");
     }
 
     /// <summary>

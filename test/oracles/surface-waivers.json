@@ -1,0 +1,19 @@
+{
+  "Error.*": "the error marker's record equality and printing, compiler-generated; the conversions it exists for are claimed through Result",
+  "None.*": "the None marker's record equality and printing, compiler-generated",
+  "Success.*": "the success marker's record equality and printing, compiler-generated",
+  "ResultState.*": "enum members; what each state means is claimed through the members that read it",
+  "AbstractAttribute..ctor": "a constraint attribute's constructor; what it constrains is CMTK0010's, held by the analyzer tests",
+  "ConcreteAttribute..ctor": "a constraint attribute's constructor; what it constrains is CMTK0010's, held by the analyzer tests",
+  "DistinctAttribute..ctor": "a constraint attribute's constructor; what it constrains is CMTK0010's, held by the analyzer tests",
+  "ClosedSetAttribute..ctor": "a constraint attribute's constructor; what it constrains is CMTK0010's, held by the analyzer tests",
+  "GeneratedClosedSetAttribute.*": "plumbing the generators write on a closed set, read by the satellites through Accept",
+  "GeneratedValueObjectAttribute.*": "plumbing the generators write on a value object, read by the satellites through Accept",
+  "GeneratedClosedSets.*": "refusal helpers that generated closed-set code calls; what they refuse is claimed through Parse and the JSON reads",
+  "IClosedSetVisitor.Visit": "the visitor GeneratedClosedSetAttribute.Accept calls, plumbing",
+  "IValueObjectVisitor.Visit": "the visitor GeneratedValueObjectAttribute.Accept calls, plumbing",
+  "IStoredJsonConverterSource.CreateStoredJsonConverter": "plumbing StoredJsonConverterFactory calls on a generated converter",
+  "DescribedJsonSchema.ExporterOptions": "the exporter options the schema descriptions are read with, plumbing",
+  "TypeKitServiceCollectionExtensions.AddEntityFrameworkTypeKit": "the internal-service-provider form of UseTypeKit, whose claims hold it",
+  "TypeKitAssertionException..ctor": "the exception the assertions throw; its messages are claimed through the assertions"
+}

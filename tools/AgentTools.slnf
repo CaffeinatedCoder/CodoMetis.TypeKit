@@ -3,9 +3,11 @@
     "path": "../CodoMetis.TypeKit.slnx",
     "projects": [
       "tools/BuildVerdict/BuildVerdict.csproj",
+      "tools/CiLanes/CiLanes.csproj",
       "tools/ConsumerSmokeTest/ConsumerSmokeTest.csproj",
       "tools/DocsQuery/DocsQuery.csproj",
-      "tools/Prober/Prober.csproj"
+      "tools/Oracles/Oracles.csproj",
+      "tools/PrHygiene/PrHygiene.csproj"
     ]
   }
 }

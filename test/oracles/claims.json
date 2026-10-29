@@ -1,0 +1,5058 @@
+[
+  {
+    "id": "A01-choose-reads-a-stream",
+    "source": "src/CodoMetis.TypeKit/README.md#find-one-in-a-collection",
+    "quote": "Both read an async stream too, as its elements arrive.",
+    "claim": "Both read an async stream too, as its elements arrive.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Choose",
+      "SequenceOptionExtensions.Choose"
+    ],
+    "heldBy": [
+      "AsyncStreamTests"
+    ]
+  },
+  {
+    "id": "A01-dispose-however-they-stop",
+    "source": "src/CodoMetis.TypeKit/README.md#chain-steps",
+    "quote": "All three read the stream in order, and dispose its enumerator however they stop: at an error, at a `break`, or when your selector throws.",
+    "claim": "All three read the stream in order, and dispose its enumerator however they stop: at an error, at a `break`, or when your selector throws.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Choose",
+      "SequenceOptionExtensions.Choose",
+      "Result.SequenceAsync",
+      "Result.TraverseAsync"
+    ],
+    "heldBy": [
+      "AsyncStreamTests"
+    ]
+  },
+  {
+    "id": "A01-stop-at-the-first-error",
+    "source": "src/CodoMetis.TypeKit/README.md#chain-steps",
+    "quote": "`SequenceAsync` and `TraverseAsync` stop at the first error and read nothing after it.",
+    "claim": "`SequenceAsync` and `TraverseAsync` stop at the first error and read nothing after it.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.SequenceAsync",
+      "Result.TraverseAsync"
+    ],
+    "heldBy": [
+      "AsyncStreamTests"
+    ]
+  },
+  {
+    "id": "A01-token-reaches-the-stream",
+    "source": "src/CodoMetis.TypeKit/README.md#chain-steps",
+    "quote": "The token you give `SequenceAsync` or `TraverseAsync` reaches the stream.",
+    "claim": "The token you give `SequenceAsync` or `TraverseAsync` reaches the stream.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.SequenceAsync",
+      "Result.TraverseAsync"
+    ],
+    "heldBy": [
+      "AsyncStreamTests"
+    ]
+  },
+  {
+    "id": "A01-with-cancellation-for-choose",
+    "source": "src/CodoMetis.TypeKit/README.md#chain-steps",
+    "quote": "For `Choose`, pass yours to `WithCancellation` on what it returns.",
+    "claim": "For `Choose`, pass yours to `WithCancellation` on what it returns.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Choose",
+      "SequenceOptionExtensions.Choose"
+    ],
+    "heldBy": [
+      "AsyncStreamTests"
+    ]
+  },
+  {
+    "id": "C01-covers-every-decimal",
+    "source": "docs/json.md#decimals-in-one-spelling",
+    "quote": "Register either one once, and it covers every decimal: nullable ones, dictionary keys, and every value object over a decimal, since its JSON is the underlying type's.",
+    "claim": "Register either one once, and it covers every decimal: nullable ones, dictionary keys, and every value object over a decimal, since its JSON is the underlying type's.",
+    "oracle": "claim",
+    "surfaces": [
+      "DecimalNumberJsonConverter.*",
+      "DecimalStringJsonConverter.*"
+    ],
+    "heldBy": [
+      "DecimalJsonConvertersTests"
+    ]
+  },
+  {
+    "id": "C01-number-is-a-number",
+    "source": "docs/json.md#decimals-in-one-spelling",
+    "quote": "**`DecimalNumberJsonConverter`** writes it as a number.",
+    "claim": "**`DecimalNumberJsonConverter`** writes it as a number.",
+    "oracle": "claim",
+    "surfaces": [
+      "DecimalNumberJsonConverter.*",
+      "DecimalStringJsonConverter.*"
+    ],
+    "heldBy": [
+      "DecimalJsonConvertersTests"
+    ]
+  },
+  {
+    "id": "C01-reads-a-number-or-a-string",
+    "source": "docs/json.md#decimals-in-one-spelling",
+    "quote": "Both read a number, or a string holding one, and keep the scale they read.",
+    "claim": "Both read a number, or a string holding one, and keep the scale they read.",
+    "oracle": "claim",
+    "surfaces": [
+      "DecimalNumberJsonConverter.*",
+      "DecimalStringJsonConverter.*"
+    ],
+    "heldBy": [
+      "DecimalJsonConvertersTests"
+    ]
+  },
+  {
+    "id": "C01-smallest-scale",
+    "source": "docs/json.md#decimals-in-one-spelling",
+    "quote": "Two converters write the smallest scale instead:",
+    "claim": "Two converters write the smallest scale instead:",
+    "oracle": "claim",
+    "surfaces": [
+      "DecimalNumberJsonConverter.*",
+      "DecimalStringJsonConverter.*"
+    ],
+    "heldBy": [
+      "DecimalJsonConvertersTests"
+    ]
+  },
+  {
+    "id": "C01-string-is-a-string",
+    "source": "docs/json.md#decimals-in-one-spelling",
+    "quote": "**`DecimalStringJsonConverter`** writes it as a string.",
+    "claim": "**`DecimalStringJsonConverter`** writes it as a string.",
+    "oracle": "claim",
+    "surfaces": [
+      "DecimalNumberJsonConverter.*",
+      "DecimalStringJsonConverter.*"
+    ],
+    "heldBy": [
+      "DecimalJsonConvertersTests"
+    ]
+  },
+  {
+    "id": "C02-hidden-is-an-error-in-both",
+    "source": "docs/text.md#required-and-optional",
+    "quote": "`Hidden` is an error in both cases.",
+    "claim": "`Hidden` is an error in both cases.",
+    "oracle": "claim",
+    "surfaces": [
+      "StringTextExtensions.*",
+      "TextFault.*"
+    ],
+    "heldBy": [
+      "StringTextExtensionsTests"
+    ]
+  },
+  {
+    "id": "C02-null-is-blank",
+    "source": "docs/text.md#required-and-optional",
+    "quote": "A null string is `Blank`.",
+    "claim": "A null string is `Blank`.",
+    "oracle": "claim",
+    "surfaces": [
+      "StringTextExtensions.*",
+      "TextFault.*"
+    ],
+    "heldBy": [
+      "StringTextExtensionsTests"
+    ]
+  },
+  {
+    "id": "C02-optional-blank-is-no-value",
+    "source": "docs/text.md#required-and-optional",
+    "quote": "For an optional one, a blank means \"no value\", and `AsOptionalText()` and `AsOptionalIdentifier()` return a `Result<Option<string>, TextFault>`.",
+    "claim": "For an optional one, a blank means \"no value\", and `AsOptionalText()` and `AsOptionalIdentifier()` return a `Result<Option<string>, TextFault>`.",
+    "oracle": "claim",
+    "surfaces": [
+      "StringTextExtensions.*",
+      "TextFault.*"
+    ],
+    "heldBy": [
+      "StringTextExtensionsTests"
+    ]
+  },
+  {
+    "id": "C02-required-blank-is-an-error",
+    "source": "docs/text.md#required-and-optional",
+    "quote": "For a required field, `Blank` is an error.",
+    "claim": "For a required field, `Blank` is an error.",
+    "oracle": "claim",
+    "surfaces": [
+      "StringTextExtensions.*",
+      "TextFault.*"
+    ],
+    "heldBy": [
+      "StringTextExtensionsTests"
+    ]
+  },
+  {
+    "id": "C03-detail-and-rule-intact",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "`Fault<AccountFault, EditFault>` (from CodoMetis.TypeKit) holds one error of either set, with its detail and rule intact.",
+    "claim": "`Fault<AccountFault, EditFault>` (from CodoMetis.TypeKit) holds one error of either set, with its detail and rule intact.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitHttpResultExtensions.ToHttpResult",
+      "Fault.*"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C03-each-error-own-set",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "Each error is answered as its own set maps it.",
+    "claim": "Each error is answered as its own set maps it.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitHttpResultExtensions.ToHttpResult",
+      "Fault.*"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C03-statuses-ascending",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "So its operation lists the statuses of both sets, in ascending order, with the problem types of both where they share a status.",
+    "claim": "So its operation lists the statuses of both sets, in ascending order, with the problem types of both where they share a status.",
+    "oracle": "claim",
+    "surfaces": [
+      "Fault.*",
+      "TypeKitHttpResultExtensions.ToHttpResult"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C03-unmapped-set-stops-start",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "The host doesn't start while either set is unmapped.",
+    "claim": "The host doesn't start while either set is unmapped.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitHttpResultExtensions.ToHttpResult",
+      "Fault.*"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C04-doc-omits-left-out",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer",
+    "quote": "The operation then lists no status and no problem type for a member left out.",
+    "claim": "The operation then lists no status and no problem type for a member left out.",
+    "oracle": "exception",
+    "surfaces": [
+      "WithoutFaultsAttribute.*",
+      "TypeKitWithoutFaultsEndpointConventionBuilderExtensions.*"
+    ],
+    "heldBy": [
+      "FaultExclusionTests"
+    ]
+  },
+  {
+    "id": "C04-left-out-everywhere-stops-start",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer",
+    "quote": "**These stop the host from starting**, as for a status: a value or a name no member has, a status that every endpoint it's set on leaves out (on the endpoint itself, or on a group whose endpoints all leave the member out), and a group or a controller none of whose endpoints answers with the type.",
+    "claim": "**These stop the host from starting**, as for a status: a value or a name no member has, a status that every endpoint it's set on leaves out (on the endpoint itself, or on a group whose endpoints all leave the member out), and a group or a controller none of whose endpoints answers with the type.",
+    "oracle": "exception",
+    "surfaces": [
+      "WithoutFaultsAttribute.*",
+      "TypeKitWithoutFaultsEndpointConventionBuilderExtensions.*"
+    ],
+    "heldBy": [
+      "FaultExclusionTests"
+    ]
+  },
+  {
+    "id": "C04-narrows-wider-status",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer",
+    "quote": "If a group gives `NotFound` a status and one endpoint inside leaves `NotFound` out, that endpoint drops it, and the group's other endpoints keep the status.",
+    "claim": "If a group gives `NotFound` a status and one endpoint inside leaves `NotFound` out, that endpoint drops it, and the group's other endpoints keep the status.",
+    "oracle": "exception",
+    "surfaces": [
+      "WithoutFaultsAttribute.*",
+      "TypeKitWithoutFaultsEndpointConventionBuilderExtensions.*"
+    ],
+    "heldBy": [
+      "FaultExclusionTests"
+    ]
+  },
+  {
+    "id": "C04-reporting-left-out-throws",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#leaving-out-what-a-route-cannot-answer",
+    "quote": "Reporting a member left out anyway throws an `InvalidOperationException` naming the endpoint and the member, rather than answering with a status the document doesn't list.",
+    "claim": "Reporting a member left out anyway throws an `InvalidOperationException` naming the endpoint and the member, rather than answering with a status the document doesn't list.",
+    "oracle": "exception",
+    "surfaces": [
+      "WithoutFaultsAttribute.*",
+      "TypeKitWithoutFaultsEndpointConventionBuilderExtensions.*"
+    ],
+    "heldBy": [
+      "FaultExclusionTests"
+    ]
+  },
+  {
+    "id": "C05-nested-chain",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#the-rule-that-refused",
+    "quote": "A rule of a nested type is named after its nesting chain, whatever `QualifiedFaultNames` says.",
+    "claim": "A rule of a nested type is named after its nesting chain, whatever `QualifiedFaultNames` says.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultRuleExtensions.*",
+      "FaultClosedSetRuleExtensions.*"
+    ],
+    "heldBy": [
+      "FaultResponsePartsTests"
+    ]
+  },
+  {
+    "id": "C05-no-namespace",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#the-rule-that-refused",
+    "quote": "**The name carries no namespace**, which would publish your application's structure to every client.",
+    "claim": "**The name carries no namespace**, which would publish your application's structure to every client.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultRuleExtensions.*",
+      "FaultClosedSetRuleExtensions.*"
+    ],
+    "heldBy": [
+      "FaultResponsePartsTests"
+    ]
+  },
+  {
+    "id": "C05-rule-qualified",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#the-rule-that-refused",
+    "quote": "The problem carries it as `rule`, qualified with its type's name, so two types' `Blank` can be told apart:",
+    "claim": "The problem carries it as `rule`, qualified with its type's name, so two types' `Blank` can be told apart:",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultRuleExtensions.*",
+      "FaultClosedSetRuleExtensions.*"
+    ],
+    "heldBy": [
+      "FaultResponsePartsTests"
+    ]
+  },
+  {
+    "id": "C05-stays-the-errors",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#the-rule-that-refused",
+    "quote": "The status, the mapping and the document stay the error's.",
+    "claim": "The status, the mapping and the document stay the error's.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultRuleExtensions.*",
+      "FaultClosedSetRuleExtensions.*"
+    ],
+    "heldBy": [
+      "FaultResponsePartsTests"
+    ]
+  },
+  {
+    "id": "C05-unnamed-value-throws",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#the-rule-that-refused",
+    "quote": "A value no member names, such as a combination of flags or a cast number, throws where it's given.",
+    "claim": "A value no member names, such as a combination of flags or a cast number, throws where it's given.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultRuleExtensions.*",
+      "FaultClosedSetRuleExtensions.*"
+    ],
+    "heldBy": [
+      "FaultResponsePartsTests"
+    ]
+  },
+  {
+    "id": "C06-description-as-detail",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type",
+    "quote": "The description becomes the problem's `detail`, so a client can show it.",
+    "claim": "The description becomes the problem's `detail`, so a client can show it.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultKind.*",
+      "IFault.*",
+      "FaultResponse.For",
+      "TypeKitClosedSetHttpResultExtensions.ToHttpResult"
+    ],
+    "heldBy": [
+      "FaultSetDefaultTests"
+    ]
+  },
+  {
+    "id": "C06-kind-gives-status",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type",
+    "quote": "The kind gives the status:",
+    "claim": "The kind gives the status:",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultKind.*",
+      "IFault.*",
+      "FaultResponse.For",
+      "TypeKitClosedSetHttpResultExtensions.ToHttpResult"
+    ],
+    "heldBy": [
+      "FaultResponsePartsTests",
+      "FaultSetDefaultTests"
+    ]
+  },
+  {
+    "id": "C06-member-must-have-kind",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type",
+    "quote": "**A member must have a kind.** A member whose kind is `default`, which is no kind, fails this call.",
+    "claim": "**A member must have a kind.** A member whose kind is `default`, which is no kind, fails this call.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultKind.*",
+      "IFault.*",
+      "FaultResponse.For",
+      "TypeKitClosedSetHttpResultExtensions.ToHttpResult"
+    ],
+    "heldBy": [
+      "FaultResponsePartsTests",
+      "FaultSetDefaultTests"
+    ]
+  },
+  {
+    "id": "C06-no-description-no-detail",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type",
+    "quote": "A member without one has no `detail`.",
+    "claim": "A member without one has no `detail`.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultKind.*",
+      "IFault.*",
+      "FaultResponse.For",
+      "TypeKitClosedSetHttpResultExtensions.ToHttpResult"
+    ],
+    "heldBy": [
+      "FaultResponsePartsTests"
+    ]
+  },
+  {
+    "id": "C07-by-kind",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once",
+    "quote": "every fault set an endpoint answers with, by its kind",
+    "claim": "every fault set an endpoint answers with, by its kind",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitFaultResponsesServiceCollectionExtensions.*",
+      "TypeKitClosedSetFaultResponsesServiceCollectionExtensions.*"
+    ],
+    "heldBy": [
+      "FaultSetDefaultTests"
+    ]
+  },
+  {
+    "id": "C07-enum-needs-own-mapping",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once",
+    "quote": "Neither has a kind, and the host doesn't start while an endpoint answers with one that's unmapped.",
+    "claim": "Neither has a kind, and the host doesn't start while an endpoint answers with one that's unmapped.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitFaultResponsesServiceCollectionExtensions.*",
+      "TypeKitClosedSetFaultResponsesServiceCollectionExtensions.*"
+    ],
+    "heldBy": [
+      "FaultSetDefaultTests"
+    ]
+  },
+  {
+    "id": "C07-member-without-kind-stops-start",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once",
+    "quote": "A member with no kind stops the start, and so does one the mapping throws for or gives a status that isn't an error.",
+    "claim": "A member with no kind stops the start, and so does one the mapping throws for or gives a status that isn't an error.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitClosedSetFaultResponsesServiceCollectionExtensions.*",
+      "TypeKitFaultResponsesServiceCollectionExtensions.*"
+    ],
+    "heldBy": [
+      "FaultSetDefaultTests"
+    ]
+  },
+  {
+    "id": "C07-own-mapping",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once",
+    "quote": "The mapping can be your own. It reads each member's kind and description through `IFault`:",
+    "claim": "The mapping can be your own. It reads each member's kind and description through `IFault`:",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitFaultResponsesServiceCollectionExtensions.*",
+      "TypeKitClosedSetFaultResponsesServiceCollectionExtensions.*"
+    ],
+    "heldBy": [
+      "FaultSetDefaultTests"
+    ]
+  },
+  {
+    "id": "C07-own-set-keeps-mapping",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#every-fault-set-at-once",
+    "quote": "A set mapped on its own keeps its mapping.",
+    "claim": "A set mapped on its own keeps its mapping.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitFaultResponsesServiceCollectionExtensions.*",
+      "TypeKitClosedSetFaultResponsesServiceCollectionExtensions.*"
+    ],
+    "heldBy": [
+      "FaultSetDefaultTests"
+    ]
+  },
+  {
+    "id": "C08-bare-names-warn",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "With bare names, the default, that's `AccountFault.NotFound` beside an `EditFault.NotFound`.",
+    "claim": "With bare names, the default, that's `AccountFault.NotFound` beside an `EditFault.NotFound`.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultResponseOptions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C08-qualified-chain-warns",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "With qualified names, it's two sets with one nesting chain in two namespaces, since the name carries no namespace.",
+    "claim": "With qualified names, it's two sets with one nesting chain in two namespaces, since the name carries no namespace.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultResponseOptions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C08-qualified-names-fix",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "Fix it with `QualifiedFaultNames`, a rename, or by leaving one out of the route",
+    "claim": "Fix it with `QualifiedFaultNames`, a rename, or by leaving one out of the route",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultResponseOptions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C08-warning-names-both",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-of-several-types",
+    "quote": "A client reads the two errors as one, so the host logs a warning at startup naming both.",
+    "claim": "A client reads the two errors as one, so the host logs a warning at startup naming both.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultResponseOptions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "C09-equal-by-the-wrapped-value",
+    "source": "CHANGELOG.md",
+    "quote": "Over a base record, a value object's equality is its wrapped value's",
+    "claim": "Over a base record, a value object's equality is its wrapped value's",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "IValueObject.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C09-in-a-collection-of-the-base",
+    "source": "CHANGELOG.md",
+    "quote": "in a collection of the base too, whatever equality the base declares.",
+    "claim": "in a collection of the base too, whatever equality the base declares.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "IValueObject.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C10-ignore-cycles-unaffected",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#json",
+    "quote": "a struct of such values, and `ReferenceHandler.IgnoreCycles`.",
+    "claim": "a struct of such values, and `ReferenceHandler.IgnoreCycles`.",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedJson.*"
+    ],
+    "heldBy": [
+      "ReferenceHandlingTests"
+    ]
+  },
+  {
+    "id": "C10-own-converters-unaffected",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#json",
+    "quote": "anything a converter of your own writes, on the options or on one property",
+    "claim": "anything a converter of your own writes, on the options or on one property",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedJson.*"
+    ],
+    "heldBy": [
+      "ReferenceHandlingTests"
+    ]
+  },
+  {
+    "id": "C10-refused-where-references-could-be-written",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#json",
+    "quote": "**Preserved references** (`ReferenceHandler.Preserve`) throw a `NotSupportedException` where the serializer could write `$id` or `$ref` inside the underlying value.",
+    "claim": "**Preserved references** (`ReferenceHandler.Preserve`) throw a `NotSupportedException` where the serializer could write `$id` or `$ref` inside the underlying value.",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedJson.*"
+    ],
+    "heldBy": [
+      "ReferenceHandlingTests"
+    ]
+  },
+  {
+    "id": "C10-value-converters-unaffected",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#json",
+    "quote": "These are unaffected: a value the serializer writes with a value converter (a number, a string, a `Guid`, a `Uri`)",
+    "claim": "These are unaffected: a value the serializer writes with a value converter (a number, a string, a `Guid`, a `Uri`)",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedJson.*"
+    ],
+    "heldBy": [
+      "ReferenceHandlingTests"
+    ]
+  },
+  {
+    "id": "C11-abstract-string-constructor",
+    "source": "CHANGELOG.md",
+    "quote": "or an abstract class's string constructor, no longer breaks the build; the value object has no parsing.",
+    "claim": "or an abstract class's string constructor, no longer breaks the build; the value object has no parsing.",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C11-implicit-result",
+    "source": "CHANGELOG.md",
+    "quote": "A wrapped type's `Parse` whose result can't be assigned to it",
+    "claim": "A wrapped type's `Parse` whose result can't be assigned to it",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C11-parsing-where-it-can-be-parsed",
+    "source": "CHANGELOG.md",
+    "quote": "`IParsable`/`ISpanParsable`/`IUtf8SpanParsable`, formatting in the invariant culture",
+    "claim": "`IParsable`/`ISpanParsable`/`IUtf8SpanParsable`, formatting in the invariant culture",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C11-ref-text",
+    "source": "CHANGELOG.md",
+    "quote": "or that takes its text by `ref`",
+    "claim": "or that takes its text by `ref`",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C12-every-position",
+    "source": "docs/json.md#describing-what-a-converter-writes",
+    "quote": "With CodoMetis.TypeKit.AspNetCore, `AddTypeKit()` writes the same descriptions into the OpenAPI document, in every position, a list's elements and a dictionary's values included.",
+    "claim": "With CodoMetis.TypeKit.AspNetCore, `AddTypeKit()` writes the same descriptions into the OpenAPI document, in every position, a list's elements and a dictionary's values included.",
+    "oracle": "claim",
+    "surfaces": [
+      "IDescribedJsonConverter.*",
+      "JsonSchemaDescriptions.*",
+      "JsonSchemaDescription.*"
+    ],
+    "heldBy": [
+      "DescribedSchemaTests"
+    ]
+  },
+  {
+    "id": "C12-options-describe",
+    "source": "docs/json.md#describing-what-a-converter-writes",
+    "quote": "**A converter someone else wrote**, or the serializer's own enum converter, is described in the options by `JsonSchemaDescriptions`.",
+    "claim": "**A converter someone else wrote**, or the serializer's own enum converter, is described in the options by `JsonSchemaDescriptions`.",
+    "oracle": "claim",
+    "surfaces": [
+      "IDescribedJsonConverter.*",
+      "JsonSchemaDescriptions.*",
+      "JsonSchemaDescription.*"
+    ],
+    "heldBy": [
+      "DescribedSchemaTests"
+    ]
+  },
+  {
+    "id": "C12-own-converter-describes-itself",
+    "source": "docs/json.md#describing-what-a-converter-writes",
+    "quote": "**Your own converter** implements `IDescribedJsonConverter` and describes itself, as both decimal converters do.",
+    "claim": "**Your own converter** implements `IDescribedJsonConverter` and describes itself, as both decimal converters do.",
+    "oracle": "claim",
+    "surfaces": [
+      "IDescribedJsonConverter.*",
+      "JsonSchemaDescriptions.*",
+      "JsonSchemaDescription.*"
+    ],
+    "heldBy": [
+      "DescribedSchemaTests"
+    ]
+  },
+  {
+    "id": "C12-parameter-keeps-aspnet",
+    "source": "docs/json.md#describing-what-a-converter-writes",
+    "quote": "So it keeps the description ASP.NET gives the type without your converters",
+    "claim": "So it keeps the description ASP.NET gives the type without your converters",
+    "oracle": "claim",
+    "surfaces": [
+      "IDescribedJsonConverter.*",
+      "JsonSchemaDescriptions.*",
+      "JsonSchemaDescription.*"
+    ],
+    "heldBy": [
+      "DescribedSchemaTests"
+    ]
+  },
+  {
+    "id": "C13-absent-is-default",
+    "source": "docs/merge-patches.md#required-constructor-parameters",
+    "quote": "a property the request leaves out keeps its default, which is `Absent`.",
+    "claim": "a property the request leaves out keeps its default, which is `Absent`.",
+    "oracle": "claim",
+    "surfaces": [
+      "PatchJsonConverterFactory.*",
+      "PatchState.*"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "C13-doc-optional-where-absent",
+    "source": "docs/merge-patches.md#required-constructor-parameters",
+    "quote": "`AddTypeKit()` leaves a patch out of `required` where the serializer lets it be absent, and keeps it there where the options reject a body without it.",
+    "claim": "`AddTypeKit()` leaves a patch out of `required` where the serializer lets it be absent, and keeps it there where the options reject a body without it.",
+    "oracle": "claim",
+    "surfaces": [
+      "PatchJsonConverterFactory.*",
+      "PatchState.*"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "C13-doc-required-where-rejected",
+    "source": "docs/merge-patches.md#required-constructor-parameters",
+    "quote": "So the document never calls a field optional when the endpoint rejects a request without it.",
+    "claim": "So the document never calls a field optional when the endpoint rejects a request without it.",
+    "oracle": "claim",
+    "surfaces": [
+      "PatchJsonConverterFactory.*",
+      "PatchState.*"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "C14-application-json-declared",
+    "source": "CHANGELOG.md",
+    "quote": "OpenAPI: a problem response an endpoint declares as `application/json`, such as `Produces<ProblemDetails>(404)` or `[ProducesResponseType<ProblemDetails>(404)]`, describes `fault` and `rule` and names its problem types, and keeps its media type",
+    "claim": "OpenAPI: a problem response an endpoint declares as `application/json`, such as `Produces<ProblemDetails>(404)` or `[ProducesResponseType<ProblemDetails>(404)]`, describes `fault` and `rule` and names its problem types, and keeps its media type",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultProblem.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "FaultResponseTests"
+    ]
+  },
+  {
+    "id": "C14-ascending-with-declared",
+    "source": "CHANGELOG.md",
+    "quote": "OpenAPI: an operation with fault responses lists every status ascending, the ones its endpoint declares itself among them",
+    "claim": "OpenAPI: an operation with fault responses lists every status ascending, the ones its endpoint declares itself among them",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultProblem.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "FaultResponseTests"
+    ]
+  },
+  {
+    "id": "C14-declared-describes-fault",
+    "source": "CHANGELOG.md",
+    "quote": "OpenAPI: a problem response an endpoint declares itself (`ProducesProblem`, `[ProducesResponseType]`) describes `fault`, and names its problem types.",
+    "claim": "OpenAPI: a problem response an endpoint declares itself (`ProducesProblem`, `[ProducesResponseType]`) describes `fault`, and names its problem types.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultProblem.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "FaultResponseTests"
+    ]
+  },
+  {
+    "id": "C15-builder-reaches-doc",
+    "source": "CHANGELOG.md",
+    "quote": "OpenAPI: a `WithFaultStatus` on the builder `MapControllers()` returns reaches the document, as it reached the response.",
+    "claim": "OpenAPI: a `WithFaultStatus` on the builder `MapControllers()` returns reaches the document, as it reached the response.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultStatusAttribute.*",
+      "TypeKitFaultStatusEndpointConventionBuilderExtensions.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C15-status-per-scope",
+    "source": "CHANGELOG.md",
+    "quote": "`WithFaultStatus`/`[FaultStatus<T>]` per endpoint, group or controller",
+    "claim": "`WithFaultStatus`/`[FaultStatus<T>]` per endpoint, group or controller",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultStatusAttribute.*",
+      "TypeKitFaultStatusEndpointConventionBuilderExtensions.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C15-without-faults-leaves-doc",
+    "source": "CHANGELOG.md",
+    "quote": "**`WithoutFaults`** and `[WithoutFaults<T>]`: a route leaves out of its document the members it never answers with, and reporting one throws",
+    "claim": "**`WithoutFaults`** and `[WithoutFaults<T>]`: a route leaves out of its document the members it never answers with, and reporting one throws",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultStatusAttribute.*",
+      "TypeKitFaultStatusEndpointConventionBuilderExtensions.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C16-differing-refused",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+    "quote": "Otherwise building the document fails rather than describe JSON the controllers don't write.",
+    "claim": "Otherwise building the document fails rather than describe JSON the controllers don't write.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C16-error-names-type-and-descriptions",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+    "quote": "The error names the type and what each set of options says of it, also for a type held only inside a patch.",
+    "claim": "The error names the type and what each set of options says of it, also for a type held only inside a patch.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C16-same-converters-build",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+    "quote": "A host with controllers registers the same converters and descriptions on both, in the same order.",
+    "claim": "A host with controllers registers the same converters and descriptions on both, in the same order.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C17-a-cast-naming-no-member",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014",
+    "quote": "A `FaultKind` or a `ConstructorAccessibility` that names no member: a cast",
+    "claim": "A `FaultKind` or a `ConstructorAccessibility` that names no member: a cast",
+    "oracle": "exception",
+    "surfaces": [
+      "FaultKind.*",
+      "ConstructorAccessibility.*",
+      "RequireParameterlessConstructorAttribute.*"
+    ],
+    "heldBy": [
+      "UndefinedEnumValueAnalyzerTests"
+    ]
+  },
+  {
+    "id": "C17-a-member-is-silent",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014",
+    "quote": "public static readonly ImportFault Duplicate = new(FaultKind.Conflict);",
+    "claim": "public static readonly ImportFault Duplicate = new(FaultKind.Conflict);",
+    "oracle": "exception",
+    "surfaces": [
+      "FaultKind.*",
+      "ConstructorAccessibility.*",
+      "RequireParameterlessConstructorAttribute.*"
+    ],
+    "heldBy": [
+      "UndefinedEnumValueAnalyzerTests"
+    ]
+  },
+  {
+    "id": "C17-constructor-accessibility-too",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014",
+    "quote": "[RequireParameterlessConstructor((ConstructorAccessibility)7)] // CMTK0014: no member, read as public",
+    "claim": "[RequireParameterlessConstructor((ConstructorAccessibility)7)] // CMTK0014: no member, read as public",
+    "oracle": "exception",
+    "surfaces": [
+      "FaultKind.*",
+      "ConstructorAccessibility.*",
+      "RequireParameterlessConstructorAttribute.*"
+    ],
+    "heldBy": [
+      "UndefinedEnumValueAnalyzerTests"
+    ]
+  },
+  {
+    "id": "C17-default-and-zero",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014",
+    "quote": "`default(FaultKind)`, a zero",
+    "claim": "`default(FaultKind)`, a zero",
+    "oracle": "exception",
+    "surfaces": [
+      "FaultKind.*",
+      "ConstructorAccessibility.*",
+      "RequireParameterlessConstructorAttribute.*"
+    ],
+    "heldBy": [
+      "UndefinedEnumValueAnalyzerTests"
+    ]
+  },
+  {
+    "id": "C17-reported-where-written",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0014",
+    "quote": "Both are reported where the value is written:",
+    "claim": "Both are reported where the value is written:",
+    "oracle": "exception",
+    "surfaces": [
+      "FaultKind.*",
+      "ConstructorAccessibility.*",
+      "RequireParameterlessConstructorAttribute.*"
+    ],
+    "heldBy": [
+      "UndefinedEnumValueAnalyzerTests"
+    ]
+  },
+  {
+    "id": "C18-a-warning-and-generated",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "A warning, and the value object is generated.",
+    "claim": "A warning, and the value object is generated.",
+    "oracle": "exception",
+    "surfaces": [
+      "IValueObject.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C18-generated-equality-never-calls-the-base",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "Over a base record, the generated `Equals(TSelf)` and `GetHashCode()` compare the underlying value alone, and never call the base's.",
+    "claim": "Over a base record, the generated `Equals(TSelf)` and `GetHashCode()` compare the underlying value alone, and never call the base's.",
+    "oracle": "exception",
+    "surfaces": [
+      "IValueObject.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C18-names-each-base-member",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "So a hand-written `Equals(TBase)`, `GetHashCode()` or `IEquatable<TBase>.Equals` on a base record isn't used, and a warning names it (CMTK1023).",
+    "claim": "So a hand-written `Equals(TBase)`, `GetHashCode()` or `IEquatable<TBase>.Equals` on a base record isn't used, and a warning names it (CMTK1023).",
+    "oracle": "exception",
+    "surfaces": [
+      "IValueObject.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C19-a-pair-once-at-the-later-argument",
+    "source": "docs/type-constraints.md#the-kind-of-a-type-argument",
+    "quote": "A breach is reported once, at the later argument.",
+    "claim": "A breach is reported once, at the later argument.",
+    "oracle": "exception",
+    "surfaces": [
+      "InterfaceAttribute.*",
+      "UnsealedAttribute.*",
+      "ValueObjectAttribute.*",
+      "FlagsEnumAttribute.*",
+      "ReadOnlyStructAttribute.*",
+      "SealedAttribute.*",
+      "RecordAttribute.*",
+      "UnrelatedAttribute.*"
+    ],
+    "heldBy": [
+      "TypeArgumentConstraintKindTests"
+    ]
+  },
+  {
+    "id": "C19-flags-enum-and-read-only-struct",
+    "source": "docs/type-constraints.md#the-kind-of-a-type-argument",
+    "quote": "**`[FlagsEnum]` and `[ReadOnlyStruct]`** narrow what `where T : Enum` and `where T : struct` admit.",
+    "claim": "**`[FlagsEnum]` and `[ReadOnlyStruct]`** narrow what `where T : Enum` and `where T : struct` admit.",
+    "oracle": "exception",
+    "surfaces": [
+      "InterfaceAttribute.*",
+      "UnsealedAttribute.*",
+      "ValueObjectAttribute.*",
+      "FlagsEnumAttribute.*",
+      "ReadOnlyStructAttribute.*",
+      "SealedAttribute.*",
+      "RecordAttribute.*",
+      "UnrelatedAttribute.*"
+    ],
+    "heldBy": [
+      "TypeArgumentConstraintKindTests"
+    ]
+  },
+  {
+    "id": "C19-interface-and-unsealed",
+    "source": "docs/type-constraints.md#the-kind-of-a-type-argument",
+    "quote": "**`[Interface]` and `[Unsealed]`** are what a proxy needs: a contract to implement, or a class to derive from.",
+    "claim": "**`[Interface]` and `[Unsealed]`** are what a proxy needs: a contract to implement, or a class to derive from.",
+    "oracle": "exception",
+    "surfaces": [
+      "InterfaceAttribute.*",
+      "UnsealedAttribute.*",
+      "ValueObjectAttribute.*",
+      "FlagsEnumAttribute.*",
+      "ReadOnlyStructAttribute.*",
+      "SealedAttribute.*",
+      "RecordAttribute.*",
+      "UnrelatedAttribute.*"
+    ],
+    "heldBy": [
+      "TypeArgumentConstraintKindTests"
+    ]
+  },
+  {
+    "id": "C19-methods-the-compiler-calls",
+    "source": "docs/type-constraints.md#the-kind-of-a-type-argument",
+    "quote": "**Methods the compiler calls for you:** a `foreach`'s `GetEnumerator`, an `await`'s `GetAwaiter`, a `Deconstruct` (in `var (a, b) = x`, a `foreach`, or a pattern like `x is (1, 2)`), and a collection expression's `Add` or builder method.",
+    "claim": "**Methods the compiler calls for you:** a `foreach`'s `GetEnumerator`, an `await`'s `GetAwaiter`, a `Deconstruct` (in `var (a, b) = x`, a `foreach`, or a pattern like `x is (1, 2)`), and a collection expression's `Add` or builder method.",
+    "oracle": "exception",
+    "surfaces": [
+      "InterfaceAttribute.*",
+      "UnsealedAttribute.*",
+      "ValueObjectAttribute.*",
+      "FlagsEnumAttribute.*",
+      "ReadOnlyStructAttribute.*",
+      "SealedAttribute.*",
+      "RecordAttribute.*",
+      "UnrelatedAttribute.*"
+    ],
+    "heldBy": [
+      "TypeArgumentConstraintKindTests"
+    ]
+  },
+  {
+    "id": "C19-value-object-and-closed-set",
+    "source": "docs/type-constraints.md#the-kind-of-a-type-argument",
+    "quote": "**`[ValueObject]` and `[ClosedSet]`** accept their marker interface with any type argument.",
+    "claim": "**`[ValueObject]` and `[ClosedSet]`** accept their marker interface with any type argument.",
+    "oracle": "exception",
+    "surfaces": [
+      "InterfaceAttribute.*",
+      "UnsealedAttribute.*",
+      "ValueObjectAttribute.*",
+      "FlagsEnumAttribute.*",
+      "ReadOnlyStructAttribute.*",
+      "SealedAttribute.*",
+      "RecordAttribute.*",
+      "UnrelatedAttribute.*"
+    ],
+    "heldBy": [
+      "TypeArgumentConstraintKindTests"
+    ]
+  },
+  {
+    "id": "C20-a-failure-says-the-outcome",
+    "source": "src/CodoMetis.TypeKit.Testing/README.md",
+    "quote": "**A failure says what the outcome was**",
+    "claim": "**A failure says what the outcome was**",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultAssertionTests"
+    ]
+  },
+  {
+    "id": "C20-fails-unless-it-holds-that-reason",
+    "source": "src/CodoMetis.TypeKit.Testing/README.md",
+    "quote": "`ShouldHold(reason)` fails unless the fault holds that reason, whichever of its types the reason belongs to.",
+    "claim": "`ShouldHold(reason)` fails unless the fault holds that reason, whichever of its types the reason belongs to.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultAssertionTests"
+    ]
+  },
+  {
+    "id": "C20-hands-back-detail-and-rule",
+    "source": "src/CodoMetis.TypeKit.Testing/README.md",
+    "quote": "It hands back the `Fault<TFault>` with its detail and rule intact.",
+    "claim": "It hands back the `Fault<TFault>` with its detail and rule intact.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultAssertionTests"
+    ]
+  },
+  {
+    "id": "C20-uninitialized-fails",
+    "source": "src/CodoMetis.TypeKit.Testing/README.md",
+    "quote": "**An uninitialized result fails every assertion.**",
+    "claim": "**An uninitialized result fails every assertion.**",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultAssertionTests"
+    ]
+  },
+  {
+    "id": "C20-whichever-of-its-types",
+    "source": "src/CodoMetis.TypeKit.Testing/README.md",
+    "quote": "whichever of its types the reason belongs to",
+    "claim": "whichever of its types the reason belongs to",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "ComposedFaultAssertionTests"
+    ]
+  },
+  {
+    "id": "C21-nullable-admits-null-as-the-wrapped-does",
+    "source": "README.md#what-you-get",
+    "quote": "Its OpenAPI schema is the one ASP.NET Core publishes for the underlying type.",
+    "claim": "Its OpenAPI schema is the one ASP.NET Core publishes for the underlying type.",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedJsonPlan.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C21-the-underlying-types-schema",
+    "source": "README.md#what-you-get",
+    "quote": "The JSON, the database column and the OpenAPI schema are the same as the underlying type's.",
+    "claim": "The JSON, the database column and the OpenAPI schema are the same as the underlying type's.",
+    "oracle": "differential",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit",
+      "GeneratedJsonPlan.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "C22-abstract",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "An abstract type with a value-object marker. It would get no member, and a value held as it, of a type derived from it, would have no `Value` and be written as `{}`.",
+    "claim": "An abstract type with a value-object marker. It would get no member, and a value held as it, of a type derived from it, would have no `Value` and be written as `{}`.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-closed-set-named-as-generated-member",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "a set itself named as one of them (a member can't have the name of its type)",
+    "claim": "a set itself named as one of them (a member can't have the name of its type)",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-equality-operator",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "So a hand-written `Equals(TSelf)`, `GetHashCode()`, `IEquatable<TSelf>.Equals`, or `operator ==` or `!=` between two of the type, fails the build (CMTK1011).",
+    "claim": "So a hand-written `Equals(TSelf)`, `GetHashCode()`, `IEquatable<TSelf>.Equals`, or `operator ==` or `!=` between two of the type, fails the build (CMTK1011).",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-every-error-links-the-table",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "Every error ends with a link to this table.",
+    "claim": "Every error ends with a link to this table.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-generic-wrapped",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "A generic underlying type, a tuple included, fails the build (CMTK1005).",
+    "claim": "A generic underlying type, a tuple included, fails the build (CMTK1005).",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-named-as-generated-member",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "named `Value` or as another member the generators add (`From`, `TryFrom`, `FromKnownGood`, `Revalidate`, `Parse`, `TryParse`, `TryFormat`, `MinValue`, `MaxValue`, `CompareTo`)",
+    "claim": "named `Value` or as another member the generators add (`From`, `TryFrom`, `FromKnownGood`, `Revalidate`, `Parse`, `TryParse`, `TryFormat`, `MinValue`, `MaxValue`, `CompareTo`)",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-no-type-half-generated",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "A declaration that can't be generated fails the build, so no type is left half-generated.",
+    "claim": "A declaration that can't be generated fails the build, so no type is left half-generated.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-over-object",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "or wrapping `object`, `System.Enum`, an array, a pointer, a nullable type, a generic type (a tuple included) or a value object (itself included).",
+    "claim": "or wrapping `object`, `System.Enum`, an array, a pointer, a nullable type, a generic type (a tuple included) or a value object (itself included).",
+    "oracle": "exception",
+    "surfaces": [
+      "IClosedSet.*",
+      "IPlainValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-over-value-object",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "or a value object (itself included). Wrap what the other value object wraps instead.",
+    "claim": "or a value object (itself included). Wrap what the other value object wraps instead.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-unsealed-record-class",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "A record class not declared `sealed`.",
+    "claim": "A record class not declared `sealed`.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C23-withheld-host-sees",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-a-client-must-not-tell-apart",
+    "quote": "**Your host still sees the fault.** `IFaultFeature` carries its name, and `NameWithheld` says the mapping keeps it from the client",
+    "claim": "**Your host still sees the fault.** `IFaultFeature` carries its name, and `NameWithheld` says the mapping keeps it from the client",
+    "oracle": "claim",
+    "surfaces": [
+      "IFaultFeature.*"
+    ],
+    "heldBy": [
+      "WithheldFaultNameTests"
+    ]
+  },
+  {
+    "id": "C23-withheld-says-nothing",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#faults-a-client-must-not-tell-apart",
+    "quote": "**The problem says nothing of the member**: no `fault`, no `rule`, and no fault set member's description as its `detail`.",
+    "claim": "**The problem says nothing of the member**: no `fault`, no `rule`, and no fault set member's description as its `detail`.",
+    "oracle": "claim",
+    "surfaces": [
+      "FaultResponse.*"
+    ],
+    "heldBy": [
+      "WithheldFaultNameTests"
+    ]
+  },
+  {
+    "id": "C24-content-comes-back",
+    "source": "src/CodoMetis.TypeKit.Testing/README.md",
+    "quote": "**The content comes back.** `ShouldBeSome()`, `ShouldBeSuccess()`, `ShouldBeError()` and `ShouldBeValue()` return the value or the error.",
+    "claim": "**The content comes back.** `ShouldBeSome()`, `ShouldBeSuccess()`, `ShouldBeError()` and `ShouldBeValue()` return the value or the error.",
+    "oracle": "claim",
+    "surfaces": [
+      "OptionAssertions.*",
+      "ResultAssertions.*",
+      "PatchAssertions.*"
+    ],
+    "heldBy": [
+      "AssertionTests",
+      "PatchAssertionTests"
+    ]
+  },
+  {
+    "id": "C25-add-create-accepts-every-value",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#declare-a-value-object",
+    "quote": "It writes a `Create` that accepts every value, ready for your rules:",
+    "claim": "It writes a `Create` that accepts every value, ready for your rules:",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests",
+      "AddCreateTests"
+    ]
+  },
+  {
+    "id": "C25-add-create-offered",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#declare-a-value-object",
+    "quote": "The build then fails because `Create` is missing (CS0535), and your editor offers a fix for that error: **Add Create**.",
+    "claim": "The build then fails because `Create` is missing (CS0535), and your editor offers a fix for that error: **Add Create**.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests"
+    ]
+  },
+  {
+    "id": "C25-create-taking-t",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#add-create",
+    "quote": "**The type already has a `Create` that takes a `T`**, static or not.",
+    "claim": "**The type already has a `Create` that takes a `T`**, static or not.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests"
+    ]
+  },
+  {
+    "id": "C25-first-member",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#add-create",
+    "quote": "`Create` goes in as the type's first member, indented as the other members are.",
+    "claim": "`Create` goes in as the type's first member, indented as the other members are.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests"
+    ]
+  },
+  {
+    "id": "C25-one-line-body",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#add-create",
+    "quote": "**The type's body is on one line and already holds members.**",
+    "claim": "**The type's body is on one line and already holds members.**",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests"
+    ]
+  },
+  {
+    "id": "C25-semicolon-gets-a-body",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#add-create",
+    "quote": "A declaration that ends in `;` gets a body.",
+    "claim": "A declaration that ends in `;` gets a body.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests",
+      "MissingCreateVariantTests"
+    ]
+  },
+  {
+    "id": "C25-tself-another-type",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#add-create",
+    "quote": "**`TSelf` is another type.** The value to return isn't this type's to build.",
+    "claim": "**`TSelf` is another type.** The value to return isn't this type's to build.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests"
+    ]
+  },
+  {
+    "id": "C25-types-spelled-as-the-file-names-them",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#add-create",
+    "quote": "The types are spelled as your file names them, so a type from a namespace the file doesn't import is qualified.",
+    "claim": "The types are spelled as your file names them, so a type from a namespace the file doesn't import is qualified.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "MissingCreateCodeFixTests",
+      "MissingCreateVariantTests"
+    ]
+  },
+  {
+    "id": "C26-sized-array-warns",
+    "source": "README.md#value-objects",
+    "quote": "An array created with a length, whose slots all start out as `default`, gets a warning (CMTK0005).",
+    "claim": "An array created with a length, whose slots all start out as `default`, gets a warning (CMTK0005).",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "DefaultFilledCollectionAnalyzerTests"
+    ]
+  },
+  {
+    "id": "C26-struct-default-fails-the-build",
+    "source": "README.md#value-objects",
+    "quote": "So the analyzers make `new OrderId()` and `default(OrderId)` build errors (CMTK0001).",
+    "claim": "So the analyzers make `new OrderId()` and `default(OrderId)` build errors (CMTK0001).",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "ForbiddenDefaultInitializationAnalyzerTests"
+    ]
+  },
+  {
+    "id": "C27-inline-every-position",
+    "source": "docs/aspnet-core.md#describe-value-objects-as-plain-types",
+    "quote": "Each one gets exactly the schema the underlying type gets in that place.",
+    "claim": "Each one gets exactly the schema the underlying type gets in that place.",
+    "oracle": "differential",
+    "surfaces": [
+      "TypeKitOpenApiOptions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "SchemaTests",
+      "NullablePositionTests"
+    ]
+  },
+  {
+    "id": "C27-inline-no-component",
+    "source": "docs/aspnet-core.md#describe-value-objects-as-plain-types",
+    "quote": "Turn on `InlineValueObjects`, and every value object is described in place by the schema of the type inside it:",
+    "claim": "Turn on `InlineValueObjects`, and every value object is described in place by the schema of the type inside it:",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "InlineValueObjectsSettingTests",
+      "AspNetCoreTests"
+    ]
+  },
+  {
+    "id": "C27-inline-nullable-in-2-0",
+    "source": "docs/aspnet-core.md#describe-value-objects-as-plain-types",
+    "quote": "That holds under OpenAPI 2.0 too, where a nullable property of a component loses its type.",
+    "claim": "That holds under OpenAPI 2.0 too, where a nullable property of a component loses its type.",
+    "oracle": "differential",
+    "surfaces": [
+      "TypeKitOpenApiOptions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "SchemaTests",
+      "NullablePositionTests"
+    ]
+  },
+  {
+    "id": "C27-inline-off-unchanged",
+    "source": "docs/aspnet-core.md#describe-value-objects-as-plain-types",
+    "quote": "`AddTypeKit()` writes the same document as before, with a component per value object.",
+    "claim": "`AddTypeKit()` writes the same document as before, with a component per value object.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "InlineValueObjectsSettingTests"
+    ]
+  },
+  {
+    "id": "C27-inline-same-name",
+    "source": "docs/aspnet-core.md#describe-value-objects-as-plain-types",
+    "quote": "Neither has a component, so neither needs a name of its own.",
+    "claim": "Neither has a component, so neither needs a name of its own.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "InlineValueObjectsSettingTests"
+    ]
+  },
+  {
+    "id": "E01-column-type",
+    "source": "docs/ef-core.md#the-model",
+    "quote": "Every property maps as a column of the underlying type, nullable where the property is.",
+    "claim": "Every property maps as a column of the underlying type, nullable where the property is.",
+    "oracle": "differential",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit",
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "MappingTests"
+    ]
+  },
+  {
+    "id": "E01-facet-kept",
+    "source": "docs/ef-core.md#the-model",
+    "quote": "A facet you configure on it is kept: a precision, a length, a column type.",
+    "claim": "A facet you configure on it is kept: a precision, a length, a column type.",
+    "oracle": "differential",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit",
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "MappingTests"
+    ]
+  },
+  {
+    "id": "E01-nullable",
+    "source": "docs/ef-core.md#the-model",
+    "quote": "nullable where the property is",
+    "claim": "nullable where the property is",
+    "oracle": "differential",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit",
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "MappingTests"
+    ]
+  },
+  {
+    "id": "E02-column-not-cast",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "A table's column is re-typed, not cast, so an index on it still serves the query.",
+    "claim": "A table's column is re-typed, not cast, so an index on it still serves the query.",
+    "oracle": "differential",
+    "surfaces": [
+      "TranslatedAsWrappedValueAttribute.*",
+      "IValueObject.Value"
+    ],
+    "heldBy": [
+      "SqlTranslationTests"
+    ]
+  },
+  {
+    "id": "E02-get-value",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "db.Orders.Where(o => o.Total.GetValue() > 100m);",
+    "claim": "db.Orders.Where(o => o.Total.GetValue() > 100m);",
+    "oracle": "differential",
+    "surfaces": [
+      "TranslatedAsWrappedValueAttribute.*",
+      "IValueObject.Value"
+    ],
+    "heldBy": [
+      "SqlTranslationTests"
+    ]
+  },
+  {
+    "id": "E02-value",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "`.Value`, `GetValue()` and `ValueOrNull()` translate to the column itself.",
+    "claim": "`.Value`, `GetValue()` and `ValueOrNull()` translate to the column itself.",
+    "oracle": "differential",
+    "surfaces": [
+      "TranslatedAsWrappedValueAttribute.*",
+      "IValueObject.Value"
+    ],
+    "heldBy": [
+      "SqlTranslationTests"
+    ]
+  },
+  {
+    "id": "E02-value-or-null",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "Use `ValueOrNull()` for an optional value object, where `.Value` would first unwrap the `Nullable`.",
+    "claim": "Use `ValueOrNull()` for an optional value object, where `.Value` would first unwrap the `Nullable`.",
+    "oracle": "differential",
+    "surfaces": [
+      "TranslatedAsWrappedValueAttribute.*",
+      "IValueObject.Value"
+    ],
+    "heldBy": [
+      "SqlTranslationTests"
+    ]
+  },
+  {
+    "id": "E03-keys",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#what-maps",
+    "quote": "Keys, foreign keys, nullable properties, primitive collections and query parameters all map as plain columns of the underlying type.",
+    "claim": "Keys, foreign keys, nullable properties, primitive collections and query parameters all map as plain columns of the underlying type.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "PostgreSqlRoundTripTests"
+    ]
+  },
+  {
+    "id": "E03-stored-as-underlying",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#what-maps",
+    "quote": "Every value object is stored in a plain column of its underlying type",
+    "claim": "Every value object is stored in a plain column of its underlying type",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "PostgreSqlRoundTripTests"
+    ]
+  },
+  {
+    "id": "E04-byte-not-generated",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "That's EF's own list: `int`, `long`, `short`, `sbyte`, `uint`, `ulong` and `ushort`, and not `byte`.",
+    "claim": "That's EF's own list: `int`, `long`, `short`, `sbyte`, `uint`, `ulong` and `ushort`, and not `byte`.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E04-char-key-yours",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "A key over `char` is yours to assign.",
+    "claim": "A key over `char` is yours to assign.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E04-generated-on-add",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "A single-column key over an integer is generated on add, like a key of that integer type.",
+    "claim": "A single-column key over an integer is generated on add, like a key of that integer type.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E04-guid-key-yours",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "A key over a `Guid` is yours to assign",
+    "claim": "A key over a `Guid` is yours to assign",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E04-hilo-and-own-generator-first",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "HiLo and a value generator of your own still come first.",
+    "claim": "HiLo and a value generator of your own still come first.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E04-own-configuration-wins",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "A configuration you write yourself always wins over these defaults.",
+    "claim": "A configuration you write yourself always wins over these defaults.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E04-temporary-as-plain",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "At `Add`, a key that is generated gets the same temporary value a plain key of the underlying type gets, also where the column is of another type, such as the `decimal` that holds a `ulong`.",
+    "claim": "At `Add`, a key that is generated gets the same temporary value a plain key of the underlying type gets, also where the column is of another type, such as the `decimal` that holds a `ulong`.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests",
+      "KeyGenerationVariantTests"
+    ]
+  },
+  {
+    "id": "E04-ulong-key-native-aot",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "Otherwise the key gets a temporary `ulong`, as a plain one does.",
+    "claim": "A default key over `ulong` throws at `Add` where the column is a `decimal` in a compiled model made with `--nativeaot` and where `ValueObjectConverter` is configured by hand; otherwise it gets a temporary `ulong`, as a plain one does.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E05-comparison",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "a comparison (`<`, `>`, `<=`, `>=`, `CompareTo`);",
+    "claim": "a comparison (`<`, `>`, `<=`, `>=`, `CompareTo`);",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests"
+    ]
+  },
+  {
+    "id": "E05-equality-allowed",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "Equality isn't ordering, and stays allowed.",
+    "claim": "Equality isn't ordering, and stays allowed.",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests"
+    ]
+  },
+  {
+    "id": "E05-ordering",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "an ordering (`OrderBy`, `ThenBy`, their descending forms, `Order`);",
+    "claim": "an ordering (`OrderBy`, `ThenBy`, their descending forms, `Order`);",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests"
+    ]
+  },
+  {
+    "id": "E05-query-filter",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "A query filter (`HasQueryFilter`, named or not) that does the same fails when the model is built, naming the entity type, since it applies to every query of that type.",
+    "claim": "A query filter (`HasQueryFilter`, named or not) that does the same fails when the model is built, naming the entity type, since it applies to every query of that type.",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests"
+    ]
+  },
+  {
+    "id": "E05-value-order-allowed",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "Compare or order by `.Value` where the underlying value's order is what you mean",
+    "claim": "Compare or order by `.Value` where the underlying value's order is what you mean",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests"
+    ]
+  },
+  {
+    "id": "E06-value-not-translated",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "So a filter, a sort, a grouping or an aggregate that reads `.Value` there fails with EF's \"could not be translated\", rather than comparing against what the column really holds.",
+    "claim": "So a filter, a sort, a grouping or an aggregate that reads `.Value` there fails with EF's \"could not be translated\", rather than comparing against what the column really holds.",
+    "oracle": "exception",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "ForeignConverterTests"
+    ]
+  },
+  {
+    "id": "E06-value-object-comparison",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "Comparing the value object itself (`o.Code == code`) goes through that converter and still works.",
+    "claim": "Comparing the value object itself (`o.Code == code`) goes through that converter and still works.",
+    "oracle": "exception",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "ForeignConverterTests"
+    ]
+  },
+  {
+    "id": "E07-in-collections-and-json",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#closed-sets",
+    "quote": "That holds in a table, in a primitive collection of names (`text[]` on PostgreSQL, a JSON array elsewhere) and in a JSON column alike, with nothing registered per set.",
+    "claim": "That holds in a table, in a primitive collection of names (`text[]` on PostgreSQL, a JSON array elsewhere) and in a JSON column alike, with nothing registered per set.",
+    "oracle": "claim",
+    "surfaces": [
+      "ClosedSetConverter.*"
+    ],
+    "heldBy": [
+      "ClosedSetMappingTests"
+    ]
+  },
+  {
+    "id": "E07-non-member-throws",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#closed-sets",
+    "quote": "An instance that isn't a member throws when it's written.",
+    "claim": "An instance that isn't a member throws when it's written.",
+    "oracle": "claim",
+    "surfaces": [
+      "ClosedSetConverter.*"
+    ],
+    "heldBy": [
+      "ClosedSetMappingTests"
+    ]
+  },
+  {
+    "id": "E07-stored-as-name",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#closed-sets",
+    "quote": "A closed set (`IClosedSet<TSelf>`) is stored as a text column of the member's name, and read back as the member itself.",
+    "claim": "A closed set (`IClosedSet<TSelf>`) is stored as a text column of the member's name, and read back as the member itself.",
+    "oracle": "claim",
+    "surfaces": [
+      "ClosedSetConverter.*"
+    ],
+    "heldBy": [
+      "ClosedSetMappingTests"
+    ]
+  },
+  {
+    "id": "E07-unknown-name-throws",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#closed-sets",
+    "quote": "A name the set no longer has throws when it's read, rather than reading as null.",
+    "claim": "A name the set no longer has throws when it's read, rather than reading as null.",
+    "oracle": "claim",
+    "surfaces": [
+      "ClosedSetConverter.*"
+    ],
+    "heldBy": [
+      "ClosedSetMappingTests"
+    ]
+  },
+  {
+    "id": "E08-error-says-so",
+    "source": "docs/ef-core.md#option-and-result",
+    "quote": "building the model fails with an error that says so",
+    "claim": "building the model fails with an error that says so",
+    "oracle": "exception",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E08-model-fails",
+    "source": "docs/ef-core.md#option-and-result",
+    "quote": "EF can't map an `Option` or a `Result` property",
+    "claim": "EF can't map an `Option` or a `Result` property",
+    "oracle": "exception",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E09-element-at-skips",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found",
+    "quote": "skips to its row: `OFFSET @p`.",
+    "claim": "skips to its row: `OFFSET @p`.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitQueryableExtensions.*",
+      "Option.FirstOrNone",
+      "Option.SingleOrNone"
+    ],
+    "heldBy": [
+      "QueryOptionTests"
+    ]
+  },
+  {
+    "id": "E09-first-reads-one-row",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found",
+    "quote": "read one row: `WHERE ... LIMIT @p`.",
+    "claim": "read one row: `WHERE ... LIMIT @p`.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitQueryableExtensions.*",
+      "Option.FirstOrNone",
+      "Option.SingleOrNone"
+    ],
+    "heldBy": [
+      "QueryOptionTests"
+    ]
+  },
+  {
+    "id": "E09-single-asks-for-two",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found",
+    "quote": "ask for two rows, and throw for more than one.",
+    "claim": "ask for two rows, and throw for more than one.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitQueryableExtensions.*",
+      "Option.FirstOrNone",
+      "Option.SingleOrNone"
+    ],
+    "heldBy": [
+      "QueryOptionTests"
+    ]
+  },
+  {
+    "id": "E10-reads-without-create",
+    "source": "docs/ef-core.md#reading-back-without-validation",
+    "quote": "EF reads a column back without validation, through the value object's `Materialize` rather than `Create`.",
+    "claim": "EF reads a column back without validation, through the value object's `Materialize` rather than `Create`.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObjectMaterializer.*",
+      "ValueObjectConverter.Materialize"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E10-revalidate-finds",
+    "source": "docs/ef-core.md#reading-back-without-validation",
+    "quote": "`Revalidate()` finds the rows that today's rules reject, as above.",
+    "claim": "`Revalidate()` finds the rows that today's rules reject, as above.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObjectMaterializer.*",
+      "ValueObjectConverter.Materialize"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E11-order-does-not-matter",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#setup",
+    "quote": "it doesn't matter whether you call it before or after `UseNpgsql` or `UseSqlite`",
+    "claim": "it doesn't matter whether you call it before or after `UseNpgsql` or `UseSqlite`",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E12-underlying-type-does-not-reach",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#model-wide-conventions-follow-the-propertys-type",
+    "quote": "So `configurationBuilder.Properties<decimal>().HavePrecision(18, 2)` reaches `decimal` properties, and not an `Amount` that wraps one.",
+    "claim": "So `configurationBuilder.Properties<decimal>().HavePrecision(18, 2)` reaches `decimal` properties, and not an `Amount` that wraps one.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E12-value-object-type-reaches",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#model-wide-conventions-follow-the-propertys-type",
+    "quote": "Configure the value object instead: `configurationBuilder.Properties<Amount>().HavePrecision(18, 2)`.",
+    "claim": "Configure the value object instead: `configurationBuilder.Properties<Amount>().HavePrecision(18, 2)`.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E13-contains",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "db.Orders.Where(o => o.Tags.Contains(tag));",
+    "claim": "db.Orders.Where(o => o.Tags.Contains(tag));",
+    "oracle": "claim",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E13-element-value",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "db.Orders.Where(o => o.Tags.Any(t => t.Value == \"x\"));",
+    "claim": "db.Orders.Where(o => o.Tags.Any(t => t.Value == \"x\"));",
+    "oracle": "claim",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E14-tpc-assign-on-sqlite",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "SQLite has no such sequence, so there you assign it.",
+    "claim": "SQLite has no such sequence, so there you assign it.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E14-tph-tpt-root",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "The root of an inheritance hierarchy follows the same rules under TPH and TPT.",
+    "claim": "The root of an inheritance hierarchy follows the same rules under TPH and TPT.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E15-as-for-primitives",
+    "source": "docs/ef-core.md#keys",
+    "quote": "A composite key of value objects is `HasKey(x => new { x.Order, x.Line })`, as for primitives.",
+    "claim": "A composite key of value objects is `HasKey(x => new { x.Order, x.Line })`, as for primitives.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "E16-column-type",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#keys",
+    "quote": "A facet you configure on the property, such as a maximum length or a column type, is kept.",
+    "claim": "A facet you configure on the property, such as a maximum length or a column type, is kept.",
+    "oracle": "claim",
+    "surfaces": [
+      "WrappedTypeValueGeneratorFactory.*"
+    ],
+    "heldBy": [
+      "KeyGenerationTests"
+    ]
+  },
+  {
+    "id": "E17-as-the-underlying-type",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server",
+    "quote": "A value object behaves on SQL Server as the type inside it does there.",
+    "claim": "A value object behaves on SQL Server as the type inside it does there.",
+    "oracle": "differential",
+    "surfaces": [
+      "TranslatedAsWrappedValueAttribute.*",
+      "IValueObject.Value"
+    ],
+    "heldBy": [
+      "SqlServerQueryVariantTests",
+      "SqlServerKeyVariantTests",
+      "SqlServerRoundTripTests"
+    ]
+  },
+  {
+    "id": "E17-datetime-kind",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server",
+    "quote": "`datetime2` keeps every tick, and a UTC value reads back with `Kind` `Unspecified`.",
+    "claim": "`datetime2` keeps every tick, and a UTC value reads back with `Kind` `Unspecified`.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "SqlServerRoundTripTests"
+    ]
+  },
+  {
+    "id": "E17-decimal-scale",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server",
+    "quote": "`10m` comes back as `10.00m`, which is equal but prints `10.00`.",
+    "claim": "`10m` comes back as `10.00m`, which is equal but prints `10.00`.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "SqlServerRoundTripTests",
+      "SqlServerQueryVariantTests",
+      "SqlServerKeyVariantTests"
+    ]
+  },
+  {
+    "id": "E17-greatest-level-160",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server",
+    "quote": "`EF.Functions.Greatest` and `Least` need compatibility level 160.",
+    "claim": "`EF.Functions.Greatest` and `Least` need compatibility level 160.",
+    "oracle": "differential",
+    "surfaces": [
+      "TranslatedAsWrappedValueAttribute.*",
+      "IValueObject.Value"
+    ],
+    "heldBy": [
+      "SqlServerQueryVariantTests"
+    ]
+  },
+  {
+    "id": "E17-guid-order",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server",
+    "quote": "SQL Server orders a `uniqueidentifier` by its last six bytes first.",
+    "claim": "SQL Server orders a `uniqueidentifier` by its last six bytes first.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "SqlServerQueryVariantTests"
+    ]
+  },
+  {
+    "id": "E17-text-ignores-case",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server",
+    "quote": "Under SQL Server's default collation, `o.Note == note`, `notes.Contains(o.Note)` and `StartsWith` also match text that differs in case or in trailing spaces.",
+    "claim": "Under SQL Server's default collation, `o.Note == note`, `notes.Contains(o.Note)` and `StartsWith` also match text that differs in case or in trailing spaces.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "SqlServerRoundTripTests",
+      "SqlServerQueryVariantTests"
+    ]
+  },
+  {
+    "id": "E17-timespan-under-a-day",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#on-sql-server",
+    "quote": "A longer one fails `SaveChanges` in a column.",
+    "claim": "A longer one fails `SaveChanges` in a column.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "SqlServerQueryVariantTests"
+    ]
+  },
+  {
+    "id": "G01-a-version-7-guid",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#declare-a-value-object",
+    "quote": "var id = OrderId.New(); // a version 7 Guid",
+    "claim": "var id = OrderId.New(); // a version 7 Guid",
+    "oracle": "claim",
+    "surfaces": [
+      "GuidValueExtensions.New"
+    ],
+    "heldBy": [
+      "GuidValueExtensionsTests"
+    ]
+  },
+  {
+    "id": "H01-any-closed-set",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#a-closed-set-as-the-fault-type",
+    "quote": "**Any closed set can be an error type**, with a mapping of its own: `AddFaultResponses<TSet>(fault => ...)`. `ToHttpResult()` takes a result over either.",
+    "claim": "**Any closed set can be an error type**, with a mapping of its own: `AddFaultResponses<TSet>(fault => ...)`. `ToHttpResult()` takes a result over either.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitClosedSetHttpResultExtensions.ToHttpResult"
+    ],
+    "heldBy": [
+      "FaultSetDefaultTests",
+      "FaultResponsePartsTests"
+    ]
+  },
+  {
+    "id": "I01-mark-it",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0001",
+    "quote": "Mark it with `[RequireCustomInitialization]`, and CMTK0001, CMTK0005, CMTK0006 and CMTK0009 then treat it as they treat a value object.",
+    "claim": "Mark it with `[RequireCustomInitialization]`, and CMTK0001, CMTK0005, CMTK0006 and CMTK0009 then treat it as they treat a value object.",
+    "oracle": "claim",
+    "surfaces": [
+      "RequireCustomInitializationAttribute..ctor",
+      "RequireCustomInitializationAttribute.ErrorMessage"
+    ],
+    "heldBy": [
+      "ForbiddenDefaultInitializationAnalyzerTests",
+      "DefaultFilledCollectionAnalyzerTests",
+      "UnassignedNoDefaultMemberAnalyzerTests",
+      "DefaultProducingCallAnalyzerTests"
+    ]
+  },
+  {
+    "id": "I01-not-one-itself",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0001",
+    "quote": "Its `default` holds default value objects that no rule sees, because the rules don't look inside another struct.",
+    "claim": "Its `default` holds default value objects that no rule sees, because the rules don't look inside another struct.",
+    "oracle": "claim",
+    "surfaces": [
+      "RequireCustomInitializationAttribute..ctor",
+      "RequireCustomInitializationAttribute.ErrorMessage"
+    ],
+    "heldBy": [
+      "UnassignedNoDefaultMemberAnalyzerTests"
+    ]
+  },
+  {
+    "id": "I01-the-message-you-give",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0001",
+    "quote": "The rule reports the message you give, as `Option` and `Result` name their own factories.",
+    "claim": "The rule reports the message you give, as `Option` and `Result` name their own factories.",
+    "oracle": "claim",
+    "surfaces": [
+      "RequireCustomInitializationAttribute..ctor",
+      "RequireCustomInitializationAttribute.ErrorMessage"
+    ],
+    "heldBy": [
+      "ForbiddenDefaultInitializationAnalyzerTests"
+    ]
+  },
+  {
+    "id": "L01-read-as-the-underlying-type-reads",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "**Swapping a primitive for a value object keeps the JSON, the column and the schema.**",
+    "claim": "**Swapping a primitive for a value object keeps the JSON, the column and the schema.**",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedJson.*",
+      "GeneratedJsonPlan.*",
+      "StoredJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "JsonParityTests"
+    ]
+  },
+  {
+    "id": "L01-the-underlying-types-json",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "Its JSON is the underlying type's under your options",
+    "claim": "Its JSON is the underlying type's under your options",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedJson.*",
+      "GeneratedJsonPlan.*",
+      "StoredJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "JsonParityTests"
+    ]
+  },
+  {
+    "id": "L02-json-never-repeats",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "A JSON or parsing rejection names the value object and the rule, or the underlying type it could not read.",
+    "claim": "A JSON or parsing rejection names the value object and the rule, or the underlying type it could not read.",
+    "oracle": "exception",
+    "surfaces": [
+      "GeneratedParsing.*",
+      "GeneratedFactories.*"
+    ],
+    "heldBy": [
+      "UnreadableInputTests"
+    ]
+  },
+  {
+    "id": "L02-no-inner-that-quotes",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "It carries no inner exception that quotes the text.",
+    "claim": "It carries no inner exception that quotes the text.",
+    "oracle": "exception",
+    "surfaces": [
+      "GeneratedParsing.*",
+      "GeneratedFactories.*"
+    ],
+    "heldBy": [
+      "UnreadableInputTests"
+    ]
+  },
+  {
+    "id": "L02-parsing-never-repeats",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "**Rejections never repeat the input.**",
+    "claim": "**Rejections never repeat the input.**",
+    "oracle": "exception",
+    "surfaces": [
+      "GeneratedParsing.*",
+      "GeneratedFactories.*"
+    ],
+    "heldBy": [
+      "UnreadableInputTests"
+    ]
+  },
+  {
+    "id": "L03-refusals-name-the-fault",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "the `JsonException`, the `FormatException` and the `FromKnownGood` exception all name your `EmailFault.NoAt`",
+    "claim": "the `JsonException`, the `FormatException` and the `FromKnownGood` exception all name your `EmailFault.NoAt`",
+    "oracle": "claim",
+    "surfaces": [
+      "IValidatedValue.Create",
+      "GeneratedFactories.*"
+    ],
+    "heldBy": [
+      "EntryPointValidationTests"
+    ]
+  },
+  {
+    "id": "L03-tryfrom-runs-create",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "The generated `TryFrom`, `FromKnownGood`, JSON converter, parsing and type converter all run it",
+    "claim": "The generated `TryFrom`, `FromKnownGood`, JSON converter, parsing and type converter all run it",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedFactories.*",
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "EntryPointValidationTests"
+    ]
+  },
+  {
+    "id": "L04-invariant-whatever-the-culture",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#parsing-and-formatting",
+    "quote": "A null `IFormatProvider` means the invariant culture in every generated `Parse`, `TryParse`, `ToString` and `TryFormat`, so the text doesn't depend on the culture the process runs in.",
+    "claim": "A null `IFormatProvider` means the invariant culture in every generated `Parse`, `TryParse`, `ToString` and `TryFormat`, so the text doesn't depend on the culture the process runs in.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "GeneratedFormatting.*",
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "L04-json-refusal-is-a-json-exception",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#parsing-and-formatting",
+    "quote": "Input it can't read throws a `JsonException` naming the value object and the underlying type",
+    "claim": "Input it can't read throws a `JsonException` naming the value object and the underlying type",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "GeneratedFormatting.*",
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "L04-text-reads-back",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#parsing-and-formatting",
+    "quote": "That text reads back as the same value wherever the underlying type's own does",
+    "claim": "That text reads back as the same value wherever the underlying type's own does",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "GeneratedFormatting.*",
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "L04-the-type-converter-writes-the-same",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#parsing-and-formatting",
+    "quote": "`ToString()` is the underlying type's own default text under the invariant culture, and the type converter and `$\"{x}\"` write the same.",
+    "claim": "`ToString()` is the underlying type's own default text under the invariant culture, and the type converter and `$\"{x}\"` write the same.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "GeneratedFormatting.*",
+      "GeneratedParsing.*"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "L05-equality-is-the-underlying-values",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#equality",
+    "quote": "Equality is the underlying value's, like the ordering, the JSON and the column.",
+    "claim": "Equality is the underlying value's, like the ordering, the JSON and the column.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "IValueObject.op_Equality",
+      "IValueObject.op_Inequality"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "L05-ordering-follows-the-underlying-type",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#equality",
+    "quote": "`CompareTo` and the operators follow the underlying type's ordering, ordinal for a string.",
+    "claim": "`CompareTo` and the operators follow the underlying type's ordering, ordinal for a string.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "IValueObject.op_Equality",
+      "IValueObject.op_Inequality"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "L05-through-every-base",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#equality",
+    "quote": "The value object implements each base's `IEquatable<TBase>` again (`IReimplementedEquatable<TBase>`), so a collection of the base compares it the way the value object does.",
+    "claim": "The value object implements each base's `IEquatable<TBase>` again (`IReimplementedEquatable<TBase>`), so a collection of the base compares it the way the value object does.",
+    "oracle": "metamorphic",
+    "surfaces": [
+      "IValueObject.op_Equality",
+      "IValueObject.op_Inequality"
+    ],
+    "heldBy": []
+  },
+  {
+    "id": "L06-never-written",
+    "source": "README.md#what-typekit-guarantees",
+    "quote": "System.Text.Json throws `NotSupportedException` for either, in both directions, instead of writing `{}` that reads back as `None`.",
+    "claim": "System.Text.Json throws `NotSupportedException` for either, in both directions, instead of writing `{}` that reads back as `None`.",
+    "oracle": "exception",
+    "surfaces": [
+      "NotWireTypeJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "NotWireTypeTests"
+    ]
+  },
+  {
+    "id": "O01-default-is-none",
+    "source": "docs/option.md#option",
+    "quote": "An option that says it has a value always has one: `T` is `notnull`, `Option.Some(null)` throws, and a `default(Option<T>)` is `None`.",
+    "claim": "An option that says it has a value always has one: `T` is `notnull`, `Option.Some(null)` throws, and a `default(Option<T>)` is `None`.",
+    "oracle": "exception",
+    "surfaces": [
+      "Option.Some",
+      "Option..ctor",
+      "Option.IsSome"
+    ],
+    "heldBy": [
+      "OptionTests"
+    ]
+  },
+  {
+    "id": "O01-tostring-never-prints",
+    "source": "docs/option.md#option",
+    "quote": "`ToString()` never prints the content.",
+    "claim": "`ToString()` never prints the content.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.ToString"
+    ],
+    "heldBy": [
+      "TextRepresentationTests"
+    ]
+  },
+  {
+    "id": "O02-element-at-or-none",
+    "source": "docs/option.md#create-one",
+    "quote": "**`ElementAtOrNone(index)`**, for the element at a position.",
+    "claim": "**`ElementAtOrNone(index)`**, for the element at a position.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.ElementAtOrNone"
+    ],
+    "heldBy": [
+      "OptionLookupTests"
+    ]
+  },
+  {
+    "id": "O02-first-and-last-or-none",
+    "source": "docs/option.md#create-one",
+    "quote": "**`FirstOrNone()` and `LastOrNone()`** on a sequence, with or without a predicate.",
+    "claim": "**`FirstOrNone()` and `LastOrNone()`** on a sequence, with or without a predicate.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.FirstOrNone",
+      "Option.LastOrNone"
+    ],
+    "heldBy": [
+      "OptionExtensionsTests"
+    ]
+  },
+  {
+    "id": "O02-get-value-or-none",
+    "source": "docs/option.md#create-one",
+    "quote": "**`GetValueOrNone(key)`** on a dictionary.",
+    "claim": "**`GetValueOrNone(key)`** on a dictionary.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.GetValueOrNone"
+    ],
+    "heldBy": [
+      "OptionExtensionsTests"
+    ]
+  },
+  {
+    "id": "O02-none-takes-its-type",
+    "source": "docs/option.md#create-one",
+    "quote": "`None()` takes its type from where it goes: a `return`, a conditional beside a `Some`, or a parameter.",
+    "claim": "`None()` takes its type from where it goes: a `return`, a conditional beside a `Some`, or a parameter.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.None",
+      "Option.op_Implicit"
+    ],
+    "heldBy": [
+      "OptionTests"
+    ]
+  },
+  {
+    "id": "O02-single-or-none-throws",
+    "source": "docs/option.md#create-one",
+    "quote": "**`SingleOrNone()`**, which throws when there is more than one element.",
+    "claim": "**`SingleOrNone()`**, which throws when there is more than one element.",
+    "oracle": "exception",
+    "surfaces": [
+      "Option.SingleOrNone"
+    ],
+    "heldBy": [
+      "OptionLookupTests"
+    ]
+  },
+  {
+    "id": "O02-to-option-null-is-none",
+    "source": "docs/option.md#create-one",
+    "quote": "**`ToOption()`** on a nullable, such as an `int?` or a `string?`. A null becomes `None`.",
+    "claim": "**`ToOption()`** on a nullable, such as an `int?` or a `string?`. A null becomes `None`.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.ToOption"
+    ],
+    "heldBy": [
+      "OptionExtensionsTests",
+      "OrNullTests"
+    ]
+  },
+  {
+    "id": "O03-a-func-reads-every-row",
+    "source": "docs/option.md#in-a-database-query",
+    "quote": "A `Func<T, bool>` held in a variable, or a method group, binds to the sequence overload instead. That reads every row and checks the condition in memory",
+    "claim": "A `Func<T, bool>` held in a variable, or a method group, binds to the sequence overload instead. That reads every row and checks the condition in memory",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.FirstOrNone"
+    ],
+    "heldBy": [
+      "QueryOptionTests"
+    ]
+  },
+  {
+    "id": "O03-last-on-a-query-does-not-compile",
+    "source": "docs/option.md#in-a-database-query",
+    "quote": "`LastOrNone` on a query fails to compile, because a query has no last row until you order it.",
+    "claim": "`LastOrNone` on a query fails to compile, because a query has no last row until you order it.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.LastOrNone"
+    ],
+    "heldBy": [
+      "QueryableOptionTests"
+    ]
+  },
+  {
+    "id": "O03-provider-runs-the-predicate",
+    "source": "docs/option.md#in-a-database-query",
+    "quote": "The database provider runs the predicate and fetches only the rows they need.",
+    "claim": "The database provider runs the predicate and fetches only the rows they need.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.FirstOrNone",
+      "Option.SingleOrNone",
+      "Option.ElementAtOrNone"
+    ],
+    "heldBy": [
+      "QueryableOptionTests",
+      "QueryOptionTests"
+    ]
+  },
+  {
+    "id": "O03-work-on-a-query",
+    "source": "docs/option.md#in-a-database-query",
+    "quote": "`FirstOrNone`, `SingleOrNone` and `ElementAtOrNone` also work on an `IQueryable<T>`.",
+    "claim": "`FirstOrNone`, `SingleOrNone` and `ElementAtOrNone` also work on an `IQueryable<T>`.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.FirstOrNone",
+      "Option.SingleOrNone",
+      "Option.ElementAtOrNone"
+    ],
+    "heldBy": [
+      "QueryableOptionTests",
+      "QueryOptionTests"
+    ]
+  },
+  {
+    "id": "O04-as-enumerable",
+    "source": "docs/option.md#get-the-value-out",
+    "quote": "**`AsEnumerable()`** gives you zero or one element, for a `foreach` or LINQ.",
+    "claim": "**`AsEnumerable()`** gives you zero or one element, for a `foreach` or LINQ.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.AsEnumerable"
+    ],
+    "heldBy": [
+      "OptionTests"
+    ]
+  },
+  {
+    "id": "O04-is-some-and-is-none",
+    "source": "docs/option.md#get-the-value-out",
+    "quote": "**`IsSome()` and `IsNone()`** answer the question on its own.",
+    "claim": "**`IsSome()` and `IsNone()`** answer the question on its own.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.IsSome",
+      "Option.IsNone"
+    ],
+    "heldBy": [
+      "OptionTests"
+    ]
+  },
+  {
+    "id": "O04-match-takes-both-branches",
+    "source": "docs/option.md#get-the-value-out",
+    "quote": "`Match` takes one branch for a value and one for nothing, and returns what they return.",
+    "claim": "`Match` takes one branch for a value and one for nothing, and returns what they return.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Match"
+    ],
+    "heldBy": [
+      "OptionTests"
+    ]
+  },
+  {
+    "id": "O04-or-and-or-default",
+    "source": "docs/option.md#get-the-value-out",
+    "quote": "**`Or(fallback)` and `OrDefault()`** give you the value, or a fallback when there is none.",
+    "claim": "**`Or(fallback)` and `OrDefault()`** give you the value, or a fallback when there is none.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Or",
+      "Option.OrDefault"
+    ],
+    "heldBy": [
+      "OptionTests",
+      "OptionExtensionsTests"
+    ]
+  },
+  {
+    "id": "O04-or-null",
+    "source": "docs/option.md#get-the-value-out",
+    "quote": "**`OrNull()`** gives you a nullable: an `int?` for an `Option<int>`, a `string?` for an `Option<string>`.",
+    "claim": "**`OrNull()`** gives you a nullable: an `int?` for an `Option<int>`, a `string?` for an `Option<string>`.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.OrNull",
+      "ValueTypeOptionExtensions.OrNull"
+    ],
+    "heldBy": [
+      "OrNullTests",
+      "OptionExtensionsTests"
+    ]
+  },
+  {
+    "id": "O04-try-get-value",
+    "source": "docs/option.md#get-the-value-out",
+    "quote": "**`TryGetValue(out value)`** fits an `if`, and the value is non-null inside the branch.",
+    "claim": "**`TryGetValue(out value)`** fits an `if`, and the value is non-null inside the branch.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.TryGetValue"
+    ],
+    "heldBy": [
+      "OptionTests"
+    ]
+  },
+  {
+    "id": "O05-bind-flattens",
+    "source": "docs/option.md#combine-options",
+    "quote": "**`Bind`** takes a selector that returns an option itself, so you never end up with an `Option<Option<T>>`.",
+    "claim": "**`Bind`** takes a selector that returns an option itself, so you never end up with an `Option<Option<T>>`.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Bind"
+    ],
+    "heldBy": [
+      "OptionTests",
+      "OptionExtensionsTests"
+    ]
+  },
+  {
+    "id": "O05-choose-is-lazy",
+    "source": "docs/option.md#combine-options",
+    "quote": "It runs lazily, like any LINQ operator.",
+    "claim": "It runs lazily, like any LINQ operator.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Choose",
+      "SequenceOptionExtensions.Choose"
+    ],
+    "heldBy": [
+      "ChooseTests"
+    ]
+  },
+  {
+    "id": "O05-choose-keeps-in-order",
+    "source": "docs/option.md#combine-options",
+    "quote": "It keeps, in order, the values the selector returns `Some` for, and drops the rest: a filter and a map in one.",
+    "claim": "It keeps, in order, the values the selector returns `Some` for, and drops the rest: a filter and a map in one.",
+    "oracle": "claim",
+    "surfaces": [
+      "SequenceOptionExtensions.Choose"
+    ],
+    "heldBy": [
+      "ChooseTests"
+    ]
+  },
+  {
+    "id": "O05-choose-without-a-selector",
+    "source": "docs/option.md#combine-options",
+    "quote": "On a sequence of options, `Choose()` without a selector keeps the values they hold.",
+    "claim": "On a sequence of options, `Choose()` without a selector keeps the values they hold.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Choose"
+    ],
+    "heldBy": [
+      "ChooseTests"
+    ]
+  },
+  {
+    "id": "O05-each-from-sees-the-earlier",
+    "source": "docs/option.md#combine-options",
+    "quote": "Each `from` after the first can use the ones before it.",
+    "claim": "Each `from` after the first can use the ones before it.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.SelectMany"
+    ],
+    "heldBy": [
+      "OptionExtensionsTests"
+    ]
+  },
+  {
+    "id": "O05-filter",
+    "source": "docs/option.md#combine-options",
+    "quote": "**`Filter`** turns a value that fails the predicate into `None`.",
+    "claim": "**`Filter`** turns a value that fails the predicate into `None`.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Filter"
+    ],
+    "heldBy": [
+      "OptionTests"
+    ]
+  },
+  {
+    "id": "O05-map",
+    "source": "docs/option.md#combine-options",
+    "quote": "**`Map`** changes the value, and a missing value stays missing.",
+    "claim": "**`Map`** changes the value, and a missing value stays missing.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Map"
+    ],
+    "heldBy": [
+      "OptionTests"
+    ]
+  },
+  {
+    "id": "O05-query-syntax",
+    "source": "docs/option.md#combine-options",
+    "quote": "`Select`, `SelectMany` and `Where` make query syntax work, as in the last example.",
+    "claim": "`Select`, `SelectMany` and `Where` make query syntax work, as in the last example.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Select",
+      "Option.SelectMany",
+      "Option.Where"
+    ],
+    "heldBy": [
+      "OptionExtensionsTests"
+    ]
+  },
+  {
+    "id": "O05-tap",
+    "source": "docs/option.md#combine-options",
+    "quote": "**`Tap`** runs an action on the value and hands the option on unchanged.",
+    "claim": "**`Tap`** runs an action on the value and hands the option on unchanged.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Tap"
+    ],
+    "heldBy": [
+      "OptionTests"
+    ]
+  },
+  {
+    "id": "O05-zip",
+    "source": "docs/option.md#combine-options",
+    "quote": "**`Zip`** combines two to six options into one value, when every one of them has a value.",
+    "claim": "**`Zip`** combines two to six options into one value, when every one of them has a value.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Zip"
+    ],
+    "heldBy": [
+      "OptionExtensionsTests"
+    ]
+  },
+  {
+    "id": "O06-a-finished-lookup-runs-at-once",
+    "source": "docs/option.md#continue-a-pending-lookup",
+    "quote": "If the lookup had already finished, the callback runs at once, on your synchronization context.",
+    "claim": "If the lookup had already finished, the callback runs at once, on your synchronization context.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.MapAsync",
+      "Option.BindAsync",
+      "Option.FilterAsync",
+      "Option.TapAsync",
+      "Option.ToResultAsync"
+    ],
+    "heldBy": [
+      "AsynchronousContextTests"
+    ]
+  },
+  {
+    "id": "O06-a-pending-lookup-runs-without-the-context",
+    "source": "docs/option.md#continue-a-pending-lookup",
+    "quote": "If it had not, the callback runs without that context, usually on a thread-pool thread",
+    "claim": "If it had not, the callback runs without that context, usually on a thread-pool thread",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.MapAsync",
+      "Option.BindAsync",
+      "Option.FilterAsync",
+      "Option.TapAsync",
+      "Option.ToResultAsync"
+    ],
+    "heldBy": [
+      "AsynchronousContextTests"
+    ]
+  },
+  {
+    "id": "O06-continue-a-pending-option",
+    "source": "docs/option.md#continue-a-pending-lookup",
+    "quote": "`MapAsync`, `BindAsync`, `FilterAsync`, `TapAsync` and `ToResultAsync` continue it the way [Result's async chains](result.md#async-chains) continue a pending result.",
+    "claim": "`MapAsync`, `BindAsync`, `FilterAsync`, `TapAsync` and `ToResultAsync` continue it the way [Result's async chains](result.md#async-chains) continue a pending result.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.MapAsync",
+      "Option.BindAsync",
+      "Option.FilterAsync",
+      "Option.TapAsync",
+      "Option.ToResultAsync"
+    ],
+    "heldBy": [
+      "OptionAsyncTests"
+    ]
+  },
+  {
+    "id": "O07-rejected-by-system-text-json",
+    "source": "docs/option.md#at-the-boundary",
+    "quote": "System.Text.Json rejects it in both directions",
+    "claim": "System.Text.Json rejects it in both directions",
+    "oracle": "exception",
+    "surfaces": [
+      "NotWireTypeJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "NotWireTypeTests"
+    ]
+  },
+  {
+    "id": "O07-to-option-in-or-null-out",
+    "source": "docs/option.md#at-the-boundary",
+    "quote": "Use `ToOption()` on the way in and `OrNull()` on the way out.",
+    "claim": "Use `ToOption()` on the way in and `OrNull()` on the way out.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.ToOption",
+      "Option.OrNull"
+    ],
+    "heldBy": [
+      "OrNullTests"
+    ]
+  },
+  {
+    "id": "O07-to-result",
+    "source": "docs/option.md#at-the-boundary",
+    "quote": "`ToResult(error)` turns the option into a [Result](result.md)",
+    "claim": "`ToResult(error)` turns the option into a [Result](result.md)",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.ToResult"
+    ],
+    "heldBy": [
+      "OptionExtensionsTests"
+    ]
+  },
+  {
+    "id": "O08-choose-reads-null-elements",
+    "source": "docs/option.md#the-surface",
+    "quote": "the elements `Choose(selector)` reads may be null, and only what the selector finds counts as a value.",
+    "claim": "the elements `Choose(selector)` reads may be null, and only what the selector finds counts as a value.",
+    "oracle": "claim",
+    "surfaces": [
+      "SequenceOptionExtensions.Choose"
+    ],
+    "heldBy": [
+      "ChooseTests"
+    ]
+  },
+  {
+    "id": "O08-default-is-rejected-by-the-analyzer",
+    "source": "docs/option.md#the-surface",
+    "quote": "A `default(Option<T>)` is `None`, but the analyzer still rejects writing it (CMTK0001).",
+    "claim": "A `default(Option<T>)` is `None`, but the analyzer still rejects writing it (CMTK0001).",
+    "oracle": "claim",
+    "surfaces": [
+      "Option..ctor"
+    ],
+    "heldBy": [
+      "OptionTests",
+      "ForbiddenDefaultInitializationAnalyzerTests"
+    ]
+  },
+  {
+    "id": "O08-equality",
+    "source": "docs/option.md#the-surface",
+    "quote": "Two options are equal when both are `None`, or when both hold equal values, as with any record struct.",
+    "claim": "Two options are equal when both are `None`, or when both hold equal values, as with any record struct.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.Equals",
+      "Option.GetHashCode",
+      "Option.op_Equality",
+      "Option.op_Inequality"
+    ],
+    "heldBy": [
+      "OptionTests"
+    ]
+  },
+  {
+    "id": "O08-filter-async",
+    "source": "docs/option.md#the-surface",
+    "quote": "| `FilterAsync(predicate)` | `Task<Option<T>>` | `Filter`, once the option is known |",
+    "claim": "| `FilterAsync(predicate)` | `Task<Option<T>>` | `Filter`, once the option is known |",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.FilterAsync"
+    ],
+    "heldBy": [
+      "OptionAsyncTests"
+    ]
+  },
+  {
+    "id": "O08-implicit-from-none",
+    "source": "docs/option.md#the-surface",
+    "quote": "| implicit from `None` | `Option<T>` | `None` |",
+    "claim": "| implicit from `None` | `Option<T>` | `None` |",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.op_Implicit"
+    ],
+    "heldBy": [
+      "OptionTests"
+    ]
+  },
+  {
+    "id": "O08-index-on-a-query-does-not-compile",
+    "source": "docs/option.md#the-surface",
+    "quote": "an `Index` on a query is a compile error",
+    "claim": "an `Index` on a query is a compile error",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.ElementAtOrNone"
+    ],
+    "heldBy": [
+      "QueryableOptionTests"
+    ]
+  },
+  {
+    "id": "O08-map-refuses-null",
+    "source": "docs/option.md#the-surface",
+    "quote": "| `Map(selector)` | `Option<T>` | `Option<TResult>`; throws if the selector returns null |",
+    "claim": "| `Map(selector)` | `Option<T>` | `Option<TResult>`; throws if the selector returns null |",
+    "oracle": "exception",
+    "surfaces": [
+      "Option.Map"
+    ],
+    "heldBy": [
+      "OptionTests"
+    ]
+  },
+  {
+    "id": "O08-none-marker-converts",
+    "source": "docs/option.md#the-surface",
+    "quote": "a `None` marker that converts to any `Option<T>`",
+    "claim": "a `None` marker that converts to any `Option<T>`",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.None",
+      "Option.op_Implicit"
+    ],
+    "heldBy": [
+      "OptionTests"
+    ]
+  },
+  {
+    "id": "O08-or-default-is-reported-for-a-value-object",
+    "source": "docs/option.md#the-surface",
+    "quote": "`T`, `default` for `None`; CMTK0009 for a value object, whose `default` is no value",
+    "claim": "`T`, `default` for `None`; CMTK0009 for a value object, whose `default` is no value",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.OrDefault"
+    ],
+    "heldBy": [
+      "OptionExtensionsTests",
+      "DefaultProducingCallAnalyzerTests"
+    ]
+  },
+  {
+    "id": "O08-single-or-none-asks-for-two-rows",
+    "source": "docs/option.md#the-surface",
+    "quote": "throws for more than one. A query is asked for two rows",
+    "claim": "throws for more than one. A query is asked for two rows",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.SingleOrNone"
+    ],
+    "heldBy": [
+      "OptionLookupTests",
+      "QueryOptionTests"
+    ]
+  },
+  {
+    "id": "O08-some-refuses-null",
+    "source": "docs/option.md#the-surface",
+    "quote": "`Option<T>`; throws `ArgumentNullException` for null",
+    "claim": "`Option<T>`; throws `ArgumentNullException` for null",
+    "oracle": "exception",
+    "surfaces": [
+      "Option.Some"
+    ],
+    "heldBy": [
+      "OptionTests"
+    ]
+  },
+  {
+    "id": "O08-to-result-async",
+    "source": "docs/option.md#the-surface",
+    "quote": "`Task<Result<T, TError>>`: a pending lookup into a `Result` pipeline",
+    "claim": "`Task<Result<T, TError>>`: a pending lookup into a `Result` pipeline",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.ToResultAsync"
+    ],
+    "heldBy": [
+      "OptionAsyncTests"
+    ]
+  },
+  {
+    "id": "P01-a-value",
+    "source": "docs/merge-patches.md#tell-absent-null-and-a-value-apart",
+    "quote": "| a value | `Value` | `onValue` | true | with the value | with the value | `Some` |",
+    "claim": "| a value | `Value` | `onValue` | true | with the value | with the value | `Some` |",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.State",
+      "Patch.Match",
+      "Patch.TryGetValue",
+      "Patch.Tap",
+      "Patch.IfPresent",
+      "Patch.ToOption"
+    ],
+    "heldBy": [
+      "PatchTests",
+      "MergePatchesTests"
+    ]
+  },
+  {
+    "id": "P01-default-is-absent",
+    "source": "docs/merge-patches.md#tell-absent-null-and-a-value-apart",
+    "quote": "**`default(Patch<T>)` is `Absent`.** The serializer never touches a property the document leaves out, so it keeps the struct's default.",
+    "claim": "**`default(Patch<T>)` is `Absent`.** The serializer never touches a property the document leaves out, so it keeps the struct's default.",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.Absent",
+      "Patch.State"
+    ],
+    "heldBy": [
+      "PatchTests",
+      "MergePatchesTests"
+    ]
+  },
+  {
+    "id": "P01-left-alone-by-the-analyzers",
+    "source": "docs/merge-patches.md#tell-absent-null-and-a-value-apart",
+    "quote": "That's why the analyzers, which reject a `default` of every other struct in this package, leave a patch alone.",
+    "claim": "That's why the analyzers, which reject a `default` of every other struct in this package, leave a patch alone.",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.Absent"
+    ],
+    "heldBy": [
+      "PatchIsDefaultableTests"
+    ]
+  },
+  {
+    "id": "P01-not-mentioned",
+    "source": "docs/merge-patches.md#tell-absent-null-and-a-value-apart",
+    "quote": "| not mentioned | `Absent` | `onAbsent` | false | no | no | `None` |",
+    "claim": "| not mentioned | `Absent` | `onAbsent` | false | no | no | `None` |",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.State",
+      "Patch.Match",
+      "Patch.TryGetValue",
+      "Patch.Tap",
+      "Patch.IfPresent",
+      "Patch.ToOption"
+    ],
+    "heldBy": [
+      "PatchTests",
+      "MergePatchesTests"
+    ]
+  },
+  {
+    "id": "P01-null",
+    "source": "docs/merge-patches.md#tell-absent-null-and-a-value-apart",
+    "quote": "| `null` | `Null` | `onNull` | false | no | with `null` | `None` |",
+    "claim": "| `null` | `Null` | `onNull` | false | no | with `null` | `None` |",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.State",
+      "Patch.Match",
+      "Patch.TryGetValue",
+      "Patch.Tap",
+      "Patch.IfPresent",
+      "Patch.ToOption"
+    ],
+    "heldBy": [
+      "PatchTests",
+      "MergePatchesTests"
+    ]
+  },
+  {
+    "id": "P01-reading-accepts-a-null",
+    "source": "docs/merge-patches.md#tell-absent-null-and-a-value-apart",
+    "quote": "**Reading always accepts a `null`, whatever `T` is.**",
+    "claim": "**Reading always accepts a `null`, whatever `T` is.**",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.Null",
+      "PatchJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "MergePatchesTests",
+      "PatchTests"
+    ]
+  },
+  {
+    "id": "P01-to-string-prints-the-state",
+    "source": "docs/merge-patches.md#tell-absent-null-and-a-value-apart",
+    "quote": "**`ToString()` prints the state**, never the value.",
+    "claim": "**`ToString()` prints the state**, never the value.",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.ToString",
+      "Patch.Equals",
+      "Patch.GetHashCode",
+      "Patch.op_Equality",
+      "Patch.op_Inequality"
+    ],
+    "heldBy": [
+      "PatchTests"
+    ]
+  },
+  {
+    "id": "P02-a-struct-s-clear-is-null",
+    "source": "docs/merge-patches.md#apply-a-patch",
+    "quote": "A field of a value type receives the clear as `null`, never as `0`.",
+    "claim": "A field of a value type receives the clear as `null`, never as `0`.",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.IfPresent"
+    ],
+    "heldBy": [
+      "PatchTests",
+      "MergePatchesTests"
+    ]
+  },
+  {
+    "id": "P02-if-present",
+    "source": "docs/merge-patches.md#apply-a-patch",
+    "quote": "**`IfPresent`** runs for a value and for a clear.",
+    "claim": "**`IfPresent`** runs for a value and for a clear.",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.IfPresent"
+    ],
+    "heldBy": [
+      "PatchTests"
+    ]
+  },
+  {
+    "id": "P02-match",
+    "source": "docs/merge-patches.md#apply-a-patch",
+    "quote": "**`Match`** takes all three, for a rule that has to say what each one means.",
+    "claim": "**`Match`** takes all three, for a rule that has to say what each one means.",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.Match"
+    ],
+    "heldBy": [
+      "PatchTests"
+    ]
+  },
+  {
+    "id": "P02-tap",
+    "source": "docs/merge-patches.md#apply-a-patch",
+    "quote": "**`Tap`** runs only for a value, as `Option`'s `Tap` does.",
+    "claim": "**`Tap`** runs only for a value, as `Option`'s `Tap` does.",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.Tap"
+    ],
+    "heldBy": [
+      "PatchTests"
+    ]
+  },
+  {
+    "id": "P02-tap-and-if-present-return-the-patch",
+    "source": "docs/merge-patches.md#apply-a-patch",
+    "quote": "`Tap` and `IfPresent` both return the patch unchanged.",
+    "claim": "`Tap` and `IfPresent` both return the patch unchanged.",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.Tap",
+      "Patch.IfPresent"
+    ],
+    "heldBy": [
+      "PatchTests"
+    ]
+  },
+  {
+    "id": "P02-to-option",
+    "source": "docs/merge-patches.md#apply-a-patch",
+    "quote": "**`ToOption()`** is for code that treats a clear and an absence the same.",
+    "claim": "**`ToOption()`** is for code that treats a clear and an absence the same.",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.ToOption"
+    ],
+    "heldBy": [
+      "PatchTests"
+    ]
+  },
+  {
+    "id": "P03-a-null-is-no-error",
+    "source": "docs/merge-patches.md#a-value-object-inside-a-patch",
+    "quote": "**A `null` isn't an error.** It's the `Null` state",
+    "claim": "**A `null` isn't an error.** It's the `Null` state",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.Null",
+      "PatchJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "MergePatchesTests"
+    ]
+  },
+  {
+    "id": "P03-a-refused-patch-is-a-400",
+    "source": "docs/merge-patches.md#a-value-object-inside-a-patch",
+    "quote": "In an endpoint, the client gets the same 400 as for any body a value object rejects, with problem details where the host adds `UseStatusCodePages()`",
+    "claim": "In an endpoint, the client gets the same 400 as for any body a value object rejects, with problem details where the host adds `UseStatusCodePages()`",
+    "oracle": "claim",
+    "surfaces": [
+      "PatchJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "HostConfigurationTests"
+    ]
+  },
+  {
+    "id": "P03-not-null-warning",
+    "source": "docs/merge-patches.md#a-value-object-inside-a-patch",
+    "quote": "`Patch<Email?>` or `Patch<string?>` gets a warning at the declaration (CS8714).",
+    "claim": "`Patch<Email?>` or `Patch<string?>` gets a warning at the declaration (CS8714).",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.Value"
+    ],
+    "heldBy": [
+      "PatchNullabilityTests"
+    ]
+  },
+  {
+    "id": "P03-not-quoted",
+    "source": "docs/merge-patches.md#a-value-object-inside-a-patch",
+    "quote": "A value `Create` rejects is rejected here as anywhere else, and the error doesn't quote it.",
+    "claim": "A value `Create` rejects is rejected here as anywhere else, and the error doesn't quote it.",
+    "oracle": "exception",
+    "surfaces": [
+      "PatchJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "MergePatchesTests",
+      "SourceGeneratedJsonTests"
+    ]
+  },
+  {
+    "id": "P03-the-field-s-path",
+    "source": "docs/merge-patches.md#a-value-object-inside-a-patch",
+    "quote": "The exception's `Path` is the field's, `$.email`, as it is for any property.",
+    "claim": "The exception's `Path` is the field's, `$.email`, as it is for any property.",
+    "oracle": "claim",
+    "surfaces": [
+      "PatchJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "MergePatchesTests",
+      "SourceGeneratedJsonTests"
+    ]
+  },
+  {
+    "id": "P03-the-value-object-s-converter",
+    "source": "docs/merge-patches.md#a-value-object-inside-a-patch",
+    "quote": "A patch reads its value with the value object's own converter, so the value object keeps its rule.",
+    "claim": "A patch reads its value with the value object's own converter, so the value object keeps its rule.",
+    "oracle": "claim",
+    "surfaces": [
+      "PatchJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "MergePatchesTests",
+      "SourceGeneratedJsonTests"
+    ]
+  },
+  {
+    "id": "P04-a-clear-or-an-absence-passes",
+    "source": "docs/merge-patches.md#validate-a-patch",
+    "quote": "**A clear or an absent field** passes through, since there's nothing to validate.",
+    "claim": "**A clear or an absent field** passes through, since there's nothing to validate.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Traverse"
+    ],
+    "heldBy": [
+      "PatchCombinationTests",
+      "MergePatchesTests"
+    ]
+  },
+  {
+    "id": "P04-a-value-is-validated",
+    "source": "docs/merge-patches.md#validate-a-patch",
+    "quote": "**A value** is validated, and a failure gives `Create`'s own error.",
+    "claim": "**A value** is validated, and a failure gives `Create`'s own error.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Traverse"
+    ],
+    "heldBy": [
+      "PatchCombinationTests",
+      "MergePatchesTests"
+    ]
+  },
+  {
+    "id": "P04-map",
+    "source": "docs/merge-patches.md#validate-a-patch",
+    "quote": "`Map` changes the value the same way, and keeps a clear and an absence as they are.",
+    "claim": "`Map` changes the value the same way, and keeps a clear and an absence as they are.",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.Map"
+    ],
+    "heldBy": [
+      "PatchCombinationTests",
+      "MergePatchesTests"
+    ]
+  },
+  {
+    "id": "P05-an-absent-patch-is-not-written",
+    "source": "docs/merge-patches.md#write-a-patch",
+    "quote": "So writing an absent patch throws a `NotSupportedException`, unless the property says to skip a default, as above.",
+    "claim": "So writing an absent patch throws a `NotSupportedException`, unless the property says to skip a default, as above.",
+    "oracle": "exception",
+    "surfaces": [
+      "PatchJsonConverterFactory.*",
+      "Patch.Absent"
+    ],
+    "heldBy": [
+      "MergePatchesTests"
+    ]
+  },
+  {
+    "id": "P05-value-of-null-is-a-clear",
+    "source": "docs/merge-patches.md#write-a-patch",
+    "quote": "`Patch.Value(null)` is the `Null` state, so a client that holds a nullable value can pass it as it is.",
+    "claim": "`Patch.Value(null)` is the `Null` state, so a client that holds a nullable value can pass it as it is.",
+    "oracle": "claim",
+    "surfaces": [
+      "Patch.Value",
+      "Patch.Null"
+    ],
+    "heldBy": [
+      "PatchTests"
+    ]
+  },
+  {
+    "id": "P06-absent-when-left-out",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "Each property of `ContactPatch` is read by its patch, and one the request leaves out is `Absent`.",
+    "claim": "Each property of `ContactPatch` is read by its patch, and one the request leaves out is `Absent`.",
+    "oracle": "claim",
+    "surfaces": [
+      "PatchJsonConverterFactory.*",
+      "Patch.State"
+    ],
+    "heldBy": [
+      "PatchSchemaTests",
+      "MergePatchesTests"
+    ]
+  },
+  {
+    "id": "P06-admitting-null",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "So a validator accepts null, and judges every other value as it judges the argument's.",
+    "claim": "So a validator accepts null, and judges every other value as it judges the argument's.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-inlined",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "**Inlined**, rather than as a component of its own.",
+    "claim": "**Inlined**, rather than as a component of its own.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-through-the-underlying-type",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "A value object inside a patch is described through its underlying type, so `email` is a `string`.",
+    "claim": "A value object inside a patch is described through its underlying type, so `email` is a `string`.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests",
+      "MergePatchesTests"
+    ]
+  },
+  {
+    "id": "P07-default-breaks-the-document",
+    "source": "docs/merge-patches.md#required-constructor-parameters",
+    "quote": "But System.Text.Json's schema exporter, which ASP.NET Core builds the document with, throws on a parameter of a struct type whose default is `default`. So the endpoint's document fails.",
+    "claim": "But System.Text.Json's schema exporter, which ASP.NET Core builds the document with, throws on a parameter of a struct type whose default is `default`. So the endpoint's document fails.",
+    "oracle": "exception",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P07-required-too",
+    "source": "docs/merge-patches.md#required-constructor-parameters",
+    "quote": "It makes every constructor parameter without a default required, a patch's too.",
+    "claim": "It makes every constructor parameter without a default required, a patch's too.",
+    "oracle": "claim",
+    "surfaces": [
+      "PatchJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "MergePatchesTests",
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P08-a-built-in-type",
+    "source": "docs/merge-patches.md#source-generated-contexts-and-native-aot",
+    "quote": "**A primitive, a `string`, a `Guid`, a date or a `Uri`** is read with the serializer's built-in converter.",
+    "claim": "**A primitive, a `string`, a `Guid`, a date or a `Uri`** is read with the serializer's built-in converter.",
+    "oracle": "claim",
+    "surfaces": [
+      "PatchJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "PatchTests"
+    ]
+  },
+  {
+    "id": "P08-a-value-object",
+    "source": "docs/merge-patches.md#source-generated-contexts-and-native-aot",
+    "quote": "**A value object** is read with its own converter.",
+    "claim": "**A value object** is read with its own converter.",
+    "oracle": "claim",
+    "surfaces": [
+      "PatchJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "SourceGeneratedJsonTests"
+    ]
+  },
+  {
+    "id": "P08-any-other-type-is-listed",
+    "source": "docs/merge-patches.md#source-generated-contexts-and-native-aot",
+    "quote": "**Any other type, a class or an enum,** must be listed in the context. Otherwise the serializer throws with its own message naming the type.",
+    "claim": "**Any other type, a class or an enum,** must be listed in the context. Otherwise the serializer throws with its own message naming the type.",
+    "oracle": "exception",
+    "surfaces": [
+      "PatchJsonConverterFactory.*"
+    ],
+    "heldBy": [
+      "PatchTests",
+      "MergePatchesTests"
+    ]
+  },
+  {
+    "id": "Q01-delegate-condition-reported",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#a-condition-that-reads-every-row",
+    "quote": "The rule reports that call, and its message names the overload it fell to.",
+    "claim": "The rule reports that call, and its message names the overload it fell to.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.FirstOrNone",
+      "Option.SingleOrNone",
+      "Option.LastOrNone",
+      "Result.FirstOrError",
+      "Result.LastOrError"
+    ],
+    "heldBy": [
+      "QueryDelegateConditionTests"
+    ]
+  },
+  {
+    "id": "Q02-last-forms-too",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#a-condition-that-reads-every-row",
+    "quote": "`LastOrNone` and `LastOrError` are reported as well.",
+    "claim": "`LastOrNone` and `LastOrError` are reported as well.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.FirstOrNone",
+      "Option.SingleOrNone",
+      "Option.LastOrNone",
+      "Result.FirstOrError",
+      "Result.LastOrError"
+    ],
+    "heldBy": [
+      "QueryDelegateConditionTests"
+    ]
+  },
+  {
+    "id": "Q03-as-enumerable-silent",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#a-condition-that-reads-every-row",
+    "quote": "To read every row on purpose, call `AsEnumerable()` first, and the rule stays silent.",
+    "claim": "To read every row on purpose, call `AsEnumerable()` first, and the rule stays silent.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.FirstOrNone",
+      "Option.SingleOrNone",
+      "Option.LastOrNone",
+      "Result.FirstOrError",
+      "Result.LastOrError"
+    ],
+    "heldBy": [
+      "QueryDelegateConditionTests"
+    ]
+  },
+  {
+    "id": "Q04-sequence-held-query-silent",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#a-condition-that-reads-every-row",
+    "quote": "A query held as an `IEnumerable<T>` is a sequence to the rule.",
+    "claim": "A query held as an `IEnumerable<T>` is a sequence to the rule.",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.FirstOrNone",
+      "Option.SingleOrNone",
+      "Option.LastOrNone",
+      "Result.FirstOrError",
+      "Result.LastOrError"
+    ],
+    "heldBy": [
+      "QueryDelegateConditionTests"
+    ]
+  },
+  {
+    "id": "Q05-ef-readme-warns",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#an-option-for-nothing-found",
+    "quote": "Then every row is read and the condition runs in memory, and the analyzer warns at the call",
+    "claim": "Then every row is read and the condition runs in memory, and the analyzer warns at the call",
+    "oracle": "claim",
+    "surfaces": [
+      "Option.FirstOrNone",
+      "Option.SingleOrNone",
+      "Option.LastOrNone",
+      "Result.FirstOrError",
+      "Result.LastOrError"
+    ],
+    "heldBy": [
+      "QueryDelegateConditionTests"
+    ]
+  },
+  {
+    "id": "R01-a-bare-error-converts-to-a-command",
+    "source": "docs/result.md#pick-a-shape",
+    "quote": "A `Result<TError>` has no value to confuse it with, so there a bare error converts on its own, and so does the `Result.Success()` marker.",
+    "claim": "A `Result<TError>` has no value to confuse it with, so there a bare error converts on its own, and so does the `Result.Success()` marker.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.op_Implicit",
+      "Result.Success"
+    ],
+    "heldBy": [
+      "ResultTests"
+    ]
+  },
+  {
+    "id": "R01-a-bare-value-is-a-success",
+    "source": "docs/result.md#pick-a-shape",
+    "quote": "Return a bare value for a success. Wrap an error in `Result.Error(...)`, because in a `Result<long, int>` a bare `5` could be either.",
+    "claim": "Return a bare value for a success. Wrap an error in `Result.Error(...)`, because in a `Result<long, int>` a bare `5` could be either.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.op_Implicit",
+      "Result.Error"
+    ],
+    "heldBy": [
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R01-to-http-result-accepts-four",
+    "source": "docs/result.md#pick-a-shape",
+    "quote": "`ToHttpResult()` accepts the first four.",
+    "claim": "`ToHttpResult()` accepts the first four.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitHttpResultExtensions.ToHttpResult",
+      "TypeKitClosedSetHttpResultExtensions.ToHttpResult"
+    ],
+    "heldBy": [
+      "FaultResponsePartsTests",
+      "ComposedFaultResponseTests"
+    ]
+  },
+  {
+    "id": "R02-a-default-result-throws",
+    "source": "docs/result.md#get-the-outcome-out",
+    "quote": "Every branching member throws on it, rather than inventing a `default(TError)`.",
+    "claim": "Every branching member throws on it, rather than inventing a `default(TError)`.",
+    "oracle": "exception",
+    "surfaces": [
+      "Result..ctor",
+      "Result.Match"
+    ],
+    "heldBy": [
+      "UninitializedResultTests"
+    ]
+  },
+  {
+    "id": "R02-match",
+    "source": "docs/result.md#get-the-outcome-out",
+    "quote": "`Match` takes one branch for a success and one for an error, and returns what they return.",
+    "claim": "`Match` takes one branch for a success and one for an error, and returns what they return.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Match"
+    ],
+    "heldBy": [
+      "ResultTests",
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R02-only-a-command-converts-to-bool",
+    "source": "docs/result.md#get-the-outcome-out",
+    "quote": "Only `Result<TError>` converts to `bool`, so `if (checkout.Charge(total))` reads as it should. A result with a value doesn't convert.",
+    "claim": "Only `Result<TError>` converts to `bool`, so `if (checkout.Charge(total))` reads as it should. A result with a value doesn't convert.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.op_Implicit"
+    ],
+    "heldBy": [
+      "ResultWithValueTests",
+      "ResultTests"
+    ]
+  },
+  {
+    "id": "R02-state",
+    "source": "docs/result.md#get-the-outcome-out",
+    "quote": "`State` tells the three states apart without throwing: `Success`, `Error`, and `Uninitialized`.",
+    "claim": "`State` tells the three states apart without throwing: `Success`, `Error`, and `Uninitialized`.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.State"
+    ],
+    "heldBy": [
+      "UninitializedResultTests"
+    ]
+  },
+  {
+    "id": "R02-the-analyzer-reports-defaults",
+    "source": "docs/result.md#get-the-outcome-out",
+    "quote": "It reports an array of results created with a length (CMTK0005), and a `default` written in your code (CMTK0001).",
+    "claim": "It reports an array of results created with a length (CMTK0005), and a `default` written in your code (CMTK0001).",
+    "oracle": "claim",
+    "surfaces": [
+      "Result..ctor"
+    ],
+    "heldBy": [
+      "DefaultFilledCollectionAnalyzerTests",
+      "ForbiddenDefaultInitializationAnalyzerTests"
+    ]
+  },
+  {
+    "id": "R02-try-get-value",
+    "source": "docs/result.md#get-the-outcome-out",
+    "quote": "`value` is non-null when it returns true, and `error` is non-null when it returns false.",
+    "claim": "`value` is non-null when it returns true, and `error` is non-null when it returns false.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.TryGetValue"
+    ],
+    "heldBy": [
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R03-on-a-success",
+    "source": "docs/result.md#chain-steps",
+    "quote": "**On a success:** `Map`, `Bind`, `Tap` and `Ensure`. An error passes through them.",
+    "claim": "**On a success:** `Map`, `Bind`, `Tap` and `Ensure`. An error passes through them.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Map",
+      "Result.Bind",
+      "Result.Tap",
+      "Result.Ensure"
+    ],
+    "heldBy": [
+      "ResultTests",
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R03-on-an-error",
+    "source": "docs/result.md#chain-steps",
+    "quote": "**On an error:** `MapError`, `TapError` and `Recover`. A success passes through them.",
+    "claim": "**On an error:** `MapError`, `TapError` and `Recover`. A success passes through them.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.MapError",
+      "Result.TapError",
+      "Result.Recover"
+    ],
+    "heldBy": [
+      "ResultTests",
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R03-recover-is-a-second-chance",
+    "source": "docs/result.md#chain-steps",
+    "quote": "Its selector returns a success or another error, which gives the operation a second chance",
+    "claim": "Its selector returns a success or another error, which gives the operation a second chance",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Recover"
+    ],
+    "heldBy": [
+      "ResultTests",
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R03-the-first-error-stops-the-chain",
+    "source": "docs/result.md#chain-steps",
+    "quote": "The first error stops the chain, and every step after it is skipped.",
+    "claim": "The first error stops the chain, and every step after it is skipped.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Bind",
+      "Result.Map",
+      "Result.Ensure"
+    ],
+    "heldBy": [
+      "ResultWithValueTests",
+      "ResultContinuationTests"
+    ]
+  },
+  {
+    "id": "R04-a-callback-s-exception-comes-out",
+    "source": "docs/result.md#async-chains",
+    "quote": "So whatever a callback throws comes out of the chain's `await`.",
+    "claim": "So whatever a callback throws comes out of the chain's `await`.",
+    "oracle": "exception",
+    "surfaces": [
+      "Result.BindAsync",
+      "Result.TapErrorAsync"
+    ],
+    "heldBy": [
+      "ResultContinuationTests"
+    ]
+  },
+  {
+    "id": "R04-a-value-task-does-not-wait",
+    "source": "docs/result.md#async-chains",
+    "quote": "Otherwise `TapAsync` and `TapErrorAsync` bind to their synchronous overload and don't wait, and `MapAsync` keeps the `ValueTask` itself as the value.",
+    "claim": "Otherwise `TapAsync` and `TapErrorAsync` bind to their synchronous overload and don't wait, and `MapAsync` keeps the `ValueTask` itself as the value.",
+    "oracle": "silent-default",
+    "surfaces": [
+      "Result.TapAsync",
+      "Result.TapErrorAsync",
+      "Result.MapAsync"
+    ],
+    "heldBy": [
+      "ResultContinuationTests"
+    ]
+  },
+  {
+    "id": "R04-awaited-once",
+    "source": "docs/result.md#async-chains",
+    "quote": "The asynchronous members continue a `Task<Result<...>>` without an `await` at each step.",
+    "claim": "The asynchronous members continue a `Task<Result<...>>` without an `await` at each step.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.MapAsync",
+      "Result.BindAsync",
+      "Result.EnsureAsync",
+      "Result.TapErrorAsync"
+    ],
+    "heldBy": [
+      "ResultContinuationTests"
+    ]
+  },
+  {
+    "id": "R05-a-finished-task-runs-at-once",
+    "source": "docs/result.md#where-a-callback-runs",
+    "quote": "**The task had already finished.** The callback runs at once, on your thread and context.",
+    "claim": "**The task had already finished.** The callback runs at once, on your thread and context.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.MapAsync"
+    ],
+    "heldBy": [
+      "AsynchronousContextTests"
+    ]
+  },
+  {
+    "id": "R05-a-running-task-runs-elsewhere",
+    "source": "docs/result.md#where-a-callback-runs",
+    "quote": "**The task was still running.** The callback runs wherever the task finishes, usually on a thread-pool thread, without your context.",
+    "claim": "**The task was still running.** The callback runs wherever the task finishes, usually on a thread-pool thread, without your context.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.MapAsync"
+    ],
+    "heldBy": [
+      "AsynchronousContextTests"
+    ]
+  },
+  {
+    "id": "R05-configure-await-false",
+    "source": "docs/result.md#where-a-callback-runs",
+    "quote": "Every `await` inside the package uses `ConfigureAwait(false)`. Nothing resumes on your `SynchronizationContext`.",
+    "claim": "Every `await` inside the package uses `ConfigureAwait(false)`. Nothing resumes on your `SynchronizationContext`.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.MapAsync",
+      "Result.BindAsync",
+      "Result.TraverseAsync"
+    ],
+    "heldBy": [
+      "AsynchronousContextTests"
+    ]
+  },
+  {
+    "id": "R05-every-continuation",
+    "source": "docs/result.md#where-a-callback-runs",
+    "quote": "That holds for every continuation of a pending result, for `TraverseAsync` after its first operation, and for every step after one that waited.",
+    "claim": "That holds for every continuation of a pending result, for `TraverseAsync` after its first operation, and for every step after one that waited.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.TraverseAsync",
+      "Result.MapAsync"
+    ],
+    "heldBy": [
+      "AsynchronousContextTests"
+    ]
+  },
+  {
+    "id": "R05-no-deadlock",
+    "source": "docs/result.md#where-a-callback-runs",
+    "quote": "If you block on a chain with `.Result` or `.Wait()`, the package's own awaits don't deadlock you.",
+    "claim": "If you block on a chain with `.Result` or `.Wait()`, the package's own awaits don't deadlock you.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.MapAsync",
+      "Result.BindAsync"
+    ],
+    "heldBy": [
+      "AsynchronousContextTests"
+    ]
+  },
+  {
+    "id": "R06-a-cancellation-propagates",
+    "source": "docs/result.md#collect-many-results",
+    "quote": "A cancellation propagates as an exception and doesn't become an error.",
+    "claim": "A cancellation propagates as an exception and doesn't become an error.",
+    "oracle": "exception",
+    "surfaces": [
+      "Result.TraverseAsync"
+    ],
+    "heldBy": [
+      "ResultTraverseAsyncTests",
+      "OptionPatchTraverseAsyncTests"
+    ]
+  },
+  {
+    "id": "R06-none-calls-nothing",
+    "source": "docs/result.md#collect-many-results",
+    "quote": "`None`, a clear and an absent field call nothing and pass through.",
+    "claim": "`None`, a clear and an absent field call nothing and pass through.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.TraverseAsync"
+    ],
+    "heldBy": [
+      "OptionPatchTraverseAsyncTests"
+    ]
+  },
+  {
+    "id": "R06-one-at-a-time",
+    "source": "docs/result.md#collect-many-results",
+    "quote": "It awaits each operation before it starts the next, so nothing starts after a fault.",
+    "claim": "It awaits each operation before it starts the next, so nothing starts after a fault.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.TraverseAsync"
+    ],
+    "heldBy": [
+      "ResultTraverseAsyncTests"
+    ]
+  },
+  {
+    "id": "R06-option-or-patch-once",
+    "source": "docs/result.md#collect-many-results",
+    "quote": "On an `Option` or a `Patch`, `TraverseAsync` runs the operation once, when there is a value.",
+    "claim": "On an `Option` or a `Patch`, `TraverseAsync` runs the operation once, when there is a value.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.TraverseAsync"
+    ],
+    "heldBy": [
+      "OptionPatchTraverseAsyncTests"
+    ]
+  },
+  {
+    "id": "R06-stop-at-the-first-error",
+    "source": "docs/result.md#collect-many-results",
+    "quote": "`Traverse`, `Sequence` and `Zip` (two to six results) stop at the first error, in the order of the sequence or the arguments.",
+    "claim": "`Traverse`, `Sequence` and `Zip` (two to six results) stop at the first error, in the order of the sequence or the arguments.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Traverse",
+      "Result.Sequence",
+      "Result.Zip"
+    ],
+    "heldBy": [
+      "ResultCombinationTests"
+    ]
+  },
+  {
+    "id": "R06-the-token",
+    "source": "docs/result.md#collect-many-results",
+    "quote": "Give it a cancellation token, and it checks the token before each operation and hands it on.",
+    "claim": "Give it a cancellation token, and it checks the token before each operation and hands it on.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.TraverseAsync"
+    ],
+    "heldBy": [
+      "ResultTraverseAsyncTests",
+      "OptionPatchTraverseAsyncTests"
+    ]
+  },
+  {
+    "id": "R06-traverse-calls-nothing-after-an-error",
+    "source": "docs/result.md#collect-many-results",
+    "quote": "`Traverse` doesn't call its selector for anything after that error.",
+    "claim": "`Traverse` doesn't call its selector for anything after that error.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Traverse"
+    ],
+    "heldBy": [
+      "ResultCombinationTests"
+    ]
+  },
+  {
+    "id": "R07-a-cancellation-is-not-an-outcome",
+    "source": "docs/result.md#an-exception-as-an-outcome",
+    "quote": "An `OperationCanceledException` passes through every overload. So does an `AggregateException` that holds only cancellations, as `Wait()` and `.Result` throw for a cancelled task.",
+    "claim": "An `OperationCanceledException` passes through every overload. So does an `AggregateException` that holds only cancellations, as `Wait()` and `.Result` throw for a cancelled task.",
+    "oracle": "exception",
+    "surfaces": [
+      "Result.Catch",
+      "Result.CatchAsync"
+    ],
+    "heldBy": [
+      "ResultCatchTests",
+      "CatchAsyncValueTaskTests"
+    ]
+  },
+  {
+    "id": "R07-a-timeout-is-an-error",
+    "source": "docs/result.md#an-exception-as-an-outcome",
+    "quote": "A cancellation over a `TimeoutException` is the error, wrapped or not. That is how `HttpClient` reports that its `Timeout` elapsed and the call failed. `.Result` on such a call gives the error too.",
+    "claim": "A cancellation over a `TimeoutException` is the error, wrapped or not. That is how `HttpClient` reports that its `Timeout` elapsed and the call failed. `.Result` on such a call gives the error too.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Catch",
+      "Result.CatchAsync"
+    ],
+    "heldBy": [
+      "ResultCatchTests",
+      "CatchAsyncValueTaskTests"
+    ]
+  },
+  {
+    "id": "R07-a-value-task-alike",
+    "source": "docs/result.md#an-exception-as-an-outcome",
+    "quote": "A `ValueTask` works the same way",
+    "claim": "A `ValueTask` works the same way",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.CatchAsync"
+    ],
+    "heldBy": [
+      "CatchAsyncValueTaskTests"
+    ]
+  },
+  {
+    "id": "R07-an-aggregate-of-anything-else",
+    "source": "docs/result.md#an-exception-as-an-outcome",
+    "quote": "An `AggregateException` that holds anything else is the error, as it was thrown.",
+    "claim": "An `AggregateException` that holds anything else is the error, as it was thrown.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Catch"
+    ],
+    "heldBy": [
+      "ResultCatchTests"
+    ]
+  },
+  {
+    "id": "R07-catch",
+    "source": "docs/result.md#an-exception-as-an-outcome",
+    "quote": "`Result.Catch` runs the call and gives you its value, or the exception as the error",
+    "claim": "`Result.Catch` runs the call and gives you its value, or the exception as the error",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Catch"
+    ],
+    "heldBy": [
+      "ResultCatchTests"
+    ]
+  },
+  {
+    "id": "R07-catch-async-awaits",
+    "source": "docs/result.md#an-exception-as-an-outcome",
+    "quote": "It awaits the task, so an exception thrown after the task's first `await` is the error too.",
+    "claim": "It awaits the task, so an exception thrown after the task's first `await` is the error too.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.CatchAsync"
+    ],
+    "heldBy": [
+      "ResultCatchTests",
+      "CatchAsyncValueTaskTests"
+    ]
+  },
+  {
+    "id": "R07-catch-over-a-task-does-not-compile",
+    "source": "docs/result.md#an-exception-as-an-outcome",
+    "quote": "Passing a delegate that returns a `Task` to `Catch` fails to compile, and the error names `CatchAsync`.",
+    "claim": "Passing a delegate that returns a `Task` to `Catch` fails to compile, and the error names `CatchAsync`.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Catch"
+    ],
+    "heldBy": [
+      "ResultCatchTests"
+    ]
+  },
+  {
+    "id": "R07-only-the-first-of-several",
+    "source": "docs/result.md#an-exception-as-an-outcome",
+    "quote": "A task that faulted with several exceptions throws only the first of them.",
+    "claim": "A task that faulted with several exceptions throws only the first of them.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.CatchAsync"
+    ],
+    "heldBy": [
+      "ResultCatchTests",
+      "ResultTests"
+    ]
+  },
+  {
+    "id": "R07-the-other-members-do-not-catch",
+    "source": "docs/result.md#an-exception-as-an-outcome",
+    "quote": "`Map`, `Bind` and the rest are unchanged: a selector that throws propagates.",
+    "claim": "`Map`, `Bind` and the rest are unchanged: a selector that throws propagates.",
+    "oracle": "exception",
+    "surfaces": [
+      "Result.Map",
+      "Result.Bind"
+    ],
+    "heldBy": [
+      "ResultCatchTests"
+    ]
+  },
+  {
+    "id": "R07-to-http-result-refuses-an-exception",
+    "source": "docs/result.md#an-exception-as-an-outcome",
+    "quote": "`ToHttpResult()` doesn't accept a `Result<T, Exception>`",
+    "claim": "`ToHttpResult()` doesn't accept a `Result<T, Exception>`",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitHttpResultExtensions.ToHttpResult",
+      "TypeKitClosedSetHttpResultExtensions.ToHttpResult"
+    ],
+    "heldBy": [
+      "FaultResponsePartsTests"
+    ]
+  },
+  {
+    "id": "R08-no-where",
+    "source": "docs/result.md#use-query-syntax",
+    "quote": "There is no `where`: a result has no error to give a value that is filtered out.",
+    "claim": "There is no `where`: a result has no error to give a value that is filtered out.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Select",
+      "Result.SelectMany"
+    ],
+    "heldBy": [
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R08-select-and-select-many",
+    "source": "docs/result.md#use-query-syntax",
+    "quote": "`Select` and `SelectMany` make query syntax work.",
+    "claim": "`Select` and `SelectMany` make query syntax work.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Select",
+      "Result.SelectMany"
+    ],
+    "heldBy": [
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R09-a-bare-error-is-not-a-result",
+    "source": "docs/result.md#the-surface",
+    "quote": "a bare value is a success; a bare error is not, since it could be either",
+    "claim": "a bare value is a success; a bare error is not, since it could be either",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.op_Implicit"
+    ],
+    "heldBy": [
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R09-as-enumerable",
+    "source": "docs/result.md#the-surface",
+    "quote": "| `AsEnumerable()` | `Result<T, TError>` | zero or one element |",
+    "claim": "| `AsEnumerable()` | `Result<T, TError>` | zero or one element |",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.AsEnumerable"
+    ],
+    "heldBy": [
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R09-bind",
+    "source": "docs/result.md#the-surface",
+    "quote": "the result the selector returns on a success; a valued one can bind to a command",
+    "claim": "the result the selector returns on a success; a valued one can bind to a command",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Bind"
+    ],
+    "heldBy": [
+      "ResultTests",
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R09-catch-async",
+    "source": "docs/result.md#the-surface",
+    "quote": "the same, awaiting the `Task` or `ValueTask`",
+    "claim": "the same, awaiting the `Task` or `ValueTask`",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.CatchAsync"
+    ],
+    "heldBy": [
+      "ResultCatchTests",
+      "CatchAsyncValueTaskTests"
+    ]
+  },
+  {
+    "id": "R09-catch-narrowed",
+    "source": "docs/result.md#the-surface",
+    "quote": "`Result<T, Exception>` or `Result<Exception>`; narrowed to one exception type",
+    "claim": "`Result<T, Exception>` or `Result<Exception>`; narrowed to one exception type",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Catch"
+    ],
+    "heldBy": [
+      "ResultCatchTests"
+    ]
+  },
+  {
+    "id": "R09-continuations",
+    "source": "docs/result.md#the-surface",
+    "quote": "the same, taking or continuing a task; the chain is awaited once",
+    "claim": "the same, taking or continuing a task; the chain is awaited once",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.MapAsync",
+      "Result.BindAsync",
+      "Result.RecoverAsync",
+      "Result.TapAsync",
+      "Result.TapErrorAsync"
+    ],
+    "heldBy": [
+      "ResultContinuationTests",
+      "ResultTests",
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R09-debugger-shows-both",
+    "source": "docs/result.md#the-surface",
+    "quote": "`ToString()` prints the state and never the value or the error, so a result is safe to log. The debugger shows both.",
+    "claim": "`ToString()` prints the state and never the value or the error, so a result is safe to log. The debugger shows both.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.ToString"
+    ],
+    "heldBy": [
+      "TextRepresentationTests"
+    ]
+  },
+  {
+    "id": "R09-ensure",
+    "source": "docs/result.md#the-surface",
+    "quote": "a success that fails the predicate becomes that error",
+    "claim": "a success that fails the predicate becomes that error",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Ensure"
+    ],
+    "heldBy": [
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R09-equality",
+    "source": "docs/result.md#the-surface",
+    "quote": "Equality works as for any record struct.",
+    "claim": "Equality works as for any record struct.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Equals",
+      "Result.GetHashCode",
+      "Result.op_Equality",
+      "Result.op_Inequality"
+    ],
+    "heldBy": [
+      "ResultTests",
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R09-error-marker-converts-to-either",
+    "source": "docs/result.md#the-surface",
+    "quote": "an `Error<TError>` marker that converts to either shape",
+    "claim": "an `Error<TError>` marker that converts to either shape",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Error",
+      "Result.op_Implicit"
+    ],
+    "heldBy": [
+      "ResultTests",
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R09-first-or-error",
+    "source": "docs/result.md#the-surface",
+    "quote": "the first or last match, or the error; on a query the provider runs the predicate, and `LastOrError` is a compile error",
+    "claim": "the first or last match, or the error; on a query the provider runs the predicate, and `LastOrError` is a compile error",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.FirstOrError",
+      "Result.LastOrError"
+    ],
+    "heldBy": [
+      "ResultWithValueTests",
+      "QueryableOptionTests"
+    ]
+  },
+  {
+    "id": "R09-map",
+    "source": "docs/result.md#the-surface",
+    "quote": "a new value on a success; `Result<T, TError>` from a `Result<TError>`",
+    "claim": "a new value on a success; `Result<T, TError>` from a `Result<TError>`",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Map"
+    ],
+    "heldBy": [
+      "ResultTests",
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R09-map-error",
+    "source": "docs/result.md#the-surface",
+    "quote": "| `MapError(selector)` | both | a new error type |",
+    "claim": "| `MapError(selector)` | both | a new error type |",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.MapError"
+    ],
+    "heldBy": [
+      "ResultTests",
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R09-map-error-and-ensure-async",
+    "source": "docs/result.md#the-surface",
+    "quote": "`MapError` and `Ensure`, once the result is known",
+    "claim": "`MapError` and `Ensure`, once the result is known",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.MapErrorAsync",
+      "Result.EnsureAsync"
+    ],
+    "heldBy": [
+      "ResultContinuationTests"
+    ]
+  },
+  {
+    "id": "R09-match",
+    "source": "docs/result.md#the-surface",
+    "quote": "what the branch returns; `onError` may take the error or nothing",
+    "claim": "what the branch returns; `onError` may take the error or nothing",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Match"
+    ],
+    "heldBy": [
+      "ResultTests",
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R09-recover",
+    "source": "docs/result.md#the-surface",
+    "quote": "the selector's result on an error, a success or another error",
+    "claim": "the selector's result on an error, a success or another error",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Recover",
+      "Result.RecoverAsync"
+    ],
+    "heldBy": [
+      "ResultTests",
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R09-sequence",
+    "source": "docs/result.md#the-surface",
+    "quote": "| `Sequence()` | `IEnumerable<Result<T, TError>>`, `IEnumerable<Result<TError>>` | the list of values, or the first error |",
+    "claim": "| `Sequence()` | `IEnumerable<Result<T, TError>>`, `IEnumerable<Result<TError>>` | the list of values, or the first error |",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Sequence"
+    ],
+    "heldBy": [
+      "ResultCombinationTests"
+    ]
+  },
+  {
+    "id": "R09-success-marker",
+    "source": "docs/result.md#the-surface",
+    "quote": "a `Success` marker that converts to any `Result<TError>`",
+    "claim": "a `Success` marker that converts to any `Result<TError>`",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Success",
+      "Result.op_Implicit"
+    ],
+    "heldBy": [
+      "ResultTests"
+    ]
+  },
+  {
+    "id": "R09-tap",
+    "source": "docs/result.md#the-surface",
+    "quote": "runs the action on that branch, hands the result on",
+    "claim": "runs the action on that branch, hands the result on",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Tap",
+      "Result.TapError"
+    ],
+    "heldBy": [
+      "ResultTests",
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R09-to-option",
+    "source": "docs/result.md#the-surface",
+    "quote": "`Some(value)`, or `None` for an error",
+    "claim": "`Some(value)`, or `None` for an error",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.ToOption"
+    ],
+    "heldBy": [
+      "ResultWithValueTests"
+    ]
+  },
+  {
+    "id": "R09-transpose",
+    "source": "docs/result.md#the-surface",
+    "quote": "the one turned inside out: `None` is a success without a value, an error stays the error",
+    "claim": "the one turned inside out: `None` is a success without a value, an error stays the error",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Transpose"
+    ],
+    "heldBy": [
+      "OptionLookupTests"
+    ]
+  },
+  {
+    "id": "R09-traverse-option",
+    "source": "docs/result.md#the-surface",
+    "quote": "`Result<Option<TResult>, TError>`: an optional input validated when present",
+    "claim": "`Result<Option<TResult>, TError>`: an optional input validated when present",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Traverse"
+    ],
+    "heldBy": [
+      "OptionLookupTests"
+    ]
+  },
+  {
+    "id": "R09-traverse-patch",
+    "source": "docs/result.md#the-surface",
+    "quote": "`Result<Patch<TResult>, TError>`: a patch field validated when it carries a value; a clear or an absence passes through",
+    "claim": "`Result<Patch<TResult>, TError>`: a patch field validated when it carries a value; a clear or an absence passes through",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Traverse"
+    ],
+    "heldBy": [
+      "PatchCombinationTests"
+    ]
+  },
+  {
+    "id": "R09-try-get-error",
+    "source": "docs/result.md#the-surface",
+    "quote": "| `TryGetError(out error)` | `Result<TError>` | `bool` |",
+    "claim": "| `TryGetError(out error)` | `Result<TError>` | `bool` |",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.TryGetError"
+    ],
+    "heldBy": [
+      "ResultTests"
+    ]
+  },
+  {
+    "id": "R09-zip",
+    "source": "docs/result.md#the-surface",
+    "quote": "one value from all, or the first error",
+    "claim": "one value from all, or the first error",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.Zip"
+    ],
+    "heldBy": [
+      "ResultCombinationTests"
+    ]
+  },
+  {
+    "id": "S01-a-closed-set-is-its-name",
+    "source": "src/CodoMetis.TypeKit.Serilog/README.md#codometistypekitserilog",
+    "quote": "**A closed set is logged as its name**, or as what its own `ToString()` prints, never by its properties.",
+    "claim": "**A closed set is logged as its name**, or as what its own `ToString()` prints, never by its properties.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitSerilogExtensions.WithTypeKit"
+    ],
+    "heldBy": [
+      "DestructuringTests"
+    ]
+  },
+  {
+    "id": "S01-a-list-of-them",
+    "source": "src/CodoMetis.TypeKit.Serilog/README.md#codometistypekitserilog",
+    "quote": "A list or a dictionary of them becomes a list or a dictionary of strings.",
+    "claim": "A list or a dictionary of them becomes a list or a dictionary of strings.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitSerilogExtensions.WithTypeKit"
+    ],
+    "heldBy": [
+      "DestructuringTests"
+    ]
+  },
+  {
+    "id": "S01-an-instance-beside-the-members",
+    "source": "src/CodoMetis.TypeKit.Serilog/README.md#codometistypekitserilog",
+    "quote": "An instance that the set's own code made beside its members has no name, and Serilog logs that it could not capture it.",
+    "claim": "An instance that the set's own code made beside its members has no name, and Serilog logs that it could not capture it.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitSerilogExtensions.WithTypeKit"
+    ],
+    "heldBy": [
+      "DestructuringTests"
+    ]
+  },
+  {
+    "id": "S01-as-what-they-print",
+    "source": "src/CodoMetis.TypeKit.Serilog/README.md#codometistypekitserilog",
+    "quote": "value objects and closed sets as what they print, also where it destructures them. A value object that masks itself stays masked.",
+    "claim": "value objects and closed sets as what they print, also where it destructures them. A value object that masks itself stays masked.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitSerilogExtensions.WithTypeKit"
+    ],
+    "heldBy": [
+      "DestructuringTests",
+      "SerilogSamples",
+      "LoggingTests"
+    ]
+  },
+  {
+    "id": "S01-every-other-type-as-before",
+    "source": "src/CodoMetis.TypeKit.Serilog/README.md#codometistypekitserilog",
+    "quote": "Serilog handles every other type as before.",
+    "claim": "Serilog handles every other type as before.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitSerilogExtensions.WithTypeKit"
+    ],
+    "heldBy": [
+      "DestructuringTests"
+    ]
+  },
+  {
+    "id": "S01-every-value-object-is-a-string",
+    "source": "src/CodoMetis.TypeKit.Serilog/README.md#codometistypekitserilog",
+    "quote": "**Every value object becomes a string**, masked or not.",
+    "claim": "**Every value object becomes a string**, masked or not.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitSerilogExtensions.WithTypeKit"
+    ],
+    "heldBy": [
+      "DestructuringTests"
+    ]
+  },
+  {
+    "id": "S01-not-the-generators",
+    "source": "src/CodoMetis.TypeKit.Serilog/README.md#codometistypekitserilog",
+    "quote": "So the host needs this package and the base package, not the generators.",
+    "claim": "So the host needs this package and the base package, not the generators.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitSerilogExtensions.WithTypeKit"
+    ],
+    "heldBy": [
+      "PackageDependencyTests"
+    ]
+  },
+  {
+    "id": "S01-unmasked-without-it",
+    "source": "src/CodoMetis.TypeKit.Serilog/README.md#codometistypekitserilog",
+    "quote": "Without this package, a value object that masks itself with a hand-written `ToString()` is logged unmasked there, as `{ Value: \"k-123\" }`.",
+    "claim": "Without this package, a value object that masks itself with a hand-written `ToString()` is logged unmasked there, as `{ Value: \"k-123\" }`.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitSerilogExtensions.WithTypeKit"
+    ],
+    "heldBy": [
+      "DestructuringTests"
+    ]
+  },
+  {
+    "id": "T01-an-error-learns-only-new-api-forms",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#configuration",
+    "quote": "A minor version may teach an Error a form that only its own new API can write.",
+    "claim": "Within a major version an Error reports nothing more of the code a consumer could already write; a minor version's Error reports only forms that call that version's new API, such as 2.3.0's CMTK0003 on an unawaited Testing assertion over a Task or ValueTask, recognised by the Testing assembly so that a consumer's own extension of the same name stays silent.",
+    "oracle": "claim",
+    "surfaces": [
+      "OptionAssertions.*",
+      "ResultAssertions.*",
+      "PatchAssertions.*"
+    ],
+    "heldBy": [
+      "IgnoredOutcomeAnalyzerTests"
+    ]
+  },
+  {
+    "id": "T02-a-few-2-2-forms-are-reported",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#configuration",
+    "quote": "2.3.0 makes an exception for a few forms that code from before 2.3.0 can contain.",
+    "claim": "2.3.0's CMTK0003 reports, on tasks of results, a Task.WhenAny of tasks the statement made in any use, a dropped Task.WhenEach, Wait() on a branch and an array written in Task.WaitAll or Task.WaitAny, all forms 2.2.0 code can contain; a WhenAny of held tasks stays silent.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.*"
+    ],
+    "heldBy": [
+      "DroppedTaskVariantTests",
+      "IgnoredOutcomeAnalyzerTests"
+    ]
+  },
+  {
+    "id": "T02-a-wrapped-assertion-is-reported",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0003",
+    "quote": "It also reports an assertion passed through `ConfigureAwait` or `WaitAsync`, and one in a branch of a `?:`, `??` or `switch` expression, as it does for a dropped result.",
+    "claim": "It also reports an assertion passed through `ConfigureAwait` or `WaitAsync`, and one in a branch of a `?:`, `??` or `switch` expression, as it does for a dropped result.",
+    "oracle": "claim",
+    "surfaces": [
+      "OptionAssertions.*",
+      "ResultAssertions.*",
+      "PatchAssertions.*",
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "DroppedTaskVariantTests"
+    ]
+  },
+  {
+    "id": "T02-combined-assertions-are-reported",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0003",
+    "quote": "You get the report when you hand assertions to `Task.WhenAll`, `Task.Run` or `Task.WhenEach` and drop what it returns.",
+    "claim": "You get the report when you hand assertions to `Task.WhenAll`, `Task.Run` or `Task.WhenEach` and drop what it returns.",
+    "oracle": "claim",
+    "surfaces": [
+      "OptionAssertions.*",
+      "ResultAssertions.*",
+      "PatchAssertions.*",
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "DroppedTaskVariantTests"
+    ]
+  },
+  {
+    "id": "T02-wait-all-observes-assertions",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0003",
+    "quote": "`Task.WaitAll` throws the failures, so it is silent.",
+    "claim": "`Task.WaitAll` throws the failures, so it is silent.",
+    "oracle": "claim",
+    "surfaces": [
+      "OptionAssertions.*",
+      "ResultAssertions.*",
+      "PatchAssertions.*",
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "DroppedTaskVariantTests"
+    ]
+  },
+  {
+    "id": "T02-when-any-of-results-is-reported",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0003",
+    "quote": "A `WhenAny` of tasks the statement made is reported whether you drop it, await it, wait for it or return it as a plain `Task`.",
+    "claim": "A `WhenAny` of tasks the statement made is reported whether you drop it, await it, wait for it or return it as a plain `Task`.",
+    "oracle": "claim",
+    "surfaces": [
+      "Result.*"
+    ],
+    "heldBy": [
+      "IgnoredOutcomeAnalyzerTests",
+      "DroppedTaskVariantTests"
+    ]
+  },
+  {
+    "id": "T03-a-catch-that-cannot-keep-the-failure-is-reported",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0003",
+    "quote": "A `catch` that throws again, one for another exception, such as `catch (OperationCanceledException)`, and one with a `when (false)` filter are reported.",
+    "claim": "A `catch` that throws again, one for another exception, such as `catch (OperationCanceledException)`, and one with a `when (false)` filter are reported.",
+    "oracle": "claim",
+    "surfaces": [
+      "OptionAssertions.*",
+      "ResultAssertions.*",
+      "PatchAssertions.*",
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "DroppedTaskVariantTests",
+      "IgnoredOutcomeAnalyzerTests"
+    ]
+  },
+  {
+    "id": "T03-a-nested-when-any-is-reported",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0003",
+    "quote": "A `Task.WhenAny` inside a `Task.WhenAll` or a `Task.Run` is reported even when you await the outer task, because that task succeeds with the failed assertion as its value",
+    "claim": "A `Task.WhenAny` inside a `Task.WhenAll` or a `Task.Run` is reported even when you await the outer task, because that task succeeds with the failed assertion as its value",
+    "oracle": "claim",
+    "surfaces": [
+      "OptionAssertions.*",
+      "ResultAssertions.*",
+      "PatchAssertions.*",
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "DroppedTaskVariantTests",
+      "IgnoredOutcomeAnalyzerTests"
+    ]
+  },
+  {
+    "id": "T03-an-unknown-filter-counts-as-catching",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0003",
+    "quote": "A filter the rule can't work out, such as `when (Expected(e))`, counts as catching the failure.",
+    "claim": "A filter the rule can't work out, such as `when (Expected(e))`, counts as catching the failure.",
+    "oracle": "claim",
+    "surfaces": [
+      "OptionAssertions.*",
+      "ResultAssertions.*",
+      "PatchAssertions.*",
+      "FaultAssertions.*"
+    ],
+    "heldBy": [
+      "DroppedTaskVariantTests",
+      "IgnoredOutcomeAnalyzerTests"
+    ]
+  },
+  {
+    "id": "W01-answers-are-real",
+    "source": "docs/walkthrough.md#walkthrough-one-orders-service",
+    "quote": "CI runs it on every change, and builds it from the packed packages too, so every answer below is one it really gives",
+    "claim": "CI runs it on every change, and builds it from the packed packages too, so every answer below is one it really gives",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit",
+      "TypeKitHttpResultExtensions.ToHttpResult",
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit",
+      "TypeKitSerilogExtensions.WithTypeKit"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W02-a-column-of-the-underlying-type",
+    "source": "docs/walkthrough.md#store-them",
+    "quote": "The id is a `TEXT` key, as a `Guid` is on SQLite, and the quantity an `INTEGER`. The status is its member's name.",
+    "claim": "The id is a `TEXT` key, as a `Guid` is on SQLite, and the quantity an `INTEGER`. The status is its member's name.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit",
+      "ClosedSetConverter.*",
+      "ValueObjectConverter.*"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W03-json-reads-through-create",
+    "source": "docs/walkthrough.md#place-an-order",
+    "quote": "So the handler receives `ann@example.com`, trimmed, and never sees the spaces.",
+    "claim": "So the handler receives `ann@example.com`, trimmed, and never sees the spaces.",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedJson.*",
+      "StringTextExtensions.*",
+      "IValidatedValue.Create"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W04-json-writes-the-string",
+    "source": "docs/walkthrough.md#place-an-order",
+    "quote": "the JSON is the underlying type's: `\"email\":\"ann@example.com\"`, a plain string, and the closed set is its name",
+    "claim": "the JSON is the underlying type's: `\"email\":\"ann@example.com\"`, a plain string, and the closed set is its name",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedJson.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W05-log-masks",
+    "source": "docs/walkthrough.md#place-an-order",
+    "quote": "`Destructure.WithTypeKit()` logs each value object as what its `ToString()` prints.",
+    "claim": "`Destructure.WithTypeKit()` logs each value object as what its `ToString()` prints.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitSerilogExtensions.WithTypeKit"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W06-rejections-never-quote",
+    "source": "docs/walkthrough.md#reject-what-doesnt-fit",
+    "quote": "Each of these is a 400 with problem details, and none of them quotes what the client sent",
+    "claim": "Each of these is a 400 with problem details, and none of them quotes what the client sent",
+    "oracle": "claim",
+    "surfaces": [
+      "GeneratedJson.*",
+      "GeneratedParsing.*"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W07-none-is-a-404",
+    "source": "docs/walkthrough.md#find-an-order",
+    "quote": "`ToResult` turns a missing order into the error `NotFound`, and `ToHttpResult()` answers it with the status the setup maps it to, as problem details.",
+    "claim": "`ToResult` turns a missing order into the error `NotFound`, and `ToHttpResult()` answers it with the status the setup maps it to, as problem details.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitQueryableExtensions.*",
+      "TypeKitHttpResultExtensions.ToHttpResult"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W08-left-out-errors-leave-the-document",
+    "source": "docs/walkthrough.md#find-an-order",
+    "quote": "The OpenAPI document then shows only the 404 for it, where it would otherwise list every status `OrderFault` maps to.",
+    "claim": "The OpenAPI document then shows only the 404 for it, where it would otherwise list every status `OrderFault` maps to.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitWithoutFaultsEndpointConventionBuilderExtensions.*",
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W09-value-is-the-column",
+    "source": "docs/walkthrough.md#query-on-value",
+    "quote": "In the query, `order.Quantity.Value` is the `Quantity` column itself, so the comparison runs in the database.",
+    "claim": "In the query, `order.Quantity.Value` is the `Quantity` column itself, so the comparison runs in the database.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.Value",
+      "TypeKitDbContextOptionsBuilderExtensions.UseTypeKit"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W10-patch-reads-through-create",
+    "source": "docs/walkthrough.md#change-an-order",
+    "quote": "Each field reads its value through its own `Create`, so `{\"quantity\":0}` is a 400 like any other body.",
+    "claim": "Each field reads its value through its own `Create`, so `{\"quantity\":0}` is a 400 like any other body.",
+    "oracle": "claim",
+    "surfaces": [
+      "PatchJsonConverterFactory.*",
+      "GeneratedJson.*"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W11-document-describes-the-underlying-type",
+    "source": "docs/walkthrough.md#read-the-openapi-document",
+    "quote": "`AddTypeKit()` describes every value object as the schema of the type inside it",
+    "claim": "`AddTypeKit()` describes every value object as the schema of the type inside it",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  },
+  {
+    "id": "W12-closed-set-is-a-string-enum",
+    "source": "docs/walkthrough.md#read-the-openapi-document",
+    "quote": "**The closed set** is a string enum of its names.",
+    "claim": "**The closed set** is a string enum of its names.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "WalkthroughTests"
+    ]
+  }
+]

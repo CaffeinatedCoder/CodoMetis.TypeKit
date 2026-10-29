@@ -16,6 +16,7 @@ dotnet tools/DocsQuery/bin/Release/net10.0/docs-query.dll entry CMTK0010
 | `list [filter...]` | Documents: `kind=adr status=open`, `date>=2026-10-01`, `title~json` | exact |
 | `find <words>` | BM25 over the sections of the ranked documents; `--top N`, `--kind K`. A section that defines an id the query names comes first. A miss proves nothing | ranked |
 | `claims [page]` | Every C# block, every line whose comment states an output, and every other fenced block of the README and the docs pages, with the sample region that compiles it; `--kind csharp\|stated\|block`, `--json` | exact |
+| `due [days]` | The facts to re-read before a release: each fact with an `external` pin verified more than `days` ago (default 183, six months). `--nuget` also lists each pin of a package nuget.org has a later release of. Run by hand, never in CI | exact |
 | `check` | Broken links, missing anchors, ids defined nowhere, and the verified facts' rules (below) | exact |
 
 `--json` prints one object per line, the summary first; a pointer is `path` and `line`. Exit codes: 0
@@ -54,11 +55,21 @@ rules:
 | `fact-orphan-test` | A `KBNNN.cs` in the facts project that no fact names |
 | `fact-fixture-missing`, `fact-fixture` | A `fixture:` whose file does not exist; one that is not `KBNNN.fixture.json` beside the test, or belongs to a fact without a test |
 | `fact-orphan-fixture` | A `KBNNN.fixture.json` in the facts project that no fact names |
-| `fact-not-executable-cited` | The probe corpus cites a fact that has no test: a `refused` entry of `.claude/probe-axes.md` whose reason names `KB-NNN`, a `not-promised` entry of `tools/probe/corpus/claims.json` whose `source` is the fact's file or which says `fact:KB-NNN`, an obligation's `inapplicable` declaration citing `fact:KB-NNN`, or a `Cite.Fact("KB-NNN")` or `Baseline.Fact("KB-NNN")` literal in the harness and probe sources (comments blanked out). No test means `none, …`, no file, a file that does not exist or declares no class of the id; a `Baseline.Fact` takes a fixture as well. Reported at the citing place |
 
-The pins and the corpus's citations are read from the checkout at each `check`, never from the index. The summary
-counts the citations of each kind (`4 fact citations (0 refused, 2 not-promised, 0 obligation, 2 harness)`), and
-`RepositoryTests` holds floors on them, so a scan that finds nothing cannot pass for a clean one.
+The pins are read from the checkout at each `check`, never from the index.
+
+An `external {name} {version}` pin is never compared by `check`: it names what the checkout never installs, a
+competitor's release among them. `due` lists what to re-read (CONTRIBUTING, "Releasing"):
+
+| Problem | When |
+|---|---|
+| `fact-old` | The fact has an `external` pin and its `verified:` date is more than `days` before today |
+| `fact-released` | With `--nuget`: nuget.org lists a later release of a pinned package, a stable one for a stable pin and any for a pre-release (SemVer order, `beta.10` after `beta.2`). Read from `v3-flatcontainer/{id}/index.json`, which lists unlisted versions too |
+
+A pin whose version is no version (`external NuGet registration data, 2026-10-29`) is never looked up, and one whose
+name nuget.org has no package of (`external PostgreSQL 17.11`) finds nothing to compare: both are due by their date alone.
+`--nuget` is the only command that reaches the network. Exit codes: 0 when a fact is due, 1 when none is or nuget.org
+could not be read.
 
 ## Freshness
 

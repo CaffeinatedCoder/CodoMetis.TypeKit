@@ -2,7 +2,10 @@
 
 The base package of TypeKit. It gives you `Option<T>` and `Result<T, TError>` that you can't misuse,
 and the interfaces that value objects and closed sets (smart enums) are generated from. It brings no
-code generator and no Metalama, only the types and the analyzers that check them.
+code generator, only the types and the analyzers that check them. TypeKit's generators are built on
+[Metalama](https://postsharp.net/metalama), which generates C# code at compile time from templates
+written in C#. They live in `CodoMetis.TypeKit.Generators`, so this package never brings Metalama into
+your project.
 
 What it does for you:
 
@@ -76,6 +79,7 @@ Option<decimal> discount =                                       // a later from
 - **`Choose(selector)`** keeps the values a selector returns `Some` for, in order and without the
   `None`s. It filters and maps in one step, over elements that may be null
   (`nicknames.Choose(n => n.ToOption())`). `Choose()` keeps the values a sequence of options holds.
+  Both read an async stream too, as its elements arrive.
 
 On a database query, `FirstOrNone`, `FirstOrError`, `SingleOrNone` and `ElementAtOrNone` ask the
 provider for only the element they need, and let it run the predicate (a `WHERE` and a `LIMIT` in
@@ -84,7 +88,8 @@ no last element until it is ordered.
 
 Write the predicate as a lambda at the call, which makes it an expression. A `Func<T, bool>` variable
 or a method group is no expression. It binds to the sequence's overload, which reads every row and
-runs the condition in memory. Hold an `Expression<Func<T, bool>>` instead.
+runs the condition in memory, and the analyzer warns at the call (CMTK0009). Hold an
+`Expression<Func<T, bool>>` instead.
 
 ### Get the value out
 
@@ -95,6 +100,7 @@ runs the condition in memory. Hold an `Expression<Func<T, bool>>` instead.
 - **`ToResult(error)`** turns absence into an error.
 - **`Traverse`** validates an optional input when it is present.
   `dto.Phone.ToOption().Traverse(Phone.Create)` is a `Result<Option<Phone>, PhoneFault>`.
+  `TraverseAsync` does the same with a check you await, such as a lookup.
 - **`Transpose()`** turns an `Option<Result<...>>` inside out, and a `Result<Option<...>>` back.
 
 `ToString()` never prints the content, so an option is safe to log. The debugger shows it.
@@ -221,6 +227,20 @@ sequence order. `Traverse` calls nothing after it. None of them collects errors.
 cancellation token you give it is cancelled. For operations that may all run at once, use
 `Task.WhenAll` and `Sequence()`.
 
+An async stream (`IAsyncEnumerable<T>`), such as a paged API or a query read with
+`AsAsyncEnumerable()`, needs no list first:
+
+```csharp
+IAsyncEnumerable<Sku> known = lines.Choose(line => Sku.TryFrom(line));                        // the lines that are SKUs, as they arrive
+Result<IReadOnlyList<Sku>, SkuFault> imported = await rows.SequenceAsync(cancellationToken);   // every SKU, or the first fault
+Result<IReadOnlyList<Order>, OrderFault> found = await ids.TraverseAsync(orders.FindAsync);    // one lookup at a time, in order
+```
+
+`SequenceAsync` and `TraverseAsync` stop at the first error and read nothing after it. All three read
+the stream in order, and dispose its enumerator however they stop: at an error, at a `break`, or when
+your selector throws. The token you give `SequenceAsync` or `TraverseAsync` reaches the stream. For
+`Choose`, pass yours to `WithCancellation` on what it returns.
+
 The asynchronous steps take callbacks that return a `Task`, and wait for them.
 `.TapErrorAsync(fault => audit.RecordAsync(fault))` has recorded the fault when the chain's `await`
 returns, and what it throws comes out of that `await`.
@@ -271,14 +291,16 @@ Result<byte[], Exception> fetched = await Result.CatchAsync(() => client.GetByte
 - **A task goes to `CatchAsync`.** A delegate that returns a `Task`, an `async` lambda among them,
   given to `Catch` or its command form doesn't compile, and the error names `CatchAsync`. The task's
   exception would be thrown after `Catch` had returned.
-- **A `ValueTask`, or a task spelled as the type argument** (`Catch<Task<int>, ...>`), is rejected
-  when called, before the delegate runs. `CatchAsync` takes a `ValueTask` through `.AsTask()` or an
-  `async` lambda, as above.
+- **`CatchAsync` takes a `ValueTask` too**, as in `Result.CatchAsync(() => stream.ReadAsync(buffer))`.
+  An `async` lambda still goes to the `Task` form.
+- **A `ValueTask` given to `Catch`, or a task spelled as the type argument** (`Catch<Task<int>, ...>`),
+  is rejected when called, before the delegate runs. Use `CatchAsync`.
 - **A delegate that returns null throws**, as `Result.Success(null)` does.
 - **The other members don't catch.** `Map`, `Bind` and the rest are unchanged: a selector that throws
   propagates.
 - **An exception is for the code that called, not for a client.** `ToHttpResult()` doesn't accept a
   `Result<T, Exception>`. Use `MapError` to turn the exception into a fault that it does accept.
+  `MapError(e => Fault.Of(reason, detail, e))` keeps the exception as the fault's cause, for your log.
 
 ### A fault with a sentence
 
@@ -288,6 +310,9 @@ beside it, in a `Fault<TFault>`: the fault as its `Reason`, and an optional `Det
 - **`Fault.Of(OrderFault.NotAmendable, "The order shipped on 3 May.")`** infers the type.
   `Fault.Of(OrderFault.NotFound)` makes one without a detail. A blank detail throws
   `ArgumentException`. Leave the detail out instead, and it is `null`.
+- **`Fault.Of(reason, detail, exception)` keeps what failed underneath** as the fault's `Cause`.
+  It's for your log. A fault with a cause equals the same fault without one, and prints the same.
+  CodoMetis.TypeKit.AspNetCore hands it to your host and never writes it into a response.
 - **A bare fault doesn't convert to one**, so comparing the two doesn't compile. Write
   `fault.Reason == OrderFault.NotFound`.
 - **`WithRule` names the rule that failed**, where the reason covers several rules. The rule is an
@@ -582,7 +607,8 @@ A value object inside a patch keeps its own rule. `Patch<Email>` given a value t
 is rejected as anywhere else, without quoting the input. Where the rejection should be the
 endpoint's own fault, the request carries a `Patch<string>`, and `Traverse` validates it:
 `request.Email.Traverse(Email.Create)` is a `Result<Patch<Email>, EmailFault>`, with a clear and an
-absence passed through. `Map` changes a value the same way.
+absence passed through. `TraverseAsync` does the same with a check you await, and `Map` changes a
+value the same way.
 
 **Good to know**
 
@@ -830,13 +856,13 @@ In a field initializer, refer to a member by its field, `Open`, not by its name.
 Nothing has run: the delegate is rejected before it is called.
 
 **Why:** the task's exception is thrown after `Catch` has returned, so the result would be a success
-whatever the call does. A delegate that returns a `Task` is rejected at compile time. A `ValueTask`
-can't be: it converts to no task type that an overload could name without making every `async`
-lambda ambiguous. And a spelled type argument chooses its overload itself.
+whatever the call does. A delegate that returns a `Task` is rejected at compile time. One that
+returns a `ValueTask` is rejected when called, since a compile error there would break a build that
+works today. And a spelled type argument chooses its overload itself.
 
-**Instead:** use `CatchAsync`, which awaits the task:
-`await Result.CatchAsync(() => stream.ReadAsync(buffer).AsTask())`, or an `async` lambda. In
-`CatchAsync`, await the inner task in the delegate.
+**Instead:** use `CatchAsync`, which awaits the task, a `ValueTask` too:
+`await Result.CatchAsync(() => stream.ReadAsync(buffer))`. In `CatchAsync`, await the inner task in
+the delegate.
 
 ### AsText in globalization-invariant mode
 

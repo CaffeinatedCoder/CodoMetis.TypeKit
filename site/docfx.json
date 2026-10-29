@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "obj/pub",
+          "files": [
+            "CodoMetis.TypeKit.dll",
+            "CodoMetis.TypeKit.EntityFrameworkCore.dll",
+            "CodoMetis.TypeKit.AspNetCore.dll",
+            "CodoMetis.TypeKit.Serilog.dll",
+            "CodoMetis.TypeKit.Testing.dll"
+          ]
+        }
+      ],
+      "dest": "obj/api"
+    }
+  ],
+  "build": {
+    "content": [
+      { "files": [ "index.md", "toc.yml" ] },
+      { "src": "obj/api", "dest": "api", "files": [ "**.yml" ] },
+      { "src": "..", "files": [ "README.md", "CHANGELOG.md", "docs/*.md", "src/*/README.md" ] }
+    ],
+    "resource": [
+      { "src": "..", "dest": "_repository", "files": [ "design/**", "CONTRIBUTING.md", "SECURITY.md", "AGENTS.md", "LICENSE", "tools/ConsumerSmokeTest/Consumers/walkthrough/*.cs" ] }
+    ],
+    "output": "obj/_site",
+    "template": [ "default", "modern", "template" ],
+    "globalMetadata": {
+      "_appTitle": "CodoMetis.TypeKit",
+      "_appName": "CodoMetis.TypeKit",
+      "_appFooter": "MIT licensed. <a href=\"https://github.com/CaffeinatedCoder/CodoMetis.TypeKit\">GitHub</a>",
+      "_enableSearch": true,
+      "_disableContribution": true,
+      "_repository": "https://github.com/CaffeinatedCoder/CodoMetis.TypeKit"
+    }
+  }
+}

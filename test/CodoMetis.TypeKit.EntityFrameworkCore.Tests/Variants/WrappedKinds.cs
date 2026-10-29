@@ -20,7 +20,10 @@ public enum Ordering
 /// <remarks>
 /// The values are chosen so that a column read as text orders differently from the type (<c>10</c>
 /// before <c>2.25</c>, <c>1.02:00:00</c> before <c>10:00:00</c>): a converter that stores another
-/// representation, or a provider that orders the stored text, cannot answer like memory by accident.
+/// representation, or a provider that orders the stored text, cannot answer like memory by accident. Text and
+/// <c>char</c> mix case (<c>"Bravo"</c> before <c>"alpha"</c> ordinally), and the Guids ascend by their first group
+/// and not by their last, so a database that orders text ignoring case, or a <c>uniqueidentifier</c> by its last
+/// group (SQL Server), cannot either.
 /// </remarks>
 public sealed record WrappedKind(string Name, Type ValueObject, Type Wrapped, Ordering Ordering, object[] Values)
 {
@@ -83,11 +86,11 @@ public static class WrappedKinds
     public static readonly WrappedKind UInt16  = new("ushort", typeof(WrapsUInt16), typeof(ushort), Ordering.Wrapped, [(ushort)2, (ushort)7, (ushort)10]);
     public static readonly WrappedKind UInt32  = new("uint", typeof(WrapsUInt32), typeof(uint), Ordering.Wrapped, [2u, 7u, 10u]);
     public static readonly WrappedKind UInt64  = new("ulong", typeof(WrapsUInt64), typeof(ulong), Ordering.Wrapped, [2ul, 7ul, 10ul]);
-    public static readonly WrappedKind Char    = new("char", typeof(WrapsChar), typeof(char), Ordering.Wrapped, ['a', 'b', 'c']);
+    public static readonly WrappedKind Char    = new("char", typeof(WrapsChar), typeof(char), Ordering.Wrapped, ['B', 'a', 'c']);
     public static readonly WrappedKind Guid    = new("Guid", typeof(WrapsGuid), typeof(Guid), Ordering.Wrapped,
-                                                     [System.Guid.Parse("00000000-0000-0000-0000-000000000002"), System.Guid.Parse("00000000-0000-0000-0000-000000000007"), System.Guid.Parse("00000000-0000-0000-0000-000000000010")]);
-    public static readonly WrappedKind String  = new("string", typeof(WrapsString), typeof(string), Ordering.Wrapped, ["alpha", "bravo", "charlie"]);
-    public static readonly WrappedKind StringRecordClass = new("string, record class", typeof(WrapsStringRecord), typeof(string), Ordering.Wrapped, ["alpha", "bravo", "charlie"]);
+                                                     [System.Guid.Parse("00000001-0000-0000-0000-000000000010"), System.Guid.Parse("00000002-0000-0000-0000-000000000002"), System.Guid.Parse("00000003-0000-0000-0000-000000000007")]);
+    public static readonly WrappedKind String  = new("string", typeof(WrapsString), typeof(string), Ordering.Wrapped, ["Bravo", "alpha", "charlie"]);
+    public static readonly WrappedKind StringRecordClass = new("string, record class", typeof(WrapsStringRecord), typeof(string), Ordering.Wrapped, ["Bravo", "alpha", "charlie"]);
     public static readonly WrappedKind Int32RecordClass = new("int, record class", typeof(WrapsInt32Record), typeof(int), Ordering.Wrapped, [2, 7, 10]);
     public static readonly WrappedKind Decimal = new("decimal", typeof(WrapsDecimal), typeof(decimal), Ordering.Wrapped, [1.5m, 2.25m, 10m]);
     public static readonly WrappedKind Double  = new("double", typeof(WrapsDouble), typeof(double), Ordering.Wrapped, [1.5, 2.25, 10.0]);

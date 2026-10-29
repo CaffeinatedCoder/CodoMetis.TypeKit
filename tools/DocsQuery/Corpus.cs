@@ -95,17 +95,24 @@ internal static class Corpus
                         .Order(StringComparer.Ordinal)];
     }
 
-    /// <summary>The samples project's C# files, whose <c>// sample:</c> regions compile the pages' blocks.</summary>
-    public static IReadOnlyList<string> Samples(string root)
-    {
-        var directory = Path.Combine(root, SamplesProject);
-        if (!Directory.Exists(directory)) return [];
+    /// <summary>
+    /// Where a page keeps its regions outside the samples project: the walkthrough's sample application, the smoke
+    /// test's consumer that the packed packages build. ReadmeSamples.RegionSources in the conventions tests is the
+    /// same list.
+    /// </summary>
+    public static readonly string[] PageSources = ["tools/ConsumerSmokeTest/Consumers/walkthrough"];
 
-        return [.. Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories)
-                            .Select(path => Relative(root, path))
-                            .Where(path => !InBuildOutput(path))
-                            .Order(StringComparer.Ordinal)];
-    }
+    /// <summary>The C# files whose <c>// sample:</c> regions compile the pages' blocks: the samples project's and each page's own sources.</summary>
+    public static IReadOnlyList<string> Samples(string root) =>
+    [
+        .. new[] { SamplesProject }.Concat(PageSources)
+                                   .Select(relative => Path.Combine(root, relative))
+                                   .Where(Directory.Exists)
+                                   .SelectMany(directory => Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+                                   .Select(path => Relative(root, path))
+                                   .Where(path => !InBuildOutput(path))
+                                   .Order(StringComparer.Ordinal)
+    ];
 
     /// <summary>
     /// The fingerprint of an index: the schema version, the tool's own version (the hash of its

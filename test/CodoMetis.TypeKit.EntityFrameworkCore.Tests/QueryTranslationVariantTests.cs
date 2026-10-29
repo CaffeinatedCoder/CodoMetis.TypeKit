@@ -68,32 +68,59 @@ public sealed class QueryTranslationVariantTests
         if (expectation is Unclaimed unclaimed) Assert.Skip(unclaimed.Reason);
         if (expectation is OpenFinding finding) Assert.Skip($"open finding: {finding.Reason}");
 
-        var valueObject = Run(@case, valueObject: true);
+        if (!AnswersAsTheWrappedType(@case, expectation, Run, out _, out var plain)) return;
+
+        // PostgreSQL translates where it would refuse what SQLite runs: an element column re-typed to the
+        // wrapped type, for one, threw there alone.
+        if (plain is null || PostgreSql(@case, valueObject: false) is not { Refusal: null } wrapped) return;
+        var translated = PostgreSql(@case, valueObject: true)!;
+        if (translated.Refusal is not null)
+            throw new ShouldAssertException($"PostgreSQL refuses what it translates over the wrapped type: {translated.Refusal}");
+        if (ClaimsTheColumn(@case))
+            translated.Sql.ShouldBe(wrapped.Sql, "PostgreSQL's SQL of the same query over the wrapped type");
+    }
+
+    /// <summary>
+    /// The case's query over the value object, run by <paramref name="run"/>, against its expectation: refused as the
+    /// docs say, or answering the rows (and, on a table's column, the SQL) of the same query over the wrapped type, or
+    /// memory's rows where that query is refused or not written. False where a refusal settles the case.
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="differs"/> names the cases a database is known to answer differently from memory, a fact of
+    /// design/knowledge: where memory is the oracle, such a case is left to the caller.
+    /// </remarks>
+    internal static bool AnswersAsTheWrappedType(QueryCase @case, Expectation expectation, Func<QueryCase, bool, Answer> run, out Answer valueObject, out Answer? plain,
+                                                 Func<QueryCase, Answer, Answer, bool>? differs = null)
+    {
+        valueObject = run(@case, true);
+        plain = null;
 
         switch (expectation)
         {
             case RefusedOrdering:
                 Refusal(valueObject, "its ordering is its own CompareTo").ShouldContain(@case.Kind.ValueObject.Name);
-                return;
+                return false;
             // The same last step through EF.Functions, which EF takes in memory too, where a database's function cannot run.
             case RefusedForeign when @case is { Op: Op.Greatest or Op.Least, Site: Site.Column or Site.Nullable }:
                 Refusal(valueObject, "is not supported because the query has switched to client-evaluation");
-                return;
+                return false;
             case RefusedForeign when @case.Op is Op.Select or Op.Distinct:
                 var memory = Memory(@case);
                 if (memory.Refusal is { } thrown)
                 {
                     // r.N!.Value over the null row, read through the converter and then unwrapped in memory, as memory does.
                     valueObject.Refusal.ShouldBeOfType(thrown.GetType(), "the query's last step, which throws in memory too");
-                    return;
+                    return false;
                 }
 
                 valueObject.Refusal.ShouldBeNull("the query's last step, which EF evaluates in memory after reading the value object through its converter");
                 valueObject.Rows.ShouldBe(memory.Rows, "the query's last step, evaluated in memory");
-                return;
+                return false;
             case RefusedForeign:
                 Refusal(valueObject, "could not be translated");
-                return;
+                return false;
+            case NullsLeftOut when differs?.Invoke(@case, valueObject, Memory(@case)) == true:
+                return false;
             case NullsLeftOut:
                 valueObject.Refusal.ShouldBeNull();
                 var nulls = NullRows(@case);
@@ -102,16 +129,17 @@ public sealed class QueryTranslationVariantTests
                     "the rows memory keeps are the query's and the null rows, which the generated operators sort first");
 
                 // A string has no < to write the wrapped type's query with; memory is no oracle here.
-                if (!new QueryBuilder(@case, valueObject: false).CanBuild) return;
+                if (!new QueryBuilder(@case, valueObject: false).CanBuild) return false;
                 break;
         }
 
-        var plain = new QueryBuilder(@case, valueObject: false).CanBuild ? Run(@case, valueObject: false) : null;
+        plain = new QueryBuilder(@case, valueObject: false).CanBuild ? run(@case, false) : null;
+        if (plain is not { Refusal: null } && differs?.Invoke(@case, valueObject, Memory(@case)) == true) return false;
         if (valueObject.Refusal is not null)
         {
             if (plain is { Refusal: null }) throw new ShouldAssertException($"refused where the same query over the wrapped type answers [{string.Join(", ", plain.Rows!)}]: {valueObject.Refusal}");
             if (plain is null) throw new ShouldAssertException($"refused, where memory answers {Shown(Memory(@case))}: {valueObject.Refusal}");
-            return;
+            return false;
         }
 
         if (plain is { Refusal: null })
@@ -125,14 +153,7 @@ public sealed class QueryTranslationVariantTests
             valueObject.Rows.ShouldBe(Memory(@case).Rows, $"the rows memory answers, where the wrapped type's query is {(plain is null ? "not written" : "refused")}");
         }
 
-        // PostgreSQL translates where it would refuse what SQLite runs: an element column re-typed to the
-        // wrapped type, for one, threw there alone.
-        if (plain is null || PostgreSql(@case, valueObject: false) is not { Refusal: null } wrapped) return;
-        var translated = PostgreSql(@case, valueObject: true)!;
-        if (translated.Refusal is not null)
-            throw new ShouldAssertException($"PostgreSQL refuses what it translates over the wrapped type: {translated.Refusal}");
-        if (ClaimsTheColumn(@case))
-            translated.Sql.ShouldBe(wrapped.Sql, "PostgreSQL's SQL of the same query over the wrapped type");
+        return true;
     }
 
     /// <summary>A guard against a vacuous run: the catalogue's floor, every kind, site and accessor in it, and the refusals it expects.</summary>
@@ -151,34 +172,53 @@ public sealed class QueryTranslationVariantTests
         all.Count(@case => Expect(@case) is NullsLeftOut).ShouldBeGreaterThan(5);
     }
 
-    private abstract record Expectation;
+    /// <summary>
+    /// A guard on the harness: one seeded database read by many cases at once, as this class and
+    /// <see cref="SqlServerQueryVariantTests"/> read it from two collections, answers each the same rows, never
+    /// "database is locked" (#148).
+    /// </summary>
+    [Fact]
+    public void A_seeded_database_read_by_many_cases_at_once_answers_each_alike()
+    {
+        var @case = QueryShapes.All().First(@case => @case is { Op: Op.OrderBy, Site: Site.Nullable } && Run(@case, valueObject: true).Rows is not null);
+        var first = Run(@case, valueObject: true);
+
+        var answers = new ConcurrentBag<Answer>();
+        Parallel.For(0, 400, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(8, Environment.ProcessorCount * 2) },
+                     _ => answers.Add(Run(@case, valueObject: true)));
+
+        answers.ShouldAllBe(answer => answer.Refusal == null && answer.Rows!.SequenceEqual(first.Rows!),
+                            answers.FirstOrDefault(answer => answer.Refusal != null) is { } refused ? Shown(refused) : null);
+    }
+
+    internal abstract record Expectation;
 
     /// <summary>Answers as the same query over the wrapped type.</summary>
-    private sealed record Same : Expectation;
+    internal sealed record Same : Expectation;
 
     /// <summary>Refused, naming the value object whose own <c>CompareTo</c> the database cannot run.</summary>
-    private sealed record RefusedOrdering : Expectation;
+    internal sealed record RefusedOrdering : Expectation;
 
     /// <summary>
     /// Refused by EF, "could not be translated": the column holds what a converter of the application's own
     /// stores. A final <c>Select</c> or <c>Distinct</c>, which EF evaluates in memory after reading the value
     /// object through that converter, answers as memory does.
     /// </summary>
-    private sealed record RefusedForeign : Expectation;
+    internal sealed record RefusedForeign : Expectation;
 
     /// <summary>
     /// Answers as the same query over the wrapped type, where a null passes no comparison, which is fewer rows
     /// than memory's: a record class's generated operators sort null first (decision 98).
     /// </summary>
-    private sealed record NullsLeftOut : Expectation;
+    internal sealed record NullsLeftOut : Expectation;
 
     /// <summary>A divergence the catalogue found and no decision settles yet: named here, never dropped from the catalogue.</summary>
-    private sealed record OpenFinding(string Reason) : Expectation;
+    internal sealed record OpenFinding(string Reason) : Expectation;
 
-    /// <summary>No sentence of the docs says what the case answers.</summary>
-    private sealed record Unclaimed(string Reason) : Expectation;
+    /// <summary>No sentence of the docs says what the case answers; <paramref name="SqliteOnly"/> where that is SQLite's doing alone.</summary>
+    internal sealed record Unclaimed(string Reason, bool SqliteOnly = false) : Expectation;
 
-    private static Expectation Expect(QueryCase @case)
+    internal static Expectation Expect(QueryCase @case)
     {
         if (@case.IsForeign)
         {
@@ -194,7 +234,7 @@ public sealed class QueryTranslationVariantTests
         // JSON text EF stores: "1:2:00:00" before "2:00:00", "09:30:00.0000000" against a parameter '09:30:00'. The
         // wrapped type's own max over a TimeSpan column answers the same text order (measured on 2026-10-16).
         if (@case is { Site: Site.CollectionElement, Op: Op.Greatest or Op.Least, ReadsWrapped: true } && (@case.Kind.Wrapped == typeof(TimeSpan) || @case.Kind.Wrapped == typeof(TimeOnly)))
-            return new Unclaimed("SQLite orders a primitive collection's TimeSpan and TimeOnly elements as the text EF stores, and the wrapped type's query is refused there");
+            return new Unclaimed("SQLite orders a primitive collection's TimeSpan and TimeOnly elements as the text EF stores, and the wrapped type's query is refused there", SqliteOnly: true);
 
         // The generated operators of a record class sort null first, so in memory null < x is true; SQL's
         // "N" < @x is unknown for a null N, as it is for the wrapped type's lifted operator.
@@ -226,12 +266,16 @@ public sealed class QueryTranslationVariantTests
         return answer.Refusal.Message;
     }
 
-    private sealed record Answer(string[]? Rows, string? Sql, Exception? Refusal);
+    internal sealed record Answer(string[]? Rows, string? Sql, Exception? Refusal);
 
-    /// <summary>One in-memory SQLite database per model, seeded once and only read.</summary>
+    /// <summary>
+    /// One in-memory SQLite database per model, seeded once and only read, one query at a time: a connection is not
+    /// thread-safe, and <see cref="SqlServerQueryVariantTests"/> reads the same databases from its own collection, in
+    /// parallel with this one, where two commands at once are "database is locked" (#148).
+    /// </summary>
     private static readonly ConcurrentDictionary<string, Lazy<(SqliteConnection Connection, Exception? Refusal)>> Databases = new();
 
-    private static Answer Run(QueryCase @case, bool valueObject)
+    internal static Answer Run(QueryCase @case, bool valueObject)
     {
         var builder = new QueryBuilder(@case, valueObject);
         var key = @case.IsFilter
@@ -241,16 +285,19 @@ public sealed class QueryTranslationVariantTests
         var (connection, refusal) = Databases.GetOrAdd(key, _ => new Lazy<(SqliteConnection, Exception?)>(() => Seeded(model, builder))).Value;
         if (refusal is not null) return new Answer(null, null, refusal);
 
-        using var db = QueryDb.Create(model, connection);
-        try
+        lock (connection)
         {
-            var set = (IQueryable)typeof(DbContext).GetMethod(nameof(DbContext.Set), Type.EmptyTypes)!.MakeGenericMethod(builder.Source).Invoke(db, null)!;
-            var (query, ordered) = builder.Build(set.Expression);
-            return Execute(set.Provider, query, ordered, sql: true);
-        }
-        catch (Exception exception) when (exception is not ShouldAssertException)
-        {
-            return new Answer(null, null, Unwrapped(exception));
+            using var db = QueryDb.Create(model, connection);
+            try
+            {
+                var set = (IQueryable)typeof(DbContext).GetMethod(nameof(DbContext.Set), Type.EmptyTypes)!.MakeGenericMethod(builder.Source).Invoke(db, null)!;
+                var (query, ordered) = builder.Build(set.Expression);
+                return Execute(set.Provider, query, ordered, sql: true);
+            }
+            catch (Exception exception) when (exception is not ShouldAssertException)
+            {
+                return new Answer(null, null, Unwrapped(exception));
+            }
         }
     }
 
@@ -281,7 +328,7 @@ public sealed class QueryTranslationVariantTests
     /// The same query over the value objects in memory, with the query filter applied as EF would, and
     /// <c>EF.Functions</c> answered as <see cref="InMemoryFunctions"/> does.
     /// </summary>
-    private static Answer Memory(QueryCase @case)
+    internal static Answer Memory(QueryCase @case)
     {
         var builder = new QueryBuilder(@case, valueObject: true);
         var source = Queryable.AsQueryable(Seed.Entities(builder, @case.Kind, valueObject: true));
@@ -302,7 +349,9 @@ public sealed class QueryTranslationVariantTests
     /// <summary>
     /// <c>EF.Functions.Greatest</c>, <c>Least</c> and Npgsql's row-value comparisons, which throw outside a query, as
     /// SQLite answers them: by each type's default comparer, which is the wrapped type's order for a value object
-    /// that declares none of its own, and a null wherever <c>Greatest</c> or <c>Least</c> meets one.
+    /// that declares none of its own, and a null wherever <c>Greatest</c> or <c>Least</c> meets one. Text compares
+    /// ordinally, as SQLite's <c>max</c> and a value object's generated comparison do, where a string's default
+    /// comparer follows the culture.
     /// </summary>
     private sealed class InMemoryFunctions : ExpressionVisitor
     {
@@ -322,7 +371,9 @@ public sealed class QueryTranslationVariantTests
         public static T Least<T>(T[] values) => Pick(values, order => order < 0);
 
         private static T Pick<T>(T[] values, Func<int, bool> keeps) =>
-            values.Any(value => value is null) ? default! : values.Aggregate((kept, value) => keeps(Comparer<T>.Default.Compare(value, kept)) ? value : kept);
+            values.Any(value => value is null) ? default! : values.Aggregate((kept, value) => keeps(Order<T>().Compare(value, kept)) ? value : kept);
+
+        private static IComparer<T> Order<T>() => typeof(T) == typeof(string) ? (IComparer<T>)StringComparer.Ordinal : Comparer<T>.Default;
 
         /// <summary>A tuple's own order is its elements', one after the other, each by its default comparer.</summary>
         public static bool RowValue(string comparison, ITuple left, ITuple right)
@@ -339,7 +390,7 @@ public sealed class QueryTranslationVariantTests
     }
 
     /// <summary>An answer as a message shows it: its rows, or its refusal.</summary>
-    private static string Shown(Answer answer) =>
+    internal static string Shown(Answer answer) =>
         answer.Refusal is { } refusal ? $"refused ({refusal.Message})" : $"[{string.Join(", ", answer.Rows!)}]";
 
     private static (SqliteConnection, Exception?) Seeded(QueryModel model, QueryBuilder builder)
@@ -360,7 +411,7 @@ public sealed class QueryTranslationVariantTests
         }
     }
 
-    private static Answer Execute(IQueryProvider provider, Expression query, bool ordered, bool sql)
+    internal static Answer Execute(IQueryProvider provider, Expression query, bool ordered, bool sql)
     {
         if (!typeof(IQueryable).IsAssignableFrom(query.Type))
             return new Answer([Text(provider.Execute(query))], null, null);
@@ -379,5 +430,5 @@ public sealed class QueryTranslationVariantTests
             ? $"#{id.GetValue(value)}"
             : WrappedKind.Text(value);
 
-    private static Exception Unwrapped(Exception exception) => exception is TargetInvocationException { InnerException: { } inner } ? Unwrapped(inner) : exception;
+    internal static Exception Unwrapped(Exception exception) => exception is TargetInvocationException { InnerException: { } inner } ? Unwrapped(inner) : exception;
 }

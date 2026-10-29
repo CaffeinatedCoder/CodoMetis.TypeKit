@@ -1,6 +1,10 @@
-# Build, test and pack on every push to main or a release branch and every PR into one; a PR packs
-# only when its diff can change a package (the changes job). Topics
-# merge into release/<version> and the release branch into main
+# Build, test and pack on every push to main or a release branch and every PR into one, in lanes: the Linux
+# test leg always, the Windows leg and the pack (Pack and Consumer) when the change can affect them, and the
+# macOS leg only in a run that selects nothing.
+# tools/CiLanes selects them from the changed paths in the changes job, and the CI job judges the run: every
+# selected job passed and every other was skipped (design/adr/0113-ci-runs-the-lanes-a-change-can-affect.md).
+# A PR into main, a push to main, a dispatch, the nightly run (nightly.yml) and the release (release.yml calls
+# this workflow) run every lane. Topics merge into release/<version> and the release branch into main
 # (design/adr/0094-topic-branches-into-a-release-branch-and-fix-trailers.md).
 #
 # The tests run on Linux, Windows and macOS: a contributor needs git and the pinned SDK on any of
@@ -27,6 +31,8 @@ on:
   pull_request:
     branches: [ "main", "release/**" ]
   workflow_dispatch:
+  # release.yml runs every lane before it verifies. Its event is the tag's push, which selects every lane.
+  workflow_call:
 
 permissions:
   contents: read
@@ -35,9 +41,11 @@ defaults:
   run:
     shell: bash
 
-# A new push to a PR makes the in-flight run pointless; main is never cancelled.
+# A new push to a PR makes the in-flight run pointless; main is never cancelled. The prefix keeps a call from
+# release.yml out of its caller's group: a called workflow's github.workflow is the caller's name, and groups
+# ignore case, so without it both would be release-<tag> and the call would wait for its caller (KB-043).
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -46,16 +54,17 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
-  # Whether this run can change a package or a trimmed consumer: on a push and in the release always, on
-  # a pull request only when the diff against the base branch touches a shipping project, a build
-  # property file, a project file, the SDK pin, the package versions, a workflow or the smoke test
-  # itself. The pack and consumer jobs below run on that answer; the deciding paths are in this job's log.
+  # Which lanes this run needs, from the paths it changes (tools/CiLanes, design/adr/0113): a PR into a release
+  # branch against its base, a push to one against the commit it replaced, every other run every lane. The job
+  # summary lists each path's class. A diff that fails fails this job, and the CI job with it, never skips a lane.
   changes:
     name: Changes
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     outputs:
-      product: ${{ steps.product.outputs.product }}
+      legs: ${{ steps.select.outputs.legs }}
+      pack: ${{ steps.select.outputs.pack }}
+      suite: ${{ steps.select.outputs.suite }}
 
     steps:
       # The whole history: the diff is against the base branch, which a shallow clone has not fetched.
@@ -63,47 +72,38 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Bash runs with -e; `git diff` of a base branch that was not fetched fails the job rather than
-      # answering false, so a broken diff can never skip the pack.
-      - name: Can the diff change a package?
-        id: product
-        run: |
-          if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
-            echo "product=true" >> "$GITHUB_OUTPUT"
-            echo "A $GITHUB_EVENT_NAME: the packages and the consumer are always built."
-            exit 0
-          fi
-          git diff --name-only "origin/$GITHUB_BASE_REF...HEAD" > changed-paths.txt
-          product=false
-          while IFS= read -r path; do
-            case "$path" in
-              global.json) reason='global.json' ;;
-              Directory.Packages.props) reason='Directory.Packages.props' ;;
-              src/*) reason='src/' ;;
-              Directory.*.props|*/Directory.*.props) reason='Directory.*.props' ;;
-              Directory.*.targets|*/Directory.*.targets) reason='Directory.*.targets' ;;
-              *.csproj) reason='*.csproj' ;;
-              .github/workflows/*) reason='.github/workflows/' ;;
-              tools/ConsumerSmokeTest/*) reason='tools/ConsumerSmokeTest/' ;;
-              *) continue ;;
-            esac
-            echo "$path ($reason)"
-            product=true
-          done < changed-paths.txt
-          echo "product=$product" >> "$GITHUB_OUTPUT"
-          if [ "$product" = true ]; then
-            echo "The paths above can change a package or a trimmed consumer: the packages and the consumer are built."
-          else
-            echo "No changed path can change a package or a trimmed consumer: the pack and consumer jobs are skipped."
-          fi
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          global-json-file: global.json
 
+      # A tool project, run as its built dll (design/adr/0092).
+      - name: Build the selection
+        run: dotnet build tools/CiLanes -c Release
+
+      - name: Select the lanes
+        id: select
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: >
+          dotnet tools/CiLanes/bin/Release/net10.0/ci-lanes.dll select
+          --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF" --base "$BASE_REF" --before "$BEFORE"
+          --output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
+
+  # The legs the changes job selected: Linux in every run, Windows when the change can affect it, macOS only in a
+  # run that selects nothing. A prose-only change builds and runs test/Prose.slnf alone, the test projects that
+  # read prose (ProseReaderTests holds the set); anything else, the whole solution.
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    needs: changes
+    env:
+      SOLUTION: ${{ needs.changes.outputs.suite == 'prose' && 'test/Prose.slnf' || 'CodoMetis.TypeKit.slnx' }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        os: ${{ fromJSON(needs.changes.outputs.legs) }}
 
     steps:
       # The whole history and its tags: CommitTrailerTests reads the fix commits since v2.1.0, and
@@ -118,19 +118,19 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore CodoMetis.TypeKit.slnx
+        run: dotnet restore "$SOLUTION"
 
       - name: Build
-        run: dotnet build CodoMetis.TypeKit.slnx -c Release --no-restore
+        run: dotnet build "$SOLUTION" -c Release --no-restore
 
-      # The EF Core round trips start a PostgreSQL container. Ubuntu runners have Docker; macOS
-      # runners have none and Windows runners run only Windows containers, so those legs leave the
-      # one class that needs it out.
+      # The EF Core tests on PostgreSQL and SQL Server, and the SQL Server facts, start a Linux container.
+      # Ubuntu runners have Docker; macOS runners have none and Windows runners run only Windows
+      # containers, so those legs leave out the classes that need it, the trait Needs=Docker.
       - name: Test
         run: >
-          dotnet test --solution CodoMetis.TypeKit.slnx -c Release --no-build
+          dotnet test --solution "$SOLUTION" -c Release --no-build
           --report-xunit-trx --results-directory TestResults
-          ${{ runner.os != 'Linux' && '--filter-not-class "*PostgreSqlRoundTripTests"' || '' }}
+          ${{ runner.os != 'Linux' && '--filter-not-trait "Needs=Docker"' || '' }}
 
       - name: Upload test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
@@ -140,153 +140,16 @@ jobs:
           path: TestResults/**/*.trx
           if-no-files-found: ignore
 
-  # The probe corpus (tools/probe/corpus), replayed with no model, split by family into legs that run at
-  # once, each running its probes as many at a time as the runner has cores (design/adr/0101, which amends
-  # 0096). On a push the whole corpus is replayed from an empty state, with coverage, and the merged state
-  # is saved for the pull requests into this branch. On a pull request the base branch's saved state is
-  # restored and only the probes whose identity or footprint the branch changed are replayed, judged
-  # against the base's footprints, without coverage, since nothing of that state is kept; with no saved
-  # state every probe runs, as from an empty state. A failing probe fails its leg and the run. Linux only:
-  # the probes test documented claims, not the platform, and the test job's three legs test the prober.
-  probes:
-    name: Probe replay (${{ matrix.family }})
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        # The families of the axes file's replay configuration, every one: ReleaseWiringTests holds this
-        # list to that, and `prober replay --family` refuses while a probe's surface is in no family.
-        family: [ http, ef, json, text, build ]
-
-    steps:
-      # The whole history: the replay adds a git worktree at HEAD, and `universe` reads the claims
-      # against origin/main.
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-        with:
-          fetch-depth: 0
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
-        with:
-          global-json-file: global.json
-
-      # The prober's state and its replay worktree, in this job's own temporary directory, never a
-      # developer's (the default without PROBE_STATE_DIR). The state is the branch's: on a pull request
-      # the base branch's, so that its saved footprints decide what the branch stales.
-      - name: Prober state directory
-        run: |
-          echo "PROBE_STATE_DIR=$RUNNER_TEMP/probe-state" >> "$GITHUB_ENV"
-          echo "PROBE_CACHE_DIR=$RUNNER_TEMP/probe-cache" >> "$GITHUB_ENV"
-          echo "PROBE_BRANCH=${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}" >> "$GITHUB_ENV"
-
-      # The base branch's state as its last green push saved it; the newest entry under the prefix. With
-      # none (the first run, or an evicted entry) the replay starts empty and runs every probe.
-      - name: Restore the base branch's probe state
-        if: github.event_name == 'pull_request'
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: ${{ runner.temp }}/probe-state
-          key: probe-state-${{ github.base_ref }}-${{ github.sha }}
-          restore-keys: probe-state-${{ github.base_ref }}-
-
-      # The prober is a tool project, run as its built dll (design/adr/0092).
-      - name: Build the prober
-        run: dotnet build tools/Prober -c Release
-
-      # Bash runs with -e, so the exit code of the replay is the step's.
-      - name: Replay the family's probes
-        run: |
-          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
-            dotnet tools/Prober/bin/Release/net10.0/prober.dll replay --branch "$PROBE_BRANCH" --family "${{ matrix.family }}" --no-footprint
-          else
-            dotnet tools/Prober/bin/Release/net10.0/prober.dll replay --all --branch "$PROBE_BRANCH" --family "${{ matrix.family }}"
-          fi
-
-      # The leg's state, for the merge below and for triage of a failure.
-      - name: Upload the leg's state
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        if: always()
-        with:
-          name: probe-state-${{ matrix.family }}
-          path: ${{ runner.temp }}/probe-state
-          if-no-files-found: error
-
-  # The legs' states joined into one: `prober merge` refuses while a registered probe was in no leg and
-  # fails when a leg did, so this job is red whenever the replay is. Then the status in the job summary,
-  # and on a push the merged state saved for the branch's pull requests.
-  probe-status:
-    name: Probe status
-    runs-on: ubuntu-latest
-    needs: probes
-    if: always()
-    timeout-minutes: 15
-
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-        with:
-          fetch-depth: 0
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
-        with:
-          global-json-file: global.json
-
-      - name: Prober state directory
-        run: |
-          echo "PROBE_STATE_DIR=$RUNNER_TEMP/probe-state" >> "$GITHUB_ENV"
-          echo "PROBE_CACHE_DIR=$RUNNER_TEMP/probe-cache" >> "$GITHUB_ENV"
-          echo "PROBE_BRANCH=${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}" >> "$GITHUB_ENV"
-
-      - name: Download the legs' states
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
-        with:
-          pattern: probe-state-*
-          path: ${{ runner.temp }}/probe-legs
-
-      - name: Build the prober
-        run: dotnet build tools/Prober -c Release
-
-      - name: Merge the legs
-        run: dotnet tools/Prober/bin/Release/net10.0/prober.dll merge --branch "$PROBE_BRANCH" --from "$RUNNER_TEMP"/probe-legs/probe-state-*
-
-      # A report: the documented claims' pair coverage and the open findings, in the job summary. It
-      # fails only when the prober cannot read the claims. `universe` builds what `status` reads.
-      - name: Probe status
-        if: always()
-        run: |
-          dotnet tools/Prober/bin/Release/net10.0/prober.dll universe --branch "$PROBE_BRANCH" > /dev/null
-          dotnet tools/Prober/bin/Release/net10.0/prober.dll status --branch "$PROBE_BRANCH" | tee status.txt
-          { echo '### Probe status'; echo; echo '```text'; cat status.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-
-      # The branch's state after a green push: what its pull requests replay against. A red push saves
-      # nothing, so a pull request judges against the last green state and replays more.
-      - name: Save the branch's probe state
-        if: github.event_name == 'push'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: ${{ runner.temp }}/probe-state
-          key: probe-state-${{ github.ref_name }}-${{ github.sha }}
-
-      # The merged evidence of every probe, for triage of a failure.
-      - name: Upload the probe state
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        if: always()
-        with:
-          name: probe-state
-          path: ${{ runner.temp }}/probe-state
-          if-no-files-found: ignore
-
   # The pack catches a package that names a README it does not pack and a broken SBOM step, and the two
   # smoke tests a consumer that no longer restores, compiles or publishes with Native AOT against the
-  # packed feed and against one packed on the spot. A pull request that touches none of the paths the
-  # changes job lists cannot change any of them, so it skips both, while every push and the release
-  # (release.yml) still run them.
+  # packed feed and against one packed on the spot. Both run when the changes job selects the pack lane,
+  # beside the test legs rather than after them: neither reads the tests' outcome, and the CI job requires
+  # all of them. The release (release.yml) runs them again on what it publishes.
   pack:
     name: Pack
     runs-on: ubuntu-latest
-    needs: [ test, changes ]
-    if: needs.changes.outputs.product == 'true'
+    needs: [ changes ]
+    if: needs.changes.outputs.pack == 'true'
 
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -342,8 +205,8 @@ jobs:
   consumer:
     name: Consumer smoke test
     runs-on: ubuntu-latest
-    needs: [ test, changes ]
-    if: needs.changes.outputs.product == 'true'
+    needs: [ changes ]
+    if: needs.changes.outputs.pack == 'true'
 
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -364,3 +227,32 @@ jobs:
 
       - name: Consumer smoke test, packing its own feed
         run: dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll
+
+  # The one required build check: every job the changes job selected succeeded and every other was skipped
+  # (tools/CiLanes gate, design/adr/0113). A skipped job reads as a passing required check, so the legs
+  # themselves cannot be required once they may be skipped (KB-043). Under always(), so a failed selection or a
+  # cancelled leg fails this job rather than skipping it, and a skipped CI is never what a merge sees.
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [ changes, test, pack, consumer ]
+    if: always()
+
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          global-json-file: global.json
+
+      - name: Build the gate
+        run: dotnet build tools/CiLanes -c Release
+
+      - name: Every selected job passed, every other was skipped
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          printf '%s' "$NEEDS" > "$RUNNER_TEMP/needs.json"
+          dotnet tools/CiLanes/bin/Release/net10.0/ci-lanes.dll gate "$RUNNER_TEMP/needs.json" --summary "$GITHUB_STEP_SUMMARY"

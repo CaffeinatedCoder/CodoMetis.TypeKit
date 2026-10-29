@@ -53,8 +53,9 @@ is the value-less shape. Anything that turns this into a second LanguageExt is o
   occurrence. It is made by `Fault.Of` alone, and comparing it with a bare reason is refused, since a
   fault with a detail never equals one
   ([decision 53](adr/0053-fault-made-by-fault-of-alone.md)); `Reason` is what a caller compares.
-  A `Cause` beside them joins 2.1 ([decision 52](adr/0052-cause-on-fault-joins-2-1.md)), and so does
-  `Rule`, the qualified name of the enum or closed-set member that refused, which the problem carries
+  A `Cause` beside them (2.3.0) is an exception for the log, which equality and printing leave out
+  and no problem carries ([decision 52](adr/0052-cause-on-fault-joins-2-1.md)). `Rule` (2.1.0) is the
+  qualified name of the enum or closed-set member that refused, which the problem carries
   as `rule` ([decision 67](adr/0067-rule-that-refused-on-fault.md)); equality compares the rule's type,
   since two types' rules can read alike ([decision 72](adr/0072-rule-identity-is-its-type.md)).
 - **`Fault<T1, T2>` and `Fault<T1, T2, T3>` (2.1.0)** hold one fault of one of several types, so a
@@ -75,7 +76,8 @@ is the value-less shape. Anything that turns this into a second LanguageExt is o
   non-goals exclude. A zip still inspects every argument, so an uninitialized one after an error
   throws. Callbacks return `Task` ([decision 30](adr/0030-asynchronous-callbacks-return-task.md)): `TapAsync` and `TapErrorAsync` take a
   `Func<…, Task>` beside the `Action`, so an `async` lambda is awaited; a `ValueTask` one needs
-  `.AsTask()`.
+  `.AsTask()`. `CatchAsync` is no callback and takes a `ValueTask` too, at a lower overload priority,
+  so an `async` lambda still binds to its `Task` form ([decision 110](adr/0110-catchasync-takes-a-valuetask-at-a-lower-priority.md)).
 - **A callback runs where the task it waited for completed (decided 2026-10-13,
   [decision 62](adr/0062-asynchronous-callbacks-run-where-awaited-task-completed.md)).** Every `await`
   in the package is `ConfigureAwait(false)`, so nothing resumes on the caller's
@@ -84,7 +86,19 @@ is the value-less shape. Anything that turns this into a second LanguageExt is o
   once on it, so in a UI or a Blazor component a callback that touches dispatcher-bound state works or
   fails by timing. That is documented rather than changed: await the task and call the synchronous
   combinator, or marshal inside the callback. `AsynchronousContextTests` holds every public member
-  that returns a task to it.
+  that returns a task or an async stream to it.
+- **Async streams (2.3.0, #128).** `Choose()` and `Choose(selector)` over an `IAsyncEnumerable<T>`
+  return one, lazily, the caller's token reaching the source through `[EnumeratorCancellation]`.
+  `SequenceAsync(cancellationToken)` and `TraverseAsync` over one read the next element only after the
+  one before it succeeded, check a token they are given before each read and each operation, and
+  dispose the enumerator on every exit. Measured 2026-10-29 against .NET 10's
+  `System.Linq.AsyncEnumerable` and EF Core 10.0.12: no name binds ambiguously beside its operators,
+  and a `T[]` or a `DbSet<T>` (which EF Core 10 does not convert to `IAsyncEnumerable<T>`) still binds
+  to the sequence members. A type that implements both `IEnumerable<T>` and `IAsyncEnumerable<T>` is
+  ambiguous (CS0121) for `Choose(selector)` and `TraverseAsync`, as it is for the BCL's own `Where`. That
+  is left as the BCL leaves it, not settled by an overload priority: a silent pick of either reading is
+  worse than a compile error. CMTK0003 reports a dropped `SequenceAsync` by its type, as it does
+  `TraverseAsync`, with no change to the analyzer.
 
 **Decided 2026-09-27: an uninitialized `Result` throws.**
 - A `default` result is `State == Uninitialized`. If the branching members tested only

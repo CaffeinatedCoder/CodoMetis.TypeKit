@@ -97,7 +97,7 @@ public static class TypeKitHttpResultExtensions
         where TFault : notnull =>
         result.Match<Results<Ok<T>, FaultProblem<TFault>>>(
             static value => TypedResults.Ok(value),
-            static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail, fault.Rule));
+            static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail, fault.Rule, fault.Cause));
 
     /// <summary>A success as <c>204 No Content</c>; a fault as problem details for its reason, with its detail.</summary>
     /// <param name="result">The outcome of the operation the endpoint ran.</param>
@@ -106,7 +106,7 @@ public static class TypeKitHttpResultExtensions
         where TFault : notnull =>
         result.Match<Results<NoContent, FaultProblem<TFault>>>(
             static () => TypedResults.NoContent(),
-            static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail, fault.Rule));
+            static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail, fault.Rule, fault.Cause));
 
     /// <summary>A success as the response <paramref name="success"/> makes of its value; a fault as problem details for its reason, with its detail.</summary>
     /// <param name="result">The outcome of the operation the endpoint ran.</param>
@@ -118,7 +118,7 @@ public static class TypeKitHttpResultExtensions
         where TSuccess : IResult
     {
         ArgumentNullException.ThrowIfNull(success);
-        return result.Match<Results<TSuccess, FaultProblem<TFault>>>(value => success(value), static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail, fault.Rule));
+        return result.Match<Results<TSuccess, FaultProblem<TFault>>>(value => success(value), static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail, fault.Rule, fault.Cause));
     }
 
     /// <summary>A success as the response <paramref name="success"/> makes; a fault as problem details for its reason, with its detail.</summary>
@@ -130,7 +130,7 @@ public static class TypeKitHttpResultExtensions
         where TSuccess : IResult
     {
         ArgumentNullException.ThrowIfNull(success);
-        return result.Match<Results<TSuccess, FaultProblem<TFault>>>(() => success(), static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail, fault.Rule));
+        return result.Match<Results<TSuccess, FaultProblem<TFault>>>(() => success(), static fault => new FaultProblem<TFault>(fault.Reason, fault.Detail, fault.Rule, fault.Cause));
     }
 
     /// <summary>A success as <c>200 OK</c> with its value; a fault of either type as problem details for its reason, with its detail.</summary>
@@ -249,7 +249,7 @@ public static class TypeKitHttpResultExtensions
             static fault => fault.Match<Results<TSuccess, FaultProblem<T1>, FaultProblem<T2>, FaultProblem<T3>>>(static f => Problem(f), static f => Problem(f), static f => Problem(f)));
     }
 
-    private static FaultProblem<TFault> Problem<TFault>(Fault<TFault> fault) where TFault : notnull => new(fault.Reason, fault.Detail, fault.Rule);
+    private static FaultProblem<TFault> Problem<TFault>(Fault<TFault> fault) where TFault : notnull => new(fault.Reason, fault.Detail, fault.Rule, fault.Cause);
 }
 
 /// <summary>Turns a <c>Result</c> whose fault is a closed set into the HTTP response an endpoint returns, as <see cref="TypeKitHttpResultExtensions"/> does for an enum.</summary>

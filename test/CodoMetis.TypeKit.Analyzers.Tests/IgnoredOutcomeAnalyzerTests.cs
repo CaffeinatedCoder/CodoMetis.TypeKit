@@ -94,6 +94,166 @@ public sealed class IgnoredOutcomeAnalyzerTests
         return test;
     }
 
+    /// <summary>The subjects, with the real test assertions referenced and imported.</summary>
+    private static AnalyzerTest<IgnoredOutcomeAnalyzer> TestWithAssertions(string code, params DiagnosticResult[] expected)
+    {
+        var test = Test("", expected);
+        test.TestState.AdditionalReferences.Add(RealTesting.Reference);
+        test.TestState.Sources.Add(("Caller.cs", "using System;\nusing System.Threading.Tasks;\nusing CodoMetis.TypeKit;\nusing CodoMetis.TypeKit.Testing;\n\n" + code));
+        return test;
+    }
+
+    /// <summary>
+    /// An assertion on a pending value fails the test only through the task it returns: dropped
+    /// unawaited, in a test method that is not <c>async</c> (where C# warns of nothing) or in one that is,
+    /// it passes whatever the value is.
+    /// </summary>
+    [Fact]
+    public Task A_dropped_assertion_on_a_pending_value_reports() =>
+        TestWithAssertions(
+            """
+            public static class Caller
+            {
+                public static void Run(Service service)
+                {
+                    {|#0:service.LoadAsync().ShouldBeSuccess()|};
+                    {|#1:service.FindAsync().ShouldBeNone()|};
+                    {|#2:service.SaveAsync().ShouldBeError(Fault.Refused)|};
+                    {|#3:service.LoadAsync().ShouldBeSuccess().ConfigureAwait(false)|};
+                    Action check = () => {|#4:service.FindAsync().ShouldBeSome()|};
+                }
+
+                public static async Task RunAsync(Service service)
+                {
+                    #pragma warning disable CS4014
+                    {|#5:service.LoadAsync().ShouldBeError()|};
+                    #pragma warning restore CS4014
+                    await Task.Yield();
+                }
+            }
+            """,
+            new DiagnosticResult("CMTK0003", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithMessage("The Task that 'ShouldBeSuccess' returns is ignored, so its outcome is never seen. Handle it, or discard it with '_ =' if nothing depends on it."),
+            Cmtk0003(1, "Task", "ShouldBeNone"),
+            Cmtk0003(2, "Task", "ShouldBeError"),
+            Cmtk0003(3, "Task", "ShouldBeSuccess"),
+            Cmtk0003(4, "Task", "ShouldBeSome"),
+            Cmtk0003(5, "Task", "ShouldBeError"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    [Fact]
+    public Task An_awaited_held_or_discarded_assertion_is_silent() =>
+        TestWithAssertions(
+            """
+            public static class Caller
+            {
+                public static async Task RunAsync(Service service)
+                {
+                    await service.LoadAsync().ShouldBeSuccess();
+                    await service.FindAsync().ShouldBeNone().ConfigureAwait(false);
+                    var pending = service.LoadAsync().ShouldBeSuccess();
+                    await pending;
+                    _ = service.SaveAsync().ShouldBeSuccess();
+                    service.Load().ShouldBeSuccess();
+                }
+
+                public static Task Returned(Service service) => service.FindAsync().ShouldBeNone();
+
+                public static Func<Task> Deferred(Service service) => () => service.FindAsync().ShouldBeNone();
+            }
+            """)
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// Only the package's own assertions are reported: the same shape from any other assembly, a
+    /// consumer's own extension on a pending result among them, built before 2.3 and builds still.
+    /// </summary>
+    [Fact]
+    public Task A_task_of_another_assembly_s_extension_on_a_pending_value_is_silent() =>
+        TestWithAssertions(
+            """
+            public static class Logging
+            {
+                public static Task LogAsync<T>(this Task<Result<T, Fault>> pending) where T : notnull => pending;
+
+                public static Task ShouldBeSuccess<T>(this Task<Option<T>> pending) where T : notnull => pending;
+            }
+
+            public static class Caller
+            {
+                public static void Run(Service service)
+                {
+                    service.LoadAsync().LogAsync();
+                    Logging.ShouldBeSuccess(service.FindAsync());
+                }
+            }
+            """)
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A <c>Task.WhenAny</c> inside a <c>Task.WhenAll</c> or a <c>Task.Run</c> completes with the faulted assertion
+    /// as its value, so awaiting the outer task sees no failure (#165). Awaiting what the <c>WhenAny</c> completes
+    /// with sees it.
+    /// </summary>
+    [Fact]
+    public Task An_assertion_a_nested_WhenAny_completes_with_reports_and_awaited_twice_is_silent() =>
+        TestWithAssertions(
+            """
+            public static class Caller
+            {
+                public static async Task Check(Task<Option<int>> first, Task<Option<int>> second)
+                {
+                    {|#0:await Task.WhenAll(Task.WhenAny(first.ShouldBeNone(), second.ShouldBeNone()))|};
+                    {|#1:await Task.Run(() => Task.WhenAny(first.ShouldBeNone(), second.ShouldBeNone()))|};
+                    {|#2:Task.WhenAll(Task.WhenAny(first.ShouldBeNone(), second.ShouldBeNone())).Wait()|};
+                    Func<Task> check = () => {|#3:Task.WhenAll(Task.WhenAny(first.ShouldBeNone(), second.ShouldBeNone()))|};
+                    await await Task.WhenAny(first.ShouldBeNone(), second.ShouldBeNone());
+                    await Task.WhenAll(Task.WhenAll(first.ShouldBeNone(), second.ShouldBeNone()));
+                }
+            }
+            """,
+            Cmtk0003(0, "Task", "WhenAll"),
+            Cmtk0003(1, "Task", "Run"),
+            Cmtk0003(2, "Task", "WhenAll"),
+            Cmtk0003(3, "Task", "WhenAll"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A <c>catch</c> around an awaited assertion in an <c>async</c> lambda keeps its failure only when it can: a
+    /// <c>catch</c> that throws again, one of a type that cannot hold a <c>TypeKitAssertionException</c>, a look-alike
+    /// of that name among them, or one whose filter is a constant <c>false</c> hands it on to the dropped task (#166).
+    /// </summary>
+    [Fact]
+    public Task An_assertion_a_catch_cannot_keep_reports_and_one_it_keeps_is_silent() =>
+        TestWithAssertions(
+            """
+            using System.Linq;
+
+            public static class Lookalike
+            {
+                public sealed class TypeKitAssertionException : Exception { }
+            }
+
+            public static class Caller
+            {
+                public static void Check(Task<Option<int>> pending)
+                {
+                    {|#0:Task.WhenAll(new[] { pending }.Select(async item => { try { await item.ShouldBeNone(); } catch { throw; } }))|};
+                    {|#1:Task.WhenAll(new[] { pending }.Select(async item => { try { await item.ShouldBeNone(); } catch (OperationCanceledException) { } }))|};
+                    {|#2:Task.WhenAll(new[] { pending }.Select(async item => { try { await item.ShouldBeNone(); } catch (Exception) when (false) { } }))|};
+                    {|#3:Task.WhenAll(new[] { pending }.Select(async item => { try { await item.ShouldBeNone(); } catch (Lookalike.TypeKitAssertionException) { } }))|};
+                    Task.WhenAll(new[] { pending }.Select(async item => { try { await item.ShouldBeNone(); } catch (TypeKitAssertionException) { } }));
+                    Task.WhenAll(new[] { pending }.Select(async item => { try { await item.ShouldBeNone(); } catch (Exception exception) when (exception.Data.Count == 0) { } }));
+                }
+            }
+            """,
+            Cmtk0003(0, "Task", "WhenAll"),
+            Cmtk0003(1, "Task", "WhenAll"),
+            Cmtk0003(2, "Task", "WhenAll"),
+            Cmtk0003(3, "Task", "WhenAll"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
     [Fact]
     public void The_descriptor_is_the_published_contract()
     {
@@ -168,6 +328,39 @@ public sealed class IgnoredOutcomeAnalyzerTests
                 }
             }
             """)
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// <c>Task.WhenAny</c> completes with a task of a result: dropped, awaited or not, converted to a plain
+    /// <c>Task</c> or waited for, the result of every task the statement made is gone (#159). Of tasks the
+    /// caller holds it completes with one of them, and drops nothing.
+    /// </summary>
+    [Fact]
+    public Task A_WhenAny_of_results_the_statement_made_reports_and_of_held_ones_is_silent() =>
+        Test(
+            """
+            public static class Caller
+            {
+                public static async Task Run(Service service, Task<Result<int, Fault>> held, Task<Result<int, Fault>> other, Task<Result<int, Fault>>[] all)
+                {
+                    {|#0:Task.WhenAny(service.LoadAsync(), service.LoadAsync())|};
+                    {|#1:await Task.WhenAny(held, service.LoadAsync())|};
+                    {|#2:Task.WhenAny(service.LoadAsync(), held).Wait()|};
+                    await Task.WhenAny(held, other);
+                    Task.WhenAny(held, other);
+                    await Task.WhenAny(all).ConfigureAwait(false);
+                    _ = Task.WhenAny(service.LoadAsync(), service.LoadAsync());
+                }
+
+                public static Task Converted(Service service) => {|#3:Task.WhenAny(service.LoadAsync(), service.LoadAsync())|};
+
+                public static Task Held(Task<Result<int, Fault>> held, Task<Result<int, Fault>> other) => Task.WhenAny(held, other);
+            }
+            """,
+            Cmtk0003(0, "Result", "WhenAny"),
+            Cmtk0003(1, "Result", "WhenAny"),
+            Cmtk0003(2, "Result", "WhenAny"),
+            Cmtk0003(3, "Result", "WhenAny"))
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
@@ -552,6 +745,50 @@ public sealed class IgnoredOutcomeAnalyzerTests
             Cmtk0003(1, "Result", "LoadAsync"),
             Cmtk0003(2, "Option", "FindAsync"),
             Cmtk0003(3, "Result", "LoadAsync"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// <c>SequenceAsync</c> and <c>TraverseAsync</c> over an async stream answer a <c>Task</c> of a result,
+    /// so dropping one reports as dropping <c>TraverseAsync</c> over a sequence does: awaited or not, and
+    /// converted to a plain <c>Task</c>. Kept or discarded with <c>_ =</c>, it is silent.
+    /// </summary>
+    [Fact]
+    public Task A_dropped_SequenceAsync_or_TraverseAsync_over_a_stream_reports_as_over_a_sequence() =>
+        Test(
+            """
+            public static class Caller
+            {
+                public static async Task Run(Service service, int[] ids, IAsyncEnumerable<int> stream, IAsyncEnumerable<Result<int, Fault>> values)
+                {
+                    {|#0:await ids.TraverseAsync(service.CancelAsync)|};
+                    {|#1:await stream.TraverseAsync(service.CancelAsync)|};
+                    {|#2:await stream.TraverseAsync((id, token) => service.LoadAsync(), default)|};
+                    {|#3:await service.SaveEachAsync(ids).SequenceAsync()|};
+                    {|#4:await values.SequenceAsync(default)|};
+                    #pragma warning disable CS4014
+                    {|#5:service.SaveEachAsync(ids).SequenceAsync()|};
+                    {|#6:stream.TraverseAsync(service.CancelAsync)|};
+                    #pragma warning restore CS4014
+
+                    _ = await values.SequenceAsync();
+                    var all = await stream.TraverseAsync(id => service.LoadAsync());
+                    if (await service.SaveEachAsync(ids).SequenceAsync()) { }
+                }
+
+                public static Task Drop(Service service, int[] ids) => {|#7:service.SaveEachAsync(ids).SequenceAsync()|};
+
+                public static Task DropEach(Service service, IAsyncEnumerable<int> stream) => {|#8:stream.TraverseAsync(service.CancelAsync)|};
+            }
+            """,
+            Cmtk0003(0, "Result", "TraverseAsync"),
+            Cmtk0003(1, "Result", "TraverseAsync"),
+            Cmtk0003(2, "Result", "TraverseAsync"),
+            Cmtk0003(3, "Result", "SequenceAsync"),
+            Cmtk0003(4, "Result", "SequenceAsync"),
+            Cmtk0003(5, "Result", "SequenceAsync"),
+            Cmtk0003(6, "Result", "TraverseAsync"),
+            Cmtk0003(7, "Result", "SequenceAsync"),
+            Cmtk0003(8, "Result", "TraverseAsync"))
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>A task that keeps its result type, an explicit cast, and a task the caller holds are not dropped by the conversion.</summary>

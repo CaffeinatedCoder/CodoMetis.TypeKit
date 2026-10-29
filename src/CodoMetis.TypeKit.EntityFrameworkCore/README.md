@@ -87,8 +87,9 @@ Server it's an identity column, so switching an `int` key to a value object chan
 Where the provider has no identity for the type, the key isn't generated, just as a plain one isn't.
 On PostgreSQL, for example, a `ulong` is a `numeric(20,0)`, which can't be an identity.
 
-There are two exceptions. EF picks the generator that fills a value object's key at `Add` by the
-column's type, not by the underlying type:
+At `Add`, a key that is generated gets the same temporary value a plain key of the underlying type
+gets, also where the column is of another type, such as the `decimal` that holds a `ulong`. HiLo and a
+value generator of your own still come first. There are two exceptions:
 
 - **A key over `char` is yours to assign.** It's never generated, on any provider, because none
   generates a `char` key. PostgreSQL rejects an identity on `character(1)`, SQLite an `AUTOINCREMENT`
@@ -97,10 +98,13 @@ column's type, not by the underlying type:
   value, but it doesn't check that you set a meaningful one. A default key, `'\0'`, is stored as it
   is, and a second such row fails on the primary key. `ValueGeneratedOnAdd()` or a value generator of
   your own on the property still applies.
-- **A default key over `ulong` throws at `Add` where the column is a `decimal`** (SQL Server,
-  PostgreSQL). EF's temporary value for the column is a negative `decimal`, and converting it back
-  throws `OverflowException`. A plain `ulong` key gets a temporary `ulong` instead. Configure
-  `ValueGeneratedNever()` on such a key and assign it.
+- **A default key over `ulong` can still throw at `Add`** where the column is a `decimal` (SQL
+  Server, PostgreSQL), in two cases. One is a compiled model made with `dotnet ef dbcontext optimize
+  --nativeaot`, which writes each column's mapping out as code and loses what gives the key a
+  temporary `ulong`. The other is a key you configure with `ValueObjectConverter` yourself. EF's
+  temporary value for the column is then a negative `decimal`, and converting it back throws
+  `OverflowException`. Otherwise the key gets a temporary `ulong`, as a plain one does. In those two
+  cases, configure `ValueGeneratedNever()` on the key and assign it.
 
 A key over a `Guid` is yours to assign, `Id = OrderId.New()` (a version 7 Guid, which sorts by
 creation time), and EF inserts it as given. To have EF generate it instead, configure
@@ -212,9 +216,34 @@ instead, which works everywhere and may add a cast:
   and stays allowed. A query filter (`HasQueryFilter`, named or not) that does the same fails when
   the model is built, naming the entity type, since it applies to every query of that type.
 
-The mapping is tested on SQLite and PostgreSQL. The SQL of each translation is pinned on PostgreSQL,
-every family of underlying types makes a round trip through a real PostgreSQL, and key generation is
-also checked in SQL Server's model.
+### On SQL Server
+
+A value object behaves on SQL Server as the type inside it does there. That isn't always how it
+behaves in memory:
+
+- **Text compares ignoring case.** Under SQL Server's default collation, `o.Note == note`,
+  `notes.Contains(o.Note)` and `StartsWith` also match text that differs in case or in trailing
+  spaces. `OrderBy` sorts ignoring case too. In memory, a value object over text equals only the same
+  text, exactly. Where case matters, give the column a binary collation:
+  `UseCollation("Latin1_General_BIN2")`.
+- **Guids sort by their last group.** SQL Server orders a `uniqueidentifier` by its last six bytes
+  first. So `OrderBy`, `<` and `Min` over Guids come out in another order than in memory.
+- **A `decimal` without a precision is a `decimal(18,2)`.** It reads back with two decimal places:
+  `10m` comes back as `10.00m`, which is equal but prints `10.00`. More decimal places are rounded
+  when the value is written. Configure the precision you need, on the property with `HasPrecision`
+  or for every such value object with `configurationBuilder.Properties<Amount>().HavePrecision(18, 4)`.
+- **A `TimeSpan` must be shorter than a day.** It's stored as `time`. A longer one fails
+  `SaveChanges` in a column. In a JSON column it's stored, but a query that reads it gets another
+  value, `01:02:00` for `1.02:00:00`, without an error. Store a longer duration as a number instead,
+  such as a value object over the seconds as a `long`.
+- **`EF.Functions.Greatest` and `Least` need compatibility level 160.** Configure it with
+  `UseSqlServer(connectionString, sql => sql.UseCompatibilityLevel(160))`. Below it, EF refuses them.
+- **A `DateTime` comes back without its kind.** `datetime2` keeps every tick, and a UTC value reads
+  back with `Kind` `Unspecified`. It's still equal to the value you wrote.
+
+The mapping is tested on SQLite, PostgreSQL and SQL Server. The SQL of each translation is pinned on
+PostgreSQL. Every family of underlying types makes a round trip through a real PostgreSQL and a real
+SQL Server, and every query and key shape of the test catalogue runs on the real SQL Server too.
 
 ## An Option for nothing found
 
@@ -237,8 +266,10 @@ These ask the database for one row and let it run the condition:
 - **The condition must be an expression.** A lambda written at the call is one. A
   `Func<Order, bool>` held in a variable, or a method group, binds `FirstOrNone`, `SingleOrNone` and
   `FirstOrError` to their overloads on a sequence. Then every row is read and the condition runs in
-  memory, without a warning. Hold an `Expression<Func<Order, bool>>` instead. `FirstOrNoneAsync`
-  takes only an expression, so a `Func` there doesn't compile.
+  memory, and the analyzer warns at the call
+  ([CMTK0009](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#a-condition-that-reads-every-row)).
+  Hold an `Expression<Func<Order, bool>>` instead. `FirstOrNoneAsync` takes only an expression, so a
+  `Func` there doesn't compile.
 - **`LastOrNone` and `LastOrError` on a query don't compile.** A query has no last row until it's
   ordered. So order it the other way and take the first, or call `AsEnumerable()` to read every row
   on purpose.

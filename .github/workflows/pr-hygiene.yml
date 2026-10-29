@@ -1,0 +1,60 @@
+# Every pull request into main or a release branch carries one type label, a severity if it is a bug,
+# the milestone of the release it goes into, a branch named <type>/<slug> that agrees with its type, and a
+# closing reference to the issue it resolves; a breaking one goes into a major (CONTRIBUTING.md, "Issues and
+# labels"; design/adr/0109-work-is-tracked-as-labelled-issues-and-ci-checks-each-pull-request.md). The rules
+# live in tools/PrHygiene, a tool project like the others (design/adr/0092), which reads the event payload
+# alone: no token, nothing of the pull request's code run, and runnable locally on a saved payload.
+#
+# Triggered on label, milestone and description edits as well as pushes, so adding what is missing turns
+# the check green without a new commit. `pull_request`, not `pull_request_target`: a pull request from a
+# fork runs with a read-only token and never sees a secret, and builds the tool from its own checkout,
+# which can only weaken the check on that pull request's own run, where a reviewer reads the diff.
+#
+# No concurrency group: every event's run completes (#144). The check takes seconds and reads only its
+# payload, so cancelling a superseded run saves nothing, and a run cancelled while its job was going leaves
+# a cancelled check run, which blocks a required check (#141, #142). Measured on 2026-10-29 on two draft
+# pull requests whose labels, milestone and body were set within seconds of opening them, five events each:
+#   - a group with cancel-in-progress: false still cancels: a newer pending run replaces the older pending
+#     one, and three of four runs were cancelled. Nothing was blocked, since a run cancelled before its job
+#     started leaves no check run, but the runs the check is meant to have are missing;
+#   - no group: all five ran, none was cancelled. Earlier runs failed (their payload had no labels yet) and
+#     the pull request was CLEAN once CI passed: the newest run decides the required check, not the last to
+#     finish. With the first run held back 75 s to finish after the one that succeeded, it was CLEAN too.
+# A run reads the payload of its own event, so a pull request that fails here is fixed by an event after the
+# fix, or by re-running the newest run.
+#
+# Actions are pinned to commit SHAs, as in dotnet.yml.
+
+name: PR hygiene
+
+on:
+  pull_request:
+    branches: [ "main", "release/**" ]
+    types: [ opened, edited, reopened, synchronize, labeled, unlabeled, milestoned, demilestoned ]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  check:
+    name: Labels and issue link
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          global-json-file: global.json
+
+      - name: Build the check
+        run: dotnet build tools/PrHygiene -c Release
+
+      - name: Check labels, milestone, branch and issue link
+        run: dotnet tools/PrHygiene/bin/Release/net10.0/pr-hygiene.dll "$GITHUB_EVENT_PATH"

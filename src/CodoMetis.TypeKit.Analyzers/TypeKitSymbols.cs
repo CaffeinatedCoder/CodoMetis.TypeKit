@@ -52,6 +52,12 @@ internal sealed class TypeKitSymbols
     /// </summary>
     private const string GeneratorsAssembly = "CodoMetis.TypeKit.Generators";
 
+    /// <summary>
+    /// The assembly of the test assertions, whose assertions on a pending value fail a test only through
+    /// the task they return. This is the package's own identity, which a consumer cannot rename.
+    /// </summary>
+    private const string TestingAssembly = "CodoMetis.TypeKit.Testing";
+
     private const string Materialize = "Materialize";
 
     private readonly ImmutableArray<INamedTypeSymbol> _valueMarkers;
@@ -107,6 +113,16 @@ internal sealed class TypeKitSymbols
         ReferencesGenerators         = referencesGenerators;
         _computeRestriction          = ComputeRestriction;
     }
+
+    /// <summary>The exception every assertion of CodoMetis.TypeKit.Testing fails with, by its metadata name in that assembly.</summary>
+    private const string AssertionExceptionName = "CodoMetis.TypeKit.Testing.TypeKitAssertionException";
+
+    /// <summary>Whether <paramref name="assembly"/> is CodoMetis.TypeKit.Testing.</summary>
+    public static bool IsTestingAssembly(IAssemblySymbol? assembly) =>
+        assembly is not null && string.Equals(assembly.Name, TestingAssembly, StringComparison.Ordinal);
+
+    /// <summary>The exception the assertions of <paramref name="testing"/>, CodoMetis.TypeKit.Testing, fail with.</summary>
+    public static INamedTypeSymbol? AssertionException(IAssemblySymbol testing) => testing.GetTypeByMetadataName(AssertionExceptionName);
 
     /// <summary>Whether the compilation references CodoMetis.TypeKit.Generators.</summary>
     public bool ReferencesGenerators { get; }
@@ -256,10 +272,15 @@ internal sealed class TypeKitSymbols
     /// declares, in both forms a call can bind to: the extension block's member, which
     /// <c>option.OrDefault()</c> binds to, and its implementation, which <c>Option.OrDefault(option)</c> binds to.
     /// </summary>
-    public IEnumerable<IMethodSymbol> OptionClassMethods(string name) =>
-        _optionClasses.SelectMany(type => type.GetMembers(name)
-                                              .Concat(type.GetTypeMembers().Where(nested => nested.IsExtension).SelectMany(block => block.GetMembers(name))))
-                      .OfType<IMethodSymbol>();
+    public IEnumerable<IMethodSymbol> OptionClassMethods(string name) => ClassMethods(_optionClasses, name);
+
+    /// <summary>The methods named <paramref name="name"/> that the package's <c>Result</c> static class declares, as <see cref="OptionClassMethods"/> finds them.</summary>
+    public IEnumerable<IMethodSymbol> ResultClassMethods(string name) => ClassMethods(_resultClasses, name);
+
+    private static IEnumerable<IMethodSymbol> ClassMethods(ImmutableArray<INamedTypeSymbol> classes, string name) =>
+        classes.SelectMany(type => type.GetMembers(name)
+                                       .Concat(type.GetTypeMembers().Where(nested => nested.IsExtension).SelectMany(block => block.GetMembers(name))))
+               .OfType<IMethodSymbol>();
 
     private static bool IsDeclaredBy(IMethodSymbol method, ImmutableArray<INamedTypeSymbol> classes)
     {

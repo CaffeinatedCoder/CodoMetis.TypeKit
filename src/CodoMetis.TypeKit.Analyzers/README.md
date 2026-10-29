@@ -28,13 +28,13 @@ project. The two packages share a version and move together.
 |---|---|---|
 | CMTK0001 | Error | `default`, `default(T)`, `new T()`, `new()` and `new T { }` of a value object, an `Option`, a `Result`, or a struct marked `[RequireCustomInitialization]`. Also through a type parameter whose constraints make it one of those. Not reported: a default that is only compared (`id == default`, `id.Equals(default)`, `ThrowIfEqual(id, default)`, `Assert.NotEqual(default, id)`), which is a guard, and one assigned to an `out` parameter of a Try method that returns `bool`. |
 | CMTK0002 | Error | A type implements `IValue<T>`, `IValidatedValue<,,>` or `IClosedSet<TSelf>`, but the compilation doesn't reference `CodoMetis.TypeKit.Generators`. So nothing is generated for it: no field, no `Value`, no factory, or for a closed set no name and no `Match`. |
-| CMTK0003 | Error | A `Result` or `Option` that a call returns, or a collection or a tuple of them that the statement made, dropped. It counts as dropped as a statement, awaited or not; when its `Task` is converted to a plain `Task`, also where a method group is the conversion; through `Wait`; in a loop that never reads it; and in a branch of a conditional, a `switch` expression or a `??` that picked the call. `_` says you mean the drop. |
+| CMTK0003 | Error | A `Result` or `Option` that a call returns, or a collection or a tuple of them that the statement made, dropped. It counts as dropped as a statement, awaited or not; when its `Task` is converted to a plain `Task`, also where a method group is the conversion; through `Wait`; in a loop that never reads it; and in a branch of a conditional, a `switch` expression or a `??` that picked the call. Also an assertion of `CodoMetis.TypeKit.Testing` on a task, left without `await`. `_` says you mean the drop. |
 | CMTK0004 | Error | `Materialize`, which rebuilds a value object without its rules, called or referenced anywhere but the EF Core package. |
 | CMTK0005 | Warning | An array or span of a value object, `Option`, `Result` or `[RequireCustomInitialization]` struct created with a length, so every slot starts as `default`. A constant length of zero isn't reported. |
 | CMTK0006 | Warning | A field or auto-property of such a type, in a class, that no initializer, `required` or constructor sets. Also a `required` one that a `[SetsRequiredMembers]` constructor doesn't set. |
 | CMTK0007 | Info | `FromKnownGood` given a value that comes straight from a parameter. |
 | CMTK0008 | Warning | The values inside two different value objects compared, `order.CustomerId.Value == product.Id.Value`, or the two value objects themselves compared through `Equals(object)`. |
-| CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. |
+| CMTK0009 | Warning | A call that returns the `default` of such a type when it finds nothing: `FirstOrDefault()`, `GetValueOrDefault()`, `Option<T>.OrDefault()` and their kind. Also `FirstOrNone`, `SingleOrNone` or `FirstOrError` on a query given a delegate, which reads every row. |
 | CMTK0010 | Error | A type argument that breaks a constraint its parameter declares by attribute: `[Abstract]`, `[Sealed]`, `[Record]`, `[Concrete]`, `[Interface]`, `[Unsealed]`, `[ValueObject]`, `[ClosedSet]`, `[FlagsEnum]` or `[ReadOnlyStruct]`. Also a pair of arguments for two parameters marked `[Distinct]` or `[Unrelated]` that are one type, or related by inheritance, implementation or boxing, reported once at the later argument. Checked at any closed use, written or inferred: a base type, a member, a parameter, a local, a `typeof`, an attribute, a call or a method group, a member of a generic extension block, whose arguments the receiver gives, and a method the compiler calls for a `foreach`, an `await`, a deconstruction, a positional pattern or a collection expression (there, `[Abstract]`, `[Sealed]`, `[Record]` and `[Concrete]` join in 3.0.0). A type parameter passed on without the attribute is a breach too. A method that implements an interface's method, or overrides one, carries the constraint of what it implements, a static one and one a base class declares included. |
 | CMTK0011 | Error | A concrete class that derives from or implements a type marked `[RequireParameterlessConstructor]`, directly or through another, without a parameterless constructor of the accessibility it asks for. A struct is never reported: its parameterless constructor is public and can be nothing else. The code fix writes or changes the constructor. |
 | CMTK0012 | Error | A closed set's `Match` given an argument by position. It binds to whichever member is declared at that place, so reordering the members swaps the branches. The code fix names every argument. |
@@ -46,6 +46,9 @@ CMTK1022, and the warning CMTK1023 come from `CodoMetis.TypeKit.Generators`, and
 them.
 
 Every rule also runs in `.razor` and `.cshtml` files (see [Generated code](#generated-code-and-razor)).
+
+One code fix answers the compiler instead of a rule: [Add Create](#add-create) writes the `Create` a
+validated value object is missing.
 
 ## CMTK0001
 
@@ -136,7 +139,8 @@ it as they treat a value object.
 A value object in a project without the generators would compile with nothing in it. This rule turns
 that into an error.
 
-The generators apply through a transitive project fabric, not an attribute on the interfaces, which
+The generators are built on [Metalama](https://postsharp.net/metalama), which generates C# code at
+compile time from templates written in C#. They apply through a transitive project fabric, not an attribute on the interfaces, which
 keeps the base package free of Metalama. The price is that a project that sees the interfaces but
 not the generators compiles a value object with nothing in it, silently. A closed set fails to
 compile there anyway, on the interface members nobody implemented, and the rule says why.
@@ -182,6 +186,29 @@ call's: `await orders.CancelAsync(id).ConfigureAwait(false);` is reported, namin
 explicit cast, to `Task` or to the delegate type, says you mean the drop. A `ValueTask<T>` has no
 conversion to `ValueTask`.
 
+**Assertions on a task.** An assertion of `CodoMetis.TypeKit.Testing` on a `Task` or `ValueTask`,
+such as `service.FindAsync(id).ShouldBeSome()`, fails the test only through the task it returns.
+Left without `await`, the test passes whatever the task holds, and C# warns only in an `async`
+method. CMTK0003 reports the line, naming the assertion. It also reports an assertion passed through
+`ConfigureAwait` or `WaitAsync`, and one in a branch of a `?:`, `??` or `switch` expression, as it does
+for a dropped result. The rule knows these assertions by the package's own assembly, so an extension of
+yours on a pending result is left alone.
+
+Handing assertions on doesn't hide them either. You get the report when you hand assertions to
+`Task.WhenAll`, `Task.Run` or `Task.WhenEach` and drop what it returns. You get it for `Task.WhenAny` and
+`Task.WaitAny` of them even when you wait, because those finish with the first task and never show a
+failure. It covers an array of them, a `Select`, a query, an `async` lambda that awaits one, and a method
+group such as `pending.Select(OptionAssertions.ShouldBeNone)`. `Task.WaitAll` throws the failures, so it is
+silent. So is a loop over assertions that reads each one.
+
+Nesting doesn't hide them. A `Task.WhenAny` inside a `Task.WhenAll` or a `Task.Run` is reported even when you
+await the outer task, because that task succeeds with the failed assertion as its value:
+`await Task.WhenAll(Task.WhenAny(first.ShouldBeNone(), second.ShouldBeNone()))` passes while both assertions
+fail. `await await Task.WhenAny(…)` throws the first failure, so it is silent. A `catch` around an awaited
+assertion in an `async` lambda hides the failure only when it can keep it. A `catch` that throws again, one for
+another exception, such as `catch (OperationCanceledException)`, and one with a `when (false)` filter are
+reported. A filter the rule can't work out, such as `when (Expected(e))`, counts as catching the failure.
+
 **Collections.** A collection of results is dropped as silently as one result:
 
 ```csharp
@@ -226,10 +253,16 @@ await foreach (var _ in orders.CancelEachAsync(ids)) { }         // a variable n
 ```
 
 - **`Wait`** is reported on a task the expression made, whether the statement drops the `bool` a
-  timeout overload returns or an `if` reads it.
+  timeout overload returns or an `if` reads it. On a `?:`, `??` or `switch` expression, each branch's
+  call is reported, as when you drop it.
 - **`Task.WaitAll` and `Task.WaitAny`** take plain tasks. So tasks of results that the statement made
-  are converted and their results dropped, as one task's conversion is. An explicit cast to the plain
-  tasks' type says you mean that drop.
+  are converted and their results dropped, as one task's conversion is. That includes an array you
+  write in the call, `Task.WaitAll(new[] { orders.CancelAsync(first), orders.CancelAsync(second) })`. An
+  explicit cast to the plain tasks' type says you mean that drop.
+- **`Task.WhenAny`** finishes with one of the tasks you give it, so every other result is lost. A
+  `WhenAny` of tasks the statement made is reported whether you drop it, await it, wait for it or return
+  it as a plain `Task`. Of tasks you still hold, it hands back one of yours, and is silent.
+- **`Task.WhenEach`** of tasks the statement made, dropped, is reported as a sequence of results.
 - **A `foreach` or `await foreach`** is reported when its header made the results, by the rule above,
   and its body never reads the iteration variable.
 
@@ -398,6 +431,44 @@ ordinary value. EF Core's forms are recognised in any project that references EF
 
 It's a warning, because code that checks the sequence isn't empty first is correct, and the rule
 can't tell.
+
+### A condition that reads every row
+
+CMTK0009 also warns when a lookup on a query would read the whole table:
+
+```csharp
+Func<Order, bool> isOpen = o => o.Open;
+var first = db.Orders.FirstOrNone(isOpen);           // CMTK0009: binds to the IEnumerable<T> overload and reads every row
+var found = db.Orders.FirstOrNone(o => o.Open);      // the database runs the condition and returns one row
+```
+
+`FirstOrNone`, `SingleOrNone` and `FirstOrError` on an `IQueryable<T>` take the condition as an
+`Expression<Func<T, bool>>`, which the database runs. A delegate is no expression. So the call binds to
+the overload on `IEnumerable<T>`, which reads every row and runs the condition in memory. The rule
+reports that call, and its message names the overload it fell to.
+
+Reported, on any receiver that is a query (`IQueryable<T>`, a `DbSet<T>`, a type parameter constrained
+to one), when the condition is:
+
+- a `Func<T, bool>` in a variable, a parameter, a field or a property;
+- a method group, such as `IsOpen`;
+- an anonymous method, `delegate (Order o) { ... }`;
+- a call that returns a `Func`, or a lambda cast to one.
+
+`LastOrNone` and `LastOrError` are reported as well. On a query they don't compile with a lambda, and a
+delegate there reads every row in the same way.
+
+To fix it, write the condition as a lambda at the call, or hold it as an `Expression<Func<T, bool>>`.
+To read every row on purpose, call `AsEnumerable()` first, and the rule stays silent.
+
+**Good to know**
+
+- **A query held as an `IEnumerable<T>` is a sequence to the rule.** Once your code converts it, the
+  rule can't tell that a query is underneath, so `IEnumerable<Order> all = db.Orders;` followed by
+  `all.FirstOrNone(isOpen)` isn't reported.
+- **There is no code fix.** The fix depends on your condition. A method group wrapped in a lambda
+  binds to the query's overload, but the database can't run your method, so EF Core throws when the
+  query runs.
 
 ## CMTK0010
 
@@ -661,6 +732,23 @@ The members are read from the enum itself, so a member that a newer base package
 here too. An enum of your application's own isn't this rule's job. A fault that no member names is
 rejected where `ToHttpResult()` turns it into a response, and `WithRule` throws for one.
 
+## Add Create
+
+A type that declares `IValidatedValue<TSelf, T, TFault>` and has no `Create` fails to build with CS0535.
+The package's fix for that error, **Add Create**, writes the method for you, as the [Generators
+README](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#declare-a-value-object)
+shows. It accepts every value until you add your rules. The types are spelled as your file names them,
+so a type from a namespace the file doesn't import is qualified. `Create` goes in as the type's first
+member, indented as the other members are. A declaration that ends in `;` gets a body.
+
+The fix isn't offered in these cases:
+
+- **`TSelf` is another type.** The value to return isn't this type's to build.
+- **The type already has a `Create` that takes a `T`**, static or not. A second one wouldn't compile, so
+  correct the one that's there.
+- **The type's body is on one line and already holds members.** Put the body on lines of its own, and the
+  fix is offered.
+
 ## Configuration
 
 You set a rule's severity in `.editorconfig`, as usual: `dotnet_diagnostic.CMTK0001.severity = warning`.
@@ -691,11 +779,28 @@ but a suppression to say so:
 - a sequence known not to be empty (CMTK0009);
 - a comparison of two identities that really are shared (CMTK0008).
 
-**What a new version may change.** Within a major version, an Error never reports more than it did.
-A new Error rule, or an Error that reports more, waits for the next major version. A Warning or an
-Info may learn more forms in a minor version, such as another method that returns a default instance
-for CMTK0009. In a build that treats warnings as errors, such an update can report code that built
-before, as a newer compiler's warnings can.
+**What a new version may change.** Within a major version, an update never makes an Error report code
+that built before. A new Error rule, or an Error that reports more of the code you could already write,
+waits for the next major version. A minor version may teach an Error a form that only its own new API can
+write. In 2.3.0, CMTK0003 reports a `CodoMetis.TypeKit.Testing` assertion on a `Task` or `ValueTask` left
+without `await`, and those assertions are new in 2.3.0. Your code from before the update can't contain
+one, so it builds as before.
+
+2.3.0 makes an exception for a few forms that code from before 2.3.0 can contain. Each one loses every
+result, so the build points at a real bug. CMTK0003 now also reports these, for tasks of results:
+
+- `Task.WhenAny` of tasks you don't hold, dropped, awaited, waited for or returned as a plain `Task`;
+- a `Task.WhenEach` of them that you drop;
+- `Wait()` on a `?:`, `??` or `switch` expression of them;
+- an array of them that you write in a `Task.WaitAll` or `Task.WaitAny` call.
+
+Handle the results, or discard what you mean to drop with `_ =`. Only a gap found before a version's tag
+is closed this way. After the tag, an Error that reports more of the code you could already write waits
+for the next major version.
+
+A Warning or an Info may learn more forms in a minor version, such as another method that returns a
+default instance for CMTK0009. In a build that treats warnings as errors, such an update can report code
+that built before, as a newer compiler's warnings can.
 
 ## Generated code and Razor
 

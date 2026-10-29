@@ -1,0 +1,16 @@
+Seed: Result<TError> loses the converter that refuses System.Text.Json, so a success is written as {} and read back as uninitialized
+Oracles: NotWireTypeTests
+Fails: the completeness row for Result<TError>, and its write and read
+
+diff --git a/src/CodoMetis.TypeKit/Result.cs b/src/CodoMetis.TypeKit/Result.cs
+index b92fd68..1f7da85 100644
+--- a/src/CodoMetis.TypeKit/Result.cs
++++ b/src/CodoMetis.TypeKit/Result.cs
+@@ -29,7 +29,6 @@ namespace CodoMetis.TypeKit;
+ /// </remarks>
+ /// <typeparam name="TError">The type of the error.</typeparam>
+ [RequireCustomInitialization("Use Result.Success() or Result.Error(error).")]
+-[JsonConverter(typeof(NotWireTypeJsonConverterFactory))]
+ [DebuggerDisplay("{DebuggerDisplay,nq}")]
+ public readonly record struct Result<TError> where TError : notnull
+ {

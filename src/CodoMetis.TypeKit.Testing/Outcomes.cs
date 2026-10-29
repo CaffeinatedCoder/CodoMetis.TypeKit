@@ -16,6 +16,9 @@ internal static class Outcomes
             throw new TypeKitAssertionException($"Expected the error {expected}, but the {Name<TOutcome>()} is the error {actual}.");
     }
 
+    /// <summary>The task an asynchronous assertion awaits, refused when null: awaited, it was a <see cref="NullReferenceException"/> naming nothing.</summary>
+    public static Task<T> Pending<T>(Task<T>? task, string paramName) => task ?? throw new ArgumentNullException(paramName, "The assertion was given no task to await.");
+
     /// <summary>
     /// <c>Result&lt;Order, OrderFault&gt;</c>, as the type is written in C# from outside its containing
     /// types: <c>Billing.Fault</c>, <c>Outer&lt;Int32&gt;.Inner</c>.

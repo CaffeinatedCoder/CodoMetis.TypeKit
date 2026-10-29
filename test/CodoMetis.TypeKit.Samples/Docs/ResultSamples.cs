@@ -175,16 +175,18 @@ public static class Usage
         return (lines, all, amount, bulk, summary, stopped);
     }
 
-    public static async Task<(Result<IReadOnlyList<Reservation>, CheckoutFault> Reserved, Result<CheckoutFault> Charged, Result<IReadOnlyList<Cart>, CheckoutFault> Found)> CollectAsync(
-        Checkout checkout, List<Cart> carts, List<decimal> totals, List<CartId> ids, CancellationToken cancellationToken)
+    public static async Task<(Result<IReadOnlyList<Reservation>, CheckoutFault> Reserved, Result<CheckoutFault> Charged, Result<IReadOnlyList<Cart>, CheckoutFault> Found, Result<Option<Cart>, CheckoutFault> Saved, Result<Patch<Cart>, CheckoutFault> Moved)> CollectAsync(
+        Checkout checkout, List<Cart> carts, List<decimal> totals, List<CartId> ids, Option<CartId> savedCart, Patch<CartId> movedTo, CancellationToken cancellationToken)
     {
         // sample: result/collect-async
         Result<IReadOnlyList<Reservation>, CheckoutFault> reserved = await carts.TraverseAsync(checkout.ReserveAsync);     // one at a time, in order; nothing starts after a fault
         Result<CheckoutFault> charged = await totals.TraverseAsync(checkout.ChargeAsync);                                   // a command per element, likewise
         Result<IReadOnlyList<Cart>, CheckoutFault> found = await ids.TraverseAsync(checkout.LoadCartAsync, cancellationToken);   // the token checked before each, and handed to it
+        Result<Option<Cart>, CheckoutFault> saved = await savedCart.TraverseAsync(checkout.FindCartAsync);           // None calls nothing; a value is looked up
+        Result<Patch<Cart>, CheckoutFault> moved = await movedTo.TraverseAsync(checkout.FindCartAsync);              // a clear or an absence passes through
         // end sample
 
-        return (reserved, charged, found);
+        return (reserved, charged, found, saved, moved);
     }
 
     public static async Task<(Result<Uri, Exception> Url, Result<Uri, UriFormatException> Narrowed, Result<Uri, ApiFault> AsFault, Result<Exception> Written, Result<string, Exception> Read)> Catching(string text, string path)
@@ -331,13 +333,24 @@ public sealed class ResultTests
     {
         var checkout = new Checkout();
 
-        var (reserved, charged, found) = await Usage.CollectAsync(checkout, [checkout.Cart, checkout.Empty], [10m, 20m], [checkout.Cart.Id], TestContext.Current.CancellationToken);
+        var (reserved, charged, found, saved, moved) = await Usage.CollectAsync(
+            checkout, [checkout.Cart, checkout.Empty], [10m, 20m], [checkout.Cart.Id], Option.Some(checkout.Cart.Id), Patch.Null<CartId>(), TestContext.Current.CancellationToken);
 
         reserved.TryGetValue(out _, out var fault).ShouldBeFalse();
         fault.ShouldBe(CheckoutFault.CartEmpty);
         ((bool)charged).ShouldBeTrue();
         found.TryGetValue(out var carts, out _).ShouldBeTrue();
         carts.ShouldBe([checkout.Cart]);
+        saved.TryGetValue(out var savedCart, out _).ShouldBeTrue();
+        savedCart.ShouldBe(Option.Some(checkout.Cart));
+        moved.TryGetValue(out var movedTo, out _).ShouldBeTrue();
+        movedTo.State.ShouldBe(PatchState.Null);
+
+        var (_, _, _, none, absent) = await Usage.CollectAsync(checkout, [], [], [], Option.None<CartId>(), Patch.Absent<CartId>(), TestContext.Current.CancellationToken);
+        none.TryGetValue(out var noCart, out _).ShouldBeTrue();
+        noCart.IsNone().ShouldBeTrue();
+        absent.TryGetValue(out var untouched, out _).ShouldBeTrue();
+        untouched.State.ShouldBe(PatchState.Absent);
     }
 
     [Fact]
