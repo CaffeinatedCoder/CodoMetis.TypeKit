@@ -651,6 +651,24 @@ public static class Option
         }
     }
 
+    /// <param name="options">The stream of options.</param>
+    /// <typeparam name="T">The type of the values.</typeparam>
+    extension<T>(IAsyncEnumerable<Option<T>> options) where T : notnull
+    {
+        /// <summary>
+        /// The values of the options that hold one, in order, as they arrive: a stream of lookups to what
+        /// was found. Lazy, as an async LINQ operator is, and the token given to <c>WithCancellation</c> or
+        /// <c>GetAsyncEnumerator</c> reaches the stream it reads.
+        /// </summary>
+        /// <returns>The values, in order.</returns>
+        public IAsyncEnumerable<T> Choose()
+        {
+            ArgumentNullException.ThrowIfNull(options);
+
+            return Chosen(options, static option => option);
+        }
+    }
+
     /// <param name="instance">The nullable value.</param>
     /// <typeparam name="T">The underlying value type.</typeparam>
     extension<T>(in T? instance) where T : struct
@@ -675,6 +693,15 @@ public static class Option
     internal static IEnumerable<TResult> Chosen<T, TResult>(IEnumerable<T> source, Func<T, Option<TResult>> selector) where TResult : notnull
     {
         foreach (var element in source)
+        {
+            if (selector(element).TryGetValue(out var value)) yield return value;
+        }
+    }
+
+    /// <summary>The iterator behind both <c>Choose</c> over a stream; the caller's token is the stream's.</summary>
+    internal static async IAsyncEnumerable<TResult> Chosen<T, TResult>(IAsyncEnumerable<T> source, Func<T, Option<TResult>> selector, [EnumeratorCancellation] CancellationToken cancellationToken = default) where TResult : notnull
+    {
+        await foreach (var element in source.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             if (selector(element).TryGetValue(out var value)) yield return value;
         }

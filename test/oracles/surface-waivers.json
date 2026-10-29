@@ -19,7 +19,6 @@
   "Option.*": "unread: the document that promises its behaviour has not been read for claims yet (#98); the core tests hold it meanwhile",
   "Result.*": "unread: the document that promises its behaviour has not been read for claims yet (#98); the core tests hold it meanwhile",
   "Patch.*": "unread: the document that promises its behaviour has not been read for claims yet (#98); the core tests hold it meanwhile",
-  "SequenceOptionExtensions.Choose": "unread: the document that promises its behaviour has not been read for claims yet (#98); the core tests hold it meanwhile",
   "ValueTypeOptionExtensions.OrNull": "unread: the document that promises its behaviour has not been read for claims yet (#98); the core tests hold it meanwhile",
   "GuidValueExtensions.New": "unread: the document that promises its behaviour has not been read for claims yet (#98); the core tests hold it meanwhile",
   "TypeKitSerilogExtensions.WithTypeKit": "unread: the document that promises its behaviour has not been read for claims yet (#98); the core tests hold it meanwhile",

@@ -20,7 +20,7 @@ namespace CodoMetis.TypeKit.Tests;
 /// (<c>.Result</c>, <c>.Wait()</c>, <c>GetAwaiter().GetResult()</c>) never does. A member that resumed on it
 /// would hang that caller, which is why <c>ConfigureAwait(false)</c> stays; such a post fails here at once.
 /// The cases are written by hand, and the completeness test holds them to every public member of the
-/// assembly that returns a task.
+/// assembly that returns a task or an <see cref="IAsyncEnumerable{T}"/>, whose cases read it to the end.
 /// </para>
 /// </remarks>
 public sealed class AsynchronousContextTests
@@ -72,6 +72,21 @@ public sealed class AsynchronousContextTests
         ["Result.TraverseAsync(IEnumerable<T>, Func<T, CancellationToken, Task<Result<TError>>>, CancellationToken)"] =
             p => new[] { 1, 2 }.TraverseAsync((x, _) => x == 1 ? p.First(Ok) : p.Later(p.Seen(Ok)), CancellationToken.None),
 
+        // A stream's first element is what the rest wait for, so the member's own await of the stream is
+        // the one that would resume on the caller's context; a selector runs as each element arrives.
+        ["Result.TraverseAsync(IAsyncEnumerable<T>, Func<T, Task<Result<TResult, TError>>>)"] =
+            p => p.Stream(1, 2).TraverseAsync(x => x == 1 ? p.First(Value) : p.Later(p.Seen(Value))),
+        ["Result.TraverseAsync(IAsyncEnumerable<T>, Func<T, CancellationToken, Task<Result<TResult, TError>>>, CancellationToken)"] =
+            p => p.Stream(1, 2).TraverseAsync((x, _) => x == 1 ? p.First(Value) : p.Later(p.Seen(Value)), CancellationToken.None),
+        ["Result.TraverseAsync(IAsyncEnumerable<T>, Func<T, Task<Result<TError>>>)"] =
+            p => p.Stream(1, 2).TraverseAsync(x => x == 1 ? p.First(Ok) : p.Later(p.Seen(Ok))),
+        ["Result.TraverseAsync(IAsyncEnumerable<T>, Func<T, CancellationToken, Task<Result<TError>>>, CancellationToken)"] =
+            p => p.Stream(1, 2).TraverseAsync((x, _) => x == 1 ? p.First(Ok) : p.Later(p.Seen(Ok)), CancellationToken.None),
+        ["Result.SequenceAsync(IAsyncEnumerable<Result<T, TError>>, CancellationToken)"] = p => p.Stream(Value, Value).SequenceAsync(),
+        ["Result.SequenceAsync(IAsyncEnumerable<Result<TError>>, CancellationToken)"]    = p => p.Stream(Ok, Ok).SequenceAsync(),
+        ["Option.Choose(IAsyncEnumerable<Option<T>>)"]                                   = p => Drain(p.Stream(Some, Some).Choose()),
+        ["SequenceOptionExtensions.Choose(IAsyncEnumerable<T>, Func<T, Option<TResult>>)"] = p => Drain(p.Stream(1, 2).Choose(x => p.Seen(Some))),
+
         // The delegate runs at once, on the caller's context; the task it returns is awaited without it.
         ["Result.CatchAsync<T>(Func<Task<T>>)"]             = p => Result.CatchAsync(() => p.Later(p.Seen(1))),
         ["Result.CatchAsync(Func<Task>)"]                   = p => Result.CatchAsync(() => (Task)p.Later(p.Seen(1))),
@@ -117,7 +132,13 @@ public sealed class AsynchronousContextTests
     };
 
     /// <summary>Members that take no callback: only that nothing resumes on the caller's context is checked.</summary>
-    private static readonly HashSet<string> WithoutCallback = ["Option.ToResultAsync(Task<Option<T>>, TError)"];
+    private static readonly HashSet<string> WithoutCallback =
+    [
+        "Option.ToResultAsync(Task<Option<T>>, TError)",
+        "Result.SequenceAsync(IAsyncEnumerable<Result<T, TError>>, CancellationToken)",
+        "Result.SequenceAsync(IAsyncEnumerable<Result<TError>>, CancellationToken)",
+        "Option.Choose(IAsyncEnumerable<Option<T>>)",
+    ];
 
     public static TheoryData<string> CaseNames => [.. Cases.Keys];
 
@@ -173,13 +194,19 @@ public sealed class AsynchronousContextTests
     }
 
     [Fact]
-    public void Every_public_member_that_returns_a_task_has_a_case()
+    public void Every_public_member_that_returns_a_task_or_a_stream_has_a_case()
     {
         var members = AsynchronousMembers().ToList();
 
         members.Count.ShouldBeGreaterThanOrEqualTo(50);
-        members.Except(Cases.Keys).ShouldBeEmpty("These public members return a task and have no case here.");
+        members.Except(Cases.Keys).ShouldBeEmpty("These public members return a task or a stream and have no case here.");
         Cases.Keys.Except(members).ShouldBeEmpty("These cases name no public member of the assembly.");
+    }
+
+    /// <summary>Reads a stream to the end without capturing the caller's context, as a member's own awaits must not.</summary>
+    private static async Task Drain<T>(IAsyncEnumerable<T> stream)
+    {
+        await foreach (var _ in stream.ConfigureAwait(false)) { }
     }
 
     private static Task Start(Func<Probe, Task> chain, Probe probe, SynchronizationContext caller)
@@ -202,7 +229,7 @@ public sealed class AsynchronousContextTests
             from type in typeof(Option<>).Assembly.GetExportedTypes()
             where !type.Name.Contains('<') && type.GetCustomAttribute<CompilerGeneratedAttribute>() is null
             from method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
-            where typeof(Task).IsAssignableFrom(method.ReturnType)
+            where typeof(Task).IsAssignableFrom(method.ReturnType) || method.ReturnType.IsGenericType && method.ReturnType.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>)
             where method.GetCustomAttribute<ObsoleteAttribute>() is not { IsError: true }
             select (Type: type, Method: method, Signature: $"({string.Join(", ", method.GetParameters().Select(p => Describe(p.ParameterType)))})");
 
@@ -248,6 +275,13 @@ public sealed class AsynchronousContextTests
         {
             await gate.Task.ConfigureAwait(false);
             return value;
+        }
+
+        /// <summary>A stream whose first element is <see cref="First{T}"/>'s task, the second following it at once.</summary>
+        public async IAsyncEnumerable<T> Stream<T>(T first, T second)
+        {
+            yield return await First(first).ConfigureAwait(false);
+            yield return second;
         }
 
         public T Seen<T>(T value)

@@ -79,6 +79,7 @@ Option<decimal> discount =                                       // a later from
 - **`Choose(selector)`** keeps the values a selector returns `Some` for, in order and without the
   `None`s. It filters and maps in one step, over elements that may be null
   (`nicknames.Choose(n => n.ToOption())`). `Choose()` keeps the values a sequence of options holds.
+  Both read an async stream too, as its elements arrive.
 
 On a database query, `FirstOrNone`, `FirstOrError`, `SingleOrNone` and `ElementAtOrNone` ask the
 provider for only the element they need, and let it run the predicate (a `WHERE` and a `LIMIT` in
@@ -224,6 +225,20 @@ sequence order. `Traverse` calls nothing after it. None of them collects errors.
 `TraverseAsync` awaits one operation at a time, in order. It starts none after an error, or once the
 cancellation token you give it is cancelled. For operations that may all run at once, use
 `Task.WhenAll` and `Sequence()`.
+
+An async stream (`IAsyncEnumerable<T>`), such as a paged API or a query read with
+`AsAsyncEnumerable()`, needs no list first:
+
+```csharp
+IAsyncEnumerable<Sku> known = lines.Choose(line => Sku.TryFrom(line));                        // the lines that are SKUs, as they arrive
+Result<IReadOnlyList<Sku>, SkuFault> imported = await rows.SequenceAsync(cancellationToken);   // every SKU, or the first fault
+Result<IReadOnlyList<Order>, OrderFault> found = await ids.TraverseAsync(orders.FindAsync);    // one lookup at a time, in order
+```
+
+`SequenceAsync` and `TraverseAsync` stop at the first error and read nothing after it. All three read
+the stream in order, and dispose its enumerator however they stop: at an error, at a `break`, or when
+your selector throws. The token you give `SequenceAsync` or `TraverseAsync` reaches the stream. For
+`Choose`, pass yours to `WithCancellation` on what it returns.
 
 The asynchronous steps take callbacks that return a `Task`, and wait for them.
 `.TapErrorAsync(fault => audit.RecordAsync(fault))` has recorded the fault when the chain's `await`
