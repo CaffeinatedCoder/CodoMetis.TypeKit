@@ -173,7 +173,9 @@
     An interface's explicit implementation is the default every type declaring the interface reaches until it
     declares a public member, so the generated one replaced it without a word; a base record's public member of
     a generated name was kept as the value object's (`MaxValue`) or failed the aspect (LAMA0500); and a base
-    record's `Create` from another project was a second rule set for generic `T.Create`. Found by the interface
+    record's `Create` from another project was a second rule set for generic `T.Create`. A seam counts where the
+    value object declares it: a base record's `CompareTo(TSelf)`, `TryFrom` or `Revalidate` stood in for the
+    generated member, and an inherited `CompareTo` made `<` overflow the stack (#194). Found by the interface
     mapping (`TryFindImplementationForInterfaceMember`), never by listing members: Metalama lists no private
     member of a type in another assembly, so a base record's from a referenced project was missed as well.
     `IConvertible` declared through an interface, and a closed set's `IParsable<TSelf>` through one, are CMTK1011

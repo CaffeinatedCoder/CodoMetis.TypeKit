@@ -1210,6 +1210,20 @@
     ]
   },
   {
+    "id": "C22-a-seam-in-a-base-record",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "Declare them on the value object itself. A `TryFrom`, `Revalidate` or `CompareTo` in a base record fails the build (CMTK1011, or CMTK1008 for `CompareTo`), because it would stand in for the generated member without a word.",
+    "claim": "A TryFrom, Revalidate or CompareTo a base record declares fails the build, CMTK1008 for CompareTo.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
     "id": "C22-abstract",
     "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
     "quote": "An abstract type with a value-object marker. It would get no member, and a value held as it, of a type derived from it, would have no `Value` and be written as `{}`.",
