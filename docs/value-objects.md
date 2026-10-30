@@ -194,6 +194,48 @@ bool ordered = Percentage.FromKnownGood(5) < Percentage.FromKnownGood(50);   // 
 - **Culture.** The generated `ToString()` uses the invariant culture, so `Weight.From(1.5m)` prints
   `1.5` on any machine.
 
+### Add, subtract and scale
+
+```csharp
+public readonly partial record struct Money : IValue<decimal>,
+    IAdditionOperators<Money, Money, Money>,
+    ISubtractionOperators<Money, Money, Money>,
+    IMultiplyOperators<Money, decimal, Money>,   // Money * 3m
+    IDivisionOperators<Money, Money, decimal>;   // two amounts make a ratio
+```
+
+```csharp
+Money total = Money.From(10.50m) + Money.From(4.50m);   // 15.00
+Money tripled = total * 3m;                             // 45.00
+decimal share = Money.From(3m) / Money.From(4m);        // 0.75
+```
+
+Declare the operator interfaces you want, and TypeKit generates their operators. Each operator does what
+the underlying type's operator does: the same result, the same overflow, the same checked context.
+Nothing is generated unless you declare it.
+
+The first type argument is the value object. The other operand and the result can each be the value
+object or another type, as long as the underlying type has that operator itself. `Money * 3m` needs
+`decimal * decimal`, and `Money / Money` returning a `decimal` needs the same.
+
+**Good to know**
+
+- **Which interfaces.** `IAdditionOperators`, `ISubtractionOperators`, `IMultiplyOperators`,
+  `IDivisionOperators`, `IModulusOperators`, `IUnaryNegationOperators` and `IUnaryPlusOperators`.
+- **Numbers have them, dates don't.** The number types and `char` implement these interfaces.
+  `DateTime`, `TimeSpan`, `DateOnly` and `Guid` implement none of them, so a value object over one gets
+  no operator, and the interface you declared fails the build (CS0535).
+- **Plain value objects only.** A validated value object gets none. An operator can't return a
+  `Result`, and a sum outside the range `Create` accepts would have to throw. The interface you
+  declared fails the build (CS0535) until you write the operator yourself.
+- **Your own operator is kept.** Write one yourself, or implement the interface explicitly, and TypeKit
+  keeps it, with its checked form. It generates only the operators you haven't written.
+- **The checked context.** `checked(a + b)` uses the checked operator, as it would for an `int`. A value
+  object over an `int` throws `OverflowException` there, and wraps around outside it.
+- **In an EF Core query.** An operator between two value objects runs in the database, as it would for
+  the underlying type: `o.Price + o.Tax > limit` keeps the rows memory keeps. One with another operand or
+  result, such as `o.Price * 2m`, throws there for now. Write `o.Price.Value * 2m` instead.
+
 ## Enums, dates and other types
 
 ```csharp
@@ -290,7 +332,7 @@ else fails the build (CMTK0004, [EF Core](ef-core.md#reading-back-without-valida
 You can write five members yourself: `TryFrom`, `FromKnownGood`, `Revalidate`, `CompareTo(TSelf)` and
 `ToString()`. TypeKit keeps yours and builds everything that depends on them from them. Writing any
 other generated member by hand fails the build (CMTK1011), and so does a second field next to the
-value (CMTK1012).
+value (CMTK1012). An arithmetic operator you write is kept too ([Add, subtract and scale](#add-subtract-and-scale)).
 
 ```csharp
 public readonly partial record struct Priority : IValue<int>
@@ -332,7 +374,8 @@ don't collide. The OpenAPI document names the schema the same way, `ShipmentId`.
 
 The interfaces use static abstract members, so one generic method can serve every value object of a
 kind. Where the underlying type allows it, the generated types also implement `IEqualityOperators`,
-`IComparisonOperators` and `IMinMaxValue`, so they fit generic-math constraints.
+`IComparisonOperators` and `IMinMaxValue`, so they fit generic-math constraints. The arithmetic operator
+interfaces you declare fit them too.
 
 ```csharp
 static Result<IReadOnlyList<TSelf>, TFault> CreateAll<TSelf, T, TFault>(IEnumerable<T> values)

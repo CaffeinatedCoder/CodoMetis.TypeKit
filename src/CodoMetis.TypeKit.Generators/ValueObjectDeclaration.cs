@@ -340,6 +340,15 @@ internal static class ValueObjectDeclaration
     }
 
     /// <summary>
+    /// <paramref name="target"/> or a base record implements a member of <paramref name="interface"/>
+    /// explicitly, compared as the instance it is, type arguments included: what a generic base implements
+    /// for <c>IAdditionOperators&lt;TSelf, TSelf, TSelf&gt;</c> is read for the value object it derives.
+    /// </summary>
+    internal static bool ImplementsExplicitly(INamedType target, INamedType @interface) =>
+        SelfAndBases(target).Any(type => type.Methods.Any(method => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true }
+                                                                 && method.ExplicitInterfaceImplementations.Any(implemented => implemented.DeclaringType.Equals(@interface))));
+
+    /// <summary>
     /// How a validated value object declares <c>Create</c>: as an explicit implementation of the
     /// marker's, and as a static method the generated code can call as <c>{TSelf}.Create(value)</c>.
     /// Alone, the explicit one cannot be reached from there (CS1929 inside the generated code); beside a

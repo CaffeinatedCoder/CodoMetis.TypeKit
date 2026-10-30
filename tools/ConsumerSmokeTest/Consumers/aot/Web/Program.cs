@@ -66,6 +66,19 @@ await Check("set-json-read", async () =>
     return $"{ReferenceEquals(tracking.Status, OrderStatus.Open)} {tracking.Counts[OrderStatus.Shipped]}";
 });
 
+// Arithmetic a value object declares: the wrapped type's operators, called directly, through generic code,
+// and in a checked context, which picks the checked operator as it would for an int.
+await Check("arithmetic", async () =>
+{
+    var total = (Amount.From(1.5m) + Amount.From(2m)) * 2m;
+    string overflow;
+    try { _ = checked(Quantity.From(int.MaxValue) + Quantity.From(1)); overflow = "wrapped around"; }
+    catch (OverflowException) { overflow = "OverflowException"; }
+    return $"{total} {Twice(Quantity.From(21))} {overflow}";
+});
+
+static T Twice<T>(T value) where T : System.Numerics.IAdditionOperators<T, T, T> => value + value;
+
 // Parsing, including through a TypeConverter (NodaTime's LocalDate).
 await Check("parse", async () => $"{Quantity.Parse("42", null).Value} {Weekday.Parse("Monday", null).Value} {Link.Parse("https://p.test/", null).Value} {Day.Parse("2026-09-27", null).Value:yyyy-MM-dd}");
 await Check("tryparse-refused", async () => Code.TryParse("abc", null, out _).ToString());

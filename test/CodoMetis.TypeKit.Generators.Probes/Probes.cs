@@ -387,3 +387,17 @@ public sealed partial class ProbeKindlessFault : IFaultSet<ProbeKindlessFault>
 
     public FaultKind Kind { get; }
 }
+
+/// <summary>
+/// Declares the arithmetic operator interfaces: each operator is generated, and is the wrapped type's.
+/// Scaled and divided by the wrapped type, and divided by itself into a ratio of it.
+/// </summary>
+public readonly partial record struct ProbeMoney : IValue<decimal>,
+    System.Numerics.IAdditionOperators<ProbeMoney, ProbeMoney, ProbeMoney>,
+    System.Numerics.ISubtractionOperators<ProbeMoney, ProbeMoney, ProbeMoney>,
+    System.Numerics.IMultiplyOperators<ProbeMoney, decimal, ProbeMoney>,
+    System.Numerics.IDivisionOperators<ProbeMoney, decimal, ProbeMoney>,
+    System.Numerics.IDivisionOperators<ProbeMoney, ProbeMoney, decimal>,
+    System.Numerics.IModulusOperators<ProbeMoney, decimal, ProbeMoney>,
+    System.Numerics.IUnaryNegationOperators<ProbeMoney, ProbeMoney>,
+    System.Numerics.IUnaryPlusOperators<ProbeMoney, ProbeMoney>;

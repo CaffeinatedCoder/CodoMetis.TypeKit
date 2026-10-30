@@ -1596,6 +1596,140 @@
     ]
   },
   {
+    "id": "C28-checked-context-is-the-underlying-types",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "`checked(a + b)` uses the checked operator, as it would for an `int`.",
+    "claim": "`checked(a + b)` uses the checked operator, as it would for an `int`.",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedArithmetic.*"
+    ],
+    "heldBy": [
+      "ArithmeticParityTests",
+      "ArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-checked-operator-not-completed",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "A `checked` operator you write needs the plain one beside it, as C# requires (CS9025), and TypeKit doesn't write that one for you either.",
+    "claim": "A `checked` operator you write needs the plain one beside it, as C# requires (CS9025), and TypeKit doesn't write that one for you either.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*"
+    ],
+    "heldBy": [
+      "ArithmeticBuildTests"
+    ]
+  },
+  {
+    "id": "C28-dates-get-no-operator",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "`DateTime`, `TimeSpan`, `DateOnly` and `Guid` implement none of them, so a value object over one gets no operator, and the interface you declared fails the build (CS0535).",
+    "claim": "`DateTime`, `TimeSpan`, `DateOnly` and `Guid` implement none of them, so a value object over one gets no operator, and the interface you declared fails the build (CS0535).",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*"
+    ],
+    "heldBy": [
+      "ArithmeticBuildTests"
+    ]
+  },
+  {
+    "id": "C28-ef-between-value-objects",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "An operator between two value objects runs in the database, as it would for the underlying type: `o.Price + o.Tax > limit` keeps the rows memory keeps.",
+    "claim": "An operator between two value objects runs in the database, as it would for the underlying type: `o.Price + o.Tax > limit` keeps the rows memory keeps.",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedArithmetic.*"
+    ],
+    "heldBy": [
+      "ArithmeticQueryTests"
+    ]
+  },
+  {
+    "id": "C28-nothing-unless-declared",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "Nothing is generated unless you declare it.",
+    "claim": "Nothing is generated unless you declare it.",
+    "oracle": "claim",
+    "surfaces": [
+      "IPlainValueObject.*"
+    ],
+    "heldBy": [
+      "ArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-one-operator-per-signature",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "only the first is generated, and the second fails the build (CS0738) until you implement it explicitly.",
+    "claim": "only the first is generated, and the second fails the build (CS0738) until you implement it explicitly.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*"
+    ],
+    "heldBy": [
+      "ArithmeticBuildTests"
+    ]
+  },
+  {
+    "id": "C28-own-operator-kept",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "Write one yourself, or implement the interface explicitly, and TypeKit keeps it, with its checked form.",
+    "claim": "Write one yourself, or implement the interface explicitly, and TypeKit keeps it, with its checked form.",
+    "oracle": "claim",
+    "surfaces": [
+      "IPlainValueObject.*"
+    ],
+    "heldBy": [
+      "ArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-record-class-null-operand",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#what-is-generated",
+    "quote": "A `null` operand of a record class throws `ArgumentNullException`.",
+    "claim": "A `null` operand of a record class throws `ArgumentNullException`.",
+    "oracle": "exception",
+    "surfaces": [
+      "GeneratedArithmetic.*"
+    ],
+    "heldBy": [
+      "ArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-the-underlying-types-operator",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "Each operator does what the underlying type's operator does: the same result, the same overflow, the same checked context.",
+    "claim": "Each operator does what the underlying type's operator does: the same result, the same overflow, the same checked context.",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedArithmetic.*",
+      "IPlainValueObject.*"
+    ],
+    "heldBy": [
+      "ArithmeticParityTests",
+      "ArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-validated-gets-none",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "A validated value object gets none.",
+    "claim": "A validated value object gets none.",
+    "oracle": "exception",
+    "surfaces": [
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "ArithmeticBuildTests",
+      "ArithmeticTests"
+    ]
+  },
+  {
     "id": "E01-column-type",
     "source": "docs/ef-core.md#the-model",
     "quote": "Every property maps as a column of the underlying type, nullable where the property is.",

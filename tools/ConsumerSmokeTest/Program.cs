@@ -423,6 +423,7 @@ namespace ConsumerSmokeTest
             AssertContains("""decimal-factory="7.8" string {"Price":"7.8"} string string""", "aot.out", "a factory in the options and one a property names are asked for the converter they make, and the stored-JSON factory keeps the generated description");
             AssertContains("openapi-decimal=\"string\" \"decimal\"", "aot.out", "the document describes a value object over a decimal as the described converter writes it");
             AssertContains("option-refused=THREW NotSupportedException: Option<Int32> is not a wire type", "aot.out", "Option refuses JSON with its own message");
+            AssertContains("arithmetic=7.0 42 OverflowException", "aot.out", "the operators a value object declares are the wrapped type's, through generic code and in a checked context");
             AssertContains("parse=42 Monday https://p.test/ 2026-09-27", "aot.out", "the generated Parse, including through a TypeConverter");
             AssertContains("parse-after-lookup=True 2026-09-27T12:00:00Z", "aot.out", "and after TypeDescriptor described the wrapped type unregistered");
             AssertContains("tryparse-refused=False", "aot.out", "the generated TryParse applies Create");

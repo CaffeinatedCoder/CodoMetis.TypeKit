@@ -20,6 +20,7 @@ using Metalama.Framework.Aspects;
     typeof(ValueObjectFormattableAspect),
     typeof(ValueObjectComparableAspect),
     typeof(ValueObjectMinMaxValueAspect),
+    typeof(ValueObjectArithmeticAspect),
     typeof(ValueObjectTypeConverterAspect),
     typeof(ValueObjectConvertibleAspect),
     typeof(ValueObjectCompanionAspect)

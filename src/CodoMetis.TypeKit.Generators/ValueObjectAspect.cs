@@ -100,6 +100,7 @@ internal sealed partial class ValueObjectAspect : TypeAspect
         builder.Outbound.AddAspect<ValueObjectFormattableAspect>();
         builder.Outbound.AddAspect<ValueObjectComparableAspect>();
         builder.Outbound.AddAspect<ValueObjectMinMaxValueAspect>();
+        builder.Outbound.AddAspect<ValueObjectArithmeticAspect>();
         builder.Outbound.AddAspect<ValueObjectTypeConverterAspect>();
         builder.Outbound.AddAspect<ValueObjectConvertibleAspect>();
         builder.Outbound.AddAspect<ValueObjectCompanionAspect>();

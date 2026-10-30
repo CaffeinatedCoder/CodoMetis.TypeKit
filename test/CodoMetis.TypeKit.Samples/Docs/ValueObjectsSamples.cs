@@ -78,6 +78,14 @@ public readonly partial record struct Percentage : IValidatedValue<Percentage, i
 }
 // end sample
 
+// sample: value-objects/arithmetic
+public readonly partial record struct Money : IValue<decimal>,
+    IAdditionOperators<Money, Money, Money>,
+    ISubtractionOperators<Money, Money, Money>,
+    IMultiplyOperators<Money, decimal, Money>,   // Money * 3m
+    IDivisionOperators<Money, Money, decimal>;   // two amounts make a ratio
+// end sample
+
 // sample: value-objects/other-wrapped-types
 public readonly partial record struct Weekday : IValue<DayOfWeek>;
 
@@ -168,6 +176,17 @@ public static class Usage
         // end sample
 
         return (widest, shown, ordered);
+    }
+
+    public static (Money Total, Money Tripled, decimal Share) Arithmetic()
+    {
+        // sample: value-objects/arithmetic-use
+        Money total = Money.From(10.50m) + Money.From(4.50m);   // 15.00
+        Money tripled = total * 3m;                             // 45.00
+        decimal share = Money.From(3m) / Money.From(4m);        // 0.75
+        // end sample
+
+        return (total, tripled, share);
     }
 
     public static (Weekday Day, Weekday Fifth, DueOn Due, bool Sooner, bool Sortable) OtherWrappedTypes()
@@ -296,6 +315,18 @@ public sealed class ValueObjectsTests
         typeof(Percentage).GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IMinMaxValue<>)).ShouldBeFalse("a validated value object has no MinValue and MaxValue");
         typeof(Weight).GetInterfaces().ShouldContain(typeof(IMinMaxValue<Weight>));
         Weight.From(1.5m).ToString().ShouldBe("1.5");
+    }
+
+    [Fact]
+    public void Arithmetic_is_what_the_comments_say()
+    {
+        var (total, tripled, share) = Usage.Arithmetic();
+
+        (Money.From(10.50m) + Money.From(4.50m)).ShouldBeShownIn(Readme, money => money.ToString());
+        (total * 3m).ShouldBeShownIn(Readme, money => money.ToString());
+        (Money.From(3m) / Money.From(4m)).ShouldBeShownIn(Readme, ratio => ratio.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        (total, tripled, share).ShouldBe((Money.From(15.00m), Money.From(45.00m), 0.75m));
+        Should.Throw<OverflowException>(() => unchecked(Money.From(decimal.MaxValue) + Money.From(1m)), "a decimal overflows in either context");
     }
 
     [Fact]
