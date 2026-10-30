@@ -43,7 +43,7 @@ footprint, it runs with the suite.
 | EF | the query | `QueryShapes` | `QueryTranslationVariantTests` | |
 | Analyzers | where a type argument is written, and what it is | `TypeArgumentSites`, `TypeArgumentKinds` (`test/CodoMetis.TypeKit.Analyzers.Tests/Variants/`) | `TypeArgumentConstraintVariantTests` | |
 | Generation | the declaration's shape | record struct, record class, struct, class; sealed or not; over each wrapped kind | `BuildOutcomeTests`, `GeneratedSurfaceTests` | |
-| Generation | the operator interfaces a plain value object declares | each arithmetic interface, the other operand and the result as the value object or another type, declared directly or through another interface, written by hand (public, explicit, a base record's explicit) or not; over every numeric wrapped type and both record shapes | `ArithmeticParityTests`, `ArithmeticTests`, `ArithmeticBuildTests` | an operator interface beside a hand-written `CompareTo` |
+| Generation | the operator interfaces a plain value object declares | each arithmetic interface, the other operand and the result as the value object or another type, declared directly or through another interface, written by hand (public, explicit, a base record's explicit, an interface's explicit) or not; over every numeric wrapped type and both record shapes | `ArithmeticParityTests`, `ArithmeticTests`, `ArithmeticBuildTests` | an operator interface beside a hand-written `CompareTo` |
 
 An empty last column means nobody has looked yet, not that nothing is missing. Fill it when a feature lands or a
 finding names a combination no test varied.
