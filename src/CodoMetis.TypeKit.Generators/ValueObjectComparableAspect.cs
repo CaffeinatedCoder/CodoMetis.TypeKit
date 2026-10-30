@@ -153,7 +153,7 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
                 yield return method.ToDisplayString();
         }
 
-        foreach (var member in ValueObjectDeclaration.ExplicitImplementationsOf(target,
+        foreach (var member in ValueObjectDeclaration.ImplementationsOf(target,
                      [typeof(IComparable<>).ToNamedType(), typeof(IComparable).ToNamedType(), typeof(IComparisonOperators<,,>).ToNamedType()]))
             yield return member;
     }

@@ -169,14 +169,16 @@
     own: its `sealed` `ToString()` is the seam; an unsealed one, its `PrintMembers`, its explicit
     implementations of the generated interfaces and an `IConvertible` on it are CMTK1011, or CMTK1008
     for comparison. Members the compiler generated on a record from another assembly do not count.
-  - **An interface's explicit implementation counts too (decided 2026-10-30, [decision 124](adr/0124-an-explicit-implementation-is-refused-wherever-the-value-object-reaches-it.md)).**
-    It is the default every type declaring the interface reaches until it declares a public member, so
-    the generated one replaced it without a word. Found by the interface mapping
-    (`TryFindImplementationForInterfaceMember`), never by listing members: Metalama lists no private
-    member of a type in another assembly, so a base record's from a referenced project was missed as
-    well. `IConvertible` declared through an interface, and a closed set's `IParsable<TSelf>` through
-    one, are CMTK1011 where they failed the aspect (LAMA0041, LAMA0512). Not refused: an interface's
-    `==`, which the record's own replaces anyway, and `INumberBase<TSelf>`'s UTF-8 bridges.
+  - **Wherever the value object reaches it (decided 2026-10-30, [decision 124](adr/0124-a-generated-member-is-refused-wherever-the-value-object-reaches-it.md)).**
+    An interface's explicit implementation is the default every type declaring the interface reaches until it
+    declares a public member, so the generated one replaced it without a word; a base record's public member of
+    a generated name was kept as the value object's (`MaxValue`) or failed the aspect (LAMA0500); and a base
+    record's `Create` from another project was a second rule set for generic `T.Create`. Found by the interface
+    mapping (`TryFindImplementationForInterfaceMember`), never by listing members: Metalama lists no private
+    member of a type in another assembly, so a base record's from a referenced project was missed as well.
+    `IConvertible` declared through an interface, and a closed set's `IParsable<TSelf>` through one, are CMTK1011
+    where they failed the aspect (LAMA0041, LAMA0512). Not refused: an interface's `==`, which the record's own
+    replaces anyway, and `INumberBase<TSelf>`'s UTF-8 bridges.
   - **Equality over a base record is generated (decided 2026-10-14, [decision 75](adr/0075-equality-over-base-record-generated.md)).**
     A derived record's synthesized equality calls the base's, which compares the base's fields and
     whatever the base declares. A base comparing by reference made two value objects holding 42 unequal

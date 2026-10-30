@@ -208,7 +208,7 @@ internal static class ClosedSetTypes
             .. set.Methods.Where(method => IsOwn(method) && method.Name == "Parse" && (SameParameters(method, text) || SameParameters(method, text, boolean))).Select(ValueObjectDeclaration.Describe),
             .. set.Methods.Where(method => IsOwn(method) && method.Name == "TryParse" && (SameParameters(method, text, set) || SameParameters(method, text, boolean, set))).Select(ValueObjectDeclaration.Describe),
             .. set.Methods.Where(method => IsOwn(method) && IsGeneratedMatch(method, members.Count)).Select(ValueObjectDeclaration.Describe),
-            .. ValueObjectDeclaration.ExplicitImplementationsOf(set, [TypeFactory.GetNamedType(typeof(IClosedSet<>))]),
+            .. ValueObjectDeclaration.ImplementationsOf(set, [TypeFactory.GetNamedType(typeof(IClosedSet<>))]),
             .. set.ImplementedInterfaces.Where(implemented => implemented.Equals(parsable)).Select(implemented => $"the interface {implemented.ToDisplayString()}"),
             .. set.ImplementedInterfaces.Where(implemented => implemented.AllImplementedInterfaces.Any(inherited => inherited.Equals(parsable))).Select(implemented => $"the interface {parsable.ToDisplayString()} in its interface {implemented.ToDisplayString()}"),
             .. set.Attributes.Where(attribute => attribute.Type.Equals(TypeFactory.GetNamedType(typeof(JsonConverterAttribute)))
