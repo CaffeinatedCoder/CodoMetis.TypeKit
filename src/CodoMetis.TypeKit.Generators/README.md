@@ -229,6 +229,9 @@ covers:
 - **The same explicit implementation in an interface the value object implements.** The generated
   member would replace it, so it would never run. The error names the interface, in your project or
   another.
+- **Any of these members in a base record**, public or explicit, in your project or another. A base's
+  `MaxValue` would stand in for the generated one, and generic code calling `T.MaxValue` would reach
+  it. The error names the base.
 
 Two explicit implementations in an interface are fine, because a value object loses nothing by
 replacing them. A record's own `==` and `!=` replace an interface's, generated or not. And .NET's

@@ -178,6 +178,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("SetWithParsableThroughInterface", "the interface IParsable<SetWithParsableThroughInterface> in its interface ISetParsesItself<SetWithParsableThroughInterface>")]
     [InlineData("SetWithNameThroughInterface", "the explicit implementation of IClosedSet<SetWithNameThroughInterface>.Name in its interface ISetNamesItself<SetWithNameThroughInterface>")]
     [InlineData("SetWithNameThroughInterface", "the explicit implementation of IClosedSet<SetWithNameThroughInterface>.TryParse(string?, out SetWithNameThroughInterface) in its interface ISetNamesItself<SetWithNameThroughInterface>")]
+    [InlineData("SetOverLibraryBase", "the explicit implementation of IClosedSet<SetOverLibraryBase>.Name in its base type ExplicitSetBase<SetOverLibraryBase>")]
     [InlineData("SetWithNameThroughLibraryInterface", "the explicit implementation of IClosedSet<SetWithNameThroughLibraryInterface>.Name in its interface IProbeSetNames<SetWithNameThroughLibraryInterface>")]
     [InlineData("SetWithTypeConverterAttribute", "the attribute TypeConverter")]
     [InlineData("SetWithJsonConverterAttribute", "the attribute JsonConverter")]
@@ -422,6 +423,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     public void An_interface_s_default_the_generators_do_not_replace_is_not_refused(string type) =>
         consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'"), consumer.Output);
 
+
     /// <summary>
     /// What a base record declares counts as the value object's own. Its unsealed <c>ToString()</c> and its
     /// <c>PrintMembers</c> were replaced by the generated <c>ToString()</c>, printing what they hid; an
@@ -442,8 +444,36 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1008", "InheritsExplicitObjectComparable", "the explicit implementation of IComparable.CompareTo(object?) in its base type ObjectComparableBase")]
     [InlineData("CMTK1011", "InheritsLibraryFormattable", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its base type ProbeFormattableRecord")]
     [InlineData("CMTK1011", "InheritsLibraryMinMax", "the explicit implementation of IMinMaxValue<InheritsLibraryMinMax>.MinValue in its base type ProbeMinMaxRecord<InheritsLibraryMinMax>")]
+    [InlineData("CMTK1011", "InheritsPublicMinMax", "PublicMinMaxItselfBase<InheritsPublicMinMax>.MinValue in its base type PublicMinMaxItselfBase<InheritsPublicMinMax>")]
+    [InlineData("CMTK1011", "InheritsPublicFormatting", "PublicFormattingBase.ToString(string?, IFormatProvider?) in its base type PublicFormattingBase")]
+    [InlineData("CMTK1008", "InheritsPublicObjectOrder", "PublicObjectOrderBase.CompareTo(object?) in its base type PublicObjectOrderBase")]
+    [InlineData("CMTK1011", "InheritsPublicParsing", "PublicParsingBase<InheritsPublicParsing>.Parse(string, IFormatProvider?) in its base type PublicParsingBase<InheritsPublicParsing>")]
+    [InlineData("CMTK1011", "InheritsMinMaxNames", "MinMaxNamesBase<InheritsMinMaxNames>.MinValue in its base type MinMaxNamesBase<InheritsMinMaxNames>")]
+    [InlineData("CMTK1011", "InheritsValueName", "ValueNameBase.Value in its base type ValueNameBase")]
+    [InlineData("CMTK1011", "InheritsFromName", "FromNameBase<InheritsFromName>.From(int) in its base type FromNameBase<InheritsFromName>")]
+    [InlineData("CMTK1011", "InheritsTryFormatName", "TryFormatNameBase.TryFormat(Span<char>, out int, ReadOnlySpan<char>, IFormatProvider?) in its base type TryFormatNameBase")]
+    [InlineData("CMTK1011", "InheritsLibraryPublicMinMax", "PublicMinMaxBase<InheritsLibraryPublicMinMax>.MinValue in its base type PublicMinMaxBase<InheritsLibraryPublicMinMax>")]
     public void What_a_base_record_declares_is_refused_by_name(string id, string type, string member) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
+
+    /// <summary>
+    /// A public static member of another project that implements a static abstract one reads as an explicit
+    /// implementation there, since the compiler records every such implementation as one, and the error called it
+    /// "the explicit implementation of IMinMaxValue..." (#197). Metalama displays it as
+    /// <c>PublicMinMaxBase&lt;T&gt;.IMinMaxValue.MinValue</c>, so it is named once, by its type and the member.
+    /// </summary>
+    [Fact]
+    public void A_public_member_of_another_project_is_named_once_as_public()
+    {
+        var declared = consumer.Errors.Where(error => error.Message.StartsWith("'InheritsLibraryPublicMinMax' declares ", StringComparison.Ordinal))
+                               .ShouldHaveSingleItem(consumer.Output)
+                               .Message.Split(", so it is not generated")[0]["'InheritsLibraryPublicMinMax' declares ".Length..]
+                               .Split(", ");
+
+        declared.Order(StringComparer.Ordinal).ShouldBe(
+            ["PublicMinMaxBase<InheritsLibraryPublicMinMax>.MaxValue in its base type PublicMinMaxBase<InheritsLibraryPublicMinMax>",
+             "PublicMinMaxBase<InheritsLibraryPublicMinMax>.MinValue in its base type PublicMinMaxBase<InheritsLibraryPublicMinMax>"], ignoreOrder: false, customMessage: consumer.Output);
+    }
 
     /// <summary>
     /// A hand-written <c>PrintMembers</c> was replaced silently with the record's <c>ToString()</c>, which
@@ -1329,6 +1359,75 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             public sealed partial record InheritsLibraryMinMax : CodoMetis.TypeKit.Generators.Probes.ProbeMinMaxRecord<InheritsLibraryMinMax>, IValue<int>;
 
+            // A base record's public implementation of a generated member, or a member of a generated name
+            // (#197): its static MinValue and MaxValue were the value object's, and no MinValue or MaxValue was
+            // generated; the others failed the aspect (LAMA0500). Every body throws, so nothing generated is touched.
+            public abstract record PublicMinMaxItselfBase<TSelf> : System.Numerics.IMinMaxValue<TSelf> where TSelf : PublicMinMaxItselfBase<TSelf>, System.Numerics.IMinMaxValue<TSelf>
+            {
+                public static TSelf MinValue => throw new System.NotSupportedException();
+
+                public static TSelf MaxValue => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsPublicMinMax : PublicMinMaxItselfBase<InheritsPublicMinMax>, IValue<int>;
+
+            public abstract record PublicFormattingBase : System.IFormattable
+            {
+                public string ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+            }
+
+            public sealed partial record InheritsPublicFormatting : PublicFormattingBase, IValue<int>;
+
+            public abstract record PublicObjectOrderBase : System.IComparable
+            {
+                public int CompareTo(object? obj) => 0;
+            }
+
+            public sealed partial record InheritsPublicObjectOrder : PublicObjectOrderBase, IValue<int>;
+
+            public abstract record PublicParsingBase<TSelf> : System.IParsable<TSelf> where TSelf : PublicParsingBase<TSelf>, System.IParsable<TSelf>
+            {
+                public static TSelf Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                public static bool TryParse(string? s, System.IFormatProvider? provider, out TSelf result) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsPublicParsing : PublicParsingBase<InheritsPublicParsing>, IValue<int>;
+
+            public abstract record MinMaxNamesBase<TSelf> where TSelf : MinMaxNamesBase<TSelf>
+            {
+                public static TSelf MinValue => throw new System.NotSupportedException();
+
+                public static TSelf MaxValue => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsMinMaxNames : MinMaxNamesBase<InheritsMinMaxNames>, IValue<int>;
+
+            public abstract record ValueNameBase
+            {
+                public int Value => 0;
+            }
+
+            public sealed partial record InheritsValueName : ValueNameBase, IValue<int>;
+
+            public abstract record FromNameBase<TSelf> where TSelf : FromNameBase<TSelf>
+            {
+                public static TSelf From(int value) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsFromName : FromNameBase<InheritsFromName>, IValue<int>;
+
+            public abstract record TryFormatNameBase
+            {
+                public bool TryFormat(System.Span<char> destination, out int charsWritten, System.ReadOnlySpan<char> format, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsTryFormatName : TryFormatNameBase, IValue<long>;
+
+            // From a project the generators do not run in: read as an explicit implementation there, named as public.
+            public sealed partial record InheritsLibraryPublicMinMax : Library.PublicMinMaxBase<InheritsLibraryPublicMinMax>, IValue<int>;
+
+
             // An interface's default the generators do not replace. Beside ToString(), the seam, no
             // formatting interface is generated, and a Uri has no ordering. The record's own == replaces an
             // interface's in every record, generated or not. INumberBase<TSelf>, .NET's, implements
@@ -1721,6 +1820,10 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             public sealed partial class SetWithNameThroughLibraryInterface : IClosedSet<SetWithNameThroughLibraryInterface>, CodoMetis.TypeKit.Generators.Probes.IProbeSetNames<SetWithNameThroughLibraryInterface> { public static readonly SetWithNameThroughLibraryInterface A = new(); }
 
+            // A base class of another project that implements IClosedSet<TSelf> explicitly: All listed none through
+            // the interface, its Name was the base's, and EF Core stored that and read no member's name back (#191).
+            public sealed partial class SetOverLibraryBase : Library.ExplicitSetBase<SetOverLibraryBase> { public static readonly SetOverLibraryBase A = new(); }
+
             public interface ISetParsesItself<TSelf> : System.IParsable<TSelf> where TSelf : ISetParsesItself<TSelf>;
 
             public sealed partial class SetWithParsableThroughInterface : IClosedSet<SetWithParsableThroughInterface>, ISetParsesItself<SetWithParsableThroughInterface> { public static readonly SetWithParsableThroughInterface A = new(); }
@@ -1769,6 +1872,43 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
         private readonly string _setsDirectory = Path.Combine(RepositoryRoot(), "artifacts", $"consumer-{Guid.NewGuid():N}");
 
+        private readonly string _libraryDirectory = Path.Combine(RepositoryRoot(), "artifacts", $"library-{Guid.NewGuid():N}");
+
+        /// <summary>
+        /// A library the generators do not run in, which references the base package alone, as a consumer's
+        /// shared project may. A base type there that carries a marker or <c>IClosedSet&lt;TSelf&gt;</c> is no
+        /// value object or set of its own, where in a project with the generators it would be refused
+        /// (CMTK1022, CMTK1014), and Metalama lists no private member of its types (#191, #195).
+        /// </summary>
+        private const string Library =
+            """
+            using CodoMetis.TypeKit;
+            using CodoMetis.TypeKit.ClosedSets;
+            using CodoMetis.TypeKit.ValueObjects;
+
+            namespace Library;
+
+            // A public static implementation of a static abstract member reads as an explicit one from here.
+            public abstract record PublicMinMaxBase<TSelf> : System.Numerics.IMinMaxValue<TSelf> where TSelf : PublicMinMaxBase<TSelf>, System.Numerics.IMinMaxValue<TSelf>
+            {
+                public static TSelf MinValue => throw new System.NotSupportedException();
+
+                public static TSelf MaxValue => throw new System.NotSupportedException();
+            }
+
+            // The set's All listed none, its Name through the interface was the base's, and EF Core stored that.
+            public abstract class ExplicitSetBase<TSelf> : IClosedSet<TSelf> where TSelf : ExplicitSetBase<TSelf>
+            {
+                string IClosedSet<TSelf>.Name => "***";
+
+                string IClosedSet<TSelf>.QualifiedName => "***";
+
+                static System.Collections.Generic.IReadOnlyList<TSelf> IClosedSet<TSelf>.All => [];
+
+                static bool IClosedSet<TSelf>.TryParse(string? name, out TSelf member) => throw new System.NotSupportedException();
+            }
+            """;
+
         /// <summary>A second file, so a declaration can be split across files.</summary>
         private const string OtherFile =
             """
@@ -1795,8 +1935,9 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
         public async ValueTask InitializeAsync()
         {
-            var declarations = Build(_directory, new Dictionary<string, string> { ["Declarations.cs"] = Declarations, ["OtherFile.cs"] = OtherFile });
-            var sets = Build(_setsDirectory, new Dictionary<string, string> { ["RefusedSets.cs"] = RefusedSets });
+            var library = await BuildLibrary(_libraryDirectory, Library);
+            var declarations = Build(_directory, new Dictionary<string, string> { ["Declarations.cs"] = Declarations, ["OtherFile.cs"] = OtherFile }, library);
+            var sets = Build(_setsDirectory, new Dictionary<string, string> { ["RefusedSets.cs"] = RefusedSets }, library);
 
             var (declarationOutput, declarationErrors) = await declarations;
             var (setOutput, setErrors) = await sets;
@@ -1808,7 +1949,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
         public ValueTask DisposeAsync()
         {
-            foreach (var directory in new[] { _directory, _setsDirectory })
+            foreach (var directory in new[] { _directory, _setsDirectory, _libraryDirectory })
                 if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
 
             return ValueTask.CompletedTask;
@@ -1819,8 +1960,9 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
         /// <paramref name="sources"/>, and reads its errors. A declaration whose build error is the
         /// compiler's own (CS0111) belongs in a consumer of its own: beside it, Metalama reported no error
         /// in the code it generated into a declaration's own file, which the other guards rely on.
+        /// <paramref name="library"/>, a project <see cref="BuildLibrary"/> built, is referenced too.
         /// </summary>
-        internal static async Task<(string Output, IReadOnlyList<Diagnostic> Errors)> Build(string directory, IReadOnlyDictionary<string, string> sources)
+        internal static async Task<(string Output, IReadOnlyList<Diagnostic> Errors)> Build(string directory, IReadOnlyDictionary<string, string> sources, string? library = null)
         {
             Directory.CreateDirectory(directory);
 
@@ -1838,6 +1980,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                      <ProjectReference Include="{src}/CodoMetis.TypeKit.Generators/CodoMetis.TypeKit.Generators.csproj" />
                      <ProjectReference Include="{src}/CodoMetis.TypeKit.Analyzers/CodoMetis.TypeKit.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
                      <ProjectReference Include="{probes}" />
+                     {(library is null ? "" : $"<ProjectReference Include=\"{library}\" />")}
                    </ItemGroup>
                  </Project>
                  """);
@@ -1859,18 +2002,66 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                 dotnet_diagnostic.CMTK1023.severity = error
                 """);
 
-            // Stop MSBuild's upward search here, so the repository's own build settings (warnings as
-            // errors, documentation, central package management) do not apply to the consumer.
+            await WriteBuildStoppers(directory);
+
+            var (_, text) = await RunBuild(directory);
+            IReadOnlyList<Diagnostic> found = [.. DiagnosticLine().Matches(text).Select(match => new Diagnostic(match.Groups["id"].Value, match.Groups["message"].Value)).Distinct()];
+
+            found.ShouldNotBeEmpty($"The consumer build reported no errors at all, so it did not run as intended:{Environment.NewLine}{text}");
+            return (text, found);
+        }
+
+        /// <summary>
+        /// Builds a library of <paramref name="source"/> in <paramref name="directory"/> that references the base
+        /// package alone, so the generators do not run in it, and returns its project file. It must build.
+        /// </summary>
+        internal static async Task<string> BuildLibrary(string directory, string source)
+        {
+            Directory.CreateDirectory(directory);
+
+            var project = Path.Combine(directory, "Library.csproj");
+            await File.WriteAllTextAsync(project,
+                $"""
+                 <Project Sdk="Microsoft.NET.Sdk">
+                   <PropertyGroup>
+                     <TargetFramework>net10.0</TargetFramework>
+                     <Nullable>enable</Nullable>
+                     <ImplicitUsings>enable</ImplicitUsings>
+                   </PropertyGroup>
+                   <ItemGroup>
+                     <ProjectReference Include="{Path.Combine(RepositoryRoot(), "src")}/CodoMetis.TypeKit/CodoMetis.TypeKit.csproj" />
+                   </ItemGroup>
+                 </Project>
+                 """);
+            await File.WriteAllTextAsync(Path.Combine(directory, "Library.cs"), source);
+            await WriteBuildStoppers(directory);
+
+            var (exitCode, text) = await RunBuild(directory);
+            exitCode.ShouldBe(0, $"The library the consumers reference did not build:{Environment.NewLine}{text}");
+            return project;
+        }
+
+        /// <summary>
+        /// Stops MSBuild's upward search in <paramref name="directory"/>, so the repository's own build settings
+        /// (warnings as errors, documentation, central package management) do not apply there.
+        /// </summary>
+        private static async Task WriteBuildStoppers(string directory)
+        {
             await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Build.props"), "<Project />");
             await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Build.targets"), "<Project />");
             await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Packages.props"),
                 "<Project><PropertyGroup><ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally></PropertyGroup></Project>");
+        }
 
-            // --no-dependencies and RestoreRecursive=false: the referenced projects are already built
-            // by this test run, and restoring them again could rewrite restore output that other
-            // tests read concurrently. Already built in this run's configuration, which is therefore
-            // passed on: without it the consumer builds in Debug and, in a Release run such as CI's,
-            // finds no referenced assembly at all.
+        /// <summary>
+        /// Builds the project in <paramref name="directory"/>. --no-dependencies and RestoreRecursive=false: the
+        /// referenced projects are already built by this test run (the library before its consumers), and
+        /// restoring them again could rewrite restore output that other tests read concurrently. Already built in
+        /// this run's configuration, which is therefore passed on: without it the consumer builds in Debug and, in
+        /// a Release run such as CI's, finds no referenced assembly at all.
+        /// </summary>
+        private static async Task<(int ExitCode, string Output)> RunBuild(string directory)
+        {
             using var process = Process.Start(new ProcessStartInfo(
                 "dotnet", ["build", directory, "-c", Configuration, "--no-dependencies", "-p:RestoreRecursive=false", "-nodeReuse:false", "-clp:NoSummary"])
             {
@@ -1883,11 +2074,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             var errors = process.StandardError.ReadToEndAsync();
             await process.WaitForExitAsync();
 
-            var text = await output + await errors;
-            IReadOnlyList<Diagnostic> found = [.. DiagnosticLine().Matches(text).Select(match => new Diagnostic(match.Groups["id"].Value, match.Groups["message"].Value)).Distinct()];
-
-            found.ShouldNotBeEmpty($"The consumer build reported no errors at all, so it did not run as intended:{Environment.NewLine}{text}");
-            return (text, found);
+            return (process.ExitCode, await output + await errors);
         }
 
         /// <summary>The configuration this test assembly, and so the projects it references, was built in.</summary>
