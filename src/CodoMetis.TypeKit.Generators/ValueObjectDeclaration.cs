@@ -340,12 +340,19 @@ internal static class ValueObjectDeclaration
     }
 
     /// <summary>
-    /// <paramref name="target"/> or a base record implements a member of <paramref name="interface"/>
-    /// explicitly, compared as the instance it is, type arguments included: what a generic base implements
-    /// for <c>IAdditionOperators&lt;TSelf, TSelf, TSelf&gt;</c> is read for the value object it derives.
+    /// <paramref name="target"/>, a base record or an interface it implements implements a member of
+    /// <paramref name="interface"/> explicitly, compared as the instance it is, type arguments included: what a
+    /// generic base implements for <c>IAdditionOperators&lt;TSelf, TSelf, TSelf&gt;</c> is read for the value
+    /// object it derives.
     /// </summary>
+    /// <remarks>
+    /// An interface's explicit implementation is the default every implementing type reaches until it declares
+    /// its own public member: a generated <c>+</c> replaced <c>IMoneyMath&lt;TSelf&gt;</c>'s, and generic
+    /// addition read 3 where the interface's answered 1.
+    /// </remarks>
     internal static bool ImplementsExplicitly(INamedType target, INamedType @interface) =>
-        SelfAndBases(target).Any(type => type.Methods.Any(method => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true }
+        SelfAndBases(target).Concat(target.AllImplementedInterfaces)
+                            .Any(type => type.Methods.Any(method => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true }
                                                                  && method.ExplicitInterfaceImplementations.Any(implemented => implemented.DeclaringType.Equals(@interface))));
 
     /// <summary>

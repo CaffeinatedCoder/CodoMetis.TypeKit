@@ -217,7 +217,7 @@ A value object may declare its own `TryFrom`, `FromKnownGood`, `Revalidate`, `Co
 `ToString()`. Each one is kept, and whatever depends on it is built from it.
 
 An arithmetic operator you write is kept as well, and so is an explicit implementation of its
-interface, yours or a base record's. Its `checked` form is then yours too: TypeKit generates neither
+interface, yours, a base record's or one an interface of yours supplies. Its `checked` form is then yours too: TypeKit generates neither
 form of that operator, and generates the ones you didn't write. A `checked` operator you write needs the
 plain one beside it, as C# requires (CS9025), and TypeKit doesn't write that one for you either. Code
 that wrote these operators by hand before 2.4 builds unchanged. A database can't run an operator you

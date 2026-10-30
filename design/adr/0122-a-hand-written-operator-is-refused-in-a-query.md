@@ -29,9 +29,11 @@ refused in a query, naming the value object and `.Value`.**
   not, which fails when the model is built. An operator over the context's own values in a filter runs in memory,
   as written, and stays allowed.
 - **Which.** `+`, `-`, `*`, `/`, `%`, unary `-` and `+`, their checked forms, `&`, `|`, `^`, `<<`, `>>`, `~` and
-  `!`: the operators EF translates as the database's own. Comparison is decision 57's, equality the record's. A
-  conversion operator is left to EF: `implicit operator string(Name n) => n.Value` is common, and translates to what
-  it does.
+  `!`, and `&&` and `||`, whose nodes carry a value object's `&` or `|` where it declares `operator true` and
+  `false`: the operators EF translates as the database's own. Left out, `&&` and `||` of a `Switch` over `bool` read
+  true where its operators answer false, unrefused (an outside review of #189). A condition over `operator true` is a
+  call of `op_True`, which EF runs in memory. Comparison is decision 57's, equality the record's. A conversion
+  operator is left to EF: `implicit operator string(Name n) => n.Value` is common, and translates to what it does.
 - **A refusal in a minor.** A query with a hand-written operator that ran before now throws. It did not return what
   the code says. Decision 34 holds the build's diagnostics, not a query's answer, and a silent wrong answer is a
   defect, fixed in the release that finds it, as the refusal of a hand-written `CompareTo` was.

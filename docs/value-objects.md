@@ -228,8 +228,8 @@ object or another type, as long as the underlying type has that operator itself.
 - **Plain value objects only.** A validated value object gets none. An operator can't return a
   `Result`, and a sum outside the range `Create` accepts would have to throw. The interface you
   declared fails the build (CS0535) until you write the operator yourself.
-- **Your own operator is kept.** Write one yourself, or implement the interface explicitly, and TypeKit
-  keeps it, with its checked form. It generates only the operators you haven't written.
+- **Your own operator is kept.** Write one yourself, or implement the interface explicitly, in the type, a
+  base record or an interface of yours, and TypeKit keeps it, with its checked form. It generates only the operators you haven't written.
 - **The checked context.** `checked(a + b)` uses the checked operator, as it would for an `int`. A value
   object over an `int` throws `OverflowException` there, and wraps around outside it.
 - **In an EF Core query.** Each operator runs in the database as the underlying type's arithmetic:

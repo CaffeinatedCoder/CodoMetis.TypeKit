@@ -1719,8 +1719,8 @@
   {
     "id": "C28-own-operator-kept",
     "source": "docs/value-objects.md#add-subtract-and-scale",
-    "quote": "Write one yourself, or implement the interface explicitly, and TypeKit keeps it, with its checked form.",
-    "claim": "Write one yourself, or implement the interface explicitly, and TypeKit keeps it, with its checked form.",
+    "quote": "Write one yourself, or implement the interface explicitly, in the type, a base record or an interface of yours, and TypeKit keeps it, with its checked form.",
+    "claim": "Write one yourself, or implement the interface explicitly, in the type, a base record or an interface of yours, and TypeKit keeps it, with its checked form.",
     "oracle": "claim",
     "surfaces": [
       "IPlainValueObject.*"
@@ -2512,8 +2512,8 @@
   {
     "id": "E18-own-operator-throws",
     "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
-    "quote": "So a query that uses an arithmetic or bitwise operator you wrote on a value object throws an `InvalidOperationException` naming the value object.",
-    "claim": "So a query that uses an arithmetic or bitwise operator you wrote on a value object throws an `InvalidOperationException` naming the value object.",
+    "quote": "So a query that uses an arithmetic or bitwise operator you wrote on a value object, `&&` and `||` included, throws an `InvalidOperationException` naming the value object.",
+    "claim": "So a query that uses an arithmetic or bitwise operator you wrote on a value object, `&&` and `||` included, throws an `InvalidOperationException` naming the value object.",
     "oracle": "exception",
     "surfaces": [
       "TranslatedAsWrappedArithmeticAttribute.*"
