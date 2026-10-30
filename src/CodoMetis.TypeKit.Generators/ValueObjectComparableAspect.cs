@@ -136,7 +136,8 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
     /// the object overload, the four ordering operators, and an explicit implementation of any member
     /// of the comparison interfaces. The explicit one was kept beside the generated public one, which
     /// it hides from every caller through the interface: an explicit <c>IComparable&lt;Rank&gt;.CompareTo</c>
-    /// sorted a list descending while <c>&lt;</c> kept ascending.
+    /// sorted a list descending while <c>&lt;</c> kept ascending. A base record's and an interface's count
+    /// too; the generated one replaced an interface's without a word (#191).
     /// </summary>
     private static IEnumerable<string> HandWrittenComparisonMembers(INamedType target)
     {

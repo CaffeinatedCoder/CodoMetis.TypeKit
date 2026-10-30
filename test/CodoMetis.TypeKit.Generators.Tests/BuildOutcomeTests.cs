@@ -169,10 +169,16 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
     /// <summary>
     /// What the generators implement and attach, written by hand, failed the aspect or the generated
-    /// code: <c>IParsable</c> twice, an attribute twice (CS0579). The error names each.
+    /// code: <c>IParsable</c> twice, an attribute twice (CS0579). The error names each. An interface's
+    /// explicit implementation of <c>IClosedSet&lt;TSelf&gt;</c> was replaced by the generated member without
+    /// a word, and <c>IParsable</c> declared through an interface failed the aspect (LAMA0512) (#191).
     /// </summary>
     [Theory]
     [InlineData("SetWithParsable", "the interface IParsable<SetWithParsable>")]
+    [InlineData("SetWithParsableThroughInterface", "the interface IParsable<SetWithParsableThroughInterface> in its interface ISetParsesItself<SetWithParsableThroughInterface>")]
+    [InlineData("SetWithNameThroughInterface", "the explicit implementation of IClosedSet<SetWithNameThroughInterface>.Name in its interface ISetNamesItself<SetWithNameThroughInterface>")]
+    [InlineData("SetWithNameThroughInterface", "the explicit implementation of IClosedSet<SetWithNameThroughInterface>.TryParse(string?, out SetWithNameThroughInterface) in its interface ISetNamesItself<SetWithNameThroughInterface>")]
+    [InlineData("SetWithNameThroughLibraryInterface", "the explicit implementation of IClosedSet<SetWithNameThroughLibraryInterface>.Name in its interface IProbeSetNames<SetWithNameThroughLibraryInterface>")]
     [InlineData("SetWithTypeConverterAttribute", "the attribute TypeConverter")]
     [InlineData("SetWithJsonConverterAttribute", "the attribute JsonConverter")]
     public void What_the_generators_implement_or_attach_is_refused_by_name_on_a_set(string type, string declared) =>
@@ -366,6 +372,57 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
 
     /// <summary>
+    /// An interface's explicit implementation of a generated interface's member is the default every type
+    /// declaring the interface reaches until it declares a public member of its own, so the generated one
+    /// replaced it without a word: <c>Max&lt;T&gt;()</c> read the generated <c>MaxValue</c> where the
+    /// interface's threw, and an <c>IFormattable</c> call printed the value where the interface answered its
+    /// own text (#191, measured 2026-10-30 for each interface here). It is refused as the value object's own
+    /// is, naming the interface, two interfaces down and through a base record too. <c>IConvertible</c>
+    /// declared through an interface failed the aspect (LAMA0041), as declaring it does.
+    /// </summary>
+    [Theory]
+    [InlineData("CMTK1011", "FormatsThroughInterface", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its interface IFormatsItself")]
+    [InlineData("CMTK1011", "SpanFormatsThroughInterface", "the explicit implementation of ISpanFormattable.TryFormat(Span<char>, out int, ReadOnlySpan<char>, IFormatProvider?) in its interface ISpanFormatsItself")]
+    [InlineData("CMTK1011", "Utf8FormatsThroughInterface", "the explicit implementation of IUtf8SpanFormattable.TryFormat(Span<byte>, out int, ReadOnlySpan<char>, IFormatProvider?) in its interface IUtf8FormatsItself")]
+    [InlineData("CMTK1011", "ParsesThroughInterface", "the explicit implementation of IParsable<ParsesThroughInterface>.Parse(string, IFormatProvider?) in its interface IParsesItself<ParsesThroughInterface>")]
+    [InlineData("CMTK1011", "SpanParsesThroughInterface", "the explicit implementation of ISpanParsable<SpanParsesThroughInterface>.Parse(ReadOnlySpan<char>, IFormatProvider?) in its interface ISpanParsesItself<SpanParsesThroughInterface>")]
+    [InlineData("CMTK1011", "Utf8ParsesThroughInterface", "the explicit implementation of IUtf8SpanParsable<Utf8ParsesThroughInterface>.Parse(ReadOnlySpan<byte>, IFormatProvider?) in its interface IUtf8ParsesItself<Utf8ParsesThroughInterface>")]
+    [InlineData("CMTK1011", "BoundedThroughInterface", "the explicit implementation of IMinMaxValue<BoundedThroughInterface>.MinValue in its interface IBoundedItself<BoundedThroughInterface>")]
+    [InlineData("CMTK1011", "ConvertsThroughInterface", "the interface IConvertible in its interface IConvertsItself")]
+    [InlineData("CMTK1008", "OrdersThroughInterface", "the explicit implementation of IComparable.CompareTo(object?) in its interface IOrdersItself")]
+    [InlineData("CMTK1008", "OrdersThroughGenericInterface", "the explicit implementation of IComparable<OrdersThroughGenericInterface>.CompareTo(OrdersThroughGenericInterface) in its interface IOrdersItselfAs<OrdersThroughGenericInterface>")]
+    [InlineData("CMTK1008", "ComparesThroughInterface", "the explicit implementation of IComparisonOperators<ComparesThroughInterface, ComparesThroughInterface, bool>.operator <(ComparesThroughInterface, ComparesThroughInterface) in its interface IComparesItself<ComparesThroughInterface>")]
+    [InlineData("CMTK1011", "FormatsThroughInterfaceOnClass", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its interface IFormatsItself")]
+    [InlineData("CMTK1008", "OrdersThroughGenericInterfaceOnClass", "the explicit implementation of IComparable<OrdersThroughGenericInterfaceOnClass>.CompareTo(OrdersThroughGenericInterfaceOnClass?) in its interface IOrdersItselfAs<OrdersThroughGenericInterfaceOnClass>")]
+    [InlineData("CMTK1011", "FormatsTwoInterfacesDown","the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its interface IFormatsItself")]
+    [InlineData("CMTK1011", "ConvertsTwoInterfacesDown", "the interface IConvertible in its interface IConvertsTwoDown")]
+    [InlineData("CMTK1011", "FormatsThroughBaseInterface", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its interface IFormatsItself")]
+    [InlineData("CMTK1011", "BoundedThroughBaseInterface", "the explicit implementation of IMinMaxValue<BoundedThroughBaseInterface>.MinValue in its interface IBoundedItself<BoundedThroughBaseInterface>")]
+    [InlineData("CMTK1008", "OrdersThroughBaseInterface", "the explicit implementation of IComparable.CompareTo(object?) in its interface IOrdersItself")]
+    [InlineData("CMTK1011", "ConvertsThroughBaseInterface", "the interface IConvertible in its base type ConvertsItselfBase")]
+    [InlineData("CMTK1011", "FormatsThroughLibraryInterface", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its interface IProbeFormats")]
+    [InlineData("CMTK1011", "BoundedThroughLibraryInterface", "the explicit implementation of IMinMaxValue<BoundedThroughLibraryInterface>.MinValue in its interface IProbeBounded<BoundedThroughLibraryInterface>")]
+    [InlineData("CMTK1008", "OrdersThroughLibraryInterface", "the explicit implementation of IComparable.CompareTo(object?) in its interface IProbeOrders")]
+    public void An_interface_s_explicit_implementation_of_a_generated_interface_is_refused_by_name(string id, string type, string member) =>
+        consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
+
+    /// <summary>
+    /// An interface's default the generators do not replace is no refusal: beside <c>ToString()</c>, the seam,
+    /// no formatting interface is generated, and a <c>Uri</c> has no ordering. The record's own <c>==</c>
+    /// replaces an interface's in every record, generated or not (measured 2026-10-30). .NET's
+    /// <c>INumberBase&lt;TSelf&gt;</c> implements <c>IUtf8SpanFormattable</c> and <c>IUtf8SpanParsable</c>
+    /// explicitly as bridges to the UTF-16 members, which every numeric type of .NET replaces with its own, as
+    /// the generated ones do: refused, no value object could implement it.
+    /// </summary>
+    [Theory]
+    [InlineData("FormatsThroughInterfaceWithToString")]
+    [InlineData("OrdersThroughInterfaceOverUri")]
+    [InlineData("EqualsThroughInterface")]
+    [InlineData("MetersAsNumber")]
+    public void An_interface_s_default_the_generators_do_not_replace_is_not_refused(string type) =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'"), consumer.Output);
+
+    /// <summary>
     /// What a base record declares counts as the value object's own. Its unsealed <c>ToString()</c> and its
     /// <c>PrintMembers</c> were replaced by the generated <c>ToString()</c>, printing what they hid; an
     /// explicit implementation of a generated interface was replaced without a word (<c>IFormattable</c>,
@@ -383,6 +440,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "InheritsConvertible", "the interface IConvertible in its base type ConvertibleBase")]
     [InlineData("CMTK1008", "InheritsExplicitComparable", "the explicit implementation of IComparable<InheritsExplicitComparable>.CompareTo(InheritsExplicitComparable?) in its base type ComparableBase<InheritsExplicitComparable>")]
     [InlineData("CMTK1008", "InheritsExplicitObjectComparable", "the explicit implementation of IComparable.CompareTo(object?) in its base type ObjectComparableBase")]
+    [InlineData("CMTK1011", "InheritsLibraryFormattable", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its base type ProbeFormattableRecord")]
+    [InlineData("CMTK1011", "InheritsLibraryMinMax", "the explicit implementation of IMinMaxValue<InheritsLibraryMinMax>.MinValue in its base type ProbeMinMaxRecord<InheritsLibraryMinMax>")]
     public void What_a_base_record_declares_is_refused_by_name(string id, string type, string member) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
 
@@ -1107,6 +1166,239 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             public sealed partial record InheritsExplicitObjectComparable : ObjectComparableBase, IValue<int>;
 
+            // An interface's explicit implementation of a generated interface's member: the default every
+            // type declaring the interface reaches until it declares a public member of its own, which the
+            // generated one replaced without a word (#191). Each interface implements every member of the
+            // generated one, so a refused value object lacks none (CS0535).
+            public interface IFormatsItself : System.IFormattable
+            {
+                string System.IFormattable.ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+            }
+
+            public readonly partial record struct FormatsThroughInterface : IValue<int>, IFormatsItself;
+
+            public interface ISpanFormatsItself : System.ISpanFormattable
+            {
+                string System.IFormattable.ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+
+                bool System.ISpanFormattable.TryFormat(System.Span<char> destination, out int charsWritten, System.ReadOnlySpan<char> format, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct SpanFormatsThroughInterface : IValue<long>, ISpanFormatsItself;
+
+            public interface IUtf8FormatsItself : System.IUtf8SpanFormattable
+            {
+                bool System.IUtf8SpanFormattable.TryFormat(System.Span<byte> utf8Destination, out int bytesWritten, System.ReadOnlySpan<char> format, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct Utf8FormatsThroughInterface : IValue<int>, IUtf8FormatsItself;
+
+            public interface IParsesItself<TSelf> : System.IParsable<TSelf> where TSelf : IParsesItself<TSelf>
+            {
+                static TSelf System.IParsable<TSelf>.Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                static bool System.IParsable<TSelf>.TryParse(string? s, System.IFormatProvider? provider, out TSelf result) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct ParsesThroughInterface : IValidatedValue<ParsesThroughInterface, string, Fault>, IParsesItself<ParsesThroughInterface>
+            {
+                public static Result<ParsesThroughInterface, Fault> Create(string value) => Result.Error(Fault.Refused);
+            }
+
+            public interface ISpanParsesItself<TSelf> : System.ISpanParsable<TSelf> where TSelf : ISpanParsesItself<TSelf>
+            {
+                static TSelf System.IParsable<TSelf>.Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                static bool System.IParsable<TSelf>.TryParse(string? s, System.IFormatProvider? provider, out TSelf result) => throw new System.NotSupportedException();
+
+                static TSelf System.ISpanParsable<TSelf>.Parse(System.ReadOnlySpan<char> s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                static bool System.ISpanParsable<TSelf>.TryParse(System.ReadOnlySpan<char> s, System.IFormatProvider? provider, out TSelf result) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct SpanParsesThroughInterface : IValue<int>, ISpanParsesItself<SpanParsesThroughInterface>;
+
+            public interface IUtf8ParsesItself<TSelf> : System.IUtf8SpanParsable<TSelf> where TSelf : IUtf8ParsesItself<TSelf>
+            {
+                static TSelf System.IUtf8SpanParsable<TSelf>.Parse(System.ReadOnlySpan<byte> utf8Text, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                static bool System.IUtf8SpanParsable<TSelf>.TryParse(System.ReadOnlySpan<byte> utf8Text, System.IFormatProvider? provider, out TSelf result) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct Utf8ParsesThroughInterface : IValue<int>, IUtf8ParsesItself<Utf8ParsesThroughInterface>;
+
+            public interface IBoundedItself<TSelf> : System.Numerics.IMinMaxValue<TSelf> where TSelf : IBoundedItself<TSelf>
+            {
+                static TSelf System.Numerics.IMinMaxValue<TSelf>.MinValue => throw new System.NotSupportedException();
+
+                static TSelf System.Numerics.IMinMaxValue<TSelf>.MaxValue => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct BoundedThroughInterface : IValue<int>, IBoundedItself<BoundedThroughInterface>;
+
+            public interface IOrdersItself : System.IComparable
+            {
+                int System.IComparable.CompareTo(object? obj) => 0;
+            }
+
+            public readonly partial record struct OrdersThroughInterface : IValue<int>, IOrdersItself;
+
+            public interface IOrdersItselfAs<TSelf> : System.IComparable<TSelf>
+            {
+                int System.IComparable<TSelf>.CompareTo(TSelf? other) => 0;
+            }
+
+            public readonly partial record struct OrdersThroughGenericInterface : IValue<int>, IOrdersItselfAs<OrdersThroughGenericInterface>;
+
+            public interface IComparesItself<TSelf> : System.Numerics.IComparisonOperators<TSelf, TSelf, bool> where TSelf : IComparesItself<TSelf>
+            {
+                static bool System.Numerics.IComparisonOperators<TSelf, TSelf, bool>.operator <(TSelf left, TSelf right) => false;
+
+                static bool System.Numerics.IComparisonOperators<TSelf, TSelf, bool>.operator >(TSelf left, TSelf right) => false;
+
+                static bool System.Numerics.IComparisonOperators<TSelf, TSelf, bool>.operator <=(TSelf left, TSelf right) => false;
+
+                static bool System.Numerics.IComparisonOperators<TSelf, TSelf, bool>.operator >=(TSelf left, TSelf right) => false;
+            }
+
+            public readonly partial record struct ComparesThroughInterface : IValue<int>, IComparesItself<ComparesThroughInterface>;
+
+            // IConvertible declared through an interface failed the aspect (LAMA0041), as declaring it does.
+            public interface IConvertsItself : System.IConvertible
+            {
+                System.TypeCode System.IConvertible.GetTypeCode() => System.TypeCode.Int32;
+                bool System.IConvertible.ToBoolean(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                byte System.IConvertible.ToByte(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                char System.IConvertible.ToChar(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                System.DateTime System.IConvertible.ToDateTime(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                decimal System.IConvertible.ToDecimal(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                double System.IConvertible.ToDouble(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                short System.IConvertible.ToInt16(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                int System.IConvertible.ToInt32(System.IFormatProvider? provider) => 0;
+                long System.IConvertible.ToInt64(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                sbyte System.IConvertible.ToSByte(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                float System.IConvertible.ToSingle(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                string System.IConvertible.ToString(System.IFormatProvider? provider) => "***";
+                object System.IConvertible.ToType(System.Type conversionType, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                ushort System.IConvertible.ToUInt16(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                uint System.IConvertible.ToUInt32(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                ulong System.IConvertible.ToUInt64(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct ConvertsThroughInterface : IValue<int>, IConvertsItself;
+
+            // A record class's, over a reference type.
+            public sealed partial record FormatsThroughInterfaceOnClass : IValue<string>, IFormatsItself;
+
+            public sealed partial record OrdersThroughGenericInterfaceOnClass : IValue<string>, IOrdersItselfAs<OrdersThroughGenericInterfaceOnClass>;
+
+            // Two interfaces down, and through an interface of a base record.
+            public interface IFormatsTwoDown : IFormatsItself;
+
+            public readonly partial record struct FormatsTwoInterfacesDown : IValue<int>, IFormatsTwoDown;
+
+            public interface IConvertsTwoDown : IConvertsItself;
+
+            public readonly partial record struct ConvertsTwoInterfacesDown : IValue<int>, IConvertsTwoDown;
+
+            public abstract record FormatsItselfBase : IFormatsItself;
+
+            public sealed partial record FormatsThroughBaseInterface : FormatsItselfBase, IValue<int>;
+
+            public abstract record BoundedItselfBase<TSelf> : IBoundedItself<TSelf> where TSelf : BoundedItselfBase<TSelf>, IBoundedItself<TSelf>;
+
+            public sealed partial record BoundedThroughBaseInterface : BoundedItselfBase<BoundedThroughBaseInterface>, IValue<int>;
+
+            public abstract record OrdersItselfBase : IOrdersItself;
+
+            public sealed partial record OrdersThroughBaseInterface : OrdersItselfBase, IValue<int>;
+
+            public abstract record ConvertsItselfBase : IConvertsItself;
+
+            public sealed partial record ConvertsThroughBaseInterface : ConvertsItselfBase, IValue<int>;
+
+            // An interface's and a base record's of another assembly, where Metalama lists no private
+            // member, which an explicit implementation is: replaced or kept without a word (#191).
+            public readonly partial record struct FormatsThroughLibraryInterface : IValue<int>, CodoMetis.TypeKit.Generators.Probes.IProbeFormats;
+
+            public readonly partial record struct BoundedThroughLibraryInterface : IValue<int>, CodoMetis.TypeKit.Generators.Probes.IProbeBounded<BoundedThroughLibraryInterface>;
+
+            public readonly partial record struct OrdersThroughLibraryInterface : IValue<int>, CodoMetis.TypeKit.Generators.Probes.IProbeOrders;
+
+            public sealed partial record InheritsLibraryFormattable : CodoMetis.TypeKit.Generators.Probes.ProbeFormattableRecord, IValue<int>;
+
+            public sealed partial record InheritsLibraryMinMax : CodoMetis.TypeKit.Generators.Probes.ProbeMinMaxRecord<InheritsLibraryMinMax>, IValue<int>;
+
+            // An interface's default the generators do not replace. Beside ToString(), the seam, no
+            // formatting interface is generated, and a Uri has no ordering. The record's own == replaces an
+            // interface's in every record, generated or not. INumberBase<TSelf>, .NET's, implements
+            // IUtf8SpanFormattable and IUtf8SpanParsable explicitly as bridges to the UTF-16 members, which
+            // every numeric type of .NET replaces with its own, as the generated ones do.
+            public readonly partial record struct FormatsThroughInterfaceWithToString : IValue<int>, IFormatsItself
+            {
+                public override string ToString() => "***";
+            }
+
+            public sealed partial record OrdersThroughInterfaceOverUri : IValue<System.Uri>, IOrdersItselfAs<OrdersThroughInterfaceOverUri>;
+
+            public interface IEqualsItself<TSelf> : System.Numerics.IEqualityOperators<TSelf, TSelf, bool> where TSelf : IEqualsItself<TSelf>
+            {
+                static bool System.Numerics.IEqualityOperators<TSelf, TSelf, bool>.operator ==(TSelf? left, TSelf? right) => true;
+
+                static bool System.Numerics.IEqualityOperators<TSelf, TSelf, bool>.operator !=(TSelf? left, TSelf? right) => false;
+            }
+
+            public readonly partial record struct EqualsThroughInterface : IValue<int>, IEqualsItself<EqualsThroughInterface>;
+
+            public readonly partial record struct MetersAsNumber : IValue<double>, System.Numerics.INumberBase<MetersAsNumber>
+            {
+                public static MetersAsNumber One => throw new System.NotSupportedException();
+                public static int Radix => 2;
+                public static MetersAsNumber Zero => throw new System.NotSupportedException();
+                public static MetersAsNumber AdditiveIdentity => throw new System.NotSupportedException();
+                public static MetersAsNumber MultiplicativeIdentity => throw new System.NotSupportedException();
+                public static MetersAsNumber Abs(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsCanonical(MetersAsNumber value) => true;
+                public static bool IsComplexNumber(MetersAsNumber value) => false;
+                public static bool IsEvenInteger(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsFinite(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsImaginaryNumber(MetersAsNumber value) => false;
+                public static bool IsInfinity(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsInteger(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsNaN(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsNegative(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsNegativeInfinity(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsNormal(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsOddInteger(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsPositive(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsPositiveInfinity(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsRealNumber(MetersAsNumber value) => true;
+                public static bool IsSubnormal(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsZero(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static MetersAsNumber MaxMagnitude(MetersAsNumber x, MetersAsNumber y) => throw new System.NotSupportedException();
+                public static MetersAsNumber MaxMagnitudeNumber(MetersAsNumber x, MetersAsNumber y) => throw new System.NotSupportedException();
+                public static MetersAsNumber MinMagnitude(MetersAsNumber x, MetersAsNumber y) => throw new System.NotSupportedException();
+                public static MetersAsNumber MinMagnitudeNumber(MetersAsNumber x, MetersAsNumber y) => throw new System.NotSupportedException();
+                public static MetersAsNumber Parse(System.ReadOnlySpan<char> s, System.Globalization.NumberStyles style, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                public static MetersAsNumber Parse(string s, System.Globalization.NumberStyles style, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                public static bool TryParse(System.ReadOnlySpan<char> s, System.Globalization.NumberStyles style, System.IFormatProvider? provider, out MetersAsNumber result) => throw new System.NotSupportedException();
+                public static bool TryParse(string? s, System.Globalization.NumberStyles style, System.IFormatProvider? provider, out MetersAsNumber result) => throw new System.NotSupportedException();
+                static bool System.Numerics.INumberBase<MetersAsNumber>.TryConvertFromChecked<TOther>(TOther value, out MetersAsNumber result) => throw new System.NotSupportedException();
+                static bool System.Numerics.INumberBase<MetersAsNumber>.TryConvertFromSaturating<TOther>(TOther value, out MetersAsNumber result) => throw new System.NotSupportedException();
+                static bool System.Numerics.INumberBase<MetersAsNumber>.TryConvertFromTruncating<TOther>(TOther value, out MetersAsNumber result) => throw new System.NotSupportedException();
+                static bool System.Numerics.INumberBase<MetersAsNumber>.TryConvertToChecked<TOther>(MetersAsNumber value, out TOther result) => throw new System.NotSupportedException();
+                static bool System.Numerics.INumberBase<MetersAsNumber>.TryConvertToSaturating<TOther>(MetersAsNumber value, out TOther result) => throw new System.NotSupportedException();
+                static bool System.Numerics.INumberBase<MetersAsNumber>.TryConvertToTruncating<TOther>(MetersAsNumber value, out TOther result) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator +(MetersAsNumber left, MetersAsNumber right) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator -(MetersAsNumber left, MetersAsNumber right) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator *(MetersAsNumber left, MetersAsNumber right) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator /(MetersAsNumber left, MetersAsNumber right) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator +(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator -(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator ++(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator --(MetersAsNumber value) => throw new System.NotSupportedException();
+            }
+
             // A base record's equality, which the derived record's synthesized one calls.
             public abstract record ReferenceEqualityBase
             {
@@ -1414,6 +1706,24 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public sealed partial class SetWithExplicitAll : IClosedSet<SetWithExplicitAll> { public static readonly SetWithExplicitAll A = new(); static System.Collections.Generic.IReadOnlyList<SetWithExplicitAll> IClosedSet<SetWithExplicitAll>.All => [A]; }
 
             public sealed partial class SetWithParsable : IClosedSet<SetWithParsable>, System.IParsable<SetWithParsable> { public static readonly SetWithParsable A = new(); }
+
+            // An interface's explicit implementation of IClosedSet<TSelf>, which the generated Name and
+            // TryParse replaced without a word (#191), and IParsable<TSelf> declared through an interface,
+            // which failed the aspect (LAMA0512).
+            public interface ISetNamesItself<TSelf> : IClosedSet<TSelf> where TSelf : class, ISetNamesItself<TSelf>
+            {
+                string IClosedSet<TSelf>.Name => "***";
+
+                static bool IClosedSet<TSelf>.TryParse(string? name, out TSelf member) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial class SetWithNameThroughInterface : IClosedSet<SetWithNameThroughInterface>, ISetNamesItself<SetWithNameThroughInterface> { public static readonly SetWithNameThroughInterface A = new(); }
+
+            public sealed partial class SetWithNameThroughLibraryInterface : IClosedSet<SetWithNameThroughLibraryInterface>, CodoMetis.TypeKit.Generators.Probes.IProbeSetNames<SetWithNameThroughLibraryInterface> { public static readonly SetWithNameThroughLibraryInterface A = new(); }
+
+            public interface ISetParsesItself<TSelf> : System.IParsable<TSelf> where TSelf : ISetParsesItself<TSelf>;
+
+            public sealed partial class SetWithParsableThroughInterface : IClosedSet<SetWithParsableThroughInterface>, ISetParsesItself<SetWithParsableThroughInterface> { public static readonly SetWithParsableThroughInterface A = new(); }
 
             [System.ComponentModel.TypeConverter(typeof(System.ComponentModel.StringConverter))]
             public sealed partial class SetWithTypeConverterAttribute : IClosedSet<SetWithTypeConverterAttribute> { public static readonly SetWithTypeConverterAttribute A = new(); }

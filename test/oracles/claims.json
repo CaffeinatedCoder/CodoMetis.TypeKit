@@ -1256,6 +1256,21 @@
     ]
   },
   {
+    "id": "C22-explicit-implementation-in-an-interface",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "**The same explicit implementation in an interface the value object implements.** The generated member would replace it, so it would never run. The error names the interface, in your project or another.",
+    "claim": "An explicit implementation of a generated interface's member in an interface the value object implements, in this project or another, fails the build naming the interface.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
     "id": "C22-generic-wrapped",
     "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
     "quote": "A generic underlying type, a tuple included, fails the build (CMTK1005).",
@@ -1265,6 +1280,20 @@
       "IPlainValueObject.*",
       "IValidatedValue.*",
       "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-interface-implementations-that-lose-nothing",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "A record's own `==` and `!=` replace an interface's, generated or not. And .NET's `INumberBase<TSelf>` formats and parses UTF-8 through the UTF-16 members, which every .NET number replaces with its own, as the generated members do.",
+    "claim": "An interface's `==` and `!=`, and `INumberBase<TSelf>`'s UTF-8 members, do not fail the build.",
+    "oracle": "claim",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*"
     ],
     "heldBy": [
       "BuildOutcomeTests"

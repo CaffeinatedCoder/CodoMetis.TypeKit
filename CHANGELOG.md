@@ -15,6 +15,7 @@ section is the GitHub release's notes.
 ### Changed
 
 - Packages: the public surface is checked against 2.3.0's, so nothing 2.3.0 ships is removed or changed in 2.3.1.
+- Generators: an explicit implementation of a generated member, such as `IFormattable.ToString` or `IMinMaxValue<TSelf>.MaxValue`, in an interface a value object or closed set implements, or in a base record from another project, now fails the build (CMTK1011, CMTK1008 for comparison), so your build can fail when you upgrade. The generated member replaced the interface's without a word, or the base's kept answering beside it: remove it, or don't implement that interface. `IConvertible` declared through an interface now fails with CMTK1011 rather than a Metalama crash ([Write your own members](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members)).
 
 ## 2.3.0 — 2026-10-29
 
