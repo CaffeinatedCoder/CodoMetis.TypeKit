@@ -11,7 +11,7 @@
   `IValueObjectMaterializer.Materialize`, by contract. `MinValue`/`MaxValue` are only generated for
   a plain value object, and so are arithmetic operators, which wrap their result through the private
   constructor as `From` does.
-- **Arithmetic is opt-in (decided 2026-10-30, [decision 121](adr/0121-arithmetic-operators-are-opt-in-and-a-hand-written-one-is-a-seam.md)).**
+- **Arithmetic is opt-in (decided 2026-10-30, [decision 122](adr/0122-arithmetic-operators-are-opt-in-and-a-hand-written-one-is-a-seam.md)).**
   `ValueObjectArithmeticAspect` generates the operators of the operator interfaces a plain value object
   declares, where the wrapped type implements the same interface with the value object replaced by itself,
   each calling the wrapped type's through `GeneratedArithmetic`, a constrained generic call with its context
