@@ -427,10 +427,21 @@ internal static class ValueObjectDeclaration
     /// callable one it is a second rule set, which generic code calling <c>T.Create</c> reached while
     /// every generated entry point applied the other.
     /// </summary>
-    public static (bool Explicitly, bool Callable) CreateDeclarations(INamedType target)
+    /// <remarks>
+    /// A base record's or an interface's counts, found by the interface mapping: <paramref name="declaration"/>
+    /// names it, and <paramref name="inherited"/> says it is not the value object's own. Where the value object
+    /// lists the marker only through a base record of another project, generic <c>T.Create</c> reached the base's
+    /// explicit implementation, which refused what the value object's own <c>Create</c> accepted (#195, measured
+    /// 2026-10-30). A base's public one is one rule set alone, which the generated code reaches as
+    /// <c>{TSelf}.Create</c>, and a second beside the value object's own.
+    /// </remarks>
+    public static (bool Explicitly, bool Callable) CreateDeclarations(INamedType target, INamedType marker, out string declaration, out bool inherited)
     {
         var explicitly = false;
         var callable   = false;
+
+        declaration = $"an explicit implementation of {marker.ToDisplayString()}";
+        inherited   = false;
 
         foreach (var method in target.Methods)
         {
@@ -445,6 +456,17 @@ internal static class ValueObjectDeclaration
             {
                 callable = true;
             }
+        }
+
+        if (!explicitly
+         && marker.Methods.FirstOrDefault(method => method.Name == nameof(IValidatedValue<,,>.Create)) is { } create
+         && target.TryFindImplementationForInterfaceMember(create, out var implementation)
+         && Elsewhere(target, implementation) is { } where
+         && (!IsPublic(implementation) || callable))
+        {
+            explicitly  = true;
+            inherited   = true;
+            declaration = IsPublic(implementation) ? PublicName(implementation, create) + where : declaration + where;
         }
 
         return (explicitly, callable);

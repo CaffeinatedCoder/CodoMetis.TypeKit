@@ -1240,6 +1240,19 @@
     ]
   },
   {
+    "id": "C22-create-in-a-base-record",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "If the value object only gets the marker through that base, generic code calling `T.Create` reaches the base's `Create`, while everything generated calls yours, and the build fails (CMTK1011). Declare the marker on the value object too, and your `Create` is the one both reach.",
+    "claim": "A base record's Create that generic T.Create reaches beside the value object's own fails the build, and declaring the marker on the value object builds.",
+    "oracle": "exception",
+    "surfaces": [
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
     "id": "C22-equality-operator",
     "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
     "quote": "So a hand-written `Equals(TSelf)`, `GetHashCode()`, `IEquatable<TSelf>.Equals`, or `operator ==` or `!=` between two of the type, fails the build (CMTK1011).",
