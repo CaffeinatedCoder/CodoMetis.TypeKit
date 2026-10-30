@@ -1,12 +1,12 @@
-# 0123. An operator in a query is the wrapped type's arithmetic
+# 0124. An operator in a query is the wrapped type's arithmetic
 
 Date: 2026-10-30
 Status: accepted
 
 Context: [#186](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/issues/186), under the 2.4.0 epic
 [#177](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/issues/177); [EF Core](../ef-core.md); refines
-[decision 121](0121-arithmetic-operators-are-opt-in-and-a-hand-written-one-is-a-seam.md), whose EF Core bullet it
-replaces, on [decision 122](0122-a-hand-written-operator-is-refused-in-a-query.md)'s mark.
+[decision 122](0122-arithmetic-operators-are-opt-in-and-a-hand-written-one-is-a-seam.md), whose EF Core bullet it
+replaces, on [decision 123](0123-a-hand-written-operator-is-refused-in-a-query.md)'s mark.
 
 EF translates an operator node as the database's arithmetic over its operands, and never calls the operator's
 method. Between two value objects into one, that is what a generated operator does where TypeKit's converter
@@ -20,7 +20,7 @@ defined", and unary `+` was not translated (measured with EF Core 10.0.12 on SQL
 **Every generated operator, marked `[TranslatedAsWrappedArithmetic]`, is rewritten to the wrapped type's
 arithmetic over what the value objects wrap, before EF translates the query.**
 
-- **The rewrite.** The interceptor and the filter convention of decision 122 rewrite a marked operator to the
+- **The rewrite.** The interceptor and the filter convention of decision 123 rewrite a marked operator to the
   wrapped type's operator over `ValueObjectConverter<,>.ProviderValue` of each value-object operand, the other
   operand as it is. `ProviderValue` translates only where TypeKit's converter stores the column
   ([decision 56](0056-value-translated-only-through-typekit-converter.md)), so an operator over a column the
