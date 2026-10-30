@@ -70,8 +70,10 @@
     translator re-types as the value object with its mapping for the same store type; unary `+` of a number
     is the operand. Any other arithmetic, bitwise or shift operator a value object declares, `&&` and `||` over its
     `&` and `|` included, is hand-written, and refused naming the value object (#187), in a filter when the model is built. The database's
-    arithmetic, and `.Value` of it, is re-typed, not cast: a cast to the column's store type, SQL Server's
-    default `decimal(18,2)`, read `(o.Price / 32m).Value` over 5 as 0.16 where memory reads 0.15625.
+    arithmetic, and `.Value` of it, is re-typed, not cast, through a `?:`, a `??`, `MAX`, `MIN` and a subquery of
+    one value too: a cast to the column's store type, SQL Server's default `decimal(18,2)`, read
+    `(o.Price / 32m).Value` over 5 as 0.16 where memory reads 0.15625. An optional operand is checked, so EF's
+    computing the last `Select` in memory reads null where the operator does.
   - **A null passes no comparison in a query (decided 2026-10-15, [decision 98](adr/0098-a-null-passes-no-comparison-in-a-query.md)).**
     A record class's generated operators sort null first, so `null < x` is true in memory, and SQL's
     `"N" < @x` leaves the null row out, as for the underlying type's nullable column. Not refused: a

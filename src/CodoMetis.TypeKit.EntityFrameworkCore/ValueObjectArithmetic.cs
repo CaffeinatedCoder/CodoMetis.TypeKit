@@ -103,17 +103,23 @@ internal static class ValueObjectArithmetic
 
     private sealed class Rewriter(string where, string orElse, bool skipsWhatRunsInMemory) : ExpressionVisitor
     {
+        /// <summary>
+        /// What each null-checked rewrite returned stands for: its value, not <c>Nullable</c>, and the check that it is
+        /// there. An operator over one takes both over, so its operands are read once and checked once.
+        /// </summary>
+        private readonly Dictionary<Expression, (Expression Value, Expression Test)> _checked = [];
+
         protected override Expression VisitBinary(BinaryExpression node)
         {
             if (Operator(node.NodeType) is not { } symbol || ValueObjectOf(node.Method, node) is not { } valueObject)
                 return base.VisitBinary(node);
 
-            var left  = Visit(node.Left);
-            var right = Visit(node.Right);
+            var (left, leftTest)   = Present(Visit(node.Left));
+            var (right, rightTest) = Present(Visit(node.Right));
 
             var valueObjectType = valueObject.ValueObjectType;
             var leftValue  = Unwrapped(left, valueObject);
-            var rightValue = Unlifted(right.Type) == valueObjectType ? Unwrapped(right, valueObject) : Unlifted(right);
+            var rightValue = right.Type == valueObjectType ? Unwrapped(right, valueObject) : right;
 
             Expression result;
             try
@@ -123,10 +129,10 @@ internal static class ValueObjectArithmetic
             catch (InvalidOperationException)
             {
                 // byte, short, char: C# computes their arithmetic as int's, and an expression tree has none of theirs.
-                throw Untranslatable(valueObject, $"{valueObjectType.Name} {symbol} {Unlifted(right.Type).Name}");
+                throw Untranslatable(valueObject, $"{valueObjectType.Name} {symbol} {right.Type.Name}");
             }
 
-            return Wrapped(result, node.Type, valueObject, $"{valueObjectType.Name} {symbol} {Unlifted(right.Type).Name}");
+            return Wrapped(result, node.Type, valueObject, $"{valueObjectType.Name} {symbol} {right.Type.Name}", Both(leftTest, rightTest));
         }
 
         protected override Expression VisitUnary(UnaryExpression node)
@@ -134,7 +140,7 @@ internal static class ValueObjectArithmetic
             if (Operator(node.NodeType) is not { } symbol || ValueObjectOf(node.Method, node) is not { } valueObject)
                 return base.VisitUnary(node);
 
-            var operand         = Visit(node.Operand);
+            var visited         = Visit(node.Operand);
             var valueObjectType = valueObject.ValueObjectType;
 
             if (node.NodeType == ExpressionType.UnaryPlus)
@@ -142,14 +148,14 @@ internal static class ValueObjectArithmetic
                 // A number's unary + is the number, which EF does not translate. Of the value object, it is the operand,
                 // which reads nothing of the column: it compares or is read through its converter, whoever's it is.
                 if (!IsNumber(valueObject.WrappedType)) throw Untranslatable(valueObject, $"{symbol}{valueObjectType.Name}");
-                if (Unlifted(node.Type) == valueObjectType) return operand;
-
-                return Wrapped(Unwrapped(operand, valueObject), node.Type, valueObject, $"{symbol}{valueObjectType.Name}");
+                if (Unlifted(node.Type) == valueObjectType) return visited;
             }
 
-            var value = Unwrapped(operand, valueObject);
+            var (operand, test) = Present(visited);
+            var value           = Unwrapped(operand, valueObject);
+            var result          = node.NodeType == ExpressionType.UnaryPlus ? value : Expression.MakeUnary(node.NodeType, value, value.Type);
 
-            return Wrapped(Expression.MakeUnary(node.NodeType, value, value.Type), node.Type, valueObject, $"{symbol}{valueObjectType.Name}");
+            return Wrapped(result, node.Type, valueObject, $"{symbol}{valueObjectType.Name}", test);
         }
 
         /// <summary>
@@ -174,38 +180,57 @@ internal static class ValueObjectArithmetic
 
         /// <summary>
         /// The wrapped type's result as the operator's: re-typed as the value object by
-        /// <see cref="ValueObjectConverter{TValueObject,T}.Materialize"/>, or as it is for any other result type.
+        /// <see cref="ValueObjectConverter{TValueObject,T}.Materialize"/>, or as it is for any other result type; where
+        /// an operand is <c>Nullable</c>, null unless <paramref name="test"/> finds every one there, as the lifted operator is.
         /// </summary>
         /// <remarks>
-        /// The tree is only translated, never run, so a <c>Nullable</c> is unwrapped and wrapped again by a conversion
-        /// EF drops: the column's nullability carries a null through the SQL.
+        /// EF computes a query's last <c>Select</c> in memory where it cannot translate it, such as over a column the
+        /// application's own converter stores. Unwrapped by a conversion alone, an optional operand threw "Nullable
+        /// object must have a value" there on a null row, where the operator answers null. Translated, the check is a
+        /// <c>CASE</c> whose one branch is the arithmetic, which <see cref="WrappedValue"/> re-types like the arithmetic.
         /// </remarks>
-        private Expression Wrapped(Expression result, Type type, GeneratedValueObjectAttribute valueObject, string what)
+        private Expression Wrapped(Expression result, Type type, GeneratedValueObjectAttribute valueObject, string what, Expression? test)
         {
             var valueObjectType = valueObject.ValueObjectType;
             var expected        = Unlifted(type) == valueObjectType ? valueObject.WrappedType : Unlifted(type);
 
-            if (Unlifted(result.Type) != expected) throw Untranslatable(valueObject, what);
+            if (result.Type != expected) throw Untranslatable(valueObject, what);
 
-            var unlifted = Unlifted(result);
-            var wrapped  = Unlifted(type) == valueObjectType ? Expression.Call(ConverterMethods.Materialize(valueObject), unlifted) : unlifted;
+            var wrapped = Unlifted(type) == valueObjectType ? Expression.Call(ConverterMethods.Materialize(valueObject), result) : result;
 
-            return wrapped.Type == type ? wrapped : Expression.Convert(wrapped, type);
+            if (test is null) return wrapped.Type == type ? wrapped : Expression.Convert(wrapped, type);
+
+            var lifted = Expression.Condition(test, Expression.Convert(wrapped, type), Expression.Constant(null, type));
+            _checked[lifted] = (wrapped, test);
+
+            return lifted;
         }
+
+        /// <summary>
+        /// <paramref name="operand"/> as a value, and the check that it is there where it is <c>Nullable</c>: an
+        /// operator this rewrote already hands over its own.
+        /// </summary>
+        private (Expression Value, Expression? Test) Present(Expression operand)
+        {
+            if (_checked.TryGetValue(operand, out var rewritten)) return rewritten;
+
+            return Nullable.GetUnderlyingType(operand.Type) is { } underlying
+                ? (Expression.Convert(operand, underlying), Expression.NotEqual(operand, Expression.Constant(null, operand.Type)))
+                : (operand, null);
+        }
+
+        private static Expression? Both(Expression? left, Expression? right) =>
+            left is null ? right : right is null ? left : Expression.AndAlso(left, right);
 
         /// <summary>A value-object operand as <see cref="ValueObjectConverter{TValueObject,T}.ProviderValue"/> of it, which translates as its column.</summary>
         private static Expression Unwrapped(Expression operand, GeneratedValueObjectAttribute valueObject) =>
-            Expression.Call(ConverterMethods.ProviderValue(valueObject), Unlifted(operand));
+            Expression.Call(ConverterMethods.ProviderValue(valueObject), operand);
 
         private Exception Untranslatable(GeneratedValueObjectAttribute valueObject, string what) =>
             new InvalidOperationException(
                 $"{what} is used {where}, but {valueObject.WrappedType.Name} has no such operator EF can translate. "
               + $"Compute it from .Value{orElse}.");
     }
-
-    /// <summary>The operand without its <c>Nullable</c>: a conversion, which EF drops, and a null passes through the SQL.</summary>
-    private static Expression Unlifted(Expression operand) =>
-        Nullable.GetUnderlyingType(operand.Type) is { } underlying ? Expression.Convert(operand, underlying) : operand;
 
     private static Type Unlifted(Type type) => Nullable.GetUnderlyingType(type) ?? type;
 

@@ -60,6 +60,18 @@ public static class ArithmeticQueries
         // 0.16 there, and the filter lost the row (measured on Azure SQL Edge before the re-typing).
         ["Price / 32m past the scale"]       = Ids(q => q.Where(p => p.Price / 32m < ProbeMoney.From(0.15626m))),
         ["(Price / 32m).Value past the scale"] = Ids(q => q.Where(p => (p.Price / 32m).Value < 0.15626m)),
+        // Composed past the scale: a CASE (?:) or a COALESCE (??) of the database's arithmetic was cast whole, and read
+        // 0.09 for 3 / 32 = 0.09375 on SQL Server; arithmetic over one, and .ValueOrNull() of an optional one's null
+        // check, the same (measured on Azure SQL Edge, an outside review of #190).
+        ["?: of two quotients, .Value"]      = Values(q => q.Select(p => (p.Rate > 1m ? p.Price / 32m : p.Tax / 32m).Value)),
+        ["?: of two quotients * 2m"]         = Values(q => q.Select(p => (p.Rate > 1m ? p.Price / 32m : p.Tax / 32m) * 2m)),
+        ["?? of two quotients, .Value"]      = Values(q => q.Select(p => (p.Optional / 32m ?? p.Price / 32m).Value)),
+        ["?? of two quotients, filtered"]    = Ids(q => q.Where(p => (p.Optional / 32m ?? p.Price / 32m).Value < 0.048m)),
+        ["?? of two quotients * 2m, filtered"] = Ids(q => q.Where(p => (p.Optional / 32m ?? p.Price / 32m) * 2m < ProbeMoney.From(0.1m))),
+        ["?? of ?: and a quotient, .Value"]  = Values(q => q.Select(p => ((p.Rate > 1m ? p.Optional / 32m : null) ?? p.Tax / 32m).Value)),
+        ["an optional quotient, ValueOrNull"] = Values(q => q.Select(p => (p.Optional / 32m).ValueOrNull())),
+        ["an optional quotient, filtered"]   = Ids(q => q.Where(p => (p.Optional / 32m).ValueOrNull() < 0.048m)),
+
         ["an optional one * 2m, filtered"]   = Ids(q => q.Where(p => p.Optional * 2m > Four)),
         ["an optional one / Price"]          = Ids(q => q.Where(p => p.Optional / p.Price > 1m)),
         ["a JSON property * 2m, filtered"]   = Ids(q => q.Where(p => p.Doc.Price * 2m > Ten)),
@@ -73,10 +85,15 @@ public static class ArithmeticQueries
         ["(Price * 2m).Value, projected"]    = Values(q => q.Select(p => (p.Price * 2m).Value)),
         ["(Price / 32m).Value, projected"]   = Values(q => q.Select(p => (p.Price / 32m).Value)),
         ["an optional one * 2m, projected"]  = Values(q => q.Select(p => p.Optional * 2m)),
+        ["an optional one * 2m + Tax"]       = Values(q => q.Select(p => p.Optional * 2m + p.Tax)),
+        ["-an optional one, projected"]      = Values(q => q.Select(p => -p.Optional)),
+        ["Price * an optional factor"]       = Values(q => q.Select(p => p.Price * p.Share)),
+        ["Price * an optional factor, filtered"] = Ids(q => q.Where(p => p.Price * p.Share > Four)),
 
         ["ordered by Tax / Price"]           = Ids(q => q.OrderBy(p => p.Tax / p.Price).ThenBy(p => p.Id), ordersDecimals: true),
         ["ordered by Price * a column"]      = Ids(q => q.OrderBy(p => p.Price * p.Rate).ThenBy(p => p.Id), ordersDecimals: true),
         ["the maximum of Tax / Price"]       = new((q, _) => [q.Max(p => p.Tax / p.Price)], OrdersDecimals: true),
+        ["a basket's largest quotient, .Value"] = new((_, b) => b.OrderBy(x => x.Id).Select(x => (object?)x.Items.Max(i => i.Price / 32m).Value), OrdersDecimals: true),
     };
 
     public static TheoryData<string> Names => [.. Cases.Keys];
@@ -93,14 +110,14 @@ public static class ArithmeticQueries
     /// <summary>The rows, and their baskets, as both the database and memory hold them.</summary>
     public static (List<Priced> Items, List<Basket> Baskets) Rows()
     {
-        Priced Row(int id, decimal price, decimal tax, decimal? optional, decimal rate, int basket) => new()
+        Priced Row(int id, decimal price, decimal tax, decimal? optional, decimal rate, decimal? share, int basket) => new()
         {
-            Id = id, Price = ProbeMoney.From(price), Tax = ProbeMoney.From(tax), Rate = rate, BasketId = basket,
+            Id = id, Price = ProbeMoney.From(price), Tax = ProbeMoney.From(tax), Rate = rate, Share = share, BasketId = basket,
             Optional = optional is { } value ? ProbeMoney.From(value) : null,
             Doc = new PricedDoc { Price = ProbeMoney.From(price) },
         };
 
-        List<Priced> items = [Row(1, 2m, 0.5m, 3m, 3m, 1), Row(2, 10m, 2m, null, 0.5m, 1), Row(3, 5m, 2m, 1.5m, 2.5m, 2)];
+        List<Priced> items = [Row(1, 2m, 0.5m, 3m, 3m, 0.5m, 1), Row(2, 10m, 2m, null, 0.5m, null, 1), Row(3, 5m, 2m, 1.5m, 2.5m, 2m, 2)];
         List<Basket> baskets = [new() { Id = 1, Items = [items[0], items[1]] }, new() { Id = 2, Items = [items[2]] }];
 
         return (items, baskets);
@@ -137,6 +154,8 @@ public static class ArithmeticQueries
         public ProbeMoney? Optional { get; set; }
 
         public decimal Rate { get; set; }
+
+        public decimal? Share { get; set; }
 
         public PricedDoc Doc { get; set; } = new();
 
@@ -206,6 +225,12 @@ public sealed class ArithmeticQueryTests : IDisposable
         db.Priced.Select(p => p.Tax / p.Price).ToQueryString().ShouldContain("ef_divide(\"p\".\"Tax\", \"p\".\"Price\")");
         db.Priced.Where(p => +p.Price > ProbeMoney.From(3m)).ToQueryString().ShouldContain("ef_compare(\"p\".\"Price\", ");
         db.Priced.Where(p => (p.Price * 2m).Value > 3m).ToQueryString().ShouldNotContain("CAST");
+
+        // An optional operand: the arithmetic in one CASE that checks it, which a ?? or .Value re-types, never casts.
+        db.Priced.Select(p => p.Optional * 2m + p.Tax).ToQueryString()
+                 .ShouldContain("WHEN \"p\".\"Optional\" IS NOT NULL THEN ef_add(ef_multiply(\"p\".\"Optional\", '2.0'), \"p\".\"Tax\")");
+        db.Priced.Select(p => (p.Optional / 32m ?? p.Price / 32m).Value).ToQueryString().ShouldNotContain("CAST");
+        db.Priced.Select(p => (p.Rate > 1m ? p.Price / 32m : p.Tax / 32m) * 2m).ToQueryString().ShouldNotContain("CAST");
     }
 
     /// <summary>
@@ -402,6 +427,29 @@ public sealed class ForeignConvertedArithmeticTests : IDisposable
         db.Priced.Count(p => p.Price == ProbeMoney.From(10m)).ShouldBe(1);
     }
 
+    /// <summary>
+    /// Computed in memory, an optional operand's null is the operator's: unwrapped by a conversion alone, the null row
+    /// threw "Nullable object must have a value" (an outside review of #190).
+    /// </summary>
+    [Fact]
+    public async Task Computed_in_memory_an_operator_over_an_optional_one_answers_null_as_memory_does()
+    {
+        _connection.Open();
+        await using var db = new ForeignDb(new DbContextOptionsBuilder<ForeignDb>().UseSqlite(_connection).UseTypeKit().Options);
+        await ArithmeticQueries.Seed(db);
+        var items = ArithmeticQueries.Rows().Items.AsQueryable();
+
+        void AnswersAsMemory<T>(Func<IQueryable<ArithmeticQueries.Priced>, IQueryable<T>> query) =>
+            query(db.Priced.OrderBy(p => p.Id)).ToList().ShouldBe(query(items.OrderBy(p => p.Id)).ToList());
+
+        AnswersAsMemory(q => q.Select(p => p.Optional * 2m));
+        AnswersAsMemory(q => q.Select(p => p.Optional / p.Price));
+        AnswersAsMemory(q => q.Select(p => -p.Optional + p.Tax));
+        AnswersAsMemory(q => q.Select(p => p.Optional * 2m * 3m));
+        AnswersAsMemory(q => q.Select(p => p.Price * p.Share));
+        AnswersAsMemory(q => q.Select(p => (p.Optional / 32m).ValueOrNull()));
+    }
+
     public void Dispose() => _connection.Dispose();
 
     private sealed class ForeignDb(DbContextOptions<ForeignDb> options) : ArithmeticQueries.PricedDb(options)
@@ -414,6 +462,10 @@ public sealed class ForeignConvertedArithmeticTests : IDisposable
             foreach (var property in new[] { entity.Property(p => p.Price), entity.Property(p => p.Tax) })
                 property.HasConversion(money => "M:" + money.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
                                        text => ProbeMoney.From(decimal.Parse(text.Substring(2), System.Globalization.CultureInfo.InvariantCulture)));
+
+            entity.Property(p => p.Optional)
+                  .HasConversion(money => "M:" + money!.Value.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                                 text => ProbeMoney.From(decimal.Parse(text.Substring(2), System.Globalization.CultureInfo.InvariantCulture)));
         }
     }
 }

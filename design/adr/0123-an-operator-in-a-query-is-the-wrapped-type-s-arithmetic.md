@@ -28,20 +28,32 @@ arithmetic over what the value objects wrap, before EF translates the query.**
   memory. A result of the value object's type is `ValueObjectConverter<,>.Materialize` of the wrapped type's, which
   the method translator re-types as the value object, with its mapping for the same store type, so it compares with
   and is read as one. Both methods are reached through `GeneratedValueObjectAttribute.Accept`, never by name, and
-  are public, so a compiled model writes a rewritten filter out. Unary `+` of a number is its operand. A `Nullable`
-  operand is unwrapped and wrapped again by conversions EF drops, and the column's nullability carries a null
-  through the SQL.
+  are public, so a compiled model writes a rewritten filter out. Unary `+` of a number is its operand.
+- **A `Nullable` operand is checked, as the lifted operator is.** The rewrite of an operator with an optional
+  operand is null unless every optional operand is there, and an operator over such a rewrite takes its check over,
+  so `o.Optional * 2m + o.Tax` checks `Optional` once: `CASE WHEN "p"."Optional" IS NOT NULL THEN
+  ef_add(ef_multiply("p"."Optional", '2.0'), "p"."Tax") END` on SQLite. Unwrapped by conversions alone, which EF drops
+  from the SQL, the null reached the arithmetic where EF computes the last `Select` in memory: over a column the
+  application's own converter stores, `Select(o => o.Amount * 2m)` threw "Nullable object must have a value" on a
+  null row (an outside review of #190).
 - **Re-typed, not cast.** The database's arithmetic, and `.Value` of it, is re-typed as a column is: cast to the
   column's store type, SQL Server's default `decimal(18,2)`, `(o.Price / 32m).Value` over 5 read 0.16 where memory
   reads 0.15625, and a filter on it lost the row (measured on Azure SQL Edge). SQLite's decimal arithmetic is
-  functions, `ef_add`, `ef_multiply`, `ef_divide`, `ef_mod` and `ef_negate`, re-typed by those names; any other
-  function's result is converted.
+  functions, `ef_add`, `ef_multiply`, `ef_divide`, `ef_mod` and `ef_negate`, re-typed by those names. So is what
+  holds such a value without computing one, branch by branch: a `CASE` (`?:`, and the null check above), a
+  `COALESCE` (`??`), `MAX` and `MIN`, and a subquery of one value. Cast whole, `(o.Optional / 32m ?? o.Price /
+  32m).Value` read 0.09 where memory reads 0.09375, a filter on it lost its row, and arithmetic over a `?:` and a
+  navigation's largest quotient rounded the same (an outside review of #190, measured on Azure SQL Edge). A branch of
+  any other shape, such as a parameter, is converted alone, and any other function's result is converted. Each
+  branch's own converter is checked, since EF gives a `CASE` the first branch's mapping.
 - **A wrapped type without an expression of its own.** `byte`, `short`, `sbyte`, `ushort` and `char` have no
   arithmetic in an expression tree, where C# computes it as an `int`'s. Their operators are refused naming the value
   object, between two value objects too, which no release translated (#184 is 2.4's).
 
-`ArithmeticQueryTests` holds it as a differential oracle: 32 queries (filters, projections, orderings and an
-aggregate; a column, a nullable column, a JSON property, a navigation, a captured factor and a decimal column as
-the other operand; `checked`, unary `+` and `-`; past the column's scale) against the same queries over the objects
+`ArithmeticQueryTests` holds it as a differential oracle: 45 queries (filters, projections, orderings and an
+aggregate; a column, a nullable column, a JSON property, a navigation, a captured factor, a decimal column and an
+optional one as the other operand; `checked`, unary `+` and `-`; past the column's scale, through `?:`, `??`,
+`ValueOrNull()` and a navigation's `Max`) against the same queries over the objects
 in memory, on SQLite, PostgreSQL 17 and SQL Server. `ArithmeticQueryFilterTests` holds the filters, named and not,
-and `ForeignConvertedArithmeticTests` a converter of the application's own.
+and `ForeignConvertedArithmeticTests` a converter of the application's own, optional operands computed in memory
+included.
