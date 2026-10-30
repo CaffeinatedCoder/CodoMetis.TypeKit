@@ -1,4 +1,4 @@
-# 0121. Arithmetic operators are opt-in by their interfaces, and a hand-written one is a seam
+# 0122. Arithmetic operators are opt-in by their interfaces, and a hand-written one is a seam
 
 Date: 2026-10-30
 Status: accepted
