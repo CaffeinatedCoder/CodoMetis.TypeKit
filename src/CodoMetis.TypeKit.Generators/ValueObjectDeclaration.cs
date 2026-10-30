@@ -399,9 +399,16 @@ internal static class ValueObjectDeclaration
     /// a <c>SortedSet</c> two. An <c>operator ==</c> or <c>!=</c> between two of the type collides with
     /// the record's own, which C# reports as CS0111 naming only <c>op_Equality</c>; the error says why.
     /// </summary>
+    /// <remarks>
+    /// An <c>Equals</c> of a base record's type counts too. It implemented <c>IEquatable&lt;TBase&gt;</c>, so a
+    /// <c>HashSet</c> of the base compared by it while <c>==</c> compared the wrapped value: two holding "a" were
+    /// equal, and the set held both (#196, measured 2026-10-30). One of the direct base's type is C#'s own CS0111,
+    /// beside the override the record synthesizes.
+    /// </remarks>
     public static IReadOnlyList<string> EqualityDeclaredByHand(INamedType target)
     {
         var equatable = TypeFactory.GetNamedType(typeof(IEquatable<>));
+        var ownTypes  = SelfAndBases(target).ToList();
 
         return
         [
@@ -409,7 +416,7 @@ internal static class ValueObjectDeclaration
                      .Where(method => method is { IsStatic: false, IsImplicitlyDeclared: false }
                                    && (method.IsExplicitInterfaceImplementation
                                            ? method.ExplicitInterfaceImplementations.Any(implemented => implemented.DeclaringType.Definition.Equals(equatable))
-                                           : (method is { Name: nameof(Equals), Parameters: [{ } other] } && other.Type.Equals(target))
+                                           : (method is { Name: nameof(Equals), Parameters: [{ } other] } && ownTypes.Any(type => other.Type.ToNonNullable().Equals(type)))
                                           || method is { Name: nameof(GetHashCode), Parameters.Count: 0 }))
                      .Select(Describe),
             .. target.Methods

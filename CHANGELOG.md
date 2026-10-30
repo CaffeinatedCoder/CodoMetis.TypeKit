@@ -15,6 +15,7 @@ section is the GitHub release's notes.
 ### Changed
 
 - Packages: the public surface is checked against 2.3.0's, so nothing 2.3.0 ships is removed or changed in 2.3.1.
+- Generators: an `Equals` a value object declares for one of its base records' types, such as `Equals(DeepBase?)`, now fails the build (CMTK1011), so your build can fail when you upgrade. A `HashSet<DeepBase>` compared by it while `==` compared the underlying value; normalise values in `Create` instead ([Equality](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#equality)).
 
 ## 2.3.0 — 2026-10-29
 

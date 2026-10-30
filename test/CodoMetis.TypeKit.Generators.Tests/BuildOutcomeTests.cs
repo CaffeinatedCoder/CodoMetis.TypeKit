@@ -325,6 +325,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CaseInsensitiveEquals", "CaseInsensitiveEquals.Equals(CaseInsensitiveEquals), CaseInsensitiveEquals.GetHashCode(), so", "(declare CaseInsensitiveEquals as IValidatedValue to get one)")]
     [InlineData("HashCodeOnly", "HashCodeOnly.GetHashCode(), so", "normalise them in Create, so")]
     [InlineData("ExplicitEquatable", "the explicit implementation of IEquatable<ExplicitEquatable>.Equals(ExplicitEquatable), so", "(declare ExplicitEquatable as IValidatedValue to get one)")]
+    [InlineData("EqualsOnClass", "EqualsOnClass.Equals(EqualsOnClass?), so", "(declare EqualsOnClass as IValidatedValue to get one)")]
+    [InlineData("EqualsDeeperBase", "EqualsDeeperBase.Equals(DeepEqualityBase?), so", "(declare EqualsDeeperBase as IValidatedValue to get one)")]
     public void A_hand_written_equality_is_refused_by_name(string type, string members, string remedy) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(members)
                                             && error.Message.Contains("a value object's equality is its wrapped value's") && error.Message.Contains(remedy), consumer.Output);
@@ -1205,6 +1207,23 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public readonly partial record struct ExplicitEquatable : IValue<string>, System.IEquatable<ExplicitEquatable>
             {
                 bool System.IEquatable<ExplicitEquatable>.Equals(ExplicitEquatable other) => true;
+            }
+
+            // A record class's, whose parameter is nullable.
+            public sealed partial record EqualsOnClass : IValue<string>
+            {
+                public bool Equals(EqualsOnClass? other) => true;
+            }
+
+            // An Equals of a deeper base record's type, which IEquatable<TBase> and so a collection of the base
+            // reached, while == compared the wrapped value (#196). The direct base's is C#'s own CS0111.
+            public abstract record DeepEqualityBase;
+
+            public abstract record MiddleEqualityBase : DeepEqualityBase;
+
+            public sealed partial record EqualsDeeperBase : MiddleEqualityBase, IValue<string>
+            {
+                public bool Equals(DeepEqualityBase? other) => ReferenceEquals(this, other);
             }
 
             // Instance state besides the wrapped value: JSON, parsing and the materializer carried the

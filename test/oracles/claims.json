@@ -1241,6 +1241,20 @@
     ]
   },
   {
+    "id": "C22-equals-of-a-base-record-s-type",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "So does an `Equals` you write for one of its base records' types, such as `Equals(DeepBase?)`: a `HashSet<DeepBase>` would compare by it while `==` compares the underlying value.",
+    "claim": "An Equals a value object declares for one of its base records' types fails the build (CMTK1011).",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
     "id": "C22-every-error-links-the-table",
     "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
     "quote": "Every error ends with a link to this table.",

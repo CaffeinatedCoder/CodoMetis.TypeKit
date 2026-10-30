@@ -247,7 +247,9 @@ What a base record declares counts as the value object's own:
 
 Equality is the underlying value's, like the ordering, the JSON and the column. So a hand-written
 `Equals(TSelf)`, `GetHashCode()`, `IEquatable<TSelf>.Equals`, or `operator ==` or `!=` between two of
-the type, fails the build (CMTK1011). It would make values equal that sort apart.
+the type, fails the build (CMTK1011). It would make values equal that sort apart. So does an `Equals`
+you write for one of its base records' types, such as `Equals(DeepBase?)`: a `HashSet<DeepBase>` would
+compare by it while `==` compares the underlying value.
 
 To make values equal that differ only in form, such as "abc" and "ABC", normalise them in `Create`.
 Equal values then hold the same underlying value. A plain value object becomes an `IValidatedValue`
