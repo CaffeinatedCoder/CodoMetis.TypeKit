@@ -32,6 +32,10 @@ public sealed class HandWrittenArithmeticTests : IDisposable
         ["+ of a validated one"]       = db => db.Lines.Where(l => l.Allowance + l.Allowance == Allowance.FromKnownGood(4)).ToList(),
         ["+ over a navigation"]        = db => db.Ledgers.Where(g => g.Lines.Any(l => l.Price + l.Tax > Limit)).ToList(),
         ["+ in OrderBy"]               = db => db.Lines.OrderBy(l => l.Price + l.Tax).ToList(),
+        ["&& in a projection"]         = db => db.Lines.Select(l => l.Switch && l.Switch).ToList(),
+        ["|| in a projection"]         = db => db.Lines.Select(l => l.Switch || l.Switch).ToList(),
+        ["&& in a filter"]             = db => db.Lines.Where(l => (l.Switch && l.Switch).Value).ToList(),
+        ["|| in a filter"]             = db => db.Lines.Where(l => (l.Switch || l.Switch).Value).ToList(),
     };
 
     public static TheoryData<string> RefusedCases => [.. Refused.Keys];
@@ -46,7 +50,7 @@ public sealed class HandWrittenArithmeticTests : IDisposable
 
         var refused = Should.Throw<InvalidOperationException>(() => Refused[name](db));
 
-        refused.Message.ShouldMatch(@"^(RoundedMoney|Permissions|Allowance)'s operator \S+ is used in a query, but it is written by hand");
+        refused.Message.ShouldMatch(@"^(RoundedMoney|Permissions|Allowance|Switch)'s operator \S+ is used in a query, but it is written by hand");
         refused.Message.ShouldContain(".Value");
     }
 
@@ -61,6 +65,9 @@ public sealed class HandWrittenArithmeticTests : IDisposable
 
         // Rounded in memory to 1.01; added in the database it would be 1.006, and no row.
         db.Lines.Where(l => l.Price == RoundedMoney.From(1.005m) + RoundedMoney.From(0.001m)).Select(l => l.Id).ToList().ShouldBe([2]);
+
+        // A condition over operator true is a call of op_True, no operator node: EF runs it in memory, as written.
+        db.Lines.OrderBy(l => l.Id).Select(l => l.Switch ? 1 : 2).ToList().ShouldBe([1, 1]);
     }
 
     [Fact]
@@ -72,6 +79,17 @@ public sealed class HandWrittenArithmeticTests : IDisposable
         var refused = Should.Throw<InvalidOperationException>(() => db.Model);
 
         refused.Message.ShouldStartWith("RoundedMoney's operator + is used in the query filter of Line, but it is written by hand");
+    }
+
+    [Fact]
+    public void A_query_filter_with_a_hand_written_conditional_operator_is_refused_when_the_model_is_built()
+    {
+        _connection.Open();
+        using var db = new SwitchFilteredDb(new DbContextOptionsBuilder<SwitchFilteredDb>().UseSqlite(_connection).UseTypeKit().Options);
+
+        var refused = Should.Throw<InvalidOperationException>(() => db.Model);
+
+        refused.Message.ShouldStartWith("Switch's operator || is used in the query filter of Line, but it is written by hand");
     }
 
     [Fact]
@@ -117,7 +135,7 @@ public sealed class HandWrittenArithmeticTests : IDisposable
     private static Line NewLine(int id, decimal price, decimal tax) => new()
     {
         Id = id, LedgerId = 1, Price = RoundedMoney.From(price), Tax = RoundedMoney.From(tax),
-        Access = Permissions.From(2), Allowance = Allowance.FromKnownGood(2),
+        Access = Permissions.From(2), Allowance = Allowance.FromKnownGood(2), Switch = Switch.From(true),
     };
 
     public sealed class Line
@@ -135,6 +153,8 @@ public sealed class HandWrittenArithmeticTests : IDisposable
         public Permissions Access { get; set; }
 
         public Allowance Allowance { get; set; }
+
+        public Switch Switch { get; set; }
     }
 
     public sealed class Ledger
@@ -163,6 +183,15 @@ public sealed class HandWrittenArithmeticTests : IDisposable
         {
             base.OnModelCreating(modelBuilder);
             modelBuilder.Entity<Line>().HasQueryFilter(l => l.Price + l.Tax > RoundedMoney.From(1m));
+        }
+    }
+
+    private sealed class SwitchFilteredDb(DbContextOptions<SwitchFilteredDb> options) : LedgerDb(options)
+    {
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<Line>().HasQueryFilter(l => (l.Switch || l.Switch).Value);
         }
     }
 
@@ -220,4 +249,19 @@ public readonly partial record struct Allowance : IValidatedValue<Allowance, int
     public static Result<Allowance, AllowanceFault> Create(int value) => value >= 0 ? new Allowance(value) : Result.Error(AllowanceFault.Negative);
 
     public static Allowance operator +(Allowance left, Allowance right) => FromKnownGood(left.Value + right.Value);
+}
+
+/// <summary>
+/// A switch with its own logic by hand: <c>&amp;&amp;</c> and <c>||</c> call its <c>&amp;</c> and <c>|</c>, which here
+/// never switch on, where the database's <c>AND</c> and <c>OR</c> of the column would.
+/// </summary>
+public readonly partial record struct Switch : IValue<bool>
+{
+    public static Switch operator &(Switch left, Switch right) => From(false);
+
+    public static Switch operator |(Switch left, Switch right) => From(false);
+
+    public static bool operator true(Switch value) => value.Value;
+
+    public static bool operator false(Switch value) => !value.Value;
 }

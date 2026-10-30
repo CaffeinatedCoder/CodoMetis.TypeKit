@@ -117,6 +117,11 @@ internal static class ValueObjectArithmetic
     /// The operators a value object can declare and EF translates as the database's own: arithmetic, bitwise and
     /// shift. Comparison is <see cref="HandWrittenOrdering"/>'s, equality is the record's, and a conversion is left to EF.
     /// </summary>
+    /// <remarks>
+    /// <c>&amp;&amp;</c> and <c>||</c> of a value object with <c>operator true</c> and <c>false</c> are their own nodes,
+    /// whose method is its <c>&amp;</c> or <c>|</c>: left out, <c>Flag &amp;&amp; Flag</c> read true where the operators
+    /// answer false, and nothing was refused.
+    /// </remarks>
     private static string? Operator(ExpressionType type) => type switch
     {
         ExpressionType.Add or ExpressionType.AddChecked                                          => "+",
@@ -128,6 +133,8 @@ internal static class ValueObjectArithmetic
         ExpressionType.UnaryPlus                                                                 => "+",
         ExpressionType.And                                                                       => "&",
         ExpressionType.Or                                                                        => "|",
+        ExpressionType.AndAlso                                                                   => "&&",
+        ExpressionType.OrElse                                                                    => "||",
         ExpressionType.ExclusiveOr                                                               => "^",
         ExpressionType.LeftShift                                                                 => "<<",
         ExpressionType.RightShift                                                                => ">>",

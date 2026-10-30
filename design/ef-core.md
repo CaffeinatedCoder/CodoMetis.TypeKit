@@ -64,7 +64,7 @@
     method, so a hand-written `+` that rounds ran as the plain sum of the columns. The arithmetic aspect
     marks every operator it generates `[TranslatedAsWrappedArithmetic]`; an interceptor, and a finalizing
     convention for query filters, refuses any other arithmetic, bitwise or shift operator a value object
-    declares, naming the value object (#187). A conversion operator is left to EF.
+    declares, `&&` and `||` over its `&` and `|` included, naming the value object (#187). A conversion operator is left to EF.
   - **A null passes no comparison in a query (decided 2026-10-15, [decision 98](adr/0098-a-null-passes-no-comparison-in-a-query.md)).**
     A record class's generated operators sort null first, so `null < x` is true in memory, and SQL's
     `"N" < @x` leaves the null row out, as for the underlying type's nullable column. Not refused: a

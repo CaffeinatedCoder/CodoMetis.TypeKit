@@ -218,7 +218,7 @@ instead, which works everywhere and may add a cast:
 - **Your own operator can't run in the database.** EF reads `o.Price + o.Tax` as the database's own
   addition of the two columns and never calls your `+`. Whatever your operator does beyond that, such
   as rounding, would be skipped. So a query that uses an arithmetic or bitwise operator you wrote on a
-  value object throws an `InvalidOperationException` naming the value object. Compute it from `.Value`
+  value object, `&&` and `||` included, throws an `InvalidOperationException` naming the value object. Compute it from `.Value`
   where the underlying type's arithmetic is what you mean (`o.Price.Value + o.Tax.Value`), or do it in
   memory after the query. A query filter that uses one fails when the model is built. An operator over
   values you pass in, which EF computes before the query, stays allowed. The operators TypeKit
