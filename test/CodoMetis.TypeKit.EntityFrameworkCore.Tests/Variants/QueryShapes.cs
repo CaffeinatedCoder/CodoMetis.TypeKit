@@ -94,6 +94,15 @@ public enum Op
     ThenByDescending,
     OrderByBoxed,
     ThenByBoxed,
+
+    /// <summary><c>Select(r =&gt; (object)r.P).Order()</c>: boxed before the operator, which then reads <c>object</c> (#206).</summary>
+    OrderBoxed,
+
+    /// <summary><c>Select(r =&gt; (object)r.P).OrderBy(x =&gt; x)</c>: a key that is the element itself.</summary>
+    OrderByItselfBoxed,
+
+    MinBoxed,
+    MaxBoxed,
     Order,
     OrderDescending,
     Min,
@@ -140,7 +149,8 @@ public sealed record QueryCase(WrappedKind Kind, Conversion Conversion, Site Sit
 
     /// <summary>A comparison, an ordering, or a minimum or maximum: what a value object's own <c>CompareTo</c> decides in memory.</summary>
     public bool Orders => Op is Op.GreaterOrEqual or Op.LessThan or Op.LessOrEqual or Op.LessThanOrNull or Op.CompareTo or Op.OrderBy or Op.OrderByDescending or Op.ThenBy or Op.ThenByDescending
-                             or Op.OrderByBoxed or Op.ThenByBoxed or Op.Order or Op.OrderDescending or Op.Min or Op.Max or Op.MinBy or Op.MaxBy
+                             or Op.OrderByBoxed or Op.ThenByBoxed or Op.OrderBoxed or Op.OrderByItselfBoxed or Op.MinBoxed or Op.MaxBoxed
+                             or Op.Order or Op.OrderDescending or Op.Min or Op.Max or Op.MinBy or Op.MaxBy
                              or Op.AnyGreaterOrEqual or Op.CountGreaterOrEqual or Op.ElementMax or Op.ElementOrderFirst
                              or Op.NavigationMin or Op.NavigationMax or Op.NavigationOrderFirst or Op.NavigationOrderDescendingFirst
                              or Op.Greatest or Op.Least or Op.RowGreaterThan or Op.RowLessThan or Op.RowGreaterOrEqual or Op.RowLessOrEqual;
@@ -163,7 +173,8 @@ public static class QueryShapes
     private static readonly Op[] ColumnOps =
     [
         Op.EqualsLiteral, Op.EqualsCaptured, Op.NotEquals, Op.GreaterOrEqual, Op.LessThan, Op.LessOrEqual, Op.CompareTo,
-        Op.OrderBy, Op.OrderByDescending, Op.ThenBy, Op.ThenByDescending, Op.OrderByBoxed, Op.ThenByBoxed, Op.Order, Op.OrderDescending,
+        Op.OrderBy, Op.OrderByDescending, Op.ThenBy, Op.ThenByDescending, Op.OrderByBoxed, Op.ThenByBoxed,
+        Op.OrderBoxed, Op.OrderByItselfBoxed, Op.MinBoxed, Op.MaxBoxed, Op.Order, Op.OrderDescending,
         Op.Min, Op.Max, Op.MinBy, Op.MaxBy, Op.Contains, Op.GroupBy, Op.Select, Op.Distinct, .. FunctionOps,
     ];
 
@@ -439,6 +450,8 @@ public sealed class QueryBuilder(QueryCase @case, bool valueObject)
         Expression Values(Expression ordered) => Q("Select", [Source, type], ordered, key);
         Expression Unordered() => Q("OrderBy", [Source, typeof(int)], source, Expression.Lambda(Expression.Modulo(Expression.Property(row, "Id"), Expression.Constant(1)), row));
         var boxed = Expression.Lambda(Expression.Convert(read, typeof(object)), row);
+        var boxedValues = Q("Select", [Source, typeof(object)], source, boxed);
+        var itself = Expression.Parameter(typeof(object), "x");
 
         return @case.Op switch
         {
@@ -456,6 +469,10 @@ public sealed class QueryBuilder(QueryCase @case, bool valueObject)
             Op.ThenByDescending  => (Values(Q("ThenByDescending", [Source, type], Unordered(), key)), true),
             Op.OrderByBoxed      => (Values(Q("OrderBy", [Source, typeof(object)], source, boxed)), true),
             Op.ThenByBoxed       => (Values(Q("ThenBy", [Source, typeof(object)], Unordered(), boxed)), true),
+            Op.OrderBoxed        => (Q("Order", [typeof(object)], boxedValues), true),
+            Op.OrderByItselfBoxed => (Q("OrderBy", [typeof(object), typeof(object)], boxedValues, Expression.Lambda(itself, itself)), true),
+            Op.MinBoxed          => (Q("Min", [typeof(object)], boxedValues), true),
+            Op.MaxBoxed          => (Q("Max", [typeof(object)], boxedValues), true),
             Op.Order             => (Q("Order", [type], Values(source)), true),
             Op.OrderDescending   => (Q("OrderDescending", [type], Values(source)), true),
             Op.Min               => (Q("Min", [Source, type], source, key), true),

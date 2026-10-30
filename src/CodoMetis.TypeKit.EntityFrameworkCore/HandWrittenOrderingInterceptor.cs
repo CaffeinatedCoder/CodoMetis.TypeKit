@@ -110,13 +110,21 @@ internal static class HandWrittenOrdering
                     foreach (var argument in node.Arguments) Refuse(argument.Type, $"compared with {method.Name}");
                 }
             }
-            else if ((method.DeclaringType == typeof(Queryable) || method.DeclaringType == typeof(Enumerable)) && OrderedType(method) is { } ordered)
+            else if (IsLinq(method) && OrderedType(method) is { } ordered)
             {
                 Refuse(ordered, $"ordered by {method.Name}");
 
                 // A key the selector converts (to object, IComparable) is still ordered in memory by the
-                // value object's CompareTo, while EF drops the conversion and orders by the column.
-                if (KeySelector(node) is { } key) Refuse(Unconverted(key.Body).Type, $"ordered by {method.Name}");
+                // value object's CompareTo, while EF drops the conversion and orders by the column. So are
+                // elements converted before the operator, Select(r => (object)r.Rank).Max(), whose key is the
+                // element itself or which has no key (#206).
+                var key = KeySelector(node);
+                var keyBody = key is null ? null : Unconverted(key.Body);
+                if (keyBody is not null && keyBody != key!.Parameters[0])
+                    Refuse(keyBody.Type, $"ordered by {method.Name}");
+                else if (method.IsGenericMethod)
+                    foreach (var element in ElementTypes(node.Arguments[0], method.GetGenericArguments()[0]))
+                        Refuse(element, $"ordered by {method.Name}");
             }
             else if (IsDbFunction(method) && !RunsInMemory(node))
             {
@@ -159,6 +167,38 @@ internal static class HandWrittenOrdering
 
         private static Expression StripQuotes(Expression expression) =>
             expression is UnaryExpression { NodeType: ExpressionType.Quote } quote ? StripQuotes(quote.Operand) : expression;
+
+        /// <summary>
+        /// The types a sequence's elements have under their boxing and reference conversions: a <c>Select</c>'s
+        /// body unconverted, followed through the operators that pass the elements on. <paramref name="declared"/>
+        /// is the element type the consuming operator reads, for a sequence that is no such operator.
+        /// </summary>
+        private static IEnumerable<Type> ElementTypes(Expression sequence, Type declared)
+        {
+            if (sequence is not MethodCallExpression { Method: { IsGenericMethod: true } method } call || !IsLinq(method)) return [declared];
+
+            var source = method.GetGenericArguments()[0];
+            switch (method.Name)
+            {
+                case nameof(Queryable.Select) when KeySelector(call) is { } selector:
+                    var body = Unconverted(selector.Body);
+                    return body == selector.Parameters[0] ? ElementTypes(call.Arguments[0], source) : [body.Type];
+                case nameof(Queryable.Cast) or nameof(Queryable.OfType):
+                    return ElementTypes(call.Arguments[0], typeof(object)).Where(element => declared.IsAssignableFrom(element));
+                case nameof(Queryable.AsQueryable) or nameof(Enumerable.AsEnumerable) or nameof(Queryable.Where) or nameof(Queryable.Distinct)
+                  or nameof(Queryable.Skip) or nameof(Queryable.Take) or nameof(Queryable.SkipWhile) or nameof(Queryable.TakeWhile)
+                  or nameof(Queryable.SkipLast) or nameof(Queryable.TakeLast) or nameof(Queryable.Reverse) or nameof(Queryable.DefaultIfEmpty)
+                  or nameof(Queryable.DistinctBy) or nameof(Queryable.OrderBy) or nameof(Queryable.OrderByDescending) or nameof(Queryable.ThenBy)
+                  or nameof(Queryable.ThenByDescending) or nameof(Queryable.Order) or nameof(Queryable.OrderDescending):
+                    return ElementTypes(call.Arguments[0], source);
+                case nameof(Queryable.Concat) or nameof(Queryable.Union) or nameof(Queryable.Intersect) or nameof(Queryable.Except):
+                    return [.. ElementTypes(call.Arguments[0], source), .. ElementTypes(call.Arguments[1], source)];
+                default:
+                    return [declared];
+            }
+        }
+
+        private static bool IsLinq(MethodInfo method) => method.DeclaringType == typeof(Queryable) || method.DeclaringType == typeof(Enumerable);
 
         /// <summary>The expression under its boxing and reference conversions; a conversion operator, which changes the value, is kept.</summary>
         private static Expression Unconverted(Expression expression) =>

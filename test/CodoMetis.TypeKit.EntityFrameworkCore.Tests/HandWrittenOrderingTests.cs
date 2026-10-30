@@ -43,6 +43,17 @@ public sealed class HandWrittenOrderingTests : IDisposable
         ["OrderBy a key cast to object"] = db => db.Ranked.OrderBy(r => (object)r.Rank).ToList(),
         ["ThenBy a key cast to object"]  = db => db.Ranked.OrderBy(r => r.Id % 1).ThenBy(r => (object)r.Rank).ToList(),
 
+        // Boxed before the operator, which then reads object: Max answered 3 and Order 1, 2, 3 where memory answers 1
+        // and 3, 2, 1 (#206).
+        ["Max of values cast to object"]                  = db => db.Ranked.Select(r => (object)r.Rank).Max()!,
+        ["Min of values cast to object"]                  = db => db.Ranked.Select(r => (object)r.Rank).Min()!,
+        ["Order of values cast to object"]                = db => db.Ranked.Select(r => (object)r.Rank).Order().ToList(),
+        ["OrderDescending of values cast to object"]      = db => db.Ranked.Select(r => (object)r.Rank).OrderDescending().ToList(),
+        ["OrderBy itself of values cast to object"]       = db => db.Ranked.Select(r => (object)r.Rank).OrderBy(x => x).ToList(),
+        ["Max of values cast to object through Where"]    = db => db.Ranked.Select(r => (object)r.Rank).Where(x => x != null).Take(5).Max()!,
+        ["Max of a record class cast to object"]          = db => db.Ranked.Select(r => (object)r.Label).Max()!,
+        ["Max of values cast to object over a navigation"] = db => db.Parents.Select(p => p.Children.Select(c => (object)c.Rank).Max()).ToList(),
+
         // The database's own GREATEST and LEAST (SQLite's max and min) order by the column: the first answered
         // 2, 2, 3 where memory's order answers 1, 1, 2 (measured on PostgreSQL 17 before the refusal).
         ["Greatest"]               = db => db.Ranked.Select(r => EF.Functions.Greatest(r.Rank, Two)).ToList(),
@@ -77,7 +88,7 @@ public sealed class HandWrittenOrderingTests : IDisposable
         var refusal = Should.Throw<InvalidOperationException>(() => Refused[query](db)).Message;
 
         refusal.ShouldContain("its ordering is its own CompareTo, which the database cannot run");
-        refusal.ShouldContain(query is "a record class" or "Least of a record class" ? "ProbeReversedLabel" : "ProbeDescending");
+        refusal.ShouldContain(query is "a record class" or "Least of a record class" or "Max of a record class cast to object" ? "ProbeReversedLabel" : "ProbeDescending");
         refusal.ShouldContain("Compare or order by .Value explicitly");
     }
 
@@ -156,6 +167,7 @@ public sealed class HandWrittenOrderingTests : IDisposable
     [InlineData(typeof(NamedFilterByRankDb), "compared with >", "the query filter \"AboveTwo\" of FilteredRank")]
     [InlineData(typeof(FilteredByChildRankDb), "compared with >", "the query filter of RankParent")]
     [InlineData(typeof(FilteredByGreatestDb), "compared by Greatest", "the query filter of FilteredRank")]
+    [InlineData(typeof(FilteredByBoxedChildRankDb), "ordered by Max", "the query filter of RankParent")]
     public void A_query_filter_that_orders_by_its_own_CompareTo_is_refused(Type context, string how, string filter)
     {
         _connection.Open();
@@ -291,6 +303,16 @@ public sealed class FilteredByChildRankDb(DbContextOptions options) : DbContext(
     {
         modelBuilder.Entity<FilteredRank>();
         modelBuilder.Entity<RankParent>().HasQueryFilter(p => p.Children.Max(c => c.Rank) > ProbeDescending.From(2));
+    }
+}
+
+/// <summary>A query filter over the greatest of the children's ranks, boxed before <c>Max</c> (#206).</summary>
+public sealed class FilteredByBoxedChildRankDb(DbContextOptions options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<FilteredRank>();
+        modelBuilder.Entity<RankParent>().HasQueryFilter(p => (ProbeDescending)p.Children.Select(c => (object)c.Rank).Max()! == ProbeDescending.From(2));
     }
 }
 
