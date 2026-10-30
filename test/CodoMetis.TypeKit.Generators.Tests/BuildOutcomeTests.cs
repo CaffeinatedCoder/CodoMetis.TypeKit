@@ -467,9 +467,23 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "InheritsValueName", "ValueNameBase.Value in its base type ValueNameBase")]
     [InlineData("CMTK1011", "InheritsFromName", "FromNameBase<InheritsFromName>.From(int) in its base type FromNameBase<InheritsFromName>")]
     [InlineData("CMTK1011", "InheritsTryFormatName", "TryFormatNameBase.TryFormat(Span<char>, out int, ReadOnlySpan<char>, IFormatProvider?) in its base type TryFormatNameBase")]
+    [InlineData("CMTK1008", "InheritsCompareTo", "CompareToSeamBase<InheritsCompareTo>.CompareTo(InheritsCompareTo?) in its base type CompareToSeamBase<InheritsCompareTo>, but its comparison is generated from CompareTo(InheritsCompareTo)")]
+    [InlineData("CMTK1008", "InheritsObjectCompareTo", "ObjectCompareToBase.CompareTo(object?) in its base type ObjectCompareToBase")]
+    [InlineData("CMTK1011", "InheritsTryFrom", "TryFromSeamBase<InheritsTryFrom>.TryFrom(string) in its base type TryFromSeamBase<InheritsTryFrom>, so it is not generated: a seam is kept only where the value object declares it")]
+    [InlineData("CMTK1011", "InheritsRevalidate", "RevalidateSeamBase<InheritsRevalidate>.Revalidate() in its base type RevalidateSeamBase<InheritsRevalidate>, so it is not generated: a seam is kept only where the value object declares it")]
     [InlineData("CMTK1011", "InheritsLibraryPublicMinMax", "PublicMinMaxBase<InheritsLibraryPublicMinMax>.MinValue in its base type PublicMinMaxBase<InheritsLibraryPublicMinMax>")]
     public void What_a_base_record_declares_is_refused_by_name(string id, string type, string member) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
+
+    /// <summary>
+    /// A base record's public <c>CompareTo(object)</c> that implements <c>IComparable</c> is found twice, by the
+    /// interface mapping and as an inherited comparison member (#194), and named once.
+    /// </summary>
+    [Fact]
+    public void A_base_member_found_twice_is_named_once() =>
+        consumer.Errors.Where(error => error.Message.StartsWith("'InheritsPublicObjectOrder' declares ", StringComparison.Ordinal))
+                .ShouldHaveSingleItem(consumer.Output)
+                .Message.Split("PublicObjectOrderBase.CompareTo(object?)").Length.ShouldBe(2, consumer.Output);
 
     /// <summary>
     /// A public static member of another project that implements a static abstract one reads as an explicit
@@ -521,7 +535,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     /// The seams stay allowed: <c>Create</c>, <c>TryFrom</c>, <c>FromKnownGood</c>, <c>Revalidate</c>,
     /// <c>CompareTo(TSelf)</c> and <c>ToString()</c>. A <c>MinValue</c> of another type, or one the value
     /// object cannot reach, is not the wrapped type's bound: no <c>MinValue</c> is generated, where it
-    /// failed inside the generated code (LAMA0611, CS1503 and CS0122).
+    /// failed inside the generated code (LAMA0611, CS1503 and CS0122). A base record's
+    /// <c>FromKnownGood(T)</c> is hidden by the generated one, so it is no inherited seam (#194).
     /// </summary>
     [Theory]
     [InlineData("WithEverySeam", "'WithEverySeam")]
@@ -534,6 +549,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("InheritsSealedToString", "'InheritsSealedToString")]
     [InlineData("InheritsFormattableBesideSealedToString", "'InheritsFormattableBesideSealedToString")]
     [InlineData("WithStatelessBase", "Described.")]
+    [InlineData("InheritsFromKnownGoodName", "FromKnownGoodNameBase")]
     public void A_seam_or_a_foreign_bound_is_not_refused(string type, string alsoNotNamed) =>
         consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'") || error.Message.Contains(alsoNotNamed), consumer.Output);
 
@@ -1438,6 +1454,55 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             }
 
             public sealed partial record InheritsTryFormatName : TryFormatNameBase, IValue<long>;
+
+            // A seam a base record declares rather than the value object (#194): its CompareTo(TSelf) left the
+            // ordering unmarked for EF Core and made < overflow the stack, its TryFrom and Revalidate stood in for
+            // the generated ones, and its CompareTo(object) failed the aspect (LAMA0500).
+            public abstract record CompareToSeamBase<TSelf> where TSelf : CompareToSeamBase<TSelf>
+            {
+                public int CompareTo(TSelf? other) => 0;
+            }
+
+            public sealed partial record InheritsCompareTo : CompareToSeamBase<InheritsCompareTo>, IValue<int>;
+
+            public abstract record ObjectCompareToBase
+            {
+                public int CompareTo(object? obj) => 0;
+            }
+
+            public sealed partial record InheritsObjectCompareTo : ObjectCompareToBase, IValue<int>;
+
+            public abstract record TryFromSeamBase<TSelf> where TSelf : TryFromSeamBase<TSelf>
+            {
+                public static Option<TSelf> TryFrom(string value) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsTryFrom : TryFromSeamBase<InheritsTryFrom>, IValidatedValue<InheritsTryFrom, string, Fault>
+            {
+                public static Result<InheritsTryFrom, Fault> Create(string value) => Result.Error(Fault.Refused);
+            }
+
+            public abstract record RevalidateSeamBase<TSelf> where TSelf : RevalidateSeamBase<TSelf>
+            {
+                public Result<TSelf, Fault> Revalidate() => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsRevalidate : RevalidateSeamBase<InheritsRevalidate>, IValidatedValue<InheritsRevalidate, string, Fault>
+            {
+                public static Result<InheritsRevalidate, Fault> Create(string value) => Result.Error(Fault.Refused);
+            }
+
+            // A base's FromKnownGood(T) is another signature than the generated one, which takes the caller's
+            // expression too and hides it, so it stands in for nothing. Generated as usual.
+            public abstract record FromKnownGoodNameBase<TSelf> where TSelf : FromKnownGoodNameBase<TSelf>
+            {
+                public static TSelf FromKnownGood(string value) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsFromKnownGoodName : FromKnownGoodNameBase<InheritsFromKnownGoodName>, IValidatedValue<InheritsFromKnownGoodName, string, Fault>
+            {
+                public static Result<InheritsFromKnownGoodName, Fault> Create(string value) => new InheritsFromKnownGoodName(value);
+            }
 
             // From a project the generators do not run in: read as an explicit implementation there, named as public.
             public sealed partial record InheritsLibraryPublicMinMax : Library.PublicMinMaxBase<InheritsLibraryPublicMinMax>, IValue<int>;

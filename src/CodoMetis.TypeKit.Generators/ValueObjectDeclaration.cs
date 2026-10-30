@@ -60,7 +60,7 @@ internal static class ValueObjectDeclaration
     /// A value object and the records it derives from, <see cref="object"/> left out. A struct has
     /// none: its base is <see cref="ValueType"/>, whose <c>ToString()</c> is nobody's seam.
     /// </summary>
-    private static IEnumerable<INamedType> SelfAndBases(INamedType target)
+    internal static IEnumerable<INamedType> SelfAndBases(INamedType target)
     {
         yield return target;
 
@@ -421,6 +421,23 @@ internal static class ValueObjectDeclaration
     }
 
     /// <summary>
+    /// The factory seams of a validated value object that a base record declares rather than the value object:
+    /// <c>TryFrom(T)</c> and <c>Revalidate()</c>. The generated one is introduced only where none exists, and a
+    /// base's counted, so it stood in for the value object's without a word: <c>TryFrom</c> answered whatever the
+    /// base did, which need not call <c>Create</c>, and <c>Revalidate</c> threw where the base's did (#194,
+    /// measured 2026-10-30). A base's <c>FromKnownGood(T)</c> is hidden by the generated one, whose caller
+    /// expression parameter makes it another signature, so it is not one.
+    /// </summary>
+    public static IReadOnlyList<string> InheritedSeams(INamedType target, INamedType valueType, ValueObjectKind kind) =>
+        kind != ValueObjectKind.Validated
+            ? []
+            : [.. SelfAndBases(target).Skip(1).SelectMany(type => type.Methods
+                                                                     .Where(method => IsHandWritten(method) && !method.IsExplicitInterfaceImplementation
+                                                                                   && (method is { Name: "TryFrom", IsStatic: true, Parameters: [{ } value] } && value.Type.ToNonNullable().Equals(valueType.ToNonNullable())
+                                                                                    || method is { Name: "Revalidate", IsStatic: false, Parameters.Count: 0 }))
+                                                                     .Select(method => $"{method.ToDisplayString()} in its base type {type.ToDisplayString()}"))];
+
+    /// <summary>
     /// How a validated value object declares <c>Create</c>: as an explicit implementation of the
     /// marker's, and as a static method the generated code can call as <c>{TSelf}.Create(value)</c>.
     /// Alone, the explicit one cannot be reached from there (CS1929 inside the generated code); beside a
@@ -622,7 +639,7 @@ internal static class ValueObjectDeclaration
     /// Written by the user, not synthesized by the compiler: a record in a referenced assembly reports its
     /// synthesized members as declared, and marks them <c>[CompilerGenerated]</c>.
     /// </summary>
-    private static bool IsHandWritten(IMember member) =>
+    internal static bool IsHandWritten(IMember member) =>
         !member.IsImplicitlyDeclared && !member.Attributes.Any(attribute => attribute.Type.Equals(TypeFactory.GetNamedType(typeof(CompilerGeneratedAttribute))));
 
     /// <summary>Non-implicit members of <paramref name="target"/> with one of <paramref name="names"/>, of any kind.</summary>

@@ -44,7 +44,7 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
         // factories. Any other hand-written comparison member would sit beside generated ones that
         // need not agree with it, so it is an error naming the seam. Before this, an operator failed
         // the aspect (LAMA0500, naming no fix) and an object overload was kept silently.
-        var besideTheSeam = HandWrittenComparisonMembers(builder.Target).ToList();
+        var besideTheSeam = HandWrittenComparisonMembers(builder.Target).Distinct().ToList();
 
         if (besideTheSeam.Count > 0)
         {
@@ -151,6 +151,21 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
 
             if (isObjectOverload || isOrderingOperator)
                 yield return method.ToDisplayString();
+        }
+
+        // A base record's CompareTo(object) failed the aspect (LAMA0500), and its CompareTo(TSelf), the seam, was
+        // used without a word: no [HandWrittenOrdering], so EF Core ordered by the column, and the generated
+        // operators called the generated CompareTo(object), which C# prefers to the base's, until the stack
+        // overflowed (#194, measured 2026-10-30). The seam is kept where the value object declares it.
+        foreach (var type in ValueObjectDeclaration.SelfAndBases(target).Skip(1))
+        {
+            foreach (var method in type.Methods)
+            {
+                if (method is { IsStatic: false, IsExplicitInterfaceImplementation: false, Name: nameof(IComparable.CompareTo), Parameters: [{ } other] }
+                 && ValueObjectDeclaration.IsHandWritten(method)
+                 && (other.Type.SpecialType == SpecialType.Object || other.Type.ToNonNullable().Equals(target)))
+                    yield return $"{method.ToDisplayString()} in its base type {type.ToDisplayString()}";
+            }
         }
 
         foreach (var member in ValueObjectDeclaration.ImplementationsOf(target,

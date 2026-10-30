@@ -215,6 +215,10 @@ method that calls `From` or `Create`.
 A value object may declare its own `TryFrom`, `FromKnownGood`, `Revalidate`, `CompareTo(TSelf)` and
 `ToString()`. Each one is kept, and whatever depends on it is built from it.
 
+Declare them on the value object itself. A `TryFrom`, `Revalidate` or `CompareTo` in a base record fails
+the build (CMTK1011, or CMTK1008 for `CompareTo`), because it would stand in for the generated member
+without a word. A base record's `sealed` `ToString()` is the one exception, as described below.
+
 Writing any other generated member or attribute by hand fails the build, naming it (CMTK1011). That
 covers:
 
