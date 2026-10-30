@@ -198,13 +198,20 @@ internal static class ValueObjectDeclaration
         // are refused below. ValueObjectContractAspect: the equality operators.
         List<INamedType> generatedInterfaces = [TypeFactory.GetNamedType(typeof(IEqualityOperators<,,>))];
 
+        // A base record's count as the value object's own (#197). Beside a generated one, its public
+        // Value, From, Parse, TryParse, ToString(string?, IFormatProvider?) or TryFormat failed the aspect
+        // (LAMA0500), naming nothing the user wrote, and its static MinValue and MaxValue were kept as the
+        // value object's, with no MinValue or MaxValue generated.
+        IEnumerable<string> Declared(Func<INamedType, IEnumerable<string>> find) =>
+            SelfAndBases(target).SelectMany(type => find(type).Select(member => type.Equals(target) ? member : $"{member} in its base type {type.ToDisplayString()}"));
+
         // ValueObjectAspect: the field, the entry points; ValueObjectContractAspect: Value; the JSON aspect's nested converter.
-        found.AddRange(MembersNamed(target, "_value", "Value", "__FromJson", "__FromText", "__TryFromText", $"{target.Name}JsonConverter"));
+        found.AddRange(Declared(type => MembersNamed(type, "_value", "Value", "__FromJson", "__FromText", "__TryFromText", $"{target.Name}JsonConverter")));
 
         if (kind == ValueObjectKind.Plain)
         {
-            found.AddRange(MethodsWithSignature(target, "From", valueType));
-            found.AddRange(MembersNamed(target, methods: false, "From"));
+            found.AddRange(Declared(type => MethodsWithSignature(type, "From", valueType)));
+            found.AddRange(Declared(type => MembersNamed(type, methods: false, "From")));
         }
 
         var stringType = TypeFactory.GetType(SpecialType.String);
@@ -215,9 +222,9 @@ internal static class ValueObjectDeclaration
 
         if (parse != ValueParseStrategy.Unsupported)
         {
-            found.AddRange(MethodsWithSignature(target, "Parse", stringType, provider));
-            found.AddRange(MethodsWithSignature(target, "TryParse", stringType, provider, target));
-            found.AddRange(MembersNamed(target, $"{target.Name}TypeConverter"));
+            found.AddRange(Declared(type => MethodsWithSignature(type, "Parse", stringType, provider)));
+            found.AddRange(Declared(type => MethodsWithSignature(type, "TryParse", stringType, provider, target)));
+            found.AddRange(Declared(type => MembersNamed(type, $"{target.Name}TypeConverter")));
             generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IParsable<>)));
 
             if (ValueObjectParsableAspect.SupportsSpan(valueType))
@@ -225,8 +232,8 @@ internal static class ValueObjectDeclaration
                 generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(ISpanParsable<>)));
 
                 var span = TypeFactory.GetType(typeof(ReadOnlySpan<char>));
-                found.AddRange(MethodsWithSignature(target, "Parse", span, provider));
-                found.AddRange(MethodsWithSignature(target, "TryParse", span, provider, target));
+                found.AddRange(Declared(type => MethodsWithSignature(type, "Parse", span, provider)));
+                found.AddRange(Declared(type => MethodsWithSignature(type, "TryParse", span, provider, target)));
             }
 
             if (ValueObjectParsableAspect.SupportsUtf8(valueType))
@@ -234,26 +241,26 @@ internal static class ValueObjectDeclaration
                 generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IUtf8SpanParsable<>)));
 
                 var utf8 = TypeFactory.GetType(typeof(ReadOnlySpan<byte>));
-                found.AddRange(MethodsWithSignature(target, "Parse", utf8, provider));
-                found.AddRange(MethodsWithSignature(target, "TryParse", utf8, provider, target));
+                found.AddRange(Declared(type => MethodsWithSignature(type, "Parse", utf8, provider)));
+                found.AddRange(Declared(type => MethodsWithSignature(type, "TryParse", utf8, provider, target)));
             }
         }
 
         // ValueObjectFormattableAspect, unless ToString() is hand-written and it generates nothing.
         if (!DeclaresToString(target))
         {
-            found.AddRange(MethodsWithSignature(target, nameof(IFormattable.ToString), stringType, provider));
+            found.AddRange(Declared(type => MethodsWithSignature(type, nameof(IFormattable.ToString), stringType, provider)));
             generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IFormattable)));
 
             if (ValueObjectFormattableAspect.ResolveStrategy(valueType) == ValueFormatStrategy.SpanFormattable)
             {
-                found.AddRange(MethodsWithSignature(target, nameof(ISpanFormattable.TryFormat), TypeFactory.GetType(typeof(Span<char>)), TypeFactory.GetType(SpecialType.Int32), TypeFactory.GetType(typeof(ReadOnlySpan<char>)), provider));
+                found.AddRange(Declared(type => MethodsWithSignature(type, nameof(ISpanFormattable.TryFormat), TypeFactory.GetType(typeof(Span<char>)), TypeFactory.GetType(SpecialType.Int32), TypeFactory.GetType(typeof(ReadOnlySpan<char>)), provider)));
                 generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(ISpanFormattable)));
             }
 
             if (ValueObjectFormattableAspect.SupportsUtf8(valueType))
             {
-                found.AddRange(MethodsWithSignature(target, nameof(IUtf8SpanFormattable.TryFormat), TypeFactory.GetType(typeof(Span<byte>)), TypeFactory.GetType(SpecialType.Int32), TypeFactory.GetType(typeof(ReadOnlySpan<char>)), provider));
+                found.AddRange(Declared(type => MethodsWithSignature(type, nameof(IUtf8SpanFormattable.TryFormat), TypeFactory.GetType(typeof(Span<byte>)), TypeFactory.GetType(SpecialType.Int32), TypeFactory.GetType(typeof(ReadOnlySpan<char>)), provider)));
                 generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IUtf8SpanFormattable)));
             }
         }
@@ -261,19 +268,24 @@ internal static class ValueObjectDeclaration
         // ValueObjectMinMaxValueAspect.
         if (kind == ValueObjectKind.Plain && ValueObjectMinMaxValueAspect.HasMinMaxValue(valueType))
         {
-            found.AddRange(MembersNamed(target, nameof(IMinMaxValue<int>.MinValue), nameof(IMinMaxValue<int>.MaxValue)));
+            found.AddRange(Declared(type => MembersNamed(type, nameof(IMinMaxValue<int>.MinValue), nameof(IMinMaxValue<int>.MaxValue))));
             generatedInterfaces.Add(TypeFactory.GetNamedType(typeof(IMinMaxValue<>)));
         }
 
         // An explicit implementation of an interface the generators implement sat beside the generated
         // member, which it hides from every caller through the interface: a generic T.Parse bypassed
         // Create, and interpolation printed through a hand-written IFormattable while ToString() did not.
-        found.AddRange(ExplicitImplementationsOf(target, generatedInterfaces));
+        // An interface's was replaced by the generated member instead, as silently.
+        found.AddRange(ImplementationsOf(target, generatedInterfaces));
 
         // ValueObjectConvertibleAspect implements every member of IConvertible explicitly, so declaring
         // the interface at all, with public or explicit members, failed the aspect (LAMA0041: it cannot
-        // introduce explicit members for an interface it was told to ignore).
+        // introduce explicit members for an interface it was told to ignore). So did declaring an
+        // interface derived from it.
         var convertible = valueType.IsConvertibleTo(typeof(IConvertible));
+        var iconvertible = TypeFactory.GetNamedType(typeof(IConvertible));
+
+        bool DerivesFromConvertible(INamedType implemented) => implemented.AllImplementedInterfaces.Any(inherited => inherited.Equals(iconvertible));
 
         // The interfaces implemented with OverrideStrategy.Fail, and IConvertible. The marker's own are implied by it.
         foreach (var implemented in target.ImplementedInterfaces)
@@ -281,15 +293,18 @@ internal static class ValueObjectDeclaration
             if (implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IValueObject<,>)))
              || implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IValueObjectMaterializer<,>)))
              || implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IPlainValueObject<,>)))
-             || (convertible && implemented.Equals(TypeFactory.GetNamedType(typeof(IConvertible)))))
+             || (convertible && implemented.Equals(iconvertible)))
                 found.Add($"the interface {implemented.ToDisplayString()}");
+            else if (convertible && DerivesFromConvertible(implemented))
+                found.Add($"the interface IConvertible in its interface {implemented.ToDisplayString()}");
         }
 
-        // IConvertible implemented by a base record is implemented already, and the aspect failed the same way.
+        // IConvertible implemented by a base record, itself or through an interface, is implemented
+        // already, and the aspect failed the same way.
         if (convertible)
         {
             foreach (var type in SelfAndBases(target).Skip(1))
-                if (type.ImplementedInterfaces.Any(implemented => implemented.Equals(TypeFactory.GetNamedType(typeof(IConvertible)))))
+                if (type.ImplementedInterfaces.Any(implemented => implemented.Equals(iconvertible) || DerivesFromConvertible(implemented)))
                     found.Add($"the interface IConvertible in its base type {type.ToDisplayString()}");
         }
 
@@ -310,33 +325,99 @@ internal static class ValueObjectDeclaration
     }
 
     /// <summary>
-    /// The members of <paramref name="target"/> that explicitly implement a member of one of
-    /// <paramref name="interfaces"/>, compared by definition, as <see cref="Describe"/> names them.
+    /// The implementations that <paramref name="target"/> reaches for a member of one of
+    /// <paramref name="interfaces"/>, compared by definition, other than its own public members, which the
+    /// checks for hand-written members answer: its own explicit implementation, and a base record's or an
+    /// interface's, explicit or public, in this assembly or another.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// A base record's count too. The generated member replaced one of <c>IFormattable</c> or
     /// <c>IEqualityOperators</c> without a word, and one of a static interface (<c>IParsable</c>,
     /// <c>IMinMaxValue</c>) or of <c>IComparable</c> kept answering the interface: a generic
     /// <c>T.Parse</c> reached a generic base's, skipping <c>Create</c>, and <c>Comparer&lt;T&gt;.Default</c>
     /// disagreed with <c>&lt;</c> (measured 2026-09-28).
+    /// </para>
+    /// <para>
+    /// So does an interface's, the default every type that declares the interface reaches until it declares
+    /// a public member of its own. The generated one replaced it without a word: <c>Max&lt;Bounded&gt;()</c>
+    /// read the generated <c>MaxValue</c> where <c>IBounded&lt;TSelf&gt;</c>'s threw, and an <c>IFormattable</c>
+    /// call printed <c>1</c> where <c>IFormats</c> answered its own text (#191, measured 2026-10-30 for every
+    /// interface the generators implement). An interface's <c>==</c> is not one: the record's own replaces it,
+    /// generated or not, and that is the implementation found.
+    /// </para>
+    /// <para>
+    /// Found by the interface mapping, never by listing members: Metalama lists no private member of a type in
+    /// another assembly, and an explicit implementation is private, so a base record's and an interface's from
+    /// a referenced project were replaced or kept without a word (measured 2026-10-30).
+    /// </para>
+    /// <para>
+    /// A base record's public implementation counts as the value object's own. Its public static <c>MaxValue</c>
+    /// was the value object's, and no <c>MaxValue</c> was generated; its public <c>ToString(string?,
+    /// IFormatProvider?)</c>, <c>CompareTo(object)</c> or <c>Parse</c> failed the aspect (LAMA0500), naming
+    /// nothing the user wrote (#197, measured 2026-10-30).
+    /// </para>
+    /// <para>
+    /// An interface's explicit implementation of a member of an interface in the same library is not refused:
+    /// .NET's <c>INumberBase&lt;TSelf&gt;</c> bridges UTF-8 formatting and parsing to the UTF-16 members, which
+    /// every numeric type of .NET replaces with its own and the generators generate both of. They are the only
+    /// such members in .NET 10's interfaces (scanned 2026-10-30).
+    /// </para>
     /// </remarks>
-    internal static IEnumerable<string> ExplicitImplementationsOf(INamedType target, IReadOnlyList<INamedType> interfaces)
+    internal static IEnumerable<string> ImplementationsOf(INamedType target, IReadOnlyList<INamedType> interfaces)
     {
-        bool OfOne(IMember implemented) => interfaces.Any(@interface => implemented.DeclaringType.Definition.Equals(@interface));
-
-        foreach (var type in SelfAndBases(target))
+        foreach (var implemented in target.AllImplementedInterfaces)
         {
-            var where = type.Equals(target) ? "" : $" in its base type {type.ToDisplayString()}";
+            if (!interfaces.Any(@interface => implemented.Definition.Equals(@interface))) continue;
 
-            foreach (var method in type.Methods)
-                if (method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && method.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(method) + where;
+            foreach (var member in implemented.Methods.Concat<IMember>(implemented.Properties).Concat(implemented.Events))
+            {
+                if (!target.TryFindImplementationForInterfaceMember(member, out var implementation) || !IsHandWritten(implementation)) continue;
 
-            foreach (var property in type.Properties)
-                if (property is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && property.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(property) + where;
+                var declaring = implementation.DeclaringType;
 
-            foreach (var @event in type.Events)
-                if (@event is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && @event.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(@event) + where;
+                if (declaring.TypeKind == TypeKind.Interface && declaring.DeclaringAssembly.Equals(implemented.DeclaringAssembly)) continue;
+
+                if (Elsewhere(target, implementation) is { } where)
+                    yield return (IsPublic(implementation) ? PublicName(implementation, member) : Describe(implementation)) + where;
+                else if (implementation.IsExplicitInterfaceImplementation)
+                    yield return Describe(implementation);
+            }
         }
+    }
+
+    /// <summary>
+    /// Where <paramref name="implementation"/> is declared, as an error names it, when it is not
+    /// <paramref name="target"/> itself: <c>" in its base type X"</c> or <c>" in its interface X"</c>.
+    /// </summary>
+    private static string? Elsewhere(INamedType target, IMember implementation) =>
+        implementation.DeclaringType switch
+        {
+            var declaring when declaring.Equals(target)     => null,
+            { TypeKind: TypeKind.Interface } declaring       => $" in its interface {declaring.ToDisplayString()}",
+            var declaring                                    => $" in its base type {declaring.ToDisplayString()}"
+        };
+
+    /// <summary>
+    /// A public member, which an explicit implementation never is. From another assembly, a public static member
+    /// that implements a static abstract one reads as an explicit implementation too, since the compiler records
+    /// every such implementation in metadata as one, so it is told apart by its accessibility.
+    /// </summary>
+    private static bool IsPublic(IMember member) => member.Accessibility == Accessibility.Public;
+
+    /// <summary>
+    /// A public implementation as an error names it: <c>BoundedBase&lt;Level&gt;.MaxValue</c>. One from another
+    /// assembly that reads as an explicit implementation displays as <c>BoundedBase&lt;Level&gt;.IMinMaxValue.MaxValue</c>,
+    /// so it is named by its type and the member it implements.
+    /// </summary>
+    private static string PublicName(IMember implementation, IMember implemented)
+    {
+        if (!implementation.IsExplicitInterfaceImplementation) return implementation.ToDisplayString();
+
+        var shown = implemented.ToDisplayString();
+        var at    = shown.IndexOf("." + implemented.Name, StringComparison.Ordinal);
+
+        return at < 0 ? implementation.ToDisplayString() : implementation.DeclaringType.ToDisplayString() + shown.Substring(at);
     }
 
     /// <summary>
@@ -346,10 +427,21 @@ internal static class ValueObjectDeclaration
     /// callable one it is a second rule set, which generic code calling <c>T.Create</c> reached while
     /// every generated entry point applied the other.
     /// </summary>
-    public static (bool Explicitly, bool Callable) CreateDeclarations(INamedType target)
+    /// <remarks>
+    /// A base record's or an interface's counts, found by the interface mapping: <paramref name="declaration"/>
+    /// names it, and <paramref name="inherited"/> says it is not the value object's own. Where the value object
+    /// lists the marker only through a base record of another project, generic <c>T.Create</c> reached the base's
+    /// explicit implementation, which refused what the value object's own <c>Create</c> accepted (#195, measured
+    /// 2026-10-30). A base's public one is one rule set alone, which the generated code reaches as
+    /// <c>{TSelf}.Create</c>, and a second beside the value object's own.
+    /// </remarks>
+    public static (bool Explicitly, bool Callable) CreateDeclarations(INamedType target, INamedType marker, out string declaration, out bool inherited)
     {
         var explicitly = false;
         var callable   = false;
+
+        declaration = $"an explicit implementation of {marker.ToDisplayString()}";
+        inherited   = false;
 
         foreach (var method in target.Methods)
         {
@@ -364,6 +456,17 @@ internal static class ValueObjectDeclaration
             {
                 callable = true;
             }
+        }
+
+        if (!explicitly
+         && marker.Methods.FirstOrDefault(method => method.Name == nameof(IValidatedValue<,,>.Create)) is { } create
+         && target.TryFindImplementationForInterfaceMember(create, out var implementation)
+         && Elsewhere(target, implementation) is { } where
+         && (!IsPublic(implementation) || callable))
+        {
+            explicitly  = true;
+            inherited   = true;
+            declaration = IsPublic(implementation) ? PublicName(implementation, create) + where : declaration + where;
         }
 
         return (explicitly, callable);
@@ -518,16 +621,20 @@ internal static class ValueObjectDeclaration
     /// <summary>Non-implicit members of <paramref name="target"/> with one of <paramref name="names"/>, of any kind.</summary>
     private static IEnumerable<string> MembersNamed(INamedType target, params string[] names) => MembersNamed(target, methods: true, names);
 
+    /// <remarks>
+    /// An explicit implementation is <see cref="ImplementationsOf"/>'s, which names it, and so is a public static
+    /// member of another assembly that implements a static abstract one, which reads as explicit there.
+    /// </remarks>
     internal static IEnumerable<string> MembersNamed(INamedType target, bool methods, params string[] names)
     {
         foreach (var field in target.Fields)
             if (!field.IsImplicitlyDeclared && Enumerable.Contains(names, field.Name)) yield return field.ToDisplayString();
 
         foreach (var property in target.Properties)
-            if (!property.IsImplicitlyDeclared && Enumerable.Contains(names, property.Name)) yield return property.ToDisplayString();
+            if (property is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false } && Enumerable.Contains(names, property.Name)) yield return property.ToDisplayString();
 
         foreach (var @event in target.Events)
-            if (!@event.IsImplicitlyDeclared && Enumerable.Contains(names, @event.Name)) yield return @event.ToDisplayString();
+            if (@event is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false } && Enumerable.Contains(names, @event.Name)) yield return @event.ToDisplayString();
 
         foreach (var nested in target.Types)
             if (Enumerable.Contains(names, nested.Name)) yield return $"the nested type {nested.ToDisplayString()}";
