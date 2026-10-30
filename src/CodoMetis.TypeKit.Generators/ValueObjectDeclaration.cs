@@ -268,12 +268,17 @@ internal static class ValueObjectDeclaration
         // An explicit implementation of an interface the generators implement sat beside the generated
         // member, which it hides from every caller through the interface: a generic T.Parse bypassed
         // Create, and interpolation printed through a hand-written IFormattable while ToString() did not.
+        // An interface's was replaced by the generated member instead, as silently.
         found.AddRange(ExplicitImplementationsOf(target, generatedInterfaces));
 
         // ValueObjectConvertibleAspect implements every member of IConvertible explicitly, so declaring
         // the interface at all, with public or explicit members, failed the aspect (LAMA0041: it cannot
-        // introduce explicit members for an interface it was told to ignore).
+        // introduce explicit members for an interface it was told to ignore). So did declaring an
+        // interface derived from it.
         var convertible = valueType.IsConvertibleTo(typeof(IConvertible));
+        var iconvertible = TypeFactory.GetNamedType(typeof(IConvertible));
+
+        bool DerivesFromConvertible(INamedType implemented) => implemented.AllImplementedInterfaces.Any(inherited => inherited.Equals(iconvertible));
 
         // The interfaces implemented with OverrideStrategy.Fail, and IConvertible. The marker's own are implied by it.
         foreach (var implemented in target.ImplementedInterfaces)
@@ -281,15 +286,18 @@ internal static class ValueObjectDeclaration
             if (implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IValueObject<,>)))
              || implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IValueObjectMaterializer<,>)))
              || implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IPlainValueObject<,>)))
-             || (convertible && implemented.Equals(TypeFactory.GetNamedType(typeof(IConvertible)))))
+             || (convertible && implemented.Equals(iconvertible)))
                 found.Add($"the interface {implemented.ToDisplayString()}");
+            else if (convertible && DerivesFromConvertible(implemented))
+                found.Add($"the interface IConvertible in its interface {implemented.ToDisplayString()}");
         }
 
-        // IConvertible implemented by a base record is implemented already, and the aspect failed the same way.
+        // IConvertible implemented by a base record, itself or through an interface, is implemented
+        // already, and the aspect failed the same way.
         if (convertible)
         {
             foreach (var type in SelfAndBases(target).Skip(1))
-                if (type.ImplementedInterfaces.Any(implemented => implemented.Equals(TypeFactory.GetNamedType(typeof(IConvertible)))))
+                if (type.ImplementedInterfaces.Any(implemented => implemented.Equals(iconvertible) || DerivesFromConvertible(implemented)))
                     found.Add($"the interface IConvertible in its base type {type.ToDisplayString()}");
         }
 
@@ -310,32 +318,57 @@ internal static class ValueObjectDeclaration
     }
 
     /// <summary>
-    /// The members of <paramref name="target"/> that explicitly implement a member of one of
-    /// <paramref name="interfaces"/>, compared by definition, as <see cref="Describe"/> names them.
+    /// The explicit implementations that <paramref name="target"/> reaches for a member of one of
+    /// <paramref name="interfaces"/>, compared by definition, as <see cref="Describe"/> names them: its own, a
+    /// base record's or an interface's, in this assembly or another.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// A base record's count too. The generated member replaced one of <c>IFormattable</c> or
     /// <c>IEqualityOperators</c> without a word, and one of a static interface (<c>IParsable</c>,
     /// <c>IMinMaxValue</c>) or of <c>IComparable</c> kept answering the interface: a generic
     /// <c>T.Parse</c> reached a generic base's, skipping <c>Create</c>, and <c>Comparer&lt;T&gt;.Default</c>
     /// disagreed with <c>&lt;</c> (measured 2026-09-28).
+    /// </para>
+    /// <para>
+    /// So does an interface's, the default every type that declares the interface reaches until it declares
+    /// a public member of its own. The generated one replaced it without a word: <c>Max&lt;Bounded&gt;()</c>
+    /// read the generated <c>MaxValue</c> where <c>IBounded&lt;TSelf&gt;</c>'s threw, and an <c>IFormattable</c>
+    /// call printed <c>1</c> where <c>IFormats</c> answered its own text (#191, measured 2026-10-30 for every
+    /// interface the generators implement). An interface's <c>==</c> is not one: the record's own replaces it,
+    /// generated or not, and that is the implementation found.
+    /// </para>
+    /// <para>
+    /// Found by the interface mapping, never by listing members: Metalama lists no private member of a type in
+    /// another assembly, and an explicit implementation is private, so a base record's and an interface's from
+    /// a referenced project were replaced or kept without a word (measured 2026-10-30).
+    /// </para>
+    /// <para>
+    /// An interface's explicit implementation of a member of an interface in the same library is not refused:
+    /// .NET's <c>INumberBase&lt;TSelf&gt;</c> bridges UTF-8 formatting and parsing to the UTF-16 members, which
+    /// every numeric type of .NET replaces with its own and the generators generate both of. They are the only
+    /// such members in .NET 10's interfaces (scanned 2026-10-30).
+    /// </para>
     /// </remarks>
     internal static IEnumerable<string> ExplicitImplementationsOf(INamedType target, IReadOnlyList<INamedType> interfaces)
     {
-        bool OfOne(IMember implemented) => interfaces.Any(@interface => implemented.DeclaringType.Definition.Equals(@interface));
-
-        foreach (var type in SelfAndBases(target))
+        foreach (var implemented in target.AllImplementedInterfaces)
         {
-            var where = type.Equals(target) ? "" : $" in its base type {type.ToDisplayString()}";
+            if (!interfaces.Any(@interface => implemented.Definition.Equals(@interface))) continue;
 
-            foreach (var method in type.Methods)
-                if (method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && method.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(method) + where;
+            foreach (var member in implemented.Methods.Concat<IMember>(implemented.Properties).Concat(implemented.Events))
+            {
+                if (!target.TryFindImplementationForInterfaceMember(member, out var implementation)
+                 || implementation is not { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true }) continue;
 
-            foreach (var property in type.Properties)
-                if (property is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && property.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(property) + where;
+                var declaring = implementation.DeclaringType;
 
-            foreach (var @event in type.Events)
-                if (@event is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && @event.ExplicitInterfaceImplementations.Any(OfOne)) yield return Describe(@event) + where;
+                if (declaring.TypeKind == TypeKind.Interface && declaring.DeclaringAssembly.Equals(implemented.DeclaringAssembly)) continue;
+
+                yield return Describe(implementation) + (declaring.Equals(target) ? ""
+                                                       : declaring.TypeKind == TypeKind.Interface ? $" in its interface {declaring.ToDisplayString()}"
+                                                       : $" in its base type {declaring.ToDisplayString()}");
+            }
         }
     }
 

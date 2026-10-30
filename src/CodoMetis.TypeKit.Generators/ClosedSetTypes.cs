@@ -189,10 +189,17 @@ internal static class ClosedSetTypes
     /// overload of another signature is the set's own and is kept, as is <c>ToString()</c>, the seam. A
     /// member of the set with a generated name is CMTK1021's, which says to rename it.
     /// </summary>
+    /// <remarks>
+    /// An explicit implementation of <c>IClosedSet&lt;TSelf&gt;</c> in an interface the set implements is the
+    /// set's too: the generated <c>Name</c> and <c>TryParse</c> replaced an interface's without a word (#191,
+    /// measured 2026-10-30). <c>IParsable&lt;TSelf&gt;</c> declared through an interface failed the aspect as
+    /// declaring it does (LAMA0512).
+    /// </remarks>
     public static IReadOnlyList<string> GeneratedMembersDeclaredByHand(INamedType set, IReadOnlyList<IField> members)
     {
         var text = TypeFactory.GetType(SpecialType.String);
         var boolean = TypeFactory.GetType(SpecialType.Boolean);
+        var parsable = TypeFactory.GetNamedType(typeof(IParsable<>)).WithTypeArguments(set);
         var memberNames = new HashSet<string>(members.Select(member => member.ToDisplayString()));
 
         return
@@ -201,9 +208,9 @@ internal static class ClosedSetTypes
             .. set.Methods.Where(method => IsOwn(method) && method.Name == "Parse" && (SameParameters(method, text) || SameParameters(method, text, boolean))).Select(ValueObjectDeclaration.Describe),
             .. set.Methods.Where(method => IsOwn(method) && method.Name == "TryParse" && (SameParameters(method, text, set) || SameParameters(method, text, boolean, set))).Select(ValueObjectDeclaration.Describe),
             .. set.Methods.Where(method => IsOwn(method) && IsGeneratedMatch(method, members.Count)).Select(ValueObjectDeclaration.Describe),
-            .. set.Methods.Where(method => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && method.ExplicitInterfaceImplementations.Any(OfClosedSet)).Select(ValueObjectDeclaration.Describe),
-            .. set.Properties.Where(property => property is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: true } && property.ExplicitInterfaceImplementations.Any(OfClosedSet)).Select(ValueObjectDeclaration.Describe),
-            .. set.ImplementedInterfaces.Where(implemented => implemented.Equals(TypeFactory.GetNamedType(typeof(IParsable<>)).WithTypeArguments(set))).Select(implemented => $"the interface {implemented.ToDisplayString()}"),
+            .. ValueObjectDeclaration.ExplicitImplementationsOf(set, [TypeFactory.GetNamedType(typeof(IClosedSet<>))]),
+            .. set.ImplementedInterfaces.Where(implemented => implemented.Equals(parsable)).Select(implemented => $"the interface {implemented.ToDisplayString()}"),
+            .. set.ImplementedInterfaces.Where(implemented => implemented.AllImplementedInterfaces.Any(inherited => inherited.Equals(parsable))).Select(implemented => $"the interface {parsable.ToDisplayString()} in its interface {implemented.ToDisplayString()}"),
             .. set.Attributes.Where(attribute => attribute.Type.Equals(TypeFactory.GetNamedType(typeof(JsonConverterAttribute)))
                                               || attribute.Type.Equals(TypeFactory.GetNamedType(typeof(TypeConverterAttribute)))
                                               || attribute.Type.Definition.Equals(TypeFactory.GetNamedType(typeof(GeneratedClosedSetAttribute<>))))
@@ -229,7 +236,4 @@ internal static class ClosedSetTypes
     /// <summary>Whether a <c>ToString()</c> is written by hand: the seam, kept in place of the generated one.</summary>
     public static bool DeclaresToString(INamedType set) =>
         set.Methods.Any(method => method is { Name: "ToString", IsStatic: false, IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false, Parameters.Count: 0 });
-
-    private static bool OfClosedSet(IMember implemented) =>
-        implemented.DeclaringType.Definition.Equals(TypeFactory.GetNamedType(typeof(IClosedSet<>)));
 }

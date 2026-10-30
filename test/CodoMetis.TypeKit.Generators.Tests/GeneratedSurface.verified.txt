@@ -1,4 +1,6 @@
 # CodoMetis.TypeKit.Generators.Probes
+IProbeSetNames<TSelf>
+  implements IClosedSet<TSelf>
 ProbeAmount
   CompareTo(Object) : Int32
   CompareTo(ProbeAmount) : Int32

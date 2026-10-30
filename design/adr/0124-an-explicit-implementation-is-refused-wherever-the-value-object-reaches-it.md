@@ -1,0 +1,84 @@
+# 0124. An explicit implementation is refused wherever the value object reaches it
+
+Date: 2026-10-30
+Status: accepted
+
+Context: [#191](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/issues/191), under the 2.4.0 epic
+[#177](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/issues/177), found while
+[#188](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/pull/188) closed the same gap for the arithmetic
+operators, where an interface's explicit implementation is kept, from an outside review of that pull request;
+refines
+[decision 28](0028-seams-declared-everything-else-refused.md), and is an exception to
+[decision 34](0034-errors-fixed-within-major-version-warnings.md) under
+[decision 119](0119-a-gap-found-before-the-tag-ships-in-that-release.md). Decision 28 refuses an explicit
+implementation of an interface the generators implement, on the value object and, since phase 11, on a base
+record (CMTK1011, CMTK1008 for the comparison interfaces). `ValueObjectDeclaration.ExplicitImplementationsOf`
+listed the members of the value object and its base records, and nothing else.
+
+## What was measured
+
+On `release/2.4.0` at `97c87c1`, 2026-10-30, with a consumer of the generators:
+
+- **An interface's explicit implementation was replaced without a word.** An interface can implement a member
+  of a base interface explicitly, and every type that declares it reaches that default until it declares a
+  public member of its own. The generated member is one, for each of the eleven interfaces the generators
+  implement: `IFormattable`, `ISpanFormattable`, `IUtf8SpanFormattable`, `IParsable`, `ISpanParsable`,
+  `IUtf8SpanParsable`, `IMinMaxValue`, `IComparable`, `IComparable<T>`, `IComparisonOperators` (each answered
+  the generated member's result through a generic call, where the interface's threw or answered its own) and
+  `IConvertible` (below). The same held two interfaces down and through an interface of a base record.
+- **Another assembly's were missed too, a base record's included.** Metalama lists no private member of a type
+  in another assembly, and an explicit implementation is private, so the listing saw none in a referenced
+  project. An interface there was replaced as above. A base record there was replaced or kept answering the
+  interface: an `IFormattable` call on a value object over a referenced record that implements it printed `1`,
+  where the base answered its own text, and `Max<T>()` over a referenced `MinMaxBase<TSelf>` reached the base's,
+  which threw. The rule has had this gap since phase 11.
+  `INamedType.TryFindImplementationForInterfaceMember` finds every one of them.
+- **`IConvertible` declared through an interface** failed the aspect (LAMA0041, naming nothing the user wrote),
+  as declaring it directly did before CMTK1011 named it. So did a closed set's `IParsable<TSelf>` declared
+  through an interface (LAMA0512). A closed set's interface that implements `IClosedSet<TSelf>.Name` or
+  `TryParse` explicitly was replaced by the generated members without a word.
+- **An interface's `==`, `!=` and `IEquatable<T>.Equals` are replaced by the record's own**, in a plain record
+  as in a value object, so the generators change nothing there. For the same reason
+  `ValueObjectContractAspect.ExplicitlyImplementsEquatableBetween` has no gap: a base record's synthesized
+  `Equals(TBase)` implements `IEquatable<TBase>` before any interface's default (a `HashSet` of the base held
+  both value objects).
+- **.NET implements three such members itself**: `INumberBase<TSelf>` implements `IUtf8SpanFormattable.TryFormat`
+  and `IUtf8SpanParsable<TSelf>.Parse` and `TryParse` explicitly, as bridges to the UTF-16 members. A scan of the
+  interfaces of `System.Private.CoreLib` for explicit implementations of the eleven found no other; the reference
+  assembly carries the same three.
+
+## Decision
+
+**CMTK1011, and CMTK1008 for the comparison interfaces, refuse an explicit implementation of a member of an
+interface the generators implement wherever the value object reaches it**: its own, a base record's, or one in
+an interface it implements, directly or through another, in this assembly or another. The error names the member
+and where it is, "in its base type `X`" or "in its interface `X`". A closed set's `IClosedSet<TSelf>` is held the
+same way.
+
+- **Found by the interface mapping, never by listing members.** For each member of a generated interface the
+  value object implements, `TryFindImplementationForInterfaceMember` gives the implementation C# maps it to; an
+  explicit one is refused. The record's own `==` is what the mapping finds for an interface's `==`, so that case
+  needs no rule of its own.
+- **`IConvertible` and a set's `IParsable<TSelf>` declared through an interface** are CMTK1011, naming the
+  interface, where the aspect failed.
+- **Not refused: an interface's explicit implementation of a member of an interface of its own library.** That
+  is .NET's `INumberBase<TSelf>`: every .NET number replaces its bridges with its own UTF-8 members, as the
+  generated ones do, and refusing them would leave no value object able to implement `INumberBase<TSelf>`. The
+  test is by assembly symbol, never by name.
+- **Not this decision:** `IValueObject<,>`, `IValueObjectMaterializer<,>` or `IPlainValueObject<,>` declared
+  through an interface of the user's (an `IEntityId<TSelf> : IValueObject<TSelf, Guid>`) still fails the aspect
+  (LAMA0512). Whether it should be accepted is a question of its own.
+
+**The exception to decision 34.** A build that worked on 2.3.0 can fail on 2.4.0, wherever a value object or a
+closed set reaches an interface's explicit implementation of a generated member, or a base record's in another
+assembly. Each is code that never runs (an interface's default the generated member replaced) or a second answer
+beside the generated one (a base's kept implementation), in every build that contains it, so the error names a
+defect, never correct code. Found before 2.4.0 is tagged, it ships in 2.4.0, as decision 119 has such a gap do.
+The changelog's Changed section says which declarations fail and what to write instead. The forms that failed the
+aspect before fail the build with a CMTK error now, which breaks no build.
+
+`BuildOutcomeTests` holds it: one value object per interface, two interfaces down, through a base record's
+interface, a record class over a reference type, and from another assembly (`IProbeFormats`, `IProbeBounded`,
+`IProbeOrders`, `ProbeFormattableRecord` and `ProbeMinMaxRecord` in `CodoMetis.TypeKit.Generators.Probes`), a
+closed set through an interface of either assembly, and the cases that build: a `ToString()` seam, a `Uri`'s
+missing ordering, an interface's `==` and an `INumberBase<TSelf>` value object.

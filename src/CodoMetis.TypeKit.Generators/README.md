@@ -220,10 +220,20 @@ covers:
 
 - **A plain value object's members**: `From`, `Value`, `Parse` and `TryParse`, `MinValue`/`MaxValue`.
 - **The attributes**: `[JsonConverter]` and `[TypeConverter]`.
-- **The interfaces the generators implement**, and `IConvertible` where they generate it.
+- **The interfaces the generators implement**, and `IConvertible` where they generate it, declared
+  directly or through another interface.
 - **An explicit implementation of a member of an interface they implement**, such as
-  `IParsable<TSelf>.Parse` or `IFormattable.ToString`. Every caller through the interface would reach
-  it rather than the generated member, and a generic `T.Parse` would skip `Create`.
+  `IParsable<TSelf>.Parse` or `IFormattable.ToString`. On the value object or a base record, every
+  caller through the interface would reach it rather than the generated member, and a generic
+  `T.Parse` would skip `Create`.
+- **The same explicit implementation in an interface the value object implements.** The generated
+  member would replace it, so it would never run. The error names the interface, in your project or
+  another.
+
+Two explicit implementations in an interface are fine, because a value object loses nothing by
+replacing them. A record's own `==` and `!=` replace an interface's, generated or not. And .NET's
+`INumberBase<TSelf>` formats and parses UTF-8 through the UTF-16 members, which every .NET number
+replaces with its own, as the generated members do.
 
 Declare `Create` once, `public static`, and never as an explicit interface implementation. The
 generated code can't call an explicit one. And beside a public one, generic code calling `T.Create`
@@ -569,7 +579,8 @@ The one place the input still appears is System.Text.Json's own: a rejected dict
 To order differently, declare `CompareTo(TSelf)` yourself. It's kept, and the object overload, the
 operators and the interfaces are built from it. Any other hand-written comparison member fails the
 build (CMTK1008), an explicit implementation of `IComparable<TSelf>`, `IComparable` or
-`IComparisonOperators` included. So in memory, every comparison agrees with your `CompareTo`.
+`IComparisonOperators` included, in an interface the value object implements too. So in memory,
+every comparison agrees with your `CompareTo`.
 
 A database can't run your `CompareTo`, because it orders the column by the underlying value. So the
 type carries `[HandWrittenOrdering]`, and an EF Core query that compares or orders it, or takes its
@@ -592,10 +603,10 @@ error ends with a link to this table. CMTK1023 is the one warning:
 | CMTK1005 | Generic or nested in a generic type (nesting in a non-generic type is fine), `file`-local or nested in a `file`-local type, named `Value` or as another member the generators add (`From`, `TryFrom`, `FromKnownGood`, `Revalidate`, `Parse`, `TryParse`, `TryFormat`, `MinValue`, `MaxValue`, `CompareTo`), derived from another value object, or wrapping `object`, `System.Enum`, an array, a pointer, a nullable type, a generic type (a tuple included) or a value object (itself included). Wrap what the other value object wraps instead. |
 | CMTK1006 | A record class not declared `sealed`. |
 | CMTK1007 | The `{TSelf}Extensions` companion's name is taken by a declared type or by another value object's companion. |
-| CMTK1008 | A hand-written comparison operator, object `CompareTo` or explicit implementation of a comparison interface beside the generated ones. |
+| CMTK1008 | A hand-written comparison operator, object `CompareTo` or explicit implementation of a comparison interface beside the generated ones, on the value object, a base record or an interface it implements. |
 | CMTK1009 | A hand-written instance constructor, including a positional record's parameter list such as `OrderId(Guid Value)`. The constructor and `Value` are generated. A static constructor is fine. |
 | CMTK1010 | Declared in more than one `partial` part. Metalama 2026.1 writes the generated `ToString()` into every part, which doesn't compile. A part a source generator adds, such as a `[GeneratedRegex]` method's, doesn't count. |
-| CMTK1011 | A hand-written member or attribute the generators add (see "Write your own members", and for a closed set every generated member but `ToString()`, by signature, `IParsable<TSelf>`, `[JsonConverter]` and `[TypeConverter]`), an explicit implementation of an interface they implement, a hand-written equality (an `operator ==` or `!=` between two of the type included, which C# also reports as CS0111), a `PrintMembers` without `ToString()`, or `Create` implemented explicitly. |
+| CMTK1011 | A hand-written member or attribute the generators add (see "Write your own members", and for a closed set every generated member but `ToString()`, by signature, `IParsable<TSelf>`, `[JsonConverter]` and `[TypeConverter]`), an explicit implementation of an interface they implement, on the value object, a base record or an interface it implements, a hand-written equality (an `operator ==` or `!=` between two of the type included, which C# also reports as CS0111), a `PrintMembers` without `ToString()`, or `Create` implemented explicitly. |
 | CMTK1012 | Instance state besides the underlying value: a field, an auto-property, a `required` member or a field-like event, declared or inherited. Compute it from `Value`, make it static, or wrap a type that holds all of it. |
 | CMTK1013 | A closed set not declared `partial`. |
 | CMTK1014 | A closed set not declared `sealed`. A set with subtypes isn't closed. |

@@ -221,6 +221,50 @@ public abstract record ProbeIdentityRecord
     public Guid Identity => _identity;
 }
 
+/// <summary>
+/// An interface in another assembly that implements <c>IFormattable</c> explicitly, which a value object
+/// declaring it in the build-outcome consumer must refuse (CMTK1011). Metalama lists no private member of a
+/// type in another assembly, and an explicit implementation is private, so a check that listed members missed it.
+/// </summary>
+public interface IProbeFormats : IFormattable
+{
+    string IFormattable.ToString(string? format, IFormatProvider? formatProvider) => "***";
+}
+
+/// <summary>The same for <c>IMinMaxValue</c>, a static interface.</summary>
+public interface IProbeBounded<TSelf> : System.Numerics.IMinMaxValue<TSelf> where TSelf : IProbeBounded<TSelf>
+{
+    static TSelf System.Numerics.IMinMaxValue<TSelf>.MinValue => throw new NotSupportedException();
+
+    static TSelf System.Numerics.IMinMaxValue<TSelf>.MaxValue => throw new NotSupportedException();
+}
+
+/// <summary>The same for <c>IComparable</c>, which CMTK1008 refuses.</summary>
+public interface IProbeOrders : IComparable
+{
+    int IComparable.CompareTo(object? obj) => 0;
+}
+
+/// <summary>The same for <c>IClosedSet</c>, on a closed set.</summary>
+public interface IProbeSetNames<TSelf> : IClosedSet<TSelf> where TSelf : class, IProbeSetNames<TSelf>
+{
+    string IClosedSet<TSelf>.Name => "***";
+}
+
+/// <summary>A base record in another assembly that implements <c>IFormattable</c> explicitly, which a value object derived from it must refuse.</summary>
+public abstract record ProbeFormattableRecord : IFormattable
+{
+    string IFormattable.ToString(string? format, IFormatProvider? formatProvider) => "***";
+}
+
+/// <summary>The same for <c>IMinMaxValue</c>, which kept answering the interface.</summary>
+public abstract record ProbeMinMaxRecord<TSelf> : System.Numerics.IMinMaxValue<TSelf> where TSelf : ProbeMinMaxRecord<TSelf>, System.Numerics.IMinMaxValue<TSelf>
+{
+    static TSelf System.Numerics.IMinMaxValue<TSelf>.MinValue => throw new NotSupportedException();
+
+    static TSelf System.Numerics.IMinMaxValue<TSelf>.MaxValue => throw new NotSupportedException();
+}
+
 /// <summary>A closed set with no data and no constructor: the generators add a private one.</summary>
 public sealed partial class ProbeStatus : IClosedSet<ProbeStatus>
 {
