@@ -33,6 +33,38 @@ public abstract record AddingBase<TSelf> : IAdditionOperators<TSelf, TSelf, TSel
 /// <summary>Its <c>+</c> is its base record's, which every caller through the interface reaches: none is generated.</summary>
 public sealed partial record InheritsAddition : AddingBase<InheritsAddition>, IValue<int>;
 
+/// <summary>An interface that implements <c>+</c> explicitly, the default of every type that declares it: the left operand.</summary>
+public interface IAddsLeft<TSelf> : IAdditionOperators<TSelf, TSelf, TSelf> where TSelf : IAddsLeft<TSelf>
+{
+    static TSelf IAdditionOperators<TSelf, TSelf, TSelf>.operator +(TSelf left, TSelf right) => left;
+}
+
+/// <summary><see cref="IAddsLeft{TSelf}"/>'s <c>+</c>, one interface further down.</summary>
+public interface IAddsLeftToo<TSelf> : IAddsLeft<TSelf> where TSelf : IAddsLeftToo<TSelf>;
+
+/// <summary>Its <c>+</c> is its interface's: none is generated.</summary>
+public readonly partial record struct AddsThroughInterface : IValue<int>, IAddsLeft<AddsThroughInterface>;
+
+/// <summary>Its <c>+</c> is an interface's that its own interface derives from.</summary>
+public readonly partial record struct AddsThroughInheritedInterface : IValue<int>, IAddsLeftToo<AddsThroughInheritedInterface>;
+
+/// <summary>A base record whose interface implements <c>+</c>.</summary>
+public abstract record AddsThroughBase<TSelf> : IAddsLeft<TSelf> where TSelf : AddsThroughBase<TSelf>;
+
+/// <summary>Its <c>+</c> is its base record's interface's.</summary>
+public sealed partial record AddsThroughBaseInterface : AddsThroughBase<AddsThroughBaseInterface>, IValue<int>;
+
+/// <summary>An interface of one value object's, not generic, that adds a fee of one.</summary>
+#pragma warning disable CA2260 // TSelf is the value object, not the interface: the shape under test.
+public interface IAddsFee : IAdditionOperators<FeeMoney, FeeMoney, FeeMoney>
+#pragma warning restore CA2260
+{
+    static FeeMoney IAdditionOperators<FeeMoney, FeeMoney, FeeMoney>.operator +(FeeMoney left, FeeMoney right) => FeeMoney.From(left.Value + right.Value + 1m);
+}
+
+/// <summary>Its <c>+</c> is <see cref="IAddsFee"/>'s; its <c>-</c>, which no interface implements, is generated.</summary>
+public readonly partial record struct FeeMoney : IValue<decimal>, IAddsFee, ISubtractionOperators<FeeMoney, FeeMoney, FeeMoney>;
+
 /// <summary>A validated value object with the <c>+</c> it had to write by hand before 2.4, which still compiles.</summary>
 public readonly partial record struct Score : IValidatedValue<Score, int, ScoreFault>, IAdditionOperators<Score, Score, Score>
 {
@@ -186,6 +218,30 @@ public sealed class ArithmeticTests
         Should.Throw<NotSupportedException>(() => Add(InheritsAddition.From(1), InheritsAddition.From(2)));
         Operators(typeof(InheritsAddition), "op_Addition").ShouldBeEmpty();
         Operators(typeof(InheritsAddition), "op_CheckedAddition").ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// An interface's explicit implementation is what every type that declares the interface reaches until it
+    /// declares a public operator of its own: one generated here replaced it, and generic addition read 3 where the
+    /// interface's answered 1. Through a generic interface, one further down, one of a base record and one of a single
+    /// value object's.
+    /// </summary>
+    [Fact]
+    public void An_interfaces_explicit_implementation_is_kept()
+    {
+        Add(AddsThroughInterface.From(1), AddsThroughInterface.From(2)).ShouldBe(AddsThroughInterface.From(1));
+        CheckedAdd(AddsThroughInterface.From(1), AddsThroughInterface.From(2)).ShouldBe(AddsThroughInterface.From(1));
+        Add(AddsThroughInheritedInterface.From(1), AddsThroughInheritedInterface.From(2)).ShouldBe(AddsThroughInheritedInterface.From(1));
+        Add(AddsThroughBaseInterface.From(1), AddsThroughBaseInterface.From(2)).ShouldBe(AddsThroughBaseInterface.From(1));
+        Add(FeeMoney.From(1m), FeeMoney.From(2m)).ShouldBe(FeeMoney.From(4m));
+
+        foreach (var type in new[] { typeof(AddsThroughInterface), typeof(AddsThroughInheritedInterface), typeof(AddsThroughBaseInterface), typeof(FeeMoney) })
+        {
+            Operators(type, "op_Addition").ShouldBeEmpty(type.Name);
+            Operators(type, "op_CheckedAddition").ShouldBeEmpty(type.Name);
+        }
+
+        (FeeMoney.From(3m) - FeeMoney.From(1m)).ShouldBe(FeeMoney.From(2m));
     }
 
     [Fact]

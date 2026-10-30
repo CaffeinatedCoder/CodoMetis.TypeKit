@@ -36,7 +36,7 @@ the same. An operand or a result of another type passes through as it is.
   `DateTime`, `TimeSpan`, `DateOnly` and `Guid` implement none of the operator interfaces (measured in the
   .NET 10 reference assemblies: they were dropped before .NET 7 shipped).
 - **A hand-written operator is a seam.** One the value object declares for the same operands, of either kind,
-  whatever it returns, or an explicit implementation of the interface, its own or a base record's, is kept,
+  whatever it returns, or an explicit implementation of the interface, its own, a base record's or an interface's, is kept,
   and neither form of that operator is generated; the operators not written are. Decision 28 would make it
   CMTK1011, but code that implemented these interfaces by hand on 2.3 must build unchanged on 2.4, and
   decision 34 lets no minor report more under an Error. Nothing generated depends on an arithmetic operator,
@@ -46,7 +46,9 @@ the same. An operand or a result of another type passes through as it is.
   generating the `+` would have built it, adding by the wrapped type's rules outside a checked context and
   the user's inside one; it is kept failing. A public operator generated beside a base record's explicit implementation
   would not implement the interface, which the base does: generic code would reach the base's, `a + b`
-  ours.
+  ours. One beside an interface's explicit implementation, the `+` of an `IMoneyMath<TSelf>` that every type
+  declaring it reaches by default, replaced it: generic addition read 3 where the interface's answered 1 (an
+  outside review of #188).
 - **One operator per signature.** C# allows one `operator /(Money, Money)`, so of two interfaces that ask for
   it, the first declared gets it and the second fails the build (CS0738), to be implemented explicitly by hand.
 - **A record class's operand of its own type** is checked for `null` and throws `ArgumentNullException`

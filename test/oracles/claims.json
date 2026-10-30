@@ -1716,8 +1716,8 @@
   {
     "id": "C28-own-operator-kept",
     "source": "docs/value-objects.md#add-subtract-and-scale",
-    "quote": "Write one yourself, or implement the interface explicitly, and TypeKit keeps it, with its checked form.",
-    "claim": "Write one yourself, or implement the interface explicitly, and TypeKit keeps it, with its checked form.",
+    "quote": "Write one yourself, or implement the interface explicitly, in the type, a base record or an interface of yours, and TypeKit keeps it, with its checked form.",
+    "claim": "Write one yourself, or implement the interface explicitly, in the type, a base record or an interface of yours, and TypeKit keeps it, with its checked form.",
     "oracle": "claim",
     "surfaces": [
       "IPlainValueObject.*"

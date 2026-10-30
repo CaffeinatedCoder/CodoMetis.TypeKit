@@ -1657,6 +1657,172 @@ ProbeWeekday
   extension static ProbeWeekdayExtensions.GetValue(ProbeWeekday) : DayOfWeek
   extension static ProbeWeekdayExtensions.ValueOrNull(ProbeWeekday?) : DayOfWeek?
 # CodoMetis.TypeKit.Generators.Tests
+AddsThroughBaseInterface
+  <Clone>$() : AddsThroughBaseInterface
+  CompareTo(AddsThroughBaseInterface) : Int32
+  CompareTo(Object) : Int32
+  Equals(AddsThroughBase<AddsThroughBaseInterface>) : Boolean
+  Equals(AddsThroughBaseInterface) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<AddsThroughBaseInterface, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<AddsThroughBaseInterface, AddsThroughBaseInterface, AddsThroughBaseInterface>
+  implements IAddsLeft<AddsThroughBaseInterface>
+  implements IComparable
+  implements IComparable<AddsThroughBaseInterface>
+  implements IComparisonOperators<AddsThroughBaseInterface, AddsThroughBaseInterface, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<AddsThroughBaseInterface, AddsThroughBaseInterface, Boolean>
+  implements IEquatable<AddsThroughBase<AddsThroughBaseInterface>>
+  implements IEquatable<AddsThroughBaseInterface>
+  implements IFormattable
+  implements IMinMaxValue<AddsThroughBaseInterface>
+  implements IParsable<AddsThroughBaseInterface>
+  implements IPlainValueObject<AddsThroughBaseInterface, Int32>
+  implements IReimplementedEquatable<AddsThroughBase<AddsThroughBaseInterface>>
+  implements ISpanFormattable
+  implements ISpanParsable<AddsThroughBaseInterface>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<AddsThroughBaseInterface>
+  implements IValue<Int32>
+  implements IValueObject<AddsThroughBaseInterface, Int32>
+  implements IValueObjectMaterializer<AddsThroughBaseInterface, Int32>
+  nested AddsThroughBaseInterfaceJsonConverter : JsonConverter<AddsThroughBaseInterface>, IStoredJsonConverterSource
+  nested AddsThroughBaseInterfaceTypeConverter : TypeConverter
+  static From(Int32) : AddsThroughBaseInterface
+  static MaxValue : AddsThroughBaseInterface
+  static MinValue : AddsThroughBaseInterface
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : AddsThroughBaseInterface
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : AddsThroughBaseInterface
+  static Parse(String, IFormatProvider) : AddsThroughBaseInterface
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out AddsThroughBaseInterface) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out AddsThroughBaseInterface) : Boolean
+  static TryParse(String, IFormatProvider, out AddsThroughBaseInterface) : Boolean
+  static op_Equality(AddsThroughBaseInterface, AddsThroughBaseInterface) : Boolean
+  static op_GreaterThan(AddsThroughBaseInterface, AddsThroughBaseInterface) : Boolean
+  static op_GreaterThanOrEqual(AddsThroughBaseInterface, AddsThroughBaseInterface) : Boolean
+  static op_Inequality(AddsThroughBaseInterface, AddsThroughBaseInterface) : Boolean
+  static op_LessThan(AddsThroughBaseInterface, AddsThroughBaseInterface) : Boolean
+  static op_LessThanOrEqual(AddsThroughBaseInterface, AddsThroughBaseInterface) : Boolean
+  extension static AddsThroughBaseInterfaceExtensions.GetValue(AddsThroughBaseInterface) : Int32
+  extension static AddsThroughBaseInterfaceExtensions.ValueOrNull(AddsThroughBaseInterface) : Int32?
+AddsThroughInheritedInterface
+  CompareTo(AddsThroughInheritedInterface) : Int32
+  CompareTo(Object) : Int32
+  Equals(AddsThroughInheritedInterface) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<AddsThroughInheritedInterface, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<AddsThroughInheritedInterface, AddsThroughInheritedInterface, AddsThroughInheritedInterface>
+  implements IAddsLeft<AddsThroughInheritedInterface>
+  implements IAddsLeftToo<AddsThroughInheritedInterface>
+  implements IComparable
+  implements IComparable<AddsThroughInheritedInterface>
+  implements IComparisonOperators<AddsThroughInheritedInterface, AddsThroughInheritedInterface, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<AddsThroughInheritedInterface, AddsThroughInheritedInterface, Boolean>
+  implements IEquatable<AddsThroughInheritedInterface>
+  implements IFormattable
+  implements IMinMaxValue<AddsThroughInheritedInterface>
+  implements IParsable<AddsThroughInheritedInterface>
+  implements IPlainValueObject<AddsThroughInheritedInterface, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<AddsThroughInheritedInterface>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<AddsThroughInheritedInterface>
+  implements IValue<Int32>
+  implements IValueObject<AddsThroughInheritedInterface, Int32>
+  implements IValueObjectMaterializer<AddsThroughInheritedInterface, Int32>
+  nested AddsThroughInheritedInterfaceJsonConverter : JsonConverter<AddsThroughInheritedInterface>, IStoredJsonConverterSource
+  nested AddsThroughInheritedInterfaceTypeConverter : TypeConverter
+  new()
+  static From(Int32) : AddsThroughInheritedInterface
+  static MaxValue : AddsThroughInheritedInterface
+  static MinValue : AddsThroughInheritedInterface
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : AddsThroughInheritedInterface
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : AddsThroughInheritedInterface
+  static Parse(String, IFormatProvider) : AddsThroughInheritedInterface
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out AddsThroughInheritedInterface) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out AddsThroughInheritedInterface) : Boolean
+  static TryParse(String, IFormatProvider, out AddsThroughInheritedInterface) : Boolean
+  static op_Equality(AddsThroughInheritedInterface, AddsThroughInheritedInterface) : Boolean
+  static op_GreaterThan(AddsThroughInheritedInterface, AddsThroughInheritedInterface) : Boolean
+  static op_GreaterThanOrEqual(AddsThroughInheritedInterface, AddsThroughInheritedInterface) : Boolean
+  static op_Inequality(AddsThroughInheritedInterface, AddsThroughInheritedInterface) : Boolean
+  static op_LessThan(AddsThroughInheritedInterface, AddsThroughInheritedInterface) : Boolean
+  static op_LessThanOrEqual(AddsThroughInheritedInterface, AddsThroughInheritedInterface) : Boolean
+  extension static AddsThroughInheritedInterfaceExtensions.GetValue(AddsThroughInheritedInterface) : Int32
+  extension static AddsThroughInheritedInterfaceExtensions.ValueOrNull(AddsThroughInheritedInterface?) : Int32?
+AddsThroughInterface
+  CompareTo(AddsThroughInterface) : Int32
+  CompareTo(Object) : Int32
+  Equals(AddsThroughInterface) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<AddsThroughInterface, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<AddsThroughInterface, AddsThroughInterface, AddsThroughInterface>
+  implements IAddsLeft<AddsThroughInterface>
+  implements IComparable
+  implements IComparable<AddsThroughInterface>
+  implements IComparisonOperators<AddsThroughInterface, AddsThroughInterface, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<AddsThroughInterface, AddsThroughInterface, Boolean>
+  implements IEquatable<AddsThroughInterface>
+  implements IFormattable
+  implements IMinMaxValue<AddsThroughInterface>
+  implements IParsable<AddsThroughInterface>
+  implements IPlainValueObject<AddsThroughInterface, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<AddsThroughInterface>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<AddsThroughInterface>
+  implements IValue<Int32>
+  implements IValueObject<AddsThroughInterface, Int32>
+  implements IValueObjectMaterializer<AddsThroughInterface, Int32>
+  nested AddsThroughInterfaceJsonConverter : JsonConverter<AddsThroughInterface>, IStoredJsonConverterSource
+  nested AddsThroughInterfaceTypeConverter : TypeConverter
+  new()
+  static From(Int32) : AddsThroughInterface
+  static MaxValue : AddsThroughInterface
+  static MinValue : AddsThroughInterface
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : AddsThroughInterface
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : AddsThroughInterface
+  static Parse(String, IFormatProvider) : AddsThroughInterface
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out AddsThroughInterface) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out AddsThroughInterface) : Boolean
+  static TryParse(String, IFormatProvider, out AddsThroughInterface) : Boolean
+  static op_Equality(AddsThroughInterface, AddsThroughInterface) : Boolean
+  static op_GreaterThan(AddsThroughInterface, AddsThroughInterface) : Boolean
+  static op_GreaterThanOrEqual(AddsThroughInterface, AddsThroughInterface) : Boolean
+  static op_Inequality(AddsThroughInterface, AddsThroughInterface) : Boolean
+  static op_LessThan(AddsThroughInterface, AddsThroughInterface) : Boolean
+  static op_LessThanOrEqual(AddsThroughInterface, AddsThroughInterface) : Boolean
+  extension static AddsThroughInterfaceExtensions.GetValue(AddsThroughInterface) : Int32
+  extension static AddsThroughInterfaceExtensions.ValueOrNull(AddsThroughInterface?) : Int32?
 BigIntegerAmount
   CompareTo(BigIntegerAmount) : Int32
   CompareTo(Object) : Int32
@@ -2384,6 +2550,63 @@ ExplicitlyAdded
   static op_LessThanOrEqual(ExplicitlyAdded, ExplicitlyAdded) : Boolean
   extension static ExplicitlyAddedExtensions.GetValue(ExplicitlyAdded) : Int32
   extension static ExplicitlyAddedExtensions.ValueOrNull(ExplicitlyAdded?) : Int32?
+FeeMoney
+  CompareTo(FeeMoney) : Int32
+  CompareTo(Object) : Int32
+  Equals(FeeMoney) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Decimal
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<FeeMoney, Decimal>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<FeeMoney, FeeMoney, FeeMoney>
+  implements IAddsFee
+  implements IComparable
+  implements IComparable<FeeMoney>
+  implements IComparisonOperators<FeeMoney, FeeMoney, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<FeeMoney, FeeMoney, Boolean>
+  implements IEquatable<FeeMoney>
+  implements IFormattable
+  implements IMinMaxValue<FeeMoney>
+  implements IParsable<FeeMoney>
+  implements IPlainValueObject<FeeMoney, Decimal>
+  implements ISpanFormattable
+  implements ISpanParsable<FeeMoney>
+  implements ISubtractionOperators<FeeMoney, FeeMoney, FeeMoney>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<FeeMoney>
+  implements IValue<Decimal>
+  implements IValueObject<FeeMoney, Decimal>
+  implements IValueObjectMaterializer<FeeMoney, Decimal>
+  nested FeeMoneyJsonConverter : JsonConverter<FeeMoney>, IStoredJsonConverterSource
+  nested FeeMoneyTypeConverter : TypeConverter
+  new()
+  static From(Decimal) : FeeMoney
+  static MaxValue : FeeMoney
+  static MinValue : FeeMoney
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : FeeMoney
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : FeeMoney
+  static Parse(String, IFormatProvider) : FeeMoney
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out FeeMoney) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out FeeMoney) : Boolean
+  static TryParse(String, IFormatProvider, out FeeMoney) : Boolean
+  static op_CheckedSubtraction(FeeMoney, FeeMoney) : FeeMoney
+  static op_Equality(FeeMoney, FeeMoney) : Boolean
+  static op_GreaterThan(FeeMoney, FeeMoney) : Boolean
+  static op_GreaterThanOrEqual(FeeMoney, FeeMoney) : Boolean
+  static op_Inequality(FeeMoney, FeeMoney) : Boolean
+  static op_LessThan(FeeMoney, FeeMoney) : Boolean
+  static op_LessThanOrEqual(FeeMoney, FeeMoney) : Boolean
+  static op_Subtraction(FeeMoney, FeeMoney) : FeeMoney
+  extension static FeeMoneyExtensions.GetValue(FeeMoney) : Decimal
+  extension static FeeMoneyExtensions.ValueOrNull(FeeMoney?) : Decimal?
 HalfAmount
   CompareTo(HalfAmount) : Int32
   CompareTo(Object) : Int32

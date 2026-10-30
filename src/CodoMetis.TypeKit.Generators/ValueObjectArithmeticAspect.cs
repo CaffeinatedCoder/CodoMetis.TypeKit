@@ -83,7 +83,7 @@ internal sealed class ArithmeticOperatorArguments
 /// </para>
 /// <para>
 /// An operator the value object already has is kept, with its checked form: one it declares for the
-/// same operands, or an explicit implementation of the interface, its own or a base record's. Code that
+/// same operands, or an explicit implementation of the interface, its own, a base record's or an interface's. Code that
 /// implemented these interfaces by hand before compiles unchanged, so this is no refusal (decision 121).
 /// </para>
 /// </remarks>
