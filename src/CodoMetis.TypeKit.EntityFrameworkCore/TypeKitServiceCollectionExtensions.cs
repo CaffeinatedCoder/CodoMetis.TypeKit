@@ -30,7 +30,8 @@ public static class TypeKitServiceCollectionExtensions
             .TryAdd<IMethodCallTranslatorPlugin, ValueObjectMethodCallTranslatorPlugin>()
             .TryAdd<IConventionSetPlugin, TypeKitConventionSetPlugin>()
             .TryAdd<IInterceptor, HandWrittenOrderingInterceptor>()
-            .TryAdd<IInterceptor, ValueThroughInterfaceInterceptor>();
+            .TryAdd<IInterceptor, ValueThroughInterfaceInterceptor>()
+            .TryAdd<IInterceptor, ValueObjectArithmeticInterceptor>();
 
         return serviceCollection;
     }

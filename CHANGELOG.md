@@ -20,6 +20,10 @@ section is the GitHub release's notes.
 
 - Packages: the public surface is checked against 2.3.0's, so nothing 2.3.0 ships is removed or changed in 2.4.0.
 
+### Fixed
+
+- EF Core: a query that uses an arithmetic or bitwise operator a value object declares by hand throws, naming the value object, where the database ran its own arithmetic and skipped the operator; a query filter fails when the model is built ([Queries](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries)).
+
 ## 2.3.0 — 2026-10-29
 
 ### Added

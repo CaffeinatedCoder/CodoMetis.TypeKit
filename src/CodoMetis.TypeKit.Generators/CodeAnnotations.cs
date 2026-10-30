@@ -40,4 +40,7 @@ internal static class CodeAnnotations
 
     public static AttributeConstruction TranslatedAsWrappedValue =>
         AttributeConstruction.Create(typeof(TranslatedAsWrappedValueAttribute));
+
+    public static AttributeConstruction TranslatedAsWrappedArithmetic =>
+        AttributeConstruction.Create(typeof(TranslatedAsWrappedArithmeticAttribute));
 }

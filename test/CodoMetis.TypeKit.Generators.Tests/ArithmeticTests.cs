@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Reflection;
+using CodoMetis.TypeKit.CompilerServices;
 using CodoMetis.TypeKit.Generators.Probes;
 using CodoMetis.TypeKit.ValueObjects;
 
@@ -193,6 +194,29 @@ public sealed class ArithmeticTests
         (Score.FromKnownGood(70) + Score.FromKnownGood(50)).ShouldBe(Score.FromKnownGood(100));
         Operators(typeof(Score), "op_Addition").ShouldHaveSingleItem();
         Operators(typeof(Score), "op_CheckedAddition").ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Every generated operator carries <see cref="TranslatedAsWrappedArithmeticAttribute"/>, which an EF Core query
+    /// translates as the wrapped type's arithmetic, and none written by hand does: the query refuses those.
+    /// </summary>
+    [Fact]
+    public void A_generated_operator_is_marked_as_the_wrapped_types_arithmetic_and_a_hand_written_one_is_not()
+    {
+        static bool Marked(MethodInfo method) => method.GetCustomAttribute<TranslatedAsWrappedArithmeticAttribute>() is not null;
+
+        var generated = typeof(ProbeMoney).GetMethods(BindingFlags.Public | BindingFlags.Static).Where(method => method.IsSpecialName && method.Name.StartsWith("op_", StringComparison.Ordinal)
+                                                                                                             && method.Name is not ("op_Equality" or "op_Inequality" or "op_LessThan" or "op_LessThanOrEqual" or "op_GreaterThan" or "op_GreaterThanOrEqual"))
+                                          .ToList();
+
+        generated.Select(method => method.Name).Distinct().Order().ShouldBe(
+            ["op_Addition", "op_CheckedAddition", "op_CheckedDivision", "op_CheckedMultiply", "op_CheckedSubtraction", "op_CheckedUnaryNegation",
+             "op_Division", "op_Modulus", "op_Multiply", "op_Subtraction", "op_UnaryNegation", "op_UnaryPlus"]);
+        generated.Where(method => !Marked(method)).Select(method => method.ToString()).ShouldBeEmpty();
+
+        Operators(typeof(RoundedMoney), "op_Subtraction").ShouldHaveSingleItem().ShouldSatisfyAllConditions(method => Marked(method).ShouldBeTrue());
+        Operators(typeof(RoundedMoney), "op_Addition").ShouldHaveSingleItem().ShouldSatisfyAllConditions(method => Marked(method).ShouldBeFalse());
+        Operators(typeof(Score), "op_Addition").ShouldHaveSingleItem().ShouldSatisfyAllConditions(method => Marked(method).ShouldBeFalse());
     }
 
     /// <summary>No interface declared, nothing generated: the arithmetic is opt-in.</summary>

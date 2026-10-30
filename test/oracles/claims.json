@@ -1649,6 +1649,45 @@
     ]
   },
   {
+    "id": "C28-ef-own-operator-rejected",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "A database can't run an operator you write, so an EF Core query that uses one is rejected, naming the value object",
+    "claim": "A database can't run an operator you write, so an EF Core query that uses one is rejected, naming the value object",
+    "oracle": "exception",
+    "surfaces": [
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-ef-own-operator-throws",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "An operator you wrote yourself can't run there, so a query that uses it throws, naming the value object",
+    "claim": "An operator you wrote yourself can't run there, so a query that uses it throws, naming the value object",
+    "oracle": "exception",
+    "surfaces": [
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-generated-operators-marked",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "The generated ones carry `[TranslatedAsWrappedArithmetic]`, which tells the query they are the underlying type's arithmetic.",
+    "claim": "The generated ones carry `[TranslatedAsWrappedArithmetic]`, which tells the query they are the underlying type's arithmetic.",
+    "oracle": "claim",
+    "surfaces": [
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "ArithmeticTests"
+    ]
+  },
+  {
     "id": "C28-nothing-unless-declared",
     "source": "docs/value-objects.md#add-subtract-and-scale",
     "quote": "Nothing is generated unless you declare it.",
@@ -2393,6 +2432,45 @@
     ],
     "heldBy": [
       "SqlServerQueryVariantTests"
+    ]
+  },
+  {
+    "id": "E18-own-operator-over-passed-values",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "An operator over values you pass in, which EF computes before the query, stays allowed.",
+    "claim": "An operator over values you pass in, which EF computes before the query, stays allowed.",
+    "oracle": "claim",
+    "surfaces": [
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenArithmeticTests"
+    ]
+  },
+  {
+    "id": "E18-own-operator-query-filter",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "A query filter that uses one fails when the model is built.",
+    "claim": "A query filter that uses one fails when the model is built.",
+    "oracle": "exception",
+    "surfaces": [
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenArithmeticTests"
+    ]
+  },
+  {
+    "id": "E18-own-operator-throws",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "So a query that uses an arithmetic or bitwise operator you wrote on a value object throws an `InvalidOperationException` naming the value object.",
+    "claim": "So a query that uses an arithmetic or bitwise operator you wrote on a value object throws an `InvalidOperationException` naming the value object.",
+    "oracle": "exception",
+    "surfaces": [
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenArithmeticTests"
     ]
   },
   {
