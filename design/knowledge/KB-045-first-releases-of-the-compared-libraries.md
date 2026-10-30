@@ -24,5 +24,6 @@ First listed version and its date, and the latest listed version, on 2026-10-29:
 | ErrorOr | 0.0.2, 2022-05-31 | 2.1.1, 2026-05-15 |
 | Intellenum | 0.0.1-alpha.1, 2023-03-12 | 2.0.1, 2025-09-30 |
 | SuperStrong.Types | 1.0.0-alpha.1, 2026-06-14 | 1.0.0, 2026-07-21 |
+| EricksonLopez.DomainPrimitives (read 2026-10-30) | 1.0.0, 2026-08-11 | 3.0.0, 2026-09-20 |
 
 A first publish date says how long a package has been released, not how widely it is used in production.
