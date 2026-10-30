@@ -59,7 +59,7 @@
     model is built (and so at `dbcontext optimize` and `migrations add`). A comparison in a filter that
     reads neither the entity nor a query is left alone: EF evaluates it in memory, by `CompareTo`
     (measured: `Floor > From(2)` on the context kept the rows memory keeps).
-  - **An operator is the wrapped type's arithmetic, or refused (decided 2026-10-30, [decision 122](adr/0122-a-hand-written-operator-is-refused-in-a-query.md) and [decision 123](adr/0123-an-operator-in-a-query-is-the-wrapped-type-s-arithmetic.md)).**
+  - **An operator is the wrapped type's arithmetic, or refused (decided 2026-10-30, [decision 123](adr/0123-a-hand-written-operator-is-refused-in-a-query.md) and [decision 123](adr/0123-an-operator-in-a-query-is-the-wrapped-type-s-arithmetic.md)).**
     EF translates an operator node as the database's arithmetic over its operands and never calls the
     method. For a generated operator between two value objects that is right where TypeKit's converter
     stores the column, and added the texts where the application's own stores `"M:" + value`; with another
