@@ -71,6 +71,23 @@ public sealed partial record MaskedOverALocalRecord : LocalMaskingRecord, IValue
 /// <summary>Over a sealed <c>ToString()</c> in another assembly.</summary>
 public sealed partial record MaskedOverALibraryRecord : ProbeMaskingRecord, IValue<string>;
 
+/// <summary>A base class in this assembly whose <c>ToString()</c> is sealed.</summary>
+public abstract class LocalMaskingSetBase
+{
+    /// <summary>What every derived class prints.</summary>
+    public sealed override string ToString() => "***";
+}
+
+/// <summary>A closed set over a sealed <c>ToString()</c>, which failed the aspect (LAMA0502, #205).</summary>
+public sealed partial class MaskedSet : LocalMaskingSetBase, CodoMetis.TypeKit.ClosedSets.IClosedSet<MaskedSet>
+{
+    /// <summary>The first member.</summary>
+    public static readonly MaskedSet Open = new();
+
+    /// <summary>The second member.</summary>
+    public static readonly MaskedSet Closed = new();
+}
+
 /// <summary>
 /// What a value object inherits from a base record. Refusals are build errors and live in
 /// <see cref="BuildOutcomeTests"/>; this is what is generated.
@@ -184,5 +201,21 @@ public sealed class InheritedMembersTests
 
         JsonSerializer.Serialize(value, value.GetType()).ShouldBe("\"SECRET\"");
         TypeDescriptor.GetConverter(value.GetType()).ConvertToInvariantString(value).ShouldBe("SECRET");
+    }
+
+    /// <summary>
+    /// A base class's sealed <c>ToString()</c> is a closed set's seam too (#205): it is what the set prints, while
+    /// its name, parsing and JSON are generated as usual.
+    /// </summary>
+    [Fact]
+    public void A_sealed_ToString_in_a_closed_set_s_base_class_is_the_seam()
+    {
+        MaskedSet.Closed.ToString().ShouldBe("***");
+        $"{MaskedSet.Closed}".ShouldBe("***");
+
+        MaskedSet.Closed.Name.ShouldBe("Closed");
+        MaskedSet.All.ShouldBe([MaskedSet.Open, MaskedSet.Closed]);
+        MaskedSet.Parse("Closed").ShouldBeSameAs(MaskedSet.Closed);
+        JsonSerializer.Serialize(MaskedSet.Closed).ShouldBe("\"Closed\"");
     }
 }

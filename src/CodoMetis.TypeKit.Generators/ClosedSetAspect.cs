@@ -79,6 +79,14 @@ internal sealed partial class ClosedSetAspect : TypeAspect
         foreach (var (member, earlier, reason) in ClosedSetTypes.CaseCollisions(members))
             problems.Add(ClosedSetMemberNameTaken.WithArguments((target, member.Name, reason.Replace("{0}", $"'{target.Name}.{earlier.Name}'"))));
 
+        // A base class's ToString() that is not sealed was replaced by the generated one without a word (#205),
+        // as a value object's base record's was. A sealed one is the seam (DeclaresToString).
+        if (ValueObjectDeclaration.UnsealedInheritedToString(target) is { } inheritedToString)
+            problems.Add(HandWrittenGeneratedMember.WithArguments((target,
+                $"{inheritedToString.ToDisplayString()} in its base type, which is not sealed",
+                $"its generated ToString() replaces it and prints the member's name; declare ToString() in {target.Name} (it may return base.ToString()), "
+              + "or seal the base's, which C# keeps in every derived class and the generators then keep too")));
+
         // A hand-written member the generators introduce failed the aspect with a Metalama error that
         // names no fix; a hand-written ToString() is the seam and is kept instead.
         var declaredByHand = ClosedSetTypes.GeneratedMembersDeclaredByHand(target, members);

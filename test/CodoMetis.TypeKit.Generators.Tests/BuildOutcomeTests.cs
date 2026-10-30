@@ -180,10 +180,36 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("SetWithNameThroughInterface", "the explicit implementation of IClosedSet<SetWithNameThroughInterface>.TryParse(string?, out SetWithNameThroughInterface) in its interface ISetNamesItself<SetWithNameThroughInterface>")]
     [InlineData("SetOverLibraryBase", "the explicit implementation of IClosedSet<SetOverLibraryBase>.Name in its base type ExplicitSetBase<SetOverLibraryBase>")]
     [InlineData("SetWithNameThroughLibraryInterface", "the explicit implementation of IClosedSet<SetWithNameThroughLibraryInterface>.Name in its interface IProbeSetNames<SetWithNameThroughLibraryInterface>")]
+    [InlineData("SetOverParsingBase", "ParsingSetBase<SetOverParsingBase>.Parse(string) in its base type ParsingSetBase<SetOverParsingBase>")]
+    [InlineData("SetOverIgnoreCaseParsingBase", "IgnoreCaseParsingSetBase<SetOverIgnoreCaseParsingBase>.Parse(string, bool) in its base type IgnoreCaseParsingSetBase<SetOverIgnoreCaseParsingBase>")]
+    [InlineData("SetOverTryParsingBase", "TryParsingSetBase<SetOverTryParsingBase>.TryParse(string?, bool, out SetOverTryParsingBase) in its base type TryParsingSetBase<SetOverTryParsingBase>")]
+    [InlineData("SetOverMatchingBase", "MatchingSetBase.Match<TResult>(Func<TResult>) in its base type MatchingSetBase")]
+    [InlineData("SetOverParsableBase", "the interface IParsable<SetOverParsableBase> in its base type ParsableSetBase<SetOverParsableBase>")]
+    [InlineData("SetOverAllListingBase", "AllListingSetBase.All in its base type AllListingSetBase")]
+    [InlineData("SetOverProtectedFieldBase", "ProtectedFieldSetBase._name in its base type ProtectedFieldSetBase")]
+    [InlineData("SetOverQualifiedBase", "QualifiedSetBase.QualifiedName in its base type QualifiedSetBase")]
+    [InlineData("SetOverOpenToStringBase", "OpenToStringSetBase.ToString() in its base type, which is not sealed, so it is not generated: its generated ToString() replaces it")]
+    [InlineData("SetOverLibraryParsingBase", "LibraryParsingSetBase<SetOverLibraryParsingBase>.Parse(string) in its base type LibraryParsingSetBase<SetOverLibraryParsingBase>")]
+    [InlineData("SetOverLibraryParsableBase", "the interface IParsable<SetOverLibraryParsableBase> in its base type LibraryParsableSetBase<SetOverLibraryParsableBase>")]
+    [InlineData("SetOverLibraryOpenToString", "LibraryOpenToStringSetBase.ToString() in its base type, which is not sealed")]
     [InlineData("SetWithTypeConverterAttribute", "the attribute TypeConverter")]
     [InlineData("SetWithJsonConverterAttribute", "the attribute JsonConverter")]
     public void What_the_generators_implement_or_attach_is_refused_by_name_on_a_set(string type, string declared) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(declared), consumer.Output);
+
+    /// <summary>
+    /// What a base class declares that the set cannot reach, or that the generators keep, is no refusal: its
+    /// <c>sealed</c> <c>ToString()</c> is the seam, as for a value object, where it failed the aspect (LAMA0502,
+    /// #205); its private <c>_name</c> and <c>_all</c>, and a <c>[JsonConverter]</c> on it, which the set's own
+    /// replaces, built before and still do (measured 2026-10-30).
+    /// </summary>
+    [Theory]
+    [InlineData("SetOverSealedToStringBase")]
+    [InlineData("SetOverLibrarySealedToString")]
+    [InlineData("SetOverPrivateFieldsBase")]
+    [InlineData("SetOverAttributedBase")]
+    public void What_a_set_s_base_class_declares_out_of_the_generators_way_is_not_refused(string type) =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}"), consumer.Output);
 
     /// <summary>
     /// A member whose name starts with the Kelvin sign (U+212A) and one that starts with K are two names
@@ -607,11 +633,12 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK0012", "CMTK0013", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CMTK1019", "CMTK1020", "CMTK1021", "CMTK1022", "CMTK1023", "CS0535"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK0012", "CMTK0013", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CMTK1019", "CMTK1020", "CMTK1021", "CMTK1022", "CMTK1023", "CS0535", "CS0738"], ignoreOrder: false, customMessage: consumer.Output);
 
     /// <summary>
     /// CS0535 is allowed above only for a refused closed set, whose interface members the generators
-    /// did not implement. A value object or a generated set that lost a member the same way is a
+    /// did not implement, and CS0738 where a base class's member of a generated name has another type
+    /// (a static <c>int All</c>, #205). A value object or a generated set that lost a member the same way is a
     /// regression the list of ids alone would let through.
     /// </summary>
     /// <summary>
@@ -625,7 +652,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
     [Fact]
     public void CS0535_names_only_a_refused_closed_set() =>
-        consumer.Errors.Where(error => error.Id == "CS0535")
+        consumer.Errors.Where(error => error.Id is "CS0535" or "CS0738")
                 .ShouldAllBe(error => RefusedClosedSet().IsMatch(error.Message), consumer.Output);
 
     [GeneratedRegex(@"^'(?:Consumer\.)?Set\w+(?:\.\w+)?(?:<T>)?' does not implement interface member ")]
@@ -2002,6 +2029,43 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             // the interface, its Name was the base's, and EF Core stored that and read no member's name back (#191).
             public sealed partial class SetOverLibraryBase : Library.ExplicitSetBase<SetOverLibraryBase> { public static readonly SetOverLibraryBase A = new(); }
 
+            // A base class that declares a member the generators introduce into a set (#205): each failed the aspect
+            // (LAMA0500, LAMA0502, LAMA0512) naming nothing the user wrote, and an unsealed ToString() was replaced
+            // without a word. A sealed ToString() is the seam, as C# keeps it in every derived class.
+            public abstract class SealedToStringSetBase { public sealed override string ToString() => "***"; }
+            public sealed partial class SetOverSealedToStringBase : SealedToStringSetBase, IClosedSet<SetOverSealedToStringBase> { public static readonly SetOverSealedToStringBase A = new(); }
+            public abstract class OpenToStringSetBase { public override string ToString() => "***"; }
+            public sealed partial class SetOverOpenToStringBase : OpenToStringSetBase, IClosedSet<SetOverOpenToStringBase> { public static readonly SetOverOpenToStringBase A = new(); }
+            public abstract class ParsingSetBase<TSelf> { public static TSelf Parse(string name) => throw new System.NotSupportedException(); }
+            public sealed partial class SetOverParsingBase : ParsingSetBase<SetOverParsingBase>, IClosedSet<SetOverParsingBase> { public static readonly SetOverParsingBase A = new(); }
+            public abstract class IgnoreCaseParsingSetBase<TSelf> { public static TSelf Parse(string name, bool ignoreCase) => throw new System.NotSupportedException(); }
+            public sealed partial class SetOverIgnoreCaseParsingBase : IgnoreCaseParsingSetBase<SetOverIgnoreCaseParsingBase>, IClosedSet<SetOverIgnoreCaseParsingBase> { public static readonly SetOverIgnoreCaseParsingBase A = new(); }
+            public abstract class TryParsingSetBase<TSelf> { public static bool TryParse(string? name, bool ignoreCase, out TSelf member) => throw new System.NotSupportedException(); }
+            public sealed partial class SetOverTryParsingBase : TryParsingSetBase<SetOverTryParsingBase>, IClosedSet<SetOverTryParsingBase> { public static readonly SetOverTryParsingBase A = new(); }
+            public abstract class MatchingSetBase { public TResult Match<TResult>(System.Func<TResult> only) => only(); }
+            public sealed partial class SetOverMatchingBase : MatchingSetBase, IClosedSet<SetOverMatchingBase> { public static readonly SetOverMatchingBase A = new(); }
+            public abstract class ParsableSetBase<TSelf> : System.IParsable<TSelf> where TSelf : ParsableSetBase<TSelf>
+            {
+                static TSelf System.IParsable<TSelf>.Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                static bool System.IParsable<TSelf>.TryParse(string? s, System.IFormatProvider? provider, out TSelf result) { result = null!; return false; }
+            }
+            public sealed partial class SetOverParsableBase : ParsableSetBase<SetOverParsableBase>, IClosedSet<SetOverParsableBase> { public static readonly SetOverParsableBase A = new(); }
+            public abstract class PrivateFieldsSetBase { private string _name = ""; private object? _all; public override int GetHashCode() => _name.Length + (_all is null ? 0 : 1); }
+            public sealed partial class SetOverPrivateFieldsBase : PrivateFieldsSetBase, IClosedSet<SetOverPrivateFieldsBase> { public static readonly SetOverPrivateFieldsBase A = new(); }
+            public abstract class QualifiedSetBase { public string QualifiedName => "***"; }
+            public abstract class AllListingSetBase { public static int All => 0; }
+            public abstract class ProtectedFieldSetBase { protected string _name = ""; }
+            public sealed partial class SetOverProtectedFieldBase : ProtectedFieldSetBase, IClosedSet<SetOverProtectedFieldBase> { public static readonly SetOverProtectedFieldBase A = new(); }
+            public sealed partial class SetOverAllListingBase : AllListingSetBase, IClosedSet<SetOverAllListingBase> { public static readonly SetOverAllListingBase A = new(); }
+            public sealed partial class SetOverQualifiedBase : QualifiedSetBase, IClosedSet<SetOverQualifiedBase> { public static readonly SetOverQualifiedBase A = new(); }
+            [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+            public abstract class AttributedSetBase { }
+            public sealed partial class SetOverAttributedBase : AttributedSetBase, IClosedSet<SetOverAttributedBase> { public static readonly SetOverAttributedBase A = new(); }
+            public sealed partial class SetOverLibrarySealedToString : Library.LibrarySealedToStringSetBase, IClosedSet<SetOverLibrarySealedToString> { public static readonly SetOverLibrarySealedToString A = new(); }
+            public sealed partial class SetOverLibraryOpenToString : Library.LibraryOpenToStringSetBase, IClosedSet<SetOverLibraryOpenToString> { public static readonly SetOverLibraryOpenToString A = new(); }
+            public sealed partial class SetOverLibraryParsingBase : Library.LibraryParsingSetBase<SetOverLibraryParsingBase>, IClosedSet<SetOverLibraryParsingBase> { public static readonly SetOverLibraryParsingBase A = new(); }
+            public sealed partial class SetOverLibraryParsableBase : Library.LibraryParsableSetBase<SetOverLibraryParsableBase>, IClosedSet<SetOverLibraryParsableBase> { public static readonly SetOverLibraryParsableBase A = new(); }
+
             public interface ISetParsesItself<TSelf> : System.IParsable<TSelf> where TSelf : ISetParsesItself<TSelf>;
 
             public sealed partial class SetWithParsableThroughInterface : IClosedSet<SetWithParsableThroughInterface>, ISetParsesItself<SetWithParsableThroughInterface> { public static readonly SetWithParsableThroughInterface A = new(); }
@@ -2095,6 +2159,20 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                 public static TSelf MinValue => throw new System.NotSupportedException();
 
                 public static TSelf MaxValue => throw new System.NotSupportedException();
+            }
+
+            // Base classes of a closed set that declare a member the generators introduce into it (#205).
+            public abstract class LibrarySealedToStringSetBase { public sealed override string ToString() => "***"; }
+
+            public abstract class LibraryOpenToStringSetBase { public override string ToString() => "***"; }
+
+            public abstract class LibraryParsingSetBase<TSelf> { public static TSelf Parse(string name) => throw new System.NotSupportedException(); }
+
+            public abstract class LibraryParsableSetBase<TSelf> : System.IParsable<TSelf> where TSelf : LibraryParsableSetBase<TSelf>
+            {
+                static TSelf System.IParsable<TSelf>.Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                static bool System.IParsable<TSelf>.TryParse(string? s, System.IFormatProvider? provider, out TSelf result) { result = null!; return false; }
             }
 
             // The set's All listed none, its Name through the interface was the base's, and EF Core stored that.
