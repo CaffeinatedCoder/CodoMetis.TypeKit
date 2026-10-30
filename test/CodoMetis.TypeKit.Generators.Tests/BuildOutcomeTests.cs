@@ -318,6 +318,9 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("HandWrittenOrdering", "the attribute HandWrittenOrdering")]
     [InlineData("HandWrittenInterface", "the interface IValueObject<HandWrittenInterface, int>")]
     [InlineData("ExplicitCreate", "Create only as an explicit implementation of IValidatedValue<ExplicitCreate, string, Fault>")]
+    [InlineData("LenientOverStrictBase", "Create both as a static method and as an explicit implementation of IValidatedValue<LenientOverStrictBase, string, LibraryFault> in its base type StrictCreateBase<LenientOverStrictBase>, so it is not generated: every generated way in calls LenientOverStrictBase.Create and generic code calling T.Create reaches the inherited one, so it would have two rule sets; declare IValidatedValue<LenientOverStrictBase, string, LibraryFault> on LenientOverStrictBase itself, so that its own Create implements it")]
+    [InlineData("OnlyStrictBase", "Create only as an explicit implementation of IValidatedValue<OnlyStrictBase, string, LibraryFault> in its base type StrictCreateBase<OnlyStrictBase>, so it is not generated: the generated code calls OnlyStrictBase.Create, which cannot reach an explicit implementation; declare it as 'public static Result<OnlyStrictBase, LibraryFault> Create(string value)', and IValidatedValue<OnlyStrictBase, string, LibraryFault> on OnlyStrictBase itself")]
+    [InlineData("LenientOverPublicBase", "Create both as a static method and as PublicCreateBase<LenientOverPublicBase>.Create(string) in its base type PublicCreateBase<LenientOverPublicBase>, so it is not generated: every generated way in calls LenientOverPublicBase.Create and generic code calling T.Create reaches the inherited one")]
     [InlineData("ExplicitCreateBesidePublic", "Create both as a static method and as an explicit implementation of IValidatedValue<ExplicitCreateBesidePublic, string, Fault>, so it is not generated: every generated way in calls ExplicitCreateBesidePublic.Create and generic code calling T.Create reaches the explicit one")]
     public void A_hand_written_generated_member_is_refused_by_name(string type, string member) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
@@ -423,6 +426,16 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     public void An_interface_s_default_the_generators_do_not_replace_is_not_refused(string type) =>
         consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'"), consumer.Output);
 
+    /// <summary>
+    /// One <c>Create</c> that both the generated code and generic <c>T.Create</c> reach builds: the value object's
+    /// own, where it declares the marker again over a base that implements <c>Create</c> explicitly, and a base's
+    /// public one alone (#195).
+    /// </summary>
+    [Theory]
+    [InlineData("LenientListedOverStrictBase")]
+    [InlineData("OnlyPublicBase")]
+    public void One_Create_over_a_base_record_is_not_refused(string type) =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'"), consumer.Output);
 
     /// <summary>
     /// What a base record declares counts as the value object's own. Its unsealed <c>ToString()</c> and its
@@ -1427,6 +1440,28 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             // From a project the generators do not run in: read as an explicit implementation there, named as public.
             public sealed partial record InheritsLibraryPublicMinMax : Library.PublicMinMaxBase<InheritsLibraryPublicMinMax>, IValue<int>;
 
+            // Create in a base record of another project (#195): generic code calling T.Create reached the
+            // base's, which refused what the value object's own accepted.
+            public sealed partial record LenientOverStrictBase : Library.StrictCreateBase<LenientOverStrictBase>
+            {
+                public static Result<LenientOverStrictBase, Library.LibraryFault> Create(string value) => Result.Error(Library.LibraryFault.Refused);
+            }
+
+            public sealed partial record OnlyStrictBase : Library.StrictCreateBase<OnlyStrictBase>;
+
+            public sealed partial record LenientOverPublicBase : Library.PublicCreateBase<LenientOverPublicBase>
+            {
+                public static Result<LenientOverPublicBase, Library.LibraryFault> Create(string value) => Result.Error(Library.LibraryFault.Refused);
+            }
+
+            // One rule set each: the marker declared again, so the value object's own Create implements it, and a
+            // base's public Create alone, which the generated code calls too.
+            public sealed partial record LenientListedOverStrictBase : Library.StrictCreateBase<LenientListedOverStrictBase>, IValidatedValue<LenientListedOverStrictBase, string, Library.LibraryFault>
+            {
+                public static Result<LenientListedOverStrictBase, Library.LibraryFault> Create(string value) => new LenientListedOverStrictBase(value);
+            }
+
+            public sealed partial record OnlyPublicBase : Library.PublicCreateBase<OnlyPublicBase>;
 
             // An interface's default the generators do not replace. Beside ToString(), the seam, no
             // formatting interface is generated, and a Uri has no ordering. The record's own == replaces an
@@ -1887,6 +1922,19 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             using CodoMetis.TypeKit.ValueObjects;
 
             namespace Library;
+
+            public enum LibraryFault { Refused }
+
+            // Generic code calling T.Create reached this, which refused what the value object's own accepted.
+            public abstract record StrictCreateBase<TSelf> : IValidatedValue<TSelf, string, LibraryFault> where TSelf : StrictCreateBase<TSelf>, IValidatedValue<TSelf, string, LibraryFault>
+            {
+                static Result<TSelf, LibraryFault> IValidatedValue<TSelf, string, LibraryFault>.Create(string value) => Result.Error(LibraryFault.Refused);
+            }
+
+            public abstract record PublicCreateBase<TSelf> : IValidatedValue<TSelf, string, LibraryFault> where TSelf : PublicCreateBase<TSelf>, IValidatedValue<TSelf, string, LibraryFault>
+            {
+                public static Result<TSelf, LibraryFault> Create(string value) => Result.Error(LibraryFault.Refused);
+            }
 
             // A public static implementation of a static abstract member reads as an explicit one from here.
             public abstract record PublicMinMaxBase<TSelf> : System.Numerics.IMinMaxValue<TSelf> where TSelf : PublicMinMaxBase<TSelf>, System.Numerics.IMinMaxValue<TSelf>

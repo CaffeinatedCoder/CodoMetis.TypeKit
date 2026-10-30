@@ -242,6 +242,11 @@ Declare `Create` once, `public static`, and never as an explicit interface imple
 generated code can't call an explicit one. And beside a public one, generic code calling `T.Create`
 would reach the explicit one's rules, not the ones every generated way of creating a value runs.
 
+The same goes for a `Create` your value object inherits from a base record in another project. If
+the value object only gets the marker through that base, generic code calling `T.Create` reaches the
+base's `Create`, while everything generated calls yours, and the build fails (CMTK1011). Declare the
+marker on the value object too, and your `Create` is the one both reach.
+
 To change what a value object prints, declare `ToString()`. A record's
 `PrintMembers(StringBuilder)` without it fails the build (CMTK1011), since the generated `ToString()`
 prints the underlying value and never calls it.
