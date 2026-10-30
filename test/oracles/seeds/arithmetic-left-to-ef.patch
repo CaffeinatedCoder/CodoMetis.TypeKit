@@ -1,0 +1,18 @@
+Seed: A query is not rewritten: a generated operator with another operand or result is left to EF, and a hand-written one runs as the database's arithmetic
+Oracles: ArithmeticQueryTests
+Fails: every query whose operator has another operand or result than the value object, which EF translates with the value object's converter on the other side and throws, and unary +, which EF does not translate
+
+diff --git a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectArithmetic.cs b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectArithmetic.cs
+index b1c03eb..153d54d 100644
+--- a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectArithmetic.cs
++++ b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectArithmetic.cs
+@@ -88,8 +88,7 @@ internal sealed class ValueObjectArithmeticQueryFilterConvention : IModelFinaliz
+ internal static class ValueObjectArithmetic
+ {
+     /// <summary>In a query's LINQ tree, which EF has already stripped of what it evaluates in memory.</summary>
+-    public static Expression Rewrite(Expression query) =>
+-        new Rewriter("in a query", ", or do it in memory after the query", skipsWhatRunsInMemory: false).Visit(query);
++    public static Expression Rewrite(Expression query) => query;
+ 
+     /// <summary>
+     /// In a query filter, where EF has not yet evaluated what reads nothing of the database: an operator over the

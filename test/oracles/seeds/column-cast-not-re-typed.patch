@@ -3,16 +3,14 @@ Oracles: SqlServerQueryVariantTests
 Fails: the SQL of every query that reads a table column through an accessor, which is no longer the wrapped type's
 
 diff --git a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTranslators.cs b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTranslators.cs
-index 4cbf797..074e67d 100644
+index 55bc382..2189158 100644
 --- a/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTranslators.cs
 +++ b/src/CodoMetis.TypeKit.EntityFrameworkCore/ValueObjectTranslators.cs
-@@ -120,9 +120,7 @@ internal static class WrappedValue
+@@ -139,7 +139,7 @@ internal static class WrappedValue
           && (operandMapping.Converter is not { } converter || !ValueObjectMapping.For(valueObject).StoresTheWrappedValue(converter, mapping?.Converter)))
              return null;
  
--        return operand is ColumnExpression column && !IsCollectionElement(column)
--                   ? new ColumnExpression(column.Name, column.TableAlias, valueType, mapping, column.IsNullable)
--                   : sqlExpressionFactory.Convert(operand, valueType, mapping);
+-        return Retyped(operand, valueType, mapping, sqlExpressionFactory) ?? sqlExpressionFactory.Convert(operand, valueType, mapping);
 +        return sqlExpressionFactory.Convert(operand, valueType, mapping);
      }
  

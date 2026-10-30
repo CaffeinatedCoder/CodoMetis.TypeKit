@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 using CodoMetis.TypeKit.CompilerServices;
@@ -60,10 +59,8 @@ internal sealed class ValueThroughInterfaceQueryFilterConvention : IModelFinaliz
 /// </para>
 /// <para>
 /// Not to the value object's own <c>Value</c> property: finding it from a <see cref="Type"/> is a member lookup the
-/// trimmer may break (IL2075). The unwrap is reached through <see cref="GeneratedValueObjectAttribute.Accept{TResult}"/>
-/// with the value object as a type argument, from an expression whose method the compiler names, so nothing is
-/// looked up by name and nothing is made with <c>MakeGenericType</c>. It is public because a compiled model writes
-/// a query filter out as C# in the application's assembly.
+/// trimmer may break (IL2075). The unwrap is <see cref="ConverterMethods"/>', reached with the value object as a type
+/// argument, so nothing is looked up by name and nothing is made with <c>MakeGenericType</c>.
 /// </para>
 /// <para>
 /// Only the conversion of a value object to its own interface is rewritten: the interface's type argument is the
@@ -73,13 +70,7 @@ internal sealed class ValueThroughInterfaceQueryFilterConvention : IModelFinaliz
 /// </remarks>
 internal static class ValueThroughInterface
 {
-    private static readonly ConcurrentDictionary<Type, MethodInfo> Unwraps = new();
-
     public static Expression Rewrite(Expression expression) => Rewriter.Instance.Visit(expression);
-
-    /// <summary><see cref="ValueObjectConverter{TValueObject,T}.ProviderValue"/> of <paramref name="valueObject"/>.</summary>
-    private static MethodInfo Unwrap(GeneratedValueObjectAttribute valueObject) =>
-        Unwraps.GetOrAdd(valueObject.ValueObjectType, static (_, description) => description.Accept(UnwrapOf.Instance), valueObject);
 
     private sealed class Rewriter : ExpressionVisitor
     {
@@ -94,19 +85,9 @@ internal static class ValueThroughInterface
              && contract.GetGenericArguments()[0] == conversion.Operand.Type
              && ValueObjectTypes.Describe(conversion.Operand.Type) is { } valueObject
              && valueObject.WrappedType == property.PropertyType)
-                return Expression.Call(Unwrap(valueObject), Visit(conversion.Operand));
+                return Expression.Call(ConverterMethods.ProviderValue(valueObject), Visit(conversion.Operand));
 
             return base.VisitMember(node);
         }
-    }
-
-    private sealed class UnwrapOf : IValueObjectVisitor<MethodInfo>
-    {
-        public static readonly UnwrapOf Instance = new();
-
-        public MethodInfo Visit<TValueObject, T>()
-            where TValueObject : IValueObject<TValueObject, T>, IValueObjectMaterializer<TValueObject, T>
-            where T : notnull =>
-            ((MethodCallExpression)ValueObjectConverter<TValueObject, T>.ToProvider.Body).Method;
     }
 }

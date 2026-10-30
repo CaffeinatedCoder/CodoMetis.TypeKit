@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Reflection;
 using CodoMetis.TypeKit.CompilerServices;
 using CodoMetis.TypeKit.ValueObjects;
@@ -73,6 +74,10 @@ internal sealed class ValueObjectMethodCallTranslatorPlugin(
         )
         {
             if (instance is not null || arguments.Count != 1) return null;
+
+            if (WrappedResult(method) is { } wrapping)
+                return WrappedValue.AsValueObject(arguments[0], wrapping, sqlExpressionFactory, typeMappingSource);
+
             if (method.GetCustomAttribute<TranslatedAsWrappedValueAttribute>() is null) return null;
 
             var parameterType = method.GetParameters()[0].ParameterType;
@@ -84,6 +89,19 @@ internal sealed class ValueObjectMethodCallTranslatorPlugin(
 
             return WrappedValue.Of(arguments[0], valueObject, valueType, sqlExpressionFactory, typeMappingSource);
         }
+
+        /// <summary>
+        /// The value object <paramref name="method"/> is <see cref="ValueObjectConverter{TValueObject,T}.Materialize"/>
+        /// of, which a generated operator's result is rewritten to (<see cref="ValueObjectArithmetic"/>); <see langword="null"/>
+        /// for any other method.
+        /// </summary>
+        private static GeneratedValueObjectAttribute? WrappedResult(MethodInfo method) =>
+            method.DeclaringType is { IsGenericType: true } converter
+         && converter.GetGenericTypeDefinition() == typeof(ValueObjectConverter<,>)
+         && ValueObjectTypes.Describe(converter.GetGenericArguments()[0]) is { } valueObject
+         && method == ConverterMethods.Materialize(valueObject)
+                ? valueObject
+                : null;
     }
 }
 
@@ -93,9 +111,10 @@ internal static class WrappedValue
     /// <summary>
     /// A column is re-typed rather than cast: it already holds the wrapped value, and a cast is not a
     /// no-op everywhere (on SQL Server, <c>CAST(Code AS nvarchar(max))</c> can stop an index seek).
-    /// The mapping keeps the column's store type, so its facets survive. Any other operand, such as a
-    /// parameter or a function result, is converted, and so is the element column of a primitive
-    /// collection (<see cref="IsCollectionElement"/>).
+    /// The mapping keeps the column's store type, so its facets survive. So is the database's arithmetic
+    /// over such columns, <c>(o.Price * 2m).Value</c>, which a cast to the column's store type would round
+    /// on SQL Server. Any other operand, such as a parameter or a function's result, is converted, and so
+    /// is the element column of a primitive collection (<see cref="IsCollectionElement"/>).
     /// </summary>
     /// <returns>
     /// <see langword="null"/>, so EF refuses the query, where the operand's converter is not TypeKit's:
@@ -120,10 +139,55 @@ internal static class WrappedValue
          && (operandMapping.Converter is not { } converter || !ValueObjectMapping.For(valueObject).StoresTheWrappedValue(converter, mapping?.Converter)))
             return null;
 
-        return operand is ColumnExpression column && !IsCollectionElement(column)
-                   ? new ColumnExpression(column.Name, column.TableAlias, valueType, mapping, column.IsNullable)
-                   : sqlExpressionFactory.Convert(operand, valueType, mapping);
+        return Retyped(operand, valueType, mapping, sqlExpressionFactory) ?? sqlExpressionFactory.Convert(operand, valueType, mapping);
     }
+
+    /// <summary>
+    /// The wrapped type's <paramref name="operand"/> as the value object over it, which is what the database holds
+    /// for one: the wrapped type's arithmetic over a value object's columns, re-typed, with the value object's
+    /// mapping for the same store type, so it compares with and is read as a value object.
+    /// </summary>
+    /// <remarks>
+    /// Re-typed rather than cast, as <see cref="Of"/> re-types: a cast to the column's store type is no identity on
+    /// SQL Server, where <c>CAST([p].[Price] / 3.0 AS decimal(18,2))</c> rounds what memory does not. A conversion
+    /// <see cref="Of"/> made is undone; any other operand is converted.
+    /// </remarks>
+    public static SqlExpression AsValueObject(
+        SqlExpression                 operand,
+        GeneratedValueObjectAttribute valueObject,
+        ISqlExpressionFactory         sqlExpressionFactory,
+        IRelationalTypeMappingSource  typeMappingSource
+    )
+    {
+        var type    = valueObject.ValueObjectType;
+        var mapping = (operand.TypeMapping?.StoreType is { } storeType ? typeMappingSource.FindMapping(type, storeType) : null)
+                   ?? typeMappingSource.FindMapping(type);
+
+        if (operand is SqlUnaryExpression { OperatorType: ExpressionType.Convert } conversion && conversion.Operand.Type == type) return conversion.Operand;
+
+        return Retyped(operand, type, mapping, sqlExpressionFactory) ?? sqlExpressionFactory.Convert(operand, type, mapping);
+    }
+
+    /// <summary>
+    /// <paramref name="operand"/> as <paramref name="type"/>, with <paramref name="mapping"/>, where it holds that value
+    /// already: a table's column, or the database's arithmetic over columns; <see langword="null"/> for anything else.
+    /// </summary>
+    private static SqlExpression? Retyped(SqlExpression operand, Type type, RelationalTypeMapping? mapping, ISqlExpressionFactory sqlExpressionFactory) =>
+        operand switch
+        {
+            ColumnExpression column when !IsCollectionElement(column) => new ColumnExpression(column.Name, column.TableAlias, type, mapping, column.IsNullable),
+            SqlBinaryExpression binary when IsArithmetic(binary.OperatorType) => new SqlBinaryExpression(binary.OperatorType, binary.Left, binary.Right, type, mapping),
+            SqlUnaryExpression { OperatorType: ExpressionType.Negate } negation => new SqlUnaryExpression(ExpressionType.Negate, negation.Operand, type, mapping),
+
+            // SQLite's decimal arithmetic: ef_add, ef_multiply, ef_divide, ef_mod, ef_negate.
+            SqlFunctionExpression { Instance: null, Schema: null, IsNiladic: false, Name: "ef_add" or "ef_multiply" or "ef_divide" or "ef_mod" or "ef_negate" } function =>
+                sqlExpressionFactory.Function(function.Name, function.Arguments, function.IsNullable, function.ArgumentsPropagateNullability, type, mapping),
+
+            _ => null,
+        };
+
+    private static bool IsArithmetic(ExpressionType type) =>
+        type is ExpressionType.Add or ExpressionType.Subtract or ExpressionType.Multiply or ExpressionType.Divide or ExpressionType.Modulo;
 
     /// <summary>
     /// The element of a primitive collection is a column of the collection's table expression
