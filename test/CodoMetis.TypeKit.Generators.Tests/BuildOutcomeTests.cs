@@ -406,6 +406,12 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "BoundedThroughBaseInterface", "the explicit implementation of IMinMaxValue<BoundedThroughBaseInterface>.MinValue in its interface IBoundedItself<BoundedThroughBaseInterface>")]
     [InlineData("CMTK1008", "OrdersThroughBaseInterface", "the explicit implementation of IComparable.CompareTo(object?) in its interface IOrdersItself")]
     [InlineData("CMTK1011", "ConvertsThroughBaseInterface", "the interface IConvertible in its base type ConvertsItselfBase")]
+    [InlineData("CMTK1011", "ContractThroughInterface", "the interface IValueObject<ContractThroughInterface, Guid> in its interface IEntityIdentifier<ContractThroughInterface>")]
+    [InlineData("CMTK1011", "ContractTwoInterfacesDown", "the interface IValueObject<ContractTwoInterfacesDown, Guid> in its interface IAggregateIdentifier<ContractTwoInterfacesDown>")]
+    [InlineData("CMTK1011", "MaterializerThroughInterface", "the interface IValueObjectMaterializer<MaterializerThroughInterface, int> in its interface IReadsBackItself<MaterializerThroughInterface>")]
+    [InlineData("CMTK1011", "PlainContractThroughInterface", "the interface IPlainValueObject<PlainContractThroughInterface, int> in its interface IFromableItself<PlainContractThroughInterface>")]
+    [InlineData("CMTK1011", "ContractThroughBaseInterface", "the interface IValueObject<ContractThroughBaseInterface, Guid> in its base type EntityIdentifierBase<ContractThroughBaseInterface>")]
+    [InlineData("CMTK1011", "ContractThroughLibraryInterface", "the interface IValueObject<ContractThroughLibraryInterface, Guid> in its interface ILibraryEntityIdentifier<ContractThroughLibraryInterface>")]
     [InlineData("CMTK1011", "FormatsThroughLibraryInterface", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its interface IProbeFormats")]
     [InlineData("CMTK1011", "BoundedThroughLibraryInterface", "the explicit implementation of IMinMaxValue<BoundedThroughLibraryInterface>.MinValue in its interface IProbeBounded<BoundedThroughLibraryInterface>")]
     [InlineData("CMTK1008", "OrdersThroughLibraryInterface", "the explicit implementation of IComparable.CompareTo(object?) in its interface IProbeOrders")]
@@ -474,6 +480,14 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "InheritsLibraryPublicMinMax", "PublicMinMaxBase<InheritsLibraryPublicMinMax>.MinValue in its base type PublicMinMaxBase<InheritsLibraryPublicMinMax>")]
     public void What_a_base_record_declares_is_refused_by_name(string id, string type, string member) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
+
+    /// <summary>
+    /// An interface derived from a marker is a way to find a value object, not a contract the generators
+    /// implement, so it is generated as usual (#192).
+    /// </summary>
+    [Fact]
+    public void A_marker_declared_through_an_interface_is_generated() =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains("'ThroughMarkerInterface'") || error.Message.Contains("IIdentifierMarker"), consumer.Output);
 
     /// <summary>
     /// A base record's public <c>CompareTo(object)</c> that implements <c>IComparable</c> is found twice, by the
@@ -1378,6 +1392,51 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             public sealed partial record ConvertsThroughBaseInterface : ConvertsItselfBase, IValue<int>;
 
+            // A contract the generators implement, declared through an interface of the user's (#192): the
+            // aspect failed (LAMA0512, LAMA0041), naming nothing the user wrote. Each interface implements the
+            // contract's members, so a refused value object lacks none (CS0535).
+            public interface IEntityIdentifier<TSelf> : IValueObject<TSelf, System.Guid> where TSelf : IEntityIdentifier<TSelf>
+            {
+                System.Guid IValueObject<TSelf, System.Guid>.Value => System.Guid.Empty;
+
+                static bool IValueObject<TSelf, System.Guid>.operator ==(TSelf left, TSelf right) => false;
+
+                static bool IValueObject<TSelf, System.Guid>.operator !=(TSelf left, TSelf right) => true;
+            }
+
+            public readonly partial record struct ContractThroughInterface : IValue<System.Guid>, IEntityIdentifier<ContractThroughInterface>;
+
+            public interface IAggregateIdentifier<TSelf> : IEntityIdentifier<TSelf> where TSelf : IAggregateIdentifier<TSelf>;
+
+            public readonly partial record struct ContractTwoInterfacesDown : IValue<System.Guid>, IAggregateIdentifier<ContractTwoInterfacesDown>;
+
+            public interface IReadsBackItself<TSelf> : IValueObjectMaterializer<TSelf, int> where TSelf : IReadsBackItself<TSelf>
+            {
+                static TSelf IValueObjectMaterializer<TSelf, int>.Materialize(int value) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct MaterializerThroughInterface : IValue<int>, IReadsBackItself<MaterializerThroughInterface>;
+
+            public interface IFromableItself<TSelf> : IPlainValueObject<TSelf, int>, IValueObject<TSelf, int> where TSelf : IFromableItself<TSelf>
+            {
+                static TSelf IPlainValueObject<TSelf, int>.From(int value) => throw new System.NotSupportedException();
+
+                int IValueObject<TSelf, int>.Value => 0;
+            }
+
+            public readonly partial record struct PlainContractThroughInterface : IValue<int>, IFromableItself<PlainContractThroughInterface>;
+
+            public abstract record EntityIdentifierBase<TSelf> : IEntityIdentifier<TSelf> where TSelf : EntityIdentifierBase<TSelf>;
+
+            public sealed partial record ContractThroughBaseInterface : EntityIdentifierBase<ContractThroughBaseInterface>, IValue<System.Guid>;
+
+            public readonly partial record struct ContractThroughLibraryInterface : IValue<System.Guid>, Library.ILibraryEntityIdentifier<ContractThroughLibraryInterface>;
+
+            // An interface derived from the marker is how a value object may be found: generated as usual.
+            public interface IIdentifierMarker : IValue<System.Guid>;
+
+            public readonly partial record struct ThroughMarkerInterface : IIdentifierMarker;
+
             // An interface's and a base record's of another assembly, where Metalama lists no private
             // member, which an explicit implementation is: replaced or kept without a word (#191).
             public readonly partial record struct FormatsThroughLibraryInterface : IValue<int>, CodoMetis.TypeKit.Generators.Probes.IProbeFormats;
@@ -2018,6 +2077,16 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public abstract record PublicCreateBase<TSelf> : IValidatedValue<TSelf, string, LibraryFault> where TSelf : PublicCreateBase<TSelf>, IValidatedValue<TSelf, string, LibraryFault>
             {
                 public static Result<TSelf, LibraryFault> Create(string value) => Result.Error(LibraryFault.Refused);
+            }
+
+            // A value-object contract declared through an interface of another project (#192).
+            public interface ILibraryEntityIdentifier<TSelf> : IValueObject<TSelf, System.Guid> where TSelf : ILibraryEntityIdentifier<TSelf>
+            {
+                System.Guid IValueObject<TSelf, System.Guid>.Value => System.Guid.Empty;
+
+                static bool IValueObject<TSelf, System.Guid>.operator ==(TSelf left, TSelf right) => false;
+
+                static bool IValueObject<TSelf, System.Guid>.operator !=(TSelf left, TSelf right) => true;
             }
 
             // A public static implementation of a static abstract member reads as an explicit one from here.
