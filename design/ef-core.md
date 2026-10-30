@@ -59,7 +59,7 @@
     model is built (and so at `dbcontext optimize` and `migrations add`). A comparison in a filter that
     reads neither the entity nor a query is left alone: EF evaluates it in memory, by `CompareTo`
     (measured: `Floor > From(2)` on the context kept the rows memory keeps).
-  - **A hand-written operator is refused in a query (decided 2026-10-30, [decision 122](adr/0122-a-hand-written-operator-is-refused-in-a-query.md)).**
+  - **A hand-written operator is refused in a query (decided 2026-10-30, [decision 123](adr/0123-a-hand-written-operator-is-refused-in-a-query.md)).**
     EF translates an operator node as the database's arithmetic over its operands and never calls the
     method, so a hand-written `+` that rounds ran as the plain sum of the columns. The arithmetic aspect
     marks every operator it generates `[TranslatedAsWrappedArithmetic]`; an interceptor, and a finalizing

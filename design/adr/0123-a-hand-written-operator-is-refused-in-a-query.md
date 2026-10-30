@@ -1,18 +1,18 @@
-# 0122. A hand-written operator is refused in a query, and a generated one is marked
+# 0123. A hand-written operator is refused in a query, and a generated one is marked
 
 Date: 2026-10-30
 Status: accepted
 
 Context: [#187](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/issues/187), under the 2.4.0 epic
 [#177](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/issues/177); [EF Core](../ef-core.md); refines
-[decision 121](0121-arithmetic-operators-are-opt-in-and-a-hand-written-one-is-a-seam.md), beside
+[decision 122](0122-arithmetic-operators-are-opt-in-and-a-hand-written-one-is-a-seam.md), beside
 [decision 57](0057-hand-written-ordering-refused-in-query.md).
 
 EF translates an operator node as the database's arithmetic over its operands, and never calls the operator's
 method. A hand-written operator therefore ran as the database's arithmetic, not as written: with its `+` rounding
 to cents, `Price + Tax > 1.006` over 1.005 and 0.001 became `ef_compare(ef_add("l"."Price", "l"."Tax"), @limit) > 0`
 on SQLite and kept no row where memory keeps the one, and `Select(l => l.Price + l.Tax)` read 1.006 where memory
-reads 1.01 (measured with EF Core 10.0.12, the refusal taken out). Decision 121 keeps such an operator as a seam, so
+reads 1.01 (measured with EF Core 10.0.12, the refusal taken out). Decision 122 keeps such an operator as a seam, so
 the build cannot stop it; the query must.
 
 **Any arithmetic, bitwise or shift operator a value object declares without `[TranslatedAsWrappedArithmetic]` is
