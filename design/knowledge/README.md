@@ -85,3 +85,4 @@ test and later for the harness's `Baseline.Fact`.
 | [KB-052](KB-052-sql-server-takes-no-max-of-a-bit.md) | SQL Server takes neither `MAX` nor `MIN` of a `bit` | SQL Server 2022, EF SqlServer 10.0.12 | `KB052`, with Docker |
 | [KB-053](KB-053-greatest-and-least-need-compatibility-level-160.md) | EF translates `Greatest` and `Least` on SQL Server only from compatibility level 160 | EF SqlServer 10.0.12 | `KB053` |
 | [KB-054](KB-054-datetime2-keeps-every-tick-and-forgets-the-kind.md) | `datetime2` keeps every tick of a `DateTime` and reads it back with `Kind` Unspecified | SQL Server 2022, EF SqlServer 10.0.12 | `KB054`, with Docker |
+| [KB-055](KB-055-ericksonlopez-domainprimitives.md) | EricksonLopez.DomainPrimitives 3.0.0 is an attribute on a partial record struct, with a catalogue of ready-made types, re-validated on every read | EricksonLopez.DomainPrimitives 3.0.0 | prose |
