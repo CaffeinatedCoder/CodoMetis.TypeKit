@@ -285,27 +285,31 @@ internal static class ValueObjectDeclaration
         var convertible = valueType.IsConvertibleTo(typeof(IConvertible));
         var iconvertible = TypeFactory.GetNamedType(typeof(IConvertible));
 
-        bool DerivesFromConvertible(INamedType implemented) => implemented.AllImplementedInterfaces.Any(inherited => inherited.Equals(iconvertible));
-
         // The interfaces implemented with OverrideStrategy.Fail, and IConvertible. The marker's own are implied by it.
+        // Declared through an interface of the user's, as an IEntityId<TSelf> : IValueObject<TSelf, Guid> declares
+        // IValueObject, each failed the aspect as declaring it does (LAMA0512, LAMA0041), naming nothing the user
+        // wrote (#192). Neither marker derives from one of them, so an interface derived from a marker is not one.
+        bool Implemented(INamedType @interface) =>
+            @interface.Definition.Equals(TypeFactory.GetNamedType(typeof(IValueObject<,>)))
+         || @interface.Definition.Equals(TypeFactory.GetNamedType(typeof(IValueObjectMaterializer<,>)))
+         || @interface.Definition.Equals(TypeFactory.GetNamedType(typeof(IPlainValueObject<,>)))
+         || (convertible && @interface.Equals(iconvertible));
+
         foreach (var implemented in target.ImplementedInterfaces)
         {
-            if (implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IValueObject<,>)))
-             || implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IValueObjectMaterializer<,>)))
-             || implemented.Definition.Equals(TypeFactory.GetNamedType(typeof(IPlainValueObject<,>)))
-             || (convertible && implemented.Equals(iconvertible)))
+            if (Implemented(implemented))
                 found.Add($"the interface {implemented.ToDisplayString()}");
-            else if (convertible && DerivesFromConvertible(implemented))
-                found.Add($"the interface IConvertible in its interface {implemented.ToDisplayString()}");
+            else
+                found.AddRange(implemented.AllImplementedInterfaces.Where(Implemented).Select(inherited => $"the interface {inherited.ToDisplayString()} in its interface {implemented.ToDisplayString()}"));
         }
 
-        // IConvertible implemented by a base record, itself or through an interface, is implemented
-        // already, and the aspect failed the same way.
-        if (convertible)
+        // One a base record implements, itself or through an interface, is implemented already, and the aspect
+        // failed the same way.
+        foreach (var type in SelfAndBases(target).Skip(1))
         {
-            foreach (var type in SelfAndBases(target).Skip(1))
-                if (type.ImplementedInterfaces.Any(implemented => implemented.Equals(iconvertible) || DerivesFromConvertible(implemented)))
-                    found.Add($"the interface IConvertible in its base type {type.ToDisplayString()}");
+            found.AddRange(type.ImplementedInterfaces.SelectMany(implemented => implemented.AllImplementedInterfaces.Prepend(implemented).Where(Implemented))
+                               .Distinct()
+                               .Select(inherited => $"the interface {inherited.ToDisplayString()} in its base type {type.ToDisplayString()}"));
         }
 
         // The attributes the aspects put on the type.

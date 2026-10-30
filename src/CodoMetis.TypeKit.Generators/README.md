@@ -224,8 +224,10 @@ covers:
 
 - **A plain value object's members**: `From`, `Value`, `Parse` and `TryParse`, `MinValue`/`MaxValue`.
 - **The attributes**: `[JsonConverter]` and `[TypeConverter]`.
-- **The interfaces the generators implement**, and `IConvertible` where they generate it, declared
-  directly or through another interface.
+- **The contracts the generators implement**: `IValueObject<TSelf, T>`, `IValueObjectMaterializer<TSelf, T>`,
+  `IPlainValueObject<TSelf, T>`, and `IConvertible` where they generate it. That holds whether you declare one
+  directly, through an interface of your own or in a base record. To constrain generic code, use
+  `IValueObject<TSelf, T>` itself, which every value object implements.
 - **An explicit implementation of a member of an interface they implement**, such as
   `IParsable<TSelf>.Parse` or `IFormattable.ToString`. On the value object or a base record, every
   caller through the interface would reach it rather than the generated member, and a generic

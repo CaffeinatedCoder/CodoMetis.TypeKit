@@ -1210,6 +1210,21 @@
     ]
   },
   {
+    "id": "C22-a-contract-through-an-interface",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "That holds whether you declare one directly, through an interface of your own or in a base record.",
+    "claim": "IValueObject, IValueObjectMaterializer, IPlainValueObject and a generated IConvertible fail the build whether declared directly, through an interface or by a base record.",
+    "oracle": "exception",
+    "surfaces": [
+      "IValueObject.*",
+      "IValueObjectMaterializer.*",
+      "IPlainValueObject.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
     "id": "C22-a-seam-in-a-base-record",
     "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
     "quote": "Declare them on the value object itself. A `TryFrom`, `Revalidate` or `CompareTo` in a base record fails the build (CMTK1011, or CMTK1008 for `CompareTo`), because it would stand in for the generated member without a word.",

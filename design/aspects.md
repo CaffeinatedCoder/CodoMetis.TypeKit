@@ -178,8 +178,9 @@
     generated member, and an inherited `CompareTo` made `<` overflow the stack (#194). Found by the interface
     mapping (`TryFindImplementationForInterfaceMember`), never by listing members: Metalama lists no private
     member of a type in another assembly, so a base record's from a referenced project was missed as well.
-    `IConvertible` declared through an interface, and a closed set's `IParsable<TSelf>` through one, are CMTK1011
-    where they failed the aspect (LAMA0041, LAMA0512). Not refused: an interface's `==`, which the record's own
+    `IConvertible`, `IValueObject<,>`, `IValueObjectMaterializer<,>` and `IPlainValueObject<,>` declared through an
+    interface or by a base record, and a closed set's `IParsable<TSelf>` through an interface, are CMTK1011 where
+    they failed the aspect (LAMA0041, LAMA0512, #192). Not refused: an interface's `==`, which the record's own
     replaces anyway, and `INumberBase<TSelf>`'s UTF-8 bridges.
   - **Equality over a base record is generated (decided 2026-10-14, [decision 75](adr/0075-equality-over-base-record-generated.md)).**
     A derived record's synthesized equality calls the base's, which compares the base's fields and
