@@ -16,6 +16,7 @@ section is the GitHub release's notes.
 
 - Packages: the public surface is checked against 2.3.0's, so nothing 2.3.0 ships is removed or changed in 2.3.1.
 - Generators: a generated member you wrote where a value object reaches it now fails the build (CMTK1011, CMTK1008 for comparison), so your build can fail when you upgrade: an explicit implementation such as `IFormattable.ToString` in an interface a value object or closed set implements, one in a base record from another project, a base record's public `MinValue` or `MaxValue`, which stood in for the generated one, and a base record's `Create` beside your own. Remove it, don't implement that interface, or declare the marker on the value object itself. A base record's public `Value`, `Parse`, `ToString(string?, IFormatProvider?)` and the like, and `IConvertible` through an interface, now fail with a CMTK error rather than a Metalama crash ([Write your own members](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members)).
+- Generators: an `Equals` a value object declares for one of its base records' types, such as `Equals(DeepBase?)`, now fails the build (CMTK1011), so your build can fail when you upgrade. A `HashSet<DeepBase>` compared by it while `==` compared the underlying value; normalise values in `Create` instead ([Equality](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#equality)).
 
 ## 2.3.0 — 2026-10-29
 
