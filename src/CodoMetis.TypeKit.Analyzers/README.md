@@ -30,7 +30,7 @@ project. The two packages share a version and move together.
 | CMTK0002 | Error | A type implements `IValue<T>`, `IValidatedValue<,,>` or `IClosedSet<TSelf>`, but the compilation doesn't reference `CodoMetis.TypeKit.Generators`. So nothing is generated for it: no field, no `Value`, no factory, or for a closed set no name and no `Match`. |
 | CMTK0003 | Error | A `Result` or `Option` that a call returns, or a collection or a tuple of them that the statement made, dropped. It counts as dropped as a statement, awaited or not; when its `Task` is converted to a plain `Task`, also where a method group is the conversion; through `Wait`; in a loop that never reads it; and in a branch of a conditional, a `switch` expression or a `??` that picked the call. Also an assertion of `CodoMetis.TypeKit.Testing` on a task, left without `await`. `_` says you mean the drop. |
 | CMTK0004 | Error | `Materialize`, which rebuilds a value object without its rules, called or referenced anywhere but the EF Core package. |
-| CMTK0005 | Warning | An array or span of a value object, `Option`, `Result` or `[RequireCustomInitialization]` struct created with a length, so every slot starts as `default`. A constant length of zero isn't reported. |
+| CMTK0005 | Warning | An array or span of a value object, `Option`, `Result` or `[RequireCustomInitialization]` struct created with a length, so every slot starts as `default`. A constant length of zero, in any dimension, isn't reported. |
 | CMTK0006 | Warning | A field or auto-property of such a type, in a class, that no initializer, `required` or constructor sets. Also a `required` one that a `[SetsRequiredMembers]` constructor doesn't set. |
 | CMTK0007 | Info | `FromKnownGood` given a value that comes straight from a parameter. |
 | CMTK0008 | Warning | The values inside two different value objects compared, `order.CustomerId.Value == product.Id.Value`, or the two value objects themselves compared through `Equals(object)`. |
@@ -303,7 +303,8 @@ OrderId[] kept = [.. rows.Select(r => OrderId.From(r.Id))];   // built from valu
 
 `stackalloc`, `GC.AllocateUninitializedArray`, `GC.AllocateArray` and `Array.Resize` are reported
 too. `Array.Resize` adds default slots whenever the new size is larger, which the rule can't tell. A
-constant length or size of zero creates no slot, as `new OrderId[0]` doesn't, and isn't reported.
+constant length or size of zero creates no slot, as `new OrderId[0]` doesn't, and isn't reported. That
+holds for any one dimension: `new OrderId[0, count]` holds no element either.
 
 It's a warning, because an array filled in a loop straight after it is created is correct, and the
 rule can't tell it from one that isn't.

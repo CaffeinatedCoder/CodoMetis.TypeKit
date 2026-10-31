@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -110,13 +111,20 @@ internal static class HandWrittenOrdering
                     foreach (var argument in node.Arguments) Refuse(argument.Type, $"compared with {method.Name}");
                 }
             }
-            else if ((method.DeclaringType == typeof(Queryable) || method.DeclaringType == typeof(Enumerable)) && OrderedType(method) is { } ordered)
+            else if (IsLinq(method) && OrderedType(method) is { } ordered)
             {
                 Refuse(ordered, $"ordered by {method.Name}");
 
                 // A key the selector converts (to object, IComparable) is still ordered in memory by the
-                // value object's CompareTo, while EF drops the conversion and orders by the column.
-                if (KeySelector(node) is { } key) Refuse(Unconverted(key.Body).Type, $"ordered by {method.Name}");
+                // value object's CompareTo, while EF drops the conversion and orders by the column. So are
+                // elements converted before the operator, Select(r => (object)r.Rank).Max(), whose key is the
+                // element itself or which has no key (#206), and a key that reads the boxed value back: through a ??,
+                // a ?:, a member of a projection, a grouping's key or elements, a join, or a subquery's First.
+                var key = KeySelector(node);
+                IEnumerable<Type> read = key is not null ? ReadTypes(key.Body, Bound(node, _scope))
+                                       : method.IsGenericMethod ? ElementTypes(node.Arguments[0], _scope, method.GetGenericArguments()[0])
+                                       : [];
+                foreach (var type in read) Refuse(type, $"ordered by {method.Name}");
             }
             else if (IsDbFunction(method) && !RunsInMemory(node))
             {
@@ -134,8 +142,22 @@ internal static class HandWrittenOrdering
                                 Refuse(element, $"compared in a row value by {method.Name}");
             }
 
-            return base.VisitMethodCall(node);
+            // The operator's lambdas are visited knowing what their parameters stand for, so that an operator inside
+            // one, g.Max() in Select(g => g.Max()), reads the elements its source was built from.
+            var outer = _scope;
+            _scope = Bound(node, outer);
+            try
+            {
+                return base.VisitMethodCall(node);
+            }
+            finally
+            {
+                _scope = outer;
+            }
         }
+
+        /// <summary>What the parameters of the lambdas around the node being visited stand for.</summary>
+        private Scope _scope = Scope.Empty;
 
         /// <summary>A function of <c>EF.Functions</c>: an extension of <see cref="DbFunctions"/>, whichever provider declares it.</summary>
         private static bool IsDbFunction(MethodInfo method) =>
@@ -159,6 +181,196 @@ internal static class HandWrittenOrdering
 
         private static Expression StripQuotes(Expression expression) =>
             expression is UnaryExpression { NodeType: ExpressionType.Quote } quote ? StripQuotes(quote.Operand) : expression;
+
+        /// <summary>What an expression of the query stands for, as far as the query says: a value, or a sequence.</summary>
+        private abstract record Meaning;
+
+        /// <summary>An expression, read where its lambdas' parameters stand for what <see cref="Scope"/> says.</summary>
+        private sealed record Value(Expression Expression, Scope Scope) : Meaning;
+
+        /// <summary>A grouping (its keys, and its elements), or with no keys, a sequence a lambda is given whole.</summary>
+        private sealed record Group(IReadOnlyList<Meaning> Keys, IReadOnlyList<Meaning> Elements) : Meaning;
+
+        /// <summary>What each lambda parameter in reach stands for; a parameter it does not name is read as its own type.</summary>
+        private sealed class Scope(ImmutableDictionary<ParameterExpression, IReadOnlyList<Meaning>> bound)
+        {
+            public static readonly Scope Empty = new(ImmutableDictionary<ParameterExpression, IReadOnlyList<Meaning>>.Empty);
+
+            public Scope With(ParameterExpression parameter, IReadOnlyList<Meaning> meanings) => new(bound.SetItem(parameter, meanings));
+
+            public IReadOnlyList<Meaning> Of(ParameterExpression parameter) => bound.TryGetValue(parameter, out var meanings) ? meanings : [];
+        }
+
+        /// <summary>
+        /// <paramref name="scope"/> with the parameters of a LINQ operator's lambdas bound: to the elements of the source
+        /// for a selector, key or predicate; for <c>Join</c> and <c>GroupJoin</c>, each side's to its sequence; for
+        /// <c>SelectMany</c>'s result selector, the collection's elements; for <c>GroupBy</c>'s, the key and the elements.
+        /// </summary>
+        private static Scope Bound(MethodCallExpression call, Scope scope)
+        {
+            if (!IsLinq(call.Method) || !call.Method.IsGenericMethod || call.Method.Name is nameof(Enumerable.Aggregate)) return scope;
+
+            var lambdas = Lambdas(call);
+            if (lambdas.Count == 0) return scope;
+
+            var source = Elements(call.Arguments[0], scope);
+            switch (call.Method.Name)
+            {
+                case nameof(Queryable.Join) or nameof(Queryable.GroupJoin) when lambdas is [var outerKey, var innerKey, var result]:
+                    var inner = Elements(call.Arguments[1], scope);
+                    return scope.With(outerKey.Parameters[0], source).With(innerKey.Parameters[0], inner).With(result.Parameters[0], source)
+                                .With(result.Parameters[1], call.Method.Name is nameof(Queryable.Join) ? inner : [new Group([], inner)]);
+                case nameof(Queryable.SelectMany):
+                    var collection = scope.With(lambdas[0].Parameters[0], source);
+                    return lambdas is [var selector, var resultSelector]
+                        ? collection.With(resultSelector.Parameters[0], source).With(resultSelector.Parameters[1], Elements(selector.Body, collection))
+                        : collection;
+                case nameof(Queryable.GroupBy):
+                    var (keys, elements) = Grouping(lambdas, scope, source);
+                    var grouped = lambdas.Where(lambda => lambda.Parameters.Count == 1).Aggregate(scope, (bound, lambda) => bound.With(lambda.Parameters[0], source));
+                    return lambdas.FirstOrDefault(lambda => lambda.Parameters.Count == 2) is { } resultOf
+                        ? grouped.With(resultOf.Parameters[0], keys).With(resultOf.Parameters[1], [new Group([], elements)])
+                        : grouped;
+                default:
+                    return lambdas.Aggregate(scope, (bound, lambda) => bound.With(lambda.Parameters[0], source));
+            }
+        }
+
+        /// <summary>A <c>GroupBy</c>'s keys, its key selector's body, and its elements, its element selector's body or the source's.</summary>
+        private static (IReadOnlyList<Meaning> Keys, IReadOnlyList<Meaning> Elements) Grouping(IReadOnlyList<LambdaExpression> lambdas, Scope scope, IReadOnlyList<Meaning> source)
+        {
+            var selectors = lambdas.Where(lambda => lambda.Parameters.Count == 1).ToList();
+            Meaning Read(LambdaExpression selector) => new Value(selector.Body, scope.With(selector.Parameters[0], source));
+
+            return ([Read(selectors[0])], selectors is [_, var element, ..] ? [Read(element)] : source);
+        }
+
+        private static List<LambdaExpression> Lambdas(MethodCallExpression call) => [.. call.Arguments.Select(StripQuotes).OfType<LambdaExpression>()];
+
+        /// <summary>
+        /// What a sequence's elements are, as far as the query says: a <c>Select</c>'s body, a join's or a <c>GroupBy</c>'s
+        /// result, a grouping, <c>SelectMany</c>'s collection, followed through the operators that pass the elements on,
+        /// and the elements of a grouping or a sequence a lambda was given; none for a sequence the query does not build.
+        /// </summary>
+        private static IReadOnlyList<Meaning> Elements(Expression sequence, Scope scope)
+        {
+            switch (Unconverted(sequence))
+            {
+                case ParameterExpression parameter:
+                    return [.. scope.Of(parameter).OfType<Group>().SelectMany(group => group.Elements)];
+                case MethodCallExpression { Method: { IsGenericMethod: true } method } call when IsLinq(method):
+                    var lambdas = Lambdas(call);
+                    switch (method.Name)
+                    {
+                        case nameof(Queryable.Select) when lambdas is [var selector]:
+                            return [new Value(selector.Body, Bound(call, scope))];
+                        case nameof(Queryable.SelectMany) when lambdas is [var selector]:
+                            return Elements(selector.Body, Bound(call, scope));
+                        case nameof(Queryable.SelectMany) or nameof(Queryable.Join) or nameof(Queryable.GroupJoin) when lambdas is [.., { Parameters.Count: 2 } result]:
+                            return [new Value(result.Body, Bound(call, scope))];
+                        case nameof(Queryable.GroupBy) when lambdas is [_, ..]:
+                            if (lambdas.FirstOrDefault(lambda => lambda.Parameters.Count == 2) is { } resultOf) return [new Value(resultOf.Body, Bound(call, scope))];
+                            var (keys, elements) = Grouping(lambdas, scope, Elements(call.Arguments[0], scope));
+                            return [new Group(keys, elements)];
+                        case nameof(Queryable.Cast) or nameof(Queryable.OfType):
+                            var target = method.GetGenericArguments()[0];
+                            return [.. Elements(call.Arguments[0], scope).Where(element => element is not Value value || ReadTypes(value.Expression, value.Scope).Any(target.IsAssignableFrom))];
+                        default:
+                            return [.. Upstream(call).SelectMany(upstream => Elements(upstream, scope))];
+                    }
+                default:
+                    return [];
+            }
+        }
+
+        /// <summary>
+        /// The types a sequence's elements have under their boxing and reference conversions. <paramref name="declared"/>
+        /// is the element type the consuming operator reads, for a sequence the query does not build.
+        /// </summary>
+        private static IEnumerable<Type> ElementTypes(Expression sequence, Scope scope, Type declared) =>
+            Elements(sequence, scope) is [_, ..] elements ? elements.SelectMany(element => TypesOf(element, declared)) : [declared];
+
+        private static IEnumerable<Type> TypesOf(Meaning meaning, Type declared) =>
+            meaning is Value value ? ReadTypes(value.Expression, value.Scope) : [declared];
+
+        /// <summary>
+        /// The types an expression reads under its boxing and reference conversions: both sides of a <c>??</c> and a
+        /// <c>?:</c>, what a parameter stands for, the expression a member of a projection or a grouping's key was set
+        /// from, and the element a <c>First</c> and its kind take.
+        /// </summary>
+        private static IEnumerable<Type> ReadTypes(Expression expression, Scope scope)
+        {
+            switch (Unconverted(expression))
+            {
+                case BinaryExpression { NodeType: ExpressionType.Coalesce } coalesce:
+                    return [.. ReadTypes(coalesce.Left, scope), .. ReadTypes(coalesce.Right, scope)];
+                case ConditionalExpression conditional:
+                    return [.. ReadTypes(conditional.IfTrue, scope), .. ReadTypes(conditional.IfFalse, scope)];
+                case ParameterExpression parameter when scope.Of(parameter) is [_, ..] meanings:
+                    return meanings.SelectMany(meaning => TypesOf(meaning, parameter.Type));
+                case MemberExpression { Expression: { } instance } member when Members(instance, member.Member, scope) is [_, ..] meanings:
+                    return meanings.SelectMany(meaning => TypesOf(meaning, member.Type));
+                case MethodCallExpression call when TakesAnElement(call) && Elements(call.Arguments[0], scope) is [_, ..] elements:
+                    return elements.SelectMany(element => TypesOf(element, call.Type));
+                case var read:
+                    return [read.Type];
+            }
+        }
+
+        /// <summary>
+        /// What <paramref name="member"/> of <paramref name="instance"/> was set from: an argument of a <c>new</c>, a
+        /// binding of a member initializer, a grouping's key, found in the expression itself or in what it stands for.
+        /// </summary>
+        private static IReadOnlyList<Meaning> Members(Expression instance, MemberInfo member, Scope scope)
+        {
+            switch (Unconverted(instance))
+            {
+                case NewExpression { Members: { } members } created:
+                    return [.. members.Select((declared, index) => (declared, index))
+                                      .Where(pair => pair.declared.HasSameMetadataDefinitionAs(member))
+                                      .Select(pair => new Value(created.Arguments[pair.index], scope))];
+                case MemberInitExpression initialized:
+                    return [.. initialized.Bindings.OfType<MemberAssignment>()
+                                          .Where(binding => binding.Member.HasSameMetadataDefinitionAs(member))
+                                          .Select(binding => new Value(binding.Expression, scope))];
+                case ParameterExpression parameter:
+                    return [.. scope.Of(parameter).SelectMany(meaning => MembersOf(meaning, member))];
+                case MemberExpression { Expression: { } outer } nested:
+                    return [.. Members(outer, nested.Member, scope).SelectMany(meaning => MembersOf(meaning, member))];
+                case MethodCallExpression call when TakesAnElement(call):
+                    return [.. Elements(call.Arguments[0], scope).SelectMany(element => MembersOf(element, member))];
+                default:
+                    return [];
+            }
+        }
+
+        private static IReadOnlyList<Meaning> MembersOf(Meaning meaning, MemberInfo member) => meaning switch
+        {
+            Value value => Members(value.Expression, member, value.Scope),
+            Group group when member is { Name: nameof(IGrouping<,>.Key), DeclaringType: { IsGenericType: true } declaring }
+                          && declaring.GetGenericTypeDefinition() == typeof(IGrouping<,>) => group.Keys,
+            _ => [],
+        };
+
+        /// <summary>An operator that answers one of its source's elements: <c>First</c>, <c>Single</c>, <c>Last</c>, <c>ElementAt</c> and their <c>OrDefault</c> forms.</summary>
+        private static bool TakesAnElement(MethodCallExpression call) =>
+            IsLinq(call.Method) && call.Method.IsGenericMethod
+         && call.Method.Name is nameof(Queryable.First) or nameof(Queryable.FirstOrDefault) or nameof(Queryable.Single) or nameof(Queryable.SingleOrDefault)
+                             or nameof(Queryable.Last) or nameof(Queryable.LastOrDefault) or nameof(Queryable.ElementAt) or nameof(Queryable.ElementAtOrDefault);
+
+        /// <summary>The sequences whose elements an operator passes on as they are: its source, both for <c>Concat</c> and its kind; none for any other.</summary>
+        private static Expression[] Upstream(MethodCallExpression call) => call.Method.Name switch
+        {
+            nameof(Queryable.AsQueryable) or nameof(Enumerable.AsEnumerable) or nameof(Queryable.Where) or nameof(Queryable.Distinct)
+             or nameof(Queryable.Skip) or nameof(Queryable.Take) or nameof(Queryable.SkipWhile) or nameof(Queryable.TakeWhile)
+             or nameof(Queryable.SkipLast) or nameof(Queryable.TakeLast) or nameof(Queryable.Reverse) or nameof(Queryable.DefaultIfEmpty)
+             or nameof(Queryable.DistinctBy) or nameof(Queryable.OrderBy) or nameof(Queryable.OrderByDescending) or nameof(Queryable.ThenBy)
+             or nameof(Queryable.ThenByDescending) or nameof(Queryable.Order) or nameof(Queryable.OrderDescending) => [call.Arguments[0]],
+            nameof(Queryable.Concat) or nameof(Queryable.Union) or nameof(Queryable.Intersect) or nameof(Queryable.Except) => [call.Arguments[0], call.Arguments[1]],
+            _ => [],
+        };
+
+        private static bool IsLinq(MethodInfo method) => method.DeclaringType == typeof(Queryable) || method.DeclaringType == typeof(Enumerable);
 
         /// <summary>The expression under its boxing and reference conversions; a conversion operator, which changes the value, is kept.</summary>
         private static Expression Unconverted(Expression expression) =>

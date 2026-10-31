@@ -296,8 +296,12 @@ internal sealed class TypeKitSymbols
     /// struct, or a type parameter constrained to be one. A class's default is null, which nullable
     /// analysis already follows.
     /// </summary>
-    public bool IsNoDefaultStruct(ITypeSymbol type) =>
-        (type.IsValueType || type is ITypeParameterSymbol { HasValueTypeConstraint: true }) && DefaultRestriction(type) is not null;
+    /// <remarks>
+    /// The types CMTK0001 judges, so CMTK0005 and CMTK0006 cover "such a type" as the README says: a
+    /// parameter bound by a value object beside <c>new()</c> is one too. Reading <c>struct</c> alone left
+    /// <c>where T : IValue&lt;int&gt;, new()</c> silent here while CMTK0001 reported it (#207).
+    /// </remarks>
+    public bool IsNoDefaultStruct(ITypeSymbol type) => DefaultRestriction(type) is not null;
 
     /// <summary>
     /// Why a <c>default</c> <paramref name="type"/> is not a valid instance, as CMTK0001 says it, or
