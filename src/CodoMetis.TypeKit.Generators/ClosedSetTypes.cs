@@ -197,8 +197,8 @@ internal static class ClosedSetTypes
     /// <para>
     /// A base class's count as the set's own (#205): its <c>Parse</c>, <c>TryParse</c>, <c>Match</c> or <c>All</c>,
     /// and an <c>IParsable&lt;TSelf&gt;</c> it implements, failed the aspect (LAMA0500, LAMA0503, LAMA0512) naming
-    /// nothing the user wrote, in this project and from another (measured 2026-10-30). A private member of a base,
-    /// such as a <c>_name</c> field, is out of the set's sight and builds.
+    /// nothing the user wrote, in this project and from another (measured 2026-10-30). A member of a base the set cannot
+    /// see, such as a private <c>_name</c> field or <c>Parse(string)</c>, is out of its sight and builds (#230).
     /// </para>
     /// </remarks>
     public static IReadOnlyList<string> GeneratedMembersDeclaredByHand(INamedType set, IReadOnlyList<IField> members)
@@ -212,7 +212,7 @@ internal static class ClosedSetTypes
         var bases = ValueObjectDeclaration.SelfAndBases(set).Skip(1).ToList();
 
         IEnumerable<string> Declared(Func<INamedType, IEnumerable<IMethod>> find) =>
-            ValueObjectDeclaration.SelfAndBases(set).SelectMany(type => find(type).Select(method => type.Equals(set)
+            ValueObjectDeclaration.SelfAndBases(set).SelectMany(type => find(type).Where(method => method.IsAccessibleFrom(set)).Select(method => type.Equals(set)
                 ? ValueObjectDeclaration.Describe(method)
                 : $"{ValueObjectDeclaration.Describe(method)} in its base type {type.ToDisplayString()}"));
 
@@ -220,7 +220,7 @@ internal static class ClosedSetTypes
         [
             .. ValueObjectDeclaration.MembersNamed(set, methods: false, [.. generatedNames]).Where(declared => !memberNames.Contains(declared)),
             .. bases.SelectMany(type => type.Fields.Concat<IMember>(type.Properties).Concat(type.Events)
-                                            .Where(member => member is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false } && member.Accessibility != Accessibility.Private && generatedNames.Contains(member.Name))
+                                            .Where(member => member is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false } && member.IsAccessibleFrom(set) && generatedNames.Contains(member.Name))
                                             .Select(member => $"{member.ToDisplayString()} in its base type {type.ToDisplayString()}")),
             .. Declared(type => type.Methods.Where(method => IsOwn(method) && method.Name == "Parse" && (SameParameters(method, text) || SameParameters(method, text, boolean)))),
             .. Declared(type => type.Methods.Where(method => IsOwn(method) && method.Name == "TryParse" && (SameParameters(method, text, result) || SameParameters(method, text, boolean, result)))),

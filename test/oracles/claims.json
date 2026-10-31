@@ -1210,6 +1210,21 @@
     ]
   },
   {
+    "id": "C22-a-base-s-private-member",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "A base's `private` member is fine: the value object can't see it, so it stands in for nothing.",
+    "claim": "A base record's private member of a generated member's name or signature does not fail the build: the value object is generated beside it, and every generated member is what a call reaches; a protected, internal or public one is refused.",
+    "oracle": "claim",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests",
+      "InheritedMembersTests"
+    ]
+  },
+  {
     "id": "C22-a-contract-through-an-interface",
     "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
     "quote": "That holds whether you declare one directly, through an interface of your own or in a base record.",
@@ -1249,6 +1264,20 @@
     ],
     "heldBy": [
       "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-a-set-s-base-class-private-member",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#closed-sets",
+    "quote": "A `private` one in that class is fine, since the set can't see it.",
+    "claim": "A closed set's base class's private Parse, TryParse or Match does not fail the build, and the set's generated members are what a call reaches; a protected, internal or public one is refused.",
+    "oracle": "claim",
+    "surfaces": [
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests",
+      "InheritedMembersTests"
     ]
   },
   {

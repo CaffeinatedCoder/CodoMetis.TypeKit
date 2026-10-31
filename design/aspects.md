@@ -175,7 +175,9 @@
     a generated name was kept as the value object's (`MaxValue`) or failed the aspect (LAMA0500); and a base
     record's `Create` from another project was a second rule set for generic `T.Create`. A seam counts where the
     value object declares it: a base record's `CompareTo(TSelf)`, `TryFrom` or `Revalidate` stood in for the
-    generated member, and an inherited `CompareTo` made `<` overflow the stack (#194). Found by the interface
+    generated member, and an inherited `CompareTo` made `<` overflow the stack (#194). A base's member the value
+    object cannot see (`IsAccessibleFrom`), a private one, reaches nothing: C# hides it, the generated member sits
+    beside it, and 2.3.0 generated the type, so it is not counted, on a value object or a closed set (#230). Found by the interface
     mapping (`TryFindImplementationForInterfaceMember`), never by listing members: Metalama lists no private
     member of a type in another assembly, so a base record's from a referenced project was missed as well.
     `IConvertible`, `IValueObject<,>`, `IValueObjectMaterializer<,>` and `IPlainValueObject<,>` declared through an

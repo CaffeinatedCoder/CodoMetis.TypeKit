@@ -237,7 +237,8 @@ covers:
   another.
 - **Any of these members in a base record**, public or explicit, in your project or another. A base's
   `MaxValue` would stand in for the generated one, and generic code calling `T.MaxValue` would reach
-  it. The error names the base.
+  it. The error names the base. A base's `private` member is fine: the value object can't see it, so
+  it stands in for nothing.
 
 An overload of a generated member is yours, and the generated one sits beside it. C# tells two methods
 apart by their type parameters and by whether a parameter is `ref`, `in` or `out`, so a
@@ -471,8 +472,9 @@ public sealed partial class OrderStatus : IClosedSet<OrderStatus>, IParsable<Ord
   (CMTK1021).
 - **A `ToString()` you write is kept**, and the name is still what JSON, parsing and the column use.
 - **An overload of a generated method with another signature**, such as `Parse(int rank)` or a
-  generic `Parse<TFormat>(string name)`, is kept too. Any other generated member written by hand fails the build (CMTK1011), in the set or in a
-  class it derives from.
+  generic `Parse<TFormat>(string name)`, is kept too. Any other generated member written by hand
+  fails the build (CMTK1011), in the set or in a class it derives from. A `private` one in that
+  class is fine, since the set can't see it.
 - **A base class's `ToString()`.** A `sealed` one is kept, since C# keeps it in every derived class.
   One that isn't sealed fails the build (CMTK1011), because the generated `ToString()` would replace
   it. Declare `ToString()` in the set, or seal the base's.

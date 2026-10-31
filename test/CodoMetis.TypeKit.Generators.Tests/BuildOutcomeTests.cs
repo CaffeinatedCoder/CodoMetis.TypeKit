@@ -2252,9 +2252,9 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
         public async ValueTask InitializeAsync()
         {
-            var library = await BuildLibrary(_libraryDirectory, Library);
-            var declarations = Build(_directory, new Dictionary<string, string> { ["Declarations.cs"] = Declarations, ["OtherFile.cs"] = OtherFile }, library);
-            var sets = Build(_setsDirectory, new Dictionary<string, string> { ["RefusedSets.cs"] = RefusedSets }, library);
+            var library = await BuildLibrary(_libraryDirectory, Library + BaseMemberAccessibility.LibrarySource);
+            var declarations = Build(_directory, new Dictionary<string, string> { ["Declarations.cs"] = Declarations, ["OtherFile.cs"] = OtherFile, ["BaseMemberAccessibility.cs"] = BaseMemberAccessibility.ValueObjectSource() }, library);
+            var sets = Build(_setsDirectory, new Dictionary<string, string> { ["RefusedSets.cs"] = RefusedSets, ["BaseMemberAccessibility.cs"] = BaseMemberAccessibility.SetSource() }, library);
 
             var (declarationOutput, declarationErrors) = await declarations;
             var (setOutput, setErrors) = await sets;
