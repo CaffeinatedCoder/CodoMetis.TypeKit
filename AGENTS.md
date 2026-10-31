@@ -159,7 +159,8 @@ the whole page. A ranked miss proves nothing.
   wrapped type, and no inner exception (`UnreadableInputTests`).
 - **Seams are declared, everything else refused.** `TryFrom`, `FromKnownGood`, `Revalidate`,
   `CompareTo(TSelf)` and `ToString()` written by hand are kept; any other member the generators
-  introduce is CMTK1011. A new generated member joins that check, or a hand-written one is kept silently.
+  introduce is CMTK1011. A new named generated member is introduced through its `GeneratedMembers` entry, which
+  that check reads; one introduced past it carries no `[GeneratedMember]`, which `GeneratedMemberAttributeTests` refuses.
 - **Diagnostic ids (`CMTK`) are public contract.** Never renumber a shipped rule, and never ship a
   new rule at Error severity in a minor version.
 - **A package contains this repository's code and nothing else.** Third-party code copied into `src/` or
