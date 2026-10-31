@@ -6,13 +6,15 @@ using Microsoft.CodeAnalysis.Testing;
 
 namespace CodoMetis.TypeKit.Analyzers.Tests;
 
-/// <summary>CMTK0005: arrays and spans of a no-default struct, created with a length.</summary>
+/// <summary>CMTK0005: arrays, spans and lists of a no-default struct, created or sized with a length.</summary>
 public sealed class DefaultFilledCollectionAnalyzerTests
 {
     private const string Subjects =
         """
         using System;
         using System.Buffers;
+        using System.Collections.Generic;
+        using System.Runtime.InteropServices;
         using CodoMetis.TypeKit;
         using CodoMetis.TypeKit.ValueObjects;
 
@@ -238,10 +240,76 @@ public sealed class DefaultFilledCollectionAnalyzerTests
             .RunAsync(TestContext.Current.CancellationToken);
 
     /// <summary>
-    /// <c>ArrayPool&lt;T&gt;.Rent</c> and the <c>typeof</c> factories judge their element as
+    /// <c>CollectionsMarshal.SetCount</c> makes room in a list without putting an item there, as
+    /// <c>Array.Resize</c> does in an array, and was not reported (#229). Across the input class, a list's
+    /// count set by that call: by element type, with the type argument inferred or written, the count named,
+    /// through a type parameter, and on a list a derived class holds.
+    /// </summary>
+    [Fact]
+    public Task Setting_a_list_s_count_reports() =>
+        Test(
+            """
+            public sealed class Ids : List<Plain> { }
+
+            public static class C
+            {
+                public static void Run(int n, List<Plain> plain, List<Option<int>> options, List<Result<int, string>> results, List<Guarded> guarded, Ids ids)
+                {
+                    {|#0:CollectionsMarshal.SetCount(plain, n)|};
+                    {|#1:CollectionsMarshal.SetCount<Plain>(plain, 3)|};
+                    {|#2:CollectionsMarshal.SetCount(count: n, list: plain)|};
+                    {|#3:CollectionsMarshal.SetCount(options, n)|};
+                    {|#4:CollectionsMarshal.SetCount(results, n)|};
+                    {|#5:CollectionsMarshal.SetCount(guarded, n)|};
+                    {|#6:CollectionsMarshal.SetCount(ids, n)|};
+                }
+
+                public static void Generic<T>(List<T> list, int n) where T : struct, IValue<int> => {|#7:CollectionsMarshal.SetCount(list, n)|};
+            }
+            """,
+            Cmtk0005(0, "CollectionsMarshal.SetCount", "Plain"),
+            Cmtk0005(1, "CollectionsMarshal.SetCount", "Plain"),
+            Cmtk0005(2, "CollectionsMarshal.SetCount", "Plain"),
+            Cmtk0005(3, "CollectionsMarshal.SetCount", "Option<int>"),
+            Cmtk0005(4, "CollectionsMarshal.SetCount", "Result<int, string>"),
+            Cmtk0005(5, "CollectionsMarshal.SetCount", "Guarded"),
+            Cmtk0005(6, "CollectionsMarshal.SetCount", "Plain"),
+            Cmtk0005(7, "CollectionsMarshal.SetCount", "T"))
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// A count of zero empties the list and adds no slot, as <c>new Plain[0]</c> creates none, however the
+    /// zero is written; a list of another element type, a nullable value object's included, has no slot to judge.
+    /// </summary>
+    [Fact]
+    public Task Setting_a_list_s_count_to_zero_or_of_another_type_stays_silent() =>
+        Test(
+            """
+            public static class C
+            {
+                public static void Run(int n, List<Plain> plain, List<int> numbers, List<Plain?> nullable, List<ValueClass> classes)
+                {
+                    const int none = 0;
+                    CollectionsMarshal.SetCount(plain, 0);
+                    CollectionsMarshal.SetCount(plain, count: 0);
+                    CollectionsMarshal.SetCount(count: none, list: plain);
+                    CollectionsMarshal.SetCount(plain, (byte)0);
+                    CollectionsMarshal.SetCount(plain, '\0');
+                    CollectionsMarshal.SetCount(numbers, n);
+                    CollectionsMarshal.SetCount(nullable, n);
+                    CollectionsMarshal.SetCount(classes, n);
+                    plain.Capacity = n;
+                    var sized = new List<Plain>(n);
+                }
+            }
+            """)
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// <c>ArrayPool&lt;T&gt;.Rent</c>, <c>CollectionsMarshal.SetCount</c> and the <c>typeof</c> factories judge their element as
     /// <c>GC.AllocateArray&lt;T&gt;</c> does, across every kind of <see cref="TypeArgumentKinds"/>: each
     /// reports exactly where the generic allocator does. <c>typeof</c> takes neither <c>dynamic</c> (CS1962) nor a nullable reference type
-    /// (CS8639), so those two kinds run <c>Rent</c> alone.
+    /// (CS8639), so those two kinds run <c>Rent</c> and <c>SetCount</c> alone.
     /// </summary>
     [Theory]
     [MemberData(nameof(Kinds))]
@@ -253,6 +321,7 @@ public sealed class DefaultFilledCollectionAnalyzerTests
             $$"""
               #nullable enable
               using System.Buffers;
+              using System.Runtime.InteropServices;
 
               public static class Use{{kind.Parameters}} {{kind.Where}}
               {
@@ -260,6 +329,7 @@ public sealed class DefaultFilledCollectionAnalyzerTests
                   {
                       _ = GC.AllocateArray<{{kind.Argument}}>(n);
                       _ = ArrayPool<{{kind.Argument}}>.Shared.Rent(n);
+                      CollectionsMarshal.SetCount(new List<{{kind.Argument}}>(), n);
                       {{(typeOf ? $"_ = Array.CreateInstance(typeof({kind.Argument}), n);" : "")}}
                       {{(typeOf ? $"_ = Array.CreateInstance(typeof({kind.Argument}), n, n);" : "")}}
                       {{(typeOf ? $"_ = Array.CreateInstanceFromArrayType(typeof({kind.Argument}[]), n);" : "")}}
@@ -272,7 +342,9 @@ public sealed class DefaultFilledCollectionAnalyzerTests
         var reported = forms.Contains("GC.AllocateArray");
         if (kind is KindOfType { Is: var type } && type.HasFlag(Is.Struct) && type.HasFlag(Is.ValueObjectMarker)) reported.ShouldBeTrue("a value object struct is the positive control");
 
-        string[] factories = typeOf ? ["ArrayPool.Rent", "Array.CreateInstance", "Array.CreateInstance", "Array.CreateInstanceFromArrayType"] : ["ArrayPool.Rent"];
+        string[] factories = typeOf
+            ? ["ArrayPool.Rent", "CollectionsMarshal.SetCount", "Array.CreateInstance", "Array.CreateInstance", "Array.CreateInstanceFromArrayType"]
+            : ["ArrayPool.Rent", "CollectionsMarshal.SetCount"];
         forms.Where(form => form != "GC.AllocateArray").Order().ShouldBe(reported ? factories.Order() : []);
     }
 
