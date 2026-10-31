@@ -169,6 +169,35 @@
     own: its `sealed` `ToString()` is the seam; an unsealed one, its `PrintMembers`, its explicit
     implementations of the generated interfaces and an `IConvertible` on it are CMTK1011, or CMTK1008
     for comparison. Members the compiler generated on a record from another assembly do not count.
+  - **Wherever the value object reaches it (decided 2026-10-30, [decision 121](adr/0121-a-generated-member-is-refused-wherever-the-value-object-reaches-it.md)).**
+    An interface's explicit implementation is the default every type declaring the interface reaches until it
+    declares a public member, so the generated one replaced it without a word; a base record's public member of
+    a generated name was kept as the value object's (`MaxValue`) or failed the aspect (LAMA0500); and a base
+    record's `Create` from another project was a second rule set for generic `T.Create`. A seam counts where the
+    value object declares it: a base record's `CompareTo(TSelf)`, `TryFrom` or `Revalidate` stood in for the
+    generated member, and an inherited `CompareTo` made `<` overflow the stack (#194). A base's member the value
+    object cannot see (`IsAccessibleFrom`), a private one, reaches nothing: C# hides it, the generated member sits
+    beside it, and 2.3.0 generated the type, so it is not counted, on a value object or a closed set (#230). Found by the interface
+    mapping (`TryFindImplementationForInterfaceMember`), never by listing members: Metalama lists no private
+    member of a type in another assembly, so a base record's from a referenced project was missed as well.
+    `IConvertible`, `IValueObject<,>`, `IValueObjectMaterializer<,>` and `IPlainValueObject<,>` declared through an
+    interface or by a base record, and a closed set's `IParsable<TSelf>` through an interface, are CMTK1011 where
+    they failed the aspect (LAMA0041, LAMA0512, #192). A closed set's base class counts as a base record does: its
+    members of a generated name or signature and its `IParsable<TSelf>` are CMTK1011, its `sealed` `ToString()` is
+    the seam and one not sealed is CMTK1011 (#205). Not refused: an interface's `==`, which the record's own
+    replaces anyway, and `INumberBase<TSelf>`'s UTF-8 bridges.
+  - **A signature is what C# overloads by (#226).** A hand-written method matches a generated one only with no type
+    parameters, as the generated one has none, and with each parameter by reference where the generated one's is
+    `out` and by value where it is by value. A generic `Parse<TFormat>(string, IFormatProvider?)`, a `From(in int)`
+    and a `TryParse` whose last parameter is by value were CMTK1011, on the type, a base record and a closed set,
+    though Metalama introduces the generated member beside each (measured 2026-10-31). `ref` or `in` against `out` is
+    no overload in C# (CS0663), and nullability none at all, so both stay CMTK1011.
+    The other checks by name and parameters, the seams and what a record synthesizes, read only a method without
+    type parameters whose parameters are all by value (`ValueObjectDeclaration.IsByValueAndNotGeneric`), as every
+    generated member but `TryParse` and `TryFormat` is: a generic `ToString<TFormat>()` was taken for the seam, so
+    the value object printed what a record prints and a closed set its type name, a generic or by-`in`
+    `CompareTo(TSelf)` marked the ordering hand-written, and a generic or by-reference `TryFrom`, `Revalidate`,
+    `CompareTo(object)`, `Equals`, `GetHashCode` or `PrintMembers` was CMTK1011 or CMTK1008.
   - **Equality over a base record is generated (decided 2026-10-14, [decision 75](adr/0075-equality-over-base-record-generated.md)).**
     A derived record's synthesized equality calls the base's, which compares the base's fields and
     whatever the base declares. A base comparing by reference made two value objects holding 42 unequal

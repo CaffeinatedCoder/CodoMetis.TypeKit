@@ -44,7 +44,8 @@ public sealed class FabricTests
 
         type.GetInterfaces().ShouldContain(typeof(IValueObject<,>).MakeGenericType(type, underlying));
         type.GetProperty("Value", BindingFlags.Public | BindingFlags.Instance).ShouldNotBeNull().PropertyType.ShouldBe(underlying);
-        type.GetMethod(plain ? "From" : "TryFrom", BindingFlags.Public | BindingFlags.Static).ShouldNotBeNull();
+        // By its signature: a value object may declare an overload of it, generic or by reference (#226).
+        type.GetMethod(plain ? "From" : "TryFrom", 0, BindingFlags.Public | BindingFlags.Static, [underlying]).ShouldNotBeNull();
     }
 
     /// <summary>

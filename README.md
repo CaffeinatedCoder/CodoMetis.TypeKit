@@ -375,7 +375,7 @@ your projects. Thanks to the Metalama team.
 
 ## Status
 
-2.3.0 is the current version. 1.0.0, released on 28 September 2026, was the first.
+2.3.1 is the current version. 1.0.0, released on 28 September 2026, was the first.
 [Migrating from 2.0 to 2.1](docs/migrating-to-2-1.md) lists what builds or runs differently since 2.0,
 and [Migrating from 1.5 to 2.0](docs/migrating-to-2.md) what changed since 1.5.
 

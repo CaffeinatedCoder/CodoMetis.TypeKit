@@ -14,8 +14,9 @@ Every fact here was read from each library's source, at the release named in the
 - **13 October 2026** for closed sets.
 - **14 October 2026**, again, for OpenAPI and Native AOT.
 - **29 October 2026** for SuperStrong.Types. Again for Thinktecture.Runtime.Extensions, at 10.6.0, and
-  LanguageExt, at 5.0.0-beta-78. And again for TypeKit's own columns, at 2.3.0.
+  LanguageExt, at 5.0.0-beta-78.
 - **30 October 2026** for EricksonLopez.DomainPrimitives, at 3.0.0.
+- **31 October 2026** for TypeKit's own columns, at 2.3.1.
 
 What was read for each library, and when, is kept in the repository's
 [verified facts](../design/knowledge/README.md). Each table below lists the entries it rests on.
@@ -45,7 +46,7 @@ Sources: FluentResults [KB-018](../design/knowledge/KB-018-fluentresults.md), On
 
 ## Value objects in detail
 
-| | TypeKit 2.3.0 | Vogen 8.0.7 (the 9.0.0-beta.2 tag the same; not on NuGet) | Thinktecture.Runtime.Extensions 10.6.0 | StronglyTypedId 1.0.0-beta08 | SuperStrong.Types 1.0.0 | EricksonLopez.DomainPrimitives 3.0.0 |
+| | TypeKit 2.3.1 | Vogen 8.0.7 (the 9.0.0-beta.2 tag the same; not on NuGet) | Thinktecture.Runtime.Extensions 10.6.0 | StronglyTypedId 1.0.0-beta08 | SuperStrong.Types 1.0.0 | EricksonLopez.DomainPrimitives 3.0.0 |
 |---|---|---|---|---|---|---|
 | Declared by | Implementing `IValue<T>` or `IValidatedValue<...>` on a `partial record` | `[ValueObject<T>]` on a partial type | `[ValueObject<T>]`, `[ComplexValueObject]` or `[SmartEnum<T>]` on a partial type | `[StronglyTypedId]` on a partial struct | `[StrongType<T>]` on a partial class, not a record or a struct | `[StrongId<T>]`, `[StringPrimitive]`, `[NumericPrimitive<T>]`, one of 39 ready-made types such as `[Email]` or `[IBAN]`, or `[ValueObject]` for several members, on a `readonly partial record struct` |
 | Validation | `Create` returns a `Result`, and every generated way of creating a value runs it | `Validate` returns a `Validation`. `From` throws | A `ValidateFactoryArguments` partial method | None | A `Define()` method built from validators such as `IsPositive()`. `From` throws, `TryFrom` returns `false`, and JSON, parsing, the type converter and EF Core reads run it | Attributes such as `[Trim]` and `[Length]`, or a `Validate` partial method. `Create` throws, `TryCreate` returns `false` and an error code. A positional `[ValueObject]` keeps its public constructor, and `with` skips `Validate` |
@@ -72,7 +73,7 @@ register means describing it in the document by hand, type by type.
 
 ## Option and Result in detail
 
-| | TypeKit 2.3.0 | LanguageExt 4.4.9 (5.0.0-beta-78) | CSharpFunctionalExtensions 3.7.0 | ErrorOr 2.1.1 |
+| | TypeKit 2.3.1 | LanguageExt 4.4.9 (5.0.0-beta-78) | CSharpFunctionalExtensions 3.7.0 | ErrorOr 2.1.1 |
 |---|---|---|---|---|
 | Reaching the value | `Match`, `TryGetValue` and the combinators. No `.Value` | `Match`, `IfNone` and the like. No public `.Value` on `Option` | `.Value`, which throws on a failure | `.Value`, which returns `default` on an error |
 | A `default` instance | `Option`: `None`. `Result`: throws when used, and fails the build when written in code (CMTK0001) | `Option`: `None` | `Maybe`: none. `Result<T>`: a success holding `default(T)` | A success holding `default(T)` |
@@ -84,7 +85,7 @@ Sources: LanguageExt [KB-015](../design/knowledge/KB-015-languageext-option.md),
 
 ## Closed sets in detail
 
-| | TypeKit 2.3.0 | Ardalis.SmartEnum 8.2.0 | Intellenum 2.0.1 | Thinktecture.Runtime.Extensions 10.6.0 |
+| | TypeKit 2.3.1 | Ardalis.SmartEnum 8.2.0 | Intellenum 2.0.1 | Thinktecture.Runtime.Extensions 10.6.0 |
 |---|---|---|---|---|
 | Declared by | Implementing `IClosedSet<TSelf>` on a `sealed partial class`, one `public static readonly` field per member | Deriving from `SmartEnum<TEnum>`, each member `new("Name", value)` | `[Intellenum]` on a partial class. Members as fields, `[Member]` attributes or a static constructor | `[SmartEnum<TKey>]` on a partial class, each member `new("KEY")` |
 | Data on a member | Properties, set through the private constructor | The subclass's own fields | One underlying value. Richer data through a custom underlying type | Declared properties, which become constructor parameters |

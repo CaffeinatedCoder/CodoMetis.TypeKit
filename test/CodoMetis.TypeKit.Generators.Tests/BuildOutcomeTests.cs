@@ -169,14 +169,49 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
     /// <summary>
     /// What the generators implement and attach, written by hand, failed the aspect or the generated
-    /// code: <c>IParsable</c> twice, an attribute twice (CS0579). The error names each.
+    /// code: <c>IParsable</c> twice, an attribute twice (CS0579). The error names each. An interface's
+    /// explicit implementation of <c>IClosedSet&lt;TSelf&gt;</c> was replaced by the generated member without
+    /// a word, and <c>IParsable</c> declared through an interface failed the aspect (LAMA0512) (#191).
     /// </summary>
     [Theory]
     [InlineData("SetWithParsable", "the interface IParsable<SetWithParsable>")]
+    [InlineData("SetWithParsableThroughInterface", "the interface IParsable<SetWithParsableThroughInterface> in its interface ISetParsesItself<SetWithParsableThroughInterface>")]
+    [InlineData("SetWithNameThroughInterface", "the explicit implementation of IClosedSet<SetWithNameThroughInterface>.Name in its interface ISetNamesItself<SetWithNameThroughInterface>")]
+    [InlineData("SetWithNameThroughInterface", "the explicit implementation of IClosedSet<SetWithNameThroughInterface>.TryParse(string?, out SetWithNameThroughInterface) in its interface ISetNamesItself<SetWithNameThroughInterface>")]
+    [InlineData("SetOverLibraryBase", "the explicit implementation of IClosedSet<SetOverLibraryBase>.Name in its base type ExplicitSetBase<SetOverLibraryBase>")]
+    [InlineData("SetWithNameThroughLibraryInterface", "the explicit implementation of IClosedSet<SetWithNameThroughLibraryInterface>.Name in its interface IProbeSetNames<SetWithNameThroughLibraryInterface>")]
+    [InlineData("SetOverParsingBase", "ParsingSetBase<SetOverParsingBase>.Parse(string) in its base type ParsingSetBase<SetOverParsingBase>")]
+    [InlineData("SetOverIgnoreCaseParsingBase", "IgnoreCaseParsingSetBase<SetOverIgnoreCaseParsingBase>.Parse(string, bool) in its base type IgnoreCaseParsingSetBase<SetOverIgnoreCaseParsingBase>")]
+    [InlineData("SetOverTryParsingBase", "TryParsingSetBase<SetOverTryParsingBase>.TryParse(string?, bool, out SetOverTryParsingBase) in its base type TryParsingSetBase<SetOverTryParsingBase>")]
+    [InlineData("SetWithTryParseByRef", "SetWithTryParseByRef.TryParse(string?, ref SetWithTryParseByRef)")]
+    [InlineData("SetOverTryParsingByRefBase", "TryParsingByRefSetBase<SetOverTryParsingByRefBase>.TryParse(string?, bool, ref SetOverTryParsingByRefBase) in its base type TryParsingByRefSetBase<SetOverTryParsingByRefBase>")]
+    [InlineData("SetOverMatchingBase", "MatchingSetBase.Match<TResult>(Func<TResult>) in its base type MatchingSetBase")]
+    [InlineData("SetOverParsableBase", "the interface IParsable<SetOverParsableBase> in its base type ParsableSetBase<SetOverParsableBase>")]
+    [InlineData("SetOverAllListingBase", "AllListingSetBase.All in its base type AllListingSetBase")]
+    [InlineData("SetOverProtectedFieldBase", "ProtectedFieldSetBase._name in its base type ProtectedFieldSetBase")]
+    [InlineData("SetOverQualifiedBase", "QualifiedSetBase.QualifiedName in its base type QualifiedSetBase")]
+    [InlineData("SetOverOpenToStringBase", "OpenToStringSetBase.ToString() in its base type, which is not sealed, so it is not generated: its generated ToString() replaces it")]
+    [InlineData("SetOverLibraryParsingBase", "LibraryParsingSetBase<SetOverLibraryParsingBase>.Parse(string) in its base type LibraryParsingSetBase<SetOverLibraryParsingBase>")]
+    [InlineData("SetOverLibraryParsableBase", "the interface IParsable<SetOverLibraryParsableBase> in its base type LibraryParsableSetBase<SetOverLibraryParsableBase>")]
+    [InlineData("SetOverLibraryOpenToString", "LibraryOpenToStringSetBase.ToString() in its base type, which is not sealed")]
     [InlineData("SetWithTypeConverterAttribute", "the attribute TypeConverter")]
     [InlineData("SetWithJsonConverterAttribute", "the attribute JsonConverter")]
     public void What_the_generators_implement_or_attach_is_refused_by_name_on_a_set(string type, string declared) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(declared), consumer.Output);
+
+    /// <summary>
+    /// What a base class declares that the set cannot reach, or that the generators keep, is no refusal: its
+    /// <c>sealed</c> <c>ToString()</c> is the seam, as for a value object, where it failed the aspect (LAMA0502,
+    /// #205); its private <c>_name</c> and <c>_all</c>, and a <c>[JsonConverter]</c> on it, which the set's own
+    /// replaces, built before and still do (measured 2026-10-30).
+    /// </summary>
+    [Theory]
+    [InlineData("SetOverSealedToStringBase")]
+    [InlineData("SetOverLibrarySealedToString")]
+    [InlineData("SetOverPrivateFieldsBase")]
+    [InlineData("SetOverAttributedBase")]
+    public void What_a_set_s_base_class_declares_out_of_the_generators_way_is_not_refused(string type) =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}"), consumer.Output);
 
     /// <summary>
     /// A member whose name starts with the Kelvin sign (U+212A) and one that starts with K are two names
@@ -305,12 +340,19 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("HandWrittenParse", "HandWrittenParse.Parse(string, IFormatProvider?)")]
     [InlineData("HandWrittenParseOverASet", "HandWrittenParseOverASet.Parse(string, IFormatProvider?)")]
     [InlineData("HandWrittenFormat", "HandWrittenFormat.ToString(string?, IFormatProvider?)")]
+    [InlineData("TryParseByRef", "TryParseByRef.TryParse(string?, IFormatProvider?, ref TryParseByRef)")]
+    [InlineData("TryParseByIn", "TryParseByIn.TryParse(string?, IFormatProvider?, in TryParseByIn)")]
+    [InlineData("ParseOfOtherNullability", "ParseOfOtherNullability.Parse(string?, IFormatProvider)")]
+    [InlineData("TryFormatByRef", "TryFormatByRef.TryFormat(Span<char>, ref int, ReadOnlySpan<char>, IFormatProvider?)")]
     [InlineData("HandWrittenMinValue", "HandWrittenMinValue.MinValue")]
     [InlineData("HandWrittenJsonConverter", "the attribute JsonConverter")]
     [InlineData("HandWrittenTypeConverter", "the attribute TypeConverter")]
     [InlineData("HandWrittenOrdering", "the attribute HandWrittenOrdering")]
     [InlineData("HandWrittenInterface", "the interface IValueObject<HandWrittenInterface, int>")]
     [InlineData("ExplicitCreate", "Create only as an explicit implementation of IValidatedValue<ExplicitCreate, string, Fault>")]
+    [InlineData("LenientOverStrictBase", "Create both as a static method and as an explicit implementation of IValidatedValue<LenientOverStrictBase, string, LibraryFault> in its base type StrictCreateBase<LenientOverStrictBase>, so it is not generated: every generated way in calls LenientOverStrictBase.Create and generic code calling T.Create reaches the inherited one, so it would have two rule sets; declare IValidatedValue<LenientOverStrictBase, string, LibraryFault> on LenientOverStrictBase itself, so that its own Create implements it")]
+    [InlineData("OnlyStrictBase", "Create only as an explicit implementation of IValidatedValue<OnlyStrictBase, string, LibraryFault> in its base type StrictCreateBase<OnlyStrictBase>, so it is not generated: the generated code calls OnlyStrictBase.Create, which cannot reach an explicit implementation; declare it as 'public static Result<OnlyStrictBase, LibraryFault> Create(string value)', and IValidatedValue<OnlyStrictBase, string, LibraryFault> on OnlyStrictBase itself")]
+    [InlineData("LenientOverPublicBase", "Create both as a static method and as PublicCreateBase<LenientOverPublicBase>.Create(string) in its base type PublicCreateBase<LenientOverPublicBase>, so it is not generated: every generated way in calls LenientOverPublicBase.Create and generic code calling T.Create reaches the inherited one")]
     [InlineData("ExplicitCreateBesidePublic", "Create both as a static method and as an explicit implementation of IValidatedValue<ExplicitCreateBesidePublic, string, Fault>, so it is not generated: every generated way in calls ExplicitCreateBesidePublic.Create and generic code calling T.Create reaches the explicit one")]
     public void A_hand_written_generated_member_is_refused_by_name(string type, string member) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
@@ -325,6 +367,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CaseInsensitiveEquals", "CaseInsensitiveEquals.Equals(CaseInsensitiveEquals), CaseInsensitiveEquals.GetHashCode(), so", "(declare CaseInsensitiveEquals as IValidatedValue to get one)")]
     [InlineData("HashCodeOnly", "HashCodeOnly.GetHashCode(), so", "normalise them in Create, so")]
     [InlineData("ExplicitEquatable", "the explicit implementation of IEquatable<ExplicitEquatable>.Equals(ExplicitEquatable), so", "(declare ExplicitEquatable as IValidatedValue to get one)")]
+    [InlineData("EqualsOnClass", "EqualsOnClass.Equals(EqualsOnClass?), so", "(declare EqualsOnClass as IValidatedValue to get one)")]
+    [InlineData("EqualsDeeperBase", "EqualsDeeperBase.Equals(DeepEqualityBase?), so", "(declare EqualsDeeperBase as IValidatedValue to get one)")]
     public void A_hand_written_equality_is_refused_by_name(string type, string members, string remedy) =>
         consumer.Errors.ShouldContain(error => error.Id == "CMTK1011" && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(members)
                                             && error.Message.Contains("a value object's equality is its wrapped value's") && error.Message.Contains(remedy), consumer.Output);
@@ -366,6 +410,74 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
 
     /// <summary>
+    /// An interface's explicit implementation of a generated interface's member is the default every type
+    /// declaring the interface reaches until it declares a public member of its own, so the generated one
+    /// replaced it without a word: <c>Max&lt;T&gt;()</c> read the generated <c>MaxValue</c> where the
+    /// interface's threw, and an <c>IFormattable</c> call printed the value where the interface answered its
+    /// own text (#191, measured 2026-10-30 for each interface here). It is refused as the value object's own
+    /// is, naming the interface, two interfaces down and through a base record too. <c>IConvertible</c>
+    /// declared through an interface failed the aspect (LAMA0041), as declaring it does.
+    /// </summary>
+    [Theory]
+    [InlineData("CMTK1011", "FormatsThroughInterface", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its interface IFormatsItself")]
+    [InlineData("CMTK1011", "SpanFormatsThroughInterface", "the explicit implementation of ISpanFormattable.TryFormat(Span<char>, out int, ReadOnlySpan<char>, IFormatProvider?) in its interface ISpanFormatsItself")]
+    [InlineData("CMTK1011", "Utf8FormatsThroughInterface", "the explicit implementation of IUtf8SpanFormattable.TryFormat(Span<byte>, out int, ReadOnlySpan<char>, IFormatProvider?) in its interface IUtf8FormatsItself")]
+    [InlineData("CMTK1011", "ParsesThroughInterface", "the explicit implementation of IParsable<ParsesThroughInterface>.Parse(string, IFormatProvider?) in its interface IParsesItself<ParsesThroughInterface>")]
+    [InlineData("CMTK1011", "SpanParsesThroughInterface", "the explicit implementation of ISpanParsable<SpanParsesThroughInterface>.Parse(ReadOnlySpan<char>, IFormatProvider?) in its interface ISpanParsesItself<SpanParsesThroughInterface>")]
+    [InlineData("CMTK1011", "Utf8ParsesThroughInterface", "the explicit implementation of IUtf8SpanParsable<Utf8ParsesThroughInterface>.Parse(ReadOnlySpan<byte>, IFormatProvider?) in its interface IUtf8ParsesItself<Utf8ParsesThroughInterface>")]
+    [InlineData("CMTK1011", "BoundedThroughInterface", "the explicit implementation of IMinMaxValue<BoundedThroughInterface>.MinValue in its interface IBoundedItself<BoundedThroughInterface>")]
+    [InlineData("CMTK1011", "ConvertsThroughInterface", "the interface IConvertible in its interface IConvertsItself")]
+    [InlineData("CMTK1008", "OrdersThroughInterface", "the explicit implementation of IComparable.CompareTo(object?) in its interface IOrdersItself")]
+    [InlineData("CMTK1008", "OrdersThroughGenericInterface", "the explicit implementation of IComparable<OrdersThroughGenericInterface>.CompareTo(OrdersThroughGenericInterface) in its interface IOrdersItselfAs<OrdersThroughGenericInterface>")]
+    [InlineData("CMTK1008", "ComparesThroughInterface", "the explicit implementation of IComparisonOperators<ComparesThroughInterface, ComparesThroughInterface, bool>.operator <(ComparesThroughInterface, ComparesThroughInterface) in its interface IComparesItself<ComparesThroughInterface>")]
+    [InlineData("CMTK1011", "FormatsThroughInterfaceOnClass", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its interface IFormatsItself")]
+    [InlineData("CMTK1008", "OrdersThroughGenericInterfaceOnClass", "the explicit implementation of IComparable<OrdersThroughGenericInterfaceOnClass>.CompareTo(OrdersThroughGenericInterfaceOnClass?) in its interface IOrdersItselfAs<OrdersThroughGenericInterfaceOnClass>")]
+    [InlineData("CMTK1011", "FormatsTwoInterfacesDown","the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its interface IFormatsItself")]
+    [InlineData("CMTK1011", "ConvertsTwoInterfacesDown", "the interface IConvertible in its interface IConvertsTwoDown")]
+    [InlineData("CMTK1011", "FormatsThroughBaseInterface", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its interface IFormatsItself")]
+    [InlineData("CMTK1011", "BoundedThroughBaseInterface", "the explicit implementation of IMinMaxValue<BoundedThroughBaseInterface>.MinValue in its interface IBoundedItself<BoundedThroughBaseInterface>")]
+    [InlineData("CMTK1008", "OrdersThroughBaseInterface", "the explicit implementation of IComparable.CompareTo(object?) in its interface IOrdersItself")]
+    [InlineData("CMTK1011", "ConvertsThroughBaseInterface", "the interface IConvertible in its base type ConvertsItselfBase")]
+    [InlineData("CMTK1011", "ContractThroughInterface", "the interface IValueObject<ContractThroughInterface, Guid> in its interface IEntityIdentifier<ContractThroughInterface>")]
+    [InlineData("CMTK1011", "ContractTwoInterfacesDown", "the interface IValueObject<ContractTwoInterfacesDown, Guid> in its interface IAggregateIdentifier<ContractTwoInterfacesDown>")]
+    [InlineData("CMTK1011", "MaterializerThroughInterface", "the interface IValueObjectMaterializer<MaterializerThroughInterface, int> in its interface IReadsBackItself<MaterializerThroughInterface>")]
+    [InlineData("CMTK1011", "PlainContractThroughInterface", "the interface IPlainValueObject<PlainContractThroughInterface, int> in its interface IFromableItself<PlainContractThroughInterface>")]
+    [InlineData("CMTK1011", "ContractThroughBaseInterface", "the interface IValueObject<ContractThroughBaseInterface, Guid> in its base type EntityIdentifierBase<ContractThroughBaseInterface>")]
+    [InlineData("CMTK1011", "ContractThroughLibraryInterface", "the interface IValueObject<ContractThroughLibraryInterface, Guid> in its interface ILibraryEntityIdentifier<ContractThroughLibraryInterface>")]
+    [InlineData("CMTK1011", "FormatsThroughLibraryInterface", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its interface IProbeFormats")]
+    [InlineData("CMTK1011", "BoundedThroughLibraryInterface", "the explicit implementation of IMinMaxValue<BoundedThroughLibraryInterface>.MinValue in its interface IProbeBounded<BoundedThroughLibraryInterface>")]
+    [InlineData("CMTK1008", "OrdersThroughLibraryInterface", "the explicit implementation of IComparable.CompareTo(object?) in its interface IProbeOrders")]
+    public void An_interface_s_explicit_implementation_of_a_generated_interface_is_refused_by_name(string id, string type, string member) =>
+        consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
+
+    /// <summary>
+    /// An interface's default the generators do not replace is no refusal: beside <c>ToString()</c>, the seam,
+    /// no formatting interface is generated, and a <c>Uri</c> has no ordering. The record's own <c>==</c>
+    /// replaces an interface's in every record, generated or not (measured 2026-10-30). .NET's
+    /// <c>INumberBase&lt;TSelf&gt;</c> implements <c>IUtf8SpanFormattable</c> and <c>IUtf8SpanParsable</c>
+    /// explicitly as bridges to the UTF-16 members, which every numeric type of .NET replaces with its own, as
+    /// the generated ones do: refused, no value object could implement it.
+    /// </summary>
+    [Theory]
+    [InlineData("FormatsThroughInterfaceWithToString")]
+    [InlineData("OrdersThroughInterfaceOverUri")]
+    [InlineData("EqualsThroughInterface")]
+    [InlineData("MetersAsNumber")]
+    public void An_interface_s_default_the_generators_do_not_replace_is_not_refused(string type) =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'"), consumer.Output);
+
+    /// <summary>
+    /// One <c>Create</c> that both the generated code and generic <c>T.Create</c> reach builds: the value object's
+    /// own, where it declares the marker again over a base that implements <c>Create</c> explicitly, and a base's
+    /// public one alone (#195).
+    /// </summary>
+    [Theory]
+    [InlineData("LenientListedOverStrictBase")]
+    [InlineData("OnlyPublicBase")]
+    public void One_Create_over_a_base_record_is_not_refused(string type) =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'"), consumer.Output);
+
+    /// <summary>
     /// What a base record declares counts as the value object's own. Its unsealed <c>ToString()</c> and its
     /// <c>PrintMembers</c> were replaced by the generated <c>ToString()</c>, printing what they hid; an
     /// explicit implementation of a generated interface was replaced without a word (<c>IFormattable</c>,
@@ -383,8 +495,61 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("CMTK1011", "InheritsConvertible", "the interface IConvertible in its base type ConvertibleBase")]
     [InlineData("CMTK1008", "InheritsExplicitComparable", "the explicit implementation of IComparable<InheritsExplicitComparable>.CompareTo(InheritsExplicitComparable?) in its base type ComparableBase<InheritsExplicitComparable>")]
     [InlineData("CMTK1008", "InheritsExplicitObjectComparable", "the explicit implementation of IComparable.CompareTo(object?) in its base type ObjectComparableBase")]
+    [InlineData("CMTK1011", "InheritsLibraryFormattable", "the explicit implementation of IFormattable.ToString(string?, IFormatProvider?) in its base type ProbeFormattableRecord")]
+    [InlineData("CMTK1011", "InheritsLibraryMinMax", "the explicit implementation of IMinMaxValue<InheritsLibraryMinMax>.MinValue in its base type ProbeMinMaxRecord<InheritsLibraryMinMax>")]
+    [InlineData("CMTK1011", "InheritsPublicMinMax", "PublicMinMaxItselfBase<InheritsPublicMinMax>.MinValue in its base type PublicMinMaxItselfBase<InheritsPublicMinMax>")]
+    [InlineData("CMTK1011", "InheritsPublicFormatting", "PublicFormattingBase.ToString(string?, IFormatProvider?) in its base type PublicFormattingBase")]
+    [InlineData("CMTK1008", "InheritsPublicObjectOrder", "PublicObjectOrderBase.CompareTo(object?) in its base type PublicObjectOrderBase")]
+    [InlineData("CMTK1011", "InheritsPublicParsing", "PublicParsingBase<InheritsPublicParsing>.Parse(string, IFormatProvider?) in its base type PublicParsingBase<InheritsPublicParsing>")]
+    [InlineData("CMTK1011", "InheritsTryParseByRef", "TryParseByRefBase<InheritsTryParseByRef>.TryParse(string?, IFormatProvider?, ref InheritsTryParseByRef) in its base type TryParseByRefBase<InheritsTryParseByRef>")]
+    [InlineData("CMTK1011", "InheritsMinMaxNames", "MinMaxNamesBase<InheritsMinMaxNames>.MinValue in its base type MinMaxNamesBase<InheritsMinMaxNames>")]
+    [InlineData("CMTK1011", "InheritsValueName", "ValueNameBase.Value in its base type ValueNameBase")]
+    [InlineData("CMTK1011", "InheritsFromName", "FromNameBase<InheritsFromName>.From(int) in its base type FromNameBase<InheritsFromName>")]
+    [InlineData("CMTK1011", "InheritsTryFormatName", "TryFormatNameBase.TryFormat(Span<char>, out int, ReadOnlySpan<char>, IFormatProvider?) in its base type TryFormatNameBase")]
+    [InlineData("CMTK1008", "InheritsCompareTo", "CompareToSeamBase<InheritsCompareTo>.CompareTo(InheritsCompareTo?) in its base type CompareToSeamBase<InheritsCompareTo>, but its comparison is generated from CompareTo(InheritsCompareTo)")]
+    [InlineData("CMTK1008", "InheritsObjectCompareTo", "ObjectCompareToBase.CompareTo(object?) in its base type ObjectCompareToBase")]
+    [InlineData("CMTK1011", "InheritsTryFrom", "TryFromSeamBase<InheritsTryFrom>.TryFrom(string) in its base type TryFromSeamBase<InheritsTryFrom>, so it is not generated: a seam is kept only where the value object declares it")]
+    [InlineData("CMTK1011", "InheritsRevalidate", "RevalidateSeamBase<InheritsRevalidate>.Revalidate() in its base type RevalidateSeamBase<InheritsRevalidate>, so it is not generated: a seam is kept only where the value object declares it")]
+    [InlineData("CMTK1011", "InheritsLibraryPublicMinMax", "PublicMinMaxBase<InheritsLibraryPublicMinMax>.MinValue in its base type PublicMinMaxBase<InheritsLibraryPublicMinMax>")]
     public void What_a_base_record_declares_is_refused_by_name(string id, string type, string member) =>
         consumer.Errors.ShouldContain(error => error.Id == id && error.Message.StartsWith($"'{type}' declares ") && error.Message.Contains(member), consumer.Output);
+
+    /// <summary>
+    /// An interface derived from a marker is a way to find a value object, not a contract the generators
+    /// implement, so it is generated as usual (#192).
+    /// </summary>
+    [Fact]
+    public void A_marker_declared_through_an_interface_is_generated() =>
+        consumer.Errors.ShouldNotContain(error => error.Message.Contains("'ThroughMarkerInterface'") || error.Message.Contains("IIdentifierMarker"), consumer.Output);
+
+    /// <summary>
+    /// A base record's public <c>CompareTo(object)</c> that implements <c>IComparable</c> is found twice, by the
+    /// interface mapping and as an inherited comparison member (#194), and named once.
+    /// </summary>
+    [Fact]
+    public void A_base_member_found_twice_is_named_once() =>
+        consumer.Errors.Where(error => error.Message.StartsWith("'InheritsPublicObjectOrder' declares ", StringComparison.Ordinal))
+                .ShouldHaveSingleItem(consumer.Output)
+                .Message.Split("PublicObjectOrderBase.CompareTo(object?)").Length.ShouldBe(2, consumer.Output);
+
+    /// <summary>
+    /// A public static member of another project that implements a static abstract one reads as an explicit
+    /// implementation there, since the compiler records every such implementation as one, and the error called it
+    /// "the explicit implementation of IMinMaxValue..." (#197). Metalama displays it as
+    /// <c>PublicMinMaxBase&lt;T&gt;.IMinMaxValue.MinValue</c>, so it is named once, by its type and the member.
+    /// </summary>
+    [Fact]
+    public void A_public_member_of_another_project_is_named_once_as_public()
+    {
+        var declared = consumer.Errors.Where(error => error.Message.StartsWith("'InheritsLibraryPublicMinMax' declares ", StringComparison.Ordinal))
+                               .ShouldHaveSingleItem(consumer.Output)
+                               .Message.Split(", so it is not generated")[0]["'InheritsLibraryPublicMinMax' declares ".Length..]
+                               .Split(", ");
+
+        declared.Order(StringComparer.Ordinal).ShouldBe(
+            ["PublicMinMaxBase<InheritsLibraryPublicMinMax>.MaxValue in its base type PublicMinMaxBase<InheritsLibraryPublicMinMax>",
+             "PublicMinMaxBase<InheritsLibraryPublicMinMax>.MinValue in its base type PublicMinMaxBase<InheritsLibraryPublicMinMax>"], ignoreOrder: false, customMessage: consumer.Output);
+    }
 
     /// <summary>
     /// A hand-written <c>PrintMembers</c> was replaced silently with the record's <c>ToString()</c>, which
@@ -417,7 +582,8 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     /// The seams stay allowed: <c>Create</c>, <c>TryFrom</c>, <c>FromKnownGood</c>, <c>Revalidate</c>,
     /// <c>CompareTo(TSelf)</c> and <c>ToString()</c>. A <c>MinValue</c> of another type, or one the value
     /// object cannot reach, is not the wrapped type's bound: no <c>MinValue</c> is generated, where it
-    /// failed inside the generated code (LAMA0611, CS1503 and CS0122).
+    /// failed inside the generated code (LAMA0611, CS1503 and CS0122). A base record's
+    /// <c>FromKnownGood(T)</c> is hidden by the generated one, so it is no inherited seam (#194).
     /// </summary>
     [Theory]
     [InlineData("WithEverySeam", "'WithEverySeam")]
@@ -430,6 +596,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [InlineData("InheritsSealedToString", "'InheritsSealedToString")]
     [InlineData("InheritsFormattableBesideSealedToString", "'InheritsFormattableBesideSealedToString")]
     [InlineData("WithStatelessBase", "Described.")]
+    [InlineData("InheritsFromKnownGoodName", "FromKnownGoodNameBase")]
     public void A_seam_or_a_foreign_bound_is_not_refused(string type, string alsoNotNamed) =>
         consumer.Errors.ShouldNotContain(error => error.Message.Contains($"'{type}'") || error.Message.Contains(alsoNotNamed), consumer.Output);
 
@@ -473,11 +640,12 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
     [Fact]
     public void Every_error_is_one_of_the_intended_ones() =>
         consumer.Errors.Select(error => error.Id).Distinct().Order()
-                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK0012", "CMTK0013", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CMTK1019", "CMTK1020", "CMTK1021", "CMTK1022", "CMTK1023", "CS0535"], ignoreOrder: false, customMessage: consumer.Output);
+                .ShouldBe(["CMTK0001", "CMTK0003", "CMTK0004", "CMTK0005", "CMTK0006", "CMTK0007", "CMTK0008", "CMTK0009", "CMTK0012", "CMTK0013", "CMTK1000", "CMTK1001", "CMTK1002", "CMTK1003", "CMTK1004", "CMTK1005", "CMTK1006", "CMTK1007", "CMTK1008", "CMTK1009", "CMTK1010", "CMTK1011", "CMTK1012", "CMTK1013", "CMTK1014", "CMTK1015", "CMTK1016", "CMTK1017", "CMTK1018", "CMTK1019", "CMTK1020", "CMTK1021", "CMTK1022", "CMTK1023", "CS0535", "CS0738"], ignoreOrder: false, customMessage: consumer.Output);
 
     /// <summary>
     /// CS0535 is allowed above only for a refused closed set, whose interface members the generators
-    /// did not implement. A value object or a generated set that lost a member the same way is a
+    /// did not implement, and CS0738 where a base class's member of a generated name has another type
+    /// (a static <c>int All</c>, #205). A value object or a generated set that lost a member the same way is a
     /// regression the list of ids alone would let through.
     /// </summary>
     /// <summary>
@@ -491,7 +659,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
     [Fact]
     public void CS0535_names_only_a_refused_closed_set() =>
-        consumer.Errors.Where(error => error.Id == "CS0535")
+        consumer.Errors.Where(error => error.Id is "CS0535" or "CS0738")
                 .ShouldAllBe(error => RefusedClosedSet().IsMatch(error.Message), consumer.Output);
 
     [GeneratedRegex(@"^'(?:Consumer\.)?Set\w+(?:\.\w+)?(?:<T>)?' does not implement interface member ")]
@@ -882,6 +1050,27 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                 public string ToString(string? format, System.IFormatProvider? provider) => "";
             }
 
+            // No overload in C#: ref or in against the generated out (CS0663), and another nullability (#226).
+            public readonly partial record struct TryParseByRef : IValue<int>
+            {
+                public static bool TryParse(string? s, System.IFormatProvider? provider, ref TryParseByRef result) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct TryParseByIn : IValue<int>
+            {
+                public static bool TryParse(string? s, System.IFormatProvider? provider, in TryParseByIn result) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct ParseOfOtherNullability : IValue<int>
+            {
+                public static ParseOfOtherNullability Parse(string? s, System.IFormatProvider provider) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct TryFormatByRef : IValue<int>
+            {
+                public bool TryFormat(System.Span<char> destination, ref int charsWritten, System.ReadOnlySpan<char> format, System.IFormatProvider? provider) => false;
+            }
+
             public readonly partial record struct HandWrittenMinValue : IValue<int>
             {
                 public static int MinValue => 0;
@@ -1107,6 +1296,431 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             public sealed partial record InheritsExplicitObjectComparable : ObjectComparableBase, IValue<int>;
 
+            // An interface's explicit implementation of a generated interface's member: the default every
+            // type declaring the interface reaches until it declares a public member of its own, which the
+            // generated one replaced without a word (#191). Each interface implements every member of the
+            // generated one, so a refused value object lacks none (CS0535).
+            public interface IFormatsItself : System.IFormattable
+            {
+                string System.IFormattable.ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+            }
+
+            public readonly partial record struct FormatsThroughInterface : IValue<int>, IFormatsItself;
+
+            public interface ISpanFormatsItself : System.ISpanFormattable
+            {
+                string System.IFormattable.ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+
+                bool System.ISpanFormattable.TryFormat(System.Span<char> destination, out int charsWritten, System.ReadOnlySpan<char> format, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct SpanFormatsThroughInterface : IValue<long>, ISpanFormatsItself;
+
+            public interface IUtf8FormatsItself : System.IUtf8SpanFormattable
+            {
+                bool System.IUtf8SpanFormattable.TryFormat(System.Span<byte> utf8Destination, out int bytesWritten, System.ReadOnlySpan<char> format, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct Utf8FormatsThroughInterface : IValue<int>, IUtf8FormatsItself;
+
+            public interface IParsesItself<TSelf> : System.IParsable<TSelf> where TSelf : IParsesItself<TSelf>
+            {
+                static TSelf System.IParsable<TSelf>.Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                static bool System.IParsable<TSelf>.TryParse(string? s, System.IFormatProvider? provider, out TSelf result) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct ParsesThroughInterface : IValidatedValue<ParsesThroughInterface, string, Fault>, IParsesItself<ParsesThroughInterface>
+            {
+                public static Result<ParsesThroughInterface, Fault> Create(string value) => Result.Error(Fault.Refused);
+            }
+
+            public interface ISpanParsesItself<TSelf> : System.ISpanParsable<TSelf> where TSelf : ISpanParsesItself<TSelf>
+            {
+                static TSelf System.IParsable<TSelf>.Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                static bool System.IParsable<TSelf>.TryParse(string? s, System.IFormatProvider? provider, out TSelf result) => throw new System.NotSupportedException();
+
+                static TSelf System.ISpanParsable<TSelf>.Parse(System.ReadOnlySpan<char> s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                static bool System.ISpanParsable<TSelf>.TryParse(System.ReadOnlySpan<char> s, System.IFormatProvider? provider, out TSelf result) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct SpanParsesThroughInterface : IValue<int>, ISpanParsesItself<SpanParsesThroughInterface>;
+
+            public interface IUtf8ParsesItself<TSelf> : System.IUtf8SpanParsable<TSelf> where TSelf : IUtf8ParsesItself<TSelf>
+            {
+                static TSelf System.IUtf8SpanParsable<TSelf>.Parse(System.ReadOnlySpan<byte> utf8Text, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                static bool System.IUtf8SpanParsable<TSelf>.TryParse(System.ReadOnlySpan<byte> utf8Text, System.IFormatProvider? provider, out TSelf result) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct Utf8ParsesThroughInterface : IValue<int>, IUtf8ParsesItself<Utf8ParsesThroughInterface>;
+
+            public interface IBoundedItself<TSelf> : System.Numerics.IMinMaxValue<TSelf> where TSelf : IBoundedItself<TSelf>
+            {
+                static TSelf System.Numerics.IMinMaxValue<TSelf>.MinValue => throw new System.NotSupportedException();
+
+                static TSelf System.Numerics.IMinMaxValue<TSelf>.MaxValue => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct BoundedThroughInterface : IValue<int>, IBoundedItself<BoundedThroughInterface>;
+
+            public interface IOrdersItself : System.IComparable
+            {
+                int System.IComparable.CompareTo(object? obj) => 0;
+            }
+
+            public readonly partial record struct OrdersThroughInterface : IValue<int>, IOrdersItself;
+
+            public interface IOrdersItselfAs<TSelf> : System.IComparable<TSelf>
+            {
+                int System.IComparable<TSelf>.CompareTo(TSelf? other) => 0;
+            }
+
+            public readonly partial record struct OrdersThroughGenericInterface : IValue<int>, IOrdersItselfAs<OrdersThroughGenericInterface>;
+
+            public interface IComparesItself<TSelf> : System.Numerics.IComparisonOperators<TSelf, TSelf, bool> where TSelf : IComparesItself<TSelf>
+            {
+                static bool System.Numerics.IComparisonOperators<TSelf, TSelf, bool>.operator <(TSelf left, TSelf right) => false;
+
+                static bool System.Numerics.IComparisonOperators<TSelf, TSelf, bool>.operator >(TSelf left, TSelf right) => false;
+
+                static bool System.Numerics.IComparisonOperators<TSelf, TSelf, bool>.operator <=(TSelf left, TSelf right) => false;
+
+                static bool System.Numerics.IComparisonOperators<TSelf, TSelf, bool>.operator >=(TSelf left, TSelf right) => false;
+            }
+
+            public readonly partial record struct ComparesThroughInterface : IValue<int>, IComparesItself<ComparesThroughInterface>;
+
+            // IConvertible declared through an interface failed the aspect (LAMA0041), as declaring it does.
+            public interface IConvertsItself : System.IConvertible
+            {
+                System.TypeCode System.IConvertible.GetTypeCode() => System.TypeCode.Int32;
+                bool System.IConvertible.ToBoolean(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                byte System.IConvertible.ToByte(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                char System.IConvertible.ToChar(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                System.DateTime System.IConvertible.ToDateTime(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                decimal System.IConvertible.ToDecimal(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                double System.IConvertible.ToDouble(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                short System.IConvertible.ToInt16(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                int System.IConvertible.ToInt32(System.IFormatProvider? provider) => 0;
+                long System.IConvertible.ToInt64(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                sbyte System.IConvertible.ToSByte(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                float System.IConvertible.ToSingle(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                string System.IConvertible.ToString(System.IFormatProvider? provider) => "***";
+                object System.IConvertible.ToType(System.Type conversionType, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                ushort System.IConvertible.ToUInt16(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                uint System.IConvertible.ToUInt32(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                ulong System.IConvertible.ToUInt64(System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct ConvertsThroughInterface : IValue<int>, IConvertsItself;
+
+            // A record class's, over a reference type.
+            public sealed partial record FormatsThroughInterfaceOnClass : IValue<string>, IFormatsItself;
+
+            public sealed partial record OrdersThroughGenericInterfaceOnClass : IValue<string>, IOrdersItselfAs<OrdersThroughGenericInterfaceOnClass>;
+
+            // Two interfaces down, and through an interface of a base record.
+            public interface IFormatsTwoDown : IFormatsItself;
+
+            public readonly partial record struct FormatsTwoInterfacesDown : IValue<int>, IFormatsTwoDown;
+
+            public interface IConvertsTwoDown : IConvertsItself;
+
+            public readonly partial record struct ConvertsTwoInterfacesDown : IValue<int>, IConvertsTwoDown;
+
+            public abstract record FormatsItselfBase : IFormatsItself;
+
+            public sealed partial record FormatsThroughBaseInterface : FormatsItselfBase, IValue<int>;
+
+            public abstract record BoundedItselfBase<TSelf> : IBoundedItself<TSelf> where TSelf : BoundedItselfBase<TSelf>, IBoundedItself<TSelf>;
+
+            public sealed partial record BoundedThroughBaseInterface : BoundedItselfBase<BoundedThroughBaseInterface>, IValue<int>;
+
+            public abstract record OrdersItselfBase : IOrdersItself;
+
+            public sealed partial record OrdersThroughBaseInterface : OrdersItselfBase, IValue<int>;
+
+            public abstract record ConvertsItselfBase : IConvertsItself;
+
+            public sealed partial record ConvertsThroughBaseInterface : ConvertsItselfBase, IValue<int>;
+
+            // A contract the generators implement, declared through an interface of the user's (#192): the
+            // aspect failed (LAMA0512, LAMA0041), naming nothing the user wrote. Each interface implements the
+            // contract's members, so a refused value object lacks none (CS0535).
+            public interface IEntityIdentifier<TSelf> : IValueObject<TSelf, System.Guid> where TSelf : IEntityIdentifier<TSelf>
+            {
+                System.Guid IValueObject<TSelf, System.Guid>.Value => System.Guid.Empty;
+
+                static bool IValueObject<TSelf, System.Guid>.operator ==(TSelf left, TSelf right) => false;
+
+                static bool IValueObject<TSelf, System.Guid>.operator !=(TSelf left, TSelf right) => true;
+            }
+
+            public readonly partial record struct ContractThroughInterface : IValue<System.Guid>, IEntityIdentifier<ContractThroughInterface>;
+
+            public interface IAggregateIdentifier<TSelf> : IEntityIdentifier<TSelf> where TSelf : IAggregateIdentifier<TSelf>;
+
+            public readonly partial record struct ContractTwoInterfacesDown : IValue<System.Guid>, IAggregateIdentifier<ContractTwoInterfacesDown>;
+
+            public interface IReadsBackItself<TSelf> : IValueObjectMaterializer<TSelf, int> where TSelf : IReadsBackItself<TSelf>
+            {
+                static TSelf IValueObjectMaterializer<TSelf, int>.Materialize(int value) => throw new System.NotSupportedException();
+            }
+
+            public readonly partial record struct MaterializerThroughInterface : IValue<int>, IReadsBackItself<MaterializerThroughInterface>;
+
+            public interface IFromableItself<TSelf> : IPlainValueObject<TSelf, int>, IValueObject<TSelf, int> where TSelf : IFromableItself<TSelf>
+            {
+                static TSelf IPlainValueObject<TSelf, int>.From(int value) => throw new System.NotSupportedException();
+
+                int IValueObject<TSelf, int>.Value => 0;
+            }
+
+            public readonly partial record struct PlainContractThroughInterface : IValue<int>, IFromableItself<PlainContractThroughInterface>;
+
+            public abstract record EntityIdentifierBase<TSelf> : IEntityIdentifier<TSelf> where TSelf : EntityIdentifierBase<TSelf>;
+
+            public sealed partial record ContractThroughBaseInterface : EntityIdentifierBase<ContractThroughBaseInterface>, IValue<System.Guid>;
+
+            public readonly partial record struct ContractThroughLibraryInterface : IValue<System.Guid>, Library.ILibraryEntityIdentifier<ContractThroughLibraryInterface>;
+
+            // An interface derived from the marker is how a value object may be found: generated as usual.
+            public interface IIdentifierMarker : IValue<System.Guid>;
+
+            public readonly partial record struct ThroughMarkerInterface : IIdentifierMarker;
+
+            // An interface's and a base record's of another assembly, where Metalama lists no private
+            // member, which an explicit implementation is: replaced or kept without a word (#191).
+            public readonly partial record struct FormatsThroughLibraryInterface : IValue<int>, CodoMetis.TypeKit.Generators.Probes.IProbeFormats;
+
+            public readonly partial record struct BoundedThroughLibraryInterface : IValue<int>, CodoMetis.TypeKit.Generators.Probes.IProbeBounded<BoundedThroughLibraryInterface>;
+
+            public readonly partial record struct OrdersThroughLibraryInterface : IValue<int>, CodoMetis.TypeKit.Generators.Probes.IProbeOrders;
+
+            public sealed partial record InheritsLibraryFormattable : CodoMetis.TypeKit.Generators.Probes.ProbeFormattableRecord, IValue<int>;
+
+            public sealed partial record InheritsLibraryMinMax : CodoMetis.TypeKit.Generators.Probes.ProbeMinMaxRecord<InheritsLibraryMinMax>, IValue<int>;
+
+            // A base record's public implementation of a generated member, or a member of a generated name
+            // (#197): its static MinValue and MaxValue were the value object's, and no MinValue or MaxValue was
+            // generated; the others failed the aspect (LAMA0500). Every body throws, so nothing generated is touched.
+            public abstract record PublicMinMaxItselfBase<TSelf> : System.Numerics.IMinMaxValue<TSelf> where TSelf : PublicMinMaxItselfBase<TSelf>, System.Numerics.IMinMaxValue<TSelf>
+            {
+                public static TSelf MinValue => throw new System.NotSupportedException();
+
+                public static TSelf MaxValue => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsPublicMinMax : PublicMinMaxItselfBase<InheritsPublicMinMax>, IValue<int>;
+
+            public abstract record PublicFormattingBase : System.IFormattable
+            {
+                public string ToString(string? format, System.IFormatProvider? formatProvider) => "***";
+            }
+
+            public sealed partial record InheritsPublicFormatting : PublicFormattingBase, IValue<int>;
+
+            public abstract record PublicObjectOrderBase : System.IComparable
+            {
+                public int CompareTo(object? obj) => 0;
+            }
+
+            public sealed partial record InheritsPublicObjectOrder : PublicObjectOrderBase, IValue<int>;
+
+            public abstract record PublicParsingBase<TSelf> : System.IParsable<TSelf> where TSelf : PublicParsingBase<TSelf>, System.IParsable<TSelf>
+            {
+                public static TSelf Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                public static bool TryParse(string? s, System.IFormatProvider? provider, out TSelf result) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsPublicParsing : PublicParsingBase<InheritsPublicParsing>, IValue<int>;
+
+            public abstract record TryParseByRefBase<TSelf>
+            {
+                public static bool TryParse(string? s, System.IFormatProvider? provider, ref TSelf result) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsTryParseByRef : TryParseByRefBase<InheritsTryParseByRef>, IValue<int>;
+
+            public abstract record MinMaxNamesBase<TSelf> where TSelf : MinMaxNamesBase<TSelf>
+            {
+                public static TSelf MinValue => throw new System.NotSupportedException();
+
+                public static TSelf MaxValue => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsMinMaxNames : MinMaxNamesBase<InheritsMinMaxNames>, IValue<int>;
+
+            public abstract record ValueNameBase
+            {
+                public int Value => 0;
+            }
+
+            public sealed partial record InheritsValueName : ValueNameBase, IValue<int>;
+
+            public abstract record FromNameBase<TSelf> where TSelf : FromNameBase<TSelf>
+            {
+                public static TSelf From(int value) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsFromName : FromNameBase<InheritsFromName>, IValue<int>;
+
+            public abstract record TryFormatNameBase
+            {
+                public bool TryFormat(System.Span<char> destination, out int charsWritten, System.ReadOnlySpan<char> format, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsTryFormatName : TryFormatNameBase, IValue<long>;
+
+            // A seam a base record declares rather than the value object (#194): its CompareTo(TSelf) left the
+            // ordering unmarked for EF Core and made < overflow the stack, its TryFrom and Revalidate stood in for
+            // the generated ones, and its CompareTo(object) failed the aspect (LAMA0500).
+            public abstract record CompareToSeamBase<TSelf> where TSelf : CompareToSeamBase<TSelf>
+            {
+                public int CompareTo(TSelf? other) => 0;
+            }
+
+            public sealed partial record InheritsCompareTo : CompareToSeamBase<InheritsCompareTo>, IValue<int>;
+
+            public abstract record ObjectCompareToBase
+            {
+                public int CompareTo(object? obj) => 0;
+            }
+
+            public sealed partial record InheritsObjectCompareTo : ObjectCompareToBase, IValue<int>;
+
+            public abstract record TryFromSeamBase<TSelf> where TSelf : TryFromSeamBase<TSelf>
+            {
+                public static Option<TSelf> TryFrom(string value) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsTryFrom : TryFromSeamBase<InheritsTryFrom>, IValidatedValue<InheritsTryFrom, string, Fault>
+            {
+                public static Result<InheritsTryFrom, Fault> Create(string value) => Result.Error(Fault.Refused);
+            }
+
+            public abstract record RevalidateSeamBase<TSelf> where TSelf : RevalidateSeamBase<TSelf>
+            {
+                public Result<TSelf, Fault> Revalidate() => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsRevalidate : RevalidateSeamBase<InheritsRevalidate>, IValidatedValue<InheritsRevalidate, string, Fault>
+            {
+                public static Result<InheritsRevalidate, Fault> Create(string value) => Result.Error(Fault.Refused);
+            }
+
+            // A base's FromKnownGood(T) is another signature than the generated one, which takes the caller's
+            // expression too and hides it, so it stands in for nothing. Generated as usual.
+            public abstract record FromKnownGoodNameBase<TSelf> where TSelf : FromKnownGoodNameBase<TSelf>
+            {
+                public static TSelf FromKnownGood(string value) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial record InheritsFromKnownGoodName : FromKnownGoodNameBase<InheritsFromKnownGoodName>, IValidatedValue<InheritsFromKnownGoodName, string, Fault>
+            {
+                public static Result<InheritsFromKnownGoodName, Fault> Create(string value) => new InheritsFromKnownGoodName(value);
+            }
+
+            // From a project the generators do not run in: read as an explicit implementation there, named as public.
+            public sealed partial record InheritsLibraryPublicMinMax : Library.PublicMinMaxBase<InheritsLibraryPublicMinMax>, IValue<int>;
+
+            // Create in a base record of another project (#195): generic code calling T.Create reached the
+            // base's, which refused what the value object's own accepted.
+            public sealed partial record LenientOverStrictBase : Library.StrictCreateBase<LenientOverStrictBase>
+            {
+                public static Result<LenientOverStrictBase, Library.LibraryFault> Create(string value) => Result.Error(Library.LibraryFault.Refused);
+            }
+
+            public sealed partial record OnlyStrictBase : Library.StrictCreateBase<OnlyStrictBase>;
+
+            public sealed partial record LenientOverPublicBase : Library.PublicCreateBase<LenientOverPublicBase>
+            {
+                public static Result<LenientOverPublicBase, Library.LibraryFault> Create(string value) => Result.Error(Library.LibraryFault.Refused);
+            }
+
+            // One rule set each: the marker declared again, so the value object's own Create implements it, and a
+            // base's public Create alone, which the generated code calls too.
+            public sealed partial record LenientListedOverStrictBase : Library.StrictCreateBase<LenientListedOverStrictBase>, IValidatedValue<LenientListedOverStrictBase, string, Library.LibraryFault>
+            {
+                public static Result<LenientListedOverStrictBase, Library.LibraryFault> Create(string value) => new LenientListedOverStrictBase(value);
+            }
+
+            public sealed partial record OnlyPublicBase : Library.PublicCreateBase<OnlyPublicBase>;
+
+            // An interface's default the generators do not replace. Beside ToString(), the seam, no
+            // formatting interface is generated, and a Uri has no ordering. The record's own == replaces an
+            // interface's in every record, generated or not. INumberBase<TSelf>, .NET's, implements
+            // IUtf8SpanFormattable and IUtf8SpanParsable explicitly as bridges to the UTF-16 members, which
+            // every numeric type of .NET replaces with its own, as the generated ones do.
+            public readonly partial record struct FormatsThroughInterfaceWithToString : IValue<int>, IFormatsItself
+            {
+                public override string ToString() => "***";
+            }
+
+            public sealed partial record OrdersThroughInterfaceOverUri : IValue<System.Uri>, IOrdersItselfAs<OrdersThroughInterfaceOverUri>;
+
+            public interface IEqualsItself<TSelf> : System.Numerics.IEqualityOperators<TSelf, TSelf, bool> where TSelf : IEqualsItself<TSelf>
+            {
+                static bool System.Numerics.IEqualityOperators<TSelf, TSelf, bool>.operator ==(TSelf? left, TSelf? right) => true;
+
+                static bool System.Numerics.IEqualityOperators<TSelf, TSelf, bool>.operator !=(TSelf? left, TSelf? right) => false;
+            }
+
+            public readonly partial record struct EqualsThroughInterface : IValue<int>, IEqualsItself<EqualsThroughInterface>;
+
+            public readonly partial record struct MetersAsNumber : IValue<double>, System.Numerics.INumberBase<MetersAsNumber>
+            {
+                public static MetersAsNumber One => throw new System.NotSupportedException();
+                public static int Radix => 2;
+                public static MetersAsNumber Zero => throw new System.NotSupportedException();
+                public static MetersAsNumber AdditiveIdentity => throw new System.NotSupportedException();
+                public static MetersAsNumber MultiplicativeIdentity => throw new System.NotSupportedException();
+                public static MetersAsNumber Abs(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsCanonical(MetersAsNumber value) => true;
+                public static bool IsComplexNumber(MetersAsNumber value) => false;
+                public static bool IsEvenInteger(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsFinite(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsImaginaryNumber(MetersAsNumber value) => false;
+                public static bool IsInfinity(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsInteger(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsNaN(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsNegative(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsNegativeInfinity(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsNormal(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsOddInteger(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsPositive(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsPositiveInfinity(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsRealNumber(MetersAsNumber value) => true;
+                public static bool IsSubnormal(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static bool IsZero(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static MetersAsNumber MaxMagnitude(MetersAsNumber x, MetersAsNumber y) => throw new System.NotSupportedException();
+                public static MetersAsNumber MaxMagnitudeNumber(MetersAsNumber x, MetersAsNumber y) => throw new System.NotSupportedException();
+                public static MetersAsNumber MinMagnitude(MetersAsNumber x, MetersAsNumber y) => throw new System.NotSupportedException();
+                public static MetersAsNumber MinMagnitudeNumber(MetersAsNumber x, MetersAsNumber y) => throw new System.NotSupportedException();
+                public static MetersAsNumber Parse(System.ReadOnlySpan<char> s, System.Globalization.NumberStyles style, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                public static MetersAsNumber Parse(string s, System.Globalization.NumberStyles style, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                public static bool TryParse(System.ReadOnlySpan<char> s, System.Globalization.NumberStyles style, System.IFormatProvider? provider, out MetersAsNumber result) => throw new System.NotSupportedException();
+                public static bool TryParse(string? s, System.Globalization.NumberStyles style, System.IFormatProvider? provider, out MetersAsNumber result) => throw new System.NotSupportedException();
+                static bool System.Numerics.INumberBase<MetersAsNumber>.TryConvertFromChecked<TOther>(TOther value, out MetersAsNumber result) => throw new System.NotSupportedException();
+                static bool System.Numerics.INumberBase<MetersAsNumber>.TryConvertFromSaturating<TOther>(TOther value, out MetersAsNumber result) => throw new System.NotSupportedException();
+                static bool System.Numerics.INumberBase<MetersAsNumber>.TryConvertFromTruncating<TOther>(TOther value, out MetersAsNumber result) => throw new System.NotSupportedException();
+                static bool System.Numerics.INumberBase<MetersAsNumber>.TryConvertToChecked<TOther>(MetersAsNumber value, out TOther result) => throw new System.NotSupportedException();
+                static bool System.Numerics.INumberBase<MetersAsNumber>.TryConvertToSaturating<TOther>(MetersAsNumber value, out TOther result) => throw new System.NotSupportedException();
+                static bool System.Numerics.INumberBase<MetersAsNumber>.TryConvertToTruncating<TOther>(MetersAsNumber value, out TOther result) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator +(MetersAsNumber left, MetersAsNumber right) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator -(MetersAsNumber left, MetersAsNumber right) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator *(MetersAsNumber left, MetersAsNumber right) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator /(MetersAsNumber left, MetersAsNumber right) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator +(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator -(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator ++(MetersAsNumber value) => throw new System.NotSupportedException();
+                public static MetersAsNumber operator --(MetersAsNumber value) => throw new System.NotSupportedException();
+            }
+
             // A base record's equality, which the derived record's synthesized one calls.
             public abstract record ReferenceEqualityBase
             {
@@ -1205,6 +1819,23 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             public readonly partial record struct ExplicitEquatable : IValue<string>, System.IEquatable<ExplicitEquatable>
             {
                 bool System.IEquatable<ExplicitEquatable>.Equals(ExplicitEquatable other) => true;
+            }
+
+            // A record class's, whose parameter is nullable.
+            public sealed partial record EqualsOnClass : IValue<string>
+            {
+                public bool Equals(EqualsOnClass? other) => true;
+            }
+
+            // An Equals of a deeper base record's type, which IEquatable<TBase> and so a collection of the base
+            // reached, while == compared the wrapped value (#196). The direct base's is C#'s own CS0111.
+            public abstract record DeepEqualityBase;
+
+            public abstract record MiddleEqualityBase : DeepEqualityBase;
+
+            public sealed partial record EqualsDeeperBase : MiddleEqualityBase, IValue<string>
+            {
+                public bool Equals(DeepEqualityBase? other) => ReferenceEquals(this, other);
             }
 
             // Instance state besides the wrapped value: JSON, parsing and the materializer carried the
@@ -1415,6 +2046,68 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
             public sealed partial class SetWithParsable : IClosedSet<SetWithParsable>, System.IParsable<SetWithParsable> { public static readonly SetWithParsable A = new(); }
 
+            // An interface's explicit implementation of IClosedSet<TSelf>, which the generated Name and
+            // TryParse replaced without a word (#191), and IParsable<TSelf> declared through an interface,
+            // which failed the aspect (LAMA0512).
+            public interface ISetNamesItself<TSelf> : IClosedSet<TSelf> where TSelf : class, ISetNamesItself<TSelf>
+            {
+                string IClosedSet<TSelf>.Name => "***";
+
+                static bool IClosedSet<TSelf>.TryParse(string? name, out TSelf member) => throw new System.NotSupportedException();
+            }
+
+            public sealed partial class SetWithNameThroughInterface : IClosedSet<SetWithNameThroughInterface>, ISetNamesItself<SetWithNameThroughInterface> { public static readonly SetWithNameThroughInterface A = new(); }
+
+            public sealed partial class SetWithNameThroughLibraryInterface : IClosedSet<SetWithNameThroughLibraryInterface>, CodoMetis.TypeKit.Generators.Probes.IProbeSetNames<SetWithNameThroughLibraryInterface> { public static readonly SetWithNameThroughLibraryInterface A = new(); }
+
+            // A base class of another project that implements IClosedSet<TSelf> explicitly: All listed none through
+            // the interface, its Name was the base's, and EF Core stored that and read no member's name back (#191).
+            public sealed partial class SetOverLibraryBase : Library.ExplicitSetBase<SetOverLibraryBase> { public static readonly SetOverLibraryBase A = new(); }
+
+            // A base class that declares a member the generators introduce into a set (#205): each failed the aspect
+            // (LAMA0500, LAMA0502, LAMA0512) naming nothing the user wrote, and an unsealed ToString() was replaced
+            // without a word. A sealed ToString() is the seam, as C# keeps it in every derived class.
+            public abstract class SealedToStringSetBase { public sealed override string ToString() => "***"; }
+            public sealed partial class SetOverSealedToStringBase : SealedToStringSetBase, IClosedSet<SetOverSealedToStringBase> { public static readonly SetOverSealedToStringBase A = new(); }
+            public abstract class OpenToStringSetBase { public override string ToString() => "***"; }
+            public sealed partial class SetOverOpenToStringBase : OpenToStringSetBase, IClosedSet<SetOverOpenToStringBase> { public static readonly SetOverOpenToStringBase A = new(); }
+            public abstract class ParsingSetBase<TSelf> { public static TSelf Parse(string name) => throw new System.NotSupportedException(); }
+            public sealed partial class SetOverParsingBase : ParsingSetBase<SetOverParsingBase>, IClosedSet<SetOverParsingBase> { public static readonly SetOverParsingBase A = new(); }
+            public abstract class IgnoreCaseParsingSetBase<TSelf> { public static TSelf Parse(string name, bool ignoreCase) => throw new System.NotSupportedException(); }
+            public sealed partial class SetOverIgnoreCaseParsingBase : IgnoreCaseParsingSetBase<SetOverIgnoreCaseParsingBase>, IClosedSet<SetOverIgnoreCaseParsingBase> { public static readonly SetOverIgnoreCaseParsingBase A = new(); }
+            public abstract class TryParsingSetBase<TSelf> { public static bool TryParse(string? name, bool ignoreCase, out TSelf member) => throw new System.NotSupportedException(); }
+            public sealed partial class SetOverTryParsingBase : TryParsingSetBase<SetOverTryParsingBase>, IClosedSet<SetOverTryParsingBase> { public static readonly SetOverTryParsingBase A = new(); }
+            public sealed partial class SetWithTryParseByRef : IClosedSet<SetWithTryParseByRef> { public static readonly SetWithTryParseByRef A = new(); public static bool TryParse(string? name, ref SetWithTryParseByRef member) => throw new System.NotSupportedException(); }
+            public abstract class TryParsingByRefSetBase<TSelf> { public static bool TryParse(string? name, bool ignoreCase, ref TSelf member) => throw new System.NotSupportedException(); }
+            public sealed partial class SetOverTryParsingByRefBase : TryParsingByRefSetBase<SetOverTryParsingByRefBase>, IClosedSet<SetOverTryParsingByRefBase> { public static readonly SetOverTryParsingByRefBase A = new(); }
+            public abstract class MatchingSetBase { public TResult Match<TResult>(System.Func<TResult> only) => only(); }
+            public sealed partial class SetOverMatchingBase : MatchingSetBase, IClosedSet<SetOverMatchingBase> { public static readonly SetOverMatchingBase A = new(); }
+            public abstract class ParsableSetBase<TSelf> : System.IParsable<TSelf> where TSelf : ParsableSetBase<TSelf>
+            {
+                static TSelf System.IParsable<TSelf>.Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+                static bool System.IParsable<TSelf>.TryParse(string? s, System.IFormatProvider? provider, out TSelf result) { result = null!; return false; }
+            }
+            public sealed partial class SetOverParsableBase : ParsableSetBase<SetOverParsableBase>, IClosedSet<SetOverParsableBase> { public static readonly SetOverParsableBase A = new(); }
+            public abstract class PrivateFieldsSetBase { private string _name = ""; private object? _all; public override int GetHashCode() => _name.Length + (_all is null ? 0 : 1); }
+            public sealed partial class SetOverPrivateFieldsBase : PrivateFieldsSetBase, IClosedSet<SetOverPrivateFieldsBase> { public static readonly SetOverPrivateFieldsBase A = new(); }
+            public abstract class QualifiedSetBase { public string QualifiedName => "***"; }
+            public abstract class AllListingSetBase { public static int All => 0; }
+            public abstract class ProtectedFieldSetBase { protected string _name = ""; }
+            public sealed partial class SetOverProtectedFieldBase : ProtectedFieldSetBase, IClosedSet<SetOverProtectedFieldBase> { public static readonly SetOverProtectedFieldBase A = new(); }
+            public sealed partial class SetOverAllListingBase : AllListingSetBase, IClosedSet<SetOverAllListingBase> { public static readonly SetOverAllListingBase A = new(); }
+            public sealed partial class SetOverQualifiedBase : QualifiedSetBase, IClosedSet<SetOverQualifiedBase> { public static readonly SetOverQualifiedBase A = new(); }
+            [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+            public abstract class AttributedSetBase { }
+            public sealed partial class SetOverAttributedBase : AttributedSetBase, IClosedSet<SetOverAttributedBase> { public static readonly SetOverAttributedBase A = new(); }
+            public sealed partial class SetOverLibrarySealedToString : Library.LibrarySealedToStringSetBase, IClosedSet<SetOverLibrarySealedToString> { public static readonly SetOverLibrarySealedToString A = new(); }
+            public sealed partial class SetOverLibraryOpenToString : Library.LibraryOpenToStringSetBase, IClosedSet<SetOverLibraryOpenToString> { public static readonly SetOverLibraryOpenToString A = new(); }
+            public sealed partial class SetOverLibraryParsingBase : Library.LibraryParsingSetBase<SetOverLibraryParsingBase>, IClosedSet<SetOverLibraryParsingBase> { public static readonly SetOverLibraryParsingBase A = new(); }
+            public sealed partial class SetOverLibraryParsableBase : Library.LibraryParsableSetBase<SetOverLibraryParsableBase>, IClosedSet<SetOverLibraryParsableBase> { public static readonly SetOverLibraryParsableBase A = new(); }
+
+            public interface ISetParsesItself<TSelf> : System.IParsable<TSelf> where TSelf : ISetParsesItself<TSelf>;
+
+            public sealed partial class SetWithParsableThroughInterface : IClosedSet<SetWithParsableThroughInterface>, ISetParsesItself<SetWithParsableThroughInterface> { public static readonly SetWithParsableThroughInterface A = new(); }
+
             [System.ComponentModel.TypeConverter(typeof(System.ComponentModel.StringConverter))]
             public sealed partial class SetWithTypeConverterAttribute : IClosedSet<SetWithTypeConverterAttribute> { public static readonly SetWithTypeConverterAttribute A = new(); }
 
@@ -1459,6 +2152,80 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
         private readonly string _setsDirectory = Path.Combine(RepositoryRoot(), "artifacts", $"consumer-{Guid.NewGuid():N}");
 
+        private readonly string _libraryDirectory = Path.Combine(RepositoryRoot(), "artifacts", $"library-{Guid.NewGuid():N}");
+
+        /// <summary>
+        /// A library the generators do not run in, which references the base package alone, as a consumer's
+        /// shared project may. A base type there that carries a marker or <c>IClosedSet&lt;TSelf&gt;</c> is no
+        /// value object or set of its own, where in a project with the generators it would be refused
+        /// (CMTK1022, CMTK1014), and Metalama lists no private member of its types (#191, #195).
+        /// </summary>
+        private const string Library =
+            """
+            using CodoMetis.TypeKit;
+            using CodoMetis.TypeKit.ClosedSets;
+            using CodoMetis.TypeKit.ValueObjects;
+
+            namespace Library;
+
+            public enum LibraryFault { Refused }
+
+            // Generic code calling T.Create reached this, which refused what the value object's own accepted.
+            public abstract record StrictCreateBase<TSelf> : IValidatedValue<TSelf, string, LibraryFault> where TSelf : StrictCreateBase<TSelf>, IValidatedValue<TSelf, string, LibraryFault>
+            {
+                static Result<TSelf, LibraryFault> IValidatedValue<TSelf, string, LibraryFault>.Create(string value) => Result.Error(LibraryFault.Refused);
+            }
+
+            public abstract record PublicCreateBase<TSelf> : IValidatedValue<TSelf, string, LibraryFault> where TSelf : PublicCreateBase<TSelf>, IValidatedValue<TSelf, string, LibraryFault>
+            {
+                public static Result<TSelf, LibraryFault> Create(string value) => Result.Error(LibraryFault.Refused);
+            }
+
+            // A value-object contract declared through an interface of another project (#192).
+            public interface ILibraryEntityIdentifier<TSelf> : IValueObject<TSelf, System.Guid> where TSelf : ILibraryEntityIdentifier<TSelf>
+            {
+                System.Guid IValueObject<TSelf, System.Guid>.Value => System.Guid.Empty;
+
+                static bool IValueObject<TSelf, System.Guid>.operator ==(TSelf left, TSelf right) => false;
+
+                static bool IValueObject<TSelf, System.Guid>.operator !=(TSelf left, TSelf right) => true;
+            }
+
+            // A public static implementation of a static abstract member reads as an explicit one from here.
+            public abstract record PublicMinMaxBase<TSelf> : System.Numerics.IMinMaxValue<TSelf> where TSelf : PublicMinMaxBase<TSelf>, System.Numerics.IMinMaxValue<TSelf>
+            {
+                public static TSelf MinValue => throw new System.NotSupportedException();
+
+                public static TSelf MaxValue => throw new System.NotSupportedException();
+            }
+
+            // Base classes of a closed set that declare a member the generators introduce into it (#205).
+            public abstract class LibrarySealedToStringSetBase { public sealed override string ToString() => "***"; }
+
+            public abstract class LibraryOpenToStringSetBase { public override string ToString() => "***"; }
+
+            public abstract class LibraryParsingSetBase<TSelf> { public static TSelf Parse(string name) => throw new System.NotSupportedException(); }
+
+            public abstract class LibraryParsableSetBase<TSelf> : System.IParsable<TSelf> where TSelf : LibraryParsableSetBase<TSelf>
+            {
+                static TSelf System.IParsable<TSelf>.Parse(string s, System.IFormatProvider? provider) => throw new System.NotSupportedException();
+
+                static bool System.IParsable<TSelf>.TryParse(string? s, System.IFormatProvider? provider, out TSelf result) { result = null!; return false; }
+            }
+
+            // The set's All listed none, its Name through the interface was the base's, and EF Core stored that.
+            public abstract class ExplicitSetBase<TSelf> : IClosedSet<TSelf> where TSelf : ExplicitSetBase<TSelf>
+            {
+                string IClosedSet<TSelf>.Name => "***";
+
+                string IClosedSet<TSelf>.QualifiedName => "***";
+
+                static System.Collections.Generic.IReadOnlyList<TSelf> IClosedSet<TSelf>.All => [];
+
+                static bool IClosedSet<TSelf>.TryParse(string? name, out TSelf member) => throw new System.NotSupportedException();
+            }
+            """;
+
         /// <summary>A second file, so a declaration can be split across files.</summary>
         private const string OtherFile =
             """
@@ -1485,8 +2252,9 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
         public async ValueTask InitializeAsync()
         {
-            var declarations = Build(_directory, new Dictionary<string, string> { ["Declarations.cs"] = Declarations, ["OtherFile.cs"] = OtherFile });
-            var sets = Build(_setsDirectory, new Dictionary<string, string> { ["RefusedSets.cs"] = RefusedSets });
+            var library = await BuildLibrary(_libraryDirectory, Library + BaseMemberAccessibility.LibrarySource);
+            var declarations = Build(_directory, new Dictionary<string, string> { ["Declarations.cs"] = Declarations, ["OtherFile.cs"] = OtherFile, ["BaseMemberAccessibility.cs"] = BaseMemberAccessibility.ValueObjectSource() }, library);
+            var sets = Build(_setsDirectory, new Dictionary<string, string> { ["RefusedSets.cs"] = RefusedSets, ["BaseMemberAccessibility.cs"] = BaseMemberAccessibility.SetSource() }, library);
 
             var (declarationOutput, declarationErrors) = await declarations;
             var (setOutput, setErrors) = await sets;
@@ -1498,7 +2266,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
 
         public ValueTask DisposeAsync()
         {
-            foreach (var directory in new[] { _directory, _setsDirectory })
+            foreach (var directory in new[] { _directory, _setsDirectory, _libraryDirectory })
                 if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
 
             return ValueTask.CompletedTask;
@@ -1509,8 +2277,9 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
         /// <paramref name="sources"/>, and reads its errors. A declaration whose build error is the
         /// compiler's own (CS0111) belongs in a consumer of its own: beside it, Metalama reported no error
         /// in the code it generated into a declaration's own file, which the other guards rely on.
+        /// <paramref name="library"/>, a project <see cref="BuildLibrary"/> built, is referenced too.
         /// </summary>
-        internal static async Task<(string Output, IReadOnlyList<Diagnostic> Errors)> Build(string directory, IReadOnlyDictionary<string, string> sources)
+        internal static async Task<(string Output, IReadOnlyList<Diagnostic> Errors)> Build(string directory, IReadOnlyDictionary<string, string> sources, string? library = null)
         {
             Directory.CreateDirectory(directory);
 
@@ -1528,6 +2297,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                      <ProjectReference Include="{src}/CodoMetis.TypeKit.Generators/CodoMetis.TypeKit.Generators.csproj" />
                      <ProjectReference Include="{src}/CodoMetis.TypeKit.Analyzers/CodoMetis.TypeKit.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
                      <ProjectReference Include="{probes}" />
+                     {(library is null ? "" : $"<ProjectReference Include=\"{library}\" />")}
                    </ItemGroup>
                  </Project>
                  """);
@@ -1549,18 +2319,66 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
                 dotnet_diagnostic.CMTK1023.severity = error
                 """);
 
-            // Stop MSBuild's upward search here, so the repository's own build settings (warnings as
-            // errors, documentation, central package management) do not apply to the consumer.
+            await WriteBuildStoppers(directory);
+
+            var (_, text) = await RunBuild(directory);
+            IReadOnlyList<Diagnostic> found = [.. DiagnosticLine().Matches(text).Select(match => new Diagnostic(match.Groups["id"].Value, match.Groups["message"].Value)).Distinct()];
+
+            found.ShouldNotBeEmpty($"The consumer build reported no errors at all, so it did not run as intended:{Environment.NewLine}{text}");
+            return (text, found);
+        }
+
+        /// <summary>
+        /// Builds a library of <paramref name="source"/> in <paramref name="directory"/> that references the base
+        /// package alone, so the generators do not run in it, and returns its project file. It must build.
+        /// </summary>
+        internal static async Task<string> BuildLibrary(string directory, string source)
+        {
+            Directory.CreateDirectory(directory);
+
+            var project = Path.Combine(directory, "Library.csproj");
+            await File.WriteAllTextAsync(project,
+                $"""
+                 <Project Sdk="Microsoft.NET.Sdk">
+                   <PropertyGroup>
+                     <TargetFramework>net10.0</TargetFramework>
+                     <Nullable>enable</Nullable>
+                     <ImplicitUsings>enable</ImplicitUsings>
+                   </PropertyGroup>
+                   <ItemGroup>
+                     <ProjectReference Include="{Path.Combine(RepositoryRoot(), "src")}/CodoMetis.TypeKit/CodoMetis.TypeKit.csproj" />
+                   </ItemGroup>
+                 </Project>
+                 """);
+            await File.WriteAllTextAsync(Path.Combine(directory, "Library.cs"), source);
+            await WriteBuildStoppers(directory);
+
+            var (exitCode, text) = await RunBuild(directory);
+            exitCode.ShouldBe(0, $"The library the consumers reference did not build:{Environment.NewLine}{text}");
+            return project;
+        }
+
+        /// <summary>
+        /// Stops MSBuild's upward search in <paramref name="directory"/>, so the repository's own build settings
+        /// (warnings as errors, documentation, central package management) do not apply there.
+        /// </summary>
+        private static async Task WriteBuildStoppers(string directory)
+        {
             await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Build.props"), "<Project />");
             await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Build.targets"), "<Project />");
             await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Packages.props"),
                 "<Project><PropertyGroup><ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally></PropertyGroup></Project>");
+        }
 
-            // --no-dependencies and RestoreRecursive=false: the referenced projects are already built
-            // by this test run, and restoring them again could rewrite restore output that other
-            // tests read concurrently. Already built in this run's configuration, which is therefore
-            // passed on: without it the consumer builds in Debug and, in a Release run such as CI's,
-            // finds no referenced assembly at all.
+        /// <summary>
+        /// Builds the project in <paramref name="directory"/>. --no-dependencies and RestoreRecursive=false: the
+        /// referenced projects are already built by this test run (the library before its consumers), and
+        /// restoring them again could rewrite restore output that other tests read concurrently. Already built in
+        /// this run's configuration, which is therefore passed on: without it the consumer builds in Debug and, in
+        /// a Release run such as CI's, finds no referenced assembly at all.
+        /// </summary>
+        private static async Task<(int ExitCode, string Output)> RunBuild(string directory)
+        {
             using var process = Process.Start(new ProcessStartInfo(
                 "dotnet", ["build", directory, "-c", Configuration, "--no-dependencies", "-p:RestoreRecursive=false", "-nodeReuse:false", "-clp:NoSummary"])
             {
@@ -1573,11 +2391,7 @@ public sealed partial class BuildOutcomeTests(BuildOutcomeTests.Consumer consume
             var errors = process.StandardError.ReadToEndAsync();
             await process.WaitForExitAsync();
 
-            var text = await output + await errors;
-            IReadOnlyList<Diagnostic> found = [.. DiagnosticLine().Matches(text).Select(match => new Diagnostic(match.Groups["id"].Value, match.Groups["message"].Value)).Distinct()];
-
-            found.ShouldNotBeEmpty($"The consumer build reported no errors at all, so it did not run as intended:{Environment.NewLine}{text}");
-            return (text, found);
+            return (process.ExitCode, await output + await errors);
         }
 
         /// <summary>The configuration this test assembly, and so the projects it references, was built in.</summary>

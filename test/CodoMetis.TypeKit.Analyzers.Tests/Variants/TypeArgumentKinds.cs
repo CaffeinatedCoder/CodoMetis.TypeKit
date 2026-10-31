@@ -260,6 +260,7 @@ public static class TypeArgumentKinds
         new KindOfParameter("an unmanaged parameter bound by IValue<int>", "<T>", $"where T : unmanaged, {ValueMarker}", new(Declares.Unmanaged | Declares.InterfaceBound | Declares.ValueObjectBound)),
         new KindOfParameter("a class parameter bound by IValue<int>", "<T>", $"where T : class, {ValueMarker}", new(Declares.Class | Declares.InterfaceBound | Declares.ValueObjectBound)),
         new KindOfParameter("a new() parameter bound by IValue<int>", "<T>", $"where T : {ValueMarker}, new()", new(Declares.New | Declares.InterfaceBound | Declares.ValueObjectBound)),
+        new KindOfParameter("a new() parameter bound by an interface deriving from IValue<int>", "<T>", "where T : IDerivedValue, new()", new(Declares.New | Declares.InterfaceBound | Declares.ValueObjectBound)),
         new KindOfParameter("a parameter bound by a class and IValue<int>", "<T>", $"where T : Handler, {ValueMarker}", new(Declares.ClassBound | Declares.InterfaceBound | Declares.ValueObjectBound)),
         new KindOfParameter("a parameter bound by IClosedSet<T>", "<T>", "where T : class, CodoMetis.TypeKit.ClosedSets.IClosedSet<T>", new(Declares.Class | Declares.InterfaceBound | Declares.ClosedSetBound)),
         new KindOfParameter("T : U, U carrying [Sealed]", "<[Sealed] U, T>", "where T : U", new(Declares.Nothing) { BoundBy = new(Declares.Nothing, "Sealed") }),
