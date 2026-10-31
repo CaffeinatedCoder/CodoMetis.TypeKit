@@ -1,0 +1,11 @@
+{
+  "//": [
+    "The .NET 11 release candidate 3 SDK, exactly: the measurement is of this build and no other.",
+    "It is installed side by side (README, \"Running it\"), so the machine's own SDKs stay as they are."
+  ],
+  "sdk": {
+    "version": "11.0.100-rc.3.26522.148",
+    "rollForward": "disable",
+    "allowPrerelease": true
+  }
+}
