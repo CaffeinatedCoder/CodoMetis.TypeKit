@@ -75,10 +75,13 @@ public sealed class CiLaneTests
         path.StartsWith(Repository.Root + Path.DirectorySeparatorChar, StringComparison.Ordinal)
         && !Path.GetRelativePath(Repository.Root, path).Split(Path.DirectorySeparatorChar).Any(part => part is "bin" or "obj");
 
+    /// <summary>The built ci-lanes.dll this project's build ordered before it.</summary>
+    internal static string CiLanes { get; } = Path.Combine(
+        typeof(CiLaneTests).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>().Single(a => a.Key == "CiLanesOutput").Value!, "ci-lanes.dll");
+
     private static List<(string Path, string Class, string[] Lanes)> Classify(IReadOnlyList<string> paths)
     {
-        var output = typeof(CiLaneTests).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>().Single(a => a.Key == "CiLanesOutput").Value!;
-        var (code, text) = Run(Path.Combine(output, "ci-lanes.dll"), ["classify", .. paths]);
+        var (code, text) = Run(CiLanes, ["classify", .. paths]);
 
         code.ShouldBe(0, text);
         return
@@ -90,7 +93,7 @@ public sealed class CiLaneTests
     }
 
     // The project and every file it imports, from the preprocessed project: each import is named there by its full path, on a line of its own.
-    private static async Task<IEnumerable<string>> Imports(string project)
+    internal static async Task<IEnumerable<string>> Imports(string project)
     {
         var file = Path.Combine(Path.GetTempPath(), $"cilanes-{Guid.NewGuid():N}.xml");
         try
@@ -106,7 +109,7 @@ public sealed class CiLaneTests
     }
 
     // Every item that names a file: what is compiled, embedded, packed or analysed, and the projects referenced.
-    private static async Task<IEnumerable<(string Item, string FullPath)>> Items(string project)
+    internal static async Task<IEnumerable<(string Item, string FullPath)>> Items(string project)
     {
         string[] kinds = ["Compile", "None", "Content", "EmbeddedResource", "AdditionalFiles", "ProjectReference"];
         var (code, text) = await RunAsync(["msbuild", project, .. kinds.Select(kind => $"-getItem:{kind}"), "-nodeReuse:false"]);
@@ -124,7 +127,7 @@ public sealed class CiLaneTests
     private static Task<(int Code, string Output)> RunAsync(string[] arguments) => Task.Run(() => Run(null, arguments));
 
     // dotnet with the arguments, or the dll with them when one is given; stdout, and stderr after it on a failure.
-    private static (int Code, string Output) Run(string? dll, string[] arguments)
+    internal static (int Code, string Output) Run(string? dll, string[] arguments)
     {
         using var process = Process.Start(new ProcessStartInfo("dotnet", dll is null ? arguments : [dll, .. arguments])
         {

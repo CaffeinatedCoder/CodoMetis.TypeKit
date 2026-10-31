@@ -9,6 +9,8 @@ dist/
 
 # Test output
 TestResults/
+# The suite CI writes for a change to tools or tests (design/adr/0127)
+/test/Reach.slnf
 *.trx
 *.coverage
 coverage*.xml

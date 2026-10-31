@@ -64,6 +64,7 @@ dotnet tools/ConsumerSmokeTest/bin/Release/net10.0/consumer-smoke-test.dll   # t
 dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll test [--project P] [--filter-class C] [--filter-method M] [-- flags]   # an agent's build and test: a verdict, not the transcript
 dotnet tools/PrHygiene/bin/Release/net10.0/pr-hygiene.dll event.json   # a PR's labels, milestone, branch and issue link, as CI's PR hygiene check reads them from the payload
 dotnet tools/CiLanes/bin/Release/net10.0/ci-lanes.dll classify <path>...   # the CI lanes a changed path selects (Linux, Windows, the pack; macOS only on the release's runs), as CI's changes job decides them
+dotnet tools/CiLanes/bin/Release/net10.0/ci-lanes.dll suite <path>...      # the tests a changed path runs alone: the whole solution, the prose suite, or the projects it reaches
 ```
 
 The oracle kit's local tool, which needs no model and never runs in CI

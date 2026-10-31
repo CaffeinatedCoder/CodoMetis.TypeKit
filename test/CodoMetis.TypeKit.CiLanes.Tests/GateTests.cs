@@ -22,6 +22,7 @@ public sealed class GateTests : IDisposable
         string? Legs = LinuxOnly,
         string? Pack = "false",
         string? Suite = "prose",
+        string? Projects = "[]",
         string Test = "success",
         string PackJob = "skipped",
         string Consumer = "skipped");
@@ -32,12 +33,17 @@ public sealed class GateTests : IDisposable
 
     private static readonly Run Full = Package with { Legs = EveryLeg };
 
+    private const string ReachedProjects = """["test/CodoMetis.TypeKit.Conventions.Tests/CodoMetis.TypeKit.Conventions.Tests.csproj","tools/PrHygiene/PrHygiene.csproj"]""";
+
+    private static readonly Run Reach = Prose with { Legs = LinuxAndWindows, Suite = "reach", Projects = ReachedProjects };
+
     private (int Code, string Output) Judge(Run run, Action<Dictionary<string, object>>? edit = null)
     {
         var outputs = new Dictionary<string, string>();
         if (run.Legs is not null) outputs["legs"] = run.Legs;
         if (run.Pack is not null) outputs["pack"] = run.Pack;
         if (run.Suite is not null) outputs["suite"] = run.Suite;
+        if (run.Projects is not null) outputs["projects"] = run.Projects;
 
         var needs = new Dictionary<string, object>
         {
@@ -98,12 +104,60 @@ public sealed class GateTests : IDisposable
     [Fact]
     public void A_run_that_is_not_selected_passes_with_every_leg() => Passes(Full);
 
+    [Fact]
+    public void A_reached_suite_passes_on_Linux_and_Windows() => Passes(Reach);
+
+    [Fact]
+    public void A_reached_suite_passes_on_Linux_alone() => Passes(Reach with { Legs = LinuxOnly });
+
+    /// <summary>The narrowed suite is held like any other: a leg that was skipped or cancelled fails the run (#268).</summary>
+    [Theory]
+    [InlineData("cancelled")]
+    [InlineData("skipped")]
+    [InlineData("failure")]
+    public void A_reached_suite_whose_legs_did_not_succeed_fails(string result) =>
+        Fails(Reach with { Test = result }, $"The job 'test' was selected and ended '{result}'.");
+
+    [Fact]
+    public void A_reached_suite_beside_the_pack_fails() =>
+        Fails(Reach with { Pack = "true", PackJob = "success", Consumer = "success" }, "The changes job chose the reached suite for a run with the pack or the macOS leg");
+
+    [Fact]
+    public void A_reached_suite_beside_every_leg_fails() =>
+        Fails(Reach with { Legs = EveryLeg }, "The changes job chose the reached suite for a run with the pack or the macOS leg");
+
+    /// <summary>An empty filter would build and test nothing, and pass.</summary>
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("""["CodoMetis.TypeKit.slnx"]""")]
+    [InlineData("""["src/CodoMetis.TypeKit/CodoMetis.TypeKit.csproj"]""")]
+    [InlineData("""["test/../src/CodoMetis.TypeKit/CodoMetis.TypeKit.csproj"]""")]
+    [InlineData("""["test/A.Tests/A.Tests.csproj","test/A.Tests/A.Tests.csproj"]""")]
+    public void A_reached_suite_without_its_projects_fails(string projects) =>
+        Fails(Reach with { Projects = projects }, "The changes job chose the reached suite with the projects");
+
+    [Theory]
+    [InlineData("full")]
+    [InlineData("prose")]
+    public void Projects_beside_a_suite_that_has_its_own_fail(string suite) =>
+        Fails((suite == "full" ? Package : Prose) with { Projects = ReachedProjects }, $"The changes job named projects for the {suite} suite");
+
+    [Theory]
+    [InlineData("test/A.Tests/A.Tests.csproj")]
+    [InlineData("""{"projects":[]}""")]
+    [InlineData("""[1]""")]
+    public void A_projects_answer_the_selection_does_not_write_fails(string projects) =>
+        Fails(Reach with { Projects = projects }, "The changes job's projects output is");
+
+    [Fact]
+    public void A_missing_projects_answer_fails() => Fails(Prose with { Projects = null }, "The changes job's projects output is missing");
+
     [Theory]
     [InlineData("failure")]
     [InlineData("cancelled")]
     [InlineData("skipped")]
     public void A_selection_that_did_not_succeed_fails(string result) =>
-        Fails(Prose with { Changes = result, Legs = null, Pack = null, Suite = null }, $"The changes job ended '{result}'");
+        Fails(Prose with { Changes = result, Legs = null, Pack = null, Suite = null, Projects = null }, $"The changes job ended '{result}'");
 
     [Theory]
     [InlineData("cancelled")]
@@ -157,7 +211,7 @@ public sealed class GateTests : IDisposable
         var file = Path.Combine(_tool.Work, "needs.json");
         File.WriteAllText(file, JsonSerializer.Serialize(new Dictionary<string, object>
         {
-            ["changes"] = new { result = "success", outputs = new { legs = LinuxOnly, pack = "false", suite = "prose" } },
+            ["changes"] = new { result = "success", outputs = new { legs = LinuxOnly, pack = "false", suite = "prose", projects = "[]" } },
             ["test"] = new { result = "success" },
             ["pack"] = new { result = "skipped" },
             ["consumer"] = new { result = "skipped" },

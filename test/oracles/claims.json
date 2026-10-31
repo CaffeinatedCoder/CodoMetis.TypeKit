@@ -2849,6 +2849,20 @@
     ]
   },
   {
+    "id": "K05-a-list-given-a-count",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005",
+    "quote": "A list counts too: `CollectionsMarshal.SetCount(ids, count)` on a `List<OrderId>` makes room for `count` items without putting one there.",
+    "claim": "CMTK0005 reports CollectionsMarshal.SetCount on a List<T> of a no-default type, unless the count is a constant zero.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "DefaultFilledCollectionAnalyzerTests"
+    ]
+  },
+  {
     "id": "K05-a-zero-dimension-is-silent",
     "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005",
     "quote": "That holds for any one dimension: `new OrderId[0, count]` holds no element either.",

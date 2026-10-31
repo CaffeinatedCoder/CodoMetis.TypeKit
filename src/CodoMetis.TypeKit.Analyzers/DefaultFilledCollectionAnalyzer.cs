@@ -10,8 +10,8 @@ using Microsoft.CodeAnalysis.Operations;
 namespace CodoMetis.TypeKit.Analyzers;
 
 /// <summary>
-/// CMTK0005: an array or span of a struct that forbids <c>default</c>, created with a length, so
-/// every element starts as a <c>default</c> instance.
+/// CMTK0005: an array, span or list of a struct that forbids <c>default</c>, created or sized with a
+/// length, so every element starts as a <c>default</c> instance.
 /// </summary>
 /// <remarks>
 /// CMTK0001 sees <c>default</c> written out, and none of these forms writes it: <c>new OrderId[n]</c>,
@@ -21,7 +21,10 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// <c>Array.CreateInstance(typeof(OrderId), n)</c>, <c>Array.CreateInstanceFromArrayType(typeof(OrderId[]), n)</c>
 /// and <c>ArrayPool&lt;OrderId&gt;.Rent(n)</c> (#228): the first two only where a <c>typeof</c> names the element,
 /// since a <c>Type</c> variable could be anything, and a rented array is reported as a fresh one, all
-/// default, though a reused one holds what it was returned with. An array with initial
+/// default, though a reused one holds what it was returned with. And <c>CollectionsMarshal.SetCount</c> (#229),
+/// which makes room in a <c>List&lt;OrderId&gt;</c> without putting an item there: like <c>Array.Resize</c> it adds
+/// slots only when the count is larger, and like a rented array a slot may hold an item removed earlier, which
+/// the rule cannot tell either. An array with initial
 /// elements, a constant length or size of zero in any one dimension and a collection expression start
 /// with no default element and are not reported. A warning, since filling such an array in a loop
 /// straight after is correct code the rule cannot tell apart.
@@ -59,8 +62,12 @@ public sealed class DefaultFilledCollectionAnalyzer : DiagnosticAnalyzer
             var array = start.Compilation.GetTypeByMetadataName("System.Array");
             var pool  = start.Compilation.GetTypeByMetadataName("System.Buffers.ArrayPool`1");
 
+            // CollectionsMarshal.SetCount<T>(List<T>, int), from .NET 8: the method itself, compared by symbol.
+            var setCount = start.Compilation.GetTypeByMetadataName("System.Runtime.InteropServices.CollectionsMarshal")?.GetMembers("SetCount").OfType<IMethodSymbol>().ToImmutableHashSet<IMethodSymbol>(SymbolEqualityComparer.Default)
+                ?? ImmutableHashSet<IMethodSymbol>.Empty;
+
             start.RegisterOperationAction(operation => AnalyzeArrayCreation(operation, symbols), OperationKind.ArrayCreation);
-            start.RegisterOperationAction(operation => AnalyzeInvocation(operation, symbols, gc, array, pool), OperationKind.Invocation);
+            start.RegisterOperationAction(operation => AnalyzeInvocation(operation, symbols, gc, array, pool, setCount), OperationKind.Invocation);
 
             // IOperation has no public node for stackalloc; the syntax is read instead.
             start.RegisterSyntaxNodeAction(node => AnalyzeStackAlloc(node, symbols), SyntaxKind.StackAllocArrayCreationExpression);
@@ -78,7 +85,7 @@ public sealed class DefaultFilledCollectionAnalyzer : DiagnosticAnalyzer
         if (Diagnose(context.ContainingSymbol, creation.Syntax, "An array created with a length", element, symbols) is { } diagnostic) context.Report(diagnostic);
     }
 
-    private static void AnalyzeInvocation(OperationAnalysisContext context, TypeKitSymbols symbols, INamedTypeSymbol? gc, INamedTypeSymbol? array, INamedTypeSymbol? arrayPool)
+    private static void AnalyzeInvocation(OperationAnalysisContext context, TypeKitSymbols symbols, INamedTypeSymbol? gc, INamedTypeSymbol? array, INamedTypeSymbol? arrayPool, ImmutableHashSet<IMethodSymbol> setCount)
     {
         var invocation = (IInvocationOperation)context.Operation;
         var method     = invocation.TargetMethod;
@@ -114,6 +121,12 @@ public sealed class DefaultFilledCollectionAnalyzer : DiagnosticAnalyzer
             // (int minimumLength): a fresh array from the pool holds nothing but default slots.
             form    = "ArrayPool.Rent";
             element = pool.TypeArguments[0];
+        }
+        else if (setCount.Contains(method.OriginalDefinition))
+        {
+            // (List<T> list, int count): every slot past the list's old count holds no item it was given.
+            form    = "CollectionsMarshal.SetCount";
+            element = method.TypeArguments[0];
         }
 
         if (form is null || element is null) return;

@@ -65,6 +65,7 @@ jobs:
       legs: ${{ steps.select.outputs.legs }}
       pack: ${{ steps.select.outputs.pack }}
       suite: ${{ steps.select.outputs.suite }}
+      projects: ${{ steps.select.outputs.projects }}
 
     steps:
       # The whole history: the diff is against the base branch, which a shallow clone has not fetched.
@@ -93,13 +94,15 @@ jobs:
 
   # The legs the changes job selected: Linux in every run, Windows when the change can affect it, macOS only in a
   # run that selects nothing. A prose-only change builds and runs test/Prose.slnf alone, the test projects that
-  # read prose (ProseReaderTests holds the set); anything else, the whole solution.
+  # read prose (ProseReaderTests holds the set). A change to tools, tests, prose or the ignore list builds and runs
+  # the projects it reaches, written as test/Reach.slnf (design/adr/0127, TestReachTests holds what reaches what);
+  # anything else, the whole solution.
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     needs: changes
     env:
-      SOLUTION: ${{ needs.changes.outputs.suite == 'prose' && 'test/Prose.slnf' || 'CodoMetis.TypeKit.slnx' }}
+      SOLUTION: ${{ needs.changes.outputs.suite == 'prose' && 'test/Prose.slnf' || needs.changes.outputs.suite == 'reach' && 'test/Reach.slnf' || 'CodoMetis.TypeKit.slnx' }}
     strategy:
       fail-fast: false
       matrix:
@@ -116,6 +119,14 @@ jobs:
         uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
         with:
           global-json-file: global.json
+
+      # The projects the change reaches, as a solution filter beside test/Prose.slnf. The gate refuses a reached
+      # suite whose projects are not one or more project files, so a filter of nothing cannot pass.
+      - name: Write the reached suite
+        if: needs.changes.outputs.suite == 'reach'
+        env:
+          PROJECTS: ${{ needs.changes.outputs.projects }}
+        run: printf '{"solution":{"path":"../CodoMetis.TypeKit.slnx","projects":%s}}\n' "$PROJECTS" > test/Reach.slnf
 
       - name: Restore
         run: dotnet restore "$SOLUTION"

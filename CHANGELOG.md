@@ -21,6 +21,7 @@ section is the GitHub release's notes.
 ### Changed
 
 - Packages: the public surface is checked against 2.3.1's, so nothing 2.3.1 ships is removed or changed in 2.4.0.
+- Analyzers: CMTK0005 now also warns at `CollectionsMarshal.SetCount(ids, count)` on a `List<OrderId>`, which makes room for `count` items without putting one there, as `new OrderId[count]` does; a constant count of zero isn't reported. In a build that treats warnings as errors, that can report code that built before ([CMTK0005](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005)).
 
 - Generators: a property, field or nested type you wrote with the name of a generated member, on the value object, a closed set or a base of either, such as `public static int Parse => 1`, now fails with CMTK1011 naming it, where it failed with a Metalama error (LAMA0506, LAMA0531) that named nothing you wrote. So does a closed set's own method named as a generated property, such as `Name()` ([Write your own members](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members)).
 
