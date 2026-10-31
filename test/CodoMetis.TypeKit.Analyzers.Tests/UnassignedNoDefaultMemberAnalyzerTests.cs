@@ -284,6 +284,116 @@ public sealed class UnassignedNoDefaultMemberAnalyzerTests
             """)
             .RunAsync(TestContext.Current.CancellationToken);
 
+    private const string Interfaces =
+        """
+
+        public interface IHasId { Plain Id { get; set; } }
+        public interface IAlsoId { Plain Id { get; set; } }
+        public interface IHas<T> { T Value { get; set; } }
+
+        """;
+
+    /// <summary>
+    /// A class reaches its own explicit interface implementation only through a cast of <c>this</c>, and
+    /// <c>((IHasId)this).Id = id</c> was reported although every constructor assigns it (#231). Across the
+    /// input class, the forms that assign a member in a constructor: plain, <c>this.</c>, a cast of
+    /// <c>this</c> to each interface the member implements (explicitly, implicitly, two at once, a generic
+    /// one) or to the class itself, deconstruction, and <c>out</c>.
+    /// </summary>
+    [Fact]
+    public Task A_member_assigned_through_a_cast_of_this_stays_silent() =>
+        Test(
+            Interfaces +
+            """
+            public sealed class Explicit : IHasId
+            {
+                public Explicit(Plain id) => ((IHasId)this).Id = id;
+                Plain IHasId.Id { get; set; }
+            }
+
+            public sealed class Implicit : IHasId
+            {
+                public Implicit(Plain id) => ((IHasId)this).Id = id;
+                public Plain Id { get; set; }
+            }
+
+            public sealed class Both : IHasId, IAlsoId
+            {
+                public Both(Plain id) => ((IAlsoId)this).Id = id;
+                public Plain Id { get; set; }
+            }
+
+            public sealed class Generic : IHas<Plain>
+            {
+                public Generic(Plain value) => ((IHas<Plain>)this).Value = value;
+                Plain IHas<Plain>.Value { get; set; }
+            }
+
+            public sealed class Itself
+            {
+                private Plain _field;
+                public Itself(Plain id)
+                {
+                    this.Id = id;
+                    ((Itself)this)._field = id;
+                }
+                public Plain Id { get; }
+            }
+
+            public sealed class Deconstructed : IHasId
+            {
+                public Deconstructed(Plain id, Plain name) => (((IHasId)this).Id, Name) = (id, name);
+                Plain IHasId.Id { get; set; }
+                public Plain Name { get; }
+            }
+
+            public sealed class ThroughOut
+            {
+                private Plain _field;
+                public ThroughOut() => Init(out ((ThroughOut)this)._field);
+                private static void Init(out Plain value) => value = Plain.Make();
+            }
+            """)
+            .RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// The cast maps to the member it reaches and to nothing else: a constructor that does not assign it is
+    /// still named, an assignment to another instance's member assigns none of this one's, and a local that
+    /// holds <c>this</c> is not followed, so <c>IHasId self = this; self.Id = id;</c> stays reported.
+    /// </summary>
+    [Fact]
+    public Task A_cast_assigns_only_the_member_it_reaches_on_this() =>
+        Test(
+            Interfaces +
+            """
+            public sealed class OneOfTwo : IHasId
+            {
+                public OneOfTwo(Plain id) => ((IHasId)this).Id = id;
+                public OneOfTwo() { }
+                Plain IHasId.{|#0:Id|} { get; set; }
+            }
+
+            public sealed class Other : IHasId
+            {
+                public Other(Other other, Plain id) => ((IHasId)other).Id = id;
+                Plain IHasId.{|#1:Id|} { get; set; }
+            }
+
+            public sealed class Aliased : IHasId
+            {
+                public Aliased(Plain id)
+                {
+                    IHasId self = this;
+                    self.Id = id;
+                }
+                Plain IHasId.{|#2:Id|} { get; set; }
+            }
+            """,
+            Cmtk0006(0, "IHasId.Id", "Plain", "the constructor 'OneOfTwo()'", AssignAdvice),
+            Cmtk0006(1, "IHasId.Id", "Plain", "the constructor 'Other(Other, Plain)'", AssignAdvice),
+            Cmtk0006(2, "IHasId.Id", "Plain", "the constructor 'Aliased(Plain)'", AssignAdvice))
+            .RunAsync(TestContext.Current.CancellationToken);
+
     [Fact]
     public Task A_compilation_without_TypeKit_is_left_alone() =>
         new AnalyzerTest<UnassignedNoDefaultMemberAnalyzer>("public sealed class S { public int N { get; set; } }", referenceTypeKit: false)

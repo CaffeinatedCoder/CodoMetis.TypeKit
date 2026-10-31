@@ -33,7 +33,9 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// serializers materialize through before they set the properties, which is how entities declare it.
 /// A record's copy constructor copies every member and is exempt too. A constructor that chains to
 /// another with <c>this(…)</c> assigns what that one assigns. An assignment on any path counts, so
-/// the rule errs towards silence.
+/// the rule errs towards silence. An assignment through a cast of <c>this</c> counts too, an interface's
+/// member as the class's implementation of it: <c>((IHasId)this).Id = id</c> is the only way a class
+/// reaches its explicit implementation (#231). A local holding <c>this</c> is not followed.
 /// </para>
 /// <para>
 /// A <c>required</c> member is set by every object initializer, except behind a constructor marked
@@ -281,11 +283,11 @@ public sealed class UnassignedNoDefaultMemberAnalyzer : DiagnosticAnalyzer
                 switch (operation)
                 {
                     case IAssignmentOperation assignment:
-                        Collect(assignment.Target, members);
+                        Collect(assignment.Target, members, type);
                         break;
 
                     case IArgumentOperation { Parameter.RefKind: RefKind.Out or RefKind.Ref } argument:
-                        Collect(argument.Value, members);
+                        Collect(argument.Value, members, type);
                         break;
 
                     case IInvocationOperation { TargetMethod.MethodKind: MethodKind.Constructor, Instance: IInstanceReferenceOperation } chained
@@ -326,22 +328,33 @@ public sealed class UnassignedNoDefaultMemberAnalyzer : DiagnosticAnalyzer
             constructor.Parameters.Count(parameter => !parameter.IsOptional && !parameter.IsParams) <= count
          && (count <= constructor.Parameters.Length || constructor.Parameters.LastOrDefault()?.IsParams == true);
 
-        private static void Collect(IOperation target, HashSet<ISymbol> members)
+        private static void Collect(IOperation target, HashSet<ISymbol> members, INamedTypeSymbol type)
         {
             switch (target)
             {
-                case IFieldReferenceOperation { Instance: IInstanceReferenceOperation } field:
+                case IFieldReferenceOperation field when OnThis(field.Instance):
                     members.Add(field.Field.AssociatedSymbol ?? field.Field);
                     break;
 
-                case IPropertyReferenceOperation { Instance: IInstanceReferenceOperation } property:
-                    members.Add(property.Property);
+                // ((IHasId)this).Id = id reaches the interface's member; the class holds its implementation.
+                case IPropertyReferenceOperation property when OnThis(property.Instance):
+                    members.Add(property.Property.ContainingType.TypeKind == TypeKind.Interface
+                        ? type.FindImplementationForInterfaceMember(property.Property) ?? property.Property
+                        : property.Property);
                     break;
 
                 case ITupleOperation tuple:
-                    foreach (var element in tuple.Elements) Collect(element, members);
+                    foreach (var element in tuple.Elements) Collect(element, members, type);
                     break;
             }
+        }
+
+        /// <summary><c>this</c>, under any casts: a class reaches its explicit implementations only through one.</summary>
+        private static bool OnThis(IOperation? instance)
+        {
+            while (instance is IConversionOperation conversion) instance = conversion.Operand;
+
+            return instance is IInstanceReferenceOperation;
         }
     }
 }

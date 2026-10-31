@@ -2433,6 +2433,20 @@
     ]
   },
   {
+    "id": "K06-an-explicit-implementation-through-a-cast",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0006",
+    "quote": "An explicit interface implementation is assigned the only way a class can reach it, through a cast: `((IHasId)this).Id = id` in every constructor keeps it quiet.",
+    "claim": "CMTK0006 counts an assignment through a cast of this, an interface's member as the class's implementation of it, and does not follow a local holding this.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "UnassignedNoDefaultMemberAnalyzerTests"
+    ]
+  },
+  {
     "id": "L01-read-as-the-underlying-type-reads",
     "source": "README.md#what-typekit-guarantees",
     "quote": "**Swapping a primitive for a value object keeps the JSON, the column and the schema.**",
