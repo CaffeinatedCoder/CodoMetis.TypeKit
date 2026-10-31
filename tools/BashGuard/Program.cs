@@ -13,7 +13,11 @@
 //     reads a project: -getProperty or -getItem with no target, -getTargetResult or restore. MSBuild then
 //     stops after evaluation and writes nothing (measured 2026-10-17), and the verdict has no such form;
 //   - the verdict tool piped into head, tail, less or more: the verdict is already the short form, and
-//     the pipe hides the tool's exit code.
+//     the pipe hides the tool's exit code;
+//   - `wt merge`, and `wt step squash`, `rebase` and `push`, its building blocks, past worktrunk's global
+//     options (-C, --config, --config-set, -v), except with --help: work reaches a release branch by a pull
+//     request and a merge commit (decision 94), and these squash, rebase or fast-forward locally. Called
+//     through a wrapper (`cargo run --bin wt`, a variable) they pass.
 //
 // The command is split the way the shell would: on ; && || | & and newlines, into $( ), backticks and
 // the string of `bash -c`, past leading assignments, `env`, `time`, `command`, `exec`, `nice` and the
@@ -270,6 +274,8 @@ static class Guard
     static readonly HashSet<string> Shells = ["bash", "sh", "zsh", "dash"];
     static readonly HashSet<string> RefusedVerbs = ["build", "test", "msbuild"];
     static readonly HashSet<string> Pagers = ["head", "tail", "less", "more"];
+    static readonly HashSet<string> WtOptionsWithValue = ["-C", "--config", "--config-set"];
+    static readonly HashSet<string> LandingSteps = ["squash", "rebase", "push"];
     const string VerdictTool = "tools/BuildVerdict";
     const string Verdict = "dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll";
 
@@ -363,6 +369,28 @@ static class Guard
         words.Skip(2).Select(Switch).Any(s => s is not null && Queries.Contains(s)) &&
         !words.Skip(2).Select(Switch).Any(s => s is not null && Runs.Contains(s));
 
+    // The words of `wt ...` that are no option nor an option's value: `wt -C x step -v push` gives [step, push].
+    static List<string> WtVerbs(List<string> words)
+    {
+        List<string> verbs = [];
+        for (var k = 1; k < words.Count; k++)
+        {
+            if (WtOptionsWithValue.Contains(words[k])) k++;
+            else if (!words[k].StartsWith('-')) verbs.Add(words[k]);
+        }
+        return verbs;
+    }
+
+    // `wt merge` or `wt step squash|rebase|push`, as "merge" or "step push"; null for any other command.
+    static string? Landing(List<string> words)
+    {
+        if (Program(words[0]) != "wt" || words.Skip(1).Any(a => a is "--help" or "-h")) return null;
+        var verbs = WtVerbs(words);
+        if (verbs is ["merge", ..]) return "merge";
+        if (verbs is ["step", var step, ..] && LandingSteps.Contains(step)) return $"step {step}";
+        return null;
+    }
+
     // Whether any command in the text builds a tool project: what a stale guard still lets through.
     public static bool BuildsATool(string text) =>
         new Scanner(text).Scan().Segments.Any(s => IsToolBuild(CommandWords(s.Words)));
@@ -437,6 +465,7 @@ static class Guard
                 if (!words.Skip(2).Any(a => a is "--help" or "-h" or "-?" or "/?"))
                     yield return ("toolchain", (words[1], words.Skip(2).ToList()));
             }
+            if (Landing(words) is { } landing) yield return ("landing", landing);
             if (IsVerdict(words) && op is ("|" or "|&") && n + 1 < segments.Count)
             {
                 var next = segments[n + 1].Words;
@@ -468,6 +497,13 @@ static class Guard
                 $"An MSBuild switch belongs on `build -- ...`, never on `test -- ...`. A person in a " +
                 $"terminal is not affected by this hook.";
         }
+        if (rule == "landing")
+            return
+                $"Refused: `wt {detail}`. In this repository work reaches release/<version> by a pull request and a " +
+                $"merge commit (decision 94), never squashed, rebased once pushed, or fast-forwarded locally, which is " +
+                $"what `wt merge` and its steps do by default, onto worktrunk's default branch. Push the branch " +
+                $"(`git push -u origin <branch>`) and open the pull request; once it merged, `wt remove <branch>` cleans " +
+                $"up. design/worktrees.md has the whole flow. A person in a terminal is not affected by this hook.";
         return
             $"Refused: the verdict tool ({VerdictTool}) piped into {detail}. The verdict is already the short " +
             $"form, and the pipe replaces the tool's exit code with {detail}'s. Run it bare; for " +

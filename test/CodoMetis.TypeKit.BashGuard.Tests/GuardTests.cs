@@ -84,6 +84,23 @@ public sealed class GuardTests(GuardTests.Sandbox sandbox) : IClassFixture<Guard
     [InlineData("a query that restores, short", "dotnet msbuild src/A/A.csproj -r -getItem:PackageReference")]
     [InlineData("a property set, not queried", "dotnet msbuild src/A/A.csproj -property:Configuration=Release")]
     [InlineData("a build that queries", "dotnet build src/A/A.csproj -getProperty:TargetPath")]
+    // worktrunk's local landing: work reaches a release branch by a pull request and a merge commit
+    [InlineData("wt merge", "wt merge")]
+    [InlineData("wt merge into a target", "wt merge release/2.4.0")]
+    [InlineData("wt merge with every merge key off", "wt merge --no-squash --no-rebase --no-ff")]
+    [InlineData("wt merge after -C", "wt -C ../CodoMetis.TypeKit-worktrees/fix-x merge")]
+    [InlineData("wt merge after --config-set", "wt --config-set merge.squash=false merge")]
+    [InlineData("wt merge after -v", "wt -vv merge")]
+    [InlineData("wt merge by its path", "/opt/homebrew/bin/wt merge")]
+    [InlineData("wt merge after command and an assignment", "WORKTRUNK_VERBOSE=1 command wt merge")]
+    [InlineData("wt merge after &&", "git push && wt merge")]
+    [InlineData("wt merge, quoted", "wt 'merge'")]
+    [InlineData("wt merge in bash -c", "bash -c 'wt merge'")]
+    [InlineData("wt merge in a substitution", "echo $(wt merge)")]
+    [InlineData("wt step squash", "wt step squash")]
+    [InlineData("wt step rebase", "wt step rebase release/2.4.0")]
+    [InlineData("wt step push", "wt step push")]
+    [InlineData("wt step push after options", "wt -C x step -v push")]
     public void Refused(string name, string command) => Guard(Payload(command)).Code.ShouldBe(2, name);
 
     // ---- what passes ----------------------------------------------------------------------------------
@@ -119,6 +136,18 @@ public sealed class GuardTests(GuardTests.Sandbox sandbox) : IClassFixture<Guard
     [InlineData("in a tab-stripped heredoc body", "cat <<-EOF\n\tdotnet test\n\tEOF\necho done")]
     [InlineData("a here-string", "grep -c x <<< \"dotnet build\"")]
     [InlineData("a tail that reads a log", "tail -20 \"$(git rev-parse --absolute-git-dir)/build-verdict-last.log\"")]
+    [InlineData("wt switch -c", "wt switch -c fix/merge-key --no-cd")]
+    [InlineData("wt switch to a branch named merge", "wt switch merge")]
+    [InlineData("wt list", "wt list --format json")]
+    [InlineData("wt remove", "wt remove fix/x")]
+    [InlineData("wt step prune", "wt step prune --dry-run")]
+    [InlineData("wt step diff", "wt step diff --branch fix/x")]
+    [InlineData("wt step for-each running git", "wt step for-each -- git status")]
+    [InlineData("wt config naming merge keys", "wt --config-set merge.squash=false list")]
+    [InlineData("help for wt merge", "wt merge --help")]
+    [InlineData("wt merge as an argument", "echo wt merge")]
+    [InlineData("wt merge in a search pattern", "grep -n \"wt merge\" design/worktrees.md")]
+    [InlineData("git merge", "git merge --no-ff fix/x")]
     // The Python original looped forever on these, until the hook's timeout.
     [InlineData("a command ending in a redirection", "ls 2>")]
     [InlineData("a command ending in a heredoc operator", "cat <<")]
@@ -154,6 +183,17 @@ public sealed class GuardTests(GuardTests.Sandbox sandbox) : IClassFixture<Guard
 
         code.ShouldBe(2);
         error.ShouldContain("Run: dotnet tools/BuildVerdict/bin/Release/net10.0/build-verdict.dll build src/A/A.csproj -- -c Release");
+    }
+
+    [Fact]
+    public void A_landing_refusal_names_the_pull_request()
+    {
+        var (code, error) = Guard(Payload("wt -C x step push"));
+
+        code.ShouldBe(2);
+        error.ShouldContain("Refused: `wt step push`", customMessage: "it names the step it refused");
+        error.ShouldContain("by a pull request and a merge commit (decision 94)", customMessage: "it says how work lands");
+        error.ShouldContain("design/worktrees.md", customMessage: "it points at the runbook");
     }
 
     // ---- payloads it cannot read are allowed ----------------------------------------------------------
