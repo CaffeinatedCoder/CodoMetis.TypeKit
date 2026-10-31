@@ -463,7 +463,11 @@ public sealed partial class OrderStatus : IClosedSet<OrderStatus>, IParsable<Ord
   (CMTK1021).
 - **A `ToString()` you write is kept**, and the name is still what JSON, parsing and the column use.
 - **An overload of a generated method with another signature**, such as `Parse(int rank)`, is kept
-  too. Any other generated member written by hand fails the build (CMTK1011).
+  too. Any other generated member written by hand fails the build (CMTK1011), in the set or in a
+  class it derives from.
+- **A base class's `ToString()`.** A `sealed` one is kept, since C# keeps it in every derived class.
+  One that isn't sealed fails the build (CMTK1011), because the generated `ToString()` would replace
+  it. Declare `ToString()` in the set, or seal the base's.
 - **An instance beside the members has no name.** If the set's own code creates one, reading its name
   throws rather than writing a null.
 - **A JSON `null` reads as `null`**, as for any class, unless the serializer's
