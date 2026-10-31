@@ -30,7 +30,8 @@ internal sealed class PatchSchemaTransformer : IOpenApiSchemaTransformer
     /// <summary>
     /// The argument's elements below a nullable patch's schema, which ASP.NET visits again as the patch: the serializer
     /// gives a <see cref="Nullable{T}"/> an element type, <c>T</c>, and ASP.NET visits <c>items</c> and
-    /// <c>additionalProperties</c> as that type. Filled as a patch, a <c>Patch&lt;int[]&gt;?</c>'s numbers admitted null.
+    /// <c>additionalProperties</c> as that type. Filled as a patch, a <c>Patch&lt;int[]&gt;?</c>'s numbers admitted null
+    /// (KB-057).
     /// </summary>
     private static readonly ConditionalWeakTable<IOpenApiSchema, Type> ArgumentElements = new();
 
@@ -46,7 +47,7 @@ internal sealed class PatchSchemaTransformer : IOpenApiSchemaTransformer
     /// <summary>
     /// The argument of a <see cref="Patch{T}"/>, or of a nullable one, whose JSON is the same values or null. The serializer
     /// reads a null into a nullable patch as null, never the patch's Null state, as it leaves an absent property: so a
-    /// nullable patch admits null without being described as a merge-patch field.
+    /// nullable patch admits null without being described as a merge-patch field (KB-057).
     /// </summary>
     private static Type? Argument(Type type) =>
         (Nullable.GetUnderlyingType(type) ?? type) is { IsGenericType: true } patch && patch.GetGenericTypeDefinition() == typeof(Patch<>)
