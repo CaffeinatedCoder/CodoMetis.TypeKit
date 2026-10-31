@@ -19,4 +19,12 @@
         <Compile Include="..\oracles\SeedVerdict.cs" Link="Oracles\SeedVerdict.cs" />
     </ItemGroup>
 
+    <!--
+      The catalogue names the test that holds each claim, and OracleCatalogue finds it among every test project's
+      sources: a change to any project under test/ reaches these tests (tools/CiLanes, design/adr/0127).
+    -->
+    <ItemGroup>
+        <ReadsByPath Include="../" />
+    </ItemGroup>
+
 </Project>
