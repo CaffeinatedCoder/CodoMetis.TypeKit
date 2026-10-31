@@ -78,8 +78,8 @@ An agent builds and tests through `tools/BuildVerdict` (`build [<project|slnx>]`
 verdict: the exit code named, each diagnostic once with its remedy from
 `tools/BuildVerdict/build-verdict-remedies.tsv` (give an UNMAPPED code a row once its fix is known), and the
 failing tests; the full log is `$GIT_DIR/build-verdict-last.log`. In an agent's Bash tool, `tools/BashGuard`
-refuses the raw `dotnet build`, `dotnet test` and `dotnet msbuild` and prints the verdict's form of the command;
-the raw commands above are for a terminal. The tools run from `bin/Release`, built at session start in the
+refuses the raw `dotnet build`, `dotnet test` and `dotnet msbuild` and prints the verdict's form of the command,
+and refuses `wt merge` and `wt step squash|rebase|push`; the raw commands above are for a terminal. The tools run from `bin/Release`, built at session start in the
 session's own checkout ([decision 105](design/adr/0105-every-tool-is-built-in-the-session-s-checkout.md)).
 A tool built from other sources refuses to run and names the command that rebuilds it,
 `dotnet build tools/<Name> -c Release`.
@@ -113,8 +113,8 @@ here, so it leads and the source decides.
   change" from it alone.
 - **Refresh it**, since it does not follow the working tree: `index_repository` with the repository root
   as `repo_path` and `name: "CodoMetis.TypeKit"`, at the start of a session and after a branch switch, a
-  rebase, a merge or a pull. A worktree under `.claude/worktrees/` isn't indexed: index it under a name of
-  its own and delete that project when done, or search the source.
+  rebase, a merge or a pull. A worktree under `.claude/worktrees/` or `../CodoMetis.TypeKit-worktrees/` isn't
+  indexed: index it under a name of its own and delete that project when done, or search the source.
 
 The way into the docs is docs-query (`dotnet tools/DocsQuery/bin/Release/net10.0/docs-query.dll`,
 [its README](tools/DocsQuery/README.md)): `entry`, `cites`, `cited-by`, `list`, `claims` and `check`
@@ -215,7 +215,9 @@ What trips agents here:
    `spike:`. A `fix:` ends with the trailers `Defect-Class:` and `Found-By:`, one of each, from the
    tables of [decision 94](design/adr/0094-topic-branches-into-a-release-branch-and-fix-trailers.md)
    (`CommitTrailerTests`). Work happens on a `<type>/<slug>` branch from `release/<version>`, reaches it
-   by a PR, and every merge is a merge commit: never squash or rebase a pushed branch.
+   by a PR, and every merge is a merge commit: never squash or rebase a pushed branch. Parallel work gets
+   a worktree each, made by `wt switch -c <type>/<slug> --no-cd` beside the repository, with the session
+   started in it ([design/worktrees.md](design/worktrees.md), [decision 126](design/adr/0126-parallel-work-runs-in-worktrunk-worktrees-beside-the-repository.md)).
 7. **Hold what the documents promise** ([decision 112](design/adr/0112-the-prober-gives-way-to-valueranges-oracle-kit.md),
    [test/oracles/README.md](test/oracles/README.md) for the files and how to add an oracle). A new public member,
    or a new promise in `docs/` or a README, gets a claim in `test/oracles/claims.json`, quoted verbatim and naming

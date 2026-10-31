@@ -148,7 +148,8 @@ Work for the next version goes into its release branch, `release/<version>` (`re
 into `main` ([decision 94](design/adr/0094-topic-branches-into-a-release-branch-and-fix-trailers.md)).
 Branch from it as `<type>/<slug>`, where the type is your main commit's (`feat/…`, `fix/…`, `docs/…`,
 `build/…`), and open the PR against it. PRs are merged with a merge commit, never squashed or rebased:
-the design records cite commits by hash.
+the design records cite commits by hash. To work on several at once, give each its own worktree beside
+the repository: [design/worktrees.md](design/worktrees.md) has the commands.
 
 - One concern per PR, closing one issue, with its labels and milestone ([above](#issues-and-labels)).
   The description follows the template: `Closes #n`, then Problem, Change and Tests, with the reasoning
@@ -222,7 +223,8 @@ The packages share one version and are released together, only through
    `## <version> — Unreleased` section. `ChangelogTests` fails while the baseline trails the last
    version the changelog dates, and pack while the new section is empty, so open it with its first
    line. Once that is on `main`, cut the next `release/<version>` from it and
-   push it, and open the version's milestone and its `epic` issue.
+   push it, open the version's milestone and its `epic` issue, and point worktrunk at the new branch in
+   each clone: `wt config state default-branch set release/<version>`.
 
 `workflow_dispatch` with `dry_run` (the default) rehearses everything but the push.
 
