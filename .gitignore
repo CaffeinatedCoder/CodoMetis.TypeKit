@@ -37,3 +37,6 @@ BenchmarkDotNet.Artifacts/
 # docs-query's index (tools/DocsQuery): one file, fingerprinted, rebuilt when the docs change
 /.docs-query.cache
 /.docs-query.cache.*.tmp
+
+# The desktop app's own worktree sessions (design/worktrees.md); worktrunk's go beside the repository
+.claude/worktrees/
