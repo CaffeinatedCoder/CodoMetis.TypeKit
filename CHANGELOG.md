@@ -23,6 +23,10 @@ section is the GitHub release's notes.
 - Generators: `IValueObject<TSelf, T>`, `IValueObjectMaterializer<TSelf, T>` or `IPlainValueObject<TSelf, T>` declared through an interface of yours, such as an `IEntityId<TSelf> : IValueObject<TSelf, Guid>`, or by a base record now fails with CMTK1011 naming that interface, where it failed with a Metalama error (LAMA0512) that named nothing you wrote. To constrain generic code, use `IValueObject<TSelf, T>` itself ([Write your own members](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members)).
 - EF Core: `Min`, `Max`, `Order`, `OrderDescending` or `OrderBy(x => x)` over a value object with its own `CompareTo`, cast to `object` first, as in `Select(o => (object)o.Priority).Max()`, or read back through `??`, a member of a projection, a grouping's key, a join or a subquery's `First()`, as in `Select(o => new { Key = (object)o.Priority }).OrderBy(a => a.Key)`, now throws as the same query without the cast does. EF dropped the cast and answered the column's order, the opposite of memory's for a descending `CompareTo` ([Queries](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries)).
 
+### Fixed
+
+- Analyzers: CMTK0005 no longer reports an array with a constant zero in any one dimension, such as `new OrderId[0, count]`, or a zero written as `0L` or, in a `stackalloc`, `(byte)0`: neither holds an element ([CMTK0005](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005)).
+
 ## 2.3.0 — 2026-10-29
 
 ### Added
