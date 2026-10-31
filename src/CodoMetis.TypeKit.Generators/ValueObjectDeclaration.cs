@@ -54,7 +54,7 @@ internal static class ValueObjectDeclaration
     }
 
     private static bool IsHandWrittenToString(IMethod method) =>
-        method is { Name: nameof(ToString), IsStatic: false, IsExplicitInterfaceImplementation: false, Parameters.Count: 0 } && IsHandWritten(method);
+        method is { Name: nameof(ToString), IsStatic: false, IsExplicitInterfaceImplementation: false, Parameters.Count: 0 } && IsByValueAndNotGeneric(method) && IsHandWritten(method);
 
     /// <summary>
     /// A value object and the records it derives from, <see cref="object"/> left out. A struct has
@@ -439,7 +439,7 @@ internal static class ValueObjectDeclaration
         kind != ValueObjectKind.Validated
             ? []
             : [.. SelfAndBases(target).Skip(1).SelectMany(type => type.Methods
-                                                                     .Where(method => IsHandWritten(method) && !method.IsExplicitInterfaceImplementation
+                                                                     .Where(method => IsHandWritten(method) && !method.IsExplicitInterfaceImplementation && IsByValueAndNotGeneric(method)
                                                                                    && (method is { Name: "TryFrom", IsStatic: true, Parameters: [{ } value] } && value.Type.ToNonNullable().Equals(valueType.ToNonNullable())
                                                                                     || method is { Name: "Revalidate", IsStatic: false, Parameters.Count: 0 }))
                                                                      .Select(method => $"{method.ToDisplayString()} in its base type {type.ToDisplayString()}"))];
@@ -513,7 +513,7 @@ internal static class ValueObjectDeclaration
         return
         [
             .. SelfAndBases(target).SelectMany(type => type.Methods
-                                                           .Where(method => method is { Name: "PrintMembers", IsStatic: false, Parameters: [{ } builder] } && builder.Type.Equals(stringBuilder) && IsHandWritten(method))
+                                                           .Where(method => method is { Name: "PrintMembers", IsStatic: false, Parameters: [{ } builder] } && builder.Type.Equals(stringBuilder) && IsByValueAndNotGeneric(method) && IsHandWritten(method))
                                                            .Select(method => Describe(method) + (type.Equals(target) ? "" : $" in its base type {type.ToDisplayString()}")))
         ];
     }
@@ -540,7 +540,7 @@ internal static class ValueObjectDeclaration
         return
         [
             .. target.Methods
-                     .Where(method => method is { IsStatic: false, IsImplicitlyDeclared: false }
+                     .Where(method => method is { IsStatic: false, IsImplicitlyDeclared: false } && IsByValueAndNotGeneric(method)
                                    && (method.IsExplicitInterfaceImplementation
                                            ? method.ExplicitInterfaceImplementations.Any(implemented => implemented.DeclaringType.Definition.Equals(equatable))
                                            : (method is { Name: nameof(Equals), Parameters: [{ } other] } && ownTypes.Any(type => other.Type.ToNonNullable().Equals(type)))
@@ -568,7 +568,7 @@ internal static class ValueObjectDeclaration
         return
         [
             .. SelfAndBases(target).Skip(1).SelectMany(type => type.Methods
-                                                                   .Where(method => method is { IsStatic: false } && IsHandWritten(method)
+                                                                   .Where(method => method is { IsStatic: false } && IsByValueAndNotGeneric(method) && IsHandWritten(method)
                                                                                  && (method.IsExplicitInterfaceImplementation
                                                                                          ? method.ExplicitInterfaceImplementations.Any(implemented => implemented.DeclaringType.Definition.Equals(equatable))
                                                                                          : (method is { Name: nameof(Equals), Parameters: [{ } other] } && other.Type.Equals(type))
@@ -648,6 +648,15 @@ internal static class ValueObjectDeclaration
     /// </summary>
     internal static bool IsHandWritten(IMember member) =>
         !member.IsImplicitlyDeclared && !member.Attributes.Any(attribute => attribute.Type.Equals(TypeFactory.GetNamedType(typeof(CompilerGeneratedAttribute))));
+
+    /// <summary>
+    /// A method without type parameters whose parameters are all by value, as every generated method is but
+    /// <c>TryParse</c> and <c>TryFormat</c> (<see cref="MethodsWithSignature"/>): C# overloads by arity and by a
+    /// parameter's ref kind, so a generic <c>CompareTo&lt;T&gt;(object?)</c> or a <c>TryFrom(in int)</c> is another
+    /// method, which the generated one sits beside, and no seam (#226).
+    /// </summary>
+    internal static bool IsByValueAndNotGeneric(IMethod method) =>
+        method.TypeParameters.Count == 0 && method.Parameters.All(parameter => parameter.RefKind == RefKind.None);
 
     /// <summary>Non-implicit members of <paramref name="target"/> with one of <paramref name="names"/>, of any kind.</summary>
     private static IEnumerable<string> MembersNamed(INamedType target, params string[] names) => MembersNamed(target, methods: true, names);

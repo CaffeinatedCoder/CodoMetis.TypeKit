@@ -189,6 +189,140 @@ public sealed partial class SetOverAnOverloadingBase : OverloadingSetBase<SetOve
     public static readonly SetOverAnOverloadingBase Second = new();
 }
 
+// The seams and the members a record synthesizes, by the same rule: a generic or by-reference overload of
+// ToString(), CompareTo, TryFrom, Revalidate, Equals, GetHashCode or PrintMembers is another method. A generic
+// ToString() was taken for the seam, and the value object printed what a record prints; a generic or by-in
+// CompareTo(TSelf) for the ordering seam, which marks the ordering hand-written; the rest were refused.
+
+/// <summary>A fault for the validated value objects below.</summary>
+public enum OverloadFault
+{
+    /// <summary>Below zero.</summary>
+    Negative
+}
+
+/// <summary>A generic <c>ToString()</c>, which is no seam.</summary>
+public readonly partial record struct ToStringOverloadedByArity : IValue<string>
+{
+    /// <summary>Hand-written.</summary>
+    public string ToString<TFormat>() => throw new NotSupportedException("hand-written");
+}
+
+/// <summary>A generic <c>CompareTo(TSelf)</c>, which is no seam.</summary>
+public readonly partial record struct CompareToOverloadedByArity : IValue<int>
+{
+    /// <summary>Hand-written.</summary>
+    public int CompareTo<TFormat>(CompareToOverloadedByArity other) => throw new NotSupportedException("hand-written");
+}
+
+/// <summary>A <c>CompareTo(TSelf)</c> by <c>in</c>, which is no seam.</summary>
+public readonly partial record struct CompareToOverloadedByIn : IValue<int>
+{
+    /// <summary>Hand-written.</summary>
+    public int CompareTo(in CompareToOverloadedByIn other) => throw new NotSupportedException("hand-written");
+}
+
+/// <summary>A generic <c>CompareTo(object?)</c> and one by <c>in</c>.</summary>
+public readonly partial record struct ObjectCompareToOverloaded : IValue<int>
+{
+    /// <summary>Hand-written.</summary>
+    public int CompareTo<TFormat>(object? other) => throw new NotSupportedException("hand-written");
+
+    /// <summary>Hand-written.</summary>
+    public int CompareTo(in object? other) => throw new NotSupportedException("hand-written");
+}
+
+/// <summary>A generic <c>Equals(TSelf)</c> and <c>GetHashCode()</c>, which are not its equality.</summary>
+public readonly partial record struct EqualityOverloadedByArity : IValue<int>
+{
+    /// <summary>Hand-written.</summary>
+    public bool Equals<TFormat>(EqualityOverloadedByArity other) => throw new NotSupportedException("hand-written");
+
+    /// <summary>Hand-written.</summary>
+    public int GetHashCode<TFormat>() => throw new NotSupportedException("hand-written");
+}
+
+/// <summary>A record class with a generic <c>PrintMembers</c>, which its synthesized <c>ToString()</c> never calls.</summary>
+public sealed partial record PrintMembersOverloadedByArity : IValue<int>
+{
+    /// <summary>Hand-written.</summary>
+    public bool PrintMembers<TFormat>(StringBuilder builder) => throw new NotSupportedException("hand-written");
+}
+
+/// <summary>A generic <c>TryFrom</c> and one by <c>in</c>, beside the generated <c>TryFrom(int)</c>.</summary>
+public readonly partial record struct TryFromOverloaded : IValidatedValue<TryFromOverloaded, int, OverloadFault>
+{
+    /// <summary>Zero or more.</summary>
+    public static Result<TryFromOverloaded, OverloadFault> Create(int value) => value < 0 ? Result.Error(OverloadFault.Negative) : new TryFromOverloaded(value);
+
+    /// <summary>Hand-written.</summary>
+    public static Option<TryFromOverloaded> TryFrom<TFormat>(int value) => throw new NotSupportedException("hand-written");
+
+    /// <summary>Hand-written.</summary>
+    public static Option<TryFromOverloaded> TryFrom(in int value) => throw new NotSupportedException("hand-written");
+}
+
+/// <summary>A base record whose seams, equality and <c>ToString()</c> are overloads of the generated ones.</summary>
+public abstract record SeamOverloadingBase<TSelf> where TSelf : notnull
+{
+    /// <summary>Hand-written.</summary>
+    public static Option<TSelf> TryFrom<TFormat>(int value) => throw new NotSupportedException("hand-written");
+
+    /// <summary>Hand-written.</summary>
+    public static Option<TSelf> TryFrom(in int value) => throw new NotSupportedException("hand-written");
+
+    /// <summary>Hand-written.</summary>
+    public Result<TSelf, OverloadFault> Revalidate<TFormat>() => throw new NotSupportedException("hand-written");
+
+    /// <summary>Hand-written.</summary>
+    public int CompareTo<TFormat>(object? other) => throw new NotSupportedException("hand-written");
+
+    /// <summary>Hand-written.</summary>
+    public int CompareTo<TFormat>(TSelf? other) => throw new NotSupportedException("hand-written");
+
+    /// <summary>Hand-written.</summary>
+    public string ToString<TFormat>() => throw new NotSupportedException("hand-written");
+
+    /// <summary>Hand-written.</summary>
+    public bool Equals<TFormat>(SeamOverloadingBase<TSelf>? other) => throw new NotSupportedException("hand-written");
+
+    /// <summary>Hand-written.</summary>
+    public int GetHashCode<TFormat>() => throw new NotSupportedException("hand-written");
+}
+
+/// <summary>A plain value object over a base record whose seams are overloads.</summary>
+public sealed partial record PlainOverASeamOverloadingBase : SeamOverloadingBase<PlainOverASeamOverloadingBase>, IValue<int>;
+
+/// <summary>A validated value object over a base record whose <c>TryFrom</c> and <c>Revalidate</c> are overloads.</summary>
+public sealed partial record ValidatedOverASeamOverloadingBase : SeamOverloadingBase<ValidatedOverASeamOverloadingBase>, IValidatedValue<ValidatedOverASeamOverloadingBase, int, OverloadFault>
+{
+    /// <summary>Zero or more.</summary>
+    public static Result<ValidatedOverASeamOverloadingBase, OverloadFault> Create(int value) => value < 0 ? Result.Error(OverloadFault.Negative) : new ValidatedOverASeamOverloadingBase(value);
+}
+
+// CMTK1023 names the base's equality, which the generated one does not call.
+#pragma warning disable CMTK1023
+/// <summary>
+/// Two levels above an explicit <c>IEquatable</c> by reference, with a generic <c>Equals</c> of that base's type: the
+/// value object implements the base's interface again all the same, since the generic one implements nothing.
+/// </summary>
+public sealed partial record EqualsOverloadOverADeeperExplicitEquality : LocalBetweenRecord, IValue<int>
+{
+    /// <summary>Hand-written.</summary>
+    public bool Equals<TFormat>(LocalExplicitEqualityRecord? other) => throw new NotSupportedException("hand-written");
+}
+#pragma warning restore CMTK1023
+
+/// <summary>A closed set with a generic <c>ToString()</c>, which is no seam.</summary>
+public sealed partial class SetWithAGenericToString : IClosedSet<SetWithAGenericToString>
+{
+    /// <summary>The first member.</summary>
+    public static readonly SetWithAGenericToString First = new();
+
+    /// <summary>Hand-written.</summary>
+    public string ToString<TFormat>() => throw new NotSupportedException("hand-written");
+}
+
 /// <summary>
 /// The generated members beside a hand-written overload of each, on the type, on a base record of this assembly
 /// and of another, and on a closed set and its base class (#226). Refusals are build errors and live in
@@ -232,6 +366,25 @@ public sealed class OverloadTests
         { "a set's IParsable<T>.Parse beside Parse<T>(string)", () => ParseThroughInterface<OverloadingSet>("Second"), OverloadingSet.Second },
         { "a set's base class's Parse<T>(string)", () => SetOverAnOverloadingBase.Parse("Second"), SetOverAnOverloadingBase.Second },
         { "a set's base class's TryParse(string?, bool, T)", () => SetOverAnOverloadingBase.TryParse("second", ignoreCase: true, out var member) ? member : SetOverAnOverloadingBase.First, SetOverAnOverloadingBase.Second },
+        { "ToString() beside ToString<T>()", () => ToStringOverloadedByArity.From("a").ToString(), "a" },
+        { "interpolation beside ToString<T>()", () => $"{ToStringOverloadedByArity.From("a")}", "a" },
+        { "CompareTo(T) beside CompareTo<T>(T)", () => Math.Sign(CompareToOverloadedByArity.From(1).CompareTo(CompareToOverloadedByArity.From(2))), -1 },
+        { "IComparable<T> beside CompareTo<T>(T)", () => Math.Sign(((IComparable<CompareToOverloadedByArity>)CompareToOverloadedByArity.From(1)).CompareTo(CompareToOverloadedByArity.From(2))), -1 },
+        { "CompareTo(T) beside CompareTo(in T)", () => Math.Sign(CompareToOverloadedByIn.From(1).CompareTo(CompareToOverloadedByIn.From(2))), -1 },
+        { "IComparable<T> beside CompareTo(in T)", () => Math.Sign(((IComparable<CompareToOverloadedByIn>)CompareToOverloadedByIn.From(1)).CompareTo(CompareToOverloadedByIn.From(2))), -1 },
+        { "CompareTo(object) beside CompareTo<T>(object?) and CompareTo(in object?)", () => Math.Sign(((IComparable)ObjectCompareToOverloaded.From(1)).CompareTo(ObjectCompareToOverloaded.From(2))), -1 },
+        { "< beside CompareTo<T>(object?)", () => ObjectCompareToOverloaded.From(1) < ObjectCompareToOverloaded.From(2), true },
+        { "Equals(T) beside Equals<T>(T)", () => EqualityOverloadedByArity.From(1).Equals(EqualityOverloadedByArity.From(1)), true },
+        { "GetHashCode() beside GetHashCode<T>()", () => EqualityOverloadedByArity.From(1).GetHashCode() == EqualityOverloadedByArity.From(1).GetHashCode(), true },
+        { "ToString() beside PrintMembers<T>(StringBuilder)", () => PrintMembersOverloadedByArity.From(1).ToString(), "1" },
+        { "TryFrom(int) beside TryFrom<T>(int) and TryFrom(in int)", () => TryFromOverloaded.TryFrom(1).IsSome() && TryFromOverloaded.TryFrom(-1).IsNone(), true },
+        { "a base record's TryFrom<T>(int) and TryFrom(in int)", () => ValidatedOverASeamOverloadingBase.TryFrom(1).IsSome() && ValidatedOverASeamOverloadingBase.TryFrom(-1).IsNone(), true },
+        { "a base record's Revalidate<T>()", () => ValidatedOverASeamOverloadingBase.FromKnownGood(1).Revalidate().TryGetValue(out _, out _), true },
+        { "a base record's CompareTo<T>(object?) and CompareTo<T>(TSelf?)", () => PlainOverASeamOverloadingBase.From(1) < PlainOverASeamOverloadingBase.From(2), true },
+        { "a base record's ToString<T>()", () => PlainOverASeamOverloadingBase.From(1).ToString(), "1" },
+        { "a base record's Equals<T>(TBase?) and GetHashCode<T>()", () => new HashSet<SeamOverloadingBase<PlainOverASeamOverloadingBase>> { PlainOverASeamOverloadingBase.From(1), PlainOverASeamOverloadingBase.From(1) }.Count, 1 },
+        { "a deeper base's IEquatable beside Equals<T>(TBase?)", () => new HashSet<LocalExplicitEqualityRecord> { EqualsOverloadOverADeeperExplicitEquality.From(42), EqualsOverloadOverADeeperExplicitEquality.From(42) }.Count, 1 },
+        { "a set's ToString() beside ToString<T>()", () => $"{SetWithAGenericToString.First}", "First" },
     };
 
     /// <summary>
@@ -255,6 +408,10 @@ public sealed class OverloadTests
         { "another assembly's From(in int)", () => OverALibraryOverloadingBase.From(in Seven) },
         { "a set's Parse<T>(string)", () => OverloadingSet.Parse<OverloadFormat>("Second") },
         { "a set's TryParse(string?, T)", () => OverloadingSet.TryParse("Second", OverloadingSet.First) },
+        { "ToString<T>()", () => ToStringOverloadedByArity.From("a").ToString<OverloadFormat>() },
+        { "CompareTo(in T)", () => CompareToOverloadedByIn.From(1).CompareTo(in OneByIn) },
+        { "TryFrom<T>(int)", () => _ = TryFromOverloaded.TryFrom<OverloadFormat>(1) },
+        { "a set's ToString<T>()", () => SetWithAGenericToString.First.ToString<OverloadFormat>() },
     };
 
     /// <summary>The hand-written overload is kept, and a call that names its type arguments or its ref kind reaches it.</summary>
@@ -263,7 +420,20 @@ public sealed class OverloadTests
     public void The_hand_written_overload_is_kept(string overload, Action handWritten) =>
         Should.Throw<NotSupportedException>(handWritten, overload).Message.ShouldBe("hand-written");
 
+    public static TheoryData<Type> NotHandWrittenOrdering => [typeof(CompareToOverloadedByArity), typeof(CompareToOverloadedByIn), typeof(PlainOverASeamOverloadingBase)];
+
+    /// <summary>
+    /// A generic or by-in <c>CompareTo(TSelf)</c> is no seam, so the ordering is the generated one and is not marked
+    /// hand-written: the EF Core satellite refuses to order by a column whose value object is marked.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(NotHandWrittenOrdering))]
+    public void An_overload_of_CompareTo_does_not_mark_the_ordering_hand_written(Type type) =>
+        type.IsDefined(typeof(CodoMetis.TypeKit.CompilerServices.HandWrittenOrderingAttribute), inherit: false).ShouldBeFalse();
+
     private static readonly int Seven = 7;
+
+    private static readonly CompareToOverloadedByIn OneByIn = CompareToOverloadedByIn.From(1);
 
     private static T ParseThroughInterface<T>(string text) where T : IParsable<T> => T.Parse(text, null);
 

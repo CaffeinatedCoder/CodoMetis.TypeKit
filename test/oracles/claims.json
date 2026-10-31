@@ -1310,6 +1310,21 @@
     ]
   },
   {
+    "id": "C22-an-overload-of-a-seam",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "The same goes for the members you may write: a generic `ToString<TFormat>()` or a `CompareTo(in TSelf)` isn't the one that's kept, so the generated `ToString()` and ordering are still there.",
+    "claim": "A generic or by-reference overload of ToString() or CompareTo(TSelf) is no seam: the generated ToString() and ordering are introduced beside it, and the ordering is not marked hand-written.",
+    "oracle": "claim",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "OverloadTests"
+    ]
+  },
+  {
     "id": "C22-closed-set-named-as-generated-member",
     "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
     "quote": "a set itself named as one of them (a member can't have the name of its type)",

@@ -190,6 +190,12 @@
     and a `TryParse` whose last parameter is by value were CMTK1011, on the type, a base record and a closed set,
     though Metalama introduces the generated member beside each (measured 2026-10-31). `ref` or `in` against `out` is
     no overload in C# (CS0663), and nullability none at all, so both stay CMTK1011.
+    The other checks by name and parameters, the seams and what a record synthesizes, read only a method without
+    type parameters whose parameters are all by value (`ValueObjectDeclaration.IsByValueAndNotGeneric`), as every
+    generated member but `TryParse` and `TryFormat` is: a generic `ToString<TFormat>()` was taken for the seam, so
+    the value object printed what a record prints and a closed set its type name, a generic or by-`in`
+    `CompareTo(TSelf)` marked the ordering hand-written, and a generic or by-reference `TryFrom`, `Revalidate`,
+    `CompareTo(object)`, `Equals`, `GetHashCode` or `PrintMembers` was CMTK1011 or CMTK1008.
   - **Equality over a base record is generated (decided 2026-10-14, [decision 75](adr/0075-equality-over-base-record-generated.md)).**
     A derived record's synthesized equality calls the base's, which compares the base's fields and
     whatever the base declares. A base comparing by reference made two value objects holding 42 unequal

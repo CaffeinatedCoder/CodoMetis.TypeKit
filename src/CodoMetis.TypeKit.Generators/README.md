@@ -244,6 +244,8 @@ apart by their type parameters and by whether a parameter is `ref`, `in` or `out
 `Parse<TFormat>(string, IFormatProvider?)`, a `From(in int value)` or a `TryParse` whose last parameter
 isn't `out` is kept, on the value object or a base record. A `ref` or `in` where the generated member has
 `out` is the same method to C#, as a different nullability is, so it fails the build like the member itself.
+The same goes for the members you may write: a generic `ToString<TFormat>()` or a `CompareTo(in TSelf)` isn't
+the one that's kept, so the generated `ToString()` and ordering are still there.
 
 Two explicit implementations in an interface are fine, because a value object loses nothing by
 replacing them. A record's own `==` and `!=` replace an interface's, generated or not. And .NET's

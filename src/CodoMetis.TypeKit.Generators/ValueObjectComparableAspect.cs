@@ -143,7 +143,7 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
     {
         foreach (var method in target.Methods)
         {
-            if (method.IsExplicitInterfaceImplementation) continue;
+            if (method.IsExplicitInterfaceImplementation || !ValueObjectDeclaration.IsByValueAndNotGeneric(method)) continue;
 
             var isObjectOverload = method is { Name: nameof(IComparable.CompareTo), Parameters: [{ Type.SpecialType: SpecialType.Object }] };
             var isOrderingOperator = method.OperatorKind is OperatorKind.LessThan or OperatorKind.GreaterThan
@@ -162,7 +162,7 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
             foreach (var method in type.Methods)
             {
                 if (method is { IsStatic: false, IsExplicitInterfaceImplementation: false, Name: nameof(IComparable.CompareTo), Parameters: [{ } other] }
-                 && ValueObjectDeclaration.IsHandWritten(method)
+                 && ValueObjectDeclaration.IsByValueAndNotGeneric(method) && ValueObjectDeclaration.IsHandWritten(method)
                  && (other.Type.SpecialType == SpecialType.Object || other.Type.ToNonNullable().Equals(target)))
                     yield return $"{method.ToDisplayString()} in its base type {type.ToDisplayString()}";
             }
@@ -176,6 +176,7 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
     /// <summary>The seam: a <c>CompareTo(TSelf)</c> the type declares itself, which the generated one then leaves in place.</summary>
     private static bool DeclaresCompareTo(INamedType target) =>
         target.Methods.Any(method => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false, Name: nameof(IComparable<int>.CompareTo) }
+                                  && ValueObjectDeclaration.IsByValueAndNotGeneric(method)
                                   && method.Parameters is [var other]
                                   && other.Type.Equals(target));
 
