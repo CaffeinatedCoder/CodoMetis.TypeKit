@@ -211,6 +211,12 @@ instead, which works everywhere and may add a cast:
     such as Npgsql's `EF.Functions.GreaterThan((o.Priority, o.Id), (priority, id))`;
   - `Min` or `Max`.
 
+  That holds when the value object is cast to `object` first, as in `Select(o => (object)o.Priority).Max()`,
+  and when the cast value reaches the ordering another way, through `??`, a member of a projection, a
+  grouping's key, a join or a subquery's `First()`, as in
+  `Select(o => new { Key = (object)o.Priority }).OrderBy(a => a.Key)`: EF drops the cast, while memory
+  still orders by your `CompareTo`.
+
   Compare or order by `.Value` where the underlying value's order is what you mean
   (`OrderBy(o => o.Priority.Value)`), or order in memory after the query. Equality isn't ordering,
   and stays allowed. A query filter (`HasQueryFilter`, named or not) that does the same fails when
@@ -224,6 +230,11 @@ instead, which works everywhere and may add a cast:
   values you pass in, which EF computes before the query, stays allowed. The operators TypeKit
   generates ([Add, subtract and scale](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/value-objects.md#add-subtract-and-scale))
   are the underlying type's, and work in a query.
+
+  One exception: a filter may order values your context holds, without a lambda, as in
+  `HasQueryFilter(o => o.Priority == Limits.Max())`. EF works that out in memory, by your `CompareTo`. With a
+  lambda, as in `Limits.OrderByDescending(l => l).First()`, EF orders those values in the database, so that
+  filter fails too.
 
 ### On SQL Server
 

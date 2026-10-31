@@ -36,6 +36,7 @@ public sealed class DroppedTaskVariantTests
         var (source, expected) = DroppedTaskShapes.Use(call, form);
 
         var test = new AnalyzerTest<IgnoredOutcomeAnalyzer>(source);
+        test.TestBehaviors = VariantSweep.Behaviors;
         test.TestState.Sources.Add(("Declarations.cs", DroppedTaskShapes.Declarations));
         test.TestState.AdditionalReferences.Add(RealTesting.Reference);
         test.ExpectedDiagnostics.AddRange(

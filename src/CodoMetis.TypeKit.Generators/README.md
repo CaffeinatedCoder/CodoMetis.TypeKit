@@ -216,6 +216,10 @@ method that calls `From` or `Create`.
 A value object may declare its own `TryFrom`, `FromKnownGood`, `Revalidate`, `CompareTo(TSelf)` and
 `ToString()`. Each one is kept, and whatever depends on it is built from it.
 
+Declare them on the value object itself. A `TryFrom`, `Revalidate` or `CompareTo` in a base record fails
+the build (CMTK1011, or CMTK1008 for `CompareTo`), because it would stand in for the generated member
+without a word. A base record's `sealed` `ToString()` is the one exception, as described below.
+
 An arithmetic operator you write is kept as well, and so is an explicit implementation of its
 interface, yours, a base record's or one an interface of yours supplies. Its `checked` form is then yours too: TypeKit generates neither
 form of that operator, and generates the ones you didn't write. A `checked` operator you write needs the
@@ -234,14 +238,43 @@ covers:
 
 - **A plain value object's members**: `From`, `Value`, `Parse` and `TryParse`, `MinValue`/`MaxValue`.
 - **The attributes**: `[JsonConverter]` and `[TypeConverter]`.
-- **The interfaces the generators implement**, and `IConvertible` where they generate it.
+- **The contracts the generators implement**: `IValueObject<TSelf, T>`, `IValueObjectMaterializer<TSelf, T>`,
+  `IPlainValueObject<TSelf, T>`, and `IConvertible` where they generate it. That holds whether you declare one
+  directly, through an interface of your own or in a base record. To constrain generic code, use
+  `IValueObject<TSelf, T>` itself, which every value object implements.
 - **An explicit implementation of a member of an interface they implement**, such as
-  `IParsable<TSelf>.Parse` or `IFormattable.ToString`. Every caller through the interface would reach
-  it rather than the generated member, and a generic `T.Parse` would skip `Create`.
+  `IParsable<TSelf>.Parse` or `IFormattable.ToString`. On the value object or a base record, every
+  caller through the interface would reach it rather than the generated member, and a generic
+  `T.Parse` would skip `Create`.
+- **The same explicit implementation in an interface the value object implements.** The generated
+  member would replace it, so it would never run. The error names the interface, in your project or
+  another.
+- **Any of these members in a base record**, public or explicit, in your project or another. A base's
+  `MaxValue` would stand in for the generated one, and generic code calling `T.MaxValue` would reach
+  it. The error names the base. A base's `private` member is fine: the value object can't see it, so
+  it stands in for nothing.
+
+An overload of a generated member is yours, and the generated one sits beside it. C# tells two methods
+apart by their type parameters and by whether a parameter is `ref`, `in` or `out`, so a
+`Parse<TFormat>(string, IFormatProvider?)`, a `From(in int value)` or a `TryParse` whose last parameter
+isn't `out` is kept, on the value object or a base record. A `ref` or `in` where the generated member has
+`out` is the same method to C#, as a different nullability is, so it fails the build like the member itself.
+The same goes for the members you may write: a generic `ToString<TFormat>()` or a `CompareTo(in TSelf)` isn't
+the one that's kept, so the generated `ToString()` and ordering are still there.
+
+Two explicit implementations in an interface are fine, because a value object loses nothing by
+replacing them. A record's own `==` and `!=` replace an interface's, generated or not. And .NET's
+`INumberBase<TSelf>` formats and parses UTF-8 through the UTF-16 members, which every .NET number
+replaces with its own, as the generated members do.
 
 Declare `Create` once, `public static`, and never as an explicit interface implementation. The
 generated code can't call an explicit one. And beside a public one, generic code calling `T.Create`
 would reach the explicit one's rules, not the ones every generated way of creating a value runs.
+
+The same goes for a `Create` your value object inherits from a base record in another project. If
+the value object only gets the marker through that base, generic code calling `T.Create` reaches the
+base's `Create`, while everything generated calls yours, and the build fails (CMTK1011). Declare the
+marker on the value object too, and your `Create` is the one both reach.
 
 To change what a value object prints, declare `ToString()`. A record's
 `PrintMembers(StringBuilder)` without it fails the build (CMTK1011), since the generated `ToString()`
@@ -261,7 +294,9 @@ What a base record declares counts as the value object's own:
 
 Equality is the underlying value's, like the ordering, the JSON and the column. So a hand-written
 `Equals(TSelf)`, `GetHashCode()`, `IEquatable<TSelf>.Equals`, or `operator ==` or `!=` between two of
-the type, fails the build (CMTK1011). It would make values equal that sort apart.
+the type, fails the build (CMTK1011). It would make values equal that sort apart. So does an `Equals`
+you write for one of its base records' types, such as `Equals(DeepBase?)`: a `HashSet<DeepBase>` would
+compare by it while `==` compares the underlying value.
 
 To make values equal that differ only in form, such as "abc" and "ABC", normalise them in `Create`.
 Equal values then hold the same underlying value. A plain value object becomes an `IValidatedValue`
@@ -450,8 +485,13 @@ public sealed partial class OrderStatus : IClosedSet<OrderStatus>, IParsable<Ord
   in case (`Open` and `open`), since `TryParse(name, ignoreCase: true)` couldn't tell them apart
   (CMTK1021).
 - **A `ToString()` you write is kept**, and the name is still what JSON, parsing and the column use.
-- **An overload of a generated method with another signature**, such as `Parse(int rank)`, is kept
-  too. Any other generated member written by hand fails the build (CMTK1011).
+- **An overload of a generated method with another signature**, such as `Parse(int rank)` or a
+  generic `Parse<TFormat>(string name)`, is kept too. Any other generated member written by hand
+  fails the build (CMTK1011), in the set or in a class it derives from. A `private` one in that
+  class is fine, since the set can't see it.
+- **A base class's `ToString()`.** A `sealed` one is kept, since C# keeps it in every derived class.
+  One that isn't sealed fails the build (CMTK1011), because the generated `ToString()` would replace
+  it. Declare `ToString()` in the set, or seal the base's.
 - **An instance beside the members has no name.** If the set's own code creates one, reading its name
   throws rather than writing a null.
 - **A JSON `null` reads as `null`**, as for any class, unless the serializer's
@@ -583,7 +623,8 @@ The one place the input still appears is System.Text.Json's own: a rejected dict
 To order differently, declare `CompareTo(TSelf)` yourself. It's kept, and the object overload, the
 operators and the interfaces are built from it. Any other hand-written comparison member fails the
 build (CMTK1008), an explicit implementation of `IComparable<TSelf>`, `IComparable` or
-`IComparisonOperators` included. So in memory, every comparison agrees with your `CompareTo`.
+`IComparisonOperators` included, in an interface the value object implements too. So in memory,
+every comparison agrees with your `CompareTo`.
 
 A database can't run your `CompareTo`, because it orders the column by the underlying value. So the
 type carries `[HandWrittenOrdering]`, and an EF Core query that compares or orders it, or takes its
@@ -606,10 +647,10 @@ error ends with a link to this table. CMTK1023 is the one warning:
 | CMTK1005 | Generic or nested in a generic type (nesting in a non-generic type is fine), `file`-local or nested in a `file`-local type, named `Value` or as another member the generators add (`From`, `TryFrom`, `FromKnownGood`, `Revalidate`, `Parse`, `TryParse`, `TryFormat`, `MinValue`, `MaxValue`, `CompareTo`), derived from another value object, or wrapping `object`, `System.Enum`, an array, a pointer, a nullable type, a generic type (a tuple included) or a value object (itself included). Wrap what the other value object wraps instead. |
 | CMTK1006 | A record class not declared `sealed`. |
 | CMTK1007 | The `{TSelf}Extensions` companion's name is taken by a declared type or by another value object's companion. |
-| CMTK1008 | A hand-written comparison operator, object `CompareTo` or explicit implementation of a comparison interface beside the generated ones. |
+| CMTK1008 | A hand-written comparison operator, object `CompareTo` or explicit implementation of a comparison interface beside the generated ones, on the value object, a base record or an interface it implements. |
 | CMTK1009 | A hand-written instance constructor, including a positional record's parameter list such as `OrderId(Guid Value)`. The constructor and `Value` are generated. A static constructor is fine. |
 | CMTK1010 | Declared in more than one `partial` part. Metalama 2026.1 writes the generated `ToString()` into every part, which doesn't compile. A part a source generator adds, such as a `[GeneratedRegex]` method's, doesn't count. |
-| CMTK1011 | A hand-written member or attribute the generators add (see "Write your own members", and for a closed set every generated member but `ToString()`, by signature, `IParsable<TSelf>`, `[JsonConverter]` and `[TypeConverter]`), an explicit implementation of an interface they implement, a hand-written equality (an `operator ==` or `!=` between two of the type included, which C# also reports as CS0111), a `PrintMembers` without `ToString()`, or `Create` implemented explicitly. |
+| CMTK1011 | A hand-written member or attribute the generators add (see "Write your own members", and for a closed set every generated member but `ToString()`, by signature, `IParsable<TSelf>`, `[JsonConverter]` and `[TypeConverter]`), an explicit implementation of an interface they implement, on the value object, a base record or an interface it implements, a hand-written equality (an `operator ==` or `!=` between two of the type included, which C# also reports as CS0111), a `PrintMembers` without `ToString()`, or `Create` implemented explicitly. |
 | CMTK1012 | Instance state besides the underlying value: a field, an auto-property, a `required` member or a field-like event, declared or inherited. Compute it from `Value`, make it static, or wrap a type that holds all of it. |
 | CMTK1013 | A closed set not declared `partial`. |
 | CMTK1014 | A closed set not declared `sealed`. A set with subtypes isn't closed. |

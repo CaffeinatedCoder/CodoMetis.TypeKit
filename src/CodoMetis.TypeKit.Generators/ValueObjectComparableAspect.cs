@@ -44,7 +44,7 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
         // factories. Any other hand-written comparison member would sit beside generated ones that
         // need not agree with it, so it is an error naming the seam. Before this, an operator failed
         // the aspect (LAMA0500, naming no fix) and an object overload was kept silently.
-        var besideTheSeam = HandWrittenComparisonMembers(builder.Target).ToList();
+        var besideTheSeam = HandWrittenComparisonMembers(builder.Target).Distinct().ToList();
 
         if (besideTheSeam.Count > 0)
         {
@@ -136,13 +136,14 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
     /// the object overload, the four ordering operators, and an explicit implementation of any member
     /// of the comparison interfaces. The explicit one was kept beside the generated public one, which
     /// it hides from every caller through the interface: an explicit <c>IComparable&lt;Rank&gt;.CompareTo</c>
-    /// sorted a list descending while <c>&lt;</c> kept ascending.
+    /// sorted a list descending while <c>&lt;</c> kept ascending. A base record's and an interface's count
+    /// too; the generated one replaced an interface's without a word (#191).
     /// </summary>
     private static IEnumerable<string> HandWrittenComparisonMembers(INamedType target)
     {
         foreach (var method in target.Methods)
         {
-            if (method.IsExplicitInterfaceImplementation) continue;
+            if (method.IsExplicitInterfaceImplementation || !ValueObjectDeclaration.IsByValueAndNotGeneric(method)) continue;
 
             var isObjectOverload = method is { Name: nameof(IComparable.CompareTo), Parameters: [{ Type.SpecialType: SpecialType.Object }] };
             var isOrderingOperator = method.OperatorKind is OperatorKind.LessThan or OperatorKind.GreaterThan
@@ -152,7 +153,23 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
                 yield return method.ToDisplayString();
         }
 
-        foreach (var member in ValueObjectDeclaration.ExplicitImplementationsOf(target,
+        // A base record's CompareTo(object) failed the aspect (LAMA0500), and its CompareTo(TSelf), the seam, was
+        // used without a word: no [HandWrittenOrdering], so EF Core ordered by the column, and the generated
+        // operators called the generated CompareTo(object), which C# prefers to the base's, until the stack
+        // overflowed (#194, measured 2026-10-30). The seam is kept where the value object declares it. A base's
+        // private CompareTo is hidden from the value object, so it stands in for nothing (#230).
+        foreach (var type in ValueObjectDeclaration.SelfAndBases(target).Skip(1))
+        {
+            foreach (var method in type.Methods)
+            {
+                if (method is { IsStatic: false, IsExplicitInterfaceImplementation: false, Name: nameof(IComparable.CompareTo), Parameters: [{ } other] }
+                 && ValueObjectDeclaration.IsByValueAndNotGeneric(method) && ValueObjectDeclaration.IsHandWritten(method) && method.IsAccessibleFrom(target)
+                 && (other.Type.SpecialType == SpecialType.Object || other.Type.ToNonNullable().Equals(target)))
+                    yield return $"{method.ToDisplayString()} in its base type {type.ToDisplayString()}";
+            }
+        }
+
+        foreach (var member in ValueObjectDeclaration.ImplementationsOf(target,
                      [typeof(IComparable<>).ToNamedType(), typeof(IComparable).ToNamedType(), typeof(IComparisonOperators<,,>).ToNamedType()]))
             yield return member;
     }
@@ -160,6 +177,7 @@ internal sealed partial class ValueObjectComparableAspect : TypeAspect
     /// <summary>The seam: a <c>CompareTo(TSelf)</c> the type declares itself, which the generated one then leaves in place.</summary>
     private static bool DeclaresCompareTo(INamedType target) =>
         target.Methods.Any(method => method is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false, Name: nameof(IComparable<int>.CompareTo) }
+                                  && ValueObjectDeclaration.IsByValueAndNotGeneric(method)
                                   && method.Parameters is [var other]
                                   && other.Type.Equals(target));
 

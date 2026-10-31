@@ -1196,6 +1196,105 @@
     "heldBy": []
   },
   {
+    "id": "C22-a-base-record-s-members",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "**Any of these members in a base record**, public or explicit, in your project or another. A base's `MaxValue` would stand in for the generated one, and generic code calling `T.MaxValue` would reach it. The error names the base.",
+    "claim": "A generated member a base record declares, public or explicit, in this project or another, fails the build naming the base.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-a-base-s-private-member",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "A base's `private` member is fine: the value object can't see it, so it stands in for nothing.",
+    "claim": "A base record's private member of a generated member's name or signature does not fail the build: the value object is generated beside it, and every generated member is what a call reaches; a protected, internal or public one is refused.",
+    "oracle": "claim",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests",
+      "InheritedMembersTests"
+    ]
+  },
+  {
+    "id": "C22-a-contract-through-an-interface",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "That holds whether you declare one directly, through an interface of your own or in a base record.",
+    "claim": "IValueObject, IValueObjectMaterializer, IPlainValueObject and a generated IConvertible fail the build whether declared directly, through an interface or by a base record.",
+    "oracle": "exception",
+    "surfaces": [
+      "IValueObject.*",
+      "IValueObjectMaterializer.*",
+      "IPlainValueObject.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-a-seam-in-a-base-record",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "Declare them on the value object itself. A `TryFrom`, `Revalidate` or `CompareTo` in a base record fails the build (CMTK1011, or CMTK1008 for `CompareTo`), because it would stand in for the generated member without a word.",
+    "claim": "A TryFrom, Revalidate or CompareTo a base record declares fails the build, CMTK1008 for CompareTo.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-a-set-s-base-class-members",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#closed-sets",
+    "quote": "Any other generated member written by hand fails the build (CMTK1011), in the set or in a class it derives from.",
+    "claim": "A generated member of a closed set written in a base class fails the build with CMTK1011.",
+    "oracle": "claim",
+    "surfaces": [
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-a-set-s-base-class-private-member",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#closed-sets",
+    "quote": "A `private` one in that class is fine, since the set can't see it.",
+    "claim": "A closed set's base class's private Parse, TryParse or Match does not fail the build, and the set's generated members are what a call reaches; a protected, internal or public one is refused.",
+    "oracle": "claim",
+    "surfaces": [
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests",
+      "InheritedMembersTests"
+    ]
+  },
+  {
+    "id": "C22-a-set-s-base-class-tostring",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#closed-sets",
+    "quote": "A `sealed` one is kept, since C# keeps it in every derived class. One that isn't sealed fails the build (CMTK1011), because the generated `ToString()` would replace it.",
+    "claim": "A closed set over a base class's sealed ToString() prints it; over one not sealed, the build fails with CMTK1011.",
+    "oracle": "claim",
+    "surfaces": [
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests",
+      "InheritedMembersTests"
+    ]
+  },
+  {
     "id": "C22-abstract",
     "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
     "quote": "An abstract type with a value-object marker. It would get no member, and a value held as it, of a type derived from it, would have no `Value` and be written as `{}`.",
@@ -1211,6 +1310,50 @@
     ]
   },
   {
+    "id": "C22-an-overload-in-a-closed-set",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#closed-sets",
+    "quote": "**An overload of a generated method with another signature**, such as `Parse(int rank)` or a generic `Parse<TFormat>(string name)`, is kept too.",
+    "claim": "A closed set's hand-written overload of Parse or TryParse with another signature, generic or by value where the generated one is out, is kept beside the generated one, in the set or its base class.",
+    "oracle": "claim",
+    "surfaces": [
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "OverloadTests",
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-an-overload-of-a-generated-member",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "C# tells two methods apart by their type parameters and by whether a parameter is `ref`, `in` or `out`, so a `Parse<TFormat>(string, IFormatProvider?)`, a `From(in int value)` or a `TryParse` whose last parameter isn't `out` is kept, on the value object or a base record. A `ref` or `in` where the generated member has `out` is the same method to C#, as a different nullability is, so it fails the build like the member itself.",
+    "claim": "A hand-written overload of a generated member that differs by its type parameters or by a ref kind against a by-value parameter is kept beside the generated member, on the value object or a base record; ref or in against out, or another nullability, fails the build with CMTK1011.",
+    "oracle": "claim",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "OverloadTests",
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-an-overload-of-a-seam",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "The same goes for the members you may write: a generic `ToString<TFormat>()` or a `CompareTo(in TSelf)` isn't the one that's kept, so the generated `ToString()` and ordering are still there.",
+    "claim": "A generic or by-reference overload of ToString() or CompareTo(TSelf) is no seam: the generated ToString() and ordering are introduced beside it, and the ordering is not marked hand-written.",
+    "oracle": "claim",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "OverloadTests"
+    ]
+  },
+  {
     "id": "C22-closed-set-named-as-generated-member",
     "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
     "quote": "a set itself named as one of them (a member can't have the name of its type)",
@@ -1220,6 +1363,19 @@
       "IPlainValueObject.*",
       "IValidatedValue.*",
       "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-create-in-a-base-record",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "If the value object only gets the marker through that base, generic code calling `T.Create` reaches the base's `Create`, while everything generated calls yours, and the build fails (CMTK1011). Declare the marker on the value object too, and your `Create` is the one both reach.",
+    "claim": "A base record's Create that generic T.Create reaches beside the value object's own fails the build, and declaring the marker on the value object builds.",
+    "oracle": "exception",
+    "surfaces": [
+      "IValidatedValue.*"
     ],
     "heldBy": [
       "BuildOutcomeTests"
@@ -1241,10 +1397,39 @@
     ]
   },
   {
+    "id": "C22-equals-of-a-base-record-s-type",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
+    "quote": "So does an `Equals` you write for one of its base records' types, such as `Equals(DeepBase?)`: a `HashSet<DeepBase>` would compare by it while `==` compares the underlying value.",
+    "claim": "An Equals a value object declares for one of its base records' types fails the build (CMTK1011).",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
     "id": "C22-every-error-links-the-table",
     "source": "src/CodoMetis.TypeKit.Generators/README.md#build-errors",
     "quote": "Every error ends with a link to this table.",
     "claim": "Every error ends with a link to this table.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*",
+      "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-explicit-implementation-in-an-interface",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "**The same explicit implementation in an interface the value object implements.** The generated member would replace it, so it would never run. The error names the interface, in your project or another.",
+    "claim": "An explicit implementation of a generated interface's member in an interface the value object implements, in this project or another, fails the build naming the interface.",
     "oracle": "exception",
     "surfaces": [
       "IPlainValueObject.*",
@@ -1265,6 +1450,20 @@
       "IPlainValueObject.*",
       "IValidatedValue.*",
       "IClosedSet.*"
+    ],
+    "heldBy": [
+      "BuildOutcomeTests"
+    ]
+  },
+  {
+    "id": "C22-interface-implementations-that-lose-nothing",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "A record's own `==` and `!=` replace an interface's, generated or not. And .NET's `INumberBase<TSelf>` formats and parses UTF-8 through the UTF-16 members, which every .NET number replaces with its own, as the generated members do.",
+    "claim": "An interface's `==` and `!=`, and `INumberBase<TSelf>`'s UTF-8 members, do not fail the build.",
+    "oracle": "claim",
+    "surfaces": [
+      "IPlainValueObject.*",
+      "IValidatedValue.*"
     ],
     "heldBy": [
       "BuildOutcomeTests"
@@ -2037,10 +2236,37 @@
     ]
   },
   {
+    "id": "E05-ordering-boxed",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "That holds when the value object is cast to `object` first, as in `Select(o => (object)o.Priority).Max()`, and when the cast value reaches the ordering another way, through `??`, a member of a projection, a grouping's key, a join or a subquery's `First()`, as in `Select(o => new { Key = (object)o.Priority }).OrderBy(a => a.Key)`: EF drops the cast, while memory still orders by your `CompareTo`.",
+    "claim": "That holds when the value object is cast to `object` first, as in `Select(o => (object)o.Priority).Max()`, and when the cast value reaches the ordering another way, through `??`, a member of a projection, a grouping's key, a join or a subquery's `First()`, as in `Select(o => new { Key = (object)o.Priority }).OrderBy(a => a.Key)`: EF drops the cast, while memory still orders by your `CompareTo`.",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests",
+      "QueryTranslationVariantTests"
+    ]
+  },
+  {
     "id": "E05-query-filter",
     "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
     "quote": "A query filter (`HasQueryFilter`, named or not) that does the same fails when the model is built, naming the entity type, since it applies to every query of that type.",
     "claim": "A query filter (`HasQueryFilter`, named or not) that does the same fails when the model is built, naming the entity type, since it applies to every query of that type.",
+    "oracle": "exception",
+    "surfaces": [
+      "HandWrittenOrderingAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenOrderingTests"
+    ]
+  },
+  {
+    "id": "E05-query-filter-own-values",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "One exception: a filter may order values your context holds, without a lambda, as in `HasQueryFilter(o => o.Priority == Limits.Max())`. EF works that out in memory, by your `CompareTo`. With a lambda, as in `Limits.OrderByDescending(l => l).First()`, EF orders those values in the database, so that filter fails too.",
+    "claim": "One exception: a filter may order values your context holds, without a lambda, as in `HasQueryFilter(o => o.Priority == Limits.Max())`. EF works that out in memory, by your `CompareTo`. With a lambda, as in `Limits.OrderByDescending(l => l).First()`, EF orders those values in the database, so that filter fails too.",
     "oracle": "exception",
     "surfaces": [
       "HandWrittenOrderingAttribute.*"
@@ -2543,6 +2769,48 @@
     ],
     "heldBy": [
       "ForbiddenDefaultInitializationAnalyzerTests"
+    ]
+  },
+  {
+    "id": "K05-a-factory-given-a-typeof",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005",
+    "quote": "and so are `Array.CreateInstance` and `Array.CreateInstanceFromArrayType` when a `typeof` names the element, and `ArrayPool<T>.Rent`. A `Type` held in a variable could be anything, so it isn't reported.",
+    "claim": "CMTK0005 reports Array.CreateInstance and Array.CreateInstanceFromArrayType given a typeof of a no-default type, and ArrayPool<T>.Rent of one, and not a Type held in a variable.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "DefaultFilledCollectionAnalyzerTests"
+    ]
+  },
+  {
+    "id": "K05-a-zero-dimension-is-silent",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0005",
+    "quote": "That holds for any one dimension: `new OrderId[0, count]` holds no element either.",
+    "claim": "CMTK0005 does not report an array whose length is a constant zero in any one of its dimensions.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "DefaultFilledCollectionAnalyzerTests"
+    ]
+  },
+  {
+    "id": "K06-an-explicit-implementation-through-a-cast",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0006",
+    "quote": "An explicit interface implementation is assigned the only way a class can reach it, through a cast: `((IHasId)this).Id = id` in every constructor keeps it quiet.",
+    "claim": "CMTK0006 counts an assignment through a cast of this, an interface's member as the class's implementation of it, and does not follow a local holding this.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "UnassignedNoDefaultMemberAnalyzerTests"
     ]
   },
   {
@@ -3758,10 +4026,75 @@
     ]
   },
   {
+    "id": "P06-element-by-element",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "A patch inside a list or a dictionary is described the same way, element by element.",
+    "claim": "A patch inside a list or a dictionary is described the same way, element by element.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
     "id": "P06-inlined",
     "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
     "quote": "**Inlined**, rather than as a component of its own.",
     "claim": "**Inlined**, rather than as a component of its own.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-map-of-patches",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "So a `Dictionary<string, Patch<string>>`, where a request sets a key with a value and clears it with `null`, is an object whose values are a string or `null`.",
+    "claim": "So a `Dictionary<string, Patch<string>>`, where a request sets a key with a value and clears it with `null`, is an object whose values are a string or `null`.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-nullable-patch-reads-null-as-null",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "But System.Text.Json reads a `null` there as a `null` patch, the same as a property the request leaves out, so you can't tell a clear from no change.",
+    "claim": "But System.Text.Json reads a `null` there as a `null` patch, the same as a property the request leaves out, so you can't tell a clear from no change.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-readme-containers",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+    "quote": "Each element of a list, an array or a dictionary of patches is described as a patch property is.",
+    "claim": "Each element of a list, an array or a dictionary of patches is described as a patch property is.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-readme-nullable-patch",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+    "quote": "A nullable patch, `Patch<T>?`, admits the same values and null, but isn't described as a merge patch: a `null` there reads as a `null` patch, the same as a property left out.",
+    "claim": "A nullable patch, `Patch<T>?`, admits the same values and null, but isn't described as a merge patch: a `null` there reads as a `null` patch, the same as a property left out.",
     "oracle": "claim",
     "surfaces": [
       "TypeKitOpenApiOptionsExtensions.AddTypeKit"

@@ -32,7 +32,10 @@ public sealed class SqlServer : IAsyncLifetime
             .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("SQL Server is now ready for client connections"))
             .Build();
 
-    private readonly ConcurrentDictionary<string, Task<string>> _databases = new();
+    // Lazy, because GetOrAdd may run its factory more than once for callers that arrive together, and two of them
+    // would drop and create the same database under each other: with the project's rows run in parallel, the first
+    // rows of a sweep did, "Database 'typekit_queries' already exists" (#251).
+    private readonly ConcurrentDictionary<string, Lazy<Task<string>>> _databases = new();
 
     private string ConnectionString(string database) => new SqlConnectionStringBuilder
     {
@@ -44,7 +47,7 @@ public sealed class SqlServer : IAsyncLifetime
     }.ConnectionString;
 
     /// <summary>A database of its own on the server, created empty the first time it is asked for, and its connection string.</summary>
-    public Task<string> DatabaseAsync(string name) => _databases.GetOrAdd(name, CreateAsync);
+    public Task<string> DatabaseAsync(string name) => _databases.GetOrAdd(name, key => new Lazy<Task<string>>(() => CreateAsync(key))).Value;
 
     private async Task<string> CreateAsync(string name)
     {
