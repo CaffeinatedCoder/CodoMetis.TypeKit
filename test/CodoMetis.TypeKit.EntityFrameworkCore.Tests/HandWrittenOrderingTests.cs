@@ -54,6 +54,19 @@ public sealed class HandWrittenOrderingTests : IDisposable
         ["Max of a record class cast to object"]          = db => db.Ranked.Select(r => (object)r.Label).Max()!,
         ["Max of values cast to object over a navigation"] = db => db.Parents.Select(p => p.Children.Select(c => (object)c.Rank).Max()).ToList(),
 
+        // The boxed value read back through a ?? or a member of a projection: each answered 1, 2, 3 (Max 3) where memory
+        // answers 3, 2, 1 (Max 1). A ?: failed translation on SQLite, and is refused before it, as on any provider.
+        ["OrderBy a coalesced key cast to object"]        = db => db.Ranked.OrderBy(r => (object?)r.Optional ?? r.Rank).ToList(),
+        ["OrderBy a conditional key cast to object"]      = db => db.Ranked.OrderBy(r => r.Optional != null ? (object)r.Optional : r.Rank).ToList(),
+        ["OrderBy a boxed member of a projection"]        = db => db.Ranked.Select(r => new { Key = (object)r.Rank }).OrderBy(a => a.Key).ToList(),
+        ["Max of a boxed member of a projection"]         = db => db.Ranked.Select(r => new { Key = (object)r.Rank }).Max(a => a.Key)!,
+        ["Max of a boxed member read back"]               = db => db.Ranked.Select(r => new { Key = (object)r.Rank }).Select(a => a.Key).Max()!,
+        ["OrderBy a boxed member through Where"]          = db => db.Ranked.Select(r => new { Key = (object)r.Rank }).Where(a => a.Key != null).OrderBy(a => a.Key).ToList(),
+        ["OrderBy a nested boxed member"]                 = db => db.Ranked.Select(r => new { Inner = new { Key = (object)r.Rank } }).OrderBy(a => a.Inner.Key).ToList(),
+        ["OrderBy a boxed member of a named type"]        = db => db.Ranked.Select(r => new BoxedRank { Key = r.Rank }).OrderBy(b => b.Key).ToList(),
+        ["OrderBy a coalesced boxed member"]              = db => db.Ranked.Select(r => new { Key = (object?)r.Optional ?? r.Rank }).OrderBy(a => a.Key).ToList(),
+        ["Max of a boxed member over a navigation"]       = db => db.Parents.Select(p => p.Children.Select(c => new { Key = (object)c.Rank }).Max(a => a.Key)).ToList(),
+
         // The database's own GREATEST and LEAST (SQLite's max and min) order by the column: the first answered
         // 2, 2, 3 where memory's order answers 1, 1, 2 (measured on PostgreSQL 17 before the refusal).
         ["Greatest"]               = db => db.Ranked.Select(r => EF.Functions.Greatest(r.Rank, Two)).ToList(),
@@ -143,6 +156,12 @@ public sealed class HandWrittenOrderingTests : IDisposable
         db.Ranked.Where(r => r.Count > ProbeCount.From(1)).OrderBy(r => r.Count).Select(r => r.Count.Value).ToList().ShouldBe([2, 3]);
         db.Ranked.Max(r => r.Count).ShouldBe(ProbeCount.From(3));
 
+        // Boxed through a projection or a ??, .Value and a generated ordering are still the column's order.
+        db.Ranked.Select(r => new { Key = (object)r.Rank.Value }).OrderBy(a => a.Key).Select(a => a.Key).ToList().ShouldBe([1, 2, 3]);
+        db.Ranked.Select(r => new { Key = (object)r.Count }).OrderBy(a => a.Key).Select(a => a.Key).ToList()
+                 .ShouldBe([ProbeCount.From(1), ProbeCount.From(2), ProbeCount.From(3)]);
+        db.Ranked.OrderBy(r => (object?)r.Count ?? r.Rank.Value).Select(r => r.Rank.Value).ToList().ShouldBe([1, 2, 3]);
+
         db.Parents.Select(p => p.Children.OrderByDescending(c => c.Rank.Value).Select(c => c.Rank.Value).First()).ToList().ShouldBe([3]);
         db.Parents.Select(p => p.Children.Max(c => c.Rank.Value)).ToList().ShouldBe([3]);
     }
@@ -168,6 +187,7 @@ public sealed class HandWrittenOrderingTests : IDisposable
     [InlineData(typeof(FilteredByChildRankDb), "compared with >", "the query filter of RankParent")]
     [InlineData(typeof(FilteredByGreatestDb), "compared by Greatest", "the query filter of FilteredRank")]
     [InlineData(typeof(FilteredByBoxedChildRankDb), "ordered by Max", "the query filter of RankParent")]
+    [InlineData(typeof(FilteredByProjectedChildRankDb), "ordered by Max", "the query filter of RankParent")]
     public void A_query_filter_that_orders_by_its_own_CompareTo_is_refused(Type context, string how, string filter)
     {
         _connection.Open();
@@ -314,6 +334,22 @@ public sealed class FilteredByBoxedChildRankDb(DbContextOptions options) : DbCon
         modelBuilder.Entity<FilteredRank>();
         modelBuilder.Entity<RankParent>().HasQueryFilter(p => (ProbeDescending)p.Children.Select(c => (object)c.Rank).Max()! == ProbeDescending.From(2));
     }
+}
+
+/// <summary>The same, the rank boxed in a projection and read back by its member.</summary>
+public sealed class FilteredByProjectedChildRankDb(DbContextOptions options) : DbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<FilteredRank>();
+        modelBuilder.Entity<RankParent>().HasQueryFilter(p => (ProbeDescending)p.Children.Select(c => new { Key = (object)c.Rank }).Max(a => a.Key)! == ProbeDescending.From(2));
+    }
+}
+
+/// <summary>A projection that holds a rank boxed.</summary>
+public sealed class BoxedRank
+{
+    public object? Key { get; set; }
 }
 
 /// <summary>A query filter that keeps the rows whose rank is the greater of it and 2, by the database's GREATEST.</summary>

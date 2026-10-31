@@ -117,14 +117,13 @@ internal static class HandWrittenOrdering
                 // A key the selector converts (to object, IComparable) is still ordered in memory by the
                 // value object's CompareTo, while EF drops the conversion and orders by the column. So are
                 // elements converted before the operator, Select(r => (object)r.Rank).Max(), whose key is the
-                // element itself or which has no key (#206).
+                // element itself or which has no key (#206), and a key that reads the boxed value through a ??, a ?:
+                // or a member of a projection, OrderBy(a => a.Key) after Select(r => new { Key = (object)r.Rank }).
                 var key = KeySelector(node);
-                var keyBody = key is null ? null : Unconverted(key.Body);
-                if (keyBody is not null && keyBody != key!.Parameters[0])
-                    Refuse(keyBody.Type, $"ordered by {method.Name}");
-                else if (method.IsGenericMethod)
-                    foreach (var element in ElementTypes(node.Arguments[0], method.GetGenericArguments()[0]))
-                        Refuse(element, $"ordered by {method.Name}");
+                IEnumerable<Type> read = key is not null ? ReadTypes(key.Body, key.Parameters[0], node.Arguments[0])
+                                       : method.IsGenericMethod ? ElementTypes(node.Arguments[0], method.GetGenericArguments()[0])
+                                       : [];
+                foreach (var type in read) Refuse(type, $"ordered by {method.Name}");
             }
             else if (IsDbFunction(method) && !RunsInMemory(node))
             {
@@ -178,25 +177,85 @@ internal static class HandWrittenOrdering
             if (sequence is not MethodCallExpression { Method: { IsGenericMethod: true } method } call || !IsLinq(method)) return [declared];
 
             var source = method.GetGenericArguments()[0];
-            switch (method.Name)
+            if (method.Name is nameof(Queryable.Select) && KeySelector(call) is { } selector)
+                return ReadTypes(selector.Body, selector.Parameters[0], call.Arguments[0]);
+            if (method.Name is nameof(Queryable.Cast) or nameof(Queryable.OfType))
+                return ElementTypes(call.Arguments[0], typeof(object)).Where(element => declared.IsAssignableFrom(element));
+
+            return Upstream(call) is [_, ..] upstream ? upstream.SelectMany(sequence => ElementTypes(sequence, source)) : [declared];
+        }
+
+        /// <summary>
+        /// The types an expression of a lambda over <paramref name="sequence"/>'s elements reads under its boxing and
+        /// reference conversions: both sides of a <c>??</c> and a <c>?:</c>, the elements themselves for the parameter,
+        /// and for a member of a projection, the expression its <c>new</c> or member initializer set it from.
+        /// </summary>
+        private static IEnumerable<Type> ReadTypes(Expression expression, ParameterExpression parameter, Expression sequence)
+        {
+            switch (Unconverted(expression))
             {
-                case nameof(Queryable.Select) when KeySelector(call) is { } selector:
-                    var body = Unconverted(selector.Body);
-                    return body == selector.Parameters[0] ? ElementTypes(call.Arguments[0], source) : [body.Type];
-                case nameof(Queryable.Cast) or nameof(Queryable.OfType):
-                    return ElementTypes(call.Arguments[0], typeof(object)).Where(element => declared.IsAssignableFrom(element));
-                case nameof(Queryable.AsQueryable) or nameof(Enumerable.AsEnumerable) or nameof(Queryable.Where) or nameof(Queryable.Distinct)
-                  or nameof(Queryable.Skip) or nameof(Queryable.Take) or nameof(Queryable.SkipWhile) or nameof(Queryable.TakeWhile)
-                  or nameof(Queryable.SkipLast) or nameof(Queryable.TakeLast) or nameof(Queryable.Reverse) or nameof(Queryable.DefaultIfEmpty)
-                  or nameof(Queryable.DistinctBy) or nameof(Queryable.OrderBy) or nameof(Queryable.OrderByDescending) or nameof(Queryable.ThenBy)
-                  or nameof(Queryable.ThenByDescending) or nameof(Queryable.Order) or nameof(Queryable.OrderDescending):
-                    return ElementTypes(call.Arguments[0], source);
-                case nameof(Queryable.Concat) or nameof(Queryable.Union) or nameof(Queryable.Intersect) or nameof(Queryable.Except):
-                    return [.. ElementTypes(call.Arguments[0], source), .. ElementTypes(call.Arguments[1], source)];
-                default:
-                    return [declared];
+                case BinaryExpression { NodeType: ExpressionType.Coalesce } coalesce:
+                    return [.. ReadTypes(coalesce.Left, parameter, sequence), .. ReadTypes(coalesce.Right, parameter, sequence)];
+                case ConditionalExpression conditional:
+                    return [.. ReadTypes(conditional.IfTrue, parameter, sequence), .. ReadTypes(conditional.IfFalse, parameter, sequence)];
+                case var read when read == parameter:
+                    return ElementTypes(sequence, parameter.Type);
+                case MemberExpression { Expression: { } instance } member when Initializers(instance, member.Member, parameter, sequence).ToList() is [_, ..] initializers:
+                    return initializers.SelectMany(initializer => ReadTypes(initializer.Expression, initializer.Parameter, initializer.Sequence));
+                case var read:
+                    return [read.Type];
             }
         }
+
+        /// <summary>
+        /// The expressions a <c>new</c> or a member initializer set <paramref name="member"/> of <paramref name="instance"/>
+        /// from, each with the parameter and the sequence its lambda reads: in the same lambda, or in the <c>Select</c>
+        /// that built the elements the parameter ranges over; none where nothing in the query set it.
+        /// </summary>
+        private static IEnumerable<(Expression Expression, ParameterExpression Parameter, Expression Sequence)> Initializers(
+            Expression instance, MemberInfo member, ParameterExpression parameter, Expression sequence)
+        {
+            switch (Unconverted(instance))
+            {
+                case NewExpression { Members: { } members } created:
+                    return members.Select((declared, index) => (declared, index))
+                                  .Where(pair => pair.declared.HasSameMetadataDefinitionAs(member))
+                                  .Select(pair => (created.Arguments[pair.index], parameter, sequence));
+                case MemberInitExpression initialized:
+                    return initialized.Bindings.OfType<MemberAssignment>()
+                                      .Where(binding => binding.Member.HasSameMetadataDefinitionAs(member))
+                                      .Select(binding => (binding.Expression, parameter, sequence));
+                case var read when read == parameter:
+                    return Projections(sequence).SelectMany(projection => Initializers(projection.Selector.Body, member, projection.Selector.Parameters[0], projection.Source));
+                case MemberExpression { Expression: { } outer } nested:
+                    return Initializers(outer, nested.Member, parameter, sequence)
+                        .SelectMany(initializer => Initializers(initializer.Expression, member, initializer.Parameter, initializer.Sequence));
+                default:
+                    return [];
+            }
+        }
+
+        /// <summary>The <c>Select</c> selectors that built a sequence's elements, each with its source, followed through the operators that pass the elements on.</summary>
+        private static IEnumerable<(LambdaExpression Selector, Expression Source)> Projections(Expression sequence)
+        {
+            if (sequence is not MethodCallExpression { Method: { IsGenericMethod: true } method } call || !IsLinq(method)) return [];
+
+            return method.Name is nameof(Queryable.Select) && KeySelector(call) is { } selector
+                ? [(selector, call.Arguments[0])]
+                : Upstream(call).SelectMany(Projections);
+        }
+
+        /// <summary>The sequences whose elements an operator passes on as they are: its source, both for <c>Concat</c> and its kind; none for any other.</summary>
+        private static Expression[] Upstream(MethodCallExpression call) => call.Method.Name switch
+        {
+            nameof(Queryable.AsQueryable) or nameof(Enumerable.AsEnumerable) or nameof(Queryable.Where) or nameof(Queryable.Distinct)
+             or nameof(Queryable.Skip) or nameof(Queryable.Take) or nameof(Queryable.SkipWhile) or nameof(Queryable.TakeWhile)
+             or nameof(Queryable.SkipLast) or nameof(Queryable.TakeLast) or nameof(Queryable.Reverse) or nameof(Queryable.DefaultIfEmpty)
+             or nameof(Queryable.DistinctBy) or nameof(Queryable.OrderBy) or nameof(Queryable.OrderByDescending) or nameof(Queryable.ThenBy)
+             or nameof(Queryable.ThenByDescending) or nameof(Queryable.Order) or nameof(Queryable.OrderDescending) => [call.Arguments[0]],
+            nameof(Queryable.Concat) or nameof(Queryable.Union) or nameof(Queryable.Intersect) or nameof(Queryable.Except) => [call.Arguments[0], call.Arguments[1]],
+            _ => [],
+        };
 
         private static bool IsLinq(MethodInfo method) => method.DeclaringType == typeof(Queryable) || method.DeclaringType == typeof(Enumerable);
 

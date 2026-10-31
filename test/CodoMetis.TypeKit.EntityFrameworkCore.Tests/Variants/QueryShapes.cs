@@ -103,6 +103,15 @@ public enum Op
 
     MinBoxed,
     MaxBoxed,
+
+    /// <summary><c>OrderBy(r =&gt; (object)r.P ?? (object)r.P)</c>: the boxed value read through a <c>??</c>.</summary>
+    OrderByCoalescedBoxed,
+
+    /// <summary><c>Select(r =&gt; new BoxedKey { Key = r.P }).OrderBy(b =&gt; b.Key)</c>: a boxed member of a projection.</summary>
+    OrderByProjectedBoxed,
+
+    /// <summary><c>Select(r =&gt; new BoxedKey { Key = r.P }).Max(b =&gt; b.Key)</c>.</summary>
+    MaxProjectedBoxed,
     Order,
     OrderDescending,
     Min,
@@ -150,6 +159,7 @@ public sealed record QueryCase(WrappedKind Kind, Conversion Conversion, Site Sit
     /// <summary>A comparison, an ordering, or a minimum or maximum: what a value object's own <c>CompareTo</c> decides in memory.</summary>
     public bool Orders => Op is Op.GreaterOrEqual or Op.LessThan or Op.LessOrEqual or Op.LessThanOrNull or Op.CompareTo or Op.OrderBy or Op.OrderByDescending or Op.ThenBy or Op.ThenByDescending
                              or Op.OrderByBoxed or Op.ThenByBoxed or Op.OrderBoxed or Op.OrderByItselfBoxed or Op.MinBoxed or Op.MaxBoxed
+                             or Op.OrderByCoalescedBoxed or Op.OrderByProjectedBoxed or Op.MaxProjectedBoxed
                              or Op.Order or Op.OrderDescending or Op.Min or Op.Max or Op.MinBy or Op.MaxBy
                              or Op.AnyGreaterOrEqual or Op.CountGreaterOrEqual or Op.ElementMax or Op.ElementOrderFirst
                              or Op.NavigationMin or Op.NavigationMax or Op.NavigationOrderFirst or Op.NavigationOrderDescendingFirst
@@ -174,7 +184,8 @@ public static class QueryShapes
     [
         Op.EqualsLiteral, Op.EqualsCaptured, Op.NotEquals, Op.GreaterOrEqual, Op.LessThan, Op.LessOrEqual, Op.CompareTo,
         Op.OrderBy, Op.OrderByDescending, Op.ThenBy, Op.ThenByDescending, Op.OrderByBoxed, Op.ThenByBoxed,
-        Op.OrderBoxed, Op.OrderByItselfBoxed, Op.MinBoxed, Op.MaxBoxed, Op.Order, Op.OrderDescending,
+        Op.OrderBoxed, Op.OrderByItselfBoxed, Op.MinBoxed, Op.MaxBoxed, Op.OrderByCoalescedBoxed, Op.OrderByProjectedBoxed, Op.MaxProjectedBoxed,
+        Op.Order, Op.OrderDescending,
         Op.Min, Op.Max, Op.MinBy, Op.MaxBy, Op.Contains, Op.GroupBy, Op.Select, Op.Distinct, .. FunctionOps,
     ];
 
@@ -229,6 +240,12 @@ public static class QueryShapes
                 }
             }
     }
+}
+
+/// <summary>A projection that holds the value read boxed, for the orderings by its member.</summary>
+public sealed class BoxedKey
+{
+    public object? Key { get; set; }
 }
 
 /// <summary>Holds a captured value, so that a query reads it as a parameter, as a closure does.</summary>
@@ -452,6 +469,11 @@ public sealed class QueryBuilder(QueryCase @case, bool valueObject)
         var boxed = Expression.Lambda(Expression.Convert(read, typeof(object)), row);
         var boxedValues = Q("Select", [Source, typeof(object)], source, boxed);
         var itself = Expression.Parameter(typeof(object), "x");
+        var coalesced = Expression.Lambda(Expression.Coalesce(Expression.Convert(read, typeof(object)), Expression.Convert(read, typeof(object))), row);
+        var holder = Expression.Parameter(typeof(BoxedKey), "b");
+        var projected = Q("Select", [Source, typeof(BoxedKey)], source,
+            Expression.Lambda(Expression.MemberInit(Expression.New(typeof(BoxedKey)), Expression.Bind(typeof(BoxedKey).GetProperty(nameof(BoxedKey.Key))!, Expression.Convert(read, typeof(object)))), row));
+        var heldKey = Expression.Lambda(Expression.Property(holder, nameof(BoxedKey.Key)), holder);
 
         return @case.Op switch
         {
@@ -473,6 +495,9 @@ public sealed class QueryBuilder(QueryCase @case, bool valueObject)
             Op.OrderByItselfBoxed => (Q("OrderBy", [typeof(object), typeof(object)], boxedValues, Expression.Lambda(itself, itself)), true),
             Op.MinBoxed          => (Q("Min", [typeof(object)], boxedValues), true),
             Op.MaxBoxed          => (Q("Max", [typeof(object)], boxedValues), true),
+            Op.OrderByCoalescedBoxed => (Values(Q("OrderBy", [Source, typeof(object)], source, coalesced)), true),
+            Op.OrderByProjectedBoxed => (Q("Select", [typeof(BoxedKey), typeof(object)], Q("OrderBy", [typeof(BoxedKey), typeof(object)], projected, heldKey), heldKey), true),
+            Op.MaxProjectedBoxed => (Q("Max", [typeof(BoxedKey), typeof(object)], projected, heldKey), true),
             Op.Order             => (Q("Order", [type], Values(source)), true),
             Op.OrderDescending   => (Q("OrderDescending", [type], Values(source)), true),
             Op.Min               => (Q("Min", [Source, type], source, key), true),
