@@ -22,8 +22,12 @@ On SDK 11.0.100-rc.3, with the 2.3.1 packages (`Metalama.Framework` 2026.1.30, `
   both compile.
 - A direct `Metalama.Framework` 2027.0.5-preview reference beside the 2.3.1 packages: compiler 2027.0.5-preview at
   15.0, the value object woven, and both union cases build and run.
+- One project on `net10.0;net11.0` with that 2027 reference and no `LangVersion`: `net10.0` compiles at 14.0 and
+  `net11.0` at 15.0. A union under `#if NET11_0_OR_GREATER`, or in a file removed from `net10.0` by a conditional
+  `Compile Remove`, builds on both targets, and the value object is generated and runs on both. With 2026.1 both
+  targets compile at 14.0 and either union fails on `net11.0`.
 
-These are the RC1 results of decision 120, unchanged.
+The first four are the RC1 results of decision 120, unchanged; decision 120 did not measure the multi-targeted project.
 
 **A web project (`Microsoft.NET.Sdk.Web`) on Metalama 2026.1 fails with `LAMA0625` when SDK 11 is the only SDK in
 its .NET installation**, on RC1 and on RC3, with 2026.1.31, and for a `net10.0` project as for a `net11.0` one. The SDK 11 Razor compiler needs Roslyn 5.11 (RC1) or

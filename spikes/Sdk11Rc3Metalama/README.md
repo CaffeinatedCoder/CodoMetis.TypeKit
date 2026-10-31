@@ -13,11 +13,18 @@ measurement, made on SDK 11.0.100-rc.1 on 2026-10-29, repeated on release candid
 4. what does a `switch` over a union returned by a `net11.0`-only library give?
 5. is LAMA0617 still reported, and is anything new?
 6. what changes with a direct `Metalama.Framework` 2027 reference beside the 2.3.1 packages?
+7. in one project targeting `net10.0;net11.0` with that 2027 reference and no `LangVersion`: which language version
+   does each target compile at, does C# 15 under `#if NET11_0_OR_GREATER` or in a file removed from `net10.0` build on
+   both targets, and is the value object generated on both?
 
 **Answer: every RC1 result holds on RC3.** Metalama 2026.1 builds, weaves and runs a `net11.0` value object, its
 compiler (2026.1.20) runs the project at C# 14, a declared union fails with `CS0106`, `CS8803` and `CS1001`, and a
 `switch` over a library's union with `CS8652`. With `Metalama.Framework` 2027.0.5-preview the compiler is 2027 at
 C# 15 and both union rows build and run. The latest 2026.1 patch (2026.1.31, compiler 2026.1.21) is also at C# 14.
+In one project on `net10.0;net11.0` with 2027.0.5-preview and no `LangVersion`, each target takes its SDK default:
+`net10.0` compiles at 14.0 and `net11.0` at 15.0, with the same compiler. A union under `#if NET11_0_OR_GREATER`, or in
+a file the project removes from `net10.0`, builds on both targets, and the value object is generated and runs on both.
+On 2026.1 the same project compiles both targets at 14.0, and either union fails on `net11.0`.
 
 **One finding that the RC1 runs could not show, and that is not an RC3 change.** A web project
 (`Microsoft.NET.Sdk.Web`, which loads the Razor source generator) on Metalama 2026.1 **fails** with `LAMA0625`
@@ -35,6 +42,9 @@ Filed as [#275](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/issues/275
 - `App`: a `net11.0` console project on `CodoMetis.TypeKit` and `CodoMetis.TypeKit.Generators` 2.3.1, with
   `OrderId : IValue<Guid>`. Properties switch the rows (`App.csproj` lists them): `ProbeVersion`, `DeclareUnion`,
   `HoldUnion`, `MatchUnion`, `MetalamaFramework=<version>` (a direct reference) and `NoGenerators` (the control).
+- `Multi`: one project on `net10.0;net11.0`, no `LangVersion`, with the value object. `ProbeVersion`,
+  `MetalamaFramework=<version>`, `IfUnion` (a union and a `switch` inside `#if NET11_0_OR_GREATER`) and `ExcludedFile`
+  (`Net11Only/Shapes.cs`, a union, under `<Compile Remove="Net11Only/**" Condition="'$(TargetFramework)' == 'net10.0'" />`).
 - `WebApp`: the same value object as a minimal-API route parameter, in `Microsoft.NET.Sdk.Web`. It suppresses
   ASP0020, the documented false alarm on a route parameter
   ([decision 12](../../design/adr/0012-asp0020-documented-suppressed.md)), which fires on SDK 10 as on SDK 11.
@@ -55,12 +65,14 @@ The SDKs are installed side by side with Microsoft's script, leaving `/usr/local
 ```
 
 ```bash
-DOTNET=~/.dotnet-sdk11-rc3/dotnet NUGET_PACKAGES=<empty folder> spikes/Sdk11Rc3Metalama/run.sh <out>
+DOTNET=~/.dotnet-sdk11-rc3/dotnet DOTNET10=~/.dotnet-sdk11-rc3-sdk10/dotnet NUGET_PACKAGES=<empty folder> \
+  spikes/Sdk11Rc3Metalama/run.sh <out>
 RC3_ALONE=~/.dotnet-sdk11-rc3/dotnet RC3_BESIDE=~/.dotnet-sdk11-rc3-sdk10/dotnet RC1_ALONE=~/.dotnet-sdk11-rc1/dotnet \
   NUGET_PACKAGES=<same folder> spikes/Sdk11Rc3Metalama/web-matrix.sh <out>
 ```
 
-`run.sh` builds `App` once per row and runs what builds; `web-matrix.sh` builds `WebApp` under each installation,
+`run.sh` builds `App` or `Multi` once per row on RC3 alone and runs what builds (`Multi`'s `net10.0` output on the
+`DOTNET10` host, since RC3 alone has no .NET 10 runtime); `web-matrix.sh` builds `WebApp` under each installation,
 the SDK 10, RC1 and `net10.0` cells from a copy whose `global.json` pins that SDK. Each writes a log per row and `summary.txt`.
 
 ## Evidence
@@ -85,6 +97,20 @@ SDK 11.0.100-rc.3.26522.148 (runtime 11.0.0-rc.3.26522.148), macOS 27.0.1 on arm
 | 6. row 2, 2027.0.5-preview | fails, as meant | `CS8304`: '2027.0.5-preview (dc7c9a1c...)'. Language version: 15.0 | | 2027.0.4-preview at 15.0 |
 | 6. row 3, 2027.0.5-preview | passes | none | as row 1, then `declared union: circle 1,5` | builds and runs |
 | 6. row 4b, 2027.0.5-preview | passes | none | as row 1, then `matched union: cat Tom` | not measured |
+
+### Row 7: one project on `net10.0;net11.0`, RC3 the only SDK
+
+Diagnostics carry their target in braces. The 2026.1 rows are the contrast, with no direct Metalama reference.
+
+| Row | Build | Diagnostics | Run |
+|---|---|---|---|
+| `#error version`, 2027.0.5-preview | fails, as meant | `CS8304`: '2027.0.5-preview (dc7c9a1c...)'. Language version: 14.0 {net10.0}; the same compiler at 15.0 {net11.0} | |
+| value object, 2027.0.5-preview | passes | none | both targets: `From`, `Parse` equal, JSON read back equal |
+| union and `switch` under `#if NET11_0_OR_GREATER`, 2027.0.5-preview | passes | none | both targets as above, then `union under #if: cat Tom` {net11.0} |
+| union in `Net11Only/Shapes.cs`, removed on `net10.0`, 2027.0.5-preview | passes | none | both targets as above, then `union in a net11.0-only file: circle 1,5` {net11.0} |
+| `#error version`, 2026.1 | fails, as meant | `CS8304`: '2026.1.20 (4a1b04c1...)'. Language version: 14.0, on both targets | |
+| union under `#if`, 2026.1 | fails | `CS0106`, `CS1001`, `CS8803` {net11.0} | |
+| union in the `net11.0`-only file, 2026.1 | fails | `CS0106`, `CS1001`, `CS8803` {net11.0} | |
 
 ### Row 5 again: the web project, by installation
 
