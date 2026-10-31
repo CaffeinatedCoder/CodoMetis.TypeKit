@@ -133,6 +133,7 @@ public sealed class QueryDelegateConditionTests
         var (source, expected) = QueryDelegateShapes.Use(receiver, element, parameters, where);
 
         var test = new AnalyzerTest<DefaultProducingCallAnalyzer>(TypeArgumentKinds.Candidates);
+        test.TestBehaviors = VariantSweep.Behaviors;
         test.TestState.Sources.Add(("Declarations.cs", QueryDelegateShapes.Declarations));
         test.TestState.Sources.Add(("Use.cs", source));
         test.ExpectedDiagnostics.AddRange(expected.Select(call => new DiagnosticResult("CMTK0009", DiagnosticSeverity.Warning).WithLocation(call.Location)));
