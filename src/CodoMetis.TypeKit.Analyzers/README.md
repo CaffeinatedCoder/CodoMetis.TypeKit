@@ -328,6 +328,10 @@ object through it and then set the properties. `required` works with EF Core's c
 precompiled queries, and makes System.Text.Json reject a document without the property. A Blazor
 component's `[Parameter]` of a value-object type is reported too, and `required` works there.
 
+An explicit interface implementation is assigned the only way a class can reach it, through a cast:
+`((IHasId)this).Id = id` in every constructor keeps it quiet. A local that holds `this` isn't
+followed, so `IHasId self = this; self.Id = id;` is still reported.
+
 The message suggests `required` only where it compiles. That leaves out a get-only property or a
 `readonly` field (CS9034), and a member, or a setter, less visible than the class (CS9032). There the
 message says to initialize the member or assign it in every constructor.

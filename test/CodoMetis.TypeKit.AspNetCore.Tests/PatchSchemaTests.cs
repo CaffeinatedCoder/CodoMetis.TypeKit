@@ -48,22 +48,64 @@ public sealed class PatchSchemaTests
     /// <summary>Described by the host as a string or a number, two branches that each refuse null.</summary>
     public sealed record Either(string Value);
 
-    /// <summary>One patch per kind of schema: a type, an enum without a type, an enum with one, branches, none at all.</summary>
+    /// <summary>
+    /// One patch per kind of schema: a type, an enum without a type, an enum with one, branches, none at all, and the
+    /// containers, whose elements are a schema of their own or a component's.
+    /// </summary>
     public sealed record KindsPatch(
         Patch<string> Name, Patch<int> Quantity, Patch<ProbeCode> Code, Patch<ProbeId> Id, Patch<Lines> Lines,
-        Patch<Colour> Colour, Patch<ProbeStatus> Status, Patch<Size> Size, Patch<int[]> Numbers, Patch<Shape> Shape, Patch<object> Anything, Patch<Either> Either);
+        Patch<Colour> Colour, Patch<ProbeStatus> Status, Patch<Size> Size, Patch<int[]> Numbers, Patch<Shape> Shape, Patch<object> Anything, Patch<Either> Either,
+        Patch<Lines[]> LinesList, Patch<Dictionary<string, int>> Counts);
 
     /// <summary>The same arguments, unpatched: what each value is judged against.</summary>
     public sealed record Kinds(
         string Name, int Quantity, ProbeCode Code, ProbeId Id, Lines Lines,
-        Colour Colour, ProbeStatus Status, Size Size, int[] Numbers, Shape Shape, object Anything, Either Either);
+        Colour Colour, ProbeStatus Status, Size Size, int[] Numbers, Shape Shape, object Anything, Either Either,
+        Lines[] LinesList, Dictionary<string, int> Counts);
+
+    /// <summary>
+    /// Every place a patch can sit, beside a patch property of the same argument: an element of a list, an array or a
+    /// dictionary, a nullable element, an element of a list in a dictionary, and a nullable patch property.
+    /// </summary>
+    public sealed record PatchPositions<T>(
+        Patch<T> Property,
+        List<Patch<T>> List,
+        Patch<T>[] Array,
+        Dictionary<string, Patch<T>> Map,
+        IReadOnlyDictionary<string, Patch<T>> ReadOnlyMap,
+        List<Patch<T>?> NullableElements,
+        Dictionary<string, List<Patch<T>>> Nested,
+        Patch<T>? Nullable) where T : notnull;
+
+    /// <summary>
+    /// The patch in each position of <see cref="PatchPositions{T}"/> other than the property itself, and whether it is a
+    /// nullable patch, which the serializer reads as null for a null, not as the Null state.
+    /// </summary>
+    private static readonly (string Position, Func<JsonNode, JsonNode?> Patch, bool Nullable)[] Positions =
+    [
+        ("list", schema => schema["items"], false),
+        ("array", schema => schema["items"], false),
+        ("map", schema => schema["additionalProperties"], false),
+        ("readOnlyMap", schema => schema["additionalProperties"], false),
+        ("nullableElements", schema => schema["items"], true),
+        ("nested", schema => schema["additionalProperties"]?["items"], false),
+        ("nullable", schema => schema, true),
+    ];
+
+    [Microsoft.AspNetCore.Mvc.ApiController]
+    public sealed class PositionsController : Microsoft.AspNetCore.Mvc.ControllerBase
+    {
+        [Microsoft.AspNetCore.Mvc.HttpPatch("/mvc/positions/guid")]
+        public int Patch([Microsoft.AspNetCore.Mvc.FromBody] PatchPositions<Guid> positions) => 0;
+    }
 
     public static TheoryData<OpenApiSpecVersion> Versions => [OpenApiSpecVersion.OpenApi3_1, OpenApiSpecVersion.OpenApi3_0];
 
-    private static Task<OpenApiJson> DocumentAsync(OpenApiSpecVersion version) =>
+    private static Task<OpenApiJson> DocumentAsync(OpenApiSpecVersion version, string placement = "components") =>
         ProbeHost.DocumentAsync(openApi =>
         {
-            openApi.AddTypeKit();
+            if (placement == "inlined by the host") openApi.CreateSchemaReferenceId = _ => null;
+            openApi.AddTypeKit(typeKit => typeKit.InlineValueObjects = placement == "InlineValueObjects");
             openApi.AddSchemaTransformer((schema, context, _) =>
             {
                 if (context.JsonTypeInfo.Type != typeof(Either)) return Task.CompletedTask;
@@ -77,9 +119,41 @@ public sealed class PatchSchemaTests
         {
             app.MapPatch("/patched/{id}", int (int id, OrderPatch patch) => 0);
             app.MapPost("/control", int (Control control) => 0);
-            app.MapPatch("/kinds", int (KindsPatch patch) => 0);
-            app.MapPost("/kinds", int (Kinds kinds) => 0);
-        });
+            MapPositions<string>(app, "name");
+            MapPositions<int>(app, "quantity");
+            MapPositions<ProbeCode>(app, "code");
+            MapPositions<ProbeId>(app, "id");
+            MapPositions<Lines>(app, "lines");
+            MapPositions<Colour>(app, "colour");
+            MapPositions<ProbeStatus>(app, "status");
+            MapPositions<Size>(app, "size");
+            MapPositions<int[]>(app, "numbers");
+            if (placement != "inlined by the host")
+            {
+                app.MapPatch("/kinds", int (KindsPatch patch) => 0);
+                app.MapPost("/kinds", int (Kinds kinds) => 0);
+                MapPositions<Shape>(app, "shape");
+            }
+            MapPositions<object>(app, "anything");
+            MapPositions<Either>(app, "either");
+            MapPositions<Lines[]>(app, "linesList");
+            MapPositions<Dictionary<string, int>>(app, "counts");
+        }, controllers: [typeof(PositionsController)]);
+
+    /// <summary>The positions of a patch of <typeparamref name="T"/>, in a body of their own, and a list of patches as the whole body.</summary>
+    private static void MapPositions<T>(WebApplication app, string key) where T : notnull
+    {
+        app.MapPatch($"/positions/{key}", int (PatchPositions<T> positions) => 0);
+        app.MapPatch($"/positions/{key}/body", int (List<Patch<T>> body) => 0);
+    }
+
+    /// <summary>A request body's schema, in 3.x the content's and in 2.0 the body parameter's.</summary>
+    private static JsonNode Body(OpenApiJson document, string path)
+    {
+        var operation = document.Root["paths"]?[path]?["patch"] ?? throw new InvalidOperationException($"No operation patch {path}.");
+        return operation["requestBody"]?["content"]?["application/json"]?["schema"]
+            ?? operation["parameters"]!.AsArray().Single(parameter => parameter!["in"]!.GetValue<string>() == "body")!["schema"]!;
+    }
 
     /// <summary>For each property, values its argument accepts and values it refuses, as JSON.</summary>
     private static readonly (string Property, string[] Values)[] Values =
@@ -96,6 +170,8 @@ public sealed class PatchSchemaTests
         ("shape", ["{\"$type\":\"circle\",\"radius\":1}", "\"x\"", "1"]),
         ("anything", ["1", "\"x\"", "{}", "[]"]),
         ("either", ["\"x\"", "1", "true"]),
+        ("linesList", ["[{\"count\":1}]", "[{}]", "{\"count\":1}"]),
+        ("counts", ["{\"a\":1}", "{\"a\":\"x\"}", "[1]"]),
     ];
 
     /// <summary>
@@ -123,6 +199,111 @@ public sealed class PatchSchemaTests
 
             foreach (var value in values)
                 patch(value).ShouldBe(argument(value), $"'{property}' should judge {value} as its argument does: {document.Property(nameof(KindsPatch), property).ToJsonString()}");
+        }
+    }
+
+    public static TheoryData<OpenApiSpecVersion, string> Hosts()
+    {
+        var data = new TheoryData<OpenApiSpecVersion, string>();
+        foreach (var version in new[] { OpenApiSpecVersion.OpenApi3_1, OpenApiSpecVersion.OpenApi3_0, OpenApiSpecVersion.OpenApi2_0 })
+        foreach (var placement in new[] { "components", "InlineValueObjects", "inlined by the host" })
+            data.Add(version, placement);
+
+        return data;
+    }
+
+    /// <summary>
+    /// A patch anywhere else is described as a patch property is: an element of a list, an array or a dictionary, one in
+    /// a list in a dictionary, and the element of a list that is the whole body. ASP.NET left the elements out, as it does
+    /// for any converter-backed element, so a client generator typed a map of patches as a map of anything. A nullable patch,
+    /// a property or an element, which was an empty component and required, is the same schema without the merge-patch
+    /// description, since a null there reads as null. Over every argument of the catalogue, in each version, wherever value
+    /// objects are described, in a minimal API and an MVC controller.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Hosts))]
+    public async Task A_patch_in_any_position_is_described_as_a_patch_property_is(OpenApiSpecVersion version, string placement)
+    {
+        var document = await DocumentAsync(version, placement);
+
+        // ASP.NET refuses a polymorphic type with no reference id, a plain property of it too (an ArgumentNullException for
+        // the referenceId, measured with Microsoft.AspNetCore.OpenApi 10.0), so a host that inlines everything has no shape.
+        var arguments = Values.Select(value => value.Property).Where(property => placement != "inlined by the host" || property != "shape");
+        foreach (var path in arguments.Select(property => "/positions/" + property).Append("/mvc/positions/guid"))
+        {
+            var positions = document.Resolve(Body(document, path));
+            var property = document.Expand(positions["properties"]!["property"])!;
+            property["description"]!.GetValue<string>().ShouldStartWith("A JSON Merge Patch field", customMessage: $"{path}: the property is the patch's");
+
+            foreach (var (position, patch, nullable) in Positions)
+            {
+                var schema = document.Expand(patch(positions["properties"]![position]!))
+                    .ShouldNotBeNull($"{path} '{position}': {positions["properties"]![position]!.ToJsonString()}");
+                if (!nullable)
+                {
+                    schema.ShouldDescribeTheSameAs(property, $"{path} '{position}'");
+                    continue;
+                }
+
+                schema["description"].ShouldBeNull($"{path} '{position}': a null in a nullable patch reads as null, not as a clear");
+                WithoutDescription(schema).ShouldDescribeTheSameAs(WithoutDescription(property), $"{path} '{position}'");
+            }
+
+            var required = positions["required"]?.AsArray().Select(node => node!.GetValue<string>()) ?? [];
+            required.ShouldNotContain("nullable", $"{path}: a nullable patch is optional as a patch is");
+
+            if (path.StartsWith("/mvc", StringComparison.Ordinal)) continue;
+            document.Expand(Body(document, path + "/body")["items"]).ShouldNotBeNull($"{path}/body").ShouldDescribeTheSameAs(property, $"{path}/body");
+        }
+    }
+
+    /// <summary>
+    /// What the document says of a map and a list of patches is what the endpoint reads: a value sets a key and a null
+    /// clears it. A nullable patch reads a null as null, as it reads a property the request leaves out, which is why the
+    /// document does not call it a merge-patch field.
+    /// </summary>
+    [Fact]
+    public async Task A_map_of_patches_reads_a_value_and_a_null_as_the_document_says()
+    {
+        await using var host = await ProbeHost.StartAsync(openApi => openApi.AddTypeKit(), endpoints: app =>
+            app.MapPatch("/read", string (PatchPositions<string> patch) => string.Join(" ",
+                patch.Map.OrderBy(entry => entry.Key).Select(entry => $"{entry.Key}={entry.Value.State}")
+                    .Concat(patch.List.Select(element => element.State.ToString()))
+                    .Append(patch.Nullable?.State.ToString() ?? "none"))));
+
+        using var response = await host.Client.PatchAsync("/read", new StringContent(
+            """{"map":{"a":"x","b":null},"list":["y",null],"nullable":null}""", System.Text.Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
+        using var leftOut = await host.Client.PatchAsync("/read", new StringContent(
+            """{"map":{},"list":[]}""", System.Text.Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
+
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldBe("a=Value b=Null Value Null none");
+        (await leftOut.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldBe("none");
+    }
+
+    /// <summary>
+    /// The element of a container of patches accepts null and otherwise exactly what its argument accepts, judged by a
+    /// JSON Schema validator over the catalogue above, as a patch property is.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Versions))]
+    public async Task A_patch_in_a_container_accepts_null_and_otherwise_exactly_what_its_argument_accepts(OpenApiSpecVersion version)
+    {
+        var document = await DocumentAsync(version);
+
+        foreach (var (property, values) in Values)
+        {
+            var positions = document.Resolve(Body(document, "/positions/" + property));
+            var argument = Validator(document, document.Property(nameof(Kinds), property), version);
+
+            foreach (var (position, select, _) in Positions)
+            {
+                var schema = select(positions["properties"]![position]!) ?? throw new ShouldAssertException($"'{property}' '{position}' has no element schema");
+                var patch = Validator(document, schema, version);
+
+                patch("null").ShouldBeTrue($"'{property}' '{position}' should accept null: {schema.ToJsonString()}");
+                foreach (var value in values)
+                    patch(value).ShouldBe(argument(value), $"'{property}' '{position}' should judge {value} as its argument does: {schema.ToJsonString()}");
+            }
         }
     }
 
@@ -249,6 +430,13 @@ public sealed class PatchSchemaTests
             openApi => openApi.AddTypeKit(), endpoints: app => app.MapPatch("/defaulted", int (DefaultedPatch patch) => 0)));
 
         refusal.StackTrace.ShouldNotBeNull().ShouldContain(nameof(System.Text.Json.Schema.JsonSchemaExporter), customMessage: "the exporter throws, not the converter");
+    }
+
+    private static JsonNode WithoutDescription(JsonNode schema)
+    {
+        var copy = schema.DeepClone().AsObject();
+        copy.Remove("description");
+        return copy;
     }
 
     private static bool AdmitsNull(JsonNode schema, OpenApiSpecVersion version) =>

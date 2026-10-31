@@ -2502,6 +2502,20 @@
     ]
   },
   {
+    "id": "K06-an-explicit-implementation-through-a-cast",
+    "source": "src/CodoMetis.TypeKit.Analyzers/README.md#cmtk0006",
+    "quote": "An explicit interface implementation is assigned the only way a class can reach it, through a cast: `((IHasId)this).Id = id` in every constructor keeps it quiet.",
+    "claim": "CMTK0006 counts an assignment through a cast of this, an interface's member as the class's implementation of it, and does not follow a local holding this.",
+    "oracle": "claim",
+    "surfaces": [
+      "IValueObject.*",
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "UnassignedNoDefaultMemberAnalyzerTests"
+    ]
+  },
+  {
     "id": "L01-read-as-the-underlying-type-reads",
     "source": "README.md#what-typekit-guarantees",
     "quote": "**Swapping a primitive for a value object keeps the JSON, the column and the schema.**",
@@ -3714,10 +3728,75 @@
     ]
   },
   {
+    "id": "P06-element-by-element",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "A patch inside a list or a dictionary is described the same way, element by element.",
+    "claim": "A patch inside a list or a dictionary is described the same way, element by element.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
     "id": "P06-inlined",
     "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
     "quote": "**Inlined**, rather than as a component of its own.",
     "claim": "**Inlined**, rather than as a component of its own.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-map-of-patches",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "So a `Dictionary<string, Patch<string>>`, where a request sets a key with a value and clears it with `null`, is an object whose values are a string or `null`.",
+    "claim": "So a `Dictionary<string, Patch<string>>`, where a request sets a key with a value and clears it with `null`, is an object whose values are a string or `null`.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-nullable-patch-reads-null-as-null",
+    "source": "docs/merge-patches.md#use-it-in-an-endpoint-and-in-the-document",
+    "quote": "But System.Text.Json reads a `null` there as a `null` patch, the same as a property the request leaves out, so you can't tell a clear from no change.",
+    "claim": "But System.Text.Json reads a `null` there as a `null` patch, the same as a property the request leaves out, so you can't tell a clear from no change.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-readme-containers",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+    "quote": "Each element of a list, an array or a dictionary of patches is described as a patch property is.",
+    "claim": "Each element of a list, an array or a dictionary of patches is described as a patch property is.",
+    "oracle": "claim",
+    "surfaces": [
+      "TypeKitOpenApiOptionsExtensions.AddTypeKit"
+    ],
+    "heldBy": [
+      "PatchSchemaTests"
+    ]
+  },
+  {
+    "id": "P06-readme-nullable-patch",
+    "source": "src/CodoMetis.TypeKit.AspNetCore/README.md#what-the-document-says",
+    "quote": "A nullable patch, `Patch<T>?`, admits the same values and null, but isn't described as a merge patch: a `null` there reads as a `null` patch, the same as a property left out.",
+    "claim": "A nullable patch, `Patch<T>?`, admits the same values and null, but isn't described as a merge patch: a `null` there reads as a `null` patch, the same as a property left out.",
     "oracle": "claim",
     "surfaces": [
       "TypeKitOpenApiOptionsExtensions.AddTypeKit"
