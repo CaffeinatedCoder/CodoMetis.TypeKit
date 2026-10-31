@@ -40,6 +40,7 @@ internal static partial class TypeArgumentSiteRun
         var use       = Fill(site.Use, subject, argument);
 
         var test = new AnalyzerTest<TAnalyzer>(Fill(TypeArgumentSites.Subjects + subject.Declarations, subject, argument));
+        test.TestBehaviors = VariantSweep.Behaviors;
         test.TestState.Sources.Add((site.File, reported ? use : Unmarked(use)));
 
         if (reported)

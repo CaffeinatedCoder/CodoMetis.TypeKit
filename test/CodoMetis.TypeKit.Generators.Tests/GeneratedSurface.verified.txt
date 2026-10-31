@@ -1,4 +1,6 @@
 # CodoMetis.TypeKit.Generators.Probes
+IProbeSetNames<TSelf>
+  implements IClosedSet<TSelf>
 ProbeAmount
   CompareTo(Object) : Int32
   CompareTo(ProbeAmount) : Int32
@@ -98,7 +100,7 @@ ProbeArticle
 ProbeArticleFault
   Description : String
   Kind : FaultKind
-  Match(Func<TResult>, Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>, Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -164,7 +166,7 @@ ProbeCode
 ProbeConcurrencyFault
   Description : String
   Kind : FaultKind
-  Match(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -698,7 +700,7 @@ ProbeIsbn
   extension static ProbeIsbnExtensions.GetValue(ProbeIsbn) : ProbeIsbnText
   extension static ProbeIsbnExtensions.ValueOrNull(ProbeIsbn?) : ProbeIsbnText
 ProbeKeyword
-  Match(Func<TResult>, Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>, Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -717,7 +719,7 @@ ProbeKeyword
   static TryParse(String, out ProbeKeyword) : Boolean
 ProbeKindlessFault
   Kind : FaultKind
-  Match(Func<TResult>, Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>, Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -779,7 +781,7 @@ ProbeLabel
   extension static ProbeLabelExtensions.GetValue(ProbeLabel) : String
   extension static ProbeLabelExtensions.ValueOrNull(ProbeLabel) : String
 ProbeLabelled
-  Match(Func<TResult>, Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>, Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -797,7 +799,7 @@ ProbeLabelled
   static TryParse(String, Boolean, out ProbeLabelled) : Boolean
   static TryParse(String, out ProbeLabelled) : Boolean
 ProbeLevel
-  Match(Func<TResult>, Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>, Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -944,7 +946,7 @@ ProbeName
   extension static ProbeNameExtensions.GetValue(ProbeName) : String
   extension static ProbeNameExtensions.ValueOrNull(ProbeName?) : String
 ProbeOrder.Status
-  Match(Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -964,7 +966,7 @@ ProbeOrder.Status
 ProbeOrderFault
   Description : String
   Kind : FaultKind
-  Match(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -1127,7 +1129,7 @@ ProbePin
 ProbePriority
   Label : String
   Match(Action, Action, Action) : Void
-  Match(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   Rank : Int32
@@ -1282,7 +1284,7 @@ ProbeSecret
   extension static ProbeSecretExtensions.GetValue(ProbeSecret) : String
   extension static ProbeSecretExtensions.ValueOrNull(ProbeSecret) : String
 ProbeShipment.Status
-  Match(Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -1358,7 +1360,7 @@ ProbeSpan
   extension static ProbeSpanExtensions.GetValue(ProbeSpan) : ProbeSpanText
   extension static ProbeSpanExtensions.ValueOrNull(ProbeSpan?) : ProbeSpanText
 ProbeSplit
-  Match(Func<TResult>, Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>, Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -1376,7 +1378,7 @@ ProbeSplit
   static TryParse(String, Boolean, out ProbeSplit) : Boolean
   static TryParse(String, out ProbeSplit) : Boolean
 ProbeStatus
-  Match(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -1394,7 +1396,7 @@ ProbeStatus
   static TryParse(String, Boolean, out ProbeStatus) : Boolean
   static TryParse(String, out ProbeStatus) : Boolean
 ProbeTier
-  Match(Func<TResult>, Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>, Func<TResult>) : TResult
   Name : String
   Perk : String
   QualifiedName : String
@@ -1583,6 +1585,112 @@ ProbeWeekday
   extension static ProbeWeekdayExtensions.GetValue(ProbeWeekday) : DayOfWeek
   extension static ProbeWeekdayExtensions.ValueOrNull(ProbeWeekday?) : DayOfWeek?
 # CodoMetis.TypeKit.Generators.Tests
+CompareToOverloadedByArity
+  CompareTo(CompareToOverloadedByArity) : Int32
+  CompareTo(Object) : Int32
+  CompareTo<TFormat>(CompareToOverloadedByArity) : Int32
+  Equals(CompareToOverloadedByArity) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<CompareToOverloadedByArity, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<CompareToOverloadedByArity>
+  implements IComparisonOperators<CompareToOverloadedByArity, CompareToOverloadedByArity, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<CompareToOverloadedByArity, CompareToOverloadedByArity, Boolean>
+  implements IEquatable<CompareToOverloadedByArity>
+  implements IFormattable
+  implements IMinMaxValue<CompareToOverloadedByArity>
+  implements IParsable<CompareToOverloadedByArity>
+  implements IPlainValueObject<CompareToOverloadedByArity, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<CompareToOverloadedByArity>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<CompareToOverloadedByArity>
+  implements IValue<Int32>
+  implements IValueObject<CompareToOverloadedByArity, Int32>
+  implements IValueObjectMaterializer<CompareToOverloadedByArity, Int32>
+  nested CompareToOverloadedByArityJsonConverter : JsonConverter<CompareToOverloadedByArity>, IStoredJsonConverterSource
+  nested CompareToOverloadedByArityTypeConverter : TypeConverter
+  new()
+  static From(Int32) : CompareToOverloadedByArity
+  static MaxValue : CompareToOverloadedByArity
+  static MinValue : CompareToOverloadedByArity
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : CompareToOverloadedByArity
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : CompareToOverloadedByArity
+  static Parse(String, IFormatProvider) : CompareToOverloadedByArity
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out CompareToOverloadedByArity) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out CompareToOverloadedByArity) : Boolean
+  static TryParse(String, IFormatProvider, out CompareToOverloadedByArity) : Boolean
+  static op_Equality(CompareToOverloadedByArity, CompareToOverloadedByArity) : Boolean
+  static op_GreaterThan(CompareToOverloadedByArity, CompareToOverloadedByArity) : Boolean
+  static op_GreaterThanOrEqual(CompareToOverloadedByArity, CompareToOverloadedByArity) : Boolean
+  static op_Inequality(CompareToOverloadedByArity, CompareToOverloadedByArity) : Boolean
+  static op_LessThan(CompareToOverloadedByArity, CompareToOverloadedByArity) : Boolean
+  static op_LessThanOrEqual(CompareToOverloadedByArity, CompareToOverloadedByArity) : Boolean
+  extension static CompareToOverloadedByArityExtensions.GetValue(CompareToOverloadedByArity) : Int32
+  extension static CompareToOverloadedByArityExtensions.ValueOrNull(CompareToOverloadedByArity?) : Int32?
+CompareToOverloadedByIn
+  CompareTo(CompareToOverloadedByIn) : Int32
+  CompareTo(Object) : Int32
+  CompareTo(in CompareToOverloadedByIn) : Int32
+  Equals(CompareToOverloadedByIn) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<CompareToOverloadedByIn, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<CompareToOverloadedByIn>
+  implements IComparisonOperators<CompareToOverloadedByIn, CompareToOverloadedByIn, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<CompareToOverloadedByIn, CompareToOverloadedByIn, Boolean>
+  implements IEquatable<CompareToOverloadedByIn>
+  implements IFormattable
+  implements IMinMaxValue<CompareToOverloadedByIn>
+  implements IParsable<CompareToOverloadedByIn>
+  implements IPlainValueObject<CompareToOverloadedByIn, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<CompareToOverloadedByIn>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<CompareToOverloadedByIn>
+  implements IValue<Int32>
+  implements IValueObject<CompareToOverloadedByIn, Int32>
+  implements IValueObjectMaterializer<CompareToOverloadedByIn, Int32>
+  nested CompareToOverloadedByInJsonConverter : JsonConverter<CompareToOverloadedByIn>, IStoredJsonConverterSource
+  nested CompareToOverloadedByInTypeConverter : TypeConverter
+  new()
+  static From(Int32) : CompareToOverloadedByIn
+  static MaxValue : CompareToOverloadedByIn
+  static MinValue : CompareToOverloadedByIn
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : CompareToOverloadedByIn
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : CompareToOverloadedByIn
+  static Parse(String, IFormatProvider) : CompareToOverloadedByIn
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out CompareToOverloadedByIn) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out CompareToOverloadedByIn) : Boolean
+  static TryParse(String, IFormatProvider, out CompareToOverloadedByIn) : Boolean
+  static op_Equality(CompareToOverloadedByIn, CompareToOverloadedByIn) : Boolean
+  static op_GreaterThan(CompareToOverloadedByIn, CompareToOverloadedByIn) : Boolean
+  static op_GreaterThanOrEqual(CompareToOverloadedByIn, CompareToOverloadedByIn) : Boolean
+  static op_Inequality(CompareToOverloadedByIn, CompareToOverloadedByIn) : Boolean
+  static op_LessThan(CompareToOverloadedByIn, CompareToOverloadedByIn) : Boolean
+  static op_LessThanOrEqual(CompareToOverloadedByIn, CompareToOverloadedByIn) : Boolean
+  extension static CompareToOverloadedByInExtensions.GetValue(CompareToOverloadedByIn) : Int32
+  extension static CompareToOverloadedByInExtensions.ValueOrNull(CompareToOverloadedByIn?) : Int32?
 DefaultedAddress
   Equals(DefaultedAddress) : Boolean
   Equals(Object) : Boolean
@@ -1668,7 +1776,7 @@ DefaultedVersion
   extension static DefaultedVersionExtensions.GetValue(DefaultedVersion) : Version
   extension static DefaultedVersionExtensions.ValueOrNull(DefaultedVersion?) : Version
 DocumentKind
-  Match(Func<TResult>, Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>, Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -1686,7 +1794,7 @@ DocumentKind
   static TryParse(String, Boolean, out DocumentKind) : Boolean
   static TryParse(String, out DocumentKind) : Boolean
 EarlyAllStatus
-  Match(Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -1704,7 +1812,7 @@ EarlyAllStatus
   static TryParse(String, Boolean, out EarlyAllStatus) : Boolean
   static TryParse(String, out EarlyAllStatus) : Boolean
 EarlyIgnoreCaseParseStatus
-  Match(Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -1722,7 +1830,7 @@ EarlyIgnoreCaseParseStatus
   static TryParse(String, Boolean, out EarlyIgnoreCaseParseStatus) : Boolean
   static TryParse(String, out EarlyIgnoreCaseParseStatus) : Boolean
 EarlyIgnoreCaseTryParseStatus
-  Match(Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -1740,7 +1848,7 @@ EarlyIgnoreCaseTryParseStatus
   static TryParse(String, Boolean, out EarlyIgnoreCaseTryParseStatus) : Boolean
   static TryParse(String, out EarlyIgnoreCaseTryParseStatus) : Boolean
 EarlyJsonKeyStatus
-  Match(Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -1758,7 +1866,7 @@ EarlyJsonKeyStatus
   static TryParse(String, Boolean, out EarlyJsonKeyStatus) : Boolean
   static TryParse(String, out EarlyJsonKeyStatus) : Boolean
 EarlyJsonStatus
-  Match(Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -1776,7 +1884,7 @@ EarlyJsonStatus
   static TryParse(String, Boolean, out EarlyJsonStatus) : Boolean
   static TryParse(String, out EarlyJsonStatus) : Boolean
 EarlyParsableStatus
-  Match(Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -1794,7 +1902,7 @@ EarlyParsableStatus
   static TryParse(String, Boolean, out EarlyParsableStatus) : Boolean
   static TryParse(String, out EarlyParsableStatus) : Boolean
 EarlyParseStatus
-  Match(Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -1812,7 +1920,7 @@ EarlyParseStatus
   static TryParse(String, Boolean, out EarlyParseStatus) : Boolean
   static TryParse(String, out EarlyParseStatus) : Boolean
 EarlyTryParseStatus
-  Match(Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -1829,8 +1937,386 @@ EarlyTryParseStatus
   static Parse(String, Boolean) : EarlyTryParseStatus
   static TryParse(String, Boolean, out EarlyTryParseStatus) : Boolean
   static TryParse(String, out EarlyTryParseStatus) : Boolean
+EqualityOverloadedByArity
+  CompareTo(EqualityOverloadedByArity) : Int32
+  CompareTo(Object) : Int32
+  Equals(EqualityOverloadedByArity) : Boolean
+  Equals(Object) : Boolean
+  Equals<TFormat>(EqualityOverloadedByArity) : Boolean
+  GetHashCode() : Int32
+  GetHashCode<TFormat>() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<EqualityOverloadedByArity, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<EqualityOverloadedByArity>
+  implements IComparisonOperators<EqualityOverloadedByArity, EqualityOverloadedByArity, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<EqualityOverloadedByArity, EqualityOverloadedByArity, Boolean>
+  implements IEquatable<EqualityOverloadedByArity>
+  implements IFormattable
+  implements IMinMaxValue<EqualityOverloadedByArity>
+  implements IParsable<EqualityOverloadedByArity>
+  implements IPlainValueObject<EqualityOverloadedByArity, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<EqualityOverloadedByArity>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<EqualityOverloadedByArity>
+  implements IValue<Int32>
+  implements IValueObject<EqualityOverloadedByArity, Int32>
+  implements IValueObjectMaterializer<EqualityOverloadedByArity, Int32>
+  nested EqualityOverloadedByArityJsonConverter : JsonConverter<EqualityOverloadedByArity>, IStoredJsonConverterSource
+  nested EqualityOverloadedByArityTypeConverter : TypeConverter
+  new()
+  static From(Int32) : EqualityOverloadedByArity
+  static MaxValue : EqualityOverloadedByArity
+  static MinValue : EqualityOverloadedByArity
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : EqualityOverloadedByArity
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : EqualityOverloadedByArity
+  static Parse(String, IFormatProvider) : EqualityOverloadedByArity
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out EqualityOverloadedByArity) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out EqualityOverloadedByArity) : Boolean
+  static TryParse(String, IFormatProvider, out EqualityOverloadedByArity) : Boolean
+  static op_Equality(EqualityOverloadedByArity, EqualityOverloadedByArity) : Boolean
+  static op_GreaterThan(EqualityOverloadedByArity, EqualityOverloadedByArity) : Boolean
+  static op_GreaterThanOrEqual(EqualityOverloadedByArity, EqualityOverloadedByArity) : Boolean
+  static op_Inequality(EqualityOverloadedByArity, EqualityOverloadedByArity) : Boolean
+  static op_LessThan(EqualityOverloadedByArity, EqualityOverloadedByArity) : Boolean
+  static op_LessThanOrEqual(EqualityOverloadedByArity, EqualityOverloadedByArity) : Boolean
+  extension static EqualityOverloadedByArityExtensions.GetValue(EqualityOverloadedByArity) : Int32
+  extension static EqualityOverloadedByArityExtensions.ValueOrNull(EqualityOverloadedByArity?) : Int32?
+EqualsOverloadOverADeeperExplicitEquality
+  <Clone>$() : EqualsOverloadOverADeeperExplicitEquality
+  CompareTo(EqualsOverloadOverADeeperExplicitEquality) : Int32
+  CompareTo(Object) : Int32
+  Equals(EqualsOverloadOverADeeperExplicitEquality) : Boolean
+  Equals(LocalBetweenRecord) : Boolean
+  Equals(LocalExplicitEqualityRecord) : Boolean
+  Equals(Object) : Boolean
+  Equals<TFormat>(LocalExplicitEqualityRecord) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<EqualsOverloadOverADeeperExplicitEquality, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<EqualsOverloadOverADeeperExplicitEquality>
+  implements IComparisonOperators<EqualsOverloadOverADeeperExplicitEquality, EqualsOverloadOverADeeperExplicitEquality, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<EqualsOverloadOverADeeperExplicitEquality, EqualsOverloadOverADeeperExplicitEquality, Boolean>
+  implements IEquatable<EqualsOverloadOverADeeperExplicitEquality>
+  implements IEquatable<LocalBetweenRecord>
+  implements IEquatable<LocalExplicitEqualityRecord>
+  implements IFormattable
+  implements IMinMaxValue<EqualsOverloadOverADeeperExplicitEquality>
+  implements IParsable<EqualsOverloadOverADeeperExplicitEquality>
+  implements IPlainValueObject<EqualsOverloadOverADeeperExplicitEquality, Int32>
+  implements IReimplementedEquatable<LocalBetweenRecord>
+  implements IReimplementedEquatable<LocalExplicitEqualityRecord>
+  implements ISpanFormattable
+  implements ISpanParsable<EqualsOverloadOverADeeperExplicitEquality>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<EqualsOverloadOverADeeperExplicitEquality>
+  implements IValue<Int32>
+  implements IValueObject<EqualsOverloadOverADeeperExplicitEquality, Int32>
+  implements IValueObjectMaterializer<EqualsOverloadOverADeeperExplicitEquality, Int32>
+  nested EqualsOverloadOverADeeperExplicitEqualityJsonConverter : JsonConverter<EqualsOverloadOverADeeperExplicitEquality>, IStoredJsonConverterSource
+  nested EqualsOverloadOverADeeperExplicitEqualityTypeConverter : TypeConverter
+  static From(Int32) : EqualsOverloadOverADeeperExplicitEquality
+  static MaxValue : EqualsOverloadOverADeeperExplicitEquality
+  static MinValue : EqualsOverloadOverADeeperExplicitEquality
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : EqualsOverloadOverADeeperExplicitEquality
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : EqualsOverloadOverADeeperExplicitEquality
+  static Parse(String, IFormatProvider) : EqualsOverloadOverADeeperExplicitEquality
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out EqualsOverloadOverADeeperExplicitEquality) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out EqualsOverloadOverADeeperExplicitEquality) : Boolean
+  static TryParse(String, IFormatProvider, out EqualsOverloadOverADeeperExplicitEquality) : Boolean
+  static op_Equality(EqualsOverloadOverADeeperExplicitEquality, EqualsOverloadOverADeeperExplicitEquality) : Boolean
+  static op_GreaterThan(EqualsOverloadOverADeeperExplicitEquality, EqualsOverloadOverADeeperExplicitEquality) : Boolean
+  static op_GreaterThanOrEqual(EqualsOverloadOverADeeperExplicitEquality, EqualsOverloadOverADeeperExplicitEquality) : Boolean
+  static op_Inequality(EqualsOverloadOverADeeperExplicitEquality, EqualsOverloadOverADeeperExplicitEquality) : Boolean
+  static op_LessThan(EqualsOverloadOverADeeperExplicitEquality, EqualsOverloadOverADeeperExplicitEquality) : Boolean
+  static op_LessThanOrEqual(EqualsOverloadOverADeeperExplicitEquality, EqualsOverloadOverADeeperExplicitEquality) : Boolean
+  extension static EqualsOverloadOverADeeperExplicitEqualityExtensions.GetValue(EqualsOverloadOverADeeperExplicitEquality) : Int32
+  extension static EqualsOverloadOverADeeperExplicitEqualityExtensions.ValueOrNull(EqualsOverloadOverADeeperExplicitEquality) : Int32?
+FormatOverloadedByArity
+  CompareTo(FormatOverloadedByArity) : Int32
+  CompareTo(Object) : Int32
+  Equals(FormatOverloadedByArity) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  ToString<TFormat>(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<FormatOverloadedByArity, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<FormatOverloadedByArity>
+  implements IComparisonOperators<FormatOverloadedByArity, FormatOverloadedByArity, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<FormatOverloadedByArity, FormatOverloadedByArity, Boolean>
+  implements IEquatable<FormatOverloadedByArity>
+  implements IFormattable
+  implements IMinMaxValue<FormatOverloadedByArity>
+  implements IParsable<FormatOverloadedByArity>
+  implements IPlainValueObject<FormatOverloadedByArity, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<FormatOverloadedByArity>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<FormatOverloadedByArity>
+  implements IValue<Int32>
+  implements IValueObject<FormatOverloadedByArity, Int32>
+  implements IValueObjectMaterializer<FormatOverloadedByArity, Int32>
+  nested FormatOverloadedByArityJsonConverter : JsonConverter<FormatOverloadedByArity>, IStoredJsonConverterSource
+  nested FormatOverloadedByArityTypeConverter : TypeConverter
+  new()
+  static From(Int32) : FormatOverloadedByArity
+  static MaxValue : FormatOverloadedByArity
+  static MinValue : FormatOverloadedByArity
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : FormatOverloadedByArity
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : FormatOverloadedByArity
+  static Parse(String, IFormatProvider) : FormatOverloadedByArity
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out FormatOverloadedByArity) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out FormatOverloadedByArity) : Boolean
+  static TryParse(String, IFormatProvider, out FormatOverloadedByArity) : Boolean
+  static op_Equality(FormatOverloadedByArity, FormatOverloadedByArity) : Boolean
+  static op_GreaterThan(FormatOverloadedByArity, FormatOverloadedByArity) : Boolean
+  static op_GreaterThanOrEqual(FormatOverloadedByArity, FormatOverloadedByArity) : Boolean
+  static op_Inequality(FormatOverloadedByArity, FormatOverloadedByArity) : Boolean
+  static op_LessThan(FormatOverloadedByArity, FormatOverloadedByArity) : Boolean
+  static op_LessThanOrEqual(FormatOverloadedByArity, FormatOverloadedByArity) : Boolean
+  extension static FormatOverloadedByArityExtensions.GetValue(FormatOverloadedByArity) : Int32
+  extension static FormatOverloadedByArityExtensions.ValueOrNull(FormatOverloadedByArity?) : Int32?
+FormatOverloadedByIn
+  CompareTo(FormatOverloadedByIn) : Int32
+  CompareTo(Object) : Int32
+  Equals(FormatOverloadedByIn) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  ToString(in String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<FormatOverloadedByIn, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<FormatOverloadedByIn>
+  implements IComparisonOperators<FormatOverloadedByIn, FormatOverloadedByIn, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<FormatOverloadedByIn, FormatOverloadedByIn, Boolean>
+  implements IEquatable<FormatOverloadedByIn>
+  implements IFormattable
+  implements IMinMaxValue<FormatOverloadedByIn>
+  implements IParsable<FormatOverloadedByIn>
+  implements IPlainValueObject<FormatOverloadedByIn, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<FormatOverloadedByIn>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<FormatOverloadedByIn>
+  implements IValue<Int32>
+  implements IValueObject<FormatOverloadedByIn, Int32>
+  implements IValueObjectMaterializer<FormatOverloadedByIn, Int32>
+  nested FormatOverloadedByInJsonConverter : JsonConverter<FormatOverloadedByIn>, IStoredJsonConverterSource
+  nested FormatOverloadedByInTypeConverter : TypeConverter
+  new()
+  static From(Int32) : FormatOverloadedByIn
+  static MaxValue : FormatOverloadedByIn
+  static MinValue : FormatOverloadedByIn
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : FormatOverloadedByIn
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : FormatOverloadedByIn
+  static Parse(String, IFormatProvider) : FormatOverloadedByIn
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out FormatOverloadedByIn) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out FormatOverloadedByIn) : Boolean
+  static TryParse(String, IFormatProvider, out FormatOverloadedByIn) : Boolean
+  static op_Equality(FormatOverloadedByIn, FormatOverloadedByIn) : Boolean
+  static op_GreaterThan(FormatOverloadedByIn, FormatOverloadedByIn) : Boolean
+  static op_GreaterThanOrEqual(FormatOverloadedByIn, FormatOverloadedByIn) : Boolean
+  static op_Inequality(FormatOverloadedByIn, FormatOverloadedByIn) : Boolean
+  static op_LessThan(FormatOverloadedByIn, FormatOverloadedByIn) : Boolean
+  static op_LessThanOrEqual(FormatOverloadedByIn, FormatOverloadedByIn) : Boolean
+  extension static FormatOverloadedByInExtensions.GetValue(FormatOverloadedByIn) : Int32
+  extension static FormatOverloadedByInExtensions.ValueOrNull(FormatOverloadedByIn?) : Int32?
+FromOverloadedByArity
+  CompareTo(FromOverloadedByArity) : Int32
+  CompareTo(Object) : Int32
+  Equals(FromOverloadedByArity) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<FromOverloadedByArity, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<FromOverloadedByArity>
+  implements IComparisonOperators<FromOverloadedByArity, FromOverloadedByArity, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<FromOverloadedByArity, FromOverloadedByArity, Boolean>
+  implements IEquatable<FromOverloadedByArity>
+  implements IFormattable
+  implements IMinMaxValue<FromOverloadedByArity>
+  implements IParsable<FromOverloadedByArity>
+  implements IPlainValueObject<FromOverloadedByArity, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<FromOverloadedByArity>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<FromOverloadedByArity>
+  implements IValue<Int32>
+  implements IValueObject<FromOverloadedByArity, Int32>
+  implements IValueObjectMaterializer<FromOverloadedByArity, Int32>
+  nested FromOverloadedByArityJsonConverter : JsonConverter<FromOverloadedByArity>, IStoredJsonConverterSource
+  nested FromOverloadedByArityTypeConverter : TypeConverter
+  new()
+  static From(Int32) : FromOverloadedByArity
+  static From<TFormat>(Int32) : FromOverloadedByArity
+  static MaxValue : FromOverloadedByArity
+  static MinValue : FromOverloadedByArity
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : FromOverloadedByArity
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : FromOverloadedByArity
+  static Parse(String, IFormatProvider) : FromOverloadedByArity
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out FromOverloadedByArity) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out FromOverloadedByArity) : Boolean
+  static TryParse(String, IFormatProvider, out FromOverloadedByArity) : Boolean
+  static op_Equality(FromOverloadedByArity, FromOverloadedByArity) : Boolean
+  static op_GreaterThan(FromOverloadedByArity, FromOverloadedByArity) : Boolean
+  static op_GreaterThanOrEqual(FromOverloadedByArity, FromOverloadedByArity) : Boolean
+  static op_Inequality(FromOverloadedByArity, FromOverloadedByArity) : Boolean
+  static op_LessThan(FromOverloadedByArity, FromOverloadedByArity) : Boolean
+  static op_LessThanOrEqual(FromOverloadedByArity, FromOverloadedByArity) : Boolean
+  extension static FromOverloadedByArityExtensions.GetValue(FromOverloadedByArity) : Int32
+  extension static FromOverloadedByArityExtensions.ValueOrNull(FromOverloadedByArity?) : Int32?
+FromOverloadedByIn
+  CompareTo(FromOverloadedByIn) : Int32
+  CompareTo(Object) : Int32
+  Equals(FromOverloadedByIn) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<FromOverloadedByIn, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<FromOverloadedByIn>
+  implements IComparisonOperators<FromOverloadedByIn, FromOverloadedByIn, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<FromOverloadedByIn, FromOverloadedByIn, Boolean>
+  implements IEquatable<FromOverloadedByIn>
+  implements IFormattable
+  implements IMinMaxValue<FromOverloadedByIn>
+  implements IParsable<FromOverloadedByIn>
+  implements IPlainValueObject<FromOverloadedByIn, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<FromOverloadedByIn>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<FromOverloadedByIn>
+  implements IValue<Int32>
+  implements IValueObject<FromOverloadedByIn, Int32>
+  implements IValueObjectMaterializer<FromOverloadedByIn, Int32>
+  nested FromOverloadedByInJsonConverter : JsonConverter<FromOverloadedByIn>, IStoredJsonConverterSource
+  nested FromOverloadedByInTypeConverter : TypeConverter
+  new()
+  static From(Int32) : FromOverloadedByIn
+  static From(in Int32) : FromOverloadedByIn
+  static MaxValue : FromOverloadedByIn
+  static MinValue : FromOverloadedByIn
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : FromOverloadedByIn
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : FromOverloadedByIn
+  static Parse(String, IFormatProvider) : FromOverloadedByIn
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out FromOverloadedByIn) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out FromOverloadedByIn) : Boolean
+  static TryParse(String, IFormatProvider, out FromOverloadedByIn) : Boolean
+  static op_Equality(FromOverloadedByIn, FromOverloadedByIn) : Boolean
+  static op_GreaterThan(FromOverloadedByIn, FromOverloadedByIn) : Boolean
+  static op_GreaterThanOrEqual(FromOverloadedByIn, FromOverloadedByIn) : Boolean
+  static op_Inequality(FromOverloadedByIn, FromOverloadedByIn) : Boolean
+  static op_LessThan(FromOverloadedByIn, FromOverloadedByIn) : Boolean
+  static op_LessThanOrEqual(FromOverloadedByIn, FromOverloadedByIn) : Boolean
+  extension static FromOverloadedByInExtensions.GetValue(FromOverloadedByIn) : Int32
+  extension static FromOverloadedByInExtensions.ValueOrNull(FromOverloadedByIn?) : Int32?
+FromOverloadedByRef
+  CompareTo(FromOverloadedByRef) : Int32
+  CompareTo(Object) : Int32
+  Equals(FromOverloadedByRef) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<FromOverloadedByRef, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<FromOverloadedByRef>
+  implements IComparisonOperators<FromOverloadedByRef, FromOverloadedByRef, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<FromOverloadedByRef, FromOverloadedByRef, Boolean>
+  implements IEquatable<FromOverloadedByRef>
+  implements IFormattable
+  implements IMinMaxValue<FromOverloadedByRef>
+  implements IParsable<FromOverloadedByRef>
+  implements IPlainValueObject<FromOverloadedByRef, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<FromOverloadedByRef>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<FromOverloadedByRef>
+  implements IValue<Int32>
+  implements IValueObject<FromOverloadedByRef, Int32>
+  implements IValueObjectMaterializer<FromOverloadedByRef, Int32>
+  nested FromOverloadedByRefJsonConverter : JsonConverter<FromOverloadedByRef>, IStoredJsonConverterSource
+  nested FromOverloadedByRefTypeConverter : TypeConverter
+  new()
+  static From(Int32) : FromOverloadedByRef
+  static From(ref Int32) : FromOverloadedByRef
+  static MaxValue : FromOverloadedByRef
+  static MinValue : FromOverloadedByRef
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : FromOverloadedByRef
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : FromOverloadedByRef
+  static Parse(String, IFormatProvider) : FromOverloadedByRef
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out FromOverloadedByRef) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out FromOverloadedByRef) : Boolean
+  static TryParse(String, IFormatProvider, out FromOverloadedByRef) : Boolean
+  static op_Equality(FromOverloadedByRef, FromOverloadedByRef) : Boolean
+  static op_GreaterThan(FromOverloadedByRef, FromOverloadedByRef) : Boolean
+  static op_GreaterThanOrEqual(FromOverloadedByRef, FromOverloadedByRef) : Boolean
+  static op_Inequality(FromOverloadedByRef, FromOverloadedByRef) : Boolean
+  static op_LessThan(FromOverloadedByRef, FromOverloadedByRef) : Boolean
+  static op_LessThanOrEqual(FromOverloadedByRef, FromOverloadedByRef) : Boolean
+  extension static FromOverloadedByRefExtensions.GetValue(FromOverloadedByRef) : Int32
+  extension static FromOverloadedByRefExtensions.ValueOrNull(FromOverloadedByRef?) : Int32?
 LocalOrder.Stage
-  Match(Func<TResult>, Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>, Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -1848,7 +2334,7 @@ LocalOrder.Stage
   static TryParse(String, Boolean, out LocalOrder.Stage) : Boolean
   static TryParse(String, out LocalOrder.Stage) : Boolean
 LocalStatus
-  Match(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
+  Match<TResult>(Func<TResult>, Func<TResult>, Func<TResult>) : TResult
   Name : String
   QualifiedName : String
   ToString() : String
@@ -1949,6 +2435,77 @@ MaskedOverALocalRecord
   static op_LessThanOrEqual(MaskedOverALocalRecord, MaskedOverALocalRecord) : Boolean
   extension static MaskedOverALocalRecordExtensions.GetValue(MaskedOverALocalRecord) : String
   extension static MaskedOverALocalRecordExtensions.ValueOrNull(MaskedOverALocalRecord) : String
+MaskedSet
+  Match<TResult>(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<MaskedSet>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<MaskedSet>
+  implements IParsable<MaskedSet>
+  nested MaskedSetJsonConverter : JsonConverter<MaskedSet>
+  nested MaskedSetTypeConverter : TypeConverter
+  static All : IReadOnlyList<MaskedSet>
+  static Parse(String) : MaskedSet
+  static Parse(String, Boolean) : MaskedSet
+  static TryParse(String, Boolean, out MaskedSet) : Boolean
+  static TryParse(String, out MaskedSet) : Boolean
+ObjectCompareToOverloaded
+  CompareTo(Object) : Int32
+  CompareTo(ObjectCompareToOverloaded) : Int32
+  CompareTo(in Object) : Int32
+  CompareTo<TFormat>(Object) : Int32
+  Equals(Object) : Boolean
+  Equals(ObjectCompareToOverloaded) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ObjectCompareToOverloaded, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ObjectCompareToOverloaded>
+  implements IComparisonOperators<ObjectCompareToOverloaded, ObjectCompareToOverloaded, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ObjectCompareToOverloaded, ObjectCompareToOverloaded, Boolean>
+  implements IEquatable<ObjectCompareToOverloaded>
+  implements IFormattable
+  implements IMinMaxValue<ObjectCompareToOverloaded>
+  implements IParsable<ObjectCompareToOverloaded>
+  implements IPlainValueObject<ObjectCompareToOverloaded, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<ObjectCompareToOverloaded>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ObjectCompareToOverloaded>
+  implements IValue<Int32>
+  implements IValueObject<ObjectCompareToOverloaded, Int32>
+  implements IValueObjectMaterializer<ObjectCompareToOverloaded, Int32>
+  nested ObjectCompareToOverloadedJsonConverter : JsonConverter<ObjectCompareToOverloaded>, IStoredJsonConverterSource
+  nested ObjectCompareToOverloadedTypeConverter : TypeConverter
+  new()
+  static From(Int32) : ObjectCompareToOverloaded
+  static MaxValue : ObjectCompareToOverloaded
+  static MinValue : ObjectCompareToOverloaded
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ObjectCompareToOverloaded
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ObjectCompareToOverloaded
+  static Parse(String, IFormatProvider) : ObjectCompareToOverloaded
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ObjectCompareToOverloaded) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ObjectCompareToOverloaded) : Boolean
+  static TryParse(String, IFormatProvider, out ObjectCompareToOverloaded) : Boolean
+  static op_Equality(ObjectCompareToOverloaded, ObjectCompareToOverloaded) : Boolean
+  static op_GreaterThan(ObjectCompareToOverloaded, ObjectCompareToOverloaded) : Boolean
+  static op_GreaterThanOrEqual(ObjectCompareToOverloaded, ObjectCompareToOverloaded) : Boolean
+  static op_Inequality(ObjectCompareToOverloaded, ObjectCompareToOverloaded) : Boolean
+  static op_LessThan(ObjectCompareToOverloaded, ObjectCompareToOverloaded) : Boolean
+  static op_LessThanOrEqual(ObjectCompareToOverloaded, ObjectCompareToOverloaded) : Boolean
+  extension static ObjectCompareToOverloadedExtensions.GetValue(ObjectCompareToOverloaded) : Int32
+  extension static ObjectCompareToOverloadedExtensions.ValueOrNull(ObjectCompareToOverloaded?) : Int32?
 OverABetweenExplicitEqualityRecord
   <Clone>$() : OverABetweenExplicitEqualityRecord
   CompareTo(Object) : Int32
@@ -2065,6 +2622,61 @@ OverADeeperExplicitEqualityRecord
   static op_LessThanOrEqual(OverADeeperExplicitEqualityRecord, OverADeeperExplicitEqualityRecord) : Boolean
   extension static OverADeeperExplicitEqualityRecordExtensions.GetValue(OverADeeperExplicitEqualityRecord) : Int32
   extension static OverADeeperExplicitEqualityRecordExtensions.ValueOrNull(OverADeeperExplicitEqualityRecord) : Int32?
+OverALibraryOverloadingBase
+  <Clone>$() : OverALibraryOverloadingBase
+  CompareTo(Object) : Int32
+  CompareTo(OverALibraryOverloadingBase) : Int32
+  Equals(Object) : Boolean
+  Equals(OverALibraryOverloadingBase) : Boolean
+  Equals(ProbeOverloadingRecord<OverALibraryOverloadingBase>) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<OverALibraryOverloadingBase, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<OverALibraryOverloadingBase>
+  implements IComparisonOperators<OverALibraryOverloadingBase, OverALibraryOverloadingBase, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<OverALibraryOverloadingBase, OverALibraryOverloadingBase, Boolean>
+  implements IEquatable<OverALibraryOverloadingBase>
+  implements IEquatable<ProbeOverloadingRecord<OverALibraryOverloadingBase>>
+  implements IFormattable
+  implements IMinMaxValue<OverALibraryOverloadingBase>
+  implements IParsable<OverALibraryOverloadingBase>
+  implements IPlainValueObject<OverALibraryOverloadingBase, Int32>
+  implements IReimplementedEquatable<ProbeOverloadingRecord<OverALibraryOverloadingBase>>
+  implements ISpanFormattable
+  implements ISpanParsable<OverALibraryOverloadingBase>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<OverALibraryOverloadingBase>
+  implements IValue<Int32>
+  implements IValueObject<OverALibraryOverloadingBase, Int32>
+  implements IValueObjectMaterializer<OverALibraryOverloadingBase, Int32>
+  nested OverALibraryOverloadingBaseJsonConverter : JsonConverter<OverALibraryOverloadingBase>, IStoredJsonConverterSource
+  nested OverALibraryOverloadingBaseTypeConverter : TypeConverter
+  static From(Int32) : OverALibraryOverloadingBase
+  static MaxValue : OverALibraryOverloadingBase
+  static MinValue : OverALibraryOverloadingBase
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : OverALibraryOverloadingBase
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : OverALibraryOverloadingBase
+  static Parse(String, IFormatProvider) : OverALibraryOverloadingBase
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out OverALibraryOverloadingBase) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out OverALibraryOverloadingBase) : Boolean
+  static TryParse(String, IFormatProvider, out OverALibraryOverloadingBase) : Boolean
+  static op_Equality(OverALibraryOverloadingBase, OverALibraryOverloadingBase) : Boolean
+  static op_GreaterThan(OverALibraryOverloadingBase, OverALibraryOverloadingBase) : Boolean
+  static op_GreaterThanOrEqual(OverALibraryOverloadingBase, OverALibraryOverloadingBase) : Boolean
+  static op_Inequality(OverALibraryOverloadingBase, OverALibraryOverloadingBase) : Boolean
+  static op_LessThan(OverALibraryOverloadingBase, OverALibraryOverloadingBase) : Boolean
+  static op_LessThanOrEqual(OverALibraryOverloadingBase, OverALibraryOverloadingBase) : Boolean
+  extension static OverALibraryOverloadingBaseExtensions.GetValue(OverALibraryOverloadingBase) : Int32
+  extension static OverALibraryOverloadingBaseExtensions.ValueOrNull(OverALibraryOverloadingBase) : Int32?
 OverALibraryRecord
   <Clone>$() : OverALibraryRecord
   CompareTo(Object) : Int32
@@ -2326,6 +2938,61 @@ OverAnIdentityRecord
   static op_LessThanOrEqual(OverAnIdentityRecord, OverAnIdentityRecord) : Boolean
   extension static OverAnIdentityRecordExtensions.GetValue(OverAnIdentityRecord) : Int32
   extension static OverAnIdentityRecordExtensions.ValueOrNull(OverAnIdentityRecord) : Int32?
+OverAnOverloadingBase
+  <Clone>$() : OverAnOverloadingBase
+  CompareTo(Object) : Int32
+  CompareTo(OverAnOverloadingBase) : Int32
+  Equals(Object) : Boolean
+  Equals(OverAnOverloadingBase) : Boolean
+  Equals(OverloadingBase<OverAnOverloadingBase>) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<OverAnOverloadingBase, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<OverAnOverloadingBase>
+  implements IComparisonOperators<OverAnOverloadingBase, OverAnOverloadingBase, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<OverAnOverloadingBase, OverAnOverloadingBase, Boolean>
+  implements IEquatable<OverAnOverloadingBase>
+  implements IEquatable<OverloadingBase<OverAnOverloadingBase>>
+  implements IFormattable
+  implements IMinMaxValue<OverAnOverloadingBase>
+  implements IParsable<OverAnOverloadingBase>
+  implements IPlainValueObject<OverAnOverloadingBase, Int32>
+  implements IReimplementedEquatable<OverloadingBase<OverAnOverloadingBase>>
+  implements ISpanFormattable
+  implements ISpanParsable<OverAnOverloadingBase>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<OverAnOverloadingBase>
+  implements IValue<Int32>
+  implements IValueObject<OverAnOverloadingBase, Int32>
+  implements IValueObjectMaterializer<OverAnOverloadingBase, Int32>
+  nested OverAnOverloadingBaseJsonConverter : JsonConverter<OverAnOverloadingBase>, IStoredJsonConverterSource
+  nested OverAnOverloadingBaseTypeConverter : TypeConverter
+  static From(Int32) : OverAnOverloadingBase
+  static MaxValue : OverAnOverloadingBase
+  static MinValue : OverAnOverloadingBase
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : OverAnOverloadingBase
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : OverAnOverloadingBase
+  static Parse(String, IFormatProvider) : OverAnOverloadingBase
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out OverAnOverloadingBase) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out OverAnOverloadingBase) : Boolean
+  static TryParse(String, IFormatProvider, out OverAnOverloadingBase) : Boolean
+  static op_Equality(OverAnOverloadingBase, OverAnOverloadingBase) : Boolean
+  static op_GreaterThan(OverAnOverloadingBase, OverAnOverloadingBase) : Boolean
+  static op_GreaterThanOrEqual(OverAnOverloadingBase, OverAnOverloadingBase) : Boolean
+  static op_Inequality(OverAnOverloadingBase, OverAnOverloadingBase) : Boolean
+  static op_LessThan(OverAnOverloadingBase, OverAnOverloadingBase) : Boolean
+  static op_LessThanOrEqual(OverAnOverloadingBase, OverAnOverloadingBase) : Boolean
+  extension static OverAnOverloadingBaseExtensions.GetValue(OverAnOverloadingBase) : Int32
+  extension static OverAnOverloadingBaseExtensions.ValueOrNull(OverAnOverloadingBase) : Int32?
 OverByte
   CompareTo(Object) : Int32
   CompareTo(OverByte) : Int32
@@ -3009,6 +3676,61 @@ OverParsesVirtually
   static op_Inequality(OverParsesVirtually, OverParsesVirtually) : Boolean
   extension static OverParsesVirtuallyExtensions.GetValue(OverParsesVirtually) : IParsesVirtually
   extension static OverParsesVirtuallyExtensions.ValueOrNull(OverParsesVirtually?) : IParsesVirtually
+OverPrivateNames
+  <Clone>$() : OverPrivateNames
+  CompareTo(Object) : Int32
+  CompareTo(OverPrivateNames) : Int32
+  Equals(Object) : Boolean
+  Equals(OverPrivateNames) : Boolean
+  Equals(PrivateNamesBase<OverPrivateNames>) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<OverPrivateNames, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<OverPrivateNames>
+  implements IComparisonOperators<OverPrivateNames, OverPrivateNames, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<OverPrivateNames, OverPrivateNames, Boolean>
+  implements IEquatable<OverPrivateNames>
+  implements IEquatable<PrivateNamesBase<OverPrivateNames>>
+  implements IFormattable
+  implements IMinMaxValue<OverPrivateNames>
+  implements IParsable<OverPrivateNames>
+  implements IPlainValueObject<OverPrivateNames, Int32>
+  implements IReimplementedEquatable<PrivateNamesBase<OverPrivateNames>>
+  implements ISpanFormattable
+  implements ISpanParsable<OverPrivateNames>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<OverPrivateNames>
+  implements IValue<Int32>
+  implements IValueObject<OverPrivateNames, Int32>
+  implements IValueObjectMaterializer<OverPrivateNames, Int32>
+  nested OverPrivateNamesJsonConverter : JsonConverter<OverPrivateNames>, IStoredJsonConverterSource
+  nested OverPrivateNamesTypeConverter : TypeConverter
+  static From(Int32) : OverPrivateNames
+  static MaxValue : OverPrivateNames
+  static MinValue : OverPrivateNames
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : OverPrivateNames
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : OverPrivateNames
+  static Parse(String, IFormatProvider) : OverPrivateNames
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out OverPrivateNames) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out OverPrivateNames) : Boolean
+  static TryParse(String, IFormatProvider, out OverPrivateNames) : Boolean
+  static op_Equality(OverPrivateNames, OverPrivateNames) : Boolean
+  static op_GreaterThan(OverPrivateNames, OverPrivateNames) : Boolean
+  static op_GreaterThanOrEqual(OverPrivateNames, OverPrivateNames) : Boolean
+  static op_Inequality(OverPrivateNames, OverPrivateNames) : Boolean
+  static op_LessThan(OverPrivateNames, OverPrivateNames) : Boolean
+  static op_LessThanOrEqual(OverPrivateNames, OverPrivateNames) : Boolean
+  extension static OverPrivateNamesExtensions.GetValue(OverPrivateNames) : Int32
+  extension static OverPrivateNamesExtensions.ValueOrNull(OverPrivateNames) : Int32?
 OverProbeStatus
   Equals(Object) : Boolean
   Equals(OverProbeStatus) : Boolean
@@ -3255,6 +3977,29 @@ OverVersion
   static op_LessThanOrEqual(OverVersion, OverVersion) : Boolean
   extension static OverVersionExtensions.GetValue(OverVersion) : Version
   extension static OverVersionExtensions.ValueOrNull(OverVersion?) : Version
+OverloadingSet
+  Match<TResult>(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<OverloadingSet>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<OverloadingSet>
+  implements IParsable<OverloadingSet>
+  nested OverloadingSetJsonConverter : JsonConverter<OverloadingSet>
+  nested OverloadingSetTypeConverter : TypeConverter
+  static All : IReadOnlyList<OverloadingSet>
+  static Parse(String) : OverloadingSet
+  static Parse(String, Boolean) : OverloadingSet
+  static Parse<TFormat>(String) : OverloadingSet
+  static Parse<TFormat>(String, Boolean) : OverloadingSet
+  static TryParse(String, Boolean, OverloadingSet) : Boolean
+  static TryParse(String, Boolean, out OverloadingSet) : Boolean
+  static TryParse(String, OverloadingSet) : Boolean
+  static TryParse(String, out OverloadingSet) : Boolean
+  static TryParse<TFormat>(String, out OverloadingSet) : Boolean
 ParityByte
   CompareTo(Object) : Int32
   CompareTo(ParityByte) : Int32
@@ -3824,6 +4569,275 @@ ParityUShort
   static op_LessThanOrEqual(ParityUShort, ParityUShort) : Boolean
   extension static ParityUShortExtensions.GetValue(ParityUShort) : UInt16
   extension static ParityUShortExtensions.ValueOrNull(ParityUShort?) : UInt16?
+ParseOverloadedByArity
+  CompareTo(Object) : Int32
+  CompareTo(ParseOverloadedByArity) : Int32
+  Equals(Object) : Boolean
+  Equals(ParseOverloadedByArity) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ParseOverloadedByArity, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ParseOverloadedByArity>
+  implements IComparisonOperators<ParseOverloadedByArity, ParseOverloadedByArity, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ParseOverloadedByArity, ParseOverloadedByArity, Boolean>
+  implements IEquatable<ParseOverloadedByArity>
+  implements IFormattable
+  implements IMinMaxValue<ParseOverloadedByArity>
+  implements IParsable<ParseOverloadedByArity>
+  implements IPlainValueObject<ParseOverloadedByArity, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<ParseOverloadedByArity>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ParseOverloadedByArity>
+  implements IValue<Int32>
+  implements IValueObject<ParseOverloadedByArity, Int32>
+  implements IValueObjectMaterializer<ParseOverloadedByArity, Int32>
+  nested ParseOverloadedByArityJsonConverter : JsonConverter<ParseOverloadedByArity>, IStoredJsonConverterSource
+  nested ParseOverloadedByArityTypeConverter : TypeConverter
+  new()
+  static From(Int32) : ParseOverloadedByArity
+  static MaxValue : ParseOverloadedByArity
+  static MinValue : ParseOverloadedByArity
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ParseOverloadedByArity
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ParseOverloadedByArity
+  static Parse(String, IFormatProvider) : ParseOverloadedByArity
+  static Parse<TFormat>(String, IFormatProvider) : ParseOverloadedByArity
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ParseOverloadedByArity) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ParseOverloadedByArity) : Boolean
+  static TryParse(String, IFormatProvider, out ParseOverloadedByArity) : Boolean
+  static op_Equality(ParseOverloadedByArity, ParseOverloadedByArity) : Boolean
+  static op_GreaterThan(ParseOverloadedByArity, ParseOverloadedByArity) : Boolean
+  static op_GreaterThanOrEqual(ParseOverloadedByArity, ParseOverloadedByArity) : Boolean
+  static op_Inequality(ParseOverloadedByArity, ParseOverloadedByArity) : Boolean
+  static op_LessThan(ParseOverloadedByArity, ParseOverloadedByArity) : Boolean
+  static op_LessThanOrEqual(ParseOverloadedByArity, ParseOverloadedByArity) : Boolean
+  extension static ParseOverloadedByArityExtensions.GetValue(ParseOverloadedByArity) : Int32
+  extension static ParseOverloadedByArityExtensions.ValueOrNull(ParseOverloadedByArity?) : Int32?
+ParseOverloadedInARecordClass
+  <Clone>$() : ParseOverloadedInARecordClass
+  CompareTo(Object) : Int32
+  CompareTo(ParseOverloadedInARecordClass) : Int32
+  Equals(Object) : Boolean
+  Equals(ParseOverloadedInARecordClass) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ParseOverloadedInARecordClass, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ParseOverloadedInARecordClass>
+  implements IComparisonOperators<ParseOverloadedInARecordClass, ParseOverloadedInARecordClass, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ParseOverloadedInARecordClass, ParseOverloadedInARecordClass, Boolean>
+  implements IEquatable<ParseOverloadedInARecordClass>
+  implements IFormattable
+  implements IMinMaxValue<ParseOverloadedInARecordClass>
+  implements IParsable<ParseOverloadedInARecordClass>
+  implements IPlainValueObject<ParseOverloadedInARecordClass, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<ParseOverloadedInARecordClass>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ParseOverloadedInARecordClass>
+  implements IValue<Int32>
+  implements IValueObject<ParseOverloadedInARecordClass, Int32>
+  implements IValueObjectMaterializer<ParseOverloadedInARecordClass, Int32>
+  nested ParseOverloadedInARecordClassJsonConverter : JsonConverter<ParseOverloadedInARecordClass>, IStoredJsonConverterSource
+  nested ParseOverloadedInARecordClassTypeConverter : TypeConverter
+  static From(Int32) : ParseOverloadedInARecordClass
+  static MaxValue : ParseOverloadedInARecordClass
+  static MinValue : ParseOverloadedInARecordClass
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ParseOverloadedInARecordClass
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ParseOverloadedInARecordClass
+  static Parse(String, IFormatProvider) : ParseOverloadedInARecordClass
+  static Parse<TFormat>(String, IFormatProvider) : ParseOverloadedInARecordClass
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ParseOverloadedInARecordClass) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ParseOverloadedInARecordClass) : Boolean
+  static TryParse(String, IFormatProvider, out ParseOverloadedInARecordClass) : Boolean
+  static op_Equality(ParseOverloadedInARecordClass, ParseOverloadedInARecordClass) : Boolean
+  static op_GreaterThan(ParseOverloadedInARecordClass, ParseOverloadedInARecordClass) : Boolean
+  static op_GreaterThanOrEqual(ParseOverloadedInARecordClass, ParseOverloadedInARecordClass) : Boolean
+  static op_Inequality(ParseOverloadedInARecordClass, ParseOverloadedInARecordClass) : Boolean
+  static op_LessThan(ParseOverloadedInARecordClass, ParseOverloadedInARecordClass) : Boolean
+  static op_LessThanOrEqual(ParseOverloadedInARecordClass, ParseOverloadedInARecordClass) : Boolean
+  extension static ParseOverloadedInARecordClassExtensions.GetValue(ParseOverloadedInARecordClass) : Int32
+  extension static ParseOverloadedInARecordClassExtensions.ValueOrNull(ParseOverloadedInARecordClass) : Int32?
+PlainOverASeamOverloadingBase
+  <Clone>$() : PlainOverASeamOverloadingBase
+  CompareTo(Object) : Int32
+  CompareTo(PlainOverASeamOverloadingBase) : Int32
+  Equals(Object) : Boolean
+  Equals(PlainOverASeamOverloadingBase) : Boolean
+  Equals(SeamOverloadingBase<PlainOverASeamOverloadingBase>) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<PlainOverASeamOverloadingBase, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<PlainOverASeamOverloadingBase>
+  implements IComparisonOperators<PlainOverASeamOverloadingBase, PlainOverASeamOverloadingBase, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<PlainOverASeamOverloadingBase, PlainOverASeamOverloadingBase, Boolean>
+  implements IEquatable<PlainOverASeamOverloadingBase>
+  implements IEquatable<SeamOverloadingBase<PlainOverASeamOverloadingBase>>
+  implements IFormattable
+  implements IMinMaxValue<PlainOverASeamOverloadingBase>
+  implements IParsable<PlainOverASeamOverloadingBase>
+  implements IPlainValueObject<PlainOverASeamOverloadingBase, Int32>
+  implements IReimplementedEquatable<SeamOverloadingBase<PlainOverASeamOverloadingBase>>
+  implements ISpanFormattable
+  implements ISpanParsable<PlainOverASeamOverloadingBase>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<PlainOverASeamOverloadingBase>
+  implements IValue<Int32>
+  implements IValueObject<PlainOverASeamOverloadingBase, Int32>
+  implements IValueObjectMaterializer<PlainOverASeamOverloadingBase, Int32>
+  nested PlainOverASeamOverloadingBaseJsonConverter : JsonConverter<PlainOverASeamOverloadingBase>, IStoredJsonConverterSource
+  nested PlainOverASeamOverloadingBaseTypeConverter : TypeConverter
+  static From(Int32) : PlainOverASeamOverloadingBase
+  static MaxValue : PlainOverASeamOverloadingBase
+  static MinValue : PlainOverASeamOverloadingBase
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : PlainOverASeamOverloadingBase
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : PlainOverASeamOverloadingBase
+  static Parse(String, IFormatProvider) : PlainOverASeamOverloadingBase
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out PlainOverASeamOverloadingBase) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out PlainOverASeamOverloadingBase) : Boolean
+  static TryParse(String, IFormatProvider, out PlainOverASeamOverloadingBase) : Boolean
+  static op_Equality(PlainOverASeamOverloadingBase, PlainOverASeamOverloadingBase) : Boolean
+  static op_GreaterThan(PlainOverASeamOverloadingBase, PlainOverASeamOverloadingBase) : Boolean
+  static op_GreaterThanOrEqual(PlainOverASeamOverloadingBase, PlainOverASeamOverloadingBase) : Boolean
+  static op_Inequality(PlainOverASeamOverloadingBase, PlainOverASeamOverloadingBase) : Boolean
+  static op_LessThan(PlainOverASeamOverloadingBase, PlainOverASeamOverloadingBase) : Boolean
+  static op_LessThanOrEqual(PlainOverASeamOverloadingBase, PlainOverASeamOverloadingBase) : Boolean
+  extension static PlainOverASeamOverloadingBaseExtensions.GetValue(PlainOverASeamOverloadingBase) : Int32
+  extension static PlainOverASeamOverloadingBaseExtensions.ValueOrNull(PlainOverASeamOverloadingBase) : Int32?
+PrintMembersOverloadedByArity
+  <Clone>$() : PrintMembersOverloadedByArity
+  CompareTo(Object) : Int32
+  CompareTo(PrintMembersOverloadedByArity) : Int32
+  Equals(Object) : Boolean
+  Equals(PrintMembersOverloadedByArity) : Boolean
+  GetHashCode() : Int32
+  PrintMembers<TFormat>(StringBuilder) : Boolean
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<PrintMembersOverloadedByArity, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<PrintMembersOverloadedByArity>
+  implements IComparisonOperators<PrintMembersOverloadedByArity, PrintMembersOverloadedByArity, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<PrintMembersOverloadedByArity, PrintMembersOverloadedByArity, Boolean>
+  implements IEquatable<PrintMembersOverloadedByArity>
+  implements IFormattable
+  implements IMinMaxValue<PrintMembersOverloadedByArity>
+  implements IParsable<PrintMembersOverloadedByArity>
+  implements IPlainValueObject<PrintMembersOverloadedByArity, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<PrintMembersOverloadedByArity>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<PrintMembersOverloadedByArity>
+  implements IValue<Int32>
+  implements IValueObject<PrintMembersOverloadedByArity, Int32>
+  implements IValueObjectMaterializer<PrintMembersOverloadedByArity, Int32>
+  nested PrintMembersOverloadedByArityJsonConverter : JsonConverter<PrintMembersOverloadedByArity>, IStoredJsonConverterSource
+  nested PrintMembersOverloadedByArityTypeConverter : TypeConverter
+  static From(Int32) : PrintMembersOverloadedByArity
+  static MaxValue : PrintMembersOverloadedByArity
+  static MinValue : PrintMembersOverloadedByArity
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : PrintMembersOverloadedByArity
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : PrintMembersOverloadedByArity
+  static Parse(String, IFormatProvider) : PrintMembersOverloadedByArity
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out PrintMembersOverloadedByArity) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out PrintMembersOverloadedByArity) : Boolean
+  static TryParse(String, IFormatProvider, out PrintMembersOverloadedByArity) : Boolean
+  static op_Equality(PrintMembersOverloadedByArity, PrintMembersOverloadedByArity) : Boolean
+  static op_GreaterThan(PrintMembersOverloadedByArity, PrintMembersOverloadedByArity) : Boolean
+  static op_GreaterThanOrEqual(PrintMembersOverloadedByArity, PrintMembersOverloadedByArity) : Boolean
+  static op_Inequality(PrintMembersOverloadedByArity, PrintMembersOverloadedByArity) : Boolean
+  static op_LessThan(PrintMembersOverloadedByArity, PrintMembersOverloadedByArity) : Boolean
+  static op_LessThanOrEqual(PrintMembersOverloadedByArity, PrintMembersOverloadedByArity) : Boolean
+  extension static PrintMembersOverloadedByArityExtensions.GetValue(PrintMembersOverloadedByArity) : Int32
+  extension static PrintMembersOverloadedByArityExtensions.ValueOrNull(PrintMembersOverloadedByArity) : Int32?
+SetOverAnOverloadingBase
+  Match<TResult>(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<SetOverAnOverloadingBase>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<SetOverAnOverloadingBase>
+  implements IParsable<SetOverAnOverloadingBase>
+  nested SetOverAnOverloadingBaseJsonConverter : JsonConverter<SetOverAnOverloadingBase>
+  nested SetOverAnOverloadingBaseTypeConverter : TypeConverter
+  static All : IReadOnlyList<SetOverAnOverloadingBase>
+  static Parse(String) : SetOverAnOverloadingBase
+  static Parse(String, Boolean) : SetOverAnOverloadingBase
+  static TryParse(String, Boolean, out SetOverAnOverloadingBase) : Boolean
+  static TryParse(String, out SetOverAnOverloadingBase) : Boolean
+SetOverPrivateNames
+  Match<TResult>(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<SetOverPrivateNames>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<SetOverPrivateNames>
+  implements IParsable<SetOverPrivateNames>
+  nested SetOverPrivateNamesJsonConverter : JsonConverter<SetOverPrivateNames>
+  nested SetOverPrivateNamesTypeConverter : TypeConverter
+  static All : IReadOnlyList<SetOverPrivateNames>
+  static Parse(String) : SetOverPrivateNames
+  static Parse(String, Boolean) : SetOverPrivateNames
+  static TryParse(String, Boolean, out SetOverPrivateNames) : Boolean
+  static TryParse(String, out SetOverPrivateNames) : Boolean
+SetWithAGenericToString
+  Match<TResult>(Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  ToString() : String
+  ToString<TFormat>() : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<SetWithAGenericToString>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<SetWithAGenericToString>
+  implements IParsable<SetWithAGenericToString>
+  nested SetWithAGenericToStringJsonConverter : JsonConverter<SetWithAGenericToString>
+  nested SetWithAGenericToStringTypeConverter : TypeConverter
+  static All : IReadOnlyList<SetWithAGenericToString>
+  static Parse(String) : SetWithAGenericToString
+  static Parse(String, Boolean) : SetWithAGenericToString
+  static TryParse(String, Boolean, out SetWithAGenericToString) : Boolean
+  static TryParse(String, out SetWithAGenericToString) : Boolean
 ShippableStatus
   Equals(Object) : Boolean
   Equals(ShippableStatus) : Boolean
@@ -3855,6 +4869,60 @@ ShippableStatus
   static op_Inequality(ShippableStatus, ShippableStatus) : Boolean
   extension static ShippableStatusExtensions.GetValue(ShippableStatus) : LocalStatus
   extension static ShippableStatusExtensions.ValueOrNull(ShippableStatus?) : LocalStatus
+SpanParseOverloaded
+  CompareTo(Object) : Int32
+  CompareTo(SpanParseOverloaded) : Int32
+  Equals(Object) : Boolean
+  Equals(SpanParseOverloaded) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<SpanParseOverloaded, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<SpanParseOverloaded>
+  implements IComparisonOperators<SpanParseOverloaded, SpanParseOverloaded, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<SpanParseOverloaded, SpanParseOverloaded, Boolean>
+  implements IEquatable<SpanParseOverloaded>
+  implements IFormattable
+  implements IMinMaxValue<SpanParseOverloaded>
+  implements IParsable<SpanParseOverloaded>
+  implements IPlainValueObject<SpanParseOverloaded, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<SpanParseOverloaded>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<SpanParseOverloaded>
+  implements IValue<Int32>
+  implements IValueObject<SpanParseOverloaded, Int32>
+  implements IValueObjectMaterializer<SpanParseOverloaded, Int32>
+  nested SpanParseOverloadedJsonConverter : JsonConverter<SpanParseOverloaded>, IStoredJsonConverterSource
+  nested SpanParseOverloadedTypeConverter : TypeConverter
+  new()
+  static From(Int32) : SpanParseOverloaded
+  static MaxValue : SpanParseOverloaded
+  static MinValue : SpanParseOverloaded
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : SpanParseOverloaded
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : SpanParseOverloaded
+  static Parse(String, IFormatProvider) : SpanParseOverloaded
+  static Parse<TFormat>(ReadOnlySpan<Char>, IFormatProvider) : SpanParseOverloaded
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out SpanParseOverloaded) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, SpanParseOverloaded) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out SpanParseOverloaded) : Boolean
+  static TryParse(String, IFormatProvider, out SpanParseOverloaded) : Boolean
+  static op_Equality(SpanParseOverloaded, SpanParseOverloaded) : Boolean
+  static op_GreaterThan(SpanParseOverloaded, SpanParseOverloaded) : Boolean
+  static op_GreaterThanOrEqual(SpanParseOverloaded, SpanParseOverloaded) : Boolean
+  static op_Inequality(SpanParseOverloaded, SpanParseOverloaded) : Boolean
+  static op_LessThan(SpanParseOverloaded, SpanParseOverloaded) : Boolean
+  static op_LessThanOrEqual(SpanParseOverloaded, SpanParseOverloaded) : Boolean
+  extension static SpanParseOverloadedExtensions.GetValue(SpanParseOverloaded) : Int32
+  extension static SpanParseOverloadedExtensions.ValueOrNull(SpanParseOverloaded?) : Int32?
 StageOfOrder
   Equals(Object) : Boolean
   Equals(StageOfOrder) : Boolean
@@ -4196,3 +5264,422 @@ ThrowingSku
   static op_Inequality(ThrowingSku, ThrowingSku) : Boolean
   extension static ThrowingSkuExtensions.GetValue(ThrowingSku) : ProbeSkuText
   extension static ThrowingSkuExtensions.ValueOrNull(ThrowingSku?) : ProbeSkuText
+ToStringOverloadedByArity
+  CompareTo(Object) : Int32
+  CompareTo(ToStringOverloadedByArity) : Int32
+  Equals(Object) : Boolean
+  Equals(ToStringOverloadedByArity) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  ToString<TFormat>() : String
+  Value : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ToStringOverloadedByArity, String>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ToStringOverloadedByArity>
+  implements IComparisonOperators<ToStringOverloadedByArity, ToStringOverloadedByArity, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ToStringOverloadedByArity, ToStringOverloadedByArity, Boolean>
+  implements IEquatable<ToStringOverloadedByArity>
+  implements IFormattable
+  implements IParsable<ToStringOverloadedByArity>
+  implements IPlainValueObject<ToStringOverloadedByArity, String>
+  implements ISpanParsable<ToStringOverloadedByArity>
+  implements IValue<String>
+  implements IValueObject<ToStringOverloadedByArity, String>
+  implements IValueObjectMaterializer<ToStringOverloadedByArity, String>
+  nested ToStringOverloadedByArityJsonConverter : JsonConverter<ToStringOverloadedByArity>, IStoredJsonConverterSource
+  nested ToStringOverloadedByArityTypeConverter : TypeConverter
+  new()
+  static From(String) : ToStringOverloadedByArity
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ToStringOverloadedByArity
+  static Parse(String, IFormatProvider) : ToStringOverloadedByArity
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ToStringOverloadedByArity) : Boolean
+  static TryParse(String, IFormatProvider, out ToStringOverloadedByArity) : Boolean
+  static op_Equality(ToStringOverloadedByArity, ToStringOverloadedByArity) : Boolean
+  static op_GreaterThan(ToStringOverloadedByArity, ToStringOverloadedByArity) : Boolean
+  static op_GreaterThanOrEqual(ToStringOverloadedByArity, ToStringOverloadedByArity) : Boolean
+  static op_Inequality(ToStringOverloadedByArity, ToStringOverloadedByArity) : Boolean
+  static op_LessThan(ToStringOverloadedByArity, ToStringOverloadedByArity) : Boolean
+  static op_LessThanOrEqual(ToStringOverloadedByArity, ToStringOverloadedByArity) : Boolean
+  extension static ToStringOverloadedByArityExtensions.GetValue(ToStringOverloadedByArity) : String
+  extension static ToStringOverloadedByArityExtensions.ValueOrNull(ToStringOverloadedByArity?) : String
+TryFormatOverloaded
+  CompareTo(Object) : Int32
+  CompareTo(TryFormatOverloaded) : Int32
+  Equals(Object) : Boolean
+  Equals(TryFormatOverloaded) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat<TFormat>(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<TryFormatOverloaded, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<TryFormatOverloaded>
+  implements IComparisonOperators<TryFormatOverloaded, TryFormatOverloaded, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<TryFormatOverloaded, TryFormatOverloaded, Boolean>
+  implements IEquatable<TryFormatOverloaded>
+  implements IFormattable
+  implements IMinMaxValue<TryFormatOverloaded>
+  implements IParsable<TryFormatOverloaded>
+  implements IPlainValueObject<TryFormatOverloaded, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<TryFormatOverloaded>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<TryFormatOverloaded>
+  implements IValue<Int32>
+  implements IValueObject<TryFormatOverloaded, Int32>
+  implements IValueObjectMaterializer<TryFormatOverloaded, Int32>
+  nested TryFormatOverloadedJsonConverter : JsonConverter<TryFormatOverloaded>, IStoredJsonConverterSource
+  nested TryFormatOverloadedTypeConverter : TypeConverter
+  new()
+  static From(Int32) : TryFormatOverloaded
+  static MaxValue : TryFormatOverloaded
+  static MinValue : TryFormatOverloaded
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : TryFormatOverloaded
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : TryFormatOverloaded
+  static Parse(String, IFormatProvider) : TryFormatOverloaded
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out TryFormatOverloaded) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out TryFormatOverloaded) : Boolean
+  static TryParse(String, IFormatProvider, out TryFormatOverloaded) : Boolean
+  static op_Equality(TryFormatOverloaded, TryFormatOverloaded) : Boolean
+  static op_GreaterThan(TryFormatOverloaded, TryFormatOverloaded) : Boolean
+  static op_GreaterThanOrEqual(TryFormatOverloaded, TryFormatOverloaded) : Boolean
+  static op_Inequality(TryFormatOverloaded, TryFormatOverloaded) : Boolean
+  static op_LessThan(TryFormatOverloaded, TryFormatOverloaded) : Boolean
+  static op_LessThanOrEqual(TryFormatOverloaded, TryFormatOverloaded) : Boolean
+  extension static TryFormatOverloadedExtensions.GetValue(TryFormatOverloaded) : Int32
+  extension static TryFormatOverloadedExtensions.ValueOrNull(TryFormatOverloaded?) : Int32?
+TryFromOverloaded
+  CompareTo(Object) : Int32
+  CompareTo(TryFromOverloaded) : Int32
+  Equals(Object) : Boolean
+  Equals(TryFromOverloaded) : Boolean
+  GetHashCode() : Int32
+  Revalidate() : Result<TryFromOverloaded, OverloadFault>
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<TryFromOverloaded, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<TryFromOverloaded>
+  implements IComparisonOperators<TryFromOverloaded, TryFromOverloaded, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<TryFromOverloaded, TryFromOverloaded, Boolean>
+  implements IEquatable<TryFromOverloaded>
+  implements IFormattable
+  implements IParsable<TryFromOverloaded>
+  implements ISpanFormattable
+  implements ISpanParsable<TryFromOverloaded>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<TryFromOverloaded>
+  implements IValidatedValue<TryFromOverloaded, Int32, OverloadFault>
+  implements IValueObject<TryFromOverloaded, Int32>
+  implements IValueObjectMaterializer<TryFromOverloaded, Int32>
+  nested TryFromOverloadedJsonConverter : JsonConverter<TryFromOverloaded>, IStoredJsonConverterSource
+  nested TryFromOverloadedTypeConverter : TypeConverter
+  new()
+  static Create(Int32) : Result<TryFromOverloaded, OverloadFault>
+  static FromKnownGood(Int32, String) : TryFromOverloaded
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : TryFromOverloaded
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : TryFromOverloaded
+  static Parse(String, IFormatProvider) : TryFromOverloaded
+  static TryFrom(Int32) : Option<TryFromOverloaded>
+  static TryFrom(in Int32) : Option<TryFromOverloaded>
+  static TryFrom<TFormat>(Int32) : Option<TryFromOverloaded>
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out TryFromOverloaded) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out TryFromOverloaded) : Boolean
+  static TryParse(String, IFormatProvider, out TryFromOverloaded) : Boolean
+  static op_Equality(TryFromOverloaded, TryFromOverloaded) : Boolean
+  static op_GreaterThan(TryFromOverloaded, TryFromOverloaded) : Boolean
+  static op_GreaterThanOrEqual(TryFromOverloaded, TryFromOverloaded) : Boolean
+  static op_Inequality(TryFromOverloaded, TryFromOverloaded) : Boolean
+  static op_LessThan(TryFromOverloaded, TryFromOverloaded) : Boolean
+  static op_LessThanOrEqual(TryFromOverloaded, TryFromOverloaded) : Boolean
+  extension static TryFromOverloadedExtensions.GetValue(TryFromOverloaded) : Int32
+  extension static TryFromOverloadedExtensions.ValueOrNull(TryFromOverloaded?) : Int32?
+TryParseOverloadedByArity
+  CompareTo(Object) : Int32
+  CompareTo(TryParseOverloadedByArity) : Int32
+  Equals(Object) : Boolean
+  Equals(TryParseOverloadedByArity) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<TryParseOverloadedByArity, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<TryParseOverloadedByArity>
+  implements IComparisonOperators<TryParseOverloadedByArity, TryParseOverloadedByArity, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<TryParseOverloadedByArity, TryParseOverloadedByArity, Boolean>
+  implements IEquatable<TryParseOverloadedByArity>
+  implements IFormattable
+  implements IMinMaxValue<TryParseOverloadedByArity>
+  implements IParsable<TryParseOverloadedByArity>
+  implements IPlainValueObject<TryParseOverloadedByArity, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<TryParseOverloadedByArity>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<TryParseOverloadedByArity>
+  implements IValue<Int32>
+  implements IValueObject<TryParseOverloadedByArity, Int32>
+  implements IValueObjectMaterializer<TryParseOverloadedByArity, Int32>
+  nested TryParseOverloadedByArityJsonConverter : JsonConverter<TryParseOverloadedByArity>, IStoredJsonConverterSource
+  nested TryParseOverloadedByArityTypeConverter : TypeConverter
+  new()
+  static From(Int32) : TryParseOverloadedByArity
+  static MaxValue : TryParseOverloadedByArity
+  static MinValue : TryParseOverloadedByArity
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : TryParseOverloadedByArity
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : TryParseOverloadedByArity
+  static Parse(String, IFormatProvider) : TryParseOverloadedByArity
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out TryParseOverloadedByArity) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out TryParseOverloadedByArity) : Boolean
+  static TryParse(String, IFormatProvider, out TryParseOverloadedByArity) : Boolean
+  static TryParse<TFormat>(String, IFormatProvider, out TryParseOverloadedByArity) : Boolean
+  static op_Equality(TryParseOverloadedByArity, TryParseOverloadedByArity) : Boolean
+  static op_GreaterThan(TryParseOverloadedByArity, TryParseOverloadedByArity) : Boolean
+  static op_GreaterThanOrEqual(TryParseOverloadedByArity, TryParseOverloadedByArity) : Boolean
+  static op_Inequality(TryParseOverloadedByArity, TryParseOverloadedByArity) : Boolean
+  static op_LessThan(TryParseOverloadedByArity, TryParseOverloadedByArity) : Boolean
+  static op_LessThanOrEqual(TryParseOverloadedByArity, TryParseOverloadedByArity) : Boolean
+  extension static TryParseOverloadedByArityExtensions.GetValue(TryParseOverloadedByArity) : Int32
+  extension static TryParseOverloadedByArityExtensions.ValueOrNull(TryParseOverloadedByArity?) : Int32?
+TryParseOverloadedByValue
+  CompareTo(Object) : Int32
+  CompareTo(TryParseOverloadedByValue) : Int32
+  Equals(Object) : Boolean
+  Equals(TryParseOverloadedByValue) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<TryParseOverloadedByValue, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<TryParseOverloadedByValue>
+  implements IComparisonOperators<TryParseOverloadedByValue, TryParseOverloadedByValue, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<TryParseOverloadedByValue, TryParseOverloadedByValue, Boolean>
+  implements IEquatable<TryParseOverloadedByValue>
+  implements IFormattable
+  implements IMinMaxValue<TryParseOverloadedByValue>
+  implements IParsable<TryParseOverloadedByValue>
+  implements IPlainValueObject<TryParseOverloadedByValue, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<TryParseOverloadedByValue>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<TryParseOverloadedByValue>
+  implements IValue<Int32>
+  implements IValueObject<TryParseOverloadedByValue, Int32>
+  implements IValueObjectMaterializer<TryParseOverloadedByValue, Int32>
+  nested TryParseOverloadedByValueJsonConverter : JsonConverter<TryParseOverloadedByValue>, IStoredJsonConverterSource
+  nested TryParseOverloadedByValueTypeConverter : TypeConverter
+  new()
+  static From(Int32) : TryParseOverloadedByValue
+  static MaxValue : TryParseOverloadedByValue
+  static MinValue : TryParseOverloadedByValue
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : TryParseOverloadedByValue
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : TryParseOverloadedByValue
+  static Parse(String, IFormatProvider) : TryParseOverloadedByValue
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out TryParseOverloadedByValue) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out TryParseOverloadedByValue) : Boolean
+  static TryParse(String, IFormatProvider, TryParseOverloadedByValue) : Boolean
+  static TryParse(String, IFormatProvider, out TryParseOverloadedByValue) : Boolean
+  static op_Equality(TryParseOverloadedByValue, TryParseOverloadedByValue) : Boolean
+  static op_GreaterThan(TryParseOverloadedByValue, TryParseOverloadedByValue) : Boolean
+  static op_GreaterThanOrEqual(TryParseOverloadedByValue, TryParseOverloadedByValue) : Boolean
+  static op_Inequality(TryParseOverloadedByValue, TryParseOverloadedByValue) : Boolean
+  static op_LessThan(TryParseOverloadedByValue, TryParseOverloadedByValue) : Boolean
+  static op_LessThanOrEqual(TryParseOverloadedByValue, TryParseOverloadedByValue) : Boolean
+  extension static TryParseOverloadedByValueExtensions.GetValue(TryParseOverloadedByValue) : Int32
+  extension static TryParseOverloadedByValueExtensions.ValueOrNull(TryParseOverloadedByValue?) : Int32?
+Utf8ParseOverloaded
+  CompareTo(Object) : Int32
+  CompareTo(Utf8ParseOverloaded) : Int32
+  Equals(Object) : Boolean
+  Equals(Utf8ParseOverloaded) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<Utf8ParseOverloaded, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<Utf8ParseOverloaded>
+  implements IComparisonOperators<Utf8ParseOverloaded, Utf8ParseOverloaded, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<Utf8ParseOverloaded, Utf8ParseOverloaded, Boolean>
+  implements IEquatable<Utf8ParseOverloaded>
+  implements IFormattable
+  implements IMinMaxValue<Utf8ParseOverloaded>
+  implements IParsable<Utf8ParseOverloaded>
+  implements IPlainValueObject<Utf8ParseOverloaded, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<Utf8ParseOverloaded>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<Utf8ParseOverloaded>
+  implements IValue<Int32>
+  implements IValueObject<Utf8ParseOverloaded, Int32>
+  implements IValueObjectMaterializer<Utf8ParseOverloaded, Int32>
+  nested Utf8ParseOverloadedJsonConverter : JsonConverter<Utf8ParseOverloaded>, IStoredJsonConverterSource
+  nested Utf8ParseOverloadedTypeConverter : TypeConverter
+  new()
+  static From(Int32) : Utf8ParseOverloaded
+  static MaxValue : Utf8ParseOverloaded
+  static MinValue : Utf8ParseOverloaded
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : Utf8ParseOverloaded
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : Utf8ParseOverloaded
+  static Parse(String, IFormatProvider) : Utf8ParseOverloaded
+  static Parse<TFormat>(ReadOnlySpan<Byte>, IFormatProvider) : Utf8ParseOverloaded
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, Utf8ParseOverloaded) : Boolean
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out Utf8ParseOverloaded) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out Utf8ParseOverloaded) : Boolean
+  static TryParse(String, IFormatProvider, out Utf8ParseOverloaded) : Boolean
+  static op_Equality(Utf8ParseOverloaded, Utf8ParseOverloaded) : Boolean
+  static op_GreaterThan(Utf8ParseOverloaded, Utf8ParseOverloaded) : Boolean
+  static op_GreaterThanOrEqual(Utf8ParseOverloaded, Utf8ParseOverloaded) : Boolean
+  static op_Inequality(Utf8ParseOverloaded, Utf8ParseOverloaded) : Boolean
+  static op_LessThan(Utf8ParseOverloaded, Utf8ParseOverloaded) : Boolean
+  static op_LessThanOrEqual(Utf8ParseOverloaded, Utf8ParseOverloaded) : Boolean
+  extension static Utf8ParseOverloadedExtensions.GetValue(Utf8ParseOverloaded) : Int32
+  extension static Utf8ParseOverloadedExtensions.ValueOrNull(Utf8ParseOverloaded?) : Int32?
+ValidatedOverASeamOverloadingBase
+  <Clone>$() : ValidatedOverASeamOverloadingBase
+  CompareTo(Object) : Int32
+  CompareTo(ValidatedOverASeamOverloadingBase) : Int32
+  Equals(Object) : Boolean
+  Equals(SeamOverloadingBase<ValidatedOverASeamOverloadingBase>) : Boolean
+  Equals(ValidatedOverASeamOverloadingBase) : Boolean
+  GetHashCode() : Int32
+  Revalidate() : Result<ValidatedOverASeamOverloadingBase, OverloadFault>
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ValidatedOverASeamOverloadingBase, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ValidatedOverASeamOverloadingBase>
+  implements IComparisonOperators<ValidatedOverASeamOverloadingBase, ValidatedOverASeamOverloadingBase, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ValidatedOverASeamOverloadingBase, ValidatedOverASeamOverloadingBase, Boolean>
+  implements IEquatable<SeamOverloadingBase<ValidatedOverASeamOverloadingBase>>
+  implements IEquatable<ValidatedOverASeamOverloadingBase>
+  implements IFormattable
+  implements IParsable<ValidatedOverASeamOverloadingBase>
+  implements IReimplementedEquatable<SeamOverloadingBase<ValidatedOverASeamOverloadingBase>>
+  implements ISpanFormattable
+  implements ISpanParsable<ValidatedOverASeamOverloadingBase>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ValidatedOverASeamOverloadingBase>
+  implements IValidatedValue<ValidatedOverASeamOverloadingBase, Int32, OverloadFault>
+  implements IValueObject<ValidatedOverASeamOverloadingBase, Int32>
+  implements IValueObjectMaterializer<ValidatedOverASeamOverloadingBase, Int32>
+  nested ValidatedOverASeamOverloadingBaseJsonConverter : JsonConverter<ValidatedOverASeamOverloadingBase>, IStoredJsonConverterSource
+  nested ValidatedOverASeamOverloadingBaseTypeConverter : TypeConverter
+  static Create(Int32) : Result<ValidatedOverASeamOverloadingBase, OverloadFault>
+  static FromKnownGood(Int32, String) : ValidatedOverASeamOverloadingBase
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ValidatedOverASeamOverloadingBase
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ValidatedOverASeamOverloadingBase
+  static Parse(String, IFormatProvider) : ValidatedOverASeamOverloadingBase
+  static TryFrom(Int32) : Option<ValidatedOverASeamOverloadingBase>
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ValidatedOverASeamOverloadingBase) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ValidatedOverASeamOverloadingBase) : Boolean
+  static TryParse(String, IFormatProvider, out ValidatedOverASeamOverloadingBase) : Boolean
+  static op_Equality(ValidatedOverASeamOverloadingBase, ValidatedOverASeamOverloadingBase) : Boolean
+  static op_GreaterThan(ValidatedOverASeamOverloadingBase, ValidatedOverASeamOverloadingBase) : Boolean
+  static op_GreaterThanOrEqual(ValidatedOverASeamOverloadingBase, ValidatedOverASeamOverloadingBase) : Boolean
+  static op_Inequality(ValidatedOverASeamOverloadingBase, ValidatedOverASeamOverloadingBase) : Boolean
+  static op_LessThan(ValidatedOverASeamOverloadingBase, ValidatedOverASeamOverloadingBase) : Boolean
+  static op_LessThanOrEqual(ValidatedOverASeamOverloadingBase, ValidatedOverASeamOverloadingBase) : Boolean
+  extension static ValidatedOverASeamOverloadingBaseExtensions.GetValue(ValidatedOverASeamOverloadingBase) : Int32
+  extension static ValidatedOverASeamOverloadingBaseExtensions.ValueOrNull(ValidatedOverASeamOverloadingBase) : Int32?
+ValidatedOverPrivateNames
+  <Clone>$() : ValidatedOverPrivateNames
+  CompareTo(Object) : Int32
+  CompareTo(ValidatedOverPrivateNames) : Int32
+  Equals(Object) : Boolean
+  Equals(PrivateNamesBase<ValidatedOverPrivateNames>) : Boolean
+  Equals(ValidatedOverPrivateNames) : Boolean
+  GetHashCode() : Int32
+  Revalidate() : Result<ValidatedOverPrivateNames, PrivateNamesFault>
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ValidatedOverPrivateNames, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IComparable
+  implements IComparable<ValidatedOverPrivateNames>
+  implements IComparisonOperators<ValidatedOverPrivateNames, ValidatedOverPrivateNames, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ValidatedOverPrivateNames, ValidatedOverPrivateNames, Boolean>
+  implements IEquatable<PrivateNamesBase<ValidatedOverPrivateNames>>
+  implements IEquatable<ValidatedOverPrivateNames>
+  implements IFormattable
+  implements IParsable<ValidatedOverPrivateNames>
+  implements IReimplementedEquatable<PrivateNamesBase<ValidatedOverPrivateNames>>
+  implements ISpanFormattable
+  implements ISpanParsable<ValidatedOverPrivateNames>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ValidatedOverPrivateNames>
+  implements IValidatedValue<ValidatedOverPrivateNames, Int32, PrivateNamesFault>
+  implements IValueObject<ValidatedOverPrivateNames, Int32>
+  implements IValueObjectMaterializer<ValidatedOverPrivateNames, Int32>
+  nested ValidatedOverPrivateNamesJsonConverter : JsonConverter<ValidatedOverPrivateNames>, IStoredJsonConverterSource
+  nested ValidatedOverPrivateNamesTypeConverter : TypeConverter
+  static Create(Int32) : Result<ValidatedOverPrivateNames, PrivateNamesFault>
+  static FromKnownGood(Int32, String) : ValidatedOverPrivateNames
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ValidatedOverPrivateNames
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ValidatedOverPrivateNames
+  static Parse(String, IFormatProvider) : ValidatedOverPrivateNames
+  static TryFrom(Int32) : Option<ValidatedOverPrivateNames>
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ValidatedOverPrivateNames) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ValidatedOverPrivateNames) : Boolean
+  static TryParse(String, IFormatProvider, out ValidatedOverPrivateNames) : Boolean
+  static op_Equality(ValidatedOverPrivateNames, ValidatedOverPrivateNames) : Boolean
+  static op_GreaterThan(ValidatedOverPrivateNames, ValidatedOverPrivateNames) : Boolean
+  static op_GreaterThanOrEqual(ValidatedOverPrivateNames, ValidatedOverPrivateNames) : Boolean
+  static op_Inequality(ValidatedOverPrivateNames, ValidatedOverPrivateNames) : Boolean
+  static op_LessThan(ValidatedOverPrivateNames, ValidatedOverPrivateNames) : Boolean
+  static op_LessThanOrEqual(ValidatedOverPrivateNames, ValidatedOverPrivateNames) : Boolean
+  extension static ValidatedOverPrivateNamesExtensions.GetValue(ValidatedOverPrivateNames) : Int32
+  extension static ValidatedOverPrivateNamesExtensions.ValueOrNull(ValidatedOverPrivateNames) : Int32?
