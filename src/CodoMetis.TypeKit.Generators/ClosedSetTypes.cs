@@ -194,6 +194,12 @@ internal static class ClosedSetTypes
     /// set's too: the generated <c>Name</c> and <c>TryParse</c> replaced an interface's without a word (#191,
     /// measured 2026-10-30). <c>IParsable&lt;TSelf&gt;</c> declared through an interface failed the aspect as
     /// declaring it does (LAMA0512).
+    /// <para>
+    /// A base class's count as the set's own (#205): its <c>Parse</c>, <c>TryParse</c>, <c>Match</c> or <c>All</c>,
+    /// and an <c>IParsable&lt;TSelf&gt;</c> it implements, failed the aspect (LAMA0500, LAMA0503, LAMA0512) naming
+    /// nothing the user wrote, in this project and from another (measured 2026-10-30). A private member of a base,
+    /// such as a <c>_name</c> field, is out of the set's sight and builds.
+    /// </para>
     /// </remarks>
     public static IReadOnlyList<string> GeneratedMembersDeclaredByHand(INamedType set, IReadOnlyList<IField> members)
     {
@@ -201,16 +207,33 @@ internal static class ClosedSetTypes
         var boolean = TypeFactory.GetType(SpecialType.Boolean);
         var parsable = TypeFactory.GetNamedType(typeof(IParsable<>)).WithTypeArguments(set);
         var memberNames = new HashSet<string>(members.Select(member => member.ToDisplayString()));
+        var generatedNames = GeneratedNames(set);
+        var bases = ValueObjectDeclaration.SelfAndBases(set).Skip(1).ToList();
 
-        return
+        IEnumerable<string> Declared(Func<INamedType, IEnumerable<IMethod>> find) =>
+            ValueObjectDeclaration.SelfAndBases(set).SelectMany(type => find(type).Select(method => type.Equals(set)
+                ? ValueObjectDeclaration.Describe(method)
+                : $"{ValueObjectDeclaration.Describe(method)} in its base type {type.ToDisplayString()}"));
+
+        List<string> found =
         [
-            .. ValueObjectDeclaration.MembersNamed(set, methods: false, [.. GeneratedNames(set)]).Where(declared => !memberNames.Contains(declared)),
-            .. set.Methods.Where(method => IsOwn(method) && method.Name == "Parse" && (SameParameters(method, text) || SameParameters(method, text, boolean))).Select(ValueObjectDeclaration.Describe),
-            .. set.Methods.Where(method => IsOwn(method) && method.Name == "TryParse" && (SameParameters(method, text, set) || SameParameters(method, text, boolean, set))).Select(ValueObjectDeclaration.Describe),
-            .. set.Methods.Where(method => IsOwn(method) && IsGeneratedMatch(method, members.Count)).Select(ValueObjectDeclaration.Describe),
+            .. ValueObjectDeclaration.MembersNamed(set, methods: false, [.. generatedNames]).Where(declared => !memberNames.Contains(declared)),
+            .. bases.SelectMany(type => type.Fields.Concat<IMember>(type.Properties).Concat(type.Events)
+                                            .Where(member => member is { IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false } && member.Accessibility != Accessibility.Private && generatedNames.Contains(member.Name))
+                                            .Select(member => $"{member.ToDisplayString()} in its base type {type.ToDisplayString()}")),
+            .. Declared(type => type.Methods.Where(method => IsOwn(method) && method.Name == "Parse" && (SameParameters(method, text) || SameParameters(method, text, boolean)))),
+            .. Declared(type => type.Methods.Where(method => IsOwn(method) && method.Name == "TryParse" && (SameParameters(method, text, set) || SameParameters(method, text, boolean, set)))),
+            .. Declared(type => type.Methods.Where(method => IsOwn(method) && IsGeneratedMatch(method, members.Count))),
             .. ValueObjectDeclaration.ImplementationsOf(set, [TypeFactory.GetNamedType(typeof(IClosedSet<>))]),
             .. set.ImplementedInterfaces.Where(implemented => implemented.Equals(parsable)).Select(implemented => $"the interface {implemented.ToDisplayString()}"),
             .. set.ImplementedInterfaces.Where(implemented => implemented.AllImplementedInterfaces.Any(inherited => inherited.Equals(parsable))).Select(implemented => $"the interface {parsable.ToDisplayString()} in its interface {implemented.ToDisplayString()}"),
+            .. bases.Where(type => type.ImplementedInterfaces.SelectMany(implemented => implemented.AllImplementedInterfaces.Prepend(implemented)).Any(inherited => inherited.Equals(parsable)))
+                    .Select(type => $"the interface {parsable.ToDisplayString()} in its base type {type.ToDisplayString()}"),
+        ];
+
+        return
+        [
+            .. found.Distinct(),
             .. set.Attributes.Where(attribute => attribute.Type.Equals(TypeFactory.GetNamedType(typeof(JsonConverterAttribute)))
                                               || attribute.Type.Equals(TypeFactory.GetNamedType(typeof(TypeConverterAttribute)))
                                               || attribute.Type.Definition.Equals(TypeFactory.GetNamedType(typeof(GeneratedClosedSetAttribute<>))))
@@ -233,7 +256,11 @@ internal static class ClosedSetTypes
                                         && func.Definition.Equals(TypeFactory.GetNamedType(typeof(Func<>)))
                                         && func.TypeArguments[0].Equals(method.TypeParameters[0]));
 
-    /// <summary>Whether a <c>ToString()</c> is written by hand: the seam, kept in place of the generated one.</summary>
-    public static bool DeclaresToString(INamedType set) =>
-        set.Methods.Any(method => method is { Name: "ToString", IsStatic: false, IsImplicitlyDeclared: false, IsExplicitInterfaceImplementation: false, Parameters.Count: 0 });
+    /// <summary>
+    /// Whether a <c>ToString()</c> is written by hand: the seam, kept in place of the generated one. A base class's
+    /// <c>sealed</c> one is the seam too, as for a value object: C# keeps it in every derived class, and generating
+    /// one failed the aspect (LAMA0502, #205). A base class's one that is not sealed is refused instead
+    /// (<see cref="ValueObjectDeclaration.UnsealedInheritedToString"/>).
+    /// </summary>
+    public static bool DeclaresToString(INamedType set) => ValueObjectDeclaration.DeclaresToString(set);
 }

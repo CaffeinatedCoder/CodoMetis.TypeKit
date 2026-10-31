@@ -17,9 +17,9 @@ namespace CodoMetis.TypeKit.Analyzers;
 /// <c>stackalloc OrderId[n]</c>, <c>GC.AllocateUninitializedArray&lt;OrderId&gt;(n)</c>,
 /// <c>GC.AllocateArray</c> and <c>Array.Resize</c> (measured 2026-09-28), which adds default slots
 /// whenever the new size is larger, and the rule cannot tell whether it is. An array with initial
-/// elements, a constant length or size of zero and a collection expression start with no default
-/// element and are not reported. A warning, since filling such an array in a loop straight after is
-/// correct code the rule cannot tell apart.
+/// elements, a constant length or size of zero in any one dimension and a collection expression start
+/// with no default element and are not reported. A warning, since filling such an array in a loop
+/// straight after is correct code the rule cannot tell apart.
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DefaultFilledCollectionAnalyzer : DiagnosticAnalyzer
@@ -66,7 +66,8 @@ public sealed class DefaultFilledCollectionAnalyzer : DiagnosticAnalyzer
         var creation = (IArrayCreationOperation)context.Operation;
 
         if (creation.Initializer is not null || creation.Type is not IArrayTypeSymbol { ElementType: var element }) return;
-        if (creation.DimensionSizes.All(size => size.ConstantValue is { HasValue: true, Value: 0 })) return;
+        // Any dimension of zero leaves the array with no element: new T[0, n] holds none.
+        if (creation.DimensionSizes.Any(size => IsZero(size.ConstantValue))) return;
 
         if (Diagnose(context.ContainingSymbol, creation.Syntax, "An array created with a length", element, symbols) is { } diagnostic) context.Report(diagnostic);
     }
@@ -95,7 +96,7 @@ public sealed class DefaultFilledCollectionAnalyzer : DiagnosticAnalyzer
         if (form is null) return;
 
         // A length of zero creates no slot, as new T[0] does not.
-        if (invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == size)?.Value.ConstantValue is { HasValue: true, Value: 0 }) return;
+        if (invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == size) is { } length && IsZero(length.Value.ConstantValue)) return;
 
         if (Diagnose(context.ContainingSymbol, invocation.Syntax, form, method.TypeArguments[0], symbols) is { } diagnostic) context.Report(diagnostic);
     }
@@ -107,12 +108,31 @@ public sealed class DefaultFilledCollectionAnalyzer : DiagnosticAnalyzer
         if (stackAlloc.Initializer is not null || stackAlloc.Type is not ArrayTypeSyntax arrayType) return;
 
         var sizes = arrayType.RankSpecifiers.SelectMany(rank => rank.Sizes);
-        if (sizes.All(size => context.SemanticModel.GetConstantValue(size, context.CancellationToken) is { HasValue: true, Value: 0 })) return;
+        if (sizes.Any(size => IsZero(context.SemanticModel.GetConstantValue(size, context.CancellationToken)))) return;
 
         if (context.SemanticModel.GetTypeInfo(arrayType.ElementType, context.CancellationToken).Type is not { } element) return;
 
         if (Diagnose(context.ContainingSymbol, stackAlloc, "A stackalloc with a length", element, symbols) is { } diagnostic) context.Report(diagnostic);
     }
+
+    /// <summary>
+    /// A constant zero of any integral type: a dimension may be a <c>long</c>, <c>uint</c> or <c>ulong</c>,
+    /// and a size read from syntax keeps its type before the conversion to <c>int</c>, <c>(byte)0</c> or <c>'\0'</c>.
+    /// </summary>
+    private static bool IsZero(Optional<object?> constant) =>
+        constant.HasValue && constant.Value switch
+        {
+            int value    => value == 0,
+            long value   => value == 0,
+            uint value   => value == 0,
+            ulong value  => value == 0,
+            short value  => value == 0,
+            ushort value => value == 0,
+            byte value   => value == 0,
+            sbyte value  => value == 0,
+            char value   => value == 0,
+            _            => false,
+        };
 
     private static Diagnostic? Diagnose(ISymbol? containingSymbol, SyntaxNode node, string form, ITypeSymbol element, TypeKitSymbols symbols)
     {

@@ -1951,6 +1951,23 @@ MaskedOverALocalRecord
   static op_LessThanOrEqual(MaskedOverALocalRecord, MaskedOverALocalRecord) : Boolean
   extension static MaskedOverALocalRecordExtensions.GetValue(MaskedOverALocalRecord) : String
   extension static MaskedOverALocalRecordExtensions.ValueOrNull(MaskedOverALocalRecord) : String
+MaskedSet
+  Match(Func<TResult>, Func<TResult>) : TResult
+  Name : String
+  QualifiedName : String
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedClosedSetAttribute<MaskedSet>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IClosedSet<MaskedSet>
+  implements IParsable<MaskedSet>
+  nested MaskedSetJsonConverter : JsonConverter<MaskedSet>
+  nested MaskedSetTypeConverter : TypeConverter
+  static All : IReadOnlyList<MaskedSet>
+  static Parse(String) : MaskedSet
+  static Parse(String, Boolean) : MaskedSet
+  static TryParse(String, Boolean, out MaskedSet) : Boolean
+  static TryParse(String, out MaskedSet) : Boolean
 OverABetweenExplicitEqualityRecord
   <Clone>$() : OverABetweenExplicitEqualityRecord
   CompareTo(Object) : Int32
