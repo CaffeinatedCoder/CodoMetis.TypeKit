@@ -903,6 +903,80 @@ ProbeMoment
   static op_LessThanOrEqual(ProbeMoment, ProbeMoment) : Boolean
   extension static ProbeMomentExtensions.GetValue(ProbeMoment) : DateTimeOffset
   extension static ProbeMomentExtensions.ValueOrNull(ProbeMoment?) : DateTimeOffset?
+ProbeMoney
+  CompareTo(Object) : Int32
+  CompareTo(ProbeMoney) : Int32
+  Equals(Object) : Boolean
+  Equals(ProbeMoney) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Decimal
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ProbeMoney, Decimal>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<ProbeMoney, ProbeMoney, ProbeMoney>
+  implements IComparable
+  implements IComparable<ProbeMoney>
+  implements IComparisonOperators<ProbeMoney, ProbeMoney, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<ProbeMoney, Decimal, ProbeMoney>
+  implements IDivisionOperators<ProbeMoney, ProbeMoney, Decimal>
+  implements IEqualityOperators<ProbeMoney, ProbeMoney, Boolean>
+  implements IEquatable<ProbeMoney>
+  implements IFormattable
+  implements IMinMaxValue<ProbeMoney>
+  implements IModulusOperators<ProbeMoney, Decimal, ProbeMoney>
+  implements IMultiplyOperators<ProbeMoney, Decimal, ProbeMoney>
+  implements IParsable<ProbeMoney>
+  implements IPlainValueObject<ProbeMoney, Decimal>
+  implements ISpanFormattable
+  implements ISpanParsable<ProbeMoney>
+  implements ISubtractionOperators<ProbeMoney, ProbeMoney, ProbeMoney>
+  implements IUnaryNegationOperators<ProbeMoney, ProbeMoney>
+  implements IUnaryPlusOperators<ProbeMoney, ProbeMoney>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ProbeMoney>
+  implements IValue<Decimal>
+  implements IValueObject<ProbeMoney, Decimal>
+  implements IValueObjectMaterializer<ProbeMoney, Decimal>
+  nested ProbeMoneyJsonConverter : JsonConverter<ProbeMoney>, IStoredJsonConverterSource
+  nested ProbeMoneyTypeConverter : TypeConverter
+  new()
+  static From(Decimal) : ProbeMoney
+  static MaxValue : ProbeMoney
+  static MinValue : ProbeMoney
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ProbeMoney
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ProbeMoney
+  static Parse(String, IFormatProvider) : ProbeMoney
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ProbeMoney) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ProbeMoney) : Boolean
+  static TryParse(String, IFormatProvider, out ProbeMoney) : Boolean
+  static op_Addition(ProbeMoney, ProbeMoney) : ProbeMoney
+  static op_CheckedAddition(ProbeMoney, ProbeMoney) : ProbeMoney
+  static op_CheckedDivision(ProbeMoney, Decimal) : ProbeMoney
+  static op_CheckedDivision(ProbeMoney, ProbeMoney) : Decimal
+  static op_CheckedMultiply(ProbeMoney, Decimal) : ProbeMoney
+  static op_CheckedSubtraction(ProbeMoney, ProbeMoney) : ProbeMoney
+  static op_CheckedUnaryNegation(ProbeMoney) : ProbeMoney
+  static op_Division(ProbeMoney, Decimal) : ProbeMoney
+  static op_Division(ProbeMoney, ProbeMoney) : Decimal
+  static op_Equality(ProbeMoney, ProbeMoney) : Boolean
+  static op_GreaterThan(ProbeMoney, ProbeMoney) : Boolean
+  static op_GreaterThanOrEqual(ProbeMoney, ProbeMoney) : Boolean
+  static op_Inequality(ProbeMoney, ProbeMoney) : Boolean
+  static op_LessThan(ProbeMoney, ProbeMoney) : Boolean
+  static op_LessThanOrEqual(ProbeMoney, ProbeMoney) : Boolean
+  static op_Modulus(ProbeMoney, Decimal) : ProbeMoney
+  static op_Multiply(ProbeMoney, Decimal) : ProbeMoney
+  static op_Subtraction(ProbeMoney, ProbeMoney) : ProbeMoney
+  static op_UnaryNegation(ProbeMoney) : ProbeMoney
+  static op_UnaryPlus(ProbeMoney) : ProbeMoney
+  extension static ProbeMoneyExtensions.GetValue(ProbeMoney) : Decimal
+  extension static ProbeMoneyExtensions.ValueOrNull(ProbeMoney?) : Decimal?
 ProbeName
   CompareTo(Object) : Int32
   CompareTo(ProbeName) : Int32
@@ -1585,6 +1659,384 @@ ProbeWeekday
   extension static ProbeWeekdayExtensions.GetValue(ProbeWeekday) : DayOfWeek
   extension static ProbeWeekdayExtensions.ValueOrNull(ProbeWeekday?) : DayOfWeek?
 # CodoMetis.TypeKit.Generators.Tests
+AddsThroughBaseInterface
+  <Clone>$() : AddsThroughBaseInterface
+  CompareTo(AddsThroughBaseInterface) : Int32
+  CompareTo(Object) : Int32
+  Equals(AddsThroughBase<AddsThroughBaseInterface>) : Boolean
+  Equals(AddsThroughBaseInterface) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<AddsThroughBaseInterface, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<AddsThroughBaseInterface, AddsThroughBaseInterface, AddsThroughBaseInterface>
+  implements IAddsLeft<AddsThroughBaseInterface>
+  implements IComparable
+  implements IComparable<AddsThroughBaseInterface>
+  implements IComparisonOperators<AddsThroughBaseInterface, AddsThroughBaseInterface, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<AddsThroughBaseInterface, AddsThroughBaseInterface, Boolean>
+  implements IEquatable<AddsThroughBase<AddsThroughBaseInterface>>
+  implements IEquatable<AddsThroughBaseInterface>
+  implements IFormattable
+  implements IMinMaxValue<AddsThroughBaseInterface>
+  implements IParsable<AddsThroughBaseInterface>
+  implements IPlainValueObject<AddsThroughBaseInterface, Int32>
+  implements IReimplementedEquatable<AddsThroughBase<AddsThroughBaseInterface>>
+  implements ISpanFormattable
+  implements ISpanParsable<AddsThroughBaseInterface>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<AddsThroughBaseInterface>
+  implements IValue<Int32>
+  implements IValueObject<AddsThroughBaseInterface, Int32>
+  implements IValueObjectMaterializer<AddsThroughBaseInterface, Int32>
+  nested AddsThroughBaseInterfaceJsonConverter : JsonConverter<AddsThroughBaseInterface>, IStoredJsonConverterSource
+  nested AddsThroughBaseInterfaceTypeConverter : TypeConverter
+  static From(Int32) : AddsThroughBaseInterface
+  static MaxValue : AddsThroughBaseInterface
+  static MinValue : AddsThroughBaseInterface
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : AddsThroughBaseInterface
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : AddsThroughBaseInterface
+  static Parse(String, IFormatProvider) : AddsThroughBaseInterface
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out AddsThroughBaseInterface) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out AddsThroughBaseInterface) : Boolean
+  static TryParse(String, IFormatProvider, out AddsThroughBaseInterface) : Boolean
+  static op_Equality(AddsThroughBaseInterface, AddsThroughBaseInterface) : Boolean
+  static op_GreaterThan(AddsThroughBaseInterface, AddsThroughBaseInterface) : Boolean
+  static op_GreaterThanOrEqual(AddsThroughBaseInterface, AddsThroughBaseInterface) : Boolean
+  static op_Inequality(AddsThroughBaseInterface, AddsThroughBaseInterface) : Boolean
+  static op_LessThan(AddsThroughBaseInterface, AddsThroughBaseInterface) : Boolean
+  static op_LessThanOrEqual(AddsThroughBaseInterface, AddsThroughBaseInterface) : Boolean
+  extension static AddsThroughBaseInterfaceExtensions.GetValue(AddsThroughBaseInterface) : Int32
+  extension static AddsThroughBaseInterfaceExtensions.ValueOrNull(AddsThroughBaseInterface) : Int32?
+AddsThroughInheritedInterface
+  CompareTo(AddsThroughInheritedInterface) : Int32
+  CompareTo(Object) : Int32
+  Equals(AddsThroughInheritedInterface) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<AddsThroughInheritedInterface, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<AddsThroughInheritedInterface, AddsThroughInheritedInterface, AddsThroughInheritedInterface>
+  implements IAddsLeft<AddsThroughInheritedInterface>
+  implements IAddsLeftToo<AddsThroughInheritedInterface>
+  implements IComparable
+  implements IComparable<AddsThroughInheritedInterface>
+  implements IComparisonOperators<AddsThroughInheritedInterface, AddsThroughInheritedInterface, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<AddsThroughInheritedInterface, AddsThroughInheritedInterface, Boolean>
+  implements IEquatable<AddsThroughInheritedInterface>
+  implements IFormattable
+  implements IMinMaxValue<AddsThroughInheritedInterface>
+  implements IParsable<AddsThroughInheritedInterface>
+  implements IPlainValueObject<AddsThroughInheritedInterface, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<AddsThroughInheritedInterface>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<AddsThroughInheritedInterface>
+  implements IValue<Int32>
+  implements IValueObject<AddsThroughInheritedInterface, Int32>
+  implements IValueObjectMaterializer<AddsThroughInheritedInterface, Int32>
+  nested AddsThroughInheritedInterfaceJsonConverter : JsonConverter<AddsThroughInheritedInterface>, IStoredJsonConverterSource
+  nested AddsThroughInheritedInterfaceTypeConverter : TypeConverter
+  new()
+  static From(Int32) : AddsThroughInheritedInterface
+  static MaxValue : AddsThroughInheritedInterface
+  static MinValue : AddsThroughInheritedInterface
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : AddsThroughInheritedInterface
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : AddsThroughInheritedInterface
+  static Parse(String, IFormatProvider) : AddsThroughInheritedInterface
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out AddsThroughInheritedInterface) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out AddsThroughInheritedInterface) : Boolean
+  static TryParse(String, IFormatProvider, out AddsThroughInheritedInterface) : Boolean
+  static op_Equality(AddsThroughInheritedInterface, AddsThroughInheritedInterface) : Boolean
+  static op_GreaterThan(AddsThroughInheritedInterface, AddsThroughInheritedInterface) : Boolean
+  static op_GreaterThanOrEqual(AddsThroughInheritedInterface, AddsThroughInheritedInterface) : Boolean
+  static op_Inequality(AddsThroughInheritedInterface, AddsThroughInheritedInterface) : Boolean
+  static op_LessThan(AddsThroughInheritedInterface, AddsThroughInheritedInterface) : Boolean
+  static op_LessThanOrEqual(AddsThroughInheritedInterface, AddsThroughInheritedInterface) : Boolean
+  extension static AddsThroughInheritedInterfaceExtensions.GetValue(AddsThroughInheritedInterface) : Int32
+  extension static AddsThroughInheritedInterfaceExtensions.ValueOrNull(AddsThroughInheritedInterface?) : Int32?
+AddsThroughInterface
+  CompareTo(AddsThroughInterface) : Int32
+  CompareTo(Object) : Int32
+  Equals(AddsThroughInterface) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<AddsThroughInterface, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<AddsThroughInterface, AddsThroughInterface, AddsThroughInterface>
+  implements IAddsLeft<AddsThroughInterface>
+  implements IComparable
+  implements IComparable<AddsThroughInterface>
+  implements IComparisonOperators<AddsThroughInterface, AddsThroughInterface, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<AddsThroughInterface, AddsThroughInterface, Boolean>
+  implements IEquatable<AddsThroughInterface>
+  implements IFormattable
+  implements IMinMaxValue<AddsThroughInterface>
+  implements IParsable<AddsThroughInterface>
+  implements IPlainValueObject<AddsThroughInterface, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<AddsThroughInterface>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<AddsThroughInterface>
+  implements IValue<Int32>
+  implements IValueObject<AddsThroughInterface, Int32>
+  implements IValueObjectMaterializer<AddsThroughInterface, Int32>
+  nested AddsThroughInterfaceJsonConverter : JsonConverter<AddsThroughInterface>, IStoredJsonConverterSource
+  nested AddsThroughInterfaceTypeConverter : TypeConverter
+  new()
+  static From(Int32) : AddsThroughInterface
+  static MaxValue : AddsThroughInterface
+  static MinValue : AddsThroughInterface
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : AddsThroughInterface
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : AddsThroughInterface
+  static Parse(String, IFormatProvider) : AddsThroughInterface
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out AddsThroughInterface) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out AddsThroughInterface) : Boolean
+  static TryParse(String, IFormatProvider, out AddsThroughInterface) : Boolean
+  static op_Equality(AddsThroughInterface, AddsThroughInterface) : Boolean
+  static op_GreaterThan(AddsThroughInterface, AddsThroughInterface) : Boolean
+  static op_GreaterThanOrEqual(AddsThroughInterface, AddsThroughInterface) : Boolean
+  static op_Inequality(AddsThroughInterface, AddsThroughInterface) : Boolean
+  static op_LessThan(AddsThroughInterface, AddsThroughInterface) : Boolean
+  static op_LessThanOrEqual(AddsThroughInterface, AddsThroughInterface) : Boolean
+  extension static AddsThroughInterfaceExtensions.GetValue(AddsThroughInterface) : Int32
+  extension static AddsThroughInterfaceExtensions.ValueOrNull(AddsThroughInterface?) : Int32?
+BigIntegerAmount
+  CompareTo(BigIntegerAmount) : Int32
+  CompareTo(Object) : Int32
+  Equals(BigIntegerAmount) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : BigInteger
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<BigIntegerAmount, BigInteger>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<BigIntegerAmount, BigIntegerAmount, BigIntegerAmount>
+  implements IArithmetic<BigIntegerAmount>
+  implements IComparable
+  implements IComparable<BigIntegerAmount>
+  implements IComparisonOperators<BigIntegerAmount, BigIntegerAmount, Boolean>
+  implements IDivisionOperators<BigIntegerAmount, BigIntegerAmount, BigIntegerAmount>
+  implements IEqualityOperators<BigIntegerAmount, BigIntegerAmount, Boolean>
+  implements IEquatable<BigIntegerAmount>
+  implements IFormattable
+  implements IModulusOperators<BigIntegerAmount, BigIntegerAmount, BigIntegerAmount>
+  implements IMultiplyOperators<BigIntegerAmount, BigIntegerAmount, BigIntegerAmount>
+  implements IParsable<BigIntegerAmount>
+  implements IPlainValueObject<BigIntegerAmount, BigInteger>
+  implements ISpanFormattable
+  implements ISpanParsable<BigIntegerAmount>
+  implements ISubtractionOperators<BigIntegerAmount, BigIntegerAmount, BigIntegerAmount>
+  implements IUnaryNegationOperators<BigIntegerAmount, BigIntegerAmount>
+  implements IUnaryPlusOperators<BigIntegerAmount, BigIntegerAmount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<BigIntegerAmount>
+  implements IValue<BigInteger>
+  implements IValueObject<BigIntegerAmount, BigInteger>
+  implements IValueObjectMaterializer<BigIntegerAmount, BigInteger>
+  nested BigIntegerAmountJsonConverter : JsonConverter<BigIntegerAmount>, IStoredJsonConverterSource
+  nested BigIntegerAmountTypeConverter : TypeConverter
+  new()
+  static From(BigInteger) : BigIntegerAmount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : BigIntegerAmount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : BigIntegerAmount
+  static Parse(String, IFormatProvider) : BigIntegerAmount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out BigIntegerAmount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out BigIntegerAmount) : Boolean
+  static TryParse(String, IFormatProvider, out BigIntegerAmount) : Boolean
+  static op_Addition(BigIntegerAmount, BigIntegerAmount) : BigIntegerAmount
+  static op_CheckedAddition(BigIntegerAmount, BigIntegerAmount) : BigIntegerAmount
+  static op_CheckedDivision(BigIntegerAmount, BigIntegerAmount) : BigIntegerAmount
+  static op_CheckedMultiply(BigIntegerAmount, BigIntegerAmount) : BigIntegerAmount
+  static op_CheckedSubtraction(BigIntegerAmount, BigIntegerAmount) : BigIntegerAmount
+  static op_CheckedUnaryNegation(BigIntegerAmount) : BigIntegerAmount
+  static op_Division(BigIntegerAmount, BigIntegerAmount) : BigIntegerAmount
+  static op_Equality(BigIntegerAmount, BigIntegerAmount) : Boolean
+  static op_GreaterThan(BigIntegerAmount, BigIntegerAmount) : Boolean
+  static op_GreaterThanOrEqual(BigIntegerAmount, BigIntegerAmount) : Boolean
+  static op_Inequality(BigIntegerAmount, BigIntegerAmount) : Boolean
+  static op_LessThan(BigIntegerAmount, BigIntegerAmount) : Boolean
+  static op_LessThanOrEqual(BigIntegerAmount, BigIntegerAmount) : Boolean
+  static op_Modulus(BigIntegerAmount, BigIntegerAmount) : BigIntegerAmount
+  static op_Multiply(BigIntegerAmount, BigIntegerAmount) : BigIntegerAmount
+  static op_Subtraction(BigIntegerAmount, BigIntegerAmount) : BigIntegerAmount
+  static op_UnaryNegation(BigIntegerAmount) : BigIntegerAmount
+  static op_UnaryPlus(BigIntegerAmount) : BigIntegerAmount
+  extension static BigIntegerAmountExtensions.GetValue(BigIntegerAmount) : BigInteger
+  extension static BigIntegerAmountExtensions.ValueOrNull(BigIntegerAmount?) : BigInteger?
+ByteAmount
+  CompareTo(ByteAmount) : Int32
+  CompareTo(Object) : Int32
+  Equals(ByteAmount) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Byte
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ByteAmount, Byte>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<ByteAmount, ByteAmount, ByteAmount>
+  implements IArithmetic<ByteAmount>
+  implements IComparable
+  implements IComparable<ByteAmount>
+  implements IComparisonOperators<ByteAmount, ByteAmount, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<ByteAmount, ByteAmount, ByteAmount>
+  implements IEqualityOperators<ByteAmount, ByteAmount, Boolean>
+  implements IEquatable<ByteAmount>
+  implements IFormattable
+  implements IMinMaxValue<ByteAmount>
+  implements IModulusOperators<ByteAmount, ByteAmount, ByteAmount>
+  implements IMultiplyOperators<ByteAmount, ByteAmount, ByteAmount>
+  implements IParsable<ByteAmount>
+  implements IPlainValueObject<ByteAmount, Byte>
+  implements ISpanFormattable
+  implements ISpanParsable<ByteAmount>
+  implements ISubtractionOperators<ByteAmount, ByteAmount, ByteAmount>
+  implements IUnaryNegationOperators<ByteAmount, ByteAmount>
+  implements IUnaryPlusOperators<ByteAmount, ByteAmount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ByteAmount>
+  implements IValue<Byte>
+  implements IValueObject<ByteAmount, Byte>
+  implements IValueObjectMaterializer<ByteAmount, Byte>
+  nested ByteAmountJsonConverter : JsonConverter<ByteAmount>, IStoredJsonConverterSource
+  nested ByteAmountTypeConverter : TypeConverter
+  new()
+  static From(Byte) : ByteAmount
+  static MaxValue : ByteAmount
+  static MinValue : ByteAmount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ByteAmount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ByteAmount
+  static Parse(String, IFormatProvider) : ByteAmount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ByteAmount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ByteAmount) : Boolean
+  static TryParse(String, IFormatProvider, out ByteAmount) : Boolean
+  static op_Addition(ByteAmount, ByteAmount) : ByteAmount
+  static op_CheckedAddition(ByteAmount, ByteAmount) : ByteAmount
+  static op_CheckedDivision(ByteAmount, ByteAmount) : ByteAmount
+  static op_CheckedMultiply(ByteAmount, ByteAmount) : ByteAmount
+  static op_CheckedSubtraction(ByteAmount, ByteAmount) : ByteAmount
+  static op_CheckedUnaryNegation(ByteAmount) : ByteAmount
+  static op_Division(ByteAmount, ByteAmount) : ByteAmount
+  static op_Equality(ByteAmount, ByteAmount) : Boolean
+  static op_GreaterThan(ByteAmount, ByteAmount) : Boolean
+  static op_GreaterThanOrEqual(ByteAmount, ByteAmount) : Boolean
+  static op_Inequality(ByteAmount, ByteAmount) : Boolean
+  static op_LessThan(ByteAmount, ByteAmount) : Boolean
+  static op_LessThanOrEqual(ByteAmount, ByteAmount) : Boolean
+  static op_Modulus(ByteAmount, ByteAmount) : ByteAmount
+  static op_Multiply(ByteAmount, ByteAmount) : ByteAmount
+  static op_Subtraction(ByteAmount, ByteAmount) : ByteAmount
+  static op_UnaryNegation(ByteAmount) : ByteAmount
+  static op_UnaryPlus(ByteAmount) : ByteAmount
+  extension static ByteAmountExtensions.GetValue(ByteAmount) : Byte
+  extension static ByteAmountExtensions.ValueOrNull(ByteAmount?) : Byte?
+CharAmount
+  CompareTo(CharAmount) : Int32
+  CompareTo(Object) : Int32
+  Equals(CharAmount) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Char
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<CharAmount, Char>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<CharAmount, CharAmount, CharAmount>
+  implements IArithmetic<CharAmount>
+  implements IComparable
+  implements IComparable<CharAmount>
+  implements IComparisonOperators<CharAmount, CharAmount, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<CharAmount, CharAmount, CharAmount>
+  implements IEqualityOperators<CharAmount, CharAmount, Boolean>
+  implements IEquatable<CharAmount>
+  implements IFormattable
+  implements IMinMaxValue<CharAmount>
+  implements IModulusOperators<CharAmount, CharAmount, CharAmount>
+  implements IMultiplyOperators<CharAmount, CharAmount, CharAmount>
+  implements IParsable<CharAmount>
+  implements IPlainValueObject<CharAmount, Char>
+  implements ISpanFormattable
+  implements ISpanParsable<CharAmount>
+  implements ISubtractionOperators<CharAmount, CharAmount, CharAmount>
+  implements IUnaryNegationOperators<CharAmount, CharAmount>
+  implements IUnaryPlusOperators<CharAmount, CharAmount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<CharAmount>
+  implements IValue<Char>
+  implements IValueObject<CharAmount, Char>
+  implements IValueObjectMaterializer<CharAmount, Char>
+  nested CharAmountJsonConverter : JsonConverter<CharAmount>, IStoredJsonConverterSource
+  nested CharAmountTypeConverter : TypeConverter
+  new()
+  static From(Char) : CharAmount
+  static MaxValue : CharAmount
+  static MinValue : CharAmount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : CharAmount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : CharAmount
+  static Parse(String, IFormatProvider) : CharAmount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out CharAmount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out CharAmount) : Boolean
+  static TryParse(String, IFormatProvider, out CharAmount) : Boolean
+  static op_Addition(CharAmount, CharAmount) : CharAmount
+  static op_CheckedAddition(CharAmount, CharAmount) : CharAmount
+  static op_CheckedDivision(CharAmount, CharAmount) : CharAmount
+  static op_CheckedMultiply(CharAmount, CharAmount) : CharAmount
+  static op_CheckedSubtraction(CharAmount, CharAmount) : CharAmount
+  static op_CheckedUnaryNegation(CharAmount) : CharAmount
+  static op_Division(CharAmount, CharAmount) : CharAmount
+  static op_Equality(CharAmount, CharAmount) : Boolean
+  static op_GreaterThan(CharAmount, CharAmount) : Boolean
+  static op_GreaterThanOrEqual(CharAmount, CharAmount) : Boolean
+  static op_Inequality(CharAmount, CharAmount) : Boolean
+  static op_LessThan(CharAmount, CharAmount) : Boolean
+  static op_LessThanOrEqual(CharAmount, CharAmount) : Boolean
+  static op_Modulus(CharAmount, CharAmount) : CharAmount
+  static op_Multiply(CharAmount, CharAmount) : CharAmount
+  static op_Subtraction(CharAmount, CharAmount) : CharAmount
+  static op_UnaryNegation(CharAmount) : CharAmount
+  static op_UnaryPlus(CharAmount) : CharAmount
+  extension static CharAmountExtensions.GetValue(CharAmount) : Char
+  extension static CharAmountExtensions.ValueOrNull(CharAmount?) : Char?
 CompareToOverloadedByArity
   CompareTo(CompareToOverloadedByArity) : Int32
   CompareTo(Object) : Int32
@@ -1691,6 +2143,78 @@ CompareToOverloadedByIn
   static op_LessThanOrEqual(CompareToOverloadedByIn, CompareToOverloadedByIn) : Boolean
   extension static CompareToOverloadedByInExtensions.GetValue(CompareToOverloadedByIn) : Int32
   extension static CompareToOverloadedByInExtensions.ValueOrNull(CompareToOverloadedByIn?) : Int32?
+DecimalAmount
+  CompareTo(DecimalAmount) : Int32
+  CompareTo(Object) : Int32
+  Equals(DecimalAmount) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Decimal
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<DecimalAmount, Decimal>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<DecimalAmount, DecimalAmount, DecimalAmount>
+  implements IArithmetic<DecimalAmount>
+  implements IComparable
+  implements IComparable<DecimalAmount>
+  implements IComparisonOperators<DecimalAmount, DecimalAmount, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<DecimalAmount, DecimalAmount, DecimalAmount>
+  implements IEqualityOperators<DecimalAmount, DecimalAmount, Boolean>
+  implements IEquatable<DecimalAmount>
+  implements IFormattable
+  implements IMinMaxValue<DecimalAmount>
+  implements IModulusOperators<DecimalAmount, DecimalAmount, DecimalAmount>
+  implements IMultiplyOperators<DecimalAmount, DecimalAmount, DecimalAmount>
+  implements IParsable<DecimalAmount>
+  implements IPlainValueObject<DecimalAmount, Decimal>
+  implements ISpanFormattable
+  implements ISpanParsable<DecimalAmount>
+  implements ISubtractionOperators<DecimalAmount, DecimalAmount, DecimalAmount>
+  implements IUnaryNegationOperators<DecimalAmount, DecimalAmount>
+  implements IUnaryPlusOperators<DecimalAmount, DecimalAmount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<DecimalAmount>
+  implements IValue<Decimal>
+  implements IValueObject<DecimalAmount, Decimal>
+  implements IValueObjectMaterializer<DecimalAmount, Decimal>
+  nested DecimalAmountJsonConverter : JsonConverter<DecimalAmount>, IStoredJsonConverterSource
+  nested DecimalAmountTypeConverter : TypeConverter
+  new()
+  static From(Decimal) : DecimalAmount
+  static MaxValue : DecimalAmount
+  static MinValue : DecimalAmount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : DecimalAmount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : DecimalAmount
+  static Parse(String, IFormatProvider) : DecimalAmount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out DecimalAmount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out DecimalAmount) : Boolean
+  static TryParse(String, IFormatProvider, out DecimalAmount) : Boolean
+  static op_Addition(DecimalAmount, DecimalAmount) : DecimalAmount
+  static op_CheckedAddition(DecimalAmount, DecimalAmount) : DecimalAmount
+  static op_CheckedDivision(DecimalAmount, DecimalAmount) : DecimalAmount
+  static op_CheckedMultiply(DecimalAmount, DecimalAmount) : DecimalAmount
+  static op_CheckedSubtraction(DecimalAmount, DecimalAmount) : DecimalAmount
+  static op_CheckedUnaryNegation(DecimalAmount) : DecimalAmount
+  static op_Division(DecimalAmount, DecimalAmount) : DecimalAmount
+  static op_Equality(DecimalAmount, DecimalAmount) : Boolean
+  static op_GreaterThan(DecimalAmount, DecimalAmount) : Boolean
+  static op_GreaterThanOrEqual(DecimalAmount, DecimalAmount) : Boolean
+  static op_Inequality(DecimalAmount, DecimalAmount) : Boolean
+  static op_LessThan(DecimalAmount, DecimalAmount) : Boolean
+  static op_LessThanOrEqual(DecimalAmount, DecimalAmount) : Boolean
+  static op_Modulus(DecimalAmount, DecimalAmount) : DecimalAmount
+  static op_Multiply(DecimalAmount, DecimalAmount) : DecimalAmount
+  static op_Subtraction(DecimalAmount, DecimalAmount) : DecimalAmount
+  static op_UnaryNegation(DecimalAmount) : DecimalAmount
+  static op_UnaryPlus(DecimalAmount) : DecimalAmount
+  extension static DecimalAmountExtensions.GetValue(DecimalAmount) : Decimal
+  extension static DecimalAmountExtensions.ValueOrNull(DecimalAmount?) : Decimal?
 DefaultedAddress
   Equals(DefaultedAddress) : Boolean
   Equals(Object) : Boolean
@@ -1793,6 +2317,150 @@ DocumentKind
   static Parse(String, Boolean) : DocumentKind
   static TryParse(String, Boolean, out DocumentKind) : Boolean
   static TryParse(String, out DocumentKind) : Boolean
+DoubleAmount
+  CompareTo(DoubleAmount) : Int32
+  CompareTo(Object) : Int32
+  Equals(DoubleAmount) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Double
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<DoubleAmount, Double>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<DoubleAmount, DoubleAmount, DoubleAmount>
+  implements IArithmetic<DoubleAmount>
+  implements IComparable
+  implements IComparable<DoubleAmount>
+  implements IComparisonOperators<DoubleAmount, DoubleAmount, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<DoubleAmount, DoubleAmount, DoubleAmount>
+  implements IEqualityOperators<DoubleAmount, DoubleAmount, Boolean>
+  implements IEquatable<DoubleAmount>
+  implements IFormattable
+  implements IMinMaxValue<DoubleAmount>
+  implements IModulusOperators<DoubleAmount, DoubleAmount, DoubleAmount>
+  implements IMultiplyOperators<DoubleAmount, DoubleAmount, DoubleAmount>
+  implements IParsable<DoubleAmount>
+  implements IPlainValueObject<DoubleAmount, Double>
+  implements ISpanFormattable
+  implements ISpanParsable<DoubleAmount>
+  implements ISubtractionOperators<DoubleAmount, DoubleAmount, DoubleAmount>
+  implements IUnaryNegationOperators<DoubleAmount, DoubleAmount>
+  implements IUnaryPlusOperators<DoubleAmount, DoubleAmount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<DoubleAmount>
+  implements IValue<Double>
+  implements IValueObject<DoubleAmount, Double>
+  implements IValueObjectMaterializer<DoubleAmount, Double>
+  nested DoubleAmountJsonConverter : JsonConverter<DoubleAmount>, IStoredJsonConverterSource
+  nested DoubleAmountTypeConverter : TypeConverter
+  new()
+  static From(Double) : DoubleAmount
+  static MaxValue : DoubleAmount
+  static MinValue : DoubleAmount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : DoubleAmount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : DoubleAmount
+  static Parse(String, IFormatProvider) : DoubleAmount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out DoubleAmount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out DoubleAmount) : Boolean
+  static TryParse(String, IFormatProvider, out DoubleAmount) : Boolean
+  static op_Addition(DoubleAmount, DoubleAmount) : DoubleAmount
+  static op_CheckedAddition(DoubleAmount, DoubleAmount) : DoubleAmount
+  static op_CheckedDivision(DoubleAmount, DoubleAmount) : DoubleAmount
+  static op_CheckedMultiply(DoubleAmount, DoubleAmount) : DoubleAmount
+  static op_CheckedSubtraction(DoubleAmount, DoubleAmount) : DoubleAmount
+  static op_CheckedUnaryNegation(DoubleAmount) : DoubleAmount
+  static op_Division(DoubleAmount, DoubleAmount) : DoubleAmount
+  static op_Equality(DoubleAmount, DoubleAmount) : Boolean
+  static op_GreaterThan(DoubleAmount, DoubleAmount) : Boolean
+  static op_GreaterThanOrEqual(DoubleAmount, DoubleAmount) : Boolean
+  static op_Inequality(DoubleAmount, DoubleAmount) : Boolean
+  static op_LessThan(DoubleAmount, DoubleAmount) : Boolean
+  static op_LessThanOrEqual(DoubleAmount, DoubleAmount) : Boolean
+  static op_Modulus(DoubleAmount, DoubleAmount) : DoubleAmount
+  static op_Multiply(DoubleAmount, DoubleAmount) : DoubleAmount
+  static op_Subtraction(DoubleAmount, DoubleAmount) : DoubleAmount
+  static op_UnaryNegation(DoubleAmount) : DoubleAmount
+  static op_UnaryPlus(DoubleAmount) : DoubleAmount
+  extension static DoubleAmountExtensions.GetValue(DoubleAmount) : Double
+  extension static DoubleAmountExtensions.ValueOrNull(DoubleAmount?) : Double?
+DoubleAmountClass
+  <Clone>$() : DoubleAmountClass
+  CompareTo(DoubleAmountClass) : Int32
+  CompareTo(Object) : Int32
+  Equals(DoubleAmountClass) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Double
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<DoubleAmountClass, Double>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<DoubleAmountClass, DoubleAmountClass, DoubleAmountClass>
+  implements IArithmetic<DoubleAmountClass>
+  implements IComparable
+  implements IComparable<DoubleAmountClass>
+  implements IComparisonOperators<DoubleAmountClass, DoubleAmountClass, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<DoubleAmountClass, DoubleAmountClass, DoubleAmountClass>
+  implements IEqualityOperators<DoubleAmountClass, DoubleAmountClass, Boolean>
+  implements IEquatable<DoubleAmountClass>
+  implements IFormattable
+  implements IMinMaxValue<DoubleAmountClass>
+  implements IModulusOperators<DoubleAmountClass, DoubleAmountClass, DoubleAmountClass>
+  implements IMultiplyOperators<DoubleAmountClass, DoubleAmountClass, DoubleAmountClass>
+  implements IParsable<DoubleAmountClass>
+  implements IPlainValueObject<DoubleAmountClass, Double>
+  implements ISpanFormattable
+  implements ISpanParsable<DoubleAmountClass>
+  implements ISubtractionOperators<DoubleAmountClass, DoubleAmountClass, DoubleAmountClass>
+  implements IUnaryNegationOperators<DoubleAmountClass, DoubleAmountClass>
+  implements IUnaryPlusOperators<DoubleAmountClass, DoubleAmountClass>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<DoubleAmountClass>
+  implements IValue<Double>
+  implements IValueObject<DoubleAmountClass, Double>
+  implements IValueObjectMaterializer<DoubleAmountClass, Double>
+  nested DoubleAmountClassJsonConverter : JsonConverter<DoubleAmountClass>, IStoredJsonConverterSource
+  nested DoubleAmountClassTypeConverter : TypeConverter
+  static From(Double) : DoubleAmountClass
+  static MaxValue : DoubleAmountClass
+  static MinValue : DoubleAmountClass
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : DoubleAmountClass
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : DoubleAmountClass
+  static Parse(String, IFormatProvider) : DoubleAmountClass
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out DoubleAmountClass) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out DoubleAmountClass) : Boolean
+  static TryParse(String, IFormatProvider, out DoubleAmountClass) : Boolean
+  static op_Addition(DoubleAmountClass, DoubleAmountClass) : DoubleAmountClass
+  static op_CheckedAddition(DoubleAmountClass, DoubleAmountClass) : DoubleAmountClass
+  static op_CheckedDivision(DoubleAmountClass, DoubleAmountClass) : DoubleAmountClass
+  static op_CheckedMultiply(DoubleAmountClass, DoubleAmountClass) : DoubleAmountClass
+  static op_CheckedSubtraction(DoubleAmountClass, DoubleAmountClass) : DoubleAmountClass
+  static op_CheckedUnaryNegation(DoubleAmountClass) : DoubleAmountClass
+  static op_Division(DoubleAmountClass, DoubleAmountClass) : DoubleAmountClass
+  static op_Equality(DoubleAmountClass, DoubleAmountClass) : Boolean
+  static op_GreaterThan(DoubleAmountClass, DoubleAmountClass) : Boolean
+  static op_GreaterThanOrEqual(DoubleAmountClass, DoubleAmountClass) : Boolean
+  static op_Inequality(DoubleAmountClass, DoubleAmountClass) : Boolean
+  static op_LessThan(DoubleAmountClass, DoubleAmountClass) : Boolean
+  static op_LessThanOrEqual(DoubleAmountClass, DoubleAmountClass) : Boolean
+  static op_Modulus(DoubleAmountClass, DoubleAmountClass) : DoubleAmountClass
+  static op_Multiply(DoubleAmountClass, DoubleAmountClass) : DoubleAmountClass
+  static op_Subtraction(DoubleAmountClass, DoubleAmountClass) : DoubleAmountClass
+  static op_UnaryNegation(DoubleAmountClass) : DoubleAmountClass
+  static op_UnaryPlus(DoubleAmountClass) : DoubleAmountClass
+  extension static DoubleAmountClassExtensions.GetValue(DoubleAmountClass) : Double
+  extension static DoubleAmountClassExtensions.ValueOrNull(DoubleAmountClass) : Double?
 EarlyAllStatus
   Match<TResult>(Func<TResult>) : TResult
   Name : String
@@ -2050,6 +2718,116 @@ EqualsOverloadOverADeeperExplicitEquality
   static op_LessThanOrEqual(EqualsOverloadOverADeeperExplicitEquality, EqualsOverloadOverADeeperExplicitEquality) : Boolean
   extension static EqualsOverloadOverADeeperExplicitEqualityExtensions.GetValue(EqualsOverloadOverADeeperExplicitEquality) : Int32
   extension static EqualsOverloadOverADeeperExplicitEqualityExtensions.ValueOrNull(EqualsOverloadOverADeeperExplicitEquality) : Int32?
+ExplicitlyAdded
+  CompareTo(ExplicitlyAdded) : Int32
+  CompareTo(Object) : Int32
+  Equals(ExplicitlyAdded) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<ExplicitlyAdded, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<ExplicitlyAdded, ExplicitlyAdded, ExplicitlyAdded>
+  implements IComparable
+  implements IComparable<ExplicitlyAdded>
+  implements IComparisonOperators<ExplicitlyAdded, ExplicitlyAdded, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<ExplicitlyAdded, ExplicitlyAdded, Boolean>
+  implements IEquatable<ExplicitlyAdded>
+  implements IFormattable
+  implements IMinMaxValue<ExplicitlyAdded>
+  implements IParsable<ExplicitlyAdded>
+  implements IPlainValueObject<ExplicitlyAdded, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<ExplicitlyAdded>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<ExplicitlyAdded>
+  implements IValue<Int32>
+  implements IValueObject<ExplicitlyAdded, Int32>
+  implements IValueObjectMaterializer<ExplicitlyAdded, Int32>
+  nested ExplicitlyAddedJsonConverter : JsonConverter<ExplicitlyAdded>, IStoredJsonConverterSource
+  nested ExplicitlyAddedTypeConverter : TypeConverter
+  new()
+  static From(Int32) : ExplicitlyAdded
+  static MaxValue : ExplicitlyAdded
+  static MinValue : ExplicitlyAdded
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : ExplicitlyAdded
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : ExplicitlyAdded
+  static Parse(String, IFormatProvider) : ExplicitlyAdded
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out ExplicitlyAdded) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out ExplicitlyAdded) : Boolean
+  static TryParse(String, IFormatProvider, out ExplicitlyAdded) : Boolean
+  static op_Equality(ExplicitlyAdded, ExplicitlyAdded) : Boolean
+  static op_GreaterThan(ExplicitlyAdded, ExplicitlyAdded) : Boolean
+  static op_GreaterThanOrEqual(ExplicitlyAdded, ExplicitlyAdded) : Boolean
+  static op_Inequality(ExplicitlyAdded, ExplicitlyAdded) : Boolean
+  static op_LessThan(ExplicitlyAdded, ExplicitlyAdded) : Boolean
+  static op_LessThanOrEqual(ExplicitlyAdded, ExplicitlyAdded) : Boolean
+  extension static ExplicitlyAddedExtensions.GetValue(ExplicitlyAdded) : Int32
+  extension static ExplicitlyAddedExtensions.ValueOrNull(ExplicitlyAdded?) : Int32?
+FeeMoney
+  CompareTo(FeeMoney) : Int32
+  CompareTo(Object) : Int32
+  Equals(FeeMoney) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Decimal
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<FeeMoney, Decimal>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<FeeMoney, FeeMoney, FeeMoney>
+  implements IAddsFee
+  implements IComparable
+  implements IComparable<FeeMoney>
+  implements IComparisonOperators<FeeMoney, FeeMoney, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<FeeMoney, FeeMoney, Boolean>
+  implements IEquatable<FeeMoney>
+  implements IFormattable
+  implements IMinMaxValue<FeeMoney>
+  implements IParsable<FeeMoney>
+  implements IPlainValueObject<FeeMoney, Decimal>
+  implements ISpanFormattable
+  implements ISpanParsable<FeeMoney>
+  implements ISubtractionOperators<FeeMoney, FeeMoney, FeeMoney>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<FeeMoney>
+  implements IValue<Decimal>
+  implements IValueObject<FeeMoney, Decimal>
+  implements IValueObjectMaterializer<FeeMoney, Decimal>
+  nested FeeMoneyJsonConverter : JsonConverter<FeeMoney>, IStoredJsonConverterSource
+  nested FeeMoneyTypeConverter : TypeConverter
+  new()
+  static From(Decimal) : FeeMoney
+  static MaxValue : FeeMoney
+  static MinValue : FeeMoney
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : FeeMoney
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : FeeMoney
+  static Parse(String, IFormatProvider) : FeeMoney
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out FeeMoney) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out FeeMoney) : Boolean
+  static TryParse(String, IFormatProvider, out FeeMoney) : Boolean
+  static op_CheckedSubtraction(FeeMoney, FeeMoney) : FeeMoney
+  static op_Equality(FeeMoney, FeeMoney) : Boolean
+  static op_GreaterThan(FeeMoney, FeeMoney) : Boolean
+  static op_GreaterThanOrEqual(FeeMoney, FeeMoney) : Boolean
+  static op_Inequality(FeeMoney, FeeMoney) : Boolean
+  static op_LessThan(FeeMoney, FeeMoney) : Boolean
+  static op_LessThanOrEqual(FeeMoney, FeeMoney) : Boolean
+  static op_Subtraction(FeeMoney, FeeMoney) : FeeMoney
+  extension static FeeMoneyExtensions.GetValue(FeeMoney) : Decimal
+  extension static FeeMoneyExtensions.ValueOrNull(FeeMoney?) : Decimal?
 FormatOverloadedByArity
   CompareTo(FormatOverloadedByArity) : Int32
   CompareTo(Object) : Int32
@@ -2315,6 +3093,707 @@ FromOverloadedByRef
   static op_LessThanOrEqual(FromOverloadedByRef, FromOverloadedByRef) : Boolean
   extension static FromOverloadedByRefExtensions.GetValue(FromOverloadedByRef) : Int32
   extension static FromOverloadedByRefExtensions.ValueOrNull(FromOverloadedByRef?) : Int32?
+HalfAmount
+  CompareTo(HalfAmount) : Int32
+  CompareTo(Object) : Int32
+  Equals(HalfAmount) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Half
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<HalfAmount, Half>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<HalfAmount, HalfAmount, HalfAmount>
+  implements IArithmetic<HalfAmount>
+  implements IComparable
+  implements IComparable<HalfAmount>
+  implements IComparisonOperators<HalfAmount, HalfAmount, Boolean>
+  implements IDivisionOperators<HalfAmount, HalfAmount, HalfAmount>
+  implements IEqualityOperators<HalfAmount, HalfAmount, Boolean>
+  implements IEquatable<HalfAmount>
+  implements IFormattable
+  implements IMinMaxValue<HalfAmount>
+  implements IModulusOperators<HalfAmount, HalfAmount, HalfAmount>
+  implements IMultiplyOperators<HalfAmount, HalfAmount, HalfAmount>
+  implements IParsable<HalfAmount>
+  implements IPlainValueObject<HalfAmount, Half>
+  implements ISpanFormattable
+  implements ISpanParsable<HalfAmount>
+  implements ISubtractionOperators<HalfAmount, HalfAmount, HalfAmount>
+  implements IUnaryNegationOperators<HalfAmount, HalfAmount>
+  implements IUnaryPlusOperators<HalfAmount, HalfAmount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<HalfAmount>
+  implements IValue<Half>
+  implements IValueObject<HalfAmount, Half>
+  implements IValueObjectMaterializer<HalfAmount, Half>
+  nested HalfAmountJsonConverter : JsonConverter<HalfAmount>, IStoredJsonConverterSource
+  nested HalfAmountTypeConverter : TypeConverter
+  new()
+  static From(Half) : HalfAmount
+  static MaxValue : HalfAmount
+  static MinValue : HalfAmount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : HalfAmount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : HalfAmount
+  static Parse(String, IFormatProvider) : HalfAmount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out HalfAmount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out HalfAmount) : Boolean
+  static TryParse(String, IFormatProvider, out HalfAmount) : Boolean
+  static op_Addition(HalfAmount, HalfAmount) : HalfAmount
+  static op_CheckedAddition(HalfAmount, HalfAmount) : HalfAmount
+  static op_CheckedDivision(HalfAmount, HalfAmount) : HalfAmount
+  static op_CheckedMultiply(HalfAmount, HalfAmount) : HalfAmount
+  static op_CheckedSubtraction(HalfAmount, HalfAmount) : HalfAmount
+  static op_CheckedUnaryNegation(HalfAmount) : HalfAmount
+  static op_Division(HalfAmount, HalfAmount) : HalfAmount
+  static op_Equality(HalfAmount, HalfAmount) : Boolean
+  static op_GreaterThan(HalfAmount, HalfAmount) : Boolean
+  static op_GreaterThanOrEqual(HalfAmount, HalfAmount) : Boolean
+  static op_Inequality(HalfAmount, HalfAmount) : Boolean
+  static op_LessThan(HalfAmount, HalfAmount) : Boolean
+  static op_LessThanOrEqual(HalfAmount, HalfAmount) : Boolean
+  static op_Modulus(HalfAmount, HalfAmount) : HalfAmount
+  static op_Multiply(HalfAmount, HalfAmount) : HalfAmount
+  static op_Subtraction(HalfAmount, HalfAmount) : HalfAmount
+  static op_UnaryNegation(HalfAmount) : HalfAmount
+  static op_UnaryPlus(HalfAmount) : HalfAmount
+  extension static HalfAmountExtensions.GetValue(HalfAmount) : Half
+  extension static HalfAmountExtensions.ValueOrNull(HalfAmount?) : Half?
+InheritsAddition
+  <Clone>$() : InheritsAddition
+  CompareTo(InheritsAddition) : Int32
+  CompareTo(Object) : Int32
+  Equals(AddingBase<InheritsAddition>) : Boolean
+  Equals(InheritsAddition) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<InheritsAddition, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<InheritsAddition, InheritsAddition, InheritsAddition>
+  implements IComparable
+  implements IComparable<InheritsAddition>
+  implements IComparisonOperators<InheritsAddition, InheritsAddition, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<InheritsAddition, InheritsAddition, Boolean>
+  implements IEquatable<AddingBase<InheritsAddition>>
+  implements IEquatable<InheritsAddition>
+  implements IFormattable
+  implements IMinMaxValue<InheritsAddition>
+  implements IParsable<InheritsAddition>
+  implements IPlainValueObject<InheritsAddition, Int32>
+  implements IReimplementedEquatable<AddingBase<InheritsAddition>>
+  implements ISpanFormattable
+  implements ISpanParsable<InheritsAddition>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<InheritsAddition>
+  implements IValue<Int32>
+  implements IValueObject<InheritsAddition, Int32>
+  implements IValueObjectMaterializer<InheritsAddition, Int32>
+  nested InheritsAdditionJsonConverter : JsonConverter<InheritsAddition>, IStoredJsonConverterSource
+  nested InheritsAdditionTypeConverter : TypeConverter
+  static From(Int32) : InheritsAddition
+  static MaxValue : InheritsAddition
+  static MinValue : InheritsAddition
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : InheritsAddition
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : InheritsAddition
+  static Parse(String, IFormatProvider) : InheritsAddition
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out InheritsAddition) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out InheritsAddition) : Boolean
+  static TryParse(String, IFormatProvider, out InheritsAddition) : Boolean
+  static op_Equality(InheritsAddition, InheritsAddition) : Boolean
+  static op_GreaterThan(InheritsAddition, InheritsAddition) : Boolean
+  static op_GreaterThanOrEqual(InheritsAddition, InheritsAddition) : Boolean
+  static op_Inequality(InheritsAddition, InheritsAddition) : Boolean
+  static op_LessThan(InheritsAddition, InheritsAddition) : Boolean
+  static op_LessThanOrEqual(InheritsAddition, InheritsAddition) : Boolean
+  extension static InheritsAdditionExtensions.GetValue(InheritsAddition) : Int32
+  extension static InheritsAdditionExtensions.ValueOrNull(InheritsAddition) : Int32?
+Int128Amount
+  CompareTo(Int128Amount) : Int32
+  CompareTo(Object) : Int32
+  Equals(Int128Amount) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int128
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<Int128Amount, Int128>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<Int128Amount, Int128Amount, Int128Amount>
+  implements IArithmetic<Int128Amount>
+  implements IComparable
+  implements IComparable<Int128Amount>
+  implements IComparisonOperators<Int128Amount, Int128Amount, Boolean>
+  implements IDivisionOperators<Int128Amount, Int128Amount, Int128Amount>
+  implements IEqualityOperators<Int128Amount, Int128Amount, Boolean>
+  implements IEquatable<Int128Amount>
+  implements IFormattable
+  implements IMinMaxValue<Int128Amount>
+  implements IModulusOperators<Int128Amount, Int128Amount, Int128Amount>
+  implements IMultiplyOperators<Int128Amount, Int128Amount, Int128Amount>
+  implements IParsable<Int128Amount>
+  implements IPlainValueObject<Int128Amount, Int128>
+  implements ISpanFormattable
+  implements ISpanParsable<Int128Amount>
+  implements ISubtractionOperators<Int128Amount, Int128Amount, Int128Amount>
+  implements IUnaryNegationOperators<Int128Amount, Int128Amount>
+  implements IUnaryPlusOperators<Int128Amount, Int128Amount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<Int128Amount>
+  implements IValue<Int128>
+  implements IValueObject<Int128Amount, Int128>
+  implements IValueObjectMaterializer<Int128Amount, Int128>
+  nested Int128AmountJsonConverter : JsonConverter<Int128Amount>, IStoredJsonConverterSource
+  nested Int128AmountTypeConverter : TypeConverter
+  new()
+  static From(Int128) : Int128Amount
+  static MaxValue : Int128Amount
+  static MinValue : Int128Amount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : Int128Amount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : Int128Amount
+  static Parse(String, IFormatProvider) : Int128Amount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out Int128Amount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out Int128Amount) : Boolean
+  static TryParse(String, IFormatProvider, out Int128Amount) : Boolean
+  static op_Addition(Int128Amount, Int128Amount) : Int128Amount
+  static op_CheckedAddition(Int128Amount, Int128Amount) : Int128Amount
+  static op_CheckedDivision(Int128Amount, Int128Amount) : Int128Amount
+  static op_CheckedMultiply(Int128Amount, Int128Amount) : Int128Amount
+  static op_CheckedSubtraction(Int128Amount, Int128Amount) : Int128Amount
+  static op_CheckedUnaryNegation(Int128Amount) : Int128Amount
+  static op_Division(Int128Amount, Int128Amount) : Int128Amount
+  static op_Equality(Int128Amount, Int128Amount) : Boolean
+  static op_GreaterThan(Int128Amount, Int128Amount) : Boolean
+  static op_GreaterThanOrEqual(Int128Amount, Int128Amount) : Boolean
+  static op_Inequality(Int128Amount, Int128Amount) : Boolean
+  static op_LessThan(Int128Amount, Int128Amount) : Boolean
+  static op_LessThanOrEqual(Int128Amount, Int128Amount) : Boolean
+  static op_Modulus(Int128Amount, Int128Amount) : Int128Amount
+  static op_Multiply(Int128Amount, Int128Amount) : Int128Amount
+  static op_Subtraction(Int128Amount, Int128Amount) : Int128Amount
+  static op_UnaryNegation(Int128Amount) : Int128Amount
+  static op_UnaryPlus(Int128Amount) : Int128Amount
+  extension static Int128AmountExtensions.GetValue(Int128Amount) : Int128
+  extension static Int128AmountExtensions.ValueOrNull(Int128Amount?) : Int128?
+Int16Amount
+  CompareTo(Int16Amount) : Int32
+  CompareTo(Object) : Int32
+  Equals(Int16Amount) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int16
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<Int16Amount, Int16>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<Int16Amount, Int16Amount, Int16Amount>
+  implements IArithmetic<Int16Amount>
+  implements IComparable
+  implements IComparable<Int16Amount>
+  implements IComparisonOperators<Int16Amount, Int16Amount, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<Int16Amount, Int16Amount, Int16Amount>
+  implements IEqualityOperators<Int16Amount, Int16Amount, Boolean>
+  implements IEquatable<Int16Amount>
+  implements IFormattable
+  implements IMinMaxValue<Int16Amount>
+  implements IModulusOperators<Int16Amount, Int16Amount, Int16Amount>
+  implements IMultiplyOperators<Int16Amount, Int16Amount, Int16Amount>
+  implements IParsable<Int16Amount>
+  implements IPlainValueObject<Int16Amount, Int16>
+  implements ISpanFormattable
+  implements ISpanParsable<Int16Amount>
+  implements ISubtractionOperators<Int16Amount, Int16Amount, Int16Amount>
+  implements IUnaryNegationOperators<Int16Amount, Int16Amount>
+  implements IUnaryPlusOperators<Int16Amount, Int16Amount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<Int16Amount>
+  implements IValue<Int16>
+  implements IValueObject<Int16Amount, Int16>
+  implements IValueObjectMaterializer<Int16Amount, Int16>
+  nested Int16AmountJsonConverter : JsonConverter<Int16Amount>, IStoredJsonConverterSource
+  nested Int16AmountTypeConverter : TypeConverter
+  new()
+  static From(Int16) : Int16Amount
+  static MaxValue : Int16Amount
+  static MinValue : Int16Amount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : Int16Amount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : Int16Amount
+  static Parse(String, IFormatProvider) : Int16Amount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out Int16Amount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out Int16Amount) : Boolean
+  static TryParse(String, IFormatProvider, out Int16Amount) : Boolean
+  static op_Addition(Int16Amount, Int16Amount) : Int16Amount
+  static op_CheckedAddition(Int16Amount, Int16Amount) : Int16Amount
+  static op_CheckedDivision(Int16Amount, Int16Amount) : Int16Amount
+  static op_CheckedMultiply(Int16Amount, Int16Amount) : Int16Amount
+  static op_CheckedSubtraction(Int16Amount, Int16Amount) : Int16Amount
+  static op_CheckedUnaryNegation(Int16Amount) : Int16Amount
+  static op_Division(Int16Amount, Int16Amount) : Int16Amount
+  static op_Equality(Int16Amount, Int16Amount) : Boolean
+  static op_GreaterThan(Int16Amount, Int16Amount) : Boolean
+  static op_GreaterThanOrEqual(Int16Amount, Int16Amount) : Boolean
+  static op_Inequality(Int16Amount, Int16Amount) : Boolean
+  static op_LessThan(Int16Amount, Int16Amount) : Boolean
+  static op_LessThanOrEqual(Int16Amount, Int16Amount) : Boolean
+  static op_Modulus(Int16Amount, Int16Amount) : Int16Amount
+  static op_Multiply(Int16Amount, Int16Amount) : Int16Amount
+  static op_Subtraction(Int16Amount, Int16Amount) : Int16Amount
+  static op_UnaryNegation(Int16Amount) : Int16Amount
+  static op_UnaryPlus(Int16Amount) : Int16Amount
+  extension static Int16AmountExtensions.GetValue(Int16Amount) : Int16
+  extension static Int16AmountExtensions.ValueOrNull(Int16Amount?) : Int16?
+Int32Amount
+  CompareTo(Int32Amount) : Int32
+  CompareTo(Object) : Int32
+  Equals(Int32Amount) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<Int32Amount, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<Int32Amount, Int32Amount, Int32Amount>
+  implements IArithmetic<Int32Amount>
+  implements IComparable
+  implements IComparable<Int32Amount>
+  implements IComparisonOperators<Int32Amount, Int32Amount, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<Int32Amount, Int32Amount, Int32Amount>
+  implements IEqualityOperators<Int32Amount, Int32Amount, Boolean>
+  implements IEquatable<Int32Amount>
+  implements IFormattable
+  implements IMinMaxValue<Int32Amount>
+  implements IModulusOperators<Int32Amount, Int32Amount, Int32Amount>
+  implements IMultiplyOperators<Int32Amount, Int32Amount, Int32Amount>
+  implements IParsable<Int32Amount>
+  implements IPlainValueObject<Int32Amount, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<Int32Amount>
+  implements ISubtractionOperators<Int32Amount, Int32Amount, Int32Amount>
+  implements IUnaryNegationOperators<Int32Amount, Int32Amount>
+  implements IUnaryPlusOperators<Int32Amount, Int32Amount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<Int32Amount>
+  implements IValue<Int32>
+  implements IValueObject<Int32Amount, Int32>
+  implements IValueObjectMaterializer<Int32Amount, Int32>
+  nested Int32AmountJsonConverter : JsonConverter<Int32Amount>, IStoredJsonConverterSource
+  nested Int32AmountTypeConverter : TypeConverter
+  new()
+  static From(Int32) : Int32Amount
+  static MaxValue : Int32Amount
+  static MinValue : Int32Amount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : Int32Amount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : Int32Amount
+  static Parse(String, IFormatProvider) : Int32Amount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out Int32Amount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out Int32Amount) : Boolean
+  static TryParse(String, IFormatProvider, out Int32Amount) : Boolean
+  static op_Addition(Int32Amount, Int32Amount) : Int32Amount
+  static op_CheckedAddition(Int32Amount, Int32Amount) : Int32Amount
+  static op_CheckedDivision(Int32Amount, Int32Amount) : Int32Amount
+  static op_CheckedMultiply(Int32Amount, Int32Amount) : Int32Amount
+  static op_CheckedSubtraction(Int32Amount, Int32Amount) : Int32Amount
+  static op_CheckedUnaryNegation(Int32Amount) : Int32Amount
+  static op_Division(Int32Amount, Int32Amount) : Int32Amount
+  static op_Equality(Int32Amount, Int32Amount) : Boolean
+  static op_GreaterThan(Int32Amount, Int32Amount) : Boolean
+  static op_GreaterThanOrEqual(Int32Amount, Int32Amount) : Boolean
+  static op_Inequality(Int32Amount, Int32Amount) : Boolean
+  static op_LessThan(Int32Amount, Int32Amount) : Boolean
+  static op_LessThanOrEqual(Int32Amount, Int32Amount) : Boolean
+  static op_Modulus(Int32Amount, Int32Amount) : Int32Amount
+  static op_Multiply(Int32Amount, Int32Amount) : Int32Amount
+  static op_Subtraction(Int32Amount, Int32Amount) : Int32Amount
+  static op_UnaryNegation(Int32Amount) : Int32Amount
+  static op_UnaryPlus(Int32Amount) : Int32Amount
+  extension static Int32AmountExtensions.GetValue(Int32Amount) : Int32
+  extension static Int32AmountExtensions.ValueOrNull(Int32Amount?) : Int32?
+Int32AmountClass
+  <Clone>$() : Int32AmountClass
+  CompareTo(Int32AmountClass) : Int32
+  CompareTo(Object) : Int32
+  Equals(Int32AmountClass) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<Int32AmountClass, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<Int32AmountClass, Int32AmountClass, Int32AmountClass>
+  implements IArithmetic<Int32AmountClass>
+  implements IComparable
+  implements IComparable<Int32AmountClass>
+  implements IComparisonOperators<Int32AmountClass, Int32AmountClass, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<Int32AmountClass, Int32AmountClass, Int32AmountClass>
+  implements IEqualityOperators<Int32AmountClass, Int32AmountClass, Boolean>
+  implements IEquatable<Int32AmountClass>
+  implements IFormattable
+  implements IMinMaxValue<Int32AmountClass>
+  implements IModulusOperators<Int32AmountClass, Int32AmountClass, Int32AmountClass>
+  implements IMultiplyOperators<Int32AmountClass, Int32AmountClass, Int32AmountClass>
+  implements IParsable<Int32AmountClass>
+  implements IPlainValueObject<Int32AmountClass, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<Int32AmountClass>
+  implements ISubtractionOperators<Int32AmountClass, Int32AmountClass, Int32AmountClass>
+  implements IUnaryNegationOperators<Int32AmountClass, Int32AmountClass>
+  implements IUnaryPlusOperators<Int32AmountClass, Int32AmountClass>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<Int32AmountClass>
+  implements IValue<Int32>
+  implements IValueObject<Int32AmountClass, Int32>
+  implements IValueObjectMaterializer<Int32AmountClass, Int32>
+  nested Int32AmountClassJsonConverter : JsonConverter<Int32AmountClass>, IStoredJsonConverterSource
+  nested Int32AmountClassTypeConverter : TypeConverter
+  static From(Int32) : Int32AmountClass
+  static MaxValue : Int32AmountClass
+  static MinValue : Int32AmountClass
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : Int32AmountClass
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : Int32AmountClass
+  static Parse(String, IFormatProvider) : Int32AmountClass
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out Int32AmountClass) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out Int32AmountClass) : Boolean
+  static TryParse(String, IFormatProvider, out Int32AmountClass) : Boolean
+  static op_Addition(Int32AmountClass, Int32AmountClass) : Int32AmountClass
+  static op_CheckedAddition(Int32AmountClass, Int32AmountClass) : Int32AmountClass
+  static op_CheckedDivision(Int32AmountClass, Int32AmountClass) : Int32AmountClass
+  static op_CheckedMultiply(Int32AmountClass, Int32AmountClass) : Int32AmountClass
+  static op_CheckedSubtraction(Int32AmountClass, Int32AmountClass) : Int32AmountClass
+  static op_CheckedUnaryNegation(Int32AmountClass) : Int32AmountClass
+  static op_Division(Int32AmountClass, Int32AmountClass) : Int32AmountClass
+  static op_Equality(Int32AmountClass, Int32AmountClass) : Boolean
+  static op_GreaterThan(Int32AmountClass, Int32AmountClass) : Boolean
+  static op_GreaterThanOrEqual(Int32AmountClass, Int32AmountClass) : Boolean
+  static op_Inequality(Int32AmountClass, Int32AmountClass) : Boolean
+  static op_LessThan(Int32AmountClass, Int32AmountClass) : Boolean
+  static op_LessThanOrEqual(Int32AmountClass, Int32AmountClass) : Boolean
+  static op_Modulus(Int32AmountClass, Int32AmountClass) : Int32AmountClass
+  static op_Multiply(Int32AmountClass, Int32AmountClass) : Int32AmountClass
+  static op_Subtraction(Int32AmountClass, Int32AmountClass) : Int32AmountClass
+  static op_UnaryNegation(Int32AmountClass) : Int32AmountClass
+  static op_UnaryPlus(Int32AmountClass) : Int32AmountClass
+  extension static Int32AmountClassExtensions.GetValue(Int32AmountClass) : Int32
+  extension static Int32AmountClassExtensions.ValueOrNull(Int32AmountClass) : Int32?
+Int64Amount
+  CompareTo(Int64Amount) : Int32
+  CompareTo(Object) : Int32
+  Equals(Int64Amount) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int64
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<Int64Amount, Int64>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<Int64Amount, Int64Amount, Int64Amount>
+  implements IArithmetic<Int64Amount>
+  implements IComparable
+  implements IComparable<Int64Amount>
+  implements IComparisonOperators<Int64Amount, Int64Amount, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<Int64Amount, Int64Amount, Int64Amount>
+  implements IEqualityOperators<Int64Amount, Int64Amount, Boolean>
+  implements IEquatable<Int64Amount>
+  implements IFormattable
+  implements IMinMaxValue<Int64Amount>
+  implements IModulusOperators<Int64Amount, Int64Amount, Int64Amount>
+  implements IMultiplyOperators<Int64Amount, Int64Amount, Int64Amount>
+  implements IParsable<Int64Amount>
+  implements IPlainValueObject<Int64Amount, Int64>
+  implements ISpanFormattable
+  implements ISpanParsable<Int64Amount>
+  implements ISubtractionOperators<Int64Amount, Int64Amount, Int64Amount>
+  implements IUnaryNegationOperators<Int64Amount, Int64Amount>
+  implements IUnaryPlusOperators<Int64Amount, Int64Amount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<Int64Amount>
+  implements IValue<Int64>
+  implements IValueObject<Int64Amount, Int64>
+  implements IValueObjectMaterializer<Int64Amount, Int64>
+  nested Int64AmountJsonConverter : JsonConverter<Int64Amount>, IStoredJsonConverterSource
+  nested Int64AmountTypeConverter : TypeConverter
+  new()
+  static From(Int64) : Int64Amount
+  static MaxValue : Int64Amount
+  static MinValue : Int64Amount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : Int64Amount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : Int64Amount
+  static Parse(String, IFormatProvider) : Int64Amount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out Int64Amount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out Int64Amount) : Boolean
+  static TryParse(String, IFormatProvider, out Int64Amount) : Boolean
+  static op_Addition(Int64Amount, Int64Amount) : Int64Amount
+  static op_CheckedAddition(Int64Amount, Int64Amount) : Int64Amount
+  static op_CheckedDivision(Int64Amount, Int64Amount) : Int64Amount
+  static op_CheckedMultiply(Int64Amount, Int64Amount) : Int64Amount
+  static op_CheckedSubtraction(Int64Amount, Int64Amount) : Int64Amount
+  static op_CheckedUnaryNegation(Int64Amount) : Int64Amount
+  static op_Division(Int64Amount, Int64Amount) : Int64Amount
+  static op_Equality(Int64Amount, Int64Amount) : Boolean
+  static op_GreaterThan(Int64Amount, Int64Amount) : Boolean
+  static op_GreaterThanOrEqual(Int64Amount, Int64Amount) : Boolean
+  static op_Inequality(Int64Amount, Int64Amount) : Boolean
+  static op_LessThan(Int64Amount, Int64Amount) : Boolean
+  static op_LessThanOrEqual(Int64Amount, Int64Amount) : Boolean
+  static op_Modulus(Int64Amount, Int64Amount) : Int64Amount
+  static op_Multiply(Int64Amount, Int64Amount) : Int64Amount
+  static op_Subtraction(Int64Amount, Int64Amount) : Int64Amount
+  static op_UnaryNegation(Int64Amount) : Int64Amount
+  static op_UnaryPlus(Int64Amount) : Int64Amount
+  extension static Int64AmountExtensions.GetValue(Int64Amount) : Int64
+  extension static Int64AmountExtensions.ValueOrNull(Int64Amount?) : Int64?
+IntPtrAmount
+  CompareTo(IntPtrAmount) : Int32
+  CompareTo(Object) : Int32
+  Equals(IntPtrAmount) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : IntPtr
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<IntPtrAmount, IntPtr>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<IntPtrAmount, IntPtrAmount, IntPtrAmount>
+  implements IArithmetic<IntPtrAmount>
+  implements IComparable
+  implements IComparable<IntPtrAmount>
+  implements IComparisonOperators<IntPtrAmount, IntPtrAmount, Boolean>
+  implements IDivisionOperators<IntPtrAmount, IntPtrAmount, IntPtrAmount>
+  implements IEqualityOperators<IntPtrAmount, IntPtrAmount, Boolean>
+  implements IEquatable<IntPtrAmount>
+  implements IFormattable
+  implements IMinMaxValue<IntPtrAmount>
+  implements IModulusOperators<IntPtrAmount, IntPtrAmount, IntPtrAmount>
+  implements IMultiplyOperators<IntPtrAmount, IntPtrAmount, IntPtrAmount>
+  implements IParsable<IntPtrAmount>
+  implements IPlainValueObject<IntPtrAmount, IntPtr>
+  implements ISpanFormattable
+  implements ISpanParsable<IntPtrAmount>
+  implements ISubtractionOperators<IntPtrAmount, IntPtrAmount, IntPtrAmount>
+  implements IUnaryNegationOperators<IntPtrAmount, IntPtrAmount>
+  implements IUnaryPlusOperators<IntPtrAmount, IntPtrAmount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<IntPtrAmount>
+  implements IValue<IntPtr>
+  implements IValueObject<IntPtrAmount, IntPtr>
+  implements IValueObjectMaterializer<IntPtrAmount, IntPtr>
+  nested IntPtrAmountJsonConverter : JsonConverter<IntPtrAmount>, IStoredJsonConverterSource
+  nested IntPtrAmountTypeConverter : TypeConverter
+  new()
+  static From(IntPtr) : IntPtrAmount
+  static MaxValue : IntPtrAmount
+  static MinValue : IntPtrAmount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : IntPtrAmount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : IntPtrAmount
+  static Parse(String, IFormatProvider) : IntPtrAmount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out IntPtrAmount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out IntPtrAmount) : Boolean
+  static TryParse(String, IFormatProvider, out IntPtrAmount) : Boolean
+  static op_Addition(IntPtrAmount, IntPtrAmount) : IntPtrAmount
+  static op_CheckedAddition(IntPtrAmount, IntPtrAmount) : IntPtrAmount
+  static op_CheckedDivision(IntPtrAmount, IntPtrAmount) : IntPtrAmount
+  static op_CheckedMultiply(IntPtrAmount, IntPtrAmount) : IntPtrAmount
+  static op_CheckedSubtraction(IntPtrAmount, IntPtrAmount) : IntPtrAmount
+  static op_CheckedUnaryNegation(IntPtrAmount) : IntPtrAmount
+  static op_Division(IntPtrAmount, IntPtrAmount) : IntPtrAmount
+  static op_Equality(IntPtrAmount, IntPtrAmount) : Boolean
+  static op_GreaterThan(IntPtrAmount, IntPtrAmount) : Boolean
+  static op_GreaterThanOrEqual(IntPtrAmount, IntPtrAmount) : Boolean
+  static op_Inequality(IntPtrAmount, IntPtrAmount) : Boolean
+  static op_LessThan(IntPtrAmount, IntPtrAmount) : Boolean
+  static op_LessThanOrEqual(IntPtrAmount, IntPtrAmount) : Boolean
+  static op_Modulus(IntPtrAmount, IntPtrAmount) : IntPtrAmount
+  static op_Multiply(IntPtrAmount, IntPtrAmount) : IntPtrAmount
+  static op_Subtraction(IntPtrAmount, IntPtrAmount) : IntPtrAmount
+  static op_UnaryNegation(IntPtrAmount) : IntPtrAmount
+  static op_UnaryPlus(IntPtrAmount) : IntPtrAmount
+  extension static IntPtrAmountExtensions.GetValue(IntPtrAmount) : IntPtr
+  extension static IntPtrAmountExtensions.ValueOrNull(IntPtrAmount?) : IntPtr?
+InternalAmount (internal)
+  CompareTo(InternalAmount) : Int32
+  CompareTo(Object) : Int32
+  Equals(InternalAmount) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<InternalAmount, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<InternalAmount, InternalAmount, InternalAmount>
+  implements IArithmetic<InternalAmount>
+  implements IComparable
+  implements IComparable<InternalAmount>
+  implements IComparisonOperators<InternalAmount, InternalAmount, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<InternalAmount, InternalAmount, InternalAmount>
+  implements IEqualityOperators<InternalAmount, InternalAmount, Boolean>
+  implements IEquatable<InternalAmount>
+  implements IFormattable
+  implements IMinMaxValue<InternalAmount>
+  implements IModulusOperators<InternalAmount, InternalAmount, InternalAmount>
+  implements IMultiplyOperators<InternalAmount, InternalAmount, InternalAmount>
+  implements IParsable<InternalAmount>
+  implements IPlainValueObject<InternalAmount, Int32>
+  implements ISpanFormattable
+  implements ISpanParsable<InternalAmount>
+  implements ISubtractionOperators<InternalAmount, InternalAmount, InternalAmount>
+  implements IUnaryNegationOperators<InternalAmount, InternalAmount>
+  implements IUnaryPlusOperators<InternalAmount, InternalAmount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<InternalAmount>
+  implements IValue<Int32>
+  implements IValueObject<InternalAmount, Int32>
+  implements IValueObjectMaterializer<InternalAmount, Int32>
+  nested InternalAmountJsonConverter : JsonConverter<InternalAmount>, IStoredJsonConverterSource
+  nested InternalAmountTypeConverter : TypeConverter
+  new()
+  static From(Int32) : InternalAmount
+  static MaxValue : InternalAmount
+  static MinValue : InternalAmount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : InternalAmount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : InternalAmount
+  static Parse(String, IFormatProvider) : InternalAmount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out InternalAmount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out InternalAmount) : Boolean
+  static TryParse(String, IFormatProvider, out InternalAmount) : Boolean
+  static op_Addition(InternalAmount, InternalAmount) : InternalAmount
+  static op_CheckedAddition(InternalAmount, InternalAmount) : InternalAmount
+  static op_CheckedDivision(InternalAmount, InternalAmount) : InternalAmount
+  static op_CheckedMultiply(InternalAmount, InternalAmount) : InternalAmount
+  static op_CheckedSubtraction(InternalAmount, InternalAmount) : InternalAmount
+  static op_CheckedUnaryNegation(InternalAmount) : InternalAmount
+  static op_Division(InternalAmount, InternalAmount) : InternalAmount
+  static op_Equality(InternalAmount, InternalAmount) : Boolean
+  static op_GreaterThan(InternalAmount, InternalAmount) : Boolean
+  static op_GreaterThanOrEqual(InternalAmount, InternalAmount) : Boolean
+  static op_Inequality(InternalAmount, InternalAmount) : Boolean
+  static op_LessThan(InternalAmount, InternalAmount) : Boolean
+  static op_LessThanOrEqual(InternalAmount, InternalAmount) : Boolean
+  static op_Modulus(InternalAmount, InternalAmount) : InternalAmount
+  static op_Multiply(InternalAmount, InternalAmount) : InternalAmount
+  static op_Subtraction(InternalAmount, InternalAmount) : InternalAmount
+  static op_UnaryNegation(InternalAmount) : InternalAmount
+  static op_UnaryPlus(InternalAmount) : InternalAmount
+  extension internal static InternalAmountExtensions.GetValue(InternalAmount) : Int32
+  extension internal static InternalAmountExtensions.ValueOrNull(InternalAmount?) : Int32?
+Ledger.Entry
+  CompareTo(Ledger.Entry) : Int32
+  CompareTo(Object) : Int32
+  Equals(Ledger.Entry) : Boolean
+  Equals(Object) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int64
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<Ledger.Entry, Int64>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<Ledger.Entry, Ledger.Entry, Ledger.Entry>
+  implements IArithmetic<Ledger.Entry>
+  implements IComparable
+  implements IComparable<Ledger.Entry>
+  implements IComparisonOperators<Ledger.Entry, Ledger.Entry, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<Ledger.Entry, Ledger.Entry, Ledger.Entry>
+  implements IEqualityOperators<Ledger.Entry, Ledger.Entry, Boolean>
+  implements IEquatable<Ledger.Entry>
+  implements IFormattable
+  implements IMinMaxValue<Ledger.Entry>
+  implements IModulusOperators<Ledger.Entry, Ledger.Entry, Ledger.Entry>
+  implements IMultiplyOperators<Ledger.Entry, Ledger.Entry, Ledger.Entry>
+  implements IParsable<Ledger.Entry>
+  implements IPlainValueObject<Ledger.Entry, Int64>
+  implements ISpanFormattable
+  implements ISpanParsable<Ledger.Entry>
+  implements ISubtractionOperators<Ledger.Entry, Ledger.Entry, Ledger.Entry>
+  implements IUnaryNegationOperators<Ledger.Entry, Ledger.Entry>
+  implements IUnaryPlusOperators<Ledger.Entry, Ledger.Entry>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<Ledger.Entry>
+  implements IValue<Int64>
+  implements IValueObject<Ledger.Entry, Int64>
+  implements IValueObjectMaterializer<Ledger.Entry, Int64>
+  nested EntryJsonConverter : JsonConverter<Ledger.Entry>, IStoredJsonConverterSource
+  nested EntryTypeConverter : TypeConverter
+  new()
+  static From(Int64) : Ledger.Entry
+  static MaxValue : Ledger.Entry
+  static MinValue : Ledger.Entry
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : Ledger.Entry
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : Ledger.Entry
+  static Parse(String, IFormatProvider) : Ledger.Entry
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out Ledger.Entry) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out Ledger.Entry) : Boolean
+  static TryParse(String, IFormatProvider, out Ledger.Entry) : Boolean
+  static op_Addition(Ledger.Entry, Ledger.Entry) : Ledger.Entry
+  static op_CheckedAddition(Ledger.Entry, Ledger.Entry) : Ledger.Entry
+  static op_CheckedDivision(Ledger.Entry, Ledger.Entry) : Ledger.Entry
+  static op_CheckedMultiply(Ledger.Entry, Ledger.Entry) : Ledger.Entry
+  static op_CheckedSubtraction(Ledger.Entry, Ledger.Entry) : Ledger.Entry
+  static op_CheckedUnaryNegation(Ledger.Entry) : Ledger.Entry
+  static op_Division(Ledger.Entry, Ledger.Entry) : Ledger.Entry
+  static op_Equality(Ledger.Entry, Ledger.Entry) : Boolean
+  static op_GreaterThan(Ledger.Entry, Ledger.Entry) : Boolean
+  static op_GreaterThanOrEqual(Ledger.Entry, Ledger.Entry) : Boolean
+  static op_Inequality(Ledger.Entry, Ledger.Entry) : Boolean
+  static op_LessThan(Ledger.Entry, Ledger.Entry) : Boolean
+  static op_LessThanOrEqual(Ledger.Entry, Ledger.Entry) : Boolean
+  static op_Modulus(Ledger.Entry, Ledger.Entry) : Ledger.Entry
+  static op_Multiply(Ledger.Entry, Ledger.Entry) : Ledger.Entry
+  static op_Subtraction(Ledger.Entry, Ledger.Entry) : Ledger.Entry
+  static op_UnaryNegation(Ledger.Entry) : Ledger.Entry
+  static op_UnaryPlus(Ledger.Entry) : Ledger.Entry
+  extension static LedgerEntryExtensions.GetValue(Ledger.Entry) : Int64
+  extension static LedgerEntryExtensions.ValueOrNull(Ledger.Entry?) : Int64?
 LocalOrder.Stage
   Match<TResult>(Func<TResult>, Func<TResult>) : TResult
   Name : String
@@ -4783,6 +6262,188 @@ PrintMembersOverloadedByArity
   static op_LessThanOrEqual(PrintMembersOverloadedByArity, PrintMembersOverloadedByArity) : Boolean
   extension static PrintMembersOverloadedByArityExtensions.GetValue(PrintMembersOverloadedByArity) : Int32
   extension static PrintMembersOverloadedByArityExtensions.ValueOrNull(PrintMembersOverloadedByArity) : Int32?
+RoundedMoney
+  CompareTo(Object) : Int32
+  CompareTo(RoundedMoney) : Int32
+  Equals(Object) : Boolean
+  Equals(RoundedMoney) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Decimal
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<RoundedMoney, Decimal>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<RoundedMoney, RoundedMoney, RoundedMoney>
+  implements IComparable
+  implements IComparable<RoundedMoney>
+  implements IComparisonOperators<RoundedMoney, RoundedMoney, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<RoundedMoney, RoundedMoney, Boolean>
+  implements IEquatable<RoundedMoney>
+  implements IFormattable
+  implements IMinMaxValue<RoundedMoney>
+  implements IParsable<RoundedMoney>
+  implements IPlainValueObject<RoundedMoney, Decimal>
+  implements ISpanFormattable
+  implements ISpanParsable<RoundedMoney>
+  implements ISubtractionOperators<RoundedMoney, RoundedMoney, RoundedMoney>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<RoundedMoney>
+  implements IValue<Decimal>
+  implements IValueObject<RoundedMoney, Decimal>
+  implements IValueObjectMaterializer<RoundedMoney, Decimal>
+  nested RoundedMoneyJsonConverter : JsonConverter<RoundedMoney>, IStoredJsonConverterSource
+  nested RoundedMoneyTypeConverter : TypeConverter
+  new()
+  static From(Decimal) : RoundedMoney
+  static MaxValue : RoundedMoney
+  static MinValue : RoundedMoney
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : RoundedMoney
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : RoundedMoney
+  static Parse(String, IFormatProvider) : RoundedMoney
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out RoundedMoney) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out RoundedMoney) : Boolean
+  static TryParse(String, IFormatProvider, out RoundedMoney) : Boolean
+  static op_Addition(RoundedMoney, RoundedMoney) : RoundedMoney
+  static op_CheckedSubtraction(RoundedMoney, RoundedMoney) : RoundedMoney
+  static op_Equality(RoundedMoney, RoundedMoney) : Boolean
+  static op_GreaterThan(RoundedMoney, RoundedMoney) : Boolean
+  static op_GreaterThanOrEqual(RoundedMoney, RoundedMoney) : Boolean
+  static op_Inequality(RoundedMoney, RoundedMoney) : Boolean
+  static op_LessThan(RoundedMoney, RoundedMoney) : Boolean
+  static op_LessThanOrEqual(RoundedMoney, RoundedMoney) : Boolean
+  static op_Subtraction(RoundedMoney, RoundedMoney) : RoundedMoney
+  extension static RoundedMoneyExtensions.GetValue(RoundedMoney) : Decimal
+  extension static RoundedMoneyExtensions.ValueOrNull(RoundedMoney?) : Decimal?
+SByteAmount
+  CompareTo(Object) : Int32
+  CompareTo(SByteAmount) : Int32
+  Equals(Object) : Boolean
+  Equals(SByteAmount) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : SByte
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<SByteAmount, SByte>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<SByteAmount, SByteAmount, SByteAmount>
+  implements IArithmetic<SByteAmount>
+  implements IComparable
+  implements IComparable<SByteAmount>
+  implements IComparisonOperators<SByteAmount, SByteAmount, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<SByteAmount, SByteAmount, SByteAmount>
+  implements IEqualityOperators<SByteAmount, SByteAmount, Boolean>
+  implements IEquatable<SByteAmount>
+  implements IFormattable
+  implements IMinMaxValue<SByteAmount>
+  implements IModulusOperators<SByteAmount, SByteAmount, SByteAmount>
+  implements IMultiplyOperators<SByteAmount, SByteAmount, SByteAmount>
+  implements IParsable<SByteAmount>
+  implements IPlainValueObject<SByteAmount, SByte>
+  implements ISpanFormattable
+  implements ISpanParsable<SByteAmount>
+  implements ISubtractionOperators<SByteAmount, SByteAmount, SByteAmount>
+  implements IUnaryNegationOperators<SByteAmount, SByteAmount>
+  implements IUnaryPlusOperators<SByteAmount, SByteAmount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<SByteAmount>
+  implements IValue<SByte>
+  implements IValueObject<SByteAmount, SByte>
+  implements IValueObjectMaterializer<SByteAmount, SByte>
+  nested SByteAmountJsonConverter : JsonConverter<SByteAmount>, IStoredJsonConverterSource
+  nested SByteAmountTypeConverter : TypeConverter
+  new()
+  static From(SByte) : SByteAmount
+  static MaxValue : SByteAmount
+  static MinValue : SByteAmount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : SByteAmount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : SByteAmount
+  static Parse(String, IFormatProvider) : SByteAmount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out SByteAmount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out SByteAmount) : Boolean
+  static TryParse(String, IFormatProvider, out SByteAmount) : Boolean
+  static op_Addition(SByteAmount, SByteAmount) : SByteAmount
+  static op_CheckedAddition(SByteAmount, SByteAmount) : SByteAmount
+  static op_CheckedDivision(SByteAmount, SByteAmount) : SByteAmount
+  static op_CheckedMultiply(SByteAmount, SByteAmount) : SByteAmount
+  static op_CheckedSubtraction(SByteAmount, SByteAmount) : SByteAmount
+  static op_CheckedUnaryNegation(SByteAmount) : SByteAmount
+  static op_Division(SByteAmount, SByteAmount) : SByteAmount
+  static op_Equality(SByteAmount, SByteAmount) : Boolean
+  static op_GreaterThan(SByteAmount, SByteAmount) : Boolean
+  static op_GreaterThanOrEqual(SByteAmount, SByteAmount) : Boolean
+  static op_Inequality(SByteAmount, SByteAmount) : Boolean
+  static op_LessThan(SByteAmount, SByteAmount) : Boolean
+  static op_LessThanOrEqual(SByteAmount, SByteAmount) : Boolean
+  static op_Modulus(SByteAmount, SByteAmount) : SByteAmount
+  static op_Multiply(SByteAmount, SByteAmount) : SByteAmount
+  static op_Subtraction(SByteAmount, SByteAmount) : SByteAmount
+  static op_UnaryNegation(SByteAmount) : SByteAmount
+  static op_UnaryPlus(SByteAmount) : SByteAmount
+  extension static SByteAmountExtensions.GetValue(SByteAmount) : SByte
+  extension static SByteAmountExtensions.ValueOrNull(SByteAmount?) : SByte?
+Score
+  CompareTo(Object) : Int32
+  CompareTo(Score) : Int32
+  Equals(Object) : Boolean
+  Equals(Score) : Boolean
+  GetHashCode() : Int32
+  Revalidate() : Result<Score, ScoreFault>
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Int32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<Score, Int32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<Score, Score, Score>
+  implements IComparable
+  implements IComparable<Score>
+  implements IComparisonOperators<Score, Score, Boolean>
+  implements IConvertible
+  implements IEqualityOperators<Score, Score, Boolean>
+  implements IEquatable<Score>
+  implements IFormattable
+  implements IParsable<Score>
+  implements ISpanFormattable
+  implements ISpanParsable<Score>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<Score>
+  implements IValidatedValue<Score, Int32, ScoreFault>
+  implements IValueObject<Score, Int32>
+  implements IValueObjectMaterializer<Score, Int32>
+  nested ScoreJsonConverter : JsonConverter<Score>, IStoredJsonConverterSource
+  nested ScoreTypeConverter : TypeConverter
+  new()
+  static Create(Int32) : Result<Score, ScoreFault>
+  static FromKnownGood(Int32, String) : Score
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : Score
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : Score
+  static Parse(String, IFormatProvider) : Score
+  static TryFrom(Int32) : Option<Score>
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out Score) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out Score) : Boolean
+  static TryParse(String, IFormatProvider, out Score) : Boolean
+  static op_Addition(Score, Score) : Score
+  static op_Equality(Score, Score) : Boolean
+  static op_GreaterThan(Score, Score) : Boolean
+  static op_GreaterThanOrEqual(Score, Score) : Boolean
+  static op_Inequality(Score, Score) : Boolean
+  static op_LessThan(Score, Score) : Boolean
+  static op_LessThanOrEqual(Score, Score) : Boolean
+  extension static ScoreExtensions.GetValue(Score) : Int32
+  extension static ScoreExtensions.ValueOrNull(Score?) : Int32?
 SetOverAnOverloadingBase
   Match<TResult>(Func<TResult>, Func<TResult>) : TResult
   Name : String
@@ -4869,6 +6530,78 @@ ShippableStatus
   static op_Inequality(ShippableStatus, ShippableStatus) : Boolean
   extension static ShippableStatusExtensions.GetValue(ShippableStatus) : LocalStatus
   extension static ShippableStatusExtensions.ValueOrNull(ShippableStatus?) : LocalStatus
+SingleAmount
+  CompareTo(Object) : Int32
+  CompareTo(SingleAmount) : Int32
+  Equals(Object) : Boolean
+  Equals(SingleAmount) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : Single
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<SingleAmount, Single>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<SingleAmount, SingleAmount, SingleAmount>
+  implements IArithmetic<SingleAmount>
+  implements IComparable
+  implements IComparable<SingleAmount>
+  implements IComparisonOperators<SingleAmount, SingleAmount, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<SingleAmount, SingleAmount, SingleAmount>
+  implements IEqualityOperators<SingleAmount, SingleAmount, Boolean>
+  implements IEquatable<SingleAmount>
+  implements IFormattable
+  implements IMinMaxValue<SingleAmount>
+  implements IModulusOperators<SingleAmount, SingleAmount, SingleAmount>
+  implements IMultiplyOperators<SingleAmount, SingleAmount, SingleAmount>
+  implements IParsable<SingleAmount>
+  implements IPlainValueObject<SingleAmount, Single>
+  implements ISpanFormattable
+  implements ISpanParsable<SingleAmount>
+  implements ISubtractionOperators<SingleAmount, SingleAmount, SingleAmount>
+  implements IUnaryNegationOperators<SingleAmount, SingleAmount>
+  implements IUnaryPlusOperators<SingleAmount, SingleAmount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<SingleAmount>
+  implements IValue<Single>
+  implements IValueObject<SingleAmount, Single>
+  implements IValueObjectMaterializer<SingleAmount, Single>
+  nested SingleAmountJsonConverter : JsonConverter<SingleAmount>, IStoredJsonConverterSource
+  nested SingleAmountTypeConverter : TypeConverter
+  new()
+  static From(Single) : SingleAmount
+  static MaxValue : SingleAmount
+  static MinValue : SingleAmount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : SingleAmount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : SingleAmount
+  static Parse(String, IFormatProvider) : SingleAmount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out SingleAmount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out SingleAmount) : Boolean
+  static TryParse(String, IFormatProvider, out SingleAmount) : Boolean
+  static op_Addition(SingleAmount, SingleAmount) : SingleAmount
+  static op_CheckedAddition(SingleAmount, SingleAmount) : SingleAmount
+  static op_CheckedDivision(SingleAmount, SingleAmount) : SingleAmount
+  static op_CheckedMultiply(SingleAmount, SingleAmount) : SingleAmount
+  static op_CheckedSubtraction(SingleAmount, SingleAmount) : SingleAmount
+  static op_CheckedUnaryNegation(SingleAmount) : SingleAmount
+  static op_Division(SingleAmount, SingleAmount) : SingleAmount
+  static op_Equality(SingleAmount, SingleAmount) : Boolean
+  static op_GreaterThan(SingleAmount, SingleAmount) : Boolean
+  static op_GreaterThanOrEqual(SingleAmount, SingleAmount) : Boolean
+  static op_Inequality(SingleAmount, SingleAmount) : Boolean
+  static op_LessThan(SingleAmount, SingleAmount) : Boolean
+  static op_LessThanOrEqual(SingleAmount, SingleAmount) : Boolean
+  static op_Modulus(SingleAmount, SingleAmount) : SingleAmount
+  static op_Multiply(SingleAmount, SingleAmount) : SingleAmount
+  static op_Subtraction(SingleAmount, SingleAmount) : SingleAmount
+  static op_UnaryNegation(SingleAmount) : SingleAmount
+  static op_UnaryPlus(SingleAmount) : SingleAmount
+  extension static SingleAmountExtensions.GetValue(SingleAmount) : Single
+  extension static SingleAmountExtensions.ValueOrNull(SingleAmount?) : Single?
 SpanParseOverloaded
   CompareTo(Object) : Int32
   CompareTo(SpanParseOverloaded) : Int32
@@ -4952,6 +6685,36 @@ StageOfOrder
   static op_Inequality(StageOfOrder, StageOfOrder) : Boolean
   extension static StageOfOrderExtensions.GetValue(StageOfOrder) : LocalOrder.Stage
   extension static StageOfOrderExtensions.ValueOrNull(StageOfOrder?) : LocalOrder.Stage
+Stamp
+  Equals(Object) : Boolean
+  Equals(Stamp) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  Value : Tick
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<Stamp, Tick>
+  attribute JsonConverterAttribute
+  implements IAdditionOperators<Stamp, Elapsed, Stamp>
+  implements IEqualityOperators<Stamp, Stamp, Boolean>
+  implements IEquatable<Stamp>
+  implements IFormattable
+  implements IPlainValueObject<Stamp, Tick>
+  implements ISubtractionOperators<Stamp, Stamp, Elapsed>
+  implements IValue<Tick>
+  implements IValueObject<Stamp, Tick>
+  implements IValueObjectMaterializer<Stamp, Tick>
+  nested StampJsonConverter : JsonConverter<Stamp>, IStoredJsonConverterSource
+  new()
+  static From(Tick) : Stamp
+  static op_Addition(Stamp, Elapsed) : Stamp
+  static op_CheckedAddition(Stamp, Elapsed) : Stamp
+  static op_CheckedSubtraction(Stamp, Stamp) : Elapsed
+  static op_Equality(Stamp, Stamp) : Boolean
+  static op_Inequality(Stamp, Stamp) : Boolean
+  static op_Subtraction(Stamp, Stamp) : Elapsed
+  extension static StampExtensions.GetValue(Stamp) : Tick
+  extension static StampExtensions.ValueOrNull(Stamp?) : Tick?
 StatusLabel
   <Clone>$() : StatusLabel
   Equals(Object) : Boolean
@@ -5521,6 +7284,364 @@ TryParseOverloadedByValue
   static op_LessThanOrEqual(TryParseOverloadedByValue, TryParseOverloadedByValue) : Boolean
   extension static TryParseOverloadedByValueExtensions.GetValue(TryParseOverloadedByValue) : Int32
   extension static TryParseOverloadedByValueExtensions.ValueOrNull(TryParseOverloadedByValue?) : Int32?
+UInt128Amount
+  CompareTo(Object) : Int32
+  CompareTo(UInt128Amount) : Int32
+  Equals(Object) : Boolean
+  Equals(UInt128Amount) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : UInt128
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<UInt128Amount, UInt128>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<UInt128Amount, UInt128Amount, UInt128Amount>
+  implements IArithmetic<UInt128Amount>
+  implements IComparable
+  implements IComparable<UInt128Amount>
+  implements IComparisonOperators<UInt128Amount, UInt128Amount, Boolean>
+  implements IDivisionOperators<UInt128Amount, UInt128Amount, UInt128Amount>
+  implements IEqualityOperators<UInt128Amount, UInt128Amount, Boolean>
+  implements IEquatable<UInt128Amount>
+  implements IFormattable
+  implements IMinMaxValue<UInt128Amount>
+  implements IModulusOperators<UInt128Amount, UInt128Amount, UInt128Amount>
+  implements IMultiplyOperators<UInt128Amount, UInt128Amount, UInt128Amount>
+  implements IParsable<UInt128Amount>
+  implements IPlainValueObject<UInt128Amount, UInt128>
+  implements ISpanFormattable
+  implements ISpanParsable<UInt128Amount>
+  implements ISubtractionOperators<UInt128Amount, UInt128Amount, UInt128Amount>
+  implements IUnaryNegationOperators<UInt128Amount, UInt128Amount>
+  implements IUnaryPlusOperators<UInt128Amount, UInt128Amount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<UInt128Amount>
+  implements IValue<UInt128>
+  implements IValueObject<UInt128Amount, UInt128>
+  implements IValueObjectMaterializer<UInt128Amount, UInt128>
+  nested UInt128AmountJsonConverter : JsonConverter<UInt128Amount>, IStoredJsonConverterSource
+  nested UInt128AmountTypeConverter : TypeConverter
+  new()
+  static From(UInt128) : UInt128Amount
+  static MaxValue : UInt128Amount
+  static MinValue : UInt128Amount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : UInt128Amount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : UInt128Amount
+  static Parse(String, IFormatProvider) : UInt128Amount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out UInt128Amount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out UInt128Amount) : Boolean
+  static TryParse(String, IFormatProvider, out UInt128Amount) : Boolean
+  static op_Addition(UInt128Amount, UInt128Amount) : UInt128Amount
+  static op_CheckedAddition(UInt128Amount, UInt128Amount) : UInt128Amount
+  static op_CheckedDivision(UInt128Amount, UInt128Amount) : UInt128Amount
+  static op_CheckedMultiply(UInt128Amount, UInt128Amount) : UInt128Amount
+  static op_CheckedSubtraction(UInt128Amount, UInt128Amount) : UInt128Amount
+  static op_CheckedUnaryNegation(UInt128Amount) : UInt128Amount
+  static op_Division(UInt128Amount, UInt128Amount) : UInt128Amount
+  static op_Equality(UInt128Amount, UInt128Amount) : Boolean
+  static op_GreaterThan(UInt128Amount, UInt128Amount) : Boolean
+  static op_GreaterThanOrEqual(UInt128Amount, UInt128Amount) : Boolean
+  static op_Inequality(UInt128Amount, UInt128Amount) : Boolean
+  static op_LessThan(UInt128Amount, UInt128Amount) : Boolean
+  static op_LessThanOrEqual(UInt128Amount, UInt128Amount) : Boolean
+  static op_Modulus(UInt128Amount, UInt128Amount) : UInt128Amount
+  static op_Multiply(UInt128Amount, UInt128Amount) : UInt128Amount
+  static op_Subtraction(UInt128Amount, UInt128Amount) : UInt128Amount
+  static op_UnaryNegation(UInt128Amount) : UInt128Amount
+  static op_UnaryPlus(UInt128Amount) : UInt128Amount
+  extension static UInt128AmountExtensions.GetValue(UInt128Amount) : UInt128
+  extension static UInt128AmountExtensions.ValueOrNull(UInt128Amount?) : UInt128?
+UInt16Amount
+  CompareTo(Object) : Int32
+  CompareTo(UInt16Amount) : Int32
+  Equals(Object) : Boolean
+  Equals(UInt16Amount) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : UInt16
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<UInt16Amount, UInt16>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<UInt16Amount, UInt16Amount, UInt16Amount>
+  implements IArithmetic<UInt16Amount>
+  implements IComparable
+  implements IComparable<UInt16Amount>
+  implements IComparisonOperators<UInt16Amount, UInt16Amount, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<UInt16Amount, UInt16Amount, UInt16Amount>
+  implements IEqualityOperators<UInt16Amount, UInt16Amount, Boolean>
+  implements IEquatable<UInt16Amount>
+  implements IFormattable
+  implements IMinMaxValue<UInt16Amount>
+  implements IModulusOperators<UInt16Amount, UInt16Amount, UInt16Amount>
+  implements IMultiplyOperators<UInt16Amount, UInt16Amount, UInt16Amount>
+  implements IParsable<UInt16Amount>
+  implements IPlainValueObject<UInt16Amount, UInt16>
+  implements ISpanFormattable
+  implements ISpanParsable<UInt16Amount>
+  implements ISubtractionOperators<UInt16Amount, UInt16Amount, UInt16Amount>
+  implements IUnaryNegationOperators<UInt16Amount, UInt16Amount>
+  implements IUnaryPlusOperators<UInt16Amount, UInt16Amount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<UInt16Amount>
+  implements IValue<UInt16>
+  implements IValueObject<UInt16Amount, UInt16>
+  implements IValueObjectMaterializer<UInt16Amount, UInt16>
+  nested UInt16AmountJsonConverter : JsonConverter<UInt16Amount>, IStoredJsonConverterSource
+  nested UInt16AmountTypeConverter : TypeConverter
+  new()
+  static From(UInt16) : UInt16Amount
+  static MaxValue : UInt16Amount
+  static MinValue : UInt16Amount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : UInt16Amount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : UInt16Amount
+  static Parse(String, IFormatProvider) : UInt16Amount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out UInt16Amount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out UInt16Amount) : Boolean
+  static TryParse(String, IFormatProvider, out UInt16Amount) : Boolean
+  static op_Addition(UInt16Amount, UInt16Amount) : UInt16Amount
+  static op_CheckedAddition(UInt16Amount, UInt16Amount) : UInt16Amount
+  static op_CheckedDivision(UInt16Amount, UInt16Amount) : UInt16Amount
+  static op_CheckedMultiply(UInt16Amount, UInt16Amount) : UInt16Amount
+  static op_CheckedSubtraction(UInt16Amount, UInt16Amount) : UInt16Amount
+  static op_CheckedUnaryNegation(UInt16Amount) : UInt16Amount
+  static op_Division(UInt16Amount, UInt16Amount) : UInt16Amount
+  static op_Equality(UInt16Amount, UInt16Amount) : Boolean
+  static op_GreaterThan(UInt16Amount, UInt16Amount) : Boolean
+  static op_GreaterThanOrEqual(UInt16Amount, UInt16Amount) : Boolean
+  static op_Inequality(UInt16Amount, UInt16Amount) : Boolean
+  static op_LessThan(UInt16Amount, UInt16Amount) : Boolean
+  static op_LessThanOrEqual(UInt16Amount, UInt16Amount) : Boolean
+  static op_Modulus(UInt16Amount, UInt16Amount) : UInt16Amount
+  static op_Multiply(UInt16Amount, UInt16Amount) : UInt16Amount
+  static op_Subtraction(UInt16Amount, UInt16Amount) : UInt16Amount
+  static op_UnaryNegation(UInt16Amount) : UInt16Amount
+  static op_UnaryPlus(UInt16Amount) : UInt16Amount
+  extension static UInt16AmountExtensions.GetValue(UInt16Amount) : UInt16
+  extension static UInt16AmountExtensions.ValueOrNull(UInt16Amount?) : UInt16?
+UInt32Amount
+  CompareTo(Object) : Int32
+  CompareTo(UInt32Amount) : Int32
+  Equals(Object) : Boolean
+  Equals(UInt32Amount) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : UInt32
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<UInt32Amount, UInt32>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<UInt32Amount, UInt32Amount, UInt32Amount>
+  implements IArithmetic<UInt32Amount>
+  implements IComparable
+  implements IComparable<UInt32Amount>
+  implements IComparisonOperators<UInt32Amount, UInt32Amount, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<UInt32Amount, UInt32Amount, UInt32Amount>
+  implements IEqualityOperators<UInt32Amount, UInt32Amount, Boolean>
+  implements IEquatable<UInt32Amount>
+  implements IFormattable
+  implements IMinMaxValue<UInt32Amount>
+  implements IModulusOperators<UInt32Amount, UInt32Amount, UInt32Amount>
+  implements IMultiplyOperators<UInt32Amount, UInt32Amount, UInt32Amount>
+  implements IParsable<UInt32Amount>
+  implements IPlainValueObject<UInt32Amount, UInt32>
+  implements ISpanFormattable
+  implements ISpanParsable<UInt32Amount>
+  implements ISubtractionOperators<UInt32Amount, UInt32Amount, UInt32Amount>
+  implements IUnaryNegationOperators<UInt32Amount, UInt32Amount>
+  implements IUnaryPlusOperators<UInt32Amount, UInt32Amount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<UInt32Amount>
+  implements IValue<UInt32>
+  implements IValueObject<UInt32Amount, UInt32>
+  implements IValueObjectMaterializer<UInt32Amount, UInt32>
+  nested UInt32AmountJsonConverter : JsonConverter<UInt32Amount>, IStoredJsonConverterSource
+  nested UInt32AmountTypeConverter : TypeConverter
+  new()
+  static From(UInt32) : UInt32Amount
+  static MaxValue : UInt32Amount
+  static MinValue : UInt32Amount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : UInt32Amount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : UInt32Amount
+  static Parse(String, IFormatProvider) : UInt32Amount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out UInt32Amount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out UInt32Amount) : Boolean
+  static TryParse(String, IFormatProvider, out UInt32Amount) : Boolean
+  static op_Addition(UInt32Amount, UInt32Amount) : UInt32Amount
+  static op_CheckedAddition(UInt32Amount, UInt32Amount) : UInt32Amount
+  static op_CheckedDivision(UInt32Amount, UInt32Amount) : UInt32Amount
+  static op_CheckedMultiply(UInt32Amount, UInt32Amount) : UInt32Amount
+  static op_CheckedSubtraction(UInt32Amount, UInt32Amount) : UInt32Amount
+  static op_CheckedUnaryNegation(UInt32Amount) : UInt32Amount
+  static op_Division(UInt32Amount, UInt32Amount) : UInt32Amount
+  static op_Equality(UInt32Amount, UInt32Amount) : Boolean
+  static op_GreaterThan(UInt32Amount, UInt32Amount) : Boolean
+  static op_GreaterThanOrEqual(UInt32Amount, UInt32Amount) : Boolean
+  static op_Inequality(UInt32Amount, UInt32Amount) : Boolean
+  static op_LessThan(UInt32Amount, UInt32Amount) : Boolean
+  static op_LessThanOrEqual(UInt32Amount, UInt32Amount) : Boolean
+  static op_Modulus(UInt32Amount, UInt32Amount) : UInt32Amount
+  static op_Multiply(UInt32Amount, UInt32Amount) : UInt32Amount
+  static op_Subtraction(UInt32Amount, UInt32Amount) : UInt32Amount
+  static op_UnaryNegation(UInt32Amount) : UInt32Amount
+  static op_UnaryPlus(UInt32Amount) : UInt32Amount
+  extension static UInt32AmountExtensions.GetValue(UInt32Amount) : UInt32
+  extension static UInt32AmountExtensions.ValueOrNull(UInt32Amount?) : UInt32?
+UInt64Amount
+  CompareTo(Object) : Int32
+  CompareTo(UInt64Amount) : Int32
+  Equals(Object) : Boolean
+  Equals(UInt64Amount) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : UInt64
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<UInt64Amount, UInt64>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<UInt64Amount, UInt64Amount, UInt64Amount>
+  implements IArithmetic<UInt64Amount>
+  implements IComparable
+  implements IComparable<UInt64Amount>
+  implements IComparisonOperators<UInt64Amount, UInt64Amount, Boolean>
+  implements IConvertible
+  implements IDivisionOperators<UInt64Amount, UInt64Amount, UInt64Amount>
+  implements IEqualityOperators<UInt64Amount, UInt64Amount, Boolean>
+  implements IEquatable<UInt64Amount>
+  implements IFormattable
+  implements IMinMaxValue<UInt64Amount>
+  implements IModulusOperators<UInt64Amount, UInt64Amount, UInt64Amount>
+  implements IMultiplyOperators<UInt64Amount, UInt64Amount, UInt64Amount>
+  implements IParsable<UInt64Amount>
+  implements IPlainValueObject<UInt64Amount, UInt64>
+  implements ISpanFormattable
+  implements ISpanParsable<UInt64Amount>
+  implements ISubtractionOperators<UInt64Amount, UInt64Amount, UInt64Amount>
+  implements IUnaryNegationOperators<UInt64Amount, UInt64Amount>
+  implements IUnaryPlusOperators<UInt64Amount, UInt64Amount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<UInt64Amount>
+  implements IValue<UInt64>
+  implements IValueObject<UInt64Amount, UInt64>
+  implements IValueObjectMaterializer<UInt64Amount, UInt64>
+  nested UInt64AmountJsonConverter : JsonConverter<UInt64Amount>, IStoredJsonConverterSource
+  nested UInt64AmountTypeConverter : TypeConverter
+  new()
+  static From(UInt64) : UInt64Amount
+  static MaxValue : UInt64Amount
+  static MinValue : UInt64Amount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : UInt64Amount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : UInt64Amount
+  static Parse(String, IFormatProvider) : UInt64Amount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out UInt64Amount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out UInt64Amount) : Boolean
+  static TryParse(String, IFormatProvider, out UInt64Amount) : Boolean
+  static op_Addition(UInt64Amount, UInt64Amount) : UInt64Amount
+  static op_CheckedAddition(UInt64Amount, UInt64Amount) : UInt64Amount
+  static op_CheckedDivision(UInt64Amount, UInt64Amount) : UInt64Amount
+  static op_CheckedMultiply(UInt64Amount, UInt64Amount) : UInt64Amount
+  static op_CheckedSubtraction(UInt64Amount, UInt64Amount) : UInt64Amount
+  static op_CheckedUnaryNegation(UInt64Amount) : UInt64Amount
+  static op_Division(UInt64Amount, UInt64Amount) : UInt64Amount
+  static op_Equality(UInt64Amount, UInt64Amount) : Boolean
+  static op_GreaterThan(UInt64Amount, UInt64Amount) : Boolean
+  static op_GreaterThanOrEqual(UInt64Amount, UInt64Amount) : Boolean
+  static op_Inequality(UInt64Amount, UInt64Amount) : Boolean
+  static op_LessThan(UInt64Amount, UInt64Amount) : Boolean
+  static op_LessThanOrEqual(UInt64Amount, UInt64Amount) : Boolean
+  static op_Modulus(UInt64Amount, UInt64Amount) : UInt64Amount
+  static op_Multiply(UInt64Amount, UInt64Amount) : UInt64Amount
+  static op_Subtraction(UInt64Amount, UInt64Amount) : UInt64Amount
+  static op_UnaryNegation(UInt64Amount) : UInt64Amount
+  static op_UnaryPlus(UInt64Amount) : UInt64Amount
+  extension static UInt64AmountExtensions.GetValue(UInt64Amount) : UInt64
+  extension static UInt64AmountExtensions.ValueOrNull(UInt64Amount?) : UInt64?
+UIntPtrAmount
+  CompareTo(Object) : Int32
+  CompareTo(UIntPtrAmount) : Int32
+  Equals(Object) : Boolean
+  Equals(UIntPtrAmount) : Boolean
+  GetHashCode() : Int32
+  ToString() : String
+  ToString(String, IFormatProvider) : String
+  TryFormat(Span<Byte>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  TryFormat(Span<Char>, out Int32, ReadOnlySpan<Char>, IFormatProvider) : Boolean
+  Value : UIntPtr
+  attribute CompilerGeneratedAttribute
+  attribute GeneratedValueObjectAttribute<UIntPtrAmount, UIntPtr>
+  attribute JsonConverterAttribute
+  attribute TypeConverterAttribute
+  implements IAdditionOperators<UIntPtrAmount, UIntPtrAmount, UIntPtrAmount>
+  implements IArithmetic<UIntPtrAmount>
+  implements IComparable
+  implements IComparable<UIntPtrAmount>
+  implements IComparisonOperators<UIntPtrAmount, UIntPtrAmount, Boolean>
+  implements IDivisionOperators<UIntPtrAmount, UIntPtrAmount, UIntPtrAmount>
+  implements IEqualityOperators<UIntPtrAmount, UIntPtrAmount, Boolean>
+  implements IEquatable<UIntPtrAmount>
+  implements IFormattable
+  implements IMinMaxValue<UIntPtrAmount>
+  implements IModulusOperators<UIntPtrAmount, UIntPtrAmount, UIntPtrAmount>
+  implements IMultiplyOperators<UIntPtrAmount, UIntPtrAmount, UIntPtrAmount>
+  implements IParsable<UIntPtrAmount>
+  implements IPlainValueObject<UIntPtrAmount, UIntPtr>
+  implements ISpanFormattable
+  implements ISpanParsable<UIntPtrAmount>
+  implements ISubtractionOperators<UIntPtrAmount, UIntPtrAmount, UIntPtrAmount>
+  implements IUnaryNegationOperators<UIntPtrAmount, UIntPtrAmount>
+  implements IUnaryPlusOperators<UIntPtrAmount, UIntPtrAmount>
+  implements IUtf8SpanFormattable
+  implements IUtf8SpanParsable<UIntPtrAmount>
+  implements IValue<UIntPtr>
+  implements IValueObject<UIntPtrAmount, UIntPtr>
+  implements IValueObjectMaterializer<UIntPtrAmount, UIntPtr>
+  nested UIntPtrAmountJsonConverter : JsonConverter<UIntPtrAmount>, IStoredJsonConverterSource
+  nested UIntPtrAmountTypeConverter : TypeConverter
+  new()
+  static From(UIntPtr) : UIntPtrAmount
+  static MaxValue : UIntPtrAmount
+  static MinValue : UIntPtrAmount
+  static Parse(ReadOnlySpan<Byte>, IFormatProvider) : UIntPtrAmount
+  static Parse(ReadOnlySpan<Char>, IFormatProvider) : UIntPtrAmount
+  static Parse(String, IFormatProvider) : UIntPtrAmount
+  static TryParse(ReadOnlySpan<Byte>, IFormatProvider, out UIntPtrAmount) : Boolean
+  static TryParse(ReadOnlySpan<Char>, IFormatProvider, out UIntPtrAmount) : Boolean
+  static TryParse(String, IFormatProvider, out UIntPtrAmount) : Boolean
+  static op_Addition(UIntPtrAmount, UIntPtrAmount) : UIntPtrAmount
+  static op_CheckedAddition(UIntPtrAmount, UIntPtrAmount) : UIntPtrAmount
+  static op_CheckedDivision(UIntPtrAmount, UIntPtrAmount) : UIntPtrAmount
+  static op_CheckedMultiply(UIntPtrAmount, UIntPtrAmount) : UIntPtrAmount
+  static op_CheckedSubtraction(UIntPtrAmount, UIntPtrAmount) : UIntPtrAmount
+  static op_CheckedUnaryNegation(UIntPtrAmount) : UIntPtrAmount
+  static op_Division(UIntPtrAmount, UIntPtrAmount) : UIntPtrAmount
+  static op_Equality(UIntPtrAmount, UIntPtrAmount) : Boolean
+  static op_GreaterThan(UIntPtrAmount, UIntPtrAmount) : Boolean
+  static op_GreaterThanOrEqual(UIntPtrAmount, UIntPtrAmount) : Boolean
+  static op_Inequality(UIntPtrAmount, UIntPtrAmount) : Boolean
+  static op_LessThan(UIntPtrAmount, UIntPtrAmount) : Boolean
+  static op_LessThanOrEqual(UIntPtrAmount, UIntPtrAmount) : Boolean
+  static op_Modulus(UIntPtrAmount, UIntPtrAmount) : UIntPtrAmount
+  static op_Multiply(UIntPtrAmount, UIntPtrAmount) : UIntPtrAmount
+  static op_Subtraction(UIntPtrAmount, UIntPtrAmount) : UIntPtrAmount
+  static op_UnaryNegation(UIntPtrAmount) : UIntPtrAmount
+  static op_UnaryPlus(UIntPtrAmount) : UIntPtrAmount
+  extension static UIntPtrAmountExtensions.GetValue(UIntPtrAmount) : UIntPtr
+  extension static UIntPtrAmountExtensions.ValueOrNull(UIntPtrAmount?) : UIntPtr?
 Utf8ParseOverloaded
   CompareTo(Object) : Int32
   CompareTo(Utf8ParseOverloaded) : Int32

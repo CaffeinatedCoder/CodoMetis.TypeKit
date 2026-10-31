@@ -1795,6 +1795,182 @@
     ]
   },
   {
+    "id": "C28-checked-context-is-the-underlying-types",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "`checked(a + b)` uses the checked operator, as it would for an `int`.",
+    "claim": "`checked(a + b)` uses the checked operator, as it would for an `int`.",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedArithmetic.*"
+    ],
+    "heldBy": [
+      "ArithmeticParityTests",
+      "ArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-checked-operator-not-completed",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "A `checked` operator you write needs the plain one beside it, as C# requires (CS9025), and TypeKit doesn't write that one for you either.",
+    "claim": "A `checked` operator you write needs the plain one beside it, as C# requires (CS9025), and TypeKit doesn't write that one for you either.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*"
+    ],
+    "heldBy": [
+      "ArithmeticBuildTests"
+    ]
+  },
+  {
+    "id": "C28-dates-get-no-operator",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "`DateTime`, `TimeSpan`, `DateOnly` and `Guid` implement none of them, so a value object over one gets no operator, and the interface you declared fails the build (CS0535).",
+    "claim": "`DateTime`, `TimeSpan`, `DateOnly` and `Guid` implement none of them, so a value object over one gets no operator, and the interface you declared fails the build (CS0535).",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*"
+    ],
+    "heldBy": [
+      "ArithmeticBuildTests"
+    ]
+  },
+  {
+    "id": "C28-ef-own-operator-rejected",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "A database can't run an operator you write, so an EF Core query that uses one is rejected, naming the value object",
+    "claim": "A database can't run an operator you write, so an EF Core query that uses one is rejected, naming the value object",
+    "oracle": "exception",
+    "surfaces": [
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-ef-own-operator-throws",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "An operator you wrote yourself can't run there, so a query that uses it throws, naming the value object",
+    "claim": "An operator you wrote yourself can't run there, so a query that uses it throws, naming the value object",
+    "oracle": "exception",
+    "surfaces": [
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-ef-runs-as-underlying-arithmetic",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "Each operator runs in the database as the underlying type's arithmetic: `o.Price + o.Tax > limit`, `o.Price * 2m > limit` and `o.Tax / o.Price < 0.3m` keep the rows memory keeps.",
+    "claim": "Each operator runs in the database as the underlying type's arithmetic: `o.Price + o.Tax > limit`, `o.Price * 2m > limit` and `o.Tax / o.Price < 0.3m` keep the rows memory keeps.",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedArithmetic.*",
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "ArithmeticQueryTests",
+      "PostgreSqlArithmeticQueryTests",
+      "SqlServerArithmeticQueryTests"
+    ]
+  },
+  {
+    "id": "C28-generated-operators-marked",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "The generated ones carry `[TranslatedAsWrappedArithmetic]`, which tells the query they are the underlying type's arithmetic.",
+    "claim": "The generated ones carry `[TranslatedAsWrappedArithmetic]`, which tells the query they are the underlying type's arithmetic.",
+    "oracle": "claim",
+    "surfaces": [
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "ArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-nothing-unless-declared",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "Nothing is generated unless you declare it.",
+    "claim": "Nothing is generated unless you declare it.",
+    "oracle": "claim",
+    "surfaces": [
+      "IPlainValueObject.*"
+    ],
+    "heldBy": [
+      "ArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-one-operator-per-signature",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
+    "quote": "only the first is generated, and the second fails the build (CS0738) until you implement it explicitly.",
+    "claim": "only the first is generated, and the second fails the build (CS0738) until you implement it explicitly.",
+    "oracle": "exception",
+    "surfaces": [
+      "IPlainValueObject.*"
+    ],
+    "heldBy": [
+      "ArithmeticBuildTests"
+    ]
+  },
+  {
+    "id": "C28-own-operator-kept",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "Write one yourself, or implement the interface explicitly, in the type, a base record or an interface of yours, and TypeKit keeps it, with its checked form.",
+    "claim": "Write one yourself, or implement the interface explicitly, in the type, a base record or an interface of yours, and TypeKit keeps it, with its checked form.",
+    "oracle": "claim",
+    "surfaces": [
+      "IPlainValueObject.*"
+    ],
+    "heldBy": [
+      "ArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-record-class-null-operand",
+    "source": "src/CodoMetis.TypeKit.Generators/README.md#what-is-generated",
+    "quote": "A `null` operand of a record class throws `ArgumentNullException`.",
+    "claim": "A `null` operand of a record class throws `ArgumentNullException`.",
+    "oracle": "exception",
+    "surfaces": [
+      "GeneratedArithmetic.*"
+    ],
+    "heldBy": [
+      "ArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-the-underlying-types-operator",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "Each operator does what the underlying type's operator does: the same result, the same overflow, the same checked context.",
+    "claim": "Each operator does what the underlying type's operator does: the same result, the same overflow, the same checked context.",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedArithmetic.*",
+      "IPlainValueObject.*"
+    ],
+    "heldBy": [
+      "ArithmeticParityTests",
+      "ArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-validated-gets-none",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "A validated value object gets none.",
+    "claim": "A validated value object gets none.",
+    "oracle": "exception",
+    "surfaces": [
+      "IValidatedValue.*"
+    ],
+    "heldBy": [
+      "ArithmeticBuildTests",
+      "ArithmeticTests"
+    ]
+  },
+  {
     "id": "E01-column-type",
     "source": "docs/ef-core.md#the-model",
     "quote": "Every property maps as a column of the underlying type, nullable where the property is.",
@@ -2485,6 +2661,105 @@
     ],
     "heldBy": [
       "SqlServerQueryVariantTests"
+    ]
+  },
+  {
+    "id": "E18-arithmetic-on-every-provider",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "The database computes them, on SQLite, PostgreSQL and SQL Server alike.",
+    "claim": "The database computes them, on SQLite, PostgreSQL and SQL Server alike.",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedArithmetic.*",
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "ArithmeticQueryTests",
+      "PostgreSqlArithmeticQueryTests",
+      "SqlServerArithmeticQueryTests"
+    ]
+  },
+  {
+    "id": "E18-arithmetic-rows-as-memory",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "`o.Price * 2m > limit` keeps the rows memory keeps, and `o.Tax / o.Price` reads a `decimal`.",
+    "claim": "`o.Price * 2m > limit` keeps the rows memory keeps, and `o.Tax / o.Price` reads a `decimal`.",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedArithmetic.*",
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "ArithmeticQueryTests",
+      "PostgreSqlArithmeticQueryTests",
+      "SqlServerArithmeticQueryTests"
+    ]
+  },
+  {
+    "id": "E18-foreign-converter-not-translated",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "an operator isn't translated, as `.Value` isn't: the column doesn't hold the underlying value, so EF's \"could not be translated\" is the answer.",
+    "claim": "an operator isn't translated, as `.Value` isn't: the column doesn't hold the underlying value, so EF's \"could not be translated\" is the answer.",
+    "oracle": "exception",
+    "surfaces": [
+      "GeneratedArithmetic.*",
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "ForeignConvertedArithmeticTests"
+    ]
+  },
+  {
+    "id": "E18-own-operator-over-passed-values",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "An operator over values you pass in, which EF computes before the query, stays allowed.",
+    "claim": "An operator over values you pass in, which EF computes before the query, stays allowed.",
+    "oracle": "claim",
+    "surfaces": [
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenArithmeticTests"
+    ]
+  },
+  {
+    "id": "E18-own-operator-query-filter",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "A query filter that uses one fails when the model is built.",
+    "claim": "A query filter that uses one fails when the model is built.",
+    "oracle": "exception",
+    "surfaces": [
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenArithmeticTests"
+    ]
+  },
+  {
+    "id": "E18-own-operator-throws",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "So a query that uses an arithmetic or bitwise operator you wrote on a value object, `&&` and `||` included, throws an `InvalidOperationException` naming the value object.",
+    "claim": "So a query that uses an arithmetic or bitwise operator you wrote on a value object, `&&` and `||` included, throws an `InvalidOperationException` naming the value object.",
+    "oracle": "exception",
+    "surfaces": [
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "HandWrittenArithmeticTests"
+    ]
+  },
+  {
+    "id": "E18-small-types-throw",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "an operator throws as well, naming the value object.",
+    "claim": "an operator throws as well, naming the value object.",
+    "oracle": "exception",
+    "surfaces": [
+      "GeneratedArithmetic.*",
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "ArithmeticQueryTests"
     ]
   },
   {

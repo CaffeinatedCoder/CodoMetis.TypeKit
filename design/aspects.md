@@ -1,6 +1,6 @@
 # Aspects
 
-- **Aspect-class count.** Eleven classes: ten for value objects and `ClosedSetAspect`, whose design is
+- **Aspect-class count.** Twelve classes: eleven for value objects and `ClosedSetAspect`, whose design is
   its own note ([Closed sets](closed-sets.md)). The Metalama Open Source edition (MIT) has no aspect-class
   limit (pricing page, 2026-09-26). The unlicensed CI build confirms it (phase 6).
 - **Entry points.** `ValueObjectAspect` introduces three private helpers on every value
@@ -9,7 +9,16 @@
   `__TryFromText` (`false`). A plain value object constructs directly; a validated one calls
   `Create` through `GeneratedFactories` in the base package. The exception is the explicit
   `IValueObjectMaterializer.Materialize`, by contract. `MinValue`/`MaxValue` are only generated for
-  a plain value object.
+  a plain value object, and so are arithmetic operators, which wrap their result through the private
+  constructor as `From` does.
+- **Arithmetic is opt-in (decided 2026-10-30, [decision 122](adr/0122-arithmetic-operators-are-opt-in-and-a-hand-written-one-is-a-seam.md)).**
+  `ValueObjectArithmeticAspect` generates the operators of the operator interfaces a plain value object
+  declares, where the wrapped type implements the same interface with the value object replaced by itself,
+  each calling the wrapped type's through `GeneratedArithmetic`, a constrained generic call with its context
+  stated. A hand-written operator for the same operands, or an explicit implementation of the interface, its
+  own, a base record's or an interface's, is a seam: kept with its `checked` form, never CMTK1011, so code that
+  wrote them on 2.3 builds unchanged. Each generated operator carries `[TranslatedAsWrappedArithmetic]`, which is
+  how an EF Core query tells it from a hand-written one ([decision 123](adr/0123-a-hand-written-operator-is-refused-in-a-query.md)).
 - **Declarations that cannot be generated** are errors, so no type is left half-generated:
   CMTK1000/1001/1002 (not `partial`, not a record, a struct not `readonly`), CMTK1003 (more than one
   marker), CMTK1004 (a validated marker whose first type argument is another type), CMTK1005 (a
