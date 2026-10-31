@@ -232,11 +232,10 @@ object or another type, as long as the underlying type has that operator itself.
   base record or an interface of yours, and TypeKit keeps it, with its checked form. It generates only the operators you haven't written.
 - **The checked context.** `checked(a + b)` uses the checked operator, as it would for an `int`. A value
   object over an `int` throws `OverflowException` there, and wraps around outside it.
-- **In an EF Core query.** An operator between two value objects runs in the database, as it would for
-  the underlying type: `o.Price + o.Tax > limit` keeps the rows memory keeps. One with another operand or
-  result, such as `o.Price * 2m`, throws there for now. Write `o.Price.Value * 2m` instead. An operator
-  you wrote yourself can't run there, so a query that uses it throws, naming the value object
-  ([EF Core, Queries](../src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries)).
+- **In an EF Core query.** Each operator runs in the database as the underlying type's arithmetic:
+  `o.Price + o.Tax > limit`, `o.Price * 2m > limit` and `o.Tax / o.Price < 0.3m` keep the rows memory
+  keeps. An operator you wrote yourself can't run there, so a query that uses it throws, naming the value
+  object ([EF Core, Queries](../src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries)).
 
 ## Enums, dates and other types
 

@@ -1835,19 +1835,6 @@
     ]
   },
   {
-    "id": "C28-ef-between-value-objects",
-    "source": "docs/value-objects.md#add-subtract-and-scale",
-    "quote": "An operator between two value objects runs in the database, as it would for the underlying type: `o.Price + o.Tax > limit` keeps the rows memory keeps.",
-    "claim": "An operator between two value objects runs in the database, as it would for the underlying type: `o.Price + o.Tax > limit` keeps the rows memory keeps.",
-    "oracle": "differential",
-    "surfaces": [
-      "GeneratedArithmetic.*"
-    ],
-    "heldBy": [
-      "ArithmeticQueryTests"
-    ]
-  },
-  {
     "id": "C28-ef-own-operator-rejected",
     "source": "src/CodoMetis.TypeKit.Generators/README.md#write-your-own-members",
     "quote": "A database can't run an operator you write, so an EF Core query that uses one is rejected, naming the value object",
@@ -1871,6 +1858,22 @@
     ],
     "heldBy": [
       "HandWrittenArithmeticTests"
+    ]
+  },
+  {
+    "id": "C28-ef-runs-as-underlying-arithmetic",
+    "source": "docs/value-objects.md#add-subtract-and-scale",
+    "quote": "Each operator runs in the database as the underlying type's arithmetic: `o.Price + o.Tax > limit`, `o.Price * 2m > limit` and `o.Tax / o.Price < 0.3m` keep the rows memory keeps.",
+    "claim": "Each operator runs in the database as the underlying type's arithmetic: `o.Price + o.Tax > limit`, `o.Price * 2m > limit` and `o.Tax / o.Price < 0.3m` keep the rows memory keeps.",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedArithmetic.*",
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "ArithmeticQueryTests",
+      "PostgreSqlArithmeticQueryTests",
+      "SqlServerArithmeticQueryTests"
     ]
   },
   {
@@ -2661,6 +2664,52 @@
     ]
   },
   {
+    "id": "E18-arithmetic-on-every-provider",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "The database computes them, on SQLite, PostgreSQL and SQL Server alike.",
+    "claim": "The database computes them, on SQLite, PostgreSQL and SQL Server alike.",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedArithmetic.*",
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "ArithmeticQueryTests",
+      "PostgreSqlArithmeticQueryTests",
+      "SqlServerArithmeticQueryTests"
+    ]
+  },
+  {
+    "id": "E18-arithmetic-rows-as-memory",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "`o.Price * 2m > limit` keeps the rows memory keeps, and `o.Tax / o.Price` reads a `decimal`.",
+    "claim": "`o.Price * 2m > limit` keeps the rows memory keeps, and `o.Tax / o.Price` reads a `decimal`.",
+    "oracle": "differential",
+    "surfaces": [
+      "GeneratedArithmetic.*",
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "ArithmeticQueryTests",
+      "PostgreSqlArithmeticQueryTests",
+      "SqlServerArithmeticQueryTests"
+    ]
+  },
+  {
+    "id": "E18-foreign-converter-not-translated",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "an operator isn't translated, as `.Value` isn't: the column doesn't hold the underlying value, so EF's \"could not be translated\" is the answer.",
+    "claim": "an operator isn't translated, as `.Value` isn't: the column doesn't hold the underlying value, so EF's \"could not be translated\" is the answer.",
+    "oracle": "exception",
+    "surfaces": [
+      "GeneratedArithmetic.*",
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "ForeignConvertedArithmeticTests"
+    ]
+  },
+  {
     "id": "E18-own-operator-over-passed-values",
     "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
     "quote": "An operator over values you pass in, which EF computes before the query, stays allowed.",
@@ -2697,6 +2746,20 @@
     ],
     "heldBy": [
       "HandWrittenArithmeticTests"
+    ]
+  },
+  {
+    "id": "E18-small-types-throw",
+    "source": "src/CodoMetis.TypeKit.EntityFrameworkCore/README.md#queries",
+    "quote": "an operator throws as well, naming the value object.",
+    "claim": "an operator throws as well, naming the value object.",
+    "oracle": "exception",
+    "surfaces": [
+      "GeneratedArithmetic.*",
+      "TranslatedAsWrappedArithmeticAttribute.*"
+    ],
+    "heldBy": [
+      "ArithmeticQueryTests"
     ]
   },
   {

@@ -221,15 +221,22 @@ instead, which works everywhere and may add a cast:
   (`OrderBy(o => o.Priority.Value)`), or order in memory after the query. Equality isn't ordering,
   and stays allowed. A query filter (`HasQueryFilter`, named or not) that does the same fails when
   the model is built, naming the entity type, since it applies to every query of that type.
+- **A value object's arithmetic runs as the underlying type's.** The operators TypeKit generates
+  ([Add, subtract and scale](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/value-objects.md#add-subtract-and-scale)) work in a query.
+  `o.Price * 2m > limit` keeps the rows memory keeps, and `o.Tax / o.Price` reads a `decimal`. The
+  database computes them, on SQLite, PostgreSQL and SQL Server alike.
 - **Your own operator can't run in the database.** EF reads `o.Price + o.Tax` as the database's own
   addition of the two columns and never calls your `+`. Whatever your operator does beyond that, such
   as rounding, would be skipped. So a query that uses an arithmetic or bitwise operator you wrote on a
   value object, `&&` and `||` included, throws an `InvalidOperationException` naming the value object. Compute it from `.Value`
   where the underlying type's arithmetic is what you mean (`o.Price.Value + o.Tax.Value`), or do it in
   memory after the query. A query filter that uses one fails when the model is built. An operator over
-  values you pass in, which EF computes before the query, stays allowed. The operators TypeKit
-  generates ([Add, subtract and scale](https://github.com/CaffeinatedCoder/CodoMetis.TypeKit/blob/main/docs/value-objects.md#add-subtract-and-scale))
-  are the underlying type's, and work in a query.
+  values you pass in, which EF computes before the query, stays allowed.
+- **Over a `byte`, `short` or `char`,** an operator throws as well, naming the value object. C#
+  computes their arithmetic as an `int`'s, and EF has no expression for theirs.
+- **Over a column your own converter stores,** an operator isn't translated, as `.Value` isn't: the
+  column doesn't hold the underlying value, so EF's "could not be translated" is the answer. As the
+  query's last step, a `Select` still works: EF computes it in memory.
 
   One exception: a filter may order values your context holds, without a lambda, as in
   `HasQueryFilter(o => o.Priority == Limits.Max())`. EF works that out in memory, by your `CompareTo`. With a

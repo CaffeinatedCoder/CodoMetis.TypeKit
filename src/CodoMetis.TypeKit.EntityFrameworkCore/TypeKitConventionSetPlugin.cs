@@ -6,9 +6,9 @@ namespace CodoMetis.TypeKit.EntityFrameworkCore;
 /// <summary>
 /// Adds TypeKit's conventions to every model <c>UseTypeKit()</c> builds: the key generation of
 /// <see cref="ValueObjectKeyValueGenerationConvention"/> and <see cref="ValueObjectTpcKeyValueGenerationConvention"/>,
-/// the rewrite of <see cref="ValueThroughInterfaceQueryFilterConvention"/>,
-/// the generator of <see cref="ValueObjectValueGeneratorConvention"/>, and the refusals of
-/// <see cref="ValueObjectArithmeticQueryFilterConvention"/> and <see cref="HandWrittenOrderingQueryFilterConvention"/>.
+/// the rewrites of <see cref="ValueThroughInterfaceQueryFilterConvention"/> and <see cref="ValueObjectArithmeticQueryFilterConvention"/>,
+/// the generator of <see cref="ValueObjectValueGeneratorConvention"/>, and the refusal of
+/// <see cref="HandWrittenOrderingQueryFilterConvention"/>.
 /// </summary>
 internal sealed class TypeKitConventionSetPlugin : IConventionSetPlugin
 {
@@ -27,7 +27,7 @@ internal sealed class TypeKitConventionSetPlugin : IConventionSetPlugin
         // A query filter's .Value read through the value-object interface, before the model is final.
         finalizing.Add(new ValueThroughInterfaceQueryFilterConvention());
 
-        // A query filter's value-object operator written by hand, refused.
+        // A query filter's value-object arithmetic, rewritten or, written by hand, refused.
         finalizing.Add(new ValueObjectArithmeticQueryFilterConvention());
 
         // Last, once whether a property is generated is final: the provider's generator for the wrapped type.

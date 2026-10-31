@@ -36,6 +36,15 @@ await Check("ef-json-column", async () =>
 db.ChangeTracker.Clear();
 await Check("ef-value", async () => (await db.Orders.Where(o => o.Code.Value.StartsWith("AB")).SingleAsync()).Quantity.Value.ToString());
 db.ChangeTracker.Clear();
+// Generated operators, rewritten to the wrapped type's arithmetic before EF's precompiler translates the query:
+// one with another operand, and one between two value objects read through .Value.
+await Check("ef-arithmetic", async () =>
+{
+    var scaled = await db.Orders.Where(o => o.Quantity * 3 > Quantity.From(5)).Select(o => o.Quantity * 3).SingleAsync();
+    var summed = await db.Orders.Where(o => o.Quantity + o.Quantity > Quantity.From(3)).Select(o => (o.Quantity + o.Quantity).Value).SingleAsync();
+    return $"{scaled.Value} {summed}";
+});
+db.ChangeTracker.Clear();
 await Check("ef-parameter", async () => (await db.Orders.Where(o => o.Id == id).SingleAsync()).Code.Value);
 db.ChangeTracker.Clear();
 await Check("ef-stored", async () =>

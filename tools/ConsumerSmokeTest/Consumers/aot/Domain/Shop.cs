@@ -34,7 +34,7 @@ public static class Billing
 // fallback with a built-in converter (Uri, an enum), a string, and parsing through a TypeConverter.
 // Quantity and Amount declare arithmetic, whose operators call the wrapped type's through a type parameter.
 public readonly partial record struct OrderId : IValue<Guid>;
-public readonly partial record struct Quantity : IValue<int>, System.Numerics.IAdditionOperators<Quantity, Quantity, Quantity>;
+public readonly partial record struct Quantity : IValue<int>, System.Numerics.IAdditionOperators<Quantity, Quantity, Quantity>, System.Numerics.IMultiplyOperators<Quantity, int, Quantity>;
 public readonly partial record struct Amount : IValue<decimal>, System.Numerics.IAdditionOperators<Amount, Amount, Amount>, System.Numerics.IMultiplyOperators<Amount, decimal, Amount>;
 public readonly partial record struct Link : IValue<Uri>;
 public readonly partial record struct Weekday : IValue<DayOfWeek>;

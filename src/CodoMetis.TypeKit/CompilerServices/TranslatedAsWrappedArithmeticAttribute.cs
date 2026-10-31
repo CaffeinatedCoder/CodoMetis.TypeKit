@@ -11,7 +11,9 @@ namespace CodoMetis.TypeKit.CompilerServices;
 /// CodoMetis.TypeKit.Generators puts it on every arithmetic operator it generates, which calls the
 /// wrapped type's through <see cref="GeneratedArithmetic"/>: an operand of the value object's type is its
 /// <c>Value</c>, any other operand is passed as it is, and a result of the value object's type wraps the
-/// wrapped type's result.
+/// wrapped type's result. CodoMetis.TypeKit.EntityFrameworkCore translates the operator so, also where
+/// an operand or the result is not the value object (<c>o.Price * 2m</c>, <c>o.Tax / o.Price</c> as a
+/// <c>decimal</c>).
 /// </para>
 /// <para>
 /// An operator without it, one written by hand, is refused in a query, naming the value object: EF

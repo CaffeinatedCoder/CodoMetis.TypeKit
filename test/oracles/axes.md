@@ -23,6 +23,8 @@ footprint, it runs with the suite.
 - **Arithmetic parity (differential).** A value object's generated arithmetic operator gives what the wrapped
   type's own gives, value or exception, unchecked and checked, for every numeric wrapped type and both record
   shapes. `ArithmeticParityTests`.
+- **Arithmetic in a query (differential).** A value object's generated operator in an EF Core query keeps the rows,
+  and reads the values, the same operator keeps in memory, on SQLite, PostgreSQL and SQL Server. `ArithmeticQueryTests`.
 - **No refusal quotes the input (exception).** A sentinel in refused input never reaches a message.
   `UnreadableInputTests`.
 - **Off the wire (exception).** `Option` and `Result` refuse System.Text.Json in both directions. `NotWireTypeTests`.
@@ -43,6 +45,7 @@ footprint, it runs with the suite.
 | EF | the query | `QueryShapes` | `QueryTranslationVariantTests` | |
 | Analyzers | where a type argument is written, and what it is | `TypeArgumentSites`, `TypeArgumentKinds` (`test/CodoMetis.TypeKit.Analyzers.Tests/Variants/`) | `TypeArgumentConstraintVariantTests` | |
 | Generation | the declaration's shape | record struct, record class, struct, class; sealed or not; over each wrapped kind | `BuildOutcomeTests`, `GeneratedSurfaceTests` | |
+| EF | an operator in a query | the operator, the other operand (the value object, the wrapped type as a literal, a parameter or a column), the result (the value object or the wrapped type), the site (a column, a nullable column, a JSON property, a navigation, a query filter, named or not), the use (a filter, a projection, an ordering, an aggregate, `.Value` of it), who stores the column (TypeKit's converter, the application's own), generated or written by hand; on SQLite, PostgreSQL and SQL Server | `ArithmeticQueryTests`, `ArithmeticQueryFilterTests`, `ForeignConvertedArithmeticTests`, `HandWrittenArithmeticTests` | an operator over a primitive collection's element; a `GroupBy` key |
 | Generation | the operator interfaces a plain value object declares | each arithmetic interface, the other operand and the result as the value object or another type, declared directly or through another interface, written by hand (public, explicit, a base record's explicit, an interface's explicit) or not; over every numeric wrapped type and both record shapes | `ArithmeticParityTests`, `ArithmeticTests`, `ArithmeticBuildTests` | an operator interface beside a hand-written `CompareTo` |
 
 An empty last column means nobody has looked yet, not that nothing is missing. Fill it when a feature lands or a

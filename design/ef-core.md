@@ -59,12 +59,21 @@
     model is built (and so at `dbcontext optimize` and `migrations add`). A comparison in a filter that
     reads neither the entity nor a query is left alone: EF evaluates it in memory, by `CompareTo`
     (measured: `Floor > From(2)` on the context kept the rows memory keeps).
-  - **A hand-written operator is refused in a query (decided 2026-10-30, [decision 123](adr/0123-a-hand-written-operator-is-refused-in-a-query.md)).**
+  - **An operator is the wrapped type's arithmetic, or refused (decided 2026-10-30, [decision 123](adr/0123-a-hand-written-operator-is-refused-in-a-query.md) and [decision 124](adr/0124-an-operator-in-a-query-is-the-wrapped-type-s-arithmetic.md)).**
     EF translates an operator node as the database's arithmetic over its operands and never calls the
-    method, so a hand-written `+` that rounds ran as the plain sum of the columns. The arithmetic aspect
-    marks every operator it generates `[TranslatedAsWrappedArithmetic]`; an interceptor, and a finalizing
-    convention for query filters, refuses any other arithmetic, bitwise or shift operator a value object
-    declares, `&&` and `||` over its `&` and `|` included, naming the value object (#187). A conversion operator is left to EF.
+    method. For a generated operator between two value objects that is right where TypeKit's converter
+    stores the column, and added the texts where the application's own stores `"M:" + value`; with another
+    operand or result it applied the value object's converter to the other side and threw (#186). An
+    interceptor, and a finalizing convention for query filters, rewrites every generated operator marked
+    `[TranslatedAsWrappedArithmetic]` to the wrapped type's operator over `ProviderValue` of each
+    value-object operand, its result wrapped by `ValueObjectConverter<,>.Materialize`, which the method
+    translator re-types as the value object with its mapping for the same store type; unary `+` of a number
+    is the operand. Any other arithmetic, bitwise or shift operator a value object declares, `&&` and `||` over its
+    `&` and `|` included, is hand-written, and refused naming the value object (#187), in a filter when the model is built. The database's
+    arithmetic, and `.Value` of it, is re-typed, not cast, through a `?:`, a `??`, `MAX`, `MIN` and a subquery of
+    one value too: a cast to the column's store type, SQL Server's default `decimal(18,2)`, read
+    `(o.Price / 32m).Value` over 5 as 0.16 where memory reads 0.15625. An optional operand is checked, so EF's
+    computing the last `Select` in memory reads null where the operator does.
   - **A null passes no comparison in a query (decided 2026-10-15, [decision 98](adr/0098-a-null-passes-no-comparison-in-a-query.md)).**
     A record class's generated operators sort null first, so `null < x` is true in memory, and SQL's
     `"N" < @x` leaves the null row out, as for the underlying type's nullable column. Not refused: a
