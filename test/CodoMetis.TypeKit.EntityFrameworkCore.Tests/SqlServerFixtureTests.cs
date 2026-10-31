@@ -3,9 +3,9 @@ using Microsoft.Data.SqlClient;
 namespace CodoMetis.TypeKit.EntityFrameworkCore.Tests;
 
 /// <summary>
-/// A guard on the harness: a database many rows ask for at once is created once, as the project's parallel mode
-/// asks for it (#251). Created more than once, one caller drops it under another, "Database 'typekit_queries' already
-/// exists", or after another has returned, and every row reading it fails.
+/// A guard on the harness: a database many callers ask for at once is created once, as the rows of a sweep ask for
+/// it when they run in parallel (#251). Created more than once, one caller drops it under another, "Database
+/// 'typekit_queries' already exists", or after another has returned, and every row reading it fails.
 /// </summary>
 [Collection(SqlServerCollection.Name)]
 [Trait("Needs", "Docker")]

@@ -33,8 +33,8 @@ public sealed class SqlServer : IAsyncLifetime
             .Build();
 
     // Lazy, because GetOrAdd may run its factory more than once for callers that arrive together, and two of them
-    // would drop and create the same database under each other: in the project's parallel mode the first rows of a
-    // sweep did, "Database 'typekit_queries' already exists" (#251).
+    // would drop and create the same database under each other: with the project's rows run in parallel, the first
+    // rows of a sweep did, "Database 'typekit_queries' already exists" (#251).
     private readonly ConcurrentDictionary<string, Lazy<Task<string>>> _databases = new();
 
     private string ConnectionString(string database) => new SqlConnectionStringBuilder

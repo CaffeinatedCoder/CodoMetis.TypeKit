@@ -24,17 +24,4 @@
         <PackageReference Include="Testcontainers" />
     </ItemGroup>
 
-    <!--
-      parallelMode "all": every row of a theory runs in parallel, not only the test classes (xunit.v3 4.x). The two
-      query sweeps are one class each of 12,275 rows, which the default mode ran one after another, and a row
-      waits on SQLite, SQL Server or PostgreSQL more than it computes: at four threads the project took 55 s
-      instead of 123 s for the same CPU (#251). A row only reads what was seeded for its model, each SQLite class
-      opens its own database per test, and the PostgreSQL round trips read back only the rows they saved.
-      SqlServerRoundTripTests creates the same tables in one database from each of its tests, so it opts out
-      ([TestClass(DisableParallelization = true)]).
-    -->
-    <ItemGroup>
-        <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
-    </ItemGroup>
-
 </Project>
