@@ -32,9 +32,10 @@ public static class Billing
 
 // One per JSON strategy: a reader method (Guid), the serializer's contract for a number, the
 // fallback with a built-in converter (Uri, an enum), a string, and parsing through a TypeConverter.
+// Quantity and Amount declare arithmetic, whose operators call the wrapped type's through a type parameter.
 public readonly partial record struct OrderId : IValue<Guid>;
-public readonly partial record struct Quantity : IValue<int>;
-public readonly partial record struct Amount : IValue<decimal>;
+public readonly partial record struct Quantity : IValue<int>, System.Numerics.IAdditionOperators<Quantity, Quantity, Quantity>;
+public readonly partial record struct Amount : IValue<decimal>, System.Numerics.IAdditionOperators<Amount, Amount, Amount>, System.Numerics.IMultiplyOperators<Amount, decimal, Amount>;
 public readonly partial record struct Link : IValue<Uri>;
 public readonly partial record struct Weekday : IValue<DayOfWeek>;
 public readonly partial record struct Name : IValue<string>;

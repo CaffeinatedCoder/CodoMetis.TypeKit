@@ -1,0 +1,17 @@
+Seed: The checked forms of the arithmetic operators are not generated, so a checked context reaches the interface's default, the unchecked operator
+Oracles: ArithmeticParityTests
+Fails: every checked row of an integer type whose sum, difference, product or negation leaves the type's range, where the wrapped type throws OverflowException and the value object wraps around
+
+diff --git a/src/CodoMetis.TypeKit.Generators/ValueObjectArithmeticAspect.cs b/src/CodoMetis.TypeKit.Generators/ValueObjectArithmeticAspect.cs
+index 5a9acb8..ce47b03 100644
+--- a/src/CodoMetis.TypeKit.Generators/ValueObjectArithmeticAspect.cs
++++ b/src/CodoMetis.TypeKit.Generators/ValueObjectArithmeticAspect.cs
+@@ -133,8 +133,6 @@ internal sealed partial class ValueObjectArithmeticAspect : TypeAspect
+ 
+             Introduce(@operator.Kind, @operator.Helper);
+ 
+-            if (@operator is { CheckedKind: { } checkedKind, CheckedHelper: { } checkedHelper })
+-                Introduce(checkedKind, checkedHelper);
+ 
+             void Introduce(OperatorKind kind, string helperName)
+             {

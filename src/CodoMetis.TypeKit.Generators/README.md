@@ -187,6 +187,7 @@ type of your own that does.
 | `IEqualityOperators<TSelf, TSelf, bool>` | every value object | The generic-math form of `==`/`!=`, so a value object satisfies that constraint. |
 | `IComparable<TSelf>`, `IComparable`, `IComparisonOperators<TSelf, TSelf, bool>`, `<` `>` `<=` `>=` | when the underlying type is comparable | Strings compare ordinally, so ordering agrees with equality. |
 | `MinValue`, `MaxValue`, `IMinMaxValue<TSelf>` | `IValue<T>` over a type whose own static `MinValue`/`MaxValue` are of that type | Never for a validated value object. |
+| `+`, `-`, `*`, `/`, `%`, unary `-` and `+`, and their `checked` forms | `IValue<T>` that declares `IAdditionOperators`, `ISubtractionOperators`, `IMultiplyOperators`, `IDivisionOperators`, `IModulusOperators`, `IUnaryNegationOperators` or `IUnaryPlusOperators`, where `T` implements the same interface with `T` in place of the value object | Only what you declare, and never for a validated value object. Each operator calls `T`'s, so the result, the overflow and the checked context are `T`'s. A `null` operand of a record class throws `ArgumentNullException`. An operator you write is kept (see "Write your own members" below). |
 | `[TypeConverter]` with a nested converter | when parsing is generated | MVC model binding and the reflection-based configuration binder use it. The configuration binding source generator, which `PublishAot` and `PublishTrimmed` turn on, doesn't bind value objects and leaves them `default`. Bind the underlying type there. |
 | `IConvertible` | when the underlying type is convertible | Explicit, so `Convert.ToInt64(quantity)` and `Convert.ChangeType(quantity, typeof(Quantity))` work. |
 | `{TSelf}Extensions.GetValue()` and `ValueOrNull()` | every value object an extension class can reach (not a `private` or `protected` nested one) | For EF Core queries, where they translate to the column. |
@@ -218,6 +219,15 @@ A value object may declare its own `TryFrom`, `FromKnownGood`, `Revalidate`, `Co
 Declare them on the value object itself. A `TryFrom`, `Revalidate` or `CompareTo` in a base record fails
 the build (CMTK1011, or CMTK1008 for `CompareTo`), because it would stand in for the generated member
 without a word. A base record's `sealed` `ToString()` is the one exception, as described below.
+
+An arithmetic operator you write is kept as well, and so is an explicit implementation of its
+interface, yours, a base record's or one an interface of yours supplies. Its `checked` form is then yours too: TypeKit generates neither
+form of that operator, and generates the ones you didn't write. A `checked` operator you write needs the
+plain one beside it, as C# requires (CS9025), and TypeKit doesn't write that one for you either. Code
+that wrote these operators by hand before 2.4 builds unchanged. C# allows one operator per pair of operand types, so of two interfaces
+that ask for the same operator, such as `IDivisionOperators<Money, Money, Money>` and
+`IDivisionOperators<Money, Money, decimal>`, only the first is generated, and the second fails the build
+(CS0738) until you implement it explicitly.
 
 Writing any other generated member or attribute by hand fails the build, naming it (CMTK1011). That
 covers:

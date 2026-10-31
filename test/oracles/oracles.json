@@ -6,6 +6,12 @@
     "against": "every public member of the base package that returns a task, by reflection: a callback runs where the task it waited for completed, and nothing resumes on the caller's context"
   },
   {
+    "class": "ArithmeticParityTests",
+    "project": "CodoMetis.TypeKit.Generators.Tests",
+    "kind": "differential",
+    "against": "the wrapped type's own operator of the same interface, called by the same generic code in the same checked or unchecked context, for every numeric wrapped type and both record shapes"
+  },
+  {
     "class": "JsonParityTests",
     "project": "CodoMetis.TypeKit.Generators.Tests",
     "kind": "differential",
